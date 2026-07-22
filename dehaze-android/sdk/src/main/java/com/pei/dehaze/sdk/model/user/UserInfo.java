@@ -15,4 +15,5 @@ public class UserInfo {
     private String avatar;
     private List<String> roles;
     private List<String> perms;
+    private String createTime;
 }

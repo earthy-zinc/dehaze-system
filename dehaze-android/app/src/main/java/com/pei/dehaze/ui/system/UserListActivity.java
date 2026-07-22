@@ -57,6 +57,7 @@ public class UserListActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
     private Toolbar toolbar;
+    private TextView tvEmpty;
     private EditText etKeywords;
     private Spinner spinnerStatus;
     private Spinner spinnerDept;
@@ -100,6 +101,7 @@ public class UserListActivity extends AppCompatActivity {
         toolbar = findViewById(R.id.toolbar);
         recyclerView = findViewById(R.id.recycler_view);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh);
+        tvEmpty = findViewById(R.id.tv_empty);
         etKeywords = findViewById(R.id.et_keywords);
         spinnerStatus = findViewById(R.id.spinner_status);
         spinnerDept = findViewById(R.id.spinner_dept);
@@ -253,6 +255,7 @@ public class UserListActivity extends AppCompatActivity {
         userViewModel.getUserList().observe(this, users -> {
             userAdapter.submitList(users);
             updatePageInfo();
+            tvEmpty.setVisibility(users == null || users.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         userViewModel.getTotal().observe(this, total -> updatePageInfo());

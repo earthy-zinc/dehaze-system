@@ -43,6 +43,7 @@ public class RoleListActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
     private Toolbar toolbar;
+    private TextView tvEmpty;
     private EditText etKeywords;
     private MaterialButton btnSearch;
     private MaterialButton btnReset;
@@ -72,6 +73,7 @@ public class RoleListActivity extends AppCompatActivity {
         toolbar = findViewById(R.id.toolbar);
         recyclerView = findViewById(R.id.recycler_view);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh);
+        tvEmpty = findViewById(R.id.tv_empty);
         etKeywords = findViewById(R.id.et_keywords);
         btnSearch = findViewById(R.id.btn_search);
         btnReset = findViewById(R.id.btn_reset);
@@ -181,6 +183,7 @@ public class RoleListActivity extends AppCompatActivity {
         roleViewModel.getRoleList().observe(this, roles -> {
             roleAdapter.submitList(roles);
             updatePageInfo();
+            tvEmpty.setVisibility(roles == null || roles.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         roleViewModel.getTotal().observe(this, total -> updatePageInfo());

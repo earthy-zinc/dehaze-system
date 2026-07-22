@@ -40,6 +40,7 @@ public class DeptListActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
     private Toolbar toolbar;
+    private TextView tvEmpty;
     private EditText etKeywords;
     private Spinner spinnerStatus;
     private MaterialButton btnSearch;
@@ -63,6 +64,7 @@ public class DeptListActivity extends AppCompatActivity {
         toolbar = findViewById(R.id.toolbar);
         recyclerView = findViewById(R.id.recycler_view);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh);
+        tvEmpty = findViewById(R.id.tv_empty);
         etKeywords = findViewById(R.id.et_keywords);
         spinnerStatus = findViewById(R.id.spinner_status);
         btnSearch = findViewById(R.id.btn_search);
@@ -123,7 +125,10 @@ public class DeptListActivity extends AppCompatActivity {
     }
 
     private void setupObservers() {
-        deptViewModel.getDeptList().observe(this, depts -> deptAdapter.setData(depts));
+        deptViewModel.getDeptList().observe(this, depts -> {
+            deptAdapter.setData(depts);
+            tvEmpty.setVisibility(depts == null || depts.isEmpty() ? View.VISIBLE : View.GONE);
+        });
 
         deptViewModel.getLoading().observe(this, isLoading ->
                 swipeRefreshLayout.setRefreshing(isLoading != null && isLoading));

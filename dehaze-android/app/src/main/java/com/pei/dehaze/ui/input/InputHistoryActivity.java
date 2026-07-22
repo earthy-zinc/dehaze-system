@@ -62,6 +62,7 @@ public class InputHistoryActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private SwipeRefreshLayout swipeRefresh;
     private RecyclerView recyclerView;
+    private TextView tvEmpty;
     private TextView tvPageInfo;
     private Spinner spinnerSource;
     private MaterialCheckBox cbFavoriteOnly;
@@ -100,6 +101,7 @@ public class InputHistoryActivity extends AppCompatActivity {
         toolbar = findViewById(R.id.toolbar);
         recyclerView = findViewById(R.id.recycler_view);
         swipeRefresh = findViewById(R.id.swipe_refresh);
+        tvEmpty = findViewById(R.id.tv_empty);
         tvPageInfo = findViewById(R.id.tv_page_info);
         spinnerSource = findViewById(R.id.spinner_source);
         cbFavoriteOnly = findViewById(R.id.cb_favorite_only);
@@ -211,6 +213,7 @@ public class InputHistoryActivity extends AppCompatActivity {
         viewModel.getHistoryList().observe(this, items -> {
             adapter.submitList(items);
             updatePageInfo();
+            tvEmpty.setVisibility(items == null || items.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         viewModel.getTotal().observe(this, total -> updatePageInfo());

@@ -44,6 +44,7 @@ public class AlgorithmListActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
     private Toolbar toolbar;
+    private TextView tvEmpty;
     private EditText etKeywords;
     private MaterialButton btnSearch;
     private MaterialButton btnReset;
@@ -69,6 +70,7 @@ public class AlgorithmListActivity extends AppCompatActivity {
         toolbar = findViewById(R.id.toolbar);
         recyclerView = findViewById(R.id.recycler_view);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh);
+        tvEmpty = findViewById(R.id.tv_empty);
         etKeywords = findViewById(R.id.et_keywords);
         btnSearch = findViewById(R.id.btn_search);
         btnReset = findViewById(R.id.btn_reset);
@@ -170,8 +172,10 @@ public class AlgorithmListActivity extends AppCompatActivity {
     }
 
     private void setupObservers() {
-        algorithmViewModel.getAlgorithmList().observe(this, algorithms ->
-                algorithmAdapter.setData(algorithms));
+        algorithmViewModel.getAlgorithmList().observe(this, algorithms -> {
+            algorithmAdapter.setData(algorithms);
+            tvEmpty.setVisibility(algorithms == null || algorithms.isEmpty() ? View.VISIBLE : View.GONE);
+        });
 
         algorithmViewModel.getLoading().observe(this, isLoading ->
                 swipeRefreshLayout.setRefreshing(isLoading != null && isLoading));

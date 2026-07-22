@@ -4,9 +4,11 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -58,6 +60,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
     private MaterialButton btnResetSearch;
     private SwipeRefreshLayout swipeSearch;
     private RecyclerView rvSearch;
+    private TextView tvEmptySearch;
     private AlgorithmBrowseAdapter browseAdapter;
 
     // 推荐 Tab
@@ -66,12 +69,14 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
     private MaterialButton btnRecommend;
     private SwipeRefreshLayout swipeRecommend;
     private RecyclerView rvRecommend;
+    private TextView tvEmptyRecommend;
     private AlgorithmRecommendAdapter recommendAdapter;
 
     // 收藏 Tab
     private MaterialButton btnRefreshFavorites;
     private SwipeRefreshLayout swipeFavorites;
     private RecyclerView rvFavorites;
+    private TextView tvEmptyFavorites;
     private AlgorithmFavoriteAdapter favoriteAdapter;
 
     // 对比 Tab
@@ -80,6 +85,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
     private MaterialButton btnCompare;
     private SwipeRefreshLayout swipeCompare;
     private RecyclerView rvCompare;
+    private TextView tvEmptyCompare;
     private AlgorithmCompareResultAdapter compareAdapter;
 
     @Override
@@ -102,7 +108,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        tabLayout.addTab(tabLayout.newTab().setText("全部算法"));
+        tabLayout.addTab(tabLayout.newTab().setText("搜索"));
         tabLayout.addTab(tabLayout.newTab().setText("智能推荐"));
         tabLayout.addTab(tabLayout.newTab().setText("我的收藏"));
         tabLayout.addTab(tabLayout.newTab().setText("算法对比"));
@@ -130,6 +136,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         btnResetSearch = findViewById(R.id.btn_reset_search);
         swipeSearch = findViewById(R.id.swipe_search);
         rvSearch = findViewById(R.id.rv_search);
+        tvEmptySearch = findViewById(R.id.tv_empty_search);
 
         browseAdapter = new AlgorithmBrowseAdapter();
         rvSearch.setLayoutManager(new LinearLayoutManager(this));
@@ -174,6 +181,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         btnRecommend = findViewById(R.id.btn_recommend);
         swipeRecommend = findViewById(R.id.swipe_recommend);
         rvRecommend = findViewById(R.id.rv_recommend);
+        tvEmptyRecommend = findViewById(R.id.tv_empty_recommend);
 
         String[] topNLabels = {"1", "2", "3", "5", "10"};
         ArrayAdapter<String> topNAdapter = new ArrayAdapter<>(this,
@@ -207,6 +215,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         btnRefreshFavorites = findViewById(R.id.btn_refresh_favorites);
         swipeFavorites = findViewById(R.id.swipe_favorites);
         rvFavorites = findViewById(R.id.rv_favorites);
+        tvEmptyFavorites = findViewById(R.id.tv_empty_favorites);
 
         favoriteAdapter = new AlgorithmFavoriteAdapter();
         rvFavorites.setLayoutManager(new LinearLayoutManager(this));
@@ -234,6 +243,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         btnCompare = findViewById(R.id.btn_compare);
         swipeCompare = findViewById(R.id.swipe_compare);
         rvCompare = findViewById(R.id.rv_compare);
+        tvEmptyCompare = findViewById(R.id.tv_empty_compare);
 
         compareAdapter = new AlgorithmCompareResultAdapter();
         rvCompare.setLayoutManager(new LinearLayoutManager(this,
@@ -255,14 +265,20 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
     }
 
     private void setupObservers() {
-        viewModel.getRecommendList().observe(this, list ->
-                recommendAdapter.submitList(list));
+        viewModel.getRecommendList().observe(this, list -> {
+            recommendAdapter.submitList(list);
+            tvEmptyRecommend.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
+        });
 
-        viewModel.getFavoriteList().observe(this, list ->
-                favoriteAdapter.submitList(list));
+        viewModel.getFavoriteList().observe(this, list -> {
+            favoriteAdapter.submitList(list);
+            tvEmptyFavorites.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
+        });
 
-        viewModel.getCompareResult().observe(this, list ->
-                compareAdapter.submitList(list));
+        viewModel.getCompareResult().observe(this, list -> {
+            compareAdapter.submitList(list);
+            tvEmptyCompare.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
+        });
 
         viewModel.getLoading().observe(this, isLoading -> {
             boolean loading = isLoading != null && isLoading;
@@ -295,8 +311,10 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         });
 
         // 搜索 Tab 的观察者
-        algorithmViewModel.getAlgorithmList().observe(this, list ->
-                browseAdapter.submitList(list));
+        algorithmViewModel.getAlgorithmList().observe(this, list -> {
+            browseAdapter.submitList(list);
+            tvEmptySearch.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
+        });
 
         algorithmViewModel.getLoading().observe(this, isLoading ->
                 swipeSearch.setRefreshing(isLoading != null && isLoading));

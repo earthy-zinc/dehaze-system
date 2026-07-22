@@ -1,5 +1,6 @@
 package com.pei.dehaze.ui.profile;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -18,6 +19,7 @@ import androidx.navigation.Navigation;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentProfileBinding;
 import com.pei.dehaze.sdk.model.user.UserInfo;
+import com.pei.dehaze.ui.input.InputHistoryActivity;
 import com.pei.dehaze.ui.profile.viewmodel.ProfileViewModel;
 import com.pei.dehaze.utils.ToastUtils;
 
@@ -44,26 +46,33 @@ public class ProfileFragment extends Fragment {
 
         setupListeners();
         setupObservers();
+        showLoadingState();
 
         profileViewModel.loadUserInfo();
     }
 
     private void setupListeners() {
         binding.logoutButton.setOnClickListener(v -> showLogoutConfirmDialog());
+        binding.cardHistory.setOnClickListener(v ->
+                startActivity(new Intent(getActivity(), InputHistoryActivity.class)));
     }
 
     private void setupObservers() {
         profileViewModel.getUserInfo().observe(getViewLifecycleOwner(), userInfo -> {
             if (userInfo != null) {
                 updateUserInfo(userInfo);
-            } else {
-                showEmptyState();
             }
         });
 
-        profileViewModel.getLoading().observe(getViewLifecycleOwner(), isLoading ->
-                binding.progressBar.setVisibility(
-                        isLoading != null && isLoading ? View.VISIBLE : View.GONE));
+        profileViewModel.getLoading().observe(getViewLifecycleOwner(), isLoading -> {
+            boolean loading = isLoading != null && isLoading;
+            binding.progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+            if (loading) {
+                showLoadingState();
+            } else if (profileViewModel.getUserInfo().getValue() == null) {
+                showEmptyState();
+            }
+        });
 
         profileViewModel.getError().observe(getViewLifecycleOwner(), errorMessage -> {
             if (errorMessage != null && !errorMessage.isEmpty()) {
@@ -83,6 +92,7 @@ public class ProfileFragment extends Fragment {
         String username = userInfo.getUsername();
         String nickname = userInfo.getNickname();
         List<String> roles = userInfo.getRoles();
+        List<String> perms = userInfo.getPerms();
 
         binding.tvUsername.setText(username != null && !username.isEmpty()
                 ? username : "未知用户");
@@ -103,6 +113,30 @@ public class ProfileFragment extends Fragment {
         binding.tvAccountNickname.setText(nickname != null && !nickname.isEmpty()
                 ? nickname : "-");
         binding.tvAccountRoles.setText(roleText);
+
+        // 权限概览卡片
+        binding.tvPermRoles.setText(roleText);
+        String permText = (perms == null || perms.isEmpty())
+                ? "无权限"
+                : perms.size() + " 项";
+        binding.tvPermPerms.setText(permText);
+        binding.tvPermCreateTime.setText(userInfo.getCreateTime() != null
+                && !userInfo.getCreateTime().isEmpty()
+                ? userInfo.getCreateTime() : "-");
+    }
+
+    private void showLoadingState() {
+        binding.tvUsername.setText("加载中...");
+        binding.tvNickname.setText("加载中...");
+        binding.tvAvatarInitial.setText("...");
+        binding.tvRole.setText("加载中...");
+        binding.tvAccountUsername.setText("加载中...");
+        binding.tvAccountUserId.setText("加载中...");
+        binding.tvAccountNickname.setText("加载中...");
+        binding.tvAccountRoles.setText("加载中...");
+        binding.tvPermRoles.setText("加载中...");
+        binding.tvPermPerms.setText("加载中...");
+        binding.tvPermCreateTime.setText("加载中...");
     }
 
     private void showEmptyState() {
@@ -114,6 +148,9 @@ public class ProfileFragment extends Fragment {
         binding.tvAccountUserId.setText("-");
         binding.tvAccountNickname.setText("-");
         binding.tvAccountRoles.setText("-");
+        binding.tvPermRoles.setText("-");
+        binding.tvPermPerms.setText("-");
+        binding.tvPermCreateTime.setText("-");
     }
 
     private String getInitial(String text) {

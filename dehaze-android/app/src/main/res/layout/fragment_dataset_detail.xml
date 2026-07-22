@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimary"
-        app:navigationIcon="@android:drawable/ic_media_previous"
+        app:navigationIcon="?attr/homeAsUpIndicator"
         app:title="数据集详情"
         app:titleTextColor="@android:color/white" />
 
@@ -320,6 +320,18 @@
                     android:nestedScrollingEnabled="false"
                     tools:itemCount="6"
                     tools:listitem="@layout/item_dataset_image" />
+
+                <TextView
+                    android:id="@+id/tv_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="32dp"
+                    android:layout_marginBottom="32dp"
+                    android:gravity="center"
+                    android:text="暂无数据"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
 
                 <!-- 分页 -->
                 <LinearLayout

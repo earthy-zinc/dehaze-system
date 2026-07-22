@@ -57,6 +57,7 @@ public class DatasetDetailFragment extends Fragment {
     private Toolbar toolbar;
     private SwipeRefreshLayout swipeRefresh;
     private RecyclerView recyclerView;
+    private TextView tvEmpty;
     private EditText etKeywords;
     private MaterialButton btnAddItem;
     private MaterialButton btnBatchDelete;
@@ -140,6 +141,7 @@ public class DatasetDetailFragment extends Fragment {
         toolbar = view.findViewById(R.id.toolbar);
         swipeRefresh = view.findViewById(R.id.swipe_refresh);
         recyclerView = view.findViewById(R.id.recycler_view);
+        tvEmpty = view.findViewById(R.id.tv_empty);
         etKeywords = view.findViewById(R.id.et_keywords);
         btnAddItem = view.findViewById(R.id.btn_add_item);
         btnBatchDelete = view.findViewById(R.id.btn_batch_delete);
@@ -274,6 +276,7 @@ public class DatasetDetailFragment extends Fragment {
         viewModel.getItems().observe(getViewLifecycleOwner(), items -> {
             imageAdapter.submitList(items);
             updatePageInfo();
+            tvEmpty.setVisibility(items == null || items.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         viewModel.getTotal().observe(getViewLifecycleOwner(), total -> updatePageInfo());
