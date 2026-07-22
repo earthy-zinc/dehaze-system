@@ -1,18 +1,30 @@
 {
+  // ============================================================
+  // Java (Spring Boot / Spring Cloud)
+  // ============================================================
   "java.compile.nullAnalysis.mode": "automatic",
   "java.autobuild.enabled": false,
   "java.configuration.updateBuildConfiguration": "disabled",
-  "java.configuration.annotationProcessing.enabled": true,
   "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms512m -Xlog:disable",
   "java.errors.incompleteClasspath.severity": "ignore",
   "java.maxConcurrentBuilds": 1,
   "java.import.generatesMetadataFilesAtProjectRoot": false,
+  "java.search.scope": "main",
+
+  // ============================================================
+  // 文件排除（性能关键）
+  // ============================================================
   "files.watcherExclude": {
     "**/node_modules/**": true,
     "**/target/**": true,
     "**/build/**": true,
     "**/.git/**": true,
     "**/logs/**": true,
+    "**/dist/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/.dart_tool/**": true,
+    "**/oh_modules/**": true,
     "**/dehaze-react-native/node_modules/**": true
   },
   "search.exclude": {
@@ -20,8 +32,56 @@
     "**/target": true,
     "**/build": true,
     "**/.git": true,
-    "**/logs": true
+    "**/logs": true,
+    "**/dist": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/.dart_tool": true,
+    "**/oh_modules": true
   },
+
+  // ============================================================
+  // 编辑器通用
+  // ============================================================
+  "editor.linkedEditing": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.minimap.enabled": false,
+  "editor.suggest.snippetsPreventQuickSuggestions": false,
+
+  // ============================================================
+  // 文件关联
+  // ============================================================
+  "files.associations": {
+    "*.css": "css",
+    "*.scss": "scss",
+    "*.less": "less",
+    "*.ets": "typescript",
+    "*.json5": "jsonc",
+    "pubspec.yaml": "yaml",
+    "*.dart": "dart"
+  },
+
+  // ============================================================
+  // 格式化（Prettier 统一）
+  // ============================================================
+  "editor.formatOnSave": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "prettier.requireConfig": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+    "vue"
+  ],
+  "stylelint.validate": ["css", "scss", "less", "postcss"],
+
+  // ============================================================
+  // 拼写检查
+  // ============================================================
   "cSpell.words": [
     "allprojects",
     "buildscript",
@@ -36,9 +96,63 @@
     "subprojects",
     "toutiao",
     "weapp",
-    "weixin"
+    "weixin",
+    "unocss",
+    "vitest",
+    "pinia",
+    "hvigor",
+    "taroify",
+    "uvicorn",
+    "fastapi"
   ],
-  "java.search.scope": "main",
-  "codingcopilot.enableCompletionLanguage": {},
-  "dart.flutterSdkPath": "/usr/local/flutter"
+
+  // ============================================================
+  // 语言特定
+  // ============================================================
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python",
+    "editor.tabSize": 4
+  },
+  "[go]": {
+    "editor.defaultFormatter": "golang.go",
+    "editor.tabSize": 4
+  },
+  "[java]": {
+    "editor.tabSize": 4
+  },
+  "[dart]": {
+    "editor.tabSize": 2
+  },
+
+  // ============================================================
+  // TypeScript / JavaScript
+  // ============================================================
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+  "js/ts.preferences.importModuleSpecifier": "relative",
+
+  // ============================================================
+  // UnoCSS（前端项目使用 UnoCSS 而非 Tailwind）
+  // ============================================================
+  "unocss.root": [
+    "dehaze-front-react",
+    "dehaze-front-vue"
+  ],
+
+  // ============================================================
+  // Vitest（前端 + SDK 测试）
+  // ============================================================
+  "vitest.disableWorkspaceWarning": true,
+
+  // ============================================================
+  // Dart / Flutter
+  // ============================================================
+  "dart.flutterSdkPath": "",
+
+  // ============================================================
+  // 杂项
+  // ============================================================
+  "gitlens.advanced.blame.customArguments": ["--ignore-revs-file", ".git-blame-ignore-revs"],
+  "gitlens.codeLens.enabled": false,
+  "gitlens.currentLine.enabled": false
 }
