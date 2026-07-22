@@ -85,11 +85,17 @@ SERVICES = {
         "aliases": ["java"],
         "port": 8989,
         "cwd": str(WORKSPACE / "dehaze-java"),
-        "build_cmd": None,
-        "start_cmd": ["mvn", "spring-boot:run", "-DskipTests", "-Dmaven.test.skip=true"],
+        # 启动前构建 fat jar，避免 mvn spring-boot:run 与 java -jar 混用导致多实例冲突
+        # Windows 下 mvn 是 mvn.cmd，subprocess 不加 shell=True 时需要显式扩展名
+        "build_cmd": (["mvn.cmd", "package", "-DskipTests", "-Dmaven.test.skip=true"]
+                      if IS_WINDOWS
+                      else ["mvn", "package", "-DskipTests", "-Dmaven.test.skip=true"]),
+        # 统一用 java -jar 启动（不再用 mvn spring-boot:run，避免 Maven launcher 与应用进程分离
+        # 导致 stop 时只能杀掉子进程、Maven 父进程残留占用端口的问题）
+        "start_cmd": ["java", "-jar", "target/dehaze-java.jar", "--spring.profiles.active=dev"],
         "log_file": str(WORKSPACE / "dehaze-java" / "java_server.log"),
         "pid_file": str(WORKSPACE / "dehaze-java" / "java_server.pid"),
-        "start_timeout": 90,  # Spring Boot 启动较慢
+        "start_timeout": 120,  # mvn package + Spring Boot 启动，耗时较长
     },
 }
 
@@ -235,7 +241,7 @@ def start_service(key: str) -> bool:
         print(f"[{key}] 端口 {port} 已在监听，跳过启动（如需重启请先 stop）")
         return False
 
-    # 编译（仅 Go）
+    # 编译（Go / Java 等配置了 build_cmd 的服务）
     if cfg["build_cmd"]:
         print(f"[{key}] 编译中...", end=" ", flush=True)
         result = subprocess.run(
