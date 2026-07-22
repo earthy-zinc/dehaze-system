@@ -137,11 +137,11 @@ class MainLayout extends ConsumerWidget {
               padding: EdgeInsets.symmetric(vertical: AppTheme.spacingM),
               children: [
                 // 首页
-                _buildNavItem(
-                  context,
-                  MenuConfig.homeItem,
-                  isActive: currentLocation.startsWith('/home'),
-                ),
+            _buildNavItem(
+              context,
+              MenuConfig.homeItem,
+              isActive: currentLocation.startsWith(AppRouterConfig.home),
+            ),
                 const Divider(),
                 // 分组菜单
                 ...MenuConfig.menuSections.map(
@@ -504,7 +504,7 @@ class MainLayout extends ConsumerWidget {
             _buildDrawerItem(
               context,
               MenuConfig.homeItem,
-              isActive: currentLocation.startsWith('/home'),
+              isActive: currentLocation.startsWith(AppRouterConfig.home),
             ),
             const Divider(),
             // 分组菜单
@@ -582,16 +582,16 @@ class MainLayout extends ConsumerWidget {
       onDestinationSelected: (index) {
         switch (index) {
           case 0:
-            context.go('/home');
+            context.go(AppRouterConfig.home);
             break;
           case 1:
-            context.go('/dataset');
+            context.go(AppRouterConfig.dataset);
             break;
           case 2:
-            context.go('/profile');
+            context.go(AppRouterConfig.profile);
             break;
           case 3:
-            context.go('/task-history');
+            context.go(AppRouterConfig.taskHistory);
             break;
         }
       },
@@ -622,10 +622,10 @@ class MainLayout extends ConsumerWidget {
 
   int _getCurrentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith('/home')) return 0;
-    if (location.startsWith('/dataset')) return 1;
-    if (location.startsWith('/profile')) return 2;
-    if (location.startsWith('/task-history')) return 3;
+    if (location.startsWith(AppRouterConfig.home)) return 0;
+    if (location.startsWith(AppRouterConfig.dataset)) return 1;
+    if (location.startsWith(AppRouterConfig.profile)) return 2;
+    if (location.startsWith(AppRouterConfig.taskHistory)) return 3;
     return 0;
   }
 }

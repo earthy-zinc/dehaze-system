@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_config.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/responsive_utils.dart';
+import '../../../widgets/dehaze_image.dart';
 import '../models/dataset_model.dart';
 
 /// 数据集卡片组件
@@ -92,17 +93,10 @@ class _DatasetCardState extends State<DatasetCard> {
     return SizedBox(
       width: width ?? double.infinity,
       height: height,
-      child: Image.network(
-        sampleUrl,
+      child: DehazeImage(
+        url: sampleUrl,
         fit: BoxFit.cover,
-        gaplessPlayback: true,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          // 加载中显示渐变图标占位
-          return _buildGradientFallback(width: width, height: height);
-        },
-        errorBuilder: (_, _, _) =>
-            _buildGradientFallback(width: width, height: height),
+        errorIcon: Icons.broken_image_outlined,
       ),
     );
   }

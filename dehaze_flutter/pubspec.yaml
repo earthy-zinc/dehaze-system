@@ -9,7 +9,6 @@ environment:
   flutter: ">=3.35.0"
 
 dependencies:
-  cached_network_image: ^3.3.0
   cupertino_icons: ^1.0.8
   dio: ^5.7.0
   flutter:
@@ -36,9 +35,9 @@ flutter:
   uses-material-design: true
 
   # 字体配置
-  # fonts:
-  #   - family: NotoSansSC
-  #     fonts:
-  #       - asset: assets/fonts/NotoSansSC-Regular.ttf
-  #       - asset: assets/fonts/NotoSansSC-Bold.ttf
-  #         weight: 700
+  fonts:
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Regular.ttf
+        - asset: assets/fonts/NotoSansSC-Bold.ttf
+          weight: 700

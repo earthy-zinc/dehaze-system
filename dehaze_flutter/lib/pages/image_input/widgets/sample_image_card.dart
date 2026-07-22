@@ -1,6 +1,6 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../widgets/dehaze_image.dart';
 import '../models/image_input_model.dart';
 
 /// 样例图片卡片
@@ -72,23 +72,10 @@ class _SampleImageCardState extends State<SampleImageCard> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    CachedNetworkImage(
-                      imageUrl: widget.sample.url,
+                    DehazeImage(
+                      url: widget.sample.url,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: Icon(
-                          Icons.broken_image_outlined,
-                          size: 32,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                      errorIcon: Icons.broken_image_outlined,
                     ),
                     // 悬停遮罩
                     AnimatedOpacity(

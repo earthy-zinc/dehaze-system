@@ -132,6 +132,7 @@ class AppTheme {
   static ThemeData get lightTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
+    fontFamily: 'NotoSansSC',
 
     // 颜色方案
     colorScheme: const ColorScheme.light(
@@ -365,6 +366,7 @@ class AppTheme {
   static ThemeData get darkTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
+    fontFamily: 'NotoSansSC',
 
     // 颜色方案
     colorScheme: const ColorScheme.dark(

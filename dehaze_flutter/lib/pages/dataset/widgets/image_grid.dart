@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/responsive_utils.dart';
+import '../../../widgets/dehaze_image.dart';
 import '../models/dataset_model.dart';
 
 /// 图片网格组件
@@ -189,8 +189,6 @@ class _ImageCardState extends State<_ImageCard>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -218,22 +216,10 @@ class _ImageCardState extends State<_ImageCard>
                   Positioned.fill(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      child: CachedNetworkImage(
-                        imageUrl: widget.image.imageUrl,
+                      child: DehazeImage(
+                        url: widget.image.imageUrl,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child:
-                              const Center(child: CircularProgressIndicator()),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: const Icon(
-                            Icons.broken_image_outlined,
-                            color: Colors.grey,
-                            size: 32,
-                          ),
-                        ),
+                        errorIcon: Icons.broken_image_outlined,
                       ),
                     ),
                   ),

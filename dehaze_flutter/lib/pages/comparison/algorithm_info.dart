@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/network/api_result.dart';
 import '../../models/algorithm_model.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
@@ -10,17 +11,85 @@ import '../../theme/app_theme.dart';
 /// 算法信息页面
 ///
 /// 展示算法详情：名称、类型、状态、描述、配置参数、元信息
-class AlgorithmInfoPage extends ConsumerWidget {
+///
+/// 优先展示处理流程中已选中的算法；若无（如从菜单/CTA 直接进入），
+/// 自动加载后端算法列表并展示第一个启用的算法，避免空状态。
+class AlgorithmInfoPage extends ConsumerStatefulWidget {
   const AlgorithmInfoPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(processingProvider);
+  ConsumerState<AlgorithmInfoPage> createState() => _AlgorithmInfoPageState();
+}
+
+class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
+  AlgorithmModel? _loadedAlgorithm;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeLoadAlgorithm());
+  }
+
+  /// 处理流程已选中算法时无需加载；否则拉取算法列表取首个启用项。
+  Future<void> _maybeLoadAlgorithm() async {
+    if (ref.read(processingProvider).selectedAlgorithm != null) return;
+    if (_loadedAlgorithm != null || _isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final service = ref.read(algorithmServiceProvider);
+      final algorithms = await service.getAlgorithmList();
+
+      // 展平树形结构，只取启用的叶子算法
+      final flatAlgorithms = <AlgorithmModel>[];
+      for (final algo in algorithms) {
+        if (algo.children.isEmpty && algo.isEnabled) {
+          flatAlgorithms.add(algo);
+        } else {
+          for (final child in algo.children) {
+            if (child.isEnabled) flatAlgorithms.add(child);
+          }
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _loadedAlgorithm = flatAlgorithms.isNotEmpty ? flatAlgorithms.first : null;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e is ApiException
+            ? e.message
+            : e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final algorithm = state.selectedAlgorithm;
+    final selected = ref.watch(processingProvider).selectedAlgorithm;
+    final algorithm = selected ?? _loadedAlgorithm;
 
     if (algorithm == null) {
-      return _buildNoData(context, theme);
+      if (_isLoading) {
+        return Scaffold(
+          body: Center(child: CircularProgressIndicator(color: AppTheme.brandBlue)),
+        );
+      }
+      if (_errorMessage != null) {
+        return Scaffold(body: _buildError(theme));
+      }
+      return Scaffold(body: _buildNoData(context, theme));
     }
 
     return Scaffold(
@@ -169,13 +238,46 @@ class AlgorithmInfoPage extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.warning_amber, size: 64, color: theme.colorScheme.error),
+            Icon(Icons.inbox_outlined, size: 64, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
-            Text('请先选择算法', style: theme.textTheme.titleMedium),
+            Text('暂无可用算法', style: theme.textTheme.titleMedium),
             const SizedBox(height: 16),
-            FilledButton(
+            FilledButton.icon(
               onPressed: () => context.go(AppRouterConfig.algorithmSelect),
-              child: const Text('去选择'),
+              icon: const Icon(Icons.refresh),
+              label: const Text('重试加载'),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildError(ThemeData theme) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+            const SizedBox(height: 16),
+            Text('加载失败', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                _errorMessage!,
+                style: theme.textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _loadedAlgorithm = null;
+                  _errorMessage = null;
+                });
+                _maybeLoadAlgorithm();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('重试'),
             ),
           ],
         ),

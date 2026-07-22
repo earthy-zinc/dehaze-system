@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/dehaze_image.dart';
 import 'models/dataset_model.dart';
 import 'providers/dataset_provider.dart';
 import 'providers/image_provider.dart';
@@ -41,12 +41,28 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
   }
 
   Future<void> _loadDatasetById(int datasetId) async {
-    final datasets = ref.read(datasetProvider).value ?? [];
-    final dataset = datasets.where((d) => d.id == datasetId).firstOrNull;
-    if (dataset != null) {
+    try {
+      final service = ref.read(datasetServiceProvider);
+      final dataset = await service.getDatasetDetail(datasetId);
+      if (!mounted) return;
       _showDatasetDetail(dataset);
+    } catch (e) {
+      if (!mounted) return;
+      _showError('加载数据集失败: ${_extractError(e)}');
     }
   }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  String _extractError(dynamic e) =>
+      e.toString().replaceFirst('Exception: ', '');
 
   @override
   void dispose() {
@@ -434,21 +450,10 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
               // 图片
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: CachedNetworkImage(
-                  imageUrl: image.imageUrl,
+                child: DehazeImage(
+                  url: image.imageUrl,
                   fit: BoxFit.contain,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[900],
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[900],
-                    child: const Icon(
-                      Icons.broken_image_outlined,
-                      color: Colors.white,
-                      size: 64,
-                    ),
-                  ),
+                  errorIcon: Icons.broken_image_outlined,
                 ),
               ),
 

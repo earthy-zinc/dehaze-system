@@ -6,7 +6,6 @@ import 'algorithm_section.dart';
 import 'cta_section.dart';
 import 'hero_section.dart';
 import 'showcase_section.dart';
-import 'tech_specs_section.dart';
 import 'tools_grid_section.dart';
 import 'workflow_section.dart';
 
@@ -42,12 +41,6 @@ class HomePage extends ConsumerWidget {
 
           // 算法优势区
           const SliverToBoxAdapter(child: AlgorithmSection()),
-
-          // 区块间距
-          SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
-
-          // 技术特性区
-          const SliverToBoxAdapter(child: TechSpecsSection()),
 
           // 区块间距
           SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
