@@ -371,11 +371,12 @@ class PredictionService:
 
         try:
             algo_module = importlib.import_module(f"algorithm.{module_name}.run")
-        except ImportError:
+        except ImportError as e:
             raise BusinessException(
                 ResultCode.SYSTEM_EXECUTION_ERROR,
-                f"算法模块未找到: algorithm.{module_name}.run, "
-                f"请确认 import_path '{import_path}' 是否正确",
+                f"算法模块加载失败: algorithm.{module_name}.run, "
+                f"请确认 import_path '{import_path}' 是否正确. "
+                f"原始错误: {e}",
             )
 
         if not hasattr(algo_module, "dehaze"):
