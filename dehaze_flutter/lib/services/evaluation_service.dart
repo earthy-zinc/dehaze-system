@@ -7,8 +7,7 @@ import '../models/evaluation_model.dart';
 /// 评估服务
 ///
 /// 封装效果评估相关 API：
-/// - evaluate: 执行效果评估
-/// - getEvaluationStatus: 查询评估任务状态
+/// - evaluate: 执行效果评估（同步返回指标）
 /// - getEvaluationLogs: 获取评估日志列表
 class EvaluationService {
   const EvaluationService(this._dio);
@@ -31,23 +30,6 @@ class EvaluationService {
       );
     }
     throw Exception(result['msg'] ?? '评估请求失败');
-  }
-
-  /// 查询评估任务状态
-  ///
-  /// GET /evaluation/{taskId}
-  Future<EvaluationResult> getEvaluationStatus(String taskId) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '${ApiConstants.evaluation}/$taskId',
-    );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      return EvaluationResult.fromJson(
-        result['data'] as Map<String, dynamic>,
-      );
-    }
-    throw Exception(result['msg'] ?? '查询评估状态失败');
   }
 
   /// 获取评估日志列表

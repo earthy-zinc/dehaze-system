@@ -32,10 +32,10 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
 
   Future<void> _evaluate() async {
     final state = ref.read(processingProvider);
-    final predFileId = state.predictionResult?.resultUrl;
+    final predUrl = state.predictionResult?.resultUrl;
     final algorithmId = state.selectedAlgorithm?.id;
 
-    if (predFileId == null || algorithmId == null) {
+    if (predUrl == null || algorithmId == null) {
       setState(() => _errorMessage = '缺少预测结果或算法信息');
       return;
     }
@@ -49,36 +49,14 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
       final service = EvaluationService(ref.read(dioClientProvider));
       final request = EvaluationRequest(
         algorithmId: algorithmId,
-        predFileId: predFileId,
-        gtFileId: predFileId,
+        predUrl: predUrl,
       );
+      // 评估为同步接口，直接返回指标
       final result = await service.evaluate(request);
-
-      if (result.metrics != null) {
-        setState(() {
-          _metrics = result.metrics;
-          _isEvaluating = false;
-        });
-      } else {
-        // 轮询
-        var attempts = 0;
-        while (attempts < 30) {
-          await Future<void>.delayed(const Duration(seconds: 2));
-          final status = await service.getEvaluationStatus(result.taskId);
-          if (status.metrics != null) {
-            setState(() {
-              _metrics = status.metrics;
-              _isEvaluating = false;
-            });
-            return;
-          }
-          attempts++;
-        }
-        setState(() {
-          _errorMessage = '评估超时';
-          _isEvaluating = false;
-        });
-      }
+      setState(() {
+        _metrics = result.metricsModel;
+        _isEvaluating = false;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');

@@ -30,13 +30,8 @@ class AppRouterConfig {
 
   // 基础路由
   static const String home = '/home';
-  static const String splash = '/splash';
-  static const String dehaze = '/dehaze';
   static const String login = '/login';
-  static const String register = '/register';
   static const String profile = '/profile';
-  static const String settings = '/settings';
-  static const String about = '/about';
 
   // 处理流程路由
   static const String imageInput = '/image-input';
@@ -54,6 +49,9 @@ class AppRouterConfig {
   // 数据管理路由
   static const String dataset = '/dataset';
   static const String datasetDetail = '/dataset/:id';
+
+  // 历史记录路由
+  static const String taskHistory = '/task-history';
 
   /// 获取数据集详情路由
   static String getDatasetDetailPath(int id) => '/dataset/$id';
@@ -170,7 +168,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
           // 处理历史
           GoRoute(
-            path: '/task-history',
+            path: AppRouterConfig.taskHistory,
             name: 'task-history',
             builder: (context, state) => const TaskHistoryPage(),
           ),

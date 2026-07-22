@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,7 +17,6 @@ class ProcessingState {
     this.selectedAlgorithm,
     this.predictionResult,
     this.errorMessage,
-    this.progress = 0,
   });
 
   /// 当前选中的图片（含文件 ID）
@@ -36,16 +34,12 @@ class ProcessingState {
   /// 错误信息
   final String? errorMessage;
 
-  /// 进度（0-100）
-  final int progress;
-
   ProcessingState copyWith({
     ProcessingStatus? status,
     SelectedImage? selectedImage,
     AlgorithmModel? selectedAlgorithm,
     PredictionResponse? predictionResult,
     String? errorMessage,
-    int? progress,
     bool clearImage = false,
     bool clearAlgorithm = false,
     bool clearResult = false,
@@ -60,14 +54,13 @@ class ProcessingState {
         predictionResult:
             clearResult ? null : (predictionResult ?? this.predictionResult),
         errorMessage: errorMessage,
-        progress: progress ?? this.progress,
       );
 
   /// 是否可以开始处理
   bool get canProcess => selectedImage != null && selectedAlgorithm != null;
 
   /// 是否有处理结果
-  bool get hasResult => predictionResult?.resultUrl != null;
+  bool get hasResult => predictionResult?.hasResult ?? false;
 }
 
 /// 处理流程状态枚举
@@ -84,26 +77,26 @@ class SelectedImage {
     required this.fileId,
     required this.fileUrl,
     required this.fileName,
-    this.localPath,
     this.bytes,
   });
 
-  final String fileId;
+  /// 文件 ID（后端 SysFile.id）
+  final int fileId;
   final String fileUrl;
   final String fileName;
-  final String? localPath;
 
   /// 原图字节流（内存态，跨平台渲染，Web 端不依赖文件路径）
   final Uint8List? bytes;
 }
 
 /// 处理流程状态管理
+///
+/// 后端预测为同步接口：POST /prediction 直接返回结果，无需轮询。
 class ProcessingNotifier extends StateNotifier<ProcessingState> {
   ProcessingNotifier(this._predictionService)
       : super(const ProcessingState());
 
   final PredictionService _predictionService;
-  Timer? _pollTimer;
 
   /// 设置选中的图片
   void setSelectedImage(SelectedImage image) {
@@ -111,7 +104,6 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
       selectedImage: image,
       clearResult: true,
       status: ProcessingStatus.idle,
-      progress: 0,
       errorMessage: null,
     );
   }
@@ -122,7 +114,6 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
       selectedAlgorithm: algorithm,
       clearResult: true,
       status: ProcessingStatus.idle,
-      progress: 0,
       errorMessage: null,
     );
   }
@@ -139,7 +130,6 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
 
     state = state.copyWith(
       status: ProcessingStatus.processing,
-      progress: 10,
       errorMessage: null,
       clearResult: true,
     );
@@ -151,82 +141,29 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
         params: params,
       );
 
-      // 发起预测请求
       final response = await _predictionService.predict(request);
-      state = state.copyWith(
-        predictionResult: response,
-        progress: 50,
-      );
 
-      // 如果任务未完成，轮询状态
-      if (!response.isCompleted) {
-        _startPolling(response.taskId);
+      if (response.hasResult) {
+        state = state.copyWith(
+          predictionResult: response,
+          status: ProcessingStatus.success,
+        );
       } else {
-        _handleCompleted(response);
+        state = state.copyWith(
+          status: ProcessingStatus.error,
+          errorMessage: '处理未返回结果，请重试',
+        );
       }
     } catch (e) {
       state = state.copyWith(
         status: ProcessingStatus.error,
         errorMessage: _extractErrorMessage(e),
-        progress: 0,
-      );
-    }
-  }
-
-  /// 轮询任务状态
-  void _startPolling(String taskId) {
-    _pollTimer?.cancel();
-    var attempts = 0;
-    const maxAttempts = 120; // 最多轮询 120 次（约 2 分钟）
-
-    _pollTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      attempts++;
-      if (attempts > maxAttempts) {
-        timer.cancel();
-        state = state.copyWith(
-          status: ProcessingStatus.error,
-          errorMessage: '处理超时，请稍后重试',
-          progress: 0,
-        );
-        return;
-      }
-
-      try {
-        final status = await _predictionService.getPredictionStatus(taskId);
-        state = state.copyWith(
-          predictionResult: status,
-          progress: (50 + attempts * 0.4).toInt().clamp(50, 95),
-        );
-
-        if (status.isCompleted) {
-          timer.cancel();
-          _handleCompleted(status);
-        }
-      } catch (_) {
-        // 单次轮询失败不中断
-      }
-    });
-  }
-
-  /// 处理完成的响应
-  void _handleCompleted(PredictionResponse response) {
-    if (response.status == PredictionStatus.success) {
-      state = state.copyWith(
-        status: ProcessingStatus.success,
-        progress: 100,
-      );
-    } else {
-      state = state.copyWith(
-        status: ProcessingStatus.error,
-        errorMessage: response.message ?? '处理失败',
-        progress: 0,
       );
     }
   }
 
   /// 重置状态
   void reset() {
-    _pollTimer?.cancel();
     state = const ProcessingState();
   }
 
@@ -236,12 +173,6 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
       errorMessage: null,
       status: ProcessingStatus.idle,
     );
-  }
-
-  @override
-  void dispose() {
-    _pollTimer?.cancel();
-    super.dispose();
   }
 
   String _extractErrorMessage(dynamic e) {

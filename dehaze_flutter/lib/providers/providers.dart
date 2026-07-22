@@ -39,13 +39,3 @@ final dioClientProvider = Provider<Dio>((ref) {
   );
   return apiClient.dio;
 });
-
-/// ApiClient Provider
-final apiClientProvider = Provider<ApiClient>((ref) {
-  final tokenStorage = ref.watch(tokenStorageProvider);
-  final onAuthError = ref.watch(authErrorCallbackProvider);
-  return ApiClient.create(
-    tokenStorage: tokenStorage,
-    onAuthError: onAuthError,
-  );
-});

@@ -107,9 +107,9 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
 
       // 构造处理流程所需的 SelectedImage 并设置
       ref.read(processingProvider.notifier).setSelectedImage(SelectedImage(
-            fileId: uploadResult.fileId,
-            fileUrl: uploadResult.fileUrl,
-            fileName: selectedImage.filename,
+            fileId: uploadResult.id,
+            fileUrl: uploadResult.url,
+            fileName: uploadResult.name,
             bytes: bytes,
           ));
 

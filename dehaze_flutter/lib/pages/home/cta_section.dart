@@ -97,14 +97,6 @@ class CTASection extends StatelessWidget {
           foregroundColor: Theme.of(context).colorScheme.primary,
         ),
       ),
-      TextButton.icon(
-        onPressed: () => context.go(AppRouterConfig.about),
-        icon: Icon(Icons.info_outline, size: 16),
-        label: const Text('关于我们'),
-        style: TextButton.styleFrom(
-          foregroundColor: Theme.of(context).colorScheme.primary,
-        ),
-      ),
     ],
   );
 }

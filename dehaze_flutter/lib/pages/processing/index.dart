@@ -19,9 +19,11 @@ class ProcessingPage extends ConsumerStatefulWidget {
 }
 
 class _ProcessingPageState extends ConsumerState<ProcessingPage> {
-  double _brightness = 0;
-  double _contrast = 0;
-  double _saturation = 0;
+  // 处理参数（与文档定义一致）
+  double _strength = 50; // 去雾强度 0-100
+  double _saturation = 100; // 饱和度 0-200
+  double _contrast = 100; // 对比度 0-200
+  double _sharpen = 30; // 锐化 0-100
 
   @override
   Widget build(BuildContext context) {
@@ -292,11 +294,17 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
                 style: theme.textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
-            _buildSlider('亮度', _brightness, (v) => setState(() => _brightness = v)),
+            _buildSlider('去雾强度', _strength, 0, 100,
+                (v) => setState(() => _strength = v)),
             const SizedBox(height: 12),
-            _buildSlider('对比度', _contrast, (v) => setState(() => _contrast = v)),
+            _buildSlider('饱和度', _saturation, 0, 200,
+                (v) => setState(() => _saturation = v)),
             const SizedBox(height: 12),
-            _buildSlider('饱和度', _saturation, (v) => setState(() => _saturation = v)),
+            _buildSlider('对比度', _contrast, 0, 200,
+                (v) => setState(() => _contrast = v)),
+            const SizedBox(height: 12),
+            _buildSlider('锐化', _sharpen, 0, 100,
+                (v) => setState(() => _sharpen = v)),
           ],
         ),
       );
@@ -304,28 +312,30 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
   Widget _buildSlider(
     String label,
     double value,
+    double min,
+    double max,
     ValueChanged<double> onChanged,
   ) =>
       Row(
         children: [
           SizedBox(
-            width: 60,
+            width: 64,
             child: Text(label),
           ),
           Expanded(
             child: Slider(
               value: value,
-              min: -1,
-              max: 1,
-              divisions: 20,
-              label: value.toStringAsFixed(1),
+              min: min,
+              max: max,
+              divisions: ((max - min) / 5).round(),
+              label: value.toStringAsFixed(0),
               onChanged: onChanged,
             ),
           ),
           SizedBox(
-            width: 50,
+            width: 44,
             child: Text(
-              value.toStringAsFixed(1),
+              value.toStringAsFixed(0),
               textAlign: TextAlign.right,
             ),
           ),
@@ -357,10 +367,9 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 16),
-              Text('正在处理... ${state.progress}%'),
+              const Text('正在处理...'),
               const SizedBox(height: 8),
               LinearProgressIndicator(
-                value: state.progress / 100,
                 backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.1),
               ),
             ],
@@ -390,9 +399,9 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
                               fontWeight: FontWeight.w600,
                               color: AppTheme.techGreen,
                             )),
-                        if (state.predictionResult?.duration != null)
+                        if (state.predictionResult?.time != null)
                           Text(
-                            '耗时: ${(state.predictionResult!.duration! / 1000).toStringAsFixed(1)}秒',
+                            '耗时: ${(state.predictionResult!.time! / 1000).toStringAsFixed(1)}秒',
                             style: theme.textTheme.bodySmall,
                           ),
                       ],
@@ -456,10 +465,12 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
   }
 
   void _startProcessing(WidgetRef ref) {
+    // 仅传递与默认值不同的参数，避免干扰算法默认行为
     final params = <String, dynamic>{};
-    if (_brightness != 0) params['brightness'] = _brightness;
-    if (_contrast != 0) params['contrast'] = _contrast;
-    if (_saturation != 0) params['saturation'] = _saturation;
+    if (_strength != 50) params['strength'] = _strength.round();
+    if (_saturation != 100) params['saturation'] = _saturation.round();
+    if (_contrast != 100) params['contrast'] = _contrast.round();
+    if (_sharpen != 30) params['sharpen'] = _sharpen.round();
 
     ref.read(processingProvider.notifier).process(
           params: params.isEmpty ? null : params,

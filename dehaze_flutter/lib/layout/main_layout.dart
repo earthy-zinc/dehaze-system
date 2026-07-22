@@ -591,7 +591,7 @@ class MainLayout extends ConsumerWidget {
             context.go('/profile');
             break;
           case 3:
-            context.go('/settings');
+            context.go('/task-history');
             break;
         }
       },
@@ -612,9 +612,9 @@ class MainLayout extends ConsumerWidget {
           label: '我的',
         ),
         NavigationDestination(
-          icon: Icon(Icons.settings_outlined),
-          selectedIcon: Icon(Icons.settings),
-          label: '设置',
+          icon: Icon(Icons.history_outlined),
+          selectedIcon: Icon(Icons.history),
+          label: '历史',
         ),
       ],
     );
@@ -625,7 +625,7 @@ class MainLayout extends ConsumerWidget {
     if (location.startsWith('/home')) return 0;
     if (location.startsWith('/dataset')) return 1;
     if (location.startsWith('/profile')) return 2;
-    if (location.startsWith('/settings')) return 3;
+    if (location.startsWith('/task-history')) return 3;
     return 0;
   }
 }

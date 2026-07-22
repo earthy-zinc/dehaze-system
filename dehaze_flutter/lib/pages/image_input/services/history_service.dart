@@ -65,43 +65,4 @@ class HistoryService {
     final jsonString = json.encode(jsonList);
     await _prefs.setString(_storageKey, jsonString);
   }
-
-  /// 获取分组后的历史记录
-  Map<String, List<HistoryRecordModel>> getGroupedHistory() {
-    final history = getHistory();
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final weekAgo = today.subtract(const Duration(days: 7));
-
-    final grouped = <String, List<HistoryRecordModel>>{
-      '今天': [],
-      '昨天': [],
-      '最近7天': [],
-      '更早': [],
-    };
-
-    for (final record in history) {
-      final recordDate = DateTime(
-        record.timestamp.year,
-        record.timestamp.month,
-        record.timestamp.day,
-      );
-
-      if (recordDate == today) {
-        grouped['今天']!.add(record);
-      } else if (recordDate == yesterday) {
-        grouped['昨天']!.add(record);
-      } else if (recordDate.isAfter(weekAgo)) {
-        grouped['最近7天']!.add(record);
-      } else {
-        grouped['更早']!.add(record);
-      }
-    }
-
-    // 移除空分组
-    grouped.removeWhere((key, value) => value.isEmpty);
-
-    return grouped;
-  }
 }

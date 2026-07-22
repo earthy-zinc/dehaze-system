@@ -39,9 +39,9 @@ class AuthService {
 
   /// 登出
   ///
-  /// DELETE /auth/logout
+  /// POST /auth/logout
   Future<void> logout() async {
-    await _dio.delete<Map<String, dynamic>>(ApiConstants.authLogout);
+    await _dio.post<Map<String, dynamic>>(ApiConstants.authLogout);
   }
 
   /// 获取验证码

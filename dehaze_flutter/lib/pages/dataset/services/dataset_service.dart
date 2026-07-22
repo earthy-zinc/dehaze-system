@@ -29,10 +29,11 @@ class DatasetService {
 
     final result = response.data!;
     if (result['code']?.toString() == ApiConstants.successCode) {
-      final list = result['data'] as List<dynamic>? ?? [];
-      return list
+      final data = result['data'] as Map<String, dynamic>?;
+      final list = (data?['list'] as List<dynamic>? ?? [])
           .map((e) => DatasetModel.fromJson(e as Map<String, dynamic>))
           .toList();
+      return list;
     }
     throw Exception(result['msg'] ?? '获取数据集列表失败');
   }
@@ -50,24 +51,6 @@ class DatasetService {
       return DatasetModel.fromJson(result['data'] as Map<String, dynamic>);
     }
     throw Exception(result['msg'] ?? '获取数据集详情失败');
-  }
-
-  /// 获取数据集下拉选项
-  ///
-  /// GET /datasets/options
-  Future<List<DatasetModel>> getDatasetOptions() async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      ApiConstants.datasetsOptions,
-    );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      final list = result['data'] as List<dynamic>? ?? [];
-      return list
-          .map((e) => DatasetModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    throw Exception(result['msg'] ?? '获取数据集选项失败');
   }
 
   /// 分页查询数据项列表
@@ -133,24 +116,14 @@ class DatasetService {
       keywords: keywords,
     );
 
-    // 将数据项的文件展开为图片列表
+    // 将数据项的清晰图与有雾图展开为图片列表
     final images = <ImageModel>[];
     for (final item in itemsResponse.list) {
-      for (final file in item.files) {
+      for (final image in item.allImages) {
         // 按类型过滤
-        if (imageType != null && file.imageType != imageType) continue;
+        if (imageType != null && image.imageType != imageType) continue;
 
-        images.add(ImageModel(
-          id: file.id,
-          datasetId: datasetId,
-          filename: file.fileName ?? 'image_${file.id}',
-          imageUrl: file.fileUrl,
-          imageType: file.imageType,
-          width: file.width,
-          height: file.height,
-          fileSize: file.fileSize,
-          createdAt: item.createTime,
-        ));
+        images.add(ImageModel.fromItemImage(image, datasetId, item.createTime));
       }
     }
 

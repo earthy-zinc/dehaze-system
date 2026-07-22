@@ -201,14 +201,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         GestureDetector(
                           onTap: _isCaptchaLoading ? null : _loadCaptcha,
                           child: Container(
-                            width: 120,
+                            width: 160,
                             height: 56,
                             decoration: BoxDecoration(
                               border: Border.all(
                                 color: theme.colorScheme.outline,
                               ),
-                              borderRadius:
-                                  BorderRadius.circular(AppTheme.radiusM),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
                             ),
                             child: _isCaptchaLoading || _captcha == null
                                 ? Center(
@@ -217,20 +218,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                             width: 20,
                                             height: 20,
                                             child: CircularProgressIndicator(
-                                                strokeWidth: 2),
+                                              strokeWidth: 2,
+                                            ),
                                           )
                                         : const Icon(Icons.refresh),
                                   )
                                 : ClipRRect(
                                     borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM),
+                                      AppTheme.radiusM,
+                                    ),
                                     child: Image.memory(
                                       _decodeBase64Image(
-                                          _captcha!.captchaBase64),
-                                      fit: BoxFit.cover,
+                                        _captcha!.captchaBase64,
+                                      ),
+                                      // fill 保证完整显示所有验证码字符（cover 会裁剪）
+                                      fit: BoxFit.fill,
                                       gaplessPlayback: true,
-                                      errorBuilder: (_, _, _) =>
-                                          const Center(
+                                      errorBuilder: (_, _, _) => const Center(
                                         child: Icon(Icons.broken_image),
                                       ),
                                     ),
@@ -265,8 +269,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusM),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
                         ),
                       ),
                       child: authState.isLoading
@@ -278,10 +281,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text(
-                              '登录',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                          : const Text('登录', style: TextStyle(fontSize: 16)),
                     ),
 
                     const SizedBox(height: 16),
@@ -303,43 +303,39 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   /// 构建头部 Logo
   Widget _buildHeader(ThemeData theme) => Column(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              gradient: AppTheme.getPrimaryGradient(),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+    children: [
+      Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          gradient: AppTheme.getPrimaryGradient(),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.brandBlue.withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            child: const Icon(
-              Icons.cloud_outlined,
-              color: Colors.white,
-              size: 40,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '图像去雾系统',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '请登录以使用完整功能',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      );
+          ],
+        ),
+        child: const Icon(Icons.cloud_outlined, color: Colors.white, size: 40),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        '图像去雾系统',
+        style: theme.textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        '请登录以使用完整功能',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    ],
+  );
 
   /// 解码 Base64 验证码图片
   static Uint8List _decodeBase64Image(String base64Str) {

@@ -152,7 +152,6 @@ class _LogCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isSuccess = log.status == 'success';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -165,18 +164,25 @@ class _LogCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  log.predUrl,
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    width: 80,
-                    height: 80,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: const Icon(Icons.broken_image, size: 32),
-                  ),
-                ),
+                child: log.predUrl != null
+                    ? Image.network(
+                        log.predUrl!,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 80,
+                          height: 80,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: const Icon(Icons.broken_image, size: 32),
+                        ),
+                      )
+                    : Container(
+                        width: 80,
+                        height: 80,
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        child: const Icon(Icons.image_not_supported, size: 32),
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -189,25 +195,11 @@ class _LogCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(log.createTime,
                         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: (isSuccess ? AppTheme.techGreen : AppTheme.errorColor).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(isSuccess ? '成功' : '失败',
-                              style: TextStyle(fontSize: 11, color: isSuccess ? AppTheme.techGreen : AppTheme.errorColor, fontWeight: FontWeight.w500)),
-                        ),
-                        if (log.duration != null) ...[
-                          const SizedBox(width: 8),
-                          Text('${(log.duration! / 1000).toStringAsFixed(1)}s',
-                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                        ],
-                      ],
-                    ),
+                    if (log.time != null) ...[
+                      const SizedBox(height: 4),
+                      Text('耗时 ${(log.time! / 1000).toStringAsFixed(1)}s',
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    ],
                   ],
                 ),
               ),
@@ -250,15 +242,17 @@ class _LogCard extends StatelessWidget {
     );
   }
 
-  Widget _imageBlock(String label, String url) => Column(
+  Widget _imageBlock(String label, String? url) => Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(8),
             child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
           Expanded(
-            child: Image.network(url, fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image))),
+            child: url != null
+                ? Image.network(url, fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image)))
+                : const Center(child: Icon(Icons.image_not_supported)),
           ),
         ],
       );

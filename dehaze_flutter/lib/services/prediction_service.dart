@@ -7,8 +7,7 @@ import '../models/prediction_model.dart';
 /// 预测服务
 ///
 /// 封装模型预测相关 API：
-/// - predict: 执行模型预测
-/// - getPredictionStatus: 查询预测任务状态
+/// - predict: 执行模型预测（同步返回结果）
 /// - getPredictionLogs: 获取预测日志列表
 class PredictionService {
   const PredictionService(this._dio);
@@ -31,23 +30,6 @@ class PredictionService {
       );
     }
     throw Exception(result['msg'] ?? '预测请求失败');
-  }
-
-  /// 查询预测任务状态
-  ///
-  /// GET /prediction/{taskId}
-  Future<PredictionResponse> getPredictionStatus(String taskId) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '${ApiConstants.prediction}/$taskId',
-    );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      return PredictionResponse.fromJson(
-        result['data'] as Map<String, dynamic>,
-      );
-    }
-    throw Exception(result['msg'] ?? '查询预测状态失败');
   }
 
   /// 获取预测日志列表

@@ -3,62 +3,72 @@ import 'package:json_annotation/json_annotation.dart';
 part 'evaluation_model.g.dart';
 
 /// 评估请求
-@JsonSerializable()
+///
+/// 对应后端 EvaluationForm：
+/// algorithmId（Long，必填）、predUrl/gtUrl（String）、params（String，JSON）。
+/// 去雾流程中使用结果图 URL 进行评估。
+@JsonSerializable(includeIfNull: false)
 class EvaluationRequest {
   const EvaluationRequest({
     required this.algorithmId,
-    required this.predFileId,
-    required this.gtFileId,
+    this.predUrl,
+    this.gtUrl,
+    this.params,
   });
 
   factory EvaluationRequest.fromJson(Map<String, dynamic> json) =>
       _$EvaluationRequestFromJson(json);
 
+  /// 算法 ID
   @JsonKey(name: 'algorithmId')
   final int algorithmId;
 
-  /// 预测结果图文件 ID
-  @JsonKey(name: 'predFileId')
-  final String predFileId;
+  /// 预测结果图 URL
+  @JsonKey(name: 'predUrl')
+  final String? predUrl;
 
-  /// 真值图（Ground Truth）文件 ID
-  @JsonKey(name: 'gtFileId')
-  final String gtFileId;
+  /// 真值图（Ground Truth）URL
+  @JsonKey(name: 'gtUrl')
+  final String? gtUrl;
+
+  /// 评估参数（JSON 字符串）
+  final String? params;
 
   Map<String, dynamic> toJson() => _$EvaluationRequestToJson(this);
 }
 
 /// 评估结果
+///
+/// 对应后端 EvaluationResultVO：评估为同步接口，直接返回指标。
 @JsonSerializable()
 class EvaluationResult {
   const EvaluationResult({
-    required this.taskId,
-    this.status = 'pending',
-    this.metrics,
-    this.message,
+    required this.logId,
+    required this.metrics,
+    this.time,
   });
 
   factory EvaluationResult.fromJson(Map<String, dynamic> json) =>
       _$EvaluationResultFromJson(json);
 
-  @JsonKey(name: 'taskId')
-  final String taskId;
+  /// 评估日志 ID
+  @JsonKey(name: 'logId')
+  final int logId;
 
-  /// 任务状态（pending/processing/success/failed）
-  final String status;
+  /// 指标结果（PSNR/SSIM/MSE/FSIM/LPIPS 等）
+  @JsonKey(defaultValue: <String, double>{})
+  final Map<String, double> metrics;
 
-  /// 评估指标
-  final EvaluationMetrics? metrics;
-
-  final String? message;
+  /// 处理耗时（毫秒）
+  final int? time;
 
   Map<String, dynamic> toJson() => _$EvaluationResultToJson(this);
 
-  bool get isCompleted => status == 'success' || status == 'failed';
+  /// 转换为结构化指标模型（供 UI 展示）
+  EvaluationMetrics get metricsModel => EvaluationMetrics.fromMap(metrics);
 }
 
-/// 评估指标
-@JsonSerializable()
+/// 评估指标（结构化展示模型）
 class EvaluationMetrics {
   const EvaluationMetrics({
     this.psnr,
@@ -68,8 +78,23 @@ class EvaluationMetrics {
     this.lpips,
   });
 
-  factory EvaluationMetrics.fromJson(Map<String, dynamic> json) =>
-      _$EvaluationMetricsFromJson(json);
+  /// 从后端指标 Map 构建（键名不区分大小写，容忍缺失）
+  factory EvaluationMetrics.fromMap(Map<String, double> map) {
+    double? pick(String key) {
+      for (final entry in map.entries) {
+        if (entry.key.toLowerCase() == key) return entry.value;
+      }
+      return null;
+    }
+
+    return EvaluationMetrics(
+      psnr: pick('psnr'),
+      ssim: pick('ssim'),
+      mse: pick('mse'),
+      fsim: pick('fsim'),
+      lpips: pick('lpips'),
+    );
+  }
 
   /// 峰值信噪比（越高越好，通常 20-40 dB）
   final double? psnr;
@@ -85,8 +110,6 @@ class EvaluationMetrics {
 
   /// 感知损失（越低越好）
   final double? lpips;
-
-  Map<String, dynamic> toJson() => _$EvaluationMetricsToJson(this);
 
   /// 获取所有指标列表（用于 UI 展示）
   List<MetricItem> toList() => [

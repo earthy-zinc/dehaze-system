@@ -10,8 +10,9 @@ EvaluationRequest _$EvaluationRequestFromJson(Map<String, dynamic> json) =>
     $checkedCreate('EvaluationRequest', json, ($checkedConvert) {
       final val = EvaluationRequest(
         algorithmId: $checkedConvert('algorithmId', (v) => (v as num).toInt()),
-        predFileId: $checkedConvert('predFileId', (v) => v as String),
-        gtFileId: $checkedConvert('gtFileId', (v) => v as String),
+        predUrl: $checkedConvert('predUrl', (v) => v as String?),
+        gtUrl: $checkedConvert('gtUrl', (v) => v as String?),
+        params: $checkedConvert('params', (v) => v as String?),
       );
       return val;
     });
@@ -19,51 +20,31 @@ EvaluationRequest _$EvaluationRequestFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$EvaluationRequestToJson(EvaluationRequest instance) =>
     <String, dynamic>{
       'algorithmId': instance.algorithmId,
-      'predFileId': instance.predFileId,
-      'gtFileId': instance.gtFileId,
+      if (instance.predUrl case final value?) 'predUrl': value,
+      if (instance.gtUrl case final value?) 'gtUrl': value,
+      if (instance.params case final value?) 'params': value,
     };
 
 EvaluationResult _$EvaluationResultFromJson(Map<String, dynamic> json) =>
     $checkedCreate('EvaluationResult', json, ($checkedConvert) {
       final val = EvaluationResult(
-        taskId: $checkedConvert('taskId', (v) => v as String),
-        status: $checkedConvert('status', (v) => v as String? ?? 'pending'),
+        logId: $checkedConvert('logId', (v) => (v as num).toInt()),
         metrics: $checkedConvert(
           'metrics',
-          (v) => v == null
-              ? null
-              : EvaluationMetrics.fromJson(v as Map<String, dynamic>),
+          (v) =>
+              (v as Map<String, dynamic>?)?.map(
+                (k, e) => MapEntry(k, (e as num).toDouble()),
+              ) ??
+              {},
         ),
-        message: $checkedConvert('message', (v) => v as String?),
+        time: $checkedConvert('time', (v) => (v as num?)?.toInt()),
       );
       return val;
     });
 
 Map<String, dynamic> _$EvaluationResultToJson(EvaluationResult instance) =>
     <String, dynamic>{
-      'taskId': instance.taskId,
-      'status': instance.status,
-      if (instance.metrics?.toJson() case final value?) 'metrics': value,
-      if (instance.message case final value?) 'message': value,
-    };
-
-EvaluationMetrics _$EvaluationMetricsFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('EvaluationMetrics', json, ($checkedConvert) {
-      final val = EvaluationMetrics(
-        psnr: $checkedConvert('psnr', (v) => (v as num?)?.toDouble()),
-        ssim: $checkedConvert('ssim', (v) => (v as num?)?.toDouble()),
-        mse: $checkedConvert('mse', (v) => (v as num?)?.toDouble()),
-        fsim: $checkedConvert('fsim', (v) => (v as num?)?.toDouble()),
-        lpips: $checkedConvert('lpips', (v) => (v as num?)?.toDouble()),
-      );
-      return val;
-    });
-
-Map<String, dynamic> _$EvaluationMetricsToJson(EvaluationMetrics instance) =>
-    <String, dynamic>{
-      if (instance.psnr case final value?) 'psnr': value,
-      if (instance.ssim case final value?) 'ssim': value,
-      if (instance.mse case final value?) 'mse': value,
-      if (instance.fsim case final value?) 'fsim': value,
-      if (instance.lpips case final value?) 'lpips': value,
+      'logId': instance.logId,
+      'metrics': instance.metrics,
+      if (instance.time case final value?) 'time': value,
     };

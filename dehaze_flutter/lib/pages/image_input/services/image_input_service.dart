@@ -3,11 +3,12 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:image/image.dart' as img;
 
+import '../../../core/constants/api_constants.dart';
 import '../models/image_input_model.dart';
 
 /// 图片输入服务
 ///
-/// 处理图片验证、压缩、上传等功能
+/// 处理图片验证、压缩、下载、样例获取等功能
 class ImageInputService {
   const ImageInputService(this._dio);
 
@@ -18,8 +19,6 @@ class ImageInputService {
   static const int compressionThresholdBytes = 5 * 1024 * 1024; // 5MB
   static const int maxWidth = 8000;
   static const int maxHeight = 8000;
-  static const int minWidth = 640;
-  static const int minHeight = 480;
   static const int compressionQuality = 85;
 
   static const List<String> supportedFormats = [
@@ -136,209 +135,79 @@ class ImageInputService {
   }
 
   /// 获取样例图片列表
+  ///
+  /// 样例库复用数据集的公开数据项：
+  /// GET /dataset-items 返回数据项及其有雾图，取有雾图作为样例。
   Future<List<SampleImageModel>> fetchSamples({
     SampleCategory? category,
   }) async {
-    try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/samples',
-        queryParameters: {
-          if (category != null && category != SampleCategory.all)
-            'category': category.name,
-        },
-      );
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiConstants.datasetItems,
+      queryParameters: const {'pageNum': 1, 'pageSize': 50},
+    );
 
-      if (response.statusCode == 200 && response.data?['code']?.toString() == '00000') {
-        final data = response.data!['data'] as List<dynamic>;
-        return data
-            .map((e) => SampleImageModel.fromJson(e as Map<String, dynamic>))
-            .toList();
+    final result = response.data!;
+    if (result['code']?.toString() != ApiConstants.successCode) {
+      throw Exception(result['msg'] ?? '获取样例图片失败');
+    }
+
+    final data = result['data'] as Map<String, dynamic>?;
+    final items = (data?['list'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>();
+
+    final samples = <SampleImageModel>[];
+    for (final item in items) {
+      final hazyImages = (item['hazyImages'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>();
+      for (final image in hazyImages) {
+        final url = image['url'] as String?;
+        if (url == null || url.isEmpty) continue;
+
+        samples.add(SampleImageModel(
+          id: image['id'] as int? ?? 0,
+          name: item['name'] as String? ??
+              image['fileName'] as String? ??
+              '样例图片',
+          url: url,
+          category: _categoryFromHazeLevel(image['hazeLevel'] as String?),
+          difficulty: _difficultyFromHazeLevel(image['hazeLevel'] as String?),
+          sceneType:
+              image['sceneType'] as String? ?? item['sceneType'] as String?,
+        ));
       }
-      throw Exception('获取样例图片失败');
-    } on DioException catch (e) {
-      // Mock 数据用于开发阶段
-      if (e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.connectionTimeout) {
-        return _getMockSamples(category);
-      }
-      rethrow;
+    }
+
+    // 按分类筛选（all 返回全部）
+    if (category == null || category == SampleCategory.all) {
+      return samples;
+    }
+    return samples.where((s) => s.category == category).toList();
+  }
+
+  /// 雾霾程度 → 样例分类
+  SampleCategory _categoryFromHazeLevel(String? hazeLevel) {
+    switch (hazeLevel) {
+      case 'light':
+        return SampleCategory.light;
+      case 'medium':
+        return SampleCategory.medium;
+      case 'heavy':
+        return SampleCategory.heavy;
+      default:
+        return SampleCategory.special;
     }
   }
 
-  /// Mock 样例数据
-  List<SampleImageModel> _getMockSamples(SampleCategory? category) {
-    final allSamples = [
-      // 轻度雾霾
-      const SampleImageModel(
-        id: 1,
-        name: '轻度雾霾-城市街道',
-        url: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800',
-        category: SampleCategory.light,
-        difficulty: DifficultyLevel.easy,
-        sceneType: '城市',
-      ),
-      const SampleImageModel(
-        id: 2,
-        name: '轻度雾霾-公园景观',
-        url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800',
-        category: SampleCategory.light,
-        difficulty: DifficultyLevel.easy,
-        sceneType: '风景',
-      ),
-      const SampleImageModel(
-        id: 3,
-        name: '轻度雾霾-建筑物',
-        url: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800',
-        category: SampleCategory.light,
-        difficulty: DifficultyLevel.easy,
-        sceneType: '建筑',
-      ),
-      const SampleImageModel(
-        id: 4,
-        name: '轻度雾霾-山景',
-        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
-        category: SampleCategory.light,
-        difficulty: DifficultyLevel.easy,
-        sceneType: '山景',
-      ),
-      const SampleImageModel(
-        id: 5,
-        name: '轻度雾霾-湖泊',
-        url: 'https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800',
-        category: SampleCategory.light,
-        difficulty: DifficultyLevel.easy,
-        sceneType: '湖泊',
-      ),
-      // 中度雾霾
-      const SampleImageModel(
-        id: 6,
-        name: '中度雾霾-城市天际线',
-        url: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800',
-        category: SampleCategory.medium,
-        difficulty: DifficultyLevel.medium,
-        sceneType: '城市',
-      ),
-      const SampleImageModel(
-        id: 7,
-        name: '中度雾霾-道路',
-        url: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800',
-        category: SampleCategory.medium,
-        difficulty: DifficultyLevel.medium,
-        sceneType: '道路',
-      ),
-      const SampleImageModel(
-        id: 8,
-        name: '中度雾霾-森林',
-        url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800',
-        category: SampleCategory.medium,
-        difficulty: DifficultyLevel.medium,
-        sceneType: '森林',
-      ),
-      const SampleImageModel(
-        id: 9,
-        name: '中度雾霾-海岸',
-        url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-        category: SampleCategory.medium,
-        difficulty: DifficultyLevel.medium,
-        sceneType: '海岸',
-      ),
-      const SampleImageModel(
-        id: 10,
-        name: '中度雾霾-乡村',
-        url: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=800',
-        category: SampleCategory.medium,
-        difficulty: DifficultyLevel.medium,
-        sceneType: '乡村',
-      ),
-      // 重度雾霾
-      const SampleImageModel(
-        id: 11,
-        name: '重度雾霾-城市中心',
-        url: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800',
-        category: SampleCategory.heavy,
-        difficulty: DifficultyLevel.hard,
-        sceneType: '城市',
-      ),
-      const SampleImageModel(
-        id: 12,
-        name: '重度雾霾-高速公路',
-        url: 'https://images.unsplash.com/photo-1465447142348-e9952c393450?w=800',
-        category: SampleCategory.heavy,
-        difficulty: DifficultyLevel.hard,
-        sceneType: '道路',
-      ),
-      const SampleImageModel(
-        id: 13,
-        name: '重度雾霾-山区',
-        url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800',
-        category: SampleCategory.heavy,
-        difficulty: DifficultyLevel.hard,
-        sceneType: '山区',
-      ),
-      const SampleImageModel(
-        id: 14,
-        name: '重度雾霾-港口',
-        url: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800',
-        category: SampleCategory.heavy,
-        difficulty: DifficultyLevel.hard,
-        sceneType: '港口',
-      ),
-      const SampleImageModel(
-        id: 15,
-        name: '重度雾霾-工业区',
-        url: 'https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?w=800',
-        category: SampleCategory.heavy,
-        difficulty: DifficultyLevel.hard,
-        sceneType: '工业',
-      ),
-      // 特殊场景
-      const SampleImageModel(
-        id: 16,
-        name: '特殊场景-夜景雾霾',
-        url: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800',
-        category: SampleCategory.special,
-        difficulty: DifficultyLevel.hard,
-        sceneType: '夜景',
-      ),
-      const SampleImageModel(
-        id: 17,
-        name: '特殊场景-逆光雾霾',
-        url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800',
-        category: SampleCategory.special,
-        difficulty: DifficultyLevel.hard,
-        sceneType: '逆光',
-      ),
-      const SampleImageModel(
-        id: 18,
-        name: '特殊场景-雨雾',
-        url: 'https://images.unsplash.com/photo-1428908728789-d2de25dbd4e2?w=800',
-        category: SampleCategory.special,
-        difficulty: DifficultyLevel.medium,
-        sceneType: '雨雾',
-      ),
-      const SampleImageModel(
-        id: 19,
-        name: '特殊场景-晨雾',
-        url: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800',
-        category: SampleCategory.special,
-        difficulty: DifficultyLevel.easy,
-        sceneType: '晨雾',
-      ),
-      const SampleImageModel(
-        id: 20,
-        name: '特殊场景-雪雾',
-        url: 'https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=800',
-        category: SampleCategory.special,
-        difficulty: DifficultyLevel.medium,
-        sceneType: '雪雾',
-      ),
-    ];
-
-    if (category == null || category == SampleCategory.all) {
-      return allSamples;
+  /// 雾霾程度 → 难度等级
+  DifficultyLevel _difficultyFromHazeLevel(String? hazeLevel) {
+    switch (hazeLevel) {
+      case 'light':
+        return DifficultyLevel.easy;
+      case 'medium':
+        return DifficultyLevel.medium;
+      default:
+        return DifficultyLevel.hard;
     }
-
-    return allSamples.where((s) => s.category == category).toList();
   }
 }
 

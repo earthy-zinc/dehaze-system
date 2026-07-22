@@ -1,38 +1,13 @@
+import 'dart:convert';
+
 import 'package:json_annotation/json_annotation.dart';
 
 part 'prediction_model.g.dart';
 
-/// 预测任务状态枚举
-enum PredictionStatus {
-  @JsonValue('pending')
-  pending,
-  @JsonValue('processing')
-  processing,
-  @JsonValue('success')
-  success,
-  @JsonValue('failed')
-  failed,
-}
-
-extension PredictionStatusExtension on PredictionStatus {
-  String get displayName {
-    switch (this) {
-      case PredictionStatus.pending:
-        return '等待中';
-      case PredictionStatus.processing:
-        return '处理中';
-      case PredictionStatus.success:
-        return '已完成';
-      case PredictionStatus.failed:
-        return '处理失败';
-    }
-  }
-
-  bool get isCompleted =>
-      this == PredictionStatus.success || this == PredictionStatus.failed;
-}
-
 /// 预测请求
+///
+/// 对应后端 PredictionForm：
+/// algorithmId（Long，必填）、fileId（Long）、imageUrl（String）、params（String，JSON）
 @JsonSerializable()
 class PredictionRequest {
   const PredictionRequest({
@@ -50,66 +25,74 @@ class PredictionRequest {
 
   /// 原始图片文件 ID
   @JsonKey(name: 'fileId')
-  final String fileId;
+  final int fileId;
 
-  /// 算法参数（自定义 JSON）
+  /// 算法参数
+  ///
+  /// 后端 `params` 字段为 String 类型，需序列化为 JSON 字符串传输。
+  @JsonKey(toJson: _paramsToJson, fromJson: _paramsFromJson)
   final Map<String, dynamic>? params;
+
+  static String? _paramsToJson(Map<String, dynamic>? params) =>
+      params == null ? null : jsonEncode(params);
+
+  static Map<String, dynamic>? _paramsFromJson(String? params) =>
+      params == null || params.isEmpty
+          ? null
+          : jsonDecode(params) as Map<String, dynamic>;
 
   Map<String, dynamic> toJson() => _$PredictionRequestToJson(this);
 }
 
 /// 预测响应
+///
+/// 对应后端 PredictionResultVO：预测为同步接口，直接返回结果。
 @JsonSerializable()
 class PredictionResponse {
   const PredictionResponse({
-    required this.taskId,
-    this.status = PredictionStatus.pending,
+    required this.logId,
     this.resultUrl,
-    this.duration,
-    this.message,
+    this.resultThumbnailUrl,
+    this.time,
   });
 
   factory PredictionResponse.fromJson(Map<String, dynamic> json) =>
       _$PredictionResponseFromJson(json);
 
-  /// 任务 ID
-  @JsonKey(name: 'taskId')
-  final String taskId;
-
-  /// 任务状态
-  @JsonKey(defaultValue: PredictionStatus.pending)
-  final PredictionStatus status;
+  /// 预测日志 ID
+  @JsonKey(name: 'logId')
+  final int logId;
 
   /// 结果图片 URL
   @JsonKey(name: 'resultUrl')
   final String? resultUrl;
 
-  /// 处理耗时（毫秒）
-  final int? duration;
+  /// 结果缩略图 URL
+  @JsonKey(name: 'resultThumbnailUrl')
+  final String? resultThumbnailUrl;
 
-  /// 消息
-  final String? message;
+  /// 处理耗时（毫秒）
+  final int? time;
 
   Map<String, dynamic> toJson() => _$PredictionResponseToJson(this);
 
-  /// 是否已完成
-  bool get isCompleted => status.isCompleted;
+  /// 是否拿到处理结果
+  bool get hasResult => resultUrl != null && resultUrl!.isNotEmpty;
 }
 
 /// 预测日志
+///
+/// 对应后端 PredLogVO。
 @JsonSerializable()
 class PredictionLog {
   const PredictionLog({
     required this.id,
     required this.algorithmName,
-    required this.originUrl,
-    required this.predUrl,
-    required this.status,
     required this.createTime,
-    this.duration,
     this.algorithmId,
-    this.originMd5,
-    this.predMd5,
+    this.originUrl,
+    this.predUrl,
+    this.time,
   });
 
   factory PredictionLog.fromJson(Map<String, dynamic> json) =>
@@ -125,27 +108,18 @@ class PredictionLog {
 
   /// 原始图片 URL
   @JsonKey(name: 'originUrl')
-  final String originUrl;
+  final String? originUrl;
 
-  /// 预测结果图片 URL
+  /// 预测结果图片 URL（失败的记录可能为空）
   @JsonKey(name: 'predUrl')
-  final String predUrl;
+  final String? predUrl;
 
-  /// 状态
-  final String status;
-
-  /// 耗时（毫秒）
-  final int? duration;
+  /// 处理耗时（毫秒）
+  final int? time;
 
   /// 创建时间
   @JsonKey(name: 'createTime')
   final String createTime;
-
-  @JsonKey(name: 'originMd5')
-  final String? originMd5;
-
-  @JsonKey(name: 'predMd5')
-  final String? predMd5;
 
   Map<String, dynamic> toJson() => _$PredictionLogToJson(this);
 }

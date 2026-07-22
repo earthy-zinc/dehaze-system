@@ -527,16 +527,6 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
                             ),
                         ],
                       ),
-                      if (image.tags != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          '标签: ${image.tags}',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
