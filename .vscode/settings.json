@@ -150,6 +150,29 @@
   "dart.flutterSdkPath": "",
 
   // ============================================================
+  // Python / Pylance（性能优化）
+  // ============================================================
+  "python.analysis.exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+    "**/dehaze-algorithm",
+    "**/dehaze-go",
+    "**/dehaze-java",
+    "**/dehaze-java-cloud",
+    "**/dehaze-java-cloud-plus",
+    "**/dehaze-android",
+    "**/dehaze_harmory",
+    "**/dehaze-flutter",
+    "**/dehaze-react-native",
+    "**/dehaze-taro",
+    "**/dehaze-uniapp",
+    "**/dehaze-tool/dehaze-sdk-harmony",
+    "**/scripts",
+    "**/config"
+  ],
+
+  // ============================================================
   // 杂项
   // ============================================================
   "gitlens.advanced.blame.customArguments": ["--ignore-revs-file", ".git-blame-ignore-revs"],
