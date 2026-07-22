@@ -460,3 +460,5 @@ dehaze_flutter/ios/Runner/Assets.xcassets/*/README.md
 # 3. 文件名（无路径前缀）在所有层级都生效
 # 4. 环境配置文件已忽略，生产环境请使用环境变量
 dehaze-tool/dehaze-sdk-js/test/resources
+
+**/.torch_extensions
