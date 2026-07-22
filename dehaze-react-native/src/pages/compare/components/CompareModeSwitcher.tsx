@@ -46,13 +46,13 @@ const CompareModeSwitcher: React.FC<CompareModeSwitcherProps> = ({
   const handleSwitch = (mode: CompareMode) => {
     if (mode === current) return;
     if (mode === 'Metrics') {
-      navigation.replace(mode, {
+      navigation.navigate(mode, {
         originalUrl: params.originalUrl,
         processedUrl: params.processedUrl,
         ...(params.algorithmId ? { algorithmId: params.algorithmId } : {}),
       } as any);
     } else {
-      navigation.replace(mode, {
+      navigation.navigate(mode, {
         originalUrl: params.originalUrl,
         processedUrl: params.processedUrl,
       } as any);

@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '@/theme/colors';
-import { spacing, layout } from '@/theme/spacing';
+import { spacing } from '@/theme/spacing';
 import { bottomTabs, RouteNames } from '../MenuConfig';
 
 // 图标映射 - Ionicons 图标名称

@@ -20,7 +20,6 @@ import type { Task, TaskStatus } from './types';
 import {
   TASK_STATUS_MAP,
   TASK_TYPE_MAP,
-  TERMINAL_STATUSES,
   isTerminal,
   formatTaskTime,
 } from './types';

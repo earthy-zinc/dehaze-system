@@ -208,6 +208,25 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const isDefault = JSON.stringify(params) === JSON.stringify(DEFAULT_PARAMS);
 
+  // 缺少必要参数时显示空状态（例如从底部 Tab 直接进入）
+  if (!originalUrl || !processedUrl) {
+    return (
+      <MainLayout title="滤镜调节" showBack>
+        <View style={styles.emptyContainer}>
+          <Icon name="image" size={48} color={theme.colors.text.tertiary} />
+          <Text style={styles.emptyTitle}>请先完成去雾处理</Text>
+          <Text style={styles.emptyDesc}>对比功能需要先处理图片</Text>
+          <TouchableOpacity
+            style={styles.emptyButton}
+            onPress={() => navigation.navigate('ImageInput')}
+          >
+            <Text style={styles.emptyButtonText}>去选择图片</Text>
+          </TouchableOpacity>
+        </View>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout title="滤镜调节" showBack>
       <CompareModeSwitcher
@@ -478,6 +497,36 @@ const styles = StyleSheet.create({
     marginLeft: -10,
     top: '50%',
     marginTop: -10,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: theme.typography.sizes.bodyLarge,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xs,
+  },
+  emptyDesc: {
+    fontSize: theme.typography.sizes.body,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.lg,
+    textAlign: 'center',
+  },
+  emptyButton: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.layout.borderRadius.md,
+  },
+  emptyButtonText: {
+    color: '#fff',
+    fontSize: theme.typography.sizes.body,
+    fontWeight: theme.typography.weights.semibold,
   },
 });
 

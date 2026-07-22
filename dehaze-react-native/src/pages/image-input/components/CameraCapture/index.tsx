@@ -6,10 +6,8 @@ import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   Alert,
-  Platform,
   Linking,
 } from 'react-native';
 import { launchCamera, ImagePickerResponse } from 'react-native-image-picker';

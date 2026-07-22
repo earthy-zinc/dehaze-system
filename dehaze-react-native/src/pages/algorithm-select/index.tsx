@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  TextInput,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/routes/types';
@@ -57,6 +58,7 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
   const [compareIds, setCompareIds] = useState<Set<number>>(new Set());
   const [compareAlgorithms, setCompareAlgorithms] = useState<Algorithm[]>([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState('');
 
   /** 判断图片是否为远程 URL（后端可访问） */
   const hasRemoteImage = !!(image?.url && image.url.startsWith('http'));
@@ -76,6 +78,17 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
     };
     return collect(tree);
   }, [tree]);
+
+  /** 按关键词过滤的算法列表（搜索时使用） */
+  const filteredAlgorithms = useMemo(() => {
+    const kw = searchKeyword.trim().toLowerCase();
+    if (!kw) return [];
+    return allLeafAlgorithms.filter(a =>
+      (a.name || '').toLowerCase().includes(kw) ||
+      (a.type || '').toLowerCase().includes(kw) ||
+      (a.description || '').toLowerCase().includes(kw)
+    );
+  }, [allLeafAlgorithms, searchKeyword]);
 
   /** 根据 ID 查找算法 */
   const findAlgorithmById = useCallback(
@@ -331,6 +344,27 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   };
 
+  /** 渲染搜索框 */
+  const renderSearchBar = () => (
+    <View style={styles.searchContainer}>
+      <Icon name="search" size={18} color={theme.colors.text.tertiary} />
+      <TextInput
+        style={styles.searchInput}
+        placeholder="搜索算法名称、类型或描述"
+        placeholderTextColor={theme.colors.text.tertiary}
+        value={searchKeyword}
+        onChangeText={setSearchKeyword}
+        autoCorrect={false}
+        autoCapitalize="none"
+      />
+      {searchKeyword.length > 0 && (
+        <TouchableOpacity onPress={() => setSearchKeyword('')} hitSlop={8}>
+          <Icon name="cancel" size={18} color={theme.colors.text.tertiary} />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
   /** 渲染浏览区域 */
   const renderBrowse = () => {
     if (treeLoading) {
@@ -338,6 +372,38 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>正在加载算法列表...</Text>
+        </View>
+      );
+    }
+
+    // 搜索模式：扁平渲染过滤后的算法卡片
+    if (searchKeyword.trim()) {
+      if (filteredAlgorithms.length === 0) {
+        return (
+          <View style={styles.centerContainer}>
+            <Icon name="search" size={48} color={theme.colors.text.tertiary} />
+            <Text style={styles.emptyText}>未找到匹配的算法</Text>
+            <Text style={styles.emptySubtext}>尝试其他关键词</Text>
+          </View>
+        );
+      }
+      return (
+        <View>
+          <Text style={styles.sectionTitle}>
+            找到 {filteredAlgorithms.length} 个算法
+          </Text>
+          {filteredAlgorithms.map(algorithm => (
+            <AlgorithmCard
+              key={algorithm.id}
+              algorithm={algorithm}
+              isFavorite={favoriteIds.has(algorithm.id)}
+              isSelected={compareIds.has(algorithm.id)}
+              onSelect={handleSelect}
+              onToggleFavorite={handleToggleFavorite}
+              onViewDetail={handleViewDetail}
+              onToggleCompare={handleToggleCompare}
+            />
+          ))}
         </View>
       );
     }
@@ -419,6 +485,9 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Tab 选择器 */}
           {renderTabs()}
+
+          {/* 搜索框（仅浏览Tab显示） */}
+          {activeTab === 'browse' && !treeLoading && renderSearchBar()}
 
           {/* 内容区域 */}
           {renderContent()}
@@ -538,6 +607,23 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.layout.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    gap: theme.spacing.sm,
+    ...theme.layout.shadows.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: theme.typography.sizes.body,
+    color: theme.colors.text.primary,
+    padding: 0,
   },
 });
 

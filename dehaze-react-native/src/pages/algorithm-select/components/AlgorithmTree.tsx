@@ -2,13 +2,12 @@
  * 算法树形组件
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
 } from 'react-native';
 import Icon from '@/components/Icon';
 import { theme } from '@/theme';
@@ -137,9 +136,7 @@ const AlgorithmTree: React.FC<AlgorithmTreeProps> = ({
   onViewDetail,
   onToggleCompare,
 }) => {
-  const flatList = useMemo(() => tree, [tree]);
-
-  if (flatList.length === 0) {
+  if (tree.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Icon name="folder-open-outline" size={48} color={theme.colors.text.tertiary} />
@@ -150,7 +147,7 @@ const AlgorithmTree: React.FC<AlgorithmTreeProps> = ({
 
   return (
     <View style={styles.container}>
-      {flatList.map(node => (
+      {tree.map(node => (
         <TreeNode
           key={node.id}
           node={node}

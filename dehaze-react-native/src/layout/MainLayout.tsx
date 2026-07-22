@@ -8,7 +8,7 @@
  * 参考 Flutter 应用的整体设计风格
  */
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, NavigationProp } from '@react-navigation/native';
 import { useResponsive } from '@/hooks/useResponsive';
 import { colors } from '@/theme/colors';
@@ -18,7 +18,6 @@ import {
   BottomTabBar,
   DrawerMenu,
   SideNav,
-  SIDE_NAV_WIDTH,
 } from './components';
 import type { RootStackParamList } from '@/routes/types';
 
@@ -41,11 +40,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute();
-  const { isMobile, isTablet, isDesktop } = useResponsive();
+  const { isMobile } = useResponsive();
   const [drawerVisible, setDrawerVisible] = useState(false);
-
-  // 判断是否为宽屏设备（平板/桌面）
-  const isWideScreen = isTablet || isDesktop;
 
   // 当前路由名称
   const currentRoute = route.name as RouteNames;

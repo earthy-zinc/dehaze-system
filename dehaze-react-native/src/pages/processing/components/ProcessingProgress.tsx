@@ -1,14 +1,14 @@
 /**
  * 处理进度组件
  *
- * 显示当前进度条、处理阶段、已用时间、错误信息。
+ * API 同步返回处理结果，仅展示真实处理状态、已用时间、错误信息。
+ * 不展示模拟百分比或阶段化进度条。
  */
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import type { TaskProgress } from '@/types/processing';
-import { PROCESSING_STAGES } from '../services/processingApi';
 
 interface ProcessingProgressProps {
   progress: TaskProgress;
@@ -24,12 +24,12 @@ const formatElapsed = (ms: number): string => {
 };
 
 const ProcessingProgress: React.FC<ProcessingProgressProps> = ({ progress }) => {
-  const { percent, stageLabel, elapsed, status, error } = progress;
+  const { status, elapsed, error } = progress;
   const isFailed = status === 'failed';
   const isCanceled = status === 'canceled';
   const isDone = status === 'success';
+  const isProcessing = !isFailed && !isCanceled && !isDone;
 
-  const currentStageIndex = PROCESSING_STAGES.findIndex(s => s.key === status);
   return (
     <View style={styles.container}>
       {/* 顶部状态 */}
@@ -49,63 +49,13 @@ const ProcessingProgress: React.FC<ProcessingProgressProps> = ({ progress }) => 
               isDone && styles.stageLabelSuccess,
             ]}
           >
-            {isFailed ? '处理失败' : isCanceled ? '已取消' : isDone ? '处理完成' : stageLabel}
+            {isFailed ? '处理失败' : isCanceled ? '已取消' : isDone ? '处理完成' : '去雾处理中'}
           </Text>
         </View>
-        <Text style={styles.percentText}>{percent}%</Text>
       </View>
 
-      {/* 进度条 */}
-      <View style={styles.barContainer}>
-        <View
-          style={[
-            styles.barFill,
-            { width: `${percent}%` },
-            isFailed && styles.barFillError,
-            isCanceled && styles.barFillCanceled,
-            isDone && styles.barFillSuccess,
-          ]}
-        />
-      </View>
-
-      {/* 阶段列表 */}
-      <View style={styles.stageList}>
-        {PROCESSING_STAGES.map((stage, index) => {
-          const isPast = currentStageIndex > index || isDone;
-          const isCurrent = currentStageIndex === index && !isDone && !isFailed && !isCanceled;
-          return (
-            <View key={stage.key} style={styles.stageItem}>
-              <View
-                style={[
-                  styles.stageDot,
-                  isPast && styles.stageDotDone,
-                  isCurrent && styles.stageDotActive,
-                ]}
-              >
-                {isPast ? (
-                  <Icon name="check-circle" size={10} color="#fff" />
-                ) : isCurrent ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <View style={styles.stageDotPending} />
-                )}
-              </View>
-              <Text
-                style={[
-                  styles.stageText,
-                  isPast && styles.stageTextDone,
-                  isCurrent && styles.stageTextActive,
-                ]}
-              >
-                {stage.label}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-
-      {/* 已用时间 */}
-      {!isFailed && !isCanceled && (
+      {/* 已用时间（处理中或完成时展示）*/}
+      {(isProcessing || isDone) && (
         <View style={styles.metaRow}>
           <Icon name="clock" size={14} color={theme.colors.text.tertiary} />
           <Text style={styles.metaText}>已用时间：{formatElapsed(elapsed)}</Text>
@@ -150,75 +100,6 @@ const styles = StyleSheet.create({
   },
   stageLabelSuccess: {
     color: theme.colors.status.success,
-  },
-  percentText: {
-    fontSize: theme.typography.sizes.body,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.primary,
-  },
-  barContainer: {
-    height: 8,
-    backgroundColor: theme.colors.background.tertiary,
-    borderRadius: theme.layout.borderRadius.full,
-    overflow: 'hidden',
-    marginBottom: theme.spacing.md,
-  },
-  barFill: {
-    height: '100%',
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.layout.borderRadius.full,
-  },
-  barFillError: {
-    backgroundColor: theme.colors.status.error,
-  },
-  barFillCanceled: {
-    backgroundColor: theme.colors.text.tertiary,
-  },
-  barFillSuccess: {
-    backgroundColor: theme.colors.status.success,
-  },
-  stageList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-  },
-  stageItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    minWidth: 80,
-  },
-  stageDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: theme.colors.background.tertiary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stageDotDone: {
-    backgroundColor: theme.colors.status.success,
-  },
-  stageDotActive: {
-    backgroundColor: theme.colors.primary,
-  },
-  stageDotPending: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.colors.text.tertiary,
-  },
-  stageText: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.tertiary,
-  },
-  stageTextDone: {
-    color: theme.colors.text.secondary,
-  },
-  stageTextActive: {
-    color: theme.colors.primary,
-    fontWeight: theme.typography.weights.medium,
   },
   metaRow: {
     flexDirection: 'row',

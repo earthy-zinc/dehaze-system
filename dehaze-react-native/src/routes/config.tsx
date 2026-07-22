@@ -11,6 +11,7 @@ import HomeScreen from '@/pages/home';
 import ImageInputScreen from '@/pages/image-input';
 import LoginScreen from '@/pages/login';
 import ProcessingScreen from '@/pages/processing';
+import ProfileScreen from '@/pages/profile';
 import React from 'react';
 import type { RootStackParamList } from './types';
 
@@ -90,5 +91,10 @@ export const protectedRoutes: RouteConfig[] = [
     name: 'Algorithm',
     component: AlgorithmScreen,
     options: { title: '算法详情', headerShown: false },
+  },
+  {
+    name: 'Profile',
+    component: ProfileScreen,
+    options: { title: '个人中心', headerShown: false },
   },
 ];

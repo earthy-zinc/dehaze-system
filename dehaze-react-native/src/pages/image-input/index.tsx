@@ -36,11 +36,13 @@ import QuickStartBanner from './components/QuickStartBanner';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ImageInput'>;
 
-const ImageInputScreen: React.FC<Props> = ({ navigation }) => {
+const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
   const { containerPadding } = useResponsive();
 
   // 状态
-  const [currentMethod, setCurrentMethod] = useState<InputMethod>('upload');
+  const [currentMethod, setCurrentMethod] = useState<InputMethod>(
+    route.params?.initialMethod ?? 'upload',
+  );
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [loading, setLoading] = useState(false);
 

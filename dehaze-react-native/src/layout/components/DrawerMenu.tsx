@@ -233,6 +233,15 @@ const DrawerMenu: React.FC<DrawerMenuProps> = ({
             </View>
           </View>
           <TouchableOpacity
+            style={styles.profileBtn}
+            onPress={() => handleItemPress('Profile')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="person-outline" size={20} color={colors.primary} />
+            <Text style={styles.profileBtnText}>个人中心</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.logoutBtn}
             onPress={handleLogout}
             activeOpacity={0.7}
@@ -412,6 +421,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.secondary,
     marginTop: 2,
+  },
+  profileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: layout.borderRadius.sm,
+    backgroundColor: colors.primaryLight,
+  },
+  profileBtnText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primary,
+    marginLeft: spacing.sm,
   },
   logoutBtn: {
     flexDirection: 'row',

@@ -12,7 +12,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
 } from 'react-native';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';

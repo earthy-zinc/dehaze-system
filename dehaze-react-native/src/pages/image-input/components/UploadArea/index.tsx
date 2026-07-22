@@ -81,7 +81,8 @@ const UploadArea: React.FC<UploadAreaProps> = ({
       const selectedImage: SelectedImage = {
         id: Date.now().toString(),
         url: fileInfo.url,
-        thumbUrl: asset.uri,
+        // 后端未提供独立缩略图 URL，复用原图 URL 避免历史记录写入本地临时路径
+        thumbUrl: fileInfo.url,
         name: fileInfo.name || fileName,
         width,
         height,

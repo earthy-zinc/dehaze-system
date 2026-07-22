@@ -249,9 +249,6 @@ const LoginScreen: React.FC = () => {
             </View>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                测试账号: admin / 密码: 123456
-              </Text>
               <Text style={[styles.footerText, { marginTop: 4 }]}>
                 Copyright © 2022 - 2024 DehazeSystem All Rights Reserved.
               </Text>

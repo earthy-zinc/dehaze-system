@@ -1,5 +1,6 @@
 import type { EvaluationMetrics } from '@/types/evaluation';
 import type { SelectedImage } from '@/types/image';
+import type { InputMethod } from '@/pages/image-input/types/imageInput';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 /**
@@ -8,7 +9,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
-  ImageInput: undefined;
+  ImageInput: { initialMethod?: InputMethod } | undefined;
   AlgorithmSelect: { image?: SelectedImage } | undefined;
   Processing:
     | { algorithmId: number; image?: SelectedImage }
@@ -30,6 +31,7 @@ export type RootStackParamList = {
   Dataset: undefined;
   Task: undefined;
   Algorithm: { algorithmId: number } | undefined;
+  Profile: undefined;
 };
 
 export type RouteKeys = keyof RootStackParamList;

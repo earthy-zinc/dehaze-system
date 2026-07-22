@@ -40,7 +40,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
       duration: 300,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [fadeAnim]);
 
   // 计算预览区域高度
   const previewHeight = isMobile ? 280 : 350;

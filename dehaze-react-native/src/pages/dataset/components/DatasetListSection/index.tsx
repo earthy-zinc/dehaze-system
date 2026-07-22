@@ -25,6 +25,36 @@ interface DatasetListSectionProps {
 /** 根节点 parentId（后端约定 0 表示根） */
 const ROOT_PARENT_ID = 0;
 
+/** 递归更新节点 expanded */
+const updateNodeExpanded = (
+  nodes: DatasetTreeNode[],
+  id: number,
+  expanded: boolean,
+): DatasetTreeNode[] =>
+  nodes.map(n => {
+    if (n.id === id) return { ...n, expanded };
+    if (n.children)
+      return { ...n, children: updateNodeExpanded(n.children, id, expanded) };
+    return n;
+  });
+
+/** 递归更新节点 children */
+const updateNodeChildren = (
+  nodes: DatasetTreeNode[],
+  id: number,
+  children: DatasetTreeNode[],
+  childrenLoaded: boolean,
+): DatasetTreeNode[] =>
+  nodes.map(n => {
+    if (n.id === id) return { ...n, children, childrenLoaded };
+    if (n.children)
+      return {
+        ...n,
+        children: updateNodeChildren(n.children, id, children, childrenLoaded),
+      };
+    return n;
+  });
+
 const DatasetListSection: React.FC<DatasetListSectionProps> = ({
   onDatasetPress,
   searchValue,
@@ -159,36 +189,6 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
     },
     [toTreeNodes],
   );
-
-  /** 递归更新节点 expanded */
-  const updateNodeExpanded = (
-    nodes: DatasetTreeNode[],
-    id: number,
-    expanded: boolean,
-  ): DatasetTreeNode[] =>
-    nodes.map(n => {
-      if (n.id === id) return { ...n, expanded };
-      if (n.children)
-        return { ...n, children: updateNodeExpanded(n.children, id, expanded) };
-      return n;
-    });
-
-  /** 递归更新节点 children */
-  const updateNodeChildren = (
-    nodes: DatasetTreeNode[],
-    id: number,
-    children: DatasetTreeNode[],
-    childrenLoaded: boolean,
-  ): DatasetTreeNode[] =>
-    nodes.map(n => {
-      if (n.id === id) return { ...n, children, childrenLoaded };
-      if (n.children)
-        return {
-          ...n,
-          children: updateNodeChildren(n.children, id, children, childrenLoaded),
-        };
-      return n;
-    });
 
   const handleRefresh = useCallback(() => {
     loadRoot(true);

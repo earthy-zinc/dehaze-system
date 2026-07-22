@@ -2,13 +2,15 @@
  * 去雾处理服务
  *
  * 封装 dehaze-sdk-js 的 ModelAPI：
- * - predict: 执行去雾预测
- * - getPredTaskStatus: 查询任务状态
+ * - predict: 执行去雾预测（同步返回结果）
+ * - getPredTaskStatus: 查询任务状态（仅当 predict 未直接返回结果时轮询）
  *
  * 提供：
  * - 单张处理 + 任务状态轮询
  * - 批量处理（串行）
- * - 阶段化进度推算（前端模拟阶段，最终以服务端结果为准）
+ *
+ * 说明：API 同步返回处理结果，前端不模拟阶段化进度百分比，
+ *       仅展示真实处理状态与已用时间。
  */
 import { ModelAPI } from 'dehaze-sdk-js';
 import type { PredictionResultVO } from 'dehaze-sdk-js';
@@ -16,17 +18,7 @@ import type {
   CommonAlgorithmParams,
   ProcessingResult,
   TaskProgress,
-  TaskStatus,
 } from '@/types/processing';
-
-/** 处理阶段定义（对应需求规格 F-M04-001） */
-export const PROCESSING_STAGES: { key: TaskStatus; label: string; start: number; end: number }[] = [
-  { key: 'preprocessing', label: '图片预处理', start: 0, end: 10 },
-  { key: 'initializing', label: '算法初始化', start: 10, end: 20 },
-  { key: 'processing', label: '去雾处理中', start: 20, end: 90 },
-  { key: 'postprocessing', label: '后处理优化', start: 90, end: 95 },
-  { key: 'saving', label: '结果保存', start: 95, end: 100 },
-];
 
 /** 默认参数（推荐配置） */
 export const DEFAULT_PARAMS: CommonAlgorithmParams = {
@@ -136,7 +128,7 @@ export interface PredictOptions {
   algorithmId: number;
   imageUrl: string;
   params?: CommonAlgorithmParams;
-  /** 进度回调（用于阶段推进 + 轮询状态） */
+  /** 进度回调（用于真实状态更新 + 轮询状态） */
   onProgress?: (progress: TaskProgress) => void;
   /** 取消信号 */
   cancelSignal?: { canceled: boolean };
@@ -148,33 +140,25 @@ export interface PredictOptions {
  * 1. 调用 ModelAPI.predict 提交预测任务
  * 2. 若返回结果含 resultUrl，直接完成
  * 3. 若仅返回 logId 无 resultUrl，启动轮询 getPredTaskStatus
- * 4. 前端模拟阶段进度推进，提升用户感知
+ *
+ * 不模拟进度百分比，仅推进真实状态与已用时间。
  */
 export async function predictSingle(opts: PredictOptions): Promise<ProcessingResult> {
   const { algorithmId, imageUrl, params, onProgress, cancelSignal } = opts;
   const startTime = Date.now();
 
-  const emit = (status: TaskStatus, percent: number, error?: string) => {
-    const stage = PROCESSING_STAGES.find(s => s.key === status);
+  const emit = (status: TaskProgress['status'], error?: string) => {
     onProgress?.({
       status,
-      percent,
-      stageLabel: stage?.label ?? '',
       elapsed: Date.now() - startTime,
       error,
     });
   };
 
-  // 阶段模拟：预处理 → 初始化（最长 1.5s）
-  emit('preprocessing', 5);
-  await delay(300);
-  if (cancelSignal?.canceled) throw new Error('用户已取消处理');
-  emit('initializing', 15);
-  await delay(400);
-  if (cancelSignal?.canceled) throw new Error('用户已取消处理');
+  // 进入处理中状态
+  emit('processing');
 
   // 提交预测任务
-  emit('processing', 25);
   let result: PredictionResultVO;
   try {
     result = await ModelAPI.predict({
@@ -183,7 +167,7 @@ export async function predictSingle(opts: PredictOptions): Promise<ProcessingRes
       params: serializeParams(params),
     });
   } catch (err) {
-    emit('failed', 0, err instanceof Error ? err.message : '预测请求失败');
+    emit('failed', err instanceof Error ? err.message : '预测请求失败');
     throw err;
   }
 
@@ -192,15 +176,9 @@ export async function predictSingle(opts: PredictOptions): Promise<ProcessingRes
   // 若返回结果无 resultUrl，启动轮询
   if (!result.resultUrl && result.logId) {
     result = await pollTaskStatus(result.logId, startTime, onProgress, cancelSignal);
-  } else {
-    // 同步拿到结果，直接推进到 100%
-    emit('postprocessing', 92);
-    await delay(150);
-    emit('saving', 97);
-    await delay(100);
   }
 
-  emit('success', 100);
+  emit('success');
   return toProcessingResult(result);
 }
 
@@ -224,12 +202,9 @@ async function pollTaskStatus(
       throw new Error('处理超时，请稍后重试');
     }
 
-    // 模拟进度推进（在 30% - 85% 之间随时间增长）
-    const simulatedPercent = Math.min(85, 30 + Math.floor(elapsed / 1000) * 5);
+    // 仅推进真实已用时间，不模拟百分比
     onProgress?.({
       status: 'processing',
-      percent: simulatedPercent,
-      stageLabel: '去雾处理中',
       elapsed,
     });
 
@@ -237,20 +212,6 @@ async function pollTaskStatus(
       const status = await ModelAPI.getPredTaskStatus(taskId);
       if (status.resultUrl) {
         // 拿到最终结果
-        onProgress?.({
-          status: 'postprocessing',
-          percent: 92,
-          stageLabel: '后处理优化',
-          elapsed: Date.now() - startTime,
-        });
-        await delay(150);
-        onProgress?.({
-          status: 'saving',
-          percent: 97,
-          stageLabel: '结果保存',
-          elapsed: Date.now() - startTime,
-        });
-        await delay(100);
         return status;
       }
     } catch (err) {

@@ -7,11 +7,11 @@
  * 3. 显示原图预览 + 算法信息
  * 4. 提供参数调节面板（可选展开）
  * 5. 用户点击「开始去雾」→ 确认对话框 → 调用 predictSingle
- * 6. 处理过程中显示阶段化进度（ProcessingProgress）
+ * 6. 处理过程中显示真实状态与已用时间（ProcessingProgress，API 同步返回不模拟进度）
  * 7. 处理完成显示结果预览（ResultPreview），可进入效果对比或重新处理
  * 8. 支持取消处理
  */
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -29,7 +29,6 @@ import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
 import { AlgorithmAPI } from 'dehaze-sdk-js';
 import type { Algorithm } from '@/types/algorithm';
-import type { SelectedImage } from '@/types/image';
 import type {
   CommonAlgorithmParams,
   ProcessingResult,
@@ -81,28 +80,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
       .finally(() => setAlgorithmLoading(false));
   }, [algorithmId]);
 
-  /** 开始去雾处理 */
-  const handleStart = useCallback(() => {
-    if (!image?.url || !algorithmId) {
-      Alert.alert('提示', '缺少图片或算法信息，请返回上一步重新选择');
-      return;
-    }
-
-    Alert.alert(
-      '确认开始去雾',
-      `图片：${image.name ?? '未命名'}\n算法：${algorithm?.name ?? algorithmId}\n参数：去雾强度 ${params.strength ?? 50}`,
-      [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '开始处理',
-          onPress: () => {
-            startProcessing();
-          },
-        },
-      ],
-    );
-  }, [image, algorithmId, algorithm, params]);
-
+  /** 开始去雾处理（实际执行） */
   const startProcessing = useCallback(() => {
     if (!image?.url || !algorithmId) return;
 
@@ -111,8 +89,6 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
     setPhase('processing');
     setProgress({
       status: 'idle',
-      percent: 0,
-      stageLabel: '准备中',
       elapsed: 0,
     });
     setResult(null);
@@ -152,8 +128,6 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
         const isCanceled = err instanceof Error && err.message.includes('取消');
         setProgress(prev => ({
           status: isCanceled ? 'canceled' : 'failed',
-          percent: prev?.percent ?? 0,
-          stageLabel: prev?.stageLabel ?? '',
           elapsed: prev?.elapsed ?? 0,
           error: err instanceof Error ? err.message : '处理失败',
         }));
@@ -163,6 +137,28 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
         }
       });
   }, [image, algorithmId, algorithm, params]);
+
+  /** 开始去雾处理（弹出确认对话框） */
+  const handleStart = useCallback(() => {
+    if (!image?.url || !algorithmId) {
+      Alert.alert('提示', '缺少图片或算法信息，请返回上一步重新选择');
+      return;
+    }
+
+    Alert.alert(
+      '确认开始去雾',
+      `图片：${image.name ?? '未命名'}\n算法：${algorithm?.name ?? algorithmId}\n参数：去雾强度 ${params.strength ?? 50}`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '开始处理',
+          onPress: () => {
+            startProcessing();
+          },
+        },
+      ],
+    );
+  }, [image, algorithmId, algorithm, params, startProcessing]);
 
   /** 取消处理 */
   const handleCancel = useCallback(() => {

@@ -14,7 +14,8 @@ export type RouteNames =
   | 'Filter'
   | 'Metrics'
   | 'Algorithm'
-  | 'Dataset';
+  | 'Dataset'
+  | 'Profile';
 
 export interface MenuItemData {
   icon: string;

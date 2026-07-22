@@ -1,7 +1,7 @@
 import type { RootStackParamList } from '@/routes/types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect } from 'react';
-import { StyleSheet, ScrollView } from 'react-native';
+import { StyleSheet, ScrollView, Alert } from 'react-native';
 import { MainLayout } from '@/layout';
 import { useAuth } from '@/store';
 import HeroSection from './components/HeroSection';
@@ -43,28 +43,26 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleProcessingPress = () => {
-    navigation.navigate('Processing');
+    Alert.alert(
+      '提示',
+      '请先选择图片和算法后再进行去雾处理',
+      [{ text: '去选择图片', onPress: () => navigation.navigate('ImageInput') }, { text: '取消' }]
+    );
   };
 
-  const handleSideBySidePress = () => {
-    navigation.navigate('SideBySide');
+  const handleComparePress = () => {
+    Alert.alert(
+      '提示',
+      '请先完成去雾处理后才能使用效果对比功能',
+      [{ text: '去处理', onPress: () => navigation.navigate('ImageInput') }, { text: '取消' }]
+    );
   };
 
-  const handleOverlayPress = () => {
-    navigation.navigate('Overlay');
-  };
-
-  const handleMagnifierPress = () => {
-    navigation.navigate('Magnifier');
-  };
-
-  const handleFilterPress = () => {
-    navigation.navigate('Filter');
-  };
-
-  const handleMetricsPress = () => {
-    navigation.navigate('Metrics');
-  };
+  const handleSideBySidePress = handleComparePress;
+  const handleOverlayPress = handleComparePress;
+  const handleMagnifierPress = handleComparePress;
+  const handleFilterPress = handleComparePress;
+  const handleMetricsPress = handleComparePress;
 
   const handleDatasetManagePress = () => {
     navigation.navigate('Dataset');
