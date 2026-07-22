@@ -38,10 +38,10 @@
         <view class="param-item">
           <view class="param-label">
             <text>去雾强度</text>
-            <text class="param-value">{{ store.params.intensity }}</text>
+            <text class="param-value">{{ store.params.strength }}</text>
           </view>
           <slider
-            :value="store.params.intensity"
+            :value="store.params.strength"
             :min="0"
             :max="100"
             :step="5"
@@ -49,7 +49,7 @@
             block-size="20"
             @change="
               (e: { detail: { value: number } }) =>
-                updateParam('intensity', e.detail.value)
+                updateParam('strength', e.detail.value)
             "
           />
         </view>
@@ -205,7 +205,7 @@ const statusText = computed(() => {
 
 /** 更新单个参数 */
 function updateParam(
-  key: "intensity" | "saturation" | "contrast" | "sharpness",
+  key: "strength" | "saturation" | "contrast" | "sharpness",
   value: number
 ) {
   store.updateParams({ [key]: value });
@@ -230,8 +230,8 @@ async function handleProcess() {
   try {
     // 构建预测参数
     const paramsObj: Record<string, number> = {};
-    if (store.params.intensity !== DEFAULT_DEHAZE_PARAMS.intensity) {
-      paramsObj.intensity = store.params.intensity;
+    if (store.params.strength !== DEFAULT_DEHAZE_PARAMS.strength) {
+      paramsObj.strength = store.params.strength;
     }
     if (store.params.saturation !== DEFAULT_DEHAZE_PARAMS.saturation) {
       paramsObj.saturation = store.params.saturation;

@@ -36,6 +36,24 @@
               耗时 {{ record.time ? record.time + "s" : "-" }}
             </text>
             <text class="record-date">{{ formatDate(record.createTime) }}</text>
+            <view class="record-actions" @click.stop>
+              <view
+                class="action-btn compare-btn"
+                :class="{ disabled: !record.predUrl || !record.originUrl }"
+                @click="handleCompare(record)"
+              >
+                <u-icon name="grid" size="14" color="#3b82f6" />
+                <text>对比</text>
+              </view>
+              <view
+                class="action-btn reprocess-btn"
+                :class="{ disabled: !record.originUrl }"
+                @click="handleReprocess(record)"
+              >
+                <u-icon name="reload" size="14" color="#f59e0b" />
+                <text>重新处理</text>
+              </view>
+            </view>
           </view>
           <view class="record-arrow">
             <u-icon name="arrow-right" size="16" color="#d1d5db" />
@@ -67,7 +85,11 @@ import {
   type PredLogVO,
   type PageResult,
 } from "@/api/prediction";
+import { getAlgorithmDetail } from "@/api/algorithm";
+import { useProcessingStore } from "@/store/processing";
+import type { ImageData } from "@/pages/image-input/data/imageInputData";
 
+const processingStore = useProcessingStore();
 const loading = ref(false);
 const records = ref<PredLogVO[]>([]);
 const currentPage = ref(1);
@@ -103,6 +125,57 @@ function loadMore() {
 function handleClick(record: PredLogVO) {
   if (record.predUrl) {
     uni.previewImage({ urls: [record.predUrl], current: record.predUrl });
+  }
+}
+
+/** 从历史记录构造 ImageData */
+function buildImageData(originUrl: string): ImageData {
+  return {
+    url: originUrl,
+    width: 0,
+    height: 0,
+    size: 0,
+    name: originUrl.split("/").pop() || "历史图片",
+  };
+}
+
+/** 对比：跳转到并排对比页，注入原图与结果图 */
+function handleCompare(record: PredLogVO) {
+  if (!record.predUrl || !record.originUrl) {
+    uni.showToast({ title: "缺少原图或结果图，无法对比", icon: "none" });
+    return;
+  }
+  processingStore.reset();
+  processingStore.setImage(buildImageData(record.originUrl));
+  processingStore.complete({
+    resultUrl: record.predUrl,
+    time: record.time || 0,
+  });
+  uni.navigateTo({ url: "/pages/side-by-side/index" });
+}
+
+/** 重新处理：拉取算法详情后跳转到处理页 */
+async function handleReprocess(record: PredLogVO) {
+  if (!record.originUrl) {
+    uni.showToast({ title: "缺少原图，无法重新处理", icon: "none" });
+    return;
+  }
+  if (!record.algorithmId) {
+    uni.showToast({ title: "缺少算法信息", icon: "none" });
+    return;
+  }
+  uni.showLoading({ title: "准备中...", mask: true });
+  try {
+    const algorithm = await getAlgorithmDetail(record.algorithmId);
+    processingStore.reset();
+    processingStore.setImage(buildImageData(record.originUrl));
+    processingStore.setAlgorithm(algorithm);
+    uni.hideLoading();
+    uni.navigateTo({ url: "/pages/processing/index" });
+  } catch (e) {
+    uni.hideLoading();
+    const msg = (e as { message?: string }).message || "算法信息加载失败";
+    uni.showToast({ title: msg, icon: "none" });
   }
 }
 
@@ -222,8 +295,40 @@ onMounted(() => loadData());
   margin-bottom: 4rpx;
 }
 .record-date {
+  display: block;
   font-size: 22rpx;
   color: #9ca3af;
+  margin-bottom: 12rpx;
+}
+.record-actions {
+  display: flex;
+  gap: 16rpx;
+}
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 24rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+
+  &.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  &:active:not(.disabled) {
+    opacity: 0.7;
+  }
+}
+.compare-btn {
+  background: #dbeafe;
+  color: #3b82f6;
+}
+.reprocess-btn {
+  background: #fef3c7;
+  color: #f59e0b;
 }
 .record-arrow {
   flex-shrink: 0;

@@ -28,10 +28,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import type { Dataset } from "../data/datasetData";
 import { formatDate } from "../data/datasetData";
-import { DATASET_BASE_URL } from "@/api/config";
+import { getDatasetItems } from "@/api/dataset";
 
 interface Props {
   dataset: Dataset;
@@ -51,17 +51,30 @@ const imageCount = computed(() => {
 
 const formattedDate = computed(() => formatDate(props.dataset.createTime));
 
-/** 缩略图：使用数据集 path 拼接数据集静态服务地址，取该数据集首张有雾图 */
-const thumbnailUrl = computed(() => {
-  const path = props.dataset.path;
-  // path 为空时无法定位图片，返回空字符串由组件占位渐变背景兜底
-  if (!path) return "";
-  return `${DATASET_BASE_URL}/${path}/hazy/001.JPG`;
-});
+/** 缩略图：从数据集项接口获取首张图片的实际URL */
+const thumbnailUrl = ref("");
+
+async function loadThumbnail() {
+  if (!props.dataset.id) return;
+  try {
+    const result = await getDatasetItems(props.dataset.id, {
+      page: 1,
+      page_size: 1,
+    });
+    const first = result.list?.[0];
+    if (first?.imageUrl) {
+      thumbnailUrl.value = first.imageUrl;
+    }
+  } catch {
+    // 获取失败时保持空字符串，由占位渐变背景兜底
+  }
+}
 
 const handleClick = () => {
   emit("click", props.dataset);
 };
+
+onMounted(loadThumbnail);
 </script>
 
 <style lang="scss" scoped>

@@ -58,60 +58,109 @@
         <text class="loading-text">加载算法列表...</text>
       </view>
 
-      <!-- 算法列表 -->
-      <view v-else class="algorithm-section">
-        <text class="section-label"
-          >可用算法 ({{ filteredList.length
-          }}{{ searchKeyword ? "/" + algorithmList.length : "" }})</text
-        >
-        <view class="algorithm-list">
+      <!-- 收藏筛选 + 算法列表 -->
+      <template v-else-if="!error">
+        <!-- 收藏筛选 -->
+        <view class="filter-row">
           <view
-            v-for="algorithm in filteredList"
-            :key="algorithm.id"
-            class="algorithm-card"
-            :class="{ selected: selectedId === algorithm.id }"
-            @click="handleSelect(algorithm)"
+            class="filter-tab"
+            :class="{ active: onlyFavorites === false }"
+            @click="onlyFavorites = false"
           >
-            <view class="algorithm-header">
-              <view class="algorithm-name">
-                <text class="name-text">{{ algorithm.name }}</text>
-                <text class="type-badge">{{
-                  algorithm.type || "未知类型"
-                }}</text>
-              </view>
-              <view v-if="selectedId === algorithm.id" class="check-icon">
-                <u-icon
-                  name="checkmark-circle-fill"
-                  size="24"
-                  color="#8b5cf6"
-                />
-              </view>
-            </view>
-            <text class="algorithm-desc">
-              {{ algorithm.description || "暂无描述" }}
-            </text>
-            <view class="algorithm-meta">
-              <text v-if="algorithm.version" class="meta-item"
-                >v{{ algorithm.version }}</text
-              >
-              <text v-if="algorithm.flops" class="meta-item">{{
-                algorithm.flops
-              }}</text>
-              <text v-if="algorithm.size" class="meta-item">{{
-                algorithm.size
-              }}</text>
-            </view>
+            全部
+          </view>
+          <view
+            class="filter-tab"
+            :class="{ active: onlyFavorites === true }"
+            @click="onlyFavorites = true"
+          >
+            <u-icon
+              name="star-fill"
+              size="14"
+              :color="onlyFavorites ? '#8b5cf6' : '#9ca3af'"
+            />
+            收藏 ({{ favoriteIds.size }})
           </view>
         </view>
 
-        <!-- 空状态 -->
-        <view v-if="filteredList.length === 0" class="empty-state">
-          <up-empty
-            :mode="searchKeyword ? 'search' : 'data'"
-            :text="searchKeyword ? '未找到匹配的算法' : '暂无可用算法'"
-          />
+        <!-- 算法列表 -->
+        <view class="algorithm-section">
+          <text class="section-label"
+            >可用算法 ({{ filteredList.length
+            }}{{ searchKeyword ? "/" + algorithmList.length : "" }})</text
+          >
+          <view class="algorithm-list">
+            <view
+              v-for="algorithm in filteredList"
+              :key="algorithm.id"
+              class="algorithm-card"
+              :class="{ selected: selectedId === algorithm.id }"
+              @click="handleSelect(algorithm)"
+            >
+              <view class="algorithm-header">
+                <view class="algorithm-name">
+                  <text class="name-text">{{ algorithm.name }}</text>
+                  <text class="type-badge">{{
+                    algorithm.type || "未知类型"
+                  }}</text>
+                </view>
+                <view class="header-actions">
+                  <view
+                    class="favorite-btn"
+                    :class="{ favorited: favoriteIds.has(algorithm.id) }"
+                    @click.stop="handleToggleFavorite(algorithm)"
+                  >
+                    <u-icon
+                      :name="
+                        favoriteIds.has(algorithm.id) ? 'star-fill' : 'star'
+                      "
+                      size="24"
+                      :color="
+                        favoriteIds.has(algorithm.id) ? '#fbbf24' : '#9ca3af'
+                      "
+                    />
+                  </view>
+                  <view v-if="selectedId === algorithm.id" class="check-icon">
+                    <u-icon
+                      name="checkmark-circle-fill"
+                      size="24"
+                      color="#8b5cf6"
+                    />
+                  </view>
+                </view>
+              </view>
+              <text class="algorithm-desc">
+                {{ algorithm.description || "暂无描述" }}
+              </text>
+              <view class="algorithm-meta">
+                <text v-if="algorithm.version" class="meta-item"
+                  >v{{ algorithm.version }}</text
+                >
+                <text v-if="algorithm.flops" class="meta-item">{{
+                  algorithm.flops
+                }}</text>
+                <text v-if="algorithm.size" class="meta-item">{{
+                  algorithm.size
+                }}</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 空状态 -->
+          <view v-if="filteredList.length === 0" class="empty-state">
+            <up-empty
+              :mode="searchKeyword ? 'search' : 'data'"
+              :text="
+                searchKeyword
+                  ? '未找到匹配的算法'
+                  : onlyFavorites
+                    ? '暂无收藏的算法'
+                    : '暂无可用算法'
+              "
+            />
+          </view>
         </view>
-      </view>
+      </template>
 
       <!-- 错误状态 -->
       <view v-if="error" class="error-state">
@@ -145,7 +194,11 @@
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { useProcessingStore } from "@/store/processing";
-import { getAlgorithmList } from "@/api/algorithm";
+import {
+  getAlgorithmList,
+  getAlgorithmFavorites,
+  toggleAlgorithmFavorite,
+} from "@/api/algorithm";
 import type { Algorithm } from "@/api/algorithm";
 
 // ==================== 状态 ====================
@@ -157,14 +210,24 @@ const algorithmList = ref<Algorithm[]>([]);
 const selectedId = ref<number | null>(null);
 const selectedAlgorithm = ref<Algorithm | null>(null);
 const searchKeyword = ref("");
+/** 已收藏算法ID集合 */
+const favoriteIds = ref<Set<number>>(new Set());
+/** 是否仅展示收藏算法 */
+const onlyFavorites = ref(false);
+/** 收藏切换中的算法ID，防止重复点击 */
+const togglingIds = ref<Set<number>>(new Set());
 
 // ==================== 计算属性 ====================
 
-/** 按关键词过滤算法列表 */
+/** 按关键词与收藏筛选过滤算法列表 */
 const filteredList = computed<Algorithm[]>(() => {
+  let list = algorithmList.value;
+  if (onlyFavorites.value) {
+    list = list.filter((a) => favoriteIds.value.has(a.id));
+  }
   const kw = searchKeyword.value.trim().toLowerCase();
-  if (!kw) return algorithmList.value;
-  return algorithmList.value.filter(
+  if (!kw) return list;
+  return list.filter(
     (a) =>
       a.name.toLowerCase().includes(kw) ||
       (a.type || "").toLowerCase().includes(kw) ||
@@ -182,8 +245,12 @@ async function loadAlgorithms() {
   error.value = "";
 
   try {
-    const list = await getAlgorithmList();
+    const [list, favorites] = await Promise.all([
+      getAlgorithmList(),
+      getAlgorithmFavorites().catch(() => []),
+    ]);
     algorithmList.value = list;
+    favoriteIds.value = new Set(favorites.map((f) => f.algorithmId));
   } catch (e) {
     const msg = (e as { message?: string }).message || "加载失败";
     error.value = msg;
@@ -200,6 +267,31 @@ function handleSelect(algorithm: Algorithm) {
 
   // 同步到处理流程 Store
   processingStore.setAlgorithm(algorithm);
+}
+
+/** 切换算法收藏状态 */
+async function handleToggleFavorite(algorithm: Algorithm) {
+  if (togglingIds.value.has(algorithm.id)) return;
+  togglingIds.value.add(algorithm.id);
+  try {
+    const result = await toggleAlgorithmFavorite(algorithm.id);
+    const next = new Set(favoriteIds.value);
+    if (result.favorited) {
+      next.add(algorithm.id);
+    } else {
+      next.delete(algorithm.id);
+    }
+    favoriteIds.value = next;
+    uni.showToast({
+      title: result.favorited ? "已收藏" : "已取消收藏",
+      icon: "none",
+    });
+  } catch (e) {
+    const msg = (e as { message?: string }).message || "操作失败";
+    uni.showToast({ title: msg, icon: "none" });
+  } finally {
+    togglingIds.value.delete(algorithm.id);
+  }
 }
 
 /** 下一步：跳转到处理页 */
@@ -403,6 +495,27 @@ onMounted(() => {
   min-width: 0;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex-shrink: 0;
+}
+
+.favorite-btn {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+
+  &:active {
+    background: #f3f4f6;
+  }
+}
+
 .name-text {
   font-size: 32rpx;
   font-weight: 700;
@@ -420,6 +533,34 @@ onMounted(() => {
 
 .check-icon {
   flex-shrink: 0;
+}
+
+/* 收藏筛选 */
+.filter-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 14rpx 28rpx;
+  background: #ffffff;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  color: #6b7280;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+  &.active {
+    background: #ede9fe;
+    color: #8b5cf6;
+    font-weight: 600;
+  }
+
+  &:active {
+    opacity: 0.85;
+  }
 }
 
 .algorithm-desc {

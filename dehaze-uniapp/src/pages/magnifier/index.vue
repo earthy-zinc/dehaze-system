@@ -82,12 +82,17 @@ import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { useProcessingStore } from "@/store/processing";
 
+/** 放大倍数 */
+const ZOOM = 2.5;
+
 const store = useProcessingStore();
 const active = ref(false);
 const posX = ref(150);
 const posY = ref(200);
 const lensSize = ref(100);
 const currentMode = ref<"result" | "origin">("result");
+/** 底图层（magnifier-wrapper）的视口矩形，用于换算触摸点相对位置 */
+const wrapperRect = ref<{ left: number; top: number; width: number; height: number } | null>(null);
 
 const originUrl = computed(() => store.originUrl);
 const resultUrl = computed(() => store.result?.resultUrl || "");
@@ -113,23 +118,54 @@ const lensStyle = computed(() => {
   };
 });
 
-const lensImageStyle = computed(() => ({
-  width: "100%",
-  height: "100%",
-  backgroundImage: `url(${lensImg.value})`,
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  transform: "scale(2)",
-  borderRadius: "50%",
-}));
+/**
+ * 放大镜内部图像样式：以触摸点为中心裁剪放大底图。
+ * 通过 background-size 放大底图，再用 background-position 把触摸点平移到镜片中心。
+ */
+const lensImageStyle = computed(() => {
+  const rect = wrapperRect.value;
+  const base: Record<string, string> = {
+    width: "100%",
+    height: "100%",
+    backgroundImage: `url(${lensImg.value})`,
+    backgroundRepeat: "no-repeat",
+    borderRadius: "50%",
+  };
+  if (!rect) {
+    return { ...base, backgroundSize: "cover", backgroundPosition: "center" };
+  }
+  // 触摸点相对于底图的坐标
+  const relX = posX.value - rect.left;
+  const relY = posY.value - rect.top;
+  // 放大后的背景尺寸
+  const bgW = rect.width * ZOOM;
+  const bgH = rect.height * ZOOM;
+  // 让触摸点对齐镜片中心：偏移 = -(触摸点 * 放大倍数 - 镜片半径)
+  const bgX = -(relX * ZOOM - lensSize.value / 2);
+  const bgY = -(relY * ZOOM - lensSize.value / 2);
+  return {
+    ...base,
+    backgroundSize: `${bgW}px ${bgH}px`,
+    backgroundPosition: `${bgX}px ${bgY}px`,
+  };
+});
 
 function handleMove(e: any) {
   active.value = true;
   const touch = e.touches?.[0] || e.changedTouches?.[0];
-  if (touch) {
-    posX.value = touch.clientX;
-    posY.value = touch.clientY;
+  if (!touch) return;
+  // 实时获取底图区域，兼容滚动/缩放
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect?.();
+  if (rect) {
+    wrapperRect.value = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
   }
+  posX.value = touch.clientX;
+  posY.value = touch.clientY;
 }
 
 function switchPage(url: string) {

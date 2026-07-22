@@ -10,6 +10,12 @@
       <!-- 效果展示区 -->
       <ShowcaseSection />
 
+      <!-- 算法推荐区 -->
+      <AlgorithmRecommendSection
+        @select="handleRecommendSelect"
+        @more="handleAlgorithmClick"
+      />
+
       <!-- 核心功能区 - 工作流程 -->
       <WorkflowSection @step-click="handleStepClick" />
 
@@ -47,6 +53,7 @@ import ShowcaseSection from "./components/ShowcaseSection.vue";
 import WorkflowSection from "./components/WorkflowSection.vue";
 import ToolsSection from "./components/ToolsSection.vue";
 import AlgorithmSection from "./components/AlgorithmSection.vue";
+import AlgorithmRecommendSection from "./components/AlgorithmRecommendSection.vue";
 import CTASection from "./components/CTASection.vue";
 import SpecCard from "@/components/business/SpecCard.vue";
 import type { ToolItem } from "./data/homeData";
@@ -102,6 +109,11 @@ const handleToolClick = (tool: ToolItem) => {
 const handleAlgorithmClick = () => {
   uni.navigateTo({ url: "/pages/algorithm-select/index" });
 };
+
+/** 算法推荐：点击具体算法 → 跳转算法选择页 */
+function handleRecommendSelect() {
+  uni.navigateTo({ url: "/pages/algorithm-select/index" });
+}
 </script>
 
 <style lang="scss" scoped>

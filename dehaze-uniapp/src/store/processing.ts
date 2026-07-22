@@ -27,7 +27,7 @@ export type ProcessingStatus =
 /** 去雾处理参数 */
 export interface DehazeParams {
   /** 去雾强度 0-100 */
-  intensity: number;
+  strength: number;
   /** 色彩饱和度 0-200 */
   saturation: number;
   /** 对比度 0-200 */
@@ -38,7 +38,7 @@ export interface DehazeParams {
 
 /** 默认处理参数 */
 export const DEFAULT_DEHAZE_PARAMS: DehazeParams = {
-  intensity: 70,
+  strength: 70,
   saturation: 120,
   contrast: 110,
   sharpness: 30,
