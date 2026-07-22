@@ -1,3 +1,0 @@
-com.pei.dehaze.framework.datasource.config.PeiDataSourceAutoConfiguration
-com.pei.dehaze.framework.mybatis.config.PeiMybatisAutoConfiguration
-com.pei.dehaze.framework.translate.config.PeiTranslateAutoConfiguration

@@ -551,23 +551,6 @@ dehaze-system/
 │   ├── pyproject.toml        # 项目配置与依赖
 │   └── start.sh              # 一键启动脚本
 │
-├── dehaze-java-cloud/         # Java微服务版本
-│   ├── pei-api/              # API接口定义
-│   ├── pei-auth/             # 认证授权服务
-│   ├── pei-common/           # 通用模块
-│   ├── pei-gateway/          # 网关服务
-│   ├── pei-modules/          # 业务模块
-│   └── pei-ops/              # 运维相关
-│
-├── dehaze-java-cloud-plus/    # Java微服务增强版
-│   ├── pei-dependencies/     # 依赖管理
-│   ├── pei-framework/        # 框架拓展
-│   ├── pei-gateway/          # 网关服务
-│   ├── pei-module-ai/        # AI大模型模块
-│   ├── pei-module-system/    # 系统功能模块
-│   ├── pei-module-infra/     # 基础设施模块
-│   └── pei-server/           # 服务端
-│
 ├── dehaze-android/            # Android客户端
 ├── dehaze-react-native/       # RN跨平台应用
 ├── dehaze-taro/               # Taro小程序
@@ -579,19 +562,6 @@ dehaze-system/
 └── dehaze-doc/                # 项目文档
     └── docs/                 # VuePress文档站点
 ```
-
----
-
-## ☁️ 微服务版本
-
-项目提供两个微服务版本，均基于 Spring Cloud 架构，适用于大规模分布式部署场景：
-
-| 版本 | 目录 | 基础框架 | 特点 |
-|------|------|----------|------|
-| 微服务版 | `dehaze-java-cloud/` | Spring Cloud Alibaba + Nacos | 基于 RuoYi-Cloud，集成 Sa-Token、SkyWalking、Spring Boot Admin |
-| 微服务增强版 | `dehaze-java-cloud-plus/` | Spring Cloud 2024 + Dubbo 3.X | 新增 Seata 分布式事务、Sentinel 熔断、RocketMQ、XXL-JOB、AI 大模型模块 |
-
-两版本共享相同的前端和算法服务，核心业务模块包括：用户/角色/部门/菜单/字典管理、算法管理、数据集管理、图像处理、文件管理等。
 
 ---
 

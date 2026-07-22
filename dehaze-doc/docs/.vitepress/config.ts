@@ -470,14 +470,6 @@ export default withMermaid(
                 text: "Python 算法服务架构文档",
                 link: "/05-子项目实现/Python算法服务架构文档",
               },
-              {
-                text: "Java 微服务版架构文档",
-                link: "/05-子项目实现/Java微服务版架构文档",
-              },
-              {
-                text: "Java 微服务增强版架构文档",
-                link: "/05-子项目实现/Java微服务增强版架构文档",
-              },
               { text: "Vue 前端架构文档", link: "/05-子项目实现/Vue前端架构文档" },
               { text: "React 前端架构文档", link: "/05-子项目实现/React前端架构文档" },
               { text: "Taro 前端架构文档", link: "/05-子项目实现/Taro前端架构文档" },

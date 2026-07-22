@@ -1,3 +1,0 @@
-com.pei.dehaze.framework.mq.redis.config.PeiRedisMQProducerAutoConfiguration
-com.pei.dehaze.framework.mq.redis.config.PeiRedisMQConsumerAutoConfiguration
-com.pei.dehaze.framework.mq.rabbitmq.config.PeiRabbitMQAutoConfiguration
