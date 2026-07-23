@@ -17,7 +17,9 @@
       <text class="card-time"
         >耗时 {{ record.time != null ? record.time + "s" : "-" }}</text
       >
-      <text class="card-date">{{ formatRelativeTime(record.createTime || "") }}</text>
+      <text class="card-date">{{
+        formatRelativeTime(record.createTime || "")
+      }}</text>
     </view>
 
     <view class="card-arrow">

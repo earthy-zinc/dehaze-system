@@ -36,7 +36,9 @@
               :step="item.step"
               :active-color="item.color"
               block-size="20"
-              @change="(e: SliderChangeEvent) => updateFilter(item.key, e.detail.value)"
+              @change="
+                (e: SliderChangeEvent) => updateFilter(item.key, e.detail.value)
+              "
             />
           </view>
         </view>
@@ -163,12 +165,30 @@ interface Preset {
 }
 
 const presets: Preset[] = [
-  { label: "原始", values: { brightness: 100, contrast: 100, saturate: 100, warmth: 0 } },
-  { label: "鲜艳", values: { brightness: 110, contrast: 120, saturate: 150, warmth: 0 } },
-  { label: "柔和", values: { brightness: 95, contrast: 90, saturate: 80, warmth: 5 } },
-  { label: "冷调", values: { brightness: 100, contrast: 105, saturate: 90, warmth: -15 } },
-  { label: "暖调", values: { brightness: 105, contrast: 100, saturate: 110, warmth: 15 } },
-  { label: "复古", values: { brightness: 90, contrast: 85, saturate: 60, warmth: 20 } },
+  {
+    label: "原始",
+    values: { brightness: 100, contrast: 100, saturate: 100, warmth: 0 },
+  },
+  {
+    label: "鲜艳",
+    values: { brightness: 110, contrast: 120, saturate: 150, warmth: 0 },
+  },
+  {
+    label: "柔和",
+    values: { brightness: 95, contrast: 90, saturate: 80, warmth: 5 },
+  },
+  {
+    label: "冷调",
+    values: { brightness: 100, contrast: 105, saturate: 90, warmth: -15 },
+  },
+  {
+    label: "暖调",
+    values: { brightness: 105, contrast: 100, saturate: 110, warmth: 15 },
+  },
+  {
+    label: "复古",
+    values: { brightness: 90, contrast: 85, saturate: 60, warmth: 20 },
+  },
 ];
 
 function updateFilter(key: FilterKey, value: number) {

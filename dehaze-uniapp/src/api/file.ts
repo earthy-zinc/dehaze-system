@@ -21,11 +21,7 @@ export function getFileInfo(fileId: number) {
 }
 
 /** 获取文件分页列表 */
-export function getFileList(
-  pageNum = 1,
-  pageSize = 20,
-  keywords = ""
-) {
+export function getFileList(pageNum = 1, pageSize = 20, keywords = "") {
   return FileAPI.getPage({
     pageNum,
     pageSize,

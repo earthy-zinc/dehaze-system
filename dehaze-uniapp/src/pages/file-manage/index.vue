@@ -31,7 +31,8 @@
           <view class="file-info">
             <text class="file-name">{{ file.name }}</text>
             <text class="file-meta">
-              {{ formatFileSize(file.size || "") }} · {{ formatRelativeTime(file.createTime || "") }}
+              {{ formatFileSize(file.size || "") }} ·
+              {{ formatRelativeTime(file.createTime || "") }}
             </text>
           </view>
           <view class="file-arrow">

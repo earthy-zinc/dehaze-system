@@ -31,7 +31,9 @@
       <!-- 数据指标 -->
       <view class="hero-stats">
         <view class="stat-item">
-          <text class="stat-value">{{ algorithmCount > 0 ? `${algorithmCount}+` : "--" }}</text>
+          <text class="stat-value">{{
+            algorithmCount > 0 ? `${algorithmCount}+` : "--"
+          }}</text>
           <text class="stat-label">去雾算法</text>
         </view>
         <view class="stat-divider" />

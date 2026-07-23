@@ -6,10 +6,7 @@
  * 展示层通过 DatasetImageItem 视图模型展平为单图列表。
  */
 
-import {
-  DatasetAPI,
-  DatasetItemAPI,
-} from "dehaze-sdk-js";
+import { DatasetAPI, DatasetItemAPI } from "dehaze-sdk-js";
 import type {
   Dataset,
   DatasetItemVO,
@@ -99,10 +96,7 @@ export function flattenDatasetItems(
 }
 
 /** 将 ImageUrlVO 转换为 DatasetImageItem */
-function toDatasetImageItem(
-  img: ImageUrlVO,
-  itemId: number
-): DatasetImageItem {
+function toDatasetImageItem(img: ImageUrlVO, itemId: number): DatasetImageItem {
   return {
     id: img.id,
     itemId,

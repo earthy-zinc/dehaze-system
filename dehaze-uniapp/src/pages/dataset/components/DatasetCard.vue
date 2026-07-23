@@ -52,7 +52,9 @@ const imageCount = computed(() => {
 const formattedDate = computed(() => {
   const time = props.dataset.createTime;
   if (!time) return "";
-  return formatRelativeTime(typeof time === "string" ? time : time.toISOString());
+  return formatRelativeTime(
+    typeof time === "string" ? time : time.toISOString()
+  );
 });
 
 /** 缩略图：从数据集项接口获取首张图片的实际URL */

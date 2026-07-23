@@ -35,7 +35,9 @@
             <text class="record-time">
               耗时 {{ record.time ? record.time + "s" : "-" }}
             </text>
-            <text class="record-date">{{ formatRelativeTime(record.createTime || "") }}</text>
+            <text class="record-date">{{
+              formatRelativeTime(record.createTime || "")
+            }}</text>
             <view class="record-actions" @click.stop>
               <view
                 class="action-btn compare-btn"
@@ -80,10 +82,7 @@
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
-import {
-  getPredictionLogs,
-  type PredLogVO,
-} from "@/api/prediction";
+import { getPredictionLogs, type PredLogVO } from "@/api/prediction";
 import { getAlgorithmDetail } from "@/api/algorithm";
 import { useProcessingStore } from "@/store/processing";
 import type { ImageData } from "@/pages/image-input/data/imageInputData";

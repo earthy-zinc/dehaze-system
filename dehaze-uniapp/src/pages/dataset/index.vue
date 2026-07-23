@@ -146,7 +146,11 @@ import PageLayout from "@/layout/index.vue";
 import DatasetCard from "./components/DatasetCard.vue";
 import DatasetInfo from "./components/DatasetInfo.vue";
 import ImageGrid from "./components/ImageGrid.vue";
-import type { Dataset, DatasetImageItem, DisplayMode } from "./data/datasetData";
+import type {
+  Dataset,
+  DatasetImageItem,
+  DisplayMode,
+} from "./data/datasetData";
 import { formatHazeLevel, IMAGE_TYPE_LABELS } from "./data/datasetData";
 import {
   getDatasets,

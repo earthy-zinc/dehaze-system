@@ -200,10 +200,14 @@ function updateParam(key: ParamKey, value: number) {
   store.updateParams({ [key]: value });
 }
 
-const onStrengthChange = (e: SliderChangeEvent) => updateParam("strength", e.detail.value);
-const onSaturationChange = (e: SliderChangeEvent) => updateParam("saturation", e.detail.value);
-const onContrastChange = (e: SliderChangeEvent) => updateParam("contrast", e.detail.value);
-const onSharpnessChange = (e: SliderChangeEvent) => updateParam("sharpness", e.detail.value);
+const onStrengthChange = (e: SliderChangeEvent) =>
+  updateParam("strength", e.detail.value);
+const onSaturationChange = (e: SliderChangeEvent) =>
+  updateParam("saturation", e.detail.value);
+const onContrastChange = (e: SliderChangeEvent) =>
+  updateParam("contrast", e.detail.value);
+const onSharpnessChange = (e: SliderChangeEvent) =>
+  updateParam("sharpness", e.detail.value);
 
 /** 重置参数 */
 function resetParams() {

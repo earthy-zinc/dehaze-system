@@ -1,9 +1,6 @@
 <template>
   <view class="recommend-section">
-    <SectionHeader
-      title="算法推荐"
-      subtitle="精选去雾算法，点击立即体验"
-    />
+    <SectionHeader title="算法推荐" subtitle="精选去雾算法，点击立即体验" />
 
     <!-- 加载中 -->
     <view v-if="loading" class="state-wrap">

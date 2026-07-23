@@ -92,7 +92,12 @@ const posY = ref(200);
 const lensSize = ref(100);
 const currentMode = ref<"result" | "origin">("result");
 /** 底图层（magnifier-wrapper）的视口矩形，用于换算触摸点相对位置 */
-const wrapperRect = ref<{ left: number; top: number; width: number; height: number } | null>(null);
+const wrapperRect = ref<{
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+} | null>(null);
 
 const originUrl = computed(() => store.originUrl);
 const resultUrl = computed(() => store.result?.resultUrl || "");

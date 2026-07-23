@@ -50,7 +50,9 @@ export interface AlgorithmRecommendVO {
 // ==================== 算法 CRUD（SDK） ====================
 
 /** 获取算法列表 */
-export function getAlgorithmList(query?: import("dehaze-sdk-js").AlgorithmQuery) {
+export function getAlgorithmList(
+  query?: import("dehaze-sdk-js").AlgorithmQuery
+) {
   return AlgorithmAPI.getList(query);
 }
 

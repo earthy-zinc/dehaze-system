@@ -15,9 +15,7 @@ import type {
 } from "dehaze-sdk-js";
 
 /** 将 params 对象序列化为 query string */
-function buildQueryString(
-  params: Record<string, unknown> | undefined
-): string {
+function buildQueryString(params: Record<string, unknown> | undefined): string {
   if (!params || Object.keys(params).length === 0) return "";
   const searchParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -58,7 +56,8 @@ function extractHeaders(
 }
 
 /** uni.request 支持的 method 类型 */
-type UniMethod = "GET" | "POST" | "PUT" | "DELETE" | "HEAD" | "OPTIONS" | "TRACE" | "CONNECT";
+type UniMethod =
+  "GET" | "POST" | "PUT" | "DELETE" | "HEAD" | "OPTIONS" | "TRACE" | "CONNECT";
 
 /**
  * 创建基于 uni.request 的 axios 适配器
@@ -134,7 +133,12 @@ export function uploadFileByUni(
     onProgress?: (progress: number) => void;
   }
 ): Promise<{ data: unknown; statusCode: number }> {
-  const { name = "file", formData = {}, header = {}, onProgress } = options || {};
+  const {
+    name = "file",
+    formData = {},
+    header = {},
+    onProgress,
+  } = options || {};
 
   return new Promise((resolve, reject) => {
     const uploadTask = uni.uploadFile({

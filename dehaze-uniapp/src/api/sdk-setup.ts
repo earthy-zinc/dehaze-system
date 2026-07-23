@@ -147,10 +147,7 @@ async function refreshToken(): Promise<string> {
       refreshToken?: string;
     }>;
 
-    if (
-      res.statusCode === 200 &&
-      response.code === ResultEnum.SUCCESS
-    ) {
+    if (res.statusCode === 200 && response.code === ResultEnum.SUCCESS) {
       const { accessToken, refreshToken: newRefreshToken } = response.data;
       uni.setStorageSync(TOKEN_KEY, accessToken);
       if (newRefreshToken) {
@@ -161,9 +158,7 @@ async function refreshToken(): Promise<string> {
     throw new Error(response.msg || "Refresh token failed");
   } catch (error) {
     redirectToLogin();
-    throw error instanceof Error
-      ? error
-      : new Error("Refresh token failed");
+    throw error instanceof Error ? error : new Error("Refresh token failed");
   }
 }
 
@@ -186,7 +181,9 @@ function handleResponseError(error: unknown): unknown {
     return Promise.reject(error);
   }
 
-  const axiosError = error as AxiosError & { config?: InternalAxiosRequestConfig };
+  const axiosError = error as AxiosError & {
+    config?: InternalAxiosRequestConfig;
+  };
   const originalConfig = axiosError.config;
 
   // 无法获取原始配置，直接拒绝
