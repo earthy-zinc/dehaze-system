@@ -17,7 +17,7 @@ public interface UserApiService {
     /**
      * 登录成功后获取用户信息（昵称、头像、权限集合和角色集合）
      */
-    @GET("/api/v1/users/me")
+    @GET("/api/v1/auth/me")
     Call<Result<UserInfo>> getUserDetails();
 
     /**

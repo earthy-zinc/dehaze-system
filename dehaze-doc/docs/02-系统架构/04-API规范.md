@@ -364,7 +364,7 @@ sequenceDiagram
     Server->>Redis: 存储 Token 信息
     Server-->>Client: { accessToken, tokenType, expires }
     
-    Client->>Server: GET /api/v1/users/me (Authorization: Bearer <token>)
+    Client->>Server: GET /api/v1/auth/me (Authorization: Bearer <token>)
     Server->>Redis: 校验 Token 状态
     Server-->>Client: { code: "00000", data: {...} }
 ```
@@ -399,7 +399,7 @@ username=admin&password=123456
 所有需要认证的接口须在请求头携带 Token：
 
 ```http
-GET /api/v1/users/me HTTP/1.1
+GET /api/v1/auth/me HTTP/1.1
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 

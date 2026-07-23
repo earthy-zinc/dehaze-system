@@ -235,7 +235,7 @@ describe("useUserStore", () => {
       expect(store.user.userId).toBe(1);
       expect(store.user.username).toBe("testuser");
       expect(store.user.roles).toEqual(["USER"]);
-      expect(store.user.permissions).toEqual(["sys:user:view"]);
+      expect(store.user.perms).toEqual(["sys:user:view"]);
     });
   });
 

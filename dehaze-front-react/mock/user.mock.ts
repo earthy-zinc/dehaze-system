@@ -2,7 +2,7 @@ import { defineMock } from "./base";
 
 export default defineMock([
   {
-    url: "users/me",
+    url: "auth/me",
     method: ["GET"],
     body: {
       code: "00000",
@@ -13,7 +13,7 @@ export default defineMock([
         avatar:
           "https://oss.youlai.tech/youlai-boot/2023/05/16/811270ef31f548af9cffc026dfc3777b.gif",
         roles: ["ROOT"],
-        permissions: [
+        perms: [
           "sys:menu:delete",
           "sys:dept:edit",
           "sys:dict_type:add",

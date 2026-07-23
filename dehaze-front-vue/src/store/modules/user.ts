@@ -13,7 +13,7 @@ import {
 export const useUserStore = defineStore("user", () => {
   const user = ref<UserInfo>({
     roles: [],
-    permissions: [],
+    perms: [],
   });
 
   /** 登录 */

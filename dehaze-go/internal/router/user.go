@@ -12,7 +12,6 @@ func RegisterSysUserRoutes(rg *gin.RouterGroup, sysUserApi *api.SysUserApi) gin.
 		// 读操作 - 无需额外权限
 		sysUserRouter.GET("page", sysUserApi.ListPagedUsers)
 		sysUserRouter.GET(":userId/form", sysUserApi.GetUserForm)
-		sysUserRouter.GET("me", sysUserApi.GetCurrentUserInfo)
 		sysUserRouter.GET("_export", sysUserApi.ListExportUsers)
 		sysUserRouter.GET("template", sysUserApi.DownloadImportTemplate)
 

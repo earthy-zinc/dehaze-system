@@ -5,15 +5,15 @@ import com.pei.dehaze.model.dto.CaptchaResult;
 import com.pei.dehaze.model.dto.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
 import com.pei.dehaze.model.dto.RefreshTokenForm;
+import com.pei.dehaze.model.vo.UserInfoVO;
 import com.pei.dehaze.plugin.ratelimit.annotation.RateLimit;
 import com.pei.dehaze.service.AuthService;
+import com.pei.dehaze.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @Tag(name = "01.认证中心")
 @RestController
@@ -22,6 +22,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final SysUserService userService;
 
     @Operation(summary = "登录")
     @RateLimit(key = "rate_limit:login:", timeWindow = 60, maxRequests = 10,
@@ -48,8 +49,8 @@ public class AuthController {
 
     @Operation(summary = "获取当前用户信息")
     @GetMapping("/me")
-    public Result<Map<String, Object>> me() {
-        return Result.success(authService.getAuthInfo());
+    public Result<UserInfoVO> me() {
+        return Result.success(userService.getCurrentUserInfo());
     }
 
     @Operation(summary = "刷新令牌")

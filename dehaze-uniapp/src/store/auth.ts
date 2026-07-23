@@ -47,7 +47,7 @@ export const useAuthStore = defineStore("auth", () => {
   const roles = computed(() => userInfo.value?.roles || []);
 
   /** 权限列表 */
-  const permissions = computed(() => userInfo.value?.permissions || []);
+  const perms = computed(() => userInfo.value?.perms || []);
 
   // ==================== 方法 ====================
 
@@ -124,8 +124,8 @@ export const useAuthStore = defineStore("auth", () => {
 
   /** 检查是否有某权限 */
   function hasPerm(perm: string): boolean {
-    if (!permissions.value || permissions.value.length === 0) return false;
-    return permissions.value.includes(perm);
+    if (!perms.value || perms.value.length === 0) return false;
+    return perms.value.includes(perm);
   }
 
   /** 检查是否有任意角色 */
@@ -155,7 +155,7 @@ export const useAuthStore = defineStore("auth", () => {
     nickname,
     userId,
     roles,
-    permissions,
+    perms,
 
     // 方法
     init,

@@ -322,7 +322,7 @@ vim config/config.yaml
 
 # 启动服务
 go mod download
-go run main.go
+go run cmd/main.go
 
 # 测试
 go test ./...

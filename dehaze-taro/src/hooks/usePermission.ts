@@ -3,21 +3,17 @@ import { hasPermission } from "@/utils/permission";
 import { useAuth } from "./useAuth";
 
 export const usePermission = () => {
-  const { permissions } = useAuth();
+  const { perms } = useAuth();
 
-  // 检查是否有指定权限
   const hasPermissionFn = useCallback(
     (permission: string | string[]): boolean => {
-      return hasPermission(permissions, permission);
+      return hasPermission(perms, permission);
     },
-    [permissions]
+    [perms]
   );
 
   return {
-    // 权限列表
-    permissions,
-
-    // 权限检查方法
+    perms,
     hasPermission: hasPermissionFn,
   };
 };

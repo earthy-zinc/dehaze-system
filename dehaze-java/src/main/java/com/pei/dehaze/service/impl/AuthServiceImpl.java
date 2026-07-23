@@ -30,7 +30,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -40,7 +39,6 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.awt.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * 认证服务实现类
@@ -176,33 +174,6 @@ public class AuthServiceImpl implements AuthService {
                 .captchaKey(captchaKey)
                 .captchaBase64(imageBase64Data)
                 .build();
-    }
-
-    @Override
-    public Map<String, Object> getAuthInfo() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof SysUserDetails)) {
-            throw new BusinessException(ResultCode.TOKEN_INVALID);
-        }
-        SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("userId", userDetails.getUserId());
-        result.put("username", userDetails.getUsername());
-        result.put("nickname", userDetails.getNickname());
-
-        // 角色列表（去掉 ROLE_ 前缀）
-        result.put("roles", authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .map(a -> a.startsWith(SecurityConstants.ROLE_PREFIX) ? a.substring(SecurityConstants.ROLE_PREFIX.length()) : a)
-                .collect(Collectors.toList()));
-
-        // 权限列表
-        result.put("permissions", userDetails.getPerms() != null
-                ? new ArrayList<>(userDetails.getPerms())
-                : Collections.emptyList());
-
-        return result;
     }
 
     @Override

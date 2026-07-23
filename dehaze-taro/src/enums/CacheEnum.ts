@@ -3,6 +3,6 @@
  */
 export enum CacheEnum {
   USER_INFO = "userInfo",
-  PERMISSIONS = "permissions",
+  PERMS = "perms",
   ROLES = "roles",
 }

@@ -13,7 +13,7 @@ class UserModel {
     this.deptId,
     this.deptName,
     this.roles = const [],
-    this.permissions = const [],
+    this.perms = const [],
     this.dataScope,
     this.status,
   });
@@ -46,7 +46,7 @@ class UserModel {
   final List<String> roles;
 
   /// 权限标识列表（如 ["sys:user:add", "sys:dataset:edit"]）
-  final List<String> permissions;
+  final List<String> perms;
 
   /// 数据权限范围（1=全部 2=自定义 3=本部门 4=本部门及以下 5=仅本人）
   @JsonKey(name: 'dataScope')
@@ -66,13 +66,13 @@ class UserModel {
   /// 检查是否拥有指定权限
   bool hasPermission(String perm) {
     if (isRoot) return true;
-    return permissions.contains(perm);
+    return perms.contains(perm);
   }
 
   /// 检查是否拥有任一权限
-  bool hasAnyPermission(List<String> perms) {
+  bool hasAnyPermission(List<String> permList) {
     if (isRoot) return true;
-    return perms.any(permissions.contains);
+    return permList.any(perms.contains);
   }
 
   /// 检查是否拥有指定角色

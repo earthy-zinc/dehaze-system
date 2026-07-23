@@ -21,7 +21,6 @@
 | `/api/v1/users/{ids}` | DELETE | 删除用户（支持批量） | `sys:user:delete` | F-UM-004 |
 | `/api/v1/users/{userId}/password` | PATCH | 重置用户密码 | `sys:user:password:reset` | F-UM-005 |
 | `/api/v1/users/{userId}/status` | PATCH | 修改用户状态 | - | F-UM-006 |
-| `/api/v1/users/me` | GET | 获取当前登录用户信息 | - | - |
 | `/api/v1/users/template` | GET | 下载用户导入模板 | - | F-UM-007 |
 | `/api/v1/users/_import` | POST | 导入用户 | - | F-UM-007 |
 | `/api/v1/users/_export` | GET | 导出用户 | - | F-UM-008 |

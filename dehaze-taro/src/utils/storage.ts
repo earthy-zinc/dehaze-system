@@ -90,13 +90,13 @@ class StorageManager {
   }
 
   // 权限管理
-  async setPermissions(permissions: string[]): Promise<void> {
-    await this.setItem(CacheEnum.PERMISSIONS, permissions);
+  async setPerms(perms: string[]): Promise<void> {
+    await this.setItem(CacheEnum.PERMS, perms);
   }
 
-  async getPermissions(): Promise<string[]> {
-    const permissions = await this.getItem<string[]>(CacheEnum.PERMISSIONS);
-    return permissions || [];
+  async getPerms(): Promise<string[]> {
+    const perms = await this.getItem<string[]>(CacheEnum.PERMS);
+    return perms || [];
   }
 
   // 角色管理
@@ -116,7 +116,7 @@ class StorageManager {
   clearAuth(): void {
     Taro.removeStorageSync(TOKEN_KEY);
     Taro.removeStorageSync(CacheEnum.USER_INFO);
-    Taro.removeStorageSync(CacheEnum.PERMISSIONS);
+    Taro.removeStorageSync(CacheEnum.PERMS);
     Taro.removeStorageSync(CacheEnum.ROLES);
   }
 }

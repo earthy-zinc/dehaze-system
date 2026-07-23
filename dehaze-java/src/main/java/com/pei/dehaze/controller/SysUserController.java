@@ -12,7 +12,6 @@ import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.query.UserPageQuery;
 import com.pei.dehaze.model.vo.UserExportVO;
 import com.pei.dehaze.model.vo.UserImportVO;
-import com.pei.dehaze.model.vo.UserInfoVO;
 import com.pei.dehaze.model.vo.UserPageVO;
 import com.pei.dehaze.plugin.dupsubmit.annotation.PreventDuplicateSubmit;
 import com.pei.dehaze.plugin.easyexcel.UserImportListener;
@@ -126,13 +125,6 @@ public class SysUserController {
                 .set(SysUser::getUpdateBy, currentUserId)
         );
         return Result.judge(result);
-    }
-
-    @Operation(summary = "获取当前登录用户信息")
-    @GetMapping("/me")
-    public Result<UserInfoVO> getCurrentUserInfo() {
-        UserInfoVO userInfoVO = userService.getCurrentUserInfo();
-        return Result.success(userInfoVO);
     }
 
     @Operation(summary = "用户导入模板下载")

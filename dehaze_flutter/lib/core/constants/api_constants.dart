@@ -50,7 +50,6 @@ class ApiConstants {
   static const String evaluationLogs = '$evaluation/logs';
 
   // ==================== 用户管理 ====================
-  static const String usersMe = '$users/me';
   static const String usersPage = '$users/page';
 
   // ==================== 成功状态码 ====================

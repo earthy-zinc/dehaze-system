@@ -7,7 +7,7 @@ from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
-from app.models.schema.user import (CaptchaData, LoginData,
+from app.models.schema.user import (CaptchaData, CurrentUserVO, LoginData,
                                     LoginForm)
 from app.repository.login_log_repository import login_log_repository
 from app.service.auth_service import AuthService
@@ -212,3 +212,16 @@ async def refresh_token(
 
     result = await AuthService.refresh_token(db, user.id, redis)
     return success(result)
+
+
+@router.get("/me", response_model=Result[CurrentUserVO], summary="获取当前用户信息")
+async def get_current_user_info(
+    user: UserContext = Depends(get_current_user),
+):
+    return success({
+        "userId": user.id,
+        "username": user.username,
+        "nickname": user.nickname,
+        "roles": user.roles,
+        "perms": user.permissions if user.permissions else [],
+    })

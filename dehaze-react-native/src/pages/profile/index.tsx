@@ -101,9 +101,9 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const username = userInfo?.username || '—';
   const avatarLetter = nickname.charAt(0).toUpperCase();
   const roles = userInfo?.roles ?? [];
-  const permissions = userInfo?.permissions ?? [];
-  const displayPerms = permissions.slice(0, MAX_PERMS_DISPLAY);
-  const remainingPerms = Math.max(0, permissions.length - MAX_PERMS_DISPLAY);
+  const perms = userInfo?.perms ?? [];
+  const displayPerms = perms.slice(0, MAX_PERMS_DISPLAY);
+  const remainingPerms = Math.max(0, perms.length - MAX_PERMS_DISPLAY);
 
   return (
     <MainLayout title="个人中心" showBack showBottomNav={false}>
@@ -171,7 +171,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         <SectionWrap
           icon="lock-closed-outline"
           title="权限概览"
-          extra={`${permissions.length} 项`}
+          extra={`${perms.length} 项`}
         >
           <View style={styles.card}>
             {displayPerms.length > 0 ? (

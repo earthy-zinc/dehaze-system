@@ -33,7 +33,7 @@ const PROFILE_ENTRIES = [
 // ==================== 页面组件 ====================
 
 const ProfilePage: React.FC = () => {
-  const { user, roles, permissions, logout } = useAuth();
+  const { user, roles, perms, logout } = useAuth();
 
   /** 跳转到指定页面（tabbar 页面用 reLaunch，其余用 navigateTo） */
   const handleNavigate = useCallback((route: string) => {
@@ -139,13 +139,13 @@ const ProfilePage: React.FC = () => {
           <View className="section">
             <View className="section-header">
               <Text className="section-title">权限概览</Text>
-              <Text className="section-count">共 {permissions.length} 项</Text>
+              <Text className="section-count">共 {perms.length} 项</Text>
             </View>
             <View className="permission-card">
-              {permissions.length > 0 ? (
+              {perms.length > 0 ? (
                 <>
                   <View className="permission-tags">
-                    {permissions
+                    {perms
                       .slice(0, MAX_PERMISSION_PREVIEW)
                       .map((perm) => (
                         <Tag key={perm} size="small">
@@ -153,9 +153,9 @@ const ProfilePage: React.FC = () => {
                         </Tag>
                       ))}
                   </View>
-                  {permissions.length > MAX_PERMISSION_PREVIEW && (
+                  {perms.length > MAX_PERMISSION_PREVIEW && (
                     <Text className="permission-more">
-                      等共 {permissions.length} 项权限
+                      等共 {perms.length} 项权限
                     </Text>
                   )}
                 </>

@@ -14,7 +14,7 @@ export class UserAPI {
    */
   public static async getInfo(): Promise<Result<UserInfo>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.get<Result<UserInfo>>(`${UserAPI.BASE_URL}/users/me`);
+    return await httpManager.get<Result<UserInfo>>(`${UserAPI.BASE_URL}/auth/me`);
   }
 
   /**

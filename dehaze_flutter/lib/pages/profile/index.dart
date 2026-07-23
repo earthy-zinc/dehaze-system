@@ -34,7 +34,7 @@ class ProfilePage extends ConsumerWidget {
             _buildRolesSection(theme, user.roles),
             const SizedBox(height: 16),
             // 权限概览
-            _buildPermissionsSection(theme, user.permissions),
+            _buildPermissionsSection(theme, user.perms),
             const SizedBox(height: 16),
             // 功能入口
             _buildMenuSection(theme, context),

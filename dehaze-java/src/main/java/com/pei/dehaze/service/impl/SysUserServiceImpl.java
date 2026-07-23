@@ -279,7 +279,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 用户权限集合
         if (CollUtil.isNotEmpty(roles)) {
             Set<String> perms = permissionService.getRolePermsFromCache(roles);
-            userInfoVO.setPermissions(perms);
+            userInfoVO.setPerms(perms);
         }
         return userInfoVO;
     }

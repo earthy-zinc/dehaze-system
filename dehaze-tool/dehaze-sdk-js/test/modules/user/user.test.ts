@@ -14,7 +14,7 @@ describe("用户管理接口测试", () => {
     await logout();
   });
 
-  describe("GET /api/v1/users/me - 获取当前登录用户信息", () => {
+  describe("GET /api/v1/auth/me - 获取当前登录用户信息", () => {
     test("获取当前登录用户信息并验证数据完整性", async () => {
       const result = await UserAPI.getInfo();
 
@@ -28,9 +28,9 @@ describe("用户管理接口测试", () => {
       expect(result.roles.length).toBeGreaterThan(0);
 
       // 验证权限数组非空且包含字符串
-      expect(result.permissions).toEqual(expect.any(Array));
-      expect(result.permissions.length).toBeGreaterThan(0);
-      result.permissions.forEach((perm) => {
+      expect(result.perms).toEqual(expect.any(Array));
+      expect(result.perms.length).toBeGreaterThan(0);
+      result.perms.forEach((perm) => {
         expect(typeof perm).toBe("string");
         expect(perm.length).toBeGreaterThan(0);
       });

@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-# Bash / Git Bash 薄壳，透传所有参数到 run.py
-exec python "$(dirname "$0")/run.py" "$@"

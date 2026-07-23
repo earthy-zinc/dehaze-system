@@ -33,7 +33,7 @@ public class UserInfoVO {
     private Set<String> roles;
 
     @Schema(description="用户权限标识集合")
-    private Set<String> permissions;
+    private Set<String> perms;
 
     @Schema(description="注册时间")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

@@ -9,7 +9,7 @@ from app.database import get_db
 from app.decorators.permission import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.common import PageResult
-from app.models.schema.user import (CurrentUserVO, PasswordForm, UserCreateVO,
+from app.models.schema.user import (PasswordForm, UserCreateVO,
                                     UserDeleteVO, UserForm, UserFormVO,
                                     UserImportVO, UserPageVO)
 from app.service.user_service import UserService
@@ -231,18 +231,3 @@ async def delete_users(
     result = await UserService.delete_users(db, ids)
 
     return success(result, msg=f"成功删除 {result['deleted_count']} 个用户")
-
-
-@router.get("/me", summary="获取当前用户信息", response_model=Result[CurrentUserVO], tags=["用户信息"])
-async def get_current_user_info(
-    user: UserContext = Depends(get_current_user),
-):
-    return success(
-        {
-            "userId": user.id,
-            "username": user.username,
-            "nickname": user.nickname,
-            "roles": user.roles,
-            "perms": user.permissions if user.permissions else [],
-        }
-    )

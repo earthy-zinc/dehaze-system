@@ -27,18 +27,6 @@ description: >-
 
 根据当前操作的子项目，加载对应的 reference 文件以获取项目特定约束：
 
-### Go 后端（dehaze-go）
-
-- 编码：查阅 [Go 编码规范](./references/go-coding.md)
-
-### Python 后端（dehaze-python）
-
-- 编码：查阅 [Python 编码规范](./references/python-coding.md)
-
-### Java 后端（dehaze-java\*）
-
-- 编码：查阅 [Java 编程规范](./references/java-coding.md)
-
 ### 前端（dehaze-front-vue / dehaze-front-react）
 
 前端项目遵循通用框架最佳实践，无额外项目特定规范。项目架构和组件设计查阅 `dehaze-doc/docs/04-项目实现/前端/` 下对应文档。

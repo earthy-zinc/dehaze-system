@@ -8,7 +8,7 @@ const initialState = {
   user: {
     avatar: "",
     roles: [] as string[],
-    permissions: [] as string[],
+    perms: [] as string[],
   } as UserInfo,
 };
 
@@ -42,7 +42,7 @@ const userSlice = createSlice({
   reducers: {
     resetToken: (state) => {
       localStorage.removeItem(TOKEN_KEY);
-      state.user = { roles: [], permissions: [] };
+      state.user = { roles: [], perms: [] };
     },
   },
   extraReducers: (builder) => {
@@ -51,7 +51,7 @@ const userSlice = createSlice({
         state.user = action.payload;
       })
       .addCase(logout.fulfilled, (state) => {
-        state.user = { roles: [], permissions: [] };
+        state.user = { roles: [], perms: [] };
       });
   },
 });

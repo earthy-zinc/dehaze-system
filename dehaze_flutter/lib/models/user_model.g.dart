@@ -22,8 +22,8 @@ UserModel _$UserModelFromJson(Map<String, dynamic> json) => $checkedCreate(
         (v) =>
             (v as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
       ),
-      permissions: $checkedConvert(
-        'permissions',
+      perms: $checkedConvert(
+        'perms',
         (v) =>
             (v as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
       ),
@@ -42,7 +42,7 @@ Map<String, dynamic> _$UserModelToJson(UserModel instance) => <String, dynamic>{
   if (instance.deptId case final value?) 'deptId': value,
   if (instance.deptName case final value?) 'deptName': value,
   'roles': instance.roles,
-  'permissions': instance.permissions,
+  'perms': instance.perms,
   if (instance.dataScope case final value?) 'dataScope': value,
   if (instance.status case final value?) 'status': value,
 };

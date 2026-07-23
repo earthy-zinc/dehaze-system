@@ -47,7 +47,7 @@ export interface AuthUserInfo {
   /** 角色列表（含 ROLE_ 前缀） */
   roles: string[];
   /** 权限列表 */
-  permissions: string[];
+  perms: string[];
 }
 
 /**

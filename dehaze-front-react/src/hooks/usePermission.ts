@@ -89,10 +89,10 @@ export const useHasPerm = () => {
       if (roles.includes("ROOT")) {
         return true;
       }
-      const permissions = userStore.user.permissions || [];
-      return permissions.includes(perm);
+      const perms = userStore.user.perms || [];
+      return perms.includes(perm);
     },
-    [userStore.user.roles, userStore.user.permissions]
+    [userStore.user.roles, userStore.user.perms]
   );
   return hasPerm;
 };

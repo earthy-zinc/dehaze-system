@@ -259,27 +259,6 @@ func (api *SysUserApi) UpdateUserStatus(c *gin.Context) {
 	common.OkWithMessage("修改用户状态成功", c)
 }
 
-// GetCurrentUserInfo 获取当前登录用户信息
-// @Summary 获取当前登录用户信息
-// @Description 获取当前登录用户信息
-// @Tags 用户接口
-// @Accept application/json
-// @Produce application/json
-// @Success 200 {object} common.Response{data=vo.UserInfoVO}
-// @Router /api/v1/users/me [get]
-func (api *SysUserApi) GetCurrentUserInfo(c *gin.Context) {
-	userID := security.GetUserID(c)
-
-	// 调用服务获取当前用户信息
-	userInfoVO, err := api.userService.GetCurrentUserInfo(c.Request.Context(), userID)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	common.OkWithDetailed(userInfoVO, "查询成功", c)
-}
-
 // ListExportUsers 导出用户
 // @Summary 导出用户
 // @Description 导出用户列表

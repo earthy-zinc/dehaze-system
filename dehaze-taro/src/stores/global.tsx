@@ -12,7 +12,7 @@ interface AuthState {
   user: UserInfo | null;
   token: string | null;
   isAuthenticated: boolean;
-  permissions: string[];
+  perms: string[];
   roles: string[];
   loading: boolean;
 }
@@ -31,7 +31,7 @@ type AuthAction =
       payload: {
         user: UserInfo;
         token: string;
-        permissions: string[];
+        perms: string[];
         roles: string[];
       };
     }
@@ -43,7 +43,7 @@ type AuthAction =
       payload: {
         user: UserInfo;
         token: string;
-        permissions: string[];
+        perms: string[];
         roles: string[];
       };
     };
@@ -76,7 +76,7 @@ const globalReducer = (
           isAuthenticated: true,
           user: action.payload.user,
           token: action.payload.token,
-          permissions: action.payload.permissions,
+          perms: action.payload.perms,
           roles: action.payload.roles,
         },
       };
@@ -90,7 +90,7 @@ const globalReducer = (
           isAuthenticated: false,
           user: null,
           token: null,
-          permissions: [],
+          perms: [],
           roles: [],
         },
       };
@@ -103,7 +103,7 @@ const globalReducer = (
           isAuthenticated: false,
           user: null,
           token: null,
-          permissions: [],
+          perms: [],
           roles: [],
         },
       };
@@ -127,7 +127,7 @@ const globalReducer = (
           isAuthenticated: true,
           user: action.payload.user,
           token: action.payload.token,
-          permissions: action.payload.permissions,
+          perms: action.payload.perms,
           roles: action.payload.roles,
           loading: false,
         },
@@ -171,7 +171,7 @@ const initialState: GlobalState = {
     user: null,
     token: null,
     isAuthenticated: false,
-    permissions: [],
+    perms: [],
     roles: [],
     loading: false,
   },
@@ -215,7 +215,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // 存储到本地
       await storage.setUserInfo(userInfo);
-      await storage.setPermissions(userInfo.permissions || []);
+      await storage.setPerms(userInfo.perms || []);
       await storage.setRoles(userInfo.roles || []);
 
       // 一次性更新认证状态（含权限与角色）
@@ -224,7 +224,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         payload: {
           user: userInfo,
           token,
-          permissions: userInfo.permissions || [],
+          perms: userInfo.perms || [],
           roles: userInfo.roles || [],
         },
       });
@@ -257,13 +257,13 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const token = storage.getToken();
       const userInfo = await storage.getUserInfo();
-      const permissions = await storage.getPermissions();
+      const perms = await storage.getPerms();
       const roles = await storage.getRoles();
 
       if (token && userInfo) {
         dispatch({
           type: "INIT_AUTH_SUCCESS",
-          payload: { user: userInfo, token, permissions, roles },
+          payload: { user: userInfo, token, perms, roles },
         });
       }
     } catch (error) {
