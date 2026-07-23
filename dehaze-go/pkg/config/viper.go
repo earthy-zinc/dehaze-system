@@ -27,7 +27,7 @@ func getConfigName() (config string) {
 }
 
 func Init() (*AppConfig, error) {
-	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+	if err := godotenv.Load("../.env"); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("加载.env失败: %w", err)
 	}
 

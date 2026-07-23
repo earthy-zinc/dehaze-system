@@ -7,7 +7,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
-	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"github.com/gin-gonic/gin"
 )

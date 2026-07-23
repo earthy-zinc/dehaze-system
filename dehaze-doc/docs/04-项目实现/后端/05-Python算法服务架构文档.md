@@ -362,7 +362,7 @@ class Settings(BaseSettings):
     APP_NAME / APP_VERSION / DEBUG
 
     # JWT 配置（启动时强制校验非空）
-    SECRET_KEY / JWT_SECRET_KEY
+    JWT_SECRET_KEY
     JWT_ACCESS_TOKEN_EXPIRES       # 访问令牌 2h
     JWT_REFRESH_TOKEN_EXPIRES      # 刷新令牌 7d
 
@@ -436,13 +436,12 @@ class Settings(BaseSettings):
 
 ```bash
 # .env
-SECRET_KEY=your-secret-key-at-least-32-chars
 JWT_SECRET_KEY=your-jwt-secret-key
 DEHAZE_PASSWORD=shared-password-for-mysql-redis-minio
 ```
 
 **安全校验**：
-- `Settings.__init__` 在所有环境校验 `SECRET_KEY` 和 `JWT_SECRET_KEY` 非空
+- `Settings.__init__` 在所有环境校验 `JWT_SECRET_KEY` 非空
 - `ProductionSettings.__init__` 额外校验密钥长度 ≥ 32 且 `DEHAZE_PASSWORD` 非空
 
 > **设计取舍**：`DEHAZE_PASSWORD` 被复用为 MySQL、Redis、MinIO、RabbitMQ 的统一密码，简化部署但单点泄露即全盘沦陷。生产环境应通过独立 Secret 管理各组件凭证（未来改进）。

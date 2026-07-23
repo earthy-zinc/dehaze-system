@@ -64,7 +64,9 @@ class AuthService:
         roles = await user_repository.get_user_role_codes(db, user.id)
 
         from app.repository.role_repository import role_repository
+        from app.service.menu_service import MenuService
         data_scope = await role_repository.get_maximum_data_scope(db, roles)
+        perms = await MenuService.list_role_perms(db, redis, set(roles))
 
         # 使用 JWT 工具类生成 Token
         if user.username is None:
@@ -73,6 +75,7 @@ class AuthService:
             user_id=user.id,
             username=user.username,
             roles=roles,
+            perms=list(perms),
             dept_id=user.dept_id,
             data_scope=data_scope,
         )
@@ -214,7 +217,9 @@ class AuthService:
         # 查询用户角色
         roles = await user_repository.get_user_role_codes(db, user.id)
         from app.repository.role_repository import role_repository
+        from app.service.menu_service import MenuService
         data_scope = await role_repository.get_maximum_data_scope(db, roles)
+        perms = await MenuService.list_role_perms(db, redis, set(roles))
 
         # 使用 JWT 工具类生成 Token
         if user.username is None:
@@ -223,6 +228,7 @@ class AuthService:
             user_id=user.id,
             username=user.username,
             roles=roles,
+            perms=list(perms),
             dept_id=user.dept_id,
             data_scope=data_scope,
         )

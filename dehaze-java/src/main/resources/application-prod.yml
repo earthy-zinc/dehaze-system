@@ -177,3 +177,6 @@ captcha:
   # 验证码有效期(秒)
   expire-seconds: 120
 
+# 读取根目录的 .env
+springdotenv:
+  directory: ../

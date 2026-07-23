@@ -53,7 +53,7 @@ javaService.defaults.baseURL = process.env.TEST_BASE_URL || backendProfile.baseU
  * 集成测试共享同一后端实例，前一个测试文件创建/删除的数据可能残留在 Redis 缓存中
  * （如 @Cacheable 的 dataset:all、dict:options:* 等），导致后续测试读到脏数据
  *
- * 注意: Java 后端使用 Redis db0，Python/Go 后端使用 db3，需按后端选择正确的 DB
+ * 注意: 三端验证码均存于 Redis db0，按后端选择对应 DB 清理
  */
 beforeAll(async () => {
   try {

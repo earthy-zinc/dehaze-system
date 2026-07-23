@@ -20,6 +20,7 @@ class JWTUtils:
         user_id: int,
         username: str,
         roles: list[str],
+        perms: list[str] | None = None,
         dept_id: int | None = None,
         data_scope: int | None = None,
         expires_delta: timedelta | None = None,
@@ -31,6 +32,7 @@ class JWTUtils:
             user_id: 用户ID
             username: 用户名
             roles: 角色列表
+            perms: 权限列表（合并进 authorities，与 Go 一致）
             dept_id: 部门ID
             data_scope: 数据权限范围
             expires_delta: 过期时间增量，默认使用配置
@@ -44,13 +46,17 @@ class JWTUtils:
         if expires_delta is None:
             expires_delta = timedelta(seconds=settings.JWT_ACCESS_TOKEN_EXPIRES)
 
+        authorities = ["ROLE_" + r for r in roles]
+        if perms:
+            authorities.extend(perms)
+
         payload = {
             "jti": jti,
             "sub": username,
             "userId": user_id,
             "deptId": dept_id,
             "dataScope": data_scope,
-            "authorities": ["ROLE_" + r for r in roles],
+            "authorities": authorities,
             "exp": now + expires_delta,
             "iat": now,
         }

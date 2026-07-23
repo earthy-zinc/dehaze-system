@@ -15,7 +15,7 @@
 ### 环境变量管理
 - 统一密码环境变量 `DEHAZE_PASSWORD=12345678` 管理所有基础设施密码
 - 三个后端（Go/Java/Python）共享相同 JWT 签名密钥，确保 JWT token 可互认
-- `.env` 文件放置在各后端项目的根目录
+- `.env` 文件位于 monorepo 根目录 `DehazeSystem/.env`
 
 ### 调试辅助脚本
 - **调试脚本**：`scripts/debug_helper.py <command>` - 包含登录逻辑 + API 调试
@@ -36,16 +36,3 @@
 - **Go**: 8990 (`go run` 开发模式)
 - **Python**: 8991 (`uvicorn --reload` 开发模式)
 - Docker 容器: MySQL 3306, Redis 6379, MongoDB 27017, MinIO 9000/9090, PostgreSQL 5432, RabbitMQ 5672/15672
-
-### JWT claims 统一格式（三端互认）
-三端 JWT token 可互认，统一 claims 结构：
-- `jti`: UUID (token ID)
-- `sub`: username (用户名)
-- `userId`: int (用户ID，camelCase)
-- `deptId`: int (部门ID)
-- `dataScope`: int (数据权限，取用户所有角色 data_scope 的最小值)
-- `authorities`: 数组 (角色，元素带 `ROLE_` 前缀，如 `["ROLE_GUEST"]`)
-- `exp`/`iat`: 时间戳
-
-三端 JWT claims 字段完全一致，不再有额外字段。
-三端 captcha 统一存 Redis db0，纯文本形式。

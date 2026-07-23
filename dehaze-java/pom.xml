@@ -57,7 +57,7 @@
         <testcontainers.version>1.19.3</testcontainers.version>
 
         <!-- Spring Dotenv -->
-        <spring-dotenv.version>4.0.0</spring-dotenv.version>
+        <spring-dotenv.version>5.1.0</spring-dotenv.version>
     </properties>
 
     <dependencies>
@@ -325,10 +325,10 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Spring Dotenv: 自动加载 .env 文件环境变量 -->
+        <!-- Spring Dotenv: 自动加载 .env 文件环境变量 (Spring Boot 3 集成模块) -->
         <dependency>
             <groupId>me.paulschwarz</groupId>
-            <artifactId>spring-dotenv</artifactId>
+            <artifactId>springboot3-dotenv</artifactId>
             <version>${spring-dotenv.version}</version>
         </dependency>
     </dependencies>

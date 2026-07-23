@@ -16,11 +16,6 @@ class TestConfig:
         """验证测试环境变量"""
         assert os.getenv("APP_ENV") == "testing"
 
-    def test_secret_key_set(self):
-        """验证密钥已设置"""
-        assert os.getenv("SECRET_KEY") is not None
-        assert len(os.getenv("SECRET_KEY", "")) >= 32
-
     def test_jwt_secret_key_set(self):
         """验证 JWT 密钥已设置"""
         assert os.getenv("JWT_SECRET_KEY") is not None

@@ -12,11 +12,6 @@ class Settings(BaseSettings):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 所有环境都需要设置密钥
-        if not self.SECRET_KEY:
-            raise ValueError(
-                "必须设置 SECRET_KEY 环境变量。"
-                "开发环境可使用: export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
-            )
         if not self.JWT_SECRET_KEY:
             raise ValueError(
                 "必须设置 JWT_SECRET_KEY 环境变量。"
@@ -24,7 +19,7 @@ class Settings(BaseSettings):
             )
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file="../.env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -36,7 +31,6 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # JWT 配置 - 必须通过环境变量设置，无安全默认值
-    SECRET_KEY: str = Field(default="")  # 必须设置，启动时会校验
     JWT_SECRET_KEY: str = Field(default="")  # 必须设置，启动时会校验
     JWT_ACCESS_TOKEN_EXPIRES: int = 7200  # 访问令牌过期时间（秒），默认 2 小时
     JWT_REFRESH_TOKEN_EXPIRES: int = 604800  # 刷新令牌过期时间（秒），默认 7 天
@@ -94,9 +88,9 @@ class Settings(BaseSettings):
             return f"redis://:{self.DEHAZE_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
-    # MinIO 配置（MinIO 移到 9100，9000 端口由 nginx-dataset 占用）
+    # MinIO 配置
     MINIO_ENDPOINT: str = "127.0.0.1:9100"
-    MINIO_ACCESS_KEY: str = ""  # 必须通过环境变量设置
+    MINIO_ACCESS_KEY: str = "admin"
     MINIO_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "dehaze"
 
@@ -208,7 +202,7 @@ class Settings(BaseSettings):
     LOG_FORMAT_JSON: bool = False  # 是否使用 JSON 结构化日志（生产环境推荐 True）
 
     # 用户管理配置
-    DEFAULT_PASSWORD: str = "123456"  # 新用户默认密码
+    DEFAULT_PASSWORD: str = "12345678"  # 新用户默认密码
     PASSWORD_MIN_LENGTH: int = 8  # 密码最小长度
     PASSWORD_REQUIRE_COMPLEXITY: bool = True  # 是否要求密码复杂度（至少包含字母和数字）
 
@@ -315,8 +309,6 @@ class ProductionSettings(Settings):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 生产环境强制校验关键配置
-        if not self.SECRET_KEY or len(self.SECRET_KEY) < 32:
-            raise ValueError("生产环境必须设置 SECRET_KEY 环境变量且长度 >= 32")
         if not self.JWT_SECRET_KEY or len(self.JWT_SECRET_KEY) < 32:
             raise ValueError("生产环境必须设置 JWT_SECRET_KEY 环境变量且长度 >= 32")
         if not self.DEHAZE_PASSWORD:

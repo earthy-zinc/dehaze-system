@@ -67,25 +67,25 @@ def decode_token(token: str) -> dict:
         )
 
 
-def _extract_roles(payload: dict) -> list[str]:
+def _split_authorities(payload: dict) -> tuple[list[str], list[str]]:
     """
-    从 JWT payload 的 authorities 字段提取角色列表
+    从 JWT payload 的 authorities 字段拆分出角色与权限
+
+    元素带 ROLE_ 前缀的为角色，其余为权限（与 Go 一致：权限合并进 authorities）
 
     Args:
         payload: JWT payload
 
     Returns:
-        角色列表（去掉 ROLE_ 前缀）
+        (角色列表, 权限列表)
     """
-    authorities = payload.get("authorities")
-    if not authorities:
-        return []
+    authorities = payload.get("authorities") or []
+    if isinstance(authorities, str):
+        authorities = [a.strip() for a in authorities.split(",") if a.strip()]
 
-    if isinstance(authorities, list):
-        return [str(a).replace("ROLE_", "", 1) if str(a).startswith("ROLE_") else str(a) for a in authorities]
-    elif isinstance(authorities, str):
-        return [a.strip().replace("ROLE_", "", 1) if a.strip().startswith("ROLE_") else a.strip() for a in authorities.split(",") if a.strip()]
-    return []
+    roles = [str(a)[len("ROLE_"):] for a in authorities if str(a).startswith("ROLE_")]
+    perms = [str(a) for a in authorities if not str(a).startswith("ROLE_")]
+    return roles, perms
 
 
 async def get_current_user(
@@ -139,13 +139,14 @@ async def get_current_user(
     # sub 统一为 username（与 Java/Go 一致）
     username = payload.get("sub", "")
 
+    roles, perms = _split_authorities(payload)
     user_context = UserContext(
         id=int(user_id),
         username=username,
         dept_id=payload.get("deptId"),
         data_scope=payload.get("dataScope"),
-        roles=_extract_roles(payload),
-        permissions=[],
+        roles=roles,
+        permissions=perms,
     )
 
     set_current_user_id(user_context.id)
@@ -198,13 +199,14 @@ async def get_current_user_optional(
     # sub 统一为 username（与 Java/Go 一致）
     username = payload.get("sub", "")
 
+    roles, perms = _split_authorities(payload)
     user_context = UserContext(
         id=int(user_id),
         username=username,
         dept_id=payload.get("deptId"),
         data_scope=payload.get("dataScope"),
-        roles=_extract_roles(payload),
-        permissions=[],
+        roles=roles,
+        permissions=perms,
     )
 
     set_current_user_id(user_context.id)

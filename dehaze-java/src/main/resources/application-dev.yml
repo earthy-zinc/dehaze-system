@@ -323,3 +323,7 @@ kafka:
     topic: dehaze.logs
     # 是否启用日志管道
     enabled: false
+
+# 读取根目录的 .env
+springdotenv:
+  directory: ../
