@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   title: {
-    fontSize: theme.typography.sizes.bodyLarge,
+    fontSize: theme.typography.sizes.large,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.text.primary,
   },
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   primaryActionText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: '#fff',
   },
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     backgroundColor: `${theme.colors.primary}15`,
   },
   secondaryActionText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.primary,
   },

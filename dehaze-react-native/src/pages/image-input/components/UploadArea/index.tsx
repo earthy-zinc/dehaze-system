@@ -17,6 +17,7 @@ import Icon from '@/components/Icon';
 import { theme } from '@/theme';
 import type { SelectedImage } from '@/types/image';
 import { imageInputApi } from '../../services/imageInputApi';
+import { getImageSizeWithFallback } from '../../utils/imageSize';
 
 interface UploadAreaProps {
   onImageSelected: (image: SelectedImage) => void;
@@ -58,15 +59,9 @@ const UploadArea: React.FC<UploadAreaProps> = ({
       let height = asset.height || 0;
 
       if (!width || !height) {
-        try {
-          const size = await imageInputApi.getImageSize(asset.uri);
-          width = size.width;
-          height = size.height;
-        } catch (e) {
-          // 使用默认值
-          width = 1920;
-          height = 1080;
-        }
+        const size = await getImageSizeWithFallback(asset.uri);
+        width = size.width;
+        height = size.height;
       }
 
       const fileName = asset.fileName || `image_${Date.now()}.jpg`;
@@ -208,12 +203,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   subtitle: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.xs,
   },
   hint: {
-    fontSize: theme.typography.sizes.caption,
+    fontSize: theme.typography.sizes.small,
     color: theme.colors.text.tertiary,
   },
   loadingContainer: {
@@ -221,7 +216,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.secondary,
     marginTop: theme.spacing.md,
   },

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { AnnotationFilter } from '../../types/dataset';
 import { useResponsive } from '@/hooks/useResponsive';
+import { theme } from '@/theme';
 
 interface TypeFilterProps {
   selectedType: AnnotationFilter;
@@ -143,9 +144,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 24,
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background.primary,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: theme.colors.border.light,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 90,
@@ -156,9 +157,9 @@ const styles = StyleSheet.create({
     minWidth: 72,
   },
   activeButton: {
-    backgroundColor: '#14b8a6',
-    borderColor: '#14b8a6',
-    shadowColor: '#14b8a6',
+    backgroundColor: theme.colors.secondary,
+    borderColor: theme.colors.secondary,
+    shadowColor: theme.colors.secondary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -167,13 +168,13 @@ const styles = StyleSheet.create({
   filterText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#6b7280',
+    color: theme.colors.text.secondary,
   },
   filterTextCompact: {
     fontSize: 14,
   },
   activeText: {
-    color: '#ffffff',
+    color: theme.colors.text.inverse,
   },
   countText: {
     fontSize: 13,

@@ -545,9 +545,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cancelBtn: {
-    backgroundColor: '#fff2f0',
+    backgroundColor: `${theme.colors.status.error}15`,
     borderWidth: 1,
-    borderColor: '#ffccc7',
+    borderColor: `${theme.colors.status.error}40`,
   },
   cancelBtnText: {
     fontSize: 13,

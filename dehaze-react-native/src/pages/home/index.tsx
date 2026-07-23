@@ -58,12 +58,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     );
   };
 
-  const handleSideBySidePress = handleComparePress;
-  const handleOverlayPress = handleComparePress;
-  const handleMagnifierPress = handleComparePress;
-  const handleFilterPress = handleComparePress;
-  const handleMetricsPress = handleComparePress;
-
   const handleDatasetManagePress = () => {
     navigation.navigate('Dataset');
   };

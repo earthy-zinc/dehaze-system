@@ -35,6 +35,9 @@ import type { RootStackParamList } from '@/routes/types';
 import { MainLayout } from '@/layout';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
+import CompareEmptyState from '@/components/CompareEmptyState';
+import SliderControl from '@/components/SliderControl';
+import { controlBarStyles, controlButtonStyles } from './styles/compareControls';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Filter'>;
@@ -204,14 +207,8 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
   // 按住看原图或无任何调节时不应用滤镜
   const applyFilter = hasFilter && !showOriginal;
 
-  const handleStepChange = (key: keyof FilterParams, delta: number) => {
-    setParams(prev => {
-      const config = PARAM_LIST.find(p => p.key === key);
-      if (!config) return prev;
-      const current = prev[key];
-      const next = Math.max(config.min, Math.min(config.max, current + delta * config.step));
-      return { ...prev, [key]: next };
-    });
+  const handleValueChange = (key: keyof FilterParams, value: number) => {
+    setParams(prev => ({ ...prev, [key]: value }));
   };
 
   const handleReset = () => setParams({ ...DEFAULT_PARAMS });
@@ -224,17 +221,7 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
   if (!originalUrl || !processedUrl) {
     return (
       <MainLayout title="滤镜调节" showBack>
-        <View style={styles.emptyContainer}>
-          <Icon name="image" size={48} color={theme.colors.text.tertiary} />
-          <Text style={styles.emptyTitle}>请先完成去雾处理</Text>
-          <Text style={styles.emptyDesc}>对比功能需要先处理图片</Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={() => navigation.navigate('ImageInput')}
-          >
-            <Text style={styles.emptyButtonText}>去选择图片</Text>
-          </TouchableOpacity>
-        </View>
+        <CompareEmptyState onPress={() => navigation.navigate('ImageInput')} />
       </MainLayout>
     );
   }
@@ -248,22 +235,22 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
       />
 
       {/* 控制栏 */}
-      <View style={styles.controlBar}>
+      <View style={controlBarStyles.bar}>
         <TouchableOpacity
-          style={[styles.controlButton, showOriginal && styles.controlButtonActive]}
+          style={[controlButtonStyles.button, showOriginal && controlButtonStyles.buttonActive]}
           onPressIn={() => setShowOriginal(true)}
           onPressOut={() => setShowOriginal(false)}
         >
           <Icon name="image" size={14} color={showOriginal ? '#fff' : theme.colors.text.secondary} />
-          <Text style={[styles.controlText, showOriginal && styles.controlTextActive]}>按住看原图</Text>
+          <Text style={[controlButtonStyles.text, showOriginal && controlButtonStyles.textActive]}>按住看原图</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.controlButton, isDefault && styles.controlButtonDisabled]}
+          style={[controlButtonStyles.button, isDefault && controlButtonStyles.buttonDisabled]}
           onPress={handleReset}
           disabled={isDefault}
         >
           <Icon name="refresh" size={14} color={theme.colors.text.secondary} />
-          <Text style={styles.controlText}>重置</Text>
+          <Text style={controlButtonStyles.text}>重置</Text>
         </TouchableOpacity>
       </View>
 
@@ -317,31 +304,19 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
           <Text style={styles.sectionTitle}>参数调节</Text>
           {PARAM_LIST.map(config => {
             const value = params[config.key];
-            const fillPercent = ((value - config.min) / (config.max - config.min)) * 100;
             return (
               <View key={config.key} style={styles.paramItem}>
                 <View style={styles.paramHeader}>
                   <Text style={styles.paramLabel}>{config.label}</Text>
                   <Text style={styles.paramValue}>{value}</Text>
                 </View>
-                <View style={styles.sliderRow}>
-                  <TouchableOpacity
-                    style={styles.stepButton}
-                    onPress={() => handleStepChange(config.key, -1)}
-                  >
-                    <Text style={styles.stepButtonText}>-</Text>
-                  </TouchableOpacity>
-                  <View style={styles.sliderTrack}>
-                    <View style={[styles.sliderFill, { width: `${fillPercent}%` }]} />
-                    <View style={[styles.sliderThumb, { left: `${fillPercent}%` }]} />
-                  </View>
-                  <TouchableOpacity
-                    style={styles.stepButton}
-                    onPress={() => handleStepChange(config.key, 1)}
-                  >
-                    <Text style={styles.stepButtonText}>+</Text>
-                  </TouchableOpacity>
-                </View>
+                <SliderControl
+                  value={value}
+                  min={config.min}
+                  max={config.max}
+                  step={config.step}
+                  onChange={v => handleValueChange(config.key, v)}
+                />
               </View>
             );
           })}
@@ -354,37 +329,6 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
-  },
-  controlBar: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  controlButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.layout.borderRadius.full,
-    backgroundColor: theme.colors.background.tertiary,
-  },
-  controlButtonActive: {
-    backgroundColor: theme.colors.primary,
-  },
-  controlButtonDisabled: {
-    opacity: 0.4,
-  },
-  controlText: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.secondary,
-  },
-  controlTextActive: {
-    color: '#fff',
   },
   previewContainer: {
     margin: theme.spacing.md,
@@ -422,7 +366,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.layout.borderRadius.lg,
   },
   sectionTitle: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
@@ -463,82 +407,9 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
   },
   paramValue: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.primary,
-  },
-  sliderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  stepButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.colors.background.tertiary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stepButtonText: {
-    fontSize: 18,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.secondary,
-  },
-  sliderTrack: {
-    flex: 1,
-    height: 32,
-    backgroundColor: theme.colors.background.tertiary,
-    borderRadius: theme.layout.borderRadius.full,
-    position: 'relative',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  sliderFill: {
-    position: 'absolute',
-    height: '100%',
-    backgroundColor: `${theme.colors.primary}40`,
-    borderRadius: theme.layout.borderRadius.full,
-  },
-  sliderThumb: {
-    position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: theme.colors.primary,
-    marginLeft: -10,
-    top: '50%',
-    marginTop: -10,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: theme.typography.sizes.bodyLarge,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.xs,
-  },
-  emptyDesc: {
-    fontSize: theme.typography.sizes.body,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.lg,
-    textAlign: 'center',
-  },
-  emptyButton: {
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.layout.borderRadius.md,
-  },
-  emptyButtonText: {
-    color: '#fff',
-    fontSize: theme.typography.sizes.body,
-    fontWeight: theme.typography.weights.semibold,
   },
 });
 

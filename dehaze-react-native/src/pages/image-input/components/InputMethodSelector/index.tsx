@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     backgroundColor: `${theme.colors.primary}10`,
   },
   methodTitle: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
     marginTop: theme.spacing.sm,
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
   },
   methodSubtitle: {
-    fontSize: theme.typography.sizes.caption,
+    fontSize: theme.typography.sizes.small,
     color: theme.colors.text.tertiary,
     marginTop: 2,
   },

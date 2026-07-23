@@ -2,6 +2,7 @@
  * 任务状态信息（标签 + 颜色）
  */
 import type { TaskVO, TaskStatus } from 'dehaze-sdk-js';
+import { theme } from '@/theme';
 
 /** 任务（SDK TaskVO 别名） */
 export type Task = TaskVO;
@@ -21,11 +22,11 @@ export const TASK_STATUS_MAP: Record<
   TaskStatus,
   { label: string; color: string; bgColor: string }
 > = {
-  PENDING: { label: '待执行', color: '#1890ff', bgColor: '#e6f7ff' },
-  PROCESSING: { label: '执行中', color: '#1890ff', bgColor: '#e6f7ff' },
-  COMPLETED: { label: '已完成', color: '#52c41a', bgColor: '#f6ffed' },
-  FAILED: { label: '失败', color: '#ff4d4f', bgColor: '#fff2f0' },
-  CANCELLED: { label: '已取消', color: '#8c8c8c', bgColor: '#fafafa' },
+  PENDING: { label: '待执行', color: theme.colors.status.info, bgColor: `${theme.colors.status.info}15` },
+  PROCESSING: { label: '执行中', color: theme.colors.status.info, bgColor: `${theme.colors.status.info}15` },
+  COMPLETED: { label: '已完成', color: theme.colors.status.success, bgColor: `${theme.colors.status.success}15` },
+  FAILED: { label: '失败', color: theme.colors.status.error, bgColor: `${theme.colors.status.error}15` },
+  CANCELLED: { label: '已取消', color: theme.colors.text.secondary, bgColor: `${theme.colors.text.secondary}15` },
 };
 
 export const TASK_TYPE_MAP: Record<string, string> = {

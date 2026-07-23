@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.sm,
   },
   name: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,

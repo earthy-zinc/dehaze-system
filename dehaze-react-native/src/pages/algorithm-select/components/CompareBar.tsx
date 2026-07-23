@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   text: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.secondary,
   },
   right: {
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   clearText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.secondary,
   },
   compareButton: {
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.text.muted,
   },
   compareText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: '#fff',
   },

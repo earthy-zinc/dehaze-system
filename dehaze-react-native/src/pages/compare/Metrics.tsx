@@ -24,6 +24,7 @@ import Icon from '@/components/Icon';
 import { ModelAPI } from 'dehaze-sdk-js';
 import type { EvaluationResultVO } from 'dehaze-sdk-js';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
+import CompareEmptyState from '@/components/CompareEmptyState';
 import ImageLoader from '@/components/ImageLoader';
 import type { EvaluationMetrics } from '@/types/evaluation';
 
@@ -94,17 +95,7 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
   if (!originalUrl || !processedUrl) {
     return (
       <MainLayout title="指标评估" showBack>
-        <View style={styles.emptyContainer}>
-          <Icon name="image" size={48} color={theme.colors.text.tertiary} />
-          <Text style={styles.emptyTitle}>请先完成去雾处理</Text>
-          <Text style={styles.emptyDesc}>对比功能需要先处理图片</Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={() => navigation.navigate('ImageInput')}
-          >
-            <Text style={styles.emptyButtonText}>去选择图片</Text>
-          </TouchableOpacity>
-        </View>
+        <CompareEmptyState onPress={() => navigation.navigate('ImageInput')} />
       </MainLayout>
     );
   }
@@ -372,7 +363,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xs,
   },
   statusTitle: {
-    fontSize: theme.typography.sizes.bodyLarge,
+    fontSize: theme.typography.sizes.large,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
   },
@@ -418,7 +409,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   evaluateButtonText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: '#fff',
   },
@@ -431,7 +422,7 @@ const styles = StyleSheet.create({
     ...theme.layout.shadows.sm,
   },
   sectionTitle: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.md,
@@ -459,7 +450,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
   },
   metricValue: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.primary,
   },
@@ -509,36 +500,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.tiny,
     color: '#fff',
     fontWeight: theme.typography.weights.medium,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: theme.typography.sizes.bodyLarge,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.xs,
-  },
-  emptyDesc: {
-    fontSize: theme.typography.sizes.body,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.lg,
-    textAlign: 'center',
-  },
-  emptyButton: {
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.layout.borderRadius.md,
-  },
-  emptyButtonText: {
-    color: '#fff',
-    fontSize: theme.typography.sizes.body,
-    fontWeight: theme.typography.weights.semibold,
   },
 });
 

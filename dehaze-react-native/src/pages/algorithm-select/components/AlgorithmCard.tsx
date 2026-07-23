@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   name: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
   },
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   primaryActionText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: '#fff',
   },

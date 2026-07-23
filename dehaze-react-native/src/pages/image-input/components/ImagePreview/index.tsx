@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   sampleBadgeText: {
-    fontSize: theme.typography.sizes.caption,
+    fontSize: theme.typography.sizes.small,
     color: '#fff',
     fontWeight: theme.typography.weights.medium,
   },
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.secondary,
     flex: 1,
   },
@@ -224,12 +224,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sampleInfoLabel: {
-    fontSize: theme.typography.sizes.caption,
+    fontSize: theme.typography.sizes.small,
     color: theme.colors.text.tertiary,
     marginBottom: 4,
   },
   sampleInfoValue: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text.primary,
   },

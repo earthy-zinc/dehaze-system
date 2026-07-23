@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   tabText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text.secondary,
   },

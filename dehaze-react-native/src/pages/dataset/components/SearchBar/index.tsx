@@ -6,6 +6,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import Icon from '@/components/Icon';
+import { theme } from '@/theme';
 
 interface SearchBarProps {
   value: string;
@@ -39,15 +40,15 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
   return (
     <View style={styles.container}>
-      <Icon name="search-plus" size={20} color="#9ca3af" style={styles.searchIcon} />
+      <Icon name="search-plus" size={20} color={theme.colors.text.tertiary} style={styles.searchIcon} />
       <TextInput
         style={styles.input}
         value={value}
         onChangeText={handleTextChange}
         onFocus={handleFocus}
         placeholder={placeholder}
-        placeholderTextColor="#9ca3af"
-        selectionColor="#14b8a6"
+        placeholderTextColor={theme.colors.text.tertiary}
+        selectionColor={theme.colors.secondary}
       />
       {showClear && (
         <TouchableOpacity
@@ -55,7 +56,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           onPress={handleClear}
           activeOpacity={0.8}
         >
-          <Icon name="times" size={16} color="#9ca3af" />
+          <Icon name="times" size={16} color={theme.colors.text.tertiary} />
         </TouchableOpacity>
       )}
     </View>
@@ -65,10 +66,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'relative',
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background.primary,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: theme.colors.border.light,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
     paddingLeft: 40,
     paddingRight: 40,
     fontSize: 16,
-    color: '#1f2937',
+    color: theme.colors.text.primary,
     height: 44,
   },
   clearButton: {
@@ -94,7 +95,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: theme.colors.background.tertiary,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -171,13 +171,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   filename: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text.primary,
     marginBottom: 2,
   },
   time: {
-    fontSize: theme.typography.sizes.caption,
+    fontSize: theme.typography.sizes.small,
     color: theme.colors.text.tertiary,
     marginBottom: 4,
   },

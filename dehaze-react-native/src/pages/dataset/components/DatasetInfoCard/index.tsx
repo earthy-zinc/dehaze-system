@@ -10,6 +10,7 @@ import Card from '@/components/Card';
 import Badge from '@/components/Badge';
 import { Dataset } from '../../types/dataset';
 import { useResponsive } from '@/hooks/useResponsive';
+import { theme } from '@/theme';
 
 interface DatasetInfoCardProps {
   dataset: Dataset;
@@ -106,7 +107,7 @@ const DatasetInfoCard: React.FC<DatasetInfoCardProps> = ({ dataset }) => {
 
 const styles = StyleSheet.create({
   gradientContainer: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: theme.colors.secondary,
     borderRadius: 12,
     padding: 20,
     margin: -20,
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontWeight: '700',
-    color: '#ffffff',
+    color: theme.colors.text.inverse,
     marginBottom: 8,
   },
   description: {
@@ -150,7 +151,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#ffffff',
+    color: theme.colors.text.inverse,
     marginBottom: 4,
   },
   statValueCompact: {

@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   headerText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.secondary,
   },
   clearButton: {
@@ -205,14 +205,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   clearButtonText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.status.error,
   },
   sectionHeader: {
     paddingVertical: theme.spacing.sm,
   },
   sectionTitle: {
-    fontSize: theme.typography.sizes.caption,
+    fontSize: theme.typography.sizes.small,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.tertiary,
     textTransform: 'uppercase',

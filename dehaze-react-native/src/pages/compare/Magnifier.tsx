@@ -21,6 +21,8 @@ import { MainLayout } from '@/layout';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
+import CompareEmptyState from '@/components/CompareEmptyState';
+import { controlBarStyles, controlButtonStyles } from './styles/compareControls';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Magnifier'>;
@@ -76,17 +78,7 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
   if (!originalUrl || !processedUrl) {
     return (
       <MainLayout title="放大镜对比" showBack>
-        <View style={styles.emptyContainer}>
-          <Icon name="image" size={48} color={theme.colors.text.tertiary} />
-          <Text style={styles.emptyTitle}>请先完成去雾处理</Text>
-          <Text style={styles.emptyDesc}>对比功能需要先处理图片</Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={() => navigation.navigate('ImageInput')}
-          >
-            <Text style={styles.emptyButtonText}>去选择图片</Text>
-          </TouchableOpacity>
-        </View>
+        <CompareEmptyState onPress={() => navigation.navigate('ImageInput')} />
       </MainLayout>
     );
   }
@@ -100,14 +92,14 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
       />
 
       {/* 控制栏 */}
-      <View style={styles.controlBar}>
-        <TouchableOpacity style={styles.controlButton} onPress={cycleZoom}>
+      <View style={controlBarStyles.bar}>
+        <TouchableOpacity style={controlButtonStyles.button} onPress={cycleZoom}>
           <Icon name="search-plus" size={14} color={theme.colors.primary} />
-          <Text style={styles.controlText}>{zoom}x 放大</Text>
+          <Text style={controlButtonStyles.text}>{zoom}x 放大</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.controlButton} onPress={cycleDisplayMode}>
+        <TouchableOpacity style={controlButtonStyles.button} onPress={cycleDisplayMode}>
           <Icon name="refresh" size={14} color={theme.colors.text.secondary} />
-          <Text style={styles.controlText}>
+          <Text style={controlButtonStyles.text}>
             {displayMode === 'original' ? '仅原图' : displayMode === 'processed' ? '仅去雾后' : '对比模式'}
           </Text>
         </TouchableOpacity>
@@ -176,28 +168,6 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  controlBar: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  controlButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.layout.borderRadius.full,
-    backgroundColor: theme.colors.background.tertiary,
-  },
-  controlText: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.secondary,
-  },
   imageContainer: {
     flex: 1,
     margin: theme.spacing.md,
@@ -251,36 +221,6 @@ const styles = StyleSheet.create({
   tipText: {
     fontSize: theme.typography.sizes.tiny,
     color: theme.colors.text.tertiary,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: theme.typography.sizes.bodyLarge,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.xs,
-  },
-  emptyDesc: {
-    fontSize: theme.typography.sizes.body,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.lg,
-    textAlign: 'center',
-  },
-  emptyButton: {
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.layout.borderRadius.md,
-  },
-  emptyButtonText: {
-    color: '#fff',
-    fontSize: theme.typography.sizes.body,
-    fontWeight: theme.typography.weights.semibold,
   },
 });
 

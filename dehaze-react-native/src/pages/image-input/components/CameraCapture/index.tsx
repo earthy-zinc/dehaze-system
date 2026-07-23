@@ -16,6 +16,7 @@ import Button from '@/components/Button';
 import { theme } from '@/theme';
 import type { SelectedImage } from '@/types/image';
 import { imageInputApi } from '../../services/imageInputApi';
+import { getImageSizeWithFallback } from '../../utils/imageSize';
 
 interface CameraCaptureProps {
   onCapture: (image: SelectedImage) => void;
@@ -74,14 +75,9 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       let height = asset.height || 0;
 
       if (!width || !height) {
-        try {
-          const size = await imageInputApi.getImageSize(asset.uri);
-          width = size.width;
-          height = size.height;
-        } catch (e) {
-          width = 1920;
-          height = 1080;
-        }
+        const size = await getImageSizeWithFallback(asset.uri);
+        width = size.width;
+        height = size.height;
       }
 
       const fileName = asset.fileName || `photo_${Date.now()}.jpg`;
@@ -177,7 +173,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   description: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: theme.spacing.xl,
@@ -198,7 +194,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   tipText: {
-    fontSize: theme.typography.sizes.caption,
+    fontSize: theme.typography.sizes.small,
     color: theme.colors.text.secondary,
   },
 });

@@ -106,7 +106,7 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
 
   // 响应式字体大小
   const titleFontSize = isMobile ? theme.typography.sizes.h3 : theme.typography.sizes.h1 * fontScale;
-  const subtitleFontSize = isMobile ? theme.typography.sizes.body : theme.typography.sizes.h6 * fontScale;
+  const subtitleFontSize = isMobile ? theme.typography.sizes.medium : theme.typography.sizes.h6 * fontScale;
 
   return (
     <View style={styles.container}>

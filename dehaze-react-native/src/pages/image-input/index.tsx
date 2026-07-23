@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     letterSpacing: theme.typography.letterSpacing.tight,
   },
   titleSubtitle: {
-    fontSize: theme.typography.sizes.caption,
+    fontSize: theme.typography.sizes.small,
     color: theme.colors.text.secondary,
     marginTop: 2,
   },

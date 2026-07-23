@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     color: theme.colors.status.success,
   },
   divider: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.muted,
   },
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.bodySmall,
   },
   labelTextMobile: {
-    fontSize: theme.typography.sizes.caption,
+    fontSize: theme.typography.sizes.small,
   },
 });
 

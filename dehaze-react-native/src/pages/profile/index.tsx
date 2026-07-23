@@ -46,6 +46,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const [recentHistory, setRecentHistory] = useState<HistoryRecord[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   /** 加载最近处理记录 */
   const loadRecentHistory = useCallback(async () => {
@@ -60,8 +61,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   // 首次进入：若用户信息缺失则拉取，同时加载历史
   useEffect(() => {
     if (!userInfo) {
-      // refreshUserInfo 失败时不阻塞页面渲染，用户可下拉刷新重试
-      refreshUserInfo().catch(() => { /* 静默忽略：见上方注释 */ });
+      refreshUserInfo().catch(() => setLoadError(true));
     }
     loadRecentHistory();
   }, [userInfo, refreshUserInfo, loadRecentHistory]);
@@ -69,7 +69,12 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   /** 下拉刷新 */
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.allSettled([refreshUserInfo(), loadRecentHistory()]);
+    const results = await Promise.allSettled([refreshUserInfo(), loadRecentHistory()]);
+    if (results[0].status === 'fulfilled') {
+      setLoadError(false);
+    } else {
+      setLoadError(true);
+    }
     setRefreshing(false);
   }, [refreshUserInfo, loadRecentHistory]);
 
@@ -115,6 +120,14 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           />
         }
       >
+        {/* 加载失败提示 */}
+        {loadError && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle-outline" size={16} color={theme.colors.status.error} />
+            <Text style={styles.errorBannerText}>加载用户信息失败，请下拉刷新重试</Text>
+          </View>
+        )}
+
         {/* 用户信息 Hero */}
         <LinearGradient
           colors={[theme.colors.primary, '#6366f1']}
@@ -316,6 +329,23 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: theme.spacing.xxxl,
   },
+  // 加载失败提示
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.layout.borderRadius.md,
+    backgroundColor: `${theme.colors.status.error}15`,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: theme.typography.sizes.small,
+    color: theme.colors.status.error,
+  },
   // Hero
   hero: {
     alignItems: 'center',
@@ -391,7 +421,7 @@ const styles = StyleSheet.create({
   },
   sectionTitleText: {
     flex: 1,
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.text.primary,
     letterSpacing: 0.3,
@@ -530,7 +560,7 @@ const styles = StyleSheet.create({
     ...theme.layout.shadows.sm,
   },
   logoutText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.status.error,
   },

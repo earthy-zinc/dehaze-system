@@ -6,7 +6,7 @@
  * - 通用参数滑块（去雾强度/饱和度/对比度/锐化）
  * - 重置为默认值
  */
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
+import SliderControl from '@/components/SliderControl';
 import type { CommonAlgorithmParams } from '@/types/processing';
 import {
   PARAM_SCHEMAS,
@@ -31,9 +32,6 @@ interface ParamsPanelProps {
 }
 
 const ParamsPanel: React.FC<ParamsPanelProps> = ({ params, onChange, disabled = false }) => {
-  // 滑块轨道真实宽度（通过 onLayout 测量），所有滑块共享同一行 flex 布局故宽度一致
-  const [trackWidth, setTrackWidth] = useState(0);
-
   const handlePreset = (presetParams: CommonAlgorithmParams) => {
     if (disabled) return;
     onChange({ ...presetParams });
@@ -44,19 +42,7 @@ const ParamsPanel: React.FC<ParamsPanelProps> = ({ params, onChange, disabled = 
     onChange({ ...DEFAULT_PARAMS });
   };
 
-  const handleStepChange = (key: keyof CommonAlgorithmParams, delta: number) => {
-    if (disabled) return;
-    const schema = PARAM_SCHEMAS.find(s => s.key === key);
-    if (!schema) return;
-    const current = params[key] ?? schema.default;
-    const next = Math.max(
-      schema.min ?? 0,
-      Math.min(schema.max ?? 100, current + delta * (schema.step ?? 1)),
-    );
-    onChange({ ...params, [key]: next });
-  };
-
-  const handleSliderChange = (key: keyof CommonAlgorithmParams, value: number) => {
+  const handleValueChange = (key: keyof CommonAlgorithmParams, value: number) => {
     if (disabled) return;
     onChange({ ...params, [key]: value });
   };
@@ -109,7 +95,6 @@ const ParamsPanel: React.FC<ParamsPanelProps> = ({ params, onChange, disabled = 
         <Text style={styles.sectionTitle}>参数调节</Text>
         {PARAM_SCHEMAS.map(schema => {
           const value = params[schema.key] ?? schema.default;
-          const fillPercent = ((value - (schema.min ?? 0)) / ((schema.max ?? 100) - (schema.min ?? 0))) * 100;
           return (
             <View key={schema.key} style={styles.paramItem}>
               <View style={styles.paramHeader}>
@@ -124,52 +109,14 @@ const ParamsPanel: React.FC<ParamsPanelProps> = ({ params, onChange, disabled = 
                 <Text style={styles.paramValue}>{value}</Text>
               </View>
 
-              {/* 自定义滑块（进度条 + 步进按钮） */}
-              <View style={styles.sliderRow}>
-                <TouchableOpacity
-                  onPress={() => handleStepChange(schema.key, -1)}
-                  disabled={disabled}
-                  style={[styles.stepButton, disabled && styles.disabled]}
-                >
-                  <Text style={styles.stepButtonText}>-</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.sliderTrack, disabled && styles.disabled]}
-                  onLayout={e => setTrackWidth(e.nativeEvent.layout.width)}
-                  onPress={e => {
-                    if (disabled || trackWidth === 0) return;
-                    const layout = e.nativeEvent.locationX;
-                    const percent = Math.max(0, Math.min(1, layout / trackWidth));
-                    const next = Math.round(
-                      (schema.min ?? 0) + percent * ((schema.max ?? 100) - (schema.min ?? 0)),
-                    );
-                    handleSliderChange(schema.key, next);
-                  }}
-                  disabled={disabled}
-                >
-                  <View
-                    style={[
-                      styles.sliderFill,
-                      { width: `${fillPercent}%` },
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.sliderThumb,
-                      { left: `${fillPercent}%` },
-                    ]}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => handleStepChange(schema.key, 1)}
-                  disabled={disabled}
-                  style={[styles.stepButton, disabled && styles.disabled]}
-                >
-                  <Text style={styles.stepButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
+              <SliderControl
+                value={value}
+                min={schema.min ?? 0}
+                max={schema.max ?? 100}
+                step={schema.step ?? 1}
+                onChange={v => handleValueChange(schema.key, v)}
+                disabled={disabled}
+              />
 
               <View style={styles.paramRangeRow}>
                 <Text style={styles.paramRange}>{schema.min}</Text>
@@ -193,7 +140,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   sectionTitle: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
@@ -260,54 +207,11 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
   },
   paramValue: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.primary,
     minWidth: 40,
     textAlign: 'right',
-  },
-  sliderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  stepButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.colors.background.tertiary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stepButtonText: {
-    fontSize: 18,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.secondary,
-  },
-  sliderTrack: {
-    flex: 1,
-    height: 32,
-    backgroundColor: theme.colors.background.tertiary,
-    borderRadius: theme.layout.borderRadius.full,
-    position: 'relative',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  sliderFill: {
-    position: 'absolute',
-    height: '100%',
-    backgroundColor: `${theme.colors.primary}40`,
-    borderRadius: theme.layout.borderRadius.full,
-  },
-  sliderThumb: {
-    position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: theme.colors.primary,
-    marginLeft: -10,
-    top: '50%',
-    marginTop: -10,
   },
   paramRangeRow: {
     flexDirection: 'row',

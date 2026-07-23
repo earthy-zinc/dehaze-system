@@ -15,6 +15,7 @@ import EmptyState from '@/components/EmptyState';
 import Icon from '@/components/Icon';
 import { DatasetTreeNode, Dataset } from '../../types/dataset';
 import { datasetApi } from '../../services/datasetApi';
+import { theme } from '@/theme';
 
 interface DatasetListSectionProps {
   onDatasetPress: (dataset: DatasetTreeNode) => void;
@@ -218,12 +219,12 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               {isLoadingChildren ? (
-                <ActivityIndicator size="small" color="#14b8a6" />
+                <ActivityIndicator size="small" color={theme.colors.secondary} />
               ) : (
                 <Icon
                   name={isExpanded ? 'chevron-down' : 'chevron-right'}
                   size={16}
-                  color="#6b7280"
+                  color={theme.colors.text.secondary}
                 />
               )}
             </TouchableOpacity>
@@ -237,7 +238,7 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
             onPress={() => onDatasetPress(item)}
             activeOpacity={0.7}
           >
-            <Icon name="database" size={18} color="#14b8a6" />
+            <Icon name="database" size={18} color={theme.colors.secondary} />
             <View style={styles.nodeTextWrap}>
               <Text style={styles.nodeName} numberOfLines={1}>
                 {item.name}
@@ -248,7 +249,7 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
                 </Text>
               )}
             </View>
-            <Icon name="chevron-right" size={14} color="#d1d5db" />
+            <Icon name="chevron-right" size={14} color={theme.colors.border.light} />
           </TouchableOpacity>
         </View>
       );
@@ -285,8 +286,8 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#14b8a6"
-            colors={['#14b8a6']}
+            tintColor={theme.colors.secondary}
+            colors={[theme.colors.secondary]}
           />
         }
         ListEmptyComponent={
@@ -303,7 +304,7 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
         ListFooterComponent={
           isLoading ? (
             <View style={styles.loadingContainer}>
-              <LoadingSpinner size="large" color="#14b8a6" />
+              <LoadingSpinner size="large" color={theme.colors.secondary} />
             </View>
           ) : null
         }
@@ -315,15 +316,15 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: theme.colors.background.secondary,
   },
   searchContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background.primary,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: theme.colors.background.tertiary,
   },
   listContainer: {
     paddingVertical: 8,
@@ -334,8 +335,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingRight: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-    backgroundColor: '#ffffff',
+    borderBottomColor: theme.colors.background.tertiary,
+    backgroundColor: theme.colors.background.primary,
   },
   expandBtn: {
     width: 28,
@@ -363,12 +364,12 @@ const styles = StyleSheet.create({
   nodeName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1f2937',
+    color: theme.colors.text.primary,
   },
   nodeType: {
     fontSize: 12,
-    color: '#9ca3af',
-    backgroundColor: '#f3f4f6',
+    color: theme.colors.text.tertiary,
+    backgroundColor: theme.colors.background.tertiary,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,

@@ -204,11 +204,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   loadingText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.secondary,
   },
   errorText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.status.error,
   },
   metricRow: {
@@ -219,19 +219,19 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     width: 80,
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text.secondary,
   },
   metricValue: {
     flex: 1,
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.primary,
     textAlign: 'center',
   },
   algorithmName: {
     flex: 1,
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.primary,
     textAlign: 'center',
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   useButtonText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: '#fff',
   },

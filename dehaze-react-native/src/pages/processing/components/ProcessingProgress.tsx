@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   stageLabel: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
   },

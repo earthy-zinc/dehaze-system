@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   heroSubtitle: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: 'rgba(255,255,255,0.85)',
     marginBottom: theme.spacing.sm,
     fontWeight: theme.typography.weights.medium,
@@ -833,7 +833,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionTitleText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.text.primary,
     letterSpacing: 0.3,
@@ -950,7 +950,7 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.weights.medium,
   },
   metricValue: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.bold,
   },
   metricSuffix: {
@@ -1076,7 +1076,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   actionPrimaryText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.bold,
     color: '#fff',
   },

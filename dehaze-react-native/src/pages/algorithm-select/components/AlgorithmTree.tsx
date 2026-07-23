@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     flex: 1,
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
   },
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   emptyText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.tertiary,
   },
 });

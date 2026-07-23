@@ -17,7 +17,7 @@ const FinalCTASection: React.FC<FinalCTASectionProps> = ({ onStartPress }) => {
 
   // 响应式字体大小
   const titleFontSize = isMobile ? theme.typography.sizes.h3 : theme.typography.sizes.h2 * fontScale;
-  const subtitleFontSize = isMobile ? theme.typography.sizes.body : theme.typography.sizes.bodyLarge * fontScale;
+  const subtitleFontSize = isMobile ? theme.typography.sizes.medium : theme.typography.sizes.large * fontScale;
 
   return (
     <View style={[

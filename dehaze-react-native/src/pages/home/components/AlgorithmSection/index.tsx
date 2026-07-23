@@ -50,7 +50,7 @@ const AlgorithmSection: React.FC<AlgorithmSectionProps> = ({
 
   // 响应式字体大小
   const titleFontSize = isMobile ? theme.typography.sizes.h3 : theme.typography.sizes.h1 * fontScale;
-  const subtitleFontSize = isMobile ? theme.typography.sizes.body : theme.typography.sizes.h6 * fontScale;
+  const subtitleFontSize = isMobile ? theme.typography.sizes.medium : theme.typography.sizes.h6 * fontScale;
 
   // 响应式图片高度
   const imageHeight = isMobile ? 200 : isTablet ? 280 : 320;
@@ -174,9 +174,9 @@ const styles = StyleSheet.create({
   },
   featureText: {
     flex: 1,
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: 'rgba(255, 255, 255, 0.95)',
-    lineHeight: theme.typography.sizes.body * theme.typography.lineHeights.body,
+    lineHeight: theme.typography.sizes.medium * theme.typography.lineHeights.body,
   },
   learnMoreButton: {
     alignSelf: 'flex-start',

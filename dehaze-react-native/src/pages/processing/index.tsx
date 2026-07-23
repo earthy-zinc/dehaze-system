@@ -420,12 +420,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   emptyTitle: {
-    fontSize: theme.typography.sizes.bodyLarge,
+    fontSize: theme.typography.sizes.large,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
   },
   emptyDesc: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.secondary,
   },
   emptyButton: {
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   emptyButtonText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: '#fff',
   },
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   infoTitle: {
-    fontSize: theme.typography.sizes.bodyLarge,
+    fontSize: theme.typography.sizes.large,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
   },
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   collapseHeaderText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text.primary,
   },
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
     ...theme.layout.shadows.sm,
   },
   startButtonText: {
-    fontSize: theme.typography.sizes.bodyLarge,
+    fontSize: theme.typography.sizes.large,
     fontWeight: theme.typography.weights.bold,
     color: '#fff',
   },
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.status.error,
   },
   cancelButtonText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.status.error,
   },

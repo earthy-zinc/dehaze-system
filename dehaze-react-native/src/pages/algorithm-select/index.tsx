@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     flex: 1,
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.primary,
     fontWeight: theme.typography.weights.medium,
   },
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     ...theme.layout.shadows.sm,
   },
   tabText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text.secondary,
   },
@@ -623,11 +623,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   loadingText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.secondary,
   },
   emptyText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text.secondary,
   },
@@ -648,12 +648,12 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   retryButtonText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: '#fff',
   },
   sectionTitle: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
@@ -671,7 +671,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     color: theme.colors.text.primary,
     padding: 0,
   },

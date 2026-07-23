@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   description: {
-    fontSize: theme.typography.sizes.caption,
+    fontSize: theme.typography.sizes.small,
     color: 'rgba(255, 255, 255, 0.9)',
   },
   buttonContainer: {
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   buttonText: {
-    fontSize: theme.typography.sizes.body,
+    fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.primary,
   },
