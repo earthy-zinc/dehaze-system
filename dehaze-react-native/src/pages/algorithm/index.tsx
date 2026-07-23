@@ -24,10 +24,13 @@ import {
   LayoutChangeEvent,
   Alert,
   Share,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import type { IoniconName } from '@/components/Icon';
 
 import type { RootStackParamList } from '@/routes/types';
 import { MainLayout } from '@/layout';
@@ -109,15 +112,15 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
       const info = await AlgorithmAPI.getAlgorithmInfoById(algorithmId);
       setAlgorithm(info);
       // 并行加载监控数据与版本历史（失败不阻塞页面）
-      Promise.allSettled([
+      const [monRes, verRes] = await Promise.allSettled([
         AlgorithmAPI.getMonitorData(algorithmId),
         AlgorithmAPI.getVersions(algorithmId),
-      ]).then(([monRes, verRes]) => {
-        if (monRes.status === 'fulfilled') setMonitor(monRes.value);
-        if (verRes.status === 'fulfilled') setVersions(verRes.value || []);
-      });
-    } catch (e: any) {
-      setError(e?.message || '加载算法详情失败');
+      ]);
+      if (monRes.status === 'fulfilled') setMonitor(monRes.value);
+      if (verRes.status === 'fulfilled') setVersions(verRes.value || []);
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setError(err?.message || '加载算法详情失败');
     } finally {
       setLoading(false);
     }
@@ -158,7 +161,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
 
   /** 滚动时更新激活章节 */
   const handleScroll = useCallback(
-    (event: any) => {
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = event.nativeEvent.contentOffset.y + 160;
       let current = activeSection;
       for (const section of SECTIONS) {
@@ -602,7 +605,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
 const SectionTitle: React.FC<{ icon: string; title: string }> = ({ icon, title }) => (
   <View style={styles.sectionTitleRow}>
     <View style={styles.sectionTitleIcon}>
-      <Ionicons name={icon as any} size={16} color={theme.colors.primary} />
+      <Ionicons name={icon as IoniconName} size={16} color={theme.colors.primary} />
     </View>
     <Text style={styles.sectionTitleText}>{title}</Text>
   </View>

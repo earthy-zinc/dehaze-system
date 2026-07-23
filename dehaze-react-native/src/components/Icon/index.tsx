@@ -2,6 +2,9 @@ import React from 'react';
 import { View, StyleSheet, TextStyle } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
+/** Ionicons 图标名称类型，供直接使用 Ionicons 组件的场景做类型约束 */
+export type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
 interface IconProps {
   name: string;
   size?: number;

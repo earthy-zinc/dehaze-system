@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { launchImageLibrary, ImagePickerResponse } from 'react-native-image-picker';
+import { launchImageLibrary, ImagePickerResponse, Asset } from 'react-native-image-picker';
 import Icon from '@/components/Icon';
 import { theme } from '@/theme';
 import type { SelectedImage } from '@/types/image';
@@ -50,7 +50,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
     }).start();
   };
 
-  const processImage = useCallback(async (asset: any) => {
+  const processImage = useCallback(async (asset: Asset & { uri: string }) => {
     setUploading(true);
     try {
       // 获取图片尺寸
@@ -92,7 +92,6 @@ const UploadArea: React.FC<UploadAreaProps> = ({
 
       onImageSelected(selectedImage);
     } catch (error) {
-      console.warn('Upload image error:', error);
       Alert.alert('上传失败', error instanceof Error ? error.message : '图片上传失败，请重试');
     } finally {
       setUploading(false);
@@ -120,7 +119,8 @@ const UploadArea: React.FC<UploadAreaProps> = ({
       }
 
       const asset = result.assets?.[0];
-      if (!asset || !asset.uri) {
+      const uri = asset?.uri;
+      if (!asset || !uri) {
         Alert.alert('错误', '无法获取图片信息');
         return;
       }
@@ -136,9 +136,8 @@ const UploadArea: React.FC<UploadAreaProps> = ({
         return;
       }
 
-      processImage(asset);
-    } catch (error) {
-      console.warn('Image selection error:', error);
+      processImage({ ...asset, uri });
+    } catch {
       Alert.alert('错误', '选择图片时发生错误');
     }
   }, [busy, processImage]);

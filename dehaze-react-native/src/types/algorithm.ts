@@ -44,14 +44,6 @@ export interface FavoriteVO {
   createTime?: string;
 }
 
-/** 算法对比请求 */
-export interface CompareRequest {
-  /** 算法 ID 列表（2-4 个） */
-  algorithmIds: number[];
-  /** 待对比的图片 URL */
-  imageUrl?: string;
-}
-
 /** 算法对比结果 VO */
 export interface AlgorithmCompareVO {
   algorithmId: number;

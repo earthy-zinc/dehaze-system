@@ -42,11 +42,14 @@ const ImageGrid: React.FC<ImageGridProps> = ({
 
   const keyExtractor = useCallback((item: DatasetImage) => item.id.toString(), []);
 
-  const getItemLayout = useCallback((data: any, index: number) => ({
-    length: imageWidth + spacing,
-    offset: (imageWidth + spacing) * Math.floor(index / numColumns),
-    index,
-  }), [imageWidth, spacing, numColumns]);
+  const getItemLayout = useCallback(
+    (_data: ArrayLike<DatasetImage> | null | undefined, index: number) => ({
+      length: imageWidth + spacing,
+      offset: (imageWidth + spacing) * Math.floor(index / numColumns),
+      index,
+    }),
+    [imageWidth, spacing, numColumns],
+  );
 
   const renderEmpty = useCallback(() => null, []);
 

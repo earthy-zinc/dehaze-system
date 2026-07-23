@@ -53,20 +53,24 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
 
   // 搜索防抖
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 用 ref 做重入守卫，避免把 isLoadingImages 放进 useCallback 依赖导致 loadItems 重建引发 useFocusEffect 抖动
+  const isLoadingImagesRef = useRef(false);
 
   const loadDatasetDetail = useCallback(async () => {
     try {
       const detail = await datasetApi.fetchDatasetDetail(datasetId);
       setDataset(detail);
-    } catch (err: any) {
-      setError(err?.msg || err?.message || '加载数据集详情失败');
+    } catch (err: unknown) {
+      const e = err as { msg?: string; message?: string };
+      setError(e?.msg || e?.message || '加载数据集详情失败');
     }
   }, [datasetId]);
 
   const loadItems = useCallback(
     async (page = 1, isRefresh = false) => {
-      if (isLoadingImages && !isRefresh) return;
+      if (isLoadingImagesRef.current && !isRefresh) return;
       try {
+        isLoadingImagesRef.current = true;
         setIsLoadingImages(true);
         if (isRefresh) setRefreshing(true);
 
@@ -85,14 +89,16 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
         }
         setHasMore(list.length >= PAGE_SIZE);
         setCurrentPage(page);
-      } catch (err: any) {
-        setError(err?.msg || err?.message || '加载数据项失败');
+      } catch (err: unknown) {
+        const e = err as { msg?: string; message?: string };
+        setError(e?.msg || e?.message || '加载数据项失败');
       } finally {
+        isLoadingImagesRef.current = false;
         setIsLoadingImages(false);
         setRefreshing(false);
       }
     },
-    [datasetId, searchValue, isLoadingImages],
+    [datasetId, searchValue],
   );
 
   const handleTypeChange = useCallback((type: AnnotationFilter) => {
@@ -155,10 +161,10 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
   }, []);
 
   const handleLoadMore = useCallback(() => {
-    if (hasMore && !isLoadingImages) {
+    if (hasMore && !isLoadingImagesRef.current) {
       loadItems(currentPage + 1);
     }
-  }, [hasMore, isLoadingImages, currentPage, loadItems]);
+  }, [hasMore, currentPage, loadItems]);
 
   const handleRefresh = useCallback(() => {
     Promise.all([loadDatasetDetail(), loadItems(1, true)]);
@@ -185,10 +191,11 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
                 },
               });
               Alert.alert('已创建', '导出任务已创建，请到任务中心查看进度');
-            } catch (err: any) {
+            } catch (err: unknown) {
+              const e = err as { msg?: string; message?: string };
               Alert.alert(
                 '导出失败',
-                err?.msg || err?.message || '请稍后重试',
+                e?.msg || e?.message || '请稍后重试',
               );
             }
           },

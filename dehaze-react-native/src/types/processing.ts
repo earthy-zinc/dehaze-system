@@ -33,19 +33,6 @@ export interface CommonAlgorithmParams {
   sharpen?: number;
 }
 
-/** 参数 schema（用于动态渲染参数调节面板） */
-export interface ParamSchema {
-  key: keyof CommonAlgorithmParams;
-  label: string;
-  type: 'slider' | 'select';
-  min?: number;
-  max?: number;
-  step?: number;
-  default: number;
-  options?: { label: string; value: number }[];
-  description?: string;
-}
-
 /** 单张处理结果 */
 export interface ProcessingResult {
   logId?: number;
@@ -55,12 +42,4 @@ export interface ProcessingResult {
   time: number;
   /** 是否命中缓存 */
   fromCache?: boolean;
-}
-
-/** 预设参数方案 */
-export interface ParamPreset {
-  key: string;
-  name: string;
-  description?: string;
-  params: CommonAlgorithmParams;
 }

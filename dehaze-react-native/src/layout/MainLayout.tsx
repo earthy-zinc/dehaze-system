@@ -7,36 +7,31 @@
  *
  * 参考 Flutter 应用的整体设计风格
  */
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, NavigationProp } from '@react-navigation/native';
 import { useResponsive } from '@/hooks/useResponsive';
 import { colors } from '@/theme/colors';
-import { RouteNames } from './MenuConfig';
 import {
   AppHeader,
   BottomTabBar,
   DrawerMenu,
   SideNav,
 } from './components';
-import type { RootStackParamList } from '@/routes/types';
+import type { RootStackParamList, RouteKeys } from '@/routes/types';
 
 interface MainLayoutProps {
   children: React.ReactNode;
   title?: string;
   showBack?: boolean;
-  showHeader?: boolean;
   showBottomNav?: boolean;
-  headerRightActions?: React.ReactNode;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({
   children,
   title,
   showBack = false,
-  showHeader = true,
   showBottomNav = true,
-  headerRightActions,
 }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute();
@@ -44,22 +39,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   // 当前路由名称
-  const currentRoute = route.name as RouteNames;
-
-  // 打开抽屉菜单
-  const handleOpenDrawer = useCallback(() => {
-    setDrawerVisible(true);
-  }, []);
-
-  // 关闭抽屉菜单
-  const handleCloseDrawer = useCallback(() => {
-    setDrawerVisible(false);
-  }, []);
+  const currentRoute = route.name as RouteKeys;
 
   // 导航处理
   const handleNavigate = useCallback(
-    (routeName: RouteNames) => {
-      navigation.navigate(routeName as keyof RootStackParamList);
+    (routeName: RouteKeys) => {
+      navigation.navigate(routeName);
     },
     [navigation],
   );
@@ -71,34 +56,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     }
   }, [navigation]);
 
-  // 渲染内容区域
-  const renderContent = useMemo(
-    () => (
-      <View style={styles.content}>
-        {children}
-      </View>
-    ),
-    [children],
-  );
-
   // 移动端布局
   if (isMobile) {
     return (
       <View style={styles.container}>
         {/* 顶部导航栏 */}
-        {showHeader && (
-          <AppHeader
-            title={title}
-            showBack={showBack}
-            showMenu={!showBack}
-            onBackPress={handleBack}
-            onMenuPress={handleOpenDrawer}
-            rightActions={headerRightActions}
-          />
-        )}
+        <AppHeader
+          title={title}
+          showBack={showBack}
+          showMenu={!showBack}
+          onBackPress={handleBack}
+          onMenuPress={() => setDrawerVisible(true)}
+        />
 
         {/* 内容区域 */}
-        {renderContent}
+        <View style={styles.content}>{children}</View>
 
         {/* 底部导航栏 */}
         {showBottomNav && (
@@ -112,7 +84,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         <DrawerMenu
           visible={drawerVisible}
           currentRoute={currentRoute}
-          onClose={handleCloseDrawer}
+          onClose={() => setDrawerVisible(false)}
           onNavigate={handleNavigate}
         />
       </View>
@@ -123,15 +95,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   return (
     <View style={styles.container}>
       {/* 顶部导航栏 */}
-      {showHeader && (
-        <AppHeader
-          title={title}
-          showBack={showBack}
-          showMenu={false}
-          onBackPress={handleBack}
-          rightActions={headerRightActions}
-        />
-      )}
+      <AppHeader
+        title={title}
+        showBack={showBack}
+        showMenu={false}
+        onBackPress={handleBack}
+      />
 
       {/* 主体区域：侧边栏 + 内容 */}
       <View style={styles.body}>
@@ -139,7 +108,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         <SideNav currentRoute={currentRoute} onNavigate={handleNavigate} />
 
         {/* 内容区域 */}
-        {renderContent}
+        <View style={styles.content}>{children}</View>
       </View>
     </View>
   );

@@ -18,5 +18,3 @@ export const API_CONFIG = {
     ? `http://${DEV_HOST}:8991`
     : 'https://ai.dehaze.com',
 } as const;
-
-export const REQUEST_TIMEOUT = 50000;

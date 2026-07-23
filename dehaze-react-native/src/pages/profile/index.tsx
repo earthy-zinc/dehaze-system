@@ -17,6 +17,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import type { IoniconName } from '@/components/Icon';
 
 import type { RootStackParamList } from '@/routes/types';
 import { MainLayout } from '@/layout';
@@ -25,6 +26,7 @@ import { theme } from '@/theme';
 import { historyStorage } from '@/pages/image-input/services/historyStorage';
 import type { HistoryRecord } from '@/pages/image-input/types/imageInput';
 import ImageLoader from '@/components/ImageLoader';
+import { extractFilename } from '@/utils/url';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -36,14 +38,6 @@ const MAX_HISTORY_DISPLAY = 3;
 /** 去除角色前缀（ROLE_） */
 function formatRole(role: string): string {
   return role.replace(/^ROLE_/, '');
-}
-
-/** 从 URL 中提取文件名 */
-function extractFilename(url?: string): string {
-  if (!url) return '历史图片';
-  const path = url.split('?')[0];
-  const segments = path.split('/');
-  return segments[segments.length - 1] || '历史图片';
 }
 
 const ProfileScreen: React.FC<Props> = ({ navigation }) => {
@@ -66,7 +60,8 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   // 首次进入：若用户信息缺失则拉取，同时加载历史
   useEffect(() => {
     if (!userInfo) {
-      refreshUserInfo().catch(() => {});
+      // refreshUserInfo 失败时不阻塞页面渲染，用户可下拉刷新重试
+      refreshUserInfo().catch(() => { /* 静默忽略：见上方注释 */ });
     }
     loadRecentHistory();
   }, [userInfo, refreshUserInfo, loadRecentHistory]);
@@ -101,9 +96,9 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const username = userInfo?.username || '—';
   const avatarLetter = nickname.charAt(0).toUpperCase();
   const roles = userInfo?.roles ?? [];
-  const perms = userInfo?.perms ?? [];
-  const displayPerms = perms.slice(0, MAX_PERMS_DISPLAY);
-  const remainingPerms = Math.max(0, perms.length - MAX_PERMS_DISPLAY);
+  const permissions = userInfo?.permissions ?? [];
+  const displayPerms = permissions.slice(0, MAX_PERMS_DISPLAY);
+  const remainingPerms = Math.max(0, permissions.length - MAX_PERMS_DISPLAY);
 
   return (
     <MainLayout title="个人中心" showBack showBottomNav={false}>
@@ -163,7 +158,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         <SectionWrap
           icon="lock-closed-outline"
           title="权限概览"
-          extra={`${perms.length} 项`}
+          extra={`${permissions.length} 项`}
         >
           <View style={styles.card}>
             {displayPerms.length > 0 ? (
@@ -240,7 +235,7 @@ const SectionWrap: React.FC<{
   <View style={styles.sectionWrap}>
     <View style={styles.sectionTitleRow}>
       <View style={styles.sectionTitleIcon}>
-        <Ionicons name={icon as any} size={16} color={theme.colors.primary} />
+        <Ionicons name={icon as IoniconName} size={16} color={theme.colors.primary} />
       </View>
       <Text style={styles.sectionTitleText}>{title}</Text>
       {extra && (

@@ -17,7 +17,7 @@ import Button from '@/components/Button';
 import { useResponsive } from '@/hooks/useResponsive';
 import { theme } from '@/theme';
 import type { SelectedImage } from '@/types/image';
-import { imageInputApi } from '../../services/imageInputApi';
+import { formatFileSize } from '@/utils/file';
 
 interface ImagePreviewProps {
   image: SelectedImage;
@@ -62,7 +62,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   const previewHeight = isMobile ? 280 : 350;
 
   // 格式化文件大小
-  const formattedSize = imageInputApi.formatFileSize(image.size || 0);
+  const formattedSize = formatFileSize(image.size || 0);
 
   // 格式化尺寸
   const formattedDimensions = `${image.width || 0} × ${image.height || 0}`;

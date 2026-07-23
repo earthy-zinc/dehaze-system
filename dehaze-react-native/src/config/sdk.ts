@@ -9,52 +9,49 @@
  * 响应拦截器约定：SDK 内部已校验 code===SUCCESS，并解包返回 response.data.data（业务载荷）。
  * 因此 onResponse 必须返回 response.data.data，与 LoginResult/CaptchaResult 等类型定义对齐。
  */
-import { configJavaAxios, configPythonAxios } from 'dehaze-sdk-js';
+import { configJavaAxios, configPythonAxios, ResultEnum } from 'dehaze-sdk-js';
 import { API_CONFIG } from './env';
 import { tokenStore, triggerTokenInvalid } from '../utils/tokenStore';
 
-// token 失效码
-const TOKEN_INVALID_CODES = ['A0230', 'A0301', 'A0302'];
+/** SDK 拦截器配置类型（从 configJavaAxios 参数推导，避免依赖 SDK 内部类型导出） */
+type InterceptorCallbacks = Parameters<typeof configJavaAxios>[0];
 
-function isTokenInvalid(error: any): boolean {
-  const status = error.response?.status;
-  const code = error.response?.data?.code;
+// token 失效码（统一使用 SDK ResultEnum，避免硬编码）
+const TOKEN_INVALID_CODES: readonly string[] = [
+  ResultEnum.TOKEN_INVALID,
+  ResultEnum.ACCESS_UNAUTHORIZED,
+  ResultEnum.FORBIDDEN_OPERATION,
+];
+
+function isTokenInvalid(error: unknown): boolean {
+  const err = error as { response?: { status?: number; data?: { code?: string } } };
+  const status = err.response?.status;
+  const code = err.response?.data?.code;
   return status === 401 || (typeof code === 'string' && TOKEN_INVALID_CODES.includes(code));
 }
 
+/** 构造 SDK 拦截器配置（Java/Python 共用同一套逻辑，仅 baseURL 不同） */
+function buildAxiosConfig(baseURL: string): InterceptorCallbacks {
+  return {
+    onRequest: config => {
+      config.baseURL = baseURL;
+      return config;
+    },
+    onRequestError: error => error,
+    onResponse: response => response.data.data,
+    onResponseError: error => {
+      if (isTokenInvalid(error)) {
+        tokenStore.clear();
+        triggerTokenInvalid();
+      }
+      return Promise.reject(error);
+    },
+    getToken: () => tokenStore.get(),
+  };
+}
+
 // 配置 Java 主后端
-configJavaAxios({
-  onRequest: config => {
-    config.baseURL = API_CONFIG.JAVA_BASE_URL;
-    return config;
-  },
-  onRequestError: error => error,
-  // 返回业务载荷（response.data.data），与 SDK 类型定义一致
-  onResponse: response => response.data.data,
-  onResponseError: error => {
-    if (isTokenInvalid(error)) {
-      tokenStore.clear();
-      triggerTokenInvalid();
-    }
-    return Promise.reject(error);
-  },
-  getToken: () => tokenStore.get(),
-});
+configJavaAxios(buildAxiosConfig(API_CONFIG.JAVA_BASE_URL));
 
 // 配置 Python 辅助后端（算法推荐/收藏/对比）
-configPythonAxios({
-  onRequest: config => {
-    config.baseURL = API_CONFIG.PYTHON_BASE_URL;
-    return config;
-  },
-  onRequestError: error => error,
-  onResponse: response => response.data.data,
-  onResponseError: error => {
-    if (isTokenInvalid(error)) {
-      tokenStore.clear();
-      triggerTokenInvalid();
-    }
-    return Promise.reject(error);
-  },
-  getToken: () => tokenStore.get(),
-});
+configPythonAxios(buildAxiosConfig(API_CONFIG.PYTHON_BASE_URL));

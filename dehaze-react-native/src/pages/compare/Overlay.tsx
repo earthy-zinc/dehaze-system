@@ -31,6 +31,9 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
   const [direction, setDirection] = useState<Direction>('vertical');
   const [dividerPos, setDividerPos] = useState(0.5);
   const layoutRef = useRef({ width: 0, height: 0 });
+  // 同步 direction 到 ref，避免 PanResponder 闭包捕获陈旧值
+  const directionRef = useRef(direction);
+  directionRef.current = direction;
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -40,13 +43,14 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (evt, gestureState) => {
+      onPanResponderMove: (evt) => {
         const { width, height } = layoutRef.current;
-        if (direction === 'vertical') {
-          const ratio = Math.max(0, Math.min(1, (gestureState.moveX || evt.nativeEvent.pageX) / width));
+        const dir = directionRef.current;
+        if (dir === 'vertical') {
+          const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / width));
           setDividerPos(ratio);
         } else {
-          const ratio = Math.max(0, Math.min(1, (gestureState.moveY || evt.nativeEvent.pageY) / height));
+          const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationY / height));
           setDividerPos(ratio);
         }
       },
@@ -124,17 +128,13 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
           style={[
             styles.overlayImage,
             direction === 'vertical'
-              ? { width: `${dividerPos * 100}%` }
-              : { height: `${dividerPos * 100}%` },
+              ? { width: `${dividerPos * 100}%`, height: '100%' }
+              : { width: '100%', height: `${dividerPos * 100}%` },
           ]}
         >
           <ImageLoader
             source={{ uri: originalUrl }}
-            style={
-              direction === 'vertical'
-                ? { width: layoutRef.current.width || '100%' as any, height: '100%' as any }
-                : { width: '100%' as any, height: layoutRef.current.height || '100%' as any }
-            }
+            style={styles.overlayImageFill}
             resizeMode="contain"
           />
         </View>
@@ -224,6 +224,10 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     backgroundColor: 'transparent',
+  },
+  overlayImageFill: {
+    width: '100%',
+    height: '100%',
   },
   divider: {
     position: 'absolute',

@@ -55,7 +55,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           onPress={handleClear}
           activeOpacity={0.8}
         >
-          <Icon name="settings" size={16} color="#9ca3af" />
+          <Icon name="times" size={16} color="#9ca3af" />
         </TouchableOpacity>
       )}
     </View>

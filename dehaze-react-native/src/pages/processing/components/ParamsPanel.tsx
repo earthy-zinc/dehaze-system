@@ -6,7 +6,7 @@
  * - 通用参数滑块（去雾强度/饱和度/对比度/锐化）
  * - 重置为默认值
  */
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,9 @@ interface ParamsPanelProps {
 }
 
 const ParamsPanel: React.FC<ParamsPanelProps> = ({ params, onChange, disabled = false }) => {
+  // 滑块轨道真实宽度（通过 onLayout 测量），所有滑块共享同一行 flex 布局故宽度一致
+  const [trackWidth, setTrackWidth] = useState(0);
+
   const handlePreset = (presetParams: CommonAlgorithmParams) => {
     if (disabled) return;
     onChange({ ...presetParams });
@@ -133,11 +136,10 @@ const ParamsPanel: React.FC<ParamsPanelProps> = ({ params, onChange, disabled = 
 
                 <TouchableOpacity
                   style={[styles.sliderTrack, disabled && styles.disabled]}
+                  onLayout={e => setTrackWidth(e.nativeEvent.layout.width)}
                   onPress={e => {
-                    if (disabled) return;
-                    // 简化：根据触摸位置计算值
+                    if (disabled || trackWidth === 0) return;
                     const layout = e.nativeEvent.locationX;
-                    const trackWidth = 200; // 近似值
                     const percent = Math.max(0, Math.min(1, layout / trackWidth));
                     const next = Math.round(
                       (schema.min ?? 0) + percent * ((schema.max ?? 100) - (schema.min ?? 0)),

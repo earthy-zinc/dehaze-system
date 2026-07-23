@@ -8,6 +8,15 @@ export type Task = TaskVO;
 
 export type { TaskStatus };
 
+/** 任务状态枚举值（统一常量，避免散落的裸字符串） */
+export const TaskStatusEnum = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const satisfies Record<TaskStatus, TaskStatus>;
+
 export const TASK_STATUS_MAP: Record<
   TaskStatus,
   { label: string; color: string; bgColor: string }
@@ -28,13 +37,23 @@ export const TASK_TYPE_MAP: Record<string, string> = {
 
 /** 终态：不再轮询 */
 export const TERMINAL_STATUSES: TaskStatus[] = [
-  'COMPLETED',
-  'FAILED',
-  'CANCELLED',
+  TaskStatusEnum.COMPLETED,
+  TaskStatusEnum.FAILED,
+  TaskStatusEnum.CANCELLED,
+];
+
+/** 可取消的状态（未进入终态前） */
+export const CANCELLABLE_STATUSES: TaskStatus[] = [
+  TaskStatusEnum.PENDING,
+  TaskStatusEnum.PROCESSING,
 ];
 
 export function isTerminal(task?: Task | null): boolean {
   return !!task && TERMINAL_STATUSES.includes(task.status);
+}
+
+export function isCancellable(task?: Task | null): boolean {
+  return !!task && CANCELLABLE_STATUSES.includes(task.status);
 }
 
 export function formatTaskTime(time?: string): string {

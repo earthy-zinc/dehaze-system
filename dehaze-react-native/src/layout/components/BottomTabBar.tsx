@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
-import { bottomTabs, RouteNames } from '../MenuConfig';
+import { bottomTabs } from '../MenuConfig';
+import type { RouteKeys } from '@/routes/types';
 
 // 图标映射 - Ionicons 图标名称
 const iconMap: { [key: string]: { default: string; active: string } } = {
@@ -26,8 +27,8 @@ const iconMap: { [key: string]: { default: string; active: string } } = {
 };
 
 interface BottomTabBarProps {
-  currentRoute: RouteNames;
-  onTabPress: (route: RouteNames) => void;
+  currentRoute: RouteKeys;
+  onTabPress: (route: RouteKeys) => void;
 }
 
 const BottomTabBar: React.FC<BottomTabBarProps> = ({

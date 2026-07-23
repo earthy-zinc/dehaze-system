@@ -7,19 +7,20 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '@/theme/colors';
 import { spacing, layout } from '@/theme/spacing';
+import type { IoniconName } from '@/components/Icon';
 import {
   homeItem,
   menuSections,
-  RouteNames,
   MenuItemData,
   MenuSection,
 } from '../MenuConfig';
+import type { RouteKeys } from '@/routes/types';
 
 const SIDE_NAV_WIDTH = 260;
 
 interface SideNavProps {
-  currentRoute: RouteNames;
-  onNavigate: (route: RouteNames) => void;
+  currentRoute: RouteKeys;
+  onNavigate: (route: RouteKeys) => void;
 }
 
 const SideNav: React.FC<SideNavProps> = ({ currentRoute, onNavigate }) => {
@@ -31,7 +32,7 @@ const SideNav: React.FC<SideNavProps> = ({ currentRoute, onNavigate }) => {
       activeOpacity={0.7}
     >
       <Ionicons
-        name={item.icon as any}
+        name={item.icon as IoniconName}
         size={18}
         color={isActive ? colors.primary : colors.text.secondary}
       />
@@ -51,7 +52,7 @@ const SideNav: React.FC<SideNavProps> = ({ currentRoute, onNavigate }) => {
       <View style={styles.sectionHeader}>
         {section.icon && (
           <Ionicons
-            name={section.icon as any}
+            name={section.icon as IoniconName}
             size={12}
             color={colors.text.muted}
             style={styles.sectionIcon}

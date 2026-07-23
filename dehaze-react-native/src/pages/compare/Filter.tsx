@@ -57,6 +57,18 @@ const DEFAULT_PARAMS: FilterParams = {
   denoise: 0,
 };
 
+/** 逐字段比较两份滤镜参数（避免 JSON.stringify 的字段顺序敏感问题） */
+function isFilterParamsEqual(a: FilterParams, b: FilterParams): boolean {
+  return (
+    a.brightness === b.brightness &&
+    a.contrast === b.contrast &&
+    a.saturation === b.saturation &&
+    a.warmth === b.warmth &&
+    a.sharpen === b.sharpen &&
+    a.denoise === b.denoise
+  );
+}
+
 const PRESETS: { key: string; name: string; params: FilterParams }[] = [
   { key: 'natural', name: '自然', params: { ...DEFAULT_PARAMS, brightness: 5, contrast: 10, saturation: 5 } },
   { key: 'vivid', name: '鲜艳', params: { ...DEFAULT_PARAMS, contrast: 30, saturation: 40 } },
@@ -206,7 +218,7 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handlePreset = (presetParams: FilterParams) => setParams({ ...presetParams });
 
-  const isDefault = JSON.stringify(params) === JSON.stringify(DEFAULT_PARAMS);
+  const isDefault = isFilterParamsEqual(params, DEFAULT_PARAMS);
 
   // 缺少必要参数时显示空状态（例如从底部 Tab 直接进入）
   if (!originalUrl || !processedUrl) {
@@ -284,7 +296,7 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
           <Text style={styles.sectionTitle}>预设方案</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
             {PRESETS.map(preset => {
-              const isActive = JSON.stringify(params) === JSON.stringify(preset.params);
+              const isActive = isFilterParamsEqual(params, preset.params);
               return (
                 <TouchableOpacity
                   key={preset.key}

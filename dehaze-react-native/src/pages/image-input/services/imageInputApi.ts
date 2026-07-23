@@ -20,6 +20,13 @@ const SUPPORTED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'
 // 文件大小限制
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
+/** React Native FormData 文件描述符（替代浏览器 File 对象，SDK 的 File 类型签名为 Web 环境设计） */
+interface RnFormDataFile {
+  uri: string;
+  name: string;
+  type: string;
+}
+
 /** hazeLevel 到 SampleCategory 的映射 */
 function hazeLevelToCategory(hazeLevel?: string): SampleCategory {
   if (hazeLevel === 'light' || hazeLevel === 'medium' || hazeLevel === 'heavy') {
@@ -119,19 +126,6 @@ export const imageInputApi = {
   },
 
   /**
-   * 格式化文件大小
-   */
-  formatFileSize: (bytes: number): string => {
-    if (bytes < 1024) {
-      return `${bytes} B`;
-    } else if (bytes < 1024 * 1024) {
-      return `${(bytes / 1024).toFixed(1)} KB`;
-    } else {
-      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-    }
-  },
-
-  /**
    * 上传本地图片到后端文件服务（/api/v1/files）
    *
    * React Native 中通过 FormData 文件描述符 {uri, name, type} 上传，
@@ -143,12 +137,12 @@ export const imageInputApi = {
     fileType?: string,
   ): Promise<FileInfo> => {
     // RN 的 FormData 接受 {uri, name, type} 形式的文件描述符
-    const fileDescriptor = {
+    const fileDescriptor: RnFormDataFile = {
       uri,
       name: fileName,
       type: fileType || 'image/jpeg',
-    } as unknown as File;
-    return await FileAPI.upload(fileDescriptor);
+    };
+    return await FileAPI.upload(fileDescriptor as unknown as File);
   },
 
   /**

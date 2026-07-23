@@ -15,19 +15,12 @@ import Icon from '@/components/Icon';
 import { theme } from '@/theme';
 import { HistoryRecord } from '../../types/imageInput';
 import { historyStorage } from '../../services/historyStorage';
+import { extractFilename } from '@/utils/url';
 
 interface HistoryItemCardProps {
   record: HistoryRecord;
   onPress: (record: HistoryRecord) => void;
   onDelete: (id: number) => void;
-}
-
-/** 从 URL 中提取文件名（兼容 http 与 file:// 地址） */
-function extractFilename(url?: string): string {
-  if (!url) return '历史图片';
-  const path = url.split('?')[0];
-  const segments = path.split('/');
-  return segments[segments.length - 1] || '历史图片';
 }
 
 const HistoryItemCard: React.FC<HistoryItemCardProps> = ({

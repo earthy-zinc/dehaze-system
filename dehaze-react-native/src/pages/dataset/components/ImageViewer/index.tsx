@@ -12,6 +12,12 @@ import Modal from '@/components/Modal';
 import Badge from '@/components/Badge';
 import Icon from '@/components/Icon';
 import type { DatasetImage, DatasetItem } from '../../types/dataset';
+import {
+  formatFileSize,
+  getTypeLabel,
+  getBadgeVariant,
+  getHazeLevelLabel,
+} from '../../utils/imageLabels';
 
 interface ImageViewerProps {
   visible: boolean;
@@ -55,48 +61,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
   const current = images[currentIndex] || image;
   if (!current) return null;
-
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return '-';
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  };
-
-  const getTypeLabel = (type?: string) => {
-    switch (type) {
-      case 'clear':
-        return '清晰图';
-      case 'hazy':
-        return '有雾图';
-      default:
-        return type || '图片';
-    }
-  };
-
-  const getBadgeVariant = (type?: string) => {
-    switch (type) {
-      case 'clear':
-        return 'clear' as const;
-      case 'hazy':
-        return 'foggy' as const;
-      default:
-        return 'secondary' as const;
-    }
-  };
-
-  const getHazeLevelLabel = (level?: string) => {
-    switch (level) {
-      case 'light':
-        return '轻度雾霾';
-      case 'medium':
-        return '中度雾霾';
-      case 'heavy':
-        return '重度雾霾';
-      default:
-        return '';
-    }
-  };
 
   return (
     <Modal

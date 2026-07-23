@@ -21,22 +21,23 @@ import LinearGradient from 'react-native-linear-gradient';
 import { colors } from '@/theme/colors';
 import { spacing, layout } from '@/theme/spacing';
 import { useAuth } from '@/store';
+import type { IoniconName } from '@/components/Icon';
 import {
   homeItem,
   menuSections,
-  RouteNames,
   MenuItemData,
   MenuSection,
 } from '../MenuConfig';
+import type { RouteKeys } from '@/routes/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(320, SCREEN_WIDTH * 0.85);
 
 interface DrawerMenuProps {
   visible: boolean;
-  currentRoute: RouteNames;
+  currentRoute: RouteKeys;
   onClose: () => void;
-  onNavigate: (route: RouteNames) => void;
+  onNavigate: (route: RouteKeys) => void;
 }
 
 const DrawerMenu: React.FC<DrawerMenuProps> = ({
@@ -83,7 +84,7 @@ const DrawerMenu: React.FC<DrawerMenuProps> = ({
   }, [visible, translateX, overlayOpacity]);
 
   const handleItemPress = useCallback(
-    (route: RouteNames) => {
+    (route: RouteKeys) => {
       onNavigate(route);
       onClose();
     },
@@ -112,7 +113,7 @@ const DrawerMenu: React.FC<DrawerMenuProps> = ({
       activeOpacity={0.7}
     >
       <Ionicons
-        name={item.icon as any}
+        name={item.icon as IoniconName}
         size={20}
         color={isActive ? colors.primary : colors.text.secondary}
       />
@@ -132,7 +133,7 @@ const DrawerMenu: React.FC<DrawerMenuProps> = ({
       <View style={styles.sectionHeader}>
         {section.icon && (
           <Ionicons
-            name={section.icon as any}
+            name={section.icon as IoniconName}
             size={14}
             color={colors.text.muted}
             style={styles.sectionIcon}

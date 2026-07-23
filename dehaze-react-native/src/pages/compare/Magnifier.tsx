@@ -35,21 +35,29 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
   const [displayMode, setDisplayMode] = useState<DisplayMode>('compare');
   const [magnifierPos, setMagnifierPos] = useState({ x: 100, y: 100 });
   const layoutRef = useRef({ width: 0, height: 0 });
+  // 保存最新位置与手势起点，避免 PanResponder 闭包捕获陈旧 state
+  const posRef = useRef(magnifierPos);
+  const startRef = useRef(magnifierPos);
+  posRef.current = magnifierPos;
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     layoutRef.current = { width, height };
     // 居中放大镜
-    setMagnifierPos({ x: (width - MAGNIFIER_SIZE) / 2, y: (height - MAGNIFIER_SIZE) / 2 });
+    const center = { x: (width - MAGNIFIER_SIZE) / 2, y: (height - MAGNIFIER_SIZE) / 2 };
+    setMagnifierPos(center);
   };
 
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        startRef.current = posRef.current;
+      },
       onPanResponderMove: (evt, gestureState) => {
         const { width, height } = layoutRef.current;
-        const newX = Math.max(0, Math.min(width - MAGNIFIER_SIZE, magnifierPos.x + gestureState.dx));
-        const newY = Math.max(0, Math.min(height - MAGNIFIER_SIZE, magnifierPos.y + gestureState.dy));
+        const newX = Math.max(0, Math.min(width - MAGNIFIER_SIZE, startRef.current.x + gestureState.dx));
+        const newY = Math.max(0, Math.min(height - MAGNIFIER_SIZE, startRef.current.y + gestureState.dy));
         setMagnifierPos({ x: newX, y: newY });
       },
     }),

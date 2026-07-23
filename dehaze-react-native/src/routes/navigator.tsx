@@ -53,7 +53,7 @@ export const RouteManager = () => {
           key={route.name}
           name={route.name}
           component={route.component}
-          options={route.options}
+          options={route.title ? { title: route.title } : undefined}
         />
       ))}
     </Stack.Navigator>

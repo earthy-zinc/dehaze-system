@@ -11,6 +11,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import ImageLoader from '@/components/ImageLoader';
 import Icon from '@/components/Icon';
 import { theme } from '@/theme';
+import { formatDuration } from '@/utils/time';
 import type { ProcessingResult } from '@/types/processing';
 
 interface ResultPreviewProps {
@@ -19,11 +20,6 @@ interface ResultPreviewProps {
   onEnterCompare: () => void;
   onReprocess: () => void;
 }
-
-const formatTime = (ms: number): string => {
-  if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(2)}s`;
-};
 
 const ResultPreview: React.FC<ResultPreviewProps> = ({
   originalUrl,
@@ -49,7 +45,7 @@ const ResultPreview: React.FC<ResultPreviewProps> = ({
       <View style={styles.metaRow}>
         <View style={styles.metaItem}>
           <Icon name="clock" size={12} color={theme.colors.text.tertiary} />
-          <Text style={styles.metaText}>耗时 {formatTime(result.time)}</Text>
+          <Text style={styles.metaText}>耗时 {formatDuration(result.time)}</Text>
         </View>
       </View>
 

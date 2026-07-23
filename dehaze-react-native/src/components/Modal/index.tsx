@@ -52,7 +52,7 @@ const Modal: React.FC<ModalProps> = ({
                     onPress={onClose}
                     activeOpacity={0.8}
                   >
-                    <Icon name="settings" size={20} color="#6b7280" />
+                    <Icon name="times" size={20} color="#6b7280" />
                   </TouchableOpacity>
                 )}
               </View>

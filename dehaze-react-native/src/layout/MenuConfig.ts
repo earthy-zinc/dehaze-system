@@ -2,25 +2,12 @@
  * 菜单配置
  * 统一管理所有菜单项数据，与 Flutter 应用保持一致
  */
-
-export type RouteNames =
-  | 'Home'
-  | 'ImageInput'
-  | 'AlgorithmSelect'
-  | 'Processing'
-  | 'SideBySide'
-  | 'Overlay'
-  | 'Magnifier'
-  | 'Filter'
-  | 'Metrics'
-  | 'Algorithm'
-  | 'Dataset'
-  | 'Profile';
+import type { RouteKeys } from '@/routes/types';
 
 export interface MenuItemData {
   icon: string;
   title: string;
-  route: RouteNames;
+  route: RouteKeys;
   badge?: string;
   isNew?: boolean;
 }
@@ -106,6 +93,11 @@ export const menuSections: MenuSection[] = [
         title: '数据集管理',
         route: 'Dataset',
       },
+      {
+        icon: 'clipboard-outline',
+        title: '任务中心',
+        route: 'Task',
+      },
     ],
   },
 ];
@@ -138,36 +130,3 @@ export const bottomTabs: MenuItemData[] = [
     route: 'SideBySide',
   },
 ];
-
-// 获取所有菜单项（平铺）
-export const getAllMenuItems = (): MenuItemData[] => {
-  const items: MenuItemData[] = [homeItem];
-  menuSections.forEach(section => {
-    items.push(...section.items);
-  });
-  return items;
-};
-
-// 根据路由查找菜单项
-export const findMenuItemByRoute = (
-  route: RouteNames,
-): MenuItemData | undefined => {
-  if (homeItem.route === route) return homeItem;
-  for (const section of menuSections) {
-    const item = section.items.find(i => i.route === route);
-    if (item) return item;
-  }
-  return undefined;
-};
-
-// 根据路由获取所属分组
-export const findSectionByRoute = (
-  route: RouteNames,
-): MenuSection | undefined => {
-  for (const section of menuSections) {
-    if (section.items.some(item => item.route === route)) {
-      return section;
-    }
-  }
-  return undefined;
-};

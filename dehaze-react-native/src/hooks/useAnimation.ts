@@ -1,5 +1,5 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react';
-import { Animated, Easing } from 'react-native';
+import { Animated, Easing, type ViewStyle } from 'react-native';
 
 interface FadeSlideOptions {
   duration?: number;
@@ -74,8 +74,8 @@ export function useFadeSlideAnimation(options: FadeSlideOptions = {}) {
   }, [autoStart, start]);
 
   const animatedStyle = useMemo(() => {
-    const transform: any[] = [];
-    
+    const transform: Array<{ translateX?: Animated.Value } | { translateY?: Animated.Value } | { scale?: Animated.Value }> = [];
+
     if (slideDistance > 0) {
       if (direction === 'left' || direction === 'right') {
         transform.push({ translateX: slideAnim });
@@ -83,7 +83,7 @@ export function useFadeSlideAnimation(options: FadeSlideOptions = {}) {
         transform.push({ translateY: slideAnim });
       }
     }
-    
+
     if (scale) {
       transform.push({ scale: scaleAnim });
     }
@@ -91,7 +91,7 @@ export function useFadeSlideAnimation(options: FadeSlideOptions = {}) {
     return {
       opacity: fadeAnim,
       transform,
-    };
+    } as ViewStyle;
   }, [fadeAnim, slideAnim, scaleAnim, direction, slideDistance, scale]);
 
   return { fadeAnim, slideAnim, scaleAnim, animatedStyle, start };

@@ -7,7 +7,7 @@
  * - token 失效由 SDK 拦截器触发 triggerTokenInvalid，自动清空状态
  */
 import '@/config/sdk'; // 初始化 SDK 配置（副作用导入）
-import { AuthAPI } from 'dehaze-sdk-js';
+import { AuthAPI, TOKEN_KEY } from 'dehaze-sdk-js';
 import type { LoginData, LoginResult, AuthUserInfo } from 'dehaze-sdk-js';
 import { CacheEnum } from '@/enums/CacheEnum';
 import { storage } from '@/utils/storage';
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const initialized = useRef(false);
 
-  // 启动时从 AsyncStorage 恢复 token
+  // 启动时从 AsyncStorage 恢复 token 和用户信息
   useEffect(() => {
     if (initialized.current) {
       return;
@@ -81,19 +81,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initialized.current = true;
 
     (async () => {
-      const token = await storage.get<string>(CacheEnum.TOKEN);
+      const token = await storage.get<string>(TOKEN_KEY);
+      const userInfo = await storage.get<AuthUserInfo>(CacheEnum.AUTH_INFO);
       if (token) {
         tokenStore.set(token);
       }
-      // 权限信息延迟到首页加载时获取（避免登录页加载阻塞）
-      dispatch({ type: 'RESTORE', token, userInfo: null });
+      dispatch({ type: 'RESTORE', token, userInfo });
     })();
   }, []);
 
   // 注册 token 失效回调
   useEffect(() => {
     const handleInvalid = () => {
-      storage.remove(CacheEnum.TOKEN);
+      storage.remove(TOKEN_KEY);
       storage.remove(CacheEnum.AUTH_INFO);
       tokenStore.clear();
       dispatch({ type: 'LOGOUT' });
@@ -105,10 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (data: LoginData) => {
     const result: LoginResult = await AuthAPI.login(data);
     const token = result.accessToken;
-    await storage.set(CacheEnum.TOKEN, token);
-    if (result.refreshToken) {
-      await storage.set(CacheEnum.REFRESH_TOKEN, result.refreshToken);
-    }
+    await storage.set(TOKEN_KEY, token);
     tokenStore.set(token);
 
     // 获取当前用户信息
@@ -123,8 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // 即使注销接口失败也清空本地状态
     }
-    storage.remove(CacheEnum.TOKEN);
-    storage.remove(CacheEnum.REFRESH_TOKEN);
+    storage.remove(TOKEN_KEY);
     storage.remove(CacheEnum.AUTH_INFO);
     tokenStore.clear();
     dispatch({ type: 'LOGOUT' });

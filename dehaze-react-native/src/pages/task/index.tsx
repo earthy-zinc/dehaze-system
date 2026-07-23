@@ -14,13 +14,16 @@ import { MainLayout } from '@/layout';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import EmptyState from '@/components/EmptyState';
 import Icon from '@/components/Icon';
+import { theme } from '@/theme';
 import { taskApi } from './services/taskApi';
 import type { TaskPage } from './services/taskApi';
 import type { Task, TaskStatus } from './types';
 import {
   TASK_STATUS_MAP,
   TASK_TYPE_MAP,
+  TaskStatusEnum,
   isTerminal,
+  isCancellable,
   formatTaskTime,
 } from './types';
 
@@ -68,8 +71,9 @@ const TaskScreen: React.FC = () => {
         }
         setHasMore(list.length >= PAGE_SIZE);
         setCurrentPage(page);
-      } catch (err: any) {
-        setError(err?.msg || err?.message || '加载任务列表失败');
+      } catch (err: unknown) {
+        const e = err as { msg?: string; message?: string };
+        setError(e?.msg || e?.message || '加载任务列表失败');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -166,14 +170,15 @@ const TaskScreen: React.FC = () => {
             setTasks(prev =>
               prev.map(t =>
                 t.taskId === task.taskId
-                  ? { ...t, status: 'CANCELLED' }
+                  ? { ...t, status: TaskStatusEnum.CANCELLED }
                   : t,
               ),
             );
-          } catch (err: any) {
+          } catch (err: unknown) {
+            const e = err as { msg?: string; message?: string };
             Alert.alert(
               '取消失败',
-              err?.msg || err?.message || '请稍后重试',
+              e?.msg || e?.message || '请稍后重试',
             );
           }
         },
@@ -182,7 +187,7 @@ const TaskScreen: React.FC = () => {
   }, []);
 
   const handleDownload = useCallback(async (task: Task) => {
-    if (task.status !== 'COMPLETED') {
+    if (task.status !== TaskStatusEnum.COMPLETED) {
       Alert.alert('提示', '任务尚未完成，无法下载');
       return;
     }
@@ -199,8 +204,9 @@ const TaskScreen: React.FC = () => {
     try {
       await taskApi.download(task.taskId);
       Alert.alert('已触发下载', '请稍候查看下载目录');
-    } catch (err: any) {
-      Alert.alert('下载失败', err?.msg || err?.message || '请稍后重试');
+    } catch (err: unknown) {
+      const e = err as { msg?: string; message?: string };
+      Alert.alert('下载失败', e?.msg || e?.message || '请稍后重试');
     }
   }, []);
 
@@ -209,15 +215,15 @@ const TaskScreen: React.FC = () => {
       const statusInfo = TASK_STATUS_MAP[item.status] || TASK_STATUS_MAP.PENDING;
       const typeLabel = TASK_TYPE_MAP[item.taskType || ''] || item.taskType || '任务';
       const isActive = !isTerminal(item);
-      const canCancel = item.status === 'PENDING' || item.status === 'PROCESSING';
-      const canDownload = item.status === 'COMPLETED';
+      const canCancel = isCancellable(item);
+      const canDownload = item.status === TaskStatusEnum.COMPLETED;
 
       return (
         <View style={styles.taskCard}>
           {/* 头部：类型 + 状态 */}
           <View style={styles.cardHeader}>
             <View style={styles.typeRow}>
-              <Icon name="task" size={16} color="#14b8a6" />
+              <Icon name="task" size={16} color={theme.colors.secondary} />
               <Text style={styles.typeText}>{typeLabel}</Text>
             </View>
             <View
@@ -235,7 +241,7 @@ const TaskScreen: React.FC = () => {
           </Text>
 
           {/* 进度条 */}
-          {(isActive || item.status === 'COMPLETED') && (
+          {(isActive || item.status === TaskStatusEnum.COMPLETED) && (
             <View style={styles.progressWrap}>
               <View style={styles.progressTrack}>
                 <View
@@ -262,7 +268,7 @@ const TaskScreen: React.FC = () => {
             )}
 
           {/* 错误信息 */}
-          {item.status === 'FAILED' && item.error ? (
+          {item.status === TaskStatusEnum.FAILED && item.error ? (
             <Text style={styles.errorText} numberOfLines={2}>
               错误：{item.error}
             </Text>
@@ -281,7 +287,7 @@ const TaskScreen: React.FC = () => {
           </View>
 
           {/* 过期提示 */}
-          {item.status === 'COMPLETED' && item.expiresAt ? (
+          {item.status === TaskStatusEnum.COMPLETED && item.expiresAt ? (
             <Text style={styles.expiresText}>
               过期时间：{formatTaskTime(item.expiresAt)}
             </Text>
@@ -295,7 +301,7 @@ const TaskScreen: React.FC = () => {
                 onPress={() => handleCancel(item)}
                 activeOpacity={0.8}
               >
-                <Icon name="cancel" size={14} color="#ff4d4f" />
+                <Icon name="cancel" size={14} color={theme.colors.status.error} />
                 <Text style={styles.cancelBtnText}>取消</Text>
               </TouchableOpacity>
             ) : null}
@@ -305,7 +311,7 @@ const TaskScreen: React.FC = () => {
                 onPress={() => handleDownload(item)}
                 activeOpacity={0.8}
               >
-                <Icon name="download" size={14} color="#ffffff" />
+                <Icon name="download" size={14} color={theme.colors.text.inverse} />
                 <Text style={styles.downloadBtnText}>下载</Text>
               </TouchableOpacity>
             ) : null}
@@ -320,11 +326,10 @@ const TaskScreen: React.FC = () => {
 
   const statusFilters: { key: TaskStatus | 'ALL'; label: string }[] = [
     { key: 'ALL', label: '全部' },
-    { key: 'PENDING', label: '待执行' },
-    { key: 'PROCESSING', label: '执行中' },
-    { key: 'COMPLETED', label: '已完成' },
-    { key: 'FAILED', label: '失败' },
-    { key: 'CANCELLED', label: '已取消' },
+    ...(Object.keys(TASK_STATUS_MAP) as TaskStatus[]).map(key => ({
+      key,
+      label: TASK_STATUS_MAP[key].label,
+    })),
   ];
 
   return (
@@ -368,8 +373,8 @@ const TaskScreen: React.FC = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#14b8a6"
-              colors={['#14b8a6']}
+              tintColor={theme.colors.secondary}
+              colors={[theme.colors.secondary]}
             />
           }
           onEndReached={handleLoadMore}
@@ -390,7 +395,7 @@ const TaskScreen: React.FC = () => {
           ListFooterComponent={
             isLoading ? (
               <View style={styles.loadingContainer}>
-                <LoadingSpinner size="large" color="#14b8a6" />
+                <LoadingSpinner size="large" color={theme.colors.secondary} />
               </View>
             ) : null
           }
@@ -403,7 +408,7 @@ const TaskScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: theme.colors.background.secondary,
   },
   filterBar: {
     flexDirection: 'row',
@@ -411,38 +416,38 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: theme.colors.background.tertiary,
   },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: theme.colors.background.tertiary,
   },
   activeFilterChip: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: theme.colors.secondary,
   },
   filterChipText: {
     fontSize: 13,
-    color: '#6b7280',
+    color: theme.colors.text.secondary,
     fontWeight: '500',
   },
   activeFilterChipText: {
-    color: '#ffffff',
+    color: theme.colors.text.inverse,
   },
   listContainer: {
     padding: 16,
     paddingTop: 12,
   },
   taskCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background.primary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
+    borderColor: theme.colors.background.tertiary,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -458,7 +463,7 @@ const styles = StyleSheet.create({
   typeText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1f2937',
+    color: theme.colors.text.primary,
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -471,7 +476,7 @@ const styles = StyleSheet.create({
   },
   taskId: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: theme.colors.text.tertiary,
     marginBottom: 8,
   },
   progressWrap: {
@@ -483,7 +488,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     flex: 1,
     height: 6,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: theme.colors.background.tertiary,
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -493,19 +498,19 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: theme.colors.text.secondary,
     fontWeight: '500',
     minWidth: 36,
     textAlign: 'right',
   },
   fileCount: {
     fontSize: 12,
-    color: '#6b7280',
+    color: theme.colors.text.secondary,
     marginBottom: 8,
   },
   errorText: {
     fontSize: 12,
-    color: '#ff4d4f',
+    color: theme.colors.status.error,
     marginBottom: 8,
   },
   timeRow: {
@@ -515,11 +520,11 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: theme.colors.text.tertiary,
   },
   expiresText: {
     fontSize: 11,
-    color: '#f59e0b',
+    color: theme.colors.status.warning,
     marginBottom: 8,
   },
   actionsRow: {
@@ -528,7 +533,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: theme.colors.background.tertiary,
     paddingTop: 12,
   },
   actionBtn: {
@@ -546,15 +551,15 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     fontSize: 13,
-    color: '#ff4d4f',
+    color: theme.colors.status.error,
     fontWeight: '500',
   },
   downloadBtn: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: theme.colors.secondary,
   },
   downloadBtnText: {
     fontSize: 13,
-    color: '#ffffff',
+    color: theme.colors.text.inverse,
     fontWeight: '500',
   },
   loadingContainer: {

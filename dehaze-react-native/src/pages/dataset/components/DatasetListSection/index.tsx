@@ -13,7 +13,7 @@ import SearchBar from '../SearchBar';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import EmptyState from '@/components/EmptyState';
 import Icon from '@/components/Icon';
-import { DatasetTreeNode } from '../../types/dataset';
+import { DatasetTreeNode, Dataset } from '../../types/dataset';
 import { datasetApi } from '../../services/datasetApi';
 
 interface DatasetListSectionProps {
@@ -68,15 +68,18 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
   /** 搜索防抖计时器 */
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /** 将后端 Dataset[] 转为树节点 */
+  /** 将后端 Dataset[] 转为树节点（懒加载模式：丢弃后端 children，按需 fetchChildren） */
   const toTreeNodes = useCallback(
-    (list: any[], level: number): DatasetTreeNode[] => {
-      return list.map(item => ({
-        ...item,
-        level,
-        expanded: false,
-        childrenLoaded: false,
-      }));
+    (list: Dataset[], level: number): DatasetTreeNode[] => {
+      return list.map(item => {
+        const { children: _children, ...rest } = item;
+        return {
+          ...rest,
+          level,
+          expanded: false,
+          childrenLoaded: false,
+        };
+      });
     },
     [],
   );
@@ -92,7 +95,7 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
         }
         setError(null);
 
-        let rootList: any[];
+        let rootList: Dataset[];
         if (searchValue.trim()) {
           // 搜索走分页接口，取前 50 条
           const page = await datasetApi.fetchDatasets({
@@ -108,8 +111,9 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
 
         const nodes = toTreeNodes(rootList, 0);
         setTreeNodes(nodes);
-      } catch (err: any) {
-        const msg = err?.msg || err?.message || '加载数据集失败';
+      } catch (err: unknown) {
+        const e = err as { msg?: string; message?: string };
+        const msg = e?.msg || e?.message || '加载数据集失败';
         setError(msg);
       } finally {
         setLoading(false);
@@ -174,8 +178,9 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
           setTreeNodes(prev =>
             updateNodeChildren(prev, node.id, childNodes, true),
           );
-        } catch (err: any) {
-          setError(err?.msg || err?.message || '加载子数据集失败');
+        } catch (err: unknown) {
+          const e = err as { msg?: string; message?: string };
+          setError(e?.msg || e?.message || '加载子数据集失败');
         } finally {
           setLoadingKeys(prev => {
             const next = new Set(prev);

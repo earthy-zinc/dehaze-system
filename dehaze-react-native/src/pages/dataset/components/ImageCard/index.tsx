@@ -10,6 +10,11 @@ import ImageLoader from '@/components/ImageLoader';
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
 import type { DatasetImage } from '../../types/dataset';
+import {
+  getTypeLabel,
+  getBadgeVariant,
+  getHazeLevelLabel,
+} from '../../utils/imageLabels';
 
 interface ImageCardProps {
   image: DatasetImage;
@@ -23,41 +28,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
   imageWidth = 150,
 }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const getTypeLabel = (type?: string) => {
-    switch (type) {
-      case 'clear':
-        return '清晰图';
-      case 'hazy':
-        return '有雾图';
-      default:
-        return type || '图片';
-    }
-  };
-
-  const getBadgeVariant = (type?: string) => {
-    switch (type) {
-      case 'clear':
-        return 'clear' as const;
-      case 'hazy':
-        return 'foggy' as const;
-      default:
-        return 'secondary' as const;
-    }
-  };
-
-  const getHazeLevelLabel = (level?: string) => {
-    switch (level) {
-      case 'light':
-        return '轻度';
-      case 'medium':
-        return '中度';
-      case 'heavy':
-        return '重度';
-      default:
-        return '';
-    }
-  };
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {

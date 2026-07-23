@@ -37,8 +37,7 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
     try {
       const list = await imageInputApi.fetchSamples(cat);
       setSamples(list);
-    } catch (error) {
-      console.warn('Failed to load samples:', error);
+    } catch {
       setSamples([]);
     } finally {
       setLoading(false);
@@ -58,18 +57,8 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
   const handleSamplePress = useCallback(async (sample: SampleImage) => {
     setLoadingImage(true);
     try {
-      let width = sample.width || 1920;
-      let height = sample.height || 1080;
-
-      if (!width || !height) {
-        try {
-          const size = await imageInputApi.getImageSize(sample.url);
-          width = size.width;
-          height = size.height;
-        } catch (e) {
-          // 使用默认值
-        }
-      }
+      const width = sample.width || 1920;
+      const height = sample.height || 1080;
 
       const selectedImage: SelectedImage = {
         id: sample.id.toString(),
@@ -86,8 +75,8 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
       };
 
       onSelectSample(selectedImage);
-    } catch (error) {
-      console.warn('Failed to select sample:', error);
+    } catch {
+      // 选图失败时仅停止 loading，不弹错误（用户可重试）
     } finally {
       setLoadingImage(false);
     }
@@ -159,7 +148,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    paddingHorizontal: -6,
+    marginHorizontal: -6,
   },
   emptyContainer: {
     padding: theme.spacing.xxxl,

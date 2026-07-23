@@ -214,9 +214,8 @@ async function pollTaskStatus(
         // 拿到最终结果
         return status;
       }
-    } catch (err) {
+    } catch {
       // 轮询出错时继续重试，不立即失败
-      console.warn('轮询任务状态失败:', err);
     }
 
     await delay(POLL_INTERVAL);

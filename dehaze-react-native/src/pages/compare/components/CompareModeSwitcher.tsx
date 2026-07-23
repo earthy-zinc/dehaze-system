@@ -46,12 +46,29 @@ const CompareModeSwitcher: React.FC<CompareModeSwitcherProps> = ({
 }) => {
   const handleSwitch = (mode: CompareMode) => {
     if (mode === current) return;
-    navigation.navigate(mode, {
+    const baseParams = {
       originalUrl: params.originalUrl,
       processedUrl: params.processedUrl,
       cleanUrl: params.cleanUrl,
       algorithmId: params.algorithmId,
-    } as any);
+    };
+    switch (mode) {
+      case 'SideBySide':
+        navigation.navigate('SideBySide', baseParams);
+        break;
+      case 'Overlay':
+        navigation.navigate('Overlay', baseParams);
+        break;
+      case 'Magnifier':
+        navigation.navigate('Magnifier', baseParams);
+        break;
+      case 'Filter':
+        navigation.navigate('Filter', baseParams);
+        break;
+      case 'Metrics':
+        navigation.navigate('Metrics', baseParams);
+        break;
+    }
   };
 
   return (

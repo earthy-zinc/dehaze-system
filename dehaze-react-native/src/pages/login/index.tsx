@@ -74,8 +74,9 @@ const LoginScreen: React.FC = () => {
         captchaKey: captcha?.captchaKey,
         captchaCode: captcha ? captchaCode : undefined,
       });
-    } catch (e: any) {
-      Alert.alert('登录失败', e?.message || '用户名或密码错误');
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      Alert.alert('登录失败', err?.message || '用户名或密码错误');
       loadCaptcha();
       setCaptchaCode('');
     } finally {
