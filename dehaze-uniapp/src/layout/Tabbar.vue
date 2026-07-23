@@ -79,9 +79,9 @@ const switchTab = (item: MenuItem, index: number) => {
 
   currentIndex.value = index;
 
-  // tabBar 页面使用 switchTab，其他页面使用 navigateTo
+  // tabBar 页面使用 reLaunch（清空页面栈，模拟 Tab 切换语义），其他页面使用 navigateTo
   if (isTabBarPage(item.route)) {
-    uni.switchTab({ url: item.route });
+    uni.reLaunch({ url: item.route });
   } else {
     uni.navigateTo({
       url: item.route,
@@ -122,7 +122,7 @@ onMounted(() => {
   border-top: 1rpx solid #f3f4f6;
   // 适配底部安全区
   padding-bottom: constant(safe-area-inset-bottom);
-  padding-bottom: calc(env(safe-area-inset-bottom) + 50px);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .tabbar-item {

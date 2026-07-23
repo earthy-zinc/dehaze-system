@@ -50,7 +50,7 @@ onMounted(() => {
 
 /** 跳转首页 */
 const goHome = () => {
-  uni.switchTab({ url: "/pages/home/index" });
+  uni.reLaunch({ url: "/pages/home/index" });
 };
 
 /** 搜索按钮点击 - 跳转到算法选择页（该页面已实现算法搜索） */

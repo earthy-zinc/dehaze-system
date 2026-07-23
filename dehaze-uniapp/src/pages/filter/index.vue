@@ -208,7 +208,7 @@ function applyPreset(p: Preset) {
 }
 
 function switchPage(url: string) {
-  uni.navigateTo({ url });
+  uni.redirectTo({ url });
 }
 function handleBack() {
   uni.navigateBack();

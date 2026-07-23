@@ -177,7 +177,7 @@ async function handleReprocess(record: PredLogVO) {
 }
 
 function handleStart() {
-  uni.switchTab({ url: "/pages/image-input/index" });
+  uni.reLaunch({ url: "/pages/image-input/index" });
 }
 
 onMounted(() => loadData());
@@ -289,7 +289,7 @@ onMounted(() => loadData());
   display: flex;
   align-items: center;
   gap: 6rpx;
-  padding: 10rpx 20rpx;
+  padding: 16rpx 32rpx;
   border-radius: 24rpx;
   font-size: 22rpx;
   font-weight: 500;

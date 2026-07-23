@@ -397,7 +397,12 @@ onMounted(() => {
 }
 
 .search-clear {
-  padding: 8rpx;
+  padding: 16rpx 24rpx;
+  min-width: 88rpx;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 图片预览 */

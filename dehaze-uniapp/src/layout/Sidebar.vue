@@ -158,7 +158,7 @@ const navigateTo = (route: string) => {
 
   // 判断是否为 tabBar 页面
   if (isTabBarPage(route)) {
-    uni.switchTab({ url: route });
+    uni.reLaunch({ url: route });
   } else {
     uni.navigateTo({
       url: route,

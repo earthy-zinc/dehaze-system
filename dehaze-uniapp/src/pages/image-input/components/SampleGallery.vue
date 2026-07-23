@@ -47,6 +47,7 @@ import {
   CATEGORY_TABS,
   getSampleImagesByCategory,
 } from "../data/imageInputData";
+import { getImageInfo } from "../utils/image";
 
 const emit = defineEmits<{
   (e: "select", data: ImageData): void;
@@ -122,19 +123,6 @@ const downloadImage = (
           reject(new Error("下载失败"));
         }
       },
-      fail: reject,
-    });
-  });
-};
-
-/** 获取图片信息 */
-const getImageInfo = (
-  src: string
-): Promise<{ width: number; height: number }> => {
-  return new Promise((resolve, reject) => {
-    uni.getImageInfo({
-      src,
-      success: (res) => resolve({ width: res.width, height: res.height }),
       fail: reject,
     });
   });

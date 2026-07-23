@@ -33,6 +33,7 @@ import { useProcessingStore } from "@/store/processing";
 import { MAX_FILE_SIZE, COMPRESS_THRESHOLD } from "../data/imageInputData";
 import { formatFileSize } from "@/utils/format";
 import type { ImageData } from "../data/imageInputData";
+import { getImageInfo } from "../utils/image";
 
 const emit = defineEmits<{
   (e: "select", data: ImageData): void;
@@ -147,19 +148,6 @@ const compressImage = (src: string): Promise<string> => {
       src,
       quality: 85,
       success: (res) => resolve(res.tempFilePath),
-      fail: reject,
-    });
-  });
-};
-
-/** 获取图片信息 */
-const getImageInfo = (
-  src: string
-): Promise<{ width: number; height: number }> => {
-  return new Promise((resolve, reject) => {
-    uni.getImageInfo({
-      src,
-      success: (res) => resolve({ width: res.width, height: res.height }),
       fail: reject,
     });
   });

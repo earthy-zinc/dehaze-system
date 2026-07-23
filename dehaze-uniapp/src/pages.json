@@ -125,26 +125,6 @@
     "navigationBarBackgroundColor": "#ffffff",
     "backgroundColor": "#f8f8f8"
   },
-  "tabBar": {
-    "color": "#9ca3af",
-    "selectedColor": "#3b82f6",
-    "backgroundColor": "#ffffff",
-    "borderStyle": "white",
-    "list": [
-      {
-        "pagePath": "pages/home/index",
-        "text": "首页"
-      },
-      {
-        "pagePath": "pages/image-input/index",
-        "text": "输入"
-      },
-      {
-        "pagePath": "pages/dataset/index",
-        "text": "数据集"
-      }
-    ]
-  },
   "easycom": {
     "autoscan": true,
     "custom": {

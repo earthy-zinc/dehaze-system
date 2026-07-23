@@ -31,9 +31,7 @@
       <!-- 数据指标 -->
       <view class="hero-stats">
         <view class="stat-item">
-          <text class="stat-value">{{
-            algorithmCount > 0 ? `${algorithmCount}+` : "--"
-          }}</text>
+          <text class="stat-value">{{ algorithmCountDisplay }}</text>
           <text class="stat-label">去雾算法</text>
         </view>
         <view class="stat-divider" />
@@ -52,8 +50,10 @@
 </template>
 
 <script lang="ts" setup>
+import { computed } from "vue";
+
 interface Props {
-  algorithmCount?: number;
+  algorithmCount?: number | string;
 }
 
 interface Emits {
@@ -61,11 +61,18 @@ interface Emits {
   (e: "secondary-click"): void;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   algorithmCount: 0,
 });
 
 const emit = defineEmits<Emits>();
+
+/** 算法数量展示：字符串原样显示，数字按 `${n}+` 格式（0 显示 "--"） */
+const algorithmCountDisplay = computed(() => {
+  const v = props.algorithmCount;
+  if (typeof v === "string") return v;
+  return v > 0 ? `${v}+` : "--";
+});
 
 const handlePrimaryClick = () => {
   emit("primary-click");

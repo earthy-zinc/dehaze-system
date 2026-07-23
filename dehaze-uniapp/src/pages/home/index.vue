@@ -3,7 +3,7 @@
     <view class="main-content">
       <!-- Hero Section - 英雄区 -->
       <HeroSection
-        :algorithm-count="algorithmCount"
+        :algorithm-count="displayAlgorithmCount"
         @primary-click="handleStartClick"
         @secondary-click="handleDatasetClick"
       />
@@ -47,7 +47,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import HeroSection from "./components/HeroSection.vue";
 import ShowcaseSection from "./components/ShowcaseSection.vue";
@@ -67,6 +67,12 @@ const specData = ref(homeData.specs);
 
 // 算法数量（动态获取）
 const algorithmCount = ref(0);
+const algorithmLoading = ref(true);
+
+/** Hero 区展示用算法数量：加载中显示 "..."，完成后显示实际数量 */
+const displayAlgorithmCount = computed(() =>
+  algorithmLoading.value ? "..." : algorithmCount.value
+);
 
 /** 统计算法树中的叶子节点数（实际可执行算法数） */
 function countLeafAlgorithms(list: Algorithm[]): number {
@@ -89,6 +95,8 @@ onMounted(async () => {
     if (algoSpec) algoSpec.value = `${algorithmCount.value}+`;
   } catch {
     // 获取失败时保持空值，不影响页面其他部分
+  } finally {
+    algorithmLoading.value = false;
   }
 });
 

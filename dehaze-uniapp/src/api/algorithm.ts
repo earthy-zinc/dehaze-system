@@ -55,10 +55,3 @@ export function toggleAlgorithmFavorite(
 export function getAlgorithmFavorites(): Promise<AlgorithmFavorite[]> {
   return pythonService.get("/api/v1/algorithm-select/favorites");
 }
-
-/** 智能推荐算法 */
-export function recommendAlgorithms(
-  data: RecommendRequest
-): Promise<AlgorithmRecommendVO[]> {
-  return pythonService.post("/api/v1/algorithm-select/recommend", data);
-}

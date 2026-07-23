@@ -174,7 +174,7 @@ function handleMove(e: any) {
 }
 
 function switchPage(url: string) {
-  uni.navigateTo({ url });
+  uni.redirectTo({ url });
 }
 function handleBack() {
   uni.navigateBack();

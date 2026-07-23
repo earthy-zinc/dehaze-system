@@ -106,7 +106,7 @@ const resultUrl = computed(() => store.result?.resultUrl || "");
 const hasImages = computed(() => !!(originUrl.value && resultUrl.value));
 
 function switchPage(url: string) {
-  uni.navigateTo({ url });
+  uni.redirectTo({ url });
 }
 function handleBack() {
   uni.navigateBack();

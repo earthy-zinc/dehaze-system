@@ -97,16 +97,16 @@ function handleTouchMove(e: TouchEvent) {
 }
 
 function handleOverlay() {
-  uni.navigateTo({ url: "/pages/overlay/index" });
+  uni.redirectTo({ url: "/pages/overlay/index" });
 }
 function handleMagnifier() {
-  uni.navigateTo({ url: "/pages/magnifier/index" });
+  uni.redirectTo({ url: "/pages/magnifier/index" });
 }
 function handleFilter() {
-  uni.navigateTo({ url: "/pages/filter/index" });
+  uni.redirectTo({ url: "/pages/filter/index" });
 }
 function handleMetrics() {
-  uni.navigateTo({ url: "/pages/metrics/index" });
+  uni.redirectTo({ url: "/pages/metrics/index" });
 }
 function handleBack() {
   uni.navigateBack();

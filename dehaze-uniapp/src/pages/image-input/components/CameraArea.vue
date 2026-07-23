@@ -28,6 +28,7 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import type { ImageData } from "../data/imageInputData";
+import { getImageInfo } from "../utils/image";
 
 const emit = defineEmits<{
   (e: "capture", data: ImageData): void;
@@ -89,19 +90,6 @@ const handleOpenCamera = () => {
         });
       }
     },
-  });
-};
-
-/** 获取图片信息 */
-const getImageInfo = (
-  src: string
-): Promise<{ width: number; height: number }> => {
-  return new Promise((resolve, reject) => {
-    uni.getImageInfo({
-      src,
-      success: (res) => resolve({ width: res.width, height: res.height }),
-      fail: reject,
-    });
   });
 };
 </script>
