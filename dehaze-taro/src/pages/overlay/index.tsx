@@ -6,6 +6,7 @@ import CompareNavbar from "@/components/compare/CompareNavbar";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
 import { loadCompareContext } from "@/components/compare/types";
+import EmptyState from "@/components/common/EmptyState";
 import "./index.less";
 
 // Taro 的 BaseEventOrig 类型定义不完整（缺 touches），扩展为触摸事件类型
@@ -75,10 +76,7 @@ const OverlayPage: React.FC = () => {
       {/* 重叠对比区域 */}
       <ScrollView className="overlay-content" scrollY>
         {!hasResult ? (
-          <View className="empty-state">
-            <Text className="empty-text">暂无对比数据</Text>
-            <Text className="empty-hint">请先完成去雾处理</Text>
-          </View>
+          <EmptyState type="compare" />
         ) : (
           <>
             <View

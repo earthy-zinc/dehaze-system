@@ -4,6 +4,7 @@ import CompareNavbar from "@/components/compare/CompareNavbar";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
 import { loadCompareContext } from "@/components/compare/types";
+import EmptyState from "@/components/common/EmptyState";
 import "./index.less";
 
 const SideBySidePage: React.FC = () => {
@@ -20,10 +21,7 @@ const SideBySidePage: React.FC = () => {
       {/* 对比内容 */}
       <ScrollView className="compare-content" scrollY>
         {!hasResult ? (
-          <View className="empty-state">
-            <Text className="empty-text">暂无对比数据</Text>
-            <Text className="empty-hint">请先完成去雾处理</Text>
-          </View>
+          <EmptyState type="compare" />
         ) : (
           <>
             {/* 原图 */}

@@ -7,6 +7,7 @@ import type { Algorithm, PredictionResultVO } from "dehaze-sdk-js";
 import { uploadImage } from "@/utils/upload";
 import { formatFileSize, formatDuration } from "@/utils/format";
 import { getErrorMessage } from "@/utils/error";
+import { saveImageToAlbum } from "@/utils/saveImage";
 import "./index.less";
 
 interface ImageData {
@@ -205,36 +206,7 @@ const ProcessingPage: React.FC = () => {
   // 保存结果到相册（设计文档 2.4.3）
   const handleSaveToAlbum = useCallback(async () => {
     if (!result?.resultUrl) return;
-
-    try {
-      // 小程序环境需先下载到本地临时文件
-      const downloadRes = await Taro.downloadFile({ url: result.resultUrl });
-      if (downloadRes.statusCode !== 200) {
-        throw new Error("下载结果图片失败");
-      }
-      await Taro.saveImageToPhotosAlbum({ filePath: downloadRes.tempFilePath });
-      Taro.showToast({ title: "已保存到相册", icon: "success" });
-    } catch (error: unknown) {
-      // 用户拒绝相册权限
-      const errMsg = (error as { errMsg?: string })?.errMsg;
-      if (
-        errMsg?.includes("auth deny") ||
-        errMsg?.includes("authorize")
-      ) {
-        Taro.showModal({
-          title: "提示",
-          content: "需要相册权限才能保存图片，请在设置中开启",
-          confirmText: "去设置",
-          success: (res) => {
-            if (res.confirm) {
-              Taro.openSetting();
-            }
-          },
-        });
-      } else {
-        Taro.showToast({ title: getErrorMessage(error, "保存失败"), icon: "none" });
-      }
-    }
+    await saveImageToAlbum(result.resultUrl);
   }, [result]);
 
   // 重置参数

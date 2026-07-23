@@ -3,7 +3,7 @@ import { View, Text } from "@tarojs/components";
 import "./EmptyState.less";
 
 interface EmptyStateProps {
-  type?: "dataset" | "image" | "search" | "history";
+  type?: "dataset" | "image" | "search" | "history" | "compare";
   title?: string;
   description?: string;
   className?: string;
@@ -40,6 +40,12 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           icon: "📋",
           title: title || "暂无历史记录",
           description: description || "处理过的图片会显示在这里",
+        };
+      case "compare":
+        return {
+          icon: "🆚",
+          title: title || "暂无对比数据",
+          description: description || "请先完成去雾处理",
         };
       default:
         return {

@@ -16,10 +16,6 @@ export const typography = {
     medium: 16,
     large: 18,
   },
-  /** 语义化别名（供组件使用） */
-  small: 13,
-  medium: 16,
-  large: 18,
   weights: {
     regular: '400' as '400',
     medium: '500' as '500',

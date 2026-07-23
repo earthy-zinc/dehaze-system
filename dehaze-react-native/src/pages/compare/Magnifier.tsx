@@ -12,7 +12,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   PanResponder,
-  Dimensions,
+  useWindowDimensions,
   LayoutChangeEvent,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -31,6 +31,7 @@ const MAGNIFIER_SIZE = 150;
 
 const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
   const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
+  const { height: screenHeight } = useWindowDimensions();
   const [zoom, setZoom] = useState<2 | 3 | 5>(2);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('compare');
   const [magnifierPos, setMagnifierPos] = useState({ x: 100, y: 100 });
@@ -113,7 +114,7 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
       </View>
 
       {/* 图片区域 */}
-      <View style={styles.imageContainer} onLayout={handleLayout}>
+      <View style={[styles.imageContainer, { minHeight: screenHeight * 0.55 }]} onLayout={handleLayout}>
         <ImageLoader
           source={{ uri: processedUrl }}
           style={styles.baseImage}
@@ -174,8 +175,6 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 };
 
-const { height: screenHeight } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   controlBar: {
     flexDirection: 'row',
@@ -206,7 +205,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.tertiary,
     overflow: 'hidden',
     position: 'relative',
-    minHeight: screenHeight * 0.55,
   },
   baseImage: {
     width: '100%',

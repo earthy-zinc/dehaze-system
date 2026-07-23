@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   PanResponder,
   LayoutChangeEvent,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/routes/types';
@@ -28,6 +28,7 @@ type Direction = 'vertical' | 'horizontal';
 
 const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
   const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
+  const { height: screenHeight } = useWindowDimensions();
   const [direction, setDirection] = useState<Direction>('vertical');
   const [dividerPos, setDividerPos] = useState(0.5);
   const layoutRef = useRef({ width: 0, height: 0 });
@@ -112,7 +113,7 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
 
       {/* 重叠区域 */}
       <View
-        style={styles.overlayContainer}
+        style={[styles.overlayContainer, { minHeight: screenHeight * 0.5 }]}
         onLayout={handleLayout}
         {...panResponder.panHandlers}
       >
@@ -179,8 +180,6 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 };
 
-const { height: screenHeight } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   controlBar: {
     flexDirection: 'row',
@@ -211,7 +210,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.tertiary,
     overflow: 'hidden',
     position: 'relative',
-    minHeight: screenHeight * 0.5,
   },
   baseImage: {
     width: '100%',

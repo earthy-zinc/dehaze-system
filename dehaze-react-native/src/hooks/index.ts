@@ -1,7 +1,5 @@
 export {
   useResponsive,
-  useResponsiveValue,
-  createResponsiveStyles,
   BREAKPOINTS,
 } from './useResponsive';
 

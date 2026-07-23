@@ -4,9 +4,6 @@ export const colors = {
   primaryDark: '#1e40af',
   secondary: '#14b8a6',
   secondaryLight: '#f0fdfa',
-  success: '#34d399',
-  warning: '#fbbf24',
-  error: '#ef4444',
   status: {
     success: '#34d399',
     warning: '#fbbf24',

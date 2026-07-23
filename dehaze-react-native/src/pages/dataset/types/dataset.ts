@@ -51,9 +51,6 @@ export type AnnotationFilter = 'annotated' | 'unannotated';
  */
 export type HazeLevel = string;
 
-/** 视图模式 */
-export type ViewMode = 'list' | 'detail';
-
 /**
  * 判断图片是否已标注（hazeLevel 非空视为已标注）
  */

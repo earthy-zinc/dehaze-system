@@ -222,48 +222,6 @@ async function pollTaskStatus(
   }
 }
 
-/** 批量处理（串行执行） */
-export interface BatchPredictOptions {
-  algorithmId: number;
-  images: { url: string; name?: string }[];
-  params?: CommonAlgorithmParams;
-  /** 单张完成回调 */
-  onItemComplete?: (index: number, result: ProcessingResult) => void;
-  /** 单张失败回调 */
-  onItemError?: (index: number, error: Error) => void;
-  /** 单张进度回调 */
-  onItemProgress?: (index: number, progress: TaskProgress) => void;
-  /** 取消信号 */
-  cancelSignal?: { canceled: boolean };
-}
-
-export async function predictBatch(opts: BatchPredictOptions): Promise<ProcessingResult[]> {
-  const { algorithmId, images, params, onItemComplete, onItemError, onItemProgress, cancelSignal } = opts;
-  const results: ProcessingResult[] = [];
-
-  for (let i = 0; i < images.length; i++) {
-    if (cancelSignal?.canceled) break;
-
-    try {
-      const result = await predictSingle({
-        algorithmId,
-        imageUrl: images[i].url,
-        params,
-        onProgress: p => onItemProgress?.(i, p),
-        cancelSignal,
-      });
-      results.push(result);
-      onItemComplete?.(i, result);
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error('处理失败');
-      onItemError?.(i, error);
-      // 失败不阻塞后续任务
-    }
-  }
-
-  return results;
-}
-
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }

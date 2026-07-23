@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { View, Text } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { COMPARE_MODES, type CompareMode } from "../types";
-import { getErrorMessage } from "@/utils/error";
+import { saveImageToAlbum } from "@/utils/saveImage";
 import "./index.less";
 
 interface CompareToolbarProps {
@@ -35,46 +35,7 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
       Taro.showToast({ title: "无结果图片可保存", icon: "none" });
       return;
     }
-    try {
-      const downloadRes = await Taro.downloadFile({ url: resultUrl });
-      if (downloadRes.statusCode !== 200) {
-        throw new Error("下载结果图片失败");
-      }
-      if (process.env.TARO_ENV === "h5") {
-        // H5 端：通过 a 标签触发下载
-        const link = document.createElement("a");
-        link.href = downloadRes.tempFilePath;
-        link.download = `dehaze-result-${Date.now()}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        Taro.showToast({ title: "已开始下载", icon: "success" });
-        return;
-      }
-      await Taro.saveImageToPhotosAlbum({
-        filePath: downloadRes.tempFilePath,
-      });
-      Taro.showToast({ title: "已保存到相册", icon: "success" });
-    } catch (error: unknown) {
-      const errMsg = (error as { errMsg?: string })?.errMsg;
-      if (
-        errMsg?.includes("auth deny") ||
-        errMsg?.includes("authorize")
-      ) {
-        Taro.showModal({
-          title: "提示",
-          content: "需要相册权限才能保存图片，请在设置中开启",
-          confirmText: "去设置",
-          success: (res) => {
-            if (res.confirm) {
-              Taro.openSetting();
-            }
-          },
-        });
-      } else {
-        Taro.showToast({ title: getErrorMessage(error, "保存失败"), icon: "none" });
-      }
-    }
+    await saveImageToAlbum(resultUrl, { h5Download: true });
   }, [resultUrl]);
 
   // 分享图片

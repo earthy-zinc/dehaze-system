@@ -10,11 +10,7 @@ interface FeaturesSectionProps {
   onImageInputPress: () => void;
   onAlgorithmSelectPress: () => void;
   onProcessingPress: () => void;
-  onSideBySidePress: () => void;
-  onOverlayPress: () => void;
-  onMagnifierPress: () => void;
-  onFilterPress: () => void;
-  onMetricsPress: () => void;
+  onComparePress: () => void;
   onDatasetManagePress: () => void;
   onTaskCenterPress: () => void;
 }
@@ -23,11 +19,7 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
   onImageInputPress,
   onAlgorithmSelectPress,
   onProcessingPress,
-  onSideBySidePress,
-  onOverlayPress,
-  onMagnifierPress,
-  onFilterPress,
-  onMetricsPress,
+  onComparePress,
   onDatasetManagePress,
   onTaskCenterPress,
 }) => {
@@ -63,31 +55,31 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
       icon: 'columns',
       title: '并排对比',
       description: '多图并排展示，支持2-4张图片同屏对比',
-      onPress: onSideBySidePress,
+      onPress: onComparePress,
     },
     {
       icon: 'layer-group',
       title: '重叠对比',
       description: '拖动分割线实时对比，支持横向和纵向模式',
-      onPress: onOverlayPress,
+      onPress: onComparePress,
     },
     {
       icon: 'search-plus',
       title: '放大镜',
       description: '局部细节放大查看，精确对比图像质量',
-      onPress: onMagnifierPress,
+      onPress: onComparePress,
     },
     {
       icon: 'sliders-h',
       title: '滤镜调节',
       description: '实时调节亮度、对比度、饱和度等参数',
-      onPress: onFilterPress,
+      onPress: onComparePress,
     },
     {
       icon: 'chart-line',
       title: '指标评估',
       description: 'SSIM、PSNR等专业指标定量分析',
-      onPress: onMetricsPress,
+      onPress: onComparePress,
     },
     {
       icon: 'database',

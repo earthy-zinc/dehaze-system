@@ -152,20 +152,20 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   beforeDot: {
-    backgroundColor: theme.colors.warning,
+    backgroundColor: theme.colors.status.warning,
   },
   afterDot: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: theme.colors.status.success,
   },
   labelText: {
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.inverse,
   },
   beforeText: {
-    color: theme.colors.warning,
+    color: theme.colors.status.warning,
   },
   afterText: {
-    color: theme.colors.success,
+    color: theme.colors.status.success,
   },
   divider: {
     fontSize: theme.typography.sizes.body,

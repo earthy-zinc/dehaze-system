@@ -139,7 +139,7 @@ export const tabBarItems: MenuItem[] = [
 ];
 
 /** TabBar 页面路由列表 */
-export const tabBarRoutes: string[] = tabBarItems.map((item) => item.route);
+const tabBarRoutes: string[] = tabBarItems.map((item) => item.route);
 
 /**
  * 获取 TabBar 项的索引

@@ -159,5 +159,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { SIDE_NAV_WIDTH };
 export default SideNav;

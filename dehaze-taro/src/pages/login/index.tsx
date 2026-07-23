@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, Form, Image, Input, Text, View } from "@tarojs/components";
-import Taro, { useDidShow } from "@tarojs/taro";
+import Taro from "@tarojs/taro";
 import { AuthAPI, CaptchaResult } from "dehaze-sdk-js";
 import { useGlobalContext } from "@/stores/global";
 import { getErrorMessage } from "@/utils/error";
@@ -18,8 +18,6 @@ const Login: React.FC = () => {
     captchaBase64: "",
     captchaKey: "",
   });
-
-  useDidShow(async () => {});
 
   useEffect(() => {
     getCaptcha();

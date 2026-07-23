@@ -5,6 +5,7 @@ import Taro from "@tarojs/taro";
 import CompareNavbar from "@/components/compare/CompareNavbar";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import { loadCompareContext } from "@/components/compare/types";
+import EmptyState from "@/components/common/EmptyState";
 import "./index.less";
 
 // 滤镜参数类型
@@ -318,10 +319,7 @@ const FilterPage: React.FC = () => {
       <CompareNavbar title="滤镜调节" />
 
       {!hasResult ? (
-        <View className="empty-state">
-          <Text className="empty-text">暂无对比数据</Text>
-          <Text className="empty-hint">请先完成去雾处理</Text>
-        </View>
+        <EmptyState type="compare" />
       ) : (
         <>
           {/* 实时预览区 */}

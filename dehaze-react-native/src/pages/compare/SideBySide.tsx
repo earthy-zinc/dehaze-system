@@ -4,7 +4,7 @@
  * 移动端默认上下排列，平板/桌面左右排列。
  * 提供双击放大还原、标签切换原图/处理后。
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
-  Dimensions,
+  useWindowDimensions,
   ViewStyle,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -31,6 +31,7 @@ type DisplayMode = 'both' | 'original' | 'processed';
 const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
   const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
   const { isPortrait, isTablet, isDesktop, containerPadding } = useResponsive();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [displayMode, setDisplayMode] = useState<DisplayMode>('both');
   const [zoomed, setZoomed] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -50,6 +51,16 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
   const containerStyle: ViewStyle = isHorizontal
     ? { flexDirection: 'row' as const }
     : { flexDirection: 'column' as const };
+
+  const imageVerticalStyle = useMemo(() => ({
+    width: '100%' as const,
+    height: screenHeight * 0.35,
+  }), [screenHeight]);
+
+  const imageHorizontalStyle = useMemo(() => ({
+    width: (screenWidth - 60) / 2,
+    height: screenHeight * 0.5,
+  }), [screenWidth, screenHeight]);
 
   // 缺少必要参数时显示空状态（例如从底部 Tab 直接进入）
   if (!originalUrl || !processedUrl) {
@@ -113,7 +124,7 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
               <TouchableOpacity onPress={toggleZoom} activeOpacity={1}>
                 <ImageLoader
                   source={{ uri: originalUrl }}
-                  style={isHorizontal ? styles.imageHorizontal : styles.imageVertical}
+                  style={isHorizontal ? imageHorizontalStyle : imageVerticalStyle}
                   resizeMode="contain"
                 />
               </TouchableOpacity>
@@ -130,7 +141,7 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
               <TouchableOpacity onPress={toggleZoom} activeOpacity={1}>
                 <ImageLoader
                   source={{ uri: processedUrl }}
-                  style={isHorizontal ? styles.imageHorizontal : styles.imageVertical}
+                  style={isHorizontal ? imageHorizontalStyle : imageVerticalStyle}
                   resizeMode="contain"
                 />
               </TouchableOpacity>
@@ -141,14 +152,12 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
         {/* 提示 */}
         <View style={styles.tipRow}>
           <Icon name="search" size={12} color={theme.colors.text.tertiary} />
-          <Text style={styles.tipText}>双击图片可放大查看</Text>
+          <Text style={styles.tipText}>点击图片可放大查看</Text>
         </View>
       </ScrollView>
     </MainLayout>
   );
 };
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   scrollView: {
@@ -212,14 +221,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.tiny,
     color: '#fff',
     fontWeight: theme.typography.weights.medium,
-  },
-  imageVertical: {
-    width: '100%',
-    height: screenHeight * 0.35,
-  },
-  imageHorizontal: {
-    width: (screenWidth - 60) / 2,
-    height: screenHeight * 0.5,
   },
   tipRow: {
     flexDirection: 'row',

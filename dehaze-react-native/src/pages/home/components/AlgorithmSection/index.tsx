@@ -80,7 +80,7 @@ const AlgorithmSection: React.FC<AlgorithmSectionProps> = ({
                 <Icon
                   name="check-circle"
                   size={20}
-                  color={theme.colors.success}
+                  color={theme.colors.status.success}
                   style={styles.featureIcon}
                 />
                 <Text style={styles.featureText}>{feature}</Text>

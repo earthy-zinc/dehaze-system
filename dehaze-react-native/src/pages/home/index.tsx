@@ -94,11 +94,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           onImageInputPress={handleImageInputPress}
           onAlgorithmSelectPress={handleAlgorithmSelectPress}
           onProcessingPress={handleProcessingPress}
-          onSideBySidePress={handleSideBySidePress}
-          onOverlayPress={handleOverlayPress}
-          onMagnifierPress={handleMagnifierPress}
-          onFilterPress={handleFilterPress}
-          onMetricsPress={handleMetricsPress}
+          onComparePress={handleComparePress}
           onDatasetManagePress={handleDatasetManagePress}
           onTaskCenterPress={handleTaskCenterPress}
         />
