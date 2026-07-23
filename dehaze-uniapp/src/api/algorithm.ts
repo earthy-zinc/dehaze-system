@@ -1,21 +1,14 @@
 /**
- * 算法管理 API
+ * 算法选择扩展 API
  *
- * 算法 CRUD 使用 dehaze-sdk-js 的 AlgorithmAPI（Java 后端）。
- * 算法选择扩展（推荐/收藏/对比）通过 SDK 导出的 pythonService 直连 Python 后端。
+ * 算法 CRUD 直接使用 dehaze-sdk-js 的 AlgorithmAPI（Java 后端），
+ * 本文件仅维护 SDK 未覆盖的算法选择扩展（推荐 / 收藏），
+ * 通过 SDK 导出的 pythonService 直连 Python 后端。
  */
 
-import { AlgorithmAPI, pythonService } from "dehaze-sdk-js";
-
-export type { Algorithm, AlgorithmQuery } from "dehaze-sdk-js";
+import { pythonService } from "dehaze-sdk-js";
 
 // ==================== 算法选择扩展类型（Python 后端） ====================
-
-/** 下拉选项 */
-export interface AlgorithmOption {
-  value: number;
-  label: string;
-}
 
 /** 收藏记录 */
 export interface AlgorithmFavorite {
@@ -45,25 +38,6 @@ export interface AlgorithmRecommendVO {
   score: number;
   reason: string;
   type?: string;
-}
-
-// ==================== 算法 CRUD（SDK） ====================
-
-/** 获取算法列表 */
-export function getAlgorithmList(
-  query?: import("dehaze-sdk-js").AlgorithmQuery
-) {
-  return AlgorithmAPI.getList(query);
-}
-
-/** 获取算法下拉选项 */
-export function getAlgorithmOptions() {
-  return AlgorithmAPI.getOption();
-}
-
-/** 获取算法详情 */
-export function getAlgorithmDetail(id: number) {
-  return AlgorithmAPI.getAlgorithmInfoById(id);
 }
 
 // ==================== 算法选择扩展（Python 后端） ====================

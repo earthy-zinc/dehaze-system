@@ -9,19 +9,13 @@
 
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { REFRESH_TOKEN_KEY, TOKEN_KEY } from "dehaze-sdk-js";
+import { AuthAPI, REFRESH_TOKEN_KEY, TOKEN_KEY } from "dehaze-sdk-js";
 import type {
   AuthUserInfo,
   CaptchaResult,
   LoginData,
   LoginResult,
-} from "@/api/auth";
-import {
-  login as loginApi,
-  logout as logoutApi,
-  getCurrentUser,
-  getCaptcha as getCaptchaApi,
-} from "@/api/auth";
+} from "dehaze-sdk-js";
 import { clearAuth as clearStorageAuth } from "@/api/sdk-setup";
 import { USER_INFO_KEY } from "@/api/config";
 
@@ -84,7 +78,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   /** 登录 */
   async function login(data: LoginData): Promise<LoginResult> {
-    const result = await loginApi(data);
+    const result = await AuthAPI.login(data);
 
     accessToken.value = result.accessToken;
     // 后端可能不返回 refreshToken，这里做兼容
@@ -98,7 +92,7 @@ export const useAuthStore = defineStore("auth", () => {
 
     // 登录成功后获取完整用户信息
     try {
-      const user = await getCurrentUser();
+      const user = await AuthAPI.getCurrentUser();
       userInfo.value = user;
       uni.setStorageSync(USER_INFO_KEY, JSON.stringify(user));
     } catch {
@@ -112,7 +106,7 @@ export const useAuthStore = defineStore("auth", () => {
   /** 登出 */
   async function logout(): Promise<void> {
     try {
-      await logoutApi();
+      await AuthAPI.logout();
     } catch {
       // 登出 API 失败也清除本地状态
     }
@@ -126,7 +120,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   /** 获取验证码 */
   async function getCaptcha(): Promise<CaptchaResult> {
-    return getCaptchaApi();
+    return AuthAPI.getCaptcha();
   }
 
   /** 检查是否有某权限 */

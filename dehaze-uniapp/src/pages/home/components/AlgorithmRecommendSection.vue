@@ -45,8 +45,8 @@
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import SectionHeader from "@/components/common/SectionHeader.vue";
-import { getAlgorithmList } from "@/api/algorithm";
-import type { Algorithm } from "@/api/algorithm";
+import { AlgorithmAPI } from "dehaze-sdk-js";
+import type { Algorithm } from "dehaze-sdk-js";
 import { getErrorMessage } from "@/utils/error";
 
 /** 展示算法数量 */
@@ -61,7 +61,7 @@ async function loadAlgorithms() {
   loading.value = true;
   error.value = "";
   try {
-    const list = await getAlgorithmList();
+    const list = await AlgorithmAPI.getList();
     algorithms.value = list.slice(0, DISPLAY_COUNT);
   } catch (e) {
     error.value = getErrorMessage(e, "算法加载失败");

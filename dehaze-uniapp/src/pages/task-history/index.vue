@@ -82,8 +82,8 @@
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
-import { getPredictionLogs, type PredLogVO } from "@/api/prediction";
-import { getAlgorithmDetail } from "@/api/algorithm";
+import { AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
+import type { PredLogVO } from "dehaze-sdk-js";
 import { useProcessingStore } from "@/store/processing";
 import type { ImageData } from "@/pages/image-input/data/imageInputData";
 import { formatRelativeTime } from "@/utils/format";
@@ -100,7 +100,7 @@ async function loadData(page = 1) {
   loading.value = true;
 
   try {
-    const result = await getPredictionLogs({ pageNum: page, pageSize: 15 });
+    const result = await ModelAPI.getPredLogs({ pageNum: page, pageSize: 15 });
     if (page === 1) {
       records.value = result.list;
     } else {
@@ -163,7 +163,7 @@ async function handleReprocess(record: PredLogVO) {
   }
   uni.showLoading({ title: "准备中...", mask: true });
   try {
-    const algorithm = await getAlgorithmDetail(record.algorithmId);
+    const algorithm = await AlgorithmAPI.getAlgorithmInfoById(record.algorithmId);
     processingStore.reset();
     processingStore.setImage(buildImageData(record.originUrl));
     processingStore.setAlgorithm(algorithm);

@@ -105,8 +105,8 @@
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { useProcessingStore } from "@/store/processing";
-import { evaluate } from "@/api/evaluation";
-import type { EvaluationResultVO } from "@/api/evaluation";
+import { ModelAPI } from "dehaze-sdk-js";
+import type { EvaluationResultVO } from "dehaze-sdk-js";
 
 const store = useProcessingStore();
 const evaluating = ref(false);
@@ -249,7 +249,7 @@ async function handleEvaluate() {
   }
   evaluating.value = true;
   try {
-    const result = await evaluate({
+    const result = await ModelAPI.evaluate({
       algorithmId: store.selectedAlgorithm.id,
       predUrl: store.result?.resultUrl,
       gtUrl: gtUrl.value,

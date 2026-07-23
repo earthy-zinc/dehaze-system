@@ -58,7 +58,8 @@
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
-import { getFileList, type FileInfo } from "@/api/file";
+import { FileAPI } from "dehaze-sdk-js";
+import type { FileInfo } from "dehaze-sdk-js";
 import { formatFileSize, formatRelativeTime } from "@/utils/format";
 
 const loading = ref(false);
@@ -71,7 +72,7 @@ async function loadData(page = 1) {
   loading.value = true;
 
   try {
-    const result = await getFileList(page, 20);
+    const result = await FileAPI.getPage({ pageNum: page, pageSize: 20 });
     if (page === 1) {
       files.value = result.list;
     } else {

@@ -165,10 +165,8 @@
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { useProcessingStore, DEFAULT_DEHAZE_PARAMS } from "@/store/processing";
-import {
-  predict as predictApi,
-  type PredictionResultVO,
-} from "@/api/prediction";
+import { ModelAPI } from "dehaze-sdk-js";
+import type { PredictionResultVO } from "dehaze-sdk-js";
 import type { SliderChangeEvent } from "@/types/uni-events";
 import { getErrorMessage } from "@/utils/error";
 
@@ -239,7 +237,7 @@ async function handleProcess() {
   store.startProcessing();
 
   try {
-    const result: PredictionResultVO = await predictApi({
+    const result: PredictionResultVO = await ModelAPI.predict({
       algorithmId: store.selectedAlgorithm.id,
       fileId: store.fileId ?? undefined,
       imageUrl: !store.fileId ? store.currentImage.url : undefined,

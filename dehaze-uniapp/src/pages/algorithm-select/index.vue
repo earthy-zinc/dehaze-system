@@ -194,12 +194,12 @@
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { useProcessingStore } from "@/store/processing";
+import { AlgorithmAPI } from "dehaze-sdk-js";
+import type { Algorithm } from "dehaze-sdk-js";
 import {
-  getAlgorithmList,
   getAlgorithmFavorites,
   toggleAlgorithmFavorite,
 } from "@/api/algorithm";
-import type { Algorithm } from "@/api/algorithm";
 import { getErrorMessage } from "@/utils/error";
 
 // ==================== 状态 ====================
@@ -247,7 +247,7 @@ async function loadAlgorithms() {
 
   try {
     const [list, favorites] = await Promise.all([
-      getAlgorithmList(),
+      AlgorithmAPI.getList(),
       getAlgorithmFavorites().catch(() => []),
     ]);
     algorithmList.value = list;

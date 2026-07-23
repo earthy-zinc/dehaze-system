@@ -59,7 +59,8 @@ import CTASection from "./components/CTASection.vue";
 import SpecCard from "@/components/business/SpecCard.vue";
 import type { ToolItem } from "./data/homeData";
 import { homeData } from "./data/homeData";
-import { getAlgorithmList, type Algorithm } from "@/api/algorithm";
+import { AlgorithmAPI } from "dehaze-sdk-js";
+import type { Algorithm } from "dehaze-sdk-js";
 
 // 技术规格数据
 const specData = ref(homeData.specs);
@@ -82,7 +83,7 @@ function countLeafAlgorithms(list: Algorithm[]): number {
 
 onMounted(async () => {
   try {
-    const list = await getAlgorithmList();
+    const list = await AlgorithmAPI.getList();
     algorithmCount.value = countLeafAlgorithms(list);
     const algoSpec = specData.value.find((s) => s.title === "智能算法");
     if (algoSpec) algoSpec.value = `${algorithmCount.value}+`;

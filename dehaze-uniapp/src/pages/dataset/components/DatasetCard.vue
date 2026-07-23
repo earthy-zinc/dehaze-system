@@ -31,7 +31,8 @@
 import { ref, computed, onMounted } from "vue";
 import type { Dataset } from "../data/datasetData";
 import { formatRelativeTime } from "@/utils/format";
-import { getDatasetItems, flattenDatasetItems } from "@/api/dataset";
+import { DatasetItemAPI } from "dehaze-sdk-js";
+import { flattenDatasetItems } from "@/api/dataset";
 
 interface Props {
   dataset: Dataset;
@@ -63,7 +64,8 @@ const thumbnailUrl = ref("");
 async function loadThumbnail() {
   if (!props.dataset.id) return;
   try {
-    const result = await getDatasetItems(props.dataset.id, {
+    const result = await DatasetItemAPI.getList({
+      datasetId: props.dataset.id,
       pageNum: 1,
       pageSize: 1,
     });

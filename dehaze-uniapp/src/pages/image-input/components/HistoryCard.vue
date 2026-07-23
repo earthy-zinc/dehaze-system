@@ -29,7 +29,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { PredLogVO } from "@/api/prediction";
+import type { PredLogVO } from "dehaze-sdk-js";
 import { formatRelativeTime } from "@/utils/format";
 
 interface Props {

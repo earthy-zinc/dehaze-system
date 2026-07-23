@@ -36,7 +36,8 @@
 import { ref, onMounted } from "vue";
 import HistoryCard from "./HistoryCard.vue";
 import type { ImageData } from "../data/imageInputData";
-import { getPredictionLogs, type PredLogVO } from "@/api/prediction";
+import { ModelAPI } from "dehaze-sdk-js";
+import type { PredLogVO } from "dehaze-sdk-js";
 
 const emit = defineEmits<{
   (e: "select", data: ImageData): void;
@@ -49,7 +50,7 @@ const records = ref<PredLogVO[]>([]);
 const loadHistory = async () => {
   loading.value = true;
   try {
-    const result = await getPredictionLogs({ pageNum: 1, pageSize: 20 });
+    const result = await ModelAPI.getPredLogs({ pageNum: 1, pageSize: 20 });
     records.value = result.list;
   } catch (e) {
     console.warn("加载历史记录失败:", e);

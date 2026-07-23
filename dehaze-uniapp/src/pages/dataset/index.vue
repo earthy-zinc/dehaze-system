@@ -152,12 +152,8 @@ import type {
   DisplayMode,
 } from "./data/datasetData";
 import { formatHazeLevel, IMAGE_TYPE_LABELS } from "./data/datasetData";
-import {
-  getDatasets,
-  getDatasetDetail,
-  getDatasetItems,
-  flattenDatasetItems,
-} from "@/api/dataset";
+import { DatasetAPI, DatasetItemAPI } from "dehaze-sdk-js";
+import { flattenDatasetItems } from "@/api/dataset";
 import { formatFileSize } from "@/utils/format";
 
 // ==================== 状态定义 ====================
@@ -218,7 +214,11 @@ const loadDatasets = async () => {
 
   listLoading.value = true;
   try {
-    const result = await getDatasets(1, searchKeyword.value);
+    const result = await DatasetAPI.getList({
+      pageNum: 1,
+      pageSize: 10,
+      keyword: searchKeyword.value || undefined,
+    });
     datasets.value = result.list;
   } catch (error) {
     console.error("加载数据集失败:", error);
@@ -237,7 +237,8 @@ const loadImages = async (append = false) => {
 
   imagesLoading.value = true;
   try {
-    const result = await getDatasetItems(currentDataset.value.id, {
+    const result = await DatasetItemAPI.getList({
+      datasetId: currentDataset.value.id,
       pageNum: currentPage.value,
       pageSize: PAGE_SIZE,
       keyword: searchKeyword.value || undefined,
@@ -282,7 +283,7 @@ const handleDatasetClick = async (dataset: Dataset) => {
   uni.showLoading({ title: "加载中..." });
 
   try {
-    const detail = await getDatasetDetail(dataset.id);
+    const detail = await DatasetAPI.getDatasetInfoById(dataset.id);
     currentDataset.value = detail;
     currentView.value = "detail";
     currentPage.value = 1;

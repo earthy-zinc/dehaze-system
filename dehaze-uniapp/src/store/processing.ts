@@ -11,8 +11,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import type { ImageData } from "@/pages/image-input/data/imageInputData";
-import type { Algorithm } from "@/api/algorithm";
-import type { PredictionResultVO } from "@/api/prediction";
+import type { Algorithm, PredictionResultVO } from "dehaze-sdk-js";
 
 /** 处理状态 */
 export type ProcessingStatus =

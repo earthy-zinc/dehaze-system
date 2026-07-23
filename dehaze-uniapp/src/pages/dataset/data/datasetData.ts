@@ -1,7 +1,7 @@
 /**
  * 数据集管理模块 - 展示层数据
  *
- * 类型定义统一从 @/api/dataset 导入，避免重复定义。
+ * SDK 类型直接从 dehaze-sdk-js 导入；视图模型 DatasetImageItem 从 @/api/dataset 导入。
  * 本文件仅保留：
  * - 展示模式等前端专用类型
  * - 格式化工具函数
@@ -10,11 +10,8 @@
 
 // ==================== 类型 re-export ====================
 
-export type {
-  Dataset,
-  DatasetStatistics,
-  DatasetImageItem,
-} from "@/api/dataset";
+export type { Dataset, DatasetStatistics } from "dehaze-sdk-js";
+export type { DatasetImageItem } from "@/api/dataset";
 
 // ==================== 展示层专用类型 ====================
 
