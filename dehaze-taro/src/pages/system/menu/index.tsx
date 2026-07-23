@@ -12,7 +12,7 @@ import { MenuTypeEnum } from "dehaze-sdk-js";
 import { DEFAULT_FORM } from "./constants";
 import TreeNode from "./components/TreeNode";
 import MenuFormDialog from "./components/MenuFormDialog";
-import "./index.scss";
+import "./index.less";
 
 // 递归展开第一层菜单
 const expandFirstLevel = (list: MenuVO[]): number[] => {

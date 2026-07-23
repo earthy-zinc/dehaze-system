@@ -22,7 +22,7 @@ import { useRoleManagement } from "@/hooks/useRoleManagement";
 import { usePermission } from "@/hooks/usePermission";
 import ErrorState from "@/components/common/ErrorState";
 import StatusTag from "@/components/common/StatusTag";
-import "./index.scss";
+import "./index.less";
 
 const RoleListPage: React.FC = () => {
   const {

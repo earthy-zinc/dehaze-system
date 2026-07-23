@@ -10,7 +10,7 @@ import {
 } from "@taroify/core";
 import { ArrowLeft } from "@taroify/icons";
 import { useRoleManagement } from "@/hooks/useRoleManagement";
-import "./permission.scss";
+import "./permission.less";
 
 const RolePermissionPage: React.FC = () => {
   const router = useRouter();

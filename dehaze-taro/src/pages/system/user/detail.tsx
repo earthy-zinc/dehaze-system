@@ -18,7 +18,7 @@ import { useUserManagement } from "@/hooks/useUserManagement";
 import { useDeptManagement } from "@/hooks/useDeptManagement";
 import { useRoleManagement } from "@/hooks/useRoleManagement";
 import type { UserForm } from "dehaze-sdk-js";
-import "./detail.scss";
+import "./detail.less";
 
 const UserDetailPage: React.FC = () => {
   const router = useRouter();

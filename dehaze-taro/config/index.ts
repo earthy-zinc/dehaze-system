@@ -39,16 +39,6 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
           use: "babel-loader",
           exclude: /node_modules/,
         },
-        {
-          test: /\.scss$/,
-          use: [
-            "css-loader",
-            {
-              loader: "sass-loader",
-              options: {},
-            },
-          ],
-        },
       ],
     },
     mini: {

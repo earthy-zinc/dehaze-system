@@ -29,7 +29,7 @@ import StatusTag from "@/components/common/StatusTag";
 import DictTypeFormDialog from "./components/DictTypeFormDialog";
 import DictItemDialog from "./components/DictItemDialog";
 import DictItemFormDialog from "./components/DictItemFormDialog";
-import "./index.scss";
+import "./index.less";
 
 const DictPage: React.FC = () => {
   const {

@@ -15,7 +15,7 @@ import {
 import { ArrowLeft } from "@taroify/icons";
 import { useRoleManagement } from "@/hooks/useRoleManagement";
 import type { RoleForm } from "dehaze-sdk-js";
-import "./detail.scss";
+import "./detail.less";
 
 const RoleDetailPage: React.FC = () => {
   const router = useRouter();

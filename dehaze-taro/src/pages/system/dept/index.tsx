@@ -19,7 +19,7 @@ import { ArrowLeft, Add, Edit, Delete, Arrow } from "@taroify/icons";
 import { useDeptManagement } from "@/hooks/useDeptManagement";
 import { usePermission } from "@/hooks/usePermission";
 import type { DeptVO, DeptForm } from "dehaze-sdk-js";
-import "./index.scss";
+import "./index.less";
 
 // 默认表单
 const DEFAULT_FORM: DeptForm = {

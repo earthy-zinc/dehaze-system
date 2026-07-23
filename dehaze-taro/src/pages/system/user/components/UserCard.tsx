@@ -4,7 +4,7 @@ import { Tag, Button, Space } from "@taroify/core";
 import { Edit, Delete, Lock, Phone } from "@taroify/icons";
 import type { UserPageVO } from "dehaze-sdk-js";
 import { usePermission } from "@/hooks/usePermission";
-import "./UserCard.scss";
+import "./UserCard.less";
 
 interface UserCardProps {
   user: UserPageVO;

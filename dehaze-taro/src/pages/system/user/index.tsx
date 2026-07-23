@@ -17,7 +17,7 @@ import { apiConfig } from "@/config/api";
 import type { UserPageVO } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
 import UserCard from "./components/UserCard";
-import "./index.scss";
+import "./index.less";
 
 const UserListPage: React.FC = () => {
   const { hasPermission } = usePermission();

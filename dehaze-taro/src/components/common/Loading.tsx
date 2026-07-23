@@ -1,7 +1,7 @@
 import React from "react";
 import { View } from "@tarojs/components";
 import { Loading as TaroLoading } from "@taroify/core";
-import "./Loading.scss";
+import "./Loading.less";
 
 interface LoadingProps {
   children?: React.ReactNode;

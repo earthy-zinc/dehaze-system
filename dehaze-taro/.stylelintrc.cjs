@@ -1,17 +1,12 @@
 module.exports = {
   extends: [
     "stylelint-config-standard",
-    "stylelint-config-recommended-scss",
     "stylelint-config-recess-order",
   ],
   overrides: [
     {
       files: ["**/*.less"],
       customSyntax: "postcss-less",
-    },
-    {
-      files: ["**/*.scss"],
-      customSyntax: "postcss-scss",
     },
   ],
   rules: {
@@ -42,14 +37,14 @@ module.exports = {
         ignorePseudoClasses: ["global", "export", "deep"],
       },
     ],
-    // 允许未知 at-rules（Less/SCSS 语法）
+    // 允许未知 at-rules（Less 语法）
     "at-rule-no-unknown": [
       true,
       {
         ignoreAtRules: ["apply", "use", "import", "reference", "plugin"],
       },
     ],
-    // Less/SCSS 嵌套会产生重复选择器误报
+    // Less 嵌套会产生重复选择器误报
     "no-duplicate-selectors": null,
   },
 };
