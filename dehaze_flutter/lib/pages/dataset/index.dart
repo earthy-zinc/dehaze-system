@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/network/api_result.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/dehaze_image.dart';
 import 'models/dataset_model.dart';
@@ -48,7 +50,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
       _showDatasetDetail(dataset);
     } catch (e) {
       if (!mounted) return;
-      _showError('加载数据集失败: ${_extractError(e)}');
+      _showError('加载数据集失败: ${extractErrorMessage(e)}');
     }
   }
 
@@ -60,9 +62,6 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
       ),
     );
   }
-
-  String _extractError(dynamic e) =>
-      e.toString().replaceFirst('Exception: ', '');
 
   @override
   void dispose() {
@@ -120,7 +119,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
                 ],
                 Icon(
                   Icons.storage_outlined,
-                  color: const Color(0xFF14B8A6),
+                  color: AppTheme.teal,
                   size: 24,
                 ),
                 const SizedBox(width: 8),
@@ -182,7 +181,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
-              color: Color(0xFF14B8A6),
+              color: AppTheme.teal,
               width: 2,
             ),
           ),
@@ -206,21 +205,14 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
         child: datasetsAsync.when(
           data: (datasets) {
             if (datasets.isEmpty) {
-              return CustomScrollView(
-                slivers: [
-                  _buildHeaderSliver(null),
-                  SliverFillRemaining(
-                    child: _buildEmptyState('暂无数据集', Icons.folder_open_outlined),
-                  ),
-                ],
+              return _buildListScroll(
+                _buildEmptyState('暂无数据集', Icons.folder_open_outlined),
               );
             }
-
-            // 使用 CustomScrollView 让 Header 跟随滚动
+            // 响应式布局：宽屏使用网格，窄屏使用列表
             return CustomScrollView(
               slivers: [
                 _buildHeaderSliver(null),
-                // 响应式布局：宽屏使用网格，窄屏使用列表
                 if (isWide)
                   _buildDatasetGridSliver(datasets)
                 else
@@ -228,23 +220,21 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
               ],
             );
           },
-          loading: () => CustomScrollView(
-            slivers: [
-              _buildHeaderSliver(null),
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            ],
+          loading: () => _buildListScroll(
+            const Center(child: CircularProgressIndicator()),
           ),
-          error: (error, stack) => CustomScrollView(
-            slivers: [
-              _buildHeaderSliver(null),
-              SliverFillRemaining(
-                child: _buildErrorState(error.toString()),
-              ),
-            ],
+          error: (error, stack) => _buildListScroll(
+            _buildErrorState(extractErrorMessage(error)),
           ),
         ),
+      );
+
+  /// 构建带 Header 的单内容滚动视图（空/加载/错误态共用）
+  Widget _buildListScroll(Widget content) => CustomScrollView(
+        slivers: [
+          _buildHeaderSliver(null),
+          SliverFillRemaining(child: content),
+        ],
       );
 
   /// 构建数据集网格（宽屏）- Sliver 版本
@@ -352,13 +342,13 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
             Icon(
               icon,
               size: 64,
-              color: const Color(0xFFD1D5DB), // gray-300
+              color: AppTheme.gray300,
             ),
             const SizedBox(height: 12),
             Text(
               message,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: const Color(0xFF6B7280), // gray-500
+                    color: AppTheme.gray500,
                   ),
             ),
           ],
@@ -431,12 +421,6 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
 
   /// 显示图片查看器
   void _showImageViewer(ImageModel image) {
-    final typeLabels = {
-      ImageType.hazy: '有雾图像',
-      ImageType.clear: '清晰图像',
-      ImageType.dehazed: '去雾结果',
-    };
-
     showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.9),
@@ -456,7 +440,6 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
                   errorIcon: Icons.broken_image_outlined,
                 ),
               ),
-
               // 关闭按钮
               Positioned(
                 top: 16,
@@ -470,71 +453,12 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
                   ),
                 ),
               ),
-
               // 图片信息
               Positioned(
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(12),
-                      bottomRight: Radius.circular(12),
-                    ),
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.8),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        image.filename,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 16,
-                        children: [
-                          Text(
-                            '类型: ${typeLabels[image.imageType]}',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                          Text(
-                            '尺寸: ${image.width} × ${image.height}',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                          if (image.fileSize != null)
-                            Text(
-                              '大小: ${_formatFileSize(image.fileSize!)}',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 14,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                child: _buildImageInfoBar(image),
               ),
             ],
           ),
@@ -542,6 +466,57 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
       ),
     );
   }
+
+  /// 图片查看器底部信息条（文件名 + 类型/尺寸/大小）
+  Widget _buildImageInfoBar(ImageModel image) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(12),
+            bottomRight: Radius.circular(12),
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.8),
+              Colors.transparent,
+            ],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              image.filename,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 16,
+              children: [
+                _infoText('类型: ${image.imageType.displayName}'),
+                _infoText('尺寸: ${image.width} × ${image.height}'),
+                if (image.fileSize != null)
+                  _infoText('大小: ${_formatFileSize(image.fileSize!)}'),
+              ],
+            ),
+          ],
+        ),
+      );
+
+  Widget _infoText(String text) => Text(
+        text,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: 14,
+        ),
+      );
 
   String _formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';

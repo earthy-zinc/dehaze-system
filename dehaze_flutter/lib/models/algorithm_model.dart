@@ -110,3 +110,24 @@ class AlgorithmModel {
   /// 是否已启用
   bool get isEnabled => status == AlgorithmStatus.enabled;
 }
+
+/// 算法列表展平工具
+extension AlgorithmListExtension on List<AlgorithmModel> {
+  /// 展平树形结构，返回所有启用的叶子算法
+  ///
+  /// 约定：父节点为分类节点（不含可执行模型），叶子节点为具体算法。
+  /// 仅返回 status==enabled 的叶子节点，供算法选择/算法信息页使用。
+  List<AlgorithmModel> get flatEnabledLeaves {
+    final result = <AlgorithmModel>[];
+    for (final algo in this) {
+      if (algo.children.isEmpty) {
+        if (algo.isEnabled) result.add(algo);
+      } else {
+        for (final child in algo.children) {
+          if (child.isEnabled) result.add(child);
+        }
+      }
+    }
+    return result;
+  }
+}

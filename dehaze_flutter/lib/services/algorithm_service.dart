@@ -21,15 +21,11 @@ class AlgorithmService {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.algorithmOptions,
     );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      final list = result['data'] as List<dynamic>? ?? [];
-      return list
-          .map((e) => AlgorithmOption.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    throw Exception(result['msg'] ?? '获取算法选项失败');
+    // ResponseInterceptor 已保证 code=='00000'，失败已 reject 为 ApiException
+    final list = response.data!['data'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => AlgorithmOption.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// 获取算法树形列表
@@ -39,15 +35,10 @@ class AlgorithmService {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.algorithm,
     );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      final list = result['data'] as List<dynamic>? ?? [];
-      return list
-          .map((e) => AlgorithmModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    throw Exception(result['msg'] ?? '获取算法列表失败');
+    final list = response.data!['data'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => AlgorithmModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// 获取算法详情
@@ -57,11 +48,6 @@ class AlgorithmService {
     final response = await _dio.get<Map<String, dynamic>>(
       '${ApiConstants.algorithm}/$id',
     );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      return AlgorithmModel.fromJson(result['data'] as Map<String, dynamic>);
-    }
-    throw Exception(result['msg'] ?? '获取算法详情失败');
+    return AlgorithmModel.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 }

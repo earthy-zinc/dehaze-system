@@ -2,7 +2,9 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/network/api_result.dart';
 import '../models/algorithm_model.dart';
+import '../models/dehaze_params.dart';
 import '../models/prediction_model.dart';
 import '../providers/providers.dart';
 import '../services/algorithm_service.dart';
@@ -133,7 +135,7 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
   }
 
   /// 执行去雾处理
-  Future<void> process({Map<String, dynamic>? params}) async {
+  Future<void> process({DehazeParams? params}) async {
     if (!state.canProcess) {
       state = state.copyWith(
         errorMessage: '请先选择图片和算法',
@@ -154,7 +156,8 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
       final request = PredictionRequest(
         algorithmId: state.selectedAlgorithm!.id,
         fileId: state.selectedImage!.fileId,
-        params: params,
+        // 仅在非默认参数时传值，避免干扰算法默认行为
+        params: params?.isDefault == false ? params!.toJson() : null,
       );
 
       final response = await _predictionService.predict(request);
@@ -175,7 +178,7 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
     } catch (e) {
       state = state.copyWith(
         status: ProcessingStatus.error,
-        errorMessage: _extractErrorMessage(e),
+        errorMessage: extractErrorMessage(e),
         clearProcessingStartTime: true,
       );
     }
@@ -193,10 +196,6 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
       status: ProcessingStatus.idle,
       clearProcessingStartTime: true,
     );
-  }
-
-  String _extractErrorMessage(dynamic e) {
-    return e.toString().replaceFirst('Exception: ', '');
   }
 }
 

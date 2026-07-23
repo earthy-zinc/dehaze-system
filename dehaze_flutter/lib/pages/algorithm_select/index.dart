@@ -53,18 +53,7 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
       final algorithms = await service.getAlgorithmList();
 
       // 展平树形结构，只显示启用的叶子算法
-      final flatAlgorithms = <AlgorithmModel>[];
-      for (final algo in algorithms) {
-        if (algo.children.isEmpty && algo.isEnabled) {
-          flatAlgorithms.add(algo);
-        } else {
-          for (final child in algo.children) {
-            if (child.isEnabled) {
-              flatAlgorithms.add(child);
-            }
-          }
-        }
-      }
+      final flatAlgorithms = algorithms.flatEnabledLeaves;
 
       if (mounted) {
         setState(() {
@@ -75,16 +64,11 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = _extractErrorMessage(e);
+          _errorMessage = extractErrorMessage(e);
           _isLoading = false;
         });
       }
     }
-  }
-
-  String _extractErrorMessage(dynamic e) {
-    if (e is ApiException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
   }
 
   /// 下一步：上传选中的图片并进入去雾处理
@@ -128,7 +112,7 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
       context.go(AppRouterConfig.processing);
     } catch (e) {
       if (mounted) {
-        _showSnackBar('图片上传失败: ${_extractErrorMessage(e)}');
+        _showSnackBar('图片上传失败: ${extractErrorMessage(e)}');
       }
     } finally {
       if (mounted) {

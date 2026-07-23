@@ -13,6 +13,8 @@ class AppTheme {
   static const Color brandBlueLight = Color(0xFF60a5fa); // Tailwind blue-400
   static const Color techGreen = Color(0xFF10b981); // Tailwind emerald-500
   static const Color accentGreen = Color(0xFF34d399); // Tailwind emerald-400
+  static const Color indigo = Color(0xFF6366F1); // Tailwind indigo-500
+  static const Color teal = Color(0xFF14B8A6); // Tailwind teal-500
 
   // 功能色彩
   static const Color successColor = Color(0xFF34A853); // 成功
@@ -30,6 +32,10 @@ class AppTheme {
 
   static const Color lightBorderPrimary = Color(0xFFE0E0E0); // 主边框
   static const Color lightBorderSecondary = Color(0xFFF5F5F5); // 次边框
+
+  // Tailwind gray 系列（数据集卡片等中性元素）
+  static const Color gray300 = Color(0xFFD1D5DB); // gray-300
+  static const Color gray500 = Color(0xFF6B7280); // gray-500
 
   // 中性色彩 - 暗黑主题
   static const Color darkTextPrimary = Color(0xFFE1E2E1); // 主要文字

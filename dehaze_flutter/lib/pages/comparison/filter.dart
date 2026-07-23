@@ -6,8 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/dehaze_image.dart';
+import 'widgets/comparison_scaffold.dart';
 
 /// 滤镜调节页面
 ///
@@ -31,35 +31,24 @@ class _FilterPageState extends ConsumerState<FilterPage> {
     final resultUrl = state.predictionResult?.resultUrl;
 
     if (resultUrl == null) {
-      return _buildNoData(context, theme);
+      return ComparisonScaffold(
+        icon: Icons.tune_outlined,
+        title: '滤镜调节',
+        subtitle: '',
+        body: _buildNoData(context, theme),
+        currentRoute: AppRouterConfig.filter,
+      );
     }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          _buildHeader(theme),
-          Expanded(child: _buildImageWithFilter(resultUrl)),
-          _buildControls(theme),
-          _buildBottomNav(context),
-        ],
-      ),
+    return ComparisonScaffold(
+      icon: Icons.tune_outlined,
+      title: '滤镜调节',
+      subtitle: '',
+      currentRoute: AppRouterConfig.filter,
+      body: _buildImageWithFilter(resultUrl),
+      controls: _buildControls(theme),
     );
   }
-
-  Widget _buildHeader(ThemeData theme) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(bottom: BorderSide(color: theme.dividerColor)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.tune_outlined, color: AppTheme.brandBlue),
-            const SizedBox(width: 8),
-            Text('滤镜调节', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-          ],
-        ),
-      );
 
   Widget _buildImageWithFilter(String url) => Center(
         child: ColorFiltered(
@@ -149,20 +138,6 @@ class _FilterPageState extends ConsumerState<FilterPage> {
               width: 40,
               child: Text(value.toStringAsFixed(1), textAlign: TextAlign.right),
             ),
-          ],
-        ),
-      );
-
-  Widget _buildBottomNav(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          children: [
-            ActionChip(label: const Text('并排对比'), onPressed: () => context.go(AppRouterConfig.sideBySide)),
-            ActionChip(label: const Text('重叠对比'), onPressed: () => context.go(AppRouterConfig.overlay)),
-            ActionChip(label: const Text('放大镜'), onPressed: () => context.go(AppRouterConfig.magnifier)),
-            ActionChip(label: const Text('指标评估'), onPressed: () => context.go(AppRouterConfig.metrics)),
           ],
         ),
       );

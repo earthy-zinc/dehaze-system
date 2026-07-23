@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/dehaze_params.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
@@ -506,15 +507,12 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
   }
 
   void _startProcessing(WidgetRef ref) {
-    // 仅传递与默认值不同的参数，避免干扰算法默认行为
-    final params = <String, dynamic>{};
-    if (_strength != 50) params['strength'] = _strength.round();
-    if (_saturation != 100) params['saturation'] = _saturation.round();
-    if (_contrast != 100) params['contrast'] = _contrast.round();
-    if (_sharpen != 30) params['sharpen'] = _sharpen.round();
-
-    ref.read(processingProvider.notifier).process(
-          params: params.isEmpty ? null : params,
-        );
+    final params = DehazeParams(
+      strength: _strength.round(),
+      saturation: _saturation.round(),
+      contrast: _contrast.round(),
+      sharpen: _sharpen.round(),
+    );
+    ref.read(processingProvider.notifier).process(params: params);
   }
 }

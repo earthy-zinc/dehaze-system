@@ -6,6 +6,7 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/logout_confirm_dialog.dart';
 
 /// 用户中心页面
 class ProfilePage extends ConsumerWidget {
@@ -208,7 +209,7 @@ class ProfilePage extends ConsumerWidget {
   Widget _buildLogoutButton(BuildContext context, WidgetRef ref, ThemeData theme) => SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
-          onPressed: () => _showLogoutConfirm(context, ref),
+          onPressed: () => showLogoutConfirm(context, ref),
           icon: Icon(Icons.logout, color: theme.colorScheme.error),
           label: Text('退出登录', style: TextStyle(color: theme.colorScheme.error)),
           style: OutlinedButton.styleFrom(
@@ -217,32 +218,6 @@ class ProfilePage extends ConsumerWidget {
           ),
         ),
       );
-
-  void _showLogoutConfirm(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('退出登录'),
-        content: const Text('确定要退出登录吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await ref.read(authProvider.notifier).logout();
-              if (context.mounted) {
-                context.go(AppRouterConfig.home);
-              }
-            },
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildNotLoggedIn(BuildContext context, ThemeData theme) => Center(
         child: Column(

@@ -6,8 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/dehaze_image.dart';
+import 'widgets/comparison_scaffold.dart';
 
 /// 放大镜对比页面
 ///
@@ -34,97 +34,95 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
     final resultUrl = state.predictionResult?.resultUrl;
 
     if (originalUrl == null || resultUrl == null) {
-      return _buildNoData(context, theme);
+      return ComparisonScaffold(
+        icon: Icons.search_outlined,
+        title: '放大镜对比',
+        subtitle: '',
+        body: _buildNoData(context, theme),
+        currentRoute: AppRouterConfig.magnifier,
+      );
     }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          _buildHeader(theme, context),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (!_initialized) {
-                  _position = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
-                  _initialized = true;
-                }
-                return GestureDetector(
-                  onPanUpdate: (details) {
-                    setState(() {
-                      _position = Offset(
-                        (_position.dx + details.delta.dx).clamp(0, constraints.maxWidth),
-                        (_position.dy + details.delta.dy).clamp(0, constraints.maxHeight),
-                      );
-                    });
-                  },
-                  child: Stack(
-                    children: [
-                      // 底层图片
-                      Positioned.fill(child: _buildImage(resultUrl)),
-                      // 放大镜
-                      Positioned(
-                        left: _position.dx - _lensSize / 2,
-                        top: _position.dy - _lensSize / 2,
-                        child: ClipOval(
-                          child: Container(
-                            width: _lensSize,
-                            height: _lensSize,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8)],
-                            ),
-                            child: Stack(
-                              children: [
-                                // 放大的图片
-                                Positioned.fill(
-                                  child: FittedBox(
-                                    fit: BoxFit.none,
-                                    alignment: Alignment(
-                                      -1 + 2 * (_position.dx / constraints.maxWidth),
-                                      -1 + 2 * (_position.dy / constraints.maxHeight),
-                                    ),
-                                    child: SizedBox(
-                                      width: constraints.maxWidth * 2,
-                                      height: constraints.maxHeight * 2,
-                                      child: _buildImage(
-                                        _showOriginal ? originalUrl : resultUrl,
-                                        bytes: _showOriginal ? originalBytes : null,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          _buildControls(theme),
-          _buildBottomNav(context),
-        ],
-      ),
+    return ComparisonScaffold(
+      icon: Icons.search_outlined,
+      title: '放大镜对比',
+      subtitle: '',
+      currentRoute: AppRouterConfig.magnifier,
+      body: _buildMagnifierBody(originalUrl, originalBytes, resultUrl),
+      controls: _buildControls(theme),
     );
   }
 
-  Widget _buildHeader(ThemeData theme, BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(bottom: BorderSide(color: theme.dividerColor)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.search_outlined, color: AppTheme.brandBlue),
-            const SizedBox(width: 8),
-            Text('放大镜对比', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-          ],
-        ),
-      );
+  Widget _buildMagnifierBody(
+    String originalUrl,
+    Uint8List? originalBytes,
+    String resultUrl,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (!_initialized) {
+          _position = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
+          _initialized = true;
+        }
+        return GestureDetector(
+          onPanUpdate: (details) {
+            setState(() {
+              _position = Offset(
+                (_position.dx + details.delta.dx).clamp(0, constraints.maxWidth),
+                (_position.dy + details.delta.dy).clamp(0, constraints.maxHeight),
+              );
+            });
+          },
+          child: Stack(
+            children: [
+              // 底层图片
+              Positioned.fill(
+                child: DehazeImage(url: resultUrl, fit: BoxFit.cover),
+              ),
+              // 放大镜
+              Positioned(
+                left: _position.dx - _lensSize / 2,
+                top: _position.dy - _lensSize / 2,
+                child: ClipOval(
+                  child: Container(
+                    width: _lensSize,
+                    height: _lensSize,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8)],
+                    ),
+                    child: Stack(
+                      children: [
+                        // 放大的图片
+                        Positioned.fill(
+                          child: FittedBox(
+                            fit: BoxFit.none,
+                            alignment: Alignment(
+                              -1 + 2 * (_position.dx / constraints.maxWidth),
+                              -1 + 2 * (_position.dy / constraints.maxHeight),
+                            ),
+                            child: SizedBox(
+                                      width: constraints.maxWidth * 2,
+                                      height: constraints.maxHeight * 2,
+                                      child: DehazeImage(
+                                        bytes: _showOriginal ? originalBytes : null,
+                                        url: _showOriginal ? originalUrl : resultUrl,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildControls(ThemeData theme) => Container(
         padding: const EdgeInsets.all(16),
@@ -160,28 +158,6 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
                 Text('${_lensSize.toInt()}px'),
               ],
             ),
-          ],
-        ),
-      );
-
-  Widget _buildImage(String url, {Uint8List? bytes}) {
-    return DehazeImage(
-      bytes: bytes,
-      url: url,
-      fit: BoxFit.cover,
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          children: [
-            ActionChip(label: const Text('并排对比'), onPressed: () => context.go(AppRouterConfig.sideBySide)),
-            ActionChip(label: const Text('重叠对比'), onPressed: () => context.go(AppRouterConfig.overlay)),
-            ActionChip(label: const Text('滤镜调节'), onPressed: () => context.go(AppRouterConfig.filter)),
-            ActionChip(label: const Text('指标评估'), onPressed: () => context.go(AppRouterConfig.metrics)),
           ],
         ),
       );

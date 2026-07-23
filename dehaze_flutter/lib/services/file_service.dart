@@ -36,13 +36,9 @@ class FileService {
       ),
       onSendProgress: onProgress,
     );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      return FileUploadResponse.fromJson(
-        result['data'] as Map<String, dynamic>,
-      );
-    }
-    throw Exception(result['msg'] ?? '文件上传失败');
+    // ResponseInterceptor 已保证 code=='00000'，失败已 reject 为 ApiException
+    return FileUploadResponse.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
   }
 }

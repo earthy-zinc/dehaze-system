@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'api_result.g.dart';
@@ -117,4 +118,17 @@ class ApiException implements Exception {
 
   @override
   String toString() => 'ApiException($code): $message';
+}
+
+/// 从异常对象中提取友好的错误信息。
+///
+/// 统一错误展示逻辑：
+/// - 拦截器层已将业务/网络错误转换为 `DioException(error: ApiException)`
+/// - 此函数负责从任意异常中提取 message，避免各页面重复实现
+String extractErrorMessage(Object e) {
+  if (e is DioException && e.error is ApiException) {
+    return (e.error as ApiException).message;
+  }
+  if (e is ApiException) return e.message;
+  return e.toString().replaceFirst('Exception: ', '');
 }

@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/network/api_result.dart';
@@ -103,10 +102,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         status: AuthStatus.authenticated,
       );
     } catch (e) {
-      final message = _extractErrorMessage(e);
       state = AuthState(
         status: AuthStatus.error,
-        errorMessage: message,
+        errorMessage: extractErrorMessage(e),
       );
     }
   }
@@ -134,17 +132,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (state.status == AuthStatus.error) {
       state = state.copyWith(status: AuthStatus.unauthenticated);
     }
-  }
-
-  /// 提取错误信息
-  String _extractErrorMessage(dynamic e) {
-    if (e is DioException && e.error is ApiException) {
-      return (e.error as ApiException).message;
-    }
-    if (e is ApiException) {
-      return e.message;
-    }
-    return e.toString();
   }
 }
 

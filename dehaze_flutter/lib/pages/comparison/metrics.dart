@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../core/network/api_result.dart';
 import '../../models/evaluation_model.dart';
 import '../../providers/processing_provider.dart';
 import '../../providers/providers.dart';
 import '../../router/config.dart';
-import '../../services/evaluation_service.dart';
 import '../../theme/app_theme.dart';
+import 'widgets/comparison_scaffold.dart';
 
 /// 指标评估页面
 ///
@@ -59,7 +59,7 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
     });
 
     try {
-      final service = EvaluationService(ref.read(dioClientProvider));
+      final service = ref.read(evaluationServiceProvider);
       final request = EvaluationRequest(
         algorithmId: algorithmId,
         predUrl: predUrl,
@@ -73,7 +73,7 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _errorMessage = extractErrorMessage(e);
         _isEvaluating = false;
       });
     }
@@ -83,31 +83,14 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      body: Column(
-        children: [
-          _buildHeader(theme),
-          Expanded(child: _buildBody(theme)),
-          _buildBottomNav(context),
-        ],
-      ),
+    return ComparisonScaffold(
+      icon: Icons.bar_chart_outlined,
+      title: '指标评估',
+      subtitle: '',
+      currentRoute: AppRouterConfig.metrics,
+      body: _buildBody(theme),
     );
   }
-
-  Widget _buildHeader(ThemeData theme) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(bottom: BorderSide(color: theme.dividerColor)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.bar_chart_outlined, color: AppTheme.brandBlue),
-            const SizedBox(width: 8),
-            Text('指标评估', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-          ],
-        ),
-      );
 
   Widget _buildBody(ThemeData theme) {
     if (_isEvaluating) {
@@ -180,21 +163,6 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
       itemBuilder: (context, index) => _MetricCard(item: items[index]),
     );
   }
-
-  Widget _buildBottomNav(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          children: [
-            ActionChip(label: const Text('并排对比'), onPressed: () => context.go(AppRouterConfig.sideBySide)),
-            ActionChip(label: const Text('重叠对比'), onPressed: () => context.go(AppRouterConfig.overlay)),
-            ActionChip(label: const Text('放大镜'), onPressed: () => context.go(AppRouterConfig.magnifier)),
-            ActionChip(label: const Text('滤镜调节'), onPressed: () => context.go(AppRouterConfig.filter)),
-            ActionChip(label: const Text('算法信息'), onPressed: () => context.go(AppRouterConfig.algorithm)),
-          ],
-        ),
-      );
 }
 
 /// 指标卡片

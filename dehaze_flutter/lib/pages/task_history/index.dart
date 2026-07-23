@@ -72,7 +72,7 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
       if (!mounted) return;
       if (refresh) {
         setState(() {
-          _errorMessage = _extractError(e);
+          _errorMessage = extractErrorMessage(e);
           _isLoading = false;
         });
       } else {
@@ -81,7 +81,7 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
           _currentPage -= 1;
           _isLoadingMore = false;
         });
-        _showSnackBar('加载更多失败: ${_extractError(e)}');
+        _showSnackBar('加载更多失败: ${extractErrorMessage(e)}');
       }
     }
   }
@@ -103,11 +103,6 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
         behavior: SnackBarBehavior.floating,
       ),
     );
-  }
-
-  String _extractError(dynamic e) {
-    if (e is ApiException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
   }
 
   @override

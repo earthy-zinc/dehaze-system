@@ -33,8 +33,10 @@ class HomePage extends ConsumerWidget {
           // 区块间距
           SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
 
-          // 核心功能区 - 包含工作流程和工具网格
-          const SliverToBoxAdapter(child: FeaturesSection()),
+          // 核心功能区 - 工作流程 + 工具网格
+          const SliverToBoxAdapter(child: WorkflowSection()),
+          SliverToBoxAdapter(child: SizedBox(height: AppTheme.spacingXL)),
+          const SliverToBoxAdapter(child: ToolsGridSection()),
 
           // 区块间距
           SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
@@ -58,23 +60,4 @@ class HomePage extends ConsumerWidget {
       ),
     );
   }
-}
-
-/// 核心功能区组合组件
-///
-/// 将工作流程和工具网格组合在一起
-class FeaturesSection extends StatelessWidget {
-  const FeaturesSection({super.key});
-
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      // 工作流程区域
-      WorkflowSection(),
-      SizedBox(height: AppTheme.spacingXL),
-
-      // 工具网格区域
-      ToolsGridSection(),
-    ],
-  );
 }

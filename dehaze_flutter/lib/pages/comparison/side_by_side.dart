@@ -6,8 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/dehaze_image.dart';
+import 'widgets/comparison_scaffold.dart';
 
 /// 并排对比页面
 ///
@@ -25,59 +25,27 @@ class SideBySidePage extends ConsumerWidget {
     final resultUrl = state.predictionResult?.resultUrl;
 
     if (originalUrl == null || resultUrl == null) {
-      return _buildNoData(context, theme);
+      return ComparisonScaffold(
+        icon: Icons.view_column_outlined,
+        title: '并排对比',
+        subtitle: '滑动分割线对比效果',
+        body: _buildNoData(context, theme),
+        currentRoute: AppRouterConfig.sideBySide,
+      );
     }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          _buildHeader(theme, context),
-          Expanded(
-            child: _BeforeAfterSlider(
-              beforeUrl: originalUrl,
-              beforeBytes: originalBytes,
-              afterUrl: resultUrl,
-            ),
-          ),
-          _buildBottomNav(context),
-        ],
+    return ComparisonScaffold(
+      icon: Icons.view_column_outlined,
+      title: '并排对比',
+      subtitle: '滑动分割线对比效果',
+      currentRoute: AppRouterConfig.sideBySide,
+      body: _BeforeAfterSlider(
+        beforeUrl: originalUrl,
+        beforeBytes: originalBytes,
+        afterUrl: resultUrl,
       ),
     );
   }
-
-  Widget _buildHeader(ThemeData theme, BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(
-            bottom: BorderSide(color: theme.dividerColor),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.view_column_outlined, color: AppTheme.brandBlue),
-            const SizedBox(width: 8),
-            Text('并排对比', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-            const Spacer(),
-            Text('滑动分割线对比效果',
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      );
-
-  Widget _buildBottomNav(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          children: [
-            ActionChip(label: const Text('重叠对比'), onPressed: () => context.go(AppRouterConfig.overlay)),
-            ActionChip(label: const Text('放大镜'), onPressed: () => context.go(AppRouterConfig.magnifier)),
-            ActionChip(label: const Text('滤镜调节'), onPressed: () => context.go(AppRouterConfig.filter)),
-            ActionChip(label: const Text('指标评估'), onPressed: () => context.go(AppRouterConfig.metrics)),
-          ],
-        ),
-      );
 
   Widget _buildNoData(BuildContext context, ThemeData theme) => Center(
         child: Column(
@@ -127,13 +95,20 @@ class _BeforeAfterSliderState extends State<_BeforeAfterSlider> {
       child: Stack(
         children: [
           // 后图（结果图）
-          Positioned.fill(child: _buildImage(widget.afterUrl)),
+          Positioned.fill(
+            child: DehazeImage(url: widget.afterUrl, fit: BoxFit.cover),
+          ),
 
           // 前图（原图），用 ClipRect 裁剪
           ClipRect(
             clipper: _LeftClipper(_position),
             child: Positioned.fill(
-                child: _buildImage(widget.beforeUrl, bytes: widget.beforeBytes)),
+              child: DehazeImage(
+                bytes: widget.beforeBytes,
+                url: widget.beforeUrl,
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
 
           // 分割线
@@ -176,14 +151,6 @@ class _BeforeAfterSliderState extends State<_BeforeAfterSlider> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildImage(String url, {Uint8List? bytes}) {
-    return DehazeImage(
-      bytes: bytes,
-      url: url,
-      fit: BoxFit.cover,
     );
   }
 }

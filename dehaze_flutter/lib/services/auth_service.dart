@@ -20,7 +20,6 @@ class AuthService {
   /// 登录
   ///
   /// POST /auth/login
-  /// Content-Type: application/x-www-form-urlencoded
   Future<LoginResponse> login(LoginRequest request) async {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConstants.authLogin,
@@ -29,12 +28,8 @@ class AuthService {
         headers: {'Content-Type': 'application/json'},
       ),
     );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      return LoginResponse.fromJson(result['data'] as Map<String, dynamic>);
-    }
-    throw Exception(result['msg'] ?? '登录失败');
+    // ResponseInterceptor 已保证 code=='00000'，失败已 reject 为 ApiException
+    return LoginResponse.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 登出
@@ -51,12 +46,7 @@ class AuthService {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.authCaptcha,
     );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      return CaptchaResponse.fromJson(result['data'] as Map<String, dynamic>);
-    }
-    throw Exception(result['msg'] ?? '获取验证码失败');
+    return CaptchaResponse.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 获取当前登录用户信息
@@ -66,11 +56,6 @@ class AuthService {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.authMe,
     );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      return UserModel.fromJson(result['data'] as Map<String, dynamic>);
-    }
-    throw Exception(result['msg'] ?? '获取用户信息失败');
+    return UserModel.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 }

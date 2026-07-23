@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../router/config.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
 import 'models/image_input_model.dart';
 import 'providers/image_input_provider.dart';
@@ -94,7 +95,7 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
                 children: [
                   Icon(
                     Icons.image_outlined,
-                    color: const Color(0xFF3B82F6),
+                    color: AppTheme.brandBlue,
                     size: 24,
                   ),
                   const SizedBox(width: 8),
@@ -185,14 +186,14 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF3B82F6), // blue-500
-              Color(0xFF6366F1), // indigo-500
+              AppTheme.brandBlue,
+              AppTheme.indigo,
             ],
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+              color: AppTheme.brandBlue.withValues(alpha: 0.3),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),
@@ -238,7 +239,7 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
                 onPressed: _quickStart,
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF3B82F6),
+                  foregroundColor: AppTheme.brandBlue,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 12,

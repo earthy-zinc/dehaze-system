@@ -6,8 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/dehaze_image.dart';
+import 'widgets/comparison_scaffold.dart';
 
 /// 重叠对比页面
 ///
@@ -31,36 +31,24 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
     final resultUrl = state.predictionResult?.resultUrl;
 
     if (originalUrl == null || resultUrl == null) {
-      return _buildNoData(context, theme);
+      return ComparisonScaffold(
+        icon: Icons.layers_outlined,
+        title: '重叠对比',
+        subtitle: '',
+        body: _buildNoData(context, theme),
+        currentRoute: AppRouterConfig.overlay,
+      );
     }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          _buildHeader(theme, context),
-          Expanded(
-              child: _buildImageStack(originalUrl, resultUrl, originalBytes)),
-          _buildControls(theme),
-          _buildBottomNav(context),
-        ],
-      ),
+    return ComparisonScaffold(
+      icon: Icons.layers_outlined,
+      title: '重叠对比',
+      subtitle: '',
+      currentRoute: AppRouterConfig.overlay,
+      body: _buildImageStack(originalUrl, resultUrl, originalBytes),
+      controls: _buildControls(theme),
     );
   }
-
-  Widget _buildHeader(ThemeData theme, BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(bottom: BorderSide(color: theme.dividerColor)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.layers_outlined, color: AppTheme.brandBlue),
-            const SizedBox(width: 8),
-            Text('重叠对比', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-          ],
-        ),
-      );
 
   Widget _buildImageStack(
     String originalUrl,
@@ -70,12 +58,18 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
       Stack(
         children: [
           // 底层：结果图
-          Positioned.fill(child: _buildImage(resultUrl)),
+          Positioned.fill(
+            child: DehazeImage(url: resultUrl, fit: BoxFit.contain),
+          ),
           // 上层：原图，带透明度
           Positioned.fill(
             child: Opacity(
               opacity: _opacity,
-              child: _buildImage(originalUrl, bytes: originalBytes),
+              child: DehazeImage(
+                bytes: originalBytes,
+                url: originalUrl,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
           // 标签
@@ -118,28 +112,6 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
                 _PresetButton(label: '仅结果', onTap: () => setState(() => _opacity = 0)),
               ],
             ),
-          ],
-        ),
-      );
-
-  Widget _buildImage(String url, {Uint8List? bytes}) {
-    return DehazeImage(
-      bytes: bytes,
-      url: url,
-      fit: BoxFit.contain,
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          children: [
-            ActionChip(label: const Text('并排对比'), onPressed: () => context.go(AppRouterConfig.sideBySide)),
-            ActionChip(label: const Text('放大镜'), onPressed: () => context.go(AppRouterConfig.magnifier)),
-            ActionChip(label: const Text('滤镜调节'), onPressed: () => context.go(AppRouterConfig.filter)),
-            ActionChip(label: const Text('指标评估'), onPressed: () => context.go(AppRouterConfig.metrics)),
           ],
         ),
       );

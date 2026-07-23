@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/auth/auth_error_handler.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/token_storage.dart';
+import '../services/evaluation_service.dart';
 
 // ==================== 基础设施 Providers ====================
 
@@ -38,4 +39,9 @@ final dioClientProvider = Provider<Dio>((ref) {
     onAuthError: onAuthError,
   );
   return apiClient.dio;
+});
+
+/// 评估服务 Provider
+final evaluationServiceProvider = Provider<EvaluationService>((ref) {
+  return EvaluationService(ref.watch(dioClientProvider));
 });

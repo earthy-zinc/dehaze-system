@@ -6,6 +6,7 @@ import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../router/config.dart';
 import '../theme/app_theme.dart';
+import '../widgets/logout_confirm_dialog.dart';
 import 'menu_config.dart';
 
 /// 主布局组件
@@ -245,34 +246,7 @@ class MainLayout extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.logout, size: 20),
             tooltip: '退出登录',
-            onPressed: () => _showLogoutConfirm(context, ref),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 显示登出确认对话框
-  void _showLogoutConfirm(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('退出登录'),
-        content: const Text('确定要退出登录吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await ref.read(authProvider.notifier).logout();
-              if (context.mounted) {
-                context.go(AppRouterConfig.home);
-              }
-            },
-            child: const Text('确定'),
+            onPressed: () => showLogoutConfirm(context, ref),
           ),
         ],
       ),

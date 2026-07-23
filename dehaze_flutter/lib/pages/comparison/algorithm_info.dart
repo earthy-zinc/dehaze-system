@@ -7,6 +7,7 @@ import '../../models/algorithm_model.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
+import 'widgets/comparison_scaffold.dart';
 
 /// 算法信息页面
 ///
@@ -47,16 +48,7 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
       final algorithms = await service.getAlgorithmList();
 
       // 展平树形结构，只取启用的叶子算法
-      final flatAlgorithms = <AlgorithmModel>[];
-      for (final algo in algorithms) {
-        if (algo.children.isEmpty && algo.isEnabled) {
-          flatAlgorithms.add(algo);
-        } else {
-          for (final child in algo.children) {
-            if (child.isEnabled) flatAlgorithms.add(child);
-          }
-        }
-      }
+      final flatAlgorithms = algorithms.flatEnabledLeaves;
 
       if (!mounted) return;
       setState(() {
@@ -66,9 +58,7 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = e is ApiException
-            ? e.message
-            : e.toString().replaceFirst('Exception: ', '');
+        _errorMessage = extractErrorMessage(e);
         _isLoading = false;
       });
     }
@@ -82,63 +72,58 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
 
     if (algorithm == null) {
       if (_isLoading) {
-        return Scaffold(
+        return ComparisonScaffold(
+          icon: Icons.info_outline,
+          title: '算法信息',
+          subtitle: '',
+          currentRoute: AppRouterConfig.algorithm,
           body: Center(child: CircularProgressIndicator(color: AppTheme.brandBlue)),
         );
       }
       if (_errorMessage != null) {
-        return Scaffold(body: _buildError(theme));
+        return ComparisonScaffold(
+          icon: Icons.info_outline,
+          title: '算法信息',
+          subtitle: '',
+          currentRoute: AppRouterConfig.algorithm,
+          body: _buildError(theme),
+        );
       }
-      return Scaffold(body: _buildNoData(context, theme));
+      return ComparisonScaffold(
+        icon: Icons.info_outline,
+        title: '算法信息',
+        subtitle: '',
+        currentRoute: AppRouterConfig.algorithm,
+        body: _buildNoData(context, theme),
+      );
     }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          _buildHeader(theme, algorithm.name),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildInfoCard(theme, algorithm),
-                  const SizedBox(height: 16),
-                  if (algorithm.description != null) ...[
-                    _buildDescriptionCard(theme, algorithm.description!),
-                    const SizedBox(height: 16),
-                  ],
-                  if (algorithm.config != null && algorithm.config!.isNotEmpty) ...[
-                    _buildConfigCard(theme, algorithm.config!),
-                    const SizedBox(height: 16),
-                  ],
-                  _buildMetaCard(theme, algorithm),
-                ],
-              ),
-            ),
-          ),
-          _buildBottomNav(context),
-        ],
+    return ComparisonScaffold(
+      icon: Icons.info_outline,
+      title: '算法信息',
+      subtitle: algorithm.name,
+      currentRoute: AppRouterConfig.algorithm,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildInfoCard(theme, algorithm),
+            const SizedBox(height: 16),
+            if (algorithm.description != null) ...[
+              _buildDescriptionCard(theme, algorithm.description!),
+              const SizedBox(height: 16),
+            ],
+            if (algorithm.config != null && algorithm.config!.isNotEmpty) ...[
+              _buildConfigCard(theme, algorithm.config!),
+              const SizedBox(height: 16),
+            ],
+            _buildMetaCard(theme, algorithm),
+          ],
+        ),
       ),
     );
   }
-
-  Widget _buildHeader(ThemeData theme, String name) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(bottom: BorderSide(color: theme.dividerColor)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.info_outline, color: AppTheme.brandBlue),
-            const SizedBox(width: 8),
-            Text('算法信息', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(width: 16),
-            Text(name, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      );
 
   Widget _buildInfoCard(ThemeData theme, AlgorithmModel algorithm) => Card(
         child: Padding(
@@ -215,21 +200,6 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
               child: Text(label, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             ),
             Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
-          ],
-        ),
-      );
-
-  Widget _buildBottomNav(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          children: [
-            ActionChip(label: const Text('并排对比'), onPressed: () => context.go(AppRouterConfig.sideBySide)),
-            ActionChip(label: const Text('重叠对比'), onPressed: () => context.go(AppRouterConfig.overlay)),
-            ActionChip(label: const Text('放大镜'), onPressed: () => context.go(AppRouterConfig.magnifier)),
-            ActionChip(label: const Text('滤镜调节'), onPressed: () => context.go(AppRouterConfig.filter)),
-            ActionChip(label: const Text('指标评估'), onPressed: () => context.go(AppRouterConfig.metrics)),
           ],
         ),
       );

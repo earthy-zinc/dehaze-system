@@ -22,14 +22,10 @@ class PredictionService {
       ApiConstants.prediction,
       data: request.toJson(),
     );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      return PredictionResponse.fromJson(
-        result['data'] as Map<String, dynamic>,
-      );
-    }
-    throw Exception(result['msg'] ?? '预测请求失败');
+    // ResponseInterceptor 已保证 code=='00000'，失败已 reject 为 ApiException
+    return PredictionResponse.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
   }
 
   /// 获取预测日志列表
@@ -46,16 +42,11 @@ class PredictionService {
         'pageSize': pageSize,
       },
     );
-
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      final data = result['data'] as Map<String, dynamic>;
-      final list = (data['list'] as List<dynamic>? ?? [])
-          .map((e) => PredictionLog.fromJson(e as Map<String, dynamic>))
-          .toList();
-      final total = data['total'] as int? ?? 0;
-      return PageResult(list: list, total: total);
-    }
-    throw Exception(result['msg'] ?? '获取预测日志失败');
+    final data = response.data!['data'] as Map<String, dynamic>;
+    final list = (data['list'] as List<dynamic>? ?? [])
+        .map((e) => PredictionLog.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final total = data['total'] as int? ?? 0;
+    return PageResult(list: list, total: total);
   }
 }
