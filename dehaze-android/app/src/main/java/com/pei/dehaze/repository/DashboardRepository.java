@@ -1,6 +1,5 @@
 package com.pei.dehaze.repository;
 
-import com.pei.dehaze.sdk.ApiCallback;
 import com.pei.dehaze.sdk.api.AlgorithmAPI;
 import com.pei.dehaze.sdk.api.DatasetAPI;
 import com.pei.dehaze.sdk.api.ModelAPI;
@@ -15,27 +14,12 @@ import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
 import com.pei.dehaze.sdk.model.task.TaskQuery;
 import com.pei.dehaze.sdk.model.task.TaskVO;
 import com.pei.dehaze.sdk.model.user.UserInfo;
-import com.pei.dehaze.sdk.network.ApiException;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class DashboardRepository {
-
-    public interface UserInfoCallback {
-        void onSuccess(UserInfo userInfo);
-        void onError(String errorMessage);
-    }
-
-    public interface StatsCallback {
-        void onSuccess(StatsData stats);
-        void onError(String errorMessage);
-    }
-
-    public interface RecentActivitiesCallback {
-        void onSuccess(List<PredictionLogVO> activities);
-        void onError(String errorMessage);
-    }
 
     public static class StatsData {
         private final long datasetCount;
@@ -67,37 +51,22 @@ public class DashboardRepository {
         }
     }
 
-    public void getUserInfo(UserInfoCallback callback) {
-        UserAPI.getInfo(new ApiCallback<UserInfo>() {
-            @Override
-            public void onSuccess(UserInfo data) {
-                callback.onSuccess(data);
-            }
-
-            @Override
-            public void onError(String code, String message) {
-                callback.onError("[" + code + "] " + message);
-            }
-
-            @Override
-            public void onFailure(ApiException e) {
-                callback.onError(e.getMessage());
-            }
-        });
+    public void getUserInfo(RepositoryCallback<UserInfo> callback) {
+        UserAPI.getInfo(RepositoryAdapters.wrap(callback));
     }
 
-    public void getStats(StatsCallback callback) {
-        StatsData[] stats = new StatsData[1];
-        final long[] pending = {4};
-        final String[] firstError = {null};
+    public void getStats(RepositoryCallback<StatsData> callback) {
+        AtomicInteger pending = new AtomicInteger(4);
+        AtomicReference<String> firstError = new AtomicReference<>(null);
+        long[] counts = new long[4];
 
-        Runnable checkComplete = () -> {
-            if (pending[0] == 0) {
-                if (firstError[0] != null) {
-                    callback.onError(firstError[0]);
+        Runnable onComplete = () -> {
+            if (pending.decrementAndGet() == 0) {
+                String err = firstError.get();
+                if (err != null) {
+                    callback.onError(err);
                 } else {
-                    callback.onSuccess(stats[0] != null ? stats[0]
-                            : new StatsData(0, 0, 0, 0));
+                    callback.onSuccess(new StatsData(counts[0], counts[1], counts[2], counts[3]));
                 }
             }
         };
@@ -105,165 +74,77 @@ public class DashboardRepository {
         DatasetQuery datasetQuery = new DatasetQuery();
         datasetQuery.setPageNum(1);
         datasetQuery.setPageSize(1);
-        DatasetAPI.getList(datasetQuery, new ApiCallback<PageResult<Dataset>>() {
+        DatasetAPI.getList(datasetQuery, RepositoryAdapters.wrap(new RepositoryCallback<PageResult<Dataset>>() {
             @Override
             public void onSuccess(PageResult<Dataset> data) {
-                long datasetCount = data.getTotal();
-                mergeStats(stats, pending, firstError, checkComplete, 0, datasetCount);
+                counts[0] = data.getTotal();
+                onComplete.run();
             }
 
             @Override
-            public void onError(String code, String message) {
-                if (firstError[0] == null) {
-                    firstError[0] = "[" + code + "] " + message;
-                }
-                synchronized (pending) {
-                    pending[0]--;
-                }
-                checkComplete.run();
+            public void onError(String errorMessage) {
+                firstError.compareAndSet(null, errorMessage);
+                onComplete.run();
             }
+        }));
 
-            @Override
-            public void onFailure(ApiException e) {
-                if (firstError[0] == null) {
-                    firstError[0] = e.getMessage();
-                }
-                synchronized (pending) {
-                    pending[0]--;
-                }
-                checkComplete.run();
-            }
-        });
-
-        AlgorithmAPI.getList(new AlgorithmQuery(), new ApiCallback<List<Algorithm>>() {
+        AlgorithmAPI.getList(new AlgorithmQuery(), RepositoryAdapters.wrap(new RepositoryCallback<List<Algorithm>>() {
             @Override
             public void onSuccess(List<Algorithm> data) {
-                long algorithmCount = data != null ? data.size() : 0;
-                mergeStats(stats, pending, firstError, checkComplete, 1, algorithmCount);
+                counts[1] = countAlgorithms(data);
+                onComplete.run();
             }
 
             @Override
-            public void onError(String code, String message) {
-                if (firstError[0] == null) {
-                    firstError[0] = "[" + code + "] " + message;
-                }
-                synchronized (pending) {
-                    pending[0]--;
-                }
-                checkComplete.run();
+            public void onError(String errorMessage) {
+                firstError.compareAndSet(null, errorMessage);
+                onComplete.run();
             }
-
-            @Override
-            public void onFailure(ApiException e) {
-                if (firstError[0] == null) {
-                    firstError[0] = e.getMessage();
-                }
-                synchronized (pending) {
-                    pending[0]--;
-                }
-                checkComplete.run();
-            }
-        });
+        }));
 
         TaskQuery taskQuery = new TaskQuery();
         taskQuery.setPageNum(1);
         taskQuery.setPageSize(1);
-        TaskAPI.getTaskPage(taskQuery, new ApiCallback<PageResult<TaskVO>>() {
+        TaskAPI.getTaskPage(taskQuery, RepositoryAdapters.wrap(new RepositoryCallback<PageResult<TaskVO>>() {
             @Override
             public void onSuccess(PageResult<TaskVO> data) {
-                long taskCount = data.getTotal();
-                mergeStats(stats, pending, firstError, checkComplete, 2, taskCount);
+                counts[2] = data.getTotal();
+                onComplete.run();
             }
 
             @Override
-            public void onError(String code, String message) {
-                if (firstError[0] == null) {
-                    firstError[0] = "[" + code + "] " + message;
-                }
-                synchronized (pending) {
-                    pending[0]--;
-                }
-                checkComplete.run();
+            public void onError(String errorMessage) {
+                firstError.compareAndSet(null, errorMessage);
+                onComplete.run();
             }
+        }));
 
-            @Override
-            public void onFailure(ApiException e) {
-                if (firstError[0] == null) {
-                    firstError[0] = e.getMessage();
-                }
-                synchronized (pending) {
-                    pending[0]--;
-                }
-                checkComplete.run();
-            }
-        });
-
-        ModelAPI.listPredictionLogs(null, 1, 1, new ApiCallback<PageResult<PredictionLogVO>>() {
+        ModelAPI.listPredictionLogs(null, 1, 1, RepositoryAdapters.wrap(new RepositoryCallback<PageResult<PredictionLogVO>>() {
             @Override
             public void onSuccess(PageResult<PredictionLogVO> data) {
-                long historyCount = data.getTotal();
-                mergeStats(stats, pending, firstError, checkComplete, 3, historyCount);
+                counts[3] = data.getTotal();
+                onComplete.run();
             }
 
             @Override
-            public void onError(String code, String message) {
-                if (firstError[0] == null) {
-                    firstError[0] = "[" + code + "] " + message;
-                }
-                synchronized (pending) {
-                    pending[0]--;
-                }
-                checkComplete.run();
+            public void onError(String errorMessage) {
+                firstError.compareAndSet(null, errorMessage);
+                onComplete.run();
             }
-
-            @Override
-            public void onFailure(ApiException e) {
-                if (firstError[0] == null) {
-                    firstError[0] = e.getMessage();
-                }
-                synchronized (pending) {
-                    pending[0]--;
-                }
-                checkComplete.run();
-            }
-        });
+        }));
     }
 
-    private void mergeStats(StatsData[] stats, long[] pending, String[] firstError,
-                           Runnable checkComplete, int index, long value) {
-        synchronized (stats) {
-            long[] values = new long[4];
-            if (stats[0] != null) {
-                values[0] = stats[0].getDatasetCount();
-                values[1] = stats[0].getAlgorithmCount();
-                values[2] = stats[0].getTaskCount();
-                values[3] = stats[0].getHistoryCount();
-            }
-            values[index] = value;
-            stats[0] = new StatsData(values[0], values[1], values[2], values[3]);
-        }
-        synchronized (pending) {
-            pending[0]--;
-        }
-        checkComplete.run();
+    /**
+     * 递归统计算法树中所有节点数量（含子节点）
+     */
+    private long countAlgorithms(List<Algorithm> tree) {
+        if (tree == null) return 0;
+        return tree.stream().mapToLong(a ->
+                (a.getChildren() != null ? countAlgorithms(a.getChildren()) : 0) + 1
+        ).sum();
     }
 
-    public void getRecentActivities(RecentActivitiesCallback callback) {
-        ModelAPI.listPredictionLogs(null, 1, 10, new ApiCallback<PageResult<PredictionLogVO>>() {
-            @Override
-            public void onSuccess(PageResult<PredictionLogVO> data) {
-                callback.onSuccess(data.getList() != null ? data.getList() : new ArrayList<>());
-            }
-
-            @Override
-            public void onError(String code, String message) {
-                callback.onError("[" + code + "] " + message);
-            }
-
-            @Override
-            public void onFailure(ApiException e) {
-                callback.onError(e.getMessage());
-            }
-        });
+    public void getRecentActivities(RepositoryCallback<List<PredictionLogVO>> callback) {
+        ModelAPI.listPredictionLogs(null, 1, 10, RepositoryAdapters.wrapPage(callback));
     }
 }

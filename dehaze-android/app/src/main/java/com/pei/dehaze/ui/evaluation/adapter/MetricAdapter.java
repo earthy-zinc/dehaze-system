@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.pei.dehaze.R;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 评估指标适配器，展示 EvalResult.metrics 中的各项指标
@@ -28,14 +29,14 @@ public class MetricAdapter extends ListAdapter<Map.Entry<String, Double>, Metric
                 @Override
                 public boolean areItemsTheSame(@NonNull Map.Entry<String, Double> oldItem,
                                                 @NonNull Map.Entry<String, Double> newItem) {
-                    return oldItem.getKey().equals(newItem.getKey());
+                    return Objects.equals(oldItem.getKey(), newItem.getKey());
                 }
 
                 @Override
                 public boolean areContentsTheSame(@NonNull Map.Entry<String, Double> oldItem,
                                                   @NonNull Map.Entry<String, Double> newItem) {
-                    return oldItem.getKey().equals(newItem.getKey())
-                            && Double.compare(oldItem.getValue(), newItem.getValue()) == 0;
+                    return Objects.equals(oldItem.getKey(), newItem.getKey())
+                            && Objects.equals(oldItem.getValue(), newItem.getValue());
                 }
             };
 

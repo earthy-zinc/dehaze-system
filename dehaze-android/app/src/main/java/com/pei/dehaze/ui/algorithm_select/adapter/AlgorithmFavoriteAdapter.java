@@ -14,6 +14,8 @@ import com.google.android.material.button.MaterialButton;
 import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.model.algorithm_select.FavoriteVO;
 
+import java.util.Objects;
+
 public class AlgorithmFavoriteAdapter extends ListAdapter<FavoriteVO, AlgorithmFavoriteAdapter.FavoriteViewHolder> {
 
     public interface OnFavoriteActionListener {
@@ -35,12 +37,8 @@ public class AlgorithmFavoriteAdapter extends ListAdapter<FavoriteVO, AlgorithmF
 
         @Override
         public boolean areContentsTheSame(@NonNull FavoriteVO oldItem, @NonNull FavoriteVO newItem) {
-            return equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName()) &&
-                    equals(oldItem.getCreateTime(), newItem.getCreateTime());
-        }
-
-        private boolean equals(Object a, Object b) {
-            return a == null ? b == null : a.equals(b);
+            return Objects.equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName()) &&
+                    Objects.equals(oldItem.getCreateTime(), newItem.getCreateTime());
         }
     };
 

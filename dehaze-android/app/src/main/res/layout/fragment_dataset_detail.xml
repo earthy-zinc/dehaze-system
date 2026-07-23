@@ -206,18 +206,11 @@
                             android:text="hazy" />
 
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_type_depth"
+                            android:id="@+id/btn_type_trans"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="depth" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_type_segment"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="segment" />
+                            android:text="trans" />
 
                     </com.google.android.material.button.MaterialButtonToggleGroup>
 

@@ -21,7 +21,9 @@ import com.pei.dehaze.R;
 import com.pei.dehaze.ui.system.adapter.MenuAdapter;
 import com.pei.dehaze.ui.system.viewmodel.MenuViewModel;
 import com.pei.dehaze.sdk.model.menu.MenuForm;
+import com.pei.dehaze.sdk.model.menu.MenuType;
 import com.pei.dehaze.sdk.model.menu.MenuVO;
+import com.pei.dehaze.utils.StringUtils;
 
 import java.util.List;
 
@@ -77,7 +79,7 @@ public class MenuListActivity extends AppCompatActivity {
         MaterialButton btnAdd = findViewById(R.id.btn_add);
 
         btnSearch.setOnClickListener(v -> {
-            String keywords = etSearch.getText() != null ? etSearch.getText().toString().trim() : "";
+            String keywords = StringUtils.getText(etSearch);
             menuViewModel.loadMenus(keywords.isEmpty() ? null : keywords);
         });
 
@@ -105,7 +107,7 @@ public class MenuListActivity extends AppCompatActivity {
             }
         });
 
-        menuViewModel.getActionResult().observe(this, result -> {
+        menuViewModel.getOperationResult().observe(this, result -> {
             if (!TextUtils.isEmpty(result)) {
                 Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
             }
@@ -168,12 +170,12 @@ public class MenuListActivity extends AppCompatActivity {
 
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
                 .setOnClickListener(v -> {
-                    String name = getText(etName);
+                    String name = StringUtils.getText(etName);
                     if (TextUtils.isEmpty(name)) {
                         Toast.makeText(this, "菜单名称不能为空", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    String sortStr = getText(etSort);
+                    String sortStr = StringUtils.getText(etSort);
                     if (TextUtils.isEmpty(sortStr)) {
                         Toast.makeText(this, "排序不能为空", Toast.LENGTH_SHORT).show();
                         return;
@@ -205,30 +207,26 @@ public class MenuListActivity extends AppCompatActivity {
             form.setId(existingId);
         }
         form.setType(typeFromRadio(rgType));
-        String parentIdStr = getText(etParentId);
+        String parentIdStr = StringUtils.getText(etParentId);
         form.setParentId(TextUtils.isEmpty(parentIdStr) ? 0 : Integer.parseInt(parentIdStr));
-        form.setName(getText(etName));
-        form.setPath(getText(etPath));
-        form.setComponent(getText(etComponent));
-        form.setPerm(getText(etPerm));
-        form.setIcon(getText(etIcon));
-        form.setRedirect(getText(etRedirect));
-        String sortStr = getText(etSort);
+        form.setName(StringUtils.getText(etName));
+        form.setPath(StringUtils.getText(etPath));
+        form.setComponent(StringUtils.getText(etComponent));
+        form.setPerm(StringUtils.getText(etPerm));
+        form.setIcon(StringUtils.getText(etIcon));
+        form.setRedirect(StringUtils.getText(etRedirect));
+        String sortStr = StringUtils.getText(etSort);
         form.setSort(TextUtils.isEmpty(sortStr) ? 1 : Integer.parseInt(sortStr));
         form.setVisible(visibleFromRadio(rgVisible));
         return form;
     }
 
-    private String getText(TextInputEditText et) {
-        return et.getText() != null ? et.getText().toString().trim() : "";
-    }
-
-    private String typeFromRadio(RadioGroup rgType) {
+    private MenuType typeFromRadio(RadioGroup rgType) {
         int checkedId = rgType.getCheckedRadioButtonId();
-        if (checkedId == R.id.rb_type_dir) return "CATALOG";
-        if (checkedId == R.id.rb_type_menu) return "MENU";
-        if (checkedId == R.id.rb_type_button) return "BUTTON";
-        return "CATALOG";
+        if (checkedId == R.id.rb_type_dir) return MenuType.CATALOG;
+        if (checkedId == R.id.rb_type_menu) return MenuType.MENU;
+        if (checkedId == R.id.rb_type_button) return MenuType.BUTTON;
+        return MenuType.CATALOG;
     }
 
     private int visibleFromRadio(RadioGroup rgVisible) {
@@ -236,11 +234,11 @@ public class MenuListActivity extends AppCompatActivity {
         return checkedId == R.id.rb_visible_yes ? 1 : 0;
     }
 
-    private void selectTypeRadio(RadioGroup rgType, String type) {
+    private void selectTypeRadio(RadioGroup rgType, MenuType type) {
         RadioButton rb;
-        if ("MENU".equals(type)) {
+        if (type == MenuType.MENU) {
             rb = rgType.findViewById(R.id.rb_type_menu);
-        } else if ("BUTTON".equals(type)) {
+        } else if (type == MenuType.BUTTON) {
             rb = rgType.findViewById(R.id.rb_type_button);
         } else {
             rb = rgType.findViewById(R.id.rb_type_dir);

@@ -11,8 +11,8 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class InputHistoryQuery extends PageQuery {
-    /** 图片来源筛选（upload/camera/sample） */
-    private String inputSource;
+    /** 图片来源筛选 */
+    private InputSource inputSource;
     /** 仅收藏 */
     private Boolean favoriteOnly = false;
     /** 关键词 */

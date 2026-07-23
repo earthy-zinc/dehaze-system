@@ -28,7 +28,7 @@ public class InputHistoryAPI {
      */
     public static void listHistory(InputHistoryQuery query, ApiCallback<PageResult<InputHistoryVO>> callback) {
         Call<Result<PageResult<InputHistoryVO>>> call = DehazeSDK.getInstance().getInputHistoryApiService().listHistory(
-                query.getInputSource(),
+                query.getInputSource() != null ? query.getInputSource().getValue() : null,
                 query.getFavoriteOnly(),
                 query.getKeywords(),
                 query.getPageNum(),

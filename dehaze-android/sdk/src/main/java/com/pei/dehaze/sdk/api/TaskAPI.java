@@ -8,8 +8,6 @@ import com.pei.dehaze.sdk.model.task.TaskCreateForm;
 import com.pei.dehaze.sdk.model.task.TaskQuery;
 import com.pei.dehaze.sdk.model.task.TaskVO;
 
-import java.io.IOException;
-
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 
@@ -26,8 +24,8 @@ public class TaskAPI {
      */
     public static void getTaskPage(TaskQuery query, ApiCallback<PageResult<TaskVO>> callback) {
         Call<Result<PageResult<TaskVO>>> call = DehazeSDK.getInstance().getTaskApiService().getTaskPage(
-                query.getStatus(),
-                query.getTaskType(),
+                query.getStatus() != null ? query.getStatus().getValue() : null,
+                query.getTaskType() != null ? query.getTaskType().getValue() : null,
                 query.getPageNum(),
                 query.getPageSize());
         call.enqueue(callback);
@@ -58,34 +56,7 @@ public class TaskAPI {
      */
     public static void downloadTaskFile(String taskId, String savePath, ApiCallback<Void> callback) {
         Call<ResponseBody> call = DehazeSDK.getInstance().getTaskApiService().downloadTaskFile(taskId);
-        call.enqueue(new retrofit2.Callback<ResponseBody>() {
-            @Override
-            public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    try {
-                        FileAPI.saveToFile(response.body(), savePath);
-                        if (callback != null) {
-                            callback.onSuccess(null);
-                        }
-                    } catch (IOException e) {
-                        if (callback != null) {
-                            callback.onFailure(new com.pei.dehaze.sdk.network.ApiException(0, "文件保存失败: " + e.getMessage()));
-                        }
-                    }
-                } else {
-                    if (callback != null) {
-                        callback.onFailure(new com.pei.dehaze.sdk.network.ApiException(response.code(), "下载失败"));
-                    }
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                if (callback != null) {
-                    callback.onFailure(new com.pei.dehaze.sdk.network.ApiException(0, t.getMessage()));
-                }
-            }
-        });
+        FileAPI.enqueueFileDownload(call, savePath, callback);
     }
 
     /**

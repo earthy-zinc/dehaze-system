@@ -24,31 +24,31 @@ public class LoginViewModelTest {
     @Test
     public void testValidUsername() {
         // 测试有效的用户名
-        loginViewModel.setUsername("admin");
+        loginViewModel.getUsername().setValue("admin");
         assertEquals("admin", loginViewModel.getUsername().getValue());
     }
 
     @Test
     public void testValidPassword() {
         // 测试有效的密码
-        loginViewModel.setPassword("123456");
+        loginViewModel.getPassword().setValue("123456");
         assertEquals("123456", loginViewModel.getPassword().getValue());
     }
 
     @Test
     public void testValidCaptchaCode() {
         // 测试有效的验证码
-        loginViewModel.setCaptchaCode("abcd");
+        loginViewModel.getCaptchaCode().setValue("abcd");
         assertEquals("abcd", loginViewModel.getCaptchaCode().getValue());
     }
 
     @Test
     public void testFormValidationWithValidData() {
         // 测试表单验证 - 有效数据
-        loginViewModel.setUsername("admin");
-        loginViewModel.setPassword("123456");
-        loginViewModel.setCaptchaCode("abcd");
-        
+        loginViewModel.getUsername().setValue("admin");
+        loginViewModel.getPassword().setValue("123456");
+        loginViewModel.getCaptchaCode().setValue("abcd");
+
         // 注意：实际的验证逻辑在 login() 方法中执行
         // 这里我们只是测试数据是否正确设置
         assertEquals("admin", loginViewModel.getUsername().getValue());
@@ -59,21 +59,21 @@ public class LoginViewModelTest {
     @Test
     public void testFormValidationWithInvalidUsername() {
         // 测试表单验证 - 无效用户名（空）
-        loginViewModel.setUsername("");
+        loginViewModel.getUsername().setValue("");
         assertEquals("", loginViewModel.getUsername().getValue());
     }
 
     @Test
     public void testFormValidationWithInvalidPassword() {
         // 测试表单验证 - 无效密码（太短）
-        loginViewModel.setPassword("123");
+        loginViewModel.getPassword().setValue("123");
         assertEquals("123", loginViewModel.getPassword().getValue());
     }
 
     @Test
     public void testFormValidationWithEmptyCaptcha() {
         // 测试表单验证 - 空验证码
-        loginViewModel.setCaptchaCode("");
+        loginViewModel.getCaptchaCode().setValue("");
         assertEquals("", loginViewModel.getCaptchaCode().getValue());
     }
 

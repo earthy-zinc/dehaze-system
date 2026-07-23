@@ -2,13 +2,15 @@ package com.pei.dehaze.ui.compare.viewmodel;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 
-import com.pei.dehaze.repository.CompareRepository;
+import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.repository.SharedRepository;
+import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.evaluation.EvalParam;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
+import com.pei.dehaze.sdk.model.prediction.DehazeParams;
 import com.pei.dehaze.sdk.model.prediction.PredParam;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
@@ -18,90 +20,58 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class CompareViewModel extends ViewModel {
+public class CompareViewModel extends BaseViewModel {
 
-    private final CompareRepository compareRepository;
+    private final SharedRepository sharedRepository;
 
     private final MutableLiveData<FileInfo> uploadedFile = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> algorithmOptions = new MutableLiveData<>();
     private final MutableLiveData<PredResult> predictionResult = new MutableLiveData<>();
-    private final MutableLiveData<Map<String, PredResult>> multiPredictionResults = new MutableLiveData<>();
+    private final MutableLiveData<Map<Long, PredResult>> multiPredictionResults = new MutableLiveData<>();
     private final MutableLiveData<EvalResult> evaluationResult = new MutableLiveData<>();
     private final MutableLiveData<List<PredictionLogVO>> predictionLogs = new MutableLiveData<>();
-    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
-    private final MutableLiveData<String> error = new MutableLiveData<>();
-    private final MutableLiveData<String> operationResult = new MutableLiveData<>();
 
     private String originalImageUrl;
 
     public CompareViewModel() {
-        compareRepository = new CompareRepository();
+        sharedRepository = new SharedRepository();
     }
 
     public void uploadImage(File imageFile) {
-        loading.setValue(true);
-        compareRepository.uploadImage(imageFile, new CompareRepository.UploadCallback() {
-            @Override
-            public void onSuccess(FileInfo fileInfo) {
-                uploadedFile.postValue(fileInfo);
-                originalImageUrl = fileInfo.getUrl();
-                operationResult.postValue("图片上传成功");
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        sharedRepository.uploadImage(imageFile, withLoading(fileInfo -> {
+            uploadedFile.postValue(fileInfo);
+            originalImageUrl = fileInfo.getUrl();
+            operationResult.postValue("图片上传成功");
+        }));
     }
 
     public void loadAlgorithmOptions() {
-        loading.setValue(true);
-        compareRepository.getAlgorithmOptions(new CompareRepository.OptionsCallback() {
-            @Override
-            public void onSuccess(List<Option> options) {
-                algorithmOptions.postValue(options);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        sharedRepository.getAlgorithmOptions(withLoading(algorithmOptions::postValue));
     }
 
-    public void predict(long algorithmId, String params) {
+    public void predict(long algorithmId, DehazeParams params) {
         if (originalImageUrl == null) {
             error.setValue("请先上传图片");
+            return;
+        }
+        String invalidMsg = params == null ? null : params.validate();
+        if (invalidMsg != null) {
+            error.setValue(invalidMsg);
             return;
         }
         PredParam param = new PredParam();
         param.setAlgorithmId(algorithmId);
         param.setImageUrl(originalImageUrl);
         param.setParams(params);
-        loading.setValue(true);
-        compareRepository.getPrediction(param, new CompareRepository.PredictionCallback() {
-            @Override
-            public void onSuccess(PredResult result) {
-                predictionResult.postValue(result);
-                operationResult.postValue("去雾处理完成");
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        sharedRepository.getPrediction(param, withLoading(result -> {
+            predictionResult.postValue(result);
+            operationResult.postValue("去雾处理完成");
+        }));
     }
 
-    public void predictMultiple(List<Long> algorithmIds, String params) {
+    public void predictMultiple(List<Long> algorithmIds, DehazeParams params) {
         if (originalImageUrl == null) {
             error.setValue("请先上传图片");
             return;
@@ -110,21 +80,26 @@ public class CompareViewModel extends ViewModel {
             error.setValue("请至少选择一个算法");
             return;
         }
+        String invalidMsg = params == null ? null : params.validate();
+        if (invalidMsg != null) {
+            error.setValue(invalidMsg);
+            return;
+        }
         loading.setValue(true);
-        Map<String, PredResult> results = new HashMap<>();
-        final int[] pending = {algorithmIds.size()};
+        Map<Long, PredResult> results = new HashMap<>();
+        AtomicInteger pending = new AtomicInteger(algorithmIds.size());
         for (Long algorithmId : algorithmIds) {
             PredParam param = new PredParam();
             param.setAlgorithmId(algorithmId);
             param.setImageUrl(originalImageUrl);
             param.setParams(params);
-            compareRepository.getPrediction(param, new CompareRepository.PredictionCallback() {
+            sharedRepository.getPrediction(param, new RepositoryCallback<PredResult>() {
                 @Override
                 public void onSuccess(PredResult result) {
                     synchronized (results) {
-                        results.put(String.valueOf(algorithmId), result);
+                        results.put(algorithmId, result);
                     }
-                    if (--pending[0] == 0) {
+                    if (pending.decrementAndGet() == 0) {
                         multiPredictionResults.postValue(results);
                         operationResult.postValue("多算法处理完成");
                         loading.postValue(false);
@@ -133,7 +108,7 @@ public class CompareViewModel extends ViewModel {
 
                 @Override
                 public void onError(String errorMessage) {
-                    if (--pending[0] == 0) {
+                    if (pending.decrementAndGet() == 0) {
                         multiPredictionResults.postValue(results);
                         loading.postValue(false);
                     }
@@ -144,42 +119,23 @@ public class CompareViewModel extends ViewModel {
     }
 
     public void evaluate(long algorithmId, String predUrl, String gtUrl) {
+        if (gtUrl == null || gtUrl.isEmpty()) {
+            error.setValue("评估需要提供参考图片");
+            return;
+        }
         EvalParam param = new EvalParam();
         param.setAlgorithmId(algorithmId);
         param.setPredUrl(predUrl);
         param.setGtUrl(gtUrl);
-        loading.setValue(true);
-        compareRepository.getEvaluation(param, new CompareRepository.EvaluationCallback() {
-            @Override
-            public void onSuccess(EvalResult result) {
-                evaluationResult.postValue(result);
-                operationResult.postValue("评估完成");
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        sharedRepository.getEvaluation(param, withLoading(result -> {
+            evaluationResult.postValue(result);
+            operationResult.postValue("评估完成");
+        }));
     }
 
     public void loadPredictionLogs() {
-        loading.setValue(true);
-        compareRepository.listPredictionLogs(1, 20, new CompareRepository.PredictionLogListCallback() {
-            @Override
-            public void onSuccess(List<PredictionLogVO> logs) {
-                predictionLogs.postValue(logs != null ? logs : new ArrayList<>());
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        sharedRepository.listPredictionLogs(1, 20, withLoading(logs ->
+                predictionLogs.postValue(logs != null ? logs : new ArrayList<>())));
     }
 
     public LiveData<FileInfo> getUploadedFile() {
@@ -194,7 +150,7 @@ public class CompareViewModel extends ViewModel {
         return predictionResult;
     }
 
-    public LiveData<Map<String, PredResult>> getMultiPredictionResults() {
+    public LiveData<Map<Long, PredResult>> getMultiPredictionResults() {
         return multiPredictionResults;
     }
 
@@ -206,27 +162,7 @@ public class CompareViewModel extends ViewModel {
         return predictionLogs;
     }
 
-    public LiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public LiveData<String> getError() {
-        return error;
-    }
-
-    public LiveData<String> getOperationResult() {
-        return operationResult;
-    }
-
     public String getOriginalImageUrl() {
         return originalImageUrl;
-    }
-
-    public void clearError() {
-        error.setValue(null);
-    }
-
-    public void clearOperationResult() {
-        operationResult.setValue(null);
     }
 }

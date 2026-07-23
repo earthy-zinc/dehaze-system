@@ -17,6 +17,8 @@ import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
 
+import java.util.Objects;
+
 public class AlgorithmBrowseAdapter extends ListAdapter<Algorithm, AlgorithmBrowseAdapter.BrowseViewHolder> {
 
     public interface OnBrowseActionListener {
@@ -39,14 +41,10 @@ public class AlgorithmBrowseAdapter extends ListAdapter<Algorithm, AlgorithmBrow
         @Override
         public boolean areContentsTheSame(@NonNull Algorithm oldItem, @NonNull Algorithm newItem) {
             return oldItem.getId() == newItem.getId() &&
-                    equals(oldItem.getName(), newItem.getName()) &&
-                    equals(oldItem.getType(), newItem.getType()) &&
-                    equals(oldItem.getDescription(), newItem.getDescription()) &&
-                    equals(oldItem.getStatus(), newItem.getStatus());
-        }
-
-        private boolean equals(Object a, Object b) {
-            return a == null ? b == null : a.equals(b);
+                    Objects.equals(oldItem.getName(), newItem.getName()) &&
+                    Objects.equals(oldItem.getType(), newItem.getType()) &&
+                    Objects.equals(oldItem.getDescription(), newItem.getDescription()) &&
+                    Objects.equals(oldItem.getStatus(), newItem.getStatus());
         }
     };
 
@@ -90,10 +88,9 @@ public class AlgorithmBrowseAdapter extends ListAdapter<Algorithm, AlgorithmBrow
             tvType.setText(algorithm.getType() == null ? "" : algorithm.getType());
             tvDescription.setText(algorithm.getDescription() == null ? "" : algorithm.getDescription());
 
-            int statusValue = algorithm.getStatus() != null ? algorithm.getStatus() : 0;
-            AlgorithmStatus status = AlgorithmStatus.fromValue(statusValue);
+            AlgorithmStatus status = algorithm.getStatus() != null ? algorithm.getStatus() : AlgorithmStatus.DRAFT;
             chipStatus.setText(status.getLabel());
-            chipStatus.setChipBackgroundColor(ColorStateList.valueOf(statusColor(statusValue)));
+            chipStatus.setChipBackgroundColor(ColorStateList.valueOf(statusColor(status)));
 
             btnUse.setOnClickListener(v -> {
                 if (listener != null) listener.onUse(algorithm);
@@ -103,14 +100,15 @@ public class AlgorithmBrowseAdapter extends ListAdapter<Algorithm, AlgorithmBrow
             });
         }
 
-        private int statusColor(int status) {
+        private int statusColor(AlgorithmStatus status) {
+            if (status == null) return 0xFF9E9E9E;
             switch (status) {
-                case 0: return 0xFF9E9E9E;
-                case 1: return 0xFFFF9800;
-                case 2: return 0xFF2196F3;
-                case 3: return 0xFF4CAF50;
-                case 4: return 0xFFE53935;
-                case 5: return 0xFF607D8B;
+                case DRAFT: return 0xFF9E9E9E;
+                case TESTING: return 0xFFFF9800;
+                case PENDING_AUDIT: return 0xFF2196F3;
+                case PUBLISHED: return 0xFF4CAF50;
+                case DISABLED: return 0xFFE53935;
+                case ARCHIVED: return 0xFF607D8B;
                 default: return 0xFF9E9E9E;
             }
         }

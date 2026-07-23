@@ -12,6 +12,8 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
+import com.pei.dehaze.utils.StringUtils;
+import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.role.RolePageVO;
 
 import java.text.SimpleDateFormat;
@@ -20,6 +22,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 public class RoleAdapter extends ListAdapter<RolePageVO, RoleAdapter.RoleViewHolder> {
@@ -53,16 +56,12 @@ public class RoleAdapter extends ListAdapter<RolePageVO, RoleAdapter.RoleViewHol
 
         @Override
         public boolean areContentsTheSame(@NonNull RolePageVO oldItem, @NonNull RolePageVO newItem) {
-            return RoleAdapter.equals(oldItem.getName(), newItem.getName()) &&
-                   RoleAdapter.equals(oldItem.getCode(), newItem.getCode()) &&
-                   RoleAdapter.equals(oldItem.getStatus(), newItem.getStatus()) &&
-                   RoleAdapter.equals(oldItem.getSort(), newItem.getSort());
+            return Objects.equals(oldItem.getName(), newItem.getName()) &&
+                   Objects.equals(oldItem.getCode(), newItem.getCode()) &&
+                   Objects.equals(oldItem.getStatus(), newItem.getStatus()) &&
+                   Objects.equals(oldItem.getSort(), newItem.getSort());
         }
     };
-
-    private static boolean equals(Object a, Object b) {
-        return a == null ? b == null : a.equals(b);
-    }
 
     public void setOnRoleActionListener(OnRoleActionListener listener) {
         this.actionListener = listener;
@@ -106,20 +105,6 @@ public class RoleAdapter extends ListAdapter<RolePageVO, RoleAdapter.RoleViewHol
 
     public List<Integer> getSelectedIdList() {
         return new ArrayList<>(selectedIds);
-    }
-
-    public String getSelectedIdsString() {
-        if (selectedIds.isEmpty()) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (Integer id : selectedIds) {
-            if (sb.length() > 0) {
-                sb.append(",");
-            }
-            sb.append(id);
-        }
-        return sb.toString();
     }
 
     private void notifySelectionChanged() {
@@ -168,11 +153,11 @@ public class RoleAdapter extends ListAdapter<RolePageVO, RoleAdapter.RoleViewHol
         }
 
         void bind(RolePageVO role) {
-            tvName.setText(safe(role.getName()));
-            tvCode.setText(safe(role.getCode()));
+            tvName.setText(StringUtils.safe(role.getName()));
+            tvCode.setText(StringUtils.safe(role.getCode()));
             tvSort.setText(role.getSort() != null ? String.valueOf(role.getSort()) : "0");
-            Integer status = role.getStatus();
-            if (status != null && status == 1) {
+            EnableStatus status = role.getStatus();
+            if (status == EnableStatus.ENABLED) {
                 tvStatus.setText("启用");
                 tvStatus.setTextColor(0xFF4CAF50);
                 tvToggleStatus.setText("禁用");
@@ -245,8 +230,5 @@ public class RoleAdapter extends ListAdapter<RolePageVO, RoleAdapter.RoleViewHol
             tvToggleStatus.setVisibility(View.GONE);
         }
 
-        private String safe(String s) {
-            return s == null ? "" : s;
-        }
     }
 }

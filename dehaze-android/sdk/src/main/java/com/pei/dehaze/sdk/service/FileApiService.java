@@ -20,9 +20,6 @@ import retrofit2.http.Query;
  */
 public interface FileApiService {
 
-    @GET("/api/v1/files/check")
-    Call<Result<Boolean>> checkFile(@Query("md5") String md5);
-
     @GET("/api/v1/files/page")
     Call<Result<PageResult<FileInfo>>> getFilePage(
             @Query("pageNum") int pageNum,

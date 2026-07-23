@@ -9,6 +9,7 @@ import com.pei.dehaze.sdk.model.auth.LoginResponse;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
+import retrofit2.http.Header;
 import retrofit2.http.POST;
 
 /**
@@ -38,16 +39,18 @@ public interface AuthApiService {
     Call<Result<Void>> logout();
 
     /**
-     * 获取当前用户认证信息（用户、角色、权限）
+     * 获取当前登录用户信息（昵称、头像、权限、角色）
      * GET /api/v1/auth/me
      */
     @GET("/api/v1/auth/me")
     Call<Result<AuthInfo>> getAuthInfo();
 
     /**
-     * 刷新令牌
+     * 刷新 Token
      * POST /api/v1/auth/refresh
+     *
+     * @param refreshToken 刷新令牌
      */
     @POST("/api/v1/auth/refresh")
-    Call<Result<LoginResponse>> refreshToken();
+    Call<Result<LoginResponse>> refreshToken(@Header("refreshToken") String refreshToken);
 }

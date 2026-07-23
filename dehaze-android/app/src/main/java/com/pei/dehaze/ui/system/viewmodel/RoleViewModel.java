@@ -2,9 +2,11 @@ package com.pei.dehaze.ui.system.viewmodel;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 
 import com.pei.dehaze.repository.RoleRepository;
+import com.pei.dehaze.ui.common.BaseViewModel;
+import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.menu.MenuVO;
@@ -15,15 +17,12 @@ import com.pei.dehaze.sdk.model.role.RoleQuery;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RoleViewModel extends ViewModel {
+public class RoleViewModel extends BaseViewModel {
 
     private final RoleRepository roleRepository;
 
     private final MutableLiveData<List<RolePageVO>> roleList = new MutableLiveData<>();
     private final MutableLiveData<Long> total = new MutableLiveData<>(0L);
-    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
-    private final MutableLiveData<String> error = new MutableLiveData<>();
-    private final MutableLiveData<String> operationResult = new MutableLiveData<>();
     private final MutableLiveData<RoleForm> roleForm = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> roleOptions = new MutableLiveData<>();
     private final MutableLiveData<List<MenuVO>> menuList = new MutableLiveData<>();
@@ -38,97 +37,40 @@ public class RoleViewModel extends ViewModel {
     }
 
     public void loadRoles() {
-        loading.setValue(true);
         RoleQuery query = buildQuery();
-        roleRepository.getRoles(query, new RoleRepository.Callback<PageResult<RolePageVO>>() {
-            @Override
-            public void onSuccess(PageResult<RolePageVO> data) {
-                roleList.postValue(data.getList() != null ? data.getList() : new ArrayList<>());
-                total.postValue(data.getTotal());
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        roleRepository.getRoles(query, withLoading(data -> {
+            roleList.postValue(data.getList());
+            total.postValue(data.getTotal());
+        }));
     }
 
     public void loadRoleForm(int id) {
-        loading.setValue(true);
-        roleRepository.getRoleForm(id, new RoleRepository.Callback<RoleForm>() {
-            @Override
-            public void onSuccess(RoleForm data) {
-                roleForm.postValue(data);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        roleRepository.getRoleForm(id, withLoading(roleForm::postValue));
     }
 
     public void addRole(RoleForm form) {
-        loading.setValue(true);
-        roleRepository.addRole(form, new RoleRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("新增角色成功");
-                loading.postValue(false);
-                loadRoles();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        roleRepository.addRole(form, withLoading(v -> {
+            operationResult.postValue("新增角色成功");
+            loadRoles();
+        }));
     }
 
     public void updateRole(int id, RoleForm form) {
-        loading.setValue(true);
-        roleRepository.updateRole(id, form, new RoleRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("修改角色成功");
-                loading.postValue(false);
-                loadRoles();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        roleRepository.updateRole(id, form, withLoading(v -> {
+            operationResult.postValue("修改角色成功");
+            loadRoles();
+        }));
     }
 
-    public void deleteRoles(String ids) {
-        loading.setValue(true);
-        roleRepository.deleteRoles(ids, new RoleRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("删除角色成功");
-                loading.postValue(false);
-                loadRoles();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+    public void deleteRoles(List<Long> ids) {
+        roleRepository.deleteRoles(ids, withLoading(v -> {
+            operationResult.postValue("删除角色成功");
+            loadRoles();
+        }));
     }
 
-    public void updateRoleStatus(long id, int status) {
-        roleRepository.updateRoleStatus(id, status, new RoleRepository.Callback<Void>() {
+    public void updateRoleStatus(long id, EnableStatus status) {
+        roleRepository.updateRoleStatus(id, status, new RepositoryCallback<Void>() {
             @Override
             public void onSuccess(Void data) {
                 operationResult.postValue("状态切换成功");
@@ -143,7 +85,7 @@ public class RoleViewModel extends ViewModel {
     }
 
     public void loadRoleOptions() {
-        roleRepository.getRoleOptions(new RoleRepository.Callback<List<Option>>() {
+        roleRepository.getRoleOptions(new RepositoryCallback<List<Option>>() {
             @Override
             public void onSuccess(List<Option> data) {
                 roleOptions.postValue(data);
@@ -157,7 +99,7 @@ public class RoleViewModel extends ViewModel {
     }
 
     public void loadMenuList() {
-        roleRepository.getMenuList(new RoleRepository.Callback<List<MenuVO>>() {
+        roleRepository.getMenuList(new RepositoryCallback<List<MenuVO>>() {
             @Override
             public void onSuccess(List<MenuVO> data) {
                 menuList.postValue(data);
@@ -171,7 +113,7 @@ public class RoleViewModel extends ViewModel {
     }
 
     public void loadRoleMenuIds(int roleId) {
-        roleRepository.getRoleMenuIds(roleId, new RoleRepository.Callback<List<Integer>>() {
+        roleRepository.getRoleMenuIds(roleId, new RepositoryCallback<List<Integer>>() {
             @Override
             public void onSuccess(List<Integer> data) {
                 roleMenuIds.postValue(data);
@@ -185,20 +127,8 @@ public class RoleViewModel extends ViewModel {
     }
 
     public void assignMenus(int roleId, List<Integer> menuIds) {
-        loading.setValue(true);
-        roleRepository.updateRoleMenus(roleId, menuIds, new RoleRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("权限分配成功");
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        roleRepository.updateRoleMenus(roleId, menuIds,
+                withLoading(v -> operationResult.postValue("权限分配成功")));
     }
 
     private RoleQuery buildQuery() {
@@ -260,18 +190,6 @@ public class RoleViewModel extends ViewModel {
         return total;
     }
 
-    public LiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public LiveData<String> getError() {
-        return error;
-    }
-
-    public LiveData<String> getOperationResult() {
-        return operationResult;
-    }
-
     public LiveData<RoleForm> getRoleForm() {
         return roleForm;
     }
@@ -286,14 +204,6 @@ public class RoleViewModel extends ViewModel {
 
     public LiveData<List<Integer>> getRoleMenuIds() {
         return roleMenuIds;
-    }
-
-    public void clearError() {
-        error.setValue(null);
-    }
-
-    public void clearOperationResult() {
-        operationResult.setValue(null);
     }
 
     public void clearRoleForm() {

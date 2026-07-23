@@ -91,27 +91,4 @@ public class ErrorUtils {
                 return defaultMessage != null && !defaultMessage.isEmpty() ? defaultMessage : "网络错误 (" + httpCode + ")";
         }
     }
-
-    /**
-     * 根据HTTP状态码生成错误信息
-     *
-     * @param code HTTP状态码
-     * @return 错误信息
-     */
-    public static String getErrorMessageByCode(int code) {
-        switch (code) {
-            case 400:
-                return "请求参数错误";
-            case 401:
-                return "未授权访问";
-            case 403:
-                return "访问被禁止";
-            case 404:
-                return "请求的资源不存在";
-            case 500:
-                return "服务器内部错误";
-            default:
-                return "HTTP错误 " + code;
-        }
-    }
 }

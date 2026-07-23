@@ -13,6 +13,7 @@ import com.pei.dehaze.sdk.model.dataset.DatasetItemUpdateForm;
 import com.pei.dehaze.sdk.model.dataset.DatasetQuery;
 import com.pei.dehaze.sdk.model.dataset.ImageItem;
 import com.pei.dehaze.sdk.model.dataset.ImageItemQuery;
+import com.pei.dehaze.sdk.model.dataset.ImageType;
 import com.pei.dehaze.sdk.model.dataset.ItemFileUpdateForm;
 
 import java.io.File;
@@ -27,6 +28,9 @@ import retrofit2.Call;
  * 数据集相关API接口封装
  */
 public class DatasetAPI {
+
+    private DatasetAPI() {
+    }
 
     // ===== 数据集 =====
 
@@ -170,16 +174,16 @@ public class DatasetAPI {
      * 上传数据项图片
      *
      * @param datasetItemId 数据项ID
-     * @param type          图片类型(clear/hazy/depth/segment)
+     * @param type          图片类型(clear/hazy/trans)
      * @param file          图片文件
      * @param description   描述
      */
-    public static void uploadItemFile(long datasetItemId, String type, File file, String description,
+    public static void uploadItemFile(long datasetItemId, ImageType type, File file, String description,
                                        ApiCallback<DatasetImageFileInfo> callback) {
         RequestBody requestFile = RequestBody.create(MediaType.parse("image/*"), file);
         MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), requestFile);
         RequestBody itemIdBody = RequestBody.create(MediaType.parse("text/plain"), String.valueOf(datasetItemId));
-        RequestBody typeBody = RequestBody.create(MediaType.parse("text/plain"), type);
+        RequestBody typeBody = RequestBody.create(MediaType.parse("text/plain"), type.getValue());
         RequestBody descBody = RequestBody.create(MediaType.parse("text/plain"), description != null ? description : "");
 
         Call<Result<DatasetImageFileInfo>> call = DehazeSDK.getInstance().getDatasetApiService()

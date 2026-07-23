@@ -7,7 +7,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.RadioGroup;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -22,8 +21,9 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
-import com.pei.dehaze.repository.DatasetRepository;
+import com.pei.dehaze.repository.RepositoryCallback;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 
 import java.util.ArrayList;
@@ -192,7 +192,7 @@ public class DatasetFragment extends Fragment {
     private void confirmDelete(Dataset dataset) {
         new AlertDialog.Builder(requireContext())
                 .setTitle("删除确认")
-                .setMessage("确认删除数据集「" + safe(dataset.getName()) + "」吗？此操作将同时删除所有子数据集和图片数据，且不可恢复！")
+                .setMessage("确认删除数据集「" + StringUtils.safe(dataset.getName()) + "」吗？此操作将同时删除所有子数据集和图片数据，且不可恢复！")
                 .setPositiveButton("确定", (dialog, which) -> viewModel.deleteDataset(dataset.getId()))
                 .setNegativeButton("取消", null)
                 .show();
@@ -225,11 +225,11 @@ public class DatasetFragment extends Fragment {
         RadioGroup rgStatus = formView.findViewById(R.id.rg_status);
 
         if (isEdit) {
-            etName.setText(safe(existing.getName()));
+            etName.setText(StringUtils.safe(existing.getName()));
             etParentId.setText(existing.getParentId() != null ? String.valueOf(existing.getParentId()) : "0");
-            etType.setText(safe(existing.getType()));
-            etPath.setText(safe(existing.getPath()));
-            etDescription.setText(safe(existing.getDescription()));
+            etType.setText(StringUtils.safe(existing.getType()));
+            etPath.setText(StringUtils.safe(existing.getPath()));
+            etDescription.setText(StringUtils.safe(existing.getDescription()));
             if (existing.getStatus() != null && existing.getStatus() == 0) {
                 rgStatus.check(R.id.rb_status_disable);
             } else {
@@ -247,11 +247,11 @@ public class DatasetFragment extends Fragment {
                 .setTitle(isEdit ? "修改数据集" : (isAddChild ? "新增子数据集" : "新增数据集"))
                 .setView(formView)
                 .setPositiveButton("确定", (dialog, which) -> {
-                    String name = getText(etName);
-                    String type = getText(etType);
-                    String path = getText(etPath);
-                    String parentIdStr = getText(etParentId);
-                    String description = getText(etDescription);
+                    String name = StringUtils.getText(etName);
+                    String type = StringUtils.getText(etType);
+                    String path = StringUtils.getText(etPath);
+                    String parentIdStr = StringUtils.getText(etParentId);
+                    String description = StringUtils.getText(etDescription);
                     int status = rgStatus.getCheckedRadioButtonId() == R.id.rb_status_enable ? 1 : 0;
 
                     if (TextUtils.isEmpty(name)) {
@@ -285,18 +285,10 @@ public class DatasetFragment extends Fragment {
                 .show();
     }
 
-    private String getText(TextInputEditText et) {
-        return et.getText() != null ? et.getText().toString().trim() : "";
-    }
-
-    private String safe(String s) {
-        return s == null ? "" : s;
-    }
-
     /**
      * 懒加载子节点回调
      */
-    private class DatasetRepositoryCallback implements DatasetRepository.Callback<List<Dataset>> {
+    private class DatasetRepositoryCallback implements RepositoryCallback<List<Dataset>> {
         private final long parentId;
 
         DatasetRepositoryCallback(long parentId) {

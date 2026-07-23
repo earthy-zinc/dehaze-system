@@ -50,17 +50,6 @@ public class FileAPI {
     }
 
     /**
-     * 文件校验（根据MD5判断是否已存在）
-     *
-     * @param md5      文件MD5
-     * @param callback 回调函数
-     */
-    public static void checkFile(String md5, ApiCallback<Boolean> callback) {
-        Call<Result<Boolean>> call = DehazeSDK.getInstance().getFileApiService().checkFile(md5);
-        call.enqueue(callback);
-    }
-
-    /**
      * 分页查询文件列表
      *
      * @param pageNum  页码
@@ -134,5 +123,36 @@ public class FileAPI {
     public static void delete(long fileId, ApiCallback<Void> callback) {
         Call<Result<Void>> call = DehazeSDK.getInstance().getFileApiService().deleteFile(fileId);
         call.enqueue(callback);
+    }
+
+    /**
+     * 通用文件下载：将 ResponseBody 流保存到本地路径。
+     * 供 UserAPI.downloadTemplate / UserAPI.export / TaskAPI.downloadTaskFile 等复用。
+     *
+     * @param call      已构造的下载 Call（返回 ResponseBody）
+     * @param filePath  本地保存路径
+     * @param callback  回调（成功时 data 为 null）
+     */
+    public static void enqueueFileDownload(Call<ResponseBody> call, String filePath, ApiCallback<Void> callback) {
+        call.enqueue(new retrofit2.Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    try {
+                        FileAPI.saveToFile(response.body(), filePath);
+                        callback.onSuccess(null);
+                    } catch (IOException e) {
+                        callback.onFailure(new ApiException(-1, "文件保存失败: " + e.getMessage()));
+                    }
+                } else {
+                    callback.onFailure(new ApiException(response.code(), response.message()));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                callback.onFailure(new ApiException(-1, t.getMessage()));
+            }
+        });
     }
 }

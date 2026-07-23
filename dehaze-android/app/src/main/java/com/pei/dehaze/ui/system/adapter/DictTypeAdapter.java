@@ -14,6 +14,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.model.dict.DictTypePageVO;
 
+import java.util.Objects;
+
 public class DictTypeAdapter extends ListAdapter<DictTypePageVO, DictTypeAdapter.DictTypeViewHolder> {
 
     public DictTypeAdapter() {
@@ -28,14 +30,10 @@ public class DictTypeAdapter extends ListAdapter<DictTypePageVO, DictTypeAdapter
 
         @Override
         public boolean areContentsTheSame(@NonNull DictTypePageVO oldItem, @NonNull DictTypePageVO newItem) {
-            return safeEquals(oldItem.getName(), newItem.getName()) &&
-                   safeEquals(oldItem.getCode(), newItem.getCode()) &&
-                   oldItem.getStatus() == newItem.getStatus() &&
-                   safeEquals(oldItem.getRemark(), newItem.getRemark());
-        }
-
-        private boolean safeEquals(String a, String b) {
-            return a == null ? b == null : a.equals(b);
+            return Objects.equals(oldItem.getName(), newItem.getName()) &&
+                   Objects.equals(oldItem.getCode(), newItem.getCode()) &&
+                   Objects.equals(oldItem.getStatus(), newItem.getStatus()) &&
+                   Objects.equals(oldItem.getRemark(), newItem.getRemark());
         }
     };
 

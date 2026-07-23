@@ -11,9 +11,9 @@ public class TaskVO {
     /** 任务ID（UUID） */
     private String taskId;
     /** 任务类型 */
-    private String taskType;
-    /** 任务状态：pending, processing, completed, failed, cancelled */
-    private String status;
+    private TaskType taskType;
+    /** 任务状态 */
+    private TaskStatus status;
     /** 执行进度(0-100) */
     private int progress;
     /** 总文件数 */

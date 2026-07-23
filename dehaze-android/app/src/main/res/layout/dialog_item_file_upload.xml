@@ -32,18 +32,11 @@
             android:text="hazy" />
 
         <RadioButton
-            android:id="@+id/rb_type_depth"
+            android:id="@+id/rb_type_trans"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:text="depth" />
-
-        <RadioButton
-            android:id="@+id/rb_type_segment"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="segment" />
+            android:text="trans" />
 
     </RadioGroup>
 

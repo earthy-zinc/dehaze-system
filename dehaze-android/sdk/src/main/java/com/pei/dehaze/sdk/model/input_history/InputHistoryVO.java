@@ -28,10 +28,10 @@ public class InputHistoryVO {
     private String algorithmParams;
     /** 处理耗时（毫秒） */
     private Integer processingTime;
-    /** 处理状态（1=成功，2=失败，3=处理中） */
-    private Integer status;
-    /** 图片来源（upload/camera/sample） */
-    private String inputSource;
+    /** 处理状态 */
+    private ProcessStatus status;
+    /** 图片来源 */
+    private InputSource inputSource;
     /** 是否收藏（0=否，1=是） */
     private Integer isFavorite;
     /** 同步状态（0=未同步，1=已同步） */

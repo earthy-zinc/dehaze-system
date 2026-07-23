@@ -1,5 +1,6 @@
 package com.pei.dehaze.ui.evaluation;
 
+import android.app.AlertDialog;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -29,11 +30,11 @@ import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.ui.evaluation.adapter.EvaluationLogAdapter;
 import com.pei.dehaze.ui.evaluation.adapter.MetricAdapter;
 import com.pei.dehaze.ui.evaluation.viewmodel.EvaluationViewModel;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
+import com.pei.dehaze.utils.UriUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -116,7 +117,12 @@ public class EvaluationActivity extends AppCompatActivity {
             ToastUtils.showShort(this, "请先选择算法");
             return;
         }
-        evaluationViewModel.predict(algorithmId);
+        new AlertDialog.Builder(this)
+                .setTitle("确认处理")
+                .setMessage("确认开始去雾处理？")
+                .setPositiveButton("确定", (d, w) -> evaluationViewModel.predict(algorithmId))
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void onEvaluateClick() {
@@ -125,14 +131,19 @@ public class EvaluationActivity extends AppCompatActivity {
             ToastUtils.showShort(this, "请先选择算法");
             return;
         }
-        evaluationViewModel.evaluate(algorithmId);
+        new AlertDialog.Builder(this)
+                .setTitle("确认评估")
+                .setMessage("确认开始指标评估？")
+                .setPositiveButton("确定", (d, w) -> evaluationViewModel.evaluate(algorithmId))
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private Long getCurrentAlgorithmId() {
         int pos = spinnerAlgorithm.getSelectedItemPosition();
         if (pos < 0 || pos >= algorithmOptions.size()) return null;
         Option option = algorithmOptions.get(pos);
-        return safeParseLong(option.getValue());
+        return option.getValue() == null ? null : StringUtils.safeParseLong(option.getValue(), 0L);
     }
 
     private void initViewModel() {
@@ -241,53 +252,10 @@ public class EvaluationActivity extends AppCompatActivity {
     }
 
     private File copyToCache(Uri uri) {
-        try {
-            InputStream is = getContentResolver().openInputStream(uri);
-            if (is == null) {
-                ToastUtils.showShort(this, "无法读取所选图片");
-                return null;
-            }
-            String fileName = getFileNameFromUri(uri);
-            File tempFile = new File(getCacheDir(), fileName != null ? fileName : "upload_temp");
-            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[4096];
-                int len;
-                while ((len = is.read(buffer)) != -1) {
-                    fos.write(buffer, 0, len);
-                }
-            }
-            is.close();
-            return tempFile;
-        } catch (Exception e) {
-            ToastUtils.showShort(this, "读取图片失败: " + e.getMessage());
-            return null;
+        File tempFile = UriUtils.copyToCache(this, uri);
+        if (tempFile == null) {
+            ToastUtils.showShort(this, "无法读取所选图片");
         }
-    }
-
-    private String getFileNameFromUri(Uri uri) {
-        String result = null;
-        if ("content".equals(uri.getScheme())) {
-            try (android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
-                if (cursor != null && cursor.moveToFirst()) {
-                    int idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
-                    if (idx >= 0) {
-                        result = cursor.getString(idx);
-                    }
-                }
-            }
-        }
-        if (result == null) {
-            result = uri.getLastPathSegment();
-        }
-        return result;
-    }
-
-    private Long safeParseLong(String value) {
-        if (value == null) return null;
-        try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return tempFile;
     }
 }

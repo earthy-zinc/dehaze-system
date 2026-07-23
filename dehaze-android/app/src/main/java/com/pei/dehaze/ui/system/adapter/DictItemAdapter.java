@@ -14,6 +14,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.model.dict.DictPageVO;
 
+import java.util.Objects;
+
 public class DictItemAdapter extends ListAdapter<DictPageVO, DictItemAdapter.DictItemViewHolder> {
 
     public DictItemAdapter() {
@@ -23,18 +25,14 @@ public class DictItemAdapter extends ListAdapter<DictPageVO, DictItemAdapter.Dic
     private static final DiffUtil.ItemCallback<DictPageVO> DIFF_CALLBACK = new DiffUtil.ItemCallback<DictPageVO>() {
         @Override
         public boolean areItemsTheSame(@NonNull DictPageVO oldItem, @NonNull DictPageVO newItem) {
-            return oldItem.getId().equals(newItem.getId());
+            return Objects.equals(oldItem.getId(), newItem.getId());
         }
 
         @Override
         public boolean areContentsTheSame(@NonNull DictPageVO oldItem, @NonNull DictPageVO newItem) {
-            return safeEquals(oldItem.getName(), newItem.getName()) &&
-                   safeEquals(oldItem.getValue(), newItem.getValue()) &&
-                   oldItem.getStatus() == newItem.getStatus();
-        }
-
-        private boolean safeEquals(String a, String b) {
-            return a == null ? b == null : a.equals(b);
+            return Objects.equals(oldItem.getName(), newItem.getName()) &&
+                   Objects.equals(oldItem.getValue(), newItem.getValue()) &&
+                   Objects.equals(oldItem.getStatus(), newItem.getStatus());
         }
     };
 

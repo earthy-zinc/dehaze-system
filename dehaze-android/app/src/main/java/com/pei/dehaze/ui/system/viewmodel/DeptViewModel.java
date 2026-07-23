@@ -2,9 +2,10 @@ package com.pei.dehaze.ui.system.viewmodel;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 
 import com.pei.dehaze.repository.DeptRepository;
+import com.pei.dehaze.ui.common.BaseViewModel;
+import com.pei.dehaze.repository.RepositoryCallback;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.dept.DeptForm;
 import com.pei.dehaze.sdk.model.dept.DeptQuery;
@@ -13,14 +14,11 @@ import com.pei.dehaze.sdk.model.dept.DeptVO;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DeptViewModel extends ViewModel {
+public class DeptViewModel extends BaseViewModel {
 
     private final DeptRepository deptRepository;
 
     private final MutableLiveData<List<DeptVO>> deptList = new MutableLiveData<>();
-    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
-    private final MutableLiveData<String> error = new MutableLiveData<>();
-    private final MutableLiveData<String> operationResult = new MutableLiveData<>();
     private final MutableLiveData<DeptForm> deptForm = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> deptOptions = new MutableLiveData<>();
 
@@ -32,96 +30,38 @@ public class DeptViewModel extends ViewModel {
     }
 
     public void loadDepts() {
-        loading.setValue(true);
         DeptQuery query = buildQuery();
-        deptRepository.getDepts(query, new DeptRepository.Callback<List<DeptVO>>() {
-            @Override
-            public void onSuccess(List<DeptVO> data) {
-                deptList.postValue(data != null ? data : new ArrayList<>());
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        deptRepository.getDepts(query, withLoading(data ->
+                deptList.postValue(data != null ? data : new ArrayList<>())));
     }
 
     public void loadDeptForm(int id) {
-        loading.setValue(true);
-        deptRepository.getDeptForm(id, new DeptRepository.Callback<DeptForm>() {
-            @Override
-            public void onSuccess(DeptForm data) {
-                deptForm.postValue(data);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        deptRepository.getDeptForm(id, withLoading(deptForm::postValue));
     }
 
     public void addDept(DeptForm form) {
-        loading.setValue(true);
-        deptRepository.addDept(form, new DeptRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("新增部门成功");
-                loading.postValue(false);
-                loadDepts();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        deptRepository.addDept(form, withLoading(v -> {
+            operationResult.postValue("新增部门成功");
+            loadDepts();
+        }));
     }
 
     public void updateDept(int id, DeptForm form) {
-        loading.setValue(true);
-        deptRepository.updateDept(id, form, new DeptRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("修改部门成功");
-                loading.postValue(false);
-                loadDepts();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        deptRepository.updateDept(id, form, withLoading(v -> {
+            operationResult.postValue("修改部门成功");
+            loadDepts();
+        }));
     }
 
-    public void deleteDepts(String ids) {
-        loading.setValue(true);
-        deptRepository.deleteDepts(ids, new DeptRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("删除部门成功");
-                loading.postValue(false);
-                loadDepts();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+    public void deleteDepts(List<Long> ids) {
+        deptRepository.deleteDepts(ids, withLoading(v -> {
+            operationResult.postValue("删除部门成功");
+            loadDepts();
+        }));
     }
 
     public void loadDeptOptions() {
-        deptRepository.getDeptOptions(new DeptRepository.Callback<List<Option>>() {
+        deptRepository.getDeptOptions(new RepositoryCallback<List<Option>>() {
             @Override
             public void onSuccess(List<Option> data) {
                 deptOptions.postValue(data);
@@ -155,32 +95,12 @@ public class DeptViewModel extends ViewModel {
         return deptList;
     }
 
-    public LiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public LiveData<String> getError() {
-        return error;
-    }
-
-    public LiveData<String> getOperationResult() {
-        return operationResult;
-    }
-
     public LiveData<DeptForm> getDeptForm() {
         return deptForm;
     }
 
     public LiveData<List<Option>> getDeptOptions() {
         return deptOptions;
-    }
-
-    public void clearError() {
-        error.setValue(null);
-    }
-
-    public void clearOperationResult() {
-        operationResult.setValue(null);
     }
 
     public void clearDeptForm() {

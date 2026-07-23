@@ -12,6 +12,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
 
+import java.util.Objects;
+
 public class StatAdapter extends ListAdapter<StatAdapter.StatItem, StatAdapter.StatViewHolder> {
 
     public StatAdapter() {
@@ -26,9 +28,9 @@ public class StatAdapter extends ListAdapter<StatAdapter.StatItem, StatAdapter.S
 
         @Override
         public boolean areContentsTheSame(@NonNull StatItem oldItem, @NonNull StatItem newItem) {
-            return oldItem.getTitle().equals(newItem.getTitle()) &&
+            return Objects.equals(oldItem.getTitle(), newItem.getTitle()) &&
                     oldItem.getValue() == newItem.getValue() &&
-                    oldItem.getDescription().equals(newItem.getDescription());
+                    Objects.equals(oldItem.getDescription(), newItem.getDescription());
         }
     };
 

@@ -18,6 +18,9 @@ import retrofit2.Call;
  */
 public class ModelAPI {
 
+    private ModelAPI() {
+    }
+
     /**
      * 执行去雾预测
      *
@@ -26,17 +29,6 @@ public class ModelAPI {
      */
     public static void predict(PredParam data, ApiCallback<PredResult> callback) {
         Call<Result<PredResult>> call = DehazeSDK.getInstance().getModelApiService().predict(data);
-        call.enqueue(callback);
-    }
-
-    /**
-     * 查询预测任务状态
-     *
-     * @param taskId   预测日志ID
-     * @param callback 回调函数
-     */
-    public static void getPredictionLog(long taskId, ApiCallback<PredictionLogVO> callback) {
-        Call<Result<PredictionLogVO>> call = DehazeSDK.getInstance().getModelApiService().getPredictionLog(taskId);
         call.enqueue(callback);
     }
 
@@ -63,17 +55,6 @@ public class ModelAPI {
      */
     public static void evaluate(EvalParam data, ApiCallback<EvalResult> callback) {
         Call<Result<EvalResult>> call = DehazeSDK.getInstance().getModelApiService().evaluate(data);
-        call.enqueue(callback);
-    }
-
-    /**
-     * 查询评估任务状态
-     *
-     * @param taskId   评估日志ID
-     * @param callback 回调函数
-     */
-    public static void getEvaluationLog(long taskId, ApiCallback<EvaluationLogVO> callback) {
-        Call<Result<EvaluationLogVO>> call = DehazeSDK.getInstance().getModelApiService().getEvaluationLog(taskId);
         call.enqueue(callback);
     }
 

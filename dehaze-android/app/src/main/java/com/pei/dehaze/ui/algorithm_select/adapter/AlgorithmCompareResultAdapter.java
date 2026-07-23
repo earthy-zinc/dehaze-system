@@ -11,8 +11,11 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmCompareVO;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
+
+import java.util.Objects;
 
 public class AlgorithmCompareResultAdapter extends ListAdapter<AlgorithmCompareVO, AlgorithmCompareResultAdapter.CompareViewHolder> {
 
@@ -29,12 +32,8 @@ public class AlgorithmCompareResultAdapter extends ListAdapter<AlgorithmCompareV
         @Override
         public boolean areContentsTheSame(@NonNull AlgorithmCompareVO oldItem, @NonNull AlgorithmCompareVO newItem) {
             return oldItem.getProcessTime() == newItem.getProcessTime() &&
-                    equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName()) &&
-                    equals(oldItem.getResultUrl(), newItem.getResultUrl());
-        }
-
-        private boolean equals(Object a, Object b) {
-            return a == null ? b == null : a.equals(b);
+                    Objects.equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName()) &&
+                    Objects.equals(oldItem.getResultUrl(), newItem.getResultUrl());
         }
     };
 
@@ -74,19 +73,16 @@ public class AlgorithmCompareResultAdapter extends ListAdapter<AlgorithmCompareV
         }
 
         void bind(AlgorithmCompareVO vo) {
-            tvName.setText(safe(vo.getAlgorithmName()));
-            tvType.setText("类型: " + safe(vo.getType()));
-            tvParams.setText("参数量: " + safe(vo.getParams()));
-            tvFlops.setText("FLOPs: " + safe(vo.getFlops()));
+            tvName.setText(StringUtils.safe(vo.getAlgorithmName(), "-"));
+            tvType.setText("类型: " + StringUtils.safe(vo.getType(), "-"));
+            tvParams.setText("参数量: " + StringUtils.safe(vo.getParams(), "-"));
+            tvFlops.setText("FLOPs: " + StringUtils.safe(vo.getFlops(), "-"));
             tvProcessTime.setText("处理耗时: " + (vo.getProcessTime() != null ? vo.getProcessTime() + " ms" : "-"));
-            AlgorithmStatus status = AlgorithmStatus.fromValue(vo.getStatus());
-            tvStatus.setText("状态: " + status.getLabel());
-            tvDescription.setText(safe(vo.getDescription()));
-            tvResultUrl.setText("结果: " + safe(vo.getResultUrl()));
+            AlgorithmStatus status = vo.getStatus();
+            tvStatus.setText("状态: " + (status != null ? status.getLabel() : ""));
+            tvDescription.setText(StringUtils.safe(vo.getDescription(), "-"));
+            tvResultUrl.setText("结果: " + StringUtils.safe(vo.getResultUrl(), "-"));
         }
 
-        private static String safe(String s) {
-            return s == null ? "-" : s;
-        }
     }
 }

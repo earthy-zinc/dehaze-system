@@ -1,5 +1,7 @@
 package com.pei.dehaze.sdk.model.algorithm_select;
 
+import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
+
 import lombok.Data;
 
 /**
@@ -21,7 +23,7 @@ public class AlgorithmCompareVO {
     /** 算法描述 */
     private String description;
     /** 状态 */
-    private int status;
+    private AlgorithmStatus status;
     /** 去雾结果URL */
     private String resultUrl;
     /** 处理耗时(毫秒) */

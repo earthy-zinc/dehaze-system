@@ -36,9 +36,9 @@ public class TaskAdapter extends ListAdapter<TaskVO, TaskAdapter.TaskViewHolder>
 
         @Override
         public boolean areContentsTheSame(@NonNull TaskVO oldItem, @NonNull TaskVO newItem) {
-            return oldItem.getStatus().equals(newItem.getStatus()) &&
+            return oldItem.getStatus() == newItem.getStatus() &&
                     oldItem.getProgress() == newItem.getProgress() &&
-                    (oldItem.getTaskType() == null ? newItem.getTaskType() == null : oldItem.getTaskType().equals(newItem.getTaskType()));
+                    oldItem.getTaskType() == newItem.getTaskType();
         }
     };
 
@@ -108,35 +108,28 @@ public class TaskAdapter extends ListAdapter<TaskVO, TaskAdapter.TaskViewHolder>
             tvTaskId.setText(task.getTaskId());
             tvType.setText(getTypeLabel(task.getTaskType()));
 
-            TaskStatus status = TaskStatus.fromValue(task.getStatus());
-            tvStatus.setText(status.getLabel());
-            applyStatusColor(tvStatus, status);
+            TaskStatus status = task.getStatus();
+            tvStatus.setText(status != null ? status.getLabel() : "");
+            if (status != null) {
+                applyStatusColor(tvStatus, status);
+            }
 
             tvProgress.setText(task.getProgress() + "%");
             progressBar.setProgress(task.getProgress());
-            progressBar.setVisibility(isProcessing(task.getStatus()) ? View.VISIBLE : View.GONE);
+            progressBar.setVisibility(isProcessing(status) ? View.VISIBLE : View.GONE);
 
             tvCreatedAt.setText(task.getCreatedAt() != null ? task.getCreatedAt() : "");
             tvCompletedAt.setText(task.getCompletedAt() != null ? task.getCompletedAt() : "—");
 
             // 操作按钮显示规则
-            boolean canCancel = TaskStatus.PENDING.getValue().equalsIgnoreCase(task.getStatus()) ||
-                    TaskStatus.PROCESSING.getValue().equalsIgnoreCase(task.getStatus());
-            boolean canDownload = TaskStatus.COMPLETED.getValue().equalsIgnoreCase(task.getStatus());
+            boolean canCancel = status == TaskStatus.PENDING || status == TaskStatus.PROCESSING;
+            boolean canDownload = status == TaskStatus.COMPLETED;
             btnCancel.setVisibility(canCancel ? View.VISIBLE : View.GONE);
             btnDownload.setVisibility(canDownload ? View.VISIBLE : View.GONE);
         }
 
-        private String getTypeLabel(String typeValue) {
-            if (typeValue == null) {
-                return "未知";
-            }
-            for (TaskType type : TaskType.values()) {
-                if (type.getValue().equals(typeValue)) {
-                    return type.getLabel();
-                }
-            }
-            return typeValue;
+        private String getTypeLabel(TaskType type) {
+            return type != null ? type.getLabel() : "未知";
         }
 
         private void applyStatusColor(TextView tv, TaskStatus status) {
@@ -160,8 +153,8 @@ public class TaskAdapter extends ListAdapter<TaskVO, TaskAdapter.TaskViewHolder>
             tv.setTextColor(color);
         }
 
-        private boolean isProcessing(String status) {
-            return TaskStatus.PROCESSING.getValue().equalsIgnoreCase(status);
+        private boolean isProcessing(TaskStatus status) {
+            return status == TaskStatus.PROCESSING;
         }
     }
 

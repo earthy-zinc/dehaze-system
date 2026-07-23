@@ -94,17 +94,17 @@ public class LoginViewModelIntegrationTest {
             // 执行加载验证码
             loginViewModel.loadCaptcha();
 
-            // 验证错误回调被调用
-            verify(errorObserver).onChanged("获取验证码失败: Bad Request");
+            // 验证错误回调被调用（经过 RepositoryAdapters.wrap + ErrorUtils 解析，A0200 映射为 "用户登录异常"）
+            verify(errorObserver).onChanged("获取验证码失败: 用户登录异常");
         }
     }
 
     @Test
     public void testLoginSuccess() {
         // 设置表单数据
-        loginViewModel.setUsername("admin");
-        loginViewModel.setPassword("123456");
-        loginViewModel.setCaptchaCode("abcd");
+        loginViewModel.getUsername().setValue("admin");
+        loginViewModel.getPassword().setValue("123456");
+        loginViewModel.getCaptchaCode().setValue("abcd");
 
         // 模拟 AuthAPI.login 成功响应
         LoginResponse mockResponse = new LoginResponse();
@@ -139,9 +139,9 @@ public class LoginViewModelIntegrationTest {
     @Test
     public void testLoginError() {
         // 设置表单数据
-        loginViewModel.setUsername("admin");
-        loginViewModel.setPassword("123456");
-        loginViewModel.setCaptchaCode("abcd");
+        loginViewModel.getUsername().setValue("admin");
+        loginViewModel.getPassword().setValue("123456");
+        loginViewModel.getCaptchaCode().setValue("abcd");
 
         // 模拟 AuthAPI.login 错误响应
         try (MockedStatic<AuthAPI> mockedAuthAPI = mockStatic(AuthAPI.class)) {
@@ -169,9 +169,9 @@ public class LoginViewModelIntegrationTest {
     @Test
     public void testLoginNetworkFailure() {
         // 设置表单数据
-        loginViewModel.setUsername("admin");
-        loginViewModel.setPassword("123456");
-        loginViewModel.setCaptchaCode("abcd");
+        loginViewModel.getUsername().setValue("admin");
+        loginViewModel.getPassword().setValue("123456");
+        loginViewModel.getCaptchaCode().setValue("abcd");
 
         // 模拟网络错误
         try (MockedStatic<AuthAPI> mockedAuthAPI = mockStatic(AuthAPI.class)) {
@@ -189,19 +189,19 @@ public class LoginViewModelIntegrationTest {
             // 执行登录
             loginViewModel.login();
 
-            // 验证状态变化
+            // 验证状态变化（RepositoryCallback 统一为 onError，前缀为 "登录失败"；ErrorUtils 将 httpCode=0 映射为 "网络连接失败，请检查网络设置"）
             verify(loadingObserver, atLeastOnce()).onChanged(true);
             verify(loadingObserver, atLeastOnce()).onChanged(false);
-            verify(errorObserver, atLeastOnce()).onChanged("网络错误: Network error");
+            verify(errorObserver, atLeastOnce()).onChanged("登录失败: 网络连接失败，请检查网络设置");
         }
     }
 
     @Test
     public void testFormValidation() {
         // 测试表单验证失败的情况
-        loginViewModel.setUsername("");  // 无效用户名
-        loginViewModel.setPassword("123");  // 密码太短
-        loginViewModel.setCaptchaCode("");  // 验证码为空
+        loginViewModel.getUsername().setValue("");  // 无效用户名
+        loginViewModel.getPassword().setValue("123");  // 密码太短
+        loginViewModel.getCaptchaCode().setValue("");  // 验证码为空
 
         // 观察错误状态
         loginViewModel.getLoginError().observeForever(errorObserver);

@@ -9,6 +9,7 @@ import com.pei.dehaze.sdk.model.dept.DeptQuery;
 import com.pei.dehaze.sdk.model.dept.DeptForm;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import retrofit2.Call;
 
@@ -16,6 +17,9 @@ import retrofit2.Call;
  * 部门相关API接口封装
  */
 public class DeptAPI {
+
+    private DeptAPI() {
+    }
 
     /**
      * 部门树形表格
@@ -79,8 +83,9 @@ public class DeptAPI {
      * @param ids      部门ID列表
      * @param callback 回调函数
      */
-    public static void deleteByIds(String ids, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getDeptApiService().deleteDepts(ids);
+    public static void deleteByIds(List<Long> ids, ApiCallback<Void> callback) {
+        String joined = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDeptApiService().deleteDepts(joined);
         call.enqueue(callback);
     }
 }

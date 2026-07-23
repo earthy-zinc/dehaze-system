@@ -15,11 +15,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryVO;
+import com.pei.dehaze.sdk.model.input_history.ProcessStatus;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -56,15 +59,11 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
         @Override
         public boolean areContentsTheSame(@NonNull InputHistoryVO oldItem, @NonNull InputHistoryVO newItem) {
             return oldItem.getId() == newItem.getId()
-                    && equals(oldItem.getOriginalImageUrl(), newItem.getOriginalImageUrl())
-                    && equals(oldItem.getResultImageUrl(), newItem.getResultImageUrl())
-                    && equals(oldItem.getStatus(), newItem.getStatus())
-                    && equals(oldItem.getIsFavorite(), newItem.getIsFavorite())
-                    && equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName());
-        }
-
-        private boolean equals(Object a, Object b) {
-            return a == null ? b == null : a.equals(b);
+                    && Objects.equals(oldItem.getOriginalImageUrl(), newItem.getOriginalImageUrl())
+                    && Objects.equals(oldItem.getResultImageUrl(), newItem.getResultImageUrl())
+                    && Objects.equals(oldItem.getStatus(), newItem.getStatus())
+                    && Objects.equals(oldItem.getIsFavorite(), newItem.getIsFavorite())
+                    && Objects.equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName());
         }
     };
 
@@ -166,14 +165,14 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
         }
 
         void bind(InputHistoryVO item) {
-            tvAlgorithmName.setText("算法: " + safe(item.getAlgorithmName()));
+            tvAlgorithmName.setText("算法: " + StringUtils.safe(item.getAlgorithmName()));
             tvStatus.setText("状态: " + formatStatus(item.getStatus()));
-            tvSource.setText("来源: " + safe(item.getInputSource()));
+            tvSource.setText("来源: " + (item.getInputSource() != null ? item.getInputSource().getLabel() : ""));
             tvProcessingTime.setText(item.getProcessingTime() != null
                     ? "耗时: " + item.getProcessingTime() + "ms" : "耗时: -");
             tvFavorite.setText(item.getIsFavorite() != null && item.getIsFavorite() == 1 ? "已收藏" : "未收藏");
             tvSyncStatus.setText(item.getSyncStatus() != null && item.getSyncStatus() == 1 ? "已同步" : "未同步");
-            tvCreateTime.setText(safe(item.getCreateTime()));
+            tvCreateTime.setText(StringUtils.safe(item.getCreateTime()));
 
             loadImage(ivOriginal, item.getOriginalImageUrl());
             loadImage(ivResult, item.getResultImageUrl());
@@ -257,22 +256,9 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
                     .into(imageView);
         }
 
-        private String formatStatus(Integer status) {
-            if (status == null) return "未知";
-            switch (status) {
-                case 1:
-                    return "成功";
-                case 2:
-                    return "失败";
-                case 3:
-                    return "处理中";
-                default:
-                    return "未知";
-            }
+        private String formatStatus(ProcessStatus status) {
+            return status != null ? status.getLabel() : "未知";
         }
 
-        private String safe(String s) {
-            return s == null ? "" : s;
-        }
     }
 }

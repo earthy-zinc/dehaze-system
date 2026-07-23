@@ -13,6 +13,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 
+import java.util.Objects;
+
 /**
  * 文件列表 Adapter
  */
@@ -27,15 +29,15 @@ public class FileAdapter extends ListAdapter<FileInfo, FileAdapter.FileViewHolde
     private static final DiffUtil.ItemCallback<FileInfo> DIFF_CALLBACK = new DiffUtil.ItemCallback<FileInfo>() {
         @Override
         public boolean areItemsTheSame(@NonNull FileInfo oldItem, @NonNull FileInfo newItem) {
-            return oldItem.getId().equals(newItem.getId());
+            return Objects.equals(oldItem.getId(), newItem.getId());
         }
 
         @Override
         public boolean areContentsTheSame(@NonNull FileInfo oldItem, @NonNull FileInfo newItem) {
-            return oldItem.getName().equals(newItem.getName()) &&
-                    (oldItem.getSize() == null ? newItem.getSize() == null : oldItem.getSize().equals(newItem.getSize())) &&
-                    (oldItem.getType() == null ? newItem.getType() == null : oldItem.getType().equals(newItem.getType())) &&
-                    (oldItem.getCreateTime() == null ? newItem.getCreateTime() == null : oldItem.getCreateTime().equals(newItem.getCreateTime()));
+            return Objects.equals(oldItem.getName(), newItem.getName()) &&
+                    Objects.equals(oldItem.getSize(), newItem.getSize()) &&
+                    Objects.equals(oldItem.getType(), newItem.getType()) &&
+                    Objects.equals(oldItem.getCreateTime(), newItem.getCreateTime());
         }
     };
 

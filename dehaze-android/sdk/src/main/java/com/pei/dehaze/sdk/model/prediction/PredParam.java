@@ -9,5 +9,5 @@ import lombok.Data;
 public class PredParam {
     private Long algorithmId;
     private String imageUrl;
-    private String params;
+    private DehazeParams params;
 }

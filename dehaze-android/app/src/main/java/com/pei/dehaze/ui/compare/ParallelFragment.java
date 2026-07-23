@@ -67,7 +67,7 @@ public class ParallelFragment extends Fragment {
                 + (Boolean.TRUE.equals(result.getFromCache()) ? "（命中缓存）" : ""));
     }
 
-    private void showMultiResults(Map<String, PredResult> results) {
+    private void showMultiResults(Map<Long, PredResult> results) {
         if (results == null || results.isEmpty()) return;
         PredResult first = results.values().iterator().next();
         if (first.getResultUrl() == null) return;
@@ -77,7 +77,7 @@ public class ParallelFragment extends Fragment {
                 .into(ivDehazed);
         StringBuilder sb = new StringBuilder("完成 " + results.size() + " 个算法：");
         boolean firstItem = true;
-        for (Map.Entry<String, PredResult> entry : results.entrySet()) {
+        for (Map.Entry<Long, PredResult> entry : results.entrySet()) {
             if (!firstItem) sb.append("、");
             sb.append("算法#").append(entry.getKey());
             firstItem = false;

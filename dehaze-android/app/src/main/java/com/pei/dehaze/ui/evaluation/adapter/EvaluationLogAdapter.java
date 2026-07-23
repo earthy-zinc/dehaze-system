@@ -11,9 +11,11 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.evaluation.EvaluationLogVO;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 评估历史列表适配器，展示 EvaluationLogVO 摘要信息。
@@ -41,12 +43,8 @@ public class EvaluationLogAdapter extends ListAdapter<EvaluationLogVO, Evaluatio
                 @Override
                 public boolean areContentsTheSame(@NonNull EvaluationLogVO oldItem,
                                                   @NonNull EvaluationLogVO newItem) {
-                    return equals(oldItem.getCreateTime(), newItem.getCreateTime())
-                            && equals(oldItem.getResult(), newItem.getResult());
-                }
-
-                private boolean equals(Object a, Object b) {
-                    return a == null ? b == null : a.equals(b);
+                    return Objects.equals(oldItem.getCreateTime(), newItem.getCreateTime())
+                            && Objects.equals(oldItem.getResult(), newItem.getResult());
                 }
             };
 
@@ -84,14 +82,14 @@ public class EvaluationLogAdapter extends ListAdapter<EvaluationLogVO, Evaluatio
         void bind(EvaluationLogVO log) {
             tvTitle.setText("评估记录 #" + (log.getId() == null ? "-" : log.getId()));
 
-            Map<String, Object> result = log.getResult();
-            if (result == null || result.isEmpty()) {
+            EvalResult result = log.getResult();
+            if (result == null) {
                 tvQualified.setText("未评估");
                 tvQualified.setTextColor(itemView.getContext().getResources()
                         .getColor(android.R.color.darker_gray));
                 tvMetrics.setText("暂无指标数据");
             } else {
-                Boolean qualified = extractQualified(result);
+                Boolean qualified = result.getQualified();
                 if (qualified != null) {
                     if (qualified) {
                         tvQualified.setText("合格");
@@ -107,7 +105,7 @@ public class EvaluationLogAdapter extends ListAdapter<EvaluationLogVO, Evaluatio
                     tvQualified.setTextColor(itemView.getContext().getResources()
                             .getColor(android.R.color.darker_gray));
                 }
-                tvMetrics.setText(formatMetrics(result));
+                tvMetrics.setText(formatMetrics(result.getMetrics()));
             }
 
             tvCreateTime.setText(log.getCreateTime() == null ? "" : log.getCreateTime());
@@ -119,27 +117,16 @@ public class EvaluationLogAdapter extends ListAdapter<EvaluationLogVO, Evaluatio
             });
         }
 
-        private Boolean extractQualified(Map<String, Object> result) {
-            Object q = result.get("qualified");
-            if (q instanceof Boolean) {
-                return (Boolean) q;
+        private String formatMetrics(Map<String, Double> metrics) {
+            if (metrics == null || metrics.isEmpty()) {
+                return "暂无指标数据";
             }
-            if (q instanceof String) {
-                String s = (String) q;
-                if ("true".equalsIgnoreCase(s)) return true;
-                if ("false".equalsIgnoreCase(s)) return false;
-            }
-            return null;
-        }
-
-        private String formatMetrics(Map<String, Object> result) {
             StringBuilder sb = new StringBuilder();
-            for (Map.Entry<String, Object> entry : result.entrySet()) {
-                if ("qualified".equals(entry.getKey())) continue;
+            for (Map.Entry<String, Double> entry : metrics.entrySet()) {
                 if (sb.length() > 0) sb.append("，");
                 sb.append(entry.getKey()).append("=").append(entry.getValue());
             }
-            return sb.length() == 0 ? "暂无指标数据" : sb.toString();
+            return sb.toString();
         }
     }
 }

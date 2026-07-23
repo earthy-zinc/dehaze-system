@@ -11,8 +11,8 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class TaskQuery extends PageQuery {
-    /** 状态筛选（pending/processing/completed/failed/cancelled） */
-    private String status;
+    /** 状态筛选 */
+    private TaskStatus status;
     /** 类型筛选 */
-    private String taskType;
+    private TaskType taskType;
 }

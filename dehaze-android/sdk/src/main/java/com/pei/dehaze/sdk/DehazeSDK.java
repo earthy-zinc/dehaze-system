@@ -14,6 +14,15 @@ import com.pei.dehaze.sdk.service.RoleApiService;
 import com.pei.dehaze.sdk.service.TaskApiService;
 import com.pei.dehaze.sdk.service.UserApiService;
 import com.pei.dehaze.sdk.utils.TokenManager;
+import com.pei.dehaze.sdk.model.Result;
+import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
+import com.pei.dehaze.sdk.model.EnableStatus;
+import com.pei.dehaze.sdk.model.input_history.InputSource;
+import com.pei.dehaze.sdk.model.input_history.ProcessStatus;
+import com.pei.dehaze.sdk.model.menu.MenuType;
+import com.pei.dehaze.sdk.model.task.TaskStatus;
+import com.pei.dehaze.sdk.model.task.TaskType;
+import com.pei.dehaze.sdk.model.user.Gender;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -22,14 +31,19 @@ import java.util.List;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
 
 import lombok.Getter;
+import okhttp3.Authenticator;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.Route;
 import okhttp3.logging.HttpLoggingInterceptor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
@@ -64,6 +78,9 @@ public class DehazeSDK {
             "/api/v1/auth/login",
             "/api/v1/auth/captcha"
     );
+
+    /** Token 刷新同步锁，防止并发请求同时触发多次刷新 */
+    private static final Object TOKEN_REFRESH_LOCK = new Object();
 
     private DehazeSDK(Builder builder) {
         String baseUrl = builder.baseUrl;
@@ -110,6 +127,53 @@ public class DehazeSDK {
             okHttpClientBuilder.addInterceptor(loggingInterceptor);
         }
 
+        // 添加 401 自动刷新 Token 的 Authenticator
+        // 触发条件：accessToken 过期/无效导致后端返回 401
+        // 行为：使用 refreshToken 同步刷新，成功后用新 accessToken 重放原始请求；失败则清除全部 token
+        okHttpClientBuilder.authenticator(new Authenticator() {
+            @Nullable
+            @Override
+            public Request authenticate(@Nullable Route route, @NotNull Response response) throws IOException {
+                // 避免无限重试：已重试过的请求不再刷新
+                if (response.request().header(HEADER_TOKEN_RETRIED) != null) {
+                    return null;
+                }
+                String path = response.request().url().encodedPath();
+                // 刷新接口自身的 401 不再递归刷新（refreshToken 已失效）
+                if (path != null && path.endsWith("/api/v1/auth/refresh")) {
+                    TokenManager.clearAll();
+                    return null;
+                }
+                String refreshToken = TokenManager.getRefreshToken();
+                if (refreshToken == null || refreshToken.isEmpty()) {
+                    return null;
+                }
+                synchronized (TOKEN_REFRESH_LOCK) {
+                    // 并发场景：其他线程可能已完成刷新。比较失败请求携带的 token 与当前 token，
+                    // 若不同说明已被刷新，直接用新 token 重放
+                    String failedToken = extractBearerToken(response.request());
+                    String currentToken = TokenManager.getToken();
+                    if (failedToken != null && !failedToken.equals(currentToken) && currentToken != null) {
+                        return response.request().newBuilder()
+                                .header("Authorization", "Bearer " + currentToken)
+                                .header(HEADER_TOKEN_RETRIED, "1")
+                                .build();
+                    }
+                    // 执行同步刷新
+                    if (refreshTokenSynchronously(refreshToken)) {
+                        String newToken = TokenManager.getToken();
+                        return response.request().newBuilder()
+                                .header("Authorization", "Bearer " + newToken)
+                                .header(HEADER_TOKEN_RETRIED, "1")
+                                .build();
+                    }
+                    // 刷新失败，清除全部 token，交由上层 ApiCallback 处理
+                    TokenManager.clearAll();
+                    return null;
+                }
+            }
+        });
+
         // 构建Retrofit实例
         // 配置 Gson 日期反序列化：兼容后端多种日期格式
         // - "yyyy-MM-dd HH:mm:ss" 标准日期时间
@@ -136,7 +200,63 @@ public class DehazeSDK {
             return null;
         };
         GsonBuilder gsonBuilder = new GsonBuilder()
-                .registerTypeAdapter(Date.class, dateDeserializer);
+                .registerTypeAdapter(Date.class, dateDeserializer)
+                // AlgorithmStatus: 按 int value 序列化/反序列化
+                .registerTypeAdapter(AlgorithmStatus.class,
+                        (JsonDeserializer<AlgorithmStatus>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : AlgorithmStatus.fromValue(json.getAsInt()))
+                .registerTypeAdapter(AlgorithmStatus.class,
+                        (JsonSerializer<AlgorithmStatus>) (src, type, ctx) ->
+                                new JsonPrimitive(src.getValue()))
+                // TaskStatus: 按 String value 序列化/反序列化
+                .registerTypeAdapter(TaskStatus.class,
+                        (JsonDeserializer<TaskStatus>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : TaskStatus.fromValue(json.getAsString()))
+                .registerTypeAdapter(TaskStatus.class,
+                        (JsonSerializer<TaskStatus>) (src, type, ctx) ->
+                                new JsonPrimitive(src.getValue()))
+                // TaskType: 按 String value 序列化/反序列化
+                .registerTypeAdapter(TaskType.class,
+                        (JsonDeserializer<TaskType>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : TaskType.fromValue(json.getAsString()))
+                .registerTypeAdapter(TaskType.class,
+                        (JsonSerializer<TaskType>) (src, type, ctx) ->
+                                new JsonPrimitive(src.getValue()))
+                // EnableStatus: 按 int value 序列化/反序列化
+                .registerTypeAdapter(EnableStatus.class,
+                        (JsonDeserializer<EnableStatus>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : EnableStatus.fromValue(json.getAsInt()))
+                .registerTypeAdapter(EnableStatus.class,
+                        (JsonSerializer<EnableStatus>) (src, type, ctx) ->
+                                new JsonPrimitive(src.getValue()))
+                // ProcessStatus: 按 int value 序列化/反序列化
+                .registerTypeAdapter(ProcessStatus.class,
+                        (JsonDeserializer<ProcessStatus>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : ProcessStatus.fromValue(json.getAsInt()))
+                .registerTypeAdapter(ProcessStatus.class,
+                        (JsonSerializer<ProcessStatus>) (src, type, ctx) ->
+                                new JsonPrimitive(src.getValue()))
+                // Gender: 按 int value 序列化/反序列化
+                .registerTypeAdapter(Gender.class,
+                        (JsonDeserializer<Gender>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : Gender.fromValue(json.getAsInt()))
+                .registerTypeAdapter(Gender.class,
+                        (JsonSerializer<Gender>) (src, type, ctx) ->
+                                new JsonPrimitive(src.getValue()))
+                // InputSource: 按 String value 序列化/反序列化
+                .registerTypeAdapter(InputSource.class,
+                        (JsonDeserializer<InputSource>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : InputSource.fromValue(json.getAsString()))
+                .registerTypeAdapter(InputSource.class,
+                        (JsonSerializer<InputSource>) (src, type, ctx) ->
+                                new JsonPrimitive(src.getValue()))
+                // MenuType: 按 String value 序列化/反序列化
+                .registerTypeAdapter(MenuType.class,
+                        (JsonDeserializer<MenuType>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : MenuType.fromValue(json.getAsString()))
+                .registerTypeAdapter(MenuType.class,
+                        (JsonSerializer<MenuType>) (src, type, ctx) ->
+                                new JsonPrimitive(src.getValue()));
         retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
                 .client(okHttpClientBuilder.build())
@@ -189,6 +309,46 @@ public class DehazeSDK {
         return url;
     }
 
+    /**
+     * 同步刷新 Token：调用 /api/v1/auth/refresh，成功后更新 TokenManager 中的 accessToken 与 refreshToken。
+     * 调用方需自行加锁（{@link #TOKEN_REFRESH_LOCK}）以避免并发刷新。
+     *
+     * @param refreshToken 当前 refreshToken
+     * @return true 表示刷新成功；false 表示刷新失败（refreshToken 已失效或网络错误）
+     */
+    private boolean refreshTokenSynchronously(String refreshToken) {
+        try {
+            retrofit2.Response<Result<com.pei.dehaze.sdk.model.auth.LoginResponse>> response =
+                    authApiService.refreshToken(refreshToken).execute();
+            if (response.isSuccessful() && response.body() != null) {
+                Result<com.pei.dehaze.sdk.model.auth.LoginResponse> result = response.body();
+                if (result.isSuccess() && result.getData() != null) {
+                    com.pei.dehaze.sdk.model.auth.LoginResponse data = result.getData();
+                    TokenManager.setToken(data.getAccessToken());
+                    TokenManager.setRefreshToken(data.getRefreshToken());
+                    return true;
+                }
+            }
+            return false;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /** 标记已尝试 Token 刷新重放的请求头，避免 Authenticator 无限递归 */
+    private static final String HEADER_TOKEN_RETRIED = "X-Token-Retried";
+
+    /**
+     * 从请求的 Authorization 头中提取 Bearer token 值
+     */
+    private static String extractBearerToken(Request request) {
+        String header = request.header("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7);
+        }
+        return null;
+    }
+
     public static void initialize(Builder builder) {
         synchronized (DehazeSDK.class) {
             instance = new DehazeSDK(builder);
@@ -207,10 +367,6 @@ public class DehazeSDK {
         public Builder setDebug(boolean debug) {
             this.debug = debug;
             return this;
-        }
-
-        public DehazeSDK build() {
-            return new DehazeSDK(this);
         }
     }
 }

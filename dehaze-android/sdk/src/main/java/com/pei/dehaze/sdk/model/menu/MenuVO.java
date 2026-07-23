@@ -59,9 +59,9 @@ public class MenuVO {
     private Integer sort;
     
     /**
-     * 菜单类型(CATALOG:目录;MENU:菜单;BUTTON:按钮;EXTLINK:外链)
+     * 菜单类型
      */
-    private String type;
+    private MenuType type;
     
     /**
      * 菜单是否可见(1:显示;0:隐藏)

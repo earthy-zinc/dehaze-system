@@ -8,8 +8,8 @@ import java.util.List;
  */
 @Data
 public class Algorithm {
-    private int id;
-    private int parentId;
+    private Long id;
+    private Long parentId;
     private String name;
     private String type;
     private String description;
@@ -18,7 +18,7 @@ public class Algorithm {
     private String importPath;
     private String params;
     private String flops;
-    private Integer status;
+    private AlgorithmStatus status;
     private String size;
     private List<Algorithm> children;
 }

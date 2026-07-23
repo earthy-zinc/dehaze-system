@@ -7,15 +7,20 @@ import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmFavorite;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmQuery;
+import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatusForm;
 import retrofit2.Call;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 算法相关API接口封装
  */
 public class AlgorithmAPI {
+
+    private AlgorithmAPI() {
+    }
 
     /**
      * 获取算法树形列表
@@ -65,7 +70,7 @@ public class AlgorithmAPI {
      * @param id       算法ID
      * @param callback 回调函数
      */
-    public static void getAlgorithmInfoById(int id, ApiCallback<Algorithm> callback) {
+    public static void getAlgorithmInfoById(long id, ApiCallback<Algorithm> callback) {
         Call<Result<Algorithm>> call = DehazeSDK.getInstance().getAlgorithmApiService().getAlgorithmInfo(id);
         call.enqueue(callback);
     }
@@ -99,7 +104,7 @@ public class AlgorithmAPI {
      * @param data     算法数据
      * @param callback 回调函数
      */
-    public static void update(int id, Algorithm data, ApiCallback<Void> callback) {
+    public static void update(long id, Algorithm data, ApiCallback<Void> callback) {
         Call<Result<Void>> call = DehazeSDK.getInstance().getAlgorithmApiService().updateAlgorithm(id, data);
         call.enqueue(callback);
     }
@@ -111,7 +116,7 @@ public class AlgorithmAPI {
      * @param status   状态
      * @param callback 回调函数
      */
-    public static void updateStatus(long id, int status, ApiCallback<Void> callback) {
+    public static void updateStatus(long id, AlgorithmStatus status, ApiCallback<Void> callback) {
         AlgorithmStatusForm form = new AlgorithmStatusForm();
         form.setStatus(status);
         Call<Result<Void>> call = DehazeSDK.getInstance().getAlgorithmApiService().updateAlgorithmStatus(id, form);
@@ -124,8 +129,9 @@ public class AlgorithmAPI {
      * @param ids      算法ID列表
      * @param callback 回调函数
      */
-    public static void deleteByIds(String ids, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getAlgorithmApiService().deleteAlgorithms(ids);
+    public static void deleteByIds(List<Long> ids, ApiCallback<Void> callback) {
+        String joined = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+        Call<Result<Void>> call = DehazeSDK.getInstance().getAlgorithmApiService().deleteAlgorithms(joined);
         call.enqueue(callback);
     }
 }

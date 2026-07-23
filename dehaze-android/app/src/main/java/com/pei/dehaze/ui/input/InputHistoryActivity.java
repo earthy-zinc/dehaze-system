@@ -8,7 +8,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
-import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -24,22 +23,21 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.checkbox.MaterialCheckBox;
-import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryForm;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryUpdateForm;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryVO;
+import com.pei.dehaze.sdk.model.input_history.InputSource;
 import com.pei.dehaze.sdk.model.input_history.SyncResultVO;
 import com.pei.dehaze.ui.input.adapter.InputHistoryAdapter;
 import com.pei.dehaze.ui.input.viewmodel.InputHistoryViewModel;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
+import com.pei.dehaze.utils.UriUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -49,12 +47,8 @@ import java.util.Set;
  */
 public class InputHistoryActivity extends AppCompatActivity {
 
-    private static final String[] STATUS_LABELS = {"成功", "失败", "处理中"};
-    private static final Integer[] STATUS_VALUES = {1, 2, 3};
     private static final String[] SOURCE_LABELS = {"全部", "上传", "相机", "样本"};
-    private static final String[] SOURCE_VALUES = {null, "upload", "camera", "sample"};
-    private static final String[] FORM_SOURCE_LABELS = {"上传", "相机", "样本"};
-    private static final String[] FORM_SOURCE_VALUES = {"upload", "camera", "sample"};
+    private static final InputSource[] SOURCE_VALUES = {null, InputSource.UPLOAD, InputSource.CAMERA, InputSource.SAMPLE};
 
     private InputHistoryViewModel viewModel;
     private InputHistoryAdapter adapter;
@@ -73,13 +67,7 @@ public class InputHistoryActivity extends AppCompatActivity {
     private MaterialButton btnClear;
     private MaterialButton btnSync;
 
-    /** 当前编辑的历史记录ID，0 表示新增模式 */
-    private long editingHistoryId = 0;
-    /** 当前表单中已上传的原始图片 URL */
-    private String currentOriginalUrl;
-    /** 当前表单中显示 URL 的 TextView 引用 */
-    private TextView currentOriginalUrlView;
-
+    private InputHistoryFormDialog formDialog;
     private ActivityResultLauncher<String> imagePickerLauncher;
 
     @Override
@@ -129,7 +117,7 @@ public class InputHistoryActivity extends AppCompatActivity {
         findViewById(R.id.btn_search).setOnClickListener(v -> {
             String keywords = ((android.widget.EditText) findViewById(R.id.et_keywords))
                     .getText().toString().trim();
-            String source = SOURCE_VALUES[spinnerSource.getSelectedItemPosition()];
+            InputSource source = SOURCE_VALUES[spinnerSource.getSelectedItemPosition()];
             boolean favoriteOnly = cbFavoriteOnly.isChecked();
             viewModel.setQueryParams(keywords, source, favoriteOnly);
             loadData();
@@ -249,7 +237,9 @@ public class InputHistoryActivity extends AppCompatActivity {
 
         viewModel.getUploadedFile().observe(this, fileInfo -> {
             if (fileInfo != null) {
-                onFileUploaded(fileInfo);
+                if (formDialog != null) {
+                    formDialog.onFileUploaded(fileInfo);
+                }
                 viewModel.clearUploadedFile();
             }
         });
@@ -263,32 +253,13 @@ public class InputHistoryActivity extends AppCompatActivity {
             ToastUtils.showShort(this, "未选择图片");
             return;
         }
-        File file = uriToFile(uri);
+        File file = UriUtils.copyToCache(this, uri);
         if (file == null) {
             ToastUtils.showShort(this, "无法读取图片文件");
             return;
         }
         ToastUtils.showShort(this, "开始上传图片...");
         viewModel.uploadFile(file);
-    }
-
-    /**
-     * 文件上传成功回调
-     */
-    private void onFileUploaded(FileInfo fileInfo) {
-        currentOriginalUrl = fileInfo.getUrl();
-        if (currentOriginalUrlView != null) {
-            currentOriginalUrlView.setVisibility(View.VISIBLE);
-            currentOriginalUrlView.setText("已上传: " + fileInfo.getUrl());
-        }
-        ToastUtils.showShort(this, "图片上传成功");
-
-        // 编辑模式下，自动调用 updateHistory 更新原图片 URL
-        if (editingHistoryId > 0) {
-            InputHistoryUpdateForm form = new InputHistoryUpdateForm();
-            form.setOriginalImageUrl(currentOriginalUrl);
-            viewModel.updateHistory(editingHistoryId, form);
-        }
     }
 
     private void loadData() {
@@ -309,150 +280,23 @@ public class InputHistoryActivity extends AppCompatActivity {
     }
 
     private void showFormDialog(InputHistoryVO existing) {
-        boolean isEdit = existing != null;
-        editingHistoryId = isEdit ? existing.getId() : 0;
-        currentOriginalUrl = isEdit ? existing.getOriginalImageUrl() : null;
-
-        View view = LayoutInflater.from(this).inflate(R.layout.dialog_input_history_form, null);
-
-        MaterialButton btnPickImage = view.findViewById(R.id.btn_pick_image);
-        TextView tvOriginalUrl = view.findViewById(R.id.tv_original_url);
-        TextInputEditText etAlgorithmId = view.findViewById(R.id.et_algorithm_id);
-        TextInputEditText etAlgorithmName = view.findViewById(R.id.et_algorithm_name);
-        TextInputEditText etAlgorithmParams = view.findViewById(R.id.et_algorithm_params);
-        TextInputEditText etProcessingTime = view.findViewById(R.id.et_processing_time);
-        Spinner spinnerStatus = view.findViewById(R.id.spinner_status);
-        Spinner spinnerSource = view.findViewById(R.id.spinner_source);
-        RadioGroup rgFavorite = view.findViewById(R.id.rg_favorite);
-
-        // 保存引用以便上传后更新
-        currentOriginalUrlView = tvOriginalUrl;
-
-        ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, STATUS_LABELS);
-        statusAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerStatus.setAdapter(statusAdapter);
-
-        ArrayAdapter<String> sourceAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, FORM_SOURCE_LABELS);
-        sourceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerSource.setAdapter(sourceAdapter);
-
-        if (isEdit) {
-            if (currentOriginalUrl != null && !currentOriginalUrl.isEmpty()) {
-                tvOriginalUrl.setVisibility(View.VISIBLE);
-                tvOriginalUrl.setText("已上传: " + currentOriginalUrl);
+        formDialog = new InputHistoryFormDialog(this, new InputHistoryFormDialog.Callback() {
+            @Override
+            public void onPickImage() {
+                imagePickerLauncher.launch("image/*");
             }
-            if (existing.getAlgorithmId() != null) {
-                etAlgorithmId.setText(String.valueOf(existing.getAlgorithmId()));
-            }
-            etAlgorithmName.setText(safe(existing.getAlgorithmName()));
-            etAlgorithmParams.setText(safe(existing.getAlgorithmParams()));
-            if (existing.getProcessingTime() != null) {
-                etProcessingTime.setText(String.valueOf(existing.getProcessingTime()));
-            }
-            for (int i = 0; i < STATUS_VALUES.length; i++) {
-                if (STATUS_VALUES[i].equals(existing.getStatus())) {
-                    spinnerStatus.setSelection(i);
-                    break;
-                }
-            }
-            String src = existing.getInputSource();
-            int srcIdx = 0;
-            for (int i = 0; i < FORM_SOURCE_VALUES.length; i++) {
-                if (FORM_SOURCE_VALUES[i].equals(src)) {
-                    srcIdx = i;
-                    break;
-                }
-            }
-            spinnerSource.setSelection(srcIdx);
-            if (existing.getIsFavorite() != null && existing.getIsFavorite() == 1) {
-                rgFavorite.check(R.id.rb_favorite_yes);
-            } else {
-                rgFavorite.check(R.id.rb_favorite_no);
-            }
-        } else {
-            spinnerStatus.setSelection(0);
-            spinnerSource.setSelection(0);
-            rgFavorite.check(R.id.rb_favorite_no);
-        }
 
-        btnPickImage.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
+            @Override
+            public void onCreate(InputHistoryForm form) {
+                viewModel.createHistory(form);
+            }
 
-        new AlertDialog.Builder(this)
-                .setTitle(isEdit ? "修改历史记录" : "新增历史记录")
-                .setView(view)
-                .setPositiveButton("确定", (dialog, which) -> {
-                    String algorithmIdStr = getText(etAlgorithmId);
-                    String algorithmName = getText(etAlgorithmName);
-                    String algorithmParams = getText(etAlgorithmParams);
-                    String processingTimeStr = getText(etProcessingTime);
-                    Integer status = STATUS_VALUES[spinnerStatus.getSelectedItemPosition()];
-                    String source = FORM_SOURCE_VALUES[spinnerSource.getSelectedItemPosition()];
-                    Integer isFavorite = rgFavorite.getCheckedRadioButtonId() == R.id.rb_favorite_yes ? 1 : 0;
-
-                    if (isEdit) {
-                        InputHistoryUpdateForm form = new InputHistoryUpdateForm();
-                        form.setOriginalImageUrl(currentOriginalUrl);
-                        if (!TextUtils.isEmpty(algorithmIdStr)) {
-                            try {
-                                form.setAlgorithmId(Long.parseLong(algorithmIdStr));
-                            } catch (NumberFormatException ignored) {
-                            }
-                        }
-                        form.setAlgorithmName(algorithmName);
-                        form.setAlgorithmParams(algorithmParams);
-                        if (!TextUtils.isEmpty(processingTimeStr)) {
-                            try {
-                                form.setProcessingTime(Integer.parseInt(processingTimeStr));
-                            } catch (NumberFormatException ignored) {
-                            }
-                        }
-                        form.setStatus(status);
-                        form.setIsFavorite(isFavorite);
-                        viewModel.updateHistory(editingHistoryId, form);
-                    } else {
-                        if (TextUtils.isEmpty(currentOriginalUrl)) {
-                            ToastUtils.showShort(this, "请先选择并上传原始图片");
-                            return;
-                        }
-                        InputHistoryForm form = new InputHistoryForm();
-                        form.setOriginalImageUrl(currentOriginalUrl);
-                        if (!TextUtils.isEmpty(algorithmIdStr)) {
-                            try {
-                                form.setAlgorithmId(Long.parseLong(algorithmIdStr));
-                            } catch (NumberFormatException ignored) {
-                            }
-                        }
-                        form.setAlgorithmName(algorithmName);
-                        form.setAlgorithmParams(algorithmParams);
-                        if (!TextUtils.isEmpty(processingTimeStr)) {
-                            try {
-                                form.setProcessingTime(Integer.parseInt(processingTimeStr));
-                            } catch (NumberFormatException ignored) {
-                            }
-                        }
-                        form.setStatus(status);
-                        form.setInputSource(source);
-                        form.setIsFavorite(isFavorite);
-                        viewModel.createHistory(form);
-                    }
-                    // 重置表单状态
-                    editingHistoryId = 0;
-                    currentOriginalUrl = null;
-                    currentOriginalUrlView = null;
-                })
-                .setNegativeButton("取消", (dialog, which) -> {
-                    editingHistoryId = 0;
-                    currentOriginalUrl = null;
-                    currentOriginalUrlView = null;
-                })
-                .setOnDismissListener(dialog -> {
-                    editingHistoryId = 0;
-                    currentOriginalUrl = null;
-                    currentOriginalUrlView = null;
-                })
-                .show();
+            @Override
+            public void onUpdate(long historyId, InputHistoryUpdateForm form) {
+                viewModel.updateHistory(historyId, form);
+            }
+        });
+        formDialog.show(existing);
     }
 
     private void confirmDelete(InputHistoryVO item) {
@@ -526,7 +370,7 @@ public class InputHistoryActivity extends AppCompatActivity {
         TextView tvSummary = view.findViewById(R.id.tv_sync_summary);
         TextView tvMessage = view.findViewById(R.id.tv_sync_message);
         tvSummary.setText("同步完成：成功 " + result.getSynced() + " 条，失败 " + result.getFailed() + " 条");
-        tvMessage.setText(safe(result.getMessage()));
+        tvMessage.setText(StringUtils.safe(result.getMessage()));
 
         new AlertDialog.Builder(this)
                 .setTitle("同步结果")
@@ -551,35 +395,5 @@ public class InputHistoryActivity extends AppCompatActivity {
                 .setView(view)
                 .setPositiveButton("关闭", null)
                 .show();
-    }
-
-    /**
-     * 将 Uri 转换为 File
-     */
-    private File uriToFile(Uri uri) {
-        try {
-            InputStream inputStream = getContentResolver().openInputStream(uri);
-            if (inputStream == null) return null;
-            File tempFile = new File(getCacheDir(), "upload_" + System.currentTimeMillis() + ".jpg");
-            try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
-                }
-            }
-            inputStream.close();
-            return tempFile;
-        } catch (IOException e) {
-            return null;
-        }
-    }
-
-    private String getText(TextInputEditText et) {
-        return et.getText() != null ? et.getText().toString().trim() : "";
-    }
-
-    private String safe(String s) {
-        return s == null ? "" : s;
     }
 }

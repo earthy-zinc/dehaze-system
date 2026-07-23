@@ -3,7 +3,6 @@ package com.pei.dehaze.sdk.api;
 import com.pei.dehaze.sdk.ApiCallback;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Result;
-import com.pei.dehaze.sdk.model.auth.AuthInfo;
 import com.pei.dehaze.sdk.model.auth.CaptchaResponse;
 import com.pei.dehaze.sdk.model.auth.LoginRequest;
 import com.pei.dehaze.sdk.model.auth.LoginResponse;
@@ -50,8 +49,8 @@ public class AuthAPI {
         call.enqueue(new ApiCallback<Void>() {
             @Override
             public void onSuccess(Void data) {
-                // 注销成功后清除本地 Token
-                TokenManager.clearToken();
+                // 注销成功后清除本地 Token（accessToken + refreshToken）
+                TokenManager.clearAll();
                 if (callback != null) {
                     callback.onSuccess(data);
                 }
@@ -71,25 +70,5 @@ public class AuthAPI {
                 }
             }
         });
-    }
-
-    /**
-     * 获取当前用户认证信息（用户、角色、权限）
-     *
-     * @param callback 回调
-     */
-    public static void getAuthInfo(ApiCallback<AuthInfo> callback) {
-        Call<Result<AuthInfo>> call = DehazeSDK.getInstance().getAuthApiService().getAuthInfo();
-        call.enqueue(callback);
-    }
-
-    /**
-     * 刷新令牌
-     *
-     * @param callback 回调
-     */
-    public static void refreshToken(ApiCallback<LoginResponse> callback) {
-        Call<Result<LoginResponse>> call = DehazeSDK.getInstance().getAuthApiService().refreshToken();
-        call.enqueue(callback);
     }
 }

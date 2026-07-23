@@ -20,16 +20,20 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.button.MaterialButton;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.menu.MenuVO;
 import com.pei.dehaze.sdk.model.role.RoleForm;
 import com.pei.dehaze.sdk.model.role.RolePageVO;
 import com.pei.dehaze.ui.system.adapter.MenuTreeAdapter;
 import com.pei.dehaze.ui.system.adapter.RoleAdapter;
 import com.pei.dehaze.ui.system.viewmodel.RoleViewModel;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
 public class RoleListActivity extends AppCompatActivity {
@@ -119,7 +123,8 @@ public class RoleListActivity extends AppCompatActivity {
             @Override
             public void onToggleStatus(RolePageVO role) {
                 if (role.getId() == null) return;
-                int newStatus = (role.getStatus() != null && role.getStatus() == 1) ? 0 : 1;
+                EnableStatus newStatus = role.getStatus() == EnableStatus.ENABLED
+                        ? EnableStatus.DISABLED : EnableStatus.ENABLED;
                 roleViewModel.updateRoleStatus(role.getId(), newStatus);
             }
         });
@@ -254,10 +259,10 @@ public class RoleListActivity extends AppCompatActivity {
     private void showDeleteConfirmDialog(RolePageVO role) {
         new AlertDialog.Builder(this)
                 .setTitle("删除确认")
-                .setMessage("确认删除角色「" + safe(role.getName()) + "」吗？删除后不可恢复。")
+                .setMessage("确认删除角色「" + StringUtils.safe(role.getName()) + "」吗？删除后不可恢复。")
                 .setPositiveButton("确定", (dialog, which) -> {
                     if (role.getId() != null) {
-                        roleViewModel.deleteRoles(String.valueOf(role.getId()));
+                        roleViewModel.deleteRoles(Collections.singletonList(role.getId().longValue()));
                     }
                 })
                 .setNegativeButton("取消", null)
@@ -274,7 +279,7 @@ public class RoleListActivity extends AppCompatActivity {
                 .setTitle("批量删除确认")
                 .setMessage("确认删除选中的 " + selectedIds.size() + " 个角色吗？删除后不可恢复。")
                 .setPositiveButton("确定", (dialog, which) ->
-                        roleViewModel.deleteRoles(roleAdapter.getSelectedIdsString()))
+                        roleViewModel.deleteRoles(selectedIds.stream().map(Integer::longValue).collect(Collectors.toList())))
                 .setNegativeButton("取消", null)
                 .show();
     }
@@ -295,8 +300,8 @@ public class RoleListActivity extends AppCompatActivity {
         spinnerDataScope.setAdapter(dataScopeAdapter);
 
         if (isEdit) {
-            etName.setText(safe(existingForm.getName()));
-            etCode.setText(safe(existingForm.getCode()));
+            etName.setText(StringUtils.safe(existingForm.getName()));
+            etCode.setText(StringUtils.safe(existingForm.getCode()));
             etCode.setEnabled(false);
             etSort.setText(existingForm.getSort() != null ? String.valueOf(existingForm.getSort()) : "1");
             if (existingForm.getDataScope() != null) {
@@ -309,7 +314,7 @@ public class RoleListActivity extends AppCompatActivity {
             } else {
                 spinnerDataScope.setSelection(0);
             }
-            if (existingForm.getStatus() != null && existingForm.getStatus() == 0) {
+            if (existingForm.getStatus() == EnableStatus.DISABLED) {
                 rgStatus.check(R.id.rb_status_disable);
             } else {
                 rgStatus.check(R.id.rb_status_enable);
@@ -328,7 +333,8 @@ public class RoleListActivity extends AppCompatActivity {
                     String code = etCode.getText().toString().trim();
                     String sortStr = etSort.getText().toString().trim();
                     int dataScope = DATA_SCOPE_VALUES[spinnerDataScope.getSelectedItemPosition()];
-                    int status = rgStatus.getCheckedRadioButtonId() == R.id.rb_status_enable ? 1 : 0;
+                    EnableStatus status = rgStatus.getCheckedRadioButtonId() == R.id.rb_status_enable
+                            ? EnableStatus.ENABLED : EnableStatus.DISABLED;
 
                     if (TextUtils.isEmpty(name)) {
                         ToastUtils.showShort(this, "请输入角色名称");
@@ -379,7 +385,7 @@ public class RoleListActivity extends AppCompatActivity {
         menuTreeAdapter.setCheckedIds(checkedIds);
 
         new AlertDialog.Builder(this)
-                .setTitle("权限分配 - " + safe(role.getName()))
+                .setTitle("权限分配 - " + StringUtils.safe(role.getName()))
                 .setView(view)
                 .setPositiveButton("确定", (dialog, which) -> {
                     if (role.getId() == null) return;
@@ -390,7 +396,4 @@ public class RoleListActivity extends AppCompatActivity {
                 .show();
     }
 
-    private static String safe(String s) {
-        return s == null ? "" : s;
-    }
 }

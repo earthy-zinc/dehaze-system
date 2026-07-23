@@ -17,7 +17,7 @@ public class DehazeApplication extends Application {
         // 2. 再初始化 DehazeSDK（Token 拦截器会读取 TokenManager）
         DehazeSDK.initialize(
             new DehazeSDK.Builder()
-                .setBaseUrl("http://10.0.2.2:8989") // Android模拟器访问本机localhost需要使用10.0.2.2
+                .setBaseUrl(BuildConfig.BASE_URL)
                 .setDebug(true)
         );
     }

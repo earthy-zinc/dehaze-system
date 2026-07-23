@@ -24,8 +24,8 @@ public class InputHistoryUpdateForm {
     private String algorithmParams;
     /** 处理耗时（毫秒） */
     private Integer processingTime;
-    /** 处理状态（1=成功，2=失败，3=处理中） */
-    private Integer status;
+    /** 处理状态 */
+    private ProcessStatus status;
     /** 是否收藏 */
     private Integer isFavorite;
     /** 同步状态（0=未同步，1=已同步） */

@@ -25,9 +25,11 @@ import com.pei.dehaze.sdk.model.dept.DeptForm;
 import com.pei.dehaze.sdk.model.dept.DeptVO;
 import com.pei.dehaze.ui.system.adapter.DeptAdapter;
 import com.pei.dehaze.ui.system.viewmodel.DeptViewModel;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class DeptListActivity extends AppCompatActivity {
@@ -170,10 +172,10 @@ public class DeptListActivity extends AppCompatActivity {
     private void showDeleteConfirmDialog(DeptVO dept) {
         new AlertDialog.Builder(this)
                 .setTitle("删除确认")
-                .setMessage("确认删除部门「" + safe(dept.getName()) + "」吗？删除后不可恢复。")
+                .setMessage("确认删除部门「" + StringUtils.safe(dept.getName()) + "」吗？删除后不可恢复。")
                 .setPositiveButton("确定", (dialog, which) -> {
                     if (dept.getId() != null) {
-                        deptViewModel.deleteDepts(String.valueOf(dept.getId()));
+                        deptViewModel.deleteDepts(Collections.singletonList(dept.getId().longValue()));
                     }
                 })
                 .setNegativeButton("取消", null)
@@ -194,7 +196,7 @@ public class DeptListActivity extends AppCompatActivity {
         String[] selectedParentName = {null};
 
         if (isEdit) {
-            etName.setText(safe(existingForm.getName()));
+            etName.setText(StringUtils.safe(existingForm.getName()));
             etSort.setText(existingForm.getSort() != null ? String.valueOf(existingForm.getSort()) : "1");
             selectedParentId[0] = existingForm.getParentId();
             for (Option opt : deptOptions) {
@@ -216,7 +218,7 @@ public class DeptListActivity extends AppCompatActivity {
             etSort.setText("1");
             rgStatus.check(R.id.rb_status_enable);
             selectedParentId[0] = parentDept.getId() != null ? parentDept.getId() : 0;
-            selectedParentName[0] = safe(parentDept.getName());
+            selectedParentName[0] = StringUtils.safe(parentDept.getName());
             tvParent.setText(selectedParentName[0]);
         } else {
             // 新增顶级部门
@@ -226,7 +228,7 @@ public class DeptListActivity extends AppCompatActivity {
         }
 
         tvParent.setOnClickListener(v -> showParentPickerDialog(selected -> {
-            selectedParentId[0] = selected.getValue() == null ? 0 : safeParseInt(selected.getValue());
+            selectedParentId[0] = StringUtils.safeParseInt(selected.getValue(), 0);
             selectedParentName[0] = selected.getLabel();
             tvParent.setText(selectedParentName[0]);
         }));
@@ -295,15 +297,4 @@ public class DeptListActivity extends AppCompatActivity {
         void onSelected(Option option);
     }
 
-    private int safeParseInt(String value) {
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private static String safe(String s) {
-        return s == null ? "" : s;
-    }
 }

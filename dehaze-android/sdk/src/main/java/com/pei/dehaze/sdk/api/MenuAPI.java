@@ -3,11 +3,11 @@ package com.pei.dehaze.sdk.api;
 import com.pei.dehaze.sdk.ApiCallback;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Result;
+import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.menu.MenuQuery;
-import com.pei.dehaze.sdk.model.menu.MenuVO;
 import com.pei.dehaze.sdk.model.menu.MenuForm;
-import com.pei.dehaze.sdk.model.menu.RouteVO;
+import com.pei.dehaze.sdk.model.menu.MenuVO;
 
 import java.util.List;
 
@@ -18,14 +18,7 @@ import retrofit2.Call;
  */
 public class MenuAPI {
 
-    /**
-     * 获取路由列表
-     *
-     * @param callback 回调函数
-     */
-    public static void getRoutes(ApiCallback<List<RouteVO>> callback) {
-        Call<Result<List<RouteVO>>> call = DehazeSDK.getInstance().getMenuApiService().getRoutes();
-        call.enqueue(callback);
+    private MenuAPI() {
     }
 
     /**
@@ -101,8 +94,8 @@ public class MenuAPI {
      * @param visible   显示状态(1:显示;0:隐藏)
      * @param callback 回调函数
      */
-    public static void updateVisible(long id, int visible, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getMenuApiService().updateMenuVisible(id, visible);
+    public static void updateVisible(long id, EnableStatus visible, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getMenuApiService().updateMenuVisible(id, visible.getValue());
         call.enqueue(callback);
     }
 }

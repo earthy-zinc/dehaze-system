@@ -2,18 +2,21 @@ package com.pei.dehaze.sdk.api;
 
 import com.pei.dehaze.sdk.ApiCallback;
 import com.pei.dehaze.sdk.DehazeSDK;
-import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.model.dict.*;
 import retrofit2.Call;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 字典相关API接口封装
  */
 public class DictAPI {
+
+    private DictAPI() {
+    }
 
     /**
      * 字典类型分页列表
@@ -67,19 +70,9 @@ public class DictAPI {
      * @param ids      字典类型ID列表
      * @param callback 回调函数
      */
-    public static void deleteDictTypes(String ids, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getDictApiService().deleteDictTypes(ids);
-        call.enqueue(callback);
-    }
-
-    /**
-     * 获取字典类型的数据项
-     *
-     * @param id       字典类型ID
-     * @param callback 回调函数
-     */
-    public static void getDictOptions(long id, ApiCallback<List<Option>> callback) {
-        Call<Result<List<Option>>> call = DehazeSDK.getInstance().getDictApiService().getDictOptions(id);
+    public static void deleteDictTypes(List<Long> ids, ApiCallback<Void> callback) {
+        String joined = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDictApiService().deleteDictTypes(joined);
         call.enqueue(callback);
     }
 
@@ -135,8 +128,9 @@ public class DictAPI {
      * @param ids      字典ID列表
      * @param callback 回调函数
      */
-    public static void deleteDictByIds(String ids, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getDictApiService().deleteDicts(ids);
+    public static void deleteDictByIds(List<Long> ids, ApiCallback<Void> callback) {
+        String joined = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDictApiService().deleteDicts(joined);
         call.enqueue(callback);
     }
 }

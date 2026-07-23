@@ -3,6 +3,7 @@ package com.pei.dehaze.sdk.api;
 import com.pei.dehaze.sdk.ApiCallback;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
+import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.model.role.RoleForm;
@@ -11,11 +12,15 @@ import com.pei.dehaze.sdk.model.role.RoleQuery;
 import retrofit2.Call;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 角色相关API接口封装
  */
 public class RoleAPI {
+
+    private RoleAPI() {
+    }
 
     /**
      * 获取角色分页数据
@@ -104,8 +109,9 @@ public class RoleAPI {
      * @param ids      角色ID列表
      * @param callback 回调函数
      */
-    public static void deleteByIds(String ids, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getRoleApiService().deleteRoles(ids);
+    public static void deleteByIds(List<Long> ids, ApiCallback<Void> callback) {
+        String joined = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+        Call<Result<Void>> call = DehazeSDK.getInstance().getRoleApiService().deleteRoles(joined);
         call.enqueue(callback);
     }
 
@@ -113,11 +119,11 @@ public class RoleAPI {
      * 修改角色状态
      *
      * @param id       角色ID
-     * @param status   状态(1:启用;0:禁用)
+     * @param status   状态
      * @param callback 回调函数
      */
-    public static void updateStatus(long id, int status, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getRoleApiService().updateRoleStatus(id, status);
+    public static void updateStatus(long id, EnableStatus status, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getRoleApiService().updateRoleStatus(id, status.getValue());
         call.enqueue(callback);
     }
 }

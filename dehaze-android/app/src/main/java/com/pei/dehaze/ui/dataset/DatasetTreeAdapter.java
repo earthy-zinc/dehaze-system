@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
 
 import java.util.ArrayList;
@@ -265,8 +266,8 @@ public class DatasetTreeAdapter extends RecyclerView.Adapter<DatasetTreeAdapter.
             itemView.setPadding(padding + 16, itemView.getPaddingTop(),
                     itemView.getPaddingRight(), itemView.getPaddingBottom());
 
-            tvName.setText(safe(dataset.getName()));
-            tvType.setText(safe(dataset.getType()));
+            tvName.setText(StringUtils.safe(dataset.getName()));
+            tvType.setText(StringUtils.safe(dataset.getType()));
             Integer status = dataset.getStatus();
             if (status != null && status == 1) {
                 tvStatus.setText("启用");
@@ -344,8 +345,5 @@ public class DatasetTreeAdapter extends RecyclerView.Adapter<DatasetTreeAdapter.
             }
         }
 
-        private String safe(String s) {
-            return s == null ? "" : s;
-        }
     }
 }

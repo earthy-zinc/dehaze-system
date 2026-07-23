@@ -50,18 +50,18 @@ public abstract class ApiCallback<T> implements Callback<Result<T>> {
             if (result.isSuccess()) {
                 onSuccess(result.getData());
             } else {
-                // 401 且 token 无效，清除本地 token
+                // token 无效业务码，清除本地全部 token（accessToken + refreshToken）
                 if (TokenManager.isTokenInvalidCode(result.getCode())) {
-                    TokenManager.clearToken();
+                    TokenManager.clearAll();
                 }
                 onError(result.getCode(), result.getMsg());
             }
         } else {
             // HTTP 错误，解析后端返回的业务错误信息
             ApiException exception = ApiException.handleHttpException(response, DehazeSDK.getInstance().getRetrofit());
-            // 401 自动清除 token
+            // 401（token 过期/无效，且 OkHttp Authenticator 刷新失败或不可用）清除全部 token
             if (response.code() == 401) {
-                TokenManager.clearToken();
+                TokenManager.clearAll();
             }
             onFailure(exception);
         }

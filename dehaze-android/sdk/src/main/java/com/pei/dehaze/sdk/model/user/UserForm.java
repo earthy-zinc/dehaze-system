@@ -1,5 +1,6 @@
 package com.pei.dehaze.sdk.model.user;
 
+import com.pei.dehaze.sdk.model.EnableStatus;
 import lombok.Data;
 import java.util.List;
 
@@ -26,29 +27,29 @@ public class UserForm {
     /**
      * 性别
      */
-    private Integer gender;
-    
+    private Gender gender;
+
     /**
      * 用户ID
      */
     private Integer id;
-    
+
     private String mobile;
-    
+
     /**
      * 昵称
      */
     private String nickname;
-    
+
     /**
      * 角色ID集合
      */
     private List<Integer> roleIds;
-    
+
     /**
-     * 用户状态(1:正常;0:禁用)
+     * 用户状态
      */
-    private Integer status;
+    private EnableStatus status;
     
     /**
      * 用户名

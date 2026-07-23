@@ -12,6 +12,8 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
+import com.pei.dehaze.utils.StringUtils;
+import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.user.UserPageVO;
 
 import java.text.SimpleDateFormat;
@@ -20,6 +22,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 public class UserAdapter extends ListAdapter<UserPageVO, UserAdapter.UserViewHolder> {
@@ -53,17 +56,13 @@ public class UserAdapter extends ListAdapter<UserPageVO, UserAdapter.UserViewHol
 
         @Override
         public boolean areContentsTheSame(@NonNull UserPageVO oldItem, @NonNull UserPageVO newItem) {
-            return UserAdapter.equals(oldItem.getUsername(), newItem.getUsername()) &&
-                   UserAdapter.equals(oldItem.getNickname(), newItem.getNickname()) &&
-                   UserAdapter.equals(oldItem.getMobile(), newItem.getMobile()) &&
-                   UserAdapter.equals(oldItem.getStatus(), newItem.getStatus()) &&
-                   UserAdapter.equals(oldItem.getDeptName(), newItem.getDeptName());
+            return Objects.equals(oldItem.getUsername(), newItem.getUsername()) &&
+                   Objects.equals(oldItem.getNickname(), newItem.getNickname()) &&
+                   Objects.equals(oldItem.getMobile(), newItem.getMobile()) &&
+                   Objects.equals(oldItem.getStatus(), newItem.getStatus()) &&
+                   Objects.equals(oldItem.getDeptName(), newItem.getDeptName());
         }
     };
-
-    private static boolean equals(Object a, Object b) {
-        return a == null ? b == null : a.equals(b);
-    }
 
     public void setOnUserActionListener(OnUserActionListener listener) {
         this.actionListener = listener;
@@ -108,20 +107,6 @@ public class UserAdapter extends ListAdapter<UserPageVO, UserAdapter.UserViewHol
 
     public List<Integer> getSelectedIdList() {
         return new ArrayList<>(selectedIds);
-    }
-
-    public String getSelectedIdsString() {
-        if (selectedIds.isEmpty()) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (Integer id : selectedIds) {
-            if (sb.length() > 0) {
-                sb.append(",");
-            }
-            sb.append(id);
-        }
-        return sb.toString();
     }
 
     private void notifySelectionChanged() {
@@ -172,12 +157,12 @@ public class UserAdapter extends ListAdapter<UserPageVO, UserAdapter.UserViewHol
         }
 
         void bind(UserPageVO user) {
-            tvUsername.setText(safe(user.getUsername()));
-            tvNickname.setText(safe(user.getNickname()));
-            tvDept.setText(safe(user.getDeptName()));
-            tvMobile.setText(safe(user.getMobile()));
-            Integer status = user.getStatus();
-            if (status != null && status == 1) {
+            tvUsername.setText(StringUtils.safe(user.getUsername()));
+            tvNickname.setText(StringUtils.safe(user.getNickname()));
+            tvDept.setText(StringUtils.safe(user.getDeptName()));
+            tvMobile.setText(StringUtils.safe(user.getMobile()));
+            EnableStatus status = user.getStatus();
+            if (status == EnableStatus.ENABLED) {
                 tvStatus.setText("启用");
                 tvStatus.setTextColor(0xFF4CAF50);
                 tvToggleStatus.setText("禁用");
@@ -250,8 +235,5 @@ public class UserAdapter extends ListAdapter<UserPageVO, UserAdapter.UserViewHol
             tvToggleStatus.setVisibility(View.GONE);
         }
 
-        private String safe(String s) {
-            return s == null ? "" : s;
-        }
     }
 }

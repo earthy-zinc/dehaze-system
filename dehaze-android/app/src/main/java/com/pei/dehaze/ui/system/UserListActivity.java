@@ -17,12 +17,11 @@ import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import androidx.annotation.NonNull;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -31,23 +30,27 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.button.MaterialButton;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.Option;
+import com.pei.dehaze.sdk.model.user.Gender;
 import com.pei.dehaze.sdk.model.user.UserForm;
 import com.pei.dehaze.sdk.model.user.UserPageVO;
 import com.pei.dehaze.ui.system.adapter.UserAdapter;
 import com.pei.dehaze.ui.system.viewmodel.UserViewModel;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class UserListActivity extends AppCompatActivity {
 
-    private static final int REQUEST_STORAGE_PERMISSION = 1001;
     private static final int REQUEST_IMPORT_FILE = 1002;
     private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$");
@@ -76,15 +79,25 @@ public class UserListActivity extends AppCompatActivity {
     private final List<Option> deptOptions = new ArrayList<>();
     private final List<Option> roleOptions = new ArrayList<>();
     private static final String[] STATUS_LABELS = {"全部", "启用", "禁用"};
-    private static final Integer[] STATUS_VALUES = {null, 1, 0};
+    private static final EnableStatus[] STATUS_VALUES = {null, EnableStatus.ENABLED, EnableStatus.DISABLED};
     private static final String[] GENDER_LABELS = {"未知", "男", "女"};
-    private static final Integer[] GENDER_VALUES = {0, 1, 2};
+    private static final Gender[] GENDER_VALUES = Gender.values();
 
     // 表单临时状态
     private Integer selectedDeptId;
     private String selectedDeptName;
     private final Set<Integer> selectedRoleIds = new HashSet<>();
     private final List<String> selectedRoleNames = new ArrayList<>();
+
+    private final ActivityResultLauncher<String[]> storagePermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                boolean granted = Boolean.TRUE.equals(result.get(Manifest.permission.WRITE_EXTERNAL_STORAGE));
+                if (!granted) {
+                    ToastUtils.showShort(this, "存储权限被拒绝，无法操作文件");
+                } else {
+                    ToastUtils.showShort(this, "权限已授予，请重新点击操作");
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -155,7 +168,8 @@ public class UserListActivity extends AppCompatActivity {
             @Override
             public void onToggleStatus(UserPageVO user) {
                 if (user.getId() == null) return;
-                int newStatus = (user.getStatus() != null && user.getStatus() == 1) ? 0 : 1;
+                EnableStatus newStatus = user.getStatus() == EnableStatus.ENABLED
+                        ? EnableStatus.DISABLED : EnableStatus.ENABLED;
                 userViewModel.updateUserStatus(user.getId(), newStatus);
             }
         });
@@ -166,7 +180,7 @@ public class UserListActivity extends AppCompatActivity {
 
         btnSearch.setOnClickListener(v -> {
             String keywords = etKeywords.getText().toString().trim();
-            Integer status = STATUS_VALUES[spinnerStatus.getSelectedItemPosition()];
+            EnableStatus status = STATUS_VALUES[spinnerStatus.getSelectedItemPosition()];
             Integer deptId = null;
             int deptPos = spinnerDept.getSelectedItemPosition();
             if (deptPos > 0 && deptPos - 1 < deptOptions.size()) {
@@ -339,7 +353,7 @@ public class UserListActivity extends AppCompatActivity {
                 .setMessage("确认删除用户「" + (user.getUsername() == null ? "" : user.getUsername()) + "」吗？删除后不可恢复。")
                 .setPositiveButton("确定", (dialog, which) -> {
                     if (user.getId() != null) {
-                        userViewModel.deleteUsers(String.valueOf(user.getId()));
+                        userViewModel.deleteUsers(Collections.singletonList(user.getId().longValue()));
                     }
                 })
                 .setNegativeButton("取消", null)
@@ -355,14 +369,8 @@ public class UserListActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("批量删除确认")
                 .setMessage("确认删除选中的 " + selectedIds.size() + " 个用户吗？删除后不可恢复。")
-                .setPositiveButton("确定", (dialog, which) -> {
-                    StringBuilder sb = new StringBuilder();
-                    for (Integer id : selectedIds) {
-                        if (sb.length() > 0) sb.append(",");
-                        sb.append(id);
-                    }
-                    userViewModel.deleteUsers(sb.toString());
-                })
+                .setPositiveButton("确定", (dialog, which) ->
+                        userViewModel.deleteUsers(selectedIds.stream().map(Integer::longValue).collect(Collectors.toList())))
                 .setNegativeButton("取消", null)
                 .show();
     }
@@ -401,142 +409,161 @@ public class UserListActivity extends AppCompatActivity {
         boolean isEdit = existingForm != null && existingForm.getId() != null;
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_user_form, null);
 
-        EditText etUsername = view.findViewById(R.id.et_username);
-        EditText etNickname = view.findViewById(R.id.et_nickname);
-        TextView tvDept = view.findViewById(R.id.tv_dept);
-        TextView tvRoles = view.findViewById(R.id.tv_roles);
-        Spinner spinnerGender = view.findViewById(R.id.spinner_gender);
-        EditText etMobile = view.findViewById(R.id.et_mobile);
-        EditText etEmail = view.findViewById(R.id.et_email);
-        RadioGroup rgStatus = view.findViewById(R.id.rg_status);
-
-        ArrayAdapter<String> genderAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, GENDER_LABELS);
-        genderAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerGender.setAdapter(genderAdapter);
-
-        // 重置临时状态
-        selectedRoleIds.clear();
-        selectedRoleNames.clear();
-        selectedDeptId = null;
-        selectedDeptName = null;
+        UserFormViewHolder holder = bindUserFormViews(view);
+        setupGenderSpinner(holder.spinnerGender);
+        resetFormState();
 
         if (isEdit) {
-            etUsername.setText(existingForm.getUsername() == null ? "" : existingForm.getUsername());
-            etUsername.setEnabled(false);
-            etNickname.setText(existingForm.getNickname() == null ? "" : existingForm.getNickname());
-            etMobile.setText(existingForm.getMobile() == null ? "" : existingForm.getMobile());
-            etEmail.setText(existingForm.getEmail() == null ? "" : existingForm.getEmail());
-            selectedDeptId = existingForm.getDeptId();
-            // 根据 deptId 查找名称
-            if (selectedDeptId != null) {
-                for (Option opt : deptOptions) {
-                    if (String.valueOf(selectedDeptId).equals(opt.getValue())) {
-                        selectedDeptName = opt.getLabel();
-                        break;
-                    }
-                }
-            }
-            tvDept.setText(selectedDeptName == null ? "请选择部门" : selectedDeptName);
-            if (existingForm.getRoleIds() != null) {
-                selectedRoleIds.addAll(existingForm.getRoleIds());
-                for (Integer roleId : selectedRoleIds) {
-                    for (Option opt : roleOptions) {
-                        if (String.valueOf(roleId).equals(opt.getValue())) {
-                            selectedRoleNames.add(opt.getLabel());
-                            break;
-                        }
-                    }
-                }
-            }
-            tvRoles.setText(TextUtils.join(", ", selectedRoleNames));
-            if (existingForm.getGender() != null) {
-                for (int i = 0; i < GENDER_VALUES.length; i++) {
-                    if (GENDER_VALUES[i].equals(existingForm.getGender())) {
-                        spinnerGender.setSelection(i);
-                        break;
-                    }
-                }
-            } else {
-                spinnerGender.setSelection(0);
-            }
-            if (existingForm.getStatus() != null && existingForm.getStatus() == 0) {
-                rgStatus.check(R.id.rb_status_disable);
-            } else {
-                rgStatus.check(R.id.rb_status_enable);
-            }
+            fillUserForm(holder, existingForm);
         } else {
-            rgStatus.check(R.id.rb_status_enable);
-            spinnerGender.setSelection(0);
-            tvDept.setText("请选择部门");
-            tvRoles.setText("请选择角色");
+            initNewUserForm(holder);
         }
 
-        // 部门选择
-        tvDept.setOnClickListener(v -> showDeptPickerDialog(deptOptions, selected -> {
-            selectedDeptId = selected.getValue() == null ? null : safeParseInt(selected.getValue());
+        holder.tvDept.setOnClickListener(v -> showDeptPickerDialog(deptOptions, selected -> {
+            selectedDeptId = selected.getValue() == null ? null : StringUtils.safeParseInt(selected.getValue(), 0);
             selectedDeptName = selected.getLabel();
-            tvDept.setText(selectedDeptName);
+            holder.tvDept.setText(selectedDeptName);
         }));
-
-        // 角色多选
-        tvRoles.setOnClickListener(v -> showRoleMultiSelectDialog());
+        holder.tvRoles.setOnClickListener(v -> showRoleMultiSelectDialog(holder.tvRoles));
 
         new AlertDialog.Builder(this)
                 .setTitle(isEdit ? "修改用户" : "新增用户")
                 .setView(view)
-                .setPositiveButton("确定", (dialog, which) -> {
-                    String username = etUsername.getText().toString().trim();
-                    String nickname = etNickname.getText().toString().trim();
-                    String mobile = etMobile.getText().toString().trim();
-                    String email = etEmail.getText().toString().trim();
-                    int gender = GENDER_VALUES[spinnerGender.getSelectedItemPosition()];
-                    int status = rgStatus.getCheckedRadioButtonId() == R.id.rb_status_enable ? 1 : 0;
-
-                    if (TextUtils.isEmpty(username)) {
-                        ToastUtils.showShort(this, "请输入用户名");
-                        return;
-                    }
-                    if (TextUtils.isEmpty(nickname)) {
-                        ToastUtils.showShort(this, "请输入昵称");
-                        return;
-                    }
-                    if (selectedDeptId == null) {
-                        ToastUtils.showShort(this, "请选择所属部门");
-                        return;
-                    }
-                    if (selectedRoleIds.isEmpty()) {
-                        ToastUtils.showShort(this, "请选择角色");
-                        return;
-                    }
-                    if (!TextUtils.isEmpty(mobile) && !MOBILE_PATTERN.matcher(mobile).matches()) {
-                        ToastUtils.showShort(this, "手机号格式不正确");
-                        return;
-                    }
-                    if (!TextUtils.isEmpty(email) && !EMAIL_PATTERN.matcher(email).matches()) {
-                        ToastUtils.showShort(this, "邮箱格式不正确");
-                        return;
-                    }
-
-                    UserForm form = new UserForm();
-                    form.setUsername(username);
-                    form.setNickname(nickname);
-                    form.setDeptId(selectedDeptId);
-                    form.setGender(gender);
-                    form.setRoleIds(new ArrayList<>(selectedRoleIds));
-                    form.setMobile(TextUtils.isEmpty(mobile) ? null : mobile);
-                    form.setEmail(TextUtils.isEmpty(email) ? null : email);
-                    form.setStatus(status);
-
-                    if (isEdit) {
-                        form.setId(existingForm.getId());
-                        userViewModel.updateUser(existingForm.getId(), form);
-                    } else {
-                        userViewModel.addUser(form);
-                    }
-                })
+                .setPositiveButton("确定", (dialog, which) -> submitUserForm(holder, existingForm, isEdit))
                 .setNegativeButton("取消", null)
                 .show();
+    }
+
+    private UserFormViewHolder bindUserFormViews(View view) {
+        UserFormViewHolder h = new UserFormViewHolder();
+        h.etUsername = view.findViewById(R.id.et_username);
+        h.etNickname = view.findViewById(R.id.et_nickname);
+        h.tvDept = view.findViewById(R.id.tv_dept);
+        h.tvRoles = view.findViewById(R.id.tv_roles);
+        h.spinnerGender = view.findViewById(R.id.spinner_gender);
+        h.etMobile = view.findViewById(R.id.et_mobile);
+        h.etEmail = view.findViewById(R.id.et_email);
+        h.rgStatus = view.findViewById(R.id.rg_status);
+        return h;
+    }
+
+    private void setupGenderSpinner(Spinner spinnerGender) {
+        ArrayAdapter<String> genderAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, GENDER_LABELS);
+        genderAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerGender.setAdapter(genderAdapter);
+    }
+
+    private void resetFormState() {
+        selectedRoleIds.clear();
+        selectedRoleNames.clear();
+        selectedDeptId = null;
+        selectedDeptName = null;
+    }
+
+    private void fillUserForm(UserFormViewHolder h, UserForm existingForm) {
+        h.etUsername.setText(StringUtils.safe(existingForm.getUsername()));
+        h.etUsername.setEnabled(false);
+        h.etNickname.setText(StringUtils.safe(existingForm.getNickname()));
+        h.etMobile.setText(StringUtils.safe(existingForm.getMobile()));
+        h.etEmail.setText(StringUtils.safe(existingForm.getEmail()));
+
+        selectedDeptId = existingForm.getDeptId();
+        selectedDeptName = findOptionLabel(deptOptions, selectedDeptId);
+        h.tvDept.setText(selectedDeptName == null ? "请选择部门" : selectedDeptName);
+
+        if (existingForm.getRoleIds() != null) {
+            selectedRoleIds.addAll(existingForm.getRoleIds());
+            for (Integer roleId : selectedRoleIds) {
+                String label = findOptionLabel(roleOptions, roleId);
+                if (label != null) selectedRoleNames.add(label);
+            }
+        }
+        h.tvRoles.setText(selectedRoleNames.isEmpty() ? "请选择角色" : TextUtils.join(", ", selectedRoleNames));
+
+        h.spinnerGender.setSelection(indexOf(GENDER_VALUES, existingForm.getGender()));
+        h.rgStatus.check(existingForm.getStatus() == EnableStatus.DISABLED
+                ? R.id.rb_status_disable : R.id.rb_status_enable);
+    }
+
+    private void initNewUserForm(UserFormViewHolder h) {
+        h.rgStatus.check(R.id.rb_status_enable);
+        h.spinnerGender.setSelection(0);
+        h.tvDept.setText("请选择部门");
+        h.tvRoles.setText("请选择角色");
+    }
+
+    private void submitUserForm(UserFormViewHolder h, UserForm existingForm, boolean isEdit) {
+        String username = h.etUsername.getText().toString().trim();
+        String nickname = h.etNickname.getText().toString().trim();
+        String mobile = h.etMobile.getText().toString().trim();
+        String email = h.etEmail.getText().toString().trim();
+        Gender gender = GENDER_VALUES[h.spinnerGender.getSelectedItemPosition()];
+        EnableStatus status = h.rgStatus.getCheckedRadioButtonId() == R.id.rb_status_enable
+                ? EnableStatus.ENABLED : EnableStatus.DISABLED;
+
+        String error = validateUserForm(username, nickname, selectedDeptId,
+                selectedRoleIds, mobile, email);
+        if (error != null) {
+            ToastUtils.showShort(this, error);
+            return;
+        }
+
+        UserForm form = new UserForm();
+        form.setUsername(username);
+        form.setNickname(nickname);
+        form.setDeptId(selectedDeptId);
+        form.setGender(gender);
+        form.setRoleIds(new ArrayList<>(selectedRoleIds));
+        form.setMobile(TextUtils.isEmpty(mobile) ? null : mobile);
+        form.setEmail(TextUtils.isEmpty(email) ? null : email);
+        form.setStatus(status);
+
+        if (isEdit) {
+            form.setId(existingForm.getId());
+            userViewModel.updateUser(existingForm.getId(), form);
+        } else {
+            userViewModel.addUser(form);
+        }
+    }
+
+    private String validateUserForm(String username, String nickname, Integer deptId,
+                                    Set<Integer> roleIds, String mobile, String email) {
+        if (TextUtils.isEmpty(username)) return "请输入用户名";
+        if (TextUtils.isEmpty(nickname)) return "请输入昵称";
+        if (deptId == null) return "请选择所属部门";
+        if (roleIds.isEmpty()) return "请选择角色";
+        if (!TextUtils.isEmpty(mobile) && !MOBILE_PATTERN.matcher(mobile).matches()) return "手机号格式不正确";
+        if (!TextUtils.isEmpty(email) && !EMAIL_PATTERN.matcher(email).matches()) return "邮箱格式不正确";
+        return null;
+    }
+
+    private String findOptionLabel(List<Option> options, Integer id) {
+        if (id == null) return null;
+        String idStr = String.valueOf(id);
+        for (Option opt : options) {
+            if (idStr.equals(opt.getValue())) return opt.getLabel();
+        }
+        return null;
+    }
+
+    private static int indexOf(Gender[] array, Gender target) {
+        if (target == null) return 0;
+        for (int i = 0; i < array.length; i++) {
+            if (array[i] != null && array[i].equals(target)) return i;
+        }
+        return 0;
+    }
+
+    private static class UserFormViewHolder {
+        EditText etUsername;
+        EditText etNickname;
+        TextView tvDept;
+        TextView tvRoles;
+        Spinner spinnerGender;
+        EditText etMobile;
+        EditText etEmail;
+        RadioGroup rgStatus;
     }
 
     private void showDeptPickerDialog(List<Option> options, OnOptionSelectedListener listener) {
@@ -554,13 +581,13 @@ public class UserListActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void showRoleMultiSelectDialog() {
+    private void showRoleMultiSelectDialog(TextView tvRoles) {
         String[] items = new String[roleOptions.size()];
         boolean[] checked = new boolean[roleOptions.size()];
         for (int i = 0; i < roleOptions.size(); i++) {
             Option opt = roleOptions.get(i);
             items[i] = opt.getLabel();
-            Integer roleId = safeParseInt(opt.getValue());
+            Integer roleId = opt.getValue() == null ? null : StringUtils.safeParseInt(opt.getValue(), 0);
             if (roleId != null && selectedRoleIds.contains(roleId)) {
                 checked[i] = true;
             }
@@ -569,7 +596,7 @@ public class UserListActivity extends AppCompatActivity {
                 .setTitle("选择角色")
                 .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> {
                     Option opt = roleOptions.get(which);
-                    Integer roleId = safeParseInt(opt.getValue());
+                    Integer roleId = opt.getValue() == null ? null : StringUtils.safeParseInt(opt.getValue(), 0);
                     if (roleId == null) return;
                     if (isChecked) {
                         selectedRoleIds.add(roleId);
@@ -580,15 +607,10 @@ public class UserListActivity extends AppCompatActivity {
                 .setPositiveButton("确定", (dialog, which) -> {
                     selectedRoleNames.clear();
                     for (Integer roleId : selectedRoleIds) {
-                        for (Option opt : roleOptions) {
-                            if (String.valueOf(roleId).equals(opt.getValue())) {
-                                selectedRoleNames.add(opt.getLabel());
-                                break;
-                            }
-                        }
+                        String label = findOptionLabel(roleOptions, roleId);
+                        if (label != null) selectedRoleNames.add(label);
                     }
-                    // 更新 tvRoles 文本需要重新展示对话框外的 TextView，但这里 dialog 已 dismiss
-                    // 改为通过回调更新
+                    tvRoles.setText(selectedRoleNames.isEmpty() ? "请选择角色" : TextUtils.join(", ", selectedRoleNames));
                 })
                 .setNegativeButton("取消", null)
                 .show();
@@ -598,37 +620,13 @@ public class UserListActivity extends AppCompatActivity {
         void onSelected(Option option);
     }
 
-    private Integer safeParseInt(String value) {
-        if (value == null) return null;
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
     private boolean ensureStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE},
-                        REQUEST_STORAGE_PERMISSION);
+                storagePermissionLauncher.launch(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE});
                 return false;
             }
         }
         return true;
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_STORAGE_PERMISSION) {
-            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-            if (!granted) {
-                ToastUtils.showShort(this, "存储权限被拒绝，无法操作文件");
-            } else {
-                ToastUtils.showShort(this, "权限已授予，请重新点击操作");
-            }
-        }
     }
 }

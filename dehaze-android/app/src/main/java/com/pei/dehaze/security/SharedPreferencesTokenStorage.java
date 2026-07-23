@@ -13,6 +13,7 @@ public class SharedPreferencesTokenStorage implements TokenStorage {
 
     private static final String PREF_NAME = "dehaze_auth_prefs";
     private static final String KEY_TOKEN = "access_token";
+    private static final String KEY_REFRESH_TOKEN = "refresh_token";
 
     private final SharedPreferences prefs;
 
@@ -35,5 +36,20 @@ public class SharedPreferencesTokenStorage implements TokenStorage {
     @Override
     public void clearToken() {
         prefs.edit().remove(KEY_TOKEN).apply();
+    }
+
+    @Override
+    public void saveRefreshToken(String refreshToken) {
+        prefs.edit().putString(KEY_REFRESH_TOKEN, refreshToken).apply();
+    }
+
+    @Override
+    public String loadRefreshToken() {
+        return prefs.getString(KEY_REFRESH_TOKEN, null);
+    }
+
+    @Override
+    public void clearRefreshToken() {
+        prefs.edit().remove(KEY_REFRESH_TOKEN).apply();
     }
 }

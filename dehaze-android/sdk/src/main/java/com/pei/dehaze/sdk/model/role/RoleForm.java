@@ -1,5 +1,6 @@
 package com.pei.dehaze.sdk.model.role;
 
+import com.pei.dehaze.sdk.model.EnableStatus;
 import lombok.Data;
 
 /**
@@ -33,7 +34,7 @@ public class RoleForm {
     private Integer sort;
     
     /**
-     * 角色状态(1-正常；0-停用)
+     * 角色状态
      */
-    private Integer status;
+    private EnableStatus status;
 }

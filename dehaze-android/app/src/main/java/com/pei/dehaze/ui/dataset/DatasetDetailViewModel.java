@@ -2,9 +2,9 @@ package com.pei.dehaze.ui.dataset;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 
 import com.pei.dehaze.repository.DatasetRepository;
+import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
 import com.pei.dehaze.sdk.model.dataset.DatasetImageFileInfo;
@@ -12,6 +12,7 @@ import com.pei.dehaze.sdk.model.dataset.DatasetItemCreateForm;
 import com.pei.dehaze.sdk.model.dataset.DatasetItemUpdateForm;
 import com.pei.dehaze.sdk.model.dataset.ImageItem;
 import com.pei.dehaze.sdk.model.dataset.ImageItemQuery;
+import com.pei.dehaze.sdk.model.dataset.ImageType;
 import com.pei.dehaze.sdk.model.dataset.ItemFileUpdateForm;
 
 import java.io.File;
@@ -21,16 +22,13 @@ import java.util.List;
 /**
  * 数据集详情页 ViewModel（数据集元数据 + 数据项分页 + 数据项 CRUD + 图片文件管理）
  */
-public class DatasetDetailViewModel extends ViewModel {
+public class DatasetDetailViewModel extends BaseViewModel {
 
     private final DatasetRepository repository;
 
     private final MutableLiveData<Dataset> datasetInfo = new MutableLiveData<>();
     private final MutableLiveData<List<ImageItem>> items = new MutableLiveData<>();
     private final MutableLiveData<Long> total = new MutableLiveData<>(0L);
-    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
-    private final MutableLiveData<String> error = new MutableLiveData<>();
-    private final MutableLiveData<String> operationResult = new MutableLiveData<>();
     private final MutableLiveData<DatasetImageFileInfo> uploadedFile = new MutableLiveData<>();
 
     private long datasetId = 0;
@@ -40,10 +38,8 @@ public class DatasetDetailViewModel extends ViewModel {
     private String sceneType;
     private String hazeLevel;
 
-    /** 当前展示的图片类型（clear/hazy/depth/segment） */
-    private String currentImageType = "hazy";
-
-    public static final String[] IMAGE_TYPES = {"clear", "hazy", "depth", "segment"};
+    /** 当前展示的图片类型（clear/hazy/trans） */
+    private ImageType currentImageType = ImageType.HAZY;
 
     public DatasetDetailViewModel() {
         repository = new DatasetRepository();
@@ -57,11 +53,11 @@ public class DatasetDetailViewModel extends ViewModel {
         return datasetId;
     }
 
-    public String getCurrentImageType() {
+    public ImageType getCurrentImageType() {
         return currentImageType;
     }
 
-    public void setCurrentImageType(String type) {
+    public void setCurrentImageType(ImageType type) {
         this.currentImageType = type;
     }
 
@@ -77,28 +73,8 @@ public class DatasetDetailViewModel extends ViewModel {
         return total;
     }
 
-    public LiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public LiveData<String> getError() {
-        return error;
-    }
-
-    public LiveData<String> getOperationResult() {
-        return operationResult;
-    }
-
     public LiveData<DatasetImageFileInfo> getUploadedFile() {
         return uploadedFile;
-    }
-
-    public void clearError() {
-        error.setValue(null);
-    }
-
-    public void clearOperationResult() {
-        operationResult.setValue(null);
     }
 
     public void clearUploadedFile() {
@@ -110,20 +86,7 @@ public class DatasetDetailViewModel extends ViewModel {
      */
     public void loadDatasetInfo() {
         if (datasetId <= 0) return;
-        loading.setValue(true);
-        repository.getDatasetById(datasetId, new DatasetRepository.Callback<Dataset>() {
-            @Override
-            public void onSuccess(Dataset data) {
-                datasetInfo.postValue(data);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        repository.getDatasetById(datasetId, withLoading(datasetInfo::postValue));
     }
 
     /**
@@ -131,22 +94,11 @@ public class DatasetDetailViewModel extends ViewModel {
      */
     public void loadItems() {
         if (datasetId <= 0) return;
-        loading.setValue(true);
         ImageItemQuery query = buildQuery();
-        repository.getItems(query, new DatasetRepository.Callback<PageResult<ImageItem>>() {
-            @Override
-            public void onSuccess(PageResult<ImageItem> data) {
-                items.postValue(data != null && data.getList() != null ? data.getList() : new ArrayList<>());
-                total.postValue(data != null ? data.getTotal() : 0L);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        repository.getItems(query, withLoading(data -> {
+            items.postValue(data != null ? data.getList() : new ArrayList<>());
+            total.postValue(data != null ? data.getTotal() : 0L);
+        }));
     }
 
     private ImageItemQuery buildQuery() {
@@ -202,175 +154,87 @@ public class DatasetDetailViewModel extends ViewModel {
      * 新建空数据项
      */
     public void createItem(String name) {
-        loading.setValue(true);
         DatasetItemCreateForm form = new DatasetItemCreateForm();
         form.setDatasetId(datasetId);
         form.setName(name);
-        repository.createItem(form, new DatasetRepository.Callback<Long>() {
-            @Override
-            public void onSuccess(Long data) {
-                operationResult.postValue("新增数据项成功");
-                loading.postValue(false);
-                loadItems();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        repository.createItem(form, withLoading(v -> {
+            operationResult.postValue("新增数据项成功");
+            loadItems();
+        }));
     }
 
     /**
      * 修改数据项名称
      */
     public void updateItem(long itemId, String name) {
-        loading.setValue(true);
         DatasetItemUpdateForm form = new DatasetItemUpdateForm();
         form.setName(name);
-        repository.updateItem(itemId, form, new DatasetRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("修改数据项成功");
-                loading.postValue(false);
-                loadItems();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        repository.updateItem(itemId, form, withLoading(v -> {
+            operationResult.postValue("修改数据项成功");
+            loadItems();
+        }));
     }
 
     /**
      * 删除数据项
      */
     public void deleteItem(long itemId) {
-        loading.setValue(true);
-        repository.deleteItem(itemId, new DatasetRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("删除数据项成功");
-                loading.postValue(false);
-                loadItems();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        repository.deleteItem(itemId, withLoading(v -> {
+            operationResult.postValue("删除数据项成功");
+            loadItems();
+        }));
     }
 
     /**
      * 批量删除数据项
      */
     public void batchDeleteItems(List<Long> ids) {
-        loading.setValue(true);
-        repository.batchDeleteItems(ids, new DatasetRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("批量删除成功");
-                loading.postValue(false);
-                loadItems();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        repository.batchDeleteItems(ids, withLoading(v -> {
+            operationResult.postValue("批量删除成功");
+            loadItems();
+        }));
     }
 
     /**
      * 上传数据项图片
      */
-    public void uploadItemFile(long datasetItemId, String type, File file, String description) {
-        loading.setValue(true);
+    public void uploadItemFile(long datasetItemId, ImageType type, File file, String description) {
         repository.uploadItemFile(datasetItemId, type, file, description,
-                new DatasetRepository.Callback<DatasetImageFileInfo>() {
-                    @Override
-                    public void onSuccess(DatasetImageFileInfo data) {
-                        operationResult.postValue("图片上传成功");
-                        uploadedFile.postValue(data);
-                        loading.postValue(false);
-                        loadItems();
-                    }
-
-                    @Override
-                    public void onError(String errorMessage) {
-                        error.postValue(errorMessage);
-                        loading.postValue(false);
-                    }
-                });
+                withLoading(data -> {
+                    operationResult.postValue("图片上传成功");
+                    uploadedFile.postValue(data);
+                    loadItems();
+                }));
     }
 
     /**
      * 修改图片信息
      */
     public void updateItemFile(long fileId, ItemFileUpdateForm form) {
-        loading.setValue(true);
-        repository.updateItemFile(fileId, form, new DatasetRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("修改图片信息成功");
-                loading.postValue(false);
-                loadItems();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        repository.updateItemFile(fileId, form, withLoading(v -> {
+            operationResult.postValue("修改图片信息成功");
+            loadItems();
+        }));
     }
 
     /**
      * 删除图片
      */
     public void deleteItemFile(long fileId) {
-        loading.setValue(true);
-        repository.deleteItemFile(fileId, new DatasetRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("删除图片成功");
-                loading.postValue(false);
-                loadItems();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        repository.deleteItemFile(fileId, withLoading(v -> {
+            operationResult.postValue("删除图片成功");
+            loadItems();
+        }));
     }
 
     /**
      * 批量删除图片
      */
     public void batchDeleteItemFiles(List<Long> ids) {
-        loading.setValue(true);
-        repository.batchDeleteItemFiles(ids, new DatasetRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("批量删除图片成功");
-                loading.postValue(false);
-                loadItems();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        repository.batchDeleteItemFiles(ids, withLoading(v -> {
+            operationResult.postValue("批量删除图片成功");
+            loadItems();
+        }));
     }
 
     /**

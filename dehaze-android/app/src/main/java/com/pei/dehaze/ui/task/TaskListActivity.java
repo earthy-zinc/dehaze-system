@@ -9,8 +9,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -32,6 +30,8 @@ import com.pei.dehaze.sdk.model.task.TaskType;
 import com.pei.dehaze.sdk.model.task.TaskVO;
 import com.pei.dehaze.ui.task.adapter.TaskAdapter;
 import com.pei.dehaze.ui.task.viewmodel.TaskViewModel;
+import com.pei.dehaze.utils.ToastUtils;
+import com.pei.dehaze.utils.ViewUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,13 +52,13 @@ public class TaskListActivity extends AppCompatActivity {
     private MaterialAutoCompleteTextView spStatus;
     private MaterialAutoCompleteTextView spType;
 
-    private String currentStatus;
-    private String currentType;
+    private TaskStatus currentStatus;
+    private TaskType currentType;
 
     private final ActivityResultLauncher<String> storagePermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
                 if (!granted) {
-                    Toast.makeText(this, "需要存储权限才能下载文件", Toast.LENGTH_SHORT).show();
+                    ToastUtils.showShort(this, "需要存储权限才能下载文件");
                 }
             });
 
@@ -145,7 +145,7 @@ public class TaskListActivity extends AppCompatActivity {
             if (position == 0) {
                 currentStatus = null;
             } else {
-                currentStatus = TaskStatus.values()[position - 1].getValue();
+                currentStatus = TaskStatus.values()[position - 1];
             }
             taskViewModel.filterByStatus(currentStatus);
         });
@@ -164,7 +164,7 @@ public class TaskListActivity extends AppCompatActivity {
             if (position == 0) {
                 currentType = null;
             } else {
-                currentType = TaskType.values()[position - 1].getValue();
+                currentType = TaskType.values()[position - 1];
             }
             taskViewModel.filterByType(currentType);
         });
@@ -184,13 +184,13 @@ public class TaskListActivity extends AppCompatActivity {
 
         taskViewModel.getError().observe(this, msg -> {
             if (!TextUtils.isEmpty(msg)) {
-                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, msg);
             }
         });
 
         taskViewModel.getOperationResult().observe(this, msg -> {
             if (!TextUtils.isEmpty(msg)) {
-                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, msg);
             }
         });
 
@@ -244,25 +244,18 @@ public class TaskListActivity extends AppCompatActivity {
     }
 
     private void bindDetail(View view, TaskVO task) {
-        setText(view, R.id.tv_detail_task_id, task.getTaskId());
-        setText(view, R.id.tv_detail_type, task.getTaskType());
-        setText(view, R.id.tv_detail_status, TaskStatus.fromValue(task.getStatus()).getLabel());
-        setText(view, R.id.tv_detail_progress, task.getProgress() + "%");
-        setText(view, R.id.tv_detail_files,
+        ViewUtils.setText(view, R.id.tv_detail_task_id, task.getTaskId());
+        ViewUtils.setText(view, R.id.tv_detail_type, task.getTaskType() != null ? task.getTaskType().getLabel() : null);
+        ViewUtils.setText(view, R.id.tv_detail_status, task.getStatus() != null ? task.getStatus().getLabel() : null);
+        ViewUtils.setText(view, R.id.tv_detail_progress, task.getProgress() + "%");
+        ViewUtils.setText(view, R.id.tv_detail_files,
                 (task.getProcessedFiles() != null ? task.getProcessedFiles() : 0) + " / " + task.getTotalFiles());
-        setText(view, R.id.tv_detail_created_at, task.getCreatedAt());
-        setText(view, R.id.tv_detail_started_at, task.getStartedAt());
-        setText(view, R.id.tv_detail_completed_at, task.getCompletedAt());
-        setText(view, R.id.tv_detail_expires_at, task.getExpiresAt());
-        setText(view, R.id.tv_detail_download_url, task.getDownloadUrl());
-        setText(view, R.id.tv_detail_error, task.getError());
-    }
-
-    private void setText(View root, int viewId, String text) {
-        TextView tv = root.findViewById(viewId);
-        if (tv != null) {
-            tv.setText(text != null ? text : "—");
-        }
+        ViewUtils.setText(view, R.id.tv_detail_created_at, task.getCreatedAt());
+        ViewUtils.setText(view, R.id.tv_detail_started_at, task.getStartedAt());
+        ViewUtils.setText(view, R.id.tv_detail_completed_at, task.getCompletedAt());
+        ViewUtils.setText(view, R.id.tv_detail_expires_at, task.getExpiresAt());
+        ViewUtils.setText(view, R.id.tv_detail_download_url, task.getDownloadUrl());
+        ViewUtils.setText(view, R.id.tv_detail_error, task.getError());
     }
 
     private void showCreateDialog() {
@@ -279,15 +272,15 @@ public class TaskListActivity extends AppCompatActivity {
         ArrayAdapter<String> typeAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, typeLabels);
         etType.setAdapter(typeAdapter);
 
-        final String[] selectedType = {null};
-        etType.setOnItemClickListener((parent, v, position, id) -> selectedType[0] = TaskType.values()[position].getValue());
+        final TaskType[] selectedType = {null};
+        etType.setOnItemClickListener((parent, v, position, id) -> selectedType[0] = TaskType.values()[position]);
 
         new AlertDialog.Builder(this)
                 .setTitle("创建任务")
                 .setView(view)
                 .setPositiveButton("创建", (d, w) -> {
                     if (selectedType[0] == null) {
-                        Toast.makeText(this, "请选择任务类型", Toast.LENGTH_SHORT).show();
+                        ToastUtils.showShort(this, "请选择任务类型");
                         return;
                     }
                     TaskCreateForm form = buildCreateForm(selectedType[0], etTargetId, etTargetIds);
@@ -300,19 +293,18 @@ public class TaskListActivity extends AppCompatActivity {
                 .show();
     }
 
-    private TaskCreateForm buildCreateForm(String type, TextInputEditText etTargetId, TextInputEditText etTargetIds) {
+    private TaskCreateForm buildCreateForm(TaskType type, TextInputEditText etTargetId, TextInputEditText etTargetIds) {
         TaskCreateForm form = new TaskCreateForm();
         form.setType(type);
 
         String targetIdStr = etTargetId.getText() != null ? etTargetId.getText().toString().trim() : "";
         String targetIdsStr = etTargetIds.getText() != null ? etTargetIds.getText().toString().trim() : "";
 
-        boolean isBatch = TaskType.BATCH_DOWNLOAD.getValue().equals(type) ||
-                TaskType.CUSTOM_EXPORT.getValue().equals(type);
+        boolean isBatch = type == TaskType.BATCH_DOWNLOAD || type == TaskType.CUSTOM_EXPORT;
 
         if (isBatch) {
             if (TextUtils.isEmpty(targetIdsStr)) {
-                Toast.makeText(this, "批量任务请填写目标ID列表", Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, "批量任务请填写目标ID列表");
                 return null;
             }
             List<Long> ids = new ArrayList<>();
@@ -322,7 +314,7 @@ public class TaskListActivity extends AppCompatActivity {
                     try {
                         ids.add(Long.parseLong(trimmed));
                     } catch (NumberFormatException e) {
-                        Toast.makeText(this, "目标ID格式错误: " + trimmed, Toast.LENGTH_SHORT).show();
+                        ToastUtils.showShort(this, "目标ID格式错误: " + trimmed);
                         return null;
                     }
                 }
@@ -330,13 +322,13 @@ public class TaskListActivity extends AppCompatActivity {
             form.setTargetIds(ids);
         } else {
             if (TextUtils.isEmpty(targetIdStr)) {
-                Toast.makeText(this, "请填写目标资源ID", Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, "请填写目标资源ID");
                 return null;
             }
             try {
                 form.setTargetId(Long.parseLong(targetIdStr));
             } catch (NumberFormatException e) {
-                Toast.makeText(this, "目标ID格式错误", Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, "目标ID格式错误");
                 return null;
             }
         }

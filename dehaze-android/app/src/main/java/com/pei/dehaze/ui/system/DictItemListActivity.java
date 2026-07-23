@@ -23,6 +23,9 @@ import com.pei.dehaze.ui.system.adapter.DictItemAdapter;
 import com.pei.dehaze.ui.system.viewmodel.DictItemViewModel;
 import com.pei.dehaze.sdk.model.dict.DictForm;
 import com.pei.dehaze.sdk.model.dict.DictPageVO;
+import com.pei.dehaze.utils.StringUtils;
+
+import java.util.Collections;
 
 public class DictItemListActivity extends AppCompatActivity {
 
@@ -125,7 +128,7 @@ public class DictItemListActivity extends AppCompatActivity {
             }
         });
 
-        dictItemViewModel.getActionResult().observe(this, result -> {
+        dictItemViewModel.getOperationResult().observe(this, result -> {
             if (!TextUtils.isEmpty(result)) {
                 Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
             }
@@ -142,7 +145,7 @@ public class DictItemListActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("确认删除")
                 .setMessage("确认删除字典数据「" + dict.getName() + "」吗？")
-                .setPositiveButton("确认", (dialog, which) -> dictItemViewModel.deleteDict(dict.getId()))
+                .setPositiveButton("确认", (dialog, which) -> dictItemViewModel.deleteDict(Collections.singletonList(dict.getId().longValue())))
                 .setNegativeButton("取消", null)
                 .show();
     }
@@ -180,17 +183,17 @@ public class DictItemListActivity extends AppCompatActivity {
 
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
                 .setOnClickListener(v -> {
-                    String name = getText(etName);
+                    String name = StringUtils.getText(etName);
                     if (TextUtils.isEmpty(name)) {
                         Toast.makeText(this, "字典标签不能为空", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    String value = getText(etValue);
+                    String value = StringUtils.getText(etValue);
                     if (TextUtils.isEmpty(value)) {
                         Toast.makeText(this, "字典键值不能为空", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    String sortStr = getText(etSort);
+                    String sortStr = StringUtils.getText(etSort);
                     if (TextUtils.isEmpty(sortStr)) {
                         Toast.makeText(this, "排序不能为空", Toast.LENGTH_SHORT).show();
                         return;
@@ -204,7 +207,7 @@ public class DictItemListActivity extends AppCompatActivity {
                     form.setValue(value);
                     form.setSort(Integer.parseInt(sortStr));
                     form.setStatus(rgStatus.getCheckedRadioButtonId() == R.id.rb_status_enable ? 1 : 0);
-                    form.setRemark(getText(etRemark));
+                    form.setRemark(StringUtils.getText(etRemark));
                     form.setTypeCode(typeCode);
 
                     if (isEdit) {
@@ -216,9 +219,5 @@ public class DictItemListActivity extends AppCompatActivity {
                 }));
 
         dialog.show();
-    }
-
-    private String getText(TextInputEditText et) {
-        return et.getText() != null ? et.getText().toString().trim() : "";
     }
 }

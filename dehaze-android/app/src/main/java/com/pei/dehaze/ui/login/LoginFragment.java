@@ -7,9 +7,6 @@ import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CompoundButton;
-import android.widget.ImageView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,6 +21,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentLoginBinding;
 import com.pei.dehaze.sdk.utils.TokenManager;
+import com.pei.dehaze.utils.ToastUtils;
 
 import timber.log.Timber;
 
@@ -82,7 +80,7 @@ public class LoginFragment extends Fragment {
 
             @Override
             public void afterTextChanged(Editable s) {
-                loginViewModel.setUsername(s.toString());
+                loginViewModel.getUsername().setValue(s.toString());
             }
         });
         
@@ -97,7 +95,7 @@ public class LoginFragment extends Fragment {
 
             @Override
             public void afterTextChanged(Editable s) {
-                loginViewModel.setPassword(s.toString());
+                loginViewModel.getPassword().setValue(s.toString());
             }
         });
         
@@ -112,7 +110,7 @@ public class LoginFragment extends Fragment {
 
             @Override
             public void afterTextChanged(Editable s) {
-                loginViewModel.setCaptchaCode(s.toString());
+                loginViewModel.getCaptchaCode().setValue(s.toString());
             }
         });
         
@@ -129,7 +127,7 @@ public class LoginFragment extends Fragment {
         // 观察登录错误信息
         loginViewModel.getLoginError().observe(getViewLifecycleOwner(), error -> {
             if (!error.isEmpty()) {
-                Toast.makeText(getContext(), error, Toast.LENGTH_LONG).show();
+                ToastUtils.showLong(getContext(), error);
             }
         });
         
@@ -137,7 +135,7 @@ public class LoginFragment extends Fragment {
         loginViewModel.getLoginSuccess().observe(getViewLifecycleOwner(), success -> {
             if (success) {
                 // 登录成功，跳转到主界面
-                Toast.makeText(getContext(), "登录成功", Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(getContext(), "登录成功");
                 // 使用 popUpTo 和 inclusive 清除登录页面的回退栈
                 Navigation.findNavController(requireView()).navigate(
                     R.id.action_login_to_dashboard,

@@ -16,6 +16,8 @@ import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
 
+import java.util.Objects;
+
 /**
  * 预测日志列表适配器，供 Dashboard 最近活动和 Presentation 历史画廊共用。
  */
@@ -42,14 +44,10 @@ public class PredictionLogAdapter extends ListAdapter<PredictionLogVO, Predictio
                 @Override
                 public boolean areContentsTheSame(@NonNull PredictionLogVO oldItem,
                                                   @NonNull PredictionLogVO newItem) {
-                    return equals(oldItem.getPredUrl(), newItem.getPredUrl())
-                            && equals(oldItem.getOriginUrl(), newItem.getOriginUrl())
-                            && equals(oldItem.getTime(), newItem.getTime())
-                            && equals(oldItem.getCreateTime(), newItem.getCreateTime());
-                }
-
-                private boolean equals(Object a, Object b) {
-                    return a == null ? b == null : a.equals(b);
+                    return Objects.equals(oldItem.getPredUrl(), newItem.getPredUrl())
+                            && Objects.equals(oldItem.getOriginUrl(), newItem.getOriginUrl())
+                            && Objects.equals(oldItem.getTime(), newItem.getTime())
+                            && Objects.equals(oldItem.getCreateTime(), newItem.getCreateTime());
                 }
             };
 

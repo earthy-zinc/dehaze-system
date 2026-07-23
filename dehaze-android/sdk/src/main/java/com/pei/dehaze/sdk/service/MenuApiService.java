@@ -4,7 +4,6 @@ import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.model.menu.MenuForm;
 import com.pei.dehaze.sdk.model.menu.MenuVO;
-import com.pei.dehaze.sdk.model.menu.RouteVO;
 import retrofit2.Call;
 import retrofit2.http.*;
 
@@ -15,9 +14,6 @@ import java.util.List;
  */
 public interface MenuApiService {
     // Menu APIs
-    @GET("/api/v1/menus/routes")
-    Call<Result<List<RouteVO>>> getRoutes();
-
     @GET("/api/v1/menus")
     Call<Result<List<MenuVO>>> getMenuList(@Query("keywords") String keywords);
 

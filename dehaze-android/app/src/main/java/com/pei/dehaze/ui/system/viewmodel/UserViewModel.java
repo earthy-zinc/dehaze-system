@@ -2,9 +2,11 @@ package com.pei.dehaze.ui.system.viewmodel;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 
 import com.pei.dehaze.repository.UserRepository;
+import com.pei.dehaze.ui.common.BaseViewModel;
+import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.user.UserForm;
@@ -15,15 +17,12 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-public class UserViewModel extends ViewModel {
+public class UserViewModel extends BaseViewModel {
 
     private final UserRepository userRepository;
 
     private final MutableLiveData<List<UserPageVO>> userList = new MutableLiveData<>();
     private final MutableLiveData<Long> total = new MutableLiveData<>(0L);
-    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
-    private final MutableLiveData<String> error = new MutableLiveData<>();
-    private final MutableLiveData<String> operationResult = new MutableLiveData<>();
     private final MutableLiveData<UserForm> userForm = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> deptOptions = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> roleOptions = new MutableLiveData<>();
@@ -31,7 +30,7 @@ public class UserViewModel extends ViewModel {
     private int pageNum = 1;
     private int pageSize = 10;
     private String keywords = "";
-    private Integer status;
+    private EnableStatus status;
     private Integer deptId;
     private String startTime;
     private String endTime;
@@ -41,114 +40,45 @@ public class UserViewModel extends ViewModel {
     }
 
     public void loadUsers() {
-        loading.setValue(true);
         UserQuery query = buildQuery();
-        userRepository.getUsers(query, new UserRepository.Callback<PageResult<UserPageVO>>() {
-            @Override
-            public void onSuccess(PageResult<UserPageVO> data) {
-                userList.postValue(data.getList() != null ? data.getList() : new ArrayList<>());
-                total.postValue(data.getTotal());
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        userRepository.getUsers(query, withLoading(data -> {
+            userList.postValue(data.getList());
+            total.postValue(data.getTotal());
+        }));
     }
 
     public void loadUserForm(int userId) {
-        loading.setValue(true);
-        userRepository.getUserForm(userId, new UserRepository.Callback<UserForm>() {
-            @Override
-            public void onSuccess(UserForm data) {
-                userForm.postValue(data);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        userRepository.getUserForm(userId, withLoading(userForm::postValue));
     }
 
     public void addUser(UserForm form) {
-        loading.setValue(true);
-        userRepository.addUser(form, new UserRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("新增用户成功");
-                loading.postValue(false);
-                loadUsers();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        userRepository.addUser(form, withLoading(v -> {
+            operationResult.postValue("新增用户成功");
+            loadUsers();
+        }));
     }
 
     public void updateUser(int id, UserForm form) {
-        loading.setValue(true);
-        userRepository.updateUser(id, form, new UserRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("修改用户成功");
-                loading.postValue(false);
-                loadUsers();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        userRepository.updateUser(id, form, withLoading(v -> {
+            operationResult.postValue("修改用户成功");
+            loadUsers();
+        }));
     }
 
-    public void deleteUsers(String ids) {
-        loading.setValue(true);
-        userRepository.deleteUsers(ids, new UserRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("删除用户成功");
-                loading.postValue(false);
-                loadUsers();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+    public void deleteUsers(List<Long> ids) {
+        userRepository.deleteUsers(ids, withLoading(v -> {
+            operationResult.postValue("删除用户成功");
+            loadUsers();
+        }));
     }
 
     public void updateUserPassword(int id, String password) {
-        loading.setValue(true);
-        userRepository.updateUserPassword(id, password, new UserRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("重置密码成功");
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        userRepository.updateUserPassword(id, password,
+                withLoading(v -> operationResult.postValue("重置密码成功")));
     }
 
-    public void updateUserStatus(long id, int status) {
-        userRepository.updateUserStatus(id, status, new UserRepository.Callback<Void>() {
+    public void updateUserStatus(long id, EnableStatus status) {
+        userRepository.updateUserStatus(id, status, new RepositoryCallback<Void>() {
             @Override
             public void onSuccess(Void data) {
                 operationResult.postValue("状态切换成功");
@@ -163,60 +93,25 @@ public class UserViewModel extends ViewModel {
     }
 
     public void downloadTemplate(String filePath) {
-        loading.setValue(true);
-        userRepository.downloadTemplate(filePath, new UserRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("模板下载成功:" + filePath);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        userRepository.downloadTemplate(filePath,
+                withLoading(v -> operationResult.postValue("模板下载成功:" + filePath)));
     }
 
     public void exportUsers(String filePath) {
-        loading.setValue(true);
         UserQuery query = buildQuery();
-        userRepository.exportUsers(query, filePath, new UserRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("导出成功:" + filePath);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        userRepository.exportUsers(query, filePath,
+                withLoading(v -> operationResult.postValue("导出成功:" + filePath)));
     }
 
     public void importUsers(int deptId, File file) {
-        loading.setValue(true);
-        userRepository.importUsers(deptId, file, new UserRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                operationResult.postValue("导入成功");
-                loading.postValue(false);
-                loadUsers();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        userRepository.importUsers(deptId, file, withLoading(v -> {
+            operationResult.postValue("导入成功");
+            loadUsers();
+        }));
     }
 
     public void loadDeptOptions() {
-        userRepository.getDeptOptions(new UserRepository.Callback<List<Option>>() {
+        userRepository.getDeptOptions(new RepositoryCallback<List<Option>>() {
             @Override
             public void onSuccess(List<Option> data) {
                 deptOptions.postValue(data);
@@ -230,7 +125,7 @@ public class UserViewModel extends ViewModel {
     }
 
     public void loadRoleOptions() {
-        userRepository.getRoleOptions(new UserRepository.Callback<List<Option>>() {
+        userRepository.getRoleOptions(new RepositoryCallback<List<Option>>() {
             @Override
             public void onSuccess(List<Option> data) {
                 roleOptions.postValue(data);
@@ -255,7 +150,7 @@ public class UserViewModel extends ViewModel {
         return query;
     }
 
-    public void setQueryParams(String keywords, Integer status, Integer deptId, String startTime, String endTime) {
+    public void setQueryParams(String keywords, EnableStatus status, Integer deptId, String startTime, String endTime) {
         this.keywords = keywords == null ? "" : keywords;
         this.status = status;
         this.deptId = deptId;
@@ -319,18 +214,6 @@ public class UserViewModel extends ViewModel {
         return total;
     }
 
-    public LiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public LiveData<String> getError() {
-        return error;
-    }
-
-    public LiveData<String> getOperationResult() {
-        return operationResult;
-    }
-
     public LiveData<UserForm> getUserForm() {
         return userForm;
     }
@@ -341,14 +224,6 @@ public class UserViewModel extends ViewModel {
 
     public LiveData<List<Option>> getRoleOptions() {
         return roleOptions;
-    }
-
-    public void clearError() {
-        error.setValue(null);
-    }
-
-    public void clearOperationResult() {
-        operationResult.setValue(null);
     }
 
     public void clearUserForm() {

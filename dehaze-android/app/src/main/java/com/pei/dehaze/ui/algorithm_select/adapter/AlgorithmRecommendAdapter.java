@@ -16,6 +16,8 @@ import com.google.android.material.chip.Chip;
 import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmRecommendVO;
 
+import java.util.Objects;
+
 public class AlgorithmRecommendAdapter extends ListAdapter<AlgorithmRecommendVO, AlgorithmRecommendAdapter.RecommendViewHolder> {
 
     public interface OnRecommendActionListener {
@@ -38,12 +40,8 @@ public class AlgorithmRecommendAdapter extends ListAdapter<AlgorithmRecommendVO,
         @Override
         public boolean areContentsTheSame(@NonNull AlgorithmRecommendVO oldItem, @NonNull AlgorithmRecommendVO newItem) {
             return oldItem.getScore() == newItem.getScore() &&
-                    equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName()) &&
-                    equals(oldItem.getReason(), newItem.getReason());
-        }
-
-        private boolean equals(Object a, Object b) {
-            return a == null ? b == null : a.equals(b);
+                    Objects.equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName()) &&
+                    Objects.equals(oldItem.getReason(), newItem.getReason());
         }
     };
 

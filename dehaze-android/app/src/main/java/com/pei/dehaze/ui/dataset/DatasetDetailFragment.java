@@ -29,10 +29,12 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
 import com.pei.dehaze.sdk.model.dataset.DatasetStatistics;
 import com.pei.dehaze.sdk.model.dataset.ImageItem;
+import com.pei.dehaze.sdk.model.dataset.ImageType;
 import com.pei.dehaze.sdk.model.dataset.ImageUrl;
 import com.pei.dehaze.utils.ToastUtils;
 
@@ -214,15 +216,13 @@ public class DatasetDetailFragment extends Fragment {
 
         toggleImageType.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked) return;
-            String type;
+            ImageType type;
             if (checkedId == R.id.btn_type_clear) {
-                type = "clear";
+                type = ImageType.CLEAR;
             } else if (checkedId == R.id.btn_type_hazy) {
-                type = "hazy";
-            } else if (checkedId == R.id.btn_type_depth) {
-                type = "depth";
-            } else if (checkedId == R.id.btn_type_segment) {
-                type = "segment";
+                type = ImageType.HAZY;
+            } else if (checkedId == R.id.btn_type_trans) {
+                type = ImageType.TRANS;
             } else {
                 return;
             }
@@ -306,7 +306,7 @@ public class DatasetDetailFragment extends Fragment {
 
     private void bindDatasetInfo(Dataset dataset) {
         if (dataset == null) return;
-        tvDatasetName.setText(safe(dataset.getName()));
+        tvDatasetName.setText(StringUtils.safe(dataset.getName()));
         Integer status = dataset.getStatus();
         if (status != null && status == 1) {
             tvDatasetStatus.setText("启用");
@@ -315,9 +315,9 @@ public class DatasetDetailFragment extends Fragment {
             tvDatasetStatus.setText("禁用");
             tvDatasetStatus.setTextColor(Color.parseColor("#9E9E9E"));
         }
-        tvDatasetType.setText("类型: " + safe(dataset.getType()));
-        tvDatasetPath.setText("路径: " + safe(dataset.getPath()));
-        tvDatasetDescription.setText(safe(dataset.getDescription()));
+        tvDatasetType.setText("类型: " + StringUtils.safe(dataset.getType()));
+        tvDatasetPath.setText("路径: " + StringUtils.safe(dataset.getPath()));
+        tvDatasetDescription.setText(StringUtils.safe(dataset.getDescription()));
 
         DatasetStatistics stats = dataset.getStatistics();
         if (stats != null) {
@@ -380,7 +380,7 @@ public class DatasetDetailFragment extends Fragment {
         View formView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_dataset_item_form, null);
         TextInputEditText etName = formView.findViewById(R.id.et_name);
         if (isEdit) {
-            etName.setText(safe(existing.getName()));
+            etName.setText(StringUtils.safe(existing.getName()));
         }
 
         new AlertDialog.Builder(requireContext())
@@ -405,7 +405,7 @@ public class DatasetDetailFragment extends Fragment {
     private void confirmDeleteItem(ImageItem item) {
         new AlertDialog.Builder(requireContext())
                 .setTitle("删除确认")
-                .setMessage("确认删除数据项「" + safe(item.getName()) + "」吗？此操作将同时删除关联的图片文件，且不可恢复！")
+                .setMessage("确认删除数据项「" + StringUtils.safe(item.getName()) + "」吗？此操作将同时删除关联的图片文件，且不可恢复！")
                 .setPositiveButton("确定", (dialog, which) -> {
                     if (item.getId() != null) {
                         viewModel.deleteItem(item.getId());
@@ -469,16 +469,14 @@ public class DatasetDetailFragment extends Fragment {
                 .setTitle("上传图片")
                 .setView(formView)
                 .setPositiveButton("上传", (dialog, which) -> {
-                    String type;
+                    ImageType type;
                     int checkedId = rgType.getCheckedRadioButtonId();
                     if (checkedId == R.id.rb_type_clear) {
-                        type = "clear";
-                    } else if (checkedId == R.id.rb_type_depth) {
-                        type = "depth";
-                    } else if (checkedId == R.id.rb_type_segment) {
-                        type = "segment";
+                        type = ImageType.CLEAR;
+                    } else if (checkedId == R.id.rb_type_trans) {
+                        type = ImageType.TRANS;
                     } else {
-                        type = "hazy";
+                        type = ImageType.HAZY;
                     }
                     String description = etDescription.getText() != null
                             ? etDescription.getText().toString().trim() : "";
@@ -534,7 +532,4 @@ public class DatasetDetailFragment extends Fragment {
                 .show();
     }
 
-    private String safe(String s) {
-        return s == null ? "" : s;
-    }
 }

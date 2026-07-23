@@ -2,49 +2,34 @@ package com.pei.dehaze.ui.system.viewmodel;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 
 import com.pei.dehaze.repository.MenuRepository;
+import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.menu.MenuForm;
 import com.pei.dehaze.sdk.model.menu.MenuVO;
 
 import java.util.List;
 
-public class MenuViewModel extends ViewModel {
+public class MenuViewModel extends BaseViewModel {
 
     private final MenuRepository menuRepository;
 
     private final MutableLiveData<List<MenuVO>> menuList = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> menuOptions = new MutableLiveData<>();
     private final MutableLiveData<MenuForm> menuForm = new MutableLiveData<>();
-    private final MutableLiveData<Boolean> loading = new MutableLiveData<>();
-    private final MutableLiveData<String> error = new MutableLiveData<>();
-    private final MutableLiveData<String> actionResult = new MutableLiveData<>();
 
     public MenuViewModel() {
         menuRepository = new MenuRepository();
     }
 
     public void loadMenus(String keywords) {
-        loading.setValue(true);
-        menuRepository.getMenuList(keywords, new MenuRepository.MenuListCallback() {
-            @Override
-            public void onSuccess(List<MenuVO> menus) {
-                menuList.postValue(menus);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        menuRepository.getMenuList(keywords, withLoading(menuList::postValue));
     }
 
     public void loadMenuOptions() {
-        menuRepository.getMenuOptions(new MenuRepository.MenuOptionsCallback() {
+        menuRepository.getMenuOptions(new RepositoryCallback<List<Option>>() {
             @Override
             public void onSuccess(List<Option> options) {
                 menuOptions.postValue(options);
@@ -58,74 +43,28 @@ public class MenuViewModel extends ViewModel {
     }
 
     public void loadMenuForm(long id) {
-        loading.setValue(true);
-        menuRepository.getMenuForm(id, new MenuRepository.MenuFormCallback() {
-            @Override
-            public void onSuccess(MenuForm form) {
-                menuForm.postValue(form);
-                loading.postValue(false);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        menuRepository.getMenuForm(id, withLoading(menuForm::postValue));
     }
 
     public void addMenu(MenuForm form) {
-        loading.setValue(true);
-        menuRepository.addMenu(form, new MenuRepository.MenuActionCallback() {
-            @Override
-            public void onSuccess() {
-                actionResult.postValue("新增菜单成功");
-                loading.postValue(false);
-                loadMenus(null);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        menuRepository.addMenu(form, withLoading(v -> {
+            operationResult.postValue("新增菜单成功");
+            loadMenus(null);
+        }));
     }
 
     public void updateMenu(long id, MenuForm form) {
-        loading.setValue(true);
-        menuRepository.updateMenu(id, form, new MenuRepository.MenuActionCallback() {
-            @Override
-            public void onSuccess() {
-                actionResult.postValue("修改菜单成功");
-                loading.postValue(false);
-                loadMenus(null);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        menuRepository.updateMenu(id, form, withLoading(v -> {
+            operationResult.postValue("修改菜单成功");
+            loadMenus(null);
+        }));
     }
 
     public void deleteMenu(long id) {
-        loading.setValue(true);
-        menuRepository.deleteMenu(id, new MenuRepository.MenuActionCallback() {
-            @Override
-            public void onSuccess() {
-                actionResult.postValue("删除菜单成功");
-                loading.postValue(false);
-                loadMenus(null);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                error.postValue(errorMessage);
-                loading.postValue(false);
-            }
-        });
+        menuRepository.deleteMenu(id, withLoading(v -> {
+            operationResult.postValue("删除菜单成功");
+            loadMenus(null);
+        }));
     }
 
     public LiveData<List<MenuVO>> getMenuList() {
@@ -138,17 +77,5 @@ public class MenuViewModel extends ViewModel {
 
     public LiveData<MenuForm> getMenuForm() {
         return menuForm;
-    }
-
-    public LiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public LiveData<String> getError() {
-        return error;
-    }
-
-    public LiveData<String> getActionResult() {
-        return actionResult;
     }
 }

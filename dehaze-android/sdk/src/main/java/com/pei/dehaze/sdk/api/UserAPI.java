@@ -2,6 +2,7 @@ package com.pei.dehaze.sdk.api;
 
 import com.pei.dehaze.sdk.ApiCallback;
 import com.pei.dehaze.sdk.DehazeSDK;
+import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.model.user.*;
@@ -9,14 +10,16 @@ import okhttp3.ResponseBody;
 import retrofit2.Call;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户相关API接口封装
  */
 public class UserAPI {
+
+    private UserAPI() {
+    }
 
     /**
      * 登录成功后获取用户信息（昵称、头像、权限集合和角色集合）
@@ -42,7 +45,7 @@ public class UserAPI {
                         queryParams.getPageNum(),
                         queryParams.getPageSize(),
                         queryParams.getKeywords(),
-                        queryParams.getStatus(),
+                        queryParams.getStatus() != null ? queryParams.getStatus().getValue() : null,
                         queryParams.getDeptId(),
                         queryParams.getStartTime(),
                         queryParams.getEndTime()
@@ -102,8 +105,9 @@ public class UserAPI {
      * @param ids      用户ID列表
      * @param callback 回调函数
      */
-    public static void deleteByIds(String ids, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getUserApiService().deleteUsers(ids);
+    public static void deleteByIds(List<Long> ids, ApiCallback<Void> callback) {
+        String joined = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+        Call<Result<Void>> call = DehazeSDK.getInstance().getUserApiService().deleteUsers(joined);
         call.enqueue(callback);
     }
 
@@ -111,11 +115,11 @@ public class UserAPI {
      * 修改用户状态
      *
      * @param id       用户ID
-     * @param status   状态(1:启用;0:禁用)
+     * @param status   状态
      * @param callback 回调函数
      */
-    public static void updateStatus(long id, int status, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getUserApiService().updateUserStatus(id, status);
+    public static void updateStatus(long id, EnableStatus status, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getUserApiService().updateUserStatus(id, status.getValue());
         call.enqueue(callback);
     }
 
@@ -127,27 +131,7 @@ public class UserAPI {
      */
     public static void downloadTemplate(String filePath, ApiCallback<Void> callback) {
         Call<ResponseBody> call = DehazeSDK.getInstance().getUserApiService().downloadUserTemplate("application/octet-stream");
-        call.enqueue(new retrofit2.Callback<ResponseBody>() {
-            @Override
-            public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    // 保存文件
-                    try {
-                        saveToFile(response.body(), filePath);
-                        callback.onSuccess(null);
-                    } catch (Exception e) {
-                        callback.onFailure(new com.pei.dehaze.sdk.network.ApiException(-1, "文件保存失败: " + e.getMessage()));
-                    }
-                } else {
-                    callback.onFailure(new com.pei.dehaze.sdk.network.ApiException(response.code(), response.message()));
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                callback.onFailure(new com.pei.dehaze.sdk.network.ApiException(-1, t.getMessage()));
-            }
-        });
+        FileAPI.enqueueFileDownload(call, filePath, callback);
     }
 
     /**
@@ -160,29 +144,10 @@ public class UserAPI {
     public static void export(UserQuery queryParams, String filePath, ApiCallback<Void> callback) {
         Call<ResponseBody> call = DehazeSDK.getInstance().getUserApiService()
                 .exportUsers(queryParams.getPageNum(), queryParams.getPageSize(), queryParams.getKeywords(),
-                        queryParams.getStatus(), queryParams.getDeptId(), queryParams.getStartTime(), queryParams.getEndTime(),
+                        queryParams.getStatus() != null ? queryParams.getStatus().getValue() : null,
+                        queryParams.getDeptId(), queryParams.getStartTime(), queryParams.getEndTime(),
                         "application/octet-stream");
-        call.enqueue(new retrofit2.Callback<ResponseBody>() {
-            @Override
-            public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    // 保存文件
-                    try {
-                        saveToFile(response.body(), filePath);
-                        callback.onSuccess(null);
-                    } catch (Exception e) {
-                        callback.onFailure(new com.pei.dehaze.sdk.network.ApiException(-1, "文件保存失败: " + e.getMessage()));
-                    }
-                } else {
-                    callback.onFailure(new com.pei.dehaze.sdk.network.ApiException(response.code(), response.message()));
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                callback.onFailure(new com.pei.dehaze.sdk.network.ApiException(-1, t.getMessage()));
-            }
-        });
+        FileAPI.enqueueFileDownload(call, filePath, callback);
     }
 
     /**
@@ -199,34 +164,5 @@ public class UserAPI {
 
         Call<Result<Void>> call = DehazeSDK.getInstance().getUserApiService().importUsers(deptId, body);
         call.enqueue(callback);
-    }
-
-    /**
-     * 保存响应体到文件
-     *
-     * @param body     响应体
-     * @param filePath 文件路径
-     * @throws Exception 保存异常
-     */
-    private static void saveToFile(ResponseBody body, String filePath) throws Exception {
-        InputStream inputStream = null;
-        OutputStream outputStream = null;
-        try {
-            inputStream = body.byteStream();
-            outputStream = new FileOutputStream(filePath);
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, bytesRead);
-            }
-            outputStream.flush();
-        } finally {
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (outputStream != null) {
-                outputStream.close();
-            }
-        }
     }
 }

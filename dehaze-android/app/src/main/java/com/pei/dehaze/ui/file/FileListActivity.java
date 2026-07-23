@@ -8,7 +8,6 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -27,10 +26,10 @@ import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.ui.file.adapter.FileAdapter;
 import com.pei.dehaze.ui.file.viewmodel.FileViewModel;
+import com.pei.dehaze.utils.UriUtils;
+import com.pei.dehaze.utils.ViewUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -207,62 +206,23 @@ public class FileListActivity extends AppCompatActivity {
     }
 
     private void bindDetail(View view, FileInfo file) {
-        setText(view, R.id.tv_detail_id, String.valueOf(file.getId()));
-        setText(view, R.id.tv_detail_name, file.getName());
-        setText(view, R.id.tv_detail_type, file.getType());
-        setText(view, R.id.tv_detail_size, file.getSize());
-        setText(view, R.id.tv_detail_path, file.getPath());
-        setText(view, R.id.tv_detail_object_name, file.getObjectName());
-        setText(view, R.id.tv_detail_md5, file.getMd5());
-        setText(view, R.id.tv_detail_url, file.getUrl());
-        setText(view, R.id.tv_detail_create_time, file.getCreateTime());
-    }
-
-    private void setText(View root, int viewId, String text) {
-        TextView tv = root.findViewById(viewId);
-        if (tv != null) {
-            tv.setText(text != null ? text : "");
-        }
+        ViewUtils.setText(view, R.id.tv_detail_id, String.valueOf(file.getId()));
+        ViewUtils.setText(view, R.id.tv_detail_name, file.getName());
+        ViewUtils.setText(view, R.id.tv_detail_type, file.getType());
+        ViewUtils.setText(view, R.id.tv_detail_size, file.getSize());
+        ViewUtils.setText(view, R.id.tv_detail_path, file.getPath());
+        ViewUtils.setText(view, R.id.tv_detail_object_name, file.getObjectName());
+        ViewUtils.setText(view, R.id.tv_detail_md5, file.getMd5());
+        ViewUtils.setText(view, R.id.tv_detail_url, file.getUrl());
+        ViewUtils.setText(view, R.id.tv_detail_create_time, file.getCreateTime());
     }
 
     private void uploadFile(Uri uri) {
-        try {
-            InputStream is = getContentResolver().openInputStream(uri);
-            if (is == null) {
-                Toast.makeText(this, "无法读取所选文件", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            String fileName = getFileNameFromUri(uri);
-            File tempFile = new File(getCacheDir(), fileName != null ? fileName : "upload_temp");
-            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[4096];
-                int len;
-                while ((len = is.read(buffer)) != -1) {
-                    fos.write(buffer, 0, len);
-                }
-            }
-            is.close();
-            fileViewModel.uploadFile(tempFile);
-        } catch (Exception e) {
-            Toast.makeText(this, "读取文件失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        File tempFile = UriUtils.copyToCache(this, uri);
+        if (tempFile == null) {
+            Toast.makeText(this, "无法读取所选文件", Toast.LENGTH_SHORT).show();
+            return;
         }
-    }
-
-    private String getFileNameFromUri(Uri uri) {
-        String result = null;
-        if ("content".equals(uri.getScheme())) {
-            try (android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
-                if (cursor != null && cursor.moveToFirst()) {
-                    int idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
-                    if (idx >= 0) {
-                        result = cursor.getString(idx);
-                    }
-                }
-            }
-        }
-        if (result == null) {
-            result = uri.getLastPathSegment();
-        }
-        return result;
+        fileViewModel.uploadFile(tempFile);
     }
 }

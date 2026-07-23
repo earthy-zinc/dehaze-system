@@ -11,7 +11,7 @@ import lombok.Data;
 @Data
 public class TaskCreateForm {
     /** 导出类型 */
-    private String type;
+    private TaskType type;
     /** 单个导出目标ID（type为dataset_export或item_download时使用） */
     private Long targetId;
     /** 批量导出目标ID列表（type为batch_download或custom_export时使用） */

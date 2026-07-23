@@ -1,5 +1,6 @@
 package com.pei.dehaze.sdk.model.user;
 
+import com.pei.dehaze.sdk.model.EnableStatus;
 import lombok.Data;
 import java.util.Date;
 
@@ -54,9 +55,9 @@ public class UserPageVO {
     private String roleNames;
     
     /**
-     * 用户状态(1:启用;0:禁用)
+     * 用户状态
      */
-    private Integer status;
+    private EnableStatus status;
     
     /**
      * 用户名

@@ -15,12 +15,15 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.dataset.ImageItem;
+import com.pei.dehaze.sdk.model.dataset.ImageType;
 import com.pei.dehaze.sdk.model.dataset.ImageUrl;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -50,8 +53,8 @@ public class DatasetImageAdapter extends ListAdapter<ImageItem, DatasetImageAdap
     private boolean selectionMode = false;
     private final Set<Long> selectedIds = new HashSet<>();
 
-    /** 当前展示的图片类型（clear/hazy/depth/segment） */
-    private String currentImageType = "hazy";
+    /** 当前展示的图片类型（clear/hazy/trans） */
+    private ImageType currentImageType = ImageType.HAZY;
 
     private static final DiffUtil.ItemCallback<ImageItem> DIFF_CALLBACK = new DiffUtil.ItemCallback<ImageItem>() {
         @Override
@@ -61,14 +64,10 @@ public class DatasetImageAdapter extends ListAdapter<ImageItem, DatasetImageAdap
 
         @Override
         public boolean areContentsTheSame(@NonNull ImageItem oldItem, @NonNull ImageItem newItem) {
-            return equals(oldItem.getId(), newItem.getId())
-                    && equals(oldItem.getName(), newItem.getName())
-                    && equals(oldItem.getImageCount(), newItem.getImageCount())
-                    && equals(oldItem.getHazyImages(), newItem.getHazyImages());
-        }
-
-        private boolean equals(Object a, Object b) {
-            return a == null ? b == null : a.equals(b);
+            return Objects.equals(oldItem.getId(), newItem.getId())
+                    && Objects.equals(oldItem.getName(), newItem.getName())
+                    && Objects.equals(oldItem.getImageCount(), newItem.getImageCount())
+                    && Objects.equals(oldItem.getHazyImages(), newItem.getHazyImages());
         }
     };
 
@@ -84,12 +83,12 @@ public class DatasetImageAdapter extends ListAdapter<ImageItem, DatasetImageAdap
         this.selectionListener = listener;
     }
 
-    public void setCurrentImageType(String type) {
+    public void setCurrentImageType(ImageType type) {
         this.currentImageType = type;
         notifyItemRangeChanged(0, getItemCount());
     }
 
-    public String getCurrentImageType() {
+    public ImageType getCurrentImageType() {
         return currentImageType;
     }
 
@@ -141,7 +140,7 @@ public class DatasetImageAdapter extends ListAdapter<ImageItem, DatasetImageAdap
         List<ImageUrl> urls = item.getHazyImages();
         if (urls == null || urls.isEmpty()) return null;
         for (ImageUrl url : urls) {
-            if (currentImageType.equalsIgnoreCase(url.getType())) {
+            if (currentImageType.getValue().equalsIgnoreCase(url.getType())) {
                 return url;
             }
         }
@@ -189,10 +188,10 @@ public class DatasetImageAdapter extends ListAdapter<ImageItem, DatasetImageAdap
         }
 
         void bind(ImageItem item) {
-            tvName.setText(safe(item.getName()));
+            tvName.setText(StringUtils.safe(item.getName()));
             Integer count = item.getImageCount();
             tvImageCount.setText(count != null ? count + " 张图片" : "0 张图片");
-            tvImageType.setText("类型: " + currentImageType);
+            tvImageType.setText("类型: " + currentImageType.getValue());
 
             ImageUrl imageUrl = findImageUrl(item);
             if (imageUrl != null && imageUrl.getUrl() != null && !imageUrl.getUrl().isEmpty()) {
@@ -270,8 +269,5 @@ public class DatasetImageAdapter extends ListAdapter<ImageItem, DatasetImageAdap
             notifySelectionChanged();
         }
 
-        private String safe(String s) {
-            return s == null ? "" : s;
-        }
     }
 }

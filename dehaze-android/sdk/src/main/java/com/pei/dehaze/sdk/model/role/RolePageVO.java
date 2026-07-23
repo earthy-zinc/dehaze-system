@@ -1,5 +1,6 @@
 package com.pei.dehaze.sdk.model.role;
 
+import com.pei.dehaze.sdk.model.EnableStatus;
 import lombok.Data;
 import java.util.Date;
 
@@ -31,7 +32,7 @@ public class RolePageVO {
     /**
      * 角色状态
      */
-    private Integer status;
+    private EnableStatus status;
     
     /**
      * 创建时间

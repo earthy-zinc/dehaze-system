@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
@@ -227,8 +228,11 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         favoriteAdapter.setOnFavoriteActionListener(new AlgorithmFavoriteAdapter.OnFavoriteActionListener() {
             @Override
             public void onUse(FavoriteVO vo) {
-                ToastUtils.showShort(AlgorithmSelectActivity.this,
-                        "已选择算法：" + vo.getAlgorithmName());
+                Intent data = new Intent();
+                data.putExtra(EXTRA_ALGORITHM_ID, vo.getAlgorithmId());
+                data.putExtra(EXTRA_ALGORITHM_NAME, vo.getAlgorithmName());
+                setResult(Activity.RESULT_OK, data);
+                finish();
             }
 
             @Override

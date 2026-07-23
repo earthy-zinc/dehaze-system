@@ -29,13 +29,14 @@ import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.file.FileInfo;
+import com.pei.dehaze.sdk.model.prediction.DehazeParams;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
+import com.pei.dehaze.utils.UriUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -110,7 +111,7 @@ public class CompareActivity extends AppCompatActivity {
             return;
         }
         Option option = algorithmOptions.get(pos);
-        Long id = safeParseLong(option.getValue());
+        Long id = option.getValue() == null ? null : StringUtils.safeParseLong(option.getValue(), 0L);
         if (id == null) {
             ToastUtils.showShort(this, "算法ID无效");
             return;
@@ -133,12 +134,20 @@ public class CompareActivity extends AppCompatActivity {
             ToastUtils.showShort(this, "请至少添加一个算法");
             return;
         }
-        if (selectedAlgorithmIds.size() == 1) {
-            Long id = selectedAlgorithmIds.iterator().next();
-            compareViewModel.predict(id, null);
-        } else {
-            compareViewModel.predictMultiple(new ArrayList<>(selectedAlgorithmIds), null);
-        }
+        new AlertDialog.Builder(this)
+                .setTitle("确认对比")
+                .setMessage("确认开始对比处理？将使用 " + selectedAlgorithmIds.size() + " 个算法处理图片。")
+                .setPositiveButton("确定", (d, w) -> {
+                    DehazeParams params = new DehazeParams();
+                    if (selectedAlgorithmIds.size() == 1) {
+                        Long id = selectedAlgorithmIds.iterator().next();
+                        compareViewModel.predict(id, params);
+                    } else {
+                        compareViewModel.predictMultiple(new ArrayList<>(selectedAlgorithmIds), params);
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void initViewModel() {
@@ -200,7 +209,7 @@ public class CompareActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void onMultiPredictionResults(java.util.Map<String, PredResult> results) {
+    private void onMultiPredictionResults(java.util.Map<Long, PredResult> results) {
         if (results == null) return;
         int success = results.size();
         int total = selectedAlgorithmIds.size();
@@ -212,53 +221,12 @@ public class CompareActivity extends AppCompatActivity {
     }
 
     private void uploadImage(Uri uri) {
-        try {
-            InputStream is = getContentResolver().openInputStream(uri);
-            if (is == null) {
-                ToastUtils.showShort(this, "无法读取所选图片");
-                return;
-            }
-            String fileName = getFileNameFromUri(uri);
-            File tempFile = new File(getCacheDir(), fileName != null ? fileName : "upload_temp");
-            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[4096];
-                int len;
-                while ((len = is.read(buffer)) != -1) {
-                    fos.write(buffer, 0, len);
-                }
-            }
-            is.close();
-            compareViewModel.uploadImage(tempFile);
-        } catch (Exception e) {
-            ToastUtils.showShort(this, "读取图片失败: " + e.getMessage());
+        File tempFile = UriUtils.copyToCache(this, uri);
+        if (tempFile == null) {
+            ToastUtils.showShort(this, "无法读取所选图片");
+            return;
         }
-    }
-
-    private String getFileNameFromUri(Uri uri) {
-        String result = null;
-        if ("content".equals(uri.getScheme())) {
-            try (android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
-                if (cursor != null && cursor.moveToFirst()) {
-                    int idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
-                    if (idx >= 0) {
-                        result = cursor.getString(idx);
-                    }
-                }
-            }
-        }
-        if (result == null) {
-            result = uri.getLastPathSegment();
-        }
-        return result;
-    }
-
-    private Long safeParseLong(String value) {
-        if (value == null) return null;
-        try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        compareViewModel.uploadImage(tempFile);
     }
 
     private static class ComparePagerAdapter extends FragmentStateAdapter {

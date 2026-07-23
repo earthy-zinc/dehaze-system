@@ -24,6 +24,9 @@ import com.pei.dehaze.ui.system.adapter.DictTypeAdapter;
 import com.pei.dehaze.ui.system.viewmodel.DictTypeViewModel;
 import com.pei.dehaze.sdk.model.dict.DictTypeForm;
 import com.pei.dehaze.sdk.model.dict.DictTypePageVO;
+import com.pei.dehaze.utils.StringUtils;
+
+import java.util.Collections;
 
 public class DictTypeListActivity extends AppCompatActivity {
 
@@ -92,7 +95,7 @@ public class DictTypeListActivity extends AppCompatActivity {
         MaterialButton btnNext = findViewById(R.id.btn_next);
 
         btnSearch.setOnClickListener(v -> {
-            String keywords = etSearch.getText() != null ? etSearch.getText().toString().trim() : "";
+            String keywords = StringUtils.getText(etSearch);
             dictTypeViewModel.loadDictTypes(keywords.isEmpty() ? null : keywords);
         });
 
@@ -143,7 +146,7 @@ public class DictTypeListActivity extends AppCompatActivity {
             }
         });
 
-        dictTypeViewModel.getActionResult().observe(this, result -> {
+        dictTypeViewModel.getOperationResult().observe(this, result -> {
             if (!TextUtils.isEmpty(result)) {
                 Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
             }
@@ -160,7 +163,7 @@ public class DictTypeListActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("确认删除")
                 .setMessage("确认删除字典类型「" + dictType.getName() + "」吗？")
-                .setPositiveButton("确认", (dialog, which) -> dictTypeViewModel.deleteDictType(dictType.getId()))
+                .setPositiveButton("确认", (dialog, which) -> dictTypeViewModel.deleteDictType(Collections.singletonList((long) dictType.getId())))
                 .setNegativeButton("取消", null)
                 .show();
     }
@@ -194,12 +197,12 @@ public class DictTypeListActivity extends AppCompatActivity {
 
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
                 .setOnClickListener(v -> {
-                    String name = getText(etName);
+                    String name = StringUtils.getText(etName);
                     if (TextUtils.isEmpty(name)) {
                         Toast.makeText(this, "字典名称不能为空", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    String code = getText(etCode);
+                    String code = StringUtils.getText(etCode);
                     if (TextUtils.isEmpty(code)) {
                         Toast.makeText(this, "字典编码不能为空", Toast.LENGTH_SHORT).show();
                         return;
@@ -211,7 +214,7 @@ public class DictTypeListActivity extends AppCompatActivity {
                     }
                     form.setName(name);
                     form.setCode(code);
-                    form.setRemark(getText(etRemark));
+                    form.setRemark(StringUtils.getText(etRemark));
                     form.setStatus(rgStatus.getCheckedRadioButtonId() == R.id.rb_status_enable ? 1 : 0);
 
                     if (isEdit) {
@@ -223,9 +226,5 @@ public class DictTypeListActivity extends AppCompatActivity {
                 }));
 
         dialog.show();
-    }
-
-    private String getText(TextInputEditText et) {
-        return et.getText() != null ? et.getText().toString().trim() : "";
     }
 }

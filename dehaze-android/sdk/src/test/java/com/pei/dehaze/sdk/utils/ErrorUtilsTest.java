@@ -30,17 +30,4 @@ public class ErrorUtilsTest {
         String networkMessage = ErrorUtils.parseError(networkError);
         assertEquals("应该返回网络错误消息", "网络连接失败，请检查网络设置", networkMessage);
     }
-    
-    @Test
-    public void testGetErrorMessageByCode() {
-        // 测试根据错误码获取消息
-        String notFoundMessage = ErrorUtils.getErrorMessageByCode(404);
-        assertEquals("应该返回资源不存在消息", "请求的资源不存在", notFoundMessage);
-        
-        String serverErrorMessage = ErrorUtils.getErrorMessageByCode(500);
-        assertEquals("应该返回服务器错误消息", "服务器内部错误", serverErrorMessage);
-        
-        String unknownMessage = ErrorUtils.getErrorMessageByCode(999);
-        assertEquals("应该返回默认HTTP错误消息", "HTTP错误 999", unknownMessage);
-    }
 }

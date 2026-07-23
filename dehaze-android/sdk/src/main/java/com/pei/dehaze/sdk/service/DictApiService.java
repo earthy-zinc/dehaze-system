@@ -1,13 +1,10 @@
 package com.pei.dehaze.sdk.service;
 
-import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.model.dict.*;
 import retrofit2.Call;
 import retrofit2.http.*;
-
-import java.util.List;
 
 /**
  * 字典相关API服务接口
@@ -30,9 +27,6 @@ public interface DictApiService {
 
     @DELETE("/api/v1/dict/types/{ids}")
     Call<Result<Void>> deleteDictTypes(@Path("ids") String ids);
-
-    @GET("/api/v1/dict/{id}/options")
-    Call<Result<List<Option>>> getDictOptions(@Path("id") long id);
 
     @GET("/api/v1/dict/page")
     Call<Result<PageResult<DictPageVO>>> getDictPage(@Query("pageNum") int pageNum,

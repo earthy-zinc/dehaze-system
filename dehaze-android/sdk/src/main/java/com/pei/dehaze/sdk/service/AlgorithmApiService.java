@@ -35,7 +35,7 @@ public interface AlgorithmApiService {
     Call<Result<List<AlgorithmFavorite>>> listFavorites();
 
     @GET("/api/v1/algorithms/{id}")
-    Call<Result<Algorithm>> getAlgorithmInfo(@Path("id") int id);
+    Call<Result<Algorithm>> getAlgorithmInfo(@Path("id") long id);
 
     @POST("/api/v1/algorithms/{id}/favorite")
     Call<Result<Void>> toggleFavorite(@Path("id") long id);
@@ -44,7 +44,7 @@ public interface AlgorithmApiService {
     Call<Result<Void>> addAlgorithm(@Body Algorithm data);
 
     @PUT("/api/v1/algorithms/{id}")
-    Call<Result<Void>> updateAlgorithm(@Path("id") int id, @Body Algorithm data);
+    Call<Result<Void>> updateAlgorithm(@Path("id") long id, @Body Algorithm data);
 
     @PUT("/api/v1/algorithms/{id}/status")
     Call<Result<Void>> updateAlgorithmStatus(@Path("id") long id, @Body AlgorithmStatusForm data);

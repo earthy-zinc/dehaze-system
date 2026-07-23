@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.chip.Chip;
 import com.pei.dehaze.R;
+import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
 
@@ -35,7 +36,7 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
     }
 
     public interface OnSelectionChangedListener {
-        void onSelectionChanged(Set<Integer> selectedIds);
+        void onSelectionChanged(Set<Long> selectedIds);
     }
 
     private static class Node {
@@ -57,7 +58,7 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
     private OnAlgorithmActionListener actionListener;
     private OnSelectionChangedListener selectionListener;
     private boolean selectionMode = false;
-    private final Set<Integer> selectedIds = new HashSet<>();
+    private final Set<Long> selectedIds = new HashSet<>();
 
     public void setOnAlgorithmActionListener(OnAlgorithmActionListener listener) {
         this.actionListener = listener;
@@ -98,7 +99,7 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
     }
 
     private void rebuildAndNotify() {
-        Map<Integer, Boolean> expandStates = new HashMap<>();
+        Map<Long, Boolean> expandStates = new HashMap<>();
         for (Node node : flatNodes) {
             expandStates.put(node.algorithm.getId(), node.expanded);
         }
@@ -109,7 +110,7 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
         notifyDataSetChanged();
     }
 
-    private void flattenWithState(Algorithm algorithm, int depth, boolean parentExpanded, Map<Integer, Boolean> expandStates) {
+    private void flattenWithState(Algorithm algorithm, int depth, boolean parentExpanded, Map<Long, Boolean> expandStates) {
         if (!parentExpanded) {
             return;
         }
@@ -150,7 +151,7 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
         notifySelectionChanged();
     }
 
-    public Set<Integer> getSelectedIds() {
+    public Set<Long> getSelectedIds() {
         return new HashSet<>(selectedIds);
     }
 
@@ -159,7 +160,7 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
             return "";
         }
         StringBuilder sb = new StringBuilder();
-        for (Integer id : selectedIds) {
+        for (Long id : selectedIds) {
             if (sb.length() > 0) {
                 sb.append(",");
             }
@@ -228,17 +229,16 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
 
         void bind(Node node) {
             Algorithm algorithm = node.algorithm;
-            tvName.setText(safe(algorithm.getName()));
-            tvType.setText(safe(algorithm.getType()));
-            tvDescription.setText(safe(algorithm.getDescription()));
-            tvParams.setText(safe(algorithm.getParams()));
-            tvFlops.setText(safe(algorithm.getFlops()));
+            tvName.setText(StringUtils.safe(algorithm.getName()));
+            tvType.setText(StringUtils.safe(algorithm.getType()));
+            tvDescription.setText(StringUtils.safe(algorithm.getDescription()));
+            tvParams.setText(StringUtils.safe(algorithm.getParams()));
+            tvFlops.setText(StringUtils.safe(algorithm.getFlops()));
 
             // 状态 Chip
-            int statusValue = algorithm.getStatus() != null ? algorithm.getStatus() : 0;
-            AlgorithmStatus status = AlgorithmStatus.fromValue(statusValue);
+            AlgorithmStatus status = algorithm.getStatus() != null ? algorithm.getStatus() : AlgorithmStatus.DRAFT;
             chipStatus.setText(status.getLabel());
-            chipStatus.setChipBackgroundColor(ColorStateList.valueOf(statusColor(statusValue)));
+            chipStatus.setChipBackgroundColor(ColorStateList.valueOf(statusColor(status)));
             chipStatus.setTextColor(0xFFFFFFFF);
 
             int padding = node.depth * 32;
@@ -319,19 +319,17 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
             tvFavorite.setVisibility(View.GONE);
         }
 
-        private String safe(String s) {
-            return s == null ? "" : s;
-        }
     }
 
-    private int statusColor(int status) {
+    private int statusColor(AlgorithmStatus status) {
+        if (status == null) return 0xFF9E9E9E;
         switch (status) {
-            case 0: return 0xFF9E9E9E; // 草稿-灰
-            case 1: return 0xFFFF9800; // 测试中-橙
-            case 2: return 0xFF2196F3; // 待审核-蓝
-            case 3: return 0xFF4CAF50; // 已发布-绿
-            case 4: return 0xFFE53935; // 已停用-红
-            case 5: return 0xFF607D8B; // 已归档-深灰
+            case DRAFT: return 0xFF9E9E9E; // 草稿-灰
+            case TESTING: return 0xFFFF9800; // 测试中-橙
+            case PENDING_AUDIT: return 0xFF2196F3; // 待审核-蓝
+            case PUBLISHED: return 0xFF4CAF50; // 已发布-绿
+            case DISABLED: return 0xFFE53935; // 已停用-红
+            case ARCHIVED: return 0xFF607D8B; // 已归档-深灰
             default: return 0xFF9E9E9E;
         }
     }

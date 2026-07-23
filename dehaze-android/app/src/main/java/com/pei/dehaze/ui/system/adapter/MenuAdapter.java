@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.model.menu.MenuType;
 import com.pei.dehaze.sdk.model.menu.MenuVO;
 
 import java.util.ArrayList;
@@ -165,15 +166,8 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.MenuViewHolder
             });
         }
 
-        private String typeLabel(String type) {
-            if (type == null) return "";
-            switch (type) {
-                case "CATALOG": return "目录";
-                case "MENU": return "菜单";
-                case "BUTTON": return "按钮";
-                case "EXTLINK": return "外链";
-                default: return type;
-            }
+        private String typeLabel(MenuType type) {
+            return type != null ? type.getLabel() : "";
         }
     }
 }

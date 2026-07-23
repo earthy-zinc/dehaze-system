@@ -7,5 +7,5 @@ import lombok.Data;
  */
 @Data
 public class AlgorithmStatusForm {
-    private Integer status;
+    private AlgorithmStatus status;
 }

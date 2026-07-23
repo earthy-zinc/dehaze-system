@@ -24,10 +24,10 @@ public class InputHistoryForm {
     private String algorithmParams;
     /** 处理耗时（毫秒） */
     private Integer processingTime;
-    /** 处理状态（1=成功，2=失败，3=处理中） */
-    private Integer status = 3;
-    /** 图片来源（upload/camera/sample） */
-    private String inputSource;
+    /** 处理状态 */
+    private ProcessStatus status = ProcessStatus.PROCESSING;
+    /** 图片来源 */
+    private InputSource inputSource;
     /** 是否收藏 */
     private Integer isFavorite = 0;
 }
