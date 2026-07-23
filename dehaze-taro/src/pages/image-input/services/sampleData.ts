@@ -95,9 +95,3 @@ export const fetchSampleImages = async (
     return [];
   }
 };
-
-/**
- * 获取所有样例图片（不分分类）
- */
-export const fetchAllSampleImages = (): Promise<SampleImage[]> =>
-  fetchSampleImages("all");

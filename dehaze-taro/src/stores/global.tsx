@@ -5,7 +5,6 @@ import { type UserInfo, type LoginData, UserAPI } from "dehaze-sdk-js";
 // 全局状态类型定义
 interface GlobalState {
   auth: AuthState;
-  system: SystemState;
   ui: UIState;
 }
 
@@ -18,11 +17,6 @@ interface AuthState {
   loading: boolean;
 }
 
-interface SystemState {
-  selectedDeptId: number | null;
-  cacheExpireTime: Record<string, number>;
-}
-
 interface UIState {
   loading: boolean;
   theme: "light" | "dark";
@@ -32,12 +26,18 @@ interface UIState {
 // Action 类型定义
 type AuthAction =
   | { type: "LOGIN_START" }
-  | { type: "LOGIN_SUCCESS"; payload: { user: UserInfo; token: string } }
+  | {
+      type: "LOGIN_SUCCESS";
+      payload: {
+        user: UserInfo;
+        token: string;
+        permissions: string[];
+        roles: string[];
+      };
+    }
   | { type: "LOGIN_FAILURE" }
   | { type: "LOGOUT" }
   | { type: "UPDATE_USER"; payload: Partial<UserInfo> }
-  | { type: "SET_PERMISSIONS"; payload: string[] }
-  | { type: "SET_ROLES"; payload: string[] }
   | {
       type: "INIT_AUTH_SUCCESS";
       payload: {
@@ -48,17 +48,12 @@ type AuthAction =
       };
     };
 
-type SystemAction =
-  | { type: "SET_SELECTED_DEPT"; payload: number | null }
-  | { type: "CLEAR_CACHE" }
-  | { type: "SET_CACHE_EXPIRE"; payload: { key: string; expireTime: number } };
-
 type UIAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_THEME"; payload: "light" | "dark" }
   | { type: "SET_NETWORK_STATUS"; payload: "online" | "offline" };
 
-type GlobalAction = AuthAction | SystemAction | UIAction;
+type GlobalAction = AuthAction | UIAction;
 
 // Reducer 函数
 const globalReducer = (
@@ -81,6 +76,8 @@ const globalReducer = (
           isAuthenticated: true,
           user: action.payload.user,
           token: action.payload.token,
+          permissions: action.payload.permissions,
+          roles: action.payload.roles,
         },
       };
 
@@ -122,24 +119,6 @@ const globalReducer = (
         },
       };
 
-    case "SET_PERMISSIONS":
-      return {
-        ...state,
-        auth: {
-          ...state.auth,
-          permissions: action.payload,
-        },
-      };
-
-    case "SET_ROLES":
-      return {
-        ...state,
-        auth: {
-          ...state.auth,
-          roles: action.payload,
-        },
-      };
-
     case "INIT_AUTH_SUCCESS":
       return {
         ...state,
@@ -151,36 +130,6 @@ const globalReducer = (
           permissions: action.payload.permissions,
           roles: action.payload.roles,
           loading: false,
-        },
-      };
-
-    case "SET_SELECTED_DEPT":
-      return {
-        ...state,
-        system: {
-          ...state.system,
-          selectedDeptId: action.payload,
-        },
-      };
-
-    case "CLEAR_CACHE":
-      return {
-        ...state,
-        system: {
-          ...state.system,
-          cacheExpireTime: {},
-        },
-      };
-
-    case "SET_CACHE_EXPIRE":
-      return {
-        ...state,
-        system: {
-          ...state.system,
-          cacheExpireTime: {
-            ...state.system.cacheExpireTime,
-            [action.payload.key]: action.payload.expireTime,
-          },
         },
       };
 
@@ -226,10 +175,6 @@ const initialState: GlobalState = {
     roles: [],
     loading: false,
   },
-  system: {
-    selectedDeptId: null,
-    cacheExpireTime: {},
-  },
   ui: {
     loading: false,
     theme: "light",
@@ -270,17 +215,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // 存储到本地
       await storage.setUserInfo(userInfo);
-      await storage.setPermissions(userInfo.perms || []);
+      await storage.setPermissions(userInfo.permissions || []);
       await storage.setRoles(userInfo.roles || []);
 
-      // 更新状态
+      // 一次性更新认证状态（含权限与角色）
       dispatch({
         type: "LOGIN_SUCCESS",
-        payload: { user: userInfo, token },
+        payload: {
+          user: userInfo,
+          token,
+          permissions: userInfo.permissions || [],
+          roles: userInfo.roles || [],
+        },
       });
-
-      dispatch({ type: "SET_PERMISSIONS", payload: userInfo.perms || [] });
-      dispatch({ type: "SET_ROLES", payload: userInfo.roles || [] });
 
       return userInfo;
     } catch (error) {
@@ -298,10 +245,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("登出接口调用失败:", error);
     } finally {
       // 清除本地存储
-      storage.removeToken();
-      await storage.removeItem("userInfo");
-      await storage.removeItem("permissions");
-      await storage.removeItem("roles");
+      storage.clearAuth();
 
       // 更新状态
       dispatch({ type: "LOGOUT" });

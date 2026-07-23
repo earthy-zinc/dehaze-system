@@ -34,6 +34,7 @@ const ImageInputContent: React.FC = () => {
     deleteHistoryRecord,
     clearHistory,
     selectHistoryRecord,
+    reprocessHistoryRecord,
     cancelSelection,
     confirmAndNavigate,
   } = useImageInput();
@@ -106,6 +107,7 @@ const ImageInputContent: React.FC = () => {
             records={state.historyRecords}
             loading={state.historyLoading}
             onSelect={selectHistoryRecord}
+            onReprocess={reprocessHistoryRecord}
             onDelete={deleteHistoryRecord}
             onClear={clearHistory}
           />

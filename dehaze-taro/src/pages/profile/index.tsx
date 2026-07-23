@@ -2,9 +2,11 @@ import React, { useCallback } from "react";
 import { View, Text, ScrollView, Image } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag } from "@taroify/core";
+import { confirmDialog } from "@/utils/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { isTabBarPage } from "@/config/menu";
 import PageLayout from "@/layout";
+import { getErrorMessage } from "@/utils/error";
 import "./index.less";
 
 // ==================== 常量定义 ====================
@@ -48,25 +50,23 @@ const ProfilePage: React.FC = () => {
   }, []);
 
   /** 退出登录（二次确认） */
-  const handleLogout = useCallback(() => {
-    Taro.showModal({
+  const handleLogout = useCallback(async () => {
+    const confirmed = await confirmDialog({
       title: "退出登录",
       content: "确认退出当前账号吗？",
       confirmColor: "#ff4d4f",
-      success: async (res) => {
-        if (!res.confirm) return;
-        try {
-          await logout();
-          Taro.showToast({ title: "已退出登录", icon: "success" });
-          // 延迟跳转，让用户看到提示。使用 reLaunch 清空页面栈
-          setTimeout(() => {
-            Taro.reLaunch({ url: "/pages/login/index" });
-          }, 800);
-        } catch (err: any) {
-          Taro.showToast({ title: err?.message || "退出失败", icon: "none" });
-        }
-      },
     });
+    if (!confirmed) return;
+    try {
+      await logout();
+      Taro.showToast({ title: "已退出登录", icon: "success" });
+      // 延迟跳转，让用户看到提示。使用 reLaunch 清空页面栈
+      setTimeout(() => {
+        Taro.reLaunch({ url: "/pages/login/index" });
+      }, 800);
+    } catch (err: unknown) {
+      Taro.showToast({ title: getErrorMessage(err, "退出失败"), icon: "none" });
+    }
   }, [logout]);
 
   /** 获取头像首字母（用于无头像时的占位） */

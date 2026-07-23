@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View } from "@tarojs/components";
+import type { BaseEventOrig } from "@tarojs/components";
 import Taro, {
   useLoad,
   usePullDownRefresh,
@@ -12,31 +13,16 @@ import {
   Loading,
   Empty,
   SwipeCell,
-  Tag,
   Cell,
 } from "@taroify/core";
+import { confirmDialog } from "@/utils/dialog";
+import { formatDateTime } from "@/utils/format";
 import { ArrowLeft, Add, Edit, Delete, Lock } from "@taroify/icons";
 import { useRoleManagement } from "@/hooks/useRoleManagement";
 import { usePermission } from "@/hooks/usePermission";
 import ErrorState from "@/components/common/ErrorState";
+import StatusTag from "@/components/common/StatusTag";
 import "./index.scss";
-
-// 日期格式化函数
-const formatDateTime = (date: Date | string | undefined): string => {
-  if (!date) return "";
-
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (Number.isNaN(d.getTime())) return "";
-
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-  const seconds = String(d.getSeconds()).padStart(2, "0");
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-};
 
 const RoleListPage: React.FC = () => {
   const {
@@ -78,14 +64,17 @@ const RoleListPage: React.FC = () => {
   });
 
   // 搜索处理
-  const handleSearch = async (event: any) => {
-    const value = event.detail?.value || "";
+  const performSearch = async (value: string) => {
     setSearchKeyword(value);
     if (value.trim()) {
       await searchRoles(value.trim());
     } else {
       await resetQuery();
     }
+  };
+
+  const handleSearch = async (event: BaseEventOrig<{ value: string }>) => {
+    await performSearch(event.detail?.value || "");
   };
 
   // 新增角色
@@ -112,18 +101,15 @@ const RoleListPage: React.FC = () => {
   };
 
   // 删除确认
-  const handleDelete = (role: any) => {
-    Taro.showModal({
+  const handleDelete = async (role: any) => {
+    const confirmed = await confirmDialog({
       title: "确认删除",
       content: `确定要删除角色 "${role.name}" 吗？此操作不可恢复。`,
       confirmText: "删除",
       cancelText: "取消",
-      success: (res) => {
-        if (res.confirm) {
-          confirmDelete(role);
-        }
-      },
     });
+    if (!confirmed) return;
+    await confirmDelete(role);
   };
 
   // 确认删除
@@ -134,19 +120,6 @@ const RoleListPage: React.FC = () => {
     } catch (error) {
       // 错误已在 hook 中处理
     }
-  };
-
-  // 获取状态标签
-  const getStatusTag = (status?: number) => {
-    return status === 1 ? (
-      <Tag color="success" size="small">
-        启用
-      </Tag>
-    ) : (
-      <Tag color="danger" size="small">
-        禁用
-      </Tag>
-    );
   };
 
   return (
@@ -167,7 +140,7 @@ const RoleListPage: React.FC = () => {
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.detail.value)}
           onSearch={handleSearch}
-          onClear={() => handleSearch("")}
+          onClear={() => performSearch("")}
         />
       </View>
 
@@ -232,7 +205,7 @@ const RoleListPage: React.FC = () => {
                   <View className="role-name">{role.name}</View>
                   <View className="role-code">编码: {role.code}</View>
                 </View>
-                <View className="role-status">{getStatusTag(role.status)}</View>
+                <View className="role-status"><StatusTag status={role.status} /></View>
                 <View className="role-meta">
                   <View className="meta-item">
                     <View className="meta-label">排序:</View>
@@ -241,7 +214,7 @@ const RoleListPage: React.FC = () => {
                 </View>
                 {role.createTime && (
                   <View className="role-time">
-                    创建时间: {formatDateTime(role.createTime)}
+                    创建时间: {formatDateTime(role.createTime, true)}
                   </View>
                 )}
               </Cell>

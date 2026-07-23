@@ -13,6 +13,8 @@ import {
   useEffect,
 } from "react";
 import Taro from "@tarojs/taro";
+import { confirmDialog } from "@/utils/dialog";
+import { getErrorMessage } from "@/utils/error";
 import type { InputHistoryVO } from "dehaze-sdk-js";
 import {
   InputMethod,
@@ -29,6 +31,14 @@ import {
 } from "../services/history";
 import { fetchSampleImages } from "../services/sampleData";
 
+/** 从 URL 中提取文件名（去除查询参数），失败时返回 fallback */
+function extractFilenameFromUrl(url: string, fallback = "历史图片"): string {
+  if (!url) return fallback;
+  const path = url.split("?")[0];
+  const segments = path.split("/");
+  return segments[segments.length - 1] || fallback;
+}
+
 // 状态类型定义
 interface ImageInputState {
   // 当前输入方式
@@ -38,7 +48,6 @@ interface ImageInputState {
   currentImage: ImageData | null;
 
   // 上传状态
-  uploadProgress: number;
   uploadLoading: boolean;
   uploadError: string | null;
 
@@ -59,7 +68,6 @@ interface ImageInputState {
 type ImageInputAction =
   | { type: "SET_ACTIVE_METHOD"; payload: InputMethod }
   | { type: "SET_CURRENT_IMAGE"; payload: ImageData | null }
-  | { type: "SET_UPLOAD_PROGRESS"; payload: number }
   | { type: "SET_UPLOAD_LOADING"; payload: boolean }
   | { type: "SET_UPLOAD_ERROR"; payload: string | null }
   | { type: "SET_SAMPLE_CATEGORY"; payload: SampleCategory }
@@ -76,7 +84,6 @@ type ImageInputAction =
 const initialState: ImageInputState = {
   activeMethod: "upload",
   currentImage: null,
-  uploadProgress: 0,
   uploadLoading: false,
   uploadError: null,
   sampleCategory: "all",
@@ -97,8 +104,6 @@ function imageInputReducer(
       return { ...state, activeMethod: action.payload };
     case "SET_CURRENT_IMAGE":
       return { ...state, currentImage: action.payload };
-    case "SET_UPLOAD_PROGRESS":
-      return { ...state, uploadProgress: action.payload };
     case "SET_UPLOAD_LOADING":
       return { ...state, uploadLoading: action.payload };
     case "SET_UPLOAD_ERROR":
@@ -177,14 +182,14 @@ export function useImageInput() {
   }, []);
 
   // 统一错误处理
-  const handleError = useCallback((error: any, fallbackMsg: string) => {
+  const handleError = useCallback((error: unknown, fallbackMsg: string) => {
     if (isImageInputError(error) && error.code === ErrorCodes.USER_CANCEL) {
       // 用户取消，不提示
       return;
     }
     const msg = isImageInputError(error)
       ? error.message
-      : error?.message || fallbackMsg;
+      : getErrorMessage(error, fallbackMsg);
     dispatch({ type: "SET_UPLOAD_ERROR", payload: msg });
     Taro.showToast({ title: msg, icon: "none" });
   }, []);
@@ -202,7 +207,7 @@ export function useImageInput() {
         );
         setCurrentImage(imageData);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleError(error, "选择图片失败");
     } finally {
       dispatch({ type: "SET_UPLOAD_LOADING", payload: false });
@@ -227,7 +232,7 @@ export function useImageInput() {
       const tempFile = await ImageInputService.takePhoto();
       const imageData = await ImageInputService.processImageFile(tempFile);
       setCurrentImage(imageData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleError(error, "拍照失败");
     } finally {
       dispatch({ type: "SET_UPLOAD_LOADING", payload: false });
@@ -251,7 +256,7 @@ export function useImageInput() {
         });
 
         Taro.showToast({ title: "样例图片加载成功", icon: "success" });
-      } catch (error: any) {
+      } catch (error: unknown) {
         handleError(error, "加载失败");
       } finally {
         dispatch({ type: "SET_SAMPLE_LOADING", payload: false });
@@ -272,7 +277,7 @@ export function useImageInput() {
       const images = await fetchSampleImages(category);
       dispatch({ type: "SET_SAMPLE_IMAGES", payload: images });
       loadedSampleCategoryRef.current = category;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("加载样例图片失败:", error);
       dispatch({ type: "SET_SAMPLE_IMAGES", payload: [] });
     } finally {
@@ -290,23 +295,6 @@ export function useImageInput() {
     }
   }, [state.sampleCategory, state.activeMethod, loadSampleImages]);
 
-  // 切换到样例 tab 时首次加载
-  useEffect(() => {
-    if (
-      state.activeMethod === "sample" &&
-      state.sampleImages.length === 0 &&
-      !state.sampleLoading
-    ) {
-      loadSampleImages(state.sampleCategory);
-    }
-  }, [
-    state.activeMethod,
-    state.sampleImages.length,
-    state.sampleLoading,
-    state.sampleCategory,
-    loadSampleImages,
-  ]);
-
   // 获取当前分类的样例图片（从 state 读取）
   const getSampleImages = useCallback(
     (category: SampleCategory): SampleImage[] => {
@@ -322,7 +310,7 @@ export function useImageInput() {
       dispatch({ type: "SET_HISTORY_LOADING", payload: true });
       const { list } = await getHistoryPage();
       dispatch({ type: "SET_HISTORY_RECORDS", payload: list });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("加载历史记录失败:", error);
       dispatch({ type: "SET_HISTORY_RECORDS", payload: [] });
     }
@@ -334,25 +322,24 @@ export function useImageInput() {
       await deleteHistoryRecord(id);
       dispatch({ type: "DELETE_HISTORY_RECORD", payload: id });
       Taro.showToast({ title: "已删除", icon: "success" });
-    } catch (error) {
+    } catch (error: unknown) {
       Taro.showToast({ title: "删除失败", icon: "none" });
     }
   }, []);
 
   // 清空历史记录
   const clearHistory = useCallback(async () => {
+    const confirmed = await confirmDialog({
+      title: "确认清空",
+      content: "确定要清空所有历史记录吗？",
+      confirmColor: "#ef4444",
+    });
+    if (!confirmed) return;
     try {
-      const res = await Taro.showModal({
-        title: "确认清空",
-        content: "确定要清空所有历史记录吗？",
-        confirmColor: "#ef4444",
-      });
-      if (res.confirm) {
-        await clearAllHistory();
-        dispatch({ type: "CLEAR_HISTORY" });
-        Taro.showToast({ title: "已清空", icon: "success" });
-      }
-    } catch (error) {
+      await clearAllHistory();
+      dispatch({ type: "CLEAR_HISTORY" });
+      Taro.showToast({ title: "已清空", icon: "success" });
+    } catch (error: unknown) {
       Taro.showToast({ title: "清空失败", icon: "none" });
     }
   }, []);
@@ -362,10 +349,7 @@ export function useImageInput() {
     (record: InputHistoryVO) => {
       // 从历史记录加载原图（后端 VO 未返回尺寸/大小，仅传递 URL 与名称）
       const url = record.originalImageUrl || "";
-      // 从 URL 中提取文件名
-      const path = url.split("?")[0];
-      const segments = path.split("/");
-      const filename = segments[segments.length - 1] || "历史图片";
+      const filename = extractFilenameFromUrl(url);
       setCurrentImage({
         url,
         path: url,
@@ -378,9 +362,26 @@ export function useImageInput() {
     [setCurrentImage]
   );
 
-  // 显示/隐藏预览
-  const setPreviewVisible = useCallback((visible: boolean) => {
-    dispatch({ type: "SET_PREVIEW_VISIBLE", payload: visible });
+  // 重新处理历史记录（设计文档：历史记录 → 更换算法 → 重新处理）
+  const reprocessHistoryRecord = useCallback((record: InputHistoryVO) => {
+    const url = record.originalImageUrl || "";
+    if (!url) {
+      Taro.showToast({ title: "原图地址缺失", icon: "none" });
+      return;
+    }
+    const filename = extractFilenameFromUrl(url);
+    Taro.setStorageSync(
+      "current_image",
+      JSON.stringify({
+        url,
+        path: url,
+        width: 0,
+        height: 0,
+        size: 0,
+        name: filename,
+      })
+    );
+    Taro.navigateTo({ url: "/pages/algorithm-select/index" });
   }, []);
 
   // 取消选择
@@ -405,11 +406,6 @@ export function useImageInput() {
     });
   }, [state.currentImage]);
 
-  // 重置状态
-  const resetState = useCallback(() => {
-    dispatch({ type: "RESET_STATE" });
-  }, []);
-
   return {
     state,
     // Actions
@@ -419,15 +415,13 @@ export function useImageInput() {
     takePhoto,
     selectSampleImage,
     setSampleCategory,
-    loadSampleImages,
     getSampleImages,
     loadHistory,
     deleteHistoryRecord: deleteHistoryRecordHandler,
     clearHistory,
     selectHistoryRecord,
-    setPreviewVisible,
+    reprocessHistoryRecord,
     cancelSelection,
     confirmAndNavigate,
-    resetState,
   };
 }

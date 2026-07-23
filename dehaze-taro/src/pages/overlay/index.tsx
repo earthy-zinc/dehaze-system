@@ -1,22 +1,24 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, Image, ScrollView } from "@tarojs/components";
+import type { BaseEventOrig } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import { ArrowLeft } from "@taroify/icons";
+import CompareNavbar from "@/components/compare/CompareNavbar";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
 import { loadCompareContext } from "@/components/compare/types";
 import "./index.less";
 
+// Taro 的 BaseEventOrig 类型定义不完整（缺 touches），扩展为触摸事件类型
+type TaroTouchEvent = BaseEventOrig & {
+  touches: Array<{ clientX: number; clientY: number }>;
+};
+
 const OverlayPage: React.FC = () => {
-  const [ctx, setCtx] = useState(loadCompareContext);
+  const [ctx] = useState(loadCompareContext);
   const [sliderPos, setSliderPos] = useState(50);
   // 缓存容器边界信息（跨端兼容：小程序不支持 getBoundingClientRect）
   const containerRectRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
   const isDragging = useRef(false);
-
-  useEffect(() => {
-    setCtx(loadCompareContext());
-  }, []);
 
   const { originImage, result, algorithm } = ctx;
   const hasResult = originImage && result?.resultUrl;
@@ -37,9 +39,9 @@ const OverlayPage: React.FC = () => {
   }, [hasResult]);
 
   // 触摸开始
-  const handleTouchStart = useCallback((e: any) => {
+  const handleTouchStart = useCallback((e: BaseEventOrig) => {
     isDragging.current = true;
-    const touch = e.touches[0];
+    const touch = (e as TaroTouchEvent).touches[0];
     const rect = containerRectRef.current;
     if (rect) {
       const x = touch.clientX - rect.left;
@@ -49,9 +51,9 @@ const OverlayPage: React.FC = () => {
   }, []);
 
   // 触摸移动
-  const handleTouchMove = useCallback((e: any) => {
+  const handleTouchMove = useCallback((e: BaseEventOrig) => {
     if (!isDragging.current) return;
-    const touch = e.touches[0];
+    const touch = (e as TaroTouchEvent).touches[0];
     const rect = containerRectRef.current;
     if (rect) {
       const x = touch.clientX - rect.left;
@@ -68,12 +70,7 @@ const OverlayPage: React.FC = () => {
   return (
     <View className="overlay-page">
       {/* 顶部导航 */}
-      <View className="navbar">
-        <View className="nav-back" onClick={() => Taro.navigateBack()}>
-          <ArrowLeft size="20" color="#333" />
-        </View>
-        <Text className="nav-title">重叠对比</Text>
-      </View>
+      <CompareNavbar title="重叠对比" />
 
       {/* 重叠对比区域 */}
       <ScrollView className="overlay-content" scrollY>

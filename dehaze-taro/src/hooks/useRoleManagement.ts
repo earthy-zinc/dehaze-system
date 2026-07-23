@@ -6,6 +6,7 @@ import type {
   RoleForm,
   OptionType,
 } from "dehaze-sdk-js";
+import { getErrorMessage } from "@/utils/error";
 
 export const useRoleManagement = () => {
   // 状态定义
@@ -32,8 +33,8 @@ export const useRoleManagement = () => {
         setTotal(response.total);
         setQueryParams(query);
         return response;
-      } catch (error: any) {
-        setLoadError(error?.message || "获取角色列表失败，请重试");
+      } catch (error: unknown) {
+        setLoadError(getErrorMessage(error, "获取角色列表失败，请重试"));
         throw error;
       } finally {
         setLoading(false);

@@ -1,79 +1,23 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, Image, ScrollView, Input } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import { ArrowLeft, Search, Star, StarOutlined, Info } from "@taroify/icons";
-import { Popup, Button } from "@taroify/core";
+import { Search, Star, StarOutlined } from "@taroify/icons";
+import CompareNavbar from "@/components/compare/CompareNavbar";
 import { AlgorithmAPI } from "dehaze-sdk-js";
 import type { Algorithm } from "dehaze-sdk-js";
 import EmptyState from "@/components/common/EmptyState";
+import { getErrorMessage } from "@/utils/error";
+import AlgorithmDetailPopup from "./components/AlgorithmDetailPopup";
+import AlgorithmTreeNode from "./components/AlgorithmTreeNode";
+import {
+  PUBLISHED_STATUS,
+  FAVORITE_STORAGE_KEY,
+  getTypeWeight,
+  collectLeafAlgorithms,
+  getStatusInfo,
+  filterTree,
+} from "./utils";
 import "./index.less";
-
-// 算法状态：3=已发布，可选
-const PUBLISHED_STATUS = 3;
-const FAVORITE_STORAGE_KEY = "favorite_algorithms";
-
-// 算法类型推荐权重（数值越高越优先推荐）
-const TYPE_WEIGHT: Record<string, number> = {
-  // 深度学习类
-  cnn: 10,
-  gan: 9,
-  transformer: 10,
-  深度学习: 10,
-  deeplab: 9,
-  // 混合类
-  混合: 7,
-  hybrid: 7,
-  // 传统类
-  传统: 5,
-  dcp: 5,
-  retinex: 5,
-  暗通道: 5,
-};
-
-// 获取算法类型权重
-function getTypeWeight(type: string): number {
-  const lower = (type || "").toLowerCase();
-  for (const key of Object.keys(TYPE_WEIGHT)) {
-    if (lower.includes(key.toLowerCase())) return TYPE_WEIGHT[key];
-  }
-  return 6;
-}
-
-// 递归收集所有叶子算法
-function collectLeafAlgorithms(nodes: Algorithm[]): Algorithm[] {
-  const result: Algorithm[] = [];
-  const walk = (list: Algorithm[]) => {
-    for (const node of list) {
-      if (node.children && node.children.length > 0) {
-        walk(node.children);
-      } else {
-        result.push(node);
-      }
-    }
-  };
-  walk(nodes);
-  return result;
-}
-
-// 状态信息
-function getStatusInfo(status?: number) {
-  switch (status) {
-    case 0:
-      return { label: "草稿", className: "status-draft" };
-    case 1:
-      return { label: "测试中", className: "status-testing" };
-    case 2:
-      return { label: "待审核", className: "status-pending" };
-    case 3:
-      return { label: "已发布", className: "status-published" };
-    case 4:
-      return { label: "已停用", className: "status-disabled" };
-    case 5:
-      return { label: "已归档", className: "status-archived" };
-    default:
-      return { label: "未知", className: "status-unknown" };
-  }
-}
 
 const AlgorithmSelectPage: React.FC = () => {
   const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
@@ -95,8 +39,8 @@ const AlgorithmSelectPage: React.FC = () => {
       // 默认展开第一层分类
       const firstLevelIds = (data || []).map((item) => item.id);
       setExpandedKeys(new Set(firstLevelIds));
-    } catch (error: any) {
-      Taro.showToast({ title: error?.message || "加载算法失败", icon: "none" });
+    } catch (error: unknown) {
+      Taro.showToast({ title: getErrorMessage(error, "加载算法失败"), icon: "none" });
     } finally {
       setLoading(false);
     }
@@ -180,32 +124,9 @@ const AlgorithmSelectPage: React.FC = () => {
     });
   }, []);
 
-  // 递归搜索过滤
-  const filterTree = useCallback(
-    (nodes: Algorithm[], keyword: string): Algorithm[] => {
-      if (!keyword) return nodes;
-      const lower = keyword.toLowerCase();
-      const result: Algorithm[] = [];
-      for (const node of nodes) {
-        const nameMatch = node.name?.toLowerCase().includes(lower);
-        const descMatch = node.description?.toLowerCase().includes(lower);
-        if (node.children && node.children.length > 0) {
-          const filteredChildren = filterTree(node.children, keyword);
-          if (filteredChildren.length > 0 || nameMatch) {
-            result.push({ ...node, children: filteredChildren });
-          }
-        } else if (nameMatch || descMatch) {
-          result.push(node);
-        }
-      }
-      return result;
-    },
-    []
-  );
-
   const filteredAlgorithms = useMemo(() => {
     return filterTree(algorithms, searchKeyword);
-  }, [algorithms, searchKeyword, filterTree]);
+  }, [algorithms, searchKeyword]);
 
   // 选择算法
   const handleSelectAlgorithm = useCallback((algorithm: Algorithm) => {
@@ -281,115 +202,10 @@ const AlgorithmSelectPage: React.FC = () => {
     );
   };
 
-  // 渲染树节点
-  const renderNode = (node: Algorithm, level: number): React.ReactNode => {
-    const hasChildren = node.children && node.children.length > 0;
-    const isExpanded = expandedKeys.has(node.id);
-    const isLeaf = !hasChildren;
-    const isPublished = node.status === PUBLISHED_STATUS;
-    const statusInfo = getStatusInfo(node.status);
-    const isFav = favoriteIds.has(node.id);
-
-    return (
-      <View key={node.id}>
-        <View
-          className={`tree-node level-${level} ${isLeaf ? "leaf" : "branch"} ${isPublished ? "selectable" : ""}`}
-          onClick={() => {
-            if (hasChildren) {
-              toggleExpand(node.id);
-            } else {
-              handleSelectAlgorithm(node);
-            }
-          }}
-        >
-          <View className="node-indent" style={{ width: `${level * 16}px` }} />
-          {hasChildren ? (
-            <View className="expand-icon">
-              <Text>{isExpanded ? "▼" : "▶"}</Text>
-            </View>
-          ) : (
-            <View className="leaf-icon">
-              <Text>⚡</Text>
-            </View>
-          )}
-          <View className="node-content">
-            <View className="node-header">
-              <Text className="node-name">{node.name}</Text>
-              {isLeaf && (
-                <View className={`status-tag ${statusInfo.className}`}>
-                  <Text>{statusInfo.label}</Text>
-                </View>
-              )}
-            </View>
-            {node.description && (
-              <Text className="node-desc">{node.description}</Text>
-            )}
-            {isLeaf && (node.version || node.size || node.flops) && (
-              <View className="node-meta">
-                {node.version && (
-                  <Text className="meta-text">v{node.version}</Text>
-                )}
-                {node.size && <Text className="meta-text">{node.size}</Text>}
-                {node.flops && <Text className="meta-text">{node.flops}</Text>}
-              </View>
-            )}
-            {isLeaf && node.type && (
-              <View className="node-type">
-                <Text className="type-label">{node.type}</Text>
-              </View>
-            )}
-          </View>
-          {/* 叶子节点操作按钮 */}
-          {isLeaf && (
-            <View className="node-actions">
-              <View
-                className="action-icon"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleFavorite(node);
-                }}
-              >
-                {isFav ? (
-                  <Star size="16" color="#f59e0b" />
-                ) : (
-                  <StarOutlined size="16" color="#9ca3af" />
-                )}
-              </View>
-              <View
-                className="action-icon"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDetailAlgorithm(node);
-                }}
-              >
-                <Info size="16" color="#6b7280" />
-              </View>
-              {isPublished && (
-                <View className="select-btn">
-                  <Text>使用</Text>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-        {hasChildren && isExpanded && (
-          <View className="tree-children">
-            {node.children!.map((child) => renderNode(child, level + 1))}
-          </View>
-        )}
-      </View>
-    );
-  };
-
   return (
     <View className="algorithm-select-page">
       {/* 顶部导航 */}
-      <View className="navbar">
-        <View className="nav-back" onClick={() => Taro.navigateBack()}>
-          <ArrowLeft size="20" color="#333" />
-        </View>
-        <Text className="nav-title">选择算法</Text>
-      </View>
+      <CompareNavbar title="选择算法" />
 
       <ScrollView className="main-scroll" scrollY>
         {/* 当前图片预览 */}
@@ -469,108 +285,32 @@ const AlgorithmSelectPage: React.FC = () => {
             />
           ) : (
             <View className="algorithm-tree">
-              {filteredAlgorithms.map((node) => renderNode(node, 0))}
+              {filteredAlgorithms.map((node) => (
+                <AlgorithmTreeNode
+                  key={node.id}
+                  node={node}
+                  level={0}
+                  expandedKeys={expandedKeys}
+                  favoriteIds={favoriteIds}
+                  onToggleExpand={toggleExpand}
+                  onSelect={handleSelectAlgorithm}
+                  onToggleFavorite={toggleFavorite}
+                  onShowDetail={setDetailAlgorithm}
+                />
+              ))}
             </View>
           )}
         </View>
       </ScrollView>
 
       {/* 算法详情弹窗 */}
-      <Popup
-        open={!!detailAlgorithm}
-        placement="bottom"
-        style={{ height: "60%", borderRadius: "16px 16px 0 0" }}
+      <AlgorithmDetailPopup
+        algorithm={detailAlgorithm}
+        isFavorite={detailAlgorithm ? favoriteIds.has(detailAlgorithm.id) : false}
         onClose={() => setDetailAlgorithm(null)}
-      >
-        {detailAlgorithm && (
-          <View className="detail-popup">
-            <View className="detail-header">
-              <Text className="detail-title">算法详情</Text>
-              <View
-                className="detail-close"
-                onClick={() => setDetailAlgorithm(null)}
-              >
-                <Text>✕</Text>
-              </View>
-            </View>
-            <ScrollView className="detail-body" scrollY>
-              <View className="detail-item">
-                <Text className="detail-label">算法名称</Text>
-                <Text className="detail-value">{detailAlgorithm.name}</Text>
-              </View>
-              {detailAlgorithm.type && (
-                <View className="detail-item">
-                  <Text className="detail-label">算法类型</Text>
-                  <Text className="detail-value">{detailAlgorithm.type}</Text>
-                </View>
-              )}
-              {detailAlgorithm.version && (
-                <View className="detail-item">
-                  <Text className="detail-label">版本</Text>
-                  <Text className="detail-value">
-                    {detailAlgorithm.version}
-                  </Text>
-                </View>
-              )}
-              {detailAlgorithm.size && (
-                <View className="detail-item">
-                  <Text className="detail-label">模型大小</Text>
-                  <Text className="detail-value">{detailAlgorithm.size}</Text>
-                </View>
-              )}
-              {detailAlgorithm.flops && (
-                <View className="detail-item">
-                  <Text className="detail-label">计算量</Text>
-                  <Text className="detail-value">{detailAlgorithm.flops}</Text>
-                </View>
-              )}
-              <View className="detail-item">
-                <Text className="detail-label">状态</Text>
-                <View
-                  className={`status-tag ${getStatusInfo(detailAlgorithm.status).className}`}
-                >
-                  <Text>{getStatusInfo(detailAlgorithm.status).label}</Text>
-                </View>
-              </View>
-              {detailAlgorithm.description && (
-                <View className="detail-item detail-desc-item">
-                  <Text className="detail-label">描述</Text>
-                  <Text className="detail-value detail-desc">
-                    {detailAlgorithm.description}
-                  </Text>
-                </View>
-              )}
-              {detailAlgorithm.createTime && (
-                <View className="detail-item">
-                  <Text className="detail-label">创建时间</Text>
-                  <Text className="detail-value">
-                    {detailAlgorithm.createTime}
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-            <View className="detail-footer">
-              <Button
-                variant="outlined"
-                onClick={() => toggleFavorite(detailAlgorithm)}
-              >
-                {favoriteIds.has(detailAlgorithm.id) ? "取消收藏" : "收藏"}
-              </Button>
-              {detailAlgorithm.status === PUBLISHED_STATUS && (
-                <Button
-                  color="primary"
-                  onClick={() => {
-                    setDetailAlgorithm(null);
-                    handleSelectAlgorithm(detailAlgorithm);
-                  }}
-                >
-                  立即使用
-                </Button>
-              )}
-            </View>
-          </View>
-        )}
-      </Popup>
+        onToggleFavorite={toggleFavorite}
+        onSelect={handleSelectAlgorithm}
+      />
     </View>
   );
 };

@@ -1,13 +1,6 @@
 import Taro from "@tarojs/taro";
-import { TOKEN_KEY } from "@/enums/CacheEnum";
-
-const STORAGE_KEYS = {
-  USER_INFO: "userInfo",
-  PERMISSIONS: "permissions",
-  ROLES: "roles",
-  SELECTED_DEPT: "selectedDept",
-  CACHE_EXPIRE: "cacheExpire",
-} as const;
+import { CacheEnum } from "@/enums/CacheEnum";
+import { TOKEN_KEY, type UserInfo } from "dehaze-sdk-js";
 
 // 存储管理类
 class StorageManager {
@@ -88,45 +81,43 @@ class StorageManager {
   }
 
   // 用户信息管理
-  async setUserInfo(userInfo: any): Promise<void> {
-    await this.setItem(STORAGE_KEYS.USER_INFO, userInfo);
+  async setUserInfo(userInfo: UserInfo): Promise<void> {
+    await this.setItem(CacheEnum.USER_INFO, userInfo);
   }
 
-  async getUserInfo(): Promise<any | null> {
-    return this.getItem(STORAGE_KEYS.USER_INFO);
+  async getUserInfo(): Promise<UserInfo | null> {
+    return this.getItem<UserInfo>(CacheEnum.USER_INFO);
   }
 
   // 权限管理
   async setPermissions(permissions: string[]): Promise<void> {
-    await this.setItem(STORAGE_KEYS.PERMISSIONS, permissions);
+    await this.setItem(CacheEnum.PERMISSIONS, permissions);
   }
 
   async getPermissions(): Promise<string[]> {
-    const permissions = await this.getItem<string[]>(STORAGE_KEYS.PERMISSIONS);
+    const permissions = await this.getItem<string[]>(CacheEnum.PERMISSIONS);
     return permissions || [];
   }
 
   // 角色管理
   async setRoles(roles: string[]): Promise<void> {
-    await this.setItem(STORAGE_KEYS.ROLES, roles);
+    await this.setItem(CacheEnum.ROLES, roles);
   }
 
   async getRoles(): Promise<string[]> {
-    const roles = await this.getItem<string[]>(STORAGE_KEYS.ROLES);
+    const roles = await this.getItem<string[]>(CacheEnum.ROLES);
     return roles || [];
   }
 
-  // 部门管理
-  async setSelectedDept(deptId: number | null): Promise<void> {
-    if (deptId) {
-      await this.setItem(STORAGE_KEYS.SELECTED_DEPT, deptId);
-    } else {
-      await this.removeItem(STORAGE_KEYS.SELECTED_DEPT);
-    }
-  }
-
-  async getSelectedDept(): Promise<number | null> {
-    return this.getItem(STORAGE_KEYS.SELECTED_DEPT);
+  /**
+   * 同步清空本地认证信息（token + 用户信息 + 权限 + 角色）
+   * 用于登出/登录失效跳转前，确保下次进入为干净状态
+   */
+  clearAuth(): void {
+    Taro.removeStorageSync(TOKEN_KEY);
+    Taro.removeStorageSync(CacheEnum.USER_INFO);
+    Taro.removeStorageSync(CacheEnum.PERMISSIONS);
+    Taro.removeStorageSync(CacheEnum.ROLES);
   }
 }
 

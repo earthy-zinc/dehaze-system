@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { View, Text, Image, ScrollView, Slider, Canvas } from "@tarojs/components";
+import type { BaseEventOrig } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import { ArrowLeft } from "@taroify/icons";
+import CompareNavbar from "@/components/compare/CompareNavbar";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import { loadCompareContext } from "@/components/compare/types";
 import "./index.less";
@@ -104,7 +105,7 @@ const BUILTIN_PRESETS: { name: string; params: FilterParams }[] = [
 const CUSTOM_PRESETS_KEY = "custom_filter_presets";
 
 const FilterPage: React.FC = () => {
-  const [ctx, setCtx] = useState(loadCompareContext);
+  const [ctx] = useState(loadCompareContext);
   const [params, setParams] = useState<FilterParams>(DEFAULT_PARAMS);
   const [showOrigin, setShowOrigin] = useState(false);
   const [customPresets, setCustomPresets] = useState<
@@ -116,11 +117,8 @@ const FilterPage: React.FC = () => {
     width: 0,
     height: 0,
   });
-  const canvasNodeRef = useRef<any>(null);
-  const canvasCtxRef = useRef<any>(null);
 
   useEffect(() => {
-    setCtx(loadCompareContext());
     // 加载自定义预设
     try {
       const stored = Taro.getStorageSync(CUSTOM_PRESETS_KEY);
@@ -213,9 +211,6 @@ const FilterPage: React.FC = () => {
         canvas.height = canvasDisplaySize.height * dpr;
         ctx2d.scale(dpr, dpr);
 
-        canvasNodeRef.current = canvas;
-        canvasCtxRef.current = ctx2d;
-
         const img = canvas.createImage();
         img.onload = () => {
           ctx2d.clearRect(
@@ -275,7 +270,7 @@ const FilterPage: React.FC = () => {
       title: "保存预设",
       editable: true,
       placeholderText: "请输入预设名称",
-      success: (res: any) => {
+      success: (res: { confirm: boolean; content?: string }) => {
         const name = (res.content || "").trim();
         if (res.confirm && name) {
           const newPreset = { name, params };
@@ -285,7 +280,7 @@ const FilterPage: React.FC = () => {
           Taro.showToast({ title: "预设已保存", icon: "success" });
         }
       },
-    } as any);
+    } as Taro.showModal.Option);
   }, [params, customPresets]);
 
   // 删除自定义预设
@@ -320,12 +315,7 @@ const FilterPage: React.FC = () => {
   return (
     <View className="filter-page">
       {/* 顶部导航 */}
-      <View className="navbar">
-        <View className="nav-back" onClick={() => Taro.navigateBack()}>
-          <ArrowLeft size="20" color="#333" />
-        </View>
-        <Text className="nav-title">滤镜调节</Text>
-      </View>
+      <CompareNavbar title="滤镜调节" />
 
       {!hasResult ? (
         <View className="empty-state">
@@ -420,10 +410,10 @@ const FilterPage: React.FC = () => {
                     value={params[config.key]}
                     step={1}
                     activeColor="#1890ff"
-                    onChanging={(e: any) =>
+                    onChanging={(e: BaseEventOrig<{ value: number }>) =>
                       handleParamChange(config.key, e.detail.value)
                     }
-                    onChange={(e: any) =>
+                    onChange={(e: BaseEventOrig<{ value: number }>) =>
                       handleParamChange(config.key, e.detail.value)
                     }
                   />

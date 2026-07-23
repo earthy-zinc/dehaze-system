@@ -3,8 +3,8 @@ import { View, Image, Text } from "@tarojs/components";
 import {
   getImageTypeLabel,
   getImageTypeBadgeClass,
-  formatHazeLevel,
 } from "@/pages/dataset/services/imageUtils";
+import { formatFileSize, formatHazeLevel } from "@/utils/format";
 import "./ImageCard.less";
 
 export interface ImageCardProps {
@@ -38,13 +38,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
   const typeBadgeClass = getImageTypeBadgeClass(imageType);
   const hazeLevelLabel = formatHazeLevel(hazeLevel);
 
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return "-";
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  };
-
   return (
     <View className={`image-card ${className}`} onClick={onClick}>
       <View className="image-wrapper">
@@ -72,8 +65,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
         )}
         {tags && (
           <View className="image-tags">
-            {tags.split(",").map((tag, index) => (
-              <Text key={index} className="tag">
+            {tags.split(",").map((tag) => (
+              <Text key={tag} className="tag">
                 {tag.trim()}
               </Text>
             ))}

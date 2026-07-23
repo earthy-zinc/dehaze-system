@@ -35,27 +35,6 @@ export const ANNOTATION_FILTER_LABELS: Record<AnnotationFilter, string> = {
 };
 
 /**
- * 格式化雾霾程度用于展示：
- * - light/medium/heavy → 轻度/中度/重度
- * - beta=X → β=X
- * - A=X,beta=Y → β=Y
- * - 其他 → 原值回显
- * - 空 → 空字符串（表示未标注）
- */
-export function formatHazeLevel(level?: string): string {
-  if (!level) return "";
-  const preset: Record<string, string> = {
-    light: "轻度",
-    medium: "中度",
-    heavy: "重度",
-  };
-  if (preset[level]) return preset[level];
-  const betaMatch = level.match(/beta=([\d.]+)/i);
-  if (betaMatch) return `β=${betaMatch[1]}`;
-  return level;
-}
-
-/**
  * 判断图片是否已标注（hazeLevel 非空视为已标注）
  */
 export function isImageAnnotated(hazeLevel?: string): boolean {

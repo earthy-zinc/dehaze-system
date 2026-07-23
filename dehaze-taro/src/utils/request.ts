@@ -29,10 +29,7 @@ function redirectToLogin(): void {
     return;
   }
 
-  storage.removeToken();
-  Taro.removeStorageSync("userInfo");
-  Taro.removeStorageSync("permissions");
-  Taro.removeStorageSync("roles");
+  storage.clearAuth();
 
   Taro.redirectTo({
     url: "/pages/login/index",

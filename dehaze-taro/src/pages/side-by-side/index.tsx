@@ -1,18 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { View, Text, Image, ScrollView } from "@tarojs/components";
-import Taro from "@tarojs/taro";
-import { ArrowLeft } from "@taroify/icons";
+import CompareNavbar from "@/components/compare/CompareNavbar";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
 import { loadCompareContext } from "@/components/compare/types";
 import "./index.less";
 
 const SideBySidePage: React.FC = () => {
-  const [ctx, setCtx] = useState(loadCompareContext);
-
-  useEffect(() => {
-    setCtx(loadCompareContext());
-  }, []);
+  const [ctx] = useState(loadCompareContext);
 
   const { originImage, result, algorithm } = ctx;
   const hasResult = originImage && result?.resultUrl;
@@ -20,12 +15,7 @@ const SideBySidePage: React.FC = () => {
   return (
     <View className="side-by-side-page">
       {/* 顶部导航 */}
-      <View className="navbar">
-        <View className="nav-back" onClick={() => Taro.navigateBack()}>
-          <ArrowLeft size="20" color="#333" />
-        </View>
-        <Text className="nav-title">效果对比</Text>
-      </View>
+      <CompareNavbar title="效果对比" />
 
       {/* 对比内容 */}
       <ScrollView className="compare-content" scrollY>

@@ -16,6 +16,7 @@ import type {
   DatasetOption,
 } from "dehaze-sdk-js";
 import { isImageAnnotated, AnnotationFilter } from "../services/imageUtils";
+import { getErrorMessage } from "@/utils/error";
 
 // 状态类型定义
 interface DatasetState {
@@ -442,8 +443,8 @@ export function useDataset() {
         // 刷新选项
         fetchDatasetOptions();
         return true;
-      } catch (error: any) {
-        Taro.showToast({ title: error?.message || "修改失败", icon: "none" });
+      } catch (error: unknown) {
+        Taro.showToast({ title: getErrorMessage(error, "修改失败"), icon: "none" });
         return false;
       }
     },
@@ -461,8 +462,8 @@ export function useDataset() {
         // 刷新选项
         fetchDatasetOptions();
         return true;
-      } catch (error: any) {
-        Taro.showToast({ title: error?.message || "删除失败", icon: "none" });
+      } catch (error: unknown) {
+        Taro.showToast({ title: getErrorMessage(error, "删除失败"), icon: "none" });
         return false;
       }
     },
@@ -477,10 +478,10 @@ export function useDataset() {
 
       const dataset = await DatasetAPI.getDatasetInfoById(datasetId);
       dispatch({ type: "SET_CURRENT_DATASET", payload: dataset });
-    } catch (error: any) {
+    } catch (error: unknown) {
       dispatch({
         type: "SET_DATASET_DETAIL_ERROR",
-        payload: error?.message || "获取数据集详情失败",
+        payload: getErrorMessage(error, "获取数据集详情失败"),
       });
     }
   }, []);
@@ -522,10 +523,10 @@ export function useDataset() {
             payload: { images: flattened, page, total, hasMore },
           });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         dispatch({
           type: "SET_IMAGES_ERROR",
-          payload: error?.message || "获取图片列表失败",
+          payload: getErrorMessage(error, "获取图片列表失败"),
         });
       }
     },

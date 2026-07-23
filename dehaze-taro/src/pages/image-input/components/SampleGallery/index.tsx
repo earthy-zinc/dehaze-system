@@ -8,6 +8,7 @@ import { Loading } from "@taroify/core";
 import FilterTabs from "@/components/common/FilterTabs";
 import { SampleImage, SampleCategory } from "../../services/types";
 import { categoryTabs } from "../../services/sampleData";
+import { formatHazeLevel } from "@/utils/format";
 import "./SampleGallery.less";
 
 interface SampleGalleryProps {
@@ -72,13 +73,7 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
                 />
                 {sample.hazeLevel && (
                   <View className={`haze-badge ${sample.hazeLevel}`}>
-                    <Text>
-                      {sample.hazeLevel === "light"
-                        ? "轻度"
-                        : sample.hazeLevel === "medium"
-                          ? "中度"
-                          : "重度"}
-                    </Text>
+                    <Text>{formatHazeLevel(sample.hazeLevel)}</Text>
                   </View>
                 )}
               </View>

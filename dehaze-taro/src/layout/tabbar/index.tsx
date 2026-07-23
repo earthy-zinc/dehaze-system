@@ -8,8 +8,6 @@ import {
   HomeOutlined,
   PhotoOutlined,
   BulbOutlined,
-  SettingOutlined,
-  AppsOutlined,
   ManagerOutlined,
 } from "@taroify/icons";
 import { tabBarItems, getTabBarIndex, type MenuItem } from "@/config/menu";
@@ -51,6 +49,21 @@ const AppTabbar: React.FC<AppTabbarProps> = ({
   const switchTab = (item: MenuItem, index: number) => {
     if (currentIndex === index) return;
 
+    // algorithm-select 依赖 current_image，未选择图片时引导用户先去图像输入
+    if (item.route === "/pages/algorithm-select/index") {
+      let hasImage = false;
+      try {
+        hasImage = !!Taro.getStorageSync("current_image");
+      } catch {
+        hasImage = false;
+      }
+      if (!hasImage) {
+        Taro.showToast({ title: "请先选择图片", icon: "none" });
+        setTimeout(() => Taro.reLaunch({ url: "/pages/image-input/index" }), 1000);
+        return;
+      }
+    }
+
     setCurrentIndex(index);
 
     // 使用 reLaunch 统一跳转（项目使用自定义 tabbar 组件，未配置原生 tabBar）
@@ -72,13 +85,10 @@ const AppTabbar: React.FC<AppTabbarProps> = ({
       "wap-home": <HomeOutlined size={size} color={color} />,
       photograph: <PhotoOutlined size={size} color={color} />,
       "bulb-o": <BulbOutlined size={size} color={color} />,
-      "setting-o": <SettingOutlined size={size} color={color} />,
-      setting: <SettingOutlined size={size} color={color} />,
-      "apps-o": <AppsOutlined size={size} color={color} />,
       "manager-o": <ManagerOutlined size={size} color={color} />,
       manager: <ManagerOutlined size={size} color={color} />,
     };
-    return iconMap[icon] || <AppsOutlined size={size} color={color} />;
+    return iconMap[icon] || <HomeOutlined size={size} color={color} />;
   };
 
   return (

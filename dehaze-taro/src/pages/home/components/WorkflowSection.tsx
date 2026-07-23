@@ -21,15 +21,21 @@ const WorkflowStep: React.FC<WorkflowStepProps> = ({
   target,
 }) => {
   const handleClick = () => {
-    try {
-      Taro.navigateTo({ url: `/pages/${target}/index` });
-    } catch (error) {
-      console.warn(`导航到 ${target} 页面不存在，将在实现后可用`);
-      Taro.showToast({
-        title: "功能开发中",
-        icon: "none",
-      });
+    // algorithm-select 和 processing 依赖 current_image，未选择图片时引导用户先去图像输入
+    if (target === "algorithm-select" || target === "processing") {
+      let hasImage = false;
+      try {
+        hasImage = !!Taro.getStorageSync("current_image");
+      } catch {
+        hasImage = false;
+      }
+      if (!hasImage) {
+        Taro.showToast({ title: "请先选择图片", icon: "none" });
+        setTimeout(() => Taro.navigateTo({ url: "/pages/image-input/index" }), 1000);
+        return;
+      }
     }
+    Taro.navigateTo({ url: `/pages/${target}/index` });
   };
 
   return (
@@ -38,8 +44,8 @@ const WorkflowStep: React.FC<WorkflowStepProps> = ({
       <View className="step-icon">{icon}</View>
       <Text className="step-title">{title}</Text>
       <View className="step-desc">
-        {description.split("\n").map((line, index) => (
-          <Text key={index}>{line}</Text>
+        {description.split("\n").map((line) => (
+          <Text key={line}>{line}</Text>
         ))}
       </View>
     </View>

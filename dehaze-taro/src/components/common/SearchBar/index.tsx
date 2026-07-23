@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
 import { View, Input } from "@tarojs/components";
+import type { BaseEventOrig } from "@tarojs/components";
 import { Search } from "@taroify/icons";
 import "./SearchBar.less";
 
@@ -36,7 +37,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
     [onSearch]
   );
 
-  const handleInput = (e: any) => {
+  const handleInput = (e: BaseEventOrig<{ value: string }>) => {
     const newValue = e.detail.value;
     setSearchValue(newValue);
     debouncedSearch(newValue);

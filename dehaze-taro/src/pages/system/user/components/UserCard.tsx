@@ -100,8 +100,8 @@ const UserCard: React.FC<UserCardProps> = ({
               {user.roleNames
                 .split(",")
                 .slice(0, 2)
-                .map((roleName, index) => (
-                  <Tag key={index} size="small" variant="outlined">
+                .map((roleName) => (
+                  <Tag key={roleName} size="small" variant="outlined">
                     {roleName.trim()}
                   </Tag>
                 ))}

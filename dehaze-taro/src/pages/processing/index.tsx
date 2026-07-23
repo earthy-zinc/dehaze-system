@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, Image, Slider } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import { ArrowLeft } from "@taroify/icons";
+import CompareNavbar from "@/components/compare/CompareNavbar";
 import { ModelAPI } from "dehaze-sdk-js";
 import type { Algorithm, PredictionResultVO } from "dehaze-sdk-js";
 import { uploadImage } from "@/utils/upload";
+import { formatFileSize, formatDuration } from "@/utils/format";
+import { getErrorMessage } from "@/utils/error";
 import "./index.less";
 
 interface ImageData {
@@ -149,11 +151,16 @@ const ProcessingPage: React.FC = () => {
       Taro.setStorageSync("prediction_result", JSON.stringify(res));
 
       Taro.showToast({ title: "处理完成", icon: "success" });
-    } catch (error: any) {
+
+      // 处理完成后自动跳转对比页面（设计文档：处理完成 → 自动进入对比页面）
+      setTimeout(() => {
+        Taro.navigateTo({ url: "/pages/side-by-side/index" });
+      }, 1500);
+    } catch (error: unknown) {
       clearAllTimers();
       setStatus("error");
-      setErrorMsg(error?.message || "处理失败，请重试");
-      Taro.showToast({ title: error?.message || "处理失败", icon: "none" });
+      setErrorMsg(getErrorMessage(error, "处理失败，请重试"));
+      Taro.showToast({ title: getErrorMessage(error, "处理失败"), icon: "none" });
     }
   }, [
     currentImage,
@@ -207,11 +214,12 @@ const ProcessingPage: React.FC = () => {
       }
       await Taro.saveImageToPhotosAlbum({ filePath: downloadRes.tempFilePath });
       Taro.showToast({ title: "已保存到相册", icon: "success" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 用户拒绝相册权限
+      const errMsg = (error as { errMsg?: string })?.errMsg;
       if (
-        error?.errMsg?.includes("auth deny") ||
-        error?.errMsg?.includes("authorize")
+        errMsg?.includes("auth deny") ||
+        errMsg?.includes("authorize")
       ) {
         Taro.showModal({
           title: "提示",
@@ -224,23 +232,10 @@ const ProcessingPage: React.FC = () => {
           },
         });
       } else {
-        Taro.showToast({ title: error?.message || "保存失败", icon: "none" });
+        Taro.showToast({ title: getErrorMessage(error, "保存失败"), icon: "none" });
       }
     }
   }, [result]);
-
-  // 格式化文件大小
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  };
-
-  // 格式化时间
-  const formatTime = (ms: number) => {
-    if (ms < 1000) return ms + " ms";
-    return (ms / 1000).toFixed(2) + " s";
-  };
 
   // 重置参数
   const handleResetParams = useCallback(() => {
@@ -252,12 +247,7 @@ const ProcessingPage: React.FC = () => {
   return (
     <View className="processing-page">
       {/* 顶部导航 */}
-      <View className="navbar">
-        <View className="nav-back" onClick={() => Taro.navigateBack()}>
-          <ArrowLeft size="20" color="#333" />
-        </View>
-        <Text className="nav-title">去雾处理</Text>
-      </View>
+      <CompareNavbar title="去雾处理" />
 
       <View className="processing-content">
         {/* 图片信息 */}
@@ -277,7 +267,7 @@ const ProcessingPage: React.FC = () => {
               <Text className="meta-item">
                 {currentImage.width}×{currentImage.height}
               </Text>
-              <Text className="meta-item">{formatSize(currentImage.size)}</Text>
+              <Text className="meta-item">{formatFileSize(currentImage.size)}</Text>
             </View>
           </View>
         )}
@@ -416,7 +406,7 @@ const ProcessingPage: React.FC = () => {
           <View className="status-section processing">
             <View className="processing-spinner" />
             <Text className="status-text">正在去雾处理中...</Text>
-            <Text className="status-hint">已用 {formatTime(elapsedTime)}</Text>
+            <Text className="status-hint">已用 {formatDuration(elapsedTime)}</Text>
           </View>
         )}
 
@@ -428,7 +418,7 @@ const ProcessingPage: React.FC = () => {
             </View>
             <Text className="status-text">处理完成</Text>
             <Text className="status-hint">
-              耗时 {formatTime(result.time)}
+              耗时 {formatDuration(result.time)}
               {result.fromCache ? " · 缓存命中" : ""}
             </Text>
 

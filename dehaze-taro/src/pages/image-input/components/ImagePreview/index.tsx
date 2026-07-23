@@ -7,7 +7,7 @@ import { View, Text, Image } from "@tarojs/components";
 import { Popup, Button } from "@taroify/core";
 import { Cross, PhotoOutlined, Expand } from "@taroify/icons";
 import { ImageData } from "../../services/types";
-import { formatFileSize } from "../../services/imageInput";
+import { formatFileSize, formatHazeLevel } from "@/utils/format";
 import "./ImagePreview.less";
 
 interface ImagePreviewProps {
@@ -97,11 +97,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                 <View className="sample-row">
                   <Text className="sample-label">雾霾程度</Text>
                   <Text className="sample-value">
-                    {imageData.sampleInfo.hazeLevel === "light"
-                      ? "轻度"
-                      : imageData.sampleInfo.hazeLevel === "medium"
-                        ? "中度"
-                        : "重度"}
+                    {formatHazeLevel(imageData.sampleInfo.hazeLevel)}
                   </Text>
                 </View>
               )}

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, Input, Textarea } from "@tarojs/components";
+import { View } from "@tarojs/components";
+import type { BaseEventOrig } from "@tarojs/components";
 import Taro, {
   useLoad,
   usePullDownRefresh,
@@ -12,15 +13,22 @@ import {
   Loading,
   Empty,
   SwipeCell,
-  Tag,
   Cell,
-  Popup,
-  Switch,
 } from "@taroify/core";
+import { confirmDialog } from "@/utils/dialog";
 import { ArrowLeft, Add, Edit, Delete, SettingOutlined } from "@taroify/icons";
 import { useDictManagement } from "@/hooks/useDictManagement";
 import { usePermission } from "@/hooks/usePermission";
-import type { DictTypeForm, DictForm } from "dehaze-sdk-js";
+import type {
+  DictTypeForm,
+  DictForm,
+  DictTypePageVO,
+  DictPageVO,
+} from "dehaze-sdk-js";
+import StatusTag from "@/components/common/StatusTag";
+import DictTypeFormDialog from "./components/DictTypeFormDialog";
+import DictItemDialog from "./components/DictItemDialog";
+import DictItemFormDialog from "./components/DictItemFormDialog";
 import "./index.scss";
 
 const DictPage: React.FC = () => {
@@ -100,14 +108,17 @@ const DictPage: React.FC = () => {
   });
 
   // 搜索
-  const handleSearch = async (event: any) => {
-    const value = event.detail?.value || "";
+  const performSearch = async (value: string) => {
     setSearchKeyword(value);
     if (value.trim()) {
       await searchDictTypes(value.trim());
     } else {
       await resetDictTypeQuery();
     }
+  };
+
+  const handleSearch = async (event: BaseEventOrig<{ value: string }>) => {
+    await performSearch(event.detail?.value || "");
   };
 
   // 新增字典类型
@@ -156,21 +167,18 @@ const DictPage: React.FC = () => {
   };
 
   // 删除字典类型
-  const handleDeleteType = (dictType: any) => {
-    Taro.showModal({
+  const handleDeleteType = async (dictType: DictTypePageVO) => {
+    const confirmed = await confirmDialog({
       title: "确认删除",
       content: `确定要删除字典类型 "${dictType.name}" 吗？关联的字典数据也将被删除，此操作不可恢复。`,
       confirmText: "删除",
       cancelText: "取消",
-      success: (res) => {
-        if (res.confirm) {
-          confirmDeleteType(dictType);
-        }
-      },
     });
+    if (!confirmed) return;
+    await confirmDeleteType(dictType);
   };
 
-  const confirmDeleteType = async (dictType: any) => {
+  const confirmDeleteType = async (dictType: DictTypePageVO) => {
     if (!dictType) return;
     try {
       await deleteDictTypes(String(dictType.id));
@@ -180,7 +188,7 @@ const DictPage: React.FC = () => {
   };
 
   // 管理字典数据
-  const handleManageItems = (dictType: any) => {
+  const handleManageItems = (dictType: DictTypePageVO) => {
     setCurrentTypeCode(dictType.code);
     setCurrentTypeName(dictType.name);
     setShowItemDialog(true);
@@ -242,21 +250,18 @@ const DictPage: React.FC = () => {
   };
 
   // 删除字典数据
-  const handleDeleteItem = (item: any) => {
-    Taro.showModal({
+  const handleDeleteItem = async (item: DictPageVO) => {
+    const confirmed = await confirmDialog({
       title: "确认删除",
       content: `确定要删除字典数据 "${item.name}" 吗？`,
       confirmText: "删除",
       cancelText: "取消",
-      success: (res) => {
-        if (res.confirm) {
-          confirmDeleteItem(item);
-        }
-      },
     });
+    if (!confirmed) return;
+    await confirmDeleteItem(item);
   };
 
-  const confirmDeleteItem = async (item: any) => {
+  const confirmDeleteItem = async (item: DictPageVO) => {
     if (!item) return;
     try {
       await deleteDictItems(String(item.id));
@@ -264,18 +269,6 @@ const DictPage: React.FC = () => {
     } catch {
       // 错误已在 hook 中处理
     }
-  };
-
-  const getStatusTag = (status?: number) => {
-    return status === 1 ? (
-      <Tag color="success" size="small">
-        启用
-      </Tag>
-    ) : (
-      <Tag color="danger" size="small">
-        禁用
-      </Tag>
-    );
   };
 
   return (
@@ -298,7 +291,7 @@ const DictPage: React.FC = () => {
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.detail.value)}
           onSearch={handleSearch}
-          onClear={() => handleSearch("")}
+          onClear={() => performSearch("")}
         />
       </View>
 
@@ -357,7 +350,7 @@ const DictPage: React.FC = () => {
                   <View className="dict-code">编码: {dictType.code}</View>
                 </View>
                 <View className="dict-status">
-                  {getStatusTag(dictType.status)}
+                  <StatusTag status={dictType.status} />
                 </View>
                 {dictType.remark && (
                   <View className="dict-remark">备注: {dictType.remark}</View>
@@ -376,248 +369,41 @@ const DictPage: React.FC = () => {
       )}
 
       {/* 字典类型表单弹窗 */}
-      <Popup
+      <DictTypeFormDialog
         open={showTypeDialog}
+        editingId={editingTypeId}
+        form={typeForm}
+        submitting={submittingType}
         onClose={() => setShowTypeDialog(false)}
-        placement="bottom"
-        style={{ height: "60%" }}
-      >
-        <View className="form-popup">
-          <View className="form-header">
-            <Text className="form-title">
-              {editingTypeId ? "编辑字典类型" : "新增字典类型"}
-            </Text>
-          </View>
-          <View className="form-body">
-            <View className="form-item">
-              <Text className="form-label">字典名称 *</Text>
-              <Input
-                className="form-input"
-                placeholder="请输入字典名称"
-                value={typeForm.name || ""}
-                onInput={(e) =>
-                  setTypeForm({ ...typeForm, name: e.detail.value })
-                }
-              />
-            </View>
-            <View className="form-item">
-              <Text className="form-label">字典编码 *</Text>
-              <Input
-                className="form-input"
-                placeholder="请输入字典编码"
-                value={typeForm.code || ""}
-                disabled={!!editingTypeId}
-                onInput={(e) =>
-                  setTypeForm({ ...typeForm, code: e.detail.value })
-                }
-              />
-            </View>
-            <View className="form-item">
-              <Text className="form-label">状态</Text>
-              <View className="form-switch">
-                <Switch
-                  checked={typeForm.status === 1}
-                  onChange={(checked) =>
-                    setTypeForm({ ...typeForm, status: checked ? 1 : 0 })
-                  }
-                />
-                <Text>{typeForm.status === 1 ? "启用" : "禁用"}</Text>
-              </View>
-            </View>
-            <View className="form-item">
-              <Text className="form-label">备注</Text>
-              <Textarea
-                className="form-textarea"
-                placeholder="请输入备注信息（最多200字符）"
-                maxlength={200}
-                value={typeForm.remark || ""}
-                onInput={(e) =>
-                  setTypeForm({ ...typeForm, remark: e.detail.value })
-                }
-              />
-            </View>
-          </View>
-          <View className="form-footer">
-            <Button onClick={() => setShowTypeDialog(false)}>取消</Button>
-            <Button
-              color="primary"
-              loading={submittingType}
-              onClick={submitTypeForm}
-            >
-              确定
-            </Button>
-          </View>
-        </View>
-      </Popup>
+        onFormChange={setTypeForm}
+        onSubmit={submitTypeForm}
+      />
 
       {/* 字典数据管理弹窗 */}
-      <Popup
+      <DictItemDialog
         open={showItemDialog}
+        typeName={currentTypeName}
+        items={dictItems}
+        loading={dictItemLoading}
+        canAdd={hasPermission("sys:dict:data:add")}
+        canEdit={hasPermission("sys:dict:data:edit")}
+        canDelete={hasPermission("sys:dict:data:delete")}
         onClose={() => setShowItemDialog(false)}
-        placement="bottom"
-        style={{ height: "80%" }}
-      >
-        <View className="item-popup">
-          <View className="item-header">
-            <Text className="item-title">字典数据 - {currentTypeName}</Text>
-            {hasPermission("sys:dict:data:add") && (
-              <Button size="small" color="primary" onClick={handleAddItem}>
-                <Add /> 新增
-              </Button>
-            )}
-          </View>
-
-          <View className="item-list">
-            {dictItemLoading && dictItems.length === 0 ? (
-              <Loading>加载中...</Loading>
-            ) : dictItems.length === 0 ? (
-              <Empty>
-                <Empty.Description>暂无字典数据</Empty.Description>
-              </Empty>
-            ) : (
-              dictItems.map((item) => (
-                <SwipeCell key={item.id} className="item-swipe-cell">
-                  <SwipeCell.Actions side="right">
-                    {hasPermission("sys:dict:data:edit") && (
-                      <Button
-                        size="small"
-                        onClick={() => handleEditItem(item.id!)}
-                      >
-                        <Edit /> 编辑
-                      </Button>
-                    )}
-                    {hasPermission("sys:dict:data:delete") && (
-                      <Button
-                        color="danger"
-                        size="small"
-                        onClick={() => handleDeleteItem(item)}
-                      >
-                        <Delete /> 删除
-                      </Button>
-                    )}
-                  </SwipeCell.Actions>
-                  <Cell className="item-cell">
-                    <View className="item-info">
-                      <View className="item-name">{item.name}</View>
-                      <View className="item-value">值: {item.value}</View>
-                    </View>
-                    <View className="item-status">
-                      {getStatusTag(item.status)}
-                    </View>
-                  </Cell>
-                </SwipeCell>
-              ))
-            )}
-          </View>
-
-          {dictItemLoading && dictItems.length > 0 && (
-            <View className="loading-more">
-              <Loading size="small">加载中...</Loading>
-            </View>
-          )}
-        </View>
-      </Popup>
+        onAdd={handleAddItem}
+        onEdit={handleEditItem}
+        onDelete={handleDeleteItem}
+      />
 
       {/* 字典数据表单弹窗 */}
-      <Popup
+      <DictItemFormDialog
         open={showItemFormDialog}
+        editingId={editingItemId}
+        form={itemForm}
+        submitting={submittingItem}
         onClose={() => setShowItemFormDialog(false)}
-        placement="bottom"
-        style={{ height: "70%" }}
-      >
-        <View className="form-popup">
-          <View className="form-header">
-            <Text className="form-title">
-              {editingItemId ? "编辑字典数据" : "新增字典数据"}
-            </Text>
-          </View>
-          <View className="form-body">
-            <View className="form-item">
-              <Text className="form-label">字典标签 *</Text>
-              <Input
-                className="form-input"
-                placeholder="请输入字典标签"
-                value={itemForm.name || ""}
-                onInput={(e) =>
-                  setItemForm({ ...itemForm, name: e.detail.value })
-                }
-              />
-            </View>
-            <View className="form-item">
-              <Text className="form-label">字典键值 *</Text>
-              <Input
-                className="form-input"
-                placeholder="请输入字典键值"
-                value={itemForm.value || ""}
-                onInput={(e) =>
-                  setItemForm({ ...itemForm, value: e.detail.value })
-                }
-              />
-            </View>
-            <View className="form-item">
-              <Text className="form-label">排序</Text>
-              <Input
-                className="form-input"
-                type="number"
-                placeholder="请输入排序值"
-                value={String(itemForm.sort || 1)}
-                onInput={(e) =>
-                  setItemForm({
-                    ...itemForm,
-                    sort: Number(e.detail.value) || 1,
-                  })
-                }
-              />
-            </View>
-            <View className="form-item">
-              <Text className="form-label">是否默认</Text>
-              <View className="form-switch">
-                <Switch
-                  checked={itemForm.defaulted === 1}
-                  onChange={(checked) =>
-                    setItemForm({ ...itemForm, defaulted: checked ? 1 : 0 })
-                  }
-                />
-                <Text>{itemForm.defaulted === 1 ? "是" : "否"}</Text>
-              </View>
-            </View>
-            <View className="form-item">
-              <Text className="form-label">状态</Text>
-              <View className="form-switch">
-                <Switch
-                  checked={itemForm.status === 1}
-                  onChange={(checked) =>
-                    setItemForm({ ...itemForm, status: checked ? 1 : 0 })
-                  }
-                />
-                <Text>{itemForm.status === 1 ? "启用" : "禁用"}</Text>
-              </View>
-            </View>
-            <View className="form-item">
-              <Text className="form-label">备注</Text>
-              <Textarea
-                className="form-textarea"
-                placeholder="请输入备注信息（最多200字符）"
-                maxlength={200}
-                value={itemForm.remark || ""}
-                onInput={(e) =>
-                  setItemForm({ ...itemForm, remark: e.detail.value })
-                }
-              />
-            </View>
-          </View>
-          <View className="form-footer">
-            <Button onClick={() => setShowItemFormDialog(false)}>取消</Button>
-            <Button
-              color="primary"
-              loading={submittingItem}
-              onClick={submitItemForm}
-            >
-              确定
-            </Button>
-          </View>
-        </View>
-      </Popup>
+        onFormChange={setItemForm}
+        onSubmit={submitItemForm}
+      />
     </View>
   );
 };

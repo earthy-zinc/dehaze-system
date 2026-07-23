@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, ScrollView } from "@tarojs/components";
-import Taro from "@tarojs/taro";
-import { ArrowLeft } from "@taroify/icons";
+import CompareNavbar from "@/components/compare/CompareNavbar";
 import { ModelAPI } from "dehaze-sdk-js";
 import type { EvaluationResultVO } from "dehaze-sdk-js";
 import CompareToolbar from "@/components/compare/CompareToolbar";
@@ -48,16 +47,13 @@ const METRIC_LABELS: Record<
 };
 
 const MetricsPage: React.FC = () => {
-  const [ctx, setCtx] = useState(loadCompareContext);
+  const [ctx] = useState(loadCompareContext);
   const [evaluation, setEvaluation] = useState<EvaluationResultVO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const { algorithm, result: prediction, cleanUrl } = ctx;
-
-  useEffect(() => {
-    setCtx(loadCompareContext());
-  }, []);
+  const { algorithm, result: prediction, originImage } = ctx;
+  const cleanUrl = originImage?.cleanUrl;
 
   // 执行评估（GT 必须是 clean 图，不能用 hazy 原图）
   const fetchEvaluation = useCallback(async () => {
@@ -82,8 +78,8 @@ const MetricsPage: React.FC = () => {
         gtUrl: cleanUrl,
       });
       setEvaluation(res);
-    } catch (err: any) {
-      setError(err?.message || "评估失败，可能需要参考图像(GT)");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "评估失败，可能需要参考图像(GT)");
     } finally {
       setLoading(false);
     }
@@ -130,12 +126,7 @@ const MetricsPage: React.FC = () => {
   return (
     <View className="metrics-page">
       {/* 顶部导航 */}
-      <View className="navbar">
-        <View className="nav-back" onClick={() => Taro.navigateBack()}>
-          <ArrowLeft size="20" color="#333" />
-        </View>
-        <Text className="nav-title">指标对比</Text>
-      </View>
+      <CompareNavbar title="指标对比" />
 
       <ScrollView className="metrics-content" scrollY>
         {/* 算法信息 + 性能数据（使用统一组件，含评估耗时） */}

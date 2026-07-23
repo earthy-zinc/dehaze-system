@@ -51,8 +51,6 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
       onClick={() => navigateTo(item.route)}
     >
       <Text className="menu-title">{item.title}</Text>
-      {item.badge && <View className="menu-badge">{item.badge}</View>}
-      {item.isNew && <View className="menu-new">NEW</View>}
     </View>
   );
 

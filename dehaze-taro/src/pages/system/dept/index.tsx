@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, Input, ScrollView } from "@tarojs/components";
+import type { BaseEventOrig } from "@tarojs/components";
 import Taro, { useLoad, usePullDownRefresh } from "@tarojs/taro";
+import { confirmDialog } from "@/utils/dialog";
 import {
   Navbar,
   Search,
@@ -198,14 +200,17 @@ const DeptPage: React.FC = () => {
   });
 
   // 搜索处理
-  const handleSearch = async (event: any) => {
-    const value = event.detail?.value || "";
+  const performSearch = async (value: string) => {
     setSearchKeyword(value);
     if (value.trim()) {
       await searchDepts(value.trim());
     } else {
       await resetQuery();
     }
+  };
+
+  const handleSearch = async (event: BaseEventOrig<{ value: string }>) => {
+    await performSearch(event.detail?.value || "");
   };
 
   // 展开/收起节点
@@ -243,18 +248,15 @@ const DeptPage: React.FC = () => {
   };
 
   // 删除部门
-  const handleDelete = (node: DeptVO) => {
-    Taro.showModal({
+  const handleDelete = async (node: DeptVO) => {
+    const confirmed = await confirmDialog({
       title: "确认删除",
       content: `确定要删除部门 "${node.name}" 吗？如有子部门需先删除子部门，此操作不可恢复。`,
       confirmText: "删除",
       cancelText: "取消",
-      success: (res) => {
-        if (res.confirm) {
-          confirmDelete(node);
-        }
-      },
     });
+    if (!confirmed) return;
+    await confirmDelete(node);
   };
 
   const confirmDelete = async (node: DeptVO) => {
@@ -317,7 +319,7 @@ const DeptPage: React.FC = () => {
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.detail.value)}
           onSearch={handleSearch}
-          onClear={() => handleSearch("")}
+          onClear={() => performSearch("")}
         />
       </View>
 

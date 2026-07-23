@@ -8,23 +8,14 @@ import "./ImageGrid.less";
 interface ImageGridProps {
   images: ImageUrlVO[];
   className?: string;
-  onImageClick?: (image: ImageUrlVO) => void;
 }
 
-const ImageGrid: React.FC<ImageGridProps> = ({
-  images,
-  className = "",
-  onImageClick,
-}) => {
+const ImageGrid: React.FC<ImageGridProps> = ({ images, className = "" }) => {
   const [viewerImage, setViewerImage] = React.useState<ImageUrlVO | null>(null);
 
-  const handleImageClick = useCallback(
-    (image: ImageUrlVO) => {
-      setViewerImage(image);
-      onImageClick?.(image);
-    },
-    [onImageClick]
-  );
+  const handleImageClick = useCallback((image: ImageUrlVO) => {
+    setViewerImage(image);
+  }, []);
 
   const handleCloseViewer = useCallback(() => {
     setViewerImage(null);
@@ -49,18 +40,19 @@ const ImageGrid: React.FC<ImageGridProps> = ({
         ))}
       </View>
 
-      <ImageViewer
-        visible={!!viewerImage}
-        src={viewerImage?.url || ""}
-        filename={viewerImage?.fileName}
-        imageType={viewerImage?.type}
-        hazeLevel={viewerImage?.hazeLevel}
-        width={viewerImage?.width}
-        height={viewerImage?.height}
-        fileSize={viewerImage?.sizeBytes}
-        description={viewerImage?.description}
-        onClose={handleCloseViewer}
-      />
+      {viewerImage && (
+        <ImageViewer
+          visible={true}
+          src={viewerImage.url}
+          filename={viewerImage.fileName}
+          imageType={viewerImage.type}
+          hazeLevel={viewerImage.hazeLevel}
+          width={viewerImage.width}
+          height={viewerImage.height}
+          fileSize={viewerImage.sizeBytes}
+          onClose={handleCloseViewer}
+        />
+      )}
     </>
   );
 };

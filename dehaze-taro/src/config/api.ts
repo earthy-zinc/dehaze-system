@@ -24,4 +24,6 @@ export const apiConfig = {
   java: JAVA_BASE_URL,
   python: PYTHON_BASE_URL,
   dataset: DATASET_BASE_URL,
+  /** 重置密码时的默认密码 */
+  defaultPassword: "123456",
 };

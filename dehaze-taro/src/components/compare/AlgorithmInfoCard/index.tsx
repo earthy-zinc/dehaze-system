@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text } from "@tarojs/components";
 import type { Algorithm, PredictionResultVO } from "dehaze-sdk-js";
-import { formatTime } from "../types";
+import { formatDuration } from "@/utils/format";
 import "./index.less";
 
 interface AlgorithmInfoCardProps {
@@ -9,8 +9,6 @@ interface AlgorithmInfoCardProps {
   result: PredictionResultVO | null;
   /** 评估耗时（可选，来自 metrics 页） */
   evaluationTime?: number;
-  /** 是否展示性能数据区块，默认 true */
-  showPerformance?: boolean;
 }
 
 /**
@@ -21,7 +19,6 @@ const AlgorithmInfoCard: React.FC<AlgorithmInfoCardProps> = ({
   algorithm,
   result,
   evaluationTime,
-  showPerformance = true,
 }) => {
   if (!algorithm && !result) return null;
 
@@ -115,14 +112,14 @@ const AlgorithmInfoCard: React.FC<AlgorithmInfoCardProps> = ({
       )}
 
       {/* 性能数据 */}
-      {showPerformance && result && (
+      {result && (
         <View className="info-section">
           <View className="section-title">
             <Text>性能数据</Text>
           </View>
           <View className="info-row">
             <Text className="info-label">处理耗时</Text>
-            <Text className="info-value">{formatTime(result.time)}</Text>
+            <Text className="info-value">{formatDuration(result.time)}</Text>
           </View>
           {result.fromCache !== undefined && (
             <View className="info-row">
@@ -135,7 +132,7 @@ const AlgorithmInfoCard: React.FC<AlgorithmInfoCardProps> = ({
           {evaluationTime !== undefined && (
             <View className="info-row">
               <Text className="info-label">评估耗时</Text>
-              <Text className="info-value">{formatTime(evaluationTime)}</Text>
+              <Text className="info-value">{formatDuration(evaluationTime)}</Text>
             </View>
           )}
         </View>

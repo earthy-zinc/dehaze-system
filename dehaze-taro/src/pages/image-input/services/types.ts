@@ -8,9 +8,6 @@ export type InputMethod = "upload" | "camera" | "sample" | "history";
 // 样例图片分类（按场景，对齐设计文档需求规格 §2.3.2）
 export type SampleCategory = "all" | "city" | "nature" | "portrait" | "night";
 
-// 难度等级
-export type DifficultyLevel = "简单" | "中等" | "困难";
-
 // 样例图片
 export interface SampleImage {
   id: number;
@@ -56,26 +53,11 @@ export interface ImageInfo {
   type?: string;
 }
 
-// 上传结果
-export interface UploadResult {
-  url: string;
-  fileId?: string;
-  success: boolean;
-  message?: string;
-}
-
-// 上传进度
-export interface UploadProgress {
-  progress: number; // 0-100
-  totalBytesSent: number;
-  totalBytesExpectedToSend: number;
-}
-
 // 错误类型
 export class ImageInputError extends Error {
   code: string;
-  details?: any;
-  constructor(code: string, message: string, details?: any) {
+  details?: unknown;
+  constructor(code: string, message: string, details?: unknown) {
     super(message);
     this.name = "ImageInputError";
     this.code = code;

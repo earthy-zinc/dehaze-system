@@ -89,9 +89,9 @@ const TechSpecs: React.FC = () => {
   return (
     <View className="tech-specs-section">
       <View className="specs-grid">
-        {specs.map((spec, index) => (
+        {specs.map((spec) => (
           <SpecCard
-            key={index}
+            key={spec.title}
             icon={spec.icon}
             title={spec.title}
             value={spec.value}

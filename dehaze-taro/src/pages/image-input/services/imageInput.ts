@@ -20,17 +20,6 @@ const getFileExtension = (path: string): string => {
   return path.split(".").pop()?.toLowerCase() || "jpg";
 };
 
-// 格式化文件大小
-export const formatFileSize = (bytes: number): string => {
-  if (bytes < 1024) {
-    return bytes + " B";
-  } else if (bytes < 1024 * 1024) {
-    return (bytes / 1024).toFixed(2) + " KB";
-  } else {
-    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
-  }
-};
-
 // 判断错误是否为 ImageInputError
 const isImageInputError = (err: any): err is ImageInputError => {
   return (
@@ -57,8 +46,9 @@ export const ImageInputService = {
         size: file.size,
         type: file.fileType,
       }));
-    } catch (error: any) {
-      if (error.errMsg?.includes("cancel")) {
+    } catch (error: unknown) {
+      const errMsg = (error as { errMsg?: string })?.errMsg;
+      if (errMsg?.includes("cancel")) {
         throw new ImageInputError(
           ErrorCodes.USER_CANCEL,
           ErrorMessages[ErrorCodes.USER_CANCEL]
@@ -89,11 +79,12 @@ export const ImageInputService = {
         size: file.size,
         type: file.fileType,
       };
-    } catch (error: any) {
-      if (error.errMsg?.includes("cancel")) {
+    } catch (error: unknown) {
+      const errMsg = (error as { errMsg?: string })?.errMsg;
+      if (errMsg?.includes("cancel")) {
         throw new ImageInputError(ErrorCodes.USER_CANCEL, "用户取消拍照");
       }
-      if (error.errMsg?.includes("auth")) {
+      if (errMsg?.includes("auth")) {
         throw new ImageInputError(
           ErrorCodes.PERMISSION_DENIED,
           ErrorMessages[ErrorCodes.PERMISSION_DENIED]
@@ -151,7 +142,7 @@ export const ImageInputService = {
   processImageFile: async (tempFile: TempFile): Promise<ImageData> => {
     // 格式校验
     const ext = getFileExtension(tempFile.path);
-    if (!SupportedFormats.includes(ext as any)) {
+    if (!SupportedFormats.includes(ext as (typeof SupportedFormats)[number])) {
       throw new ImageInputError(
         ErrorCodes.UNSUPPORTED_FORMAT,
         ErrorMessages[ErrorCodes.UNSUPPORTED_FORMAT]

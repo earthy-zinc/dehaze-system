@@ -1,97 +1,34 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, Input, ScrollView } from "@tarojs/components";
 import Taro, { useLoad, usePullDownRefresh } from "@tarojs/taro";
-import { Navbar, Loading, Tag, Button, Popup, Textarea } from "@taroify/core";
+import { Navbar, Loading, Tag, Button } from "@taroify/core";
 import { ArrowLeft, Search } from "@taroify/icons";
 import { AlgorithmAPI } from "dehaze-sdk-js";
 import type { Algorithm, AlgorithmAuditForm } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
+import { getErrorMessage } from "@/utils/error";
+import { usePermission } from "@/hooks/usePermission";
+import {
+  STATUS_INFO,
+  STATUS_FILTERS,
+  flattenTree,
+  filterTree,
+  updateAlgorithmInTree,
+  removeAlgorithmFromTree,
+} from "./utils";
+import type { FlatNode } from "./utils";
+import AlgorithmDetailPopup from "./components/AlgorithmDetailPopup";
+import AlgorithmAuditPopup from "./components/AlgorithmAuditPopup";
 import "./index.less";
-
-// ==================== 状态定义 ====================
-
-/** 状态信息映射 */
-const STATUS_INFO: Record<
-  number,
-  {
-    label: string;
-    color: "default" | "primary" | "success" | "warning" | "danger";
-  }
-> = {
-  0: { label: "草稿", color: "default" },
-  1: { label: "测试中", color: "warning" },
-  2: { label: "待审核", color: "primary" },
-  3: { label: "已发布", color: "success" },
-  4: { label: "已停用", color: "default" },
-  5: { label: "已归档", color: "default" },
-};
-
-/** 状态筛选选项 */
-const STATUS_FILTERS: { label: string; value: number | "" }[] = [
-  { label: "全部", value: "" },
-  { label: "草稿", value: 0 },
-  { label: "测试中", value: 1 },
-  { label: "待审核", value: 2 },
-  { label: "已发布", value: 3 },
-  { label: "已停用", value: 4 },
-];
-
-// ==================== 工具函数 ====================
-
-/** 递归展开算法树为平铺列表（含层级缩进信息） */
-interface FlatNode {
-  algorithm: Algorithm;
-  level: number;
-  hasChildren: boolean;
-}
-
-function flattenTree(nodes: Algorithm[], level = 0): FlatNode[] {
-  const result: FlatNode[] = [];
-  for (const node of nodes) {
-    const hasChildren = !!(node.children && node.children.length > 0);
-    result.push({ algorithm: node, level, hasChildren });
-    if (hasChildren) {
-      result.push(...flattenTree(node.children!, level + 1));
-    }
-  }
-  return result;
-}
-
-/** 递归过滤算法树（按关键词和状态） */
-function filterTree(
-  nodes: Algorithm[],
-  keyword: string,
-  statusFilter: number | ""
-): Algorithm[] {
-  const lowerKeyword = keyword.toLowerCase();
-  const match = (algo: Algorithm): boolean => {
-    const nameMatch =
-      !keyword || (algo.name || "").toLowerCase().includes(lowerKeyword);
-    const typeMatch =
-      !keyword || (algo.type || "").toLowerCase().includes(lowerKeyword);
-    const statusMatch = statusFilter === "" || algo.status === statusFilter;
-    return (nameMatch || typeMatch) && statusMatch;
-  };
-
-  const walk = (list: Algorithm[]): Algorithm[] => {
-    const result: Algorithm[] = [];
-    for (const node of list) {
-      const children = node.children ? walk(node.children) : [];
-      if (match(node) || children.length > 0) {
-        result.push({
-          ...node,
-          children: children.length > 0 ? children : undefined,
-        });
-      }
-    }
-    return result;
-  };
-  return walk(nodes);
-}
 
 // ==================== 页面组件 ====================
 
 const AlgorithmManagePage: React.FC = () => {
+  const { hasPermission } = usePermission();
+  const canAudit = hasPermission("sys:algorithm:audit");
+  const canEdit = hasPermission("sys:algorithm:edit");
+  const canDelete = hasPermission("sys:algorithm:delete");
+
   const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -120,8 +57,8 @@ const AlgorithmManagePage: React.FC = () => {
     try {
       const data = await AlgorithmAPI.getList();
       setAlgorithms(data || []);
-    } catch (err: any) {
-      setLoadError(err?.message || "加载失败，请重试");
+    } catch (err: unknown) {
+      setLoadError(getErrorMessage(err, "加载失败，请重试"));
     } finally {
       setLoading(false);
     }
@@ -178,9 +115,9 @@ const AlgorithmManagePage: React.FC = () => {
             prev?.id === algo.id ? { ...prev, status: newStatus } : prev
           );
           Taro.showToast({ title: `${actionText}成功`, icon: "success" });
-        } catch (err: any) {
+        } catch (err: unknown) {
           Taro.showToast({
-            title: err?.message || `${actionText}失败`,
+            title: getErrorMessage(err, `${actionText}失败`),
             icon: "none",
           });
         } finally {
@@ -224,8 +161,8 @@ const AlgorithmManagePage: React.FC = () => {
         title: auditApproved ? "审核通过" : "已驳回",
         icon: "success",
       });
-    } catch (err: any) {
-      Taro.showToast({ title: err?.message || "审核失败", icon: "none" });
+    } catch (err: unknown) {
+      Taro.showToast({ title: getErrorMessage(err, "审核失败"), icon: "none" });
     } finally {
       setAuditSubmitting(false);
     }
@@ -245,45 +182,14 @@ const AlgorithmManagePage: React.FC = () => {
           setAlgorithms((prev) => removeAlgorithmFromTree(prev, algo.id));
           setDetailAlgo((prev) => (prev?.id === algo.id ? null : prev));
           Taro.showToast({ title: "删除成功", icon: "success" });
-        } catch (err: any) {
-          Taro.showToast({ title: err?.message || "删除失败", icon: "none" });
+        } catch (err: unknown) {
+          Taro.showToast({ title: getErrorMessage(err, "删除失败"), icon: "none" });
         } finally {
           setActionLoadingId(null);
         }
       },
     });
   }, []);
-
-  // ==================== 树操作工具函数 ====================
-
-  function updateAlgorithmInTree(
-    nodes: Algorithm[],
-    id: number,
-    patch: Partial<Algorithm>
-  ): Algorithm[] {
-    return nodes.map((node) => {
-      if (node.id === id) return { ...node, ...patch };
-      if (node.children)
-        return {
-          ...node,
-          children: updateAlgorithmInTree(node.children, id, patch),
-        };
-      return node;
-    });
-  }
-
-  function removeAlgorithmFromTree(
-    nodes: Algorithm[],
-    id: number
-  ): Algorithm[] {
-    return nodes
-      .filter((node) => node.id !== id)
-      .map((node) =>
-        node.children
-          ? { ...node, children: removeAlgorithmFromTree(node.children, id) }
-          : node
-      );
-  }
 
   // ==================== 渲染 ====================
 
@@ -294,7 +200,7 @@ const AlgorithmManagePage: React.FC = () => {
     const isPending = algo.status === 2;
     const isPublished = algo.status === 3;
     const isDisabled = algo.status === 4;
-    const canDelete = algo.status === 0 || algo.status === 4;
+    const isDeletableStatus = algo.status === 0 || algo.status === 4;
 
     return (
       <View
@@ -320,9 +226,9 @@ const AlgorithmManagePage: React.FC = () => {
           </View>
         </View>
 
-        {!hasChildren && (
+        {!hasChildren && (canAudit || canEdit || canDelete) && (
           <View className="node-actions" onClick={(e) => e.stopPropagation()}>
-            {isPending && (
+            {isPending && canAudit && (
               <>
                 <Button
                   size="mini"
@@ -340,7 +246,7 @@ const AlgorithmManagePage: React.FC = () => {
                 </Button>
               </>
             )}
-            {(isPublished || isDisabled) && (
+            {(isPublished || isDisabled) && canEdit && (
               <Button
                 size="mini"
                 color={isPublished ? "warning" : "primary"}
@@ -350,7 +256,7 @@ const AlgorithmManagePage: React.FC = () => {
                 {isPublished ? "停用" : "启用"}
               </Button>
             )}
-            {canDelete && (
+            {isDeletableStatus && canDelete && (
               <Button
                 size="mini"
                 color="danger"
@@ -365,14 +271,6 @@ const AlgorithmManagePage: React.FC = () => {
       </View>
     );
   };
-
-  /** 渲染详情项 */
-  const renderDetailItem = (label: string, value: React.ReactNode) => (
-    <View className="detail-item">
-      <Text className="detail-label">{label}</Text>
-      <View className="detail-value">{value || "-"}</View>
-    </View>
-  );
 
   return (
     <View className="algo-manage-page">
@@ -425,183 +323,30 @@ const AlgorithmManagePage: React.FC = () => {
       </ScrollView>
 
       {/* 算法详情弹窗 */}
-      <Popup
+      <AlgorithmDetailPopup
         open={detailVisible}
-        placement="bottom"
-        rounded
+        algorithm={detailAlgo}
+        actionLoadingId={actionLoadingId}
+        canAudit={canAudit}
+        canEdit={canEdit}
+        canDelete={canDelete}
         onClose={() => setDetailVisible(false)}
-        className="detail-popup"
-      >
-        {detailAlgo && (
-          <View className="detail-content">
-            <View className="detail-header">
-              <Text className="detail-title">{detailAlgo.name}</Text>
-              <Text
-                className="detail-close"
-                onClick={() => setDetailVisible(false)}
-              >
-                关闭
-              </Text>
-            </View>
-
-            <View className="detail-section">
-              <Text className="section-title">基本信息</Text>
-              {renderDetailItem("算法名称", detailAlgo.name)}
-              {renderDetailItem("算法类型", detailAlgo.type)}
-              {renderDetailItem("描述", detailAlgo.description)}
-              {renderDetailItem(
-                "状态",
-                <Tag
-                  color={
-                    STATUS_INFO[detailAlgo.status ?? 0]?.color || "default"
-                  }
-                  size="small"
-                >
-                  {STATUS_INFO[detailAlgo.status ?? 0]?.label || "未知"}
-                </Tag>
-              )}
-              {renderDetailItem("版本", detailAlgo.version)}
-              {renderDetailItem("大小", detailAlgo.size)}
-            </View>
-
-            <View className="detail-section">
-              <Text className="section-title">技术信息</Text>
-              {renderDetailItem("路径", detailAlgo.path)}
-              {renderDetailItem("导入路径", detailAlgo.importPath)}
-              {renderDetailItem("参数", detailAlgo.params)}
-              {renderDetailItem("计算量(FLOPs)", detailAlgo.flops)}
-            </View>
-
-            {(detailAlgo.status === 2 || detailAlgo.auditBy != null) && (
-              <View className="detail-section">
-                <Text className="section-title">审核信息</Text>
-                {renderDetailItem("审核人", detailAlgo.auditBy)}
-                {renderDetailItem("审核时间", detailAlgo.auditTime)}
-                {renderDetailItem("审核备注", detailAlgo.auditRemark)}
-              </View>
-            )}
-
-            {renderDetailItem("创建时间", detailAlgo.createTime)}
-
-            {/* 操作按钮 */}
-            <View className="detail-footer">
-              {detailAlgo.status === 2 && (
-                <>
-                  <Button
-                    block
-                    color="success"
-                    onClick={() => {
-                      setDetailVisible(false);
-                      handleOpenAudit(detailAlgo, true);
-                    }}
-                  >
-                    审核通过
-                  </Button>
-                  <Button
-                    block
-                    color="danger"
-                    onClick={() => {
-                      setDetailVisible(false);
-                      handleOpenAudit(detailAlgo, false);
-                    }}
-                  >
-                    审核驳回
-                  </Button>
-                </>
-              )}
-              {detailAlgo.status === 3 && (
-                <Button
-                  block
-                  color="warning"
-                  loading={actionLoadingId === detailAlgo.id}
-                  onClick={() => handleToggleStatus(detailAlgo)}
-                >
-                  停用算法
-                </Button>
-              )}
-              {detailAlgo.status === 4 && (
-                <>
-                  <Button
-                    block
-                    color="primary"
-                    loading={actionLoadingId === detailAlgo.id}
-                    onClick={() => handleToggleStatus(detailAlgo)}
-                  >
-                    启用算法
-                  </Button>
-                  <Button
-                    block
-                    color="danger"
-                    loading={actionLoadingId === detailAlgo.id}
-                    onClick={() => {
-                      setDetailVisible(false);
-                      handleDelete(detailAlgo);
-                    }}
-                  >
-                    删除算法
-                  </Button>
-                </>
-              )}
-              {detailAlgo.status === 0 && (
-                <Button
-                  block
-                  color="danger"
-                  loading={actionLoadingId === detailAlgo.id}
-                  onClick={() => {
-                    setDetailVisible(false);
-                    handleDelete(detailAlgo);
-                  }}
-                >
-                  删除算法
-                </Button>
-              )}
-            </View>
-          </View>
-        )}
-      </Popup>
+        onToggleStatus={handleToggleStatus}
+        onDelete={handleDelete}
+        onOpenAudit={handleOpenAudit}
+      />
 
       {/* 审核弹窗 */}
-      <Popup
+      <AlgorithmAuditPopup
         open={auditVisible}
-        placement="center"
-        rounded
+        algorithm={auditAlgo}
+        approved={auditApproved}
+        remark={auditRemark}
+        submitting={auditSubmitting}
         onClose={() => setAuditVisible(false)}
-        className="audit-popup"
-      >
-        <View className="audit-content">
-          <Text className="audit-title">
-            {auditApproved ? "审核通过" : "审核驳回"}
-          </Text>
-          {auditAlgo && (
-            <Text className="audit-name">算法：{auditAlgo.name}</Text>
-          )}
-          {!auditApproved && (
-            <View className="audit-remark">
-              <Text className="remark-label">驳回原因（必填）</Text>
-              <Textarea
-                className="remark-input"
-                placeholder="请输入驳回原因"
-                value={auditRemark}
-                onInput={(e) => setAuditRemark(e.detail.value)}
-                maxlength={200}
-              />
-            </View>
-          )}
-          <View className="audit-footer">
-            <Button block onClick={() => setAuditVisible(false)}>
-              取消
-            </Button>
-            <Button
-              block
-              color={auditApproved ? "success" : "danger"}
-              loading={auditSubmitting}
-              onClick={handleAuditSubmit}
-            >
-              确认
-            </Button>
-          </View>
-        </View>
-      </Popup>
+        onRemarkChange={setAuditRemark}
+        onSubmit={handleAuditSubmit}
+      />
     </View>
   );
 };

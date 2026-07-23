@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, ScrollView } from "@tarojs/components";
-import Taro from "@tarojs/taro";
 import { Arrow, Add } from "@taroify/icons";
+import { confirmDialog } from "@/utils/dialog";
 
 // 组件导入
 import SearchBar from "@/components/common/SearchBar";
@@ -18,7 +18,7 @@ import DatasetFormDialog, {
 
 // Store 和类型
 import { DatasetProvider, useDataset } from "./store/datasetStore";
-import type { Dataset, ImageUrlVO } from "./services/types";
+import type { Dataset } from "./services/types";
 import {
   AnnotationFilter,
   ANNOTATION_FILTER_LABELS,
@@ -146,11 +146,6 @@ const DatasetContent: React.FC = () => {
     }
   };
 
-  // 图片点击处理
-  const handleImageClick = (image: ImageUrlVO) => {
-    console.log("Image clicked:", image.fileName);
-  };
-
   // 新增根数据集
   const handleAddRoot = () => {
     setDialog({
@@ -182,19 +177,16 @@ const DatasetContent: React.FC = () => {
   };
 
   // 删除数据集（带确认）
-  const handleDelete = (dataset: Dataset) => {
-    Taro.showModal({
+  const handleDelete = async (dataset: Dataset) => {
+    const confirmed = await confirmDialog({
       title: "确认删除",
       content: `确定要删除数据集「${dataset.name}」吗？此操作不可恢复。`,
       confirmText: "删除",
       confirmColor: "#ef4444",
       cancelText: "取消",
-      success: (res) => {
-        if (res.confirm) {
-          deleteDataset(dataset.id);
-        }
-      },
     });
+    if (!confirmed) return;
+    await deleteDataset(dataset.id);
   };
 
   // 表单提交处理
@@ -322,7 +314,6 @@ const DatasetContent: React.FC = () => {
               ) : (
                 <ImageGrid
                   images={state.images}
-                  onImageClick={handleImageClick}
                 />
               )}
             </View>

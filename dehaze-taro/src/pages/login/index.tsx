@@ -3,6 +3,7 @@ import { Button, Form, Image, Input, Text, View } from "@tarojs/components";
 import Taro, { useDidShow } from "@tarojs/taro";
 import { AuthAPI, CaptchaResult } from "dehaze-sdk-js";
 import { useGlobalContext } from "@/stores/global";
+import { getErrorMessage } from "@/utils/error";
 import "./index.less";
 
 const Login: React.FC = () => {
@@ -86,13 +87,13 @@ const Login: React.FC = () => {
       setTimeout(() => {
         Taro.reLaunch({ url: "/pages/home/index" });
       }, 1000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 打印完整错误对象，便于诊断
       console.error("登录失败:", error);
+      const axiosErr = error as { response?: { data?: { msg?: string } } };
       const errMsg =
-        error?.response?.data?.msg ||
-        error?.message ||
-        "登录失败，请检查用户名和密码";
+        axiosErr?.response?.data?.msg ||
+        getErrorMessage(error, "登录失败，请检查用户名和密码");
       Taro.showToast({ title: errMsg, icon: "none" });
 
       // 登录失败，刷新验证码

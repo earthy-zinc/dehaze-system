@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View } from "@tarojs/components";
+import type { BaseEventOrig } from "@tarojs/components";
 import Taro, { useLoad, usePageScroll } from "@tarojs/taro";
 import {
   Navbar,
@@ -12,6 +13,7 @@ import {
 import { Plus } from "@taroify/icons";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { usePermission } from "@/hooks/usePermission";
+import { apiConfig } from "@/config/api";
 import type { UserPageVO } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
 import UserCard from "./components/UserCard";
@@ -61,7 +63,7 @@ const UserListPage: React.FC = () => {
   };
 
   // 搜索
-  const handleSearch = async (event: any) => {
+  const handleSearch = async (event: BaseEventOrig<{ value: string }>) => {
     const value = event.detail.value || "";
     setSearchValue(value);
     if (value.trim()) {
@@ -101,7 +103,7 @@ const UserListPage: React.FC = () => {
     const confirmed = await new Promise<boolean>((resolve) => {
       Taro.showModal({
         title: "重置密码",
-        content: `确定要重置用户"${user.nickname}"的密码为默认密码"123456"吗？`,
+        content: `确定要重置用户"${user.nickname}"的密码为默认密码"${apiConfig.defaultPassword}"吗？`,
         success: (res) => {
           if (res.confirm) {
             resolve(true);
@@ -114,13 +116,10 @@ const UserListPage: React.FC = () => {
 
     if (confirmed && user.id) {
       try {
-        const newPassword = "123456"; // 默认密码
-        await resetPassword(user.id, newPassword);
+        await resetPassword(user.id, apiConfig.defaultPassword);
       } catch (error) {
         // 错误已在 hook 中处理
       }
-    } else {
-      Taro.showToast({ title: "请输入新密码", icon: "none" });
     }
   };
 
@@ -207,25 +206,6 @@ const UserListPage: React.FC = () => {
           <Button size="small" variant="outlined" onClick={handleLoadMore}>
             加载更多
           </Button>
-        </View>
-      )}
-
-      {/* 列表为空时的提示 */}
-      {!loading && total === 0 && (
-        <View className="empty-state">
-          <Empty>
-            <Empty.Image />
-            <Empty.Description>暂无用户数据</Empty.Description>
-          </Empty>
-          {hasPermission("sys:user:add") && (
-            <Button
-              color="primary"
-              className="empty-state__button"
-              onClick={handleAddUser}
-            >
-              新增第一个用户
-            </Button>
-          )}
         </View>
       )}
     </View>

@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, Image } from "@tarojs/components";
+import type { BaseEventOrig } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import { ArrowLeft } from "@taroify/icons";
+import CompareNavbar from "@/components/compare/CompareNavbar";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import { loadCompareContext } from "@/components/compare/types";
 import "./index.less";
 
 // 放大倍数选项
 const ZOOM_OPTIONS = [2, 3, 5] as const;
+type ZoomValue = (typeof ZOOM_OPTIONS)[number];
 // 放大镜尺寸选项
 const SIZE_OPTIONS = [
   { value: 100, label: "小" },
@@ -17,9 +19,14 @@ const SIZE_OPTIONS = [
 // 显示模式
 type DisplayMode = "origin" | "result" | "compare";
 
+// Taro 的 BaseEventOrig 类型定义不完整（缺 touches），扩展为触摸事件类型
+type TaroTouchEvent = BaseEventOrig & {
+  touches: Array<{ clientX: number; clientY: number }>;
+};
+
 const MagnifierPage: React.FC = () => {
-  const [ctx, setCtx] = useState(loadCompareContext);
-  const [zoom, setZoom] = useState<number>(2);
+  const [ctx] = useState(loadCompareContext);
+  const [zoom, setZoom] = useState<ZoomValue>(2);
   const [lensSize, setLensSize] = useState<number>(150);
   const [displayMode, setDisplayMode] = useState<DisplayMode>("compare");
   const [lensPos, setLensPos] = useState({ x: 0, y: 0 });
@@ -27,11 +34,6 @@ const MagnifierPage: React.FC = () => {
 
   // 缓存容器边界信息（跨端兼容：小程序不支持 getBoundingClientRect）
   const containerRectRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
-  const lastTapTime = useRef(0);
-
-  useEffect(() => {
-    setCtx(loadCompareContext());
-  }, []);
 
   const { originImage, result } = ctx;
   const hasResult = originImage && result?.resultUrl;
@@ -55,8 +57,9 @@ const MagnifierPage: React.FC = () => {
   }, [hasResult]);
 
   // 触摸移动放大镜
-  const handleTouchMove = useCallback((e: any) => {
-    const touch = e.touches[0];
+  const handleTouchMove = useCallback((e: BaseEventOrig) => {
+    const { touches } = e as TaroTouchEvent;
+    const touch = touches[0];
     const rect = containerRectRef.current;
     if (!rect) return;
     const x = touch.clientX - rect.left;
@@ -69,34 +72,31 @@ const MagnifierPage: React.FC = () => {
 
   // 双指捏合调整倍数
   const lastPinchDistance = useRef(0);
-  const handleTouchStart = useCallback((e: any) => {
-    if (e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
+  const handleTouchStart = useCallback((e: BaseEventOrig) => {
+    const { touches } = e as TaroTouchEvent;
+    if (touches.length === 2) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
       lastPinchDistance.current = Math.sqrt(dx * dx + dy * dy);
     }
   }, []);
 
-  const handlePinchMove = useCallback((e: any) => {
-    if (e.touches.length !== 2 || lastPinchDistance.current === 0) return;
-    const dx = e.touches[0].clientX - e.touches[1].clientX;
-    const dy = e.touches[0].clientY - e.touches[1].clientY;
+  const handlePinchMove = useCallback((e: BaseEventOrig) => {
+    const { touches } = e as TaroTouchEvent;
+    if (touches.length !== 2 || lastPinchDistance.current === 0) return;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
     const distance = Math.sqrt(dx * dx + dy * dy);
     const delta = distance - lastPinchDistance.current;
 
     if (Math.abs(delta) > 10) {
       setZoom((prev) => {
+        const currentIndex = ZOOM_OPTIONS.indexOf(prev);
         if (delta > 0) {
-          const nextIndex = Math.min(
-            ZOOM_OPTIONS.indexOf(prev as 2 | 3 | 5) + 1,
-            ZOOM_OPTIONS.length - 1
-          );
+          const nextIndex = Math.min(currentIndex + 1, ZOOM_OPTIONS.length - 1);
           return ZOOM_OPTIONS[nextIndex];
         } else {
-          const nextIndex = Math.max(
-            ZOOM_OPTIONS.indexOf(prev as 2 | 3 | 5) - 1,
-            0
-          );
+          const nextIndex = Math.max(currentIndex - 1, 0);
           return ZOOM_OPTIONS[nextIndex];
         }
       });
@@ -110,12 +110,6 @@ const MagnifierPage: React.FC = () => {
 
   // 点击切换显示模式（原图 → 处理后 → 对比 → 原图）
   const handleTap = useCallback(() => {
-    const now = Date.now();
-    if (now - lastTapTime.current < 300) {
-      // 双击 - 暂不实现标记点
-      return;
-    }
-    lastTapTime.current = now;
     setDisplayMode((prev) => {
       if (prev === "origin") return "result";
       if (prev === "result") return "compare";
@@ -148,12 +142,7 @@ const MagnifierPage: React.FC = () => {
   return (
     <View className="magnifier-page">
       {/* 顶部导航 */}
-      <View className="navbar">
-        <View className="nav-back" onClick={() => Taro.navigateBack()}>
-          <ArrowLeft size="20" color="#333" />
-        </View>
-        <Text className="nav-title">放大镜对比</Text>
-      </View>
+      <CompareNavbar title="放大镜对比" />
 
       {/* 对比区域 */}
       {!hasResult ? (
@@ -167,7 +156,7 @@ const MagnifierPage: React.FC = () => {
           <View
             className="image-container"
             onTouchStart={handleTouchStart}
-            onTouchMove={(e: any) => {
+            onTouchMove={(e) => {
               handleTouchMove(e);
               handlePinchMove(e);
             }}

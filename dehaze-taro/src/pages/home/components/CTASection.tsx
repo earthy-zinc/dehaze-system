@@ -7,15 +7,7 @@ import "./CTASection.less";
 
 const CTASection: React.FC = () => {
   const handleStartClick = () => {
-    try {
-      Taro.navigateTo({ url: "/pages/image-input/index" });
-    } catch (error) {
-      console.warn("导航页面不存在，将在实现后可用");
-      Taro.showToast({
-        title: "功能开发中",
-        icon: "none",
-      });
-    }
+    Taro.navigateTo({ url: "/pages/image-input/index" });
   };
 
   return (

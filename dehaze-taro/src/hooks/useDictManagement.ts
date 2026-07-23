@@ -25,7 +25,6 @@ export const useDictManagement = () => {
   // 字典数据状态
   const [dictItems, setDictItems] = useState<DictPageVO[]>([]);
   const [dictItemLoading, setDictItemLoading] = useState(false);
-  const [dictItemTotal, setDictItemTotal] = useState(0);
   const [dictItemQueryParams, setDictItemQueryParams] = useState<DictQuery>({
     pageNum: 1,
     pageSize: 10,
@@ -144,7 +143,6 @@ export const useDictManagement = () => {
         const query = { ...dictItemQueryParams, ...params };
         const response = await DictAPI.getDictPage(query);
         setDictItems(response.list);
-        setDictItemTotal(response.total);
         setDictItemQueryParams(query);
         return response;
       } catch (error) {
@@ -234,7 +232,6 @@ export const useDictManagement = () => {
     // 字典数据状态
     dictItems,
     dictItemLoading,
-    dictItemTotal,
     dictItemQueryParams,
 
     // 字典类型操作

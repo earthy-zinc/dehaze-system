@@ -26,15 +26,7 @@ const ToolCard: React.FC<ToolCardProps> = ({
   target,
 }) => {
   const handleClick = () => {
-    try {
-      Taro.navigateTo({ url: `/pages/${target}/index` });
-    } catch (error) {
-      console.warn(`导航到 ${target} 页面不存在，将在实现后可用`);
-      Taro.showToast({
-        title: "功能开发中",
-        icon: "none",
-      });
-    }
+    Taro.navigateTo({ url: `/pages/${target}/index` });
   };
 
   return (
@@ -91,9 +83,9 @@ const ToolsGrid: React.FC = () => {
   return (
     <View className="tools-section">
       <View className="tools-grid">
-        {tools.map((tool, index) => (
+        {tools.map((tool) => (
           <ToolCard
-            key={index}
+            key={tool.target}
             icon={tool.icon}
             title={tool.title}
             description={tool.description}

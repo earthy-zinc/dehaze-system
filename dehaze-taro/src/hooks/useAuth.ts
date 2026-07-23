@@ -11,9 +11,5 @@ export const useAuth = () => {
     login,
     logout,
     initAuth,
-
-    // 便捷属性
-    isAuthenticated: state.auth.isAuthenticated,
-    isLoading: state.auth.loading,
   };
 };

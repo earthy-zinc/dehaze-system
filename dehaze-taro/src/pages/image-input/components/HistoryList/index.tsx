@@ -15,6 +15,7 @@ interface HistoryListProps {
   records: InputHistoryVO[];
   loading?: boolean;
   onSelect: (record: InputHistoryVO) => void;
+  onReprocess: (record: InputHistoryVO) => void;
   onDelete: (id: number) => void;
   onClear: () => void;
 }
@@ -23,6 +24,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   records,
   loading = false,
   onSelect,
+  onReprocess,
   onDelete,
   onClear,
 }) => {
@@ -119,6 +121,13 @@ const HistoryList: React.FC<HistoryListProps> = ({
                     </View>
                   </View>
                   <SwipeCell.Actions side="right">
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={() => onReprocess(record)}
+                    >
+                      重新处理
+                    </Button>
                     <Button
                       variant="contained"
                       color="danger"

@@ -1,10 +1,9 @@
 import React, { useEffect } from "react";
 import { View, Image, Text } from "@tarojs/components";
+import type { BaseEventOrig } from "@tarojs/components";
 import { Close } from "@taroify/icons";
-import {
-  getImageTypeLabel,
-  formatHazeLevel,
-} from "@/pages/dataset/services/imageUtils";
+import { getImageTypeLabel } from "@/pages/dataset/services/imageUtils";
+import { formatFileSize, formatHazeLevel } from "@/utils/format";
 import "./ImageViewer.less";
 
 export interface ImageViewerProps {
@@ -56,14 +55,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   const typeLabel = getImageTypeLabel(imageType) || "未知类型";
   const hazeLevelLabel = formatHazeLevel(hazeLevel);
 
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return "-";
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  };
-
-  const handleMaskClick = (e: any) => {
+  const handleMaskClick = (e: BaseEventOrig) => {
     if (e.target === e.currentTarget) {
       onClose();
     }

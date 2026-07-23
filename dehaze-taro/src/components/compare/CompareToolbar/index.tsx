@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import { View, Text } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { COMPARE_MODES, type CompareMode } from "../types";
+import { getErrorMessage } from "@/utils/error";
 import "./index.less";
 
 interface CompareToolbarProps {
@@ -54,10 +55,11 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
         filePath: downloadRes.tempFilePath,
       });
       Taro.showToast({ title: "已保存到相册", icon: "success" });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errMsg = (error as { errMsg?: string })?.errMsg;
       if (
-        error?.errMsg?.includes("auth deny") ||
-        error?.errMsg?.includes("authorize")
+        errMsg?.includes("auth deny") ||
+        errMsg?.includes("authorize")
       ) {
         Taro.showModal({
           title: "提示",
@@ -70,7 +72,7 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
           },
         });
       } else {
-        Taro.showToast({ title: error?.message || "保存失败", icon: "none" });
+        Taro.showToast({ title: getErrorMessage(error, "保存失败"), icon: "none" });
       }
     }
   }, [resultUrl]);

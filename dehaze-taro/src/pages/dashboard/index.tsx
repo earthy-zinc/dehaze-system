@@ -151,6 +151,20 @@ const Dashboard: React.FC = () => {
         return;
       }
     }
+    // 算法选择和去雾处理入口：需先选择图片
+    if (route === "/pages/algorithm-select/index" || route === "/pages/processing/index") {
+      const hasImage = (() => {
+        try {
+          return !!Taro.getStorageSync("current_image");
+        } catch {
+          return false;
+        }
+      })();
+      if (!hasImage) {
+        Taro.showToast({ title: "请先选择图片", icon: "none" });
+        return;
+      }
+    }
     if (isTabBarPage(route)) {
       Taro.reLaunch({ url: route });
     } else {
@@ -190,15 +204,9 @@ const Dashboard: React.FC = () => {
           {/* 用户欢迎区 */}
           <View className="welcome-section">
             <View className="user-avatar">
-              {user?.avatar ? (
-                <Text className="avatar-text">
-                  {user.nickname?.[0] || user.username?.[0] || "U"}
-                </Text>
-              ) : (
-                <Text className="avatar-text">
-                  {user?.nickname?.[0] || user?.username?.[0] || "U"}
-                </Text>
-              )}
+              <Text className="avatar-text">
+                {user?.nickname?.[0] || user?.username?.[0] || "U"}
+              </Text>
             </View>
             <View className="user-info">
               <Text className="user-name">

@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import Taro from "@tarojs/taro";
 import type { UserQuery, UserPageVO, UserForm } from "dehaze-sdk-js";
+import { getErrorMessage } from "@/utils/error";
 
 export const useUserManagement = () => {
   // 状态定义
@@ -26,8 +27,8 @@ export const useUserManagement = () => {
         setTotal(response.total);
         setQueryParams(query);
         return response;
-      } catch (error: any) {
-        setLoadError(error?.message || "获取用户列表失败，请重试");
+      } catch (error: unknown) {
+        setLoadError(getErrorMessage(error, "获取用户列表失败，请重试"));
         throw error;
       } finally {
         setLoading(false);
@@ -128,16 +129,6 @@ export const useUserManagement = () => {
     [fetchUsers]
   );
 
-  // 重置查询参数
-  const resetQuery = useCallback(() => {
-    const defaultParams = {
-      pageNum: 1,
-      pageSize: 10,
-    };
-    setQueryParams(defaultParams);
-    fetchUsers(defaultParams);
-  }, [fetchUsers]);
-
   return {
     // 状态
     users,
@@ -154,7 +145,6 @@ export const useUserManagement = () => {
     resetPassword,
     getUserDetail,
     searchUsers,
-    resetQuery,
     setQueryParams,
   };
 };
