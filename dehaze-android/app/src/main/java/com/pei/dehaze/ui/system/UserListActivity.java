@@ -21,7 +21,6 @@ import android.widget.TextView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -30,6 +29,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.button.MaterialButton;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityUserListBinding;
 import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.user.Gender;
@@ -57,24 +57,7 @@ public class UserListActivity extends AppCompatActivity {
 
     private UserViewModel userViewModel;
     private UserAdapter userAdapter;
-    private RecyclerView recyclerView;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private Toolbar toolbar;
-    private TextView tvEmpty;
-    private EditText etKeywords;
-    private Spinner spinnerStatus;
-    private Spinner spinnerDept;
-    private MaterialButton btnSearch;
-    private MaterialButton btnReset;
-    private MaterialButton btnAdd;
-    private MaterialButton btnBatchDelete;
-    private MaterialButton btnCancelSelect;
-    private MaterialButton btnSelectAll;
-    private MaterialButton btnExport;
-    private MaterialButton btnTemplate;
-    private MaterialButton btnPrev;
-    private MaterialButton btnNext;
-    private TextView tvPageInfo;
+    private ActivityUserListBinding binding;
 
     private final List<Option> deptOptions = new ArrayList<>();
     private final List<Option> roleOptions = new ArrayList<>();
@@ -102,7 +85,8 @@ public class UserListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_user_list);
+        binding = ActivityUserListBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         initViews();
         initViewModel();
@@ -111,43 +95,24 @@ public class UserListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        toolbar = findViewById(R.id.toolbar);
-        recyclerView = findViewById(R.id.recycler_view);
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh);
-        tvEmpty = findViewById(R.id.tv_empty);
-        etKeywords = findViewById(R.id.et_keywords);
-        spinnerStatus = findViewById(R.id.spinner_status);
-        spinnerDept = findViewById(R.id.spinner_dept);
-        btnSearch = findViewById(R.id.btn_search);
-        btnReset = findViewById(R.id.btn_reset);
-        btnAdd = findViewById(R.id.btn_add);
-        btnBatchDelete = findViewById(R.id.btn_batch_delete);
-        btnCancelSelect = findViewById(R.id.btn_cancel_select);
-        btnSelectAll = findViewById(R.id.btn_select_all);
-        btnExport = findViewById(R.id.btn_export);
-        btnTemplate = findViewById(R.id.btn_template);
-        btnPrev = findViewById(R.id.btn_prev);
-        btnNext = findViewById(R.id.btn_next);
-        tvPageInfo = findViewById(R.id.tv_page_info);
-
-        setSupportActionBar(toolbar);
-        toolbar.setNavigationOnClickListener(v -> finish());
+        setSupportActionBar(binding.toolbar);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
         userAdapter = new UserAdapter();
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(userAdapter);
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerView.setAdapter(userAdapter);
 
         ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, STATUS_LABELS);
         statusAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerStatus.setAdapter(statusAdapter);
+        binding.spinnerStatus.setAdapter(statusAdapter);
 
         ArrayAdapter<String> deptAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, new ArrayList<>(java.util.Collections.singletonList("全部部门")));
         deptAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerDept.setAdapter(deptAdapter);
+        binding.spinnerDept.setAdapter(deptAdapter);
 
-        swipeRefreshLayout.setOnRefreshListener(this::loadData);
+        binding.swipeRefresh.setOnRefreshListener(this::loadData);
 
         userAdapter.setOnUserActionListener(new UserAdapter.OnUserActionListener() {
             @Override
@@ -175,14 +140,14 @@ public class UserListActivity extends AppCompatActivity {
         });
 
         userAdapter.setOnSelectionChangedListener(selectedIds -> {
-            tvPageInfo.setText("已选中 " + selectedIds.size() + " 项");
+            binding.tvPageInfo.setText("已选中 " + selectedIds.size() + " 项");
         });
 
-        btnSearch.setOnClickListener(v -> {
-            String keywords = etKeywords.getText().toString().trim();
-            EnableStatus status = STATUS_VALUES[spinnerStatus.getSelectedItemPosition()];
+        binding.btnSearch.setOnClickListener(v -> {
+            String keywords = binding.etKeywords.getText().toString().trim();
+            EnableStatus status = STATUS_VALUES[binding.spinnerStatus.getSelectedItemPosition()];
             Integer deptId = null;
-            int deptPos = spinnerDept.getSelectedItemPosition();
+            int deptPos = binding.spinnerDept.getSelectedItemPosition();
             if (deptPos > 0 && deptPos - 1 < deptOptions.size()) {
                 try {
                     deptId = Integer.parseInt(deptOptions.get(deptPos - 1).getValue());
@@ -193,18 +158,18 @@ public class UserListActivity extends AppCompatActivity {
             loadData();
         });
 
-        btnReset.setOnClickListener(v -> {
-            etKeywords.setText("");
-            spinnerStatus.setSelection(0);
-            if (spinnerDept.getAdapter() != null && spinnerDept.getAdapter().getCount() > 0) {
-                spinnerDept.setSelection(0);
+        binding.btnReset.setOnClickListener(v -> {
+            binding.etKeywords.setText("");
+            binding.spinnerStatus.setSelection(0);
+            if (binding.spinnerDept.getAdapter() != null && binding.spinnerDept.getAdapter().getCount() > 0) {
+                binding.spinnerDept.setSelection(0);
             }
             userViewModel.resetQuery();
             loadData();
         });
 
-        btnAdd.setOnClickListener(v -> showUserFormDialog(null));
-        btnBatchDelete.setOnClickListener(v -> {
+        binding.btnAdd.setOnClickListener(v -> showUserFormDialog(null));
+        binding.btnBatchDelete.setOnClickListener(v -> {
             if (!userAdapter.isSelectionMode()) {
                 userAdapter.setSelectionMode(true);
                 updateSelectionModeUI(true);
@@ -213,15 +178,15 @@ public class UserListActivity extends AppCompatActivity {
                 showBatchDeleteConfirmDialog();
             }
         });
-        btnCancelSelect.setOnClickListener(v -> {
+        binding.btnCancelSelect.setOnClickListener(v -> {
             userAdapter.clearSelection();
             userAdapter.setSelectionMode(false);
             updateSelectionModeUI(false);
             updatePageInfo();
         });
-        btnSelectAll.setOnClickListener(v -> userAdapter.selectAll());
+        binding.btnSelectAll.setOnClickListener(v -> userAdapter.selectAll());
 
-        btnExport.setOnClickListener(v -> {
+        binding.btnExport.setOnClickListener(v -> {
             if (!ensureStoragePermission()) return;
             File dir = new File(getExternalFilesDir(null), "exports");
             if (!dir.exists() && !dir.mkdirs()) {
@@ -233,7 +198,7 @@ public class UserListActivity extends AppCompatActivity {
             userViewModel.exportUsers(file.getAbsolutePath());
         });
 
-        btnTemplate.setOnClickListener(v -> {
+        binding.btnTemplate.setOnClickListener(v -> {
             if (!ensureStoragePermission()) return;
             File dir = new File(getExternalFilesDir(null), "templates");
             if (!dir.exists() && !dir.mkdirs()) {
@@ -244,20 +209,20 @@ public class UserListActivity extends AppCompatActivity {
             userViewModel.downloadTemplate(file.getAbsolutePath());
         });
 
-        btnPrev.setOnClickListener(v -> userViewModel.prevPage());
-        btnNext.setOnClickListener(v -> userViewModel.nextPage());
+        binding.btnPrev.setOnClickListener(v -> userViewModel.prevPage());
+        binding.btnNext.setOnClickListener(v -> userViewModel.nextPage());
     }
 
     private void updateSelectionModeUI(boolean selectionMode) {
-        btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
-        btnExport.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
-        btnTemplate.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnExport.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnTemplate.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
         if (selectionMode) {
-            btnBatchDelete.setText("删除选中");
+            binding.btnBatchDelete.setText("删除选中");
         } else {
-            btnBatchDelete.setText("批量删除");
+            binding.btnBatchDelete.setText("批量删除");
         }
     }
 
@@ -269,13 +234,13 @@ public class UserListActivity extends AppCompatActivity {
         userViewModel.getUserList().observe(this, users -> {
             userAdapter.submitList(users);
             updatePageInfo();
-            tvEmpty.setVisibility(users == null || users.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.tvEmpty.setVisibility(users == null || users.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         userViewModel.getTotal().observe(this, total -> updatePageInfo());
 
         userViewModel.getLoading().observe(this, isLoading ->
-                swipeRefreshLayout.setRefreshing(isLoading != null && isLoading));
+                binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
         userViewModel.getError().observe(this, errorMessage -> {
             if (errorMessage != null && !errorMessage.isEmpty()) {
@@ -317,7 +282,7 @@ public class UserListActivity extends AppCompatActivity {
             ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                     android.R.layout.simple_spinner_item, deptLabels);
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spinnerDept.setAdapter(adapter);
+            binding.spinnerDept.setAdapter(adapter);
         });
 
         userViewModel.getRoleOptions().observe(this, options -> {
@@ -337,14 +302,14 @@ public class UserListActivity extends AppCompatActivity {
     private void updatePageInfo() {
         if (userAdapter != null && userAdapter.isSelectionMode()) {
             int count = userAdapter.getSelectedIds().size();
-            tvPageInfo.setText("已选中 " + count + " 项");
+            binding.tvPageInfo.setText("已选中 " + count + " 项");
             return;
         }
         long total = userViewModel.getTotal().getValue() != null ? userViewModel.getTotal().getValue() : 0L;
         int pageNum = userViewModel.getPageNum();
         int pageSize = userViewModel.getPageSize();
         int totalPages = Math.max(1, (int) Math.ceil(total * 1.0 / pageSize));
-        tvPageInfo.setText("第 " + pageNum + " 页 / 共 " + totalPages + " 页 (共 " + total + " 条)");
+        binding.tvPageInfo.setText("第 " + pageNum + " 页 / 共 " + totalPages + " 页 (共 " + total + " 条)");
     }
 
     private void showDeleteConfirmDialog(UserPageVO user) {

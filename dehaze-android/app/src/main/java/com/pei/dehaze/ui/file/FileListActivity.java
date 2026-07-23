@@ -1,7 +1,6 @@
 package com.pei.dehaze.ui.file;
 
 import android.Manifest;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -16,13 +15,14 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.widget.ProgressBar;
 
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityFileListBinding;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.ui.file.adapter.FileAdapter;
 import com.pei.dehaze.ui.file.viewmodel.FileViewModel;
@@ -40,9 +40,7 @@ public class FileListActivity extends AppCompatActivity {
 
     private FileViewModel fileViewModel;
     private FileAdapter fileAdapter;
-    private RecyclerView recyclerView;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private ProgressBar progressBar;
+    private ActivityFileListBinding binding;
 
     private final ActivityResultLauncher<String> pickFileLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -63,7 +61,8 @@ public class FileListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_file_list);
+        binding = ActivityFileListBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         initViews();
         initViewModel();
@@ -77,18 +76,14 @@ public class FileListActivity extends AppCompatActivity {
             getSupportActionBar().setTitle("文件管理");
         }
 
-        recyclerView = findViewById(R.id.recycler_view);
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh);
-        progressBar = findViewById(R.id.progress_bar);
-
         fileAdapter = new FileAdapter();
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(fileAdapter);
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerView.setAdapter(fileAdapter);
 
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+        binding.recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                LinearLayoutManager lm = (LinearLayoutManager) recyclerView.getLayoutManager();
+            public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                LinearLayoutManager lm = (LinearLayoutManager) rv.getLayoutManager();
                 if (lm != null) {
                     int totalItemCount = lm.getItemCount();
                     int lastVisible = lm.findLastVisibleItemPosition();
@@ -120,28 +115,28 @@ public class FileListActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(R.id.btn_search).setOnClickListener(v -> {
-            String keywords = ((android.widget.EditText) findViewById(R.id.et_search)).getText().toString().trim();
+        binding.btnSearch.setOnClickListener(v -> {
+            String keywords = binding.etSearch.getText().toString().trim();
             fileViewModel.searchFiles(keywords);
         });
 
-        findViewById(R.id.btn_upload).setOnClickListener(v -> {
+        binding.btnUpload.setOnClickListener(v -> {
             pickFileLauncher.launch("*/*");
         });
 
-        swipeRefreshLayout.setOnRefreshListener(() -> fileViewModel.loadFiles());
+        binding.swipeRefresh.setOnRefreshListener(() -> fileViewModel.loadFiles());
     }
 
     private void initViewModel() {
-        fileViewModel = new FileViewModel();
+        fileViewModel = new ViewModelProvider(this).get(FileViewModel.class);
     }
 
     private void setupObservers() {
         fileViewModel.getFileList().observe(this, files -> fileAdapter.submitList(files));
 
         fileViewModel.getLoading().observe(this, isLoading -> {
-            swipeRefreshLayout.setRefreshing(isLoading != null && isLoading);
-            progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE);
+            binding.swipeRefresh.setRefreshing(isLoading != null && isLoading);
+            binding.progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE);
         });
 
         fileViewModel.getError().observe(this, msg -> {

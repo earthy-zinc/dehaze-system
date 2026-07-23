@@ -7,21 +7,14 @@ import android.text.TextUtils;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
-import android.widget.Spinner;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityAlgorithmSelectBinding;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmCompareVO;
 import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmRecommendVO;
@@ -51,48 +44,25 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
 
     private AlgorithmSelectViewModel viewModel;
     private AlgorithmViewModel algorithmViewModel;
-    private Toolbar toolbar;
-    private TabLayout tabLayout;
-    private android.widget.ViewFlipper viewFlipper;
+    private ActivityAlgorithmSelectBinding binding;
 
     // 搜索 Tab
-    private TextInputEditText etSearchKeywords;
-    private MaterialButton btnSearchAlgo;
-    private MaterialButton btnResetSearch;
-    private SwipeRefreshLayout swipeSearch;
-    private RecyclerView rvSearch;
-    private TextView tvEmptySearch;
     private AlgorithmBrowseAdapter browseAdapter;
 
     // 推荐 Tab
-    private TextInputEditText etRecommendImageUrl;
-    private Spinner spinnerTopN;
-    private MaterialButton btnRecommend;
-    private SwipeRefreshLayout swipeRecommend;
-    private RecyclerView rvRecommend;
-    private TextView tvEmptyRecommend;
     private AlgorithmRecommendAdapter recommendAdapter;
 
     // 收藏 Tab
-    private MaterialButton btnRefreshFavorites;
-    private SwipeRefreshLayout swipeFavorites;
-    private RecyclerView rvFavorites;
-    private TextView tvEmptyFavorites;
     private AlgorithmFavoriteAdapter favoriteAdapter;
 
     // 对比 Tab
-    private TextInputEditText etCompareImageUrl;
-    private TextInputEditText etAlgorithmIds;
-    private MaterialButton btnCompare;
-    private SwipeRefreshLayout swipeCompare;
-    private RecyclerView rvCompare;
-    private TextView tvEmptyCompare;
     private AlgorithmCompareResultAdapter compareAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_algorithm_select);
+        binding = ActivityAlgorithmSelectBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         initViews();
         initViewModel();
@@ -102,21 +72,17 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        toolbar = findViewById(R.id.toolbar);
-        tabLayout = findViewById(R.id.tab_layout);
-        viewFlipper = findViewById(R.id.view_flipper);
+        setSupportActionBar(binding.toolbar);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
-        setSupportActionBar(toolbar);
-        toolbar.setNavigationOnClickListener(v -> finish());
-
-        tabLayout.addTab(tabLayout.newTab().setText("搜索"));
-        tabLayout.addTab(tabLayout.newTab().setText("智能推荐"));
-        tabLayout.addTab(tabLayout.newTab().setText("我的收藏"));
-        tabLayout.addTab(tabLayout.newTab().setText("算法对比"));
-        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("搜索"));
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("智能推荐"));
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("我的收藏"));
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("算法对比"));
+        binding.tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
-                viewFlipper.setDisplayedChild(tab.getPosition());
+                binding.viewFlipper.setDisplayedChild(tab.getPosition());
                 if (tab.getPosition() == TAB_FAVORITES) {
                     loadFavorites();
                 }
@@ -132,25 +98,18 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         });
 
         // 搜索 Tab
-        etSearchKeywords = findViewById(R.id.et_search_keywords);
-        btnSearchAlgo = findViewById(R.id.btn_search_algo);
-        btnResetSearch = findViewById(R.id.btn_reset_search);
-        swipeSearch = findViewById(R.id.swipe_search);
-        rvSearch = findViewById(R.id.rv_search);
-        tvEmptySearch = findViewById(R.id.tv_empty_search);
-
         browseAdapter = new AlgorithmBrowseAdapter();
-        rvSearch.setLayoutManager(new LinearLayoutManager(this));
-        rvSearch.setAdapter(browseAdapter);
+        binding.rvSearch.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvSearch.setAdapter(browseAdapter);
 
-        swipeSearch.setOnRefreshListener(() -> algorithmViewModel.loadAlgorithms());
-        btnSearchAlgo.setOnClickListener(v -> doSearch());
-        btnResetSearch.setOnClickListener(v -> {
-            etSearchKeywords.setText("");
+        binding.swipeSearch.setOnRefreshListener(() -> algorithmViewModel.loadAlgorithms());
+        binding.btnSearchAlgo.setOnClickListener(v -> doSearch());
+        binding.btnResetSearch.setOnClickListener(v -> {
+            binding.etSearchKeywords.setText("");
             algorithmViewModel.resetQuery();
             algorithmViewModel.loadAlgorithms();
         });
-        etSearchKeywords.setOnEditorActionListener((v, actionId, event) -> {
+        binding.etSearchKeywords.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 doSearch();
                 return true;
@@ -177,25 +136,18 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         });
 
         // 推荐 Tab
-        etRecommendImageUrl = findViewById(R.id.et_recommend_image_url);
-        spinnerTopN = findViewById(R.id.spinner_top_n);
-        btnRecommend = findViewById(R.id.btn_recommend);
-        swipeRecommend = findViewById(R.id.swipe_recommend);
-        rvRecommend = findViewById(R.id.rv_recommend);
-        tvEmptyRecommend = findViewById(R.id.tv_empty_recommend);
-
         String[] topNLabels = {"1", "2", "3", "5", "10"};
         ArrayAdapter<String> topNAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, topNLabels);
         topNAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerTopN.setAdapter(topNAdapter);
-        spinnerTopN.setSelection(2); // 默认3
+        binding.spinnerTopN.setAdapter(topNAdapter);
+        binding.spinnerTopN.setSelection(2); // 默认3
 
         recommendAdapter = new AlgorithmRecommendAdapter();
-        rvRecommend.setLayoutManager(new LinearLayoutManager(this));
-        rvRecommend.setAdapter(recommendAdapter);
+        binding.rvRecommend.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvRecommend.setAdapter(recommendAdapter);
 
-        swipeRecommend.setOnRefreshListener(this::doRecommend);
+        binding.swipeRecommend.setOnRefreshListener(this::doRecommend);
 
         recommendAdapter.setOnRecommendActionListener(new AlgorithmRecommendAdapter.OnRecommendActionListener() {
             @Override
@@ -210,20 +162,15 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
             }
         });
 
-        btnRecommend.setOnClickListener(v -> doRecommend());
+        binding.btnRecommend.setOnClickListener(v -> doRecommend());
 
         // 收藏 Tab
-        btnRefreshFavorites = findViewById(R.id.btn_refresh_favorites);
-        swipeFavorites = findViewById(R.id.swipe_favorites);
-        rvFavorites = findViewById(R.id.rv_favorites);
-        tvEmptyFavorites = findViewById(R.id.tv_empty_favorites);
-
         favoriteAdapter = new AlgorithmFavoriteAdapter();
-        rvFavorites.setLayoutManager(new LinearLayoutManager(this));
-        rvFavorites.setAdapter(favoriteAdapter);
+        binding.rvFavorites.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvFavorites.setAdapter(favoriteAdapter);
 
-        swipeFavorites.setOnRefreshListener(this::loadFavorites);
-        btnRefreshFavorites.setOnClickListener(v -> loadFavorites());
+        binding.swipeFavorites.setOnRefreshListener(this::loadFavorites);
+        binding.btnRefreshFavorites.setOnClickListener(v -> loadFavorites());
 
         favoriteAdapter.setOnFavoriteActionListener(new AlgorithmFavoriteAdapter.OnFavoriteActionListener() {
             @Override
@@ -242,23 +189,16 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         });
 
         // 对比 Tab
-        etCompareImageUrl = findViewById(R.id.et_compare_image_url);
-        etAlgorithmIds = findViewById(R.id.et_algorithm_ids);
-        btnCompare = findViewById(R.id.btn_compare);
-        swipeCompare = findViewById(R.id.swipe_compare);
-        rvCompare = findViewById(R.id.rv_compare);
-        tvEmptyCompare = findViewById(R.id.tv_empty_compare);
-
         compareAdapter = new AlgorithmCompareResultAdapter();
-        rvCompare.setLayoutManager(new LinearLayoutManager(this,
+        binding.rvCompare.setLayoutManager(new LinearLayoutManager(this,
                 LinearLayoutManager.HORIZONTAL, false));
-        rvCompare.setAdapter(compareAdapter);
+        binding.rvCompare.setAdapter(compareAdapter);
 
-        btnCompare.setOnClickListener(v -> doCompare());
+        binding.btnCompare.setOnClickListener(v -> doCompare());
     }
 
     private void doSearch() {
-        String keywords = etSearchKeywords.getText() == null ? "" : etSearchKeywords.getText().toString().trim();
+        String keywords = binding.etSearchKeywords.getText() == null ? "" : binding.etSearchKeywords.getText().toString().trim();
         algorithmViewModel.setKeywords(keywords);
         algorithmViewModel.loadAlgorithms();
     }
@@ -271,24 +211,24 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
     private void setupObservers() {
         viewModel.getRecommendList().observe(this, list -> {
             recommendAdapter.submitList(list);
-            tvEmptyRecommend.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.tvEmptyRecommend.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         viewModel.getFavoriteList().observe(this, list -> {
             favoriteAdapter.submitList(list);
-            tvEmptyFavorites.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.tvEmptyFavorites.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         viewModel.getCompareResult().observe(this, list -> {
             compareAdapter.submitList(list);
-            tvEmptyCompare.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.tvEmptyCompare.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         viewModel.getLoading().observe(this, isLoading -> {
             boolean loading = isLoading != null && isLoading;
-            swipeRecommend.setRefreshing(loading);
-            swipeFavorites.setRefreshing(loading);
-            swipeCompare.setRefreshing(loading);
+            binding.swipeRecommend.setRefreshing(loading);
+            binding.swipeFavorites.setRefreshing(loading);
+            binding.swipeCompare.setRefreshing(loading);
         });
 
         viewModel.getError().observe(this, errorMessage -> {
@@ -317,11 +257,11 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         // 搜索 Tab 的观察者
         algorithmViewModel.getAlgorithmList().observe(this, list -> {
             browseAdapter.submitList(list);
-            tvEmptySearch.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.tvEmptySearch.setVisibility(list == null || list.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         algorithmViewModel.getLoading().observe(this, isLoading ->
-                swipeSearch.setRefreshing(isLoading != null && isLoading));
+                binding.swipeSearch.setRefreshing(isLoading != null && isLoading));
 
         algorithmViewModel.getError().observe(this, errorMessage -> {
             if (errorMessage != null && !errorMessage.isEmpty()) {
@@ -339,12 +279,12 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
     }
 
     private void doRecommend() {
-        String imageUrl = etRecommendImageUrl.getText() == null ? "" : etRecommendImageUrl.getText().toString().trim();
+        String imageUrl = binding.etRecommendImageUrl.getText() == null ? "" : binding.etRecommendImageUrl.getText().toString().trim();
         if (TextUtils.isEmpty(imageUrl)) {
             ToastUtils.showShort(this, "请输入待去雾图片URL");
             return;
         }
-        int topN = TOP_N_VALUES[spinnerTopN.getSelectedItemPosition()];
+        int topN = TOP_N_VALUES[binding.spinnerTopN.getSelectedItemPosition()];
         viewModel.recommend(imageUrl, topN);
     }
 
@@ -353,8 +293,8 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
     }
 
     private void doCompare() {
-        String imageUrl = etCompareImageUrl.getText() == null ? "" : etCompareImageUrl.getText().toString().trim();
-        String idsStr = etAlgorithmIds.getText() == null ? "" : etAlgorithmIds.getText().toString().trim();
+        String imageUrl = binding.etCompareImageUrl.getText() == null ? "" : binding.etCompareImageUrl.getText().toString().trim();
+        String idsStr = binding.etAlgorithmIds.getText() == null ? "" : binding.etAlgorithmIds.getText().toString().trim();
         if (TextUtils.isEmpty(idsStr)) {
             ToastUtils.showShort(this, "请输入算法ID列表");
             return;

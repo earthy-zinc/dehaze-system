@@ -130,6 +130,14 @@ public class LoginFragment extends Fragment {
                 ToastUtils.showLong(getContext(), error);
             }
         });
+
+        // 观察加载状态：禁用/启用登录按钮，显示/隐藏 ProgressBar
+        loginViewModel.getLoading().observe(getViewLifecycleOwner(), isLoading -> {
+            boolean loading = Boolean.TRUE.equals(isLoading);
+            binding.loginButton.setEnabled(!loading);
+            binding.loginProgressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+            binding.loginButton.setText(loading ? "登录中..." : "登 录");
+        });
         
         // 观察登录成功状态
         loginViewModel.getLoginSuccess().observe(getViewLifecycleOwner(), success -> {

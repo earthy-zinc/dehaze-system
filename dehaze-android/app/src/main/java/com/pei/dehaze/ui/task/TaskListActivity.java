@@ -8,7 +8,6 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.ProgressBar;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -16,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -23,6 +23,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityTaskListBinding;
 import com.pei.dehaze.sdk.model.task.ExportOptions;
 import com.pei.dehaze.sdk.model.task.TaskCreateForm;
 import com.pei.dehaze.sdk.model.task.TaskStatus;
@@ -34,7 +35,6 @@ import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.utils.ViewUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -45,9 +45,7 @@ public class TaskListActivity extends AppCompatActivity {
 
     private TaskViewModel taskViewModel;
     private TaskAdapter taskAdapter;
-    private RecyclerView recyclerView;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private ProgressBar progressBar;
+    private ActivityTaskListBinding binding;
 
     private MaterialAutoCompleteTextView spStatus;
     private MaterialAutoCompleteTextView spType;
@@ -65,7 +63,8 @@ public class TaskListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_task_list);
+        binding = ActivityTaskListBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         initViews();
         initViewModel();
@@ -79,20 +78,14 @@ public class TaskListActivity extends AppCompatActivity {
             getSupportActionBar().setTitle("任务管理");
         }
 
-        recyclerView = findViewById(R.id.recycler_view);
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh);
-        progressBar = findViewById(R.id.progress_bar);
-        spStatus = findViewById(R.id.sp_status);
-        spType = findViewById(R.id.sp_type);
-
         setupStatusFilter();
         setupTypeFilter();
 
         taskAdapter = new TaskAdapter();
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(taskAdapter);
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerView.setAdapter(taskAdapter);
 
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+        binding.recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 LinearLayoutManager lm = (LinearLayoutManager) recyclerView.getLayoutManager();
@@ -127,9 +120,9 @@ public class TaskListActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(R.id.btn_create).setOnClickListener(v -> showCreateDialog());
+        binding.btnCreate.setOnClickListener(v -> showCreateDialog());
 
-        swipeRefreshLayout.setOnRefreshListener(() -> taskViewModel.loadTasks());
+        binding.swipeRefresh.setOnRefreshListener(() -> taskViewModel.loadTasks());
     }
 
     private void setupStatusFilter() {
@@ -139,6 +132,7 @@ public class TaskListActivity extends AppCompatActivity {
             statusLabels.add(status.getLabel());
         }
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, statusLabels);
+        spStatus = binding.spStatus;
         spStatus.setAdapter(adapter);
         spStatus.setText("全部", false);
         spStatus.setOnItemClickListener((parent, view, position, id) -> {
@@ -158,6 +152,7 @@ public class TaskListActivity extends AppCompatActivity {
             typeLabels.add(type.getLabel());
         }
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, typeLabels);
+        spType = binding.spType;
         spType.setAdapter(adapter);
         spType.setText("全部", false);
         spType.setOnItemClickListener((parent, view, position, id) -> {
@@ -171,15 +166,15 @@ public class TaskListActivity extends AppCompatActivity {
     }
 
     private void initViewModel() {
-        taskViewModel = new TaskViewModel();
+        taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);
     }
 
     private void setupObservers() {
         taskViewModel.getTaskList().observe(this, tasks -> taskAdapter.submitList(tasks));
 
         taskViewModel.getLoading().observe(this, isLoading -> {
-            swipeRefreshLayout.setRefreshing(isLoading != null && isLoading);
-            progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE);
+            binding.swipeRefresh.setRefreshing(isLoading != null && isLoading);
+            binding.progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE);
         });
 
         taskViewModel.getError().observe(this, msg -> {

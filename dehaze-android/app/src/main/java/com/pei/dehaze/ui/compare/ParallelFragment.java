@@ -4,8 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,6 +12,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.FragmentParallelBinding;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
@@ -24,18 +23,13 @@ import java.util.Map;
 public class ParallelFragment extends Fragment {
 
     private CompareViewModel compareViewModel;
-    private ImageView ivOriginal;
-    private ImageView ivDehazed;
-    private TextView tvAlgorithmInfo;
+    private FragmentParallelBinding binding;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_parallel, container, false);
-        ivOriginal = view.findViewById(R.id.iv_original);
-        ivDehazed = view.findViewById(R.id.iv_dehazed);
-        tvAlgorithmInfo = view.findViewById(R.id.tv_algorithm_info);
-        return view;
+        binding = FragmentParallelBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
@@ -53,7 +47,7 @@ public class ParallelFragment extends Fragment {
         Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
-                .into(ivOriginal);
+                .into(binding.ivOriginal);
     }
 
     private void showDehazed(PredResult result) {
@@ -62,8 +56,8 @@ public class ParallelFragment extends Fragment {
         Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(result.getResultUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
-                .into(ivDehazed);
-        tvAlgorithmInfo.setText("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms")
+                .into(binding.ivDehazed);
+        binding.tvAlgorithmInfo.setText("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms")
                 + (Boolean.TRUE.equals(result.getFromCache()) ? "（命中缓存）" : ""));
     }
 
@@ -74,7 +68,7 @@ public class ParallelFragment extends Fragment {
         Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(first.getResultUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
-                .into(ivDehazed);
+                .into(binding.ivDehazed);
         StringBuilder sb = new StringBuilder("完成 " + results.size() + " 个算法：");
         boolean firstItem = true;
         for (Map.Entry<Long, PredResult> entry : results.entrySet()) {
@@ -82,6 +76,12 @@ public class ParallelFragment extends Fragment {
             sb.append("算法#").append(entry.getKey());
             firstItem = false;
         }
-        tvAlgorithmInfo.setText(sb.toString());
+        binding.tvAlgorithmInfo.setText(sb.toString());
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
 }

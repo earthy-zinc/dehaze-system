@@ -12,14 +12,12 @@ import com.pei.dehaze.utils.ToastUtils;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityDictTypeListBinding;
 import com.pei.dehaze.ui.system.adapter.DictTypeAdapter;
 import com.pei.dehaze.ui.system.viewmodel.DictTypeViewModel;
 import com.pei.dehaze.sdk.model.dict.DictTypeForm;
@@ -35,14 +33,13 @@ public class DictTypeListActivity extends AppCompatActivity {
 
     private DictTypeViewModel dictTypeViewModel;
     private DictTypeAdapter dictTypeAdapter;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private TextInputEditText etSearch;
-    private TextView tvPageInfo;
+    private ActivityDictTypeListBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_dict_type_list);
+        binding = ActivityDictTypeListBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         initViews();
         initViewModel();
@@ -51,17 +48,11 @@ public class DictTypeListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        MaterialToolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        setSupportActionBar(binding.toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
-        toolbar.setNavigationOnClickListener(v -> finish());
-
-        etSearch = findViewById(R.id.et_search);
-        RecyclerView recyclerView = findViewById(R.id.recycler_view);
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh);
-        tvPageInfo = findViewById(R.id.tv_page_info);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
         dictTypeAdapter = new DictTypeAdapter();
         dictTypeAdapter.setListener(new DictTypeAdapter.OnDictTypeActionListener() {
@@ -83,30 +74,24 @@ public class DictTypeListActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(dictTypeAdapter);
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerView.setAdapter(dictTypeAdapter);
 
-        swipeRefreshLayout.setOnRefreshListener(() -> dictTypeViewModel.loadDictTypes(null));
+        binding.swipeRefresh.setOnRefreshListener(() -> dictTypeViewModel.loadDictTypes(null));
 
-        MaterialButton btnSearch = findViewById(R.id.btn_search);
-        MaterialButton btnReset = findViewById(R.id.btn_reset);
-        MaterialButton btnAdd = findViewById(R.id.btn_add);
-        MaterialButton btnPrev = findViewById(R.id.btn_prev);
-        MaterialButton btnNext = findViewById(R.id.btn_next);
-
-        btnSearch.setOnClickListener(v -> {
-            String keywords = StringUtils.getText(etSearch);
+        binding.btnSearch.setOnClickListener(v -> {
+            String keywords = StringUtils.getText(binding.etSearch);
             dictTypeViewModel.loadDictTypes(keywords.isEmpty() ? null : keywords);
         });
 
-        btnReset.setOnClickListener(v -> {
-            etSearch.setText("");
+        binding.btnReset.setOnClickListener(v -> {
+            binding.etSearch.setText("");
             dictTypeViewModel.loadDictTypes(null);
         });
 
-        btnAdd.setOnClickListener(v -> showFormDialog(null));
+        binding.btnAdd.setOnClickListener(v -> showFormDialog(null));
 
-        btnPrev.setOnClickListener(v -> {
+        binding.btnPrev.setOnClickListener(v -> {
             int page = dictTypeViewModel.getCurrentPage();
             if (page > 1) {
                 dictTypeViewModel.loadPage(page - 1);
@@ -115,14 +100,14 @@ public class DictTypeListActivity extends AppCompatActivity {
             }
         });
 
-        btnNext.setOnClickListener(v -> {
+        binding.btnNext.setOnClickListener(v -> {
             int page = dictTypeViewModel.getCurrentPage();
             dictTypeViewModel.loadPage(page + 1);
         });
     }
 
     private void initViewModel() {
-        dictTypeViewModel = new DictTypeViewModel();
+        dictTypeViewModel = new ViewModelProvider(this).get(DictTypeViewModel.class);
     }
 
     private void setupObservers() {
@@ -134,11 +119,11 @@ public class DictTypeListActivity extends AppCompatActivity {
             int size = dictTypeViewModel.getPageSize();
             long totalLong = total != null ? total : 0;
             int totalPages = (int) Math.ceil((double) totalLong / size);
-            tvPageInfo.setText(String.format("第 %d 页 / 共 %d 页 (总计 %d 条)", page, totalPages, totalLong));
+            binding.tvPageInfo.setText(String.format("第 %d 页 / 共 %d 页 (总计 %d 条)", page, totalPages, totalLong));
         });
 
         dictTypeViewModel.getLoading().observe(this, isLoading ->
-                swipeRefreshLayout.setRefreshing(isLoading != null && isLoading));
+                binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
         dictTypeViewModel.getError().observe(this, errorMsg -> {
             if (!TextUtils.isEmpty(errorMsg)) {

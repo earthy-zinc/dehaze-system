@@ -5,6 +5,9 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.DehazeSDK;
+
+import okhttp3.OkHttpClient;
 
 /**
  * ViewModel 基类，提供统一的 loading/error/operationResult 状态管理
@@ -20,6 +23,28 @@ public abstract class BaseViewModel extends ViewModel {
 
     public void clearError() { error.setValue(null); }
     public void clearOperationResult() { operationResult.setValue(null); }
+
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        cancelPendingRequests();
+    }
+
+    /**
+     * 取消所有进行中的网络请求。
+     * 折中方案：通过 OkHttp Dispatcher 全局取消，而非逐个 Call 跟踪，
+     * 避免改造全部 SDK API / Repository / ViewModel 三层调用链。
+     * 当 ViewModel 被销毁时（Activity/Fragment 销毁），取消其发起的请求。
+     */
+    private void cancelPendingRequests() {
+        try {
+            okhttp3.Call.Factory factory = DehazeSDK.getInstance().getRetrofit().callFactory();
+            if (factory instanceof OkHttpClient) {
+                ((OkHttpClient) factory).dispatcher().cancelAll();
+            }
+        } catch (Exception ignored) {
+        }
+    }
 
     /**
      * 成功回调函数式接口。

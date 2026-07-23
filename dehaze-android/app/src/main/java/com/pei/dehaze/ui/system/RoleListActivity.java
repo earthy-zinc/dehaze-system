@@ -9,17 +9,15 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.material.button.MaterialButton;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityRoleListBinding;
 import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.menu.MenuVO;
 import com.pei.dehaze.sdk.model.role.RoleForm;
@@ -44,20 +42,7 @@ public class RoleListActivity extends AppCompatActivity {
 
     private RoleViewModel roleViewModel;
     private RoleAdapter roleAdapter;
-    private RecyclerView recyclerView;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private Toolbar toolbar;
-    private TextView tvEmpty;
-    private EditText etKeywords;
-    private MaterialButton btnSearch;
-    private MaterialButton btnReset;
-    private MaterialButton btnAdd;
-    private MaterialButton btnBatchDelete;
-    private MaterialButton btnCancelSelect;
-    private MaterialButton btnSelectAll;
-    private MaterialButton btnPrev;
-    private MaterialButton btnNext;
-    private TextView tvPageInfo;
+    private ActivityRoleListBinding binding;
 
     // 权限分配临时状态
     private RolePageVO pendingPermissionRole;
@@ -65,7 +50,8 @@ public class RoleListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_role_list);
+        binding = ActivityRoleListBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         initViews();
         initViewModel();
@@ -74,29 +60,14 @@ public class RoleListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        toolbar = findViewById(R.id.toolbar);
-        recyclerView = findViewById(R.id.recycler_view);
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh);
-        tvEmpty = findViewById(R.id.tv_empty);
-        etKeywords = findViewById(R.id.et_keywords);
-        btnSearch = findViewById(R.id.btn_search);
-        btnReset = findViewById(R.id.btn_reset);
-        btnAdd = findViewById(R.id.btn_add);
-        btnBatchDelete = findViewById(R.id.btn_batch_delete);
-        btnCancelSelect = findViewById(R.id.btn_cancel_select);
-        btnSelectAll = findViewById(R.id.btn_select_all);
-        btnPrev = findViewById(R.id.btn_prev);
-        btnNext = findViewById(R.id.btn_next);
-        tvPageInfo = findViewById(R.id.tv_page_info);
-
-        setSupportActionBar(toolbar);
-        toolbar.setNavigationOnClickListener(v -> finish());
+        setSupportActionBar(binding.toolbar);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
         roleAdapter = new RoleAdapter();
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(roleAdapter);
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerView.setAdapter(roleAdapter);
 
-        swipeRefreshLayout.setOnRefreshListener(this::loadData);
+        binding.swipeRefresh.setOnRefreshListener(this::loadData);
 
         roleAdapter.setOnRoleActionListener(new RoleAdapter.OnRoleActionListener() {
             @Override
@@ -130,23 +101,23 @@ public class RoleListActivity extends AppCompatActivity {
         });
 
         roleAdapter.setOnSelectionChangedListener(selectedIds ->
-                tvPageInfo.setText("已选中 " + selectedIds.size() + " 项"));
+                binding.tvPageInfo.setText("已选中 " + selectedIds.size() + " 项"));
 
-        btnSearch.setOnClickListener(v -> {
-            String keywords = etKeywords.getText().toString().trim();
+        binding.btnSearch.setOnClickListener(v -> {
+            String keywords = binding.etKeywords.getText().toString().trim();
             roleViewModel.setKeywords(keywords);
             loadData();
         });
 
-        btnReset.setOnClickListener(v -> {
-            etKeywords.setText("");
+        binding.btnReset.setOnClickListener(v -> {
+            binding.etKeywords.setText("");
             roleViewModel.resetQuery();
             loadData();
         });
 
-        btnAdd.setOnClickListener(v -> showRoleFormDialog(null));
+        binding.btnAdd.setOnClickListener(v -> showRoleFormDialog(null));
 
-        btnBatchDelete.setOnClickListener(v -> {
+        binding.btnBatchDelete.setOnClickListener(v -> {
             if (!roleAdapter.isSelectionMode()) {
                 roleAdapter.setSelectionMode(true);
                 updateSelectionModeUI(true);
@@ -156,27 +127,27 @@ public class RoleListActivity extends AppCompatActivity {
             }
         });
 
-        btnCancelSelect.setOnClickListener(v -> {
+        binding.btnCancelSelect.setOnClickListener(v -> {
             roleAdapter.clearSelection();
             roleAdapter.setSelectionMode(false);
             updateSelectionModeUI(false);
             updatePageInfo();
         });
 
-        btnSelectAll.setOnClickListener(v -> roleAdapter.selectAll());
+        binding.btnSelectAll.setOnClickListener(v -> roleAdapter.selectAll());
 
-        btnPrev.setOnClickListener(v -> roleViewModel.prevPage());
-        btnNext.setOnClickListener(v -> roleViewModel.nextPage());
+        binding.btnPrev.setOnClickListener(v -> roleViewModel.prevPage());
+        binding.btnNext.setOnClickListener(v -> roleViewModel.nextPage());
     }
 
     private void updateSelectionModeUI(boolean selectionMode) {
-        btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
         if (selectionMode) {
-            btnBatchDelete.setText("删除选中");
+            binding.btnBatchDelete.setText("删除选中");
         } else {
-            btnBatchDelete.setText("批量删除");
+            binding.btnBatchDelete.setText("批量删除");
         }
     }
 
@@ -188,13 +159,13 @@ public class RoleListActivity extends AppCompatActivity {
         roleViewModel.getRoleList().observe(this, roles -> {
             roleAdapter.submitList(roles);
             updatePageInfo();
-            tvEmpty.setVisibility(roles == null || roles.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.tvEmpty.setVisibility(roles == null || roles.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         roleViewModel.getTotal().observe(this, total -> updatePageInfo());
 
         roleViewModel.getLoading().observe(this, isLoading ->
-                swipeRefreshLayout.setRefreshing(isLoading != null && isLoading));
+                binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
         roleViewModel.getError().observe(this, errorMessage -> {
             if (errorMessage != null && !errorMessage.isEmpty()) {
@@ -246,14 +217,14 @@ public class RoleListActivity extends AppCompatActivity {
     private void updatePageInfo() {
         if (roleAdapter != null && roleAdapter.isSelectionMode()) {
             int count = roleAdapter.getSelectedIds().size();
-            tvPageInfo.setText("已选中 " + count + " 项");
+            binding.tvPageInfo.setText("已选中 " + count + " 项");
             return;
         }
         long total = roleViewModel.getTotal().getValue() != null ? roleViewModel.getTotal().getValue() : 0L;
         int pageNum = roleViewModel.getPageNum();
         int pageSize = roleViewModel.getPageSize();
         int totalPages = Math.max(1, (int) Math.ceil(total * 1.0 / pageSize));
-        tvPageInfo.setText("第 " + pageNum + " 页 / 共 " + totalPages + " 页 (共 " + total + " 条)");
+        binding.tvPageInfo.setText("第 " + pageNum + " 页 / 共 " + totalPages + " 页 (共 " + total + " 条)");
     }
 
     private void showDeleteConfirmDialog(RolePageVO role) {

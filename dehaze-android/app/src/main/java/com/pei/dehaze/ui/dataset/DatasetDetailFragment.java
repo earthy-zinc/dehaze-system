@@ -17,11 +17,9 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.bumptech.glide.Glide;
@@ -29,7 +27,9 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.FragmentDatasetDetailBinding;
 import com.pei.dehaze.utils.StringUtils;
+import com.pei.dehaze.utils.UriUtils;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
 import com.pei.dehaze.sdk.model.dataset.DatasetStatistics;
@@ -39,9 +39,6 @@ import com.pei.dehaze.sdk.model.dataset.ImageUrl;
 import com.pei.dehaze.utils.ToastUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -55,32 +52,7 @@ public class DatasetDetailFragment extends Fragment {
 
     private DatasetDetailViewModel viewModel;
     private DatasetImageAdapter imageAdapter;
-
-    private Toolbar toolbar;
-    private SwipeRefreshLayout swipeRefresh;
-    private RecyclerView recyclerView;
-    private TextView tvEmpty;
-    private EditText etKeywords;
-    private MaterialButton btnAddItem;
-    private MaterialButton btnBatchDelete;
-    private MaterialButton btnCancelSelect;
-    private MaterialButton btnSelectAll;
-    private MaterialButton btnPrev;
-    private MaterialButton btnNext;
-    private TextView tvPageInfo;
-    private MaterialButtonToggleGroup toggleImageType;
-
-    private TextView tvDatasetName;
-    private TextView tvDatasetStatus;
-    private TextView tvDatasetType;
-    private TextView tvDatasetPath;
-    private TextView tvDatasetDescription;
-    private TextView tvStatItems;
-    private TextView tvStatFiles;
-    private TextView tvStatSize;
-    private TextView tvStatClear;
-    private TextView tvStatHazy;
-    private TextView tvStatDistribution;
+    private FragmentDatasetDetailBinding binding;
 
     private long datasetId;
 
@@ -122,7 +94,8 @@ public class DatasetDetailFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_dataset_detail, container, false);
+        binding = FragmentDatasetDetailBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
@@ -132,68 +105,42 @@ public class DatasetDetailFragment extends Fragment {
         viewModel = new ViewModelProvider(this).get(DatasetDetailViewModel.class);
         viewModel.setDatasetId(datasetId);
 
-        bindViews(view);
+        bindViews();
         setupListeners();
         setupObservers();
 
         viewModel.refresh();
     }
 
-    private void bindViews(View view) {
-        toolbar = view.findViewById(R.id.toolbar);
-        swipeRefresh = view.findViewById(R.id.swipe_refresh);
-        recyclerView = view.findViewById(R.id.recycler_view);
-        tvEmpty = view.findViewById(R.id.tv_empty);
-        etKeywords = view.findViewById(R.id.et_keywords);
-        btnAddItem = view.findViewById(R.id.btn_add_item);
-        btnBatchDelete = view.findViewById(R.id.btn_batch_delete);
-        btnCancelSelect = view.findViewById(R.id.btn_cancel_select);
-        btnSelectAll = view.findViewById(R.id.btn_select_all);
-        btnPrev = view.findViewById(R.id.btn_prev);
-        btnNext = view.findViewById(R.id.btn_next);
-        tvPageInfo = view.findViewById(R.id.tv_page_info);
-        toggleImageType = view.findViewById(R.id.toggle_image_type);
-
-        tvDatasetName = view.findViewById(R.id.tv_dataset_name);
-        tvDatasetStatus = view.findViewById(R.id.tv_dataset_status);
-        tvDatasetType = view.findViewById(R.id.tv_dataset_type);
-        tvDatasetPath = view.findViewById(R.id.tv_dataset_path);
-        tvDatasetDescription = view.findViewById(R.id.tv_dataset_description);
-        tvStatItems = view.findViewById(R.id.tv_stat_items);
-        tvStatFiles = view.findViewById(R.id.tv_stat_files);
-        tvStatSize = view.findViewById(R.id.tv_stat_size);
-        tvStatClear = view.findViewById(R.id.tv_stat_clear);
-        tvStatHazy = view.findViewById(R.id.tv_stat_hazy);
-        tvStatDistribution = view.findViewById(R.id.tv_stat_distribution);
-
-        toolbar.setNavigationOnClickListener(v -> requireActivity().getOnBackPressedDispatcher().onBackPressed());
+    private void bindViews() {
+        binding.toolbar.setNavigationOnClickListener(v -> requireActivity().getOnBackPressedDispatcher().onBackPressed());
 
         imageAdapter = new DatasetImageAdapter();
-        recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
-        recyclerView.setAdapter(imageAdapter);
+        binding.recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
+        binding.recyclerView.setAdapter(imageAdapter);
 
         // 默认选中 hazy
-        toggleImageType.check(R.id.btn_type_hazy);
+        binding.toggleImageType.check(R.id.btn_type_hazy);
     }
 
     private void setupListeners() {
-        swipeRefresh.setOnRefreshListener(() -> viewModel.refresh());
+        binding.swipeRefresh.setOnRefreshListener(() -> viewModel.refresh());
 
-        viewById(R.id.btn_search).setOnClickListener(v -> {
-            String kw = etKeywords.getText().toString().trim();
+        binding.btnSearch.setOnClickListener(v -> {
+            String kw = binding.etKeywords.getText().toString().trim();
             viewModel.setQueryParams(kw, null, null);
             viewModel.loadItems();
         });
 
-        viewById(R.id.btn_reset).setOnClickListener(v -> {
-            etKeywords.setText("");
+        binding.btnReset.setOnClickListener(v -> {
+            binding.etKeywords.setText("");
             viewModel.resetQuery();
             viewModel.loadItems();
         });
 
-        btnAddItem.setOnClickListener(v -> showItemFormDialog(null));
+        binding.btnAddItem.setOnClickListener(v -> showItemFormDialog(null));
 
-        btnBatchDelete.setOnClickListener(v -> {
+        binding.btnBatchDelete.setOnClickListener(v -> {
             if (!imageAdapter.isSelectionMode()) {
                 imageAdapter.setSelectionMode(true);
                 updateSelectionUI(true);
@@ -203,18 +150,18 @@ public class DatasetDetailFragment extends Fragment {
             }
         });
 
-        btnCancelSelect.setOnClickListener(v -> {
+        binding.btnCancelSelect.setOnClickListener(v -> {
             imageAdapter.clearSelection();
             imageAdapter.setSelectionMode(false);
             updateSelectionUI(false);
         });
 
-        btnSelectAll.setOnClickListener(v -> imageAdapter.selectAll());
+        binding.btnSelectAll.setOnClickListener(v -> imageAdapter.selectAll());
 
-        btnPrev.setOnClickListener(v -> viewModel.prevPage());
-        btnNext.setOnClickListener(v -> viewModel.nextPage());
+        binding.btnPrev.setOnClickListener(v -> viewModel.prevPage());
+        binding.btnNext.setOnClickListener(v -> viewModel.nextPage());
 
-        toggleImageType.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+        binding.toggleImageType.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked) return;
             ImageType type;
             if (checkedId == R.id.btn_type_clear) {
@@ -263,11 +210,7 @@ public class DatasetDetailFragment extends Fragment {
         });
 
         imageAdapter.setSelectionListener(selectedIds ->
-                btnBatchDelete.setText(selectedIds.isEmpty() ? "批量删除" : "删除选中(" + selectedIds.size() + ")"));
-    }
-
-    private View viewById(int id) {
-        return requireView().findViewById(id);
+                binding.btnBatchDelete.setText(selectedIds.isEmpty() ? "批量删除" : "删除选中(" + selectedIds.size() + ")"));
     }
 
     private void setupObservers() {
@@ -276,13 +219,13 @@ public class DatasetDetailFragment extends Fragment {
         viewModel.getItems().observe(getViewLifecycleOwner(), items -> {
             imageAdapter.submitList(items);
             updatePageInfo();
-            tvEmpty.setVisibility(items == null || items.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.tvEmpty.setVisibility(items == null || items.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         viewModel.getTotal().observe(getViewLifecycleOwner(), total -> updatePageInfo());
 
         viewModel.getLoading().observe(getViewLifecycleOwner(), isLoading ->
-                swipeRefresh.setRefreshing(isLoading != null && isLoading));
+                binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
         viewModel.getError().observe(getViewLifecycleOwner(), errorMessage -> {
             if (errorMessage != null && !errorMessage.isEmpty()) {
@@ -306,34 +249,34 @@ public class DatasetDetailFragment extends Fragment {
 
     private void bindDatasetInfo(Dataset dataset) {
         if (dataset == null) return;
-        tvDatasetName.setText(StringUtils.safe(dataset.getName()));
+        binding.tvDatasetName.setText(StringUtils.safe(dataset.getName()));
         Integer status = dataset.getStatus();
         if (status != null && status == 1) {
-            tvDatasetStatus.setText("启用");
-            tvDatasetStatus.setTextColor(Color.parseColor("#4CAF50"));
+            binding.tvDatasetStatus.setText("启用");
+            binding.tvDatasetStatus.setTextColor(Color.parseColor("#4CAF50"));
         } else {
-            tvDatasetStatus.setText("禁用");
-            tvDatasetStatus.setTextColor(Color.parseColor("#9E9E9E"));
+            binding.tvDatasetStatus.setText("禁用");
+            binding.tvDatasetStatus.setTextColor(Color.parseColor("#9E9E9E"));
         }
-        tvDatasetType.setText("类型: " + StringUtils.safe(dataset.getType()));
-        tvDatasetPath.setText("路径: " + StringUtils.safe(dataset.getPath()));
-        tvDatasetDescription.setText(StringUtils.safe(dataset.getDescription()));
+        binding.tvDatasetType.setText("类型: " + StringUtils.safe(dataset.getType()));
+        binding.tvDatasetPath.setText("路径: " + StringUtils.safe(dataset.getPath()));
+        binding.tvDatasetDescription.setText(StringUtils.safe(dataset.getDescription()));
 
         DatasetStatistics stats = dataset.getStatistics();
         if (stats != null) {
-            tvStatItems.setText("数据项: " + (stats.getItemCount() != null ? stats.getItemCount() : 0));
-            tvStatFiles.setText("文件: " + (stats.getFileCount() != null ? stats.getFileCount() : 0));
-            tvStatSize.setText("大小: " + (stats.getTotalSize() != null ? stats.getTotalSize() : 0));
-            tvStatClear.setText("已标注: " + (stats.getAnnotatedCount() != null ? stats.getAnnotatedCount() : 0));
-            tvStatHazy.setText("未标注: " + (stats.getUnannotatedCount() != null ? stats.getUnannotatedCount() : 0));
-            tvStatDistribution.setText(formatDistribution(stats));
+            binding.tvStatItems.setText("数据项: " + (stats.getItemCount() != null ? stats.getItemCount() : 0));
+            binding.tvStatFiles.setText("文件: " + (stats.getFileCount() != null ? stats.getFileCount() : 0));
+            binding.tvStatSize.setText("大小: " + (stats.getTotalSize() != null ? stats.getTotalSize() : 0));
+            binding.tvStatClear.setText("已标注: " + (stats.getAnnotatedCount() != null ? stats.getAnnotatedCount() : 0));
+            binding.tvStatHazy.setText("未标注: " + (stats.getUnannotatedCount() != null ? stats.getUnannotatedCount() : 0));
+            binding.tvStatDistribution.setText(formatDistribution(stats));
         } else {
-            tvStatItems.setText("数据项: 0");
-            tvStatFiles.setText("文件: 0");
-            tvStatSize.setText("大小: 0");
-            tvStatClear.setText("清晰: 0");
-            tvStatHazy.setText("雾化: 0");
-            tvStatDistribution.setText("");
+            binding.tvStatItems.setText("数据项: 0");
+            binding.tvStatFiles.setText("文件: 0");
+            binding.tvStatSize.setText("大小: 0");
+            binding.tvStatClear.setText("清晰: 0");
+            binding.tvStatHazy.setText("雾化: 0");
+            binding.tvStatDistribution.setText("");
         }
     }
 
@@ -356,23 +299,23 @@ public class DatasetDetailFragment extends Fragment {
     }
 
     private void updateSelectionUI(boolean selectionMode) {
-        btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnAddItem.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
-        btnBatchDelete.setText(selectionMode ? "删除选中" : "批量删除");
+        binding.btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnAddItem.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnBatchDelete.setText(selectionMode ? "删除选中" : "批量删除");
     }
 
     private void updatePageInfo() {
         if (imageAdapter != null && imageAdapter.isSelectionMode()) {
             int count = imageAdapter.getSelectedIds().size();
-            tvPageInfo.setText("已选中 " + count + " 项");
+            binding.tvPageInfo.setText("已选中 " + count + " 项");
             return;
         }
         long totalVal = viewModel.getTotal().getValue() != null ? viewModel.getTotal().getValue() : 0L;
         int pageNum = viewModel.getPageNum();
         int pageSize = viewModel.getPageSize();
         int totalPages = Math.max(1, (int) Math.ceil(totalVal * 1.0 / pageSize));
-        tvPageInfo.setText("第 " + pageNum + " 页 / 共 " + totalPages + " 页 (共 " + totalVal + " 条)");
+        binding.tvPageInfo.setText("第 " + pageNum + " 页 / 共 " + totalPages + " 页 (共 " + totalVal + " 条)");
     }
 
     private void showItemFormDialog(ImageItem existing) {
@@ -481,7 +424,7 @@ public class DatasetDetailFragment extends Fragment {
                     String description = etDescription.getText() != null
                             ? etDescription.getText().toString().trim() : "";
 
-                    File file = uriToFile(pendingUploadUri);
+                    File file = UriUtils.copyToCache(requireContext(), pendingUploadUri);
                     if (file == null) {
                         ToastUtils.showShort(getContext(), "无法读取选择的图片文件");
                         return;
@@ -491,28 +434,6 @@ public class DatasetDetailFragment extends Fragment {
                 })
                 .setNegativeButton("取消", (dialog, which) -> pendingUploadUri = null)
                 .show();
-    }
-
-    /**
-     * 将 Uri 转换为 File
-     */
-    private File uriToFile(Uri uri) {
-        try {
-            InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
-            if (inputStream == null) return null;
-            File tempFile = new File(requireContext().getCacheDir(), "upload_" + System.currentTimeMillis() + ".jpg");
-            try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
-                }
-            }
-            inputStream.close();
-            return tempFile;
-        } catch (IOException e) {
-            return null;
-        }
     }
 
     /**
@@ -532,4 +453,11 @@ public class DatasetDetailFragment extends Fragment {
                 .show();
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
+    }
+
 }
+

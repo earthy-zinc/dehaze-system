@@ -2,15 +2,11 @@ package com.pei.dehaze.ui.algorithm;
 
 import androidx.appcompat.app.AlertDialog;
 import android.os.Bundle;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.chip.Chip;
-import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityAlgorithmDetailBinding;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
 import com.pei.dehaze.ui.algorithm.viewmodel.AlgorithmViewModel;
@@ -25,10 +21,7 @@ import java.util.List;
 public class AlgorithmDetailActivity extends AppCompatActivity {
 
     private AlgorithmViewModel algorithmViewModel;
-    private Toolbar toolbar;
-    private TextView tvName, tvType, tvDescription, tvParams, tvFlops, tvSize, tvPath, tvImportPath;
-    private Chip chipStatus;
-    private MaterialButton btnEdit, btnToggleStatus, btnFavorite, btnDelete;
+    private ActivityAlgorithmDetailBinding binding;
 
     private long algorithmId;
     private Algorithm currentAlgorithm;
@@ -36,7 +29,8 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_algorithm_detail);
+        binding = ActivityAlgorithmDetailBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         algorithmId = getIntent().getLongExtra("algorithm_id", 0L);
 
@@ -53,43 +47,28 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        toolbar = findViewById(R.id.toolbar);
-        tvName = findViewById(R.id.tv_algorithm_name);
-        tvType = findViewById(R.id.tv_algorithm_type);
-        tvDescription = findViewById(R.id.tv_algorithm_description);
-        tvParams = findViewById(R.id.tv_algorithm_params);
-        tvFlops = findViewById(R.id.tv_algorithm_flops);
-        tvSize = findViewById(R.id.tv_algorithm_size);
-        tvPath = findViewById(R.id.tv_algorithm_path);
-        tvImportPath = findViewById(R.id.tv_algorithm_import_path);
-        chipStatus = findViewById(R.id.chip_status);
-        btnEdit = findViewById(R.id.btn_edit);
-        btnToggleStatus = findViewById(R.id.btn_toggle_status);
-        btnFavorite = findViewById(R.id.btn_favorite);
-        btnDelete = findViewById(R.id.btn_delete);
+        setSupportActionBar(binding.toolbar);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
-        setSupportActionBar(toolbar);
-        toolbar.setNavigationOnClickListener(v -> finish());
-
-        btnEdit.setOnClickListener(v -> {
+        binding.btnEdit.setOnClickListener(v -> {
             if (currentAlgorithm != null) {
                 showAlgorithmFormDialog(currentAlgorithm);
             }
         });
 
-        btnToggleStatus.setOnClickListener(v -> {
+        binding.btnToggleStatus.setOnClickListener(v -> {
             if (currentAlgorithm != null) {
                 showStatusTransitionDialog(currentAlgorithm);
             }
         });
 
-        btnFavorite.setOnClickListener(v -> {
+        binding.btnFavorite.setOnClickListener(v -> {
             if (currentAlgorithm != null) {
                 algorithmViewModel.toggleFavorite(currentAlgorithm.getId());
             }
         });
 
-        btnDelete.setOnClickListener(v -> {
+        binding.btnDelete.setOnClickListener(v -> {
             if (currentAlgorithm != null) {
                 showDeleteConfirmDialog(currentAlgorithm);
             }
@@ -127,19 +106,19 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
     }
 
     private void updateUI(Algorithm algorithm) {
-        tvName.setText(StringUtils.safe(algorithm.getName()));
-        tvType.setText(StringUtils.safe(algorithm.getType()));
-        tvDescription.setText(StringUtils.safe(algorithm.getDescription()));
-        tvParams.setText(StringUtils.safe(algorithm.getParams()));
-        tvFlops.setText(StringUtils.safe(algorithm.getFlops()));
-        tvSize.setText(StringUtils.safe(algorithm.getSize()));
-        tvPath.setText(StringUtils.safe(algorithm.getPath()));
-        tvImportPath.setText(StringUtils.safe(algorithm.getImportPath()));
+        binding.tvAlgorithmName.setText(StringUtils.safe(algorithm.getName()));
+        binding.tvAlgorithmType.setText(StringUtils.safe(algorithm.getType()));
+        binding.tvAlgorithmDescription.setText(StringUtils.safe(algorithm.getDescription()));
+        binding.tvAlgorithmParams.setText(StringUtils.safe(algorithm.getParams()));
+        binding.tvAlgorithmFlops.setText(StringUtils.safe(algorithm.getFlops()));
+        binding.tvAlgorithmSize.setText(StringUtils.safe(algorithm.getSize()));
+        binding.tvAlgorithmPath.setText(StringUtils.safe(algorithm.getPath()));
+        binding.tvAlgorithmImportPath.setText(StringUtils.safe(algorithm.getImportPath()));
 
         AlgorithmStatus status = algorithm.getStatus() != null ? algorithm.getStatus() : AlgorithmStatus.DRAFT;
-        chipStatus.setText(status.getLabel());
-        chipStatus.setChipBackgroundColor(ColorStateList.valueOf(statusColor(status)));
-        chipStatus.setTextColor(0xFFFFFFFF);
+        binding.chipStatus.setText(status.getLabel());
+        binding.chipStatus.setChipBackgroundColor(ColorStateList.valueOf(statusColor(status)));
+        binding.chipStatus.setTextColor(0xFFFFFFFF);
     }
 
     private void showStatusTransitionDialog(Algorithm algorithm) {

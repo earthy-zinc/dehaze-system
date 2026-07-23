@@ -5,19 +5,15 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.material.button.MaterialButton;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityAlgorithmListBinding;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmFavorite;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
@@ -34,24 +30,13 @@ public class AlgorithmListActivity extends AppCompatActivity {
 
     private AlgorithmViewModel algorithmViewModel;
     private AlgorithmAdapter algorithmAdapter;
-    private RecyclerView recyclerView;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private Toolbar toolbar;
-    private TextView tvEmpty;
-    private EditText etKeywords;
-    private MaterialButton btnSearch;
-    private MaterialButton btnReset;
-    private MaterialButton btnAdd;
-    private MaterialButton btnCompare;
-    private MaterialButton btnCancelSelect;
-    private MaterialButton btnSelectAll;
-    private MaterialButton btnFavorites;
-    private TextView tvSelectionInfo;
+    private ActivityAlgorithmListBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_algorithm_list);
+        binding = ActivityAlgorithmListBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         initViews();
         initViewModel();
@@ -60,28 +45,14 @@ public class AlgorithmListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        toolbar = findViewById(R.id.toolbar);
-        recyclerView = findViewById(R.id.recycler_view);
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh);
-        tvEmpty = findViewById(R.id.tv_empty);
-        etKeywords = findViewById(R.id.et_keywords);
-        btnSearch = findViewById(R.id.btn_search);
-        btnReset = findViewById(R.id.btn_reset);
-        btnAdd = findViewById(R.id.btn_add);
-        btnCompare = findViewById(R.id.btn_compare);
-        btnCancelSelect = findViewById(R.id.btn_cancel_select);
-        btnSelectAll = findViewById(R.id.btn_select_all);
-        btnFavorites = findViewById(R.id.btn_favorites);
-        tvSelectionInfo = findViewById(R.id.tv_selection_info);
-
-        setSupportActionBar(toolbar);
-        toolbar.setNavigationOnClickListener(v -> finish());
+        setSupportActionBar(binding.toolbar);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
         algorithmAdapter = new AlgorithmAdapter();
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(algorithmAdapter);
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerView.setAdapter(algorithmAdapter);
 
-        swipeRefreshLayout.setOnRefreshListener(this::loadData);
+        binding.swipeRefresh.setOnRefreshListener(this::loadData);
 
         algorithmAdapter.setOnAlgorithmActionListener(new AlgorithmAdapter.OnAlgorithmActionListener() {
             @Override
@@ -112,25 +83,24 @@ public class AlgorithmListActivity extends AppCompatActivity {
             }
         });
 
-        algorithmAdapter.setOnSelectionChangedListener(selectedIds -> {
-            tvSelectionInfo.setText("已选中 " + selectedIds.size() + " 个算法");
-        });
+        algorithmAdapter.setOnSelectionChangedListener(selectedIds ->
+                binding.tvSelectionInfo.setText("已选中 " + selectedIds.size() + " 个算法"));
 
-        btnSearch.setOnClickListener(v -> {
-            String keywords = etKeywords.getText().toString().trim();
+        binding.btnSearch.setOnClickListener(v -> {
+            String keywords = binding.etKeywords.getText().toString().trim();
             algorithmViewModel.setKeywords(keywords);
             loadData();
         });
 
-        btnReset.setOnClickListener(v -> {
-            etKeywords.setText("");
+        binding.btnReset.setOnClickListener(v -> {
+            binding.etKeywords.setText("");
             algorithmViewModel.resetQuery();
             loadData();
         });
 
-        btnAdd.setOnClickListener(v -> showAlgorithmFormDialog(null));
+        binding.btnAdd.setOnClickListener(v -> showAlgorithmFormDialog(null));
 
-        btnCompare.setOnClickListener(v -> {
+        binding.btnCompare.setOnClickListener(v -> {
             if (!algorithmAdapter.isSelectionMode()) {
                 algorithmAdapter.setSelectionMode(true);
                 updateSelectionModeUI(true);
@@ -140,24 +110,24 @@ public class AlgorithmListActivity extends AppCompatActivity {
             }
         });
 
-        btnCancelSelect.setOnClickListener(v -> {
+        binding.btnCancelSelect.setOnClickListener(v -> {
             algorithmAdapter.clearSelection();
             algorithmAdapter.setSelectionMode(false);
             updateSelectionModeUI(false);
         });
 
-        btnSelectAll.setOnClickListener(v -> algorithmAdapter.selectAll());
+        binding.btnSelectAll.setOnClickListener(v -> algorithmAdapter.selectAll());
 
-        btnFavorites.setOnClickListener(v -> algorithmViewModel.loadFavorites());
+        binding.btnFavorites.setOnClickListener(v -> algorithmViewModel.loadFavorites());
     }
 
     private void updateSelectionModeUI(boolean selectionMode) {
-        btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        tvSelectionInfo.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
-        btnFavorites.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
-        btnCompare.setText(selectionMode ? "开始对比" : "对比");
+        binding.btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.tvSelectionInfo.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnFavorites.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnCompare.setText(selectionMode ? "开始对比" : "对比");
     }
 
     private void initViewModel() {
@@ -167,11 +137,11 @@ public class AlgorithmListActivity extends AppCompatActivity {
     private void setupObservers() {
         algorithmViewModel.getAlgorithmList().observe(this, algorithms -> {
             algorithmAdapter.setData(algorithms);
-            tvEmpty.setVisibility(algorithms == null || algorithms.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.tvEmpty.setVisibility(algorithms == null || algorithms.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         algorithmViewModel.getLoading().observe(this, isLoading ->
-                swipeRefreshLayout.setRefreshing(isLoading != null && isLoading));
+                binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
         algorithmViewModel.getError().observe(this, errorMessage -> {
             if (errorMessage != null && !errorMessage.isEmpty()) {

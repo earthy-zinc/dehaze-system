@@ -8,22 +8,17 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.bumptech.glide.Glide;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.checkbox.MaterialCheckBox;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityInputHistoryBinding;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryForm;
@@ -52,20 +47,7 @@ public class InputHistoryActivity extends AppCompatActivity {
 
     private InputHistoryViewModel viewModel;
     private InputHistoryAdapter adapter;
-
-    private Toolbar toolbar;
-    private SwipeRefreshLayout swipeRefresh;
-    private RecyclerView recyclerView;
-    private TextView tvEmpty;
-    private TextView tvPageInfo;
-    private Spinner spinnerSource;
-    private MaterialCheckBox cbFavoriteOnly;
-    private MaterialButton btnAdd;
-    private MaterialButton btnBatchDelete;
-    private MaterialButton btnCancelSelect;
-    private MaterialButton btnSelectAll;
-    private MaterialButton btnClear;
-    private MaterialButton btnSync;
+    private ActivityInputHistoryBinding binding;
 
     private InputHistoryFormDialog formDialog;
     private ActivityResultLauncher<String> imagePickerLauncher;
@@ -73,7 +55,8 @@ public class InputHistoryActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_input_history);
+        binding = ActivityInputHistoryBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         imagePickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
@@ -86,54 +69,39 @@ public class InputHistoryActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        toolbar = findViewById(R.id.toolbar);
-        recyclerView = findViewById(R.id.recycler_view);
-        swipeRefresh = findViewById(R.id.swipe_refresh);
-        tvEmpty = findViewById(R.id.tv_empty);
-        tvPageInfo = findViewById(R.id.tv_page_info);
-        spinnerSource = findViewById(R.id.spinner_source);
-        cbFavoriteOnly = findViewById(R.id.cb_favorite_only);
-        btnAdd = findViewById(R.id.btn_add);
-        btnBatchDelete = findViewById(R.id.btn_batch_delete);
-        btnCancelSelect = findViewById(R.id.btn_cancel_select);
-        btnSelectAll = findViewById(R.id.btn_select_all);
-        btnClear = findViewById(R.id.btn_clear);
-        btnSync = findViewById(R.id.btn_sync);
-
-        setSupportActionBar(toolbar);
-        toolbar.setNavigationOnClickListener(v -> finish());
+        setSupportActionBar(binding.toolbar);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
         ArrayAdapter<String> sourceAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, SOURCE_LABELS);
         sourceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerSource.setAdapter(sourceAdapter);
+        binding.spinnerSource.setAdapter(sourceAdapter);
 
         adapter = new InputHistoryAdapter();
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(adapter);
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerView.setAdapter(adapter);
 
-        swipeRefresh.setOnRefreshListener(this::loadData);
+        binding.swipeRefresh.setOnRefreshListener(this::loadData);
 
-        findViewById(R.id.btn_search).setOnClickListener(v -> {
-            String keywords = ((android.widget.EditText) findViewById(R.id.et_keywords))
-                    .getText().toString().trim();
-            InputSource source = SOURCE_VALUES[spinnerSource.getSelectedItemPosition()];
-            boolean favoriteOnly = cbFavoriteOnly.isChecked();
+        binding.btnSearch.setOnClickListener(v -> {
+            String keywords = binding.etKeywords.getText().toString().trim();
+            InputSource source = SOURCE_VALUES[binding.spinnerSource.getSelectedItemPosition()];
+            boolean favoriteOnly = binding.cbFavoriteOnly.isChecked();
             viewModel.setQueryParams(keywords, source, favoriteOnly);
             loadData();
         });
 
-        findViewById(R.id.btn_reset).setOnClickListener(v -> {
-            ((android.widget.EditText) findViewById(R.id.et_keywords)).setText("");
-            spinnerSource.setSelection(0);
-            cbFavoriteOnly.setChecked(false);
+        binding.btnReset.setOnClickListener(v -> {
+            binding.etKeywords.setText("");
+            binding.spinnerSource.setSelection(0);
+            binding.cbFavoriteOnly.setChecked(false);
             viewModel.resetQuery();
             loadData();
         });
 
-        btnAdd.setOnClickListener(v -> showFormDialog(null));
+        binding.btnAdd.setOnClickListener(v -> showFormDialog(null));
 
-        btnBatchDelete.setOnClickListener(v -> {
+        binding.btnBatchDelete.setOnClickListener(v -> {
             if (!adapter.isSelectionMode()) {
                 adapter.setSelectionMode(true);
                 updateSelectionModeUI(true);
@@ -143,18 +111,18 @@ public class InputHistoryActivity extends AppCompatActivity {
             }
         });
 
-        btnCancelSelect.setOnClickListener(v -> {
+        binding.btnCancelSelect.setOnClickListener(v -> {
             adapter.clearSelection();
             adapter.setSelectionMode(false);
             updateSelectionModeUI(false);
             updatePageInfo();
         });
 
-        btnSelectAll.setOnClickListener(v -> adapter.selectAll());
+        binding.btnSelectAll.setOnClickListener(v -> adapter.selectAll());
 
-        btnClear.setOnClickListener(v -> confirmClear());
+        binding.btnClear.setOnClickListener(v -> confirmClear());
 
-        btnSync.setOnClickListener(v -> confirmSync());
+        binding.btnSync.setOnClickListener(v -> confirmSync());
 
         adapter.setActionListener(new InputHistoryAdapter.OnHistoryActionListener() {
             @Override
@@ -181,16 +149,16 @@ public class InputHistoryActivity extends AppCompatActivity {
         });
 
         adapter.setSelectionListener(selectedIds ->
-                btnBatchDelete.setText(selectedIds.isEmpty() ? "批量删除" : "删除选中(" + selectedIds.size() + ")"));
+                binding.btnBatchDelete.setText(selectedIds.isEmpty() ? "批量删除" : "删除选中(" + selectedIds.size() + ")"));
     }
 
     private void updateSelectionModeUI(boolean selectionMode) {
-        btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
-        btnClear.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
-        btnSync.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
-        btnBatchDelete.setText(selectionMode ? "删除选中" : "批量删除");
+        binding.btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnClear.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnSync.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnBatchDelete.setText(selectionMode ? "删除选中" : "批量删除");
     }
 
     private void initViewModel() {
@@ -201,13 +169,13 @@ public class InputHistoryActivity extends AppCompatActivity {
         viewModel.getHistoryList().observe(this, items -> {
             adapter.submitList(items);
             updatePageInfo();
-            tvEmpty.setVisibility(items == null || items.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.tvEmpty.setVisibility(items == null || items.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         viewModel.getTotal().observe(this, total -> updatePageInfo());
 
         viewModel.getLoading().observe(this, isLoading ->
-                swipeRefresh.setRefreshing(isLoading != null && isLoading));
+                binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
         viewModel.getError().observe(this, errorMessage -> {
             if (errorMessage != null && !errorMessage.isEmpty()) {
@@ -269,14 +237,14 @@ public class InputHistoryActivity extends AppCompatActivity {
     private void updatePageInfo() {
         if (adapter != null && adapter.isSelectionMode()) {
             int count = adapter.getSelectedIds().size();
-            tvPageInfo.setText("已选中 " + count + " 项");
+            binding.tvPageInfo.setText("已选中 " + count + " 项");
             return;
         }
         long totalVal = viewModel.getTotal().getValue() != null ? viewModel.getTotal().getValue() : 0L;
         int pageNum = viewModel.getPageNum();
         int pageSize = viewModel.getPageSize();
         int totalPages = Math.max(1, (int) Math.ceil(totalVal * 1.0 / pageSize));
-        tvPageInfo.setText("第 " + pageNum + " 页 / 共 " + totalPages + " 页 (共 " + totalVal + " 条)");
+        binding.tvPageInfo.setText("第 " + pageNum + " 页 / 共 " + totalPages + " 页 (共 " + totalVal + " 条)");
     }
 
     private void showFormDialog(InputHistoryVO existing) {

@@ -10,14 +10,12 @@ import com.pei.dehaze.utils.ToastUtils;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityMenuListBinding;
 import com.pei.dehaze.ui.system.adapter.MenuAdapter;
 import com.pei.dehaze.ui.system.viewmodel.MenuViewModel;
 import com.pei.dehaze.sdk.model.menu.MenuForm;
@@ -31,13 +29,13 @@ public class MenuListActivity extends AppCompatActivity {
 
     private MenuViewModel menuViewModel;
     private MenuAdapter menuAdapter;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private TextInputEditText etSearch;
+    private ActivityMenuListBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_menu_list);
+        binding = ActivityMenuListBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         initViews();
         initViewModel();
@@ -46,16 +44,11 @@ public class MenuListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        MaterialToolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        setSupportActionBar(binding.toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
-        toolbar.setNavigationOnClickListener(v -> finish());
-
-        etSearch = findViewById(R.id.et_search);
-        RecyclerView recyclerView = findViewById(R.id.recycler_view);
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
         menuAdapter = new MenuAdapter();
         menuAdapter.setListener(new MenuAdapter.OnMenuActionListener() {
@@ -69,37 +62,33 @@ public class MenuListActivity extends AppCompatActivity {
                 confirmDelete(menu);
             }
         });
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(menuAdapter);
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerView.setAdapter(menuAdapter);
 
-        swipeRefreshLayout.setOnRefreshListener(() -> menuViewModel.loadMenus(null));
+        binding.swipeRefresh.setOnRefreshListener(() -> menuViewModel.loadMenus(null));
 
-        MaterialButton btnSearch = findViewById(R.id.btn_search);
-        MaterialButton btnReset = findViewById(R.id.btn_reset);
-        MaterialButton btnAdd = findViewById(R.id.btn_add);
-
-        btnSearch.setOnClickListener(v -> {
-            String keywords = StringUtils.getText(etSearch);
+        binding.btnSearch.setOnClickListener(v -> {
+            String keywords = StringUtils.getText(binding.etSearch);
             menuViewModel.loadMenus(keywords.isEmpty() ? null : keywords);
         });
 
-        btnReset.setOnClickListener(v -> {
-            etSearch.setText("");
+        binding.btnReset.setOnClickListener(v -> {
+            binding.etSearch.setText("");
             menuViewModel.loadMenus(null);
         });
 
-        btnAdd.setOnClickListener(v -> showFormDialog(null));
+        binding.btnAdd.setOnClickListener(v -> showFormDialog(null));
     }
 
     private void initViewModel() {
-        menuViewModel = new MenuViewModel();
+        menuViewModel = new ViewModelProvider(this).get(MenuViewModel.class);
     }
 
     private void setupObservers() {
         menuViewModel.getMenuList().observe(this, menus -> menuAdapter.setMenuTree(menus));
 
         menuViewModel.getLoading().observe(this, isLoading ->
-                swipeRefreshLayout.setRefreshing(isLoading != null && isLoading));
+                binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
         menuViewModel.getError().observe(this, errorMsg -> {
             if (!TextUtils.isEmpty(errorMsg)) {

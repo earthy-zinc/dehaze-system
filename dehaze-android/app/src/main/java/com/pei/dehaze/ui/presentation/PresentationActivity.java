@@ -8,28 +8,20 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
-import android.widget.Spinner;
-import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
-import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityPresentationBinding;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
@@ -53,19 +45,7 @@ import androidx.fragment.app.FragmentActivity;
 public class PresentationActivity extends AppCompatActivity {
 
     private PresentationViewModel presentationViewModel;
-
-    private Toolbar toolbar;
-    private ImageView ivOriginal;
-    private Spinner spinnerAlgorithm;
-    private SeekBar seekBarStrength;
-    private TextView tvStrengthValue;
-    private MaterialButton btnPredict;
-    private ProgressBar progressBar;
-    private MaterialCardView cardResult;
-    private ViewPager2 viewPager;
-    private TabLayout tabLayout;
-    private TextView tvAlgorithmInfo;
-    private RecyclerView rvHistory;
+    private ActivityPresentationBinding binding;
 
     private final List<Option> algorithmOptions = new ArrayList<>();
     private long presetAlgorithmId = 0L;
@@ -80,7 +60,8 @@ public class PresentationActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_presentation);
+        binding = ActivityPresentationBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         presetAlgorithmId = getIntent().getLongExtra("algorithm_id", 0L);
         initViews();
@@ -90,29 +71,16 @@ public class PresentationActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        toolbar = findViewById(R.id.toolbar);
-        ivOriginal = findViewById(R.id.iv_original);
-        spinnerAlgorithm = findViewById(R.id.spinner_algorithm);
-        seekBarStrength = findViewById(R.id.seek_bar_strength);
-        tvStrengthValue = findViewById(R.id.tv_strength_value);
-        btnPredict = findViewById(R.id.btn_predict);
-        progressBar = findViewById(R.id.progress_bar);
-        cardResult = findViewById(R.id.card_result);
-        viewPager = findViewById(R.id.view_pager);
-        tabLayout = findViewById(R.id.tab_layout);
-        tvAlgorithmInfo = findViewById(R.id.tv_algorithm_info);
-        rvHistory = findViewById(R.id.rv_history);
+        setSupportActionBar(binding.toolbar);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
-        setSupportActionBar(toolbar);
-        toolbar.setNavigationOnClickListener(v -> finish());
-
-        findViewById(R.id.btn_select_image).setOnClickListener(v ->
+        binding.btnSelectImage.setOnClickListener(v ->
                 pickImageLauncher.launch("image/*"));
 
-        seekBarStrength.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        binding.seekBarStrength.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvStrengthValue.setText("强度：" + progress);
+                binding.tvStrengthValue.setText("强度：" + progress);
             }
 
             @Override
@@ -124,17 +92,17 @@ public class PresentationActivity extends AppCompatActivity {
             }
         });
 
-        btnPredict.setOnClickListener(v -> onPredictClick());
+        binding.btnPredict.setOnClickListener(v -> onPredictClick());
 
         pagerAdapter = new ResultPagerAdapter(this);
-        viewPager.setAdapter(pagerAdapter);
-        new TabLayoutMediator(tabLayout, viewPager,
+        binding.viewPager.setAdapter(pagerAdapter);
+        new TabLayoutMediator(binding.tabLayout, binding.viewPager,
                 (tab, position) -> tab.setText(position == 0 ? "原图" : "去雾结果"))
                 .attach();
 
         historyAdapter = new PredictionLogAdapter();
-        rvHistory.setLayoutManager(new LinearLayoutManager(this));
-        rvHistory.setAdapter(historyAdapter);
+        binding.rvHistory.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvHistory.setAdapter(historyAdapter);
     }
 
     private void onPredictClick() {
@@ -143,7 +111,7 @@ public class PresentationActivity extends AppCompatActivity {
             ToastUtils.showShort(this, "请先选择算法");
             return;
         }
-        int strength = seekBarStrength.getProgress();
+        int strength = binding.seekBarStrength.getProgress();
         DehazeParams params = new DehazeParams(strength, 100, 100, 30);
         new AlertDialog.Builder(this)
                 .setTitle("确认处理")
@@ -155,7 +123,7 @@ public class PresentationActivity extends AppCompatActivity {
     }
 
     private Long getCurrentAlgorithmId() {
-        int pos = spinnerAlgorithm.getSelectedItemPosition();
+        int pos = binding.spinnerAlgorithm.getSelectedItemPosition();
         if (pos < 0 || pos >= algorithmOptions.size()) return null;
         Option option = algorithmOptions.get(pos);
         return option.getValue() == null ? null : StringUtils.safeParseLong(option.getValue(), 0L);
@@ -170,10 +138,12 @@ public class PresentationActivity extends AppCompatActivity {
         presentationViewModel.getAlgorithmOptions().observe(this, this::updateAlgorithmSpinner);
         presentationViewModel.getAlgorithmDetail().observe(this, this::showAlgorithmInfo);
         presentationViewModel.getPredictionResult().observe(this, this::onPredictionResult);
-        presentationViewModel.getHistoryList().observe(this, logs ->
-                historyAdapter.submitList(logs));
+        presentationViewModel.getHistoryList().observe(this, logs -> {
+            historyAdapter.submitList(logs);
+            binding.tvHistoryEmpty.setVisibility(logs == null || logs.isEmpty() ? View.VISIBLE : View.GONE);
+        });
         presentationViewModel.getLoading().observe(this, isLoading ->
-                progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE));
+                binding.progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE));
         presentationViewModel.getError().observe(this, errorMessage -> {
             if (!TextUtils.isEmpty(errorMessage)) {
                 ToastUtils.showShort(this, errorMessage);
@@ -190,12 +160,12 @@ public class PresentationActivity extends AppCompatActivity {
 
     private void showOriginalImage(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
-        ivOriginal.setVisibility(View.VISIBLE);
+        binding.ivOriginal.setVisibility(View.VISIBLE);
         String resolved = DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl());
         Glide.with(this).load(resolved)
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
-                .into(ivOriginal);
+                .into(binding.ivOriginal);
         pagerAdapter.setOriginalUrl(resolved);
     }
 
@@ -204,7 +174,7 @@ public class PresentationActivity extends AppCompatActivity {
         if (options != null) {
             algorithmOptions.addAll(options);
         }
-        ViewUtils.updateAlgorithmSpinner(spinnerAlgorithm, algorithmOptions);
+        ViewUtils.updateAlgorithmSpinner(binding.spinnerAlgorithm, algorithmOptions);
     }
 
     private void showAlgorithmInfo(Algorithm algorithm) {
@@ -220,12 +190,12 @@ public class PresentationActivity extends AppCompatActivity {
         if (algorithm.getSize() != null && !algorithm.getSize().isEmpty()) {
             sb.append("\n模型大小：").append(algorithm.getSize());
         }
-        tvAlgorithmInfo.setText(sb.toString());
+        binding.tvAlgorithmInfo.setText(sb.toString());
     }
 
     private void onPredictionResult(PredResult result) {
         if (result == null) return;
-        cardResult.setVisibility(View.VISIBLE);
+        binding.cardResult.setVisibility(View.VISIBLE);
         pagerAdapter.setResultUrl(DehazeSDK.getInstance().resolveUrl(result.getResultUrl()));
         Long algorithmId = getCurrentAlgorithmId();
         if (algorithmId != null) {
@@ -233,7 +203,7 @@ public class PresentationActivity extends AppCompatActivity {
         }
         String info = "耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms")
                 + (Boolean.TRUE.equals(result.getFromCache()) ? "（命中缓存）" : "");
-        tvAlgorithmInfo.setText(info);
+        binding.tvAlgorithmInfo.setText(info);
     }
 
     private void loadData() {

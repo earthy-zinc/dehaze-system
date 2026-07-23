@@ -5,22 +5,16 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
-import android.widget.Spinner;
-import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.bumptech.glide.Glide;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityEvaluationBinding;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
@@ -42,18 +36,7 @@ import java.util.Map;
 public class EvaluationActivity extends AppCompatActivity {
 
     private EvaluationViewModel evaluationViewModel;
-
-    private Toolbar toolbar;
-    private Spinner spinnerAlgorithm;
-    private ImageView ivHazy;
-    private ImageView ivClear;
-    private MaterialButton btnPredict;
-    private MaterialButton btnEvaluate;
-    private ProgressBar progressBar;
-    private MaterialCardView cardEvaluationResult;
-    private TextView tvQualified;
-    private androidx.recyclerview.widget.RecyclerView rvMetrics;
-    private androidx.recyclerview.widget.RecyclerView rvHistory;
+    private ActivityEvaluationBinding binding;
 
     private final List<Option> algorithmOptions = new ArrayList<>();
     private MetricAdapter metricAdapter;
@@ -72,7 +55,8 @@ public class EvaluationActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_evaluation);
+        binding = ActivityEvaluationBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         initViews();
         initViewModel();
@@ -81,34 +65,22 @@ public class EvaluationActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        toolbar = findViewById(R.id.toolbar);
-        spinnerAlgorithm = findViewById(R.id.spinner_algorithm);
-        ivHazy = findViewById(R.id.iv_hazy);
-        ivClear = findViewById(R.id.iv_clear);
-        btnPredict = findViewById(R.id.btn_predict);
-        btnEvaluate = findViewById(R.id.btn_evaluate);
-        progressBar = findViewById(R.id.progress_bar);
-        cardEvaluationResult = findViewById(R.id.card_evaluation_result);
-        tvQualified = findViewById(R.id.tv_qualified);
-        rvMetrics = findViewById(R.id.rv_metrics);
-        rvHistory = findViewById(R.id.rv_history);
+        setSupportActionBar(binding.toolbar);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
-        setSupportActionBar(toolbar);
-        toolbar.setNavigationOnClickListener(v -> finish());
+        binding.btnSelectHazy.setOnClickListener(v -> pickHazyLauncher.launch("image/*"));
+        binding.btnSelectClear.setOnClickListener(v -> pickClearLauncher.launch("image/*"));
 
-        findViewById(R.id.btn_select_hazy).setOnClickListener(v -> pickHazyLauncher.launch("image/*"));
-        findViewById(R.id.btn_select_clear).setOnClickListener(v -> pickClearLauncher.launch("image/*"));
-
-        btnPredict.setOnClickListener(v -> onPredictClick());
-        btnEvaluate.setOnClickListener(v -> onEvaluateClick());
+        binding.btnPredict.setOnClickListener(v -> onPredictClick());
+        binding.btnEvaluate.setOnClickListener(v -> onEvaluateClick());
 
         metricAdapter = new MetricAdapter();
-        rvMetrics.setLayoutManager(new LinearLayoutManager(this));
-        rvMetrics.setAdapter(metricAdapter);
+        binding.rvMetrics.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvMetrics.setAdapter(metricAdapter);
 
         evaluationLogAdapter = new EvaluationLogAdapter();
-        rvHistory.setLayoutManager(new LinearLayoutManager(this));
-        rvHistory.setAdapter(evaluationLogAdapter);
+        binding.rvHistory.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvHistory.setAdapter(evaluationLogAdapter);
     }
 
     private void onPredictClick() {
@@ -140,7 +112,7 @@ public class EvaluationActivity extends AppCompatActivity {
     }
 
     private Long getCurrentAlgorithmId() {
-        int pos = spinnerAlgorithm.getSelectedItemPosition();
+        int pos = binding.spinnerAlgorithm.getSelectedItemPosition();
         if (pos < 0 || pos >= algorithmOptions.size()) return null;
         Option option = algorithmOptions.get(pos);
         return option.getValue() == null ? null : StringUtils.safeParseLong(option.getValue(), 0L);
@@ -156,10 +128,12 @@ public class EvaluationActivity extends AppCompatActivity {
         evaluationViewModel.getAlgorithmOptions().observe(this, this::updateAlgorithmSpinner);
         evaluationViewModel.getPredictionResult().observe(this, this::onPredictionResult);
         evaluationViewModel.getEvaluationResult().observe(this, this::onEvaluationResult);
-        evaluationViewModel.getEvaluationLogs().observe(this, logs ->
-                evaluationLogAdapter.submitList(logs));
+        evaluationViewModel.getEvaluationLogs().observe(this, logs -> {
+            evaluationLogAdapter.submitList(logs);
+            binding.tvHistoryEmpty.setVisibility(logs == null || logs.isEmpty() ? View.VISIBLE : View.GONE);
+        });
         evaluationViewModel.getLoading().observe(this, isLoading ->
-                progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE));
+                binding.progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE));
         evaluationViewModel.getError().observe(this, errorMessage -> {
             if (!TextUtils.isEmpty(errorMessage)) {
                 ToastUtils.showShort(this, errorMessage);
@@ -176,20 +150,20 @@ public class EvaluationActivity extends AppCompatActivity {
 
     private void showHazyImage(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
-        ivHazy.setVisibility(View.VISIBLE);
+        binding.ivHazy.setVisibility(View.VISIBLE);
         Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
-                .into(ivHazy);
+                .into(binding.ivHazy);
     }
 
     private void showClearImage(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
-        ivClear.setVisibility(View.VISIBLE);
+        binding.ivClear.setVisibility(View.VISIBLE);
         Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
-                .into(ivClear);
+                .into(binding.ivClear);
     }
 
     private void updateAlgorithmSpinner(List<Option> options) {
@@ -197,29 +171,29 @@ public class EvaluationActivity extends AppCompatActivity {
         if (options != null) {
             algorithmOptions.addAll(options);
         }
-        ViewUtils.updateAlgorithmSpinner(spinnerAlgorithm, algorithmOptions);
+        ViewUtils.updateAlgorithmSpinner(binding.spinnerAlgorithm, algorithmOptions);
     }
 
     private void onPredictionResult(PredResult result) {
         if (result == null) return;
-        btnEvaluate.setEnabled(true);
+        binding.btnEvaluate.setEnabled(true);
     }
 
     private void onEvaluationResult(EvalResult result) {
         if (result == null) return;
-        cardEvaluationResult.setVisibility(View.VISIBLE);
+        binding.cardEvaluationResult.setVisibility(View.VISIBLE);
         Boolean qualified = result.getQualified();
         if (qualified != null) {
             if (qualified) {
-                tvQualified.setText("评估结论：合格");
-                tvQualified.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
+                binding.tvQualified.setText("评估结论：合格");
+                binding.tvQualified.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
             } else {
-                tvQualified.setText("评估结论：不合格");
-                tvQualified.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
+                binding.tvQualified.setText("评估结论：不合格");
+                binding.tvQualified.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
             }
         } else {
-            tvQualified.setText("评估结论：-");
-            tvQualified.setTextColor(getResources().getColor(android.R.color.darker_gray));
+            binding.tvQualified.setText("评估结论：-");
+            binding.tvQualified.setTextColor(getResources().getColor(android.R.color.darker_gray));
         }
         Map<String, Double> metrics = result.getMetrics();
         List<Map.Entry<String, Double>> entries = new ArrayList<>();
@@ -227,6 +201,7 @@ public class EvaluationActivity extends AppCompatActivity {
             entries.addAll(metrics.entrySet());
         }
         metricAdapter.submitList(entries);
+        binding.tvMetricsEmpty.setVisibility(entries.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
     private void loadData() {

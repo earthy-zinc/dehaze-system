@@ -5,7 +5,6 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.RadioGroup;
 
 import androidx.annotation.NonNull;
@@ -15,12 +14,10 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.FragmentDatasetBinding;
 import com.pei.dehaze.repository.RepositoryCallback;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
 import com.pei.dehaze.utils.StringUtils;
@@ -37,18 +34,14 @@ public class DatasetFragment extends Fragment {
 
     private DatasetViewModel viewModel;
     private DatasetTreeAdapter adapter;
-    private SwipeRefreshLayout swipeRefresh;
-    private EditText etKeywords;
-    private MaterialButton btnAdd;
-    private MaterialButton btnBatchDelete;
-    private MaterialButton btnCancelSelect;
-    private MaterialButton btnSelectAll;
+    private FragmentDatasetBinding binding;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_dataset, container, false);
+        binding = FragmentDatasetBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
@@ -56,14 +49,6 @@ public class DatasetFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         viewModel = new ViewModelProvider(this).get(DatasetViewModel.class);
-
-        etKeywords = view.findViewById(R.id.et_keywords);
-        swipeRefresh = view.findViewById(R.id.swipe_refresh);
-        RecyclerView recyclerView = view.findViewById(R.id.recycler_view);
-        btnAdd = view.findViewById(R.id.btn_add);
-        btnBatchDelete = view.findViewById(R.id.btn_batch_delete);
-        btnCancelSelect = view.findViewById(R.id.btn_cancel_select);
-        btnSelectAll = view.findViewById(R.id.btn_select_all);
 
         adapter = new DatasetTreeAdapter();
         adapter.setActionListener(new DatasetTreeAdapter.OnDatasetActionListener() {
@@ -93,15 +78,15 @@ public class DatasetFragment extends Fragment {
             }
         });
         adapter.setSelectionListener(selectedIds ->
-                btnBatchDelete.setText(selectedIds.isEmpty() ? "批量删除" : "删除选中(" + selectedIds.size() + ")"));
+                binding.btnBatchDelete.setText(selectedIds.isEmpty() ? "批量删除" : "删除选中(" + selectedIds.size() + ")"));
 
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        recyclerView.setAdapter(adapter);
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        binding.recyclerView.setAdapter(adapter);
 
-        swipeRefresh.setOnRefreshListener(() -> viewModel.loadRoots());
+        binding.swipeRefresh.setOnRefreshListener(() -> viewModel.loadRoots());
 
-        view.findViewById(R.id.btn_search).setOnClickListener(v -> {
-            String kw = etKeywords.getText().toString().trim();
+        binding.btnSearch.setOnClickListener(v -> {
+            String kw = binding.etKeywords.getText().toString().trim();
             if (kw.isEmpty()) {
                 ToastUtils.showShort(getContext(), "请输入搜索关键词");
                 return;
@@ -109,14 +94,14 @@ public class DatasetFragment extends Fragment {
             viewModel.search(kw);
         });
 
-        view.findViewById(R.id.btn_reset).setOnClickListener(v -> {
-            etKeywords.setText("");
+        binding.btnReset.setOnClickListener(v -> {
+            binding.etKeywords.setText("");
             viewModel.clearSearch();
         });
 
-        btnAdd.setOnClickListener(v -> showFormDialog(null, false));
+        binding.btnAdd.setOnClickListener(v -> showFormDialog(null, false));
 
-        btnBatchDelete.setOnClickListener(v -> {
+        binding.btnBatchDelete.setOnClickListener(v -> {
             if (!adapter.isSelectionMode()) {
                 adapter.setSelectionMode(true);
                 updateSelectionUI(true);
@@ -126,26 +111,26 @@ public class DatasetFragment extends Fragment {
             }
         });
 
-        btnCancelSelect.setOnClickListener(v -> {
+        binding.btnCancelSelect.setOnClickListener(v -> {
             adapter.clearSelection();
             adapter.setSelectionMode(false);
             updateSelectionUI(false);
         });
 
-        btnSelectAll.setOnClickListener(v -> adapter.selectAll());
+        binding.btnSelectAll.setOnClickListener(v -> adapter.selectAll());
 
         setupObservers();
         viewModel.loadRoots();
     }
 
     private void updateSelectionUI(boolean selectionMode) {
-        btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
+        binding.btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        binding.btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
         if (selectionMode) {
-            btnBatchDelete.setText("删除选中");
+            binding.btnBatchDelete.setText("删除选中");
         } else {
-            btnBatchDelete.setText("批量删除");
+            binding.btnBatchDelete.setText("批量删除");
         }
     }
 
@@ -159,7 +144,7 @@ public class DatasetFragment extends Fragment {
         });
 
         viewModel.getLoading().observe(getViewLifecycleOwner(), isLoading ->
-                swipeRefresh.setRefreshing(isLoading != null && isLoading));
+                binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
         viewModel.getError().observe(getViewLifecycleOwner(), errorMessage -> {
             if (errorMessage != null && !errorMessage.isEmpty()) {
@@ -304,5 +289,11 @@ public class DatasetFragment extends Fragment {
         public void onError(String errorMessage) {
             ToastUtils.showShort(getContext(), "加载子节点失败: " + errorMessage);
         }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
 }

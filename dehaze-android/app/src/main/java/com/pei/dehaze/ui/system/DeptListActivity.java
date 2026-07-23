@@ -12,14 +12,11 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.material.button.MaterialButton;
 import com.pei.dehaze.R;
+import com.pei.dehaze.databinding.ActivityDeptListBinding;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.dept.DeptForm;
 import com.pei.dehaze.sdk.model.dept.DeptVO;
@@ -39,22 +36,15 @@ public class DeptListActivity extends AppCompatActivity {
 
     private DeptViewModel deptViewModel;
     private DeptAdapter deptAdapter;
-    private RecyclerView recyclerView;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private Toolbar toolbar;
-    private TextView tvEmpty;
-    private EditText etKeywords;
-    private Spinner spinnerStatus;
-    private MaterialButton btnSearch;
-    private MaterialButton btnReset;
-    private MaterialButton btnAdd;
+    private ActivityDeptListBinding binding;
 
     private final List<Option> deptOptions = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_dept_list);
+        binding = ActivityDeptListBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         initViews();
         initViewModel();
@@ -63,29 +53,19 @@ public class DeptListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        toolbar = findViewById(R.id.toolbar);
-        recyclerView = findViewById(R.id.recycler_view);
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh);
-        tvEmpty = findViewById(R.id.tv_empty);
-        etKeywords = findViewById(R.id.et_keywords);
-        spinnerStatus = findViewById(R.id.spinner_status);
-        btnSearch = findViewById(R.id.btn_search);
-        btnReset = findViewById(R.id.btn_reset);
-        btnAdd = findViewById(R.id.btn_add);
-
-        setSupportActionBar(toolbar);
-        toolbar.setNavigationOnClickListener(v -> finish());
+        setSupportActionBar(binding.toolbar);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
         deptAdapter = new DeptAdapter();
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(deptAdapter);
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerView.setAdapter(deptAdapter);
 
         ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, STATUS_LABELS);
         statusAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerStatus.setAdapter(statusAdapter);
+        binding.spinnerStatus.setAdapter(statusAdapter);
 
-        swipeRefreshLayout.setOnRefreshListener(this::loadData);
+        binding.swipeRefresh.setOnRefreshListener(this::loadData);
 
         deptAdapter.setOnDeptActionListener(new DeptAdapter.OnDeptActionListener() {
             @Override
@@ -105,21 +85,21 @@ public class DeptListActivity extends AppCompatActivity {
             }
         });
 
-        btnSearch.setOnClickListener(v -> {
-            String keywords = etKeywords.getText().toString().trim();
-            Integer status = STATUS_VALUES[spinnerStatus.getSelectedItemPosition()];
+        binding.btnSearch.setOnClickListener(v -> {
+            String keywords = binding.etKeywords.getText().toString().trim();
+            Integer status = STATUS_VALUES[binding.spinnerStatus.getSelectedItemPosition()];
             deptViewModel.setQueryParams(keywords, status);
             loadData();
         });
 
-        btnReset.setOnClickListener(v -> {
-            etKeywords.setText("");
-            spinnerStatus.setSelection(0);
+        binding.btnReset.setOnClickListener(v -> {
+            binding.etKeywords.setText("");
+            binding.spinnerStatus.setSelection(0);
             deptViewModel.resetQuery();
             loadData();
         });
 
-        btnAdd.setOnClickListener(v -> showDeptFormDialog(null, null));
+        binding.btnAdd.setOnClickListener(v -> showDeptFormDialog(null, null));
     }
 
     private void initViewModel() {
@@ -129,11 +109,11 @@ public class DeptListActivity extends AppCompatActivity {
     private void setupObservers() {
         deptViewModel.getDeptList().observe(this, depts -> {
             deptAdapter.setData(depts);
-            tvEmpty.setVisibility(depts == null || depts.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.tvEmpty.setVisibility(depts == null || depts.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         deptViewModel.getLoading().observe(this, isLoading ->
-                swipeRefreshLayout.setRefreshing(isLoading != null && isLoading));
+                binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
         deptViewModel.getError().observe(this, errorMessage -> {
             if (errorMessage != null && !errorMessage.isEmpty()) {

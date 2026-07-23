@@ -8,7 +8,6 @@ import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.pei.dehaze.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity {
@@ -31,8 +30,7 @@ public class MainActivity extends AppCompatActivity {
         NavController navController = navHostFragment.getNavController();
 
         // 设置底部导航栏
-        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
-        NavigationUI.setupWithNavController(bottomNavigationView, navController);
+        NavigationUI.setupWithNavController(binding.bottomNavigation, navController);
 
         appBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.dashboardFragment,
