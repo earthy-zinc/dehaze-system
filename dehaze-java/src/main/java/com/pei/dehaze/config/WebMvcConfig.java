@@ -12,6 +12,7 @@ import org.hibernate.validator.HibernateValidator;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -48,9 +49,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
         // 移除默认的 Jackson 转换器，替换为使用自定义 ObjectMapper 的实例
         converters.removeIf(c -> c instanceof MappingJackson2HttpMessageConverter);
-        // StringHttpMessageConverter 与 Jackson 一起插入到列表头部，保证优先级
-        converters.add(0, new StringHttpMessageConverter());
+        // add(0, ...) 后加的在前，按期望优先级逆序插入：
+        // 最终顺序 = ByteArray(0) > Jackson(1) > String(2) > 默认
+        // ByteArrayHttpMessageConverter 必须在 Jackson 之前，否则 byte[] 返回值
+        // (如 springdoc /v3/api-docs) 会被 Jackson 序列化为 base64 字符串
         converters.add(0, jackson2HttpMessageConverter);
+        converters.add(0, new StringHttpMessageConverter());
+        converters.add(0, new ByteArrayHttpMessageConverter());
     }
 
     @Bean
