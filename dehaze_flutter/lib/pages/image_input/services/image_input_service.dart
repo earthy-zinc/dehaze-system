@@ -146,12 +146,8 @@ class ImageInputService {
       queryParameters: const {'pageNum': 1, 'pageSize': 50},
     );
 
-    final result = response.data!;
-    if (result['code']?.toString() != ApiConstants.successCode) {
-      throw Exception(result['msg'] ?? '获取样例图片失败');
-    }
-
-    final data = result['data'] as Map<String, dynamic>?;
+    // 业务状态码由 ResponseInterceptor 统一拦截，此处响应均为成功，直接读取 data
+    final data = response.data!['data'] as Map<String, dynamic>?;
     final items = (data?['list'] as List<dynamic>? ?? [])
         .whereType<Map<String, dynamic>>();
 

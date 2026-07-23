@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../widgets/dehaze_image.dart';
+import 'widgets/compare_empty_state.dart';
 import 'widgets/comparison_scaffold.dart';
 
 /// 并排对比页面
@@ -18,7 +19,6 @@ class SideBySidePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(processingProvider);
-    final theme = Theme.of(context);
 
     final originalUrl = state.selectedImage?.fileUrl;
     final originalBytes = state.selectedImage?.bytes;
@@ -29,7 +29,7 @@ class SideBySidePage extends ConsumerWidget {
         icon: Icons.view_column_outlined,
         title: '并排对比',
         subtitle: '滑动分割线对比效果',
-        body: _buildNoData(context, theme),
+        body: CompareEmptyState(onAction: () => context.go(AppRouterConfig.processing)),
         currentRoute: AppRouterConfig.sideBySide,
       );
     }
@@ -46,22 +46,6 @@ class SideBySidePage extends ConsumerWidget {
       ),
     );
   }
-
-  Widget _buildNoData(BuildContext context, ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.warning_amber, size: 64, color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            Text('请先完成去雾处理', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () => context.go(AppRouterConfig.processing),
-              child: const Text('去处理'),
-            ),
-          ],
-        ),
-      );
 }
 
 /// 滑动分割线对比组件

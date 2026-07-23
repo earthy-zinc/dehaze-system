@@ -7,6 +7,7 @@ import '../../models/algorithm_model.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
+import 'widgets/compare_empty_state.dart';
 import 'widgets/comparison_scaffold.dart';
 
 /// 算法信息页面
@@ -75,7 +76,6 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
         return ComparisonScaffold(
           icon: Icons.info_outline,
           title: '算法信息',
-          subtitle: '',
           currentRoute: AppRouterConfig.algorithm,
           body: Center(child: CircularProgressIndicator(color: AppTheme.brandBlue)),
         );
@@ -84,7 +84,6 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
         return ComparisonScaffold(
           icon: Icons.info_outline,
           title: '算法信息',
-          subtitle: '',
           currentRoute: AppRouterConfig.algorithm,
           body: _buildError(theme),
         );
@@ -92,9 +91,14 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
       return ComparisonScaffold(
         icon: Icons.info_outline,
         title: '算法信息',
-        subtitle: '',
         currentRoute: AppRouterConfig.algorithm,
-        body: _buildNoData(context, theme),
+        body: CompareEmptyState(
+          icon: Icons.inbox_outlined,
+          iconColor: theme.colorScheme.onSurfaceVariant,
+          message: '暂无可用算法',
+          actionLabel: '重试加载',
+          onAction: () => context.go(AppRouterConfig.algorithmSelect),
+        ),
       );
     }
 
@@ -200,23 +204,6 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
               child: Text(label, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             ),
             Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
-          ],
-        ),
-      );
-
-  Widget _buildNoData(BuildContext context, ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 64, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(height: 16),
-            Text('暂无可用算法', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => context.go(AppRouterConfig.algorithmSelect),
-              icon: const Icon(Icons.refresh),
-              label: const Text('重试加载'),
-            ),
           ],
         ),
       );

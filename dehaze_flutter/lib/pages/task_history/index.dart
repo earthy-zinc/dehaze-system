@@ -6,6 +6,7 @@ import '../../models/prediction_model.dart';
 import '../../providers/processing_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/ui_utils.dart';
 import '../../widgets/dehaze_image.dart';
 
 /// 处理历史页面
@@ -31,7 +32,7 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadLogs());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadLogs(refresh: true));
   }
 
   Future<void> _loadLogs({bool refresh = false}) async {
@@ -81,7 +82,7 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
           _currentPage -= 1;
           _isLoadingMore = false;
         });
-        _showSnackBar('加载更多失败: ${extractErrorMessage(e)}');
+        showSnackBar(context, '加载更多失败: ${extractErrorMessage(e)}');
       }
     }
   }
@@ -96,13 +97,28 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
     return false;
   }
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  /// 下拉刷新：重置页码并重新加载第一页
+  ///
+  /// 保留当前列表避免刷新时闪烁，仅在新数据到达后替换；
+  /// 失败时以 SnackBar 提示，不影响已加载内容。
+  Future<void> _refresh() async {
+    _currentPage = 1;
+    try {
+      final service = ref.read(predictionServiceProvider);
+      final result = await service.getPredictionLogs(
+        pageNum: _currentPage,
+        pageSize: _pageSize,
+      );
+      if (!mounted) return;
+      setState(() {
+        _logs = result.list;
+        _total = result.total;
+        _errorMessage = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      showSnackBar(context, '刷新失败: ${extractErrorMessage(e)}');
+    }
   }
 
   @override
@@ -112,52 +128,57 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
     return Scaffold(
       body: ResponsiveConstraints(
         maxWidth: 1000,
-        child: NotificationListener<ScrollNotification>(
-          onNotification: _onScroll,
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _buildHeader(theme)),
-              if (_isLoading && _logs.isEmpty)
-                const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
-              else if (_errorMessage != null)
-                SliverFillRemaining(child: _buildError(theme))
-              else if (_logs.isEmpty)
-                SliverFillRemaining(child: _buildEmpty(theme))
-              else ...[
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => _LogCard(log: _logs[index]),
-                      childCount: _logs.length,
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(child: _buildHeader(theme)),
+                if (_isLoading && _logs.isEmpty)
+                  const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()))
+                else if (_errorMessage != null)
+                  SliverFillRemaining(child: _buildError(theme))
+                else if (_logs.isEmpty)
+                  SliverFillRemaining(child: _buildEmpty(theme))
+                else ...[
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _LogCard(log: _logs[index]),
+                        childCount: _logs.length,
+                      ),
                     ),
                   ),
-                ),
-                // 加载更多指示器
-                if (_isLoadingMore)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
+                  // 加载更多指示器
+                  if (_isLoadingMore)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
                     ),
-                  ),
-                // 已加载完毕提示
-                if (!_hasMore && _logs.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Center(
-                        child: Text(
-                          '没有更多了',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                  // 已加载完毕提示
+                  if (!_hasMore && _logs.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Center(
+                          child: Text(
+                            '没有更多了',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

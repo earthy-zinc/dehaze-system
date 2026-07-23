@@ -16,9 +16,6 @@ class Breakpoints {
   static const double expanded = 1200; // 扩展型（桌面）
 }
 
-/// 设备类型枚举
-enum DeviceType { mobile, tablet, desktop }
-
 /// 响应式工具类
 ///
 /// 遵循 Flutter 官方响应式最佳实践：
@@ -26,39 +23,13 @@ enum DeviceType { mobile, tablet, desktop }
 /// - 基于窗口尺寸而非设备类型判断布局
 /// - 不锁定屏幕方向
 class ResponsiveUtils {
-  /// 获取当前设备类型（基于窗口宽度，非硬件类型）
-  static DeviceType getDeviceType(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    if (width < Breakpoints.md) return DeviceType.mobile;
-    if (width < Breakpoints.lg) return DeviceType.tablet;
-    return DeviceType.desktop;
-  }
-
   /// 判断是否为移动设备尺寸
   static bool isMobile(BuildContext context) =>
       MediaQuery.sizeOf(context).width < Breakpoints.md;
 
-  /// 判断是否为平板设备尺寸
-  static bool isTablet(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return width >= Breakpoints.md && width < Breakpoints.lg;
-  }
-
-  /// 判断是否为桌面设备尺寸
-  static bool isDesktop(BuildContext context) =>
-      MediaQuery.sizeOf(context).width >= Breakpoints.lg;
-
   /// 判断是否为宽屏（平板或桌面）
   static bool isWideScreen(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= Breakpoints.md;
-
-  /// 获取当前窗口宽度
-  static double getWindowWidth(BuildContext context) =>
-      MediaQuery.sizeOf(context).width;
-
-  /// 获取当前窗口高度
-  static double getWindowHeight(BuildContext context) =>
-      MediaQuery.sizeOf(context).height;
 
   /// 获取响应式网格列数
   /// 用于图片网格、卡片网格等
@@ -83,28 +54,18 @@ class ResponsiveUtils {
     double tablet = 16,
     double desktop = 20,
   }) {
-    final deviceType = getDeviceType(context);
-    switch (deviceType) {
-      case DeviceType.mobile:
-        return mobile;
-      case DeviceType.tablet:
-        return tablet;
-      case DeviceType.desktop:
-        return desktop;
-    }
+    final width = MediaQuery.sizeOf(context).width;
+    if (width >= Breakpoints.lg) return desktop;
+    if (width >= Breakpoints.md) return tablet;
+    return mobile;
   }
 
   /// 获取响应式内边距
   static EdgeInsets getResponsivePadding(BuildContext context) {
-    final deviceType = getDeviceType(context);
-    switch (deviceType) {
-      case DeviceType.mobile:
-        return const EdgeInsets.all(12);
-      case DeviceType.tablet:
-        return const EdgeInsets.all(16);
-      case DeviceType.desktop:
-        return const EdgeInsets.all(24);
-    }
+    final width = MediaQuery.sizeOf(context).width;
+    if (width >= Breakpoints.lg) return const EdgeInsets.all(24);
+    if (width >= Breakpoints.md) return const EdgeInsets.all(16);
+    return const EdgeInsets.all(12);
   }
 }
 

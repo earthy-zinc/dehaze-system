@@ -8,6 +8,7 @@ import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/ui_utils.dart';
 import '../image_input/providers/image_input_provider.dart';
 
 /// 算法选择页面
@@ -79,13 +80,13 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
   Future<void> _uploadAndProceed() async {
     final selectedImage = ref.read(selectedImageProvider);
     if (selectedImage == null) {
-      _showSnackBar('请先选择图片');
+      showSnackBar(context, '请先选择图片');
       return;
     }
 
     final bytes = selectedImage.bytes;
     if (bytes == null || bytes.isEmpty) {
-      _showSnackBar('图片数据无效，请重新选择');
+      showSnackBar(context, '图片数据无效，请重新选择');
       return;
     }
 
@@ -112,22 +113,13 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
       context.go(AppRouterConfig.processing);
     } catch (e) {
       if (mounted) {
-        _showSnackBar('图片上传失败: ${extractErrorMessage(e)}');
+        showSnackBar(context, '图片上传失败: ${extractErrorMessage(e)}');
       }
     } finally {
       if (mounted) {
         setState(() => _isUploading = false);
       }
     }
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   @override

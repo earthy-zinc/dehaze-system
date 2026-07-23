@@ -11,6 +11,10 @@ import '../models/dataset_model.dart';
 /// - getDatasetDetail: 获取数据集详情
 /// - getDatasetItems: 分页查询数据项
 /// - getItemFiles: 获取数据项图片
+///
+/// 业务状态码由 [ResponseInterceptor] 统一拦截：
+/// code == '00000' 放行，否则 reject 抛出 ApiException，
+/// 因此此处响应均为成功，直接读取 `data` 字段即可。
 class DatasetService {
   const DatasetService(this._dio);
 
@@ -27,15 +31,11 @@ class DatasetService {
       },
     );
 
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      final data = result['data'] as Map<String, dynamic>?;
-      final list = (data?['list'] as List<dynamic>? ?? [])
-          .map((e) => DatasetModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      return list;
-    }
-    throw Exception(result['msg'] ?? '获取数据集列表失败');
+    final data = response.data!['data'] as Map<String, dynamic>?;
+    final list = (data?['list'] as List<dynamic>? ?? [])
+        .map((e) => DatasetModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return list;
   }
 
   /// 获取数据集详情
@@ -46,11 +46,7 @@ class DatasetService {
       '${ApiConstants.datasets}/$datasetId',
     );
 
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      return DatasetModel.fromJson(result['data'] as Map<String, dynamic>);
-    }
-    throw Exception(result['msg'] ?? '获取数据集详情失败');
+    return DatasetModel.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 分页查询数据项列表
@@ -72,16 +68,12 @@ class DatasetService {
       },
     );
 
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      final data = result['data'] as Map<String, dynamic>;
-      final list = (data['list'] as List<dynamic>? ?? [])
-          .map((e) => DatasetItemModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      final total = data['total'] as int? ?? 0;
-      return PageResult(list: list, total: total);
-    }
-    throw Exception(result['msg'] ?? '获取数据项列表失败');
+    final data = response.data!['data'] as Map<String, dynamic>;
+    final list = (data['list'] as List<dynamic>? ?? [])
+        .map((e) => DatasetItemModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final total = data['total'] as int? ?? 0;
+    return PageResult(list: list, total: total);
   }
 
   /// 获取数据项详情（含图片文件）
@@ -92,11 +84,8 @@ class DatasetService {
       '${ApiConstants.datasetItems}/$itemId',
     );
 
-    final result = response.data!;
-    if (result['code']?.toString() == ApiConstants.successCode) {
-      return DatasetItemModel.fromJson(result['data'] as Map<String, dynamic>);
-    }
-    throw Exception(result['msg'] ?? '获取数据项详情失败');
+    return DatasetItemModel.fromJson(
+        response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 获取数据集下的所有图片（通过数据项）

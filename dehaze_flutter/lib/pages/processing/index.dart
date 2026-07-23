@@ -27,34 +27,9 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
   double _contrast = 100; // 对比度 0-200
   double _sharpen = 30; // 锐化 0-100
 
-  /// 已用时间刷新定时器，仅在处理中运行，每 100ms 触发一次重绘
-  Timer? _elapsedTimer;
-
-  @override
-  void dispose() {
-    _elapsedTimer?.cancel();
-    super.dispose();
-  }
-
-  /// 根据处理状态启停已用时间定时器
-  void _syncElapsedTimer(ProcessingStatus status) {
-    if (status == ProcessingStatus.processing) {
-      _elapsedTimer ??= Timer.periodic(
-        const Duration(milliseconds: 100),
-        (_) {
-          if (mounted) setState(() {});
-        },
-      );
-    } else {
-      _elapsedTimer?.cancel();
-      _elapsedTimer = null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(processingProvider);
-    _syncElapsedTimer(state.status);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -384,7 +359,7 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
         );
 
       case ProcessingStatus.processing:
-        return _buildProcessingIndicator(theme, state);
+        return _buildProcessingIndicator(state);
 
       case ProcessingStatus.success:
         return Column(
@@ -475,11 +450,11 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
   }
 
   /// 构建处理中指示器：进度环 + 真实已用时间（不显示假百分比）
-  Widget _buildProcessingIndicator(ThemeData theme, ProcessingState state) {
+  ///
+  /// 已用时间由独立的 [_TimerText] 自行驱动定时刷新，
+  /// 避免每 100ms 触发整棵 Widget 树重建。
+  Widget _buildProcessingIndicator(ProcessingState state) {
     final startTime = state.processingStartTime;
-    final elapsed = startTime != null
-        ? DateTime.now().difference(startTime)
-        : Duration.zero;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -494,12 +469,7 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
           const Text('正在处理...'),
           if (startTime != null) ...[
             const SizedBox(height: 8),
-            Text(
-              '已用 ${elapsed.inSeconds}s',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
+            _TimerText(start: startTime),
           ],
         ],
       ),
@@ -514,5 +484,53 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
       sharpen: _sharpen.round(),
     );
     ref.read(processingProvider.notifier).process(params: params);
+  }
+}
+
+/// 处理已用时间文本
+///
+/// 独立维护定时器与已用秒数，仅自身重建，
+/// 避免父页面定时刷新导致整棵子树重建。
+class _TimerText extends StatefulWidget {
+  const _TimerText({required this.start});
+
+  final DateTime start;
+
+  @override
+  State<_TimerText> createState() => _TimerTextState();
+}
+
+class _TimerTextState extends State<_TimerText> {
+  Timer? _timer;
+  int _elapsedSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _elapsedSeconds = DateTime.now().difference(widget.start).inSeconds;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _elapsedSeconds = DateTime.now().difference(widget.start).inSeconds;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(
+      '已用 ${_elapsedSeconds}s',
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
   }
 }

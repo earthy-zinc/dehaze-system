@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../widgets/dehaze_image.dart';
+import 'widgets/compare_empty_state.dart';
 import 'widgets/comparison_scaffold.dart';
 
 /// 放大镜对比页面
@@ -37,8 +38,7 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
       return ComparisonScaffold(
         icon: Icons.search_outlined,
         title: '放大镜对比',
-        subtitle: '',
-        body: _buildNoData(context, theme),
+        body: CompareEmptyState(onAction: () => context.go(AppRouterConfig.processing)),
         currentRoute: AppRouterConfig.magnifier,
       );
     }
@@ -46,7 +46,6 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
     return ComparisonScaffold(
       icon: Icons.search_outlined,
       title: '放大镜对比',
-      subtitle: '',
       currentRoute: AppRouterConfig.magnifier,
       body: _buildMagnifierBody(originalUrl, originalBytes, resultUrl),
       controls: _buildControls(theme),
@@ -157,22 +156,6 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
                 ),
                 Text('${_lensSize.toInt()}px'),
               ],
-            ),
-          ],
-        ),
-      );
-
-  Widget _buildNoData(BuildContext context, ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.warning_amber, size: 64, color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            Text('请先完成去雾处理', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () => context.go(AppRouterConfig.processing),
-              child: const Text('去处理'),
             ),
           ],
         ),

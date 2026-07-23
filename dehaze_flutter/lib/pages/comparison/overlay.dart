@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../widgets/dehaze_image.dart';
+import 'widgets/compare_empty_state.dart';
 import 'widgets/comparison_scaffold.dart';
 
 /// 重叠对比页面
@@ -34,8 +35,7 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
       return ComparisonScaffold(
         icon: Icons.layers_outlined,
         title: '重叠对比',
-        subtitle: '',
-        body: _buildNoData(context, theme),
+        body: CompareEmptyState(onAction: () => context.go(AppRouterConfig.processing)),
         currentRoute: AppRouterConfig.overlay,
       );
     }
@@ -43,7 +43,6 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
     return ComparisonScaffold(
       icon: Icons.layers_outlined,
       title: '重叠对比',
-      subtitle: '',
       currentRoute: AppRouterConfig.overlay,
       body: _buildImageStack(originalUrl, resultUrl, originalBytes),
       controls: _buildControls(theme),
@@ -111,22 +110,6 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
                 _PresetButton(label: '半透明', onTap: () => setState(() => _opacity = 0.5)),
                 _PresetButton(label: '仅结果', onTap: () => setState(() => _opacity = 0)),
               ],
-            ),
-          ],
-        ),
-      );
-
-  Widget _buildNoData(BuildContext context, ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.warning_amber, size: 64, color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            Text('请先完成去雾处理', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () => context.go(AppRouterConfig.processing),
-              child: const Text('去处理'),
             ),
           ],
         ),

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_result.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/format_utils.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/ui_utils.dart';
 import '../../widgets/dehaze_image.dart';
 import 'models/dataset_model.dart';
 import 'providers/dataset_provider.dart';
@@ -30,6 +32,9 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
+  /// 深度链接加载数据集详情时的 loading 标记
+  bool _loadingDetail = false;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +48,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
   }
 
   Future<void> _loadDatasetById(int datasetId) async {
+    setState(() => _loadingDetail = true);
     try {
       final service = ref.read(datasetServiceProvider);
       final dataset = await service.getDatasetDetail(datasetId);
@@ -50,17 +56,10 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
       _showDatasetDetail(dataset);
     } catch (e) {
       if (!mounted) return;
-      _showError('加载数据集失败: ${extractErrorMessage(e)}');
+      showError(context, '加载数据集失败: ${extractErrorMessage(e)}');
+    } finally {
+      if (mounted) setState(() => _loadingDetail = false);
     }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   @override
@@ -75,6 +74,15 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
     final datasetsAsync = ref.watch(datasetProvider);
     final selectedDataset = ref.watch(selectedDatasetProvider);
     final isWide = ResponsiveUtils.isWideScreen(context);
+
+    // 深度链接加载数据集详情时显示 loading 占位
+    if (selectedDataset == null &&
+        widget.initialDatasetId != null &&
+        _loadingDetail) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       body: ResponsiveConstraints(
@@ -503,7 +511,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
                 _infoText('类型: ${image.imageType.displayName}'),
                 _infoText('尺寸: ${image.width} × ${image.height}'),
                 if (image.fileSize != null)
-                  _infoText('大小: ${_formatFileSize(image.fileSize!)}'),
+                  _infoText('大小: ${FormatUtils.formatFileSize(image.fileSize!)}'),
               ],
             ),
           ],
@@ -517,10 +525,4 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
           fontSize: 14,
         ),
       );
-
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
 }

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../widgets/dehaze_image.dart';
+import 'widgets/compare_empty_state.dart';
 import 'widgets/comparison_scaffold.dart';
 
 /// 滤镜调节页面
@@ -34,8 +35,7 @@ class _FilterPageState extends ConsumerState<FilterPage> {
       return ComparisonScaffold(
         icon: Icons.tune_outlined,
         title: '滤镜调节',
-        subtitle: '',
-        body: _buildNoData(context, theme),
+        body: CompareEmptyState(onAction: () => context.go(AppRouterConfig.processing)),
         currentRoute: AppRouterConfig.filter,
       );
     }
@@ -43,7 +43,6 @@ class _FilterPageState extends ConsumerState<FilterPage> {
     return ComparisonScaffold(
       icon: Icons.tune_outlined,
       title: '滤镜调节',
-      subtitle: '',
       currentRoute: AppRouterConfig.filter,
       body: _buildImageWithFilter(resultUrl),
       controls: _buildControls(theme),
@@ -137,22 +136,6 @@ class _FilterPageState extends ConsumerState<FilterPage> {
             SizedBox(
               width: 40,
               child: Text(value.toStringAsFixed(1), textAlign: TextAlign.right),
-            ),
-          ],
-        ),
-      );
-
-  Widget _buildNoData(BuildContext context, ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.warning_amber, size: 64, color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            Text('请先完成去雾处理', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () => context.go(AppRouterConfig.processing),
-              child: const Text('去处理'),
             ),
           ],
         ),

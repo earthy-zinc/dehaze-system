@@ -9,6 +9,7 @@ import '../../models/auth_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/ui_utils.dart';
 
 /// 登录页面
 class LoginPage extends ConsumerStatefulWidget {
@@ -59,7 +60,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _isCaptchaLoading = false);
-        _showError('获取验证码失败，请检查网络连接');
+        showError(context, '获取验证码失败，请检查网络连接');
       }
     }
   }
@@ -68,7 +69,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     if (_captcha == null) {
-      _showError('请先获取验证码');
+      showError(context, '请先获取验证码');
       return;
     }
 
@@ -87,21 +88,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (authState.status == AuthStatus.authenticated) {
       context.go(AppRouterConfig.home);
     } else if (authState.status == AuthStatus.error) {
-      _showError(authState.errorMessage ?? '登录失败');
+      showError(context, authState.errorMessage ?? '登录失败');
       // 刷新验证码
       _captchaController.clear();
       _loadCaptcha();
     }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   @override

@@ -17,7 +17,7 @@ class ComparisonScaffold extends StatelessWidget {
     super.key,
     required this.icon,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.body,
     this.controls,
     required this.currentRoute,
@@ -29,8 +29,8 @@ class ComparisonScaffold extends StatelessWidget {
   /// 标题文案
   final String title;
 
-  /// 标题右侧副标题（操作提示等）
-  final String subtitle;
+  /// 标题右侧副标题（操作提示等），为 null 时不渲染
+  final String? subtitle;
 
   /// 主体内容
   final Widget body;
@@ -80,9 +80,10 @@ class ComparisonScaffold extends StatelessWidget {
                 style: theme.textTheme.titleLarge
                     ?.copyWith(fontWeight: FontWeight.w700)),
             const Spacer(),
-            Text(subtitle,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            if (subtitle != null)
+              Text(subtitle!,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ],
         ),
       );
