@@ -7,14 +7,12 @@ class MenuItemData {
     required this.title,
     required this.route,
     this.badge,
-    this.isNew = false,
   });
 
   final IconData icon;
   final String title;
   final String route;
   final String? badge; // 角标文字（如 "NEW"、数字等）
-  final bool isNew; // 是否为新功能
 }
 
 /// 菜单分组数据模型

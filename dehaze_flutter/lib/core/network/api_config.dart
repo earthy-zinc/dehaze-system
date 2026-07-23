@@ -1,6 +1,5 @@
-import 'dart:io' show Platform;
-
-import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, kReleaseMode, defaultTargetPlatform, TargetPlatform;
 
 /// API 基础配置
 ///
@@ -20,7 +19,9 @@ class ApiConfig {
     if (env.isNotEmpty) return env;
     if (kReleaseMode) return 'https://api.dehaze.example.com:8989';
     if (kIsWeb) return 'http://127.0.0.1:8989';
-    if (Platform.isAndroid) return 'http://10.0.2.2:8989';
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8989';
+    }
     return 'http://127.0.0.1:8989';
   }
 
@@ -35,7 +36,9 @@ class ApiConfig {
     if (env.isNotEmpty) return env;
     if (kReleaseMode) return 'https://cdn.dehaze.example.com:9000';
     if (kIsWeb) return 'http://127.0.0.1:9000';
-    if (Platform.isAndroid) return 'http://10.0.2.2:9000';
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:9000';
+    }
     return 'http://127.0.0.1:9000';
   }
 

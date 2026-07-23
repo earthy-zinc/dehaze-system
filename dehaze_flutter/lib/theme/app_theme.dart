@@ -741,7 +741,7 @@ class AppTheme {
   );
 
   /// 根据主题模式获取适当的阴影
-  static List<BoxShadow> getShadow(int level, {bool isDark = false}) {
+  static List<BoxShadow> getShadow(int level) {
     switch (level) {
       case 1:
         return shadowLevel1;

@@ -76,14 +76,6 @@ class ResponsiveUtils {
     return mobile;
   }
 
-  /// 获取瀑布流列数（与 CSS column-count 对应）
-  static int getWaterfallColumnCount(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    if (width >= Breakpoints.lg) return 4;
-    if (width >= Breakpoints.sm) return 3;
-    return 2;
-  }
-
   /// 获取响应式间距
   static double getResponsiveSpacing(
     BuildContext context, {
@@ -102,24 +94,6 @@ class ResponsiveUtils {
     }
   }
 
-  /// 获取响应式字体大小
-  static double getResponsiveFontSize(
-    BuildContext context, {
-    required double base,
-    double mobileScale = 0.85,
-    double tabletScale = 0.95,
-  }) {
-    final deviceType = getDeviceType(context);
-    switch (deviceType) {
-      case DeviceType.mobile:
-        return base * mobileScale;
-      case DeviceType.tablet:
-        return base * tabletScale;
-      case DeviceType.desktop:
-        return base;
-    }
-  }
-
   /// 获取响应式内边距
   static EdgeInsets getResponsivePadding(BuildContext context) {
     final deviceType = getDeviceType(context);
@@ -130,75 +104,6 @@ class ResponsiveUtils {
         return const EdgeInsets.all(16);
       case DeviceType.desktop:
         return const EdgeInsets.all(24);
-    }
-  }
-
-  /// 获取卡片宽高比
-  static double getCardAspectRatio(
-    BuildContext context, {
-    double mobile = 1.0,
-    double tablet = 1.1,
-    double desktop = 1.2,
-  }) {
-    final deviceType = getDeviceType(context);
-    switch (deviceType) {
-      case DeviceType.mobile:
-        return mobile;
-      case DeviceType.tablet:
-        return tablet;
-      case DeviceType.desktop:
-        return desktop;
-    }
-  }
-
-  /// 根据宽度获取响应式值
-  /// 适用于需要更精细控制的场景
-  static T getResponsiveValue<T>(
-    BuildContext context, {
-    required T defaultValue,
-    T? xs,
-    T? sm,
-    T? md,
-    T? lg,
-    T? xl,
-    T? xxl,
-  }) {
-    final width = MediaQuery.sizeOf(context).width;
-    if (width >= Breakpoints.xxl) return xxl ?? xl ?? lg ?? md ?? sm ?? xs ?? defaultValue;
-    if (width >= Breakpoints.xl) return xl ?? lg ?? md ?? sm ?? xs ?? defaultValue;
-    if (width >= Breakpoints.lg) return lg ?? md ?? sm ?? xs ?? defaultValue;
-    if (width >= Breakpoints.md) return md ?? sm ?? xs ?? defaultValue;
-    if (width >= Breakpoints.sm) return sm ?? xs ?? defaultValue;
-    return xs ?? defaultValue;
-  }
-}
-
-/// 响应式构建器 Widget
-///
-/// 根据窗口宽度自动选择合适的布局
-class ResponsiveBuilder extends StatelessWidget {
-  const ResponsiveBuilder({
-    required this.mobile,
-    super.key,
-    this.tablet,
-    this.desktop,
-  });
-
-  final Widget mobile;
-  final Widget? tablet;
-  final Widget? desktop;
-
-  @override
-  Widget build(BuildContext context) {
-    final deviceType = ResponsiveUtils.getDeviceType(context);
-
-    switch (deviceType) {
-      case DeviceType.desktop:
-        return desktop ?? tablet ?? mobile;
-      case DeviceType.tablet:
-        return tablet ?? mobile;
-      case DeviceType.mobile:
-        return mobile;
     }
   }
 }
@@ -231,55 +136,5 @@ class ResponsiveConstraints extends StatelessWidget {
             child: child,
           ),
         ),
-      );
-}
-
-/// 自适应网格视图
-///
-/// 根据可用宽度自动计算列数，避免固定列数导致的布局问题
-class AdaptiveGridView extends StatelessWidget {
-  const AdaptiveGridView({
-    required this.children,
-    super.key,
-    this.minItemWidth = 150,
-    this.maxItemWidth = 300,
-    this.spacing = 16,
-    this.childAspectRatio = 1.0,
-    this.padding,
-    this.shrinkWrap = false,
-    this.physics,
-  });
-
-  final List<Widget> children;
-  final double minItemWidth;
-  final double maxItemWidth;
-  final double spacing;
-  final double childAspectRatio;
-  final EdgeInsets? padding;
-  final bool shrinkWrap;
-  final ScrollPhysics? physics;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          // 根据可用宽度计算最佳列数
-          final availableWidth = constraints.maxWidth - (padding?.horizontal ?? 0);
-          var crossAxisCount = (availableWidth / minItemWidth).floor();
-          crossAxisCount = crossAxisCount.clamp(1, (availableWidth / maxItemWidth).ceil().clamp(1, 10));
-
-          return GridView.builder(
-            padding: padding,
-            shrinkWrap: shrinkWrap,
-            physics: physics,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: spacing,
-              mainAxisSpacing: spacing,
-              childAspectRatio: childAspectRatio,
-            ),
-            itemCount: children.length,
-            itemBuilder: (context, index) => children[index],
-          );
-        },
       );
 }

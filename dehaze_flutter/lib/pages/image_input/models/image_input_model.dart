@@ -226,38 +226,6 @@ class SampleImageModel {
   Map<String, dynamic> toJson() => _$SampleImageModelToJson(this);
 }
 
-/// 样例图片分页响应
-@JsonSerializable()
-class PaginatedSampleResponse {
-  const PaginatedSampleResponse({
-    required this.list,
-    required this.total,
-    required this.page,
-    required this.pageSize,
-    required this.totalPages,
-  });
-
-  factory PaginatedSampleResponse.fromJson(Map<String, dynamic> json) =>
-      _$PaginatedSampleResponseFromJson(json);
-
-  @JsonKey(name: 'list')
-  final List<SampleImageModel> list;
-
-  @JsonKey(name: 'total')
-  final int total;
-
-  @JsonKey(name: 'page')
-  final int page;
-
-  @JsonKey(name: 'page_size')
-  final int pageSize;
-
-  @JsonKey(name: 'total_pages')
-  final int totalPages;
-
-  Map<String, dynamic> toJson() => _$PaginatedSampleResponseToJson(this);
-}
-
 /// 图片验证结果
 class ImageValidationResult {
   const ImageValidationResult({

@@ -35,35 +35,3 @@ class PageResult<T> {
   Map<String, dynamic> toJson(Object? Function(T value) toJsonT) =>
       _$PageResultToJson(this, toJsonT);
 }
-
-/// 分页请求参数
-class PageRequest {
-  const PageRequest({
-    this.pageNum = 1,
-    this.pageSize = 10,
-    this.keywords,
-  });
-
-  /// 页码（从 1 开始）
-  final int pageNum;
-
-  /// 每页条数
-  final int pageSize;
-
-  /// 搜索关键词
-  final String? keywords;
-
-  /// 转换为查询参数
-  Map<String, dynamic> toQueryParams() => {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-        if (keywords != null && keywords!.isNotEmpty) 'keywords': keywords,
-      };
-
-  /// 下一页请求
-  PageRequest nextPage() => PageRequest(
-        pageNum: pageNum + 1,
-        pageSize: pageSize,
-        keywords: keywords,
-      );
-}

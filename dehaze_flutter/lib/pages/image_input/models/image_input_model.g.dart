@@ -116,36 +116,3 @@ const _$DifficultyLevelEnumMap = {
   DifficultyLevel.medium: 'medium',
   DifficultyLevel.hard: 'hard',
 };
-
-PaginatedSampleResponse _$PaginatedSampleResponseFromJson(
-  Map<String, dynamic> json,
-) => $checkedCreate(
-  'PaginatedSampleResponse',
-  json,
-  ($checkedConvert) {
-    final val = PaginatedSampleResponse(
-      list: $checkedConvert(
-        'list',
-        (v) => (v as List<dynamic>)
-            .map((e) => SampleImageModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      ),
-      total: $checkedConvert('total', (v) => (v as num).toInt()),
-      page: $checkedConvert('page', (v) => (v as num).toInt()),
-      pageSize: $checkedConvert('page_size', (v) => (v as num).toInt()),
-      totalPages: $checkedConvert('total_pages', (v) => (v as num).toInt()),
-    );
-    return val;
-  },
-  fieldKeyMap: const {'pageSize': 'page_size', 'totalPages': 'total_pages'},
-);
-
-Map<String, dynamic> _$PaginatedSampleResponseToJson(
-  PaginatedSampleResponse instance,
-) => <String, dynamic>{
-  'list': instance.list.map((e) => e.toJson()).toList(),
-  'total': instance.total,
-  'page': instance.page,
-  'page_size': instance.pageSize,
-  'total_pages': instance.totalPages,
-};

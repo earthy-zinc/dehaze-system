@@ -31,9 +31,6 @@ class FileService {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConstants.filesUpload,
       data: formData,
-      options: Options(
-        headers: {'Content-Type': 'multipart/form-data'},
-      ),
       onSendProgress: onProgress,
     );
     // ResponseInterceptor 已保证 code=='00000'，失败已 reject 为 ApiException
