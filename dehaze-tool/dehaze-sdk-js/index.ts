@@ -35,6 +35,14 @@ export { configJavaAxios, configPythonAxios } from "./src/config";
 export { javaService } from "./src/utils/request";
 export { pythonService } from "./src/utils/requestPy";
 
+// Axios 类型导出（供宿主项目配置 adapter / 拦截器使用）
+export type {
+  AxiosAdapter,
+  AxiosError,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
+
 // API 导出
 export {
   AlgorithmAPI,

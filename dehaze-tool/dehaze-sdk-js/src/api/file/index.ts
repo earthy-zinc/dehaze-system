@@ -64,7 +64,7 @@ class FileAPI {
    * @param query 查询参数
    */
   static getPage(query?: FileQuery) {
-    return request<any, PageResult<FileInfo>>({
+    return request<any, PageResult<FileInfo[]>>({
       url: "/api/v1/files/page",
       method: "get",
       params: query,

@@ -1,5 +1,8 @@
 import {
   BatchDeleteForm,
+  BatchDeleteResultVO,
+  BatchOperationResultVO,
+  BatchUploadResultVO,
   Dataset,
   DatasetAddForm,
   DatasetItemCreateForm,
@@ -106,7 +109,7 @@ class DatasetAPI {
    * @param data 批量删除表单
    */
   static batchDelete(data: BatchDeleteForm) {
-    return request<any, { successIds: number[]; failedItems: { id: number; reason: string }[] }>({
+    return request<any, BatchDeleteResultVO>({
       url: "/api/v1/datasets/batch",
       method: "delete",
       data: data,
@@ -197,16 +200,7 @@ class DatasetItemAPI {
    * @param data 批量上传表单（使用FormData）
    */
   static batchUpload(data: FormData) {
-    return request<
-      any,
-      {
-        total: number;
-        succeeded: number;
-        failed: number;
-        successItems: { id: number; name: string; fileCount: number }[];
-        failedItems: { fileName: string; reason: string }[];
-      }
-    >({
+    return request<any, BatchUploadResultVO>({
       url: "/api/v1/dataset-items/batch",
       method: "post",
       data: data,
@@ -221,16 +215,7 @@ class DatasetItemAPI {
    * @param data 批量删除表单
    */
   static batchDelete(data: BatchDeleteForm) {
-    return request<
-      any,
-      {
-        successCount: number;
-        failedCount: number;
-        message: string;
-        successIds?: number[];
-        failureDetails?: { identifier?: string; reason: string }[];
-      }
-    >({
+    return request<any, BatchOperationResultVO>({
       url: "/api/v1/dataset-items/batch",
       method: "delete",
       data: data,
@@ -297,15 +282,7 @@ class ItemFileAPI {
    * @param data 批量删除表单
    */
   static batchDelete(data: BatchDeleteForm) {
-    return request<
-      any,
-      {
-        successIds: number[];
-        failedItems: { id?: number; reason: string }[];
-        successCount: number;
-        failedCount: number;
-      }
-    >({
+    return request<any, BatchDeleteResultVO>({
       url: "/api/v1/item-files/batch",
       method: "delete",
       data: data,
@@ -313,134 +290,6 @@ class ItemFileAPI {
   }
 }
 
-// 导出旧接口（兼容性）
-class LegacyDatasetAPI {
-  /**
-   * @deprecated 使用 DatasetItemAPI.add 替代
-   * 新增数据项
-   * @param datasetId
-   * @param name
-   */
-  static addDatasetItem(datasetId: number, name?: string) {
-    return request<any, number>({
-      url: "/api/v1/dataset/item",
-      method: "post",
-      params: {
-        datasetId,
-        name,
-      },
-    });
-  }
-
-  /**
-   * @deprecated 使用 DatasetItemAPI.update 替代
-   * 修改数据项
-   * @param datasetItemId
-   * @param name
-   */
-  static updateDatasetItem(datasetItemId: number, name: string) {
-    return request({
-      url: "/api/v1/dataset/item/",
-      method: "put",
-      params: {
-        datasetItemId,
-        name,
-      },
-    });
-  }
-
-  /**
-   * @deprecated 使用 DatasetItemAPI.deleteById 替代
-   * 删除数据项
-   * @param datasetItemId
-   */
-  static deleteDatasetItem(datasetItemId: number) {
-    return request({
-      url: "/api/v1/dataset/item",
-      method: "delete",
-      params: {
-        datasetItemId,
-      },
-    });
-  }
-
-  /**
-   * @deprecated 使用 ItemFileAPI.upload 替代
-   * 上传图片
-   * @param datasetId
-   * @param datasetItemId
-   * @param type
-   * @param file
-   * @param description
-   */
-  static uploadItemImage(
-    datasetId: number,
-    datasetItemId: number,
-    type: string,
-    file: File,
-    description?: string
-  ) {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("datasetId", datasetId.toString());
-    formData.append("datasetItemId", datasetItemId.toString());
-    formData.append("type", type);
-    if (description) {
-      formData.append("description", description);
-    }
-    return request<
-      any,
-      {
-        id: number;
-        datasetItemId: number;
-        fileId: number;
-        type: string;
-        description: string;
-        url: string;
-      }
-    >({
-      url: "/api/v1/dataset/image",
-      method: "post",
-      data: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-  }
-
-  /**
-   * @deprecated 使用 ItemFileAPI.update 替代
-   * 修改图片信息
-   * @param itemFileId
-   * @param type
-   * @param description
-   */
-  static updateItemImage(itemFileId: number, type: string, description?: string) {
-    return request({
-      url: "/api/v1/dataset/image/",
-      method: "put",
-      params: {
-        itemFileId,
-        type,
-        description,
-      },
-    });
-  }
-
-  /**
-   * @deprecated 使用 ItemFileAPI.deleteById 替代
-   * 删除图片
-   * @param itemFileId
-   */
-  static deleteItemImage(itemFileId: number) {
-    return request({
-      url: "/api/v1/dataset/image",
-      method: "delete",
-      params: { itemFileId },
-    });
-  }
-}
-
 // 导出
 export default DatasetAPI;
-export { DatasetAPI, DatasetItemAPI, ItemFileAPI, LegacyDatasetAPI };
+export { DatasetAPI, DatasetItemAPI, ItemFileAPI };

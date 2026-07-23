@@ -1,7 +1,7 @@
 /**
  * 菜单类型枚举
  */
-export const enum MenuTypeEnum {
+export enum MenuTypeEnum {
   /**
    * 目录
    */

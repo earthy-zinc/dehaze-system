@@ -55,7 +55,7 @@ class ModelAPI {
 
   /** 获取预测日志分页列表 */
   static getPredLogs(query?: PredLogQuery) {
-    return request<any, PageResult<PredLogVO>>({
+    return request<any, PageResult<PredLogVO[]>>({
       url: "/api/v1/prediction/logs",
       method: "get",
       params: query,
@@ -83,7 +83,7 @@ class ModelAPI {
 
   /** 获取评估日志分页列表 */
   static getEvalLogs(query?: EvalLogQuery) {
-    return request<any, PageResult<EvalLogVO>>({
+    return request<any, PageResult<EvalLogVO[]>>({
       url: "/api/v1/evaluation/logs",
       method: "get",
       params: query,

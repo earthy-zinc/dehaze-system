@@ -28,12 +28,6 @@ export interface EvalResult {
   description?: string;
 }
 
-export interface PredImageInfo {
-  name: string;
-  path: string;
-  url: string;
-}
-
 // ===== 新预测/评估 API 类型（对应 Java PredictionController/EvaluationController） =====
 
 /** 预测请求 */

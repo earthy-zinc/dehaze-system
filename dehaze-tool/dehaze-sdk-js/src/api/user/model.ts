@@ -9,7 +9,7 @@ export interface UserInfo {
   nickname?: string;
   avatar?: string;
   roles: string[];
-  perms: string[];
+  permissions: string[];
 }
 
 /**

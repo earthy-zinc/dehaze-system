@@ -374,18 +374,6 @@ export interface ImageUrlVO {
   pairedCount?: number;
 }
 
-/**
- * 上传图片返回信息
- */
-export interface DatasetImageFileInfo {
-  id: number;
-  datasetItemId: number;
-  fileId: number;
-  type: string;
-  description: string;
-  url: string;
-}
-
 // ==================== 批量操作相关类型 ====================
 
 /**
@@ -482,36 +470,4 @@ export interface BatchOperationResultVO {
   successIds?: number[];
   /** 失败详情列表 */
   failureDetails?: BatchActionFailureDetailVO[];
-}
-
-// ==================== 旧类型保留（兼容性） ====================
-
-/**
- * @deprecated 使用 DatasetQuery 替代
- */
-export interface ImageItemQuery extends PageQuery {
-  keywords?: string;
-}
-
-/**
- * @deprecated 使用 ImageUrlVO 替代
- */
-export interface ImageItem {
-  id: number;
-  imgUrl: ImageUrl[];
-}
-
-/**
- * @deprecated 使用 SimpleImageUrlVO 替代
- */
-export interface ImageUrl {
-  id: number;
-  /** 图片类型（有雾图像、无雾图像） */
-  type: string;
-  /** 图片URL */
-  url: string;
-  /** 高清图片URL */
-  originUrl?: string;
-  /** 描述 */
-  description?: string;
 }
