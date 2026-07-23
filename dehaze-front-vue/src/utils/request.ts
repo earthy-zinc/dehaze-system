@@ -1,4 +1,3 @@
-import { REFRESH_TOKEN_KEY } from "@/enums/CacheEnum";
 import { useUserStoreHook } from "@/store/modules/user";
 
 import type { AxiosInstance, InternalAxiosRequestConfig } from "axios";
@@ -7,6 +6,7 @@ import {
   configPythonAxios,
   javaService,
   pythonService,
+  REFRESH_TOKEN_KEY,
   ResponseData,
   ResultEnum,
 } from "dehaze-sdk-js";

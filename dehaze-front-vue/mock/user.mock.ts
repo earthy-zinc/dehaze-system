@@ -13,7 +13,7 @@ export default defineMock([
         avatar:
           "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80",
         roles: ["ROOT"],
-        perms: [
+        permissions: [
           "sys:menu:delete",
           "sys:dept:edit",
           "sys:dict_type:add",

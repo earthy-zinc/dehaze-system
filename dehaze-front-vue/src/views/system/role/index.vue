@@ -221,6 +221,7 @@
 <script lang="ts" setup>
 import {
   MenuAPI,
+  OptionType,
   RoleAPI,
   RoleForm,
   RolePageVO,

@@ -16,7 +16,7 @@
 </template>
 
 <script lang="ts" setup>
-import { DictAPI } from "dehaze-sdk-js";
+import { DictAPI, OptionType } from "dehaze-sdk-js";
 
 const props = defineProps({
   /**

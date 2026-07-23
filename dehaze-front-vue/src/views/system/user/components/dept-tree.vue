@@ -21,7 +21,7 @@
 </template>
 
 <script lang="ts" setup>
-import { DeptAPI } from "dehaze-sdk-js";
+import { DeptAPI, OptionType } from "dehaze-sdk-js";
 import { Search } from "@element-plus/icons-vue";
 
 const props = defineProps({

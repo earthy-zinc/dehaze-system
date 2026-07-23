@@ -1,5 +1,5 @@
 // 算法模型 store
-import { AlgorithmAPI } from "dehaze-sdk-js";
+import { AlgorithmAPI, OptionType } from "dehaze-sdk-js";
 
 export const useAlgorithmStore = defineStore("algorithm", () => {
   // 模型下拉框选项列表

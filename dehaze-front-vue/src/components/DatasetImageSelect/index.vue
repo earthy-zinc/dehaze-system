@@ -12,6 +12,7 @@ import {
   DatasetItemQuery,
   DatasetItemVO,
   ImageUrlVO,
+  OptionType,
 } from "dehaze-sdk-js";
 import { Refresh, Search } from "@element-plus/icons-vue";
 

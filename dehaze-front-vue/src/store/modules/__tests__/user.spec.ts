@@ -1,5 +1,4 @@
-import { TOKEN_KEY } from "@/enums/CacheEnum";
-import { AuthAPI, UserAPI } from "dehaze-sdk-js";
+import { AuthAPI, TOKEN_KEY, UserAPI } from "dehaze-sdk-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useUserStore } from "../user";
 
@@ -88,7 +87,7 @@ describe("useUserStore", () => {
         nickname: "管理员",
         avatar: "https://example.com/avatar.jpg",
         roles: ["ADMIN", "USER"],
-        perms: ["sys:user:view", "sys:user:edit"],
+        permissions: ["sys:user:view", "sys:user:edit"],
       };
 
       vi.mocked(UserAPI.getInfo).mockResolvedValue(mockUserInfo);
@@ -124,7 +123,7 @@ describe("useUserStore", () => {
         nickname: "管理员",
         avatar: "https://example.com/avatar.jpg",
         roles: [],
-        perms: [],
+        permissions: [],
       };
 
       vi.mocked(UserAPI.getInfo).mockResolvedValue(mockUserInfo);
@@ -210,7 +209,7 @@ describe("useUserStore", () => {
       // Assert
       expect(store.user).toEqual({
         roles: [],
-        perms: [],
+        permissions: [],
       });
     });
 
@@ -222,7 +221,7 @@ describe("useUserStore", () => {
         nickname: "测试用户",
         avatar: "https://example.com/avatar.jpg",
         roles: ["USER"],
-        perms: ["sys:user:view"],
+        permissions: ["sys:user:view"],
       };
 
       vi.mocked(UserAPI.getInfo).mockResolvedValue(mockUserInfo);
@@ -236,7 +235,7 @@ describe("useUserStore", () => {
       expect(store.user.userId).toBe(1);
       expect(store.user.username).toBe("testuser");
       expect(store.user.roles).toEqual(["USER"]);
-      expect(store.user.perms).toEqual(["sys:user:view"]);
+      expect(store.user.permissions).toEqual(["sys:user:view"]);
     });
   });
 
@@ -264,7 +263,7 @@ describe("useUserStore", () => {
         nickname: "管理员",
         avatar: "https://example.com/avatar.jpg",
         roles: ["ADMIN"],
-        perms: ["sys:user:view", "sys:user:edit"],
+        permissions: ["sys:user:view", "sys:user:edit"],
       };
 
       vi.mocked(AuthAPI.login).mockResolvedValue(mockLoginResponse);

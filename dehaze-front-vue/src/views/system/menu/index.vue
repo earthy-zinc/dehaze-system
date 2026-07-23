@@ -326,6 +326,7 @@ import {
   MenuQuery,
   MenuTypeEnum,
   MenuVO,
+  OptionType,
 } from "dehaze-sdk-js";
 import {
   Delete,

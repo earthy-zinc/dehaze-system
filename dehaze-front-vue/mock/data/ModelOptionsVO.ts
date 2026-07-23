@@ -1,3 +1,5 @@
+import type { OptionType } from "dehaze-sdk-js";
+
 export default [
   {
     label: "模型一",

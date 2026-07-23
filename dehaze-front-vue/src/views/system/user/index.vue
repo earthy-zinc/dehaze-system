@@ -341,6 +341,7 @@ defineOptions({
 
 import {
   DeptAPI,
+  OptionType,
   RoleAPI,
   UserAPI,
   UserForm,

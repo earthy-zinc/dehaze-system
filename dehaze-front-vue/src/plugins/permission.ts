@@ -1,4 +1,4 @@
-import { TOKEN_KEY } from "@/enums/CacheEnum";
+import { TOKEN_KEY } from "dehaze-sdk-js";
 import router from "@/router";
 import { usePermissionStore, useUserStore } from "@/store";
 import NProgress from "@/utils/nprogress";

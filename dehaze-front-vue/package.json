@@ -80,7 +80,7 @@
     "@wangeditor/editor": "^5.1.23",
     "@wangeditor/editor-for-vue": "5.1.10",
     "animate.css": "^4.1.1",
-    "axios": "^1.13.2",
+    "axios": "^1.18.1",
     "color": "^5.0.3",
     "dehaze-sdk-js": "link:../dehaze-tool/dehaze-sdk-js",
     "echarts": "^6.0.0",

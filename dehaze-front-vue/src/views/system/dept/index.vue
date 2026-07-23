@@ -158,7 +158,7 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import { DeptAPI, DeptForm, DeptQuery, DeptVO } from "dehaze-sdk-js";
+import { DeptAPI, DeptForm, DeptQuery, DeptVO, OptionType } from "dehaze-sdk-js";
 import { Delete, Edit, Plus, Refresh, Search } from "@element-plus/icons-vue";
 
 const queryFormRef = ref(ElForm);
