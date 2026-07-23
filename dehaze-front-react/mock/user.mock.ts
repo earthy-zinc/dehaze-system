@@ -13,7 +13,7 @@ export default defineMock([
         avatar:
           "https://oss.youlai.tech/youlai-boot/2023/05/16/811270ef31f548af9cffc026dfc3777b.gif",
         roles: ["ROOT"],
-        perms: [
+        permissions: [
           "sys:menu:delete",
           "sys:dept:edit",
           "sys:dict_type:add",

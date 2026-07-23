@@ -145,7 +145,7 @@ const Home: React.FC = () => {
 
   // 顶部统计：菜单数 + 权限数 + 角色 + 系统版本
   const menuCount = permissionStore.routes?.length ?? 0;
-  const permCount = userStore.user.perms?.length ?? 0;
+  const permCount = userStore.user.permissions?.length ?? 0;
 
   const stats = [
     { label: "可用菜单", value: menuCount },

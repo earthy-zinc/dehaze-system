@@ -1,6 +1,5 @@
-import { AuthAPI, UserAPI, LoginData, UserInfo } from "dehaze-sdk-js";
+import { AuthAPI, UserAPI, LoginData, TOKEN_KEY, UserInfo } from "dehaze-sdk-js";
 
-import { TOKEN_KEY } from "@/enums/CacheEnum";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
@@ -9,7 +8,7 @@ const initialState = {
   user: {
     avatar: "",
     roles: [] as string[],
-    perms: [] as string[],
+    permissions: [] as string[],
   } as UserInfo,
 };
 
@@ -43,7 +42,7 @@ const userSlice = createSlice({
   reducers: {
     resetToken: (state) => {
       localStorage.removeItem(TOKEN_KEY);
-      state.user = { roles: [], perms: [] };
+      state.user = { roles: [], permissions: [] };
     },
   },
   extraReducers: (builder) => {
@@ -52,7 +51,7 @@ const userSlice = createSlice({
         state.user = action.payload;
       })
       .addCase(logout.fulfilled, (state) => {
-        state.user = { roles: [], perms: [] };
+        state.user = { roles: [], permissions: [] };
       });
   },
 });

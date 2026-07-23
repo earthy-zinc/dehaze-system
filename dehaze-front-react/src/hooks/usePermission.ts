@@ -1,5 +1,5 @@
 // usePermission.ts
-import { TOKEN_KEY } from "@/enums/CacheEnum";
+import { TOKEN_KEY } from "dehaze-sdk-js";
 import { DisPatchType, RootState } from "@/store";
 import { generateRoutes } from "@/store/modules/permissionSlice";
 import { getUserInfo, resetToken } from "@/store/modules/userSlice";
@@ -14,7 +14,7 @@ const whiteList = ["/login", "/403", "/404"];
  * 路由守卫 + 用户信息初始化 Hook
  * 在 BasicLayout 中调用，确保：
  * 1. 未登录用户被重定向到 /login
- * 2. 登录后自动拉取用户信息（roles/perms）与动态路由
+ * 2. 登录后自动拉取用户信息（roles/permissions）与动态路由
  * 3. 已登录用户访问 /login 时重定向回首页
  */
 export const usePermission = () => {
@@ -77,7 +77,7 @@ export const usePermission = () => {
  * 权限校验 Hook
  * 基于当前用户的角色与权限列表判断是否拥有指定权限
  * - ROOT 角色拥有所有权限
- * - 其他角色按 perms 列表匹配
+ * - 其他角色按 permissions 列表匹配
  * @returns hasPerm 函数，传入权限标识返回布尔值
  */
 export const useHasPerm = () => {
@@ -89,10 +89,10 @@ export const useHasPerm = () => {
       if (roles.includes("ROOT")) {
         return true;
       }
-      const perms = userStore.user.perms || [];
-      return perms.includes(perm);
+      const permissions = userStore.user.permissions || [];
+      return permissions.includes(perm);
     },
-    [userStore.user.roles, userStore.user.perms]
+    [userStore.user.roles, userStore.user.permissions]
   );
   return hasPerm;
 };

@@ -1,4 +1,10 @@
-import { AlgorithmAPI, FileAPI, ModelAPI, type FileInfo } from "dehaze-sdk-js";
+import {
+  AlgorithmAPI,
+  FileAPI,
+  ModelAPI,
+  type FileInfo,
+  type OptionType,
+} from "dehaze-sdk-js";
 import AlgorithmToolBar from "@/components/AlgorithmToolBar";
 import { MagnifierInfo, Point } from "@/components/AlgorithmToolBar/types";
 import ExampleImageSelect from "@/components/ExampleImageSelect";

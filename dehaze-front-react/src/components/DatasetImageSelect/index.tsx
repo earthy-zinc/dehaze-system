@@ -4,6 +4,7 @@ import {
   Dataset,
   DatasetItemQuery,
   DatasetItemVO,
+  OptionType,
 } from "dehaze-sdk-js";
 import Waterfall from "@/components/Waterfall";
 import { ViewCard } from "@/components/Waterfall/types";

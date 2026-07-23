@@ -1,4 +1,4 @@
-import { AlgorithmAPI, FileAPI, ModelAPI } from "dehaze-sdk-js";
+import { AlgorithmAPI, FileAPI, ModelAPI, type OptionType } from "dehaze-sdk-js";
 
 import AlgorithmToolBar from "@/components/AlgorithmToolBar";
 import SingleImageShow from "@/components/SingleImageShow";

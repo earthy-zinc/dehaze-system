@@ -75,7 +75,7 @@
     "ahooks": "^3.9.6",
     "animate.css": "^4.1.1",
     "antd": "^5.29.3",
-    "axios": "1.12.2",
+    "axios": "^1.18.1",
     "classnames": "^2.5.1",
     "dehaze-sdk-js": "link:../dehaze-tool/dehaze-sdk-js",
     "lodash": "^4.17.21",
