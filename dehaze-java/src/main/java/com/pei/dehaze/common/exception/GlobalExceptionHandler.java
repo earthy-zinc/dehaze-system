@@ -47,7 +47,10 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(BindException e) {
         log.error("BindException:{}", e.getMessage());
-        String msg = e.getAllErrors().stream().map(DefaultMessageSourceResolvable::getDefaultMessage).collect(Collectors.joining("；"));
+        String msg = e.getAllErrors()
+            .stream()
+            .map(DefaultMessageSourceResolvable::getDefaultMessage)
+            .collect(Collectors.joining("；"));
         return Result.failed(ResultCode.PARAM_ERROR, msg);
     }
 
@@ -58,7 +61,10 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(ConstraintViolationException e) {
         log.error("ConstraintViolationException:{}", e.getMessage());
-        String msg = e.getConstraintViolations().stream().map(ConstraintViolation::getMessage).collect(Collectors.joining("；"));
+        String msg = e.getConstraintViolations()
+            .stream()
+            .map(ConstraintViolation::getMessage)
+            .collect(Collectors.joining("；"));
         return Result.failed(ResultCode.PARAM_ERROR, msg);
     }
 
@@ -69,7 +75,11 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(MethodArgumentNotValidException e) {
         log.error("MethodArgumentNotValidException:{}", e.getMessage());
-        String msg = e.getBindingResult().getAllErrors().stream().map(DefaultMessageSourceResolvable::getDefaultMessage).collect(Collectors.joining("；"));
+        String msg = e.getBindingResult()
+            .getAllErrors()
+            .stream()
+            .map(DefaultMessageSourceResolvable::getDefaultMessage)
+            .collect(Collectors.joining("；"));
         return Result.failed(ResultCode.PARAM_ERROR, msg);
     }
 
