@@ -268,7 +268,7 @@ class DevelopmentSettings(Settings):
 
     # Redis 配置
     REDIS_HOST: str = "127.0.0.1"
-    REDIS_DB: int = 3
+    REDIS_DB: int = 0
 
     # 文件访问基础 URL（与 Java 端 file.baseUrl 一致，统一使用 127.0.0.1 避免 localhost DNS 解析开销）
     FILE_BASE_URL: str = "http://127.0.0.1:8989/api/v1/files/download"

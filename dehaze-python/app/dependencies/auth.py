@@ -16,7 +16,8 @@ oauth2_scheme = HTTPBearer(auto_error=False)
 class UserContext(BaseModel):
     id: int
     username: str
-    nickname: Optional[str] = None
+    dept_id: Optional[int] = None
+    data_scope: Optional[int] = None
     roles: list[str] = []
     permissions: list[str] = []
 
@@ -64,29 +65,6 @@ def decode_token(token: str) -> dict:
             detail=error_msg,
             headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
         )
-
-
-def _extract_permissions(payload: dict) -> list[str]:
-    """
-    从 JWT payload 提取权限列表
-
-    JWT 字段契约由签发端（Java/Go/Python）统一为 `permissions`：
-    - 字符串：逗号分隔的权限列表
-    - 列表：权限项列表
-
-    Args:
-        payload: JWT payload
-
-    Returns:
-        权限列表
-    """
-    permissions = payload.get("permissions", [])
-
-    if isinstance(permissions, str):
-        return [p.strip() for p in permissions.split(",") if p.strip()]
-    if isinstance(permissions, list):
-        return [str(p) for p in permissions if p]
-    return []
 
 
 def _extract_roles(payload: dict) -> list[str]:
@@ -164,9 +142,10 @@ async def get_current_user(
     user_context = UserContext(
         id=int(user_id),
         username=username,
-        nickname=payload.get("nickname"),
+        dept_id=payload.get("deptId"),
+        data_scope=payload.get("dataScope"),
         roles=_extract_roles(payload),
-        permissions=_extract_permissions(payload),
+        permissions=[],
     )
 
     set_current_user_id(user_context.id)
@@ -222,9 +201,10 @@ async def get_current_user_optional(
     user_context = UserContext(
         id=int(user_id),
         username=username,
-        nickname=payload.get("nickname"),
+        dept_id=payload.get("deptId"),
+        data_scope=payload.get("dataScope"),
         roles=_extract_roles(payload),
-        permissions=_extract_permissions(payload),
+        permissions=[],
     )
 
     set_current_user_id(user_context.id)

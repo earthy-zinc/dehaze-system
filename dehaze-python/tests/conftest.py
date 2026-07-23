@@ -216,12 +216,11 @@ async def auth_headers(sample_user: dict, mock_redis: MockRedis) -> dict:
     jti = str(uuid4())
     payload = {
         "jti": jti,
-        "sub": str(sample_user["id"]),
-        "user_id": sample_user["id"],
-        "username": sample_user["username"],
-        "nickname": sample_user["nickname"],
-        "roles": "USER",
-        "permissions": "",
+        "sub": sample_user["username"],
+        "userId": sample_user["id"],
+        "deptId": 1,
+        "dataScope": 1,
+        "authorities": ["ROLE_USER"],
         "exp": datetime.now(timezone.utc) + timedelta(seconds=settings.JWT_ACCESS_TOKEN_EXPIRES),
         "iat": datetime.now(timezone.utc),
     }

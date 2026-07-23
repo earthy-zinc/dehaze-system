@@ -154,7 +154,7 @@ cache:
     enabled: true
     addr: 127.0.0.1:6379
     password: ${DEHAZE_PASSWORD}
-    db: 3
+    db: 0
     useCluster: false
     timeout: 5
     poolSize: 20

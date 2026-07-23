@@ -28,9 +28,9 @@ def assert_response_error(response: dict, expected_code: int = 500) -> None:
 def generate_test_token(
     user_id: int,
     username: str = "testuser",
-    nickname: str = "Test User",
-    roles: str = "USER",
-    permissions: str = "",
+    roles: list[str] | None = None,
+    dept_id: int | None = 1,
+    data_scope: int | None = 1,
     secret_key: str = "test-jwt-secret-key-for-testing-32chars!",
     expires_in: int = 7200,
 ) -> str:
@@ -40,24 +40,25 @@ def generate_test_token(
     Args:
         user_id: 用户 ID
         username: 用户名
-        nickname: 昵称
-        roles: 角色列表（逗号分隔）
-        permissions: 权限列表（逗号分隔）
+        roles: 角色列表
+        dept_id: 部门ID
+        data_scope: 数据权限范围
         secret_key: JWT 密钥
         expires_in: 过期时间（秒）
 
     Returns:
         JWT Token 字符串
     """
+    if roles is None:
+        roles = ["USER"]
     jti = str(uuid4())
     payload = {
         "jti": jti,
-        "sub": str(user_id),
-        "user_id": user_id,
-        "username": username,
-        "nickname": nickname,
-        "roles": roles,
-        "permissions": permissions,
+        "sub": username,
+        "userId": user_id,
+        "deptId": dept_id,
+        "dataScope": data_scope,
+        "authorities": ["ROLE_" + r for r in roles],
         "exp": datetime.now(timezone.utc) + timedelta(seconds=expires_in),
         "iat": datetime.now(timezone.utc),
     }

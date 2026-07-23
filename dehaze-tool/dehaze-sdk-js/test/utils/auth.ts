@@ -21,22 +21,17 @@ const TEST_CREDENTIALS = {
 
 /**
  * 从 Redis 读取验证码值
- * 各后端差异:
- *   - Java:   db0, key=captcha_code:{captchaKey}, Jackson 序列化带外层双引号
- *   - Python: db3, key=captcha:{captchaKey}, 纯字符串
- *   - Go:     db3, key=captcha_code:{captchaKey}, 纯字符串
+ * 三端统一: 存于 Redis db0、纯文本形式，仅 key 前缀有差异:
+ *   - Java:   key=captcha_code:{captchaKey}
+ *   - Python: key=captcha:{captchaKey}
+ *   - Go:     key=captcha_code:{captchaKey}
  */
 function getCaptchaCodeFromRedis(captchaKey: string): string {
   const redisKey = `${backendProfile.captchaKeyPrefix}${captchaKey}`;
-  const raw = execSync(
+  return execSync(
     `docker exec -i ${backendProfile.redisContainer} redis-cli -a ${backendProfile.redisPassword} -n ${backendProfile.captchaRedisDB} get ${redisKey}`,
     { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
   ).trim();
-  // Java 后端 Jackson 序列化带外层双引号，去掉；Python/Go 为纯字符串
-  if (backendProfile.captchaJacksonQuoted && raw.startsWith('"') && raw.endsWith('"')) {
-    return raw.slice(1, -1);
-  }
-  return raw;
 }
 
 /**

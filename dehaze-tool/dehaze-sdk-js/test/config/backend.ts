@@ -7,7 +7,7 @@
  *   TEST_BACKEND=go             → http://127.0.0.1:8990
  *
  * 三个后端业务逻辑相同、API 路径统一为 /api/v1/...，
- * 但验证码在 Redis 中的存储 key 前缀、序列化方式、所用 DB 号有差异。
+ * 验证码在三端均存于 Redis db0、纯文本形式，仅 key 前缀有差异。
  */
 
 export type BackendType = "java" | "python" | "go";
@@ -25,8 +25,6 @@ export interface BackendProfile {
   captchaRedisDB: string;
   /** 验证码 key 前缀 */
   captchaKeyPrefix: string;
-  /** 验证码值是否带 Jackson 双引号（Java 后端用 Jackson 序列化） */
-  captchaJacksonQuoted: boolean;
   /** 后端中文名 */
   name: string;
 }
@@ -42,7 +40,6 @@ const PROFILES: Record<BackendType, BackendProfile> = {
     redisPassword: REDIS_PASSWORD,
     captchaRedisDB: "0",
     captchaKeyPrefix: "captcha_code:",
-    captchaJacksonQuoted: true,
     name: "Java",
   },
   python: {
@@ -50,9 +47,8 @@ const PROFILES: Record<BackendType, BackendProfile> = {
     baseURL: "http://127.0.0.1:8991",
     redisContainer: REDIS_CONTAINER,
     redisPassword: REDIS_PASSWORD,
-    captchaRedisDB: "3",
+    captchaRedisDB: "0",
     captchaKeyPrefix: "captcha:",
-    captchaJacksonQuoted: false,
     name: "Python",
   },
   go: {
@@ -60,9 +56,8 @@ const PROFILES: Record<BackendType, BackendProfile> = {
     baseURL: "http://127.0.0.1:8990",
     redisContainer: REDIS_CONTAINER,
     redisPassword: REDIS_PASSWORD,
-    captchaRedisDB: "3",
+    captchaRedisDB: "0",
     captchaKeyPrefix: "captcha_code:",
-    captchaJacksonQuoted: false,
     name: "Go",
   },
 };

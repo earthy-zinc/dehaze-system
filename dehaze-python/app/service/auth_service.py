@@ -60,20 +60,21 @@ class AuthService:
         if user.status != 1:
             raise ValueError("用户已被禁用")
 
-        # 查询用户角色和权限（权限走 Redis 缓存）
+        # 查询用户角色
         roles = await user_repository.get_user_role_codes(db, user.id)
-        from app.service.menu_service import MenuService
-        permissions = await MenuService.list_role_perms(db, redis, roles)
+
+        from app.repository.role_repository import role_repository
+        data_scope = await role_repository.get_maximum_data_scope(db, roles)
 
         # 使用 JWT 工具类生成 Token
-        if user.username is None or user.nickname is None:
+        if user.username is None:
             raise ValueError("用户信息不完整")
         access_token = JWTUtils.create_access_token(
             user_id=user.id,
             username=user.username,
-            nickname=user.nickname,
             roles=roles,
-            permissions=permissions,
+            dept_id=user.dept_id,
+            data_scope=data_scope,
         )
 
         return {
@@ -210,20 +211,20 @@ class AuthService:
         if user.status != 1:
             raise BusinessException(ResultCode.USER_ACCOUNT_LOCKED, "用户已被禁用")
 
-        # 查询用户角色和权限（权限走 Redis 缓存）
+        # 查询用户角色
         roles = await user_repository.get_user_role_codes(db, user.id)
-        from app.service.menu_service import MenuService
-        permissions = await MenuService.list_role_perms(db, redis, roles)
+        from app.repository.role_repository import role_repository
+        data_scope = await role_repository.get_maximum_data_scope(db, roles)
 
         # 使用 JWT 工具类生成 Token
-        if user.username is None or user.nickname is None:
+        if user.username is None:
             raise BusinessException("用户信息不完整")
         access_token = JWTUtils.create_access_token(
             user_id=user.id,
             username=user.username,
-            nickname=user.nickname,
             roles=roles,
-            permissions=permissions,
+            dept_id=user.dept_id,
+            data_scope=data_scope,
         )
 
         return {

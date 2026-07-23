@@ -19,9 +19,9 @@ class JWTUtils:
     def create_access_token(
         user_id: int,
         username: str,
-        nickname: str,
         roles: list[str],
-        permissions: list[str],
+        dept_id: int | None = None,
+        data_scope: int | None = None,
         expires_delta: timedelta | None = None,
     ) -> str:
         """
@@ -30,9 +30,9 @@ class JWTUtils:
         Args:
             user_id: 用户ID
             username: 用户名
-            nickname: 昵称
             roles: 角色列表
-            permissions: 权限列表
+            dept_id: 部门ID
+            data_scope: 数据权限范围
             expires_delta: 过期时间增量，默认使用配置
 
         Returns:
@@ -46,15 +46,13 @@ class JWTUtils:
 
         payload = {
             "jti": jti,
-            "sub": username,  # sub 统一为 username（与 Java/Go 一致）
-            "userId": user_id,  # camelCase（与 Java/Go 一致）
-            "username": username,
-            "nickname": nickname,
-            "authorities": ["ROLE_" + r for r in roles],  # 数组格式（与 Java/Go 一致）
-            "permissions": ",".join(permissions),
+            "sub": username,
+            "userId": user_id,
+            "deptId": dept_id,
+            "dataScope": data_scope,
+            "authorities": ["ROLE_" + r for r in roles],
             "exp": now + expires_delta,
             "iat": now,
-            "type": "access",
         }
 
         return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm="HS256")

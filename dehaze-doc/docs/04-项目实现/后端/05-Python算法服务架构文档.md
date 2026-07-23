@@ -1034,9 +1034,9 @@ app/infrastructure/job/
 class UserContext(BaseModel):
     id: int
     username: str
-    nickname: Optional[str]
+    dept_id: Optional[int]
+    data_scope: Optional[int]
     roles: list[str]
-    permissions: list[str]
 
     @property
     def is_root(self) -> bool:

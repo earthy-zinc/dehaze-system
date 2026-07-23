@@ -24,7 +24,7 @@ import com.pei.dehaze.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
     private final CodeGenerator codeGenerator;
     private final Font captchaFont;
     private final CaptchaProperties captchaProperties;
@@ -72,7 +72,7 @@ public class AuthServiceImpl implements AuthService {
     public LoginResult login(LoginForm form) {
         // 1. 验证码校验
         String cacheKey = SecurityConstants.CAPTCHA_CODE_PREFIX + form.getCaptchaKey();
-        String cacheVerifyCode = (String) redisTemplate.opsForValue().get(cacheKey);
+        String cacheVerifyCode = redisTemplate.opsForValue().get(cacheKey);
         if (cacheVerifyCode == null) {
             throw new BusinessException(ResultCode.VERIFY_CODE_TIMEOUT);
         }
@@ -85,7 +85,8 @@ public class AuthServiceImpl implements AuthService {
         // 2. 账户锁定检查（Redis 计数，5次失败锁定30分钟）
         String username = form.getUsername().toLowerCase().trim();
         String failKey = LOGIN_FAIL_PREFIX + username;
-        Integer failCount = (Integer) redisTemplate.opsForValue().get(failKey);
+        String failCountStr = redisTemplate.opsForValue().get(failKey);
+        Integer failCount = failCountStr != null ? Integer.parseInt(failCountStr) : null;
         if (failCount != null && failCount >= MAX_LOGIN_ATTEMPTS) {
             throw new BusinessException("账户已被锁定，请" + LOCK_DURATION_MINUTES + "分钟后再试");
         }
