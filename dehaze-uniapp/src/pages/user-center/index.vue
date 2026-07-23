@@ -35,11 +35,11 @@
       <view class="section-card">
         <view class="section-header">
           <text class="section-title">权限概览</text>
-          <text class="section-count">{{ auth.perms.length }} 项</text>
+          <text class="section-count">{{ auth.permissions.length }} 项</text>
         </view>
-        <view v-if="auth.perms.length > 0" class="perm-grid">
+        <view v-if="auth.permissions.length > 0" class="perm-grid">
           <text
-            v-for="perm in auth.perms.slice(0, 12)"
+            v-for="perm in auth.permissions.slice(0, 12)"
             :key="perm"
             class="perm-item"
           >

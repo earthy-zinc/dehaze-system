@@ -69,9 +69,6 @@ const handleLoad = (record: PredLogVO) => {
   }
   const imageData: ImageData = {
     url,
-    width: 0,
-    height: 0,
-    size: 0,
     name: record.algorithmName
       ? `${record.algorithmName}-历史记录`
       : "历史记录",

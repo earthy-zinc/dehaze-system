@@ -41,9 +41,12 @@ export interface ImageData {
   fileId?: number;
   /** 后端返回的 HTTP URL */
   remoteUrl?: string;
-  width: number;
-  height: number;
-  size: number;
+  /** 图片宽度（样例/上传场景有值，历史记录场景可能缺失） */
+  width?: number;
+  /** 图片高度 */
+  height?: number;
+  /** 文件大小（字节） */
+  size?: number;
   name: string;
   sampleInfo?: SampleImage;
 }
@@ -169,7 +172,11 @@ export function getSampleImagesByCategory(category: FogLevel): SampleImage[] {
 /** 获取随机样例图片 */
 export function getRandomSampleImage(): SampleImage {
   const allImages = getAllSampleImages();
-  return allImages[Math.floor(Math.random() * allImages.length)];
+  const image = allImages[Math.floor(Math.random() * allImages.length)];
+  if (!image) {
+    throw new Error("No sample images available");
+  }
+  return image;
 }
 
 /** 难度颜色映射 */
@@ -186,58 +193,10 @@ export const DIFFICULTY_BG_COLORS: Record<Difficulty, string> = {
   困难: "#fee2e2",
 };
 
-// ==================== 工具函数 ====================
-
-/** 格式化文件大小 */
-export function formatFileSize(bytes: number): string {
-  if (!bytes) return "-";
-  if (bytes < 1024) return bytes + " B";
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-  return (bytes / (1024 * 1024)).toFixed(2) + " MB";
-}
-
-/** 格式化时间（相对时间） */
-export function formatTime(timestamp: string): string {
-  if (!timestamp) return "-";
-  const date = new Date(timestamp);
-  if (isNaN(date.getTime())) return "-";
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-
-  if (diff < 60000) return "刚刚";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  if (diff < 172800000) return "昨天";
-
-  return date.toLocaleDateString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-/** 支持的图片格式 */
-export const SUPPORTED_FORMATS = ["jpg", "jpeg", "png", "webp", "heic"];
+// ==================== 常量 ====================
 
 /** 最大文件大小（20MB） */
 export const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 /** 压缩阈值（5MB） */
 export const COMPRESS_THRESHOLD = 5 * 1024 * 1024;
-
-/** 检查文件格式是否支持 */
-export function isSupportedFormat(fileName: string): boolean {
-  const ext = fileName.split(".").pop()?.toLowerCase();
-  return ext ? SUPPORTED_FORMATS.includes(ext) : false;
-}
-
-/** 检查文件大小是否超限 */
-export function isFileSizeValid(size: number): boolean {
-  return size <= MAX_FILE_SIZE;
-}
-
-/** 是否需要压缩 */
-export function needsCompression(size: number): boolean {
-  return size > COMPRESS_THRESHOLD;
-}

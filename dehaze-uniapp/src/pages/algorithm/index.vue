@@ -66,7 +66,7 @@
             <view class="spec-card">
               <text class="spec-label">创建时间</text>
               <text class="spec-value small">{{
-                formatTime(algorithm.createTime)
+                formatRelativeTime(algorithm.createTime || "")
               }}</text>
             </view>
           </view>
@@ -99,6 +99,7 @@ import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { useProcessingStore } from "@/store/processing";
 import { getAlgorithmDetail, type Algorithm } from "@/api/algorithm";
+import { formatRelativeTime } from "@/utils/format";
 
 const store = useProcessingStore();
 const loading = ref(false);
@@ -115,11 +116,6 @@ async function loadDetail() {
   } finally {
     loading.value = false;
   }
-}
-
-function formatTime(time?: string): string {
-  if (!time) return "-";
-  return new Date(time).toLocaleDateString("zh-CN");
 }
 
 onMounted(() => {

@@ -131,6 +131,29 @@ interface MetricDisplay {
   color: string;
 }
 
+/** 指标阈值颜色配置：good/fair 为阈值，lowerIsBetter 表示数值越低越好 */
+const COLOR_THRESHOLDS: Record<
+  string,
+  { good: number; fair: number; lowerIsBetter?: boolean }
+> = {
+  psnr: { good: 30, fair: 25 },
+  ssim: { good: 0.9, fair: 0.7 },
+  mse: { good: 100, fair: 500, lowerIsBetter: true },
+};
+
+const COLOR_GOOD = "#10b981";
+const COLOR_FAIR = "#f59e0b";
+const COLOR_BAD = "#ef4444";
+const COLOR_NEUTRAL = "#3b82f6";
+
+function getMetricColor(key: string, value: number): string {
+  const cfg = COLOR_THRESHOLDS[key];
+  if (!cfg) return COLOR_NEUTRAL;
+  const isGood = cfg.lowerIsBetter ? value <= cfg.good : value >= cfg.good;
+  const isFair = cfg.lowerIsBetter ? value <= cfg.fair : value >= cfg.fair;
+  return isGood ? COLOR_GOOD : isFair ? COLOR_FAIR : COLOR_BAD;
+}
+
 const metricsList = computed<MetricDisplay[]>(() => {
   if (!evalResult.value) return getDefaultMetrics();
 
@@ -166,27 +189,7 @@ const metricsList = computed<MetricDisplay[]>(() => {
     const displayValue = d.unit
       ? `${value.toFixed(2)} ${d.unit}`
       : value.toFixed(4);
-    const color =
-      d.key === "psnr"
-        ? value >= 30
-          ? "#10b981"
-          : value >= 25
-            ? "#f59e0b"
-            : "#ef4444"
-        : d.key === "ssim"
-          ? value >= 0.9
-            ? "#10b981"
-            : value >= 0.7
-              ? "#f59e0b"
-              : "#ef4444"
-          : d.key === "mse"
-            ? value <= 100
-              ? "#10b981"
-              : value <= 500
-                ? "#f59e0b"
-                : "#ef4444"
-            : "#3b82f6";
-    return { ...d, value, displayValue, color };
+    return { ...d, value, displayValue, color: getMetricColor(d.key, value) };
   });
 });
 

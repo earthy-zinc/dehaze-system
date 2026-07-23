@@ -30,8 +30,8 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from "vue";
 import type { Dataset } from "../data/datasetData";
-import { formatDate } from "../data/datasetData";
-import { getDatasetItems } from "@/api/dataset";
+import { formatRelativeTime } from "@/utils/format";
+import { getDatasetItems, flattenDatasetItems } from "@/api/dataset";
 
 interface Props {
   dataset: Dataset;
@@ -49,7 +49,11 @@ const imageCount = computed(() => {
   return props.dataset.total ?? props.dataset.statistics?.itemCount ?? 0;
 });
 
-const formattedDate = computed(() => formatDate(props.dataset.createTime));
+const formattedDate = computed(() => {
+  const time = props.dataset.createTime;
+  if (!time) return "";
+  return formatRelativeTime(typeof time === "string" ? time : time.toISOString());
+});
 
 /** 缩略图：从数据集项接口获取首张图片的实际URL */
 const thumbnailUrl = ref("");
@@ -58,10 +62,10 @@ async function loadThumbnail() {
   if (!props.dataset.id) return;
   try {
     const result = await getDatasetItems(props.dataset.id, {
-      page: 1,
-      page_size: 1,
+      pageNum: 1,
+      pageSize: 1,
     });
-    const first = result.list?.[0];
+    const first = flattenDatasetItems(result.list)[0];
     if (first?.imageUrl) {
       thumbnailUrl.value = first.imageUrl;
     }

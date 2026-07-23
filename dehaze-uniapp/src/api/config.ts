@@ -53,11 +53,5 @@ export const DATASET_BASE_URL = getDatasetBaseURL();
 /** 请求超时时间（毫秒） */
 export const REQUEST_TIMEOUT = 30000;
 
-/** Token 本地存储 key */
-export const ACCESS_TOKEN_KEY = "access_token";
-
-/** RefreshToken 本地存储 key */
-export const REFRESH_TOKEN_KEY = "refresh_token";
-
 /** 用户信息本地存储 key */
 export const USER_INFO_KEY = "user_info";

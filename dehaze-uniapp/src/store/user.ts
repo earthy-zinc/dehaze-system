@@ -16,9 +16,6 @@ export const useUserStore = defineStore("user", () => {
   /** 展示模式偏好（数据集图片 grid / waterfall） */
   const displayMode = ref<"grid" | "waterfall">("grid");
 
-  /** 主题模式（预留） */
-  const themeMode = ref<"light" | "dark">("light");
-
   // ==================== 方法 ====================
 
   /** 初始化用户偏好 */
@@ -45,7 +42,6 @@ export const useUserStore = defineStore("user", () => {
 
   return {
     displayMode,
-    themeMode,
     initPreferences,
     setDisplayMode,
   };

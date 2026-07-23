@@ -9,6 +9,7 @@
 
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
+import { REFRESH_TOKEN_KEY, TOKEN_KEY } from "dehaze-sdk-js";
 import type {
   AuthUserInfo,
   CaptchaResult,
@@ -21,12 +22,8 @@ import {
   getCurrentUser,
   getCaptcha as getCaptchaApi,
 } from "@/api/auth";
-import { clearAuth as clearStorageAuth } from "@/api/request";
-import {
-  ACCESS_TOKEN_KEY,
-  REFRESH_TOKEN_KEY,
-  USER_INFO_KEY,
-} from "@/api/config";
+import { clearAuth as clearStorageAuth } from "@/api/sdk-setup";
+import { USER_INFO_KEY } from "@/api/config";
 
 export const useAuthStore = defineStore("auth", () => {
   // ==================== 状态 ====================
@@ -56,14 +53,14 @@ export const useAuthStore = defineStore("auth", () => {
   const roles = computed(() => userInfo.value?.roles || []);
 
   /** 权限列表 */
-  const perms = computed(() => userInfo.value?.perms || []);
+  const permissions = computed(() => userInfo.value?.permissions || []);
 
   // ==================== 方法 ====================
 
   /** 初始化：从 Storage 恢复登录态 */
   function init() {
     try {
-      const token = uni.getStorageSync(ACCESS_TOKEN_KEY);
+      const token = uni.getStorageSync(TOKEN_KEY);
       const refresh = uni.getStorageSync(REFRESH_TOKEN_KEY);
       const userStr = uni.getStorageSync(USER_INFO_KEY);
 
@@ -94,7 +91,7 @@ export const useAuthStore = defineStore("auth", () => {
     refreshToken.value = result.refreshToken || "";
 
     // 持久化 Token
-    uni.setStorageSync(ACCESS_TOKEN_KEY, result.accessToken);
+    uni.setStorageSync(TOKEN_KEY, result.accessToken);
     if (result.refreshToken) {
       uni.setStorageSync(REFRESH_TOKEN_KEY, result.refreshToken);
     }
@@ -125,7 +122,6 @@ export const useAuthStore = defineStore("auth", () => {
     userInfo.value = null;
 
     clearStorageAuth();
-    uni.removeStorageSync(USER_INFO_KEY);
   }
 
   /** 获取验证码 */
@@ -135,8 +131,8 @@ export const useAuthStore = defineStore("auth", () => {
 
   /** 检查是否有某权限 */
   function hasPerm(perm: string): boolean {
-    if (!perms.value || perms.value.length === 0) return false;
-    return perms.value.includes(perm);
+    if (!permissions.value || permissions.value.length === 0) return false;
+    return permissions.value.includes(perm);
   }
 
   /** 检查是否有任意角色 */
@@ -166,7 +162,7 @@ export const useAuthStore = defineStore("auth", () => {
     nickname,
     userId,
     roles,
-    perms,
+    permissions,
 
     // 方法
     init,

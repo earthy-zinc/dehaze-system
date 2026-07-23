@@ -35,7 +35,7 @@
             <text class="record-time">
               耗时 {{ record.time ? record.time + "s" : "-" }}
             </text>
-            <text class="record-date">{{ formatDate(record.createTime) }}</text>
+            <text class="record-date">{{ formatRelativeTime(record.createTime || "") }}</text>
             <view class="record-actions" @click.stop>
               <view
                 class="action-btn compare-btn"
@@ -83,11 +83,12 @@ import PageLayout from "@/layout/index.vue";
 import {
   getPredictionLogs,
   type PredLogVO,
-  type PageResult,
 } from "@/api/prediction";
 import { getAlgorithmDetail } from "@/api/algorithm";
 import { useProcessingStore } from "@/store/processing";
 import type { ImageData } from "@/pages/image-input/data/imageInputData";
+import { formatRelativeTime } from "@/utils/format";
+import { getErrorMessage } from "@/utils/error";
 
 const processingStore = useProcessingStore();
 const loading = ref(false);
@@ -128,13 +129,10 @@ function handleClick(record: PredLogVO) {
   }
 }
 
-/** 从历史记录构造 ImageData */
+/** 从历史记录构造 ImageData（无尺寸信息时省略，由展示层条件渲染） */
 function buildImageData(originUrl: string): ImageData {
   return {
     url: originUrl,
-    width: 0,
-    height: 0,
-    size: 0,
     name: originUrl.split("/").pop() || "历史图片",
   };
 }
@@ -174,29 +172,13 @@ async function handleReprocess(record: PredLogVO) {
     uni.navigateTo({ url: "/pages/processing/index" });
   } catch (e) {
     uni.hideLoading();
-    const msg = (e as { message?: string }).message || "算法信息加载失败";
+    const msg = getErrorMessage(e, "算法信息加载失败");
     uni.showToast({ title: msg, icon: "none" });
   }
 }
 
 function handleStart() {
   uni.switchTab({ url: "/pages/image-input/index" });
-}
-
-function formatDate(time?: string): string {
-  if (!time) return "-";
-  const d = new Date(time);
-  const now = Date.now();
-  const diff = now - d.getTime();
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  if (diff < 172800000) return "昨天";
-  return d.toLocaleDateString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 onMounted(() => loadData());

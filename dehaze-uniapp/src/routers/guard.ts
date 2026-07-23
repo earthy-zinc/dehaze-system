@@ -7,7 +7,7 @@
  * 使用方式：在 App.vue onLaunch 中调用 setupRouteGuard()
  */
 
-import { ACCESS_TOKEN_KEY } from "@/api/config";
+import { TOKEN_KEY } from "dehaze-sdk-js";
 
 /** 白名单页面（无需登录即可访问） */
 const WHITE_LIST = ["pages/login/index"];
@@ -37,62 +37,36 @@ function getCurrentPagePath(): string {
 /** 检查是否有有效 Token */
 function hasValidToken(): boolean {
   try {
-    const token = uni.getStorageSync(ACCESS_TOKEN_KEY);
+    const token = uni.getStorageSync(TOKEN_KEY);
     return !!token;
   } catch {
     return false;
   }
 }
 
+/** 需要拦截的导航方法列表 */
+const INTERCEPT_METHODS = [
+  "navigateTo",
+  "redirectTo",
+  "reLaunch",
+  "switchTab",
+] as const;
+
+/** 统一的导航拦截逻辑：非白名单页面且无有效 Token 时重定向到登录页 */
+function authInterceptor(args: { url: string }): boolean {
+  const path = args.url.split("?")[0] || "";
+  if (!isWhitePath(path) && !hasValidToken()) {
+    uni.reLaunch({ url: `/${LOGIN_PATH}` });
+    return false;
+  }
+  return true;
+}
+
 /** 安装路由守卫 */
 export function setupRouteGuard() {
-  // 拦截 navigateTo
-  uni.addInterceptor("navigateTo", {
-    invoke(args) {
-      const path = (args as { url: string }).url.split("?")[0] || "";
-      if (!isWhitePath(path) && !hasValidToken()) {
-        uni.reLaunch({ url: `/${LOGIN_PATH}` });
-        return false;
-      }
-      return true;
-    },
-  });
-
-  // 拦截 redirectTo
-  uni.addInterceptor("redirectTo", {
-    invoke(args) {
-      const path = (args as { url: string }).url.split("?")[0] || "";
-      if (!isWhitePath(path) && !hasValidToken()) {
-        uni.reLaunch({ url: `/${LOGIN_PATH}` });
-        return false;
-      }
-      return true;
-    },
-  });
-
-  // 拦截 reLaunch
-  uni.addInterceptor("reLaunch", {
-    invoke(args) {
-      const path = (args as { url: string }).url.split("?")[0] || "";
-      if (!isWhitePath(path) && !hasValidToken()) {
-        uni.reLaunch({ url: `/${LOGIN_PATH}` });
-        return false;
-      }
-      return true;
-    },
-  });
-
-  // 拦截 switchTab
-  uni.addInterceptor("switchTab", {
-    invoke(args) {
-      const path = (args as { url: string }).url.split("?")[0] || "";
-      if (!isWhitePath(path) && !hasValidToken()) {
-        uni.reLaunch({ url: `/${LOGIN_PATH}` });
-        return false;
-      }
-      return true;
-    },
-  });
+  INTERCEPT_METHODS.forEach((method) =>
+    uni.addInterceptor(method, { invoke: authInterceptor })
+  );
 }
 
 /**

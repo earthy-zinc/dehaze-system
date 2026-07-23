@@ -29,17 +29,17 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import type { DatasetImage } from "../data/datasetData";
+import type { DatasetImageItem } from "../data/datasetData";
 import { IMAGE_TYPE_LABELS, formatHazeLevel } from "../data/datasetData";
 
 interface Props {
-  image: DatasetImage;
+  image: DatasetImageItem;
   /** 是否为瀑布流模式 */
   isWaterfall?: boolean;
 }
 
 interface Emits {
-  (e: "click", image: DatasetImage): void;
+  (e: "click", image: DatasetImageItem): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {

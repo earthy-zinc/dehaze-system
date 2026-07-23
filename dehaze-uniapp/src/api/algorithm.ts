@@ -1,43 +1,15 @@
 /**
  * 算法管理 API
  *
- * API 路径与后端一致：
- * - GET    /algorithms                       算法列表
- * - GET    /algorithms/options               算法下拉选项
- * - GET    /algorithms/{id}                  算法详情
- * - POST   /algorithm-select/favorite        收藏/取消收藏算法
- * - GET    /algorithm-select/favorites       收藏列表
- * - POST   /algorithm-select/recommend       智能推荐算法
- * - POST   /algorithm-select/compare         算法对比
+ * 算法 CRUD 使用 dehaze-sdk-js 的 AlgorithmAPI（Java 后端）。
+ * 算法选择扩展（推荐/收藏/对比）通过 SDK 导出的 pythonService 直连 Python 后端。
  */
 
-import { get, post } from "./request";
+import { AlgorithmAPI, pythonService } from "dehaze-sdk-js";
 
-// ==================== 类型定义 ====================
+export type { Algorithm, AlgorithmQuery } from "dehaze-sdk-js";
 
-/** 算法模型 */
-export interface Algorithm {
-  id: number;
-  parentId: number;
-  name: string;
-  type: string;
-  description: string;
-  img?: string;
-  path?: string;
-  importPath?: string;
-  params?: string;
-  flops?: string;
-  status?: number;
-  size?: string;
-  version?: string;
-  createTime?: string;
-  children?: Algorithm[];
-}
-
-/** 算法查询参数 */
-export interface AlgorithmQuery {
-  keywords?: string;
-}
+// ==================== 算法选择扩展类型（Python 后端） ====================
 
 /** 下拉选项 */
 export interface AlgorithmOption {
@@ -75,47 +47,42 @@ export interface AlgorithmRecommendVO {
   type?: string;
 }
 
-// ==================== API 方法 ====================
+// ==================== 算法 CRUD（SDK） ====================
 
 /** 获取算法列表 */
-export async function getAlgorithmList(
-  query?: AlgorithmQuery
-): Promise<Algorithm[]> {
-  return get<Algorithm[]>("/algorithms", {
-    data: query as Record<string, unknown>,
-  });
+export function getAlgorithmList(query?: import("dehaze-sdk-js").AlgorithmQuery) {
+  return AlgorithmAPI.getList(query);
 }
 
 /** 获取算法下拉选项 */
-export async function getAlgorithmOptions(): Promise<AlgorithmOption[]> {
-  return get<AlgorithmOption[]>("/algorithms/options");
+export function getAlgorithmOptions() {
+  return AlgorithmAPI.getOption();
 }
 
 /** 获取算法详情 */
-export async function getAlgorithmDetail(id: number): Promise<Algorithm> {
-  return get<Algorithm>(`/algorithms/${id}`);
+export function getAlgorithmDetail(id: number) {
+  return AlgorithmAPI.getAlgorithmInfoById(id);
 }
 
+// ==================== 算法选择扩展（Python 后端） ====================
+
 /** 切换算法收藏状态（未收藏→添加，已收藏→取消） */
-export async function toggleAlgorithmFavorite(
+export function toggleAlgorithmFavorite(
   algorithmId: number
 ): Promise<ToggleFavoriteResult> {
-  return post<ToggleFavoriteResult>("/algorithm-select/favorite", {
+  return pythonService.post("/api/v1/algorithm-select/favorite", {
     algorithmId,
   });
 }
 
 /** 获取当前用户的算法收藏列表 */
-export async function getAlgorithmFavorites(): Promise<AlgorithmFavorite[]> {
-  return get<AlgorithmFavorite[]>("/algorithm-select/favorites");
+export function getAlgorithmFavorites(): Promise<AlgorithmFavorite[]> {
+  return pythonService.get("/api/v1/algorithm-select/favorites");
 }
 
 /** 智能推荐算法 */
-export async function recommendAlgorithms(
+export function recommendAlgorithms(
   data: RecommendRequest
 ): Promise<AlgorithmRecommendVO[]> {
-  return post<AlgorithmRecommendVO[]>(
-    "/algorithm-select/recommend",
-    data as unknown as Record<string, unknown>
-  );
+  return pythonService.post("/api/v1/algorithm-select/recommend", data);
 }

@@ -31,7 +31,7 @@
       <!-- 数据指标 -->
       <view class="hero-stats">
         <view class="stat-item">
-          <text class="stat-value">29+</text>
+          <text class="stat-value">{{ algorithmCount > 0 ? `${algorithmCount}+` : "--" }}</text>
           <text class="stat-label">去雾算法</text>
         </view>
         <view class="stat-divider" />
@@ -50,10 +50,18 @@
 </template>
 
 <script lang="ts" setup>
+interface Props {
+  algorithmCount?: number;
+}
+
 interface Emits {
   (e: "primary-click"): void;
   (e: "secondary-click"): void;
 }
+
+withDefaults(defineProps<Props>(), {
+  algorithmCount: 0,
+});
 
 const emit = defineEmits<Emits>();
 

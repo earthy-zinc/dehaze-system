@@ -31,7 +31,7 @@
           <view class="file-info">
             <text class="file-name">{{ file.name }}</text>
             <text class="file-meta">
-              {{ formatSize(file.size) }} · {{ formatDate(file.createTime) }}
+              {{ formatFileSize(file.size || "") }} · {{ formatRelativeTime(file.createTime || "") }}
             </text>
           </view>
           <view class="file-arrow">
@@ -57,10 +57,11 @@
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
-import { getFileList, type SysFile } from "@/api/file";
+import { getFileList, type FileInfo } from "@/api/file";
+import { formatFileSize, formatRelativeTime } from "@/utils/format";
 
 const loading = ref(false);
-const files = ref<SysFile[]>([]);
+const files = ref<FileInfo[]>([]);
 const currentPage = ref(1);
 const hasMore = ref(true);
 
@@ -88,7 +89,7 @@ function loadMore() {
   if (hasMore.value) loadData(currentPage.value + 1);
 }
 
-function handleClick(file: SysFile) {
+function handleClick(file: FileInfo) {
   if (file.url) {
     // 复制文件 URL
     uni.setClipboardData({
@@ -108,26 +109,6 @@ function getIcon(type?: string): string {
   if (t.includes("audio")) return "mic";
   if (t.includes("pdf") || t.includes("doc")) return "file-text";
   return "file";
-}
-
-function formatSize(size?: string): string {
-  if (!size || size === "0") return "0 B";
-  const bytes = parseInt(size, 10);
-  if (isNaN(bytes)) return size;
-  if (bytes < 1024) return bytes + " B";
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-}
-
-function formatDate(time?: string): string {
-  if (!time) return "-";
-  const d = new Date(time);
-  const now = Date.now();
-  const diff = now - d.getTime();
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  if (diff < 172800000) return "昨天";
-  return d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
 }
 
 onMounted(() => loadData());

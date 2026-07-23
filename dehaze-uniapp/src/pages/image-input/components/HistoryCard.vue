@@ -17,7 +17,7 @@
       <text class="card-time"
         >耗时 {{ record.time != null ? record.time + "s" : "-" }}</text
       >
-      <text class="card-date">{{ formatTime(record.createTime || "") }}</text>
+      <text class="card-date">{{ formatRelativeTime(record.createTime || "") }}</text>
     </view>
 
     <view class="card-arrow">
@@ -28,7 +28,7 @@
 
 <script lang="ts" setup>
 import type { PredLogVO } from "@/api/prediction";
-import { formatTime } from "../data/imageInputData";
+import { formatRelativeTime } from "@/utils/format";
 
 interface Props {
   record: PredLogVO;

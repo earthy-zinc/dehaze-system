@@ -170,52 +170,6 @@ export const tabBarItems: MenuItem[] = [
 export const tabBarRoutes: string[] = tabBarItems.map((item) => item.route);
 
 /**
- * 获取所有菜单项（平铺，包含首页）
- */
-export const getAllMenuItems = (): MenuItem[] => {
-  return [homeItem, ...menuSections.flatMap((s) => s.items)];
-};
-
-/**
- * 获取所有菜单项（不包含首页）
- */
-export const getMenuItemsWithoutHome = (): MenuItem[] => {
-  return menuSections.flatMap((s) => s.items);
-};
-
-/**
- * 根据路由查找菜单项
- */
-export const findMenuItemByRoute = (route: string): MenuItem | undefined => {
-  return getAllMenuItems().find((item) => item.route === route);
-};
-
-/**
- * 检查路由是否存在于菜单中
- */
-export const containsRoute = (route: string): boolean => {
-  return findMenuItemByRoute(route) !== undefined;
-};
-
-/**
- * 根据路由获取所属分组
- */
-export const findSectionByRoute = (route: string): MenuSection | undefined => {
-  return menuSections.find((section) =>
-    section.items.some((item) => item.route === route)
-  );
-};
-
-/**
- * 获取菜单项的索引（用于底部导航栏等）
- */
-export const getMenuItemIndex = (route: string): number => {
-  const items = getAllMenuItems();
-  const index = items.findIndex((item) => item.route === route);
-  return index !== -1 ? index : 0;
-};
-
-/**
  * 获取 TabBar 项的索引
  */
 export const getTabBarIndex = (route: string): number => {

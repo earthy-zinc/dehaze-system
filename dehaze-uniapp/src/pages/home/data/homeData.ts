@@ -122,7 +122,7 @@ export const homeData = {
     {
       icon: "gift",
       title: "智能算法",
-      value: "29+",
+      value: "",
       description: "支持多种先进去雾算法",
     },
     {

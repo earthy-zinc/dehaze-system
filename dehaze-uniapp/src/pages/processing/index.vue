@@ -47,10 +47,7 @@
             :step="5"
             active-color="#f59e0b"
             block-size="20"
-            @change="
-              (e: { detail: { value: number } }) =>
-                updateParam('strength', e.detail.value)
-            "
+            @change="onStrengthChange"
           />
         </view>
 
@@ -66,10 +63,7 @@
             :step="5"
             active-color="#f59e0b"
             block-size="20"
-            @change="
-              (e: { detail: { value: number } }) =>
-                updateParam('saturation', e.detail.value)
-            "
+            @change="onSaturationChange"
           />
         </view>
 
@@ -85,10 +79,7 @@
             :step="5"
             active-color="#f59e0b"
             block-size="20"
-            @change="
-              (e: { detail: { value: number } }) =>
-                updateParam('contrast', e.detail.value)
-            "
+            @change="onContrastChange"
           />
         </view>
 
@@ -104,10 +95,7 @@
             :step="5"
             active-color="#f59e0b"
             block-size="20"
-            @change="
-              (e: { detail: { value: number } }) =>
-                updateParam('sharpness', e.detail.value)
-            "
+            @change="onSharpnessChange"
           />
         </view>
       </view>
@@ -181,6 +169,8 @@ import {
   predict as predictApi,
   type PredictionResultVO,
 } from "@/api/prediction";
+import type { SliderChangeEvent } from "@/types/uni-events";
+import { getErrorMessage } from "@/utils/error";
 
 // ==================== 状态 ====================
 
@@ -203,17 +193,34 @@ const statusText = computed(() => {
 
 // ==================== 方法 ====================
 
+type ParamKey = "strength" | "saturation" | "contrast" | "sharpness";
+
 /** 更新单个参数 */
-function updateParam(
-  key: "strength" | "saturation" | "contrast" | "sharpness",
-  value: number
-) {
+function updateParam(key: ParamKey, value: number) {
   store.updateParams({ [key]: value });
 }
+
+const onStrengthChange = (e: SliderChangeEvent) => updateParam("strength", e.detail.value);
+const onSaturationChange = (e: SliderChangeEvent) => updateParam("saturation", e.detail.value);
+const onContrastChange = (e: SliderChangeEvent) => updateParam("contrast", e.detail.value);
+const onSharpnessChange = (e: SliderChangeEvent) => updateParam("sharpness", e.detail.value);
 
 /** 重置参数 */
 function resetParams() {
   store.updateParams({ ...DEFAULT_DEHAZE_PARAMS });
+}
+
+/** 构建预测参数：仅提交与默认值不同的参数 */
+function buildPredictParams(): string | undefined {
+  const paramsObj: Record<string, number> = {};
+  (Object.keys(DEFAULT_DEHAZE_PARAMS) as ParamKey[]).forEach((key) => {
+    if (store.params[key] !== DEFAULT_DEHAZE_PARAMS[key]) {
+      paramsObj[key] = store.params[key];
+    }
+  });
+  return Object.keys(paramsObj).length > 0
+    ? JSON.stringify(paramsObj)
+    : undefined;
 }
 
 /** 开始处理 */
@@ -228,29 +235,11 @@ async function handleProcess() {
   store.startProcessing();
 
   try {
-    // 构建预测参数
-    const paramsObj: Record<string, number> = {};
-    if (store.params.strength !== DEFAULT_DEHAZE_PARAMS.strength) {
-      paramsObj.strength = store.params.strength;
-    }
-    if (store.params.saturation !== DEFAULT_DEHAZE_PARAMS.saturation) {
-      paramsObj.saturation = store.params.saturation;
-    }
-    if (store.params.contrast !== DEFAULT_DEHAZE_PARAMS.contrast) {
-      paramsObj.contrast = store.params.contrast;
-    }
-    if (store.params.sharpness !== DEFAULT_DEHAZE_PARAMS.sharpness) {
-      paramsObj.sharpness = store.params.sharpness;
-    }
-
     const result: PredictionResultVO = await predictApi({
       algorithmId: store.selectedAlgorithm.id,
       fileId: store.fileId ?? undefined,
       imageUrl: !store.fileId ? store.currentImage.url : undefined,
-      params:
-        Object.keys(paramsObj).length > 0
-          ? JSON.stringify(paramsObj)
-          : undefined,
+      params: buildPredictParams(),
     });
 
     store.complete(result);
@@ -261,7 +250,7 @@ async function handleProcess() {
       duration: 2000,
     });
   } catch (error) {
-    const msg = (error as { message?: string }).message || "处理失败";
+    const msg = getErrorMessage(error, "处理失败");
     store.fail(msg);
     uni.showToast({ title: msg, icon: "none", duration: 2500 });
   } finally {

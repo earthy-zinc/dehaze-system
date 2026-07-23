@@ -8,7 +8,12 @@ export default defineConfig({
     open: false,
     port: 5176,
     // H5 开发代理：将 /api 请求转发到后端
+    // 注意：algorithm-select 必须在 /api 之前，确保 Python 端点优先匹配
     proxy: {
+      "/api/v1/algorithm-select": {
+        target: "http://127.0.0.1:8991",
+        changeOrigin: true,
+      },
       "/api": {
         target: "http://127.0.0.1:8989",
         changeOrigin: true,

@@ -131,6 +131,7 @@
 import { reactive, ref, onMounted } from "vue";
 import { useAuthStore } from "@/store/auth";
 import { navigateToHome } from "@/routers/guard";
+import { getErrorMessage } from "@/utils/error";
 
 // ==================== 状态定义 ====================
 
@@ -219,8 +220,7 @@ const handleSubmit = async () => {
       navigateToHome();
     }, 1500);
   } catch (error) {
-    const err = error as { msg?: string; message?: string };
-    const errorMsg = err?.msg || err?.message || "登录失败，请重试";
+    const errorMsg = getErrorMessage(error, "登录失败，请重试");
 
     // 验证码错误时刷新验证码
     if (errorMsg.includes("验证码")) {

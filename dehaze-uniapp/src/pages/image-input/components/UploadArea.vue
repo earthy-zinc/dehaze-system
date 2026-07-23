@@ -30,11 +30,8 @@
 import { ref } from "vue";
 import { uploadImage } from "@/api/file";
 import { useProcessingStore } from "@/store/processing";
-import {
-  MAX_FILE_SIZE,
-  COMPRESS_THRESHOLD,
-  formatFileSize,
-} from "../data/imageInputData";
+import { MAX_FILE_SIZE, COMPRESS_THRESHOLD } from "../data/imageInputData";
+import { formatFileSize } from "@/utils/format";
 import type { ImageData } from "../data/imageInputData";
 
 const emit = defineEmits<{

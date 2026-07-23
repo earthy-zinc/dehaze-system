@@ -50,6 +50,7 @@ import { ref, onMounted } from "vue";
 import SectionHeader from "@/components/common/SectionHeader.vue";
 import { getAlgorithmList } from "@/api/algorithm";
 import type { Algorithm } from "@/api/algorithm";
+import { getErrorMessage } from "@/utils/error";
 
 /** 展示算法数量 */
 const DISPLAY_COUNT = 4;
@@ -66,7 +67,7 @@ async function loadAlgorithms() {
     const list = await getAlgorithmList();
     algorithms.value = list.slice(0, DISPLAY_COUNT);
   } catch (e) {
-    error.value = (e as { message?: string }).message || "算法加载失败";
+    error.value = getErrorMessage(e, "算法加载失败");
   } finally {
     loading.value = false;
   }

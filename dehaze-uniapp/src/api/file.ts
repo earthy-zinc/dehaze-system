@@ -1,118 +1,82 @@
 /**
- * 文件上传 API
+ * 文件管理 API
  *
- * API 路径：
- * - POST /files       上传文件
- * - GET  /files/{id}  获取文件信息
+ * 查询类接口使用 dehaze-sdk-js 的 FileAPI。
+ * 文件上传使用 uni.uploadFile（小程序/App 全平台兼容），
+ * 因 SDK 的 FileAPI.upload 依赖浏览器 FormData + File API。
  */
 
-import { get } from "./request";
+import { FileAPI, ResultEnum, TOKEN_KEY } from "dehaze-sdk-js";
+import type { FileInfo } from "dehaze-sdk-js";
+import { uploadFileByUni } from "./uni-adapter";
 import { BASE_URL } from "./config";
-import type { ImageData } from "@/pages/image-input/data/imageInputData";
 
-// ==================== 类型定义 ====================
-
-/** 后端返回的文件信息 */
-export interface FileInfo {
-  id: number;
-  name: string;
-  path: string;
-  url: string;
-}
-
-/** 文件记录（从 /files/page 返回） */
-export interface SysFile {
-  id: number;
-  type?: string;
-  url?: string;
-  name: string;
-  objectName: string;
-  size: string;
-  path: string;
-  md5: string;
-  createTime: string;
-  updateTime: string;
-}
-
-/** 文件分页结果 */
-export interface FilePageResult {
-  list: SysFile[];
-  total: number;
-  pageNum: number;
-  pageSize: number;
-}
+export type { FileInfo, FileQuery } from "dehaze-sdk-js";
 
 // ==================== API 方法 ====================
 
 /** 获取文件信息 */
-export async function getFileInfo(fileId: number): Promise<FileInfo> {
-  return get<FileInfo>(`/files/${fileId}`);
+export function getFileInfo(fileId: number) {
+  return FileAPI.getById(fileId);
 }
 
 /** 获取文件分页列表 */
-export async function getFileList(
+export function getFileList(
   pageNum = 1,
   pageSize = 20,
   keywords = ""
-): Promise<FilePageResult> {
-  const params: Record<string, unknown> = { pageNum, pageSize };
-  if (keywords) params.keywords = keywords;
-  return get<FilePageResult>("/files/page", { data: params });
+) {
+  return FileAPI.getPage({
+    pageNum,
+    pageSize,
+    keywords: keywords || undefined,
+  });
+}
+
+/** 上传图片所需的最小参数 */
+export interface UploadImageParams {
+  /** 本地图片路径（tempFilePath / 本地文件路径） */
+  url: string;
 }
 
 /**
  * 上传图片并返回文件信息
  *
  * 使用 uni.uploadFile（multipart/form-data），
- * 不支持 request.ts 中的拦截器，需要手动传 token。
+ * 不支持 axios 拦截器，需要手动传 token。
  */
 export async function uploadImage(
-  imageData: Omit<ImageData, "fileId">,
+  imageData: UploadImageParams,
   onProgress?: (progress: number) => void
 ): Promise<FileInfo> {
-  const accessToken = uni.getStorageSync("access_token") || "";
+  const accessToken = uni.getStorageSync(TOKEN_KEY) || "";
   const authorization = accessToken.startsWith("Bearer ")
     ? accessToken
     : `Bearer ${accessToken}`;
 
-  return new Promise((resolve, reject) => {
-    const uploadTask = uni.uploadFile({
-      url: BASE_URL + "/files",
-      filePath: imageData.url,
+  const { data, statusCode } = await uploadFileByUni(
+    `${BASE_URL}/files`,
+    imageData.url,
+    {
       name: "file",
-      formData: {},
-      header: {
-        Authorization: authorization,
-      },
-      success: (res) => {
-        if (res.statusCode === 200) {
-          try {
-            const response = JSON.parse(res.data) as {
-              code: string;
-              data: FileInfo;
-              msg: string;
-            };
-            if (response.code === "00000") {
-              resolve(response.data);
-            } else {
-              reject(new Error(response.msg || "上传失败"));
-            }
-          } catch {
-            reject(new Error("解析响应失败"));
-          }
-        } else {
-          reject(new Error(`上传失败: ${res.statusCode}`));
-        }
-      },
-      fail: (err) => {
-        reject(new Error(err.errMsg || "上传失败"));
-      },
-    });
-
-    if (onProgress) {
-      uploadTask.onProgressUpdate((res) => {
-        onProgress(res.progress);
-      });
+      header: { Authorization: authorization },
+      onProgress,
     }
-  });
+  );
+
+  if (statusCode !== 200) {
+    throw new Error(`上传失败: ${statusCode}`);
+  }
+
+  const response = data as {
+    code: string;
+    data: FileInfo;
+    msg: string;
+  };
+
+  if (response.code !== ResultEnum.SUCCESS) {
+    throw new Error(response.msg || "上传失败");
+  }
+
+  return response.data;
 }

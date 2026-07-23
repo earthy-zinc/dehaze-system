@@ -36,7 +36,7 @@
               :step="item.step"
               :active-color="item.color"
               block-size="20"
-              @change="(e: any) => updateFilter(item.key, e.detail.value)"
+              @change="(e: SliderChangeEvent) => updateFilter(item.key, e.detail.value)"
             />
           </view>
         </view>
@@ -83,13 +83,27 @@
 import { ref, computed, reactive, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { useProcessingStore } from "@/store/processing";
+import type { SliderChangeEvent } from "@/types/uni-events";
+
+type FilterKey = "brightness" | "contrast" | "saturate" | "warmth";
+
+interface FilterConfig {
+  key: FilterKey;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  color: string;
+}
 
 const store = useProcessingStore();
 
 const resultUrl = computed(() => store.result?.resultUrl || "");
 const hasImages = computed(() => !!resultUrl.value);
 
-const filters = reactive([
+const filters = reactive<FilterConfig[]>([
   {
     key: "brightness",
     label: "亮度",
@@ -134,24 +148,30 @@ const filters = reactive([
 
 const activePreset = ref("原始");
 
+function getFilter(key: FilterKey): number {
+  return filters.find((f) => f.key === key)?.value ?? 0;
+}
+
 const filterString = computed(() => {
-  const b = filters[0].value;
-  const c = filters[1].value;
-  const s = filters[2].value;
-  const w = filters[3].value;
-  return `brightness(${b}%) contrast(${c}%) saturate(${s}%) sepia(${w > 0 ? w : 0}%) hue-rotate(${w < 0 ? w : 0}deg)`;
+  const warmth = getFilter("warmth");
+  return `brightness(${getFilter("brightness")}%) contrast(${getFilter("contrast")}%) saturate(${getFilter("saturate")}%) sepia(${Math.max(warmth, 0)}%) hue-rotate(${Math.min(warmth, 0)}deg)`;
 });
 
-const presets = [
-  { label: "原始", values: [100, 100, 100, 0] },
-  { label: "鲜艳", values: [110, 120, 150, 0] },
-  { label: "柔和", values: [95, 90, 80, 5] },
-  { label: "冷调", values: [100, 105, 90, -15] },
-  { label: "暖调", values: [105, 100, 110, 15] },
-  { label: "复古", values: [90, 85, 60, 20] },
+interface Preset {
+  label: string;
+  values: Record<FilterKey, number>;
+}
+
+const presets: Preset[] = [
+  { label: "原始", values: { brightness: 100, contrast: 100, saturate: 100, warmth: 0 } },
+  { label: "鲜艳", values: { brightness: 110, contrast: 120, saturate: 150, warmth: 0 } },
+  { label: "柔和", values: { brightness: 95, contrast: 90, saturate: 80, warmth: 5 } },
+  { label: "冷调", values: { brightness: 100, contrast: 105, saturate: 90, warmth: -15 } },
+  { label: "暖调", values: { brightness: 105, contrast: 100, saturate: 110, warmth: 15 } },
+  { label: "复古", values: { brightness: 90, contrast: 85, saturate: 60, warmth: 20 } },
 ];
 
-function updateFilter(key: string, value: number) {
+function updateFilter(key: FilterKey, value: number) {
   const item = filters.find((f) => f.key === key);
   if (item) {
     item.value = value;
@@ -159,11 +179,11 @@ function updateFilter(key: string, value: number) {
   }
 }
 
-function applyPreset(p: (typeof presets)[number]) {
-  filters[0].value = p.values[0];
-  filters[1].value = p.values[1];
-  filters[2].value = p.values[2];
-  filters[3].value = p.values[3];
+function applyPreset(p: Preset) {
+  (Object.keys(p.values) as FilterKey[]).forEach((key) => {
+    const item = filters.find((f) => f.key === key);
+    if (item) item.value = p.values[key];
+  });
   activePreset.value = p.label;
 }
 

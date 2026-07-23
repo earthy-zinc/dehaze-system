@@ -23,11 +23,14 @@
 
       <!-- 图片信息 -->
       <view class="preview-info">
-        <view class="info-item">
+        <view v-if="image.size != null" class="info-item">
           <u-icon name="photo" size="16" color="#3b82f6" />
           <text class="info-text">{{ formatFileSize(image.size) }}</text>
         </view>
-        <view class="info-item">
+        <view
+          v-if="image.width != null && image.height != null"
+          class="info-item"
+        >
           <u-icon name="scan" size="16" color="#10b981" />
           <text class="info-text">{{ image.width }} × {{ image.height }}</text>
         </view>
@@ -61,7 +64,7 @@
 
 <script lang="ts" setup>
 import type { ImageData } from "../data/imageInputData";
-import { formatFileSize } from "../data/imageInputData";
+import { formatFileSize } from "@/utils/format";
 
 interface Props {
   image: ImageData;

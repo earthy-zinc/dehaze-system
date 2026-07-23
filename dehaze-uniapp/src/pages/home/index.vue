@@ -3,6 +3,7 @@
     <view class="main-content">
       <!-- Hero Section - 英雄区 -->
       <HeroSection
+        :algorithm-count="algorithmCount"
         @primary-click="handleStartClick"
         @secondary-click="handleDatasetClick"
       />
@@ -46,7 +47,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import HeroSection from "./components/HeroSection.vue";
 import ShowcaseSection from "./components/ShowcaseSection.vue";
@@ -58,9 +59,37 @@ import CTASection from "./components/CTASection.vue";
 import SpecCard from "@/components/business/SpecCard.vue";
 import type { ToolItem } from "./data/homeData";
 import { homeData } from "./data/homeData";
+import { getAlgorithmList, type Algorithm } from "@/api/algorithm";
 
 // 技术规格数据
 const specData = ref(homeData.specs);
+
+// 算法数量（动态获取）
+const algorithmCount = ref(0);
+
+/** 统计算法树中的叶子节点数（实际可执行算法数） */
+function countLeafAlgorithms(list: Algorithm[]): number {
+  let count = 0;
+  for (const algo of list) {
+    if (algo.children && algo.children.length > 0) {
+      count += countLeafAlgorithms(algo.children);
+    } else {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+onMounted(async () => {
+  try {
+    const list = await getAlgorithmList();
+    algorithmCount.value = countLeafAlgorithms(list);
+    const algoSpec = specData.value.find((s) => s.title === "智能算法");
+    if (algoSpec) algoSpec.value = `${algorithmCount.value}+`;
+  } catch {
+    // 获取失败时保持空值，不影响页面其他部分
+  }
+});
 
 // 事件处理函数
 const handleStartClick = () => {

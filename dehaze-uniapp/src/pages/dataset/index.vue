@@ -60,15 +60,6 @@
         <!-- 数据集信息 -->
         <DatasetInfo v-if="currentDataset" :dataset="currentDataset" />
 
-        <!-- 标注状态筛选 -->
-        <view class="filter-wrapper">
-          <TypeFilter
-            :active-filter="currentAnnotationFilter"
-            :counts="annotationCounts"
-            @change="handleFilterChange"
-          />
-        </view>
-
         <!-- 图片网格/瀑布流 -->
         <ImageGrid
           :images="images"
@@ -89,7 +80,6 @@
         </view>
         <view class="tips-list">
           <text class="tips-item">• 点击数据集卡片查看详细信息</text>
-          <text class="tips-item">• 支持按已标注/未标注筛选图片</text>
           <text class="tips-item">• 点击图片可查看大图</text>
           <text class="tips-item">• 支持网格和瀑布流两种展示模式</text>
         </view>
@@ -144,10 +134,6 @@
               formatFileSize(selectedImage.fileSize)
             }}</text>
           </view>
-          <view v-if="selectedImage.tags" class="info-row">
-            <text class="info-label">标签:</text>
-            <text class="info-value">{{ selectedImage.tags }}</text>
-          </view>
         </view>
       </view>
     </up-popup>
@@ -155,27 +141,20 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import DatasetCard from "./components/DatasetCard.vue";
 import DatasetInfo from "./components/DatasetInfo.vue";
-import TypeFilter from "./components/TypeFilter.vue";
 import ImageGrid from "./components/ImageGrid.vue";
-import type {
-  Dataset,
-  DatasetImage,
-  AnnotationFilter,
-  AnnotationCounts,
-  DisplayMode,
-} from "./data/datasetData";
+import type { Dataset, DatasetImageItem, DisplayMode } from "./data/datasetData";
+import { formatHazeLevel, IMAGE_TYPE_LABELS } from "./data/datasetData";
 import {
-  fetchDatasets,
-  fetchDatasetDetail,
-  fetchDatasetImages,
-  formatFileSize,
-  formatHazeLevel,
-  IMAGE_TYPE_LABELS,
-} from "./data/datasetData";
+  getDatasets,
+  getDatasetDetail,
+  getDatasetItems,
+  flattenDatasetItems,
+} from "@/api/dataset";
+import { formatFileSize } from "@/utils/format";
 
 // ==================== 状态定义 ====================
 
@@ -194,11 +173,8 @@ const listLoading = ref(false);
 /** 当前选中的数据集 */
 const currentDataset = ref<Dataset | null>(null);
 
-/** 当前标注状态筛选（已标注/未标注） */
-const currentAnnotationFilter = ref<AnnotationFilter>("annotated");
-
 /** 图片列表 */
-const images = ref<DatasetImage[]>([]);
+const images = ref<DatasetImageItem[]>([]);
 
 /** 图片加载状态 */
 const imagesLoading = ref(false);
@@ -216,24 +192,10 @@ const displayMode = ref<DisplayMode>("grid");
 const showImageViewer = ref(false);
 
 /** 当前选中的图片 */
-const selectedImage = ref<DatasetImage | null>(null);
+const selectedImage = ref<DatasetImageItem | null>(null);
 
-// ==================== 计算属性 ====================
-
-/** 标注状态计数 */
-const annotationCounts = computed<AnnotationCounts>(() => {
-  if (!currentDataset.value) {
-    return { all: 0, annotated: 0, unannotated: 0 };
-  }
-  return {
-    all:
-      currentDataset.value.total ??
-      currentDataset.value.statistics?.itemCount ??
-      0,
-    annotated: currentDataset.value.statistics?.annotatedCount ?? 0,
-    unannotated: currentDataset.value.statistics?.unannotatedCount ?? 0,
-  };
-});
+/** 每页大小 */
+const PAGE_SIZE = 20;
 
 // ==================== 方法定义 ====================
 
@@ -252,10 +214,8 @@ const loadDatasets = async () => {
 
   listLoading.value = true;
   try {
-    const result = await fetchDatasets(1, searchKeyword.value);
-    if (result.code === 0) {
-      datasets.value = result.data.list;
-    }
+    const result = await getDatasets(1, searchKeyword.value);
+    datasets.value = result.list;
   } catch (error) {
     console.error("加载数据集失败:", error);
     uni.showToast({
@@ -273,21 +233,19 @@ const loadImages = async (append = false) => {
 
   imagesLoading.value = true;
   try {
-    const result = await fetchDatasetImages(
-      currentDataset.value.id,
-      currentPage.value,
-      currentAnnotationFilter.value,
-      searchKeyword.value
-    );
+    const result = await getDatasetItems(currentDataset.value.id, {
+      pageNum: currentPage.value,
+      pageSize: PAGE_SIZE,
+      keyword: searchKeyword.value || undefined,
+    });
 
-    if (result.code === 0) {
-      if (append) {
-        images.value = [...images.value, ...result.data.list];
-      } else {
-        images.value = result.data.list;
-      }
-      hasMore.value = result.data.page < result.data.total_pages;
+    const imageItems = flattenDatasetItems(result.list);
+    if (append) {
+      images.value = [...images.value, ...imageItems];
+    } else {
+      images.value = imageItems;
     }
+    hasMore.value = currentPage.value * PAGE_SIZE < result.total;
   } catch (error) {
     console.error("加载图片失败:", error);
     uni.showToast({
@@ -320,17 +278,14 @@ const handleDatasetClick = async (dataset: Dataset) => {
   uni.showLoading({ title: "加载中..." });
 
   try {
-    const result = await fetchDatasetDetail(dataset.id);
-    if (result.code === 0 && result.data) {
-      currentDataset.value = result.data;
-      currentView.value = "detail";
-      currentAnnotationFilter.value = "annotated";
-      currentPage.value = 1;
-      images.value = [];
-      hasMore.value = true;
+    const detail = await getDatasetDetail(dataset.id);
+    currentDataset.value = detail;
+    currentView.value = "detail";
+    currentPage.value = 1;
+    images.value = [];
+    hasMore.value = true;
 
-      await loadImages();
-    }
+    await loadImages();
   } catch (error) {
     console.error("加载详情失败:", error);
     uni.showToast({
@@ -346,19 +301,9 @@ const handleDatasetClick = async (dataset: Dataset) => {
 const handleBackToList = () => {
   currentView.value = "list";
   currentDataset.value = null;
-  currentAnnotationFilter.value = "annotated";
   currentPage.value = 1;
   images.value = [];
   hasMore.value = true;
-};
-
-/** 标注状态筛选变更 */
-const handleFilterChange = (filter: AnnotationFilter) => {
-  currentAnnotationFilter.value = filter;
-  currentPage.value = 1;
-  images.value = [];
-  hasMore.value = true;
-  loadImages();
 };
 
 /** 加载更多 */
@@ -375,7 +320,7 @@ const handleModeChange = (mode: DisplayMode) => {
 };
 
 /** 图片点击 */
-const handleImageClick = (image: DatasetImage) => {
+const handleImageClick = (image: DatasetImageItem) => {
   selectedImage.value = image;
   showImageViewer.value = true;
 };
@@ -486,11 +431,6 @@ onMounted(() => {
 .back-text {
   font-size: 28rpx;
   color: #4b5563;
-}
-
-/* 筛选器包装 */
-.filter-wrapper {
-  margin: 24rpx 0;
 }
 
 /* 加载状态 */

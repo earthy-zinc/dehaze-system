@@ -36,11 +36,11 @@ export interface DehazeParams {
   sharpness: number;
 }
 
-/** 默认处理参数 */
+/** 默认处理参数（与产品文档需求规格.md 默认值对齐） */
 export const DEFAULT_DEHAZE_PARAMS: DehazeParams = {
-  strength: 70,
-  saturation: 120,
-  contrast: 110,
+  strength: 50,
+  saturation: 100,
+  contrast: 100,
   sharpness: 30,
 };
 

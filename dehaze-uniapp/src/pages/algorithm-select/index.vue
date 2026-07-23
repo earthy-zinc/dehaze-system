@@ -200,6 +200,7 @@ import {
   toggleAlgorithmFavorite,
 } from "@/api/algorithm";
 import type { Algorithm } from "@/api/algorithm";
+import { getErrorMessage } from "@/utils/error";
 
 // ==================== 状态 ====================
 
@@ -252,7 +253,7 @@ async function loadAlgorithms() {
     algorithmList.value = list;
     favoriteIds.value = new Set(favorites.map((f) => f.algorithmId));
   } catch (e) {
-    const msg = (e as { message?: string }).message || "加载失败";
+    const msg = getErrorMessage(e, "加载失败");
     error.value = msg;
     uni.showToast({ title: msg, icon: "none" });
   } finally {
@@ -287,7 +288,7 @@ async function handleToggleFavorite(algorithm: Algorithm) {
       icon: "none",
     });
   } catch (e) {
-    const msg = (e as { message?: string }).message || "操作失败";
+    const msg = getErrorMessage(e, "操作失败");
     uni.showToast({ title: msg, icon: "none" });
   } finally {
     togglingIds.value.delete(algorithm.id);

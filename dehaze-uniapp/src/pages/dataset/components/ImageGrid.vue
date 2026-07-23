@@ -93,10 +93,10 @@ import {
   getCurrentInstance,
 } from "vue";
 import ImageCard from "./ImageCard.vue";
-import type { DatasetImage, DisplayMode } from "../data/datasetData";
+import type { DatasetImageItem, DisplayMode } from "../data/datasetData";
 
 interface Props {
-  images: DatasetImage[];
+  images: DatasetImageItem[];
   loading?: boolean;
   hasMore?: boolean;
   /** 初始展示模式 */
@@ -104,7 +104,7 @@ interface Props {
 }
 
 interface Emits {
-  (e: "image-click", image: DatasetImage): void;
+  (e: "image-click", image: DatasetImageItem): void;
   (e: "load-more"): void;
   (e: "mode-change", mode: DisplayMode): void;
 }
@@ -125,7 +125,7 @@ const columnCount = ref(2);
 
 // 计算瀑布流列数据
 const waterfallColumns = computed(() => {
-  const columns: DatasetImage[][] = Array.from(
+  const columns: DatasetImageItem[][] = Array.from(
     { length: columnCount.value },
     () => []
   );
@@ -134,7 +134,9 @@ const waterfallColumns = computed(() => {
   props.images.forEach((image) => {
     // 找到最短的列
     const minHeightIndex = columnHeights.indexOf(Math.min(...columnHeights));
-    columns[minHeightIndex].push(image);
+    const targetColumn = columns[minHeightIndex];
+    if (!targetColumn) return;
+    targetColumn.push(image);
     // 累加高度（使用图片宽高比估算）
     columnHeights[minHeightIndex] += image.height / image.width;
   });
@@ -151,7 +153,7 @@ const handleModeChange = (mode: DisplayMode) => {
 };
 
 // 图片点击
-const handleImageClick = (image: DatasetImage) => {
+const handleImageClick = (image: DatasetImageItem) => {
   emit("image-click", image);
 };
 

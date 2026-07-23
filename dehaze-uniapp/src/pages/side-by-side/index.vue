@@ -13,11 +13,7 @@
 
       <!-- 对比容器 -->
       <view v-if="hasImages" class="compare-wrapper">
-        <view
-          class="compare-container"
-          @touchmove="handleTouchMove"
-          @touchend="handleTouchEnd"
-        >
+        <view class="compare-container" @touchmove="handleTouchMove">
           <!-- 底部：原图 -->
           <image
             :src="originUrl"
@@ -91,17 +87,14 @@ const originUrl = computed(() => store.originUrl);
 const resultUrl = computed(() => store.result?.resultUrl || "");
 const hasImages = computed(() => !!(originUrl.value && resultUrl.value));
 
-function handleTouchMove(e: any) {
-  const touch = e.touches?.[0] || e.changedTouches?.[0];
+function handleTouchMove(e: TouchEvent) {
+  const touch = e.touches[0] || e.changedTouches[0];
   if (!touch) return;
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect?.();
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
   if (!rect) return;
-  let pos = ((touch.clientX - rect.left) / rect.width) * 100;
-  pos = Math.max(5, Math.min(95, pos));
-  sliderPos.value = pos;
+  const pos = ((touch.clientX - rect.left) / rect.width) * 100;
+  sliderPos.value = Math.max(5, Math.min(95, pos));
 }
-
-function handleTouchEnd() {}
 
 function handleOverlay() {
   uni.navigateTo({ url: "/pages/overlay/index" });
