@@ -1,15 +1,14 @@
 <template>
   <PageLayout class="page">
     <view class="main-content">
-      <view class="page-header-card">
-        <view class="header-icon">
-          <u-icon name="search" size="28" color="#f59e0b" />
-        </view>
-        <view class="header-text">
-          <text class="header-title">放大镜对比</text>
-          <text class="header-subtitle">触控移动查看局部细节</text>
-        </view>
-      </view>
+      <PageHeaderCard
+        icon="search"
+        icon-color="#f59e0b"
+        icon-bg="#fef3c7"
+        title="放大镜对比"
+        subtitle="触控移动查看局部细节"
+        variant="dark"
+      />
 
       <view v-if="hasImages" class="content-area">
         <!-- 原图背景 + 放大镜 -->
@@ -80,6 +79,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
+import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore } from "@/store/processing";
 
 /** 放大倍数 */
@@ -194,33 +194,6 @@ onMounted(() => {
 }
 .main-content {
   padding: 24rpx;
-}
-.page-header-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-}
-.header-icon {
-  width: 80rpx;
-  height: 80rpx;
-  background: #fef3c7;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.header-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1f2937;
-}
-.header-subtitle {
-  font-size: 26rpx;
-  color: #6b7280;
 }
 
 .magnifier-wrapper {

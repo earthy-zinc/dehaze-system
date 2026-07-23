@@ -71,8 +71,8 @@ export const useAuthStore = defineStore("auth", () => {
           userInfo.value = null;
         }
       }
-    } catch (error) {
-      console.warn("[AuthStore] 初始化失败:", error);
+    } catch {
+      // 初始化失败时使用默认空状态
     }
   }
 
@@ -97,7 +97,6 @@ export const useAuthStore = defineStore("auth", () => {
       uni.setStorageSync(USER_INFO_KEY, JSON.stringify(user));
     } catch {
       // 用户信息获取失败不影响登录流程
-      console.warn("[AuthStore] 获取用户信息失败");
     }
 
     return result;

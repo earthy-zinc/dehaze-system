@@ -169,9 +169,8 @@ const refreshCaptcha = async () => {
     captchaBase64.value = raw.startsWith("data:")
       ? raw
       : `data:image/png;base64,${raw}`;
-  } catch (error) {
+  } catch {
     captchaError.value = "获取验证码失败，请重试";
-    console.error("[Login] 获取验证码失败:", error);
   }
 };
 
@@ -254,25 +253,14 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 /* ==================== 设计变量 ==================== */
-$brand-primary: #3b82f6;
-$brand-secondary: #6366f1;
-$brand-gradient: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-$text-primary: #1f2937;
-$text-secondary: #6b7280;
-$text-tertiary: #9ca3af;
-$border-color: #e5e7eb;
-$bg-page: #f9fafb;
-$radius-card: 16px;
-$radius-input: 8px;
-$radius-button: 12px;
-$shadow-card: 0 8px 24px rgba(0, 0, 0, 0.12);
-$shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
+/* 使用全局令牌：通过 vite additionalData 自动注入 @/styles/variables.scss */
+/* 品牌色、文字色、圆角、阴影等令牌均来自 variables.scss，无需在此重复定义 */
 
 .login-page {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: $bg-page;
+  background: $color-bg-primary;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -286,7 +274,7 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
 .hero-bg {
   position: relative;
   height: 320rpx;
-  background: $brand-gradient;
+  background: $gradient-primary;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -358,9 +346,9 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
   position: relative;
   z-index: 2;
   margin: -60rpx 40rpx 0;
-  background: #ffffff;
-  border-radius: $radius-card;
-  box-shadow: $shadow-card;
+  background: $color-white;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-lg;
   padding: 48rpx 40rpx 36rpx;
   animation: cardEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -384,7 +372,7 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
     display: block;
     font-size: 36rpx;
     font-weight: 600;
-    color: $text-primary;
+    color: $color-text-primary;
     margin-bottom: 8rpx;
     letter-spacing: 1rpx;
   }
@@ -392,7 +380,7 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
   .card-subtitle {
     display: block;
     font-size: 24rpx;
-    color: $text-secondary;
+    color: $color-text-secondary;
   }
 }
 
@@ -407,9 +395,9 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
     align-items: center;
     padding: 0 24rpx;
     height: 88rpx;
-    background: #f9fafb;
-    border: 2rpx solid $border-color;
-    border-radius: $radius-input;
+    background: $color-bg-primary;
+    border: 2rpx solid $color-border;
+    border-radius: $radius-sm;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
     .input-icon {
@@ -421,7 +409,7 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
     .form-input {
       flex: 1;
       font-size: 28rpx;
-      color: $text-primary;
+      color: $color-text-primary;
       background: transparent;
       border: none;
       outline: none;
@@ -429,23 +417,23 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
     }
 
     .placeholder {
-      color: $text-tertiary;
+      color: $color-text-placeholder;
       font-size: 28rpx;
     }
 
     &.focused {
-      background: #ffffff;
-      border-color: $brand-primary;
+      background: $color-white;
+      border-color: $color-primary;
       box-shadow: $shadow-input-focus;
 
       .input-icon {
-        color: $brand-primary;
+        color: $color-primary;
       }
     }
 
     &.error {
-      border-color: #ef4444;
-      background: #fef2f2;
+      border-color: $color-danger;
+      background: $color-danger-bg;
     }
   }
 
@@ -461,9 +449,9 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
     .captcha-image {
       width: 180rpx;
       height: 88rpx;
-      border-radius: $radius-input;
-      border: 2rpx solid $border-color;
-      background: #f3f4f6;
+      border-radius: $radius-sm;
+      border: 2rpx solid $color-border;
+      background: $color-bg-secondary;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -472,8 +460,8 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
       transition: all 0.2s ease;
 
       &:hover {
-        border-color: $brand-primary;
-        background: #eff6ff;
+        border-color: $color-primary;
+        background: $color-primary-bg;
       }
 
       .captcha-img {
@@ -483,7 +471,7 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
 
       .captcha-placeholder {
         font-size: 22rpx;
-        color: $text-tertiary;
+        color: $color-text-placeholder;
       }
     }
   }
@@ -494,7 +482,7 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
     gap: 6rpx;
     margin-top: 12rpx;
     font-size: 22rpx;
-    color: #ef4444;
+    color: $color-danger;
   }
 }
 
@@ -504,10 +492,10 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
   height: 96rpx;
   margin-top: 16rpx;
   border: none;
-  border-radius: $radius-button;
-  background: $brand-gradient;
+  border-radius: $radius-md;
+  background: $gradient-primary;
   background-size: 200% auto;
-  color: #ffffff;
+  color: $color-white;
   font-size: 32rpx;
   font-weight: 600;
   letter-spacing: 8rpx;
@@ -530,7 +518,7 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
   }
 
   &.loading {
-    background: linear-gradient(135deg, #60a5fa 0%, #818cf8 100%);
+    background: linear-gradient(135deg, $color-primary-light 0%, $color-secondary-light 100%);
   }
 }
 
@@ -559,7 +547,7 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
 
   .hint-text {
     font-size: 22rpx;
-    color: $text-tertiary;
+    color: $color-text-placeholder;
   }
 }
 
@@ -575,7 +563,7 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
 
   .footer-text {
     font-size: 20rpx;
-    color: $text-tertiary;
+    color: $color-text-placeholder;
     line-height: 1.8;
   }
 }

@@ -2,15 +2,13 @@
   <PageLayout class="processing-page">
     <view class="main-content">
       <!-- 页面标题 -->
-      <view class="page-header-card">
-        <view class="header-icon">
-          <u-icon name="setting" size="28" color="#f59e0b" />
-        </view>
-        <view class="header-text">
-          <text class="header-title">去雾处理</text>
-          <text class="header-subtitle">{{ statusText }}</text>
-        </view>
-      </view>
+      <PageHeaderCard
+        icon="setting"
+        icon-color="#f59e0b"
+        icon-bg="linear-gradient(135deg, #fef3c7, #fde68a)"
+        title="去雾处理"
+        :subtitle="statusText"
+      />
 
       <!-- 处理信息区 -->
       <view class="info-section">
@@ -164,6 +162,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
+import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore, DEFAULT_DEHAZE_PARAMS } from "@/store/processing";
 import { ModelAPI } from "dehaze-sdk-js";
 import type { PredictionResultVO } from "dehaze-sdk-js";
@@ -300,44 +299,6 @@ onMounted(() => {
   padding: 24rpx;
   padding-bottom: calc(180rpx + constant(safe-area-inset-bottom));
   padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
-}
-
-/* 页面标题 */
-.page-header-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-}
-
-.header-icon {
-  width: 80rpx;
-  height: 80rpx;
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.header-text {
-  flex: 1;
-}
-.header-title {
-  display: block;
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 8rpx;
-}
-.header-subtitle {
-  display: block;
-  font-size: 26rpx;
-  color: #6b7280;
 }
 
 /* 处理信息 */

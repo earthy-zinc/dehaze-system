@@ -52,8 +52,7 @@ const loadHistory = async () => {
   try {
     const result = await ModelAPI.getPredLogs({ pageNum: 1, pageSize: 20 });
     records.value = result.list;
-  } catch (e) {
-    console.warn("加载历史记录失败:", e);
+  } catch {
     records.value = [];
   } finally {
     loading.value = false;

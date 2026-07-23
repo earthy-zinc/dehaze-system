@@ -1,15 +1,14 @@
 <template>
   <PageLayout class="page">
     <view class="main-content">
-      <view class="page-header-card">
-        <view class="header-icon">
-          <u-icon name="setting" size="28" color="#10b981" />
-        </view>
-        <view class="header-text">
-          <text class="header-title">滤镜调节</text>
-          <text class="header-subtitle">实时调节画面效果</text>
-        </view>
-      </view>
+      <PageHeaderCard
+        icon="setting"
+        icon-color="#10b981"
+        icon-bg="#d1fae5"
+        title="滤镜调节"
+        subtitle="实时调节画面效果"
+        variant="dark"
+      />
 
       <view v-if="hasImages" class="content-area">
         <!-- 预览图 -->
@@ -84,6 +83,7 @@
 <script lang="ts" setup>
 import { ref, computed, reactive, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
+import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore } from "@/store/processing";
 import type { SliderChangeEvent } from "@/types/uni-events";
 
@@ -228,33 +228,6 @@ onMounted(() => {
 }
 .main-content {
   padding: 24rpx;
-}
-.page-header-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-}
-.header-icon {
-  width: 80rpx;
-  height: 80rpx;
-  background: #d1fae5;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.header-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1f2937;
-}
-.header-subtitle {
-  font-size: 26rpx;
-  color: #6b7280;
 }
 
 .preview-wrapper {

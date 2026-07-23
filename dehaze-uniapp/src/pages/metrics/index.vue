@@ -1,15 +1,14 @@
 <template>
   <PageLayout class="page">
     <view class="main-content">
-      <view class="page-header-card">
-        <view class="header-icon">
-          <u-icon name="integral" size="28" color="#ec4899" />
-        </view>
-        <view class="header-text">
-          <text class="header-title">指标评估</text>
-          <text class="header-subtitle">图像质量评估指标</text>
-        </view>
-      </view>
+      <PageHeaderCard
+        icon="integral"
+        icon-color="#ec4899"
+        icon-bg="#fce7f3"
+        title="指标评估"
+        subtitle="图像质量评估指标"
+        variant="dark"
+      />
 
       <view v-if="hasImages" class="content-area">
         <!-- 算法处理信息 -->
@@ -104,6 +103,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
+import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore } from "@/store/processing";
 import { ModelAPI } from "dehaze-sdk-js";
 import type { EvaluationResultVO } from "dehaze-sdk-js";
@@ -284,33 +284,6 @@ onMounted(() => {
 }
 .main-content {
   padding: 24rpx;
-}
-.page-header-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-}
-.header-icon {
-  width: 80rpx;
-  height: 80rpx;
-  background: #fce7f3;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.header-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1f2937;
-}
-.header-subtitle {
-  font-size: 26rpx;
-  color: #6b7280;
 }
 
 .info-card {

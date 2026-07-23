@@ -1,15 +1,13 @@
 <template>
   <PageLayout class="page">
     <view class="main-content">
-      <view class="page-header-card">
-        <view class="header-icon">
-          <u-icon name="folder" size="28" color="#10b981" />
-        </view>
-        <view class="header-text">
-          <text class="header-title">文件管理</text>
-          <text class="header-subtitle">查看已上传的文件列表</text>
-        </view>
-      </view>
+      <PageHeaderCard
+        icon="folder"
+        icon-color="#10b981"
+        icon-bg="#d1fae5"
+        title="文件管理"
+        subtitle="查看已上传的文件列表"
+      />
 
       <!-- 加载状态 -->
       <view v-if="loading" class="loading-container">
@@ -58,6 +56,7 @@
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
+import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { FileAPI } from "dehaze-sdk-js";
 import type { FileInfo } from "dehaze-sdk-js";
 import { formatFileSize, formatRelativeTime } from "@/utils/format";
@@ -125,38 +124,6 @@ onMounted(() => loadData());
 .main-content {
   padding: 24rpx;
   padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
-}
-
-.page-header-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: #fff;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-}
-.header-icon {
-  width: 80rpx;
-  height: 80rpx;
-  background: #d1fae5;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.header-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1f2937;
-  display: block;
-  margin-bottom: 8rpx;
-}
-.header-subtitle {
-  font-size: 26rpx;
-  color: #6b7280;
-  display: block;
 }
 
 .file-list {

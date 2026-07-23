@@ -2,15 +2,13 @@
   <PageLayout class="dataset-page">
     <view class="main-content">
       <!-- 页面标题卡片 -->
-      <view class="page-header-card">
-        <view class="header-icon">
-          <u-icon name="server-fill" size="28" color="#14b8a6" />
-        </view>
-        <view class="header-text">
-          <text class="header-title">数据集管理</text>
-          <text class="header-subtitle">浏览和管理图像去雾数据集</text>
-        </view>
-      </view>
+      <PageHeaderCard
+        icon="server-fill"
+        icon-color="#14b8a6"
+        icon-bg="linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%)"
+        title="数据集管理"
+        subtitle="浏览和管理图像去雾数据集"
+      />
 
       <!-- 搜索栏 -->
       <view class="search-wrapper">
@@ -143,6 +141,7 @@
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
+import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import DatasetCard from "./components/DatasetCard.vue";
 import DatasetInfo from "./components/DatasetInfo.vue";
 import ImageGrid from "./components/ImageGrid.vue";
@@ -220,8 +219,7 @@ const loadDatasets = async () => {
       keyword: searchKeyword.value || undefined,
     });
     datasets.value = result.list;
-  } catch (error) {
-    console.error("加载数据集失败:", error);
+  } catch {
     uni.showToast({
       title: "加载失败，请重试",
       icon: "none",
@@ -251,8 +249,7 @@ const loadImages = async (append = false) => {
       images.value = imageItems;
     }
     hasMore.value = currentPage.value * PAGE_SIZE < result.total;
-  } catch (error) {
-    console.error("加载图片失败:", error);
+  } catch {
     uni.showToast({
       title: "加载失败，请重试",
       icon: "none",
@@ -291,8 +288,7 @@ const handleDatasetClick = async (dataset: Dataset) => {
     hasMore.value = true;
 
     await loadImages();
-  } catch (error) {
-    console.error("加载详情失败:", error);
+  } catch {
     uni.showToast({
       title: "加载失败，请重试",
       icon: "none",
@@ -347,58 +343,18 @@ onMounted(() => {
 .dataset-page {
   width: 100%;
   min-height: 100vh;
-  background: #f9fafb;
+  background: $color-bg-primary;
 }
 
 .main-content {
-  padding: 24rpx;
+  padding: $spacing-md;
   padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
 }
 
-/* 页面标题卡片 */
-.page-header-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-}
-
-.header-icon {
-  width: 80rpx;
-  height: 80rpx;
-  background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%);
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.header-title {
-  display: block;
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 8rpx;
-}
-
-.header-subtitle {
-  display: block;
-  font-size: 26rpx;
-  color: #6b7280;
-}
-
 /* 搜索栏 */
 .search-wrapper {
-  margin-bottom: 24rpx;
+  margin-bottom: $spacing-md;
 }
 
 /* 列表视图 */
@@ -409,7 +365,7 @@ onMounted(() => {
 .dataset-list {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: $spacing-md;
 }
 
 /* 详情视图 */
@@ -421,12 +377,12 @@ onMounted(() => {
 .back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 16rpx 24rpx;
-  background: #ffffff;
-  border-radius: 16rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+  gap: $spacing-xs;
+  padding: $spacing-sm $spacing-md;
+  background: $color-white;
+  border-radius: $radius-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-sm;
 
   &:active {
     transform: scale(0.95);
@@ -434,7 +390,7 @@ onMounted(() => {
 }
 
 .back-text {
-  font-size: 28rpx;
+  font-size: $font-md;
   color: #4b5563;
 }
 
@@ -448,9 +404,9 @@ onMounted(() => {
 }
 
 .loading-text {
-  margin-top: 24rpx;
-  font-size: 28rpx;
-  color: #9ca3af;
+  margin-top: $spacing-md;
+  font-size: $font-md;
+  color: $color-text-placeholder;
 }
 
 /* 空状态 */
@@ -462,9 +418,9 @@ onMounted(() => {
 .tips-card {
   background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
   border: 2rpx solid #99f6e4;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-top: 32rpx;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  margin-top: $spacing-lg;
 }
 
 .tips-header {
@@ -487,7 +443,7 @@ onMounted(() => {
 }
 
 .tips-item {
-  font-size: 26rpx;
+  font-size: $font-sm;
   color: #115e59;
   line-height: 1.5;
 }
@@ -497,8 +453,8 @@ onMounted(() => {
   width: 90vw;
   max-width: 800rpx;
   max-height: 90vh;
-  background: #000000;
-  border-radius: 24rpx;
+  background: $color-black;
+  border-radius: $radius-xl;
   overflow: hidden;
 }
 
@@ -506,13 +462,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx;
+  padding: $spacing-md;
   background: rgba(0, 0, 0, 0.8);
 }
 
 .viewer-title {
-  font-size: 28rpx;
-  color: #ffffff;
+  font-size: $font-md;
+  color: $color-white;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -535,17 +491,17 @@ onMounted(() => {
 
 .viewer-image {
   width: 100%;
-  background: #000000;
+  background: $color-black;
 }
 
 .viewer-info {
-  padding: 24rpx;
+  padding: $spacing-md;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
 }
 
 .info-row {
   display: flex;
-  gap: 16rpx;
+  gap: $spacing-sm;
   margin-bottom: 12rpx;
 
   &:last-child {
@@ -554,32 +510,24 @@ onMounted(() => {
 }
 
 .info-label {
-  font-size: 26rpx;
+  font-size: $font-sm;
   color: rgba(255, 255, 255, 0.7);
   flex-shrink: 0;
 }
 
 .info-value {
-  font-size: 26rpx;
-  color: #ffffff;
+  font-size: $font-sm;
+  color: $color-white;
 }
 
 /* 小屏幕适配 */
 @media (max-width: 375px) {
   .main-content {
-    padding: 16rpx;
-  }
-
-  .page-header-card {
-    padding: 24rpx;
-  }
-
-  .header-title {
-    font-size: 32rpx;
+    padding: $spacing-sm;
   }
 
   .tips-card {
-    padding: 24rpx;
+    padding: $spacing-md;
   }
 }
 </style>

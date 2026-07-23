@@ -53,8 +53,7 @@ const handleQuickStart = async () => {
       title: "已加载样例图片",
       icon: "success",
     });
-  } catch (error) {
-    console.error("快速体验加载失败:", error);
+  } catch {
     uni.showToast({
       title: "加载失败，请重试",
       icon: "none",

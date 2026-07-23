@@ -61,8 +61,7 @@ const handleOpenCamera = () => {
         };
 
         emit("capture", imageData);
-      } catch (error) {
-        console.error("处理拍照图片失败:", error);
+      } catch {
         uni.showToast({
           title: "图片处理失败，请重试",
           icon: "none",

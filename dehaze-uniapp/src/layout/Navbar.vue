@@ -43,8 +43,8 @@ onMounted(() => {
   try {
     const sysInfo = uni.getSystemInfoSync();
     statusBarHeight.value = sysInfo.statusBarHeight || 0;
-  } catch (error) {
-    console.warn("[AppNavbar] Failed to get statusBarHeight:", error);
+  } catch {
+    // 获取失败时保持默认值 0
   }
 });
 

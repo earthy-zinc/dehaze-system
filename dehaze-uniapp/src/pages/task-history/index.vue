@@ -1,15 +1,13 @@
 <template>
   <PageLayout class="page">
     <view class="main-content">
-      <view class="page-header-card">
-        <view class="header-icon">
-          <u-icon name="clock" size="28" color="#6366f1" />
-        </view>
-        <view class="header-text">
-          <text class="header-title">处理历史</text>
-          <text class="header-subtitle">查看所有去雾处理记录</text>
-        </view>
-      </view>
+      <PageHeaderCard
+        icon="clock"
+        icon-color="#6366f1"
+        icon-bg="#e0e7ff"
+        title="处理历史"
+        subtitle="查看所有去雾处理记录"
+      />
 
       <!-- 加载状态 -->
       <view v-if="loading" class="loading-container">
@@ -82,6 +80,7 @@
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
+import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
 import type { PredLogVO } from "dehaze-sdk-js";
 import { useProcessingStore } from "@/store/processing";
@@ -108,8 +107,7 @@ async function loadData(page = 1) {
     }
     hasMore.value = records.value.length < result.total;
     currentPage.value = page;
-  } catch (e) {
-    console.warn("加载历史失败:", e);
+  } catch {
     uni.showToast({ title: "加载失败", icon: "none" });
   } finally {
     loading.value = false;
@@ -192,38 +190,6 @@ onMounted(() => loadData());
 .main-content {
   padding: 24rpx;
   padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
-}
-
-.page-header-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: #fff;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-}
-.header-icon {
-  width: 80rpx;
-  height: 80rpx;
-  background: #e0e7ff;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.header-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1f2937;
-  display: block;
-  margin-bottom: 8rpx;
-}
-.header-subtitle {
-  font-size: 26rpx;
-  color: #6b7280;
-  display: block;
 }
 
 .record-list {

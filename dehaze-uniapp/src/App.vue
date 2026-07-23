@@ -25,6 +25,6 @@ onHide(() => {});
 @import "uview-plus/index.scss";
 
 /* 全局样式 */
-@import "@/styles/variables.scss";
+/* variables.scss 已通过 vite.config.ts 的 scss.additionalData 全局注入，无需在此重复导入 */
 @import "@/styles/common.scss";
 </style>

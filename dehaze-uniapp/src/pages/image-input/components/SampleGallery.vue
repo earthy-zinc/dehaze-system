@@ -94,8 +94,7 @@ const handleSampleClick = async (sample: SampleImage) => {
       title: "样例图片加载成功",
       icon: "success",
     });
-  } catch (error) {
-    console.error("加载样例图片失败:", error);
+  } catch {
     uni.showToast({
       title: "加载失败，请重试",
       icon: "none",

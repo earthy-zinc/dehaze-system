@@ -2,15 +2,13 @@
   <PageLayout class="algorithm-select-page">
     <view class="main-content">
       <!-- 页面标题 -->
-      <view class="page-header-card">
-        <view class="header-icon">
-          <u-icon name="gift" size="28" color="#8b5cf6" />
-        </view>
-        <view class="header-text">
-          <text class="header-title">选择算法</text>
-          <text class="header-subtitle">选择合适的去雾算法处理图片</text>
-        </view>
-      </view>
+      <PageHeaderCard
+        icon="gift"
+        icon-color="#8b5cf6"
+        icon-bg="linear-gradient(135deg, #ede9fe, #ddd6fe)"
+        title="选择算法"
+        subtitle="选择合适的去雾算法处理图片"
+      />
 
       <!-- 搜索框 -->
       <view class="search-bar">
@@ -193,6 +191,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
+import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore } from "@/store/processing";
 import { AlgorithmAPI } from "dehaze-sdk-js";
 import type { Algorithm } from "dehaze-sdk-js";
@@ -333,44 +332,6 @@ onMounted(() => {
   padding: 24rpx;
   padding-bottom: calc(180rpx + constant(safe-area-inset-bottom));
   padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
-}
-
-/* 页面标题卡片 */
-.page-header-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-}
-
-.header-icon {
-  width: 80rpx;
-  height: 80rpx;
-  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.header-text {
-  flex: 1;
-}
-.header-title {
-  display: block;
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 8rpx;
-}
-.header-subtitle {
-  display: block;
-  font-size: 26rpx;
-  color: #6b7280;
 }
 
 /* 搜索框 */

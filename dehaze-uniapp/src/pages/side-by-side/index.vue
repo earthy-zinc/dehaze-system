@@ -1,15 +1,14 @@
 <template>
   <PageLayout class="page">
     <view class="main-content">
-      <view class="page-header-card">
-        <view class="header-icon">
-          <u-icon name="grid" size="28" color="#3b82f6" />
-        </view>
-        <view class="header-text">
-          <text class="header-title">并排对比</text>
-          <text class="header-subtitle">左右滑动查看去雾前后差异</text>
-        </view>
-      </view>
+      <PageHeaderCard
+        icon="grid"
+        icon-color="#3b82f6"
+        icon-bg="#dbeafe"
+        title="并排对比"
+        subtitle="左右滑动查看去雾前后差异"
+        variant="dark"
+      />
 
       <!-- 对比容器 -->
       <view v-if="hasImages" class="compare-wrapper">
@@ -78,6 +77,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
+import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore } from "@/store/processing";
 
 const store = useProcessingStore();
@@ -127,39 +127,6 @@ onMounted(() => {
 }
 .main-content {
   padding: 24rpx;
-}
-.page-header-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-}
-.header-icon {
-  width: 80rpx;
-  height: 80rpx;
-  background: #dbeafe;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.header-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #fff;
-}
-.header-subtitle {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.6);
-}
-.page-header-card .header-title {
-  color: #1f2937;
-}
-.page-header-card .header-subtitle {
-  color: #6b7280;
 }
 
 .compare-wrapper {

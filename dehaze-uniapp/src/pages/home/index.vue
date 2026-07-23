@@ -158,7 +158,7 @@ function handleRecommendSelect() {
 .home-page {
   width: 100%;
   min-height: 100vh;
-  background: #ffffff;
+  background: $color-white;
 }
 
 .main-content {
@@ -169,13 +169,13 @@ function handleRecommendSelect() {
 
 .tech-specs-section {
   padding: 80rpx 40rpx;
-  background: #ffffff;
+  background: $color-white;
   width: 100%;
 
   .specs-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 32rpx;
+    gap: $spacing-lg;
     max-width: 100%;
     margin: 0 auto;
   }
@@ -184,7 +184,7 @@ function handleRecommendSelect() {
 @media screen and (max-width: 768rpx) {
   .tech-specs-section .specs-grid {
     grid-template-columns: 1fr;
-    gap: 24rpx;
+    gap: $spacing-md;
   }
 }
 </style>

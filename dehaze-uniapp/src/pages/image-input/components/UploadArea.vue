@@ -80,8 +80,8 @@ const handleChooseImage = () => {
 
           try {
             finalPath = await compressImage(tempFilePath);
-          } catch (e) {
-            console.warn("压缩失败，使用原图:", e);
+          } catch {
+            // 压缩失败时回退使用原图
           }
         }
 
@@ -108,8 +108,7 @@ const handleChooseImage = () => {
           imageData.remoteUrl = fileInfo.url;
 
           uni.showToast({ title: "上传成功", icon: "success" });
-        } catch (uploadErr) {
-          console.error("上传失败，使用本地图片:", uploadErr);
+        } catch {
           uni.showToast({
             title: "上传失败，将使用本地图片处理",
             icon: "none",
@@ -119,8 +118,7 @@ const handleChooseImage = () => {
 
         processingStore.setImage(imageData);
         emit("select", imageData);
-      } catch (error) {
-        console.error("处理图片失败:", error);
+      } catch {
         uni.showToast({
           title: "图片处理失败，请重试",
           icon: "none",

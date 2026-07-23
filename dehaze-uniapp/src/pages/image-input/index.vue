@@ -2,15 +2,13 @@
   <PageLayout class="image-input-page">
     <view class="main-content">
       <!-- 页面标题卡片 -->
-      <view class="page-header-card">
-        <view class="header-icon">
-          <u-icon name="camera" size="28" color="#3b82f6" />
-        </view>
-        <view class="header-text">
-          <text class="header-title">图像输入</text>
-          <text class="header-subtitle">选择图片开始去雾处理</text>
-        </view>
-      </view>
+      <PageHeaderCard
+        icon="camera"
+        icon-color="#3b82f6"
+        icon-bg="linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)"
+        title="图像输入"
+        subtitle="选择图片开始去雾处理"
+      />
 
       <!-- 输入方式选择 -->
       <view class="input-methods">
@@ -84,6 +82,7 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import PageLayout from "@/layout/index.vue";
+import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore } from "@/store/processing";
 import InputMethodCard from "./components/InputMethodCard.vue";
 import UploadArea from "./components/UploadArea.vue";
@@ -179,46 +178,6 @@ const handleNextStep = () => {
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
 }
 
-/* 页面标题卡片 */
-.page-header-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-}
-
-.header-icon {
-  width: 80rpx;
-  height: 80rpx;
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.header-title {
-  display: block;
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 8rpx;
-}
-
-.header-subtitle {
-  display: block;
-  font-size: 26rpx;
-  color: #6b7280;
-}
-
 /* 输入方式选择 */
 .input-methods {
   margin-bottom: 24rpx;
@@ -285,14 +244,6 @@ const handleNextStep = () => {
 @media (max-width: 375px) {
   .main-content {
     padding: 16rpx;
-  }
-
-  .page-header-card {
-    padding: 24rpx;
-  }
-
-  .header-title {
-    font-size: 32rpx;
   }
 
   .content-section {
