@@ -8,7 +8,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.Toast;
+import com.pei.dehaze.utils.ToastUtils;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -54,9 +54,9 @@ public class FileListActivity extends AppCompatActivity {
     private final ActivityResultLauncher<String> storagePermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
                 if (granted) {
-                    Toast.makeText(this, "存储权限已授予", Toast.LENGTH_SHORT).show();
+                    ToastUtils.showShort(this, "存储权限已授予");
                 } else {
-                    Toast.makeText(this, "需要存储权限才能下载文件", Toast.LENGTH_SHORT).show();
+                    ToastUtils.showShort(this, "需要存储权限才能下载文件");
                 }
             });
 
@@ -146,13 +146,13 @@ public class FileListActivity extends AppCompatActivity {
 
         fileViewModel.getError().observe(this, msg -> {
             if (!TextUtils.isEmpty(msg)) {
-                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, msg);
             }
         });
 
         fileViewModel.getOperationResult().observe(this, msg -> {
             if (!TextUtils.isEmpty(msg)) {
-                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, msg);
             }
         });
 
@@ -220,7 +220,7 @@ public class FileListActivity extends AppCompatActivity {
     private void uploadFile(Uri uri) {
         File tempFile = UriUtils.copyToCache(this, uri);
         if (tempFile == null) {
-            Toast.makeText(this, "无法读取所选文件", Toast.LENGTH_SHORT).show();
+            ToastUtils.showShort(this, "无法读取所选文件");
             return;
         }
         fileViewModel.uploadFile(tempFile);

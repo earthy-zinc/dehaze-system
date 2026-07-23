@@ -7,7 +7,7 @@ import android.view.View;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
-import android.widget.Toast;
+import com.pei.dehaze.utils.ToastUtils;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -93,7 +93,7 @@ public class DictItemListActivity extends AppCompatActivity {
             if (page > 1) {
                 dictItemViewModel.loadPage(page - 1);
             } else {
-                Toast.makeText(this, "已经是第一页", Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, "已经是第一页");
             }
         });
 
@@ -124,13 +124,13 @@ public class DictItemListActivity extends AppCompatActivity {
 
         dictItemViewModel.getError().observe(this, errorMsg -> {
             if (!TextUtils.isEmpty(errorMsg)) {
-                Toast.makeText(this, errorMsg, Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, errorMsg);
             }
         });
 
         dictItemViewModel.getOperationResult().observe(this, result -> {
             if (!TextUtils.isEmpty(result)) {
-                Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, result);
             }
         });
 
@@ -185,17 +185,17 @@ public class DictItemListActivity extends AppCompatActivity {
                 .setOnClickListener(v -> {
                     String name = StringUtils.getText(etName);
                     if (TextUtils.isEmpty(name)) {
-                        Toast.makeText(this, "字典标签不能为空", Toast.LENGTH_SHORT).show();
+                        ToastUtils.showShort(this, "字典标签不能为空");
                         return;
                     }
                     String value = StringUtils.getText(etValue);
                     if (TextUtils.isEmpty(value)) {
-                        Toast.makeText(this, "字典键值不能为空", Toast.LENGTH_SHORT).show();
+                        ToastUtils.showShort(this, "字典键值不能为空");
                         return;
                     }
                     String sortStr = StringUtils.getText(etSort);
                     if (TextUtils.isEmpty(sortStr)) {
-                        Toast.makeText(this, "排序不能为空", Toast.LENGTH_SHORT).show();
+                        ToastUtils.showShort(this, "排序不能为空");
                         return;
                     }
 

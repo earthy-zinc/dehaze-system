@@ -1,6 +1,6 @@
 package com.pei.dehaze.ui.dataset;
 
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -166,7 +166,7 @@ public class DatasetDetailFragment extends Fragment {
         tvStatHazy = view.findViewById(R.id.tv_stat_hazy);
         tvStatDistribution = view.findViewById(R.id.tv_stat_distribution);
 
-        toolbar.setNavigationOnClickListener(v -> requireActivity().onBackPressed());
+        toolbar.setNavigationOnClickListener(v -> requireActivity().getOnBackPressedDispatcher().onBackPressed());
 
         imageAdapter = new DatasetImageAdapter();
         recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));

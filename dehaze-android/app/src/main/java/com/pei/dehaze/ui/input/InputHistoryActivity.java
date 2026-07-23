@@ -1,6 +1,6 @@
 package com.pei.dehaze.ui.input;
 
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;

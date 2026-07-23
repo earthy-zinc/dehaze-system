@@ -1,13 +1,12 @@
 package com.pei.dehaze.ui.presentation;
 
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -42,6 +41,7 @@ import com.pei.dehaze.ui.presentation.viewmodel.PresentationViewModel;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.utils.UriUtils;
+import com.pei.dehaze.utils.ViewUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -204,14 +204,7 @@ public class PresentationActivity extends AppCompatActivity {
         if (options != null) {
             algorithmOptions.addAll(options);
         }
-        List<String> labels = new ArrayList<>();
-        for (Option opt : algorithmOptions) {
-            labels.add(opt.getLabel());
-        }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, labels);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerAlgorithm.setAdapter(adapter);
+        ViewUtils.updateAlgorithmSpinner(spinnerAlgorithm, algorithmOptions);
     }
 
     private void showAlgorithmInfo(Algorithm algorithm) {
@@ -268,6 +261,7 @@ public class PresentationActivity extends AppCompatActivity {
 
         private String originalUrl;
         private String resultUrl;
+        private final ImagePageFragment[] fragments = new ImagePageFragment[2];
 
         public ResultPagerAdapter(@NonNull FragmentActivity fragmentActivity) {
             super(fragmentActivity);
@@ -275,19 +269,31 @@ public class PresentationActivity extends AppCompatActivity {
 
         public void setOriginalUrl(String url) {
             this.originalUrl = url;
-            notifyItemChanged(0);
+            ImagePageFragment fragment = fragments[0];
+            if (fragment != null) {
+                fragment.updateUrl(url);
+            } else {
+                notifyItemChanged(0);
+            }
         }
 
         public void setResultUrl(String url) {
             this.resultUrl = url;
-            notifyItemChanged(1);
+            ImagePageFragment fragment = fragments[1];
+            if (fragment != null) {
+                fragment.updateUrl(url);
+            } else {
+                notifyItemChanged(1);
+            }
         }
 
         @NonNull
         @Override
         public Fragment createFragment(int position) {
             String url = position == 0 ? originalUrl : resultUrl;
-            return ImagePageFragment.newInstance(url);
+            ImagePageFragment fragment = ImagePageFragment.newInstance(url);
+            fragments[position] = fragment;
+            return fragment;
         }
 
         @Override
@@ -303,6 +309,9 @@ public class PresentationActivity extends AppCompatActivity {
 
         private static final String ARG_URL = "image_url";
 
+        private ImageView imageView;
+        private String currentUrl;
+
         public static ImagePageFragment newInstance(String url) {
             ImagePageFragment fragment = new ImagePageFragment();
             Bundle args = new Bundle();
@@ -315,9 +324,29 @@ public class PresentationActivity extends AppCompatActivity {
         public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState) {
             View view = inflater.inflate(R.layout.item_image_page, container, false);
-            ImageView imageView = view.findViewById(R.id.iv_page_image);
-            Bundle args = getArguments();
-            String url = args != null ? args.getString(ARG_URL) : null;
+            imageView = view.findViewById(R.id.iv_page_image);
+            if (currentUrl == null) {
+                Bundle args = getArguments();
+                currentUrl = args != null ? args.getString(ARG_URL) : null;
+            }
+            loadImage(currentUrl);
+            return view;
+        }
+
+        @Override
+        public void onDestroyView() {
+            super.onDestroyView();
+            imageView = null;
+        }
+
+        public void updateUrl(String url) {
+            currentUrl = url;
+            if (imageView != null) {
+                loadImage(url);
+            }
+        }
+
+        private void loadImage(String url) {
             if (url != null && !url.isEmpty()) {
                 Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(url))
                         .placeholder(R.drawable.ic_image)
@@ -326,7 +355,6 @@ public class PresentationActivity extends AppCompatActivity {
             } else {
                 imageView.setImageResource(R.drawable.ic_image);
             }
-            return view;
         }
     }
 }

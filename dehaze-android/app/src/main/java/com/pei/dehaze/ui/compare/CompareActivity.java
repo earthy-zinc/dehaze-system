@@ -1,11 +1,10 @@
 package com.pei.dehaze.ui.compare;
 
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
@@ -35,6 +34,7 @@ import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.utils.UriUtils;
+import com.pei.dehaze.utils.ViewUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -189,14 +189,7 @@ public class CompareActivity extends AppCompatActivity {
         if (options != null) {
             algorithmOptions.addAll(options);
         }
-        List<String> labels = new ArrayList<>();
-        for (Option opt : algorithmOptions) {
-            labels.add(opt.getLabel());
-        }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, labels);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerAlgorithm.setAdapter(adapter);
+        ViewUtils.updateAlgorithmSpinner(spinnerAlgorithm, algorithmOptions);
     }
 
     private void onPredictionResult(PredResult result) {

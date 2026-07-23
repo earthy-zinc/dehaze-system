@@ -17,13 +17,9 @@ mockitoInline = "5.2.0"
 navigationFragment = "2.6.0"
 navigationUi = "2.6.0"
 gridlayout = "1.0.0"
-# Room 相关依赖
 orgJacocoCore = "0.8.14"
 retrofit = "3.0.0"
 robolectric = "4.16"
-room = "2.6.1"
-# DataStore 相关依赖
-datastore = "1.1.1"
 rules = "1.5.0"
 runner = "1.5.2"
 swiperefreshlayout = "1.1.0"
@@ -47,16 +43,10 @@ mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockito
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
 navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigationUi" }
 gridlayout = { group = "androidx.gridlayout", name = "gridlayout", version.ref = "gridlayout" }
-# Room 相关库定义
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "loggingInterceptor" }
 org-jacoco-core = { module = "org.jacoco:org.jacoco.core", version.ref = "orgJacocoCore" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
-# DataStore 相关库定义
-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 rules = { module = "androidx.test:rules", version.ref = "rules" }
 runner = { module = "androidx.test:runner", version.ref = "runner" }
 swiperefreshlayout = { module = "androidx.swiperefreshlayout:swiperefreshlayout", version.ref = "swiperefreshlayout" }

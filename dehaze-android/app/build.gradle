@@ -69,15 +69,7 @@ dependencies {
     
     // 添加 SwipeRefreshLayout
     implementation libs.swiperefreshlayout
-    
-    // Room数据库依赖
-    implementation libs.room.runtime
-    implementation libs.room.ktx
-    annotationProcessor libs.room.compiler
-    
-    // DataStore依赖（替代SharedPreferences）
-    implementation libs.datastore.preferences
-    
+
     // Retrofit依赖
     implementation libs.retrofit
     implementation libs.converter.gson

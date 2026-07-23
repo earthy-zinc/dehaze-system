@@ -34,7 +34,7 @@ import com.pei.dehaze.ui.algorithm_select.adapter.AlgorithmRecommendAdapter;
 import com.pei.dehaze.ui.algorithm_select.viewmodel.AlgorithmSelectViewModel;
 import com.pei.dehaze.utils.ToastUtils;
 
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 
 import java.util.ArrayList;
 import java.util.List;

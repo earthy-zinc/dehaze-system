@@ -6,7 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.Toast;
+import com.pei.dehaze.utils.ToastUtils;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -103,13 +103,13 @@ public class MenuListActivity extends AppCompatActivity {
 
         menuViewModel.getError().observe(this, errorMsg -> {
             if (!TextUtils.isEmpty(errorMsg)) {
-                Toast.makeText(this, errorMsg, Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, errorMsg);
             }
         });
 
         menuViewModel.getOperationResult().observe(this, result -> {
             if (!TextUtils.isEmpty(result)) {
-                Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
+                ToastUtils.showShort(this, result);
             }
         });
 
@@ -172,12 +172,12 @@ public class MenuListActivity extends AppCompatActivity {
                 .setOnClickListener(v -> {
                     String name = StringUtils.getText(etName);
                     if (TextUtils.isEmpty(name)) {
-                        Toast.makeText(this, "菜单名称不能为空", Toast.LENGTH_SHORT).show();
+                        ToastUtils.showShort(this, "菜单名称不能为空");
                         return;
                     }
                     String sortStr = StringUtils.getText(etSort);
                     if (TextUtils.isEmpty(sortStr)) {
-                        Toast.makeText(this, "排序不能为空", Toast.LENGTH_SHORT).show();
+                        ToastUtils.showShort(this, "排序不能为空");
                         return;
                     }
 
