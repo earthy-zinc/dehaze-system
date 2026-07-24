@@ -97,7 +97,7 @@ class AlgorithmService:
             path=data.get("path", ""),
             import_path=data.get("importPath", ""),
             description=data.get("description", ""),
-            status=1,  # StatusEnum.ENABLE，对齐 Java addAlgorithm
+            status=data.get("status", 0),
             version=data.get("version"),
         )
 

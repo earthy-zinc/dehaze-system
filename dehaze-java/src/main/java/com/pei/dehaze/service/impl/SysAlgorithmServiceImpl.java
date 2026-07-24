@@ -8,7 +8,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.AlgorithmStatusEnum;
-import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.ResultCode;
@@ -99,7 +98,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     public List<Option<Long>> getOption() {
         List<SysAlgorithm> algorithms = this.list(
                 new LambdaQueryWrapper<SysAlgorithm>()
-                        .eq(SysAlgorithm::getStatus, StatusEnum.ENABLE.getValue()));
+                        .eq(SysAlgorithm::getStatus, AlgorithmStatusEnum.PUBLISHED.getValue()));
         // 使用 Map 分组，避免 O(n²) 递归
         Map<Long, List<SysAlgorithm>> parentToChildrenMap = algorithms.stream()
                 .collect(Collectors.groupingBy(SysAlgorithm::getParentId));
@@ -118,7 +117,6 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     @Override
     public Long addAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
-        sysAlgorithm.setStatus(StatusEnum.ENABLE.getValue());
         if (FileUtil.isFile(sysAlgorithm.getPath())) {
             sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
         }

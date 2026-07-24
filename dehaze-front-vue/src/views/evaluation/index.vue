@@ -5,7 +5,12 @@ import ParallelImageUpload from "@/components/ParallelImageUpload/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { Arrayable } from "@vueuse/core";
-import { Algorithm, AlgorithmAPI, EvalResult, ModelAPI } from "dehaze-sdk-js";
+import { Algorithm, AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
+
+interface MetricItem {
+  label: string;
+  value: number | string;
+}
 import { Setting } from "@element-plus/icons-vue";
 import * as echarts from "echarts";
 
@@ -40,7 +45,7 @@ const state = reactive({
 });
 
 const algorithmInfo = ref<Algorithm | null>(null);
-const metrics = ref<EvalResult[]>();
+const metrics = ref<MetricItem[]>();
 
 const { imageInfo } = toRefs(imageShowStore);
 
@@ -135,11 +140,15 @@ async function handleEvaluation() {
       modelId.value
     );
 
-    metrics.value = await ModelAPI.evaluation({
-      modelId: modelId.value,
+    const result = await ModelAPI.evaluate({
+      algorithmId: modelId.value,
       predUrl: pred.value!.url,
       gtUrl: gt.value!.url,
     });
+    metrics.value = Object.entries(result.metrics).map(([label, value]) => ({
+      label,
+      value,
+    }));
     showResult.value = true;
   } catch (e: any) {
     ElMessage.error("评估失败：" + (e.message || "未知错误"));
@@ -159,9 +168,7 @@ const radarIndicators = computed(() => {
   if (!metrics.value) return [];
   return metrics.value.map((m) => {
     const v = Number(m.value);
-    const baseline = m.baseline ? Number(m.baseline) : 0;
-    // 取值与基准的较大者作为参考，再留出 30% 余量
-    const ref = Math.max(v, baseline, 1);
+    const ref = Math.max(v, 1);
     return { name: m.label, max: ref * 1.3 };
   });
 });
@@ -173,28 +180,10 @@ function renderRadarChart() {
     radarChart = markRaw(echarts.init(radarChartRef.value));
   }
   const currentValues = metrics.value.map((m) => Number(m.value));
-  const baselineValues = metrics.value.map((m) =>
-    m.baseline ? Number(m.baseline) : 0
-  );
-  const hasBaseline = metrics.value.some((m) => m.baseline);
-  const series: any[] = [
-    {
-      value: currentValues,
-      name: "本次评估",
-      areaStyle: { opacity: 0.2 },
-    },
-  ];
-  if (hasBaseline) {
-    series.push({
-      value: baselineValues,
-      name: "基准值",
-      areaStyle: { opacity: 0.1 },
-    });
-  }
   radarChart.setOption({
     tooltip: {},
     legend: {
-      data: hasBaseline ? ["本次评估", "基准值"] : ["本次评估"],
+      data: ["本次评估"],
       bottom: 0,
     },
     radar: {
@@ -204,7 +193,13 @@ function renderRadarChart() {
     series: [
       {
         type: "radar",
-        data: series,
+        data: [
+          {
+            value: currentValues,
+            name: "本次评估",
+            areaStyle: { opacity: 0.2 },
+          },
+        ],
       },
     ],
   });
@@ -218,30 +213,10 @@ function renderBarChart() {
   }
   const labels = metrics.value.map((m) => m.label);
   const values = metrics.value.map((m) => Number(m.value));
-  const baselines = metrics.value.map((m) =>
-    m.baseline ? Number(m.baseline) : 0
-  );
-  const hasBaseline = metrics.value.some((m) => m.baseline);
-  const series: any[] = [
-    {
-      name: "本次评估",
-      type: "bar",
-      data: values,
-      itemStyle: { color: "#409EFF" },
-    },
-  ];
-  if (hasBaseline) {
-    series.push({
-      name: "基准值",
-      type: "bar",
-      data: baselines,
-      itemStyle: { color: "#E6A23C" },
-    });
-  }
   barChart.setOption({
     tooltip: { trigger: "axis" },
     legend: {
-      data: hasBaseline ? ["本次评估", "基准值"] : ["本次评估"],
+      data: ["本次评估"],
       bottom: 0,
     },
     grid: { left: "3%", right: "4%", bottom: "10%", containLabel: true },
@@ -251,7 +226,14 @@ function renderBarChart() {
       axisLabel: { interval: 0, rotate: 0 },
     },
     yAxis: { type: "value" },
-    series,
+    series: [
+      {
+        name: "本次评估",
+        type: "bar",
+        data: values,
+        itemStyle: { color: "#409EFF" },
+      },
+    ],
   });
 }
 
@@ -323,11 +305,7 @@ function handleExportReport() {
   content += "========================================\n";
   content += "一、评估指标\n";
   metrics.value.forEach((m) => {
-    content += `  ${m.label}：${Number(m.value).toFixed(4)}`;
-    if (m.better === "higher") content += "（越高越好）";
-    else if (m.better === "lower") content += "（越低越好）";
-    if (m.baseline) content += `，基准值：${m.baseline}`;
-    content += "\n";
+    content += `  ${m.label}：${Number(m.value).toFixed(4)}\n`;
   });
   content += "========================================\n";
   content += "二、处理参数\n";

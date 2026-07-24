@@ -72,7 +72,7 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         db: AsyncSession,
     ) -> list[dict]:
         """获取算法下拉选项列表（树形结构）"""
-        stmt = select(SysAlgorithm).where(SysAlgorithm.status == 1)
+        stmt = select(SysAlgorithm).where(SysAlgorithm.status == AlgorithmStatus.PUBLISHED)
         result = await db.execute(stmt)
         algorithms = result.scalars().all()
 

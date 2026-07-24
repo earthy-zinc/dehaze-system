@@ -243,9 +243,9 @@ const Dehaze: React.FC = () => {
     startProgressSimulation();
 
     try {
-      const response = await ModelAPI.prediction({
-        modelId: selectedModel,
-        url: urls[0].url,
+      const response = await ModelAPI.predict({
+        algorithmId: selectedModel,
+        imageUrl: urls[0].url,
       });
 
       // 已取消则忽略结果
@@ -261,13 +261,13 @@ const Dehaze: React.FC = () => {
 
       dispatch(
         setImageUrl({
-          url: changeUrl(response.hazeUrl),
+          url: changeUrl(urls[0].url),
           type: ImageTypeEnum.HAZE,
         })
       );
       dispatch(
         setImageUrl({
-          url: changeUrl(response.predUrl),
+          url: changeUrl(response.resultUrl),
           type: ImageTypeEnum.PRED,
         })
       );
@@ -375,9 +375,9 @@ const Dehaze: React.FC = () => {
         if (batchCancelRef.current) break;
 
         // 调用预测接口
-        const predRes = await ModelAPI.prediction({
-          modelId: selectedModel,
-          url: changeUrl(uploadRes.url),
+        const predRes = await ModelAPI.predict({
+          algorithmId: selectedModel,
+          imageUrl: changeUrl(uploadRes.url),
         });
         if (batchCancelRef.current) break;
 
@@ -399,7 +399,7 @@ const Dehaze: React.FC = () => {
                   ...t,
                   status: "completed",
                   progress: 100,
-                  resultUrl: changeUrl(predRes.predUrl),
+                  resultUrl: changeUrl(predRes.resultUrl),
                 }
               : t
           )

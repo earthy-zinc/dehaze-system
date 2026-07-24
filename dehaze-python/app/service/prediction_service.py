@@ -284,7 +284,6 @@ class PredictionService:
         # 处理本地文件路径 /api/v1/files/download/... → upload/...
         if url.startswith("/api/v1/files/download/"):
             local_path = url[len("/api/v1/files/download/"):]
-            # 尝试相对于 upload 目录
             full_path = Path("upload") / local_path
             if full_path.exists():
                 loop = asyncio.get_running_loop()

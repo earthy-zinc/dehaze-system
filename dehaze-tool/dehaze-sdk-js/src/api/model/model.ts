@@ -1,34 +1,4 @@
-/** 模型预测参数 */
-export interface PredParam {
-  modelId: number;
-  url: string;
-  modelParam?: Object;
-}
-
-/** 模型预测结果 */
-export interface PredResult {
-  predUrl: string;
-  hazeUrl: string;
-}
-
-/** 评价参数 */
-export interface EvalParam {
-  modelId: number;
-  predUrl: string;
-  gtUrl?: string;
-}
-
-/** 评价结果 */
-export interface EvalResult {
-  id: number;
-  label: string;
-  value: string;
-  baseline?: string;
-  better?: "higher" | "lower";
-  description?: string;
-}
-
-// ===== 新预测/评估 API 类型（对应 Java PredictionController/EvaluationController） =====
+// ===== 预测/评估 API 类型（对应 Java PredictionController/EvaluationController） =====
 
 /** 预测请求 */
 export interface PredictionForm {

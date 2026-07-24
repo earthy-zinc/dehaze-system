@@ -26,12 +26,7 @@ const selectedModel = ref<number>();
 
 // 当前激活的页面（单值状态机，替代多个布尔标志）
 type PageName =
-  | "camera"
-  | "singleImage"
-  | "example"
-  | "overlap"
-  | "loading"
-  | "batch";
+  "camera" | "singleImage" | "example" | "overlap" | "loading" | "batch";
 const activePage = ref<PageName>("example");
 
 const disableMore = computed(() => activePage.value !== "overlap");
@@ -181,19 +176,17 @@ async function handleGenerateImage() {
   activePage.value = "loading";
   // 启动模拟进度
   startProgressSimulation(95);
-  ModelAPI.prediction({
-    modelId,
-    url: imgUrl,
-    modelParam: dehazeParams.value,
+  ModelAPI.predict({
+    algorithmId: modelId,
+    imageUrl: imgUrl,
+    params: dehazeParams.value ? JSON.stringify(dehazeParams.value) : undefined,
   })
     .then(async (res) => {
       if (cancelFlag) return;
-      // 进入保存阶段
       progress.value = 95;
       stopProgressSimulation();
-      // 获取生成后的图片url
-      imageShowStore.setImageUrl(changeUrl(res.hazeUrl), ImageTypeEnum.HAZE);
-      imageShowStore.setImageUrl(changeUrl(res.predUrl), ImageTypeEnum.PRED);
+      imageShowStore.setImageUrl(changeUrl(imgUrl), ImageTypeEnum.HAZE);
+      imageShowStore.setImageUrl(changeUrl(res.resultUrl), ImageTypeEnum.PRED);
       if (cleanUrl.value) {
         try {
           const cleanRes = await handleCleanUrl(cleanUrl.value, modelId);
@@ -324,12 +317,14 @@ async function handleStartBatch() {
       // 先上传原图
       const uploadRes = await FileAPI.upload(task.file, modelId);
       task.hazeUrl = changeUrl(uploadRes.url);
-      const predRes = await ModelAPI.prediction({
-        modelId,
-        url: task.hazeUrl,
-        modelParam: dehazeParams.value,
+      const predRes = await ModelAPI.predict({
+        algorithmId: modelId,
+        imageUrl: task.hazeUrl,
+        params: dehazeParams.value
+          ? JSON.stringify(dehazeParams.value)
+          : undefined,
       });
-      task.resultUrl = changeUrl(predRes.predUrl);
+      task.resultUrl = changeUrl(predRes.resultUrl);
       task.progress = 100;
       task.status = "success";
     } catch (e: any) {
@@ -536,7 +531,7 @@ onUnmounted(() => {
       </template>
     </AlgorithmToolBar>
     <!-- 右侧功能栏 -->
-    <el-card class="flex-center">
+    <el-card class="flex-center example-img-wrap">
       <!-- 样例图片显示 -->
       <ExampleImageSelect
         v-if="activePage === 'example'"
@@ -891,6 +886,14 @@ onUnmounted(() => {
       width: calc(100vw - 6vw);
       height: calc(100vh - $navbar-height - 40px);
     }
+  }
+}
+</style>
+
+<style lang="scss">
+.example-img-wrap {
+  .el-card__body {
+    overflow: unset;
   }
 }
 </style>

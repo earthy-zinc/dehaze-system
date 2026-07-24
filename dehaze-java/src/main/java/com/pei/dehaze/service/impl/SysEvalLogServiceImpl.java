@@ -22,6 +22,7 @@ import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.client.PythonAlgorithmClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -48,6 +49,9 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
     private final PythonAlgorithmClient pythonClient;
     private final SysFileService sysFileService;
 
+    @Value("${file.datasetBaseUrl}")
+    private String datasetBaseUrl;
+
     @Override
     public EvaluationResultVO evaluate(EvaluationForm form) {
         // 1. 校验算法存在
@@ -70,8 +74,8 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         // 3. 调用 Python 评估服务（事务外远程调用，不占用数据库连接）
         long startTime = System.currentTimeMillis();
         try {
-            String predUrl = form.getPredUrl() != null ? form.getPredUrl() : resolveFileUrl(form.getPredFileId(), "pred");
-            String gtUrl = form.getGtUrl() != null ? form.getGtUrl() : resolveFileUrl(form.getGtFileId(), "gt");
+            String predUrl = toAbsoluteUrl(form.getPredUrl() != null ? form.getPredUrl() : resolveFileUrl(form.getPredFileId(), "pred"));
+            String gtUrl = toAbsoluteUrl(form.getGtUrl() != null ? form.getGtUrl() : resolveFileUrl(form.getGtFileId(), "gt"));
 
             JSONObject result = pythonClient.evaluate(
                     form.getAlgorithmId(), predUrl, gtUrl);

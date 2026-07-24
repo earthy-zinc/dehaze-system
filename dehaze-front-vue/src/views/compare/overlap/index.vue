@@ -3,7 +3,12 @@ import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { Arrayable } from "@vueuse/core";
-import { Algorithm, AlgorithmAPI, EvalResult, ModelAPI } from "dehaze-sdk-js";
+import { Algorithm, AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
+
+interface MetricItem {
+  label: string;
+  value: number | string;
+}
 import { Setting } from "@element-plus/icons-vue";
 
 const imageShowStore = useImageShowStore();
@@ -28,7 +33,7 @@ const state = reactive({
 });
 
 const algorithmInfo = ref<Algorithm | null>(null);
-const metrics = ref<EvalResult[]>();
+const metrics = ref<MetricItem[]>();
 
 const { imageInfo } = toRefs(imageShowStore);
 
@@ -108,13 +113,16 @@ onMounted(() => {
       ElMessage.error("获取算法信息失败：" + (e.message || "未知错误"));
     });
 
-  ModelAPI.evaluation({
-    modelId: modelId.value,
+  ModelAPI.evaluate({
+    algorithmId: modelId.value,
     predUrl: pred.value.url,
     gtUrl: gt.value.url,
   })
     .then((res) => {
-      metrics.value = res;
+      metrics.value = Object.entries(res.metrics).map(([label, value]) => ({
+        label,
+        value,
+      }));
     })
     .catch((e: any) => {
       ElMessage.error("评估失败：" + (e.message || "未知错误"));
@@ -259,21 +267,11 @@ onMounted(() => {
           <h3 class="text-center">指标评价</h3>
           <el-table :data="metrics">
             <el-table-column :width="90" fixed label="指标" prop="label" />
-            <el-table-column :width="125" align="center" label="值">
+            <el-table-column :width="160" align="center" label="值">
               <template #default="scope">
-                <span
-                  >{{ Number(scope.row.value).toFixed(4) }}&nbsp;&nbsp;</span
-                >
-
-                <span v-if="scope.row.better === 'higher'">
-                  <el-tag type="success"> ↑ </el-tag>
-                </span>
-                <span v-else-if="scope.row.better === 'lower'">
-                  <el-tag type="danger"> ↓ </el-tag>
-                </span>
+                {{ Number(scope.row.value).toFixed(4) }}
               </template>
             </el-table-column>
-            <el-table-column :min-width="300" label="描述" prop="description" />
           </el-table>
         </div>
       </div>

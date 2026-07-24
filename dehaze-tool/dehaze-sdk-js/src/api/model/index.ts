@@ -3,39 +3,15 @@ import request from "@/utils/request";
 import {
   EvalLogQuery,
   EvalLogVO,
-  EvalParam,
-  EvalResult,
   EvaluationForm,
   EvaluationResultVO,
   PredLogQuery,
   PredLogVO,
-  PredParam,
-  PredResult,
   PredictionForm,
   PredictionResultVO,
 } from "./model";
 
 class ModelAPI {
-  /** [旧] 模型预测 */
-  static prediction(data: PredParam) {
-    return request<any, PredResult>({
-      url: "/model/prediction",
-      method: "post",
-      data,
-    });
-  }
-
-  /** [旧] 模型评估 */
-  static evaluation(data: EvalParam) {
-    return request<any, EvalResult[]>({
-      url: "/model/evaluation",
-      method: "post",
-      data,
-    });
-  }
-
-  // ===== 新预测 API（对应 Java PredictionController） =====
-
   /** 执行模型预测（去雾处理） */
   static predict(data: PredictionForm) {
     return request<any, PredictionResultVO>({
@@ -61,8 +37,6 @@ class ModelAPI {
       params: query,
     });
   }
-
-  // ===== 新评估 API（对应 Java EvaluationController） =====
 
   /** 执行效果评估（PSNR/SSIM/LPIPS等） */
   static evaluate(data: EvaluationForm) {

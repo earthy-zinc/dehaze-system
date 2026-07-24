@@ -18,12 +18,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import styles from "./index.module.scss";
 
 type ActivePage =
-  | "singleImage"
-  | "example"
-  | "loading"
-  | "overlap"
-  | "effect"
-  | "camera";
+  "singleImage" | "example" | "loading" | "overlap" | "effect" | "camera";
 
 export default function Overlap() {
   const [image1, setImage1] = useState(
@@ -99,13 +94,12 @@ export default function Overlap() {
 
   const handleGenerateImage = () => {
     setActivePage("loading");
-    ModelAPI.prediction({
-      modelId: Number(selectedModel.value) || 1,
-      url: image1,
+    ModelAPI.predict({
+      algorithmId: Number(selectedModel.value) || 1,
+      imageUrl: image1,
     })
       .then((res) => {
-        // 获取生成后的图片url
-        setImage2(res.predUrl);
+        setImage2(res.resultUrl);
       })
       .then(() => setActivePage("overlap"))
       .catch((err) => {

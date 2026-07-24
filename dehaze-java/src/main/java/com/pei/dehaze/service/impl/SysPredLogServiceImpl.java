@@ -21,6 +21,7 @@ import com.pei.dehaze.service.SysPredLogService;
 import com.pei.dehaze.service.client.PythonAlgorithmClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -45,6 +46,9 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
     private final SysAlgorithmService algorithmService;
     private final PythonAlgorithmClient pythonClient;
     private final SysFileService sysFileService;
+
+    @Value("${file.datasetBaseUrl}")
+    private String datasetBaseUrl;
 
     @Override
     public PredictionResultVO predict(PredictionForm form) {
@@ -140,14 +144,26 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
      */
     private String resolveImageUrl(PredictionForm form) {
         if (form.getFileId() != null) {
-            // 从文件管理模块获取文件的绝对 URL（Python 服务需要可直接访问的地址）
             com.pei.dehaze.model.entity.SysFile sysFile = sysFileService.getById(form.getFileId());
             if (sysFile != null && CharSequenceUtil.isNotBlank(sysFile.getUrl())) {
-                return sysFile.getUrl();
+                return toAbsoluteUrl(sysFile.getUrl());
             }
             log.warn("文件不存在或 URL 为空: fileId={}", form.getFileId());
             return null;
         }
-        return form.getImageUrl();
+        return toAbsoluteUrl(form.getImageUrl());
+    }
+
+    private String toAbsoluteUrl(String url) {
+        if (CharSequenceUtil.isBlank(url)) {
+            return url;
+        }
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return url;
+        }
+        if (url.startsWith("/dataset-api/")) {
+            return datasetBaseUrl + url.substring("/dataset-api".length());
+        }
+        return url;
     }
 }
