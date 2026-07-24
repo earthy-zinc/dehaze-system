@@ -145,8 +145,6 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
 
     private String resolveFileUrl(Long fileId, String type) {
         if (fileId != null) {
-            // 从文件管理模块获取文件的绝对 URL（与 SysPredLogServiceImpl.resolveImageUrl 一致），
-            // 而非直接拼 /api/v1/files/download/{fileId}（下载接口期望 objectName 而非数字 fileId）
             SysFile sysFile = sysFileService.getById(fileId);
             if (sysFile != null && CharSequenceUtil.isNotBlank(sysFile.getUrl())) {
                 return sysFile.getUrl();
@@ -154,5 +152,18 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
             log.warn("文件不存在或 URL 为空: fileId={}", fileId);
         }
         throw new BusinessException(ResultCode.PARAM_ERROR, "缺少" + ("pred".equals(type) ? "预测" : "参考") + "图片");
+    }
+
+    private String toAbsoluteUrl(String url) {
+        if (CharSequenceUtil.isBlank(url)) {
+            return url;
+        }
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return url;
+        }
+        if (url.startsWith("/dataset-api/")) {
+            return datasetBaseUrl + url.substring("/dataset-api".length());
+        }
+        return url;
     }
 }
