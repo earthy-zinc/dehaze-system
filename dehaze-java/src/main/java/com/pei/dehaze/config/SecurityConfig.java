@@ -6,6 +6,7 @@ import com.pei.dehaze.config.property.SecurityProperties;
 import com.pei.dehaze.filter.JwtValidationFilter;
 import com.pei.dehaze.security.exception.MyAccessDeniedHandler;
 import com.pei.dehaze.security.exception.MyAuthenticationEntryPoint;
+import com.pei.dehaze.service.ApiKeyService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,17 +22,9 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * Spring Security 权限配置
- *
- * @author Ray Hao
- * @since 2023/2/17
- */
 @Slf4j
 @Configuration
 @EnableWebSecurity
@@ -45,6 +38,7 @@ public class SecurityConfig {
     private final MyAccessDeniedHandler accessDeniedHandler;
     private final RedisTemplate<String, Object> redisTemplate;
     private final SecurityProperties securityProperties;
+    private final ApiKeyService apiKeyService;
 
     @PostConstruct
     public void validateJwtKey() {
@@ -78,15 +72,11 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
         ;
 
-        // JWT 校验过滤器
-        http.addFilterBefore(new JwtValidationFilter(redisTemplate,securityProperties.getJwt().getKey()), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(new JwtValidationFilter(redisTemplate, securityProperties.getJwt().getKey(), apiKeyService), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * 不走过滤器链的放行配置
-     */
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return web -> {
@@ -96,19 +86,6 @@ public class SecurityConfig {
         };
     }
 
-    /**
-     * 密码编码器
-     */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    /**
-     * AuthenticationManager 手动注入
-     *
-     * @param authenticationConfiguration 认证配置
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();

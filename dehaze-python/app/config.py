@@ -89,7 +89,7 @@ class Settings(BaseSettings):
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
     # MinIO 配置
-    MINIO_ENDPOINT: str = "127.0.0.1:9100"
+    MINIO_ENDPOINT: str = "127.0.0.1:9110"
     MINIO_ACCESS_KEY: str = "admin"
     MINIO_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "dehaze"
@@ -289,7 +289,7 @@ class ProductionSettings(Settings):
 
     DB_HOST: str = "192.168.31.3"
     REDIS_HOST: str = "192.168.31.3"
-    MINIO_ENDPOINT: str = "192.168.31.3:9100"
+    MINIO_ENDPOINT: str = "192.168.31.3:9110"
 
     # XXL-Job 配置（生产环境启用）
     XXLJOB_ENABLED: bool = True

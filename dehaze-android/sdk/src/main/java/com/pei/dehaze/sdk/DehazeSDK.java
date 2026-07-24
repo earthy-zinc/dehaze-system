@@ -2,6 +2,7 @@ package com.pei.dehaze.sdk;
 
 import com.pei.dehaze.sdk.service.AlgorithmApiService;
 import com.pei.dehaze.sdk.service.AlgorithmSelectApiService;
+import com.pei.dehaze.sdk.service.ApiKeyApiService;
 import com.pei.dehaze.sdk.service.AuthApiService;
 import com.pei.dehaze.sdk.service.DatasetApiService;
 import com.pei.dehaze.sdk.service.DeptApiService;
@@ -60,6 +61,7 @@ public class DehazeSDK {
 
     private final Retrofit retrofit;
     private final AuthApiService authApiService;
+    private final ApiKeyApiService apiKeyApiService;
     private final UserApiService userApiService;
     private final AlgorithmApiService algorithmApiService;
     private final AlgorithmSelectApiService algorithmSelectApiService;
@@ -265,6 +267,7 @@ public class DehazeSDK {
 
         // 创建API服务实例
         this.authApiService = retrofit.create(AuthApiService.class);
+        this.apiKeyApiService = retrofit.create(ApiKeyApiService.class);
         this.userApiService = retrofit.create(UserApiService.class);
         this.algorithmApiService = retrofit.create(AlgorithmApiService.class);
         this.algorithmSelectApiService = retrofit.create(AlgorithmSelectApiService.class);

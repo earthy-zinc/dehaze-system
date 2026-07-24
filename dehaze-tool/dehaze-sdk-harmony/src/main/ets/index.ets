@@ -23,6 +23,7 @@ export { RoleForm, RoleQuery, RolePageVO } from './model/RoleInfo';
 export { MenuTypeEnum, MenuQuery, MenuVO, MenuForm, RouteVO, Meta } from './model/MenuInfo';
 export { DictTypeQuery, DictTypePageVO, DictTypeForm, DictQuery, DictForm, DictPageVO } from './model/DictInfo';
 export { UserInfo, UserQuery, UserPageVO, UserForm } from './model/UserInfo';
+export { ApiKeyInfo, ApiKeyCreateForm } from './model/ApiKeyInfo';
 
 // ==================== API 类 ====================
 export { AuthAPI } from './api/auth';
@@ -37,3 +38,4 @@ export { DictAPI } from './api/dict';
 export { FileAPI } from './api/file';
 export { MenuAPI } from './api/menu';
 export { RoleAPI } from './api/role';
+export { ApiKeyAPI } from './api/apiKey';

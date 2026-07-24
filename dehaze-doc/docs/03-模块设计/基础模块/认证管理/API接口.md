@@ -19,6 +19,11 @@
 | `/api/v1/auth/captcha` | GET | 获取验证码 | - | F-AM-003 |
 | `/api/v1/auth/refresh` | POST | 刷新令牌 | - | F-AM-004 |
 | `/api/v1/auth/me` | GET | 获取当前用户权限信息 | - | F-AM-005 |
+| `/api/v1/auth/api-keys` | POST | 创建 API Key | - | F-AM-006 |
+| `/api/v1/auth/api-keys` | GET | 查询当前用户的 API Key 列表 | - | F-AM-007 |
+| `/api/v1/auth/api-keys/{id}` | DELETE | 删除/吊销 API Key | - | F-AM-008 |
+
+> **API Key 认证**：API Key 为长期身份凭证，详细设计与使用说明参见 [API Key认证.md](./API%20Key认证.md)。
 
 ## 3. 权限标识汇总
 
@@ -28,6 +33,7 @@
 |------|---------|
 | 登录、获取验证码 | 公开访问 |
 | 注销、刷新令牌、获取权限信息 | 需登录态 |
+| 创建、查询、删除 API Key | 需登录态 |
 
 ## 4. 业务错误码
 

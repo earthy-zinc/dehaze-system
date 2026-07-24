@@ -154,7 +154,7 @@ file:
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
-    endpoint: http://127.0.0.1:9100
+    endpoint: http://127.0.0.1:9110
     # 访问凭据
     access-key: admin
     # 凭据密钥

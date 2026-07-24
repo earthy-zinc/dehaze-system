@@ -51,6 +51,9 @@ type IUserRepository interface {
 	// FindUserAuthInfo 查询用户认证信息（含角色、权限）
 	FindUserAuthInfo(ctx context.Context, username string) (*model.UserAuthInfo, error)
 
+	// FindUserAuthInfoByID 根据用户ID查询认证信息（含角色、权限）
+	FindUserAuthInfoByID(ctx context.Context, userID int64) (*model.UserAuthInfo, error)
+
 	// FindUserWithRoleCodesByID 根据用户ID查询用户信息和角色编码（单次JOIN查询，消除N+1）
 	FindUserWithRoleCodesByID(ctx context.Context, userID int64) (*model.SysUser, []string, error)
 

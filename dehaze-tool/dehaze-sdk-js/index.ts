@@ -1,5 +1,6 @@
 // API 模块导入
 import AlgorithmAPI from "./src/api/algorithm";
+import ApiKeyAPI from "./src/api/api-key";
 import AuthAPI from "./src/api/auth";
 import DatasetAPI, { DatasetItemAPI, ItemFileAPI } from "./src/api/dataset";
 import DeptAPI from "./src/api/dept";
@@ -14,6 +15,7 @@ import UserAPI from "./src/api/user";
 
 // API 模型导出
 export * from "./src/api/algorithm/model";
+export * from "./src/api/api-key/model";
 export * from "./src/api/auth/model";
 export * from "./src/api/dataset/model";
 export * from "./src/api/dept/model";
@@ -46,6 +48,7 @@ export type {
 // API 导出
 export {
   AlgorithmAPI,
+  ApiKeyAPI,
   AuthAPI,
   DatasetAPI,
   DatasetItemAPI,

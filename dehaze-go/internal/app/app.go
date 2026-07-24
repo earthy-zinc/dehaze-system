@@ -10,6 +10,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/api"
 	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
 	afrepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm_favorite"
+	apikeyrepo "github.com/earthyzinc/dehaze-go/internal/repository/api_key"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	deptrepo "github.com/earthyzinc/dehaze-go/internal/repository/dept"
 	dictrepo "github.com/earthyzinc/dehaze-go/internal/repository/dict"
@@ -23,6 +24,7 @@ import (
 	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
 	"github.com/earthyzinc/dehaze-go/internal/router"
 	algoservice "github.com/earthyzinc/dehaze-go/internal/service/algorithm"
+	apikeyservice "github.com/earthyzinc/dehaze-go/internal/service/api_key"
 	authservice "github.com/earthyzinc/dehaze-go/internal/service/auth"
 	datasetservice "github.com/earthyzinc/dehaze-go/internal/service/dataset"
 	deptservice "github.com/earthyzinc/dehaze-go/internal/service/dept"
@@ -46,6 +48,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/job"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/mq"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/earthyzinc/dehaze-go/pkg/storage"
@@ -134,6 +137,7 @@ func (a *Application) Init() error {
 	taskRepo := taskrepo.NewTaskRepository(gormDB)
 	inputHistoryRepo := ihrepo.NewInputHistoryRepository(gormDB)
 	predLogRepo := predrepo.NewPredLogRepository(gormDB)
+	apiKeyRepo := apikeyrepo.NewApiKeyRepository(gormDB)
 
 	// services
 	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo)
@@ -175,6 +179,7 @@ func (a *Application) Init() error {
 	predictionService := predservice.NewPredictionService(predLogRepo, algoClient, cacheClient)
 	evalLogRepo := evalrepo.NewEvalLogRepository(gormDB)
 	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algoClient)
+	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService)
 
 	// 启动 MQ Consumer 消费死信队列
 	// 注意：Go 后端不消费 export 主队列（由 Java/Python 执行任务），
@@ -209,6 +214,7 @@ func (a *Application) Init() error {
 	inputHistoryApi := api.NewSysInputHistoryApi(inputHistoryService)
 	predictionApi := api.NewSysPredictionApi(predictionService)
 	evaluationApi := api.NewSysEvaluationApi(evaluationService)
+	apiKeyApi := api.NewApiKeyApi(apiKeyService)
 
 	// routes
 	engine := a.Server.GetEngine()
@@ -243,6 +249,17 @@ func (a *Application) Init() error {
 	router.RegisterImageInputRoutes(protectedV1, inputHistoryApi)
 	router.RegisterPredictionRoutes(protectedV1, predictionApi)
 	router.RegisterEvaluationRoutes(protectedV1, evaluationApi)
+	router.RegisterApiKeyRoutes(protectedV1, apiKeyApi)
+
+	middleware.ApiKeyAuth = func(ctx context.Context, rawKey string) (*security.CustomClaims, error) {
+		authInfo, err := apiKeyService.AuthenticateByKey(ctx, rawKey)
+		if err != nil {
+			return nil, err
+		}
+		j := security.NewJWT()
+		claims := j.CreateClaims(authInfo)
+		return &claims, nil
+	}
 
 	return nil
 }

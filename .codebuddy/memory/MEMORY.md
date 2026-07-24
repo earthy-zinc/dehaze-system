@@ -35,4 +35,4 @@
 - **Java**: 8989 (Spring Boot devtools 热重载)
 - **Go**: 8990 (`go run` 开发模式)
 - **Python**: 8991 (`uvicorn --reload` 开发模式)
-- Docker 容器: MySQL 3306, Redis 6379, MongoDB 27017, MinIO 9000/9090, PostgreSQL 5432, RabbitMQ 5672/15672
+- Docker 容器: MySQL 3306, Redis 6379, MongoDB 27017, MinIO 9110(API)/9190(Console), PostgreSQL 5432, RabbitMQ 5672/15672

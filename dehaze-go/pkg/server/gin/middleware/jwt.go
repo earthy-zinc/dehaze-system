@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -13,12 +14,29 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/security"
 )
 
+var ApiKeyAuth func(ctx context.Context, rawKey string) (*security.CustomClaims, error)
+
 // JWTAuth JWT 认证中间件
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := security.GetToken(c)
 		if token == "" {
 			unauthorized(c)
+			return
+		}
+
+		if strings.HasPrefix(token, "dhak_") {
+			if ApiKeyAuth == nil {
+				unauthorized(c)
+				return
+			}
+			claims, err := ApiKeyAuth(c.Request.Context(), token)
+			if err != nil {
+				unauthorized(c)
+				return
+			}
+			c.Set("claims", claims)
+			c.Next()
 			return
 		}
 

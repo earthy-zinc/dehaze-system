@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError
@@ -89,6 +89,7 @@ def _split_authorities(payload: dict) -> tuple[list[str], list[str]]:
 
 
 async def get_current_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme),
 ) -> UserContext:
     """
@@ -111,6 +112,13 @@ async def get_current_user(
         )
 
     token = credentials.credentials
+
+    if token.startswith("dhak_"):
+        from app.service.api_key_service import ApiKeyService
+        user_context = await ApiKeyService.authenticate_by_key(
+            request.state.db, token)
+        set_current_user_id(user_context.id)
+        return user_context
 
     # 先解码 Token 获取 jti
     payload = decode_token(token)
@@ -155,25 +163,22 @@ async def get_current_user(
 
 
 async def get_current_user_optional(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme),
 ) -> Optional[UserContext]:
-    """
-    获取当前登录用户（可选）
-
-    用于可选认证场景，如公开接口但登录用户有额外权限。
-    仅"无 Token"时返回 None；Token 存在但无效/过期时抛 401（与 get_current_user 一致），
-    让前端感知到需要刷新 Token，而不是把过期 Token 当作游客处理。
-
-    Args:
-        credentials: Bearer Token
-
-    Returns:
-        用户上下文，未登录返回 None
-    """
     if credentials is None:
         return None
 
-    payload = decode_token(credentials.credentials)
+    token = credentials.credentials
+
+    if token.startswith("dhak_"):
+        from app.service.api_key_service import ApiKeyService
+        user_context = await ApiKeyService.authenticate_by_key(
+            request.state.db, token)
+        set_current_user_id(user_context.id)
+        return user_context
+
+    payload = decode_token(token)
 
     jti = payload.get("jti")
     if jti:

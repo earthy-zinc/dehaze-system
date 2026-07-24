@@ -481,7 +481,7 @@ tlmgr install <package_name>
 | **消息队列** | RocketMQ | 9876 / 10909-10912 / 19876 | Namesrv / Broker / Console |
 | **协调** | Zookeeper | 2181 | Kafka 协调 |
 | **注册中心** | Nacos | 8848 / 9848 / 10848 | HTTP / gRPC / 控制台 |
-| **对象存储** | MinIO API | 9100 | S3 兼容 API |
+| **对象存储** | MinIO API | 9110 | S3 兼容 API |
 | **对象存储** | MinIO Console | 9190 | 管理界面 |
 | **对象存储** | nginx-dataset | 9000 | 数据集静态文件 |
 | **搜索** | Elasticsearch | 9200 / 9300 | HTTP / 传输 |

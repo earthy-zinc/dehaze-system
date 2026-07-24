@@ -68,14 +68,14 @@ services:
       - pei-network
 
   # MinIO
-  # 用于后端文件上传功能（用户上传的去雾结果等），端口 9100/9190
+  # 用于后端文件上传功能（用户上传的去雾结果等），端口 9110/9190
   # 数据集原始文件的浏览通过下面的 nginx 静态服务提供（端口 9000）
   minio:
     image: minio/minio:latest
     container_name: minio
     restart: always
     ports:
-      - "9100:9000"
+      - "9110:9000"
       - "9190:9090"
     environment:
       - MINIO_ACCESS_KEY=admin

@@ -224,7 +224,7 @@ file:
   baseUrl: "http://127.0.0.1:8990/api/v1/files/download" # 文件访问基础URL
   maxSize: 104857600 # 单文件最大大小（字节），默认100MB
   minio:
-    endpoint: "127.0.0.1:9100"
+    endpoint: "127.0.0.1:9110"
     accessKey: "admin"
     secretKey: "${DEHAZE_PASSWORD}"
     bucketName: "dehaze"

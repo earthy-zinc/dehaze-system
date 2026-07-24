@@ -12,6 +12,7 @@ import { DictAPI } from './api/dict';
 import { FileAPI } from './api/file';
 import { MenuAPI } from './api/menu';
 import { RoleAPI } from './api/role';
+import { ApiKeyAPI } from './api/apiKey';
 import { common } from '@kit.AbilityKit';
 
 /**
@@ -37,6 +38,7 @@ export class DehazeSDK {
   public fileApi: FileAPI = undefined;
   public menuApi: MenuAPI = undefined;
   public roleApi: RoleAPI = undefined;
+  public apiKeyApi: ApiKeyAPI = undefined;
 
   private constructor(builder: Builder) {
     // 初始化 HTTP 管理器
@@ -55,6 +57,7 @@ export class DehazeSDK {
     this.fileApi = new FileAPI();
     this.menuApi = new MenuAPI();
     this.roleApi = new RoleAPI();
+    this.apiKeyApi = new ApiKeyAPI();
   }
 
   /**

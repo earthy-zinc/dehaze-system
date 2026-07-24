@@ -410,6 +410,48 @@ DELETE /api/v1/auth/logout HTTP/1.1
 Authorization: Bearer <token>
 ```
 
+### 6.5 API Key 认证
+
+除 JWT Token 外，系统支持 **API Key** 作为长期身份凭证，面向脚本调用、定时任务、第三方系统集成等机器对机器（M2M）场景。API Key 默认永不过期，可选设置过期时间。
+
+**凭证格式：**
+
+API Key 明文带固定前缀 `dhak_`，例如 `dhak_a1b2c3d4e5f6...`。
+
+**携带方式：**
+
+与 JWT Token 一致，通过 `Authorization: Bearer` 请求头携带：
+
+```http
+GET /api/v1/datasets/page?pageNum=1&pageSize=10 HTTP/1.1
+Authorization: Bearer dhak_a1b2c3d4e5f6...
+```
+
+服务端识别到 `dhak_` 前缀的凭证时走 API Key 校验分支，校验通过后以 Key 所属用户身份继续后续鉴权。
+
+**管理接口：**
+
+| 路径 | 方法 | 功能 |
+|------|------|------|
+| `/api/v1/auth/api-keys` | POST | 创建 API Key（请求体：`{"name": "xxx", "expiresAt": "可选 ISO 日期时间"}`） |
+| `/api/v1/auth/api-keys` | GET | 查询当前用户的 API Key 列表 |
+| `/api/v1/auth/api-keys/{id}` | DELETE | 删除/吊销 API Key |
+
+**跨后端支持：**
+
+API Key 存储于共享数据库，**Java / Go / Python** 三个后端服务通用，用户只需创建一个 Key 即可在任意后端发起的接口调用中使用。
+
+**安全约定：**
+
+| 安全措施 | 说明 |
+|---------|------|
+| 明文仅展示一次 | API Key 明文仅在创建成功时返回一次，之后无法再查询 |
+| 哈希存储 | 服务端仅存储 API Key 的 SHA-256 哈希值，不存储明文 |
+| 可吊销 | 用户可随时删除/吊销 Key，删除后立即失效 |
+| 可选过期 | 支持创建时设置 `expiresAt`，到期后自动失效 |
+
+> 详细设计与使用说明参见 `03-模块设计/基础模块/认证管理/API Key认证.md`。
+
 ---
 
 ## 7. 时间格式
@@ -438,7 +480,7 @@ Authorization: Bearer <token>
 
 | 模块 | 路径前缀 | 说明 |
 |------|---------|------|
-| **认证中心** | `/api/v1/auth` | 登录、登出、验证码 |
+| **认证中心** | `/api/v1/auth` | 登录、登出、验证码、API Key 管理 |
 | **用户管理** | `/api/v1/users` | 用户 CRUD、导入导出 |
 | **角色管理** | `/api/v1/roles` | 角色 CRUD、权限分配 |
 | **菜单管理** | `/api/v1/menus` | 菜单 CRUD、路由配置 |

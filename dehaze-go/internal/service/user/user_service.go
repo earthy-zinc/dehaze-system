@@ -78,6 +78,17 @@ func (s *UserService) GetUserAuthInfo(ctx context.Context, username string) (*mo
 	return authInfo, nil
 }
 
+func (s *UserService) GetUserAuthInfoByID(ctx context.Context, userID int64) (*model.UserAuthInfo, error) {
+	authInfo, err := s.userRepo.FindUserAuthInfoByID(ctx, userID)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询用户认证信息失败", err)
+	}
+	if authInfo == nil {
+		return nil, ErrUserNotFound
+	}
+	return authInfo, nil
+}
+
 // ====================
 // IUserService 接口实现
 // ====================

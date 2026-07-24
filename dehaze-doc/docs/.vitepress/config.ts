@@ -131,6 +131,10 @@ export default withMermaid(
                 link: "/03-模块设计/基础模块/认证管理/API接口",
               },
               {
+                text: "API Key认证",
+                link: "/03-模块设计/基础模块/认证管理/API Key认证",
+              },
+              {
                 text: "前端实现",
                 link: "/03-模块设计/基础模块/认证管理/前端实现",
               },

@@ -18,6 +18,9 @@ type IUserService interface {
 	// GetUserAuthInfo 根据用户名获取认证信息
 	GetUserAuthInfo(ctx context.Context, username string) (*model.UserAuthInfo, error)
 
+	// GetUserAuthInfoByID 根据用户ID获取认证信息
+	GetUserAuthInfoByID(ctx context.Context, userID int64) (*model.UserAuthInfo, error)
+
 	// GetPage 用户分页列表
 	GetPage(ctx context.Context, q *query.UserPageQuery) (*vo.PageResult[vo.UserPageVO], error)
 

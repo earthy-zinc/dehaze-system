@@ -2,6 +2,7 @@
 数据库实体模型（ORM）
 """
 
+from app.models.entity.api_key import SysApiKey
 from app.models.entity.sys_algorithm import SysAlgorithm
 from app.models.entity.sys_dataset import SysDataset, SysDatasetItem, SysItemFile
 from app.models.entity.sys_dept import SysDept
@@ -19,6 +20,7 @@ __all__ = [
     'SysUser',
     'SysRole',
     'SysUserRole',
+    'SysApiKey',
     # 部门
     'SysDept',
     # 菜单

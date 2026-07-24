@@ -29,6 +29,10 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     from app.router.auth import router as auth_router
     app.include_router(auth_router)
 
+    # API密钥路由
+    from app.router.api_key import router as api_key_router
+    app.include_router(api_key_router)
+
     # 算法路由
     from app.router.algorithm import router as algorithm_router
     app.include_router(algorithm_router)

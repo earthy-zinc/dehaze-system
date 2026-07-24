@@ -376,6 +376,75 @@ func (r *UserRepository) FindUserAuthInfo(ctx context.Context, username string) 
 	return &authInfo, nil
 }
 
+func (r *UserRepository) FindUserAuthInfoByID(ctx context.Context, userID int64) (*model.UserAuthInfo, error) {
+	type userWithRole struct {
+		UserId    int64  `gorm:"column:user_id"`
+		Username  string `gorm:"column:username"`
+		Nickname  string `gorm:"column:nickname"`
+		DeptId    int64  `gorm:"column:dept_id"`
+		Password  string `gorm:"column:password"`
+		Status    int8   `gorm:"column:status"`
+		Code      string `gorm:"column:code"`
+		DataScope int8   `gorm:"column:data_scope"`
+		Perms     string `gorm:"column:perms"`
+	}
+	var rows []userWithRole
+	err := r.db.WithContext(ctx).
+		Table("sys_user u").
+		Select(`u.id as user_id, u.username, u.nickname, u.dept_id, u.password, u.status,
+			r.code, r.data_scope,
+			(SELECT GROUP_CONCAT(DISTINCT m.perm SEPARATOR ',')
+			 FROM sys_menu m
+			 JOIN sys_role_menu srm ON m.id = srm.menu_id
+			 JOIN sys_user_role sur2 ON srm.role_id = sur2.role_id
+			 WHERE sur2.user_id = u.id AND m.perm IS NOT NULL AND m.perm != '') as perms`).
+		Joins("LEFT JOIN sys_user_role sur ON u.id = sur.user_id").
+		Joins("LEFT JOIN sys_role r ON sur.role_id = r.id AND r.status = 1 AND r.deleted = 0").
+		Where("u.id = ? AND u.deleted = 0", userID).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	first := rows[0]
+	authInfo := model.UserAuthInfo{
+		UserId:   first.UserId,
+		Username: first.Username,
+		Nickname: first.Nickname,
+		DeptId:   first.DeptId,
+		Password: first.Password,
+		Status:   first.Status,
+	}
+
+	roles := make([]string, 0, len(rows))
+	var minDataScope int8
+	hasDataScope := false
+	for _, row := range rows {
+		if row.Code != "" {
+			roles = append(roles, row.Code)
+			if !hasDataScope || row.DataScope < minDataScope {
+				minDataScope = row.DataScope
+				hasDataScope = true
+			}
+		}
+	}
+	authInfo.Roles = roles
+	if hasDataScope {
+		authInfo.DataScope = minDataScope
+	}
+
+	if first.Perms != "" {
+		authInfo.Perms = strings.Split(first.Perms, ",")
+	} else {
+		authInfo.Perms = []string{}
+	}
+
+	return &authInfo, nil
+}
+
 // FindUserWithRoleCodesByID 根据用户ID查询用户信息和角色编码（单次JOIN查询，消除N+1）
 func (r *UserRepository) FindUserWithRoleCodesByID(ctx context.Context, userID int64) (*model.SysUser, []string, error) {
 	type userWithRoleCode struct {
