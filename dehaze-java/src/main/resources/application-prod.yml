@@ -74,11 +74,7 @@ security:
     key: ${JWT_SECRET_KEY}
     ttl: 7200
     refresh-ttl: 604800
-  ignore-urls:
-    - /api/v1/files/download/**
-    - /api/v1/auth/captcha
-    - /api/v1/auth/login
-    - /api/v1/auth/refresh
+
 
 # 监控配置 (生产环境仅暴露必要端点)
 management:

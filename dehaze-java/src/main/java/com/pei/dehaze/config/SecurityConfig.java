@@ -1,6 +1,5 @@
 package com.pei.dehaze.config;
 
-import cn.hutool.core.collection.CollUtil;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.config.property.SecurityProperties;
 import com.pei.dehaze.filter.JwtValidationFilter;
@@ -18,7 +17,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -32,24 +30,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private static final String DEFAULT_DEV_KEY = "SecretKey012345678901234567890123456789012345678901234567890123456789";
-
     private final MyAuthenticationEntryPoint authenticationEntryPoint;
     private final MyAccessDeniedHandler accessDeniedHandler;
     private final RedisTemplate<String, Object> redisTemplate;
     private final SecurityProperties securityProperties;
     private final ApiKeyService apiKeyService;
-
-    @PostConstruct
-    public void validateJwtKey() {
-        String key = securityProperties.getJwt().getKey();
-        if (DEFAULT_DEV_KEY.equals(key)) {
-            log.warn("⚠️  安全警告：当前使用硬编码的默认 JWT 密钥！请设置环境变量 JWT_SECRET_KEY 以使用安全密钥。" +
-                    "生产环境必须设置，否则攻击者可伪造任意用户 Token。");
-        }
-    }
-
-
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -60,6 +45,15 @@ public class SecurityConfig {
                                 .requestMatchers("/health", "/ready").permitAll()
                                 .requestMatchers("/actuator/health").permitAll()
                                 .requestMatchers("/actuator/**").hasRole("ADMIN")
+                                .requestMatchers("/v3/api-docs/**").permitAll()
+                                .requestMatchers("/doc.html").permitAll()
+                                .requestMatchers("/swagger-resources/**").permitAll()
+                                .requestMatchers("/webjars/**").permitAll()
+                                .requestMatchers("/swagger-ui/**").permitAll()
+                                .requestMatchers("/swagger-ui.html").permitAll()
+                                .requestMatchers("/api/v1/files/download/**").permitAll()
+                                .requestMatchers("/api/v1/auth/captcha").permitAll()
+                                .requestMatchers("/api/v1/auth/refresh").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .exceptionHandling(httpSecurityExceptionHandlingConfigurer ->
@@ -75,15 +69,6 @@ public class SecurityConfig {
         http.addFilterBefore(new JwtValidationFilter(redisTemplate, securityProperties.getJwt().getKey(), apiKeyService), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return web -> {
-            if (CollUtil.isNotEmpty(securityProperties.getIgnoreUrls())) {
-                web.ignoring().requestMatchers(securityProperties.getIgnoreUrls().toArray(new String[0]));
-            }
-        };
     }
 
     @Bean

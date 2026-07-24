@@ -80,9 +80,7 @@ security:
   jwt:
     key: TestSecretKey0123456789012345678901234567890123456789
     ttl: 60
-    ignore-urls:
-      - /v3/api-docs/**
-      - /swagger-ui/**
+
 
 mybatis-plus:
   global-config:
