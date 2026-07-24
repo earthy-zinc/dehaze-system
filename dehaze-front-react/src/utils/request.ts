@@ -3,6 +3,7 @@ import {
   configPythonAxios,
   ResponseData,
   ResultEnum,
+  TOKEN_KEY,
 } from "dehaze-sdk-js";
 
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
@@ -43,6 +44,7 @@ export default function configRequest() {
       };
     },
     onResponseError,
+    getToken: () => localStorage.getItem(TOKEN_KEY),
   });
   configPythonAxios({
     onRequest: (config: InternalAxiosRequestConfig) => {
@@ -52,5 +54,6 @@ export default function configRequest() {
       };
     },
     onResponseError,
+    getToken: () => localStorage.getItem(TOKEN_KEY),
   });
 }

@@ -2497,41 +2497,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/me": {
-            "get": {
-                "description": "获取当前登录用户信息",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "用户接口"
-                ],
-                "summary": "获取当前登录用户信息",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/common.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/vo.UserInfoVO"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/users/page": {
             "get": {
                 "description": "获取用户分页列表",

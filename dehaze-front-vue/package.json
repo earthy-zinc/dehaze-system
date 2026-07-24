@@ -82,7 +82,7 @@
     "animate.css": "^4.1.1",
     "axios": "^1.18.1",
     "color": "^5.0.3",
-    "dehaze-sdk-js": "link:../dehaze-tool/dehaze-sdk-js",
+    "dehaze-sdk-js": "workspace:*",
     "echarts": "^6.0.0",
     "element-plus": "^2.13.0",
     "lodash-es": "^4.17.22",

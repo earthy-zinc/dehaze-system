@@ -56,7 +56,7 @@
     "@tarojs/shared": "4.1.7",
     "@tarojs/taro": "4.1.7",
     "axios": "^1.18.1",
-    "dehaze-sdk-js": "link:../dehaze-tool/dehaze-sdk-js",
+    "dehaze-sdk-js": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

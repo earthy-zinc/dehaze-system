@@ -65,11 +65,7 @@ const filterAsyncRoutes = (
       }
 
       if (tmpRoute.children) {
-        tmpRoute.children = filterAsyncRoutes(
-          route.children,
-          roles,
-          fullPath
-        );
+        tmpRoute.children = filterAsyncRoutes(route.children, roles, fullPath);
       }
 
       asyncRoutes.push(tmpRoute);

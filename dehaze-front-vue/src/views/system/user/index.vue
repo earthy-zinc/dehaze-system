@@ -82,11 +82,17 @@
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item @click="downloadTemplate">
-                        <el-icon><Download /></el-icon>下载模板</el-dropdown-item
-                      >
+                        <el-icon>
+                          <Download />
+                        </el-icon>
+                        下载模板
+                      </el-dropdown-item>
                       <el-dropdown-item @click="openDialog('user-import')">
-                        <el-icon><Top /></el-icon>导入数据</el-dropdown-item
-                      >
+                        <el-icon>
+                          <Top />
+                        </el-icon>
+                        导入数据
+                      </el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
@@ -94,8 +100,14 @@
                   class="ml-3"
                   :loading="exportLoading"
                   @click="handleExport"
-                  ><template #icon><el-icon><Download /></el-icon></template>导出</el-button
                 >
+                  <template #icon>
+                    <el-icon>
+                      <Download />
+                    </el-icon>
+                  </template>
+                  导出
+                </el-button>
               </div>
             </div>
           </template>
@@ -385,6 +397,9 @@ watch(dateTimeRange, (newVal) => {
   if (newVal) {
     queryParams.startTime = newVal[0];
     queryParams.endTime = newVal[1];
+  } else {
+    queryParams.startTime = undefined;
+    queryParams.endTime = undefined;
   }
 });
 
@@ -436,7 +451,6 @@ function handleQuery() {
   loading.value = true;
   UserAPI.getPage(queryParams)
     .then((data) => {
-      console.log("handleQuery", data);
       pageData.value = data.list;
       total.value = data.total;
     })
@@ -449,10 +463,14 @@ function handleQuery() {
 const debouncedQuery = useDebounceFn(handleQuery, 300);
 
 /** 修改用户状态 */
-function handleStatusChange(row: { id: number; status: number }) {
-  UserAPI.updateStatus(row.id, row.status).then(() => {
-    ElMessage.success("状态修改成功");
-  });
+function handleStatusChange(row: any) {
+  UserAPI.updateStatus(row.id, row.status)
+    .then(() => {
+      ElMessage.success("状态修改成功");
+    })
+    .catch(() => {
+      row.status = row.status === 1 ? 0 : 1;
+    });
 }
 
 /** 重置查询 */
@@ -480,29 +498,27 @@ function resetPassword(row: { [key: string]: any }) {
       confirmButtonText: "确定",
       cancelButtonText: "取消",
     }
-  ).then(({ value }) => {
-    if (!value) {
-      ElMessage.warning("请输入新密码");
-      return false;
-    }
-    UserAPI.updatePassword(row.id, value).then(() => {
-      ElMessage.success("密码重置成功，新密码是：" + value);
-    });
-  });
+  )
+    .then(({ value }) => {
+      if (!value) {
+        ElMessage.warning("请输入新密码");
+        return false;
+      }
+      UserAPI.updatePassword(row.id, value).then(() => {
+        ElMessage.success("密码重置成功，新密码是：" + value);
+      });
+    })
+    .catch(() => {});
 }
 
 /** 加载角色下拉数据源 */
 async function loadRoleOptions() {
-  RoleAPI.getOptions().then((data) => {
-    roleList.value = data;
-  });
+  roleList.value = await RoleAPI.getOptions();
 }
 
 /** 加载部门下拉数据源 */
 async function loadDeptOptions() {
-  DeptAPI.getOptions().then((data) => {
-    deptList.value = data;
-  });
+  deptList.value = await DeptAPI.getOptions();
 }
 
 /**
@@ -521,9 +537,8 @@ async function openDialog(type: string, id?: number) {
     await loadRoleOptions();
     if (id) {
       dialog.title = "修改用户";
-      UserAPI.getFormData(id).then((data) => {
-        Object.assign(formData, { ...data });
-      });
+      const data = await UserAPI.getFormData(id);
+      Object.assign(formData, { ...data });
     } else {
       dialog.title = "新增用户";
     }
@@ -531,7 +546,7 @@ async function openDialog(type: string, id?: number) {
     // 用户导入弹窗
     dialog.title = "导入用户";
     dialog.width = 600;
-    loadDeptOptions();
+    await loadDeptOptions();
   }
 }
 
@@ -589,7 +604,7 @@ const handleSubmit = useThrottleFn(() => {
       ElMessage.warning("上传Excel文件不能为空");
       return false;
     }
-    UserAPI.import(importData?.deptId, importData?.file).then((data) => {
+    UserAPI.import(importData?.deptId, importData?.file).then(() => {
       ElMessage.success("导入用户成功");
       closeDialog();
       resetQuery();
@@ -598,7 +613,7 @@ const handleSubmit = useThrottleFn(() => {
 }, 3000);
 
 /** 删除用户 */
-function handleDelete(row?: { id: number; username: string }) {
+function handleDelete(row?: any) {
   let userIds: string;
   let confirmText: string;
 
@@ -618,12 +633,14 @@ function handleDelete(row?: { id: number; username: string }) {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
-  }).then(function () {
-    UserAPI.deleteByIds(userIds).then(() => {
-      ElMessage.success("删除成功");
-      resetQuery();
-    });
-  });
+  })
+    .then(function () {
+      UserAPI.deleteByIds(userIds).then(() => {
+        ElMessage.success("删除成功");
+        resetQuery();
+      });
+    })
+    .catch(() => {});
 }
 
 /** 下载导入模板 */

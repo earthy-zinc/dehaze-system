@@ -26,7 +26,12 @@
             <el-icon><Search /></el-icon>
             搜索
           </el-button>
-          <el-button @click="resetQuery"> <el-icon><Refresh /></el-icon>重置 </el-button>
+          <el-button @click="resetQuery">
+            <el-icon>
+              <Refresh />
+            </el-icon>
+            重置
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -44,14 +49,22 @@
           :disabled="ids.length === 0"
           type="danger"
           @click="handleDelete()"
-          ><el-icon><Delete /></el-icon>删除
+        >
+          <el-icon>
+            <Delete />
+          </el-icon>
+          删除
         </el-button>
       </template>
 
       <el-table
         v-loading="loading"
         :data="deptList"
-        :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+        :tree-props="{
+          children: 'children',
+          hasChildren: 'hasChildren',
+          checkStrictly: false,
+        }"
         default-expand-all
         row-key="id"
         @selection-change="handleSelectionChange"
@@ -158,7 +171,13 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import { DeptAPI, DeptForm, DeptQuery, DeptVO, OptionType } from "dehaze-sdk-js";
+import {
+  DeptAPI,
+  DeptForm,
+  DeptQuery,
+  DeptVO,
+  OptionType,
+} from "dehaze-sdk-js";
 import { Delete, Edit, Plus, Refresh, Search } from "@element-plus/icons-vue";
 
 const queryFormRef = ref(ElForm);
@@ -191,10 +210,11 @@ const rules = reactive({
 /** 查询 */
 function handleQuery() {
   loading.value = true;
-  DeptAPI.getList(queryParams).then((data) => {
-    deptList.value = data;
-    loading.value = false;
-  });
+  DeptAPI.getList(queryParams)
+    .then((data) => {
+      deptList.value = data;
+    })
+    .finally(() => (loading.value = false));
 }
 
 /**重置查询 */
@@ -210,15 +230,14 @@ function handleSelectionChange(selection: any) {
 
 /** 获取部门下拉数据  */
 async function loadDeptOptions() {
-  DeptAPI.getOptions().then((data) => {
-    deptOptions.value = [
-      {
-        value: 0,
-        label: "顶级部门",
-        children: data,
-      },
-    ];
-  });
+  const data = await DeptAPI.getOptions();
+  deptOptions.value = [
+    {
+      value: 0,
+      label: "顶级部门",
+      children: data,
+    },
+  ];
 }
 
 /**
@@ -232,9 +251,8 @@ async function openDialog(parentId?: number, deptId?: number) {
   dialog.visible = true;
   if (deptId) {
     dialog.title = "修改部门";
-    DeptAPI.getFormData(deptId).then((data) => {
-      Object.assign(formData, data);
-    });
+    const data = await DeptAPI.getFormData(deptId);
+    Object.assign(formData, data);
   } else {
     dialog.title = "新增部门";
     formData.parentId = parentId ?? 0;
@@ -280,25 +298,28 @@ function handleDelete(row?: any) {
         cancelButtonText: "取消",
         type: "warning",
       }
-    ).then(() => {
-      DeptAPI.deleteById(row.id).then(() => {
-        ElMessage.success("删除成功");
-        resetQuery();
-      });
-    });
+    )
+      .then(() => {
+        DeptAPI.deleteByIds(row.id).then(() => {
+          ElMessage.success("删除成功");
+          resetQuery();
+        });
+      })
+      .catch(() => {});
   } else if (ids.value.length > 0) {
-    // 批量删除（JSON Body）
     const deptIds = ids.value;
     ElMessageBox.confirm(`确认删除选中的部门吗？删除后不可恢复。`, "警告", {
       confirmButtonText: "确定",
       cancelButtonText: "取消",
       type: "warning",
-    }).then(() => {
-      DeptAPI.batchDelete(deptIds).then(() => {
-        ElMessage.success("删除成功");
-        resetQuery();
-      });
-    });
+    })
+      .then(() => {
+        DeptAPI.deleteByIds(deptIds.join(",")).then(() => {
+          ElMessage.success("删除成功");
+          resetQuery();
+        });
+      })
+      .catch(() => {});
   } else {
     ElMessage.warning("请勾选删除项");
   }

@@ -77,7 +77,7 @@
     "antd": "^5.29.3",
     "axios": "^1.18.1",
     "classnames": "^2.5.1",
-    "dehaze-sdk-js": "link:../dehaze-tool/dehaze-sdk-js",
+    "dehaze-sdk-js": "workspace:*",
     "lodash": "^4.17.21",
     "nprogress": "^0.2.0",
     "prop-types": "^15.8.1",

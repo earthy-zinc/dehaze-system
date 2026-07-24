@@ -9,6 +9,7 @@ import {
   REFRESH_TOKEN_KEY,
   ResponseData,
   ResultEnum,
+  TOKEN_KEY,
 } from "dehaze-sdk-js";
 
 // token 刷新状态：是否正在刷新中
@@ -114,6 +115,7 @@ export default function configRequest() {
       };
     },
     onResponseError: createOnResponseError(javaService),
+    getToken: () => localStorage.getItem(TOKEN_KEY),
   });
   configPythonAxios({
     onRequest: (config: InternalAxiosRequestConfig) => {
@@ -123,5 +125,6 @@ export default function configRequest() {
       };
     },
     onResponseError: createOnResponseError(pythonService),
+    getToken: () => localStorage.getItem(TOKEN_KEY),
   });
 }
