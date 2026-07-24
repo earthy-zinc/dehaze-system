@@ -20,11 +20,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.net.URI;
 
 @Tag(name = "07.文件接口")
 @RestController
@@ -103,6 +106,15 @@ public class FileController {
     public ResponseEntity<Resource> download(HttpServletRequest request) {
         String fullPath = request.getRequestURI();
         String objectName = fullPath.substring("/api/v1/files/download/".length());
+
+        SysFile file = sysFileService.getOne(
+                new LambdaQueryWrapper<SysFile>().eq(SysFile::getObjectName, objectName));
+        if (file != null && file.getUrl() != null && !file.getUrl().startsWith(filePathBuilder.getBaseUrl())) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(file.getUrl()))
+                    .build();
+        }
+
         String filename = FileUtil.getName(objectName);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");

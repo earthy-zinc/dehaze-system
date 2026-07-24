@@ -2,8 +2,10 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -220,6 +222,14 @@ func (api *SysFileApi) DownloadFile(c *gin.Context) {
 	if objectName == "" {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "缺少objectName参数"))
 		return
+	}
+
+	file, err := api.fileService.GetFileByObjectName(ctx, objectName)
+	if err == nil && file != nil && file.URL != nil && *file.URL != "" {
+		if cfg := config.GetConfig(); cfg != nil && !strings.HasPrefix(*file.URL, cfg.File.BaseURL) {
+			c.Redirect(http.StatusFound, *file.URL)
+			return
+		}
 	}
 
 	reader, sysFile, err := api.fileService.DownloadFile(ctx, objectName)

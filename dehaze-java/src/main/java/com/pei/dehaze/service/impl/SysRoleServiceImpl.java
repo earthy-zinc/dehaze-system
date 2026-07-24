@@ -96,6 +96,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * @return {@link Boolean}
      */
     @Override
+    @CacheEvict(value = "user:auth", allEntries = true)
     public boolean saveRole(RoleForm roleForm) {
 
         Long roleId = roleForm.getId();

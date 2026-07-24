@@ -166,6 +166,11 @@ func (s *FileService) GetPage(ctx context.Context, pageNum, pageSize int, keywor
 	}, nil
 }
 
+// GetFileByObjectName 根据对象名获取文件记录
+func (s *FileService) GetFileByObjectName(ctx context.Context, objectName string) (*model.SysFile, error) {
+	return s.fileRepo.FindByObjectName(ctx, objectName)
+}
+
 // DownloadFile 下载文件（返回文件流）
 func (s *FileService) DownloadFile(ctx context.Context, objectName string) (io.ReadCloser, *model.SysFile, error) {
 	file, err := s.fileRepo.FindByObjectName(ctx, objectName)

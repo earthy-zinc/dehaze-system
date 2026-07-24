@@ -34,6 +34,27 @@
 - `workspace:*` 正确解析 peer 依赖，TypeScript 能正常加载 `.d.ts` 类型声明
 - `pnpm-workspace.yaml` 已声明所有子项目为 workspace 成员
 
+### Java 数据权限机制
+- `MyDataPermissionHandler` 通过 `DataPermissionInterceptor` 自动在 SQL 上附加数据范围过滤
+- `SysDeptMapper.selectList` 上有 `@DataPermission(deptIdColumnName = "id")`，部门查询受数据权限控制
+- `SecurityUtils.isRoot()` 仅对 ROOT 角色码返回 true，ADMIN 角色不跳过数据权限
+- `DataScopeEnum`: ALL=0, DEPT_AND_SUB=1, DEPT=2, SELF=3（值越小范围越大）
+- `getUserAuthInfo` 有 `@Cacheable("user:auth")` 缓存，改角色 data_scope 后需清缓存或重新登录
+- `SysRoleServiceImpl.saveRole` 已加 `@CacheEvict("user:auth")` 确保角色变更时缓存自动失效
+
+### 算法生命周期状态
+- 算法有 6 种状态：0=草稿, 1=测试中, 2=待审核, 3=已发布(终态), 4=已停用(终态), 5=已归档(终态)
+- 终态(3/4/5)不允许通过 `PUT /api/v1/algorithms/{id}/status` 修改状态，后端返回 400 "终态算法不允许修改状态"
+- 前端列表页不能用 `el-switch`/`Switch`（二态 0/1）展示算法状态，会导致无限循环：switch 归一化触发 @change → API 失败 → catch 回滚修改 row.status → 再次触发 @change
+- 正确做法：列表页用 Tag 展示 6 种生命周期状态；编辑表单用 el-select/Select 下拉框展示 6 种状态
+- 新增算法默认状态应为 0（草稿），不是 1（测试中）
+
+### 文件存储双轨制
+- **用户上传文件**：存入 MinIO，`objectName` 格式 `upload/yyyyMMdd/md5.ext`，`url` 指向后端 download API（如 `http://127.0.0.1:8989/api/v1/files/download/...`）
+- **数据集文件**：由 nginx-dataset 容器（端口 9000）直服，不上传 MinIO；`objectName` 为相对路径（如 `Dense-Haze/clean/14_GT.png`），`url` 指向 nginx（如 `http://127.0.0.1:9000/...`）
+- 数据集初始化由 Java `InitFile` 组件完成（`file.init=true` 时扫描磁盘），仅创建 DB 记录不上传 MinIO
+- 三端 download 接口统一逻辑：先查 DB，若 `url` 不以当前后端 download baseUrl 开头则 302 重定向到该 URL（处理 nginx 直服的数据集文件）
+
 以下服务已经启动，请勿重复启动，如需重启，请告知用户，切勿私自重启
 
 - **Java**: 8989 (Spring Boot devtools 热重载)

@@ -11,7 +11,7 @@ from app.dependencies.auth import get_current_user
 from app.models.schema.file import FilePageVO, FileUploadResultVO, FileVO
 from app.service.file_service import FileService
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -160,6 +160,9 @@ async def download_file(
     if not file_info:
         raise HTTPException(
             status_code=404, detail=ResultCode.FILE_NOT_FOUND.msg)
+
+    if file_info.url and not file_info.url.startswith(settings.FILE_BASE_URL):
+        return RedirectResponse(file_info.url)
 
     # 构造 Content-Disposition（RFC 5987 编码中文文件名）
     filename = file_info.name

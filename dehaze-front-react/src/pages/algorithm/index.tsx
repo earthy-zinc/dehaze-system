@@ -23,7 +23,6 @@ import {
   Modal,
   Popconfirm,
   Space,
-  Switch,
   Table,
   Tag,
   type TableColumnsType,
@@ -47,6 +46,16 @@ function cleanAlgorithms(algorithms: Algorithm[]): void {
     }
   }
 }
+
+/** 算法生命周期状态映射 */
+const statusMap: Record<number, { label: string; color: string }> = {
+  0: { label: "草稿", color: "default" },
+  1: { label: "测试中", color: "orange" },
+  2: { label: "待审核", color: "gold" },
+  3: { label: "已发布", color: "green" },
+  4: { label: "已停用", color: "red" },
+  5: { label: "已归档", color: "default" },
+};
 
 export default function AlgorithmList(): React.JSX.Element {
   const [algorithmList, setAlgorithmList] = useState<Algorithm[]>([]);
@@ -77,7 +86,7 @@ export default function AlgorithmList(): React.JSX.Element {
 
   useEffect(() => {
     loadData(queryParams);
-  }, [queryParams, refreshFlag]); // eslint-disable-line
+  }, [queryParams, refreshFlag]);
 
   const refreshList = useCallback(() => setRefreshFlag((prev) => prev + 1), []);
 
@@ -126,21 +135,6 @@ export default function AlgorithmList(): React.JSX.Element {
     setDetailVisible(true);
   }, []);
 
-  /** 切换算法启用状态 */
-  const handleStatusChange = useCallback(
-    async (checked: boolean, record: Algorithm) => {
-      const status = checked ? 1 : 0;
-      try {
-        await AlgorithmAPI.updateStatus(record.id, status);
-        message.success(`算法「${record.name}」已${checked ? "启用" : "禁用"}`);
-        refreshList();
-      } catch (error: any) {
-        message.error(error?.message || "状态更新失败");
-      }
-    },
-    [refreshList]
-  );
-
   const handleDelete = useCallback(
     (record: Algorithm) => {
       AlgorithmAPI.deleteByIds([String(record.id)])
@@ -188,14 +182,14 @@ export default function AlgorithmList(): React.JSX.Element {
         key: "status",
         width: 100,
         align: "center",
-        render: (status: number, record: Algorithm) => (
-          <Switch
-            checked={status === 1}
-            checkedChildren="启用"
-            unCheckedChildren="禁用"
-            onChange={(checked) => handleStatusChange(checked, record)}
-          />
-        ),
+        render: (status: number) => {
+          const item = statusMap[status];
+          return item ? (
+            <Tag color={item.color}>{item.label}</Tag>
+          ) : (
+            <span>-</span>
+          );
+        },
       },
       {
         title: "代码导入路径",
@@ -265,13 +259,7 @@ export default function AlgorithmList(): React.JSX.Element {
         ),
       },
     ],
-    [
-      handleAddSub,
-      handleEdit,
-      handleDelete,
-      handleStatusChange,
-      handleViewDetail,
-    ]
+    [handleAddSub, handleEdit, handleDelete, handleViewDetail]
   );
 
   // ==================== 渲染 ====================
@@ -349,9 +337,14 @@ export default function AlgorithmList(): React.JSX.Element {
               <Tag>{detailRecord.type}</Tag>
             </Descriptions.Item>
             <Descriptions.Item label="状态">
-              <Tag color={detailRecord.status === 1 ? "green" : "default"}>
-                {detailRecord.status === 1 ? "启用" : "禁用"}
-              </Tag>
+              {(() => {
+                const item = statusMap[detailRecord.status!];
+                return item ? (
+                  <Tag color={item.color}>{item.label}</Tag>
+                ) : (
+                  <span>-</span>
+                );
+              })()}
             </Descriptions.Item>
             <Descriptions.Item label="代码导入路径">
               {detailRecord.importPath || "-"}

@@ -2,7 +2,14 @@
 import EditDialog from "@/components/DataList/EditDialog/index.vue";
 import type { FormInstance } from "element-plus";
 import { Algorithm, AlgorithmAPI, AlgorithmQuery } from "dehaze-sdk-js";
-import { Search, Refresh, Setting, Plus, Edit, Delete } from "@element-plus/icons-vue";
+import {
+  Search,
+  Refresh,
+  Setting,
+  Plus,
+  Edit,
+  Delete,
+} from "@element-plus/icons-vue";
 
 defineOptions({
   name: "AlgorithmList",
@@ -112,7 +119,7 @@ function resetQuery() {
 
 const dialogRef = ref();
 
-function openDialog<T extends Algorithm>(type: string, row: T) {
+function openDialog(type: string, row: Partial<Algorithm>) {
   dialogRef.value.open(type, row);
 }
 
@@ -140,20 +147,17 @@ function handleDelete(row: Algorithm) {
     });
 }
 
-// 切换算法状态
-function handleStatusChange(row: Algorithm, val: string | number | boolean) {
-  const status = Number(val);
-  AlgorithmAPI.updateStatus(row.id, status)
-    .then(() => {
-      row.status = status;
-      ElMessage.success(status === 1 ? "已启用" : "已禁用");
-    })
-    .catch((e) => {
-      // 接口失败时回滚状态并提示
-      row.status = status === 1 ? 0 : 1;
-      ElMessage.error("状态切换失败：" + e.message);
-    });
-}
+const statusMap: Record<
+  number,
+  { label: string; type: "primary" | "success" | "warning" | "info" | "danger" }
+> = {
+  0: { label: "草稿", type: "info" },
+  1: { label: "测试中", type: "warning" },
+  2: { label: "待审核", type: "warning" },
+  3: { label: "已发布", type: "success" },
+  4: { label: "已停用", type: "danger" },
+  5: { label: "已归档", type: "info" },
+};
 
 // 算法详情弹窗
 const detailVisible = ref(false);
@@ -281,7 +285,7 @@ onMounted(() => {
               <el-button
                 link
                 type="primary"
-                @click.stop="handleShowDetail(scope.row)"
+                @click.stop="handleShowDetail(scope.row as Algorithm)"
               >
                 {{ scope.row.name }}
               </el-button>
@@ -334,19 +338,22 @@ onMounted(() => {
             min-width="90"
           >
             <template #default="scope">
-              <el-switch
-                :model-value="scope.row.status"
-                :active-value="1"
-                :inactive-value="0"
-                active-text="启用"
-                inactive-text="禁用"
-                inline-prompt
-                @change="(val) => handleStatusChange(scope.row, val)"
-                @click.stop
-              />
+              <el-tag
+                v-if="scope.row.status != null && statusMap[scope.row.status]"
+                :type="statusMap[scope.row.status].type"
+                size="small"
+              >
+                {{ statusMap[scope.row.status].label }}
+              </el-tag>
+              <span v-else class="text-muted">-</span>
             </template>
           </el-table-column>
-          <el-table-column align="center" fixed="right" label="操作" width="220">
+          <el-table-column
+            align="center"
+            fixed="right"
+            label="操作"
+            width="220"
+          >
             <template #default="scope">
               <el-button
                 link
@@ -370,7 +377,7 @@ onMounted(() => {
                 link
                 size="small"
                 type="danger"
-                @click.stop="handleDelete(scope.row)"
+                @click.stop="handleDelete(scope.row as Algorithm)"
               >
                 <el-icon><Delete /></el-icon>
                 删除
@@ -414,8 +421,14 @@ onMounted(() => {
           {{ detailData.size }}
         </el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag v-if="detailData.status === 1" type="success">启用</el-tag>
-          <el-tag v-else type="info">禁用</el-tag>
+          <el-tag
+            v-if="detailData.status != null && statusMap[detailData.status]"
+            :type="statusMap[detailData.status].type"
+            size="small"
+          >
+            {{ statusMap[detailData.status].label }}
+          </el-tag>
+          <span v-else class="text-muted">-</span>
         </el-descriptions-item>
         <el-descriptions-item label="导入路径" :span="2">
           {{ detailData.importPath }}

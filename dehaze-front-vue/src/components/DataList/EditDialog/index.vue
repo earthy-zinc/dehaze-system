@@ -248,14 +248,23 @@ async function submitForm() {
       </el-form-item>
       <el-form-item :label="`&nbsp;&nbsp;${NAME_CONSTANT}状态`">
         <el-switch
+          v-if="isDatasetList"
           v-model="formData.status"
-          :active-text="`${isDatasetList ? '显示' : '启用'}`"
-          :inactive-text="`${isDatasetList ? '隐藏' : '禁用'}`"
-          active-value="1"
-          inactive-value="0"
+          active-text="显示"
+          inactive-text="隐藏"
+          :active-value="1"
+          :inactive-value="0"
           inline-prompt
           size="large"
         />
+        <el-select v-else v-model="formData.status" style="width: 100%">
+          <el-option label="草稿" :value="0" />
+          <el-option label="测试中" :value="1" />
+          <el-option label="待审核" :value="2" />
+          <el-option label="已发布" :value="3" />
+          <el-option label="已停用" :value="4" />
+          <el-option label="已归档" :value="5" />
+        </el-select>
       </el-form-item>
     </el-form>
     <template #footer>
