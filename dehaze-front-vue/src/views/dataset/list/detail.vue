@@ -6,7 +6,6 @@ import {
   IMAGE_TYPE_LABELS,
   formatHazeLevel,
 } from "@/enums/ImageTypeEnum";
-import { changeUrl } from "@/utils";
 import {
   Dataset,
   DatasetAPI,
@@ -175,8 +174,8 @@ const images = computed<ViewCard[]>(() => {
       const isSelected = selectedIds.value.includes(item.id);
       return {
         id: item.id,
-        src: changeUrl(img.url),
-        originSrc: changeUrl(img.originUrl || img.url),
+        src: img.url,
+        originSrc: img.originUrl || img.url,
         alt: img.description || item.name,
         backgroundColor: isSelected ? "#ecf5ff" : "#fff",
       } as ViewCard;
@@ -258,7 +257,7 @@ const detailImage = computed(() => detailImages.value[detailImageIndex.value]);
 const detailImageUrl = computed(() => {
   const img = detailImage.value;
   if (!img) return "";
-  return changeUrl(img.originUrl || img.url);
+  return img.originUrl || img.url;
 });
 
 function handleImageClick(itemId: number) {
@@ -362,7 +361,7 @@ async function deleteDetailItem() {
 // ==================== 列表/网格辅助 ====================
 function getThumbUrl(row: DatasetItemVO): string {
   const img = row.clearImage || row.hazyImages?.[0];
-  return img ? changeUrl(img.thumbnailUrl || img.url) : "";
+  return img ? img.thumbnailUrl || img.url : "";
 }
 
 function getResolution(row: DatasetItemVO): string {

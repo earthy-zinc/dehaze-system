@@ -2,7 +2,6 @@
 import Camera from "@/components/Camera/index.vue";
 import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
 import { useImageShowStore } from "@/store/modules/imageShow";
-import { changeUrl } from "@/utils";
 import examples from "@/views/presentation/dehaze/exampleImages";
 import { FileAPI } from "dehaze-sdk-js";
 import { UploadFilled } from "@element-plus/icons-vue";
@@ -186,7 +185,7 @@ async function handleUploadRequest(options: UploadRequestOptions) {
     );
     uploadProgress.value = 100;
     ElMessage.success("上传成功");
-    const url = changeUrl(res.url);
+    const url = res.url;
     handleImageSelected(url, "upload");
   } catch (err: any) {
     ElMessage.error("上传失败：" + (err?.message || "未知错误"));
@@ -204,7 +203,7 @@ function handleCameraSave(file: File) {
   uploading.value = true;
   FileAPI.upload(file, imageShowStore.modelId)
     .then((res) => {
-      const url = changeUrl(res.url);
+      const url = res.url;
       handleImageSelected(url, "camera");
     })
     .catch((err: any) => {

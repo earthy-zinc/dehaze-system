@@ -22,7 +22,6 @@ import {
   setModelId,
 } from "@/store/modules/imageShowSlice";
 
-import { changeUrl } from "@/utils";
 import { calculateFileMd5 } from "@/utils/md5";
 import {
   CheckCircleOutlined,
@@ -184,7 +183,7 @@ const Dehaze: React.FC = () => {
       }
       dispatch(
         setImageUrl({
-          url: changeUrl(res.url),
+          url: res.url,
           type: ImageTypeEnum.HAZE,
         })
       );
@@ -261,13 +260,13 @@ const Dehaze: React.FC = () => {
 
       dispatch(
         setImageUrl({
-          url: changeUrl(urls[0].url),
+          url: urls[0].url,
           type: ImageTypeEnum.HAZE,
         })
       );
       dispatch(
         setImageUrl({
-          url: changeUrl(response.resultUrl),
+          url: response.resultUrl,
           type: ImageTypeEnum.PRED,
         })
       );
@@ -377,7 +376,7 @@ const Dehaze: React.FC = () => {
         // 调用预测接口
         const predRes = await ModelAPI.predict({
           algorithmId: selectedModel,
-          imageUrl: changeUrl(uploadRes.url),
+          imageUrl: uploadRes.url,
         });
         if (batchCancelRef.current) break;
 
@@ -399,7 +398,7 @@ const Dehaze: React.FC = () => {
                   ...t,
                   status: "completed",
                   progress: 100,
-                  resultUrl: changeUrl(predRes.resultUrl),
+                  resultUrl: predRes.resultUrl,
                 }
               : t
           )

@@ -8,7 +8,6 @@ import {
 } from "dehaze-sdk-js";
 import Waterfall from "@/components/Waterfall";
 import { ViewCard } from "@/components/Waterfall/types";
-import { changeUrl } from "@/utils";
 import { Button, Card, Form, TreeSelect } from "antd";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -68,8 +67,8 @@ const DatasetImageSelect: React.FC<DatasetImageSelectProps> = ({
         if (!image) return null;
         return {
           id: item.id,
-          src: changeUrl(image.url),
-          originSrc: changeUrl(image.originUrl || image.url),
+          src: image.url,
+          originSrc: image.originUrl || image.url,
           alt: image.description || "",
         } as ViewCard;
       })

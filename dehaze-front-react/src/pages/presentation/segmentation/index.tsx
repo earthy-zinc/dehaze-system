@@ -5,7 +5,6 @@ import SingleImageShow from "@/components/SingleImageShow";
 
 import { setLoading } from "@/store/modules/imageShowSlice";
 
-import { changeUrl } from "@/utils";
 import { InboxOutlined } from "@ant-design/icons";
 import { Card, message, Select, Upload } from "antd";
 import React, { useEffect, useState } from "react";
@@ -38,7 +37,7 @@ const Segmentation: React.FC = () => {
     dispatch(setLoading(true));
     FileAPI.upload(file)
       .then((res) => {
-        setOriginUrl(changeUrl(res.url));
+        setOriginUrl(res.url);
         setResultUrl("");
         setStage("preview");
       })
@@ -57,7 +56,7 @@ const Segmentation: React.FC = () => {
         algorithmId: selectedModel,
         imageUrl: originUrl,
       });
-      setResultUrl(changeUrl(response.resultUrl));
+      setResultUrl(response.resultUrl);
       setStage("result");
       message.success("分割处理完成");
     } catch (error) {

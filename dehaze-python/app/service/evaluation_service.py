@@ -94,7 +94,7 @@ class EvaluationService:
         )
 
         # 转换为 { "psnr": 35.0, "ssim": 0.92, ... } 格式
-        metrics = {m["metric_name"]: m["value"] for m in metrics_list}
+        metrics = {m["label"]: m["value"] for m in metrics_list}
 
         elapsed = int((time.time() - start) * 1000)
         qualified = _is_qualified(metrics)

@@ -15,7 +15,6 @@ import {
   isExternal,
   hexToRGBA,
   loadImage,
-  changeUrl,
 } from "../index";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
@@ -644,44 +643,6 @@ describe("Utils Functions", () => {
     });
   });
 
-  describe("changeUrl", () => {
-    it("应该替换URL的主机部分", () => {
-      const originalUrl = "https://oldhost.com/api/test";
-      const result = changeUrl(originalUrl);
-
-      // 由于测试环境的配置，结果可能包含不同的值
-      expect(result).toContain("localhost");
-      expect(result).toContain("/api/test");
-    });
-
-    it("应该处理空的URL", () => {
-      expect(changeUrl("")).toBe("");
-      expect(changeUrl(null as any)).toBe("");
-      expect(changeUrl(undefined as any)).toBe("");
-    });
-
-    it("应该处理带有端口的URL", () => {
-      const originalUrl = "https://oldhost.com:8080/api/test";
-      const result = changeUrl(originalUrl);
-
-      expect(result).toContain("localhost");
-      expect(result).toContain("/api/test");
-    });
-
-    it("应该处理无效URL时抛出错误", () => {
-      // 相对URL会导致new URL()抛出错误
-      expect(() => changeUrl("/api/test")).toThrow("Invalid URL");
-    });
-
-    it("应该处理复杂的URL结构", () => {
-      const originalUrl =
-        "https://oldhost.com:8080/api/v1/users?page=1&limit=10";
-      const result = changeUrl(originalUrl);
-
-      expect(result).toContain("localhost");
-      expect(result).toContain("/api/v1/users");
-    });
-  });
 
   describe("边界情况和错误处理", () => {
     it("应该处理null/undefined输入", () => {

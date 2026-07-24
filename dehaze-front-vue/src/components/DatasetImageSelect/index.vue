@@ -4,7 +4,6 @@ import { ViewCard } from "@/components/Waterfall/types";
 import {
   IMAGE_TYPE_LABELS,
 } from "@/enums/ImageTypeEnum";
-import { changeUrl } from "@/utils";
 import {
   Dataset,
   DatasetAPI,
@@ -108,8 +107,8 @@ function switchImageUrl() {
     }
     return {
       id: item.id,
-      src: changeUrl(img.url),
-      originSrc: changeUrl(img.originUrl || img.url),
+      src: img.url,
+      originSrc: img.originUrl || img.url,
       alt: img.description || "",
     };
   });
@@ -133,7 +132,7 @@ function selectImage(itemId: number) {
     const haze = imgs.find((i) => i.type === "hazy");
     const clear = imgs.find((i) => i.type === "clear");
     if (haze && clear) {
-      emit("onSelected", changeUrl(haze.originUrl || haze.url), changeUrl(clear.originUrl || clear.url));
+      emit("onSelected", haze.originUrl || haze.url, clear.originUrl || clear.url);
     }
   }
 }

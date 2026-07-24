@@ -8,7 +8,6 @@ import SingleImageShow from "@/components/SingleImageShow/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { useAlgorithmStore } from "@/store";
 import { useImageShowStore } from "@/store/modules/imageShow";
-import { changeUrl } from "@/utils";
 import examples from "@/views/presentation/dehaze/exampleImages";
 import { FileAPI, ModelAPI } from "dehaze-sdk-js";
 import { UploadFile, UploadUserFile } from "element-plus";
@@ -99,7 +98,7 @@ function handleImageUpload(file: File) {
   FileAPI.upload(file, imageShowStore.modelId)
     .then((res) => {
       // 文件上传成功后拿到服务器返回的 url 地址在右侧渲染
-      imageShowStore.setImageUrl(changeUrl(res.url), ImageTypeEnum.HAZE);
+      imageShowStore.setImageUrl(res.url, ImageTypeEnum.HAZE);
       activePage.value = "singleImage";
     })
     .catch((err) => {
@@ -185,12 +184,12 @@ async function handleGenerateImage() {
       if (cancelFlag) return;
       progress.value = 95;
       stopProgressSimulation();
-      imageShowStore.setImageUrl(changeUrl(imgUrl), ImageTypeEnum.HAZE);
-      imageShowStore.setImageUrl(changeUrl(res.resultUrl), ImageTypeEnum.PRED);
+      imageShowStore.setImageUrl(imgUrl, ImageTypeEnum.HAZE);
+      imageShowStore.setImageUrl(res.resultUrl, ImageTypeEnum.PRED);
       if (cleanUrl.value) {
         try {
           const cleanRes = await handleCleanUrl(cleanUrl.value, modelId);
-          cleanUrl.value = changeUrl(cleanRes);
+          cleanUrl.value = cleanRes;
         } catch (e: any) {
           ElMessage.error("清晰图上传失败：" + (e.message || "未知错误"));
         }
@@ -316,7 +315,7 @@ async function handleStartBatch() {
     try {
       // 先上传原图
       const uploadRes = await FileAPI.upload(task.file, modelId);
-      task.hazeUrl = changeUrl(uploadRes.url);
+      task.hazeUrl = uploadRes.url;
       const predRes = await ModelAPI.predict({
         algorithmId: modelId,
         imageUrl: task.hazeUrl,
@@ -324,7 +323,7 @@ async function handleStartBatch() {
           ? JSON.stringify(dehazeParams.value)
           : undefined,
       });
-      task.resultUrl = changeUrl(predRes.resultUrl);
+      task.resultUrl = predRes.resultUrl;
       task.progress = 100;
       task.status = "success";
     } catch (e: any) {
@@ -388,8 +387,8 @@ function handleClearBatch() {
   batchTasks.value = [];
 }
 
-function statusTagColor(status: BatchTask["status"]): string {
-  const map: Record<BatchTask["status"], string> = {
+function statusTagColor(status: string): string {
+  const map: Record<string, string> = {
     pending: "#1890ff",
     processing: "#1890ff",
     success: "#52c41a",
@@ -399,8 +398,8 @@ function statusTagColor(status: BatchTask["status"]): string {
   return map[status];
 }
 
-function statusText(status: BatchTask["status"]) {
-  const map: Record<BatchTask["status"], string> = {
+function statusText(status: string) {
+  const map: Record<string, string> = {
     pending: "等待中",
     processing: "处理中",
     success: "已完成",
@@ -665,7 +664,7 @@ onUnmounted(() => {
                 v-if="scope.row.status === 'success'"
                 link
                 type="primary"
-                @click="handleViewBatchResult(scope.row)"
+                @click="handleViewBatchResult(scope.row as BatchTask)"
               >
                 查看
               </el-button>
@@ -673,7 +672,7 @@ onUnmounted(() => {
                 v-if="scope.row.status === 'failed'"
                 link
                 type="warning"
-                @click="handleRetryBatch(scope.row)"
+                @click="handleRetryBatch(scope.row as BatchTask)"
               >
                 重试
               </el-button>
@@ -684,7 +683,7 @@ onUnmounted(() => {
                 "
                 link
                 type="danger"
-                @click="handleRemoveBatch(scope.row)"
+                @click="handleRemoveBatch(scope.row as BatchTask)"
               >
                 移除
               </el-button>

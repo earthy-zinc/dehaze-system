@@ -23,7 +23,6 @@ import { useNavigate } from "react-router-dom";
 import Camera from "@/components/Camera";
 import ExampleImageSelect from "@/components/ExampleImageSelect";
 import exampleImages from "@/pages/presentation/dehaze/exampleImages";
-import { changeUrl } from "@/utils";
 import { FileAPI } from "dehaze-sdk-js";
 
 const { Dragger } = Upload;
@@ -177,7 +176,7 @@ const UploadPanel: React.FC<UploadPanelProps> = ({ onImageSelected }) => {
     })
       .then((res) => {
         message.success("上传成功");
-        onImageSelected(changeUrl(res.url), "upload");
+        onImageSelected(res.url), "upload";
       })
       .catch((err) => {
         message.error("上传失败: " + (err?.message || "未知错误"));
@@ -259,7 +258,7 @@ const CameraPanel: React.FC<CameraPanelProps> = ({ onImageSelected }) => {
       .then((res) => {
         hide();
         message.success("拍照上传成功");
-        onImageSelected(changeUrl(res.url), "camera");
+        onImageSelected(res.url), "camera";
       })
       .catch((err) => {
         hide();
