@@ -40,21 +40,6 @@ Object.defineProperty(window, "IntersectionObserverEntry", {
   writable: true,
 });
 
-// Mock environment variables
-const mockEnv = {
-  VITE_BASE_API: "/api",
-};
-
-// Mock import.meta.env
-Object.defineProperty(globalThis, "import", {
-  value: {
-    meta: {
-      env: mockEnv,
-    },
-  },
-  writable: true,
-});
-
 describe("Utils Functions", () => {
   describe("hasClass", () => {
     it("应该检测到存在的class", () => {

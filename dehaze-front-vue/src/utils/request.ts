@@ -1,4 +1,3 @@
-import type { InternalAxiosRequestConfig } from "axios";
 import { configAxios, ResponseData } from "dehaze-sdk-js";
 
 function createOnResponseError() {
@@ -17,12 +16,6 @@ function createOnResponseError() {
 
 export default function configRequest() {
   configAxios({
-    onRequest: (config: InternalAxiosRequestConfig) => {
-      return {
-        ...config,
-        baseURL: import.meta.env.VITE_BASE_API,
-      };
-    },
     onResponseError: createOnResponseError(),
   });
 }
