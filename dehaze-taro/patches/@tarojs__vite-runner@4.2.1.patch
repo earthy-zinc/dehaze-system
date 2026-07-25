@@ -1,0 +1,35 @@
+diff --git a/dist/harmony/entry.js b/dist/harmony/entry.js
+index be0cf2f875362d9a75e1fb71c9e296ec86138168..2a25c94b8d933fef334fc7cc95e5fb22751b37ef 100644
+--- a/dist/harmony/entry.js
++++ b/dist/harmony/entry.js
+@@ -57,7 +57,7 @@ function default_1(viteCompilerContext) {
+                     const tabbar = appConfig.tabBar;
+                     const parse = new template_1.AppParser(appPath, appConfig, taroConfig, viteCompilerContext.loaderMeta);
+                     // emit pages
+-                    yield Promise.all(viteCompilerContext.pages.map((page) => __awaiter(this, void 0, void 0, function* () {
++                    for (const page of viteCompilerContext.pages) {
+                         if (page.isNative) {
+                             const { sourceDir, nativeExt } = viteCompilerContext;
+                             const nativePath = (0, helper_1.resolveMainFilePath)(node_path_1.default.join(sourceDir, page.name), nativeExt);
+@@ -80,7 +80,7 @@ function default_1(viteCompilerContext) {
+                                 resolveDependencies: true
+                             });
+                         }
+-                    })));
++                    }
+                     // native components
+                     for (const comp of viteCompilerContext.nativeComponents.values()) {
+                         viteCompilerContext.generateNativeComponent(this, comp, [rawId]);
+diff --git a/dist/harmony/template/app.js b/dist/harmony/template/app.js
+index 8d3c3dccfed8f97c9a0ae092512a9a443f499a82..13f1747f5de511e326d4d802cfa0269c82c22652 100644
+--- a/dist/harmony/template/app.js
++++ b/dist/harmony/template/app.js
+@@ -102,7 +102,7 @@ class Parser extends base_1.default {
+   }
+ 
+   onMemoryLevel(level: AbilityConstant.MemoryLevel) {
+-    let levelRes: number
++    let levelRes: number = 0
+ 
+     switch (level) {
+       case AbilityConstant.MemoryLevel.MEMORY_LEVEL_MODERATE:

@@ -21,7 +21,7 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
     },
     sourceRoot: "src",
     outputRoot: `dist/${process.env.TARO_ENV}`,
-    plugins: ["@tarojs/plugin-http"],
+    plugins: ["@tarojs/plugin-http", "@tarojs/plugin-platform-harmony-cpp"],
     defineConstants: {},
     copy: {
       patterns: [],
@@ -95,6 +95,15 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
           enable: false, // 默认为 false，如需使用 css modules 功能，则设为 true
         },
       },
+    },
+    harmony: {
+      // 当前仅支持使用 Vite 编译鸿蒙应用
+      // @ts-ignore Taro 4.1.7 类型定义中 IHarmonyConfig 缺少 compiler 属性，运行时需要
+      compiler: "vite",
+      // Note: 鸿蒙工程路径，可以参考 [鸿蒙应用创建导读](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V2/start-with-ets-stage-0000001477980905-V2) 创建
+      projectPath: path.resolve(__dirname, "..", "harmory"),
+      // Taro 项目编译到对应鸿蒙模块名，默认为 entry
+      hapName: "entry",
     },
   };
   if (process.env.NODE_ENV === "development") {

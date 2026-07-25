@@ -8,6 +8,8 @@ packages:
 
 onlyBuiltDependencies:
   - esbuild
+  - "@tarojs/binding"
+  - "@tarojs/cli"
 
 overrides:
   '@tarojs/webpack5-prebundle>enhanced-resolve': 5.17.1
