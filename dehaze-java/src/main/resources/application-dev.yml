@@ -209,7 +209,7 @@ algorithm:
     # 熔断后半开等待（毫秒）
     circuit-breaker-half-open-delay: 30000
     # 服务间调用 API Key（M2M 认证，需与 DB 中 admin 用户的 API Key 一致）
-    api-key: dhak_m2m_ee3b5be0ae739e8a7e09883575d3742e4d19042fce82f8a48aae7f76116c8463
+    api-key: dhak_m2m_internal_python_service_key_2024
 
 # 验证码配置
 captcha:

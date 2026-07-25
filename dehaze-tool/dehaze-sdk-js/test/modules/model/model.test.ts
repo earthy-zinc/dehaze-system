@@ -5,7 +5,7 @@ import { createPredictionForm, createEvaluationForm } from "#/factories/model";
 describe("预测与评估 API 测试", () => {
   describe("POST /api/v1/prediction - 模型预测", () => {
     test("正向测试：提交预测请求并验证返回结构", async () => {
-      const form = createPredictionForm({ algorithmId: 1 });
+      const form = createPredictionForm({ algorithmId: 13 }); // DCP 算法
       const result = await ModelAPI.predict(form);
 
       expect(result).toBeDefined();
@@ -72,22 +72,29 @@ describe("预测与评估 API 测试", () => {
   describe("POST /api/v1/evaluation - 效果评估", () => {
     test("正向测试：提交评估请求并验证返回指标", async () => {
       const form = createEvaluationForm({ algorithmId: 1 });
-      const result = await ModelAPI.evaluate(form);
+      try {
+        const result = await ModelAPI.evaluate(form);
 
-      expect(result).toBeDefined();
-      expect(typeof result.metrics).toBe("object");
-      expect(result.metrics).not.toBeNull();
-      if (result.metrics.psnr !== undefined) {
-        expect(typeof result.metrics.psnr).toBe("number");
-        expect(result.metrics.psnr).toBeGreaterThan(0);
+        expect(result).toBeDefined();
+        expect(typeof result.metrics).toBe("object");
+        expect(result.metrics).not.toBeNull();
+        if (result.metrics.psnr !== undefined) {
+          expect(typeof result.metrics.psnr).toBe("number");
+          expect(result.metrics.psnr).toBeGreaterThan(0);
+        }
+        if (result.metrics.ssim !== undefined) {
+          expect(typeof result.metrics.ssim).toBe("number");
+          expect(result.metrics.ssim).toBeGreaterThanOrEqual(0);
+          expect(result.metrics.ssim).toBeLessThanOrEqual(1);
+        }
+        expect(typeof result.time).toBe("number");
+        expect(result.time).toBeGreaterThanOrEqual(0);
+      } catch (e: any) {
+        console.error("=== 评估请求失败 ===");
+        console.error("HTTP状态:", e?.response?.status);
+        console.error("响应体:", JSON.stringify(e?.response?.data, null, 2));
+        throw e;
       }
-      if (result.metrics.ssim !== undefined) {
-        expect(typeof result.metrics.ssim).toBe("number");
-        expect(result.metrics.ssim).toBeGreaterThanOrEqual(0);
-        expect(result.metrics.ssim).toBeLessThanOrEqual(1);
-      }
-      expect(typeof result.time).toBe("number");
-      expect(result.time).toBeGreaterThanOrEqual(0);
     });
 
     test("参数校验：缺少 algorithmId 应报错", async () => {
