@@ -145,13 +145,11 @@ const ProfilePage: React.FC = () => {
               {perms.length > 0 ? (
                 <>
                   <View className="permission-tags">
-                    {perms
-                      .slice(0, MAX_PERMISSION_PREVIEW)
-                      .map((perm) => (
-                        <Tag key={perm} size="small">
-                          {perm}
-                        </Tag>
-                      ))}
+                    {perms.slice(0, MAX_PERMISSION_PREVIEW).map((perm) => (
+                      <Tag key={perm} size="small">
+                        {perm}
+                      </Tag>
+                    ))}
                   </View>
                   {perms.length > MAX_PERMISSION_PREVIEW && (
                     <Text className="permission-more">

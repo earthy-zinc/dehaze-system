@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.evaluation.EvaluationLogVO;
+import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 
 import java.util.Map;
 import java.util.Objects;
@@ -67,14 +68,14 @@ public class EvaluationLogAdapter extends ListAdapter<EvaluationLogVO, Evaluatio
 
     class LogViewHolder extends RecyclerView.ViewHolder {
         private final TextView tvTitle;
-        private final TextView tvQualified;
+        private final TextView tvStatus;
         private final TextView tvMetrics;
         private final TextView tvCreateTime;
 
         LogViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitle = itemView.findViewById(R.id.tv_title);
-            tvQualified = itemView.findViewById(R.id.tv_qualified);
+            tvStatus = itemView.findViewById(R.id.tv_status);
             tvMetrics = itemView.findViewById(R.id.tv_metrics);
             tvCreateTime = itemView.findViewById(R.id.tv_create_time);
         }
@@ -84,25 +85,23 @@ public class EvaluationLogAdapter extends ListAdapter<EvaluationLogVO, Evaluatio
 
             EvalResult result = log.getResult();
             if (result == null) {
-                tvQualified.setText("未评估");
-                tvQualified.setTextColor(itemView.getContext().getResources()
+                tvStatus.setText("未评估");
+                tvStatus.setTextColor(itemView.getContext().getResources()
                         .getColor(android.R.color.darker_gray));
                 tvMetrics.setText("暂无指标数据");
             } else {
-                Boolean qualified = result.getQualified();
-                if (qualified != null) {
-                    if (qualified) {
-                        tvQualified.setText("合格");
-                        tvQualified.setTextColor(itemView.getContext().getResources()
-                                .getColor(android.R.color.holo_green_dark));
-                    } else {
-                        tvQualified.setText("不合格");
-                        tvQualified.setTextColor(itemView.getContext().getResources()
-                                .getColor(android.R.color.holo_red_dark));
-                    }
+                PredEvalTaskStatus status = result.getStatus();
+                if (status == PredEvalTaskStatus.FAILED) {
+                    tvStatus.setText("失败");
+                    tvStatus.setTextColor(itemView.getContext().getResources()
+                            .getColor(android.R.color.holo_red_dark));
+                } else if (status == PredEvalTaskStatus.COMPLETED) {
+                    tvStatus.setText("完成");
+                    tvStatus.setTextColor(itemView.getContext().getResources()
+                            .getColor(android.R.color.holo_green_dark));
                 } else {
-                    tvQualified.setText("已评估");
-                    tvQualified.setTextColor(itemView.getContext().getResources()
+                    tvStatus.setText("处理中");
+                    tvStatus.setTextColor(itemView.getContext().getResources()
                             .getColor(android.R.color.darker_gray));
                 }
                 tvMetrics.setText(formatMetrics(result.getMetrics()));

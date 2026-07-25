@@ -1,6 +1,8 @@
 package job
 
 import (
+	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
+	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 )
 
@@ -10,9 +12,9 @@ type JobManager struct {
 }
 
 // NewJobManager 创建任务管理器
-func NewJobManager(storageSvc StorageService) *JobManager {
+func NewJobManager(storageSvc StorageService, predLogRepo predrepo.IPredLogRepository, evalLogRepo evalrepo.IEvalLogRepository) *JobManager {
 	return &JobManager{
-		cleanupJob: NewCleanupJob(storageSvc),
+		cleanupJob: NewCleanupJob(storageSvc, predLogRepo, evalLogRepo),
 	}
 }
 
@@ -37,8 +39,8 @@ func (m *JobManager) GetCleanupJob() *CleanupJob {
 var jobManager *JobManager
 
 // InitJobs 初始化定时任务
-func InitJobs(storageSvc StorageService) {
-	jobManager = NewJobManager(storageSvc)
+func InitJobs(storageSvc StorageService, predLogRepo predrepo.IPredLogRepository, evalLogRepo evalrepo.IEvalLogRepository) {
+	jobManager = NewJobManager(storageSvc, predLogRepo, evalLogRepo)
 	jobManager.Start()
 	logger.Info("定时任务初始化完成")
 }

@@ -24,6 +24,9 @@ public interface ModelApiService {
     @POST("/api/v1/prediction")
     Call<Result<PredResult>> predict(@Body PredParam data);
 
+    @GET("/api/v1/prediction/{taskId}")
+    Call<Result<PredResult>> getPredTaskStatus(@Path("taskId") long taskId);
+
     @GET("/api/v1/prediction/logs")
     Call<Result<PageResult<PredictionLogVO>>> listPredictionLogs(
             @Query("algorithmId") Long algorithmId,
@@ -32,6 +35,9 @@ public interface ModelApiService {
 
     @POST("/api/v1/evaluation")
     Call<Result<EvalResult>> evaluate(@Body EvalParam data);
+
+    @GET("/api/v1/evaluation/{taskId}")
+    Call<Result<EvalResult>> getEvalTaskStatus(@Path("taskId") long taskId);
 
     @GET("/api/v1/evaluation/logs")
     Call<Result<PageResult<EvaluationLogVO>>> listEvaluationLogs(

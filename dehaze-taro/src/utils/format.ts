@@ -49,7 +49,7 @@ export function formatDateTime(
 ): string {
   if (!date) return "-";
   const d = typeof date === "string" ? new Date(date) : date;
-  if (isNaN(d.getTime())) return String(date);
+  if (Number.isNaN(d.getTime())) return String(date);
   const pad = (n: number) => String(n).padStart(2, "0");
   const base = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
     d.getDate()

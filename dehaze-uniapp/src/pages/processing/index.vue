@@ -236,17 +236,21 @@ async function handleProcess() {
   store.startProcessing();
 
   try {
-    const result: PredictionResultVO = await ModelAPI.predict({
+    const result: PredictionResultVO = await ModelAPI.predictAndWait({
       algorithmId: store.selectedAlgorithm.id,
       fileId: store.fileId ?? undefined,
       imageUrl: !store.fileId ? store.currentImage.url : undefined,
       params: buildPredictParams(),
     });
 
+    if (result.status === "failed") {
+      throw new Error(result.errorMessage || "处理失败");
+    }
+
     store.complete(result);
 
     uni.showToast({
-      title: `处理完成，耗时${result.time}s`,
+      title: `处理完成，耗时${result.time ?? 0}s`,
       icon: "success",
       duration: 2000,
     });

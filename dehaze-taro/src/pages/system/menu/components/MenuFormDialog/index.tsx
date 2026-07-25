@@ -73,9 +73,8 @@ const MenuFormDialog: React.FC<MenuFormDialogProps> = ({
             <View className="parent-menu-display">
               {form.parentId === 0
                 ? "顶级菜单"
-                : menuOptions.find(
-                    (opt) => Number(opt.value) === form.parentId
-                  )?.label || "未知菜单"}
+                : menuOptions.find((opt) => Number(opt.value) === form.parentId)
+                    ?.label || "未知菜单"}
             </View>
           </View>
 
@@ -171,7 +170,9 @@ const MenuFormDialog: React.FC<MenuFormDialogProps> = ({
               type="number"
               placeholder="请输入排序值"
               value={String(form.sort ?? 1)}
-              onInput={(e) => onFieldChange("sort", Number(e.detail.value) || 1)}
+              onInput={(e) =>
+                onFieldChange("sort", Number(e.detail.value) || 1)
+              }
             />
           </View>
 

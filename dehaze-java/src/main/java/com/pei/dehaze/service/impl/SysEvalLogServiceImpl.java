@@ -2,7 +2,6 @@ package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.text.CharSequenceUtil;
-import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -19,48 +18,39 @@ import com.pei.dehaze.model.vo.EvaluationResultVO;
 import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysEvalLogService;
 import com.pei.dehaze.service.SysFileService;
-import com.pei.dehaze.service.client.PythonAlgorithmClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * 效果评估服务 —— 生产级实现
- * <p>
- * 调用 Python 算法服务执行 PSNR/SSIM/LPIPS/NIQE 等多维指标评估
- *
- * @author earthyzinc
- * @since 2024-06-12
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEvalLog> implements SysEvalLogService {
 
     private final SysAlgorithmService algorithmService;
-    private final PythonAlgorithmClient pythonClient;
     private final SysFileService sysFileService;
+    private final EvalLogAsyncTask asyncTask;
 
     @Value("${file.datasetBaseUrl}")
     private String datasetBaseUrl;
 
     @Override
     public EvaluationResultVO evaluate(EvaluationForm form) {
-        // 1. 校验算法存在
         SysAlgorithm algorithm = algorithmService.getById(form.getAlgorithmId());
         if (algorithm == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
 
-        // 2. 记录评估请求日志（独立短事务，避免远程调用期间占用数据库连接）
+        String predUrl = toAbsoluteUrl(form.getPredUrl() != null ? form.getPredUrl() : resolveFileUrl(form.getPredFileId(), "pred"));
+        String gtUrl = toAbsoluteUrl(form.getGtUrl() != null ? form.getGtUrl() : resolveFileUrl(form.getGtFileId(), "gt"));
+
         SysEvalLog evalLog = new SysEvalLog();
         evalLog.setAlgorithmId(form.getAlgorithmId());
         if (form.getPredFileId() != null) {
@@ -69,49 +59,17 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         if (form.getGtFileId() != null) {
             evalLog.setGtFileId(form.getGtFileId());
         }
+        evalLog.setPredUrl(predUrl);
+        evalLog.setGtUrl(gtUrl);
+        evalLog.setStatus("processing");
         this.save(evalLog);
 
-        // 3. 调用 Python 评估服务（事务外远程调用，不占用数据库连接）
-        long startTime = System.currentTimeMillis();
-        try {
-            String predUrl = toAbsoluteUrl(form.getPredUrl() != null ? form.getPredUrl() : resolveFileUrl(form.getPredFileId(), "pred"));
-            String gtUrl = toAbsoluteUrl(form.getGtUrl() != null ? form.getGtUrl() : resolveFileUrl(form.getGtFileId(), "gt"));
+        asyncTask.execute(evalLog.getId(), form.getAlgorithmId(), predUrl, gtUrl);
 
-            JSONObject result = pythonClient.evaluate(
-                    form.getAlgorithmId(), predUrl, gtUrl);
-
-            // 4. 更新日志（成功）
-            int elapsed = (int) (System.currentTimeMillis() - startTime);
-            evalLog.setTime(elapsed);
-            evalLog.setResult(result.toString());
-            this.updateById(evalLog);
-
-            // 5. 解析评估指标
-            Map<String, Double> metrics = new LinkedHashMap<>();
-            JSONObject metricsJson = result.getJSONObject("metrics");
-            if (metricsJson != null) {
-                for (String key : metricsJson.keySet()) {
-                    metrics.put(key, metricsJson.getDouble(key));
-                }
-            }
-
-            EvaluationResultVO vo = new EvaluationResultVO();
-            vo.setLogId(evalLog.getId());
-            vo.setMetrics(metrics);
-            vo.setTime(elapsed);
-
-            log.info("评估完成: algorithmId={}, evalLogId={}, time={}ms, metrics={}",
-                    form.getAlgorithmId(), evalLog.getId(), elapsed, metrics);
-            return vo;
-
-        } catch (BusinessException e) {
-            int elapsed = (int) (System.currentTimeMillis() - startTime);
-            evalLog.setTime(elapsed);
-            this.updateById(evalLog);
-            log.error("评估失败: algorithmId={}, evalLogId={}, error={}",
-                    form.getAlgorithmId(), evalLog.getId(), e.getMessage());
-            throw e;
-        }
+        EvaluationResultVO vo = new EvaluationResultVO();
+        vo.setLogId(evalLog.getId());
+        vo.setStatus("processing");
+        return vo;
     }
 
     @Override
@@ -124,7 +82,6 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         Page<SysEvalLog> result = this.page(page, wrapper);
         Page<EvalLogVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
 
-        // 批量预加载算法名称，避免分页内逐条 getById 触发 N+1 查询
         Set<Long> algorithmIds = result.getRecords().stream()
                 .map(SysEvalLog::getAlgorithmId)
                 .filter(Objects::nonNull)

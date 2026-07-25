@@ -1,8 +1,8 @@
 import React, { useCallback } from "react";
 import { View, Text } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import { COMPARE_MODES, type CompareMode } from "../types";
 import { saveImageToAlbum } from "@/utils/saveImage";
+import { COMPARE_MODES, type CompareMode } from "../types";
 import "./index.less";
 
 interface CompareToolbarProps {
@@ -47,11 +47,9 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
     if (process.env.TARO_ENV === "h5") {
       // H5 端：优先使用 Web Share API，失败则在新标签页打开
       if (typeof navigator !== "undefined" && navigator.share) {
-        navigator
-          .share({ title: "去雾结果", url: resultUrl })
-          .catch(() => {
-            window.open(resultUrl, "_blank");
-          });
+        navigator.share({ title: "去雾结果", url: resultUrl }).catch(() => {
+          window.open(resultUrl, "_blank");
+        });
       } else {
         window.open(resultUrl, "_blank");
       }

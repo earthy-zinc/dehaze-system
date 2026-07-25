@@ -14,7 +14,8 @@ export {
 } from './model/DatasetInfo';
 export {
   PredParam, PredResult, PredLog, PredLogQuery,
-  EvalParam, EvalResult, EvalLogQuery
+  EvalParam, EvalResult, EvalLog, EvalLogQuery,
+  TaskStatus, PollOptions
 } from './model/ModelInfo';
 export { InputHistory, InputHistoryQuery, CreateInputHistory, HistoryStatus } from './model/InputHistoryInfo';
 export { FileInfo } from './model/FileInfo';

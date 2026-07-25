@@ -109,7 +109,9 @@ async function loadDetail() {
   if (!store.selectedAlgorithm?.id) return;
   loading.value = true;
   try {
-    const detail = await AlgorithmAPI.getAlgorithmInfoById(store.selectedAlgorithm.id);
+    const detail = await AlgorithmAPI.getAlgorithmInfoById(
+      store.selectedAlgorithm.id
+    );
     algorithm.value = detail;
   } catch {
     algorithm.value = store.selectedAlgorithm;

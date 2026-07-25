@@ -11,7 +11,8 @@ import { uniqueCode } from "#/factories/common";
 describe("字典管理接口测试", () => {
   // 统一管理创建的字典类型和字典数据ID，用于清理
   const createdDictTypeIds: number[] = [];
-  const createdDictIds: number[] = [];  afterAll(async () => {
+  const createdDictIds: number[] = [];
+  afterAll(async () => {
     for (const dictId of createdDictIds) {
       try {
         await DictAPI.deleteDictByIds(dictId.toString());

@@ -1,5 +1,7 @@
 package com.pei.dehaze.controller;
 
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
@@ -16,12 +18,9 @@ import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * 效果评估控制器 —— 评估去雾处理效果
- *
- * @author earthyzinc
- * @since 2024-06-12
- */
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @Tag(name = "11.效果评估接口")
 @RestController
 @RequestMapping("/api/v1/evaluation")
@@ -30,7 +29,7 @@ public class EvaluationController {
 
     private final SysEvalLogService evalLogService;
 
-    @Operation(summary = "执行效果评估（PSNR/SSIM/LPIPS等）")
+    @Operation(summary = "执行效果评估（PSNR/SSIM/LPIPS等，异步）")
     @PostMapping
     public Result<EvaluationResultVO> evaluate(@Valid @RequestBody EvaluationForm form) {
         EvaluationResultVO result = evalLogService.evaluate(form);
@@ -47,7 +46,14 @@ public class EvaluationController {
         }
         EvaluationResultVO result = new EvaluationResultVO();
         result.setLogId(evalLog.getId());
-        result.setTime(evalLog.getTime());
+        result.setStatus(evalLog.getStatus());
+        if ("completed".equals(evalLog.getStatus())) {
+            result.setMetrics(parseMetrics(evalLog.getResult()));
+            result.setTime(evalLog.getTime());
+        } else if ("failed".equals(evalLog.getStatus())) {
+            result.setErrorMessage(evalLog.getErrorMessage());
+            result.setTime(evalLog.getTime());
+        }
         return Result.success(result);
     }
 
@@ -56,5 +62,21 @@ public class EvaluationController {
     public PageResult<EvalLogVO> getEvalLogs(@ParameterObject EvalLogQuery query) {
         Page<EvalLogVO> page = evalLogService.getEvalLogPage(query);
         return PageResult.success(page);
+    }
+
+    private Map<String, Double> parseMetrics(String resultJson) {
+        if (resultJson == null || resultJson.isBlank()) {
+            return null;
+        }
+        JSONObject json = JSONUtil.parseObj(resultJson);
+        JSONObject metricsJson = json.getJSONObject("metrics");
+        if (metricsJson == null) {
+            return null;
+        }
+        Map<String, Double> metrics = new LinkedHashMap<>();
+        for (String key : metricsJson.keySet()) {
+            metrics.put(key, metricsJson.getDouble(key));
+        }
+        return metrics;
     }
 }

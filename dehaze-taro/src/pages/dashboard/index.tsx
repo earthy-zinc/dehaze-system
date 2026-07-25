@@ -152,7 +152,10 @@ const Dashboard: React.FC = () => {
       }
     }
     // 算法选择和去雾处理入口：需先选择图片
-    if (route === "/pages/algorithm-select/index" || route === "/pages/processing/index") {
+    if (
+      route === "/pages/algorithm-select/index" ||
+      route === "/pages/processing/index"
+    ) {
       const hasImage = (() => {
         try {
           return !!Taro.getStorageSync("current_image");

@@ -59,7 +59,10 @@ const AppTabbar: React.FC<AppTabbarProps> = ({
       }
       if (!hasImage) {
         Taro.showToast({ title: "请先选择图片", icon: "none" });
-        setTimeout(() => Taro.reLaunch({ url: "/pages/image-input/index" }), 1000);
+        setTimeout(
+          () => Taro.reLaunch({ url: "/pages/image-input/index" }),
+          1000
+        );
         return;
       }
     }

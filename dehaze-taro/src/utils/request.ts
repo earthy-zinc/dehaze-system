@@ -1,10 +1,6 @@
 import Taro from "@tarojs/taro";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
-import {
-  configAxios,
-  ResponseData,
-  ResultEnum,
-} from "dehaze-sdk-js";
+import { configAxios, ResponseData, ResultEnum } from "dehaze-sdk-js";
 import { storage } from "@/utils/storage";
 import { apiConfig } from "@/config/api";
 

@@ -13,6 +13,8 @@ type SysEvalLog struct {
 	GtMD5       string    `gorm:"column:gt_md5;type:char(32);not null;comment:真值图像md5值" json:"gtMd5"`
 	GtURL       string    `gorm:"column:gt_url;type:text;not null;comment:真值图像url" json:"gtUrl"`
 	Time        int       `gorm:"column:time;type:int;default:0;comment:评估时间（秒）" json:"time"`
+	Status      string    `gorm:"column:status;type:varchar(20);not null;default:completed;comment:任务状态：processing/completed/failed" json:"status"`
+	ErrorMessage *string  `gorm:"column:error_message;type:text;comment:失败错误信息" json:"errorMessage"`
 	Result      *string   `gorm:"column:result;type:json;comment:预测结果" json:"result"`
 	CreatedAt   time.Time `gorm:"column:create_time;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"createTime"`
 	UpdatedAt   time.Time `gorm:"column:update_time;type:datetime;not null;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;comment:更新时间" json:"updateTime"`

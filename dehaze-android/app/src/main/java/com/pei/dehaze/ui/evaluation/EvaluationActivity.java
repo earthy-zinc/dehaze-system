@@ -19,6 +19,7 @@ import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
+import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.ui.evaluation.adapter.EvaluationLogAdapter;
 import com.pei.dehaze.ui.evaluation.adapter.MetricAdapter;
@@ -182,18 +183,16 @@ public class EvaluationActivity extends AppCompatActivity {
     private void onEvaluationResult(EvalResult result) {
         if (result == null) return;
         binding.cardEvaluationResult.setVisibility(View.VISIBLE);
-        Boolean qualified = result.getQualified();
-        if (qualified != null) {
-            if (qualified) {
-                binding.tvQualified.setText("评估结论：合格");
-                binding.tvQualified.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
-            } else {
-                binding.tvQualified.setText("评估结论：不合格");
-                binding.tvQualified.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
-            }
+        PredEvalTaskStatus status = result.getStatus();
+        if (status == PredEvalTaskStatus.FAILED) {
+            binding.tvStatus.setText("评估结论：失败 - " + (result.getErrorMessage() != null ? result.getErrorMessage() : ""));
+            binding.tvStatus.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
+        } else if (status == PredEvalTaskStatus.COMPLETED) {
+            binding.tvStatus.setText("评估结论：完成");
+            binding.tvStatus.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
         } else {
-            binding.tvQualified.setText("评估结论：-");
-            binding.tvQualified.setTextColor(getResources().getColor(android.R.color.darker_gray));
+            binding.tvStatus.setText("评估结论：-");
+            binding.tvStatus.setTextColor(getResources().getColor(android.R.color.darker_gray));
         }
         Map<String, Double> metrics = result.getMetrics();
         List<Map.Entry<String, Double>> entries = new ArrayList<>();

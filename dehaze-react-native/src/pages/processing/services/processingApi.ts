@@ -1,16 +1,11 @@
 /**
  * 去雾处理服务
  *
- * 封装 dehaze-sdk-js 的 ModelAPI：
- * - predict: 执行去雾预测（同步返回结果）
- * - getPredTaskStatus: 查询任务状态（仅当 predict 未直接返回结果时轮询）
+ * 封装 dehaze-sdk-js 的 ModelAPI.predictAndWait：
+ * - POST /prediction 立即返回 logId + status=processing
+ * - 内部自动轮询 GET /prediction/{taskId} 直到 completed/failed
  *
- * 提供：
- * - 单张处理 + 任务状态轮询
- * - 批量处理（串行）
- *
- * 说明：API 同步返回处理结果，前端不模拟阶段化进度百分比，
- *       仅展示真实处理状态与已用时间。
+ * 不模拟进度百分比，仅推进真实状态与已用时间。
  */
 import { ModelAPI } from 'dehaze-sdk-js';
 import type { PredictionResultVO } from 'dehaze-sdk-js';
@@ -102,7 +97,6 @@ const MAX_POLL_DURATION = 5 * 60 * 1000;
 /** 将参数对象序列化为后端可识别的 JSON 字符串 */
 function serializeParams(params?: CommonAlgorithmParams): string | undefined {
   if (!params) return undefined;
-  // 仅保留已设置字段
   const filtered: Record<string, number> = {};
   (Object.keys(params) as (keyof CommonAlgorithmParams)[]).forEach(k => {
     const v = params[k];
@@ -113,7 +107,6 @@ function serializeParams(params?: CommonAlgorithmParams): string | undefined {
   return Object.keys(filtered).length ? JSON.stringify(filtered) : undefined;
 }
 
-/** 将 SDK 预测结果映射为前端处理结果 */
 function toProcessingResult(vo: PredictionResultVO): ProcessingResult {
   return {
     logId: vo.logId,
@@ -137,11 +130,8 @@ export interface PredictOptions {
 /**
  * 单张去雾处理
  *
- * 1. 调用 ModelAPI.predict 提交预测任务
- * 2. 若返回结果含 resultUrl，直接完成
- * 3. 若仅返回 logId 无 resultUrl，启动轮询 getPredTaskStatus
- *
- * 不模拟进度百分比，仅推进真实状态与已用时间。
+ * 调用 SDK predictAndWait（POST + 自动轮询），失败时通过 status=failed 抛出错误。
+ * 取消信号触发时立即抛出错误。
  */
 export async function predictSingle(opts: PredictOptions): Promise<ProcessingResult> {
   const { algorithmId, imageUrl, params, onProgress, cancelSignal } = opts;
@@ -155,73 +145,38 @@ export async function predictSingle(opts: PredictOptions): Promise<ProcessingRes
     });
   };
 
-  // 进入处理中状态
   emit('processing');
 
-  // 提交预测任务
-  let result: PredictionResultVO;
   try {
-    result = await ModelAPI.predict({
-      algorithmId,
-      imageUrl,
-      params: serializeParams(params),
-    });
+    const result = await ModelAPI.predictAndWait(
+      {
+        algorithmId,
+        imageUrl,
+        params: serializeParams(params),
+      },
+      {
+        intervalMs: POLL_INTERVAL,
+        timeoutMs: MAX_POLL_DURATION,
+        onPoll: () => {
+          if (cancelSignal?.canceled) {
+            throw new Error('用户已取消处理');
+          }
+          emit('processing');
+        },
+      },
+    );
+
+    if (cancelSignal?.canceled) throw new Error('用户已取消处理');
+
+    if (result.status === 'failed') {
+      throw new Error(result.errorMessage || '处理失败');
+    }
+
+    emit('success');
+    return toProcessingResult(result);
   } catch (err) {
     emit('failed', err instanceof Error ? err.message : '预测请求失败');
     throw err;
   }
-
-  if (cancelSignal?.canceled) throw new Error('用户已取消处理');
-
-  // 若返回结果无 resultUrl，启动轮询
-  if (!result.resultUrl && result.logId) {
-    result = await pollTaskStatus(result.logId, startTime, onProgress, cancelSignal);
-  }
-
-  emit('success');
-  return toProcessingResult(result);
 }
 
-/**
- * 轮询任务状态
- *
- * @param taskId 后端返回的 logId
- * @param startTime 任务开始时间（用于超时判定）
- */
-async function pollTaskStatus(
-  taskId: number,
-  startTime: number,
-  onProgress?: (p: TaskProgress) => void,
-  cancelSignal?: { canceled: boolean },
-): Promise<PredictionResultVO> {
-  while (true) {
-    if (cancelSignal?.canceled) throw new Error('用户已取消处理');
-
-    const elapsed = Date.now() - startTime;
-    if (elapsed > MAX_POLL_DURATION) {
-      throw new Error('处理超时，请稍后重试');
-    }
-
-    // 仅推进真实已用时间，不模拟百分比
-    onProgress?.({
-      status: 'processing',
-      elapsed,
-    });
-
-    try {
-      const status = await ModelAPI.getPredTaskStatus(taskId);
-      if (status.resultUrl) {
-        // 拿到最终结果
-        return status;
-      }
-    } catch {
-      // 轮询出错时继续重试，不立即失败
-    }
-
-    await delay(POLL_INTERVAL);
-  }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}

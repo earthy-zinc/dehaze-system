@@ -68,10 +68,7 @@ export function getStatusInfo(status?: number) {
 }
 
 // 递归搜索过滤
-export function filterTree(
-  nodes: Algorithm[],
-  keyword: string
-): Algorithm[] {
+export function filterTree(nodes: Algorithm[], keyword: string): Algorithm[] {
   if (!keyword) return nodes;
   const lower = keyword.toLowerCase();
   const result: Algorithm[] = [];

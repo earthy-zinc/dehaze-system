@@ -6,7 +6,6 @@ describe("导出任务接口测试", () => {
   let testItemIds: number[] = [];
 
   beforeAll(async () => {
-
     // 创建测试数据集
     const datasetForm = createDatasetForm({ type: "图像去雾" });
     testDatasetId = await DatasetAPI.add(datasetForm);

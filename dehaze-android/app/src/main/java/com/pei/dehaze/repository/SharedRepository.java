@@ -40,17 +40,17 @@ public class SharedRepository {
     }
 
     /**
-     * 执行去雾预测
+     * 提交去雾预测并轮询至终态（completed/failed）或超时
      */
     public void getPrediction(PredParam param, RepositoryCallback<PredResult> callback) {
-        ModelAPI.predict(param, RepositoryAdapters.wrap(callback));
+        ModelAPI.predictAndWait(param, RepositoryAdapters.wrap(callback));
     }
 
     /**
-     * 执行效果评估
+     * 提交效果评估并轮询至终态（completed/failed）或超时
      */
     public void getEvaluation(EvalParam param, RepositoryCallback<EvalResult> callback) {
-        ModelAPI.evaluate(param, RepositoryAdapters.wrap(callback));
+        ModelAPI.evaluateAndWait(param, RepositoryAdapters.wrap(callback));
     }
 
     /**

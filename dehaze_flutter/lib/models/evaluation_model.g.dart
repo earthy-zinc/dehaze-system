@@ -29,6 +29,10 @@ EvaluationResult _$EvaluationResultFromJson(Map<String, dynamic> json) =>
     $checkedCreate('EvaluationResult', json, ($checkedConvert) {
       final val = EvaluationResult(
         logId: $checkedConvert('logId', (v) => (v as num).toInt()),
+        status: $checkedConvert(
+          'status',
+          (v) => EvaluationResult._statusFromJson(v as String?),
+        ),
         metrics: $checkedConvert(
           'metrics',
           (v) =>
@@ -38,6 +42,7 @@ EvaluationResult _$EvaluationResultFromJson(Map<String, dynamic> json) =>
               {},
         ),
         time: $checkedConvert('time', (v) => (v as num?)?.toInt()),
+        errorMessage: $checkedConvert('errorMessage', (v) => v as String?),
       );
       return val;
     });
@@ -45,6 +50,8 @@ EvaluationResult _$EvaluationResultFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$EvaluationResultToJson(EvaluationResult instance) =>
     <String, dynamic>{
       'logId': instance.logId,
-      'metrics': instance.metrics,
+      'status': EvaluationResult._statusToJson(instance.status),
+      if (instance.metrics case final value?) 'metrics': value,
       if (instance.time case final value?) 'time': value,
+      if (instance.errorMessage case final value?) 'errorMessage': value,
     };

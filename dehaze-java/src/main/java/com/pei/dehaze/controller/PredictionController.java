@@ -16,12 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * 模型预测控制器 —— 去雾处理核心API入口
- *
- * @author earthyzinc
- * @since 2024-06-12
- */
 @Tag(name = "10.模型预测接口")
 @RestController
 @RequestMapping("/api/v1/prediction")
@@ -30,7 +24,7 @@ public class PredictionController {
 
     private final SysPredLogService predLogService;
 
-    @Operation(summary = "执行模型预测（去雾处理）")
+    @Operation(summary = "执行模型预测（去雾处理，异步）")
     @PostMapping
     public Result<PredictionResultVO> predict(@Valid @RequestBody PredictionForm form) {
         PredictionResultVO result = predLogService.predict(form);
@@ -41,15 +35,20 @@ public class PredictionController {
     @GetMapping("/{taskId}")
     public Result<PredictionResultVO> getTaskStatus(
             @Parameter(description = "预测任务ID") @PathVariable Long taskId) {
-        // 查询预测日志判断状态
         var predLog = predLogService.getById(taskId);
         if (predLog == null) {
             return Result.failed("预测任务不存在");
         }
         PredictionResultVO result = new PredictionResultVO();
         result.setLogId(predLog.getId());
-        result.setResultUrl(predLog.getPredUrl());
-        result.setTime(predLog.getTime());
+        result.setStatus(predLog.getStatus());
+        if ("completed".equals(predLog.getStatus())) {
+            result.setResultUrl(predLog.getPredUrl());
+            result.setTime(predLog.getTime());
+        } else if ("failed".equals(predLog.getStatus())) {
+            result.setErrorMessage(predLog.getErrorMessage());
+            result.setTime(predLog.getTime());
+        }
         return Result.success(result);
     }
 

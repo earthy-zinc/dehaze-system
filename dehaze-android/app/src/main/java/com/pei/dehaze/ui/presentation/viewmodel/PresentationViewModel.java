@@ -11,6 +11,7 @@ import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmQuery;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.prediction.DehazeParams;
+import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 import com.pei.dehaze.sdk.model.prediction.PredParam;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
@@ -72,6 +73,10 @@ public class PresentationViewModel extends BaseViewModel {
         param.setImageUrl(originalImageUrl);
         param.setParams(params);
         sharedRepository.getPrediction(param, withLoading(result -> {
+            if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+                error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "去雾处理失败");
+                return;
+            }
             predictionResult.postValue(result);
             operationResult.postValue("去雾处理完成");
             loadHistory();

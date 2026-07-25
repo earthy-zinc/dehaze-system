@@ -31,7 +31,10 @@ const WorkflowStep: React.FC<WorkflowStepProps> = ({
       }
       if (!hasImage) {
         Taro.showToast({ title: "请先选择图片", icon: "none" });
-        setTimeout(() => Taro.navigateTo({ url: "/pages/image-input/index" }), 1000);
+        setTimeout(
+          () => Taro.navigateTo({ url: "/pages/image-input/index" }),
+          1000
+        );
         return;
       }
     }

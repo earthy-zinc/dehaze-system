@@ -13,6 +13,7 @@ import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.evaluation.EvaluationLogVO;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.prediction.DehazeParams;
+import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 import com.pei.dehaze.sdk.model.prediction.PredParam;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 
@@ -67,6 +68,10 @@ public class EvaluationViewModel extends BaseViewModel {
         param.setImageUrl(hazy.getUrl());
         param.setParams(new DehazeParams());
         sharedRepository.getPrediction(param, withLoading(result -> {
+            if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+                error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "去雾处理失败");
+                return;
+            }
             predictionResult.postValue(result);
             operationResult.postValue("去雾处理完成，可进行评估");
         }));
@@ -88,6 +93,10 @@ public class EvaluationViewModel extends BaseViewModel {
         param.setPredUrl(pred.getResultUrl());
         param.setGtUrl(clear.getUrl());
         sharedRepository.getEvaluation(param, withLoading(result -> {
+            if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+                error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "评估失败");
+                return;
+            }
             evaluationResult.postValue(result);
             operationResult.postValue("评估完成");
             loadEvaluationLogs();

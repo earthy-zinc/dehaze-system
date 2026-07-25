@@ -57,15 +57,18 @@ const Segmentation: React.FC = () => {
 
     dispatch(setLoading(true));
     try {
-      const response = await ModelAPI.predict({
+      const response = await ModelAPI.predictAndWait({
         algorithmId: selectedModel,
         imageUrl: originUrl,
       });
-      setResultUrl(response.resultUrl);
+      if (response.status === "failed") {
+        throw new Error(response.errorMessage || "分割处理失败");
+      }
+      setResultUrl(response.resultUrl || "");
       setStage("result");
       message.success("分割处理完成");
     } catch (error) {
-      message.error("分割处理失败");
+      message.error(error instanceof Error ? error.message : "分割处理失败");
     } finally {
       dispatch(setLoading(false));
     }

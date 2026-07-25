@@ -28,4 +28,8 @@ public class SysPredLog extends BaseEntity {
     private String predUrl;
 
     private Integer time;
+
+    private String status;
+
+    private String errorMessage;
 }

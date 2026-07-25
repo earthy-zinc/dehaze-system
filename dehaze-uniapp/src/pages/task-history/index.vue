@@ -161,7 +161,9 @@ async function handleReprocess(record: PredLogVO) {
   }
   uni.showLoading({ title: "准备中...", mask: true });
   try {
-    const algorithm = await AlgorithmAPI.getAlgorithmInfoById(record.algorithmId);
+    const algorithm = await AlgorithmAPI.getAlgorithmInfoById(
+      record.algorithmId
+    );
     processingStore.reset();
     processingStore.setImage(buildImageData(record.originUrl));
     processingStore.setAlgorithm(algorithm);

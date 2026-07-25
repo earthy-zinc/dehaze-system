@@ -29,5 +29,9 @@ public class SysEvalLog extends BaseEntity {
 
     private Integer time;
 
+    private String status;
+
+    private String errorMessage;
+
     private String result;
 }

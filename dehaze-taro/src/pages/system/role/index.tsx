@@ -205,7 +205,9 @@ const RoleListPage: React.FC = () => {
                   <View className="role-name">{role.name}</View>
                   <View className="role-code">编码: {role.code}</View>
                 </View>
-                <View className="role-status"><StatusTag status={role.status} /></View>
+                <View className="role-status">
+                  <StatusTag status={role.status} />
+                </View>
                 <View className="role-meta">
                   <View className="meta-item">
                     <View className="meta-label">排序:</View>

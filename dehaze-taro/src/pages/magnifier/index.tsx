@@ -34,7 +34,12 @@ const MagnifierPage: React.FC = () => {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
   // 缓存容器边界信息（跨端兼容：小程序不支持 getBoundingClientRect）
-  const containerRectRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
+  const containerRectRef = useRef<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   const { originImage, result } = ctx;
   const hasResult = originImage && result?.resultUrl;

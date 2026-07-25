@@ -166,7 +166,10 @@ const Login: React.FC = () => {
             {loading ? "登录中..." : "登 录"}
           </Button>
 
-          <View className="register-link" onClick={() => Taro.reLaunch({ url: "/pages/register/index" })}>
+          <View
+            className="register-link"
+            onClick={() => Taro.reLaunch({ url: "/pages/register/index" })}
+          >
             <Text className="link-text">没有账号？立即注册</Text>
           </View>
           <View className="footer-info">

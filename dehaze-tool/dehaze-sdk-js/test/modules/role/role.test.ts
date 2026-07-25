@@ -5,7 +5,8 @@ import { ROLES } from "#/factories/constants";
 
 describe("角色管理接口测试", () => {
   // 统一管理创建的角色ID，用于清理
-  const createdRoleIds: number[] = [];  afterAll(async () => {
+  const createdRoleIds: number[] = [];
+  afterAll(async () => {
     for (const roleId of createdRoleIds) {
       try {
         await RoleAPI.deleteByIds(roleId.toString());

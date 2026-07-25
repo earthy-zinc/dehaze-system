@@ -1,12 +1,13 @@
 module.exports = {
-  extends: [
-    "stylelint-config-standard",
-    "stylelint-config-recess-order",
-  ],
+  extends: ["stylelint-config-standard", "stylelint-config-recess-order"],
   overrides: [
     {
       files: ["**/*.less"],
       customSyntax: "postcss-less",
+      rules: {
+        // rpx 是 Taro/小程序合法单位，该规则无法识别
+        "declaration-property-value-no-unknown": null,
+      },
     },
   ],
   rules: {

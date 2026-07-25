@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import 'prediction_model.dart';
+
 part 'evaluation_model.g.dart';
 
 /// 评估请求
@@ -39,13 +41,16 @@ class EvaluationRequest {
 
 /// 评估结果
 ///
-/// 对应后端 EvaluationResultVO：评估为同步接口，直接返回指标。
+/// 对应后端 EvaluationResultVO：异步任务模式。
+/// POST 立即返回 logId + status=processing；GET 轮询至 completed/failed 时返回完整字段。
 @JsonSerializable()
 class EvaluationResult {
   const EvaluationResult({
     required this.logId,
-    required this.metrics,
+    required this.status,
+    this.metrics,
     this.time,
+    this.errorMessage,
   });
 
   factory EvaluationResult.fromJson(Map<String, dynamic> json) =>
@@ -55,17 +60,31 @@ class EvaluationResult {
   @JsonKey(name: 'logId')
   final int logId;
 
-  /// 指标结果（PSNR/SSIM/MSE/FSIM/LPIPS 等）
+  /// 任务状态
+  @JsonKey(fromJson: _statusFromJson, toJson: _statusToJson)
+  final TaskStatus status;
+
+  /// 指标结果（PSNR/SSIM/MSE/FSIM/LPIPS 等，status=completed 时返回）
   @JsonKey(defaultValue: <String, double>{})
-  final Map<String, double> metrics;
+  final Map<String, double>? metrics;
 
   /// 处理耗时（毫秒）
   final int? time;
 
+  /// 失败错误信息（status=failed 时返回）
+  @JsonKey(name: 'errorMessage')
+  final String? errorMessage;
+
+  static TaskStatus _statusFromJson(String? value) =>
+      TaskStatus.fromString(value);
+
+  static String _statusToJson(TaskStatus status) => status.name;
+
   Map<String, dynamic> toJson() => _$EvaluationResultToJson(this);
 
   /// 转换为结构化指标模型（供 UI 展示）
-  EvaluationMetrics get metricsModel => EvaluationMetrics.fromMap(metrics);
+  EvaluationMetrics get metricsModel =>
+      EvaluationMetrics.fromMap(metrics ?? const {});
 }
 
 /// 评估指标（结构化展示模型）

@@ -183,10 +183,7 @@ const UserListPage: React.FC = () => {
           {loading && <Loading>加载中...</Loading>}
 
           {!loading && loadError && users.length === 0 && (
-            <ErrorState
-              message={loadError}
-              onRetry={() => fetchUsers()}
-            />
+            <ErrorState message={loadError} onRetry={() => fetchUsers()} />
           )}
 
           {!loading && !loadError && users.length === 0 && (

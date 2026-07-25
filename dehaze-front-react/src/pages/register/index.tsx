@@ -1,17 +1,7 @@
 import { AuthAPI, RegisterData } from "dehaze-sdk-js";
 import defaultSettings from "@/settings";
-import {
-  LockOutlined,
-  SafetyOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
-import {
-  Button,
-  Card,
-  Form,
-  Input,
-  Tag,
-} from "antd";
+import { LockOutlined, SafetyOutlined, UserOutlined } from "@ant-design/icons";
+import { Button, Card, Form, Input, Tag } from "antd";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./index.scss";
@@ -42,7 +32,9 @@ export default function Register() {
     captchaCode: string;
   }) => {
     if (values.password !== values.confirmPassword) {
-      form.setFields([{ name: "confirmPassword", errors: ["两次密码输入不一致"] }]);
+      form.setFields([
+        { name: "confirmPassword", errors: ["两次密码输入不一致"] },
+      ]);
       return;
     }
 
@@ -76,19 +68,23 @@ export default function Register() {
           <Tag className="ml-2 absolute-rt">{defaultSettings.version}</Tag>
         </div>
 
-        <Form
-          form={form}
-          className="login-form"
-          onFinish={handleRegister}
-        >
+        <Form form={form} className="login-form" onFinish={handleRegister}>
           <Form.Item
             name="username"
             rules={[
               { required: true, message: "请输入用户名" },
-              { pattern: /^[a-zA-Z0-9_]{3,32}$/, message: "3-32位字母、数字、下划线" },
+              {
+                pattern: /^[a-zA-Z0-9_]{3,32}$/,
+                message: "3-32位字母、数字、下划线",
+              },
             ]}
           >
-            <Input prefix={<UserOutlined />} placeholder="用户名" size="large" autoFocus />
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="用户名"
+              size="large"
+              autoFocus
+            />
           </Form.Item>
 
           <Form.Item
@@ -102,7 +98,10 @@ export default function Register() {
             name="password"
             rules={[
               { required: true, message: "请输入密码" },
-              { pattern: /^(?=.*[a-zA-Z])(?=.*\d).{6,20}$/, message: "6-20位，含字母和数字" },
+              {
+                pattern: /^(?=.*[a-zA-Z])(?=.*\d).{6,20}$/,
+                message: "6-20位，含字母和数字",
+              },
             ]}
           >
             <Input.Password
@@ -140,7 +139,12 @@ export default function Register() {
                     style={{ height: 34, cursor: "pointer" }}
                   />
                 ) : (
-                  <Button type="link" size="small" onClick={getCaptcha} style={{ height: 34, padding: 0 }}>
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={getCaptcha}
+                    style={{ height: 34, padding: 0 }}
+                  >
                     加载验证码
                   </Button>
                 )
@@ -149,7 +153,13 @@ export default function Register() {
           </Form.Item>
 
           <Form.Item>
-            <Button className="w-full" size="large" type="primary" htmlType="submit" loading={loading}>
+            <Button
+              className="w-full"
+              size="large"
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+            >
               注册
             </Button>
           </Form.Item>

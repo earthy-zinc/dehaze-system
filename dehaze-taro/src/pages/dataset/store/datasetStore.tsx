@@ -15,8 +15,8 @@ import type {
   DatasetUpdateForm,
   DatasetOption,
 } from "dehaze-sdk-js";
-import { isImageAnnotated, AnnotationFilter } from "../services/imageUtils";
 import { getErrorMessage } from "@/utils/error";
+import { isImageAnnotated, AnnotationFilter } from "../services/imageUtils";
 
 // 状态类型定义
 interface DatasetState {
@@ -324,13 +324,19 @@ export function useDataset() {
   const { state, dispatch } = context;
 
   // Actions
-  const setView = useCallback((view: "list" | "detail") => {
-    dispatch({ type: "SET_VIEW", payload: view });
-  }, []);
+  const setView = useCallback(
+    (view: "list" | "detail") => {
+      dispatch({ type: "SET_VIEW", payload: view });
+    },
+    [dispatch]
+  );
 
-  const setCurrentDatasetId = useCallback((id: number | null) => {
-    dispatch({ type: "SET_CURRENT_DATASET_ID", payload: id });
-  }, []);
+  const setCurrentDatasetId = useCallback(
+    (id: number | null) => {
+      dispatch({ type: "SET_CURRENT_DATASET_ID", payload: id });
+    },
+    [dispatch]
+  );
 
   // 获取数据集列表（根级）
   const fetchDatasets = useCallback(
@@ -369,26 +375,29 @@ export function useDataset() {
         });
       }
     },
-    [state.datasets.length]
+    [dispatch, state.datasets.length]
   );
 
   // 获取子数据集（懒加载）
-  const fetchChildren = useCallback(async (parentId: number) => {
-    try {
-      dispatch({
-        type: "SET_CHILDREN_LOADING",
-        payload: { parentId, loading: true },
-      });
-      const children = await DatasetAPI.getChildren(parentId);
-      dispatch({
-        type: "SET_CHILDREN",
-        payload: { parentId, children: children || [] },
-      });
-    } catch (error) {
-      console.error("获取子数据集失败:", error);
-      dispatch({ type: "SET_CHILDREN", payload: { parentId, children: [] } });
-    }
-  }, []);
+  const fetchChildren = useCallback(
+    async (parentId: number) => {
+      try {
+        dispatch({
+          type: "SET_CHILDREN_LOADING",
+          payload: { parentId, loading: true },
+        });
+        const children = await DatasetAPI.getChildren(parentId);
+        dispatch({
+          type: "SET_CHILDREN",
+          payload: { parentId, children: children || [] },
+        });
+      } catch (error) {
+        console.error("获取子数据集失败:", error);
+        dispatch({ type: "SET_CHILDREN", payload: { parentId, children: [] } });
+      }
+    },
+    [dispatch]
+  );
 
   // 切换展开/收起
   const toggleExpand = useCallback(
@@ -400,7 +409,7 @@ export function useDataset() {
         fetchChildren(id);
       }
     },
-    [state.expandedIds, state.childrenMap, fetchChildren]
+    [dispatch, state.expandedIds, state.childrenMap, fetchChildren]
   );
 
   // 获取数据集下拉选项（用于父级选择）
@@ -411,7 +420,7 @@ export function useDataset() {
     } catch (error) {
       console.error("获取数据集选项失败:", error);
     }
-  }, []);
+  }, [dispatch]);
 
   // 新增数据集
   const createDataset = useCallback(
@@ -444,7 +453,10 @@ export function useDataset() {
         fetchDatasetOptions();
         return true;
       } catch (error: unknown) {
-        Taro.showToast({ title: getErrorMessage(error, "修改失败"), icon: "none" });
+        Taro.showToast({
+          title: getErrorMessage(error, "修改失败"),
+          icon: "none",
+        });
         return false;
       }
     },
@@ -463,7 +475,10 @@ export function useDataset() {
         fetchDatasetOptions();
         return true;
       } catch (error: unknown) {
-        Taro.showToast({ title: getErrorMessage(error, "删除失败"), icon: "none" });
+        Taro.showToast({
+          title: getErrorMessage(error, "删除失败"),
+          icon: "none",
+        });
         return false;
       }
     },
@@ -471,20 +486,23 @@ export function useDataset() {
   );
 
   // 获取数据集详情
-  const fetchDatasetDetail = useCallback(async (datasetId: number) => {
-    try {
-      dispatch({ type: "SET_DATASET_DETAIL_LOADING", payload: true });
-      dispatch({ type: "SET_DATASET_DETAIL_ERROR", payload: null });
+  const fetchDatasetDetail = useCallback(
+    async (datasetId: number) => {
+      try {
+        dispatch({ type: "SET_DATASET_DETAIL_LOADING", payload: true });
+        dispatch({ type: "SET_DATASET_DETAIL_ERROR", payload: null });
 
-      const dataset = await DatasetAPI.getDatasetInfoById(datasetId);
-      dispatch({ type: "SET_CURRENT_DATASET", payload: dataset });
-    } catch (error: unknown) {
-      dispatch({
-        type: "SET_DATASET_DETAIL_ERROR",
-        payload: getErrorMessage(error, "获取数据集详情失败"),
-      });
-    }
-  }, []);
+        const dataset = await DatasetAPI.getDatasetInfoById(datasetId);
+        dispatch({ type: "SET_CURRENT_DATASET", payload: dataset });
+      } catch (error: unknown) {
+        dispatch({
+          type: "SET_DATASET_DETAIL_ERROR",
+          payload: getErrorMessage(error, "获取数据集详情失败"),
+        });
+      }
+    },
+    [dispatch]
+  );
 
   // 获取图片列表（通过数据项接口获取后展平，按标注状态过滤）
   const fetchImages = useCallback(
@@ -530,33 +548,45 @@ export function useDataset() {
         });
       }
     },
-    []
+    [dispatch]
   );
 
   // 其他简化 actions
-  const setSearchKeyword = useCallback((keyword: string) => {
-    dispatch({ type: "SET_SEARCH_KEYWORD", payload: keyword });
-  }, []);
+  const setSearchKeyword = useCallback(
+    (keyword: string) => {
+      dispatch({ type: "SET_SEARCH_KEYWORD", payload: keyword });
+    },
+    [dispatch]
+  );
 
-  const setImageSearchKeyword = useCallback((keyword: string) => {
-    dispatch({ type: "SET_IMAGE_SEARCH_KEYWORD", payload: keyword });
-  }, []);
+  const setImageSearchKeyword = useCallback(
+    (keyword: string) => {
+      dispatch({ type: "SET_IMAGE_SEARCH_KEYWORD", payload: keyword });
+    },
+    [dispatch]
+  );
 
-  const setAnnotationFilter = useCallback((filter: AnnotationFilter) => {
-    dispatch({ type: "SET_ANNOTATION_FILTER", payload: filter });
-  }, []);
+  const setAnnotationFilter = useCallback(
+    (filter: AnnotationFilter) => {
+      dispatch({ type: "SET_ANNOTATION_FILTER", payload: filter });
+    },
+    [dispatch]
+  );
 
-  const setSelectedImage = useCallback((image: ImageUrlVO | null) => {
-    dispatch({ type: "SET_SELECTED_IMAGE", payload: image });
-  }, []);
+  const setSelectedImage = useCallback(
+    (image: ImageUrlVO | null) => {
+      dispatch({ type: "SET_SELECTED_IMAGE", payload: image });
+    },
+    [dispatch]
+  );
 
   const resetImages = useCallback(() => {
     dispatch({ type: "RESET_IMAGES" });
-  }, []);
+  }, [dispatch]);
 
   const resetState = useCallback(() => {
     dispatch({ type: "RESET_STATE" });
-  }, []);
+  }, [dispatch]);
 
   return {
     state,

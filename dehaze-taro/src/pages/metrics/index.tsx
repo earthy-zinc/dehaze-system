@@ -72,14 +72,19 @@ const MetricsPage: React.FC = () => {
       setLoading(true);
       setError("");
 
-      const res = await ModelAPI.evaluate({
+      const res = await ModelAPI.evaluateAndWait({
         algorithmId: algorithm.id,
         predUrl: prediction.resultUrl,
         gtUrl: cleanUrl,
       });
+      if (res.status === "failed") {
+        throw new Error(res.errorMessage || "评估失败");
+      }
       setEvaluation(res);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "评估失败，可能需要参考图像(GT)");
+      setError(
+        err instanceof Error ? err.message : "评估失败，可能需要参考图像(GT)"
+      );
     } finally {
       setLoading(false);
     }
@@ -140,13 +145,6 @@ const MetricsPage: React.FC = () => {
         <View className="info-card">
           <View className="card-title">
             <Text>质量评估指标</Text>
-            {evaluation?.qualified !== undefined && (
-              <View
-                className={`qualified-tag ${evaluation.qualified ? "qualified" : "unqualified"}`}
-              >
-                <Text>{evaluation.qualified ? "合格" : "不合格"}</Text>
-              </View>
-            )}
           </View>
 
           {loading ? (

@@ -15,6 +15,9 @@ type IPredLogRepository interface {
 	FindByAlgorithmAndMD5(ctx context.Context, algorithmID int64, originMD5 string) (*model.SysPredLog, error)
 	FindPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error)
 	GetMonitorStats(ctx context.Context, algorithmID int64) (*MonitorStats, error)
+	UpdateResult(ctx context.Context, id int64, status, predURL, predMD5 string, time int) error
+	UpdateStatus(ctx context.Context, id int64, status, errorMessage string, time int) error
+	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
 }
 
 // MonitorStats 算法监控统计原始数据
@@ -73,6 +76,40 @@ func (r *predLogRepository) FindPage(ctx context.Context, algorithmID int64, pag
 		return nil, 0, err
 	}
 	return list, total, nil
+}
+
+func (r *predLogRepository) UpdateResult(ctx context.Context, id int64, status, predURL, predMD5 string, time int) error {
+	return r.db.WithContext(ctx).Model(&model.SysPredLog{}).
+		Where("id = ?", id).
+		Updates(map[string]any{
+			"status":   status,
+			"pred_url": predURL,
+			"pred_md5": predMD5,
+			"time":     time,
+		}).Error
+}
+
+func (r *predLogRepository) UpdateStatus(ctx context.Context, id int64, status, errorMessage string, time int) error {
+	updates := map[string]any{
+		"status": status,
+		"time":   time,
+	}
+	if errorMessage != "" {
+		updates["error_message"] = errorMessage
+	}
+	return r.db.WithContext(ctx).Model(&model.SysPredLog{}).
+		Where("id = ?", id).
+		Updates(updates).Error
+}
+
+func (r *predLogRepository) MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error) {
+	result := r.db.WithContext(ctx).Model(&model.SysPredLog{}).
+		Where("status = ? AND update_time < ?", "processing", threshold).
+		Updates(map[string]any{
+			"status":        "failed",
+			"error_message": "任务执行超时，服务可能已重启",
+		})
+	return int(result.RowsAffected), result.Error
 }
 
 // GetMonitorStats 获取算法监控统计数据

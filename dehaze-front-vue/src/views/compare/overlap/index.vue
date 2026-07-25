@@ -113,16 +113,21 @@ onMounted(() => {
       ElMessage.error("获取算法信息失败：" + (e.message || "未知错误"));
     });
 
-  ModelAPI.evaluate({
+  ModelAPI.evaluateAndWait({
     algorithmId: modelId.value,
     predUrl: pred.value.url,
     gtUrl: gt.value.url,
   })
     .then((res) => {
-      metrics.value = Object.entries(res.metrics).map(([label, value]) => ({
-        label,
-        value,
-      }));
+      if (res.status === "failed") {
+        throw new Error(res.errorMessage || "评估失败");
+      }
+      metrics.value = Object.entries(res.metrics || {}).map(
+        ([label, value]) => ({
+          label,
+          value,
+        })
+      );
     })
     .catch((e: any) => {
       ElMessage.error("评估失败：" + (e.message || "未知错误"));

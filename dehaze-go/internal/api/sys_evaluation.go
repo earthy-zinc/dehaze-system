@@ -55,12 +55,12 @@ func (api *SysEvaluationApi) GetEvaluationLog(c *gin.Context) {
 		return
 	}
 
-	log, err := api.service.GetLogByID(ctx, id)
+	result, err := api.service.GetTaskStatus(ctx, id)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-	common.OkWithData(log, c)
+	common.OkWithData(result, c)
 }
 
 // ListEvaluationLogs 评估日志列表

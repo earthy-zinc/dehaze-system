@@ -20,6 +20,7 @@ import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.input_history.InputSource;
 import com.pei.dehaze.sdk.model.input_history.ProcessStatus;
 import com.pei.dehaze.sdk.model.menu.MenuType;
+import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 import com.pei.dehaze.sdk.model.task.TaskStatus;
 import com.pei.dehaze.sdk.model.task.TaskType;
 import com.pei.dehaze.sdk.model.user.Gender;
@@ -179,6 +180,12 @@ public class DehazeSDK {
                                 json.isJsonNull() ? null : MenuType.fromValue(json.getAsString()))
                 .registerTypeAdapter(MenuType.class,
                         (JsonSerializer<MenuType>) (src, type, ctx) ->
+                                new JsonPrimitive(src.getValue()))
+                .registerTypeAdapter(PredEvalTaskStatus.class,
+                        (JsonDeserializer<PredEvalTaskStatus>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : PredEvalTaskStatus.fromValue(json.getAsString()))
+                .registerTypeAdapter(PredEvalTaskStatus.class,
+                        (JsonSerializer<PredEvalTaskStatus>) (src, type, ctx) ->
                                 new JsonPrimitive(src.getValue()));
         retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)

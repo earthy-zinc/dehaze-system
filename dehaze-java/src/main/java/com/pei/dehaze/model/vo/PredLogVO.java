@@ -34,6 +34,12 @@ public class PredLogVO {
     @Schema(description = "处理时间（毫秒）")
     private Integer time;
 
+    @Schema(description = "任务状态：processing/completed/failed")
+    private String status;
+
+    @Schema(description = "失败错误信息")
+    private String errorMessage;
+
     @Schema(description = "创建时间")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

@@ -1,9 +1,10 @@
 """
-预测服务 —— 编排算法预测流程
+预测服务 —— 编排算法预测流程（异步任务模式）
 
 调用算法模块的 dehaze() 函数，管理输入/输出/存储
 - 基于 (algorithmId, imageMd5) 的 Redis 缓存（24h TTL）
-- 预测日志写入 sys_pred_log
+- 预测日志写入 sys_pred_log，状态机：processing → completed/failed
+- POST 立即返回 logId + status=processing，asyncio.create_task 后台执行
 """
 
 import asyncio
@@ -13,7 +14,7 @@ import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -46,7 +47,7 @@ _inference_executor = ThreadPoolExecutor(
 
 
 class PredictionService:
-    """模型预测编排服务"""
+    """模型预测编排服务（异步任务模式）"""
 
     # 算法模块名 → 目录名的映射
     ALGORITHM_REGISTRY = {
@@ -68,24 +69,16 @@ class PredictionService:
         user_id: Optional[int] = None,
     ) -> dict:
         """
-        执行单次预测（带缓存）
+        提交预测任务（异步）
 
-        Args:
-            algorithm_id: 算法ID
-            image_url: 输入图片的完整URL
-            params: 可选参数字典
-            user_id: 用户ID（用于日志记录）
+        流程：
+        1. 校验算法、下载图片、计算 MD5
+        2. 命中缓存 → 直接写 completed 日志并返回完整结果
+        3. 未命中 → 创建 processing 日志，提交 asyncio.create_task 后立即返回
 
         Returns:
-            {
-                "resultUrl": str,
-                "resultMd5": str,
-                "resultThumbnailUrl": Optional[str],
-                "format": str,
-                "logId": Optional[int],
-                "fromCache": bool,
-                "time": int (毫秒),
-            }
+            缓存命中：{logId, status: "completed", resultUrl, resultMd5, time}
+            未命中：  {logId, status: "processing"}
         """
         start = time.time()
 
@@ -103,91 +96,162 @@ class PredictionService:
             elapsed = int((time.time() - start) * 1000)
             logger.info("预测缓存命中: algorithmId=%s, md5=%s", algorithm_id, image_md5)
 
-            # 写入日志（缓存命中也记录，便于审计）
-            log_id = await self._write_pred_log(
-                algorithm_id=algorithm_id,
-                origin_md5=image_md5,
-                origin_url=image_url,
-                pred_md5=cached.get("resultMd5", ""),
-                pred_url=cached["resultUrl"],
-                time_ms=elapsed,
-                user_id=user_id,
-            )
+            # 缓存命中直接写 completed 日志并返回完整结果
+            from app.models.base import set_current_user_id
+            set_current_user_id(user_id)
+            try:
+                async with get_db_session() as db:
+                    log = await pred_log_repository.create_log(
+                        db=db,
+                        algorithm_id=algorithm_id,
+                        origin_md5=image_md5,
+                        origin_url=image_url,
+                        pred_md5=cached.get("resultMd5", ""),
+                        pred_url=cached["resultUrl"],
+                        time_ms=elapsed,
+                    )
+                    log_id = log.id
+            finally:
+                set_current_user_id(None)
 
             return {
+                "logId": log_id,
+                "status": "completed",
                 "resultUrl": cached["resultUrl"],
                 "resultMd5": cached.get("resultMd5", ""),
                 "resultThumbnailUrl": cached.get("resultThumbnailUrl"),
-                "format": cached.get("format", "png"),
-                "logId": log_id,
-                "fromCache": True,
                 "time": elapsed,
             }
 
-        # 4. 缓存未命中，调用算法去雾（在线程池中执行，避免阻塞事件循环）
-        # 计算输入图像尺寸（像素数），用于 Prometheus INFERENCE_IMAGE_SIZE 指标
+        # 4. 缓存未命中：创建 processing 日志
+        from app.models.base import set_current_user_id
+        set_current_user_id(user_id)
         try:
-            with PIL.Image.open(image_bytes) as img:
-                image_size = img.width * img.height
-            image_bytes.seek(0)  # reset after reading header
-        except Exception:
-            image_size = None
-
-        loop = asyncio.get_running_loop()
-        inference_start = time.monotonic()
-        inference_status = "success"
-        try:
-            result_bytes = await loop.run_in_executor(
-                _inference_executor,
-                self._run_dehaze,
-                algorithm.import_path or algorithm.name,
-                image_bytes,
-            )
-        except Exception:
-            inference_status = "error"
-            raise
+            async with get_db_session() as db:
+                log = await pred_log_repository.create_pending_log(
+                    db=db,
+                    algorithm_id=algorithm_id,
+                    origin_md5=image_md5,
+                    origin_url=image_url,
+                )
+                log_id = log.id
         finally:
-            record_inference_metrics(
-                algorithm=algorithm.name,
-                duration_seconds=time.monotonic() - inference_start,
-                status=inference_status,
-                image_size=image_size,
+            set_current_user_id(None)
+
+        # 5. 提交异步任务（不等待完成）
+        loop = asyncio.get_running_loop()
+        loop.create_task(self._execute_async(
+            log_id=log_id,
+            algorithm_id=algorithm_id,
+            image_bytes=image_bytes,
+            image_md5=image_md5,
+            algorithm=algorithm,
+            cache_key=cache_key,
+            user_id=user_id,
+        ))
+
+        # 6. 立即返回 processing
+        return {
+            "logId": log_id,
+            "status": "processing",
+        }
+
+    async def _execute_async(
+        self,
+        log_id: int,
+        algorithm_id: int,
+        image_bytes: io.BytesIO,
+        image_md5: str,
+        algorithm: SysAlgorithm,
+        cache_key: str,
+        user_id: Optional[int] = None,
+    ) -> None:
+        """异步执行预测任务，完成后更新日志状态"""
+        from app.models.base import set_current_user_id
+        set_current_user_id(user_id)
+        start_time = time.time()
+        try:
+            # 1. 计算输入图像尺寸（用于指标）
+            try:
+                with PIL.Image.open(image_bytes) as img:
+                    image_size = img.width * img.height
+                image_bytes.seek(0)
+            except Exception:
+                image_size = None
+
+            # 2. 执行去雾推理（CPU 密集型 → 线程池）
+            loop = asyncio.get_running_loop()
+            inference_start = time.monotonic()
+            inference_status = "success"
+            try:
+                result_bytes = await loop.run_in_executor(
+                    _inference_executor,
+                    self._run_dehaze,
+                    algorithm.import_path or algorithm.name,
+                    image_bytes,
+                )
+            except Exception:
+                inference_status = "error"
+                raise
+            finally:
+                record_inference_metrics(
+                    algorithm=algorithm.name,
+                    duration_seconds=time.monotonic() - inference_start,
+                    status=inference_status,
+                    image_size=image_size,
+                )
+
+            # 3. 上传结果
+            result_url = await self._upload_result(result_bytes, algorithm.name)
+            result_md5 = calculate_bytes_md5(result_bytes)
+            elapsed_ms = int((time.time() - start_time) * 1000)
+
+            # 4. 更新日志为 completed
+            async with get_db_session() as db:
+                await pred_log_repository.update_result(
+                    db=db,
+                    log_id=log_id,
+                    pred_md5=result_md5,
+                    pred_url=result_url,
+                    time_ms=elapsed_ms,
+                )
+
+            # 5. 写入 Redis 缓存
+            await self._set_cached_prediction(cache_key, {
+                "resultUrl": result_url,
+                "resultMd5": result_md5,
+                "resultThumbnailUrl": None,
+                "format": "png",
+            })
+
+            logger.info(
+                "异步预测完成: logId=%s, algorithmId=%s, time=%sms",
+                log_id, algorithm_id, elapsed_ms,
             )
 
-        # 5. 上传结果图片
-        result_url = await self._upload_result(result_bytes, algorithm.name)
-        result_md5 = calculate_bytes_md5(result_bytes)
-
-        elapsed = int((time.time() - start) * 1000)
-
-        # 6. 写入预测日志
-        log_id = await self._write_pred_log(
-            algorithm_id=algorithm_id,
-            origin_md5=image_md5,
-            origin_url=image_url,
-            pred_md5=result_md5,
-            pred_url=result_url,
-            time_ms=elapsed,
-            user_id=user_id,
-        )
-
-        # 7. 写入 Redis 缓存
-        await self._set_cached_prediction(cache_key, {
-            "resultUrl": result_url,
-            "resultMd5": result_md5,
-            "resultThumbnailUrl": None,
-            "format": "png",
-        })
-
-        return {
-            "resultUrl": result_url,
-            "resultMd5": result_md5,
-            "resultThumbnailUrl": None,
-            "format": "png",
-            "logId": log_id,
-            "fromCache": False,
-            "time": elapsed,
-        }
+        except Exception as e:
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            error_msg = str(e)
+            logger.error(
+                "异步预测失败: logId=%s, algorithmId=%s, error=%s",
+                log_id, algorithm_id, error_msg, exc_info=True,
+            )
+            try:
+                async with get_db_session() as db:
+                    await pred_log_repository.update_status(
+                        db=db,
+                        log_id=log_id,
+                        status="failed",
+                        error_message=error_msg,
+                        time_ms=elapsed_ms,
+                    )
+            except Exception as update_err:
+                logger.error(
+                    "更新预测日志失败状态失败: logId=%s, error=%s",
+                    log_id, update_err,
+                )
+        finally:
+            set_current_user_id(None)
 
     async def _get_cached_prediction(self, cache_key: str) -> Optional[dict]:
         """从 Redis 读取预测缓存（带降级）"""
@@ -234,37 +298,6 @@ class PredictionService:
             operation_name="prediction_cache_invalidate",
         )
         return result or 0
-
-    async def _write_pred_log(
-        self,
-        algorithm_id: int,
-        origin_md5: str,
-        origin_url: str,
-        pred_md5: str,
-        pred_url: str,
-        time_ms: int,
-        user_id: Optional[int] = None,
-    ) -> Optional[int]:
-        """写入预测日志"""
-        from app.models.base import set_current_user_id
-        set_current_user_id(user_id)
-        try:
-            async with get_db_session() as db:
-                log = await pred_log_repository.create_log(
-                    db=db,
-                    algorithm_id=algorithm_id,
-                    origin_md5=origin_md5,
-                    origin_url=origin_url,
-                    pred_md5=pred_md5,
-                    pred_url=pred_url,
-                    time_ms=time_ms,
-                )
-                return log.id
-        except Exception as e:
-            logger.warning("写入预测日志失败: %s", e)
-            return None
-        finally:
-            set_current_user_id(None)
 
     @staticmethod
     async def get_algorithm(algorithm_id: int) -> SysAlgorithm:

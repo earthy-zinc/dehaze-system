@@ -4,6 +4,24 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'prediction_model.g.dart';
 
+/// 任务状态
+enum TaskStatus {
+  processing,
+  completed,
+  failed;
+
+  static TaskStatus fromString(String? value) {
+    switch (value) {
+      case 'completed':
+        return TaskStatus.completed;
+      case 'failed':
+        return TaskStatus.failed;
+      default:
+        return TaskStatus.processing;
+    }
+  }
+}
+
 /// 预测请求
 ///
 /// 对应后端 PredictionForm：
@@ -12,7 +30,8 @@ part 'prediction_model.g.dart';
 class PredictionRequest {
   const PredictionRequest({
     required this.algorithmId,
-    required this.fileId,
+    this.fileId,
+    this.imageUrl,
     this.params,
   });
 
@@ -25,7 +44,11 @@ class PredictionRequest {
 
   /// 原始图片文件 ID
   @JsonKey(name: 'fileId')
-  final int fileId;
+  final int? fileId;
+
+  /// 原始图片 URL（fileId 与 imageUrl 二选一）
+  @JsonKey(name: 'imageUrl')
+  final String? imageUrl;
 
   /// 算法参数
   ///
@@ -46,14 +69,17 @@ class PredictionRequest {
 
 /// 预测响应
 ///
-/// 对应后端 PredictionResultVO：预测为同步接口，直接返回结果。
+/// 对应后端 PredictionResultVO：异步任务模式。
+/// POST 立即返回 logId + status=processing；GET 轮询至 completed/failed 时返回完整字段。
 @JsonSerializable()
 class PredictionResponse {
   const PredictionResponse({
     required this.logId,
+    required this.status,
     this.resultUrl,
     this.resultThumbnailUrl,
     this.time,
+    this.errorMessage,
   });
 
   factory PredictionResponse.fromJson(Map<String, dynamic> json) =>
@@ -63,21 +89,37 @@ class PredictionResponse {
   @JsonKey(name: 'logId')
   final int logId;
 
-  /// 结果图片 URL
+  /// 任务状态
+  @JsonKey(fromJson: _statusFromJson, toJson: _statusToJson)
+  final TaskStatus status;
+
+  /// 结果图片 URL（status=completed 时返回）
   @JsonKey(name: 'resultUrl')
   final String? resultUrl;
 
-  /// 结果缩略图 URL
+  /// 结果缩略图 URL（status=completed 时返回）
   @JsonKey(name: 'resultThumbnailUrl')
   final String? resultThumbnailUrl;
 
   /// 处理耗时（毫秒）
   final int? time;
 
+  /// 失败错误信息（status=failed 时返回）
+  @JsonKey(name: 'errorMessage')
+  final String? errorMessage;
+
+  static TaskStatus _statusFromJson(String? value) =>
+      TaskStatus.fromString(value);
+
+  static String _statusToJson(TaskStatus status) => status.name;
+
   Map<String, dynamic> toJson() => _$PredictionResponseToJson(this);
 
-  /// 是否拿到处理结果
-  bool get hasResult => resultUrl != null && resultUrl!.isNotEmpty;
+  /// 是否已拿到处理结果
+  bool get hasResult =>
+      status == TaskStatus.completed &&
+      resultUrl != null &&
+      resultUrl!.isNotEmpty;
 }
 
 /// 预测日志

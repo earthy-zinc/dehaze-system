@@ -201,8 +201,7 @@ public class PresentationActivity extends AppCompatActivity {
         if (algorithmId != null) {
             presentationViewModel.getAlgorithmDetail(algorithmId);
         }
-        String info = "耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms")
-                + (Boolean.TRUE.equals(result.getFromCache()) ? "（命中缓存）" : "");
+        String info = "耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms");
         binding.tvAlgorithmInfo.setText(info);
     }
 

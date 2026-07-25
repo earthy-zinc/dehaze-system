@@ -132,7 +132,9 @@ const AlgorithmInfoCard: React.FC<AlgorithmInfoCardProps> = ({
           {evaluationTime !== undefined && (
             <View className="info-row">
               <Text className="info-label">评估耗时</Text>
-              <Text className="info-value">{formatDuration(evaluationTime)}</Text>
+              <Text className="info-value">
+                {formatDuration(evaluationTime)}
+              </Text>
             </View>
           )}
         </View>

@@ -176,9 +176,9 @@ func (a *Application) Init() error {
 	taskApi := api.NewSysTaskApi(taskService)
 	inputHistoryService := ihservice.NewInputHistoryService(inputHistoryRepo)
 	algoClient := algo.NewClient(cfg.Algorithm)
-	predictionService := predservice.NewPredictionService(predLogRepo, algoClient, cacheClient)
+	predictionService := predservice.NewPredictionService(predLogRepo, algorithmRepo, algoClient, cacheClient)
 	evalLogRepo := evalrepo.NewEvalLogRepository(gormDB)
-	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algoClient)
+	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algorithmRepo, algoClient)
 	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService)
 
 	// 启动 MQ Consumer 消费死信队列
@@ -196,8 +196,8 @@ func (a *Application) Init() error {
 		}
 	}
 
-	// 启动定时清理任务（清理过期任务、失败记录等）
-	job.InitJobs(storageService)
+	// 启动定时清理任务（清理过期任务、失败记录、预测/评估僵尸任务等）
+	job.InitJobs(storageService, predLogRepo, evalLogRepo)
 
 	// apis
 	authApi := api.NewAuthApi(authService)

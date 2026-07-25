@@ -11,6 +11,7 @@ import com.pei.dehaze.sdk.model.evaluation.EvalParam;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.prediction.DehazeParams;
+import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 import com.pei.dehaze.sdk.model.prediction.PredParam;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
@@ -66,6 +67,10 @@ public class CompareViewModel extends BaseViewModel {
         param.setImageUrl(originalImageUrl);
         param.setParams(params);
         sharedRepository.getPrediction(param, withLoading(result -> {
+            if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+                error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "去雾处理失败");
+                return;
+            }
             predictionResult.postValue(result);
             operationResult.postValue("去雾处理完成");
         }));
@@ -96,12 +101,18 @@ public class CompareViewModel extends BaseViewModel {
             sharedRepository.getPrediction(param, new RepositoryCallback<PredResult>() {
                 @Override
                 public void onSuccess(PredResult result) {
-                    synchronized (results) {
-                        results.put(algorithmId, result);
+                    if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+                        error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "去雾处理失败");
+                    } else {
+                        synchronized (results) {
+                            results.put(algorithmId, result);
+                        }
                     }
                     if (pending.decrementAndGet() == 0) {
                         multiPredictionResults.postValue(results);
-                        operationResult.postValue("多算法处理完成");
+                        if (results.size() > 0) {
+                            operationResult.postValue("多算法处理完成");
+                        }
                         loading.postValue(false);
                     }
                 }
@@ -128,6 +139,10 @@ public class CompareViewModel extends BaseViewModel {
         param.setPredUrl(predUrl);
         param.setGtUrl(gtUrl);
         sharedRepository.getEvaluation(param, withLoading(result -> {
+            if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+                error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "评估失败");
+                return;
+            }
             evaluationResult.postValue(result);
             operationResult.postValue("评估完成");
         }));

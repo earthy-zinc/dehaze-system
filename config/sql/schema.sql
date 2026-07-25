@@ -410,6 +410,8 @@ CREATE TABLE `sys_pred_log`
     `pred_md5`       char(32) NULL DEFAULT NULL COMMENT '预测图像md5值',
     `pred_url`       TEXT     NULL DEFAULT NULL COMMENT '预测图像url',
     `time`           int               DEFAULT 0 COMMENT '推理时间（秒）',
+    `status`         varchar(20) NOT NULL DEFAULT 'completed' COMMENT '任务状态：processing/completed/failed',
+    `error_message`  text NULL DEFAULT NULL COMMENT '失败错误信息',
     `create_time`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`      bigint   NULL     DEFAULT NULL COMMENT '创建人ID',
@@ -417,7 +419,8 @@ CREATE TABLE `sys_pred_log`
     PRIMARY KEY (`id`) USING BTREE,
     KEY `idx_algorithm_id` (`algorithm_id`) USING BTREE,
     KEY `idx_origin_md5` (`origin_md5`) USING BTREE,
-    KEY `idx_pred_md5` (`pred_md5`) USING BTREE
+    KEY `idx_pred_md5` (`pred_md5`) USING BTREE,
+    KEY `idx_status` (`status`) USING BTREE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci
@@ -435,6 +438,8 @@ CREATE TABLE `sys_eval_log`
     `gt_md5`       char(32) NULL DEFAULT NULL COMMENT '真值图像md5值',
     `gt_url`       TEXT     NULL DEFAULT NULL COMMENT '真值图像url',
     `time`         int               DEFAULT 0 COMMENT '评估时间（秒）',
+    `status`       varchar(20) NOT NULL DEFAULT 'completed' COMMENT '任务状态：processing/completed/failed',
+    `error_message` text NULL DEFAULT NULL COMMENT '失败错误信息',
     `result`       json COMMENT '预测结果',
     `create_time`  datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`  datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -443,7 +448,8 @@ CREATE TABLE `sys_eval_log`
     PRIMARY KEY (`id`) USING BTREE,
     KEY `idx_algorithm_id` (`algorithm_id`) USING BTREE,
     KEY `idx_pred_md5` (`pred_md5`) USING BTREE,
-    KEY `idx_gt_md5` (`gt_md5`) USING BTREE
+    KEY `idx_gt_md5` (`gt_md5`) USING BTREE,
+    KEY `idx_status` (`status`) USING BTREE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci

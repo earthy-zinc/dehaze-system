@@ -67,7 +67,7 @@ const DatasetContent: React.FC = () => {
   useEffect(() => {
     fetchDatasets(1, "", false);
     fetchDatasetOptions();
-  }, []);
+  }, [fetchDatasets, fetchDatasetOptions]);
 
   // 搜索处理
   const handleSearch = (keyword: string) => {
@@ -262,9 +262,7 @@ const DatasetContent: React.FC = () => {
             datasets={state.datasets}
             loading={state.datasetsLoading}
             error={state.datasetsError}
-            onRetry={() =>
-              fetchDatasets(1, state.searchKeyword, false)
-            }
+            onRetry={() => fetchDatasets(1, state.searchKeyword, false)}
             hasMore={state.datasetsHasMore}
             onLoadMore={handleLoadMoreDatasets}
             onDatasetClick={handleDatasetClick}
@@ -312,9 +310,7 @@ const DatasetContent: React.FC = () => {
                   description="该数据集中没有符合条件的图片"
                 />
               ) : (
-                <ImageGrid
-                  images={state.images}
-                />
+                <ImageGrid images={state.images} />
               )}
             </View>
 

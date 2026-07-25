@@ -120,9 +120,11 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
         <View
           style={[
             styles.overlayImage,
+            /* eslint-disable react-native/no-inline-styles */
             direction === 'vertical'
               ? { width: `${dividerPos * 100}%`, height: '100%' }
               : { width: '100%', height: `${dividerPos * 100}%` },
+            /* eslint-enable react-native/no-inline-styles */
           ]}
         >
           <ImageLoader

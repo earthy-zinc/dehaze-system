@@ -6,9 +6,9 @@ import React from "react";
 import { View, Text, Image } from "@tarojs/components";
 import { Loading } from "@taroify/core";
 import FilterTabs from "@/components/common/FilterTabs";
+import { formatHazeLevel } from "@/utils/format";
 import { SampleImage, SampleCategory } from "../../services/types";
 import { categoryTabs } from "../../services/sampleData";
-import { formatHazeLevel } from "@/utils/format";
 import "./SampleGallery.less";
 
 interface SampleGalleryProps {

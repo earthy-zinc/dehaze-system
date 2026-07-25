@@ -18,7 +18,12 @@ const OverlayPage: React.FC = () => {
   const [ctx] = useState(loadCompareContext);
   const [sliderPos, setSliderPos] = useState(50);
   // 缓存容器边界信息（跨端兼容：小程序不支持 getBoundingClientRect）
-  const containerRectRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
+  const containerRectRef = useRef<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const isDragging = useRef(false);
 
   const { originImage, result, algorithm } = ctx;

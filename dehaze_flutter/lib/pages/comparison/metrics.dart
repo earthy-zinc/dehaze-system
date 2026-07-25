@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
 import '../../models/evaluation_model.dart';
+import '../../models/prediction_model.dart';
 import '../../providers/processing_provider.dart';
 import '../../providers/providers.dart';
 import '../../router/config.dart';
@@ -65,12 +66,20 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
         predUrl: predUrl,
         gtUrl: gtUrl,
       );
-      // 评估为同步接口，直接返回指标
-      final result = await service.evaluate(request);
-      setState(() {
-        _metrics = result.metricsModel;
-        _isEvaluating = false;
-      });
+      // 评估为异步任务：POST 后轮询 GET 直至终态
+      final result = await service.evaluateAndWait(request);
+
+      if (result.status == TaskStatus.failed) {
+        setState(() {
+          _errorMessage = result.errorMessage ?? '评估失败';
+          _isEvaluating = false;
+        });
+      } else {
+        setState(() {
+          _metrics = result.metricsModel;
+          _isEvaluating = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _errorMessage = extractErrorMessage(e);

@@ -6,8 +6,8 @@ import React from "react";
 import { View, Text, Image } from "@tarojs/components";
 import { Popup, Button } from "@taroify/core";
 import { Cross, PhotoOutlined, Expand } from "@taroify/icons";
-import { ImageData } from "../../services/types";
 import { formatFileSize, formatHazeLevel } from "@/utils/format";
+import { ImageData } from "../../services/types";
 import "./ImagePreview.less";
 
 interface ImagePreviewProps {

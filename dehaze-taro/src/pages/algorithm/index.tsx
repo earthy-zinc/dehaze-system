@@ -183,7 +183,10 @@ const AlgorithmManagePage: React.FC = () => {
           setDetailAlgo((prev) => (prev?.id === algo.id ? null : prev));
           Taro.showToast({ title: "删除成功", icon: "success" });
         } catch (err: unknown) {
-          Taro.showToast({ title: getErrorMessage(err, "删除失败"), icon: "none" });
+          Taro.showToast({
+            title: getErrorMessage(err, "删除失败"),
+            icon: "none",
+          });
         } finally {
           setActionLoadingId(null);
         }

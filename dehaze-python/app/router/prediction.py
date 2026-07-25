@@ -1,9 +1,9 @@
 """
-预测 API 路由 —— 去雾处理核心入口
+预测 API 路由 —— 去雾处理核心入口（异步任务模式）
 
-POST /api/v1/prediction          → 执行模型预测（去雾）
+POST /api/v1/prediction          → 提交预测任务，立即返回 {logId, status: "processing"}
 GET  /api/v1/prediction/logs     → 预测日志列表
-GET  /api/v1/prediction/{taskId} → 查询预测任务状态（通过日志ID）
+GET  /api/v1/prediction/{taskId} → 查询预测任务状态，根据 status 返回不同字段
 """
 import json
 import logging
@@ -38,12 +38,13 @@ class PredictionRequest(BaseModel):
 
 
 class PredictionResponse(BaseModel):
-    """预测响应"""
+    """预测响应：POST 返回 logId+status；GET 根据 status 返回不同字段"""
     logId: Optional[int] = Field(default=None, description="预测日志ID")
-    resultUrl: str = Field(description="处理后的图片URL")
-    resultThumbnailUrl: Optional[str] = Field(default=None, description="缩略图URL")
+    status: str = Field(description="任务状态：processing/completed/failed")
+    resultUrl: Optional[str] = Field(default=None, description="处理后的图片URL（completed 时返回）")
+    resultThumbnailUrl: Optional[str] = Field(default=None, description="缩略图URL（completed 时返回）")
     time: int = Field(default=0, description="处理时间(毫秒)")
-    fromCache: bool = Field(default=False, description="是否命中缓存")
+    errorMessage: Optional[str] = Field(default=None, description="失败错误信息（failed 时返回）")
 
 
 @router.post("", response_model=Result[PredictionResponse])
@@ -52,14 +53,14 @@ async def predict(
     user: UserContext = Depends(get_current_user),
 ):
     """
-    执行模型预测（去雾处理）
+    提交模型预测任务（异步）
 
-    接收雾化图片URL或文件ID，调用指定算法进行去雾，返回处理后的图片URL。
-    基于 (algorithmId, imageMd5) 的 Redis 缓存，缓存命中直接返回结果。
+    立即返回 logId + status：
+    - 缓存命中：status=completed 且包含完整结果
+    - 缓存未命中：status=processing，需通过 GET /{taskId} 轮询
     """
     logger.info(f"预测请求: user={user.username}, algorithmId={body.algorithmId}")
 
-    # 解析图片来源 URL（fileId 优先）
     image_url = body.imageUrl
     if body.fileId is not None:
         image_url = f"/api/v1/files/download/{body.fileId}"
@@ -82,10 +83,10 @@ async def predict(
 
     return success(PredictionResponse(
         logId=result.get("logId"),
-        resultUrl=result["resultUrl"],
+        status=result.get("status", "processing"),
+        resultUrl=result.get("resultUrl"),
         resultThumbnailUrl=result.get("resultThumbnailUrl"),
         time=result.get("time", 0),
-        fromCache=result.get("fromCache", False),
     ))
 
 
@@ -97,6 +98,8 @@ class PredictionLogVO(BaseModel):
     originUrl: Optional[str] = Field(default=None, validation_alias="origin_url", serialization_alias="originUrl", description="原图URL")
     predMd5: Optional[str] = Field(default=None, validation_alias="pred_md5", serialization_alias="predMd5", description="预测结果MD5")
     predUrl: Optional[str] = Field(default=None, validation_alias="pred_url", serialization_alias="predUrl", description="预测结果URL")
+    status: Optional[str] = Field(default=None, description="任务状态：processing/completed/failed")
+    errorMessage: Optional[str] = Field(default=None, validation_alias="error_message", serialization_alias="errorMessage", description="失败错误信息")
     time: Optional[int] = Field(default=None, description="推理耗时(秒)")
     createTime: Optional[datetime] = Field(default=None, validation_alias="create_time", serialization_alias="createTime", description="创建时间")
 
@@ -120,7 +123,7 @@ async def list_prediction_logs(
     return success(PageResult(list=logs, total=total))
 
 
-@router.get("/{task_id}", response_model=Result[PredictionLogVO], summary="查询预测任务状态")
+@router.get("/{task_id}", response_model=Result[PredictionResponse], summary="查询预测任务状态")
 async def get_prediction_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
@@ -128,9 +131,20 @@ async def get_prediction_task(
     """
     查询预测任务状态（通过日志ID查询）
 
-    文档中的 taskId 对应 sys_pred_log.id
+    根据 status 返回不同字段：
+    - processing: 仅返回 logId + status
+    - completed: 返回完整结果（resultUrl、time）
+    - failed: 返回 errorMessage + time
     """
     log = await pred_log_repository.get_by_id(db, task_id)
     if not log:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "预测任务不存在")
-    return success(log)
+
+    resp = PredictionResponse(logId=log.id, status=log.status)
+    if log.status == "completed":
+        resp.resultUrl = log.pred_url
+        resp.time = log.time or 0
+    elif log.status == "failed":
+        resp.errorMessage = log.error_message
+        resp.time = log.time or 0
+    return success(resp)

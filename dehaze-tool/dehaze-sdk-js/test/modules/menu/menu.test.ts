@@ -32,7 +32,8 @@ function findMenuById(menus: MenuVO[], id: number): MenuVO | null {
 }
 
 describe("菜单管理接口测试", () => {
-  const createdMenuIds: number[] = [];  afterAll(async () => {
+  const createdMenuIds: number[] = [];
+  afterAll(async () => {
     // 清理测试创建的菜单（从后往前删除，先删子菜单）
     for (const menuId of createdMenuIds.reverse()) {
       try {
@@ -41,7 +42,6 @@ describe("菜单管理接口测试", () => {
         console.warn(`清理菜单失败: ${menuId}`, error);
       }
     }
-
   });
 
   describe("GET /api/v1/menus/routes - 获取路由列表", () => {

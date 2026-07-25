@@ -107,10 +107,11 @@ type PredictionRequest struct {
 // PredictionResponse 预测响应
 type PredictionResponse struct {
 	LogID              int64  `json:"logId"`
-	ResultURL          string `json:"resultUrl"`
-	ResultThumbnailURL string `json:"resultThumbnailUrl"`
-	Time               int    `json:"time"`
-	FromCache          bool   `json:"fromCache"`
+	Status             string `json:"status"`
+	ResultURL          string `json:"resultUrl,omitempty"`
+	ResultThumbnailURL string `json:"resultThumbnailUrl,omitempty"`
+	Time               int    `json:"time,omitempty"`
+	ErrorMessage       string `json:"errorMessage,omitempty"`
 }
 
 // EvaluationRequest 评估请求
@@ -122,10 +123,11 @@ type EvaluationRequest struct {
 
 // EvaluationResponse 评估响应
 type EvaluationResponse struct {
-	LogID     int64              `json:"logId"`
-	Metrics   map[string]float64 `json:"metrics"`
-	Qualified bool               `json:"qualified"`
-	Time      int                `json:"time"`
+	LogID        int64              `json:"logId"`
+	Status       string             `json:"status"`
+	Metrics      map[string]float64 `json:"metrics,omitempty"`
+	Time         int                `json:"time,omitempty"`
+	ErrorMessage string             `json:"errorMessage,omitempty"`
 }
 
 // Predict 调用 Python 预测服务
@@ -141,6 +143,26 @@ func (c *Client) Predict(ctx context.Context, req *PredictionRequest) (*Predicti
 func (c *Client) Evaluate(ctx context.Context, req *EvaluationRequest) (*EvaluationResponse, error) {
 	var resp EvaluationResponse
 	if err := c.doPost(ctx, "/api/v1/evaluation", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetPredTaskStatus 查询预测任务状态（用于异步轮询）
+func (c *Client) GetPredTaskStatus(ctx context.Context, taskID int64) (*PredictionResponse, error) {
+	var resp PredictionResponse
+	path := fmt.Sprintf("/api/v1/prediction/%d", taskID)
+	if err := c.doGet(ctx, path, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetEvalTaskStatus 查询评估任务状态（用于异步轮询）
+func (c *Client) GetEvalTaskStatus(ctx context.Context, taskID int64) (*EvaluationResponse, error) {
+	var resp EvaluationResponse
+	path := fmt.Sprintf("/api/v1/evaluation/%d", taskID)
+	if err := c.doGet(ctx, path, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -171,6 +193,121 @@ func (c *Client) doPost(ctx context.Context, path string, reqBody interface{}, r
 		return nil
 	}
 	return exec()
+}
+
+// doGet 通用 GET 请求 — 用于查询任务状态
+func (c *Client) doGet(ctx context.Context, path string, respBody interface{}) error {
+	url := c.baseURL + path
+
+	exec := func() error {
+		return c.doGetWithRetry(ctx, url, respBody, path)
+	}
+	if c.breaker != nil {
+		if err := c.breaker.Execute(exec); err != nil {
+			if errors.Is(err, protection.ErrCircuitOpen) {
+				return fmt.Errorf("算法服务熔断中，请稍后重试: %w", err)
+			}
+			return err
+		}
+		return nil
+	}
+	return exec()
+}
+
+// doGetWithRetry 带指数退避的重试逻辑（GET 请求）
+func (c *Client) doGetWithRetry(
+	ctx context.Context,
+	url string,
+	respBody interface{},
+	path string,
+) error {
+	var lastErr error
+	backoff := c.backoff
+
+	for attempt := 0; attempt <= c.maxRetry; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+			backoff *= 2
+		}
+
+		lastErr = c.doSingleGet(ctx, url, respBody, path)
+		if lastErr == nil {
+			return nil
+		}
+		if !isRetryable(lastErr) {
+			return lastErr
+		}
+	}
+
+	if lastErr != nil {
+		return fmt.Errorf("算法服务调用失败（已重试 %d 次）: %w", c.maxRetry, lastErr)
+	}
+	return nil
+}
+
+// doSingleGet 执行单次 GET 请求
+func (c *Client) doSingleGet(
+	ctx context.Context,
+	url string,
+	respBody interface{},
+	path string,
+) error {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("创建请求失败: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	if traceID := trace.GetTraceID(ctx); traceID != "" {
+		httpReq.Header.Set(trace.HeaderName, traceID)
+	}
+	if tp := trace.TraceParentFromContext(ctx); tp != "" {
+		httpReq.Header.Set(trace.HeaderNameTraceParent, tp)
+	}
+	if c.apiKey != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
+
+	start := time.Now()
+	httpResp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		logger.Error("算法服务请求失败",
+			zap.String("url", url),
+			zap.Duration("elapsed", time.Since(start)),
+			zap.Error(err))
+		return fmt.Errorf("算法服务请求失败: %w", err)
+	}
+	defer httpResp.Body.Close()
+
+	respBytes, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		return fmt.Errorf("读取响应失败: %w", err)
+	}
+
+	if httpResp.StatusCode != http.StatusOK {
+		return &httpStatusError{status: httpResp.StatusCode, body: string(respBytes)}
+	}
+
+	var apiResp struct {
+		Code string          `json:"code"`
+		Msg  string          `json:"msg"`
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(respBytes, &apiResp); err != nil {
+		return fmt.Errorf("解析响应失败: %w", err)
+	}
+	if apiResp.Code != "00000" {
+		return &businessError{code: apiResp.Code, msg: apiResp.Msg}
+	}
+
+	if err := json.Unmarshal(apiResp.Data, respBody); err != nil {
+		return fmt.Errorf("解析响应数据失败: %w", err)
+	}
+
+	return nil
 }
 
 // doPostWithRetry 带指数退避的重试逻辑

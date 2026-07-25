@@ -33,7 +33,7 @@ withDefaults(
   {
     subtitle: "",
     variant: "default",
-  },
+  }
 );
 </script>
 

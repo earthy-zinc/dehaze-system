@@ -99,12 +99,15 @@ export default function Overlap() {
 
   const handleGenerateImage = () => {
     setActivePage("loading");
-    ModelAPI.predict({
+    ModelAPI.predictAndWait({
       algorithmId: Number(selectedModel.value) || 1,
       imageUrl: image1,
     })
       .then((res) => {
-        setImage2(res.resultUrl);
+        if (res.status === "failed") {
+          throw new Error(res.errorMessage || "去雾处理失败");
+        }
+        setImage2(res.resultUrl || "");
       })
       .then(() => setActivePage("overlap"))
       .catch((err) => {

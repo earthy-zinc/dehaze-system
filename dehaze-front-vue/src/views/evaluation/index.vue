@@ -140,15 +140,20 @@ async function handleEvaluation() {
       modelId.value
     );
 
-    const result = await ModelAPI.evaluate({
+    const result = await ModelAPI.evaluateAndWait({
       algorithmId: modelId.value,
       predUrl: pred.value!.url,
       gtUrl: gt.value!.url,
     });
-    metrics.value = Object.entries(result.metrics).map(([label, value]) => ({
-      label,
-      value,
-    }));
+    if (result.status === "failed") {
+      throw new Error(result.errorMessage || "评估失败");
+    }
+    metrics.value = Object.entries(result.metrics || {}).map(
+      ([label, value]) => ({
+        label,
+        value,
+      })
+    );
     showResult.value = true;
   } catch (e: any) {
     ElMessage.error("评估失败：" + (e.message || "未知错误"));

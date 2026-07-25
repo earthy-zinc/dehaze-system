@@ -242,13 +242,17 @@ const Dehaze: React.FC = () => {
     startProgressSimulation();
 
     try {
-      const response = await ModelAPI.predict({
+      const response = await ModelAPI.predictAndWait({
         algorithmId: selectedModel,
         imageUrl: urls[0].url,
       });
 
       // 已取消则忽略结果
       if (cancelFlagRef.current) return;
+
+      if (response.status === "failed") {
+        throw new Error(response.errorMessage || "去雾处理失败");
+      }
 
       // 后处理阶段
       setProgress(95);
@@ -266,7 +270,7 @@ const Dehaze: React.FC = () => {
       );
       dispatch(
         setImageUrl({
-          url: response.resultUrl,
+          url: response.resultUrl || "",
           type: ImageTypeEnum.PRED,
         })
       );
@@ -274,7 +278,7 @@ const Dehaze: React.FC = () => {
       message.success("去雾处理完成");
     } catch (error) {
       if (!cancelFlagRef.current) {
-        message.error("生成失败");
+        message.error(error instanceof Error ? error.message : "生成失败");
         setShow((prev) => ({ ...prev, singleImage: true, overlap: false }));
       }
     } finally {
@@ -373,12 +377,16 @@ const Dehaze: React.FC = () => {
           : await FileAPI.upload(files[i], modelId);
         if (batchCancelRef.current) break;
 
-        // 调用预测接口
-        const predRes = await ModelAPI.predict({
+        // 调用预测接口（异步轮询直到终态）
+        const predRes = await ModelAPI.predictAndWait({
           algorithmId: selectedModel,
           imageUrl: uploadRes.url,
         });
         if (batchCancelRef.current) break;
+
+        if (predRes.status === "failed") {
+          throw new Error(predRes.errorMessage || "处理失败");
+        }
 
         // 模拟单张进度递增
         for (let p = 0; p <= 100; p += 25) {

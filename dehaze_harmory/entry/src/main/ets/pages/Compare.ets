@@ -1,6 +1,12 @@
 import { router, promptAction } from '@kit.ArkUI';
-import { EvaluationAPI, EvalParam, EvalResult } from 'dehaze-sdk-harmony';
+import { EvaluationAPI, EvalParam, EvalResult, PollOptions } from 'dehaze-sdk-harmony';
 import { ProcessingContext } from '../common/AppState';
+
+/** 指标展示项（由 metrics Record 转换得到） */
+class MetricItem {
+  name: string = '';
+  value: string = '';
+}
 
 /**
  * 效果对比页面
@@ -10,7 +16,7 @@ import { ProcessingContext } from '../common/AppState';
  * - 重叠对比模式：滑动分隔线对比
  * - 放大镜模式：跟随触摸位置放大显示
  * - 滤镜模式：灰度、暖色、冷色等滤镜效果对比
- * - 指标评估：调用 EvaluationAPI 计算 PSNR/SSIM 等指标（GT 必须是 clean 图）
+ * - 指标评估：调用 EvaluationAPI.evaluateAndWait 异步计算 PSNR/SSIM 等指标（GT 必须是 clean 图）
  * - 算法信息展示
  * - 重新处理/返回首页（结果由后端自动保存到 prediction_log）
  */
@@ -35,9 +41,10 @@ struct Compare {
   @State filterIndex: number = 0;
 
   // 指标评估
-  @State evalResults: EvalResult[] = [];
+  @State evalMetrics: MetricItem[] = [];
   @State evalLoading: boolean = false;
   @State evalDone: boolean = false;
+  @State evalError: string = '';
 
   aboutToAppear(): void {
     this.originalUrl = ProcessingContext.getOriginalUrl();
@@ -81,19 +88,40 @@ struct Compare {
       return;
     }
     this.evalLoading = true;
+    this.evalError = '';
     try {
       const param: EvalParam = {
         algorithmId: this.algorithmId,
         predUrl: this.resultUrl,
         gtUrl: this.gtUrl,
       };
-      const results = await EvaluationAPI.evaluate(param);
-      this.evalResults = results || [];
+      const pollOptions: PollOptions = {
+        intervalMs: 2000,
+        timeoutMs: 120000,
+      };
+      const result: EvalResult = await EvaluationAPI.evaluateAndWait(param, pollOptions);
+
+      if (result.status === 'failed') {
+        this.evalError = result.errorMessage || '评估失败';
+        promptAction.showToast({ message: this.evalError });
+        return;
+      }
+
+      const metrics: Record<string, number> = result.metrics || {};
+      const items: MetricItem[] = [];
+      Object.keys(metrics).forEach((key: string) => {
+        const item = new MetricItem();
+        item.name = key;
+        item.value = metrics[key].toFixed(4);
+        items.push(item);
+      });
+      this.evalMetrics = items;
       this.evalDone = true;
       promptAction.showToast({ message: '指标评估完成' });
     } catch (e) {
       const err = e as { message?: string };
-      promptAction.showToast({ message: err?.message || '评估失败，请重试' });
+      this.evalError = err?.message || '评估失败，请重试';
+      promptAction.showToast({ message: this.evalError });
     } finally {
       this.evalLoading = false;
     }
@@ -535,18 +563,17 @@ struct Compare {
             .width('100%')
             .margin({ bottom: 12 })
 
-            if (this.evalDone && this.evalResults.length > 0) {
-              ForEach(this.evalResults, (item: EvalResult) => {
+            if (this.evalDone && this.evalMetrics.length > 0) {
+              ForEach(this.evalMetrics, (item: MetricItem) => {
                 Row() {
-                  Text(item.label).fontSize(13).fontColor('#666666').width(80)
+                  Text(item.name).fontSize(13).fontColor('#666666').width(80)
                   Text(item.value).fontSize(13).fontColor('#333333').fontWeight(FontWeight.Medium).layoutWeight(1)
-                  if (item.baseline) {
-                    Text(`基准 ${item.baseline}`).fontSize(11).fontColor('#999999')
-                  }
                 }.width('100%').padding({ top: 6, bottom: 6 })
               })
-            } else if (this.evalDone && this.evalResults.length === 0) {
+            } else if (this.evalDone && this.evalMetrics.length === 0) {
               Text('暂无评估结果数据').fontSize(13).fontColor('#999999')
+            } else if (this.evalError) {
+              Text(this.evalError).fontSize(12).fontColor('#ff4d4f')
             } else if (!this.gtUrl) {
               Text('需要 GT 参考图（clean 图）才能进行指标评估').fontSize(12).fontColor('#ff4d4f')
             } else {

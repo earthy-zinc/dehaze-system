@@ -169,30 +169,39 @@ export function useImageInput() {
   const loadedSampleCategoryRef = useRef<SampleCategory | null>(null);
 
   // 切换输入方式
-  const setActiveMethod = useCallback((method: InputMethod) => {
-    dispatch({ type: "SET_ACTIVE_METHOD", payload: method });
-  }, []);
+  const setActiveMethod = useCallback(
+    (method: InputMethod) => {
+      dispatch({ type: "SET_ACTIVE_METHOD", payload: method });
+    },
+    [dispatch]
+  );
 
   // 设置当前图片
-  const setCurrentImage = useCallback((image: ImageData | null) => {
-    dispatch({ type: "SET_CURRENT_IMAGE", payload: image });
-    if (image) {
-      dispatch({ type: "SET_PREVIEW_VISIBLE", payload: true });
-    }
-  }, []);
+  const setCurrentImage = useCallback(
+    (image: ImageData | null) => {
+      dispatch({ type: "SET_CURRENT_IMAGE", payload: image });
+      if (image) {
+        dispatch({ type: "SET_PREVIEW_VISIBLE", payload: true });
+      }
+    },
+    [dispatch]
+  );
 
   // 统一错误处理
-  const handleError = useCallback((error: unknown, fallbackMsg: string) => {
-    if (isImageInputError(error) && error.code === ErrorCodes.USER_CANCEL) {
-      // 用户取消，不提示
-      return;
-    }
-    const msg = isImageInputError(error)
-      ? error.message
-      : getErrorMessage(error, fallbackMsg);
-    dispatch({ type: "SET_UPLOAD_ERROR", payload: msg });
-    Taro.showToast({ title: msg, icon: "none" });
-  }, []);
+  const handleError = useCallback(
+    (error: unknown, fallbackMsg: string) => {
+      if (isImageInputError(error) && error.code === ErrorCodes.USER_CANCEL) {
+        // 用户取消，不提示
+        return;
+      }
+      const msg = isImageInputError(error)
+        ? error.message
+        : getErrorMessage(error, fallbackMsg);
+      dispatch({ type: "SET_UPLOAD_ERROR", payload: msg });
+      Taro.showToast({ title: msg, icon: "none" });
+    },
+    [dispatch]
+  );
 
   // 从相册选择图片
   const chooseImageFromAlbum = useCallback(async () => {
@@ -212,7 +221,7 @@ export function useImageInput() {
     } finally {
       dispatch({ type: "SET_UPLOAD_LOADING", payload: false });
     }
-  }, [setCurrentImage, handleError]);
+  }, [dispatch, setCurrentImage, handleError]);
 
   // 拍照
   const takePhoto = useCallback(async () => {
@@ -237,7 +246,7 @@ export function useImageInput() {
     } finally {
       dispatch({ type: "SET_UPLOAD_LOADING", payload: false });
     }
-  }, [setCurrentImage, handleError]);
+  }, [dispatch, setCurrentImage, handleError]);
 
   // 选择样例图片
   const selectSampleImage = useCallback(
@@ -262,28 +271,34 @@ export function useImageInput() {
         dispatch({ type: "SET_SAMPLE_LOADING", payload: false });
       }
     },
-    [setCurrentImage, handleError]
+    [dispatch, setCurrentImage, handleError]
   );
 
   // 切换样例分类（触发重新加载）
-  const setSampleCategory = useCallback((category: SampleCategory) => {
-    dispatch({ type: "SET_SAMPLE_CATEGORY", payload: category });
-  }, []);
+  const setSampleCategory = useCallback(
+    (category: SampleCategory) => {
+      dispatch({ type: "SET_SAMPLE_CATEGORY", payload: category });
+    },
+    [dispatch]
+  );
 
   // 加载样例图片
-  const loadSampleImages = useCallback(async (category: SampleCategory) => {
-    try {
-      dispatch({ type: "SET_SAMPLE_LOADING", payload: true });
-      const images = await fetchSampleImages(category);
-      dispatch({ type: "SET_SAMPLE_IMAGES", payload: images });
-      loadedSampleCategoryRef.current = category;
-    } catch (error: unknown) {
-      console.error("加载样例图片失败:", error);
-      dispatch({ type: "SET_SAMPLE_IMAGES", payload: [] });
-    } finally {
-      dispatch({ type: "SET_SAMPLE_LOADING", payload: false });
-    }
-  }, []);
+  const loadSampleImages = useCallback(
+    async (category: SampleCategory) => {
+      try {
+        dispatch({ type: "SET_SAMPLE_LOADING", payload: true });
+        const images = await fetchSampleImages(category);
+        dispatch({ type: "SET_SAMPLE_IMAGES", payload: images });
+        loadedSampleCategoryRef.current = category;
+      } catch (error: unknown) {
+        console.error("加载样例图片失败:", error);
+        dispatch({ type: "SET_SAMPLE_IMAGES", payload: [] });
+      } finally {
+        dispatch({ type: "SET_SAMPLE_LOADING", payload: false });
+      }
+    },
+    [dispatch]
+  );
 
   // 当分类变化时重新加载样例图片
   useEffect(() => {
@@ -314,18 +329,21 @@ export function useImageInput() {
       console.error("加载历史记录失败:", error);
       dispatch({ type: "SET_HISTORY_RECORDS", payload: [] });
     }
-  }, []);
+  }, [dispatch]);
 
   // 删除历史记录
-  const deleteHistoryRecordHandler = useCallback(async (id: number) => {
-    try {
-      await deleteHistoryRecord(id);
-      dispatch({ type: "DELETE_HISTORY_RECORD", payload: id });
-      Taro.showToast({ title: "已删除", icon: "success" });
-    } catch (error: unknown) {
-      Taro.showToast({ title: "删除失败", icon: "none" });
-    }
-  }, []);
+  const deleteHistoryRecordHandler = useCallback(
+    async (id: number) => {
+      try {
+        await deleteHistoryRecord(id);
+        dispatch({ type: "DELETE_HISTORY_RECORD", payload: id });
+        Taro.showToast({ title: "已删除", icon: "success" });
+      } catch (error: unknown) {
+        Taro.showToast({ title: "删除失败", icon: "none" });
+      }
+    },
+    [dispatch]
+  );
 
   // 清空历史记录
   const clearHistory = useCallback(async () => {
@@ -342,7 +360,7 @@ export function useImageInput() {
     } catch (error: unknown) {
       Taro.showToast({ title: "清空失败", icon: "none" });
     }
-  }, []);
+  }, [dispatch]);
 
   // 选择历史记录
   const selectHistoryRecord = useCallback(
@@ -388,7 +406,7 @@ export function useImageInput() {
   const cancelSelection = useCallback(() => {
     dispatch({ type: "SET_CURRENT_IMAGE", payload: null });
     dispatch({ type: "SET_PREVIEW_VISIBLE", payload: false });
-  }, []);
+  }, [dispatch]);
 
   // 确认选择，跳转算法选择页
   const confirmAndNavigate = useCallback(() => {

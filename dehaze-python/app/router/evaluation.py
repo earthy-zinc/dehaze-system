@@ -1,9 +1,9 @@
 """
-评估 API 路由 —— 去雾效果评估
+评估 API 路由 —— 去雾效果评估（异步任务模式）
 
-POST /api/v1/evaluation          → 执行效果评估（PSNR/SSIM/LPIPS/NIQE/Entropy）
+POST /api/v1/evaluation          → 提交评估任务，立即返回 {logId, status: "processing"}
 GET  /api/v1/evaluation/logs     → 评估日志列表
-GET  /api/v1/evaluation/{taskId} → 查询评估任务状态（通过日志ID）
+GET  /api/v1/evaluation/{taskId} → 查询评估任务状态，根据 status 返回不同字段
 """
 
 import json
@@ -44,11 +44,12 @@ class EvaluationRequest(BaseModel):
 
 
 class EvaluationResponse(BaseModel):
-    """评估响应"""
+    """评估响应：POST 返回 logId+status；GET 根据 status 返回不同字段"""
     logId: Optional[int] = Field(default=None, description="评估日志ID")
-    metrics: dict[str, float] = Field(description="评估指标 {psnr, ssim, lpips, niqe, entropy}")
-    qualified: bool = Field(default=False, description="是否合格（基于 PSNR≥30/SSIM≥0.8/LPIPS≤0.3/NIQE≤5.0）")
+    status: str = Field(description="任务状态：processing/completed/failed")
+    metrics: Optional[dict[str, float]] = Field(default=None, description="评估指标（completed 时返回）")
     time: int = Field(default=0, description="处理时间(毫秒)")
+    errorMessage: Optional[str] = Field(default=None, description="失败错误信息（failed 时返回）")
 
 
 @router.post("", response_model=Result[EvaluationResponse])
@@ -57,21 +58,19 @@ async def evaluate(
     user: UserContext = Depends(get_current_user),
 ):
     """
-    执行效果评估
+    提交效果评估任务（异步）
 
-    对比预测结果与参考图像，计算 PSNR/SSIM/LPIPS/NIQE/Entropy 等多维指标，
-    并基于阈值判定是否合格。
+    立即返回 logId + status=processing，需通过 GET /{taskId} 轮询结果
     """
     result = await evaluation_service.evaluate(
         algorithm_id=body.algorithmId,
         pred_url=body.predUrl,
         gt_url=body.gtUrl,
+        user_id=user.id,
     )
     return success(EvaluationResponse(
-        logId=result["logId"],
-        metrics=result["metrics"],
-        qualified=result["qualified"],
-        time=result["time"],
+        logId=result.get("logId"),
+        status=result.get("status", "processing"),
     ))
 
 
@@ -83,6 +82,8 @@ class EvaluationLogVO(BaseModel):
     predUrl: Optional[str] = Field(default=None, validation_alias="pred_url", serialization_alias="predUrl", description="预测图URL")
     gtMd5: Optional[str] = Field(default=None, validation_alias="gt_md5", serialization_alias="gtMd5", description="GT图MD5")
     gtUrl: Optional[str] = Field(default=None, validation_alias="gt_url", serialization_alias="gtUrl", description="GT图URL")
+    status: Optional[str] = Field(default=None, description="任务状态：processing/completed/failed")
+    errorMessage: Optional[str] = Field(default=None, validation_alias="error_message", serialization_alias="errorMessage", description="失败错误信息")
     time: Optional[int] = Field(default=None, description="评估耗时(秒)")
     result: Optional[dict] = Field(default=None, description="评估指标 JSON")
     createTime: Optional[datetime] = Field(default=None, validation_alias="create_time", serialization_alias="createTime", description="创建时间")
@@ -104,7 +105,6 @@ async def list_evaluation_logs(
         page=pageNum,
         size=pageSize,
     )
-    # result 字段可能是 JSON 字符串，转换为 dict
     log_list = []
     for log in logs:
         log_dict = {
@@ -114,6 +114,8 @@ async def list_evaluation_logs(
             "pred_url": log.pred_url,
             "gt_md5": log.gt_md5,
             "gt_url": log.gt_url,
+            "status": log.status,
+            "error_message": log.error_message,
             "time": log.time,
             "result": log.result if isinstance(log.result, dict) else (
                 json.loads(log.result) if isinstance(log.result, str) and log.result else None
@@ -124,7 +126,7 @@ async def list_evaluation_logs(
     return success(PageResult(list=log_list, total=total))
 
 
-@router.get("/{task_id}", response_model=Result[EvaluationLogVO], summary="查询评估任务状态")
+@router.get("/{task_id}", response_model=Result[EvaluationResponse], summary="查询评估任务状态")
 async def get_evaluation_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
@@ -132,9 +134,26 @@ async def get_evaluation_task(
     """
     查询评估任务状态（通过日志ID查询）
 
-    文档中的 taskId 对应 sys_eval_log.id
+    根据 status 返回不同字段：
+    - processing: 仅返回 logId + status
+    - completed: 返回完整结果（metrics、time）
+    - failed: 返回 errorMessage + time
     """
     log = await eval_log_repository.get_by_id(db, task_id)
     if not log:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "评估任务不存在")
-    return success(log)
+
+    resp = EvaluationResponse(logId=log.id, status=log.status)
+    if log.status == "completed":
+        if isinstance(log.result, str) and log.result:
+            try:
+                resp.metrics = json.loads(log.result)
+            except json.JSONDecodeError:
+                resp.metrics = None
+        elif isinstance(log.result, dict):
+            resp.metrics = log.result
+        resp.time = log.time or 0
+    elif log.status == "failed":
+        resp.errorMessage = log.error_message
+        resp.time = log.time or 0
+    return success(resp)

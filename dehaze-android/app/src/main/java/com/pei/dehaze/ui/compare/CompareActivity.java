@@ -181,8 +181,7 @@ public class CompareActivity extends AppCompatActivity {
         binding.tvEmpty.setVisibility(View.GONE);
         new AlertDialog.Builder(this)
                 .setTitle("处理完成")
-                .setMessage("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms")
-                        + (Boolean.TRUE.equals(result.getFromCache()) ? "（命中缓存）" : ""))
+                .setMessage("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms"))
                 .setPositiveButton("确定", null)
                 .show();
     }

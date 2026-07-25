@@ -2,6 +2,7 @@ package eval_log
 
 import (
 	"context"
+	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"gorm.io/gorm"
@@ -12,6 +13,9 @@ type IEvalLogRepository interface {
 	Create(ctx context.Context, log *model.SysEvalLog) error
 	FindByID(ctx context.Context, id int64) (*model.SysEvalLog, error)
 	FindPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
+	UpdateResult(ctx context.Context, id int64, status string, result string, time int) error
+	UpdateStatus(ctx context.Context, id int64, status, errorMessage string, time int) error
+	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
 }
 
 type evalLogRepository struct {
@@ -50,4 +54,37 @@ func (r *evalLogRepository) FindPage(ctx context.Context, algorithmID int64, pag
 		return nil, 0, err
 	}
 	return list, total, nil
+}
+
+func (r *evalLogRepository) UpdateResult(ctx context.Context, id int64, status string, result string, time int) error {
+	return r.db.WithContext(ctx).Model(&model.SysEvalLog{}).
+		Where("id = ?", id).
+		Updates(map[string]any{
+			"status": status,
+			"result": result,
+			"time":   time,
+		}).Error
+}
+
+func (r *evalLogRepository) UpdateStatus(ctx context.Context, id int64, status, errorMessage string, time int) error {
+	updates := map[string]any{
+		"status": status,
+		"time":   time,
+	}
+	if errorMessage != "" {
+		updates["error_message"] = errorMessage
+	}
+	return r.db.WithContext(ctx).Model(&model.SysEvalLog{}).
+		Where("id = ?", id).
+		Updates(updates).Error
+}
+
+func (r *evalLogRepository) MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error) {
+	result := r.db.WithContext(ctx).Model(&model.SysEvalLog{}).
+		Where("status = ? AND update_time < ?", "processing", threshold).
+		Updates(map[string]any{
+			"status":        "failed",
+			"error_message": "任务执行超时，服务可能已重启",
+		})
+	return int(result.RowsAffected), result.Error
 }

@@ -38,11 +38,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
   const canDownload = task.status === "COMPLETED";
 
   return (
-    <View
-      key={task.taskId}
-      className="task-card"
-      onClick={() => onClick(task)}
-    >
+    <View key={task.taskId} className="task-card" onClick={() => onClick(task)}>
       <View className="card-header">
         <View className="header-left">
           <Tag color={tagInfo.color} size="small">
@@ -68,7 +64,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
       )}
 
       <View className="card-footer">
-        <Text className="task-time">创建: {formatDateTime(task.createdAt)}</Text>
+        <Text className="task-time">
+          创建: {formatDateTime(task.createdAt)}
+        </Text>
         <View className="task-actions" onClick={(e) => e.stopPropagation()}>
           {isActive && (
             <Button

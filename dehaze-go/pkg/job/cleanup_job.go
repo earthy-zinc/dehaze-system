@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
+	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
+	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 	tasksvc "github.com/earthyzinc/dehaze-go/internal/service/task"
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
@@ -27,6 +29,10 @@ const (
 	oldThreshold     = 30 * 24 * time.Hour // 30天前已终止任务清理
 	stuckProcessing  = 30 * time.Minute    // PROCESSING 30分钟无进展
 	stuckPending     = 24 * time.Hour      // PENDING 24小时未启动
+
+	// 预测/评估僵尸任务清理（对齐 Java PredEvalLogCleanupJob）
+	predEvalCleanupInterval = 1 * time.Minute
+	predEvalStuckThreshold  = 10 * time.Minute
 )
 
 // CleanupJob 清理任务管理器
@@ -34,6 +40,8 @@ type CleanupJob struct {
 	running        bool
 	cacheClient    types.ICache
 	storageService StorageService
+	predLogRepo    predrepo.IPredLogRepository
+	evalLogRepo    evalrepo.IEvalLogRepository
 	cancelFunc     context.CancelFunc
 }
 
@@ -43,11 +51,13 @@ type StorageService interface {
 }
 
 // NewCleanupJob 创建清理任务管理器
-func NewCleanupJob(storageSvc StorageService) *CleanupJob {
+func NewCleanupJob(storageSvc StorageService, predLogRepo predrepo.IPredLogRepository, evalLogRepo evalrepo.IEvalLogRepository) *CleanupJob {
 	return &CleanupJob{
 		running:        false,
 		cacheClient:    cache.GetCache(),
 		storageService: storageSvc,
+		predLogRepo:    predLogRepo,
+		evalLogRepo:    evalLogRepo,
 	}
 }
 
@@ -82,9 +92,12 @@ func (j *CleanupJob) Stop() {
 func (j *CleanupJob) run(ctx context.Context) {
 	ticker := time.NewTicker(CleanupInterval)
 	defer ticker.Stop()
+	predEvalTicker := time.NewTicker(predEvalCleanupInterval)
+	defer predEvalTicker.Stop()
 
 	// 立即执行一次清理
 	j.executeCleanup(ctx)
+	j.cleanupStuckPredEvalLogs(ctx)
 
 	for {
 		select {
@@ -93,7 +106,29 @@ func (j *CleanupJob) run(ctx context.Context) {
 			return
 		case <-ticker.C:
 			j.executeCleanup(ctx)
+		case <-predEvalTicker.C:
+			j.cleanupStuckPredEvalLogs(ctx)
 		}
+	}
+}
+
+// cleanupStuckPredEvalLogs 回收预测/评估僵尸任务
+// 扫描 status='processing' AND update_time < NOW() - 10min 的记录，标记为 failed
+func (j *CleanupJob) cleanupStuckPredEvalLogs(ctx context.Context) {
+	threshold := time.Now().Add(-predEvalStuckThreshold)
+
+	predCount, err := j.predLogRepo.MarkStuckAsFailed(ctx, threshold)
+	if err != nil {
+		logger.Error("回收预测僵尸任务失败", zap.Error(err))
+	} else if predCount > 0 {
+		logger.Warn("回收预测僵尸任务", zap.Int("count", predCount))
+	}
+
+	evalCount, err := j.evalLogRepo.MarkStuckAsFailed(ctx, threshold)
+	if err != nil {
+		logger.Error("回收评估僵尸任务失败", zap.Error(err))
+	} else if evalCount > 0 {
+		logger.Warn("回收评估僵尸任务", zap.Int("count", evalCount))
 	}
 }
 

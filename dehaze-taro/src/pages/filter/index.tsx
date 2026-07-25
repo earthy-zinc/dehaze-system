@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { View, Text, Image, ScrollView, Slider, Canvas } from "@tarojs/components";
+import {
+  View,
+  Text,
+  Image,
+  ScrollView,
+  Slider,
+  Canvas,
+} from "@tarojs/components";
 import type { BaseEventOrig } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import CompareNavbar from "@/components/compare/CompareNavbar";
@@ -245,7 +252,13 @@ const FilterPage: React.FC = () => {
         };
         img.src = currentPreviewUrl;
       });
-  }, [canvasDisplaySize, filterStyle, showOrigin, hasResult, currentPreviewUrl]);
+  }, [
+    canvasDisplaySize,
+    filterStyle,
+    showOrigin,
+    hasResult,
+    currentPreviewUrl,
+  ]);
 
   // 参数变更
   const handleParamChange = useCallback(

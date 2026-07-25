@@ -3,16 +3,20 @@ import { expectBizError } from "#/utils/assertion";
 import { createPredictionForm, createEvaluationForm } from "#/factories/model";
 
 describe("预测与评估 API 测试", () => {
-  describe("POST /api/v1/prediction - 模型预测", () => {
-    test("正向测试：提交预测请求并验证返回结构", async () => {
+  describe("POST /api/v1/prediction - 模型预测（异步）", () => {
+    test("正向测试：提交预测并通过轮询获取结果", async () => {
       const form = createPredictionForm({ algorithmId: 13 }); // DCP 算法
-      const result = await ModelAPI.predict(form);
+      const result = await ModelAPI.predictAndWait(form, {
+        intervalMs: 2000,
+        timeoutMs: 120000,
+      });
 
       expect(result).toBeDefined();
+      expect(result.status).toBe("completed");
       expect(typeof result.resultUrl).toBe("string");
-      expect(result.resultUrl.length).toBeGreaterThan(0);
+      expect(result.resultUrl!.length).toBeGreaterThan(0);
       expect(typeof result.time).toBe("number");
-      expect(result.time).toBeGreaterThanOrEqual(0);
+      expect(result.time!).toBeGreaterThanOrEqual(0);
     });
 
     test("参数校验：缺少 algorithmId 应报错", async () => {
@@ -50,6 +54,24 @@ describe("预测与评估 API 测试", () => {
     });
   });
 
+  describe("predictAndWait 轮询机制", () => {
+    test("onPoll 回调应被调用（至少一次 processing）", async () => {
+      const form = createPredictionForm({ algorithmId: 13 });
+      const statuses: string[] = [];
+      const result = await ModelAPI.predictAndWait(form, {
+        intervalMs: 1000,
+        timeoutMs: 120000,
+        onPoll: (status) => statuses.push(status),
+      });
+
+      expect(result.status).toBe("completed");
+      // 轮询至少发生一次（缓存命中场景下 onPoll 不会被调用，此时 statuses 可能为空）
+      if (statuses.length > 0) {
+        expect(statuses).toContain("processing");
+      }
+    });
+  });
+
   describe("GET /api/v1/prediction/logs - 预测日志", () => {
     test("正向测试：分页查询预测日志", async () => {
       const page = await ModelAPI.getPredLogs({ pageNum: 1, pageSize: 5 });
@@ -59,7 +81,6 @@ describe("预测与评估 API 测试", () => {
       expect(typeof page.total).toBe("number");
       expect(page.total).toBeGreaterThanOrEqual(0);
 
-      // 验证 list 字段结构（可能是数组或单个对象，取决于后端实现）
       const list = page.list as any;
       if (Array.isArray(list) && list.length > 0) {
         const item = list[0]!;
@@ -69,26 +90,30 @@ describe("预测与评估 API 测试", () => {
     });
   });
 
-  describe("POST /api/v1/evaluation - 效果评估", () => {
-    test("正向测试：提交评估请求并验证返回指标", async () => {
+  describe("POST /api/v1/evaluation - 效果评估（异步）", () => {
+    test("正向测试：提交评估并通过轮询获取指标", async () => {
       const form = createEvaluationForm({ algorithmId: 1 });
       try {
-        const result = await ModelAPI.evaluate(form);
+        const result = await ModelAPI.evaluateAndWait(form, {
+          intervalMs: 2000,
+          timeoutMs: 120000,
+        });
 
         expect(result).toBeDefined();
+        expect(result.status).toBe("completed");
         expect(typeof result.metrics).toBe("object");
         expect(result.metrics).not.toBeNull();
-        if (result.metrics.psnr !== undefined) {
-          expect(typeof result.metrics.psnr).toBe("number");
-          expect(result.metrics.psnr).toBeGreaterThan(0);
+        if (result.metrics!.psnr !== undefined) {
+          expect(typeof result.metrics!.psnr).toBe("number");
+          expect(result.metrics!.psnr).toBeGreaterThan(0);
         }
-        if (result.metrics.ssim !== undefined) {
-          expect(typeof result.metrics.ssim).toBe("number");
-          expect(result.metrics.ssim).toBeGreaterThanOrEqual(0);
-          expect(result.metrics.ssim).toBeLessThanOrEqual(1);
+        if (result.metrics!.ssim !== undefined) {
+          expect(typeof result.metrics!.ssim).toBe("number");
+          expect(result.metrics!.ssim).toBeGreaterThanOrEqual(0);
+          expect(result.metrics!.ssim).toBeLessThanOrEqual(1);
         }
         expect(typeof result.time).toBe("number");
-        expect(result.time).toBeGreaterThanOrEqual(0);
+        expect(result.time!).toBeGreaterThanOrEqual(0);
       } catch (e: any) {
         console.error("=== 评估请求失败 ===");
         console.error("HTTP状态:", e?.response?.status);

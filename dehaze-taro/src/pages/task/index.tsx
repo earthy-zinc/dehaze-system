@@ -90,7 +90,10 @@ const TaskPage: React.FC = () => {
       setPageNum(nextPage);
       setHasMore(list.length >= PAGE_SIZE);
     } catch (err: unknown) {
-      Taro.showToast({ title: getErrorMessage(err, "加载更多失败"), icon: "none" });
+      Taro.showToast({
+        title: getErrorMessage(err, "加载更多失败"),
+        icon: "none",
+      });
     }
   }, [loading, hasMore, pageNum, statusFilter]);
 
@@ -219,9 +222,7 @@ const TaskPage: React.FC = () => {
       setTaskList((prev) =>
         prev.map((t) => (t.taskId === task.taskId ? updated : t))
       );
-      setDetailTask((prev) =>
-        prev?.taskId === task.taskId ? updated : prev
-      );
+      setDetailTask((prev) => (prev?.taskId === task.taskId ? updated : prev));
       Taro.showToast({ title: "任务已取消", icon: "success" });
     } catch (err: unknown) {
       Taro.showToast({ title: getErrorMessage(err, "取消失败"), icon: "none" });

@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.DehazeSDK;
+import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
 
 import java.util.Objects;
@@ -47,6 +48,7 @@ public class PredictionLogAdapter extends ListAdapter<PredictionLogVO, Predictio
                     return Objects.equals(oldItem.getPredUrl(), newItem.getPredUrl())
                             && Objects.equals(oldItem.getOriginUrl(), newItem.getOriginUrl())
                             && Objects.equals(oldItem.getTime(), newItem.getTime())
+                            && Objects.equals(oldItem.getStatus(), newItem.getStatus())
                             && Objects.equals(oldItem.getCreateTime(), newItem.getCreateTime());
                 }
             };
@@ -71,6 +73,7 @@ public class PredictionLogAdapter extends ListAdapter<PredictionLogVO, Predictio
     class LogViewHolder extends RecyclerView.ViewHolder {
         private final ImageView ivThumb;
         private final TextView tvTitle;
+        private final TextView tvStatus;
         private final TextView tvTime;
         private final TextView tvCreateTime;
 
@@ -78,6 +81,7 @@ public class PredictionLogAdapter extends ListAdapter<PredictionLogVO, Predictio
             super(itemView);
             ivThumb = itemView.findViewById(R.id.iv_thumb);
             tvTitle = itemView.findViewById(R.id.tv_title);
+            tvStatus = itemView.findViewById(R.id.tv_status);
             tvTime = itemView.findViewById(R.id.tv_time);
             tvCreateTime = itemView.findViewById(R.id.tv_create_time);
         }
@@ -96,6 +100,22 @@ public class PredictionLogAdapter extends ListAdapter<PredictionLogVO, Predictio
             }
 
             tvTitle.setText("去雾记录 #" + (log.getId() == null ? "-" : log.getId()));
+
+            PredEvalTaskStatus status = PredEvalTaskStatus.fromValue(log.getStatus());
+            if (status == PredEvalTaskStatus.FAILED) {
+                tvStatus.setText("失败");
+                tvStatus.setTextColor(itemView.getContext().getResources()
+                        .getColor(android.R.color.holo_red_dark));
+            } else if (status == PredEvalTaskStatus.COMPLETED) {
+                tvStatus.setText("完成");
+                tvStatus.setTextColor(itemView.getContext().getResources()
+                        .getColor(android.R.color.holo_green_dark));
+            } else {
+                tvStatus.setText("处理中");
+                tvStatus.setTextColor(itemView.getContext().getResources()
+                        .getColor(android.R.color.darker_gray));
+            }
+
             Integer time = log.getTime();
             tvTime.setText(time == null ? "耗时：-" : ("耗时：" + time + "ms"));
             tvCreateTime.setText(log.getCreateTime() == null ? "" : log.getCreateTime());

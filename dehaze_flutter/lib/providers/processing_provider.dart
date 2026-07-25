@@ -10,6 +10,7 @@ import '../providers/providers.dart';
 import '../services/algorithm_service.dart';
 import '../services/file_service.dart';
 import '../services/prediction_service.dart';
+export '../services/prediction_service.dart' show PollOptions;
 
 /// 处理流程状态
 class ProcessingState {
@@ -107,7 +108,8 @@ class SelectedImage {
 
 /// 处理流程状态管理
 ///
-/// 后端预测为同步接口：POST /prediction 直接返回结果，无需轮询。
+/// 后端预测为异步任务：POST 立即返回 status=processing，
+/// 通过 predictAndWait 轮询 GET 直至 completed/failed。
 class ProcessingNotifier extends StateNotifier<ProcessingState> {
   ProcessingNotifier(this._predictionService)
       : super(const ProcessingState());
@@ -160,9 +162,15 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
         params: params?.isDefault == false ? params!.toJson() : null,
       );
 
-      final response = await _predictionService.predict(request);
+      final response = await _predictionService.predictAndWait(request);
 
-      if (response.hasResult) {
+      if (response.status == TaskStatus.failed) {
+        state = state.copyWith(
+          status: ProcessingStatus.error,
+          errorMessage: response.errorMessage ?? '处理失败',
+          clearProcessingStartTime: true,
+        );
+      } else if (response.hasResult) {
         state = state.copyWith(
           predictionResult: response,
           status: ProcessingStatus.success,

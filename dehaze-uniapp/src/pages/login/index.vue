@@ -518,7 +518,11 @@ onMounted(() => {
   }
 
   &.loading {
-    background: linear-gradient(135deg, $color-primary-light 0%, $color-secondary-light 100%);
+    background: linear-gradient(
+      135deg,
+      $color-primary-light 0%,
+      $color-secondary-light 100%
+    );
   }
 }
 

@@ -10,7 +10,6 @@ describe("文件管理接口测试", () => {
   let testFileMd5: string;
 
   beforeAll(async () => {
-
     // 创建测试文件
     const testDir = path.join(__dirname, "../../../temp");
     if (!fs.existsSync(testDir)) {
@@ -39,7 +38,6 @@ describe("文件管理接口测试", () => {
     if (fs.existsSync(testFilePath)) {
       fs.unlinkSync(testFilePath);
     }
-
   });
 
   describe("GET /api/v1/files/check - 文件上传检查", () => {

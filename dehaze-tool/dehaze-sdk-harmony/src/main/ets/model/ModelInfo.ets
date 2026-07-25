@@ -1,10 +1,22 @@
 /**
  * 模型预测与效果评估数据模型
  *
- * 与后端 dehaze-go 内部模型对齐：
- * - 预测：bo.PredForm / vo.PredictionResultVO / model.SysPredLog
- * - 评估：bo.EvalForm / vo.EvaluationResultVO / model.SysEvalLog
+ * 异步任务模式：POST 立即返回 logId + status=processing；
+ * GET 轮询至 completed/failed 时返回完整字段。
  */
+
+/** 任务状态 */
+export type TaskStatus = 'processing' | 'completed' | 'failed';
+
+/** 轮询选项 */
+export class PollOptions {
+  /** 轮询间隔（毫秒），默认 2000 */
+  intervalMs?: number = undefined;
+  /** 最大等待时间（毫秒），默认 120000 */
+  timeoutMs?: number = undefined;
+  /** 每次轮询回调 */
+  onPoll?: (status: TaskStatus) => void = undefined;
+}
 
 /**
  * 预测请求参数
@@ -28,14 +40,16 @@ export class PredParam {
 export class PredResult {
   /** 预测日志 ID */
   logId?: number = undefined;
-  /** 结果图 URL */
-  resultUrl: string = '';
-  /** 结果缩略图 URL */
+  /** 任务状态 */
+  status: TaskStatus = 'processing';
+  /** 结果图 URL（completed 时返回） */
+  resultUrl?: string = undefined;
+  /** 结果缩略图 URL（completed 时返回） */
   resultThumbnailUrl?: string = undefined;
   /** 处理耗时（毫秒） */
   time?: number = undefined;
-  /** 是否命中缓存 */
-  fromCache?: boolean = undefined;
+  /** 失败错误信息（failed 时返回） */
+  errorMessage?: string = undefined;
 }
 
 /** 预测日志（后端 model.SysPredLog，历史记录） */
@@ -49,6 +63,10 @@ export class PredLog {
   predUrl?: string = undefined;
   /** 处理耗时 */
   time?: number = undefined;
+  /** 任务状态 */
+  status?: string = undefined;
+  /** 失败错误信息 */
+  errorMessage?: string = undefined;
   createTime?: string = undefined;
 }
 
@@ -71,19 +89,38 @@ export class EvalParam {
   gtUrl?: string = undefined;
 }
 
-/** 评估结果项 */
+/** 评估结果（后端 vo.EvaluationResultVO） */
 export class EvalResult {
+  /** 评估日志 ID */
+  logId?: number = undefined;
+  /** 任务状态 */
+  status: TaskStatus = 'processing';
+  /** 评估指标（completed 时返回） */
+  metrics?: Record<string, number> = undefined;
+  /** 处理耗时（毫秒） */
+  time?: number = undefined;
+  /** 失败错误信息（failed 时返回） */
+  errorMessage?: string = undefined;
+}
+
+/** 评估日志（后端 model.SysEvalLog，历史记录） */
+export class EvalLog {
   id: number = 0;
-  /** 指标名称 */
-  label: string = '';
-  /** 指标值 */
-  value: string = '';
-  /** 基准值 */
-  baseline?: string = undefined;
-  /** 越高越好 / 越低越好 */
-  better?: string = undefined;
-  /** 指标描述 */
-  description?: string = undefined;
+  algorithmId: number = 0;
+  algorithmName?: string = undefined;
+  /** 预测图 URL */
+  predUrl?: string = undefined;
+  /** GT 图 URL */
+  gtUrl?: string = undefined;
+  /** 评估指标 JSON 字符串 */
+  result?: string = undefined;
+  /** 处理耗时 */
+  time?: number = undefined;
+  /** 任务状态 */
+  status?: string = undefined;
+  /** 失败错误信息 */
+  errorMessage?: string = undefined;
+  createTime?: string = undefined;
 }
 
 /** 评估日志查询参数 */

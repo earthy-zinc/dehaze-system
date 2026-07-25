@@ -10,7 +10,11 @@ $color-secondary: #6366f1;
 $color-secondary-light: #818cf8;
 
 // 品牌渐变（主色 → 次色）
-$gradient-primary: linear-gradient(135deg, $color-primary 0%, $color-secondary 100%);
+$gradient-primary: linear-gradient(
+  135deg,
+  $color-primary 0%,
+  $color-secondary 100%
+);
 
 // ==================== 功能色 ====================
 $color-success: #10b981;
@@ -65,7 +69,7 @@ $shadow-sm: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 $shadow-md: 0 4rpx 16rpx rgb(0 0 0 / 6%);
 $shadow-lg: 0 8rpx 32rpx rgb(0 0 0 / 8%);
 // 输入框聚焦光环
-$shadow-input-focus: 0 0 0 6rpx rgba(59, 130, 246, 0.12);
+$shadow-input-focus: 0 0 0 6rpx rgb(59 130 246 / 12%);
 
 // ==================== 安全区域 ====================
 $safe-area-bottom: constant(safe-area-inset-bottom);

@@ -137,13 +137,17 @@ const ProcessingPage: React.FC = () => {
         uploadedFileIdRef.current = fileInfo.id;
       }
 
-      const res = await ModelAPI.predict({
+      const res = await ModelAPI.predictAndWait({
         algorithmId: selectedAlgorithm.id,
         fileId: uploadedFileIdRef.current,
         params: JSON.stringify(params),
       });
 
       clearAllTimers();
+
+      if (res.status === "failed") {
+        throw new Error(res.errorMessage || "处理失败");
+      }
 
       setResult(res);
       setStatus("success");
@@ -161,7 +165,10 @@ const ProcessingPage: React.FC = () => {
       clearAllTimers();
       setStatus("error");
       setErrorMsg(getErrorMessage(error, "处理失败，请重试"));
-      Taro.showToast({ title: getErrorMessage(error, "处理失败"), icon: "none" });
+      Taro.showToast({
+        title: getErrorMessage(error, "处理失败"),
+        icon: "none",
+      });
     }
   }, [
     currentImage,
@@ -239,7 +246,9 @@ const ProcessingPage: React.FC = () => {
               <Text className="meta-item">
                 {currentImage.width}×{currentImage.height}
               </Text>
-              <Text className="meta-item">{formatFileSize(currentImage.size)}</Text>
+              <Text className="meta-item">
+                {formatFileSize(currentImage.size)}
+              </Text>
             </View>
           </View>
         )}
@@ -378,7 +387,9 @@ const ProcessingPage: React.FC = () => {
           <View className="status-section processing">
             <View className="processing-spinner" />
             <Text className="status-text">正在去雾处理中...</Text>
-            <Text className="status-hint">已用 {formatDuration(elapsedTime)}</Text>
+            <Text className="status-hint">
+              已用 {formatDuration(elapsedTime)}
+            </Text>
           </View>
         )}
 
@@ -390,7 +401,7 @@ const ProcessingPage: React.FC = () => {
             </View>
             <Text className="status-text">处理完成</Text>
             <Text className="status-hint">
-              耗时 {formatDuration(result.time)}
+              耗时 {formatDuration(result.time ?? 0)}
               {result.fromCache ? " · 缓存命中" : ""}
             </Text>
 

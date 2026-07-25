@@ -42,7 +42,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({ images, className = "" }) => {
 
       {viewerImage && (
         <ImageViewer
-          visible={true}
+          visible
           src={viewerImage.url}
           filename={viewerImage.fileName}
           imageType={viewerImage.type}

@@ -100,9 +100,7 @@ const DictItemFormDialog: React.FC<DictItemFormDialogProps> = ({
               placeholder="请输入备注信息（最多200字符）"
               maxlength={200}
               value={form.remark || ""}
-              onInput={(e) =>
-                onFormChange({ ...form, remark: e.detail.value })
-              }
+              onInput={(e) => onFormChange({ ...form, remark: e.detail.value })}
             />
           </View>
         </View>

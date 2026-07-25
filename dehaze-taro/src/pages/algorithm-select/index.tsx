@@ -40,7 +40,10 @@ const AlgorithmSelectPage: React.FC = () => {
       const firstLevelIds = (data || []).map((item) => item.id);
       setExpandedKeys(new Set(firstLevelIds));
     } catch (error: unknown) {
-      Taro.showToast({ title: getErrorMessage(error, "加载算法失败"), icon: "none" });
+      Taro.showToast({
+        title: getErrorMessage(error, "加载算法失败"),
+        icon: "none",
+      });
     } finally {
       setLoading(false);
     }
@@ -306,7 +309,9 @@ const AlgorithmSelectPage: React.FC = () => {
       {/* 算法详情弹窗 */}
       <AlgorithmDetailPopup
         algorithm={detailAlgorithm}
-        isFavorite={detailAlgorithm ? favoriteIds.has(detailAlgorithm.id) : false}
+        isFavorite={
+          detailAlgorithm ? favoriteIds.has(detailAlgorithm.id) : false
+        }
         onClose={() => setDetailAlgorithm(null)}
         onToggleFavorite={toggleFavorite}
         onSelect={handleSelectAlgorithm}

@@ -78,6 +78,20 @@ public class PythonAlgorithmClient {
         return pythonCallTimer.record(() -> postWithRetry(props.getEvaluatePath(), body.toString()));
     }
 
+    /**
+     * 查询预测任务状态（用于异步轮询）
+     */
+    public JSONObject getPredTaskStatus(Long taskId) {
+        return getWithRetry(props.getPredictPath() + "/" + taskId);
+    }
+
+    /**
+     * 查询评估任务状态（用于异步轮询）
+     */
+    public JSONObject getEvalTaskStatus(Long taskId) {
+        return getWithRetry(props.getEvaluatePath() + "/" + taskId);
+    }
+
     // ==================== 核心请求方法 ====================
 
     private JSONObject postWithRetry(String path, String jsonBody) {
@@ -126,19 +140,52 @@ public class PythonAlgorithmClient {
         throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, msg);
     }
 
-    private JSONObject doPost(String url, String jsonBody, String idempotencyKey) {
+    private JSONObject getWithRetry(String path) {
+        String url = props.getBaseUrl() + path;
+
+        Exception lastException = null;
+        long backoff = props.getRetryBackoff();
+
+        for (int attempt = 0; attempt <= props.getMaxRetry(); attempt++) {
+            try {
+                if (attempt > 0) {
+                    log.info("重试第 {} 次: {} (退避 {}ms)", attempt, url, backoff);
+                    Thread.sleep(backoff);
+                    backoff *= 2;
+                }
+                return circuitBreaker.executeSupplier(() -> doGet(url));
+            } catch (CallNotPermittedException e) {
+                throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 算法服务熔断中，请稍后重试");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 算法服务调用被中断");
+            } catch (ResourceAccessException e) {
+                lastException = e;
+                log.warn("Python 服务网络异常 (attempt={}/{}): {}", attempt + 1, props.getMaxRetry() + 1, e.getMessage(), e);
+            } catch (BusinessException e) {
+                throw e;
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("调用 Python 服务异常 (attempt={}/{}): {}", attempt + 1, props.getMaxRetry() + 1, e.getMessage(), e);
+            }
+        }
+
+        String msg = "Python 算法服务调用失败 (已重试 " + props.getMaxRetry() + " 次): " +
+                (lastException != null ? lastException.getMessage() : "未知错误");
+        log.error(msg, lastException);
+        throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, msg);
+    }
+
+    private HttpHeaders buildAuthHeaders(String idempotencyKey) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        // 幂等键：重试时携带同一键，便于下游去重（防重复处理）
-        headers.set("X-Idempotency-Key", idempotencyKey);
-        // 透传 traceId 到 Python 算法服务，形成跨服务全链路追踪
+        if (idempotencyKey != null) {
+            headers.set("X-Idempotency-Key", idempotencyKey);
+        }
         String traceId = MDC.get("traceId");
         if (traceId != null && !traceId.isBlank()) {
             headers.set("X-Trace-Id", traceId);
         }
-        // 透传当前用户的 Authorization（Bearer token）：
-        // Python 算法服务的 prediction/evaluation 接口需要 JWT 认证，
-        // 且与 Java 后端共享同一 JWT 密钥，透传即可通过校验
         ServletRequestAttributes requestAttributes =
                 (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (requestAttributes != null) {
@@ -147,15 +194,13 @@ public class PythonAlgorithmClient {
                 headers.set(HttpHeaders.AUTHORIZATION, authorization);
             }
         }
-        // 当原始请求无 Authorization 头时（如使用 X-Session-Id 登录），
-        // 使用配置的 API Key 进行 M2M 认证
         if (!headers.containsKey(HttpHeaders.AUTHORIZATION) && props.getApiKey() != null && !props.getApiKey().isBlank()) {
             headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + props.getApiKey());
         }
-        HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+        return headers;
+    }
 
-        ResponseEntity<String> response = algorithmRestTemplate.postForEntity(url, entity, String.class);
-
+    private JSONObject parsePythonResponse(ResponseEntity<String> response) {
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 服务返回非 2xx: " + response.getStatusCode() + " body=" + response.getBody());
         }
@@ -176,5 +221,19 @@ public class PythonAlgorithmClient {
         }
 
         return json.getJSONObject("data");
+    }
+
+    private JSONObject doPost(String url, String jsonBody, String idempotencyKey) {
+        HttpHeaders headers = buildAuthHeaders(idempotencyKey);
+        HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+        ResponseEntity<String> response = algorithmRestTemplate.postForEntity(url, entity, String.class);
+        return parsePythonResponse(response);
+    }
+
+    private JSONObject doGet(String url) {
+        HttpHeaders headers = buildAuthHeaders(null);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        ResponseEntity<String> response = algorithmRestTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        return parsePythonResponse(response);
     }
 }

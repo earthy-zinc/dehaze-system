@@ -57,8 +57,7 @@ public class ParallelFragment extends Fragment {
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(binding.ivDehazed);
-        binding.tvAlgorithmInfo.setText("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms")
-                + (Boolean.TRUE.equals(result.getFromCache()) ? "（命中缓存）" : ""));
+        binding.tvAlgorithmInfo.setText("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms"));
     }
 
     private void showMultiResults(Map<Long, PredResult> results) {

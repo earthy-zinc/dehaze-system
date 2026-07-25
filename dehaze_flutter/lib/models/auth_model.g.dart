@@ -25,17 +25,17 @@ Map<String, dynamic> _$LoginRequestToJson(LoginRequest instance) =>
       'captchaCode': instance.captchaCode,
     };
 
-LoginResponse _$LoginResponseFromJson(
-  Map<String, dynamic> json,
-) => $checkedCreate('LoginResponse', json, ($checkedConvert) {
-  final val = LoginResponse(
-    sessionId: $checkedConvert('sessionId', (v) => v as String),
-    user: $checkedConvert(
-        'user',
-        (v) => LoginUser.fromJson(v as Map<String, dynamic>)),
-  );
-  return val;
-});
+LoginResponse _$LoginResponseFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('LoginResponse', json, ($checkedConvert) {
+      final val = LoginResponse(
+        sessionId: $checkedConvert('sessionId', (v) => v as String),
+        user: $checkedConvert(
+          'user',
+          (v) => LoginUser.fromJson(v as Map<String, dynamic>),
+        ),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$LoginResponseToJson(LoginResponse instance) =>
     <String, dynamic>{
@@ -46,19 +46,18 @@ Map<String, dynamic> _$LoginResponseToJson(LoginResponse instance) =>
 LoginUser _$LoginUserFromJson(Map<String, dynamic> json) =>
     $checkedCreate('LoginUser', json, ($checkedConvert) {
       final val = LoginUser(
-        id: $checkedConvert('id', (v) => v as int),
+        id: $checkedConvert('id', (v) => (v as num).toInt()),
         username: $checkedConvert('username', (v) => v as String),
         nickname: $checkedConvert('nickname', (v) => v as String),
       );
       return val;
     });
 
-Map<String, dynamic> _$LoginUserToJson(LoginUser instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'username': instance.username,
-      'nickname': instance.nickname,
-    };
+Map<String, dynamic> _$LoginUserToJson(LoginUser instance) => <String, dynamic>{
+  'id': instance.id,
+  'username': instance.username,
+  'nickname': instance.nickname,
+};
 
 CaptchaResponse _$CaptchaResponseFromJson(Map<String, dynamic> json) =>
     $checkedCreate('CaptchaResponse', json, ($checkedConvert) {

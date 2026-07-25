@@ -1,8 +1,11 @@
 """
-评估服务 —— 编排去雾效果评估流程
+评估服务 —— 编排去雾效果评估流程（异步任务模式）
 
 对比预测结果与参考图像，计算 PSNR/SSIM/LPIPS/NIQE/Entropy 等多维指标，
 并基于阈值判定是否合格。
+
+状态机：processing → completed/failed
+POST 立即返回 logId + status=processing，asyncio.create_task 后台执行
 """
 
 import asyncio
@@ -10,7 +13,6 @@ import logging
 import time
 from typing import Optional
 
-from app.core.exceptions import BusinessException
 from app.database import get_db_session
 from app.repository.pred_eval_log_repository import eval_log_repository
 from app.service.prediction_service import prediction_service
@@ -19,12 +21,11 @@ from algorithm.metrics import calculate as calculate_metrics
 
 logger = logging.getLogger(__name__)
 
-# 评估合格阈值（文档要求）
 QUALIFIED_THRESHOLDS = {
-    "psnr": 30.0,   # ≥ 30 dB
-    "ssim": 0.8,    # ≥ 0.8
-    "lpips": 0.3,   # ≤ 0.3
-    "niqe": 5.0,    # ≤ 5.0
+    "psnr": 30.0,
+    "ssim": 0.8,
+    "lpips": 0.3,
+    "niqe": 5.0,
 }
 
 
@@ -43,36 +44,28 @@ def _is_qualified(metrics: dict[str, float]) -> bool:
 
 
 class EvaluationService:
-    """去雾效果评估服务"""
+    """去雾效果评估服务（异步任务模式）"""
 
     async def evaluate(
         self,
         algorithm_id: int,
         pred_url: str,
         gt_url: str,
+        user_id: Optional[int] = None,
     ) -> dict:
         """
-        执行效果评估
+        提交效果评估任务（异步）
 
-        Args:
-            algorithm_id: 算法ID
-            pred_url: 预测结果图片URL（由 Java 端解析后透传，可为绝对URL或 /api/v1/files/download/... 相对路径）
-            gt_url: Ground Truth 参考图片URL（同上）
-
-        Returns:
-            {
-                "logId": Optional[int],
-                "metrics": dict[str, float],
-                "qualified": bool,
-                "time": int (毫秒),
-            }
+        流程：
+        1. 校验算法、并行下载 pred/gt 图片、计算 MD5
+        2. 创建 processing 日志
+        3. 提交 asyncio.create_task 后台执行
+        4. 立即返回 {logId, status: "processing"}
         """
         logger.info("评估请求: algorithmId=%s", algorithm_id)
 
         # 1. 校验算法存在
         await prediction_service.get_algorithm(algorithm_id)
-
-        start = time.time()
 
         # 2. 并行下载预测图和参考图
         pred_bytes, gt_bytes = await asyncio.gather(
@@ -86,69 +79,99 @@ class EvaluationService:
             asyncio.to_thread(calculate_bytes_md5, gt_bytes),
         )
 
-        # 4. 调用评估（图像处理 CPU 密集型，移至线程池避免阻塞事件循环）
-        pred_bytes.seek(0)
-        gt_bytes.seek(0)
-        metrics_list = await asyncio.to_thread(
-            calculate_metrics, pred_bytes, gt_bytes
-        )
-
-        # 转换为 { "psnr": 35.0, "ssim": 0.92, ... } 格式
-        metrics = {m["label"]: m["value"] for m in metrics_list}
-
-        elapsed = int((time.time() - start) * 1000)
-        qualified = _is_qualified(metrics)
-        logger.info(
-            "评估完成: algorithmId=%s, time=%sms, qualified=%s, metrics=%s",
-            algorithm_id, elapsed, qualified, metrics,
-        )
-
-        # 5. 写入评估日志
-        log_id = await self._write_eval_log(
-            algorithm_id=algorithm_id,
-            pred_md5=pred_md5,
-            pred_url=pred_url,
-            gt_md5=gt_md5,
-            gt_url=gt_url,
-            result=metrics,
-            time_ms=elapsed,
-        )
-
-        return {
-            "logId": log_id,
-            "metrics": metrics,
-            "qualified": qualified,
-            "time": elapsed,
-        }
-
-    async def _write_eval_log(
-        self,
-        algorithm_id: int,
-        pred_md5: str,
-        pred_url: str,
-        gt_md5: str,
-        gt_url: str,
-        result: dict,
-        time_ms: int,
-    ) -> Optional[int]:
-        """写入评估日志"""
+        # 4. 创建 processing 日志
+        from app.models.base import set_current_user_id
+        set_current_user_id(user_id)
         try:
             async with get_db_session() as db:
-                log = await eval_log_repository.create_log(
+                log = await eval_log_repository.create_pending_log(
                     db=db,
                     algorithm_id=algorithm_id,
                     pred_md5=pred_md5,
                     pred_url=pred_url,
                     gt_md5=gt_md5,
                     gt_url=gt_url,
-                    result=result,
-                    time_ms=time_ms,
                 )
-                return log.id
+                log_id = log.id
+        finally:
+            set_current_user_id(None)
+
+        # 5. 提交异步任务（不等待完成）
+        loop = asyncio.get_running_loop()
+        loop.create_task(self._execute_async(
+            log_id=log_id,
+            algorithm_id=algorithm_id,
+            pred_bytes=pred_bytes,
+            gt_bytes=gt_bytes,
+            user_id=user_id,
+        ))
+
+        # 6. 立即返回 processing
+        return {
+            "logId": log_id,
+            "status": "processing",
+        }
+
+    async def _execute_async(
+        self,
+        log_id: int,
+        algorithm_id: int,
+        pred_bytes,
+        gt_bytes,
+        user_id: Optional[int] = None,
+    ) -> None:
+        """异步执行评估任务，完成后更新日志状态"""
+        from app.models.base import set_current_user_id
+        set_current_user_id(user_id)
+        start_time = time.time()
+        try:
+            # 1. 调用评估（图像处理 CPU 密集型，移至线程池避免阻塞事件循环）
+            pred_bytes.seek(0)
+            gt_bytes.seek(0)
+            metrics_list = await asyncio.to_thread(
+                calculate_metrics, pred_bytes, gt_bytes
+            )
+            metrics = {m["label"]: m["value"] for m in metrics_list}
+
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            qualified = _is_qualified(metrics)
+            logger.info(
+                "异步评估完成: logId=%s, algorithmId=%s, time=%sms, qualified=%s, metrics=%s",
+                log_id, algorithm_id, elapsed_ms, qualified, metrics,
+            )
+
+            # 2. 更新日志为 completed
+            async with get_db_session() as db:
+                await eval_log_repository.update_result(
+                    db=db,
+                    log_id=log_id,
+                    result=metrics,
+                    time_ms=elapsed_ms,
+                )
+
         except Exception as e:
-            logger.warning("写入评估日志失败: %s", e)
-            return None
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            error_msg = str(e)
+            logger.error(
+                "异步评估失败: logId=%s, algorithmId=%s, error=%s",
+                log_id, algorithm_id, error_msg, exc_info=True,
+            )
+            try:
+                async with get_db_session() as db:
+                    await eval_log_repository.update_status(
+                        db=db,
+                        log_id=log_id,
+                        status="failed",
+                        error_message=error_msg,
+                        time_ms=elapsed_ms,
+                    )
+            except Exception as update_err:
+                logger.error(
+                    "更新评估日志失败状态失败: logId=%s, error=%s",
+                    log_id, update_err,
+                )
+        finally:
+            set_current_user_id(None)
 
 
-# 单例
 evaluation_service = EvaluationService()

@@ -1,5 +1,5 @@
 import { router, promptAction } from '@kit.ArkUI';
-import { PredictionAPI, PredParam, PredResult } from 'dehaze-sdk-harmony';
+import { PredictionAPI, PredParam, PredResult, PollOptions } from 'dehaze-sdk-harmony';
 import { ProcessingContext } from '../common/AppState';
 
 /**
@@ -95,13 +95,16 @@ struct Processing {
     ProcessingContext.setAlgorithmParams(this.buildParams());
 
     try {
-      // 调用预测接口（API 同步返回，无真实进度）
       const param: PredParam = {
         algorithmId: this.algorithmId,
         imageUrl: this.originalUrl,
         params: this.buildParams(),
       };
-      const result: PredResult = await PredictionAPI.predict(param);
+      const pollOptions: PollOptions = {
+        intervalMs: 2000,
+        timeoutMs: 300000,
+      };
+      const result: PredResult = await PredictionAPI.predictAndWait(param, pollOptions);
 
       // 取消后忽略结果
       if (this.isCancelled) {
@@ -109,6 +112,12 @@ struct Processing {
       }
 
       this.stopTimer();
+
+      if (result.status === 'failed') {
+        promptAction.showToast({ message: result.errorMessage || '处理失败，请重试' });
+        this.isProcessing = false;
+        return;
+      }
 
       // 保存结果到上下文
       ProcessingContext.setResult(result.resultUrl, result.time);
@@ -312,7 +321,7 @@ struct Processing {
               .fontColor('#999999')
               .margin({ top: 6 })
 
-            Text('处理为同步请求，完成后自动跳转')
+            Text('异步处理中，完成后自动跳转')
               .fontSize(12)
               .fontColor('#BBBBBB')
               .margin({ top: 4 })

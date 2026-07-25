@@ -177,9 +177,10 @@ html.dark .login-container {
 }
 
 .login-container {
+  padding-top: var(--titlebar-h, 0);
   overflow-y: auto;
-  padding-top: var(--titlebar-h, 0px);
   background: url("@/assets/images/login-bg.jpg") no-repeat center right;
+
   @apply wh-full flex-center;
 
   .login-form {

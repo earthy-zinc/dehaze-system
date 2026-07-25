@@ -5,11 +5,12 @@ XXL-Job 定时任务 Handler
 任务在 XXL-Job Admin 控制台中配置 CRON 表达式和参数。
 
 任务清单：
-- cleanupExpiredTasks: 清理过期任务（每天凌晨 2 点）
-- cleanupStuckTasks:   回收僵死任务（每小时）
-- modelHealthCheck:    模型健康检查（每 30 分钟）
-- cleanupOrphanFiles:  孤儿文件清理（每天凌晨 4 点）
-- cleanupTempFiles:    临时文件清理（每 6 小时）
+- cleanupExpiredTasks:     清理过期任务（每天凌晨 2 点）
+- cleanupStuckTasks:       回收僵死任务（每小时）
+- modelHealthCheck:        模型健康检查（每 30 分钟）
+- cleanupOrphanFiles:      孤儿文件清理（每天凌晨 4 点）
+- cleanupTempFiles:        临时文件清理（每 6 小时）
+- cleanupStuckPredEvalLogs: 回收预测/评估僵尸任务（每 60 秒）
 """
 
 from __future__ import annotations
@@ -410,6 +411,44 @@ async def cleanup_temp_files() -> str:
             f"失败={failed}"
         )
         logger.info(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="cleanupStuckPredEvalLogs")
+async def cleanup_stuck_pred_eval_logs() -> str:
+    """
+    回收预测/评估僵尸任务
+
+    扫描 status='processing' AND update_time < NOW() - 10 MINUTE 的记录，
+    标记为 status='failed', error_message='任务执行超时，服务可能已重启'。
+    与 Java PredEvalLogCleanupJob、Go cleanupStuckPredEvalLogs 对齐。
+
+    CRON 建议: 0 * * * * ? （每 60 秒）
+    """
+    from app.repository.pred_eval_log_repository import (
+        pred_log_repository, eval_log_repository,
+    )
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        threshold = datetime.now() - timedelta(minutes=10)
+
+        async with get_db_session() as db:
+            pred_count = await pred_log_repository.mark_stuck_as_failed(
+                db=db, threshold=threshold,
+            )
+            eval_count = await eval_log_repository.mark_stuck_as_failed(
+                db=db, threshold=threshold,
+            )
+
+        if pred_count > 0 or eval_count > 0:
+            msg = f"回收预测/评估僵尸任务: pred={pred_count}, eval={eval_count}"
+            logger.warning(msg)
+        else:
+            msg = "回收预测/评估僵尸任务: 无"
+            logger.debug(msg)
         return msg
     finally:
         set_current_user_id(None)

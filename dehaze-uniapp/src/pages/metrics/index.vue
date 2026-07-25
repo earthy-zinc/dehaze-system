@@ -249,15 +249,19 @@ async function handleEvaluate() {
   }
   evaluating.value = true;
   try {
-    const result = await ModelAPI.evaluate({
+    const result = await ModelAPI.evaluateAndWait({
       algorithmId: store.selectedAlgorithm.id,
       predUrl: store.result?.resultUrl,
       gtUrl: gtUrl.value,
     });
+    if (result.status === "failed") {
+      throw new Error(result.errorMessage || "评估失败");
+    }
     evalResult.value = result;
     uni.showToast({ title: "评估完成", icon: "success" });
-  } catch {
-    uni.showToast({ title: "评估失败，请检查后端服务", icon: "none" });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "评估失败，请检查后端服务";
+    uni.showToast({ title: msg, icon: "none" });
   } finally {
     evaluating.value = false;
   }

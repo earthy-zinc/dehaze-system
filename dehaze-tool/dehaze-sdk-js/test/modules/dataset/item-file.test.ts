@@ -27,7 +27,6 @@ describe("图片文件接口测试", () => {
   let uploadedFileIds: number[] = [];
 
   beforeAll(async () => {
-
     // 创建测试数据集
     const datasetForm = createDatasetForm({
       name: uniqueName("文件测试数据集"),

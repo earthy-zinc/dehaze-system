@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
+	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 	algo "github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
@@ -21,91 +22,218 @@ import (
 const (
 	predCachePrefix = "pred:"
 	predCacheTTL    = 24 * time.Hour
+
+	StatusProcessing = "processing"
+	StatusCompleted  = "completed"
+	StatusFailed     = "failed"
 )
 
 // PredictionService 去雾预测服务
 type PredictionService struct {
 	repo     predrepo.IPredLogRepository
+	algoRepo algorepo.IAlgorithmRepository
 	client   *algo.Client
 	cache    types.ICache
 }
 
-// NewPredictionService 创建预测服务实例
-func NewPredictionService(repo predrepo.IPredLogRepository, client *algo.Client, cache types.ICache) *PredictionService {
-	return &PredictionService{repo: repo, client: client, cache: cache}
+func NewPredictionService(repo predrepo.IPredLogRepository, algoRepo algorepo.IAlgorithmRepository, client *algo.Client, cache types.ICache) *PredictionService {
+	return &PredictionService{repo: repo, algoRepo: algoRepo, client: client, cache: cache}
 }
 
-// PredictionResult 预测结果
+// PredictionResult 预测结果 VO
 type PredictionResult struct {
 	LogID              int64  `json:"logId"`
-	ResultURL          string `json:"resultUrl"`
-	ResultThumbnailURL string `json:"resultThumbnailUrl"`
-	Time               int    `json:"time"`
-	FromCache          bool   `json:"fromCache"`
+	Status             string `json:"status"`
+	ResultURL          string `json:"resultUrl,omitempty"`
+	ResultThumbnailURL string `json:"resultThumbnailUrl,omitempty"`
+	Time               int    `json:"time,omitempty"`
+	ErrorMessage       string `json:"errorMessage,omitempty"`
 }
 
-// Predict 执行去雾预测（带 Redis 缓存：key = pred:{algorithmId}:{imageMd5}）
+// Predict 提交去雾预测任务（异步）
+// 流程：校验算法 → 检查缓存 → 写日志(processing) → 启动 goroutine 执行 → 立即返回
 func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imageURL string, params string, userID int64) (*PredictionResult, error) {
-	// 1. 计算图片 URL 的 MD5 作为缓存键
+	if _, err := s.algoRepo.FindByID(ctx, algorithmID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
+		}
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+	}
+
 	imageMD5 := utils.MD5Hex(imageURL)
 
-	// 2. 检查 Redis 缓存
 	if s.cache != nil {
 		cacheKey := fmt.Sprintf("%s%d:%s", predCachePrefix, algorithmID, imageMD5)
-		if cached, err := s.cache.Get(ctx, cacheKey); err == nil && cached != "" {
-			var result PredictionResult
-			if json.Unmarshal([]byte(cached), &result) == nil {
-				logger.Info("预测结果命中缓存", zap.Int64("algorithmID", algorithmID))
-				result.FromCache = true
-				return &result, nil
+		if cachedStr, err := s.cache.Get(ctx, cacheKey); err == nil && cachedStr != "" {
+			var cached algo.PredictionResponse
+			if json.Unmarshal([]byte(cachedStr), &cached) == nil {
+				predLog := &model.SysPredLog{
+					AlgorithmID: algorithmID,
+					OriginMD5:   imageMD5,
+					OriginURL:   imageURL,
+					PredMD5:     utils.MD5Hex(cached.ResultURL),
+					PredURL:     cached.ResultURL,
+					Time:        cached.Time,
+					Status:      StatusCompleted,
+					CreateBy:    &userID,
+				}
+				if err := s.repo.Create(ctx, predLog); err != nil {
+					logger.Error("写入缓存命中预测日志失败", zap.Error(err))
+				}
+				return &PredictionResult{
+					LogID:              predLog.ID,
+					Status:             StatusCompleted,
+					ResultURL:          cached.ResultURL,
+					ResultThumbnailURL: cached.ResultThumbnailURL,
+					Time:               cached.Time,
+				}, nil
 			}
 		}
 	}
 
-	// 3. 调用 Python 算法服务
+	predLog := &model.SysPredLog{
+		AlgorithmID: algorithmID,
+		OriginMD5:   imageMD5,
+		OriginURL:   imageURL,
+		Status:      StatusProcessing,
+		CreateBy:    &userID,
+	}
+	if err := s.repo.Create(ctx, predLog); err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建预测日志失败", err)
+	}
+
+	logID := predLog.ID
+	go s.executeAsync(logID, algorithmID, imageURL, params, imageMD5)
+
+	return &PredictionResult{
+		LogID:  logID,
+		Status: StatusProcessing,
+	}, nil
+}
+
+// executeAsync 异步执行预测任务，更新日志状态
+func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, params, imageMD5 string) {
+	ctx := context.Background()
+	startTime := time.Now()
+
 	resp, err := s.client.Predict(ctx, &algo.PredictionRequest{
 		AlgorithmID: algorithmID,
 		ImageURL:    imageURL,
 		Params:      params,
 	})
+
 	if err != nil {
-		logger.Error("去雾预测失败", zap.Int64("algorithmID", algorithmID), zap.Error(err))
-		return nil, common.WrapBizError(common.CALL_THIRD_PARTY_SERVICE_ERROR, "去雾处理失败", err)
+		elapsed := int(time.Since(startTime).Seconds())
+		logger.Error("异步去雾预测失败",
+			zap.Int64("algorithmID", algorithmID),
+			zap.Int64("logID", logID),
+			zap.Error(err))
+		errMsg := err.Error()
+		if updateErr := s.repo.UpdateStatus(ctx, logID, StatusFailed, errMsg, elapsed); updateErr != nil {
+			logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
+		}
+		return
 	}
 
-	// 4. 写入预测日志
-	predLog := &model.SysPredLog{
-		AlgorithmID: algorithmID,
-		OriginMD5:   imageMD5,
-		OriginURL:   imageURL,
-		PredMD5:     utils.MD5Hex(resp.ResultURL),
-		PredURL:     resp.ResultURL,
-		Time:        resp.Time,
-		CreateBy:    &userID,
-	}
-	if err := s.repo.Create(ctx, predLog); err != nil {
-		logger.Error("写入预测日志失败", zap.Error(err))
+	if resp.Status == StatusProcessing {
+		var pollErr error
+		resp, pollErr = s.pollPredTask(ctx, resp.LogID)
+		if pollErr != nil {
+			elapsed := int(time.Since(startTime).Seconds())
+			errMsg := pollErr.Error()
+			if updateErr := s.repo.UpdateStatus(ctx, logID, StatusFailed, errMsg, elapsed); updateErr != nil {
+				logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
+			}
+			return
+		}
 	}
 
-	// 5. 缓存结果到 Redis
-	result := &PredictionResult{
-		LogID:              predLog.ID,
-		ResultURL:          resp.ResultURL,
-		ResultThumbnailURL: resp.ResultThumbnailURL,
-		Time:               resp.Time,
+	elapsed := int(time.Since(startTime).Seconds())
+
+	if resp.Status == StatusFailed {
+		errMsg := resp.ErrorMessage
+		if updateErr := s.repo.UpdateStatus(ctx, logID, StatusFailed, errMsg, elapsed); updateErr != nil {
+			logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
+		}
+		return
 	}
+
+	if err := s.repo.UpdateResult(ctx, logID, StatusCompleted, resp.ResultURL, utils.MD5Hex(resp.ResultURL), resp.Time); err != nil {
+		logger.Error("更新预测日志完成状态失败", zap.Int64("logID", logID), zap.Error(err))
+	}
+
 	if s.cache != nil {
+		result := &algo.PredictionResponse{
+			ResultURL:          resp.ResultURL,
+			ResultThumbnailURL: resp.ResultThumbnailURL,
+			Time:               resp.Time,
+		}
 		cacheKey := fmt.Sprintf("%s%d:%s", predCachePrefix, algorithmID, imageMD5)
 		if data, err := json.Marshal(result); err == nil {
 			_ = s.cache.Set(ctx, cacheKey, string(data), predCacheTTL)
 		}
 	}
 
-	logger.Info("去雾预测完成", zap.Int64("algorithmID", algorithmID), zap.Int64("logID", predLog.ID))
+	logger.Info("异步去雾预测完成",
+		zap.Int64("algorithmID", algorithmID),
+		zap.Int64("logID", logID))
+}
+
+// pollPredTask 轮询 Python 预测任务状态直到终态
+func (s *PredictionService) pollPredTask(ctx context.Context, pythonLogID int64) (*algo.PredictionResponse, error) {
+	const interval = 2 * time.Second
+	const timeout = 5 * time.Minute
+	deadline := time.Now().Add(timeout)
+
+	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(interval):
+		}
+
+		result, err := s.client.GetPredTaskStatus(ctx, pythonLogID)
+		if err != nil {
+			logger.Warn("轮询预测任务状态失败",
+				zap.Int64("pythonLogID", pythonLogID),
+				zap.Error(err))
+			continue
+		}
+		if result.Status == StatusCompleted || result.Status == StatusFailed {
+			return result, nil
+		}
+	}
+	return nil, fmt.Errorf("Python 预测任务 %d 轮询超时", pythonLogID)
+}
+
+// GetTaskStatus 查询任务状态，根据 status 返回不同字段
+func (s *PredictionService) GetTaskStatus(ctx context.Context, id int64) (*PredictionResult, error) {
+	log, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "预测任务不存在")
+		}
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询预测日志失败", err)
+	}
+
+	result := &PredictionResult{
+		LogID:  log.ID,
+		Status: log.Status,
+	}
+	switch log.Status {
+	case StatusCompleted:
+		result.ResultURL = log.PredURL
+		result.Time = log.Time
+	case StatusFailed:
+		if log.ErrorMessage != nil {
+			result.ErrorMessage = *log.ErrorMessage
+		}
+		result.Time = log.Time
+	}
 	return result, nil
 }
 
-// GetLogByID 查询预测日志
+// GetLogByID 查询预测日志（用于列表展示）
 func (s *PredictionService) GetLogByID(ctx context.Context, id int64) (*model.SysPredLog, error) {
 	log, err := s.repo.FindByID(ctx, id)
 	if err != nil {

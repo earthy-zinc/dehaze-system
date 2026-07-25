@@ -4,6 +4,12 @@ module.exports = {
   parserOptions: {
     requireConfigFile: false,
   },
+  rules: {
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      { varsIgnorePattern: '^_', argsIgnorePattern: '^_' },
+    ],
+  },
   overrides: [
     {
       files: ['*.js'],

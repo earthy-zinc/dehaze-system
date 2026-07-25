@@ -51,19 +51,44 @@
 
 ### 2.4 模型预测接口
 
+> **异步任务模式**：POST 立即返回 `{ logId, status: "processing" }`，前端通过 GET 轮询 `status` 字段直至 `completed` 或 `failed`。详见 [预测评估异步化改造](../../../05-改造计划/预测评估异步化改造.md)。
+
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/prediction` | POST | 执行模型预测 | - | F-M05-009 |
-| `/api/v1/prediction/{taskId}` | GET | 查询预测任务状态 | - | F-M05-009 |
+| `/api/v1/prediction` | POST | 提交预测任务，立即返回 logId + status=processing | - | F-M05-009 |
+| `/api/v1/prediction/{taskId}` | GET | 轮询预测任务状态（processing/completed/failed） | - | F-M05-009 |
 | `/api/v1/prediction/logs` | GET | 获取预测日志列表 | - | F-M05-009 |
+
+**POST 响应**（`PredictionResultVO`）：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `logId` | Long | 预测日志 ID |
+| `status` | String | 任务状态，POST 时为 `"processing"` |
+| `resultUrl` | String | 结果图 URL（GET 轮询 completed 时返回） |
+| `resultThumbnailUrl` | String | 结果缩略图 URL（GET 轮询 completed 时返回） |
+| `time` | int | 处理耗时（毫秒，GET 轮询 completed/failed 时返回） |
+| `errorMessage` | String | 失败错误信息（GET 轮询 failed 时返回） |
 
 ### 2.5 效果评估接口
 
+> **异步任务模式**：与模型预测同理，POST 立即返回 `{ logId, status: "processing" }`，前端通过 GET 轮询直至终态。
+
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/evaluation` | POST | 执行效果评估（PSNR/SSIM/LPIPS等） | - | F-M05-010 |
-| `/api/v1/evaluation/{taskId}` | GET | 查询评估任务状态 | - | F-M05-010 |
+| `/api/v1/evaluation` | POST | 提交评估任务，立即返回 logId + status=processing | - | F-M05-010 |
+| `/api/v1/evaluation/{taskId}` | GET | 轮询评估任务状态（processing/completed/failed） | - | F-M05-010 |
 | `/api/v1/evaluation/logs` | GET | 获取评估日志列表 | - | F-M05-010 |
+
+**POST 响应**（`EvaluationResultVO`）：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `logId` | Long | 评估日志 ID |
+| `status` | String | 任务状态，POST 时为 `"processing"` |
+| `metrics` | Map<String,Double> | 评估指标（GET 轮询 completed 时返回，如 `{"PSNR": 28.56, "SSIM": 0.92}`） |
+| `time` | int | 处理耗时（毫秒，GET 轮询 completed/failed 时返回） |
+| `errorMessage` | String | 失败错误信息（GET 轮询 failed 时返回） |
 
 ## 3. 权限标识汇总
 

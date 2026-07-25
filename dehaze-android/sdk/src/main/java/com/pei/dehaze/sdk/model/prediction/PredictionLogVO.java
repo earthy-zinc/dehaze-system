@@ -14,5 +14,7 @@ public class PredictionLogVO {
     private String predMd5;
     private String predUrl;
     private Integer time;
+    private String status;
+    private String errorMessage;
     private String createTime;
 }

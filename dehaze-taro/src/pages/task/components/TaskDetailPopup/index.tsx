@@ -64,7 +64,10 @@ const TaskDetailPopup: React.FC<TaskDetailPopupProps> = ({
           )}
           {renderDetailItem(
             "状态",
-            <Tag color={STATUS_TAG[task.status]?.color || "default"} size="small">
+            <Tag
+              color={STATUS_TAG[task.status]?.color || "default"}
+              size="small"
+            >
               {STATUS_TAG[task.status]?.label || task.status}
             </Tag>
           )}

@@ -16,6 +16,7 @@ class SysPredLog(BaseModel):
         Index('idx_algorithm_id', 'algorithm_id'),
         Index('idx_origin_md5', 'origin_md5'),
         Index('idx_pred_md5', 'pred_md5'),
+        Index('idx_status', 'status'),
         {'comment': '模型预测日志表'}
     )
 
@@ -28,6 +29,8 @@ class SysPredLog(BaseModel):
     pred_md5 = Column(CHAR(32), nullable=False, comment='预测图像md5值')
     pred_url = Column(Text, nullable=False, comment='预测图像url')
     time = Column(Integer, default=0, comment='推理时间（秒）')
+    status = Column(String(20), nullable=False, default='completed', comment='任务状态：processing/completed/failed')
+    error_message = Column(Text, nullable=True, comment='失败错误信息')
 
 
 class SysEvalLog(BaseModel):
@@ -36,6 +39,7 @@ class SysEvalLog(BaseModel):
         Index('idx_algorithm_id', 'algorithm_id'),
         Index('idx_pred_md5', 'pred_md5'),
         Index('idx_gt_md5', 'gt_md5'),
+        Index('idx_status', 'status'),
         {'comment': '模型预测日志表'}
     )
 
@@ -48,6 +52,8 @@ class SysEvalLog(BaseModel):
     gt_md5 = Column(CHAR(32), nullable=False, comment='真值图像md5值')
     gt_url = Column(Text, nullable=False, comment='真值图像url')
     time = Column(Integer, default=0, comment='评估时间（秒）')
+    status = Column(String(20), nullable=False, default='completed', comment='任务状态：processing/completed/failed')
+    error_message = Column(Text, nullable=True, comment='失败错误信息')
     result = Column(JSON, comment='预测结果')
 
 

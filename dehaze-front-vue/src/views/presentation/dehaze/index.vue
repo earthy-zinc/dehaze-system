@@ -175,17 +175,20 @@ async function handleGenerateImage() {
   activePage.value = "loading";
   // 启动模拟进度
   startProgressSimulation(95);
-  ModelAPI.predict({
+  ModelAPI.predictAndWait({
     algorithmId: modelId,
     imageUrl: imgUrl,
     params: dehazeParams.value ? JSON.stringify(dehazeParams.value) : undefined,
   })
     .then(async (res) => {
       if (cancelFlag) return;
+      if (res.status === "failed") {
+        throw new Error(res.errorMessage || "去雾处理失败");
+      }
       progress.value = 95;
       stopProgressSimulation();
       imageShowStore.setImageUrl(imgUrl, ImageTypeEnum.HAZE);
-      imageShowStore.setImageUrl(res.resultUrl, ImageTypeEnum.PRED);
+      imageShowStore.setImageUrl(res.resultUrl || "", ImageTypeEnum.PRED);
       if (cleanUrl.value) {
         try {
           const cleanRes = await handleCleanUrl(cleanUrl.value, modelId);
@@ -316,14 +319,17 @@ async function handleStartBatch() {
       // 先上传原图
       const uploadRes = await FileAPI.upload(task.file, modelId);
       task.hazeUrl = uploadRes.url;
-      const predRes = await ModelAPI.predict({
+      const predRes = await ModelAPI.predictAndWait({
         algorithmId: modelId,
         imageUrl: task.hazeUrl,
         params: dehazeParams.value
           ? JSON.stringify(dehazeParams.value)
           : undefined,
       });
-      task.resultUrl = predRes.resultUrl;
+      if (predRes.status === "failed") {
+        throw new Error(predRes.errorMessage || "处理失败");
+      }
+      task.resultUrl = predRes.resultUrl || "";
       task.progress = 100;
       task.status = "success";
     } catch (e: any) {
