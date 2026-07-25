@@ -147,6 +147,11 @@ public class PythonAlgorithmClient {
                 headers.set(HttpHeaders.AUTHORIZATION, authorization);
             }
         }
+        // 当原始请求无 Authorization 头时（如使用 X-Session-Id 登录），
+        // 使用配置的 API Key 进行 M2M 认证
+        if (!headers.containsKey(HttpHeaders.AUTHORIZATION) && props.getApiKey() != null && !props.getApiKey().isBlank()) {
+            headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + props.getApiKey());
+        }
         HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
 
         ResponseEntity<String> response = algorithmRestTemplate.postForEntity(url, entity, String.class);

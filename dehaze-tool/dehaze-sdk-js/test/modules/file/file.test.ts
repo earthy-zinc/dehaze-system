@@ -1,6 +1,5 @@
 import { FileAPI } from "../../../index";
-import { login, logout } from "#/utils/auth";
-import { expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError } from "#/utils/assertion";
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
@@ -11,7 +10,6 @@ describe("文件管理接口测试", () => {
   let testFileMd5: string;
 
   beforeAll(async () => {
-    await login();
 
     // 创建测试文件
     const testDir = path.join(__dirname, "../../../temp");
@@ -42,7 +40,6 @@ describe("文件管理接口测试", () => {
       fs.unlinkSync(testFilePath);
     }
 
-    await logout();
   });
 
   describe("GET /api/v1/files/check - 文件上传检查", () => {
@@ -109,11 +106,12 @@ describe("文件管理接口测试", () => {
     });
 
     test("参数校验：未提供文件应抛出业务错误", async () => {
-      await expectBizErrorOrUndefined(FileAPI.upload(null as any), [
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        FileAPI.upload(null as any),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -140,12 +138,12 @@ describe("文件管理接口测试", () => {
     test("异常测试：删除不存在的文件ID", async () => {
       const nonExistId = 999999999;
       // 删除不存在的文件，后端可能返回成功（幂等）或错误
-      await expectBizErrorOrUndefined(FileAPI.deleteById(nonExistId), [
-        "A0401",
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        FileAPI.deleteById(nonExistId),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
   });
 });

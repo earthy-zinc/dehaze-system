@@ -2,7 +2,7 @@
  * 数据集模块 API 封装
  *
  * 直接调用 SDK 的 DatasetAPI / DatasetItemAPI / ItemFileAPI，
- * SDK 内部已通过 configJavaAxios 注入 baseURL 和 token，
+ * SDK 内部已通过 configAxios 注入 baseURL 和 token，
  * 并已在响应拦截器中剥离 R<T> 包装（直接返回 data 字段）。
  *
  * 注意：导出/下载任务已迁移至统一任务接口 /api/v1/tasks，

@@ -1,9 +1,5 @@
 import type { InternalAxiosRequestConfig } from "axios";
-import {
-  configJavaAxios,
-  configPythonAxios,
-  ResponseData,
-} from "dehaze-sdk-js";
+import { configAxios, ResponseData } from "dehaze-sdk-js";
 
 function createOnResponseError() {
   return (error: any) => {
@@ -20,20 +16,11 @@ function createOnResponseError() {
 }
 
 export default function configRequest() {
-  configJavaAxios({
+  configAxios({
     onRequest: (config: InternalAxiosRequestConfig) => {
       return {
         ...config,
         baseURL: import.meta.env.VITE_JAVA_BASE_API,
-      };
-    },
-    onResponseError: createOnResponseError(),
-  });
-  configPythonAxios({
-    onRequest: (config: InternalAxiosRequestConfig) => {
-      return {
-        ...config,
-        baseURL: import.meta.env.VITE_PYTHON_BASE_API,
       };
     },
     onResponseError: createOnResponseError(),

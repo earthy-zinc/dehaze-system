@@ -1,6 +1,5 @@
 import { DatasetAPI, DatasetItemAPI, BatchDeleteForm } from "../../../index";
-import { login, logout } from "#/utils/auth";
-import { expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError } from "#/utils/assertion";
 import {
   createDatasetForm,
   createDatasetItemForm,
@@ -12,7 +11,6 @@ describe("数据项接口测试", () => {
   let testDatasetId: number;
 
   beforeAll(async () => {
-    await login();
     const form = createDatasetForm({ type: "图像去雾" });
     testDatasetId = await DatasetAPI.add(form);
   });
@@ -23,7 +21,6 @@ describe("数据项接口测试", () => {
     } catch (e) {
       // 忽略清理错误
     }
-    await logout();
   });
 
   describe("GET /api/v1/dataset-items - 分页查询数据项列表", () => {
@@ -107,7 +104,7 @@ describe("数据项接口测试", () => {
     test("参数校验：缺少必需字段 datasetId", async () => {
       const form = createDatasetItemForm(testDatasetId);
       delete (form as any).datasetId;
-      await expectBizErrorOrUndefined(DatasetItemAPI.add(form), ["A0400", "B0001"]);
+      await expectBizError(DatasetItemAPI.add(form), ["A0400", "B0001"], undefined, true);
     });
   });
 
@@ -155,7 +152,12 @@ describe("数据项接口测试", () => {
     });
 
     test("异常测试：获取不存在的数据项", async () => {
-      await expectBizErrorOrUndefined(DatasetItemAPI.getById(99999999), ["A0401", "B0001", "A0400"]);
+      await expectBizError(
+        DatasetItemAPI.getById(99999999),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -196,7 +198,12 @@ describe("数据项接口测试", () => {
 
     test("异常测试：更新不存在的数据项", async () => {
       const form = createDatasetItemUpdateForm();
-      await expectBizErrorOrUndefined(DatasetItemAPI.update(99999999, form), ["A0401", "B0001", "A0400"]);
+      await expectBizError(
+        DatasetItemAPI.update(99999999, form),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -209,7 +216,12 @@ describe("数据项接口测试", () => {
       await DatasetItemAPI.deleteById(result.id);
 
       // 验证已删除
-      await expectBizErrorOrUndefined(DatasetItemAPI.getById(result.id), ["A0401", "B0001", "A0400"]);
+      await expectBizError(
+        DatasetItemAPI.getById(result.id),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
     });
 
     test("异常测试：删除不存在的数据项（后端bug - 应返回错误）", async () => {
@@ -251,7 +263,7 @@ describe("数据项接口测试", () => {
       const form: BatchDeleteForm = {
         ids: [],
       };
-      await expectBizErrorOrUndefined(DatasetItemAPI.batchDelete(form), ["A0400", "B0001"]);
+      await expectBizError(DatasetItemAPI.batchDelete(form), ["A0400", "B0001"], undefined, true);
     });
 
     test("异常测试：包含不存在的ID", async () => {
@@ -293,7 +305,12 @@ describe("数据项接口测试", () => {
       await DatasetItemAPI.deleteById(itemId);
 
       // Verify
-      await expectBizErrorOrUndefined(DatasetItemAPI.getById(itemId), ["A0401", "B0001", "A0400"]);
+      await expectBizError(
+        DatasetItemAPI.getById(itemId),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
     });
   });
 });

@@ -1,6 +1,5 @@
 import { DatasetAPI, BatchDeleteForm, TaskAPI } from "../../../index";
-import { login, logout } from "#/utils/auth";
-import { expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError } from "#/utils/assertion";
 import {
   createDatasetForm,
   createDatasetUpdateForm,
@@ -8,14 +7,6 @@ import {
 } from "#/factories/dataset";
 
 describe("数据集接口测试", () => {
-  beforeAll(async () => {
-    await login();
-  });
-
-  afterAll(async () => {
-    await logout();
-  });
-
   describe("GET /api/v1/datasets - 获取数据集列表", () => {
     test("正向测试：获取所有数据集", async () => {
       const query = createDatasetQuery();
@@ -108,7 +99,7 @@ describe("数据集接口测试", () => {
     test("参数校验：缺少必需字段 name", async () => {
       const form = createDatasetForm();
       delete (form as any).name;
-      await expectBizErrorOrUndefined(DatasetAPI.add(form), ["A0400", "B0001"]);
+      await expectBizError(DatasetAPI.add(form), ["A0400", "B0001"], undefined, true);
     });
   });
 
@@ -197,11 +188,12 @@ describe("数据集接口测试", () => {
 
     test("异常测试：更新不存在的数据集", async () => {
       const form = createDatasetUpdateForm();
-      await expectBizErrorOrUndefined(DatasetAPI.update(99999999, form), [
-        "A0401",
-        "B0001",
-        "A0400",
-      ]);
+      await expectBizError(
+        DatasetAPI.update(99999999, form),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -219,11 +211,12 @@ describe("数据集接口测试", () => {
     });
 
     test("异常测试：删除不存在的数据集", async () => {
-      await expectBizErrorOrUndefined(DatasetAPI.deleteById(99999999), [
-        "A0401",
-        "B0001",
-        "A0400",
-      ]);
+      await expectBizError(
+        DatasetAPI.deleteById(99999999),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -254,7 +247,7 @@ describe("数据集接口测试", () => {
       const form: BatchDeleteForm = {
         ids: [],
       };
-      await expectBizErrorOrUndefined(DatasetAPI.batchDelete(form), ["A0400", "B0001"]);
+      await expectBizError(DatasetAPI.batchDelete(form), ["A0400", "B0001"], undefined, true);
     });
 
     test("异常测试：包含不存在的ID", async () => {
@@ -362,7 +355,12 @@ describe("数据集接口测试", () => {
 
     test("边界测试：超长数据集名称应被拒绝", async () => {
       const form = createDatasetForm({ name: "x".repeat(500) });
-      await expectBizErrorOrUndefined(DatasetAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizError(
+        DatasetAPI.add(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("边界测试：特殊字符数据集名称不应污染存储", async () => {

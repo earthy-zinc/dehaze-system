@@ -1,5 +1,4 @@
 import { DatasetAPI, DatasetItemAPI, ItemFileAPI, TaskAPI } from "../../../index";
-import { login, logout } from "#/utils/auth";
 import {
   createDatasetForm,
   createDatasetItemForm,
@@ -28,10 +27,12 @@ describe("图片文件接口测试", () => {
   let uploadedFileIds: number[] = [];
 
   beforeAll(async () => {
-    await login();
 
     // 创建测试数据集
-    const datasetForm = createDatasetForm({ name: uniqueName("文件测试数据集"), type: "用户数据集" });
+    const datasetForm = createDatasetForm({
+      name: uniqueName("文件测试数据集"),
+      type: "用户数据集",
+    });
     testDatasetId = await DatasetAPI.add(datasetForm);
 
     // 创建测试数据项
@@ -59,7 +60,6 @@ describe("图片文件接口测试", () => {
     } catch (e) {
       // 忽略
     }
-    await logout();
   });
 
   describe("POST /api/v1/item-files - 上传数据项图片", () => {

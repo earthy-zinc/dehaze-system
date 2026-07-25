@@ -8,7 +8,7 @@ import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { DeptAPI, DatasetAPI, RoleAPI, DictAPI, MenuAPI } from "../../../index";
 import UserAPI from "@/api/user";
 import { login, logout } from "#/utils/auth";
-import { expectBizError, expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError } from "#/utils/assertion";
 import { createDeptForm } from "#/factories/dept";
 import { createRoleForm } from "#/factories/role";
 import { createDictTypeForm, createDictForm } from "#/factories/dict";
@@ -19,14 +19,6 @@ import { DEPTS, ROLES } from "#/factories/constants";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 
 describe("安全性测试", () => {
-  beforeAll(async () => {
-    await login();
-  });
-
-  afterAll(async () => {
-    await logout();
-  });
-
   // ──────────────────────────────────────────────────────────────────────
   // 1. XSS 脚本注入防护测试
   // ──────────────────────────────────────────────────────────────────────
@@ -238,41 +230,67 @@ describe("安全性测试", () => {
     test("超长部门名称应被拒绝", async () => {
       const form = createDeptForm({ parentId: DEPTS.CQUPT.id, name: longString });
 
-      await expectBizErrorOrUndefined(DeptAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizError(
+        DeptAPI.add(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("超长角色名称应被拒绝", async () => {
       const form = createRoleForm({ name: longString });
 
-      await expectBizErrorOrUndefined(RoleAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizError(
+        RoleAPI.add(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("超长字典类型名称应被拒绝", async () => {
       const form = createDictTypeForm({ name: longString });
 
-      await expectBizErrorOrUndefined(DictAPI.addDictType(form), [
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        DictAPI.addDictType(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("超长数据集名称应被拒绝", async () => {
       const form = createDatasetForm({ name: longString });
 
-      await expectBizErrorOrUndefined(DatasetAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizError(
+        DatasetAPI.add(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("超长菜单名称应被拒绝", async () => {
       const form = createMenuForm({ name: longString });
 
-      await expectBizErrorOrUndefined(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizError(
+        MenuAPI.add(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("超长用户昵称应被拒绝", async () => {
       const form = createUserForm({ nickname: longString });
 
-      await expectBizErrorOrUndefined(UserAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizError(
+        UserAPI.add(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -313,7 +331,6 @@ describe("安全性测试", () => {
     });
 
     afterAll(async () => {
-      // 重新登录以不影响后续测试
       await login();
     });
 

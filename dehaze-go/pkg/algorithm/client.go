@@ -33,6 +33,7 @@ type Client struct {
 	breaker    *protection.Breaker
 	maxRetry   int
 	backoff    time.Duration
+	apiKey     string
 }
 
 // NewClient 创建算法服务客户端
@@ -92,6 +93,7 @@ func NewClient(cfg options.Algorithm) *Client {
 		breaker:  breaker,
 		maxRetry: maxRetry,
 		backoff:  backoff,
+		apiKey:   cfg.ApiKey,
 	}
 }
 
@@ -241,6 +243,10 @@ func (c *Client) doSinglePost(
 	}
 	if tp := trace.TraceParentFromContext(ctx); tp != "" {
 		httpReq.Header.Set(trace.HeaderNameTraceParent, tp)
+	}
+	// 使用 API Key 进行 M2M 认证
+	if c.apiKey != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
 	}
 
 	start := time.Now()

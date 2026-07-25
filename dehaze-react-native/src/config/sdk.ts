@@ -1,8 +1,8 @@
-import { configJavaAxios, configPythonAxios, ResultEnum } from 'dehaze-sdk-js';
+import { configAxios, ResultEnum } from 'dehaze-sdk-js';
 import { API_CONFIG } from './env';
 import { sessionStore, triggerSessionInvalid } from '../utils/tokenStore';
 
-type InterceptorCallbacks = Parameters<typeof configJavaAxios>[0];
+type InterceptorCallbacks = Parameters<typeof configAxios>[0];
 
 const SESSION_INVALID_CODES: readonly string[] = [
   ResultEnum.TOKEN_INVALID,
@@ -39,6 +39,4 @@ function buildAxiosConfig(baseURL: string): InterceptorCallbacks {
   };
 }
 
-configJavaAxios(buildAxiosConfig(API_CONFIG.JAVA_BASE_URL));
-
-configPythonAxios(buildAxiosConfig(API_CONFIG.PYTHON_BASE_URL));
+configAxios(buildAxiosConfig(API_CONFIG.JAVA_BASE_URL));

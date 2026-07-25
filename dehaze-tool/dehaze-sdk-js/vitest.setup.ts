@@ -3,8 +3,9 @@
  * 在所有测试之前加载，提供 Node.js 环境下缺失的浏览器 API polyfill
  */
 import { afterAll, beforeAll } from "vitest";
-import { javaService } from "./src/utils/request";
+import { service } from "./src/utils/request";
 import { backendProfile } from "./test/config/backend";
+import { login } from "./test/utils/auth";
 import { disconnectRedis, getRedis } from "./test/utils/redis";
 
 class LocalStorageMock {
@@ -46,7 +47,7 @@ Object.defineProperty(globalThis, "localStorage", {
 
 // 配置后端 baseURL（Node.js 环境无浏览器 origin，需显式指定）
 // 通过 TEST_BACKEND 环境变量切换 java / python / go 后端
-javaService.defaults.baseURL = process.env.TEST_BASE_URL || backendProfile.baseURL;
+service.defaults.baseURL = process.env.TEST_BASE_URL || backendProfile.baseURL;
 
 beforeAll(async () => {
   try {
@@ -56,6 +57,7 @@ beforeAll(async () => {
       await redis.del(keys);
     }
   } catch {}
+  await login();
 });
 
 afterAll(async () => {

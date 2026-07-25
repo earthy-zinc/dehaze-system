@@ -31,11 +31,10 @@ export * from "./src/types";
 export * from "./src/enums";
 
 // 配置导出
-export { configJavaAxios, configPythonAxios } from "./src/config";
+export { configAxios } from "./src/config";
 
 // Axios 实例导出
-export { javaService } from "./src/utils/request";
-export { pythonService } from "./src/utils/requestPy";
+export { service } from "./src/utils/request";
 
 // Axios 类型导出（供宿主项目配置 adapter / 拦截器使用）
 export type { AxiosAdapter, AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axios";

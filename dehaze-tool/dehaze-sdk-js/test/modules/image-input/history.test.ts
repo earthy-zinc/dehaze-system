@@ -1,16 +1,10 @@
 import { ImageInputHistoryAPI, HistoryForm, HistoryUpdateForm } from "../../../index";
-import { login, logout } from "#/utils/auth";
-import { expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError } from "#/utils/assertion";
 
 describe("图像输入历史记录 API 测试", () => {
-  beforeAll(async () => {
-    await login();
-  });
-
   const createdIds: number[] = [];
 
   afterAll(async () => {
-    await logout();
     for (const id of createdIds) {
       try {
         await ImageInputHistoryAPI.deleteById(id);
@@ -132,11 +126,12 @@ describe("图像输入历史记录 API 测试", () => {
     });
 
     test("异常测试：访问不存在的记录应报错", async () => {
-      await expectBizErrorOrUndefined(ImageInputHistoryAPI.getById(99999999), [
-        "A0401",
-        "A0400",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        ImageInputHistoryAPI.getById(99999999),
+        ["A0401", "A0400", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -178,11 +173,12 @@ describe("图像输入历史记录 API 测试", () => {
       await ImageInputHistoryAPI.deleteById(id);
 
       // 验证已删除
-      await expectBizErrorOrUndefined(ImageInputHistoryAPI.getById(id), [
-        "A0401",
-        "A0400",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        ImageInputHistoryAPI.getById(id),
+        ["A0401", "A0400", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("幂等性测试：删除已不存在的记录应成功", async () => {
@@ -211,11 +207,12 @@ describe("图像输入历史记录 API 测试", () => {
 
       // 验证已删除
       for (const id of batchIds) {
-        await expectBizErrorOrUndefined(ImageInputHistoryAPI.getById(id), [
-          "A0401",
-          "A0400",
-          "ERR_BAD_REQUEST",
-        ]);
+        await expectBizError(
+          ImageInputHistoryAPI.getById(id),
+          ["A0401", "A0400", "ERR_BAD_REQUEST"],
+          undefined,
+          true
+        );
       }
     });
   });

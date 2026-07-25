@@ -1,16 +1,7 @@
 import { AlgorithmAPI, Algorithm } from "../../../index";
-import { login, logout } from "#/utils/auth";
-import { expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError } from "#/utils/assertion";
 
 describe("算法管理新增端点测试", () => {
-  beforeAll(async () => {
-    await login();
-  });
-
-  afterAll(async () => {
-    await logout();
-  });
-
   let testAlgorithmId: number;
 
   // 创建一个测试算法（通过前端的 AlgorithmFormDialog 新增后自动状态=0 草稿）
@@ -47,21 +38,21 @@ describe("算法管理新增端点测试", () => {
     });
 
     test("参数校验：无效状态值应提示错误", async () => {
-      await expectBizErrorOrUndefined(AlgorithmAPI.updateStatus(testAlgorithmId, 99), [
-        "A0502",
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        AlgorithmAPI.updateStatus(testAlgorithmId, 99),
+        ["A0502", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("异常测试：不存在的算法ID应报错", async () => {
-      await expectBizErrorOrUndefined(AlgorithmAPI.updateStatus(99999999, 1), [
-        "A0401",
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        AlgorithmAPI.updateStatus(99999999, 1),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -141,11 +132,12 @@ describe("算法管理新增端点测试", () => {
 
     test("参数校验：空文件应报错", async () => {
       const emptyFile = new File([], "empty.json", { type: "application/json" });
-      await expectBizErrorOrUndefined(AlgorithmAPI.validateImport(emptyFile), [
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        AlgorithmAPI.validateImport(emptyFile),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
   });
 });

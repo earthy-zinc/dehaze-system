@@ -462,3 +462,5 @@ dehaze_flutter/ios/Runner/Assets.xcassets/*/README.md
 dehaze-tool/dehaze-sdk-js/test/resources
 
 **/.torch_extensions
+
+dehaze-tool/dehaze-sdk-js/.session-cache.json

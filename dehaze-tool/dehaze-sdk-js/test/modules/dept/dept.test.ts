@@ -1,19 +1,10 @@
 import { DeptAPI, DeptForm, DeptQuery } from "../../../index";
-import { login, logout } from "#/utils/auth";
-import { expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError } from "#/utils/assertion";
 import { createDeptForm, createDeptQuery } from "#/factories/dept";
 import { uniqueName } from "#/factories/common";
 import { DEPTS } from "#/factories/constants";
 
 describe("部门管理接口测试", () => {
-  beforeAll(async () => {
-    await login();
-  });
-
-  afterAll(async () => {
-    await logout();
-  });
-
   describe("GET /api/v1/dept - 部门树形表格", () => {
     test("正向测试：获取部门树形列表并验证树形结构", async () => {
       const result = await DeptAPI.getList();
@@ -292,11 +283,12 @@ describe("部门管理接口测试", () => {
         sort: 100,
       };
 
-      await expectBizErrorOrUndefined(DeptAPI.add(form as DeptForm), [
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        DeptAPI.add(form as DeptForm),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("参数校验：缺少必需字段 parentId", async () => {
@@ -305,11 +297,12 @@ describe("部门管理接口测试", () => {
         status: 1,
       };
 
-      await expectBizErrorOrUndefined(DeptAPI.add(form as DeptForm), [
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        DeptAPI.add(form as DeptForm),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("参数校验：同级部门名称已存在", async () => {
@@ -320,11 +313,12 @@ describe("部门管理接口测试", () => {
       createdDeptIds.push(deptId);
 
       // 尝试创建同名部门
-      await expectBizErrorOrUndefined(DeptAPI.add({ ...form, sort: form.sort! + 1 }), [
-        "A0501",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        DeptAPI.add({ ...form, sort: form.sort! + 1 }),
+        ["A0501", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("参数校验：父部门不存在应抛出业务错误", async () => {
@@ -333,12 +327,12 @@ describe("部门管理接口测试", () => {
       // 【保留此测试】持续暴露后端缺少父部门存在性校验的问题
       const form = createDeptForm({ parentId: 99999999 });
 
-      await expectBizErrorOrUndefined(DeptAPI.add(form), [
-        "A0401",
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        DeptAPI.add(form),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -443,12 +437,12 @@ describe("部门管理接口测试", () => {
     test("异常测试：更新不存在的部门", async () => {
       const form = createDeptForm();
 
-      await expectBizErrorOrUndefined(DeptAPI.update(99999999, form), [
-        "A0401",
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        DeptAPI.update(99999999, form),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("参数校验：部门名称冲突（同级）", async () => {
@@ -458,12 +452,14 @@ describe("部门管理接口测试", () => {
       additionalDeptIds.push(anotherDeptId);
 
       // 尝试将 testDept 改为与 anotherDept 同名
-      await expectBizErrorOrUndefined(
+      await expectBizError(
         DeptAPI.update(testDeptId, {
           name: anotherForm.name!,
           parentId: DEPTS.CQUPT.id,
         } as DeptForm),
-        ["A0501", "B0001", "ERR_BAD_REQUEST"]
+        ["A0501", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
       );
     });
 
@@ -476,9 +472,11 @@ describe("部门管理接口测试", () => {
       // 【预期行为】将部门移动到其子部门下应返回业务错误（如 A0400/B0001），防止循环依赖
       // 【实际行为】后端未校验循环依赖，更新成功（后端 bug）
       // 【保留此测试】持续暴露后端缺少循环依赖校验的问题
-      await expectBizErrorOrUndefined(
+      await expectBizError(
         DeptAPI.update(testDeptId, { parentId: childDeptId } as DeptForm),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
       );
     });
   });
@@ -517,20 +515,21 @@ describe("部门管理接口测试", () => {
     });
 
     test("异常测试：删除不存在的部门", async () => {
-      await expectBizErrorOrUndefined(DeptAPI.deleteByIds("99999999"), [
-        "A0401",
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        DeptAPI.deleteByIds("99999999"),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("参数校验：空的 ID 列表", async () => {
-      await expectBizErrorOrUndefined(DeptAPI.deleteByIds(""), [
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        DeptAPI.deleteByIds(""),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("业务校验：删除有子部门的部门会级联删除子部门", async () => {
@@ -593,7 +592,12 @@ describe("部门管理接口测试", () => {
 
     test("边界测试：超长部门名称应被拒绝", async () => {
       const form = createDeptForm({ parentId: DEPTS.CQUPT.id, name: "x".repeat(256) });
-      await expectBizErrorOrUndefined(DeptAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizError(
+        DeptAPI.add(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("边界测试：特殊字符部门名称不应污染存储", async () => {

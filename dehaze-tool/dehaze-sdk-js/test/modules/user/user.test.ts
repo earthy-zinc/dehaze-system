@@ -1,19 +1,10 @@
-import { login, logout } from "#/utils/auth";
-import { expectBizError, expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError } from "#/utils/assertion";
 import { createUserForm, createUserQuery } from "#/factories/user";
 import UserAPI from "@/api/user";
 import { UserForm, UserQuery } from "@/api/user/model";
 import { ROLES, USERS, DEPTS, ADMIN_VISIBLE_USER_COUNT } from "#/factories/constants";
 
 describe("用户管理接口测试", () => {
-  beforeAll(async () => {
-    await login();
-  });
-
-  afterAll(async () => {
-    await logout();
-  });
-
   describe("GET /api/v1/auth/me - 获取当前登录用户信息", () => {
     test("获取当前登录用户信息并验证数据完整性", async () => {
       const result = await UserAPI.getInfo();
@@ -344,7 +335,7 @@ describe("用户管理接口测试", () => {
         status: 1,
         deptId: existingDeptId,
       };
-      await expectBizErrorOrUndefined(UserAPI.add(form as UserForm), ["A0400", "B0001"]);
+      await expectBizError(UserAPI.add(form as UserForm), ["A0400", "B0001"], undefined, true);
     });
 
     test("参数校验：缺少必需字段 nickname", async () => {
@@ -353,7 +344,7 @@ describe("用户管理接口测试", () => {
         status: 1,
         deptId: existingDeptId,
       };
-      await expectBizErrorOrUndefined(UserAPI.add(form as UserForm), ["A0400", "B0001"]);
+      await expectBizError(UserAPI.add(form as UserForm), ["A0400", "B0001"], undefined, true);
     });
 
     test("参数校验：用户名已存在", async () => {
@@ -363,7 +354,7 @@ describe("用户管理接口测试", () => {
         status: 1,
         deptId: existingDeptId,
       };
-      await expectBizErrorOrUndefined(UserAPI.add(form), ["A0400", "B0001"]);
+      await expectBizError(UserAPI.add(form), ["A0400", "B0001"], undefined, true);
     });
   });
 
@@ -622,11 +613,12 @@ describe("用户管理接口测试", () => {
         roleIds: existingRoleIds,
       });
 
-      await expectBizErrorOrUndefined(UserAPI.update(nonExistentUserId, form), [
-        "A0401",
-        "B0001",
-        "A0400",
-      ]);
+      await expectBizError(
+        UserAPI.update(nonExistentUserId, form),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
     });
 
     test("参数校验：用户名冲突", async () => {
@@ -636,11 +628,12 @@ describe("用户管理接口测试", () => {
         nickname: beforeUpdate.nickname || originalUser.nickname,
         roleIds: beforeUpdate.roleIds ?? existingRoleIds,
       });
-      await expectBizErrorOrUndefined(UserAPI.update(testUserId, form), [
-        "A0501",
-        "B0001",
-        "A0400",
-      ]);
+      await expectBizError(
+        UserAPI.update(testUserId, form),
+        ["A0501", "B0001", "A0400"],
+        undefined,
+        true
+      );
 
       // 验证用户名未被修改
       const formData = await UserAPI.getFormData(testUserId);
@@ -693,22 +686,24 @@ describe("用户管理接口测试", () => {
 
     test("参数校验：空密码应被拒绝", async () => {
       const emptyPassword = "";
-      await expectBizErrorOrUndefined(UserAPI.updatePassword(testUserId, emptyPassword), [
-        "A0410",
-        "A0400",
-        "B0001",
-      ]);
+      await expectBizError(
+        UserAPI.updatePassword(testUserId, emptyPassword),
+        ["A0410", "A0400", "B0001"],
+        undefined,
+        true
+      );
     });
 
     test("修改不存在用户的密码", async () => {
       const nonExistentUserId = 99999999;
       const newPassword = "newpassword123";
 
-      await expectBizErrorOrUndefined(UserAPI.updatePassword(nonExistentUserId, newPassword), [
-        "A0401",
-        "B0001",
-        "A0400",
-      ]);
+      await expectBizError(
+        UserAPI.updatePassword(nonExistentUserId, newPassword),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -802,7 +797,7 @@ describe("用户管理接口测试", () => {
 
     test("参数校验：空的ID列表", async () => {
       const emptyIds = "";
-      await expectBizErrorOrUndefined(UserAPI.deleteByIds(emptyIds), ["B0001", "A0400"]);
+      await expectBizError(UserAPI.deleteByIds(emptyIds), ["B0001", "A0400"], undefined, true);
     });
   });
 

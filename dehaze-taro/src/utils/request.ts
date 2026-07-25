@@ -1,8 +1,7 @@
 import Taro from "@tarojs/taro";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import {
-  configJavaAxios,
-  configPythonAxios,
+  configAxios,
   ResponseData,
   ResultEnum,
 } from "dehaze-sdk-js";
@@ -98,7 +97,7 @@ function onResponseError(error: AxiosError): void {
 }
 
 export default function configRequest(): void {
-  configJavaAxios({
+  configAxios({
     onRequest: (config: InternalAxiosRequestConfig) => {
       const sessionId = storage.getSessionId();
       if (sessionId) {
@@ -108,21 +107,6 @@ export default function configRequest(): void {
       return {
         ...config,
         baseURL: apiConfig.java,
-      };
-    },
-    onResponseError,
-  });
-
-  configPythonAxios({
-    onRequest: (config: InternalAxiosRequestConfig) => {
-      const sessionId = storage.getSessionId();
-      if (sessionId) {
-        if (!config.headers) config.headers = {} as any;
-        config.headers["X-Session-Id"] = sessionId;
-      }
-      return {
-        ...config,
-        baseURL: apiConfig.python,
       };
     },
     onResponseError,

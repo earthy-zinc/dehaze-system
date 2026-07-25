@@ -1015,4 +1015,10 @@ insert into sys_algorithm (id, parent_id, type, name, img, path, size, params, f
 values (117, 111, '图像去雾', 'NH-HAZE-23', null, 'WPXNet/nh-haze-23.pth', '151.75 MB', '36.99 MB', '211.24 GB',
         'algorithm.WPXNet.run', '用于浓雾数据集的权重模型', 3, '2024-11-28 14:05:23', '2024-12-03 21:23:26', 2, 2);
 
+-- ----------------------------
+-- Records of sys_api_key
+-- ----------------------------
+insert into sys_api_key (user_id, name, key_prefix, key_hash, status, expires_at, create_time, create_by)
+values (2, 'M2M服务间调用', 'dhak_m2m', 'ee3b5be0ae739e8a7e09883575d3742e4d19042fce82f8a48aae7f76116c8463', 1, null, now(), 2);
+
 SET FOREIGN_KEY_CHECKS = 1;

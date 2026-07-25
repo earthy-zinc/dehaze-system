@@ -36,9 +36,3 @@ export async function expectBizError(
     return codeMatch && msgMatch;
   });
 }
-
-export const expectBizErrorOrUndefined = (
-  promise: Promise<any>,
-  expectedCodes: string[],
-  msgContains?: string | string[]
-) => expectBizError(promise, expectedCodes, msgContains, true);

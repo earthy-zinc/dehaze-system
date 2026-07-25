@@ -202,6 +202,7 @@ algorithm:
   serviceUrl: "http://127.0.0.1:8991" # Python 算法服务地址
   timeout: 60 # 请求超时（秒）
   connectTimeout: 5 # 连接超时（秒）
+  apiKey: "dhak_m2m_ee3b5be0ae739e8a7e09883575d3742e4d19042fce82f8a48aae7f76116c8463" # 服务间调用 API Key（M2M 认证）
   # 重试配置（指数退避）
   maxRetry: 3 # 最大重试次数（0 表示不重试）
   retryBackoffMs: 1000 # 重试初始退避（毫秒），指数增长

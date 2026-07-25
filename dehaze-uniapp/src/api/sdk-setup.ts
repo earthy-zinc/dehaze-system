@@ -1,33 +1,17 @@
-import {
-  configJavaAxios,
-  configPythonAxios,
-  javaService,
-  pythonService,
-  SESSION_KEY,
-} from "dehaze-sdk-js";
+import { configAxios, service, SESSION_KEY } from "dehaze-sdk-js";
 import type { AxiosError, InternalAxiosRequestConfig } from "dehaze-sdk-js";
 import { createUniRequestAdapter } from "./uni-adapter";
 import { USER_INFO_KEY } from "./config";
 
-const JAVA_HOST = "http://127.0.0.1:8989";
-const PYTHON_HOST = "http://127.0.0.1:8991";
+const API_HOST = "http://127.0.0.1:8989";
 const REQUEST_TIMEOUT = 30000;
 
-function getJavaBaseURL(): string {
+function getBaseURL(): string {
   // #ifdef H5
   return "";
   // #endif
   // #ifndef H5
-  return JAVA_HOST;
-  // #endif
-}
-
-function getPythonBaseURL(): string {
-  // #ifdef H5
-  return "";
-  // #endif
-  // #ifndef H5
-  return PYTHON_HOST;
+  return API_HOST;
   // #endif
 }
 
@@ -62,10 +46,9 @@ function handleResponseError(error: unknown): unknown {
 }
 
 const uniAdapter = createUniRequestAdapter();
-javaService.defaults.adapter = uniAdapter;
-pythonService.defaults.adapter = uniAdapter;
+service.defaults.adapter = uniAdapter;
 
-configJavaAxios({
+configAxios({
   onRequest: (config: InternalAxiosRequestConfig) => {
     const sessionId = uni.getStorageSync(SESSION_KEY) || null;
     if (sessionId) {
@@ -74,23 +57,7 @@ configJavaAxios({
     }
     return {
       ...config,
-      baseURL: getJavaBaseURL(),
-      timeout: config.timeout || REQUEST_TIMEOUT,
-    };
-  },
-  onResponseError: handleResponseError,
-});
-
-configPythonAxios({
-  onRequest: (config: InternalAxiosRequestConfig) => {
-    const sessionId = uni.getStorageSync(SESSION_KEY) || null;
-    if (sessionId) {
-      if (!config.headers) config.headers = {} as any;
-      config.headers["X-Session-Id"] = sessionId;
-    }
-    return {
-      ...config,
-      baseURL: getPythonBaseURL(),
+      baseURL: getBaseURL(),
       timeout: config.timeout || REQUEST_TIMEOUT,
     };
   },

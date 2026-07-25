@@ -8,7 +8,7 @@ import type {
 } from "axios";
 import axios from "axios";
 
-const service = axios.create({
+export const service = axios.create({
   baseURL: "",
   timeout: 30000,
   withCredentials: true,
@@ -33,7 +33,6 @@ service.interceptors.response.use(
   async (response: AxiosResponse) => {
     const interceptors = configManager.getInterceptors();
 
-    // 处理二进制响应类型（如文件下载、导出等）
     if (response.config.responseType === "arraybuffer" || response.config.responseType === "blob") {
       const result = (await interceptors.onResponse?.(response)) || response.data;
       return result;
@@ -41,7 +40,6 @@ service.interceptors.response.use(
 
     const { code, data } = response.data;
     if (code !== ResultEnum.SUCCESS) {
-      // 构造模拟 AxiosError，让 onResponseError 能访问 response.data
       const error = new Error(response.data?.msg || "Business error") as AxiosError;
       error.response = response;
       error.config = response.config;
@@ -59,11 +57,6 @@ service.interceptors.response.use(
   }
 );
 
-// 封装请求函数，正确处理泛型类型
-// 响应拦截器已经返回 response.data.data，所以这里直接返回 R 类型
-function request<T = any, R = any>(config: AxiosRequestConfig): Promise<R> {
+export default function <T = any, R = any>(config: AxiosRequestConfig): Promise<R> {
   return service.request(config) as Promise<R>;
 }
-
-export const javaService = service;
-export default request;

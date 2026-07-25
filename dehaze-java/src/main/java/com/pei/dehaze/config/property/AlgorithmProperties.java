@@ -44,4 +44,7 @@ public class AlgorithmProperties {
 
     /** 评估端点路径 */
     private String evaluatePath = "/api/v1/evaluation";
+
+    /** 服务间调用 API Key（M2M 认证） */
+    private String apiKey;
 }

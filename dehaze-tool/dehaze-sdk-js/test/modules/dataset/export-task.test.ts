@@ -1,5 +1,4 @@
 import { DatasetAPI, DatasetItemAPI, TaskAPI } from "../../../index";
-import { login, logout } from "#/utils/auth";
 import { createDatasetForm, createDatasetItemForm } from "#/factories/dataset";
 
 describe("导出任务接口测试", () => {
@@ -7,7 +6,6 @@ describe("导出任务接口测试", () => {
   let testItemIds: number[] = [];
 
   beforeAll(async () => {
-    await login();
 
     // 创建测试数据集
     const datasetForm = createDatasetForm({ type: "图像去雾" });
@@ -31,7 +29,6 @@ describe("导出任务接口测试", () => {
     } catch (e) {
       // 忽略
     }
-    await logout();
   });
 
   describe("POST /api/v1/tasks - 创建数据集导出任务（dataset_export）", () => {

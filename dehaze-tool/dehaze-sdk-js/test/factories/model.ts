@@ -1,9 +1,11 @@
 import { PredictionForm, EvaluationForm } from "../../index";
 
+const DATASET_BASE_URL = "http://127.0.0.1:9000";
+
 export function createPredictionForm(overrides: Partial<PredictionForm> = {}): PredictionForm {
   return {
     algorithmId: 1,
-    imageUrl: "/api/v1/files/download/test_haze_image.jpg",
+    imageUrl: `${DATASET_BASE_URL}/NH-HAZE-2023/hazy/001.JPG`,
     ...overrides,
   };
 }
@@ -11,8 +13,8 @@ export function createPredictionForm(overrides: Partial<PredictionForm> = {}): P
 export function createEvaluationForm(overrides: Partial<EvaluationForm> = {}): EvaluationForm {
   return {
     algorithmId: 1,
-    predUrl: "/api/v1/files/download/test_pred.jpg",
-    gtUrl: "/api/v1/files/download/test_gt.jpg",
+    predUrl: `${DATASET_BASE_URL}/NH-HAZE-2023/hazy/001.JPG`,
+    gtUrl: `${DATASET_BASE_URL}/NH-HAZE-2023/clean/001.JPG`,
     ...overrides,
   };
 }

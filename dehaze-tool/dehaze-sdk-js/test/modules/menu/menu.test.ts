@@ -1,6 +1,5 @@
 import { MenuAPI, MenuVO } from "../../../index";
-import { login, logout } from "#/utils/auth";
-import { expectBizError, expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError } from "#/utils/assertion";
 import { createMenuForm, createMenuQuery } from "#/factories/menu";
 import { MenuTypeEnum } from "@/enums/MenuTypeEnum";
 
@@ -33,13 +32,7 @@ function findMenuById(menus: MenuVO[], id: number): MenuVO | null {
 }
 
 describe("菜单管理接口测试", () => {
-  const createdMenuIds: number[] = [];
-
-  beforeAll(async () => {
-    await login();
-  });
-
-  afterAll(async () => {
+  const createdMenuIds: number[] = [];  afterAll(async () => {
     // 清理测试创建的菜单（从后往前删除，先删子菜单）
     for (const menuId of createdMenuIds.reverse()) {
       try {
@@ -49,7 +42,6 @@ describe("菜单管理接口测试", () => {
       }
     }
 
-    await logout();
   });
 
   describe("GET /api/v1/menus/routes - 获取路由列表", () => {
@@ -299,7 +291,12 @@ describe("菜单管理接口测试", () => {
         type: MenuTypeEnum.CATALOG,
       };
 
-      await expectBizErrorOrUndefined(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizError(
+        MenuAPI.add(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("参数校验：缺少必需字段 type 应抛出业务错误", async () => {
@@ -308,7 +305,12 @@ describe("菜单管理接口测试", () => {
         name: "测试菜单",
       };
 
-      await expectBizErrorOrUndefined(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizError(
+        MenuAPI.add(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -399,7 +401,12 @@ describe("菜单管理接口测试", () => {
 
     test("超长菜单名称应被拒绝", async () => {
       const form = createMenuForm({ name: "x".repeat(500), parentId: 0 });
-      await expectBizErrorOrUndefined(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizError(
+        MenuAPI.add(form),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("特殊字符菜单名称不应污染存储", async () => {

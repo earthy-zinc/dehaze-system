@@ -227,6 +227,11 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         log.debug("清除所有数据集缓存");
     }
 
+    @CacheEvict(value = {"dataset:all", "dataset:options", "dataset:page", "dataset:children", "dataset:detail"}, allEntries = true)
+    public void evictDatasetMetadataCache() {
+        log.debug("清除数据集元数据缓存（保留统计缓存）");
+    }
+
     @Override
     public IPage<DatasetVO> listPagedDatasets(DatasetQuery queryParams) {
         int pageNum = queryParams.getPageNum();
@@ -281,7 +286,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             hasChildrenMap.put(child.getId(), grandParentIds.contains(child.getId()));
         }
 
-        Map<Long, DatasetStatistics> statsMap = getAllDatasetStats();
+        Map<Long, DatasetStatistics> statsMap = self.getAllDatasetStats();
 
         List<DatasetVO> records = rootDatasets.stream()
                 .map(entity -> {
@@ -332,7 +337,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                 .map(SysDataset::getParentId)
                 .collect(Collectors.toSet());
 
-        Map<Long, DatasetStatistics> statsMap = getAllDatasetStats();
+        Map<Long, DatasetStatistics> statsMap = self.getAllDatasetStats();
 
         return children.stream()
                 .map(entity -> {
@@ -359,8 +364,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         SysDataset sysDataset = datasetConverter.form2Entity(dataset);
         if (this.save(sysDataset)) {
             self.evictAllDatasetsCache();
-            DatasetStatistics stats = getAllDatasetStats().get(sysDataset.getId());
-            return datasetConverter.entity2Vo(sysDataset, stats);
+            return datasetConverter.entity2Vo(sysDataset, createEmptyStats());
         } else {
             throw new BusinessException("新增数据集失败");
         }
@@ -391,8 +395,8 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         sysDataset.setId(id);
 
         if (this.updateById(sysDataset)) {
-            self.evictAllDatasetsCache();
-            DatasetStatistics stats = getAllDatasetStats().get(id);
+            self.evictDatasetMetadataCache();
+            DatasetStatistics stats = self.getAllDatasetStats().get(id);
             return datasetConverter.entity2Vo(sysDataset, stats);
         } else {
             throw new BusinessException("更新数据集失败");
@@ -546,13 +550,13 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             return null;
         }
 
-        DatasetStatistics stats = getAllDatasetStats().get(id);
+        DatasetStatistics stats = self.getAllDatasetStats().get(id);
         return datasetConverter.entity2Vo(dataset, stats);
     }
 
     @Override
     public DatasetStatistics calculateStatistics(Long datasetId) {
-        return getAllDatasetStats().getOrDefault(datasetId, createEmptyStats());
+        return self.getAllDatasetStats().getOrDefault(datasetId, createEmptyStats());
     }
 
     @Override

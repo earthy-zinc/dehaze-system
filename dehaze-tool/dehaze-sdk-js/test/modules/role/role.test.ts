@@ -1,18 +1,11 @@
 import { RoleAPI, RoleForm, RoleQuery } from "../../../index";
-import { login, logout } from "#/utils/auth";
-import { expectBizError, expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError } from "#/utils/assertion";
 import { createRoleForm, createRoleQuery } from "#/factories/role";
 import { ROLES } from "#/factories/constants";
 
 describe("角色管理接口测试", () => {
   // 统一管理创建的角色ID，用于清理
-  const createdRoleIds: number[] = [];
-
-  beforeAll(async () => {
-    await login();
-  });
-
-  afterAll(async () => {
+  const createdRoleIds: number[] = [];  afterAll(async () => {
     for (const roleId of createdRoleIds) {
       try {
         await RoleAPI.deleteByIds(roleId.toString());
@@ -20,7 +13,6 @@ describe("角色管理接口测试", () => {
         // 忽略删除错误
       }
     }
-    await logout();
   });
 
   describe("GET /api/v1/roles/page - 角色分页列表", () => {
@@ -306,7 +298,7 @@ describe("角色管理接口测试", () => {
         status: 1,
       };
 
-      await expectBizErrorOrUndefined(RoleAPI.add(form as RoleForm), ["A0400", "B0001"]);
+      await expectBizError(RoleAPI.add(form as RoleForm), ["A0400", "B0001"], undefined, true);
     });
 
     test("参数校验：缺少必需字段 name", async () => {
@@ -315,7 +307,7 @@ describe("角色管理接口测试", () => {
         status: 1,
       };
 
-      await expectBizErrorOrUndefined(RoleAPI.add(form as RoleForm), ["A0400", "B0001"]);
+      await expectBizError(RoleAPI.add(form as RoleForm), ["A0400", "B0001"], undefined, true);
     });
 
     test("参数校验：角色编码已存在", async () => {
@@ -457,10 +449,12 @@ describe("角色管理接口测试", () => {
         name: "测试",
       };
 
-      await expectBizErrorOrUndefined(RoleAPI.update(99999999, form as RoleForm), [
-        "A0400",
-        "B0001",
-      ]);
+      await expectBizError(
+        RoleAPI.update(99999999, form as RoleForm),
+        ["A0400", "B0001"],
+        undefined,
+        true
+      );
     });
 
     test("参数校验：角色编码冲突", async () => {
@@ -471,11 +465,12 @@ describe("角色管理接口测试", () => {
         dataScope: originalRole.dataScope || 1,
       };
 
-      await expectBizErrorOrUndefined(RoleAPI.update(testRoleId, form as RoleForm), [
-        "A0503",
-        "B0001",
-        "A0400",
-      ]);
+      await expectBizError(
+        RoleAPI.update(testRoleId, form as RoleForm),
+        ["A0503", "B0001", "A0400"],
+        undefined,
+        true
+      );
 
       // 验证未被修改
       const formData = await RoleAPI.getFormData(testRoleId);
@@ -529,10 +524,7 @@ describe("角色管理接口测试", () => {
     });
 
     test("参数校验：空的ID列表", async () => {
-      await expectBizErrorOrUndefined(RoleAPI.deleteByIds(""), [
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(RoleAPI.deleteByIds(""), ["B0001", "ERR_BAD_REQUEST"], undefined, true);
     });
 
     test("完整 CRUD 生命周期：创建→读→更新→读→删除→验证不存在", async () => {

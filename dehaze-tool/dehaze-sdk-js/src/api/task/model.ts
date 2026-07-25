@@ -3,21 +3,12 @@ import { PageQuery } from "@/types";
 /**
  * 任务类型
  */
-export type TaskType =
-  | "dataset_export"
-  | "item_download"
-  | "batch_download"
-  | "custom_export";
+export type TaskType = "dataset_export" | "item_download" | "batch_download" | "custom_export";
 
 /**
  * 任务状态
  */
-export type TaskStatus =
-  | "PENDING"
-  | "PROCESSING"
-  | "COMPLETED"
-  | "FAILED"
-  | "CANCELLED";
+export type TaskStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
 
 /**
  * 任务创建表单

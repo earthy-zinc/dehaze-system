@@ -48,6 +48,8 @@ public interface SysDatasetService extends IService<SysDataset> {
 
     void evictAllDatasetsCache();
 
+    void evictDatasetMetadataCache();
+
     DatasetStatistics calculateStatistics(Long datasetId);
 
     List<SysDataset> getAllDatasets();

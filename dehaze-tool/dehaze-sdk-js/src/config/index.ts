@@ -21,12 +21,7 @@ class ConfigManager {
 }
 
 export const configManager = new ConfigManager();
-export const pythonConfigManager = new ConfigManager();
 
-export const configJavaAxios = (callback: InterceptorCallbacks) => {
+export const configAxios = (callback: InterceptorCallbacks) => {
   configManager.setInterceptors(callback);
-};
-
-export const configPythonAxios = (callback: InterceptorCallbacks) => {
-  pythonConfigManager.setInterceptors(callback);
 };

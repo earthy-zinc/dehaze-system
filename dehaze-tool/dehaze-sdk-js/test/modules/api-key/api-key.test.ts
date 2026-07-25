@@ -1,7 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
-import { ApiKeyAPI, javaService } from "../../../index";
+import { ApiKeyAPI, service } from "../../../index";
 import type { ApiKeyVO } from "@/api/api-key/model";
-import { login, logout } from "#/utils/auth";
 import { createApiKeyForm } from "#/factories/api-key";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 
@@ -9,13 +8,8 @@ describe("API密钥管理", () => {
   const cleanup = new TestCleanupRegistry();
   let createdKey: ApiKeyVO;
 
-  beforeAll(async () => {
-    await login();
-  });
-
   afterAll(async () => {
     await cleanup.executeAll();
-    await logout();
   });
 
   describe("创建API密钥", () => {
@@ -69,7 +63,7 @@ describe("API密钥管理", () => {
 
   describe("使用API密钥鉴权", () => {
     test("使用API密钥访问受保护接口应成功", async () => {
-      const response = await javaService.get("/api/v1/auth/me", {
+      const response = await service.get("/api/v1/auth/me", {
         headers: { Authorization: `Bearer ${createdKey.apiKey}` },
       });
 
@@ -80,7 +74,7 @@ describe("API密钥管理", () => {
 
     test("使用无效API密钥应返回401", async () => {
       await expect(
-        javaService.get("/api/v1/auth/me", {
+        service.get("/api/v1/auth/me", {
           headers: { Authorization: "Bearer dhak_invalidkey123456789012345678901234567890" },
         })
       ).rejects.toSatisfy((error: any) => {
@@ -102,7 +96,7 @@ describe("API密钥管理", () => {
       expect(found).toBeUndefined();
 
       await expect(
-        javaService.get("/api/v1/auth/me", {
+        service.get("/api/v1/auth/me", {
           headers: { Authorization: `Bearer ${keyToDelete.apiKey}` },
         })
       ).rejects.toSatisfy((error: any) => {
