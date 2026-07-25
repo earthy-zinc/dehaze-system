@@ -57,27 +57,11 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       // 运行是否自动打开浏览器
       open: false,
       proxy: {
-        /** 代理前缀为 /java-api 的请求  */
-        [env.VITE_JAVA_BASE_API]: {
+        /** 代理前缀为 /api 的请求  */
+        [env.VITE_BASE_API]: {
           changeOrigin: true,
           // 接口地址
-          target: env.VITE_JAVA_API_URL,
-          rewrite: (path) =>
-            path.replace(new RegExp("^" + env.VITE_JAVA_BASE_API), ""),
-        },
-        /** 代理前缀为 /py-api 的请求  */
-        [env.VITE_PYTHON_BASE_API]: {
-          changeOrigin: true,
-          target: env.VITE_PYTHON_API_URL,
-          rewrite: (path) =>
-            path.replace(new RegExp("^" + env.VITE_PYTHON_BASE_API), ""),
-        },
-        /** 代理前缀为 /dataset-api 的请求（nginx-dataset 静态数据集文件） */
-        [env.VITE_DATASET_BASE_API]: {
-          changeOrigin: true,
-          target: env.VITE_DATASET_API_URL,
-          rewrite: (path) =>
-            path.replace(new RegExp("^" + env.VITE_DATASET_BASE_API), ""),
+          target: env.VITE_API_URL,
         },
       },
     },

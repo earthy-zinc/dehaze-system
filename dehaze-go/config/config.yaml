@@ -119,6 +119,11 @@ jwt:
   ttl: 7200
   refresh-token-ttl: 604800 # RefreshToken 过期时间（秒），7天
 
+session:
+  cookie:
+    secure: false # 开发环境 HTTP，Secure 必须为 false 否则浏览器丢弃 Cookie
+    path: / # 开发环境 Vite 代理前缀为 /java-api，Path=/api 无法匹配，需用 /
+
 db:
   driver: mysql
   type: mysql

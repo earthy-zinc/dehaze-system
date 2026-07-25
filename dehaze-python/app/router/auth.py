@@ -28,13 +28,13 @@ LOCKOUT_DURATION = 900
 def _set_session_cookie(response: Response, session_id: str, remember_me: bool):
     max_age = SESSION_TTL if remember_me else None
     response.set_cookie(
-        SESSION_COOKIE, session_id, max_age=max_age, path="/api",
-        httponly=True, secure=True, samesite="lax",
+        SESSION_COOKIE, session_id, max_age=max_age, path=settings.SESSION_COOKIE_PATH,
+        httponly=True, secure=settings.SESSION_COOKIE_SECURE, samesite="lax",
     )
 
 
 def _clear_session_cookie(response: Response):
-    response.delete_cookie(SESSION_COOKIE, path="/api")
+    response.delete_cookie(SESSION_COOKIE, path=settings.SESSION_COOKIE_PATH)
 
 
 @router.post(

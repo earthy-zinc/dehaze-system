@@ -59,6 +59,11 @@ jwt:
   key: SecretKey012345678901234567890123456789012345678901234567890123456789
   ttl: 7200
 
+session:
+  cookie:
+    secure: false
+    path: /
+
 
 cache:
   # 缓存类型：redis/local/multi

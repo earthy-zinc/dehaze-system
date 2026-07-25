@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,12 @@ public class AuthController {
 
     private final AuthService authService;
     private final SysUserService userService;
+
+    @Value("${security.session.cookie.secure:true}")
+    private boolean cookieSecure;
+
+    @Value("${security.session.cookie.path:/api}")
+    private String cookiePath;
 
     private static final long SESSION_MAX_AGE = 604800L;
 
@@ -76,9 +83,9 @@ public class AuthController {
         long maxAge = rememberMe ? SESSION_MAX_AGE : -1;
         ResponseCookie cookie = ResponseCookie.from(SecurityConstants.SESSION_COOKIE_NAME, sessionId)
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .sameSite("Lax")
-                .path("/api")
+                .path(cookiePath)
                 .maxAge(maxAge)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
@@ -87,9 +94,9 @@ public class AuthController {
     private void clearSessionCookie(HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from(SecurityConstants.SESSION_COOKIE_NAME, "")
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .sameSite("Lax")
-                .path("/api")
+                .path(cookiePath)
                 .maxAge(0)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());

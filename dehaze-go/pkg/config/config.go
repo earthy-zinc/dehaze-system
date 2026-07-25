@@ -18,6 +18,7 @@ type AppConfig struct {
 	RabbitMQ  options.RabbitMQ  `mapstructure:"rabbitmq" json:"rabbitmq" yaml:"rabbitmq"`
 	Kafka     options.Kafka     `mapstructure:"kafka" json:"kafka" yaml:"kafka"`
 	Cors      options.CORS      `mapstructure:"cors" json:"cors" yaml:"cors"`
+	Session   options.Session   `mapstructure:"session" json:"session" yaml:"session"`
 }
 
 var (

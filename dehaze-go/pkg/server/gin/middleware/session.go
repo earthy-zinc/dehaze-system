@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
+	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"go.uber.org/zap"
@@ -111,30 +112,44 @@ func extractSessionID(c *gin.Context) string {
 	return ExtractSessionID(c)
 }
 
+func getCookieConfig() (secure bool, path string) {
+	secure = true
+	path = "/api"
+	if config.Config != nil {
+		if config.Config.Session.Cookie.Path != "" {
+			path = config.Config.Session.Cookie.Path
+		}
+		secure = config.Config.Session.Cookie.Secure
+	}
+	return secure, path
+}
+
 func SetSessionCookie(c *gin.Context, sessionID string, rememberMe bool) {
 	maxAge := -1
 	if rememberMe {
 		maxAge = int(SessionTTL.Seconds())
 	}
+	secure, path := getCookieConfig()
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     SessionCookieName,
 		Value:    sessionID,
 		MaxAge:   maxAge,
-		Path:     "/api",
+		Path:     path,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	})
 }
 
 func ClearSessionCookie(c *gin.Context) {
+	secure, path := getCookieConfig()
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     SessionCookieName,
 		Value:    "",
 		MaxAge:   0,
-		Path:     "/api",
+		Path:     path,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	})
 }

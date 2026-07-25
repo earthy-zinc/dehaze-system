@@ -74,6 +74,12 @@ security:
     key: ${JWT_SECRET_KEY}
     ttl: 7200
     refresh-ttl: 604800
+  session:
+    cookie:
+      # 生产环境 HTTPS，启用 Secure 防止 Cookie 在明文传输中泄露
+      secure: true
+      # 生产环境无代理前缀，Path=/api 限制 Cookie 仅在 API 路径携带
+      path: /api
 
 
 # 监控配置 (生产环境仅暴露必要端点)

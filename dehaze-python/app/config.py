@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     CAPTCHA_NOISE_LINES: int = 5
     CAPTCHA_EXPIRES: int = 300
 
+    # Session Cookie 配置（与 Java/Go 保持一致）
+    SESSION_COOKIE_SECURE: bool = True
+    SESSION_COOKIE_PATH: str = "/api"
+
     # 共享密码（从 .env 加载）
     DEHAZE_PASSWORD: str = Field(default="")
 
@@ -264,6 +268,10 @@ class DevelopmentSettings(Settings):
     # Redis 配置
     REDIS_HOST: str = "127.0.0.1"
     REDIS_DB: int = 0
+
+    # Session Cookie：开发环境 HTTP + Vite 代理前缀 /py-api，需关闭 Secure 并用 /
+    SESSION_COOKIE_SECURE: bool = False
+    SESSION_COOKIE_PATH: str = "/"
 
     # 文件访问基础 URL（与 Java 端 file.baseUrl 一致，统一使用 127.0.0.1 避免 localhost DNS 解析开销）
     FILE_BASE_URL: str = "http://127.0.0.1:8989/api/v1/files/download"

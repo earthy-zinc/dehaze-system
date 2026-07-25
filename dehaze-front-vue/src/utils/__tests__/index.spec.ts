@@ -42,7 +42,7 @@ Object.defineProperty(window, "IntersectionObserverEntry", {
 
 // Mock environment variables
 const mockEnv = {
-  VITE_JAVA_BASE_API: "/api",
+  VITE_BASE_API: "/api",
 };
 
 // Mock import.meta.env

@@ -110,6 +110,12 @@ security:
     key: ${JWT_SECRET_KEY:SecretKey012345678901234567890123456789012345678901234567890123456789}
     ttl: 7200
     refresh-ttl: 604800
+  session:
+    cookie:
+      # 开发环境使用 HTTP，Secure 必须为 false 否则浏览器会丢弃 Cookie
+      secure: false
+      # 开发环境 Vite 代理前缀为 /java-api，Path=/api 无法匹配，需用 /
+      path: /
 
 # 监控配置 (开发环境适度开放，禁止暴露 heapdump/env/configprops 等高危端点)
 management:

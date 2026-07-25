@@ -23,7 +23,7 @@ export default function configRequest() {
     onRequest: (config: InternalAxiosRequestConfig) => {
       return {
         ...config,
-        baseURL: import.meta.env.VITE_JAVA_BASE_API,
+        baseURL: import.meta.env.VITE_BASE_API,
       };
     },
     onResponseError: createOnResponseError(),
