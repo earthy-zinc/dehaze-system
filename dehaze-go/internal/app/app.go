@@ -141,7 +141,7 @@ func (a *Application) Init() error {
 
 	// services
 	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo)
-	authService := authservice.NewAuthService(cacheClient, userService)
+	authService := authservice.NewAuthService(cacheClient, userService, gormDB)
 	algorithmService := algoservice.NewAlgorithmService(algorithmRepo, predLogRepo)
 	menuService := menuservice.NewMenuService(cacheClient, menuRepo)
 	roleService := roleservice.NewRoleService(cacheClient, roleRepo, menuRepo)

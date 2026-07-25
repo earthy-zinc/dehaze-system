@@ -21,6 +21,8 @@ import (
 	"github.com/mojocn/base64Captcha"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 )
@@ -28,12 +30,14 @@ import (
 type AuthService struct {
 	cacheClient types.ICache
 	userService userservice.IUserService
+	db          *gorm.DB
 }
 
-func NewAuthService(cacheClient types.ICache, userService userservice.IUserService) IAuthService {
+func NewAuthService(cacheClient types.ICache, userService userservice.IUserService, db *gorm.DB) IAuthService {
 	return &AuthService{
 		cacheClient: cacheClient,
 		userService: userService,
+		db:          db,
 	}
 }
 
@@ -114,6 +118,87 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP 
 		SessionID: sessionID,
 		User: &dto.LoginUser{
 			ID:       user.UserId,
+			Username: user.Username,
+			Nickname: user.Nickname,
+		},
+	}, nil
+}
+
+func (s *AuthService) Register(ctx context.Context, req *bo.RegisterRequest, clientIP string) (*dto.LoginResult, error) {
+	if req == nil {
+		return nil, common.NewBizError(common.PARAM_ERROR, "注册请求不能为空")
+	}
+
+	username := strings.ToLower(strings.TrimSpace(req.Username))
+	nickname := strings.TrimSpace(req.Nickname)
+
+	if !s.VerifyCaptcha(ctx, req.CaptchaKey, req.CaptchaCode) {
+		return nil, common.NewBizError(common.VERIFY_CODE_ERROR, "验证码错误")
+	}
+
+	var existingCount int64
+	if err := s.db.WithContext(ctx).Model(&model.SysUser{}).
+		Where("username = ? AND deleted = 0", username).Count(&existingCount).Error; err != nil {
+		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "检查用户名失败", err)
+	}
+	if existingCount > 0 {
+		return nil, common.NewBizError(common.DATA_EXISTS, "用户名已被注册")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "密码加密失败", err)
+	}
+
+	user := &model.SysUser{
+		Username: username,
+		Nickname: nickname,
+		Password: string(hashedPassword),
+		Gender:   1,
+		Status:   1,
+		Deleted:  0,
+	}
+	if err := s.db.WithContext(ctx).Create(user).Error; err != nil {
+		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "创建用户失败", err)
+	}
+
+	var guestRole model.SysRole
+	if err := s.db.WithContext(ctx).
+		Where("code = ? AND status = 1 AND deleted = 0", "GUEST").
+		First(&guestRole).Error; err == nil {
+		userRole := &model.SysUserRole{UserID: user.ID, RoleID: guestRole.ID}
+		s.db.WithContext(ctx).Create(userRole)
+	}
+
+	s.resetLoginFailCount(ctx, clientIP, username)
+
+	sessionID := uuid.New().String()
+	authorities := []string{"ROLE_GUEST"}
+
+	sessionData := middleware.SessionData{
+		UserID:      user.ID,
+		Username:    user.Username,
+		Nickname:    user.Nickname,
+		DeptID:      0,
+		DataScope:   guestRole.DataScope,
+		Authorities: authorities,
+	}
+
+	sessionJSON, err := json.Marshal(sessionData)
+	if err != nil {
+		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "创建Session失败", err)
+	}
+
+	if err := s.cacheClient.Set(ctx, common.SessionPrefix+sessionID, string(sessionJSON), middleware.SessionTTL); err != nil {
+		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "创建Session失败", err)
+	}
+
+	logger.Info("用户注册成功", zap.String("username", username))
+
+	return &dto.LoginResult{
+		SessionID: sessionID,
+		User: &dto.LoginUser{
+			ID:       user.ID,
 			Username: user.Username,
 			Nickname: user.Nickname,
 		},

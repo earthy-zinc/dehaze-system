@@ -40,7 +40,7 @@ func setupTest(t *testing.T) *testFixture {
 	t.Helper()
 	mockCache := mocks.NewMockICache(t)
 	mockUserService := mocks.NewMockIUserService(t)
-	svc := NewAuthService(mockCache, mockUserService).(*AuthService)
+	svc := NewAuthService(mockCache, mockUserService, nil).(*AuthService)
 	return &testFixture{
 		cache:       mockCache,
 		userService: mockUserService,

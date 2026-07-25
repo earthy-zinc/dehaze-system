@@ -56,6 +56,27 @@ func (a *AuthApi) Login(c *gin.Context) {
 	common.OkWithDetailed(result, common.SUCCESS.Msg, c)
 }
 
+func (a *AuthApi) Register(c *gin.Context) {
+	var req bo.RegisterRequest
+	if err := c.ShouldBind(&req); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	clientIP := c.ClientIP()
+	result, err := a.authService.Register(c.Request.Context(), &req, clientIP)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	if result != nil {
+		middleware.SetSessionCookie(c, result.SessionID, false)
+	}
+
+	common.OkWithDetailed(result, common.SUCCESS.Msg, c)
+}
+
 func (a *AuthApi) Logout(c *gin.Context) {
 	if err := a.authService.Logout(c); err != nil {
 		_ = c.Error(err)

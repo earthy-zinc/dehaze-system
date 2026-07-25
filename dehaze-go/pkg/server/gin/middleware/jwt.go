@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
@@ -10,8 +9,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
 )
-
-var ApiKeyAuth func(ctx context.Context, rawKey string) (*security.CustomClaims, error)
 
 // JWTAuth JWT 认证中间件
 func JWTAuth() gin.HandlerFunc {
@@ -59,4 +56,3 @@ func unauthorized(c *gin.Context) {
 	})
 	c.Abort()
 }
-

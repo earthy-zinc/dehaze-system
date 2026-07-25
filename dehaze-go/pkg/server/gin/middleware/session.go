@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -30,9 +31,14 @@ type SessionData struct {
 	Nickname    string   `json:"nickname"`
 }
 
+var ApiKeyAuth func(ctx context.Context, rawKey string) (*security.CustomClaims, error)
+
 func SessionAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.Request.Header.Get("Authorization")
+		if token != "" && strings.HasPrefix(token, "Bearer ") {
+			token = token[7:]
+		}
 		if token != "" && strings.HasPrefix(token, "dhak_") {
 			if ApiKeyAuth == nil {
 				unauthorized(c)

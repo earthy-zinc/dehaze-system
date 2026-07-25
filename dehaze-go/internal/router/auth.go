@@ -9,6 +9,7 @@ func RegisterNoAuthRoutes(rg *gin.RouterGroup, authApi *api.AuthApi) gin.IRoutes
 	authRouter := rg.Group("auth")
 	{
 		authRouter.POST("login", authApi.Login)
+		authRouter.POST("register", authApi.Register)
 		authRouter.GET("captcha", authApi.Captcha)
 	}
 	return authRouter
