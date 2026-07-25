@@ -404,8 +404,6 @@ DerivedData
 *.synctex.gz(busy)
 *.pdfsync
 
-# HarmonyOS (dehaze_harmory)
-.hvigor/
 
 # =============================================================================
 # 项目根目录特殊文件
@@ -459,8 +457,8 @@ dehaze_flutter/ios/Runner/Assets.xcassets/*/README.md
 # 2. 根目录直接存在的文件夹直接用 文件夹名/ 忽略
 # 3. 文件名（无路径前缀）在所有层级都生效
 # 4. 环境配置文件已忽略，生产环境请使用环境变量
-dehaze-tool/dehaze-sdk-js/test/resources
+dehaze-sdk-js/test/resources
 
 **/.torch_extensions
 
-dehaze-tool/dehaze-sdk-js/.session-cache.json
+dehaze-sdk-js/.session-cache.json

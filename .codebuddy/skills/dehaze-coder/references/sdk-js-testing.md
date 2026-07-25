@@ -1,6 +1,6 @@
 # dehaze-sdk-js API 测试编写规范
 
-适用于：`dehaze-tool/dehaze-sdk-js` 中的 Vitest API 集成测试
+适用于：`dehaze-sdk-js` 中的 Vitest API 集成测试
 
 ## 测试代码结构规范
 

@@ -6,7 +6,7 @@
         "./src/*"
       ],
       "dehaze-sdk-js": [
-        "../dehaze-tool/dehaze-sdk-js/dist/index.d.ts"
+        "../dehaze-sdk-js/dist/index.d.ts"
       ]
     }
   },

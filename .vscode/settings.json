@@ -162,12 +162,10 @@
     "**/dehaze-java-cloud",
     "**/dehaze-java-cloud-plus",
     "**/dehaze-android",
-    "**/dehaze_harmory",
     "**/dehaze-flutter",
     "**/dehaze-react-native",
     "**/dehaze-taro",
     "**/dehaze-uniapp",
-    "**/dehaze-tool/dehaze-sdk-harmony",
     "**/scripts",
     "**/config"
   ],

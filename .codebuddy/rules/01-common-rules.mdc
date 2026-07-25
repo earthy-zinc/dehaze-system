@@ -31,8 +31,8 @@ provider:
 
 对于一个功能的变更，如果涉及到API以及请求/响应参数增删改，需要同步检查和变更
 - dehaze-java、dehaze-python、dehaze-go 三个后端、以及单元测试
-- dehaze-tool/dehaze-sdk-js、dehaze-tool/dehaze-sdk-harmony、dehaze-android/sdk SDK层，以及SDK接口测试 dehaze-tool/dehaze-sdk-js/test
-- dehaze-front-react、dehaze-front-vue、dehaze_flutter、dehaze-react-native、dehaze-android、dehaze-uniapp、dehaze-taro、dehaze-harmory 使用到这个API的地方
+- dehaze-sdk-js、dehaze-android/sdk SDK层，以及SDK接口测试 dehaze-sdk-js/test
+- dehaze-front-react、dehaze-front-vue、dehaze_flutter、dehaze-react-native、dehaze-android、dehaze-uniapp、dehaze-taro使用到这个API的地方
 - dehaze-doc 相关文档
 
 - 其中后端逻辑的变更需要同步修改三个后端、以及单元测试，SDK接口测试

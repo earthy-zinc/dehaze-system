@@ -1,6 +1,6 @@
 packages:
   - 'dehaze-doc'
-  - 'dehaze-tool/dehaze-sdk-js'
+  - 'dehaze-sdk-js'
   - 'dehaze-uniapp'
   - 'dehaze-taro'
   - 'dehaze-front-vue'

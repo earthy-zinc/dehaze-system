@@ -64,7 +64,7 @@
 **执行时机:** 编写完每个测试用例后立即检查
 
 ```bash
-cd dehaze-tool/dehaze-sdk-js && pnpm run lint
+cd dehaze-sdk-js && pnpm run lint
 ```
 
 **重要说明:**

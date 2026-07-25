@@ -31,7 +31,7 @@ const config = {
   },
   watchFolders: [
     path.resolve(__dirname, 'src'),
-    path.resolve(__dirname, '../dehaze-tool/dehaze-sdk-js'),
+    path.resolve(__dirname, '../dehaze-sdk-js'),
   ],
 };
 

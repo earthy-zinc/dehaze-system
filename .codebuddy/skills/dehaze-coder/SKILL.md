@@ -2,9 +2,9 @@
 name: dehaze-coder
 description: >-
   dehaze-system 项目的统一编码与测试规范 skill。当用户需要为 dehaze-system 写组件、写接口、写 API、实现需求、生成代码、修改代码、添加功能、修复 bug、重构代码、编写测试，或涉及 dehaze-system 项目的任何代码编写、代码修改、功能实现、技术实现任务时触发此 skill。
-  适用于 dehaze-system monorepo 中所有子项目：dehaze-go、dehaze-python、dehaze-java*、dehaze-front-vue、dehaze-front-react、dehaze-tool/dehaze-sdk-js 等。
+  适用于 dehaze-system monorepo 中所有子项目：dehaze-go、dehaze-python、dehaze-java*、dehaze-front-vue、dehaze-front-react、dehaze-sdk-js 等。
   当用户提到"编码规范"、"测试规范"、"开发规范"、"编程规范"、"写代码"、"写接口"、"修 bug"、"重构"、"写测试"、"加功能"等关键词，且上下文涉及 dehaze-system 项目时，优先使用此 skill。
-  同时涵盖 dehaze-sdk-js 的 Vitest API 集成测试编写、运行与失败排查。当用户提到"dehaze-tool/dehaze-sdk-js"、"SDK-JS"、"vitest"、"API 接口测试"、"测试失败排查"等场景时也触发此 skill。
+  同时涵盖 dehaze-sdk-js 的 Vitest API 集成测试编写、运行与失败排查。当用户提到"dehaze-sdk-js"、"SDK-JS"、"vitest"、"API 接口测试"、"测试失败排查"等场景时也触发此 skill。
 ---
 
 # dehaze-coder：统一编码与测试规范
@@ -31,7 +31,7 @@ description: >-
 
 前端项目遵循通用框架最佳实践，无额外项目特定规范。项目架构和组件设计查阅 `dehaze-doc/docs/04-项目实现/前端/` 下对应文档。
 
-### dehaze-sdk-js（dehaze-tool/dehaze-sdk-js）
+### dehaze-sdk-js
 
 #### 环境与目录硬约束
 
@@ -53,8 +53,8 @@ description: >-
 
 **目录与职责边界：**
 
-- 用例文件：`dehaze-tool/dehaze-sdk-js/test/modules/**/**.test.ts`。
-- 工厂函数：`dehaze-tool/dehaze-sdk-js/test/factories/**`：
+- 用例文件：`dehaze-sdk-js/test/modules/**/**.test.ts`。
+- 工厂函数：`dehaze-sdk-js/test/factories/**`：
   - 固定常量：`test/factories/constants.ts`（如预置 `USERS/ROLES/DEPTS`、固定可见用户数等）。
   - 通用唯一数据生成：`test/factories/common.ts`（如 `uniqueEmail/uniqueMobile/uniqueName`）。
   - 业务表单/查询对象工厂：如 `test/factories/user.ts` 中的 `createUserForm/createUserQuery` 等。
