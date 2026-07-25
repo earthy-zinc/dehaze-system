@@ -229,12 +229,39 @@
 
                 </FrameLayout>
 
+                <!-- 记住我复选框 -->
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/rememberMeCheckBox"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:checked="true"
+                    android:text="记住我（7天内免登录）"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <!-- 立即注册链接 -->
+                <TextView
+                    android:id="@+id/registerLink"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_gravity="center"
+                    android:text="没有账号？立即注册"
+                    android:textColor="@color/brand_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:padding="8dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground" />
+
                 <!-- 账号密码提示 -->
                 <TextView
                     android:id="@+id/accountHint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="4dp"
                     android:text="请输入账号和密码登录"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"

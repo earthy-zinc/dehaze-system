@@ -1,10 +1,9 @@
 /**
- * 登录页
+ * 注册页
  *
- * 对接 dehaze-sdk-js AuthAPI：
- * - 登录（用户名 + 密码 + 图形验证码）
- * - 获取验证码图片
- * - 登录成功后由 AuthContext 跳转 Home
+ * 对接 dehaze-sdk-js AuthAPI.register：
+ * - 用户名 + 昵称 + 密码 + 确认密码 + 图形验证码
+ * - 注册成功后自动登录（后端返回 sessionId），跳转 Home
  */
 import { useAuth } from '@/store';
 import { AuthAPI } from 'dehaze-sdk-js';
@@ -24,21 +23,22 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 
-const LoginScreen: React.FC = () => {
+const RegisterScreen: React.FC = () => {
   const { login } = useAuth();
   const navigation = useNavigation<any>();
   const [username, setUsername] = useState('');
+  const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [captchaCode, setCaptchaCode] = useState('');
   const [captcha, setCaptcha] = useState<CaptchaResult | null>(null);
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
 
   const loadCaptcha = async () => {
     setCaptchaLoading(true);
@@ -59,9 +59,21 @@ const LoginScreen: React.FC = () => {
     loadCaptcha();
   }, []);
 
-  const handleLogin = async () => {
-    if (!username || !password) {
-      Alert.alert('提示', '请输入用户名和密码');
+  const handleRegister = async () => {
+    if (!username.trim()) {
+      Alert.alert('提示', '请输入用户名');
+      return;
+    }
+    if (!nickname.trim()) {
+      Alert.alert('提示', '请输入昵称');
+      return;
+    }
+    if (!password) {
+      Alert.alert('提示', '请输入密码');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('提示', '两次密码不一致');
       return;
     }
     if (captcha && !captchaCode) {
@@ -71,22 +83,60 @@ const LoginScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      await login({
-        username,
+      await AuthAPI.register({
+        username: username.trim(),
         password,
+        nickname: nickname.trim(),
         captchaKey: captcha?.captchaKey,
         captchaCode: captcha ? captchaCode : undefined,
-        rememberMe,
       });
+      Alert.alert('注册成功', '请使用新账号登录', [
+        { text: '去登录', onPress: () => navigation.replace('Login') },
+      ]);
     } catch (e: unknown) {
       const err = e as { message?: string };
-      Alert.alert('登录失败', err?.message || '用户名或密码错误');
+      Alert.alert('注册失败', err?.message || '注册失败，请稍后重试');
       loadCaptcha();
       setCaptchaCode('');
     } finally {
       setLoading(false);
     }
   };
+
+  const inputGroups = [
+    {
+      label: '用户名',
+      icon: 'person-outline',
+      value: username,
+      onChange: setUsername,
+      placeholder: '请输入用户名',
+      secure: false,
+    },
+    {
+      label: '昵称',
+      icon: 'happy-outline',
+      value: nickname,
+      onChange: setNickname,
+      placeholder: '请输入昵称',
+      secure: false,
+    },
+    {
+      label: '密码',
+      icon: 'lock-closed-outline',
+      value: password,
+      onChange: setPassword,
+      placeholder: '请输入密码',
+      secure: !showPassword,
+    },
+    {
+      label: '确认密码',
+      icon: 'lock-closed-outline',
+      value: confirmPassword,
+      onChange: setConfirmPassword,
+      placeholder: '请再次输入密码',
+      secure: !showPassword,
+    },
+  ];
 
   return (
     <LinearGradient
@@ -105,7 +155,6 @@ const LoginScreen: React.FC = () => {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.card}>
-              {/* 品牌头部 */}
               <View style={styles.header}>
                 <View style={styles.logoContainer}>
                   <LinearGradient
@@ -117,70 +166,48 @@ const LoginScreen: React.FC = () => {
                     <Text style={styles.logo}>雾</Text>
                   </LinearGradient>
                 </View>
-                <Text style={styles.title}>图像去雾系统</Text>
-                <Text style={styles.subtitle}>
-                  Professional Image Dehaze Platform
-                </Text>
+                <Text style={styles.title}>用户注册</Text>
+                <Text style={styles.subtitle}>Create Your Dehaze Account</Text>
               </View>
 
-              {/* 表单 */}
               <View style={styles.form}>
-                {/* 用户名 */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>用户名</Text>
-                  <View style={styles.inputWrap}>
-                    <Ionicons
-                      name="person-outline"
-                      size={18}
-                      color="#9ca3af"
-                      style={styles.inputIcon}
-                    />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="请输入用户名"
-                      placeholderTextColor="#9ca3af"
-                      value={username}
-                      onChangeText={setUsername}
-                      autoCapitalize="none"
-                      returnKeyType="next"
-                    />
-                  </View>
-                </View>
-
-                {/* 密码 */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>密码</Text>
-                  <View style={styles.inputWrap}>
-                    <Ionicons
-                      name="lock-closed-outline"
-                      size={18}
-                      color="#9ca3af"
-                      style={styles.inputIcon}
-                    />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="请输入密码"
-                      placeholderTextColor="#9ca3af"
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                      returnKeyType={captcha ? 'next' : 'done'}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(s => !s)}
-                      style={styles.eyeBtn}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
+                {inputGroups.map((group, index) => (
+                  <View key={index} style={styles.inputGroup}>
+                    <Text style={styles.label}>{group.label}</Text>
+                    <View style={styles.inputWrap}>
                       <Ionicons
-                        name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                        name={group.icon as any}
                         size={18}
                         color="#9ca3af"
+                        style={styles.inputIcon}
                       />
-                    </TouchableOpacity>
+                      <TextInput
+                        style={styles.input}
+                        placeholder={group.placeholder}
+                        placeholderTextColor="#9ca3af"
+                        value={group.value}
+                        onChangeText={group.onChange}
+                        secureTextEntry={group.secure}
+                        autoCapitalize="none"
+                        returnKeyType="next"
+                      />
+                      {(group.label === '密码' || group.label === '确认密码') && (
+                        <TouchableOpacity
+                          onPress={() => setShowPassword(s => !s)}
+                          style={styles.eyeBtn}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons
+                            name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                            size={18}
+                            color="#9ca3af"
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
-                </View>
+                ))}
 
-                {/* 验证码 */}
                 {captcha && (
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>验证码</Text>
@@ -222,24 +249,9 @@ const LoginScreen: React.FC = () => {
                   </View>
                 )}
 
-                {/* 记住我 */}
-                <TouchableOpacity
-                  style={styles.rememberRow}
-                  onPress={() => setRememberMe(r => !r)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={rememberMe ? 'checkbox-outline' : 'square-outline'}
-                    size={20}
-                    color={rememberMe ? '#3B82F6' : '#9ca3af'}
-                  />
-                  <Text style={styles.rememberText}>记住我（7天内免登录）</Text>
-                </TouchableOpacity>
-
-                {/* 登录按钮 */}
                 <TouchableOpacity
                   style={styles.buttonWrap}
-                  onPress={handleLogin}
+                  onPress={handleRegister}
                   disabled={loading}
                   activeOpacity={0.9}
                 >
@@ -253,7 +265,7 @@ const LoginScreen: React.FC = () => {
                       <ActivityIndicator color="white" />
                     ) : (
                       <>
-                        <Text style={styles.buttonText}>登录</Text>
+                        <Text style={styles.buttonText}>注册</Text>
                         <Ionicons
                           name="arrow-forward"
                           size={18}
@@ -267,10 +279,10 @@ const LoginScreen: React.FC = () => {
 
                 <TouchableOpacity
                   style={styles.registerLink}
-                  onPress={() => navigation.replace('Register')}
+                  onPress={() => navigation.replace('Login')}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.registerLinkText}>没有账号？立即注册</Text>
+                  <Text style={styles.registerLinkText}>已有账号？立即登录</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -356,7 +368,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   inputGroup: {
-    marginBottom: 18,
+    marginBottom: 16,
   },
   label: {
     fontSize: 13,
@@ -410,19 +422,8 @@ const styles = StyleSheet.create({
     width: 100,
     height: 40,
   },
-  rememberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 12,
-    marginLeft: 4,
-    gap: 8,
-  },
-  rememberText: {
-    fontSize: 13,
-    color: '#6b7280',
-  },
   buttonWrap: {
-    marginTop: 4,
+    marginTop: 8,
     borderRadius: 14,
     overflow: 'hidden',
   },
@@ -464,4 +465,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen;
+export default RegisterScreen;

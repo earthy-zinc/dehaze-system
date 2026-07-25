@@ -51,10 +51,19 @@ public class ProfileFragment extends Fragment {
         profileViewModel.loadUserInfo();
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (profileViewModel != null) {
+            profileViewModel.loadUserInfo();
+        }
+    }
+
     private void setupListeners() {
         binding.logoutButton.setOnClickListener(v -> showLogoutConfirmDialog());
         binding.cardHistory.setOnClickListener(v ->
                 startActivity(new Intent(getActivity(), InputHistoryActivity.class)));
+        binding.cardNotLoggedIn.setOnClickListener(v -> navigateToLogin());
     }
 
     private void setupObservers() {
@@ -69,8 +78,14 @@ public class ProfileFragment extends Fragment {
             binding.progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
             if (loading) {
                 showLoadingState();
-            } else if (profileViewModel.getUserInfo().getValue() == null) {
-                showEmptyState();
+            }
+        });
+
+        profileViewModel.getNotLoggedIn().observe(getViewLifecycleOwner(), notLoggedIn -> {
+            if (Boolean.TRUE.equals(notLoggedIn)) {
+                showNotLoggedInState();
+            } else {
+                showLoggedInState();
             }
         });
 
@@ -105,7 +120,6 @@ public class ProfileFragment extends Fragment {
                 : TextUtils.join("、", roles);
         binding.tvRole.setText(roleText);
 
-        // 账号信息卡片
         binding.tvAccountUsername.setText(username != null && !username.isEmpty()
                 ? username : "-");
         binding.tvAccountUserId.setText(userInfo.getUserId() != null
@@ -114,7 +128,6 @@ public class ProfileFragment extends Fragment {
                 ? nickname : "-");
         binding.tvAccountRoles.setText(roleText);
 
-        // 权限概览卡片
         binding.tvPermRoles.setText(roleText);
         String permText = (perms == null || perms.isEmpty())
                 ? "无权限"
@@ -139,18 +152,26 @@ public class ProfileFragment extends Fragment {
         binding.tvPermCreateTime.setText("加载中...");
     }
 
-    private void showEmptyState() {
-        binding.tvUsername.setText("未登录");
-        binding.tvNickname.setText("无法获取用户信息");
-        binding.tvAvatarInitial.setText("?");
-        binding.tvRole.setText("-");
-        binding.tvAccountUsername.setText("-");
-        binding.tvAccountUserId.setText("-");
-        binding.tvAccountNickname.setText("-");
-        binding.tvAccountRoles.setText("-");
-        binding.tvPermRoles.setText("-");
-        binding.tvPermPerms.setText("-");
-        binding.tvPermCreateTime.setText("-");
+    private void showNotLoggedInState() {
+        binding.cardNotLoggedIn.setVisibility(View.VISIBLE);
+        binding.cardUserHeader.setVisibility(View.GONE);
+        binding.tvAccountSectionTitle.setVisibility(View.GONE);
+        binding.cardAccountInfo.setVisibility(View.GONE);
+        binding.tvPermSectionTitle.setVisibility(View.GONE);
+        binding.cardPermInfo.setVisibility(View.GONE);
+        binding.cardHistory.setVisibility(View.GONE);
+        binding.logoutButton.setVisibility(View.GONE);
+    }
+
+    private void showLoggedInState() {
+        binding.cardNotLoggedIn.setVisibility(View.GONE);
+        binding.cardUserHeader.setVisibility(View.VISIBLE);
+        binding.tvAccountSectionTitle.setVisibility(View.VISIBLE);
+        binding.cardAccountInfo.setVisibility(View.VISIBLE);
+        binding.tvPermSectionTitle.setVisibility(View.VISIBLE);
+        binding.cardPermInfo.setVisibility(View.VISIBLE);
+        binding.cardHistory.setVisibility(View.VISIBLE);
+        binding.logoutButton.setVisibility(View.VISIBLE);
     }
 
     private String getInitial(String text) {
@@ -172,7 +193,6 @@ public class ProfileFragment extends Fragment {
     private void navigateToLogin() {
         NavController navController = Navigation.findNavController(requireActivity(),
                 R.id.nav_host_fragment_content_main);
-        // 清除整个回退栈，以登录页作为新的根
         NavOptions options = new NavOptions.Builder()
                 .setPopUpTo(R.id.nav_graph, true)
                 .build();

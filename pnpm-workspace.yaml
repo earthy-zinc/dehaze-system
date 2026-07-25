@@ -5,3 +5,7 @@ packages:
   - 'dehaze-taro'
   - 'dehaze-front-vue'
   - 'dehaze-front-react'
+overrides:
+  stylelint-config-recommended: "^17.0.0"
+  "@vue/server-renderer": "3.5.39"
+  "@tarojs/webpack5-prebundle>enhanced-resolve": "5.17.1"

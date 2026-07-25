@@ -1,4 +1,4 @@
-package com.pei.dehaze.ui.login;
+package com.pei.dehaze.ui.register;
 
 import android.util.Patterns;
 
@@ -10,22 +10,22 @@ import com.pei.dehaze.repository.RepositoryCallback;
 import com.pei.dehaze.sdk.model.auth.CaptchaResponse;
 import com.pei.dehaze.sdk.model.auth.LoginRequest;
 import com.pei.dehaze.sdk.model.auth.LoginResponse;
-import com.pei.dehaze.sdk.utils.TokenManager;
 
 import lombok.Getter;
 
 @Getter
-public class LoginViewModel extends ViewModel {
+public class RegisterViewModel extends ViewModel {
     private final MutableLiveData<String> username = new MutableLiveData<>("");
+    private final MutableLiveData<String> nickname = new MutableLiveData<>("");
     private final MutableLiveData<String> password = new MutableLiveData<>("");
+    private final MutableLiveData<String> confirmPassword = new MutableLiveData<>("");
     private final MutableLiveData<String> captchaCode = new MutableLiveData<>("");
     private final MutableLiveData<String> captchaKey = new MutableLiveData<>("");
     private final MutableLiveData<String> captchaImage = new MutableLiveData<>("");
-    private final MutableLiveData<Boolean> rememberMe = new MutableLiveData<>(true);
 
     private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
-    private final MutableLiveData<String> loginError = new MutableLiveData<>("");
-    private final MutableLiveData<Boolean> loginSuccess = new MutableLiveData<>(false);
+    private final MutableLiveData<String> error = new MutableLiveData<>("");
+    private final MutableLiveData<Boolean> registerSuccess = new MutableLiveData<>(false);
 
     private final AuthRepository authRepository = new AuthRepository();
 
@@ -39,49 +39,53 @@ public class LoginViewModel extends ViewModel {
 
             @Override
             public void onError(String errorMessage) {
-                loginError.postValue("获取验证码失败: " + errorMessage);
+                error.postValue("获取验证码失败: " + errorMessage);
             }
         });
     }
 
-    public void login() {
+    public void register() {
         if (!isUserNameValid(username.getValue())) {
-            loginError.setValue("用户名格式不正确");
+            error.setValue("用户名格式不正确");
             return;
         }
 
         if (!isPasswordValid(password.getValue())) {
-            loginError.setValue("密码长度不能少于6位");
+            error.setValue("密码长度不能少于6位");
+            return;
+        }
+
+        if (password.getValue() == null || !password.getValue().equals(confirmPassword.getValue())) {
+            error.setValue("两次密码不一致");
             return;
         }
 
         if (!isCaptchaCodeValid(captchaCode.getValue())) {
-            loginError.setValue("验证码不能为空");
+            error.setValue("验证码不能为空");
             return;
         }
 
         loading.setValue(true);
-        loginError.setValue("");
+        error.setValue("");
 
         LoginRequest request = new LoginRequest();
         request.setUsername(username.getValue());
         request.setPassword(password.getValue());
+        request.setNickname(nickname.getValue());
         request.setCaptchaCode(captchaCode.getValue());
         request.setCaptchaKey(captchaKey.getValue());
-        request.setRememberMe(Boolean.TRUE.equals(rememberMe.getValue()));
 
-        authRepository.login(request, new RepositoryCallback<LoginResponse>() {
+        authRepository.register(request, new RepositoryCallback<LoginResponse>() {
             @Override
             public void onSuccess(LoginResponse data) {
-                TokenManager.setSessionId(data.getSessionId());
                 loading.postValue(false);
-                loginSuccess.postValue(true);
+                registerSuccess.postValue(true);
             }
 
             @Override
             public void onError(String errorMessage) {
                 loading.postValue(false);
-                loginError.postValue("登录失败: " + errorMessage);
+                error.postValue("注册失败: " + errorMessage);
                 loadCaptcha();
             }
         });

@@ -12,6 +12,7 @@ import React, {
   useRef,
   type ReactNode,
 } from 'react';
+import { Alert } from 'react-native';
 
 interface AuthState {
   sessionId: string | null;
@@ -72,20 +73,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       const sid = await storage.get<string>(SESSION_KEY);
-      const userInfo = await storage.get<AuthUserInfo>(CacheEnum.AUTH_INFO);
-      if (sid) {
-        sessionStore.set(sid);
+      if (!sid) {
+        dispatch({ type: 'RESTORE', sessionId: null, userInfo: null });
+        return;
       }
-      dispatch({ type: 'RESTORE', sessionId: sid, userInfo });
+      sessionStore.set(sid);
+      try {
+        const userInfo = await AuthAPI.getCurrentUser();
+        await storage.set(CacheEnum.AUTH_INFO, userInfo);
+        dispatch({ type: 'RESTORE', sessionId: sid, userInfo });
+      } catch {
+        storage.remove(SESSION_KEY);
+        storage.remove(CacheEnum.AUTH_INFO);
+        sessionStore.clear();
+        dispatch({ type: 'RESTORE', sessionId: null, userInfo: null });
+      }
     })();
   }, []);
 
   useEffect(() => {
     const handleInvalid = () => {
-      storage.remove(SESSION_KEY);
-      storage.remove(CacheEnum.AUTH_INFO);
-      sessionStore.clear();
-      dispatch({ type: 'LOGOUT' });
+      Alert.alert(
+        '登录已失效',
+        '您的登录状态已过期，请重新登录',
+        [
+          {
+            text: '重新登录',
+            onPress: () => {
+              storage.remove(SESSION_KEY);
+              storage.remove(CacheEnum.AUTH_INFO);
+              sessionStore.clear();
+              dispatch({ type: 'LOGOUT' });
+            },
+          },
+        ],
+        { cancelable: false }
+      );
     };
     setOnSessionInvalid(handleInvalid);
     return () => setOnSessionInvalid(null);
@@ -93,9 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (data: LoginData) => {
     const result: LoginResult = await AuthAPI.login(data);
-    await storage.set(SESSION_KEY, result.sessionId);
     sessionStore.set(result.sessionId);
-
+    if (data.rememberMe !== false) {
+      await storage.set(SESSION_KEY, result.sessionId);
+    }
     const userInfo = await AuthAPI.getCurrentUser();
     await storage.set(CacheEnum.AUTH_INFO, userInfo);
     dispatch({ type: 'LOGIN', sessionId: result.sessionId, userInfo });

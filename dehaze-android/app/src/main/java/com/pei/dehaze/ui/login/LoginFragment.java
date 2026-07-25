@@ -67,6 +67,14 @@ public class LoginFragment extends Fragment {
         
         // 验证码图片点击事件（刷新验证码）
         binding.captchaImage.setOnClickListener(v -> loginViewModel.loadCaptcha());
+
+        // 记住我复选框
+        binding.rememberMeCheckBox.setOnCheckedChangeListener((buttonView, isChecked) ->
+                loginViewModel.getRememberMe().setValue(isChecked));
+
+        // 立即注册链接
+        binding.registerLink.setOnClickListener(v ->
+                Navigation.findNavController(requireView()).navigate(R.id.action_login_to_register));
         
         // 添加文本变化监听器以更新ViewModel
         binding.usernameEditText.addTextChangedListener(new TextWatcher() {

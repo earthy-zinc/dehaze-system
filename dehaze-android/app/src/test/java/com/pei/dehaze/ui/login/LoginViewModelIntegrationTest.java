@@ -108,7 +108,7 @@ public class LoginViewModelIntegrationTest {
 
         // 模拟 AuthAPI.login 成功响应
         LoginResponse mockResponse = new LoginResponse();
-        mockResponse.setAccessToken("test_token");
+        mockResponse.setSessionId("test_session_id");
 
         try (MockedStatic<AuthAPI> mockedAuthAPI = mockStatic(AuthAPI.class)) {
             mockedAuthAPI.when(() -> AuthAPI.login(any(LoginRequest.class), any()))

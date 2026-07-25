@@ -6,8 +6,6 @@ import com.pei.dehaze.sdk.model.auth.CaptchaResponse;
 import com.pei.dehaze.sdk.model.auth.LoginRequest;
 import com.pei.dehaze.sdk.model.auth.LoginResponse;
 
-import java.util.Map;
-
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
@@ -18,7 +16,7 @@ public interface AuthApiService {
     Call<Result<LoginResponse>> login(@Body LoginRequest request);
 
     @POST("/api/v1/auth/register")
-    Call<Result<LoginResponse>> register(@Body Map<String, Object> body);
+    Call<Result<LoginResponse>> register(@Body LoginRequest request);
 
     @GET("/api/v1/auth/captcha")
     Call<Result<CaptchaResponse>> getCaptcha();

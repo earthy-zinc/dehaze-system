@@ -18,6 +18,7 @@ export interface CompareRouteParams {
  */
 export type RootStackParamList = {
   Login: undefined;
+  Register: undefined;
   Home: undefined;
   ImageInput: { initialMethod?: InputMethod } | undefined;
   AlgorithmSelect: { image?: SelectedImage } | undefined;

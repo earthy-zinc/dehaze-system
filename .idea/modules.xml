@@ -2,9 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/dehaze-go/dehaze-go.iml" filepath="$PROJECT_DIR$/dehaze-go/dehaze-go.iml" />
       <module fileurl="file://$PROJECT_DIR$/dehaze-python/.venv/dehaze-python.iml" filepath="$PROJECT_DIR$/dehaze-python/.venv/dehaze-python.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/dehaze-system.iml" filepath="$PROJECT_DIR$/.idea/dehaze-system.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/sdk/图像去雾系统.sdk.iml" filepath="$PROJECT_DIR$/.idea/modules/sdk/图像去雾系统.sdk.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/sdk/图像去雾系统.sdk.main.iml" filepath="$PROJECT_DIR$/.idea/modules/sdk/图像去雾系统.sdk.main.iml" />
     </modules>
   </component>
 </project>

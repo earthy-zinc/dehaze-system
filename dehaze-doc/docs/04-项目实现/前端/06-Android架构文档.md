@@ -42,6 +42,8 @@
 com.pei.dehaze
 ├── ui                  # UI层
 │   ├── login           # 登录模块
+│   ├── register        # 注册模块
+│   ├── profile         # 个人中心模块（含未登录态入口）
 │   ├── dashboard       # 仪表盘模块
 │   ├── dataset         # 数据集模块
 │   ├── algorithm       # 算法模块
@@ -56,6 +58,16 @@ com.pei.dehaze
 ├── common              # 公共组件
 └── sdk                 # SDK封装
 ```
+
+### 认证架构
+
+采用 Session 认证（对齐 [认证管理](../../03-模块设计/基础模块/认证管理/持久登录设计.md)）：
+
+- **SessionId 存储**：`TokenManager` 通过 `TokenStorage` 实现持久化（`SharedPreferencesTokenStorage`），应用启动时自动恢复
+- **请求鉴权**：SDK 拦截器自动为非公开端点注入 `X-Session-Id` 请求头
+- **7天免登录**：登录页"记住我"复选框，勾选时 `LoginRequest.rememberMe=true`，后端设置 7 天 Cookie Max-Age（移动端由本地存储实现持久化语义）
+- **Session 失效处理**：`ApiCallback` 在收到 401 或 `A0230` 业务码时触发 `TokenManager.triggerSessionInvalid()`，`DehazeApplication` 中注册的全局监听器会通知当前 Activity，由 `MainActivity` 弹出"登录已失效"对话框并跳转登录页
+- **未登录态展示**：个人中心页面在 `TokenManager.hasToken()=false` 时显示"未登录"入口卡片，点击跳转登录/注册页，避免无入口的死路
 
 ## 4. 主要组件
 

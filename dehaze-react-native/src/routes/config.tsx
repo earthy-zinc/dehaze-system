@@ -10,6 +10,7 @@ import TaskScreen from '@/pages/task';
 import HomeScreen from '@/pages/home';
 import ImageInputScreen from '@/pages/image-input';
 import LoginScreen from '@/pages/login';
+import RegisterScreen from '@/pages/register';
 import ProcessingScreen from '@/pages/processing';
 import ProfileScreen from '@/pages/profile';
 import React from 'react';
@@ -25,6 +26,7 @@ export interface RouteConfig {
 // 公开路由（无需认证）
 export const publicRoutes: RouteConfig[] = [
   { name: 'Login', component: LoginScreen, title: '登录' },
+  { name: 'Register', component: RegisterScreen, title: '注册' },
 ];
 
 // 受保护路由（需认证）

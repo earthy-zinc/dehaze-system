@@ -50,18 +50,15 @@ public abstract class ApiCallback<T> implements Callback<Result<T>> {
             if (result.isSuccess()) {
                 onSuccess(result.getData());
             } else {
-                // session 无效业务码，清除本地 sessionId
                 if (TokenManager.isTokenInvalidCode(result.getCode())) {
-                    TokenManager.clearAll();
+                    TokenManager.triggerSessionInvalid();
                 }
                 onError(result.getCode(), result.getMsg());
             }
         } else {
-            // HTTP 错误，解析后端返回的业务错误信息
             ApiException exception = ApiException.handleHttpException(response, DehazeSDK.getInstance().getRetrofit());
-            // 401（session 过期/无效）清除本地 sessionId
             if (response.code() == 401) {
-                TokenManager.clearAll();
+                TokenManager.triggerSessionInvalid();
             }
             onFailure(exception);
         }

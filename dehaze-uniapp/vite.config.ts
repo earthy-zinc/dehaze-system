@@ -37,7 +37,7 @@ export default defineConfig({
         // 取消sass废弃API的报警
         silenceDeprecations: ["legacy-js-api", "color-functions", "import"],
         // 全局注入设计令牌，使任意 <style lang="scss"> 块可直接使用 $color-* / $spacing-* 等变量
-        additionalData: `@import "${path.resolve(__dirname, "src/styles/variables.scss")}";`,
+        additionalData: `@import "${path.resolve(__dirname, "src/styles/variables.scss").replace(/\\/g, "/")}";`,
       },
     },
   },

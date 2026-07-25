@@ -2,15 +2,17 @@ package com.pei.dehaze;
 
 import android.os.Bundle;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.navigation.NavController;
+import androidx.navigation.NavOptions;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import com.pei.dehaze.databinding.ActivityMainBinding;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements DehazeApplication.SessionInvalidHandler {
 
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
@@ -24,12 +26,10 @@ public class MainActivity extends AppCompatActivity {
 
         setSupportActionBar(binding.toolbar);
 
-        // 通过FragmentContainerView获取NavController
         NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.nav_host_fragment_content_main);
         NavController navController = navHostFragment.getNavController();
 
-        // 设置底部导航栏
         NavigationUI.setupWithNavController(binding.bottomNavigation, navController);
 
         appBarConfiguration = new AppBarConfiguration.Builder(
@@ -50,5 +50,31 @@ public class MainActivity extends AppCompatActivity {
 
         return NavigationUI.navigateUp(navController, appBarConfiguration)
                 || super.onSupportNavigateUp();
+    }
+
+    @Override
+    public void onSessionInvalid() {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("登录已失效")
+                .setMessage("您的登录状态已过期，请重新登录")
+                .setCancelable(false)
+                .setPositiveButton("重新登录", (dialog, which) -> navigateToLogin())
+                .show();
+    }
+
+    private void navigateToLogin() {
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.nav_host_fragment_content_main);
+        if (navHostFragment == null) {
+            return;
+        }
+        NavController navController = navHostFragment.getNavController();
+        NavOptions options = new NavOptions.Builder()
+                .setPopUpTo(R.id.nav_graph, true)
+                .build();
+        navController.navigate(R.id.loginFragment, null, options);
     }
 }

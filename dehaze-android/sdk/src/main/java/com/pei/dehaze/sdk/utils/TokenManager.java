@@ -3,6 +3,8 @@ package com.pei.dehaze.sdk.utils;
 public class TokenManager {
     private static String sessionId;
     private static TokenStorage storage;
+    private static SessionInvalidListener sessionInvalidListener;
+    private static boolean isInvalidating = false;
 
     private TokenManager() {
     }
@@ -17,6 +19,7 @@ public class TokenManager {
     public static void setSessionId(String id) {
         synchronized (TokenManager.class) {
             TokenManager.sessionId = id;
+            isInvalidating = false;
             if (storage != null) {
                 storage.saveSessionId(id);
             }
@@ -41,6 +44,26 @@ public class TokenManager {
     public static boolean hasToken() {
         synchronized (TokenManager.class) {
             return sessionId != null && !sessionId.isEmpty();
+        }
+    }
+
+    public static void setSessionInvalidListener(SessionInvalidListener listener) {
+        sessionInvalidListener = listener;
+    }
+
+    public static void triggerSessionInvalid() {
+        synchronized (TokenManager.class) {
+            if (isInvalidating) {
+                return;
+            }
+            isInvalidating = true;
+            sessionId = null;
+            if (storage != null) {
+                storage.clearSessionId();
+            }
+        }
+        if (sessionInvalidListener != null) {
+            sessionInvalidListener.onSessionInvalid();
         }
     }
 

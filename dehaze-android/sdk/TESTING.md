@@ -5,8 +5,7 @@
 本SDK包含以下类型的测试：
 
 1. **单元测试** - 测试各个组件的基本功能
-2. **集成测试** - 测试API接口的调用
-3. **示例应用** - 演示SDK的使用方法
+2. **示例应用** - 演示SDK的使用方法
 
 ## 运行测试
 
@@ -36,7 +35,7 @@ build/reports/tests/test/index.html
 ### DehazeSDKTest
 测试SDK的基本功能，包括：
 - SDK初始化
-- Token管理
+- Session 管理
 - 认证API调用
 
 ### ErrorUtilsTest
@@ -45,19 +44,10 @@ build/reports/tests/test/index.html
 - 错误消息生成
 
 ### TokenManagerTest
-测试Token管理器的功能：
-- Token的设置和获取
-- Token的清除
-
-### ApiIntegrationTest
-测试各个模块的API接口调用：
-- 用户API
-- 算法API
-- 数据集API
-- 部门API
-- 字典API
-- 菜单API
-- 角色API
+测试 Session 管理器的功能：
+- SessionId 的设置和获取
+- SessionId 的清除
+- Session 失效回调触发
 
 ## 编写新测试
 
