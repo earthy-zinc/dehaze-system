@@ -70,10 +70,10 @@ export const NavBar: React.FC = () => {
       </div>
       <div className="navbar-right">
         <Dropdown className="settings-item" menu={{ items }}>
-          <div className="flex-center h100% p10px">
+          <div className="flex-center h100%">
             <img
               src={userStore.user.avatar}
-              className="rounded-full mr-10px w24px h24px"
+              className="rounded-full ml-10px w24px h24px"
               alt=""
             />
             <span style={{ minWidth: "60px" }}>{userStore.user.username}</span>
