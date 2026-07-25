@@ -72,7 +72,8 @@ func SetupAuthRouter() *gin.Engine {
 	router.RegisterNoAuthRoutes(v1, authApi)
 
 	protectedV1 := v1.Group("")
-	protectedV1.Use(middleware.JWTAuth())
+	protectedV1.Use(middleware.SessionAuth())
+	protectedV1.Use(middleware.UserContextMiddleware())
 	router.RegisterAuthRoutes(protectedV1, authApi)
 
 	return engine

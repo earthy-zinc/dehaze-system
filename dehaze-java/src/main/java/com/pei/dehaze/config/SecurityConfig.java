@@ -1,17 +1,14 @@
 package com.pei.dehaze.config;
 
 import com.pei.dehaze.common.constant.SecurityConstants;
-import com.pei.dehaze.config.property.SecurityProperties;
-import com.pei.dehaze.filter.JwtValidationFilter;
+import com.pei.dehaze.filter.SessionFilter;
 import com.pei.dehaze.security.exception.MyAccessDeniedHandler;
 import com.pei.dehaze.security.exception.MyAuthenticationEntryPoint;
 import com.pei.dehaze.service.ApiKeyService;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -23,7 +20,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -32,8 +28,7 @@ public class SecurityConfig {
 
     private final MyAuthenticationEntryPoint authenticationEntryPoint;
     private final MyAccessDeniedHandler accessDeniedHandler;
-    private final RedisTemplate<String, Object> redisTemplate;
-    private final SecurityProperties securityProperties;
+    private final StringRedisTemplate stringRedisTemplate;
     private final ApiKeyService apiKeyService;
 
     @Bean
@@ -53,7 +48,6 @@ public class SecurityConfig {
                                 .requestMatchers("/swagger-ui.html").permitAll()
                                 .requestMatchers("/api/v1/files/download/**").permitAll()
                                 .requestMatchers("/api/v1/auth/captcha").permitAll()
-                                .requestMatchers("/api/v1/auth/refresh").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .exceptionHandling(httpSecurityExceptionHandlingConfigurer ->
@@ -66,7 +60,7 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
         ;
 
-        http.addFilterBefore(new JwtValidationFilter(redisTemplate, securityProperties.getJwt().getKey(), apiKeyService), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(new SessionFilter(stringRedisTemplate, apiKeyService), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

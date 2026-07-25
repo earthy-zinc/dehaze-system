@@ -3,7 +3,6 @@ package com.pei.dehaze.config;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -19,7 +18,6 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.validation.beanvalidation.SpringConstraintValidatorFactory;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.math.BigInteger;
 import java.util.List;
 
 @Configuration
@@ -39,10 +37,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 注册 JavaTimeModule 以支持 Java 8 日期时间类型（LocalDateTime、LocalDate、LocalTime 等）
         objectMapper.registerModule(new JavaTimeModule());
 
-        // 后台Long值传递给前端精度丢失问题（JS最大精度整数是Math.pow(2,53)）
+        // 项目使用数据库自增 ID（非雪花 ID），Long 值不会超过 JS 安全整数范围（2^53-1），无需转为字符串
         SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addSerializer(Long.class, ToStringSerializer.instance);
-        simpleModule.addSerializer(BigInteger.class, ToStringSerializer.instance);
         objectMapper.registerModule(simpleModule);
 
         jackson2HttpMessageConverter.setObjectMapper(objectMapper);

@@ -1,33 +1,22 @@
-/**
- * Token 内存存储
- *
- * SDK 的 getToken 回调需要同步返回 token，
- * 而 AsyncStorage 是异步的，因此维护一份内存副本，
- * 由 AuthContext 在登录/恢复时同步写入。
- */
+let sessionId: string | null = null;
+let onSessionInvalid: (() => void) | null = null;
 
-let accessToken: string | null = null;
-let onTokenInvalid: (() => void) | null = null;
-
-export const tokenStore = {
-  /** 同步获取 token */
+export const sessionStore = {
   get(): string | null {
-    return accessToken;
+    return sessionId;
   },
-  /** 设置 token（登录成功或从 AsyncStorage 恢复时调用） */
-  set(token: string) {
-    accessToken = token;
+  set(id: string) {
+    sessionId = id;
   },
-  /** 清空 token（注销或 token 失效时调用） */
   clear() {
-    accessToken = null;
+    sessionId = null;
   },
 };
 
-export function setOnTokenInvalid(cb: (() => void) | null) {
-  onTokenInvalid = cb;
+export function setOnSessionInvalid(cb: (() => void) | null) {
+  onSessionInvalid = cb;
 }
 
-export function triggerTokenInvalid() {
-  onTokenInvalid?.();
+export function triggerSessionInvalid() {
+  onSessionInvalid?.();
 }

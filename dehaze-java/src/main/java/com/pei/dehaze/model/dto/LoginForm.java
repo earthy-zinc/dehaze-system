@@ -24,6 +24,6 @@ public class LoginForm {
     @Schema(description = "验证码")
     private String captchaCode;
 
-    @Schema(description = "记住我（控制 refreshToken Cookie 的 Max-Age：true=7天，false=会话级）")
+    @Schema(description = "记住我（控制 Session Cookie 的 Max-Age：true=7天，false=会话级）")
     private Boolean rememberMe;
 }

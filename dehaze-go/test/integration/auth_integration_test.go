@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	tu "github.com/earthyzinc/dehaze-go/test/integration/testutil"
@@ -52,7 +51,6 @@ func TestCaptcha_GetSuccess(t *testing.T) {
 func TestCaptcha_Expired(t *testing.T) {
 	captchaKey := tu.GetCaptcha(t)
 
-	// 从缓存中删除验证码，模拟过期
 	tu.DeleteCaptchaFromCache(captchaKey)
 
 	loginBody := map[string]string{
@@ -69,7 +67,7 @@ func TestCaptcha_Expired(t *testing.T) {
 }
 
 // ============================================================
-// 2. 登录成功链路（验证码正确 + 登录成功）
+// 2. 登录成功链路
 // ============================================================
 
 func TestLogin_Success_Admin(t *testing.T) {
@@ -91,17 +89,19 @@ func TestLogin_Success_Admin(t *testing.T) {
 	assert.Equal(t, common.SUCCESS.Msg, resp.Msg)
 
 	var loginData struct {
-		AccessToken  string `json:"accessToken"`
-		TokenType    string `json:"tokenType"`
-		RefreshToken string `json:"refreshToken"`
-		Expires      int64  `json:"expires"`
+		SessionID string `json:"sessionId"`
+		User      struct {
+			ID       int64  `json:"id"`
+			Username string `json:"username"`
+			Nickname string `json:"nickname"`
+		} `json:"user"`
 	}
 	require.NoError(t, json.Unmarshal(resp.Data, &loginData))
 
-	assert.NotEmpty(t, loginData.AccessToken, "accessToken 不应为空")
-	assert.Equal(t, "Bearer", loginData.TokenType, "tokenType 应为 Bearer")
-	assert.NotEmpty(t, loginData.RefreshToken, "refreshToken 不应为空")
-	assert.Greater(t, loginData.Expires, time.Now().UnixMilli(), "expires 应大于当前时间戳(毫秒)")
+	assert.NotEmpty(t, loginData.SessionID, "sessionId 不应为空")
+	assert.Greater(t, loginData.User.ID, int64(0), "user.id 应大于 0")
+	assert.Equal(t, "admin", loginData.User.Username, "username 应为 admin")
+	assert.NotEmpty(t, loginData.User.Nickname, "nickname 不应为空")
 }
 
 func TestLogin_WrongPassword(t *testing.T) {
@@ -133,7 +133,7 @@ func TestLogin_WrongCaptcha(t *testing.T) {
 		"username":    "admin",
 		"password":    "123456",
 		"captchaKey":  captchaKey,
-		"captchaCode": "000000", // 故意传错误验证码
+		"captchaCode": "000000",
 	}
 	w := tu.DoRequest(http.MethodPost, "/api/v1/auth/login", loginBody, "")
 
@@ -145,30 +145,30 @@ func TestLogin_WrongCaptcha(t *testing.T) {
 }
 
 // ============================================================
-// 3. JWT 鉴权中间件链路
+// 3. Session 鉴权中间件链路
 // ============================================================
 
-func TestJWT_NoToken_AccessProtectedRoute(t *testing.T) {
+func TestSession_NoSession_AccessProtectedRoute(t *testing.T) {
 	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, "")
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code, "无Token访问受保护路由应返回401")
+	assert.Equal(t, http.StatusUnauthorized, w.Code, "无Session访问受保护路由应返回401")
 	resp := tu.ParseResponse(t, w)
 	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "错误码应为 TOKEN_INVALID")
 }
 
-func TestJWT_FakeToken_AccessProtectedRoute(t *testing.T) {
-	fakeToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmYWtlIiwiZXhwIjoxNjAwMDAwMDAwfQ.invalid_signature"
-	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, fakeToken)
+func TestSession_FakeSession_AccessProtectedRoute(t *testing.T) {
+	fakeSessionID := "00000000-0000-0000-0000-000000000000"
+	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, fakeSessionID)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code, "伪造Token应返回401")
+	assert.Equal(t, http.StatusUnauthorized, w.Code, "伪造Session应返回401")
 	resp := tu.ParseResponse(t, w)
 	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "错误码应为 TOKEN_INVALID")
 }
 
-func TestJWT_ValidToken_GetAuthInfo(t *testing.T) {
-	accessToken, _ := tu.LoginAndGetTokens(t, "admin", "123456")
+func TestSession_Admin_GetAuthInfo(t *testing.T) {
+	sessionID := tu.LoginAndGetSessionID(t, "admin", "123456")
 
-	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, accessToken)
+	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, sessionID)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	resp := tu.ParseResponse(t, w)
@@ -190,10 +190,10 @@ func TestJWT_ValidToken_GetAuthInfo(t *testing.T) {
 	assert.NotNil(t, userInfo.Perms, "perms 不应为 nil")
 }
 
-func TestJWT_ValidToken_TestUser_GetAuthInfo(t *testing.T) {
-	accessToken, _ := tu.LoginAndGetTokens(t, "test", "123456")
+func TestSession_TestUser_GetAuthInfo(t *testing.T) {
+	sessionID := tu.LoginAndGetSessionID(t, "test", "123456")
 
-	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, accessToken)
+	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, sessionID)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	resp := tu.ParseResponse(t, w)
@@ -213,117 +213,25 @@ func TestJWT_ValidToken_TestUser_GetAuthInfo(t *testing.T) {
 }
 
 // ============================================================
-// 4. 注销后 Token 失效
+// 4. 注销后 Session 失效
 // ============================================================
 
-func TestLogout_TokenInvalidated(t *testing.T) {
-	accessToken, _ := tu.LoginAndGetTokens(t, "admin", "123456")
+func TestLogout_SessionInvalidated(t *testing.T) {
+	sessionID := tu.LoginAndGetSessionID(t, "admin", "123456")
 
-	// 先确认 Token 有效
-	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, accessToken)
+	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, sessionID)
 	require.Equal(t, http.StatusOK, w.Code)
 	resp := tu.ParseResponse(t, w)
-	require.Equal(t, common.SUCCESS.Code, resp.Code, "注销前 Token 应有效")
+	require.Equal(t, common.SUCCESS.Code, resp.Code, "注销前 Session 应有效")
 
-	// 执行注销
-	w = tu.DoRequest(http.MethodPost, "/api/v1/auth/logout", nil, accessToken)
+	w = tu.DoRequest(http.MethodPost, "/api/v1/auth/logout", nil, sessionID)
 	assert.Equal(t, http.StatusOK, w.Code)
 	resp = tu.ParseResponse(t, w)
 	assert.Equal(t, common.SUCCESS.Code, resp.Code)
 	assert.Equal(t, common.SUCCESS.Msg, resp.Msg)
 
-	// 注销后使用同一 Token 访问受保护路由应被拒绝
-	// 注销后 Token 在黑名单中，JWT 中间件返回 TOKEN_INVALID
-	w = tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, accessToken)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, "注销后 Token 应失效，返回 401")
+	w = tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, sessionID)
+	assert.Equal(t, http.StatusUnauthorized, w.Code, "注销后 Session 应失效，返回 401")
 	resp = tu.ParseResponse(t, w)
 	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "注销后错误码应为 TOKEN_INVALID")
-}
-
-// ============================================================
-// 5. Refresh 链路
-// ============================================================
-
-func TestRefresh_Success(t *testing.T) {
-	_, refreshToken := tu.LoginAndGetTokens(t, "admin", "123456")
-
-	refreshBody := map[string]string{
-		"refreshToken": refreshToken,
-	}
-	w := tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, refreshToken)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	resp := tu.ParseResponse(t, w)
-	assert.Equal(t, common.SUCCESS.Code, resp.Code)
-	assert.Equal(t, common.SUCCESS.Msg, resp.Msg)
-
-	var newTokens struct {
-		AccessToken  string `json:"accessToken"`
-		TokenType    string `json:"tokenType"`
-		RefreshToken string `json:"refreshToken"`
-		Expires      int64  `json:"expires"`
-	}
-	require.NoError(t, json.Unmarshal(resp.Data, &newTokens))
-	assert.NotEmpty(t, newTokens.AccessToken, "新 accessToken 不应为空")
-	assert.Equal(t, "Bearer", newTokens.TokenType)
-	assert.NotEmpty(t, newTokens.RefreshToken, "新 refreshToken 不应为空")
-	assert.Greater(t, newTokens.Expires, time.Now().UnixMilli(), "新 expires 应大于当前时间")
-
-	// 使用新 accessToken 访问受保护路由应成功
-	w = tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, newTokens.AccessToken)
-	assert.Equal(t, http.StatusOK, w.Code)
-	meResp := tu.ParseResponse(t, w)
-	assert.Equal(t, common.SUCCESS.Code, meResp.Code, "使用刷新后的 accessToken 访问 /me 应成功")
-}
-
-func TestRefresh_OldRefreshToken_Invalidated(t *testing.T) {
-	_, refreshToken := tu.LoginAndGetTokens(t, "admin", "123456")
-
-	// 第一次刷新应成功
-	refreshBody := map[string]string{
-		"refreshToken": refreshToken,
-	}
-	w := tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, refreshToken)
-	require.Equal(t, http.StatusOK, w.Code)
-	resp := tu.ParseResponse(t, w)
-	require.Equal(t, common.SUCCESS.Code, resp.Code, "首次刷新应成功")
-
-	// 解析首次刷新返回的新 accessToken
-	var newTokens struct {
-		AccessToken  string `json:"accessToken"`
-		RefreshToken string `json:"refreshToken"`
-	}
-	require.NoError(t, json.Unmarshal(resp.Data, &newTokens))
-	require.NotEmpty(t, newTokens.AccessToken, "首次刷新应返回新 accessToken")
-
-	// 使用已被消费的旧 refreshToken 再次刷新应失败
-	// API 从 Header 读取 Token，JWT 中间件检测到旧 refreshToken 在黑名单中，返回 401
-	w = tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, refreshToken)
-	assert.Equal(t, http.StatusUnauthorized, w.Code, "旧 refreshToken 已在黑名单，应返回 401")
-	resp = tu.ParseResponse(t, w)
-	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "旧 refreshToken 应已失效，错误码为 TOKEN_INVALID")
-}
-
-func TestRefresh_EmptyRefreshToken(t *testing.T) {
-	// /refresh 路由受 JWT 中间件保护，无 Token 时中间件直接返回 401
-	refreshBody := map[string]string{
-		"refreshToken": "",
-	}
-	w := tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, "")
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code, "无 Token 应返回 401")
-	resp := tu.ParseResponse(t, w)
-	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "无 Token 应返回 TOKEN_INVALID")
-}
-
-func TestRefresh_FakeRefreshToken(t *testing.T) {
-	// /refresh 路由受 JWT 中间件保护，伪造 Token 时中间件直接返回 401
-	refreshBody := map[string]string{
-		"refreshToken": "fake.refresh.token",
-	}
-	w := tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, "fake.refresh.token")
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code, "伪造 Token 应返回 401")
-	resp := tu.ParseResponse(t, w)
-	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "伪造 Token 应返回 TOKEN_INVALID")
 }

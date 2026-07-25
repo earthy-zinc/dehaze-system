@@ -10,7 +10,6 @@ func RegisterNoAuthRoutes(rg *gin.RouterGroup, authApi *api.AuthApi) gin.IRoutes
 	{
 		authRouter.POST("login", authApi.Login)
 		authRouter.GET("captcha", authApi.Captcha)
-		authRouter.POST("refresh", authApi.RefreshToken)
 	}
 	return authRouter
 }

@@ -171,9 +171,7 @@ const Home: React.FC = () => {
                 {greeting}
                 {greeting.length <= 4 ? `，${nickname}！` : ""}
               </h2>
-              <p className="subtitle">
-                欢迎使用图像去雾系统，今天是 {dateStr}
-              </p>
+              <p className="subtitle">欢迎使用图像去雾系统，今天是 {dateStr}</p>
               <span className="role-tag">{roleLabel}</span>
             </div>
           </div>

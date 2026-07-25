@@ -20,7 +20,8 @@
           class="close-icon"
           size="12px"
           @click.prevent.stop="closeSelectedTag(tag)"
-        ><Close /></el-icon>
+          ><Close
+        /></el-icon>
       </router-link>
     </el-scrollbar>
 

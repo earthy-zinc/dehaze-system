@@ -33,17 +33,12 @@ export * from "./src/enums";
 // 配置导出
 export { configJavaAxios, configPythonAxios } from "./src/config";
 
-// Axios 实例导出（用于 token 刷新后重发请求）
+// Axios 实例导出
 export { javaService } from "./src/utils/request";
 export { pythonService } from "./src/utils/requestPy";
 
 // Axios 类型导出（供宿主项目配置 adapter / 拦截器使用）
-export type {
-  AxiosAdapter,
-  AxiosError,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
-} from "axios";
+export type { AxiosAdapter, AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 
 // API 导出
 export {

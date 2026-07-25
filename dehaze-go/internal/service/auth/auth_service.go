@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
@@ -19,16 +19,17 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
 	"github.com/mojocn/base64Captcha"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
+
+	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 )
 
-// AuthService 认证服务实现
 type AuthService struct {
 	cacheClient types.ICache
 	userService userservice.IUserService
 }
 
-// NewAuthService 创建认证服务实例
 func NewAuthService(cacheClient types.ICache, userService userservice.IUserService) IAuthService {
 	return &AuthService{
 		cacheClient: cacheClient,
@@ -36,33 +37,26 @@ func NewAuthService(cacheClient types.ICache, userService userservice.IUserServi
 	}
 }
 
-// Login 用户登录
 func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP string) (*dto.LoginResult, error) {
 	if req == nil {
 		return nil, common.NewBizError(common.PARAM_ERROR, "登录请求不能为空")
 	}
 
-	// 1. 用户名预处理：小写转换和空格清理
 	username := strings.ToLower(strings.TrimSpace(req.Username))
 	password := req.Password
 
-	// 2. 检查登录失败次数是否超限（防暴力破解，双重维度：IP + 用户名）
 	if err := s.checkLoginFailCount(ctx, clientIP, username); err != nil {
 		return nil, err
 	}
 
-	// 3. 验证码校验
 	if !s.VerifyCaptcha(ctx, req.CaptchaKey, req.CaptchaCode) {
-		// 记录登录失败次数（双重维度：IP + 用户名）
 		s.incrementLoginFailCount(ctx, clientIP, username)
 		return nil, common.NewBizError(common.VERIFY_CODE_ERROR, "验证码错误")
 	}
 
-	// 4. 用户认证
 	u := &model.SysUser{Username: username, Password: password}
 	user, err := s.userService.Login(ctx, u)
 	if err != nil {
-		// 记录登录失败次数（双重维度：IP + 用户名）
 		s.incrementLoginFailCount(ctx, clientIP, username)
 		logger.Warn("登录失败: 用户名不存在或密码错误",
 			zap.String("username", username),
@@ -71,44 +65,53 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP 
 		return nil, err
 	}
 
-	// 5. 检查用户状态
 	if user.Status != 1 {
 		return nil, common.NewBizError(common.USER_ACCOUNT_LOCKED, "用户已被禁用")
 	}
 
-	// 6. 生成JWT Token（双Token机制）
-	accessToken, refreshToken, accessClaims, _, err := security.LoginTokenWithRefresh(user)
-	if err != nil {
-		logger.Error("生成Token失败", zap.Error(err))
-		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "生成Token失败", err)
+	sessionID := uuid.New().String()
+
+	var authorities []string
+	for _, role := range user.Roles {
+		authorities = append(authorities, "ROLE_"+role)
+	}
+	authorities = append(authorities, user.Perms...)
+
+	sessionData := middleware.SessionData{
+		UserID:      user.UserId,
+		Username:    user.Username,
+		DeptID:      user.DeptId,
+		DataScope:   user.DataScope,
+		Authorities: authorities,
+		Nickname:    user.Nickname,
 	}
 
-	// 7. 处理多端登录互斥
+	sessionJSON, err := json.Marshal(sessionData)
+	if err != nil {
+		logger.Error("序列化Session数据失败", zap.Error(err))
+		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "创建Session失败", err)
+	}
+
+	if err := s.cacheClient.Set(ctx, common.SessionPrefix+sessionID, string(sessionJSON), middleware.SessionTTL); err != nil {
+		logger.Error("存储Session失败", zap.Error(err))
+		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "创建Session失败", err)
+	}
+
 	cfg := config.GetConfig()
 	if cfg.System.UseMultiPoint {
-		if err := s.handleMultiPointLogin(ctx, accessToken, user.Username); err != nil {
+		if err := s.handleMultiPointSession(ctx, sessionID, user.Username); err != nil {
 			return nil, err
 		}
 	}
 
-	// 8. 登录成功，重置失败次数
 	s.resetLoginFailCount(ctx, clientIP, username)
-
-	// 9. 计算过期时间（毫秒）
-	expires := int64(0)
-	if accessClaims.ExpiresAt != nil {
-		expires = accessClaims.ExpiresAt.Unix() * 1000 // 转换为毫秒
-	}
 
 	logger.Info("用户登录成功",
 		zap.String("username", username),
 		zap.String("clientIP", clientIP))
 
 	return &dto.LoginResult{
-		AccessToken:  accessToken,
-		TokenType:    "Bearer",
-		RefreshToken: refreshToken,
-		Expires:      expires,
+		SessionID: sessionID,
 		User: &dto.LoginUser{
 			ID:       user.UserId,
 			Username: user.Username,
@@ -117,23 +120,16 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP 
 	}, nil
 }
 
-// Logout 用户注销
 func (s *AuthService) Logout(c *gin.Context) error {
-	token := security.GetToken(c)
-	if token == "" {
-		return nil // 无Token视为已注销
+	sessionID := middleware.ExtractSessionID(c)
+	if sessionID != "" {
+		if err := s.cacheClient.Delete(c.Request.Context(), common.SessionPrefix+sessionID); err != nil {
+			logger.Error("注销失败：删除Session失败", zap.Error(err))
+		}
 	}
 
-	// 将Token加入黑名单
-	if err := s.AddTokenToBlacklist(c.Request.Context(), token); err != nil {
-		logger.Error("注销失败：加入黑名单失败", zap.Error(err))
-		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "注销失败", err)
-	}
-
-	// 清理Cookie中的Token
 	security.ClearToken(c)
 
-	// 尝试从Claims获取用户名，清理多端登录缓存
 	if claims, err := security.GetClaims(c); err == nil && claims != nil {
 		username := claims.Subject
 		if username != "" {
@@ -147,91 +143,9 @@ func (s *AuthService) Logout(c *gin.Context) error {
 	return nil
 }
 
-// RefreshToken 刷新令牌
-func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*dto.LoginResult, error) {
-	if refreshToken == "" {
-		return nil, common.NewBizError(common.PARAM_ERROR, "刷新令牌不能为空")
-	}
-
-	// 1. 解析并验证refreshToken
-	j := security.NewJWT()
-	claims, err := j.ParseToken(refreshToken)
-	if err != nil {
-		if errors.Is(err, security.ErrTokenExpired) {
-			return nil, common.NewBizError(common.TOKEN_INVALID, "刷新令牌已过期，请重新登录")
-		}
-		return nil, common.NewBizError(common.TOKEN_INVALID, "无效的刷新令牌")
-	}
-
-	// 2. 检查refreshToken是否在黑名单
-	if s.IsTokenBlacklisted(ctx, refreshToken) {
-		return nil, common.NewBizError(common.TOKEN_INVALID, "刷新令牌已失效，请重新登录")
-	}
-
-	// 3. 获取用户最新认证信息（确保权限实时更新）
-	userAuthInfo, err := s.userService.GetUserAuthInfo(ctx, claims.Subject)
-	if err != nil {
-		return nil, common.NewBizError(common.USER_NOT_EXIST, "用户不存在")
-	}
-
-	// 4. 检查用户状态
-	if userAuthInfo.Status != 1 {
-		return nil, common.NewBizError(common.USER_ACCOUNT_LOCKED, "用户已被禁用")
-	}
-
-	// 5. 生成新的Token对
-	newAccessToken, newRefreshToken, newAccessClaims, _, err := security.LoginTokenWithRefresh(userAuthInfo)
-	if err != nil {
-		logger.Error("生成新Token失败", zap.Error(err))
-		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "生成Token失败", err)
-	}
-
-	// 6. 将旧的refreshToken加入黑名单（通过jti）
-	cfg := config.GetConfig()
-	refreshTTL := cfg.JWT.RefreshTokenTTL
-	if refreshTTL <= 0 {
-		refreshTTL = 7 * 24 * 3600
-	}
-	// 解析旧refreshToken获取jti
-	if oldClaims, parseErr := j.ParseToken(refreshToken); parseErr == nil && oldClaims.ID != "" {
-		if err := s.cacheClient.Set(ctx, common.BlacklistPrefix+oldClaims.ID, "1", time.Duration(refreshTTL)*time.Second); err != nil {
-			logger.Warn("将旧refreshToken加入黑名单失败", zap.Error(err))
-		}
-	}
-
-	// 7. 处理多端登录互斥
-	if cfg.System.UseMultiPoint {
-		if err := s.handleMultiPointLogin(ctx, newAccessToken, userAuthInfo.Username); err != nil {
-			return nil, err
-		}
-	}
-
-	// 8. 计算过期时间（毫秒）
-	expires := int64(0)
-	if newAccessClaims.ExpiresAt != nil {
-		expires = newAccessClaims.ExpiresAt.Unix() * 1000
-	}
-
-	logger.Info("令牌刷新成功", zap.String("username", userAuthInfo.Username))
-
-	return &dto.LoginResult{
-		AccessToken:  newAccessToken,
-		TokenType:    "Bearer",
-		RefreshToken: newRefreshToken,
-		Expires:      expires,
-		User: &dto.LoginUser{
-			ID:       userAuthInfo.UserId,
-			Username: userAuthInfo.Username,
-			Nickname: userAuthInfo.Nickname,
-		},
-	}, nil
-}
-
-// GetCaptcha 获取验证码
 func (s *AuthService) GetCaptcha(ctx context.Context, clientIP string) (*dto.CaptchaResult, error) {
 	cfg := config.GetConfig()
 
-	// 检查验证码获取次数限制（防刷）
 	if cfg.Captcha.RetryCount > 0 {
 		key := "captcha:limit:" + clientIP
 		count, err := s.cacheClient.Get(ctx, key)
@@ -241,12 +155,10 @@ func (s *AuthService) GetCaptcha(ctx context.Context, clientIP string) (*dto.Cap
 				return nil, common.NewBizError(common.PARAM_ERROR, "验证码获取次数已达上限，请稍后重试")
 			}
 		}
-		// 增加获取次数
 		s.cacheClient.Incr(ctx, key)
 		s.cacheClient.Expire(ctx, key, time.Duration(cfg.Captcha.TimeOut)*time.Second)
 	}
 
-	// 生成验证码
 	driver := base64Captcha.NewDriverDigit(
 		cfg.Captcha.Height,
 		cfg.Captcha.Width,
@@ -268,7 +180,6 @@ func (s *AuthService) GetCaptcha(ctx context.Context, clientIP string) (*dto.Cap
 	}, nil
 }
 
-// VerifyCaptcha 校验验证码
 func (s *AuthService) VerifyCaptcha(ctx context.Context, captchaKey, captchaCode string) bool {
 	if captchaKey == "" || captchaCode == "" {
 		return false
@@ -278,95 +189,21 @@ func (s *AuthService) VerifyCaptcha(ctx context.Context, captchaKey, captchaCode
 	return store.Verify(captchaKey, captchaCode, true)
 }
 
-// GetAuthInfo 获取当前用户认证信息
 func (s *AuthService) GetAuthInfo(ctx context.Context, userID int64) (*vo.UserInfoVO, error) {
 	return s.userService.GetCurrentUserInfo(ctx, userID)
 }
 
-// AddTokenToBlacklist 将Token加入黑名单（存储jti而非完整Token，节省内存）
-func (s *AuthService) AddTokenToBlacklist(ctx context.Context, token string) error {
-	if token == "" {
-		return nil
-	}
-
-	// 解析Token获取jti
-	j := security.NewJWT()
-	claims, err := j.ParseToken(token)
-	if err != nil {
-		// 任何解析失败的 Token（过期、格式错误、签名无效等）都无法通过 JWT 验证，
-		// 无需加入黑名单，直接返回 nil
-		return nil
-	}
-
-	jti := claims.ID
-	if jti == "" {
-		return common.NewBizError(common.SYSTEM_EXECUTION_ERROR, "Token缺少jti")
-	}
-
-	// 黑名单过期时间使用 Token 实际剩余有效期，避免过度占用 Redis 内存
-	remaining := time.Until(claims.ExpiresAt.Time)
-	if remaining <= 0 {
-		logger.Info("Token已过期，无需加入黑名单", zap.String("jti", jti))
-		return nil
-	}
-	ttl := remaining
-
-	if err := s.cacheClient.Set(ctx, common.BlacklistPrefix+jti, "1", ttl); err != nil {
-		return err
-	}
-
-	logger.Info("Token已加入黑名单", zap.String("jti", jti))
-	return nil
-}
-
-// IsTokenBlacklisted 检查Token是否在黑名单中（通过jti检查）
-func (s *AuthService) IsTokenBlacklisted(ctx context.Context, token string) bool {
-	if token == "" {
-		return false
-	}
-
-	// 解析Token获取jti
-	j := security.NewJWT()
-	claims, err := j.ParseToken(token)
-	if err != nil {
-		// Token解析失败，视为无效Token
-		return false
-	}
-
-	jti := claims.ID
-	if jti == "" {
-		return false
-	}
-
-	exists, err := s.cacheClient.Exists(ctx, common.BlacklistPrefix+jti)
-	if err != nil {
-		// 缓存服务异常时，记录日志但不阻止请求（保证服务可用性）
-		logger.Error("检查Token黑名单失败", zap.Error(err))
-		return false
-	}
-	return exists
-}
-
-// handleMultiPointLogin 处理多端登录互斥
-func (s *AuthService) handleMultiPointLogin(ctx context.Context, newToken, username string) error {
-	// 获取当前用户的旧Token
-	oldToken, err := s.cacheClient.Get(ctx, username)
-	if err == nil && oldToken != "" {
-		// 将旧Token加入黑名单（通过jti）
-		j := security.NewJWT()
-		if oldClaims, parseErr := j.ParseToken(oldToken); parseErr == nil && oldClaims.ID != "" {
-			cfg := config.GetConfig()
-			ttl := time.Duration(cfg.JWT.TTL) * time.Second
-			if setErr := s.cacheClient.Set(ctx, common.BlacklistPrefix+oldClaims.ID, "1", ttl); setErr != nil {
-				logger.Error("多端登录：将旧Token加入黑名单失败", zap.String("username", username), zap.String("jti", oldClaims.ID), zap.Error(setErr))
-			} else {
-				logger.Info("多端登录：已将旧Token加入黑名单", zap.String("username", username), zap.String("jti", oldClaims.ID))
-			}
+func (s *AuthService) handleMultiPointSession(ctx context.Context, newSessionID, username string) error {
+	oldSessionID, err := s.cacheClient.Get(ctx, username)
+	if err == nil && oldSessionID != "" {
+		if err := s.cacheClient.Delete(ctx, common.SessionPrefix+oldSessionID); err != nil {
+			logger.Warn("多端登录：删除旧Session失败", zap.String("username", username), zap.Error(err))
+		} else {
+			logger.Info("多端登录：已删除旧Session", zap.String("username", username))
 		}
 	}
 
-	// 存储新Token
-	if err := security.SetJWT(ctx, newToken, username); err != nil {
+	if err := s.cacheClient.Set(ctx, username, newSessionID, middleware.SessionTTL); err != nil {
 		logger.Error("存储用户登录状态失败", zap.Error(err))
 		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "设置登录状态失败", err)
 	}
@@ -374,7 +211,6 @@ func (s *AuthService) handleMultiPointLogin(ctx context.Context, newToken, usern
 	return nil
 }
 
-// getLoginSecurityConfig 获取登录安全配置，提供默认值
 func getLoginSecurityConfig() (failLimit int, lockTime time.Duration) {
 	cfg := config.GetConfig()
 	failLimit = cfg.System.LoginFailLimit
@@ -389,60 +225,48 @@ func getLoginSecurityConfig() (failLimit int, lockTime time.Duration) {
 	return
 }
 
-// incrementLoginFailCount 增加登录失败次数（双重维度：IP + 用户名）
 func (s *AuthService) incrementLoginFailCount(ctx context.Context, clientIP, username string) {
 	failLimit, lockTime := getLoginSecurityConfig()
 
-	// IP维度计数
 	ipKey := "login:fail:ip:" + clientIP
 	ipCount, _ := s.cacheClient.Incr(ctx, ipKey)
 	s.cacheClient.Expire(ctx, ipKey, lockTime)
 	if ipCount >= int64(failLimit) {
-		logger.Warn("IP登录失败次数过多，可能存在暴力破解风险",
+		logger.Warn("IP登录失败次数过多",
 			zap.String("clientIP", clientIP),
 			zap.Int64("failCount", ipCount))
 	}
 
-	// 用户名维度计数
 	if username != "" {
 		userKey := "login:fail:user:" + username
 		userCount, _ := s.cacheClient.Incr(ctx, userKey)
 		s.cacheClient.Expire(ctx, userKey, lockTime)
 		if userCount >= int64(failLimit) {
-			logger.Warn("用户名登录失败次数过多，可能存在暴力破解风险",
+			logger.Warn("用户名登录失败次数过多",
 				zap.String("username", username),
 				zap.Int64("failCount", userCount))
 		}
 	}
 }
 
-// checkLoginFailCount 检查登录失败次数是否超限（双重维度：IP + 用户名）
 func (s *AuthService) checkLoginFailCount(ctx context.Context, clientIP, username string) error {
 	failLimit, _ := getLoginSecurityConfig()
 
-	// 检查IP维度
 	ipKey := "login:fail:ip:" + clientIP
 	ipCount, err := s.cacheClient.Get(ctx, ipKey)
 	if err == nil {
 		count, _ := strconv.Atoi(string(ipCount))
 		if count >= failLimit {
-			logger.Warn("IP登录失败次数超限，已临时锁定",
-				zap.String("clientIP", clientIP),
-				zap.Int("failCount", count))
 			return common.NewBizError(common.PASSWORD_ENTER_EXCEED_LIMIT, "登录失败次数过多，IP已临时锁定，请稍后重试")
 		}
 	}
 
-	// 检查用户名维度
 	if username != "" {
 		userKey := "login:fail:user:" + username
 		userCount, err := s.cacheClient.Get(ctx, userKey)
 		if err == nil {
 			count, _ := strconv.Atoi(string(userCount))
 			if count >= failLimit {
-				logger.Warn("用户名登录失败次数超限，已临时锁定",
-					zap.String("username", username),
-					zap.Int("failCount", count))
 				return common.NewBizError(common.PASSWORD_ENTER_EXCEED_LIMIT, "登录失败次数过多，账户已临时锁定，请稍后重试")
 			}
 		}
@@ -451,15 +275,12 @@ func (s *AuthService) checkLoginFailCount(ctx context.Context, clientIP, usernam
 	return nil
 }
 
-// resetLoginFailCount 重置登录失败次数（双重维度：IP + 用户名）
 func (s *AuthService) resetLoginFailCount(ctx context.Context, clientIP, username string) {
-	// 重置IP维度
 	ipKey := "login:fail:ip:" + clientIP
 	if err := s.cacheClient.Delete(ctx, ipKey); err != nil {
 		logger.Warn("重置IP登录失败次数失败", zap.String("clientIP", clientIP), zap.Error(err))
 	}
 
-	// 重置用户名维度
 	if username != "" {
 		userKey := "login:fail:user:" + username
 		if err := s.cacheClient.Delete(ctx, userKey); err != nil {

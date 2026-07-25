@@ -1,11 +1,10 @@
 import logging
 
-from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
-from app.dependencies.auth import UserContext, get_current_user
+from app.dependencies.auth import UserContext, SESSION_COOKIE, SESSION_TTL, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.user import (CaptchaData, CurrentUserVO, LoginData,
                                     LoginForm)
@@ -14,7 +13,6 @@ from app.service.auth_service import AuthService
 from app.utils.user_agent import parse_user_agent
 from fastapi import APIRouter, Depends, Request, Response, status
 from app.middleware.non_null_response import NonNullJSONResponse as JSONResponse
-from jose import jwt
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,24 +22,18 @@ router = APIRouter(prefix="/api/v1/auth", tags=["认证中心"])
 
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_DURATION = 900
-REFRESH_TOKEN_MAX_AGE = 7 * 24 * 3600
 
 
-def _set_refresh_token_cookies(response: Response, refresh_token: str, remember_me: bool):
-    max_age = REFRESH_TOKEN_MAX_AGE if remember_me else -1
+def _set_session_cookie(response: Response, session_id: str, remember_me: bool):
+    max_age = SESSION_TTL if remember_me else None
     response.set_cookie(
-        "refreshToken", refresh_token, max_age=max_age, path="/",
-        httponly=True, samesite="lax",
-    )
-    response.set_cookie(
-        "rememberMe", str(remember_me).lower(), max_age=max_age, path="/",
-        httponly=False, samesite="lax",
+        SESSION_COOKIE, session_id, max_age=max_age, path="/api",
+        httponly=True, secure=True, samesite="lax",
     )
 
 
-def _clear_refresh_token_cookies(response: Response):
-    response.delete_cookie("refreshToken", path="/")
-    response.delete_cookie("rememberMe", path="/")
+def _clear_session_cookie(response: Response):
+    response.delete_cookie(SESSION_COOKIE, path="/api")
 
 
 @router.post(
@@ -107,7 +99,7 @@ async def login(
             "登录成功", browser, os_name
         )
         remember_me = request.rememberMe if request.rememberMe is not None else False
-        _set_refresh_token_cookies(response, result.get("refreshToken", ""), remember_me)
+        _set_session_cookie(response, result.get("sessionId", ""), remember_me)
         return success(result)
     except ValueError as e:
         attempts = await redis.incr(attempts_key)
@@ -141,22 +133,11 @@ async def logout(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-        try:
-            payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
-            jti = payload.get("jti")
-            if jti:
-                await redis.setex(
-                    f"token:blacklist:{jti}",
-                    settings.JWT_ACCESS_TOKEN_EXPIRES,
-                    "1",
-                )
-        except Exception as e:
-            logger.warning("logout 解码 Token 失败: %s", e)
+    session_id = request.cookies.get(SESSION_COOKIE) or request.headers.get(SESSION_COOKIE)
+    if session_id:
+        await redis.delete(f"session:{session_id}")
 
-    _clear_refresh_token_cookies(response)
+    _clear_session_cookie(response)
     return success(msg="一切ok")
 
 
@@ -165,31 +146,6 @@ async def get_captcha(
     redis: Redis = Depends(get_redis),
 ):
     result = await AuthService.get_captcha(redis)
-    return success(result)
-
-
-@router.post("/refresh", response_model=Result[LoginData], summary="刷新访问令牌")
-async def refresh_token(
-    request: Request,
-    response: Response,
-    db: AsyncSession = Depends(get_db),
-    redis: Redis = Depends(get_redis),
-):
-    refresh_token_str = request.cookies.get("refreshToken", "")
-    if not refresh_token_str:
-        try:
-            body = await request.json()
-            refresh_token_str = body.get("refreshToken", "")
-        except Exception:
-            pass
-
-    if not refresh_token_str:
-        raise BusinessException(ResultCode.TOKEN_INVALID, "刷新令牌不能为空")
-
-    result = await AuthService.refresh_token(db, refresh_token_str, redis)
-
-    remember_me = request.cookies.get("rememberMe", "false") == "true"
-    _set_refresh_token_cookies(response, result.get("refreshToken", ""), remember_me)
     return success(result)
 
 

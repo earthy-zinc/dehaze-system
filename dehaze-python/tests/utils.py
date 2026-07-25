@@ -4,70 +4,44 @@
 提供测试辅助功能，包括断言工具、数据生成器等
 """
 
-from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
-from jose import jwt
-
 
 def assert_response_success(response: dict) -> None:
-    """断言响应成功"""
     assert response.get("code") == 200, f"Expected code 200, got {response.get('code')}"
     assert "data" in response, "Response missing 'data' field"
 
 
 def assert_response_error(response: dict, expected_code: int = 500) -> None:
-    """断言响应错误"""
     assert response.get("code") == expected_code, (
         f"Expected code {expected_code}, got {response.get('code')}"
     )
     assert "message" in response, "Response missing 'message' field"
 
 
-def generate_test_token(
+def generate_test_session(
     user_id: int,
     username: str = "testuser",
     roles: list[str] | None = None,
-    dept_id: int | None = 1,
-    data_scope: int | None = 1,
-    secret_key: str = "test-jwt-secret-key-for-testing-32chars!",
-    expires_in: int = 7200,
-) -> str:
-    """
-    生成测试用 JWT Token
-
-    Args:
-        user_id: 用户 ID
-        username: 用户名
-        roles: 角色列表
-        dept_id: 部门ID
-        data_scope: 数据权限范围
-        secret_key: JWT 密钥
-        expires_in: 过期时间（秒）
-
-    Returns:
-        JWT Token 字符串
-    """
-    if roles is None:
-        roles = ["USER"]
-    jti = str(uuid4())
-    payload = {
-        "jti": jti,
-        "sub": username,
+    dept_id: int = 1,
+    data_scope: int = 1,
+) -> tuple[str, dict]:
+    session_id = str(uuid4())
+    session_data = {
         "userId": user_id,
+        "username": username,
+        "nickname": "Test User",
         "deptId": dept_id,
         "dataScope": data_scope,
-        "authorities": ["ROLE_" + r for r in roles],
-        "exp": datetime.now(timezone.utc) + timedelta(seconds=expires_in),
-        "iat": datetime.now(timezone.utc),
+        "authorities": ["ROLE_" + r for r in (roles or ["USER"])],
     }
-    return jwt.encode(payload, secret_key, algorithm="HS256")
+    return session_id, session_data
 
 
 def generate_auth_headers(token: str) -> dict[str, str]:
-    """生成认证请求头"""
-    return {"Authorization": f"Bearer {token}"}
+    """生成认证请求头（Session 模式）"""
+    return {"X-Session-Id": token, "Cookie": f"X-Session-Id={token}"}
 
 
 class TestDataFactory:

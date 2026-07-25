@@ -51,11 +51,11 @@ func DeleteCaptchaFromCache(captchaKey string) {
 }
 
 // ============================================================
-// 登录与 Token 相关
+// 登录与 Session 相关
 // ============================================================
 
-// LoginAndGetTokens 执行完整登录流程（验证码 -> 登录），返回 accessToken 和 refreshToken
-func LoginAndGetTokens(t *testing.T, username, password string) (accessToken, refreshToken string) {
+// LoginAndGetSessionID 执行完整登录流程（验证码 -> 登录），返回 sessionId
+func LoginAndGetSessionID(t *testing.T, username, password string) string {
 	t.Helper()
 	captchaKey := GetCaptcha(t)
 	testCaptchaCode := "888888"
@@ -74,13 +74,15 @@ func LoginAndGetTokens(t *testing.T, username, password string) (accessToken, re
 	require.Equal(t, common.SUCCESS.Code, resp.Code, "登录应成功, msg=%s", resp.Msg)
 
 	var loginData struct {
-		AccessToken  string `json:"accessToken"`
-		TokenType    string `json:"tokenType"`
-		RefreshToken string `json:"refreshToken"`
-		Expires      int64  `json:"expires"`
+		SessionID string `json:"sessionId"`
+		User      struct {
+			ID       int64  `json:"id"`
+			Username string `json:"username"`
+			Nickname string `json:"nickname"`
+		} `json:"user"`
 	}
 	require.NoError(t, json.Unmarshal(resp.Data, &loginData))
-	require.NotEmpty(t, loginData.AccessToken, "accessToken 不应为空")
-	require.NotEmpty(t, loginData.RefreshToken, "refreshToken 不应为空")
-	return loginData.AccessToken, loginData.RefreshToken
+	require.NotEmpty(t, loginData.SessionID, "sessionId 不应为空")
+	require.NotEmpty(t, loginData.User.Username, "user.username 不应为空")
+	return loginData.SessionID
 }

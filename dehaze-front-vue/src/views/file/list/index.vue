@@ -83,15 +83,11 @@ function handleCurrentChange(val: number) {
 
 async function handleDelete(row: FileInfo) {
   try {
-    await ElMessageBox.confirm(
-      `确认删除文件 "${row.name}" ？`,
-      "删除确认",
-      {
-        type: "warning",
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-      }
-    );
+    await ElMessageBox.confirm(`确认删除文件 "${row.name}" ？`, "删除确认", {
+      type: "warning",
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+    });
     await FileAPI.deleteById(row.id);
     ElMessage.success("删除文件成功");
     loadData();
@@ -207,7 +203,12 @@ onMounted(() => {
         row-key="id"
       >
         <el-table-column type="selection" width="44" align="center" />
-        <el-table-column label="文件名" prop="name" min-width="220" show-overflow-tooltip>
+        <el-table-column
+          label="文件名"
+          prop="name"
+          min-width="220"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             <div class="file-name-cell">
               <el-icon class="file-icon"><Document /></el-icon>
@@ -215,9 +216,16 @@ onMounted(() => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="文件类型" prop="type" width="110" align="center">
+        <el-table-column
+          label="文件类型"
+          prop="type"
+          width="110"
+          align="center"
+        >
           <template #default="{ row }">
-            <el-tag v-if="row.type" type="info" size="small">{{ row.type }}</el-tag>
+            <el-tag v-if="row.type" type="info" size="small">{{
+              row.type
+            }}</el-tag>
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
@@ -288,9 +296,7 @@ onMounted(() => {
         accept="*/*"
       >
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-        <div class="el-upload__text">
-          将文件拖到此处，或<em>点击上传</em>
-        </div>
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
       </el-upload>
 
       <template #footer>
@@ -309,8 +315,8 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .search-container {
-  margin-bottom: 16px;
   padding: 16px;
+  margin-bottom: 16px;
   background: #fff;
   border-radius: 4px;
 }
@@ -323,13 +329,13 @@ onMounted(() => {
 
 .file-name-cell {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 
   .file-icon {
-    color: var(--el-color-primary);
-    font-size: 16px;
     flex-shrink: 0;
+    font-size: 16px;
+    color: var(--el-color-primary);
   }
 
   .file-name-text {
@@ -340,8 +346,8 @@ onMounted(() => {
 }
 
 .file-size {
-  font-variant-numeric: tabular-nums;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .text-muted {

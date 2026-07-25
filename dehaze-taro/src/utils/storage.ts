@@ -1,10 +1,8 @@
 import Taro from "@tarojs/taro";
 import { CacheEnum } from "@/enums/CacheEnum";
-import { TOKEN_KEY, type UserInfo } from "dehaze-sdk-js";
+import { SESSION_KEY, type UserInfo } from "dehaze-sdk-js";
 
-// 存储管理类
 class StorageManager {
-  // 设置存储项
   async setItem<T>(key: string, value: T, expire?: number): Promise<void> {
     try {
       const data = {
@@ -22,13 +20,11 @@ class StorageManager {
     }
   }
 
-  // 获取存储项
   async getItem<T>(key: string): Promise<T | null> {
     try {
       const result = await Taro.getStorage({ key });
       const { value, expire } = JSON.parse(result.data);
 
-      // 检查是否过期
       if (expire && Date.now() > expire) {
         await this.removeItem(key);
         return null;
@@ -40,7 +36,6 @@ class StorageManager {
     }
   }
 
-  // 删除存储项
   async removeItem(key: string): Promise<void> {
     try {
       await Taro.removeStorage({ key });
@@ -49,7 +44,6 @@ class StorageManager {
     }
   }
 
-  // 清空所有存储
   async clear(): Promise<void> {
     try {
       await Taro.clearStorage();
@@ -58,29 +52,26 @@ class StorageManager {
     }
   }
 
-  // ===== Token 管理（同步存储，原始字符串，供 SDK 拦截器同步读取） =====
-
-  setToken(token: string): void {
-    Taro.setStorageSync(TOKEN_KEY, token);
+  setSessionId(sessionId: string): void {
+    Taro.setStorageSync(SESSION_KEY, sessionId);
   }
 
-  getToken(): string | null {
+  getSessionId(): string | null {
     try {
-      return Taro.getStorageSync(TOKEN_KEY) || null;
+      return Taro.getStorageSync(SESSION_KEY) || null;
     } catch {
       return null;
     }
   }
 
-  removeToken(): void {
+  removeSessionId(): void {
     try {
-      Taro.removeStorageSync(TOKEN_KEY);
+      Taro.removeStorageSync(SESSION_KEY);
     } catch (error) {
-      console.error("删除Token失败:", error);
+      console.error("删除SessionId失败:", error);
     }
   }
 
-  // 用户信息管理
   async setUserInfo(userInfo: UserInfo): Promise<void> {
     await this.setItem(CacheEnum.USER_INFO, userInfo);
   }
@@ -89,7 +80,6 @@ class StorageManager {
     return this.getItem<UserInfo>(CacheEnum.USER_INFO);
   }
 
-  // 权限管理
   async setPerms(perms: string[]): Promise<void> {
     await this.setItem(CacheEnum.PERMS, perms);
   }
@@ -99,7 +89,6 @@ class StorageManager {
     return perms || [];
   }
 
-  // 角色管理
   async setRoles(roles: string[]): Promise<void> {
     await this.setItem(CacheEnum.ROLES, roles);
   }
@@ -109,12 +98,8 @@ class StorageManager {
     return roles || [];
   }
 
-  /**
-   * 同步清空本地认证信息（token + 用户信息 + 权限 + 角色）
-   * 用于登出/登录失效跳转前，确保下次进入为干净状态
-   */
   clearAuth(): void {
-    Taro.removeStorageSync(TOKEN_KEY);
+    Taro.removeStorageSync(SESSION_KEY);
     Taro.removeStorageSync(CacheEnum.USER_INFO);
     Taro.removeStorageSync(CacheEnum.PERMS);
     Taro.removeStorageSync(CacheEnum.ROLES);

@@ -1,17 +1,9 @@
-/**
- * 认证上下文
- *
- * 使用 dehaze-sdk-js 的 AuthAPI 进行认证。
- * - 登录时持久化 token 到 AsyncStorage 并同步到 tokenStore（供 SDK 同步读取）
- * - 注销时清空 token 与权限信息
- * - token 失效由 SDK 拦截器触发 triggerTokenInvalid，自动清空状态
- */
-import '@/config/sdk'; // 初始化 SDK 配置（副作用导入）
-import { AuthAPI, TOKEN_KEY } from 'dehaze-sdk-js';
+import '@/config/sdk';
+import { AuthAPI, SESSION_KEY } from 'dehaze-sdk-js';
 import type { LoginData, LoginResult, AuthUserInfo } from 'dehaze-sdk-js';
 import { CacheEnum } from '@/enums/CacheEnum';
 import { storage } from '@/utils/storage';
-import { tokenStore, setOnTokenInvalid } from '@/utils/tokenStore';
+import { sessionStore, setOnSessionInvalid } from '@/utils/tokenStore';
 import React, {
   createContext,
   useContext,
@@ -22,20 +14,19 @@ import React, {
 } from 'react';
 
 interface AuthState {
-  token: string | null;
+  sessionId: string | null;
   userInfo: AuthUserInfo | null;
-  /** 初始化加载中（从 AsyncStorage 恢复 token） */
   loading: boolean;
 }
 
 type AuthAction =
-  | { type: 'RESTORE'; token: string | null; userInfo: AuthUserInfo | null }
-  | { type: 'LOGIN'; token: string; userInfo: AuthUserInfo }
+  | { type: 'RESTORE'; sessionId: string | null; userInfo: AuthUserInfo | null }
+  | { type: 'LOGIN'; sessionId: string; userInfo: AuthUserInfo }
   | { type: 'SET_USER_INFO'; userInfo: AuthUserInfo }
   | { type: 'LOGOUT' };
 
 const initialState: AuthState = {
-  token: null,
+  sessionId: null,
   userInfo: null,
   loading: true,
 };
@@ -44,16 +35,16 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
     case 'RESTORE':
       return {
-        token: action.token,
+        sessionId: action.sessionId,
         userInfo: action.userInfo,
         loading: false,
       };
     case 'LOGIN':
-      return { token: action.token, userInfo: action.userInfo, loading: false };
+      return { sessionId: action.sessionId, userInfo: action.userInfo, loading: false };
     case 'SET_USER_INFO':
       return { ...state, userInfo: action.userInfo };
     case 'LOGOUT':
-      return { token: null, userInfo: null, loading: false };
+      return { sessionId: null, userInfo: null, loading: false };
     default:
       return state;
   }
@@ -73,7 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const initialized = useRef(false);
 
-  // 启动时从 AsyncStorage 恢复 token 和用户信息
   useEffect(() => {
     if (initialized.current) {
       return;
@@ -81,48 +71,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initialized.current = true;
 
     (async () => {
-      const token = await storage.get<string>(TOKEN_KEY);
+      const sid = await storage.get<string>(SESSION_KEY);
       const userInfo = await storage.get<AuthUserInfo>(CacheEnum.AUTH_INFO);
-      if (token) {
-        tokenStore.set(token);
+      if (sid) {
+        sessionStore.set(sid);
       }
-      dispatch({ type: 'RESTORE', token, userInfo });
+      dispatch({ type: 'RESTORE', sessionId: sid, userInfo });
     })();
   }, []);
 
-  // 注册 token 失效回调
   useEffect(() => {
     const handleInvalid = () => {
-      storage.remove(TOKEN_KEY);
+      storage.remove(SESSION_KEY);
       storage.remove(CacheEnum.AUTH_INFO);
-      tokenStore.clear();
+      sessionStore.clear();
       dispatch({ type: 'LOGOUT' });
     };
-    setOnTokenInvalid(handleInvalid);
-    return () => setOnTokenInvalid(null);
+    setOnSessionInvalid(handleInvalid);
+    return () => setOnSessionInvalid(null);
   }, []);
 
   const login = async (data: LoginData) => {
     const result: LoginResult = await AuthAPI.login(data);
-    const token = result.accessToken;
-    await storage.set(TOKEN_KEY, token);
-    tokenStore.set(token);
+    await storage.set(SESSION_KEY, result.sessionId);
+    sessionStore.set(result.sessionId);
 
-    // 获取当前用户信息
     const userInfo = await AuthAPI.getCurrentUser();
     await storage.set(CacheEnum.AUTH_INFO, userInfo);
-    dispatch({ type: 'LOGIN', token, userInfo });
+    dispatch({ type: 'LOGIN', sessionId: result.sessionId, userInfo });
   };
 
   const logout = async () => {
     try {
       await AuthAPI.logout();
     } catch {
-      // 即使注销接口失败也清空本地状态
     }
-    storage.remove(TOKEN_KEY);
+    storage.remove(SESSION_KEY);
     storage.remove(CacheEnum.AUTH_INFO);
-    tokenStore.clear();
+    sessionStore.clear();
     dispatch({ type: 'LOGOUT' });
   };
 
@@ -134,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextValue = {
     state,
-    isAuthenticated: !!state.token,
+    isAuthenticated: !!state.sessionId,
     login,
     logout,
     refreshUserInfo,

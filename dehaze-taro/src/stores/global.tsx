@@ -2,7 +2,6 @@ import React, { createContext, useContext, useReducer } from "react";
 import { storage } from "@/utils/storage";
 import { type UserInfo, type LoginData, UserAPI } from "dehaze-sdk-js";
 
-// 全局状态类型定义
 interface GlobalState {
   auth: AuthState;
   ui: UIState;
@@ -10,7 +9,7 @@ interface GlobalState {
 
 interface AuthState {
   user: UserInfo | null;
-  token: string | null;
+  sessionId: string | null;
   isAuthenticated: boolean;
   perms: string[];
   roles: string[];
@@ -23,14 +22,13 @@ interface UIState {
   networkStatus: "online" | "offline";
 }
 
-// Action 类型定义
 type AuthAction =
   | { type: "LOGIN_START" }
   | {
       type: "LOGIN_SUCCESS";
       payload: {
         user: UserInfo;
-        token: string;
+        sessionId: string;
         perms: string[];
         roles: string[];
       };
@@ -42,7 +40,7 @@ type AuthAction =
       type: "INIT_AUTH_SUCCESS";
       payload: {
         user: UserInfo;
-        token: string;
+        sessionId: string;
         perms: string[];
         roles: string[];
       };
@@ -55,7 +53,6 @@ type UIAction =
 
 type GlobalAction = AuthAction | UIAction;
 
-// Reducer 函数
 const globalReducer = (
   state: GlobalState,
   action: GlobalAction
@@ -75,7 +72,7 @@ const globalReducer = (
           loading: false,
           isAuthenticated: true,
           user: action.payload.user,
-          token: action.payload.token,
+          sessionId: action.payload.sessionId,
           perms: action.payload.perms,
           roles: action.payload.roles,
         },
@@ -89,7 +86,7 @@ const globalReducer = (
           loading: false,
           isAuthenticated: false,
           user: null,
-          token: null,
+          sessionId: null,
           perms: [],
           roles: [],
         },
@@ -102,7 +99,7 @@ const globalReducer = (
           ...state.auth,
           isAuthenticated: false,
           user: null,
-          token: null,
+          sessionId: null,
           perms: [],
           roles: [],
         },
@@ -126,7 +123,7 @@ const globalReducer = (
           ...state.auth,
           isAuthenticated: true,
           user: action.payload.user,
-          token: action.payload.token,
+          sessionId: action.payload.sessionId,
           perms: action.payload.perms,
           roles: action.payload.roles,
           loading: false,
@@ -136,28 +133,19 @@ const globalReducer = (
     case "SET_LOADING":
       return {
         ...state,
-        ui: {
-          ...state.ui,
-          loading: action.payload,
-        },
+        ui: { ...state.ui, loading: action.payload },
       };
 
     case "SET_THEME":
       return {
         ...state,
-        ui: {
-          ...state.ui,
-          theme: action.payload,
-        },
+        ui: { ...state.ui, theme: action.payload },
       };
 
     case "SET_NETWORK_STATUS":
       return {
         ...state,
-        ui: {
-          ...state.ui,
-          networkStatus: action.payload,
-        },
+        ui: { ...state.ui, networkStatus: action.payload },
       };
 
     default:
@@ -165,11 +153,10 @@ const globalReducer = (
   }
 };
 
-// 初始状态
 const initialState: GlobalState = {
   auth: {
     user: null,
-    token: null,
+    sessionId: null,
     isAuthenticated: false,
     perms: [],
     roles: [],
@@ -182,7 +169,6 @@ const initialState: GlobalState = {
   },
 };
 
-// Context 创建
 const GlobalContext = createContext<{
   state: GlobalState;
   dispatch: React.Dispatch<GlobalAction>;
@@ -191,39 +177,31 @@ const GlobalContext = createContext<{
   initAuth: () => Promise<void>;
 } | null>(null);
 
-// Provider 组件
 export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [state, dispatch] = useReducer(globalReducer, initialState);
 
-  // 登录函数
   const login = async (loginData: LoginData): Promise<UserInfo> => {
     dispatch({ type: "LOGIN_START" });
 
     try {
       const { AuthAPI } = await import("dehaze-sdk-js");
       const response = await AuthAPI.login(loginData);
-      const { tokenType, accessToken } = response;
-      const token = `${tokenType} ${accessToken}`;
 
-      // 先保存 token，后续请求拦截器才能读取到
-      storage.setToken(token);
+      storage.setSessionId(response.sessionId);
 
-      // 获取用户信息（此时请求头会携带 token）
       const userInfo = await UserAPI.getInfo();
 
-      // 存储到本地
       await storage.setUserInfo(userInfo);
       await storage.setPerms(userInfo.perms || []);
       await storage.setRoles(userInfo.roles || []);
 
-      // 一次性更新认证状态（含权限与角色）
       dispatch({
         type: "LOGIN_SUCCESS",
         payload: {
           user: userInfo,
-          token,
+          sessionId: response.sessionId,
           perms: userInfo.perms || [],
           roles: userInfo.roles || [],
         },
@@ -236,7 +214,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // 登出函数
   const logout = async (): Promise<void> => {
     try {
       const { AuthAPI } = await import("dehaze-sdk-js");
@@ -244,26 +221,22 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error) {
       console.error("登出接口调用失败:", error);
     } finally {
-      // 清除本地存储
       storage.clearAuth();
-
-      // 更新状态
       dispatch({ type: "LOGOUT" });
     }
   };
 
-  // 初始化认证状态
   const initAuth = async (): Promise<void> => {
     try {
-      const token = storage.getToken();
+      const sessionId = storage.getSessionId();
       const userInfo = await storage.getUserInfo();
       const perms = await storage.getPerms();
       const roles = await storage.getRoles();
 
-      if (token && userInfo) {
+      if (sessionId && userInfo) {
         dispatch({
           type: "INIT_AUTH_SUCCESS",
-          payload: { user: userInfo, token, perms, roles },
+          payload: { user: userInfo, sessionId, perms, roles },
         });
       }
     } catch (error) {
@@ -286,7 +259,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-// 自定义 Hook
 export const useGlobalContext = () => {
   const context = useContext(GlobalContext);
   if (!context) {

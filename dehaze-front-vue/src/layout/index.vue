@@ -111,7 +111,7 @@ watch(route, () => {
 <style lang="scss" scoped>
 .fixed-header {
   position: fixed;
-  top: var(--titlebar-h, 0px);
+  top: var(--titlebar-h, 0);
   right: 0;
   z-index: 9;
   width: calc(100% - $sidebar-width);
@@ -120,7 +120,7 @@ watch(route, () => {
 
 .sidebar-container {
   position: fixed;
-  top: var(--titlebar-h, 0px);
+  top: var(--titlebar-h, 0);
   bottom: 0;
   left: 0;
   z-index: 999;
@@ -340,7 +340,7 @@ watch(route, () => {
     }
 
     // 顶部模式全局变量修改
-    --el-menu-item-height: $navbar-height;
+    --el-menu-item-height: #{$navbar-height};
   }
 }
 </style>

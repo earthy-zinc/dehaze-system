@@ -5,7 +5,9 @@
       <div class="title">
         业绩柱状图
         <el-tooltip content="点击试试下载" effect="dark" placement="bottom">
-          <el-icon class="download" @click="downloadEchart"><Download /></el-icon>
+          <el-icon class="download" @click="downloadEchart"
+            ><Download
+          /></el-icon>
         </el-tooltip>
       </div>
     </template>

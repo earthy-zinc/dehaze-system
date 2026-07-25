@@ -88,24 +88,24 @@ function handleClose() {
 .titlebar {
   position: fixed;
   top: 0;
-  left: 0;
   right: 0;
+  left: 0;
   z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: $titlebar-height;
   padding-left: 12px;
+  user-select: none;
   background: var(--el-bg-color);
   border-bottom: 1px solid var(--el-border-color-light);
   -webkit-app-region: drag;
-  user-select: none;
 }
 
 .titlebar__left {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
 .titlebar__logo {
@@ -132,10 +132,10 @@ function handleClose() {
   width: 46px;
   height: 100%;
   padding: 0;
-  border: none;
-  background: transparent;
   color: var(--el-text-color-regular);
   cursor: pointer;
+  background: transparent;
+  border: none;
   transition: background 0.15s;
 
   &:hover {
@@ -148,7 +148,7 @@ function handleClose() {
 }
 
 .titlebar__btn--close:hover {
-  background: #e81123;
   color: #fff;
+  background: #e81123;
 }
 </style>

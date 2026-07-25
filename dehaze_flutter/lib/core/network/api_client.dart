@@ -6,17 +6,12 @@ import 'api_config.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
 import 'interceptors/response_interceptor.dart';
-import 'interceptors/retry_interceptor.dart';
 
-/// API 客户端
-///
-/// Dio 单例封装，统一管理网络请求配置和拦截器
 class ApiClient {
   ApiClient._internal(this.dio);
 
   final Dio dio;
 
-  /// 工厂方法：创建配置完整的 Dio 实例
   factory ApiClient.create({
     required TokenStorage tokenStorage,
     void Function()? onAuthError,
@@ -32,21 +27,9 @@ class ApiClient {
       },
     ));
 
-    // 按顺序添加拦截器：
-    // 1. AuthInterceptor - 请求时注入 Token
-    // 2. ResponseInterceptor - 响应时判断 code
-    // 3. RetryInterceptor - 401 时刷新 Token 并重试
-    // 4. ErrorInterceptor - 统一错误转换
-    final retryInterceptor = RetryInterceptor(
-      dio: dio,
-      tokenStorage: tokenStorage,
-      onAuthError: onAuthError,
-    );
-
     dio.interceptors.addAll([
       AuthInterceptor(tokenStorage),
       ResponseInterceptor(),
-      retryInterceptor,
       ErrorInterceptor(onAuthError: onAuthError),
     ]);
 

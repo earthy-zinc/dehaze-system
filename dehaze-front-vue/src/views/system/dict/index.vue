@@ -16,7 +16,9 @@
           <el-button type="primary" @click="handleQuery()"
             ><el-icon><Search /></el-icon>搜索</el-button
           >
-          <el-button @click="resetQuery()"><el-icon><Refresh /></el-icon>重置</el-button>
+          <el-button @click="resetQuery()"
+            ><el-icon><Refresh /></el-icon>重置</el-button
+          >
         </el-form-item>
       </el-form>
     </div>

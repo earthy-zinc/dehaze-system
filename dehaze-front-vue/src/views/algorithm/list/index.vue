@@ -458,8 +458,8 @@ onMounted(() => {
 }
 
 .type-tree-card {
-  width: 240px;
   flex-shrink: 0;
+  width: 240px;
   border-radius: 4px;
 
   .tree-header {
@@ -482,40 +482,40 @@ onMounted(() => {
 
   .type-node {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
     color: var(--el-text-color-regular);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
 
     .type-label {
-      font-size: 13px;
       flex: 1;
       overflow: hidden;
       text-overflow: ellipsis;
+      font-size: 13px;
       white-space: nowrap;
     }
 
     .type-badge {
       :deep(.el-badge__content) {
-        font-size: 11px;
         height: 18px;
-        line-height: 18px;
         padding: 0 6px;
+        font-size: 11px;
+        line-height: 18px;
       }
     }
 
     &:hover {
-      background: var(--el-fill-color-light);
       color: var(--el-color-primary);
+      background: var(--el-fill-color-light);
     }
 
     &.active {
-      background: var(--el-color-primary-light-9);
-      color: var(--el-color-primary);
       font-weight: 500;
+      color: var(--el-color-primary);
+      background: var(--el-color-primary-light-9);
     }
   }
 }
@@ -526,8 +526,8 @@ onMounted(() => {
 }
 
 .search-container {
-  margin-bottom: 16px;
   padding: 16px;
+  margin-bottom: 16px;
   background: #fff;
   border-radius: 4px;
 }
@@ -552,8 +552,8 @@ onMounted(() => {
 
 .toolbar {
   display: flex;
-  align-items: center;
   gap: 16px;
+  align-items: center;
   margin-bottom: 12px;
 
   .result-tip {
@@ -561,9 +561,9 @@ onMounted(() => {
     color: var(--el-text-color-secondary);
 
     strong {
-      color: var(--el-color-primary);
-      font-size: 14px;
       margin: 0 2px;
+      font-size: 14px;
+      color: var(--el-color-primary);
     }
   }
 }
@@ -577,7 +577,7 @@ onMounted(() => {
   font-weight: bold;
 }
 
-@media (max-width: 992px) {
+@media (width <= 992px) {
   .algorithm-page {
     flex-direction: column;
   }

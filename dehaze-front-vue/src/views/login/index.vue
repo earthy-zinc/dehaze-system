@@ -3,7 +3,7 @@
     <!-- 顶部 -->
     <div
       class="absolute-lt flex-x-end p-3 w-full"
-      style="top: var(--titlebar-h, 0px)"
+      style="top: var(--titlebar-h, 0)"
     >
       <el-switch
         v-model="isDark"
@@ -132,20 +132,17 @@ import { Moon, Sunny } from "@element-plus/icons-vue";
 import { AuthAPI, LoginData } from "dehaze-sdk-js";
 import { LocationQuery, LocationQueryValue, useRoute } from "vue-router";
 
-// Stores
 const userStore = useUserStore();
 const settingsStore = useSettingsStore();
 
-// Internationalization
 const { t } = useI18n();
 
-// Reactive states
 const isDark = ref(settingsStore.theme === ThemeEnum.DARK);
 const icpVisible = ref(true);
-const loading = ref(false); // 按钮loading
-const isCapslock = ref(false); // 是否大写锁定
-const captchaBase64 = ref(); // 验证码图片Base64字符串
-const loginFormRef = ref(ElForm); // 登录表单ref
+const loading = ref(false);
+const isCapslock = ref(false);
+const captchaBase64 = ref();
+const loginFormRef = ref(ElForm);
 const { height } = useWindowSize();
 
 const loginData = ref<LoginData>({
@@ -185,7 +182,6 @@ const loginRules = computed(() => {
   };
 });
 
-/** 获取验证码 */
 function getCaptcha() {
   AuthAPI.getCaptcha().then((data) => {
     loginData.value.captchaKey = data.captchaKey;
@@ -193,7 +189,6 @@ function getCaptcha() {
   });
 }
 
-/** 登录 */
 const route = useRoute();
 
 function handleLogin() {
@@ -227,14 +222,12 @@ function handleLogin() {
   });
 }
 
-/** 主题切换 */
 const toggleTheme = () => {
   const newTheme =
     settingsStore.theme === ThemeEnum.DARK ? ThemeEnum.LIGHT : ThemeEnum.DARK;
   settingsStore.changeTheme(newTheme);
 };
 
-/** 根据屏幕宽度切换设备模式 */
 watchEffect(() => {
   if (height.value < 600) {
     icpVisible.value = false;
@@ -243,9 +236,7 @@ watchEffect(() => {
   }
 });
 
-/** 检查输入大小写 */
 function checkCapslock(event: KeyboardEvent) {
-  // 防止浏览器密码自动填充时报错
   if (event instanceof KeyboardEvent) {
     isCapslock.value = event.getModifierState("CapsLock");
   }
@@ -265,8 +256,8 @@ html.dark .login-container {
 }
 
 .login-container {
+  padding-top: var(--titlebar-h, 0);
   overflow-y: auto;
-  padding-top: var(--titlebar-h, 0px);
   background: url("@/assets/images/login-bg.jpg") no-repeat center right;
 
   @apply wh-full flex-center;

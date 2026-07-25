@@ -1,5 +1,4 @@
 import { AuthAPI, LoginData } from "dehaze-sdk-js";
-import { getAccessToken } from "@/utils/auth";
 import { ThemeEnum } from "@/enums/ThemeEnum";
 import defaultSettings from "@/settings";
 import { DisPatchType } from "@/store";
@@ -49,15 +48,9 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    // 已登录用户访问登录页 -> 直接跳转首页
-    if (getAccessToken()) {
-      navigate("/", { replace: true });
-      return;
-    }
     getCaptcha();
   }, []);
 
-  // 登录提交（Form 的 onFinish 自带回车提交支持）
   const handleLogin = (values: {
     username: string;
     password: string;
@@ -81,7 +74,6 @@ export default function Login() {
         });
       })
       .catch(() => {
-        // 登录失败：清空密码和验证码输入，并刷新验证码
         form.setFieldsValue({ password: "", captchaCode: "" });
         getCaptcha();
       })

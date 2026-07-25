@@ -18,7 +18,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import styles from "./index.module.scss";
 
 type ActivePage =
-  "singleImage" | "example" | "loading" | "overlap" | "effect" | "camera";
+  | "singleImage"
+  | "example"
+  | "loading"
+  | "overlap"
+  | "effect"
+  | "camera";
 
 export default function Overlap() {
   const [image1, setImage1] = useState(

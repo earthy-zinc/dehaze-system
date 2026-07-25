@@ -2,10 +2,7 @@
 import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import Waterfall from "@/components/Waterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
-import {
-  IMAGE_TYPE_LABELS,
-  formatHazeLevel,
-} from "@/enums/ImageTypeEnum";
+import { IMAGE_TYPE_LABELS, formatHazeLevel } from "@/enums/ImageTypeEnum";
 import {
   Dataset,
   DatasetAPI,
@@ -479,10 +476,7 @@ function resetPairedUpload() {
 
 async function submitPairedUpload() {
   // 清晰图和有雾图均为可选（适配不同数据集规范），但至少上传一张图片
-  if (
-    clearFileList.value.length === 0 &&
-    hazyFileList.value.length === 0
-  ) {
+  if (clearFileList.value.length === 0 && hazyFileList.value.length === 0) {
     ElMessage.warning("请至少上传一张图片（清晰图或有雾图）");
     return;
   }
@@ -1133,10 +1127,12 @@ onUnmounted(() => {
       <el-alert type="info" :closable="false" show-icon class="mb-3">
         <template #title>文件名自动识别配对规则</template>
         <div class="pairing-rules">
-          xxx_clear.jpg / xxx_gt.jpg 识别为清晰图；xxx_hazy.jpg 识别为有雾图；xxx_trans.jpg
-          识别为透射图；xxx_depth.jpg 识别为深度图；xxx_segment.jpg 识别为分割图。雾霾程度
-          支持多种规范：xxx_hazy_light.jpg / xxx_hazy_medium.jpg / xxx_hazy_heavy.jpg
-          （人工分级），或 xxx_1_0.74905.jpg（学术参数格式，统一取最后一个数值作为 beta）。
+          xxx_clear.jpg / xxx_gt.jpg 识别为清晰图；xxx_hazy.jpg
+          识别为有雾图；xxx_trans.jpg 识别为透射图；xxx_depth.jpg
+          识别为深度图；xxx_segment.jpg 识别为分割图。雾霾程度
+          支持多种规范：xxx_hazy_light.jpg / xxx_hazy_medium.jpg /
+          xxx_hazy_heavy.jpg （人工分级），或
+          xxx_1_0.74905.jpg（学术参数格式，统一取最后一个数值作为 beta）。
           同一前缀（前导数字）的图片自动归为一个配对组。
         </div>
       </el-alert>
@@ -1229,11 +1225,7 @@ onUnmounted(() => {
               {{ detailImage?.formattedSize || "-" }}
             </el-descriptions-item>
             <el-descriptions-item label="雾霾程度">
-              <el-tag
-                v-if="detailImage?.hazeLevel"
-                size="small"
-                type="warning"
-              >
+              <el-tag v-if="detailImage?.hazeLevel" size="small" type="warning">
                 {{ formatHazeLevel(detailImage.hazeLevel) }}
               </el-tag>
               <span v-else>-</span>

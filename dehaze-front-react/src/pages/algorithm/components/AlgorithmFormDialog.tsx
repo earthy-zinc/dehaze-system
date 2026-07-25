@@ -189,10 +189,7 @@ const AlgorithmFormDialog = forwardRef<AlgorithmFormDialogRef, Props>(
             <Form.Item name="importPath" label="代码导入路径">
               <Input placeholder="如 models.ridcp" />
             </Form.Item>
-            <Form.Item
-              name="status"
-              label="状态"
-            >
+            <Form.Item name="status" label="状态">
               <Select style={{ width: "100%" }}>
                 <Select.Option value={0}>草稿</Select.Option>
                 <Select.Option value={1}>测试中</Select.Option>

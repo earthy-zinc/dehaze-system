@@ -29,20 +29,35 @@ LoginResponse _$LoginResponseFromJson(
   Map<String, dynamic> json,
 ) => $checkedCreate('LoginResponse', json, ($checkedConvert) {
   final val = LoginResponse(
-    accessToken: $checkedConvert('accessToken', (v) => v as String),
-    tokenType: $checkedConvert('tokenType', (v) => v as String? ?? 'Bearer'),
-    expires: $checkedConvert('expires', (v) => (v as num?)?.toInt() ?? 3600),
-    refreshToken: $checkedConvert('refreshToken', (v) => v as String?),
+    sessionId: $checkedConvert('sessionId', (v) => v as String),
+    user: $checkedConvert(
+        'user',
+        (v) => LoginUser.fromJson(v as Map<String, dynamic>)),
   );
   return val;
 });
 
 Map<String, dynamic> _$LoginResponseToJson(LoginResponse instance) =>
     <String, dynamic>{
-      'accessToken': instance.accessToken,
-      'tokenType': instance.tokenType,
-      'expires': instance.expires,
-      if (instance.refreshToken case final value?) 'refreshToken': value,
+      'sessionId': instance.sessionId,
+      'user': instance.user.toJson(),
+    };
+
+LoginUser _$LoginUserFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('LoginUser', json, ($checkedConvert) {
+      final val = LoginUser(
+        id: $checkedConvert('id', (v) => v as int),
+        username: $checkedConvert('username', (v) => v as String),
+        nickname: $checkedConvert('nickname', (v) => v as String),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$LoginUserToJson(LoginUser instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'username': instance.username,
+      'nickname': instance.nickname,
     };
 
 CaptchaResponse _$CaptchaResponseFromJson(Map<String, dynamic> json) =>

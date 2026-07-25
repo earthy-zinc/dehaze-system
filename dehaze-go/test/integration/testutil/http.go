@@ -20,8 +20,8 @@ type APIResponse struct {
 }
 
 // DoRequest 构造 HTTP 请求并通过 Engine 执行，返回响应记录器。
-// token 非空时自动设置 Authorization: Bearer <token>。
-func DoRequest(method, path string, body interface{}, token string) *httptest.ResponseRecorder {
+// sessionID 非空时自动设置 X-Session-Id 请求头。
+func DoRequest(method, path string, body interface{}, sessionID string) *httptest.ResponseRecorder {
 	var reqBody *bytes.Buffer
 	if body != nil {
 		b, _ := json.Marshal(body)
@@ -32,8 +32,8 @@ func DoRequest(method, path string, body interface{}, token string) *httptest.Re
 
 	req := httptest.NewRequest(method, path, reqBody)
 	req.Header.Set("Content-Type", "application/json")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
+	if sessionID != "" {
+		req.Header.Set("X-Session-Id", sessionID)
 	}
 
 	w := httptest.NewRecorder()

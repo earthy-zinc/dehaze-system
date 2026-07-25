@@ -8,7 +8,14 @@ import {
   DatasetAPI,
   DatasetQuery,
 } from "dehaze-sdk-js";
-import { Delete, Edit, Plus, Refresh, Search, Setting } from "@element-plus/icons-vue";
+import {
+  Delete,
+  Edit,
+  Plus,
+  Refresh,
+  Search,
+  Setting,
+} from "@element-plus/icons-vue";
 
 const props = defineProps<{
   listType: string;

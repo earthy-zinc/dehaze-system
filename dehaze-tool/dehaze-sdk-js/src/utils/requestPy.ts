@@ -15,10 +15,6 @@ const service = axios.create({
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const interceptors = pythonConfigManager.getInterceptors();
-    const accessToken = interceptors.getToken?.();
-    if (accessToken) {
-      config.headers.Authorization = accessToken;
-    }
     const otherConfig = interceptors.onRequest?.(config) || {};
     return { ...config, ...otherConfig };
   },

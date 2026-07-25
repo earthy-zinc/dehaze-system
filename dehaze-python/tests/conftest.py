@@ -204,29 +204,22 @@ async def sample_menu(db_session: AsyncSession) -> dict:
 
 @pytest_asyncio.fixture
 async def auth_headers(sample_user: dict, mock_redis: MockRedis) -> dict:
-    """获取认证请求头"""
-    from datetime import datetime, timedelta, timezone
+    """获取认证请求头（Session 模式）"""
+    import json
     from uuid import uuid4
 
-    from jose import jwt
-
-    from app.config import settings
-
-    jti = str(uuid4())
-    payload = {
-        "jti": jti,
-        "sub": sample_user["username"],
+    session_id = str(uuid4())
+    session_data = json.dumps({
         "userId": sample_user["id"],
+        "username": sample_user["username"],
+        "nickname": sample_user.get("nickname", ""),
         "deptId": 1,
         "dataScope": 1,
         "authorities": ["ROLE_USER"],
-        "exp": datetime.now(timezone.utc) + timedelta(seconds=settings.JWT_ACCESS_TOKEN_EXPIRES),
-        "iat": datetime.now(timezone.utc),
-    }
+    })
+    await mock_redis.set("session:" + session_id, session_data)
 
-    token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm="HS256")
-
-    return {"Authorization": f"Bearer {token}"}
+    return {"X-Session-Id": session_id, "Cookie": f"X-Session-Id={session_id}"}
 
 
 # ==================== 工具函数 ====================

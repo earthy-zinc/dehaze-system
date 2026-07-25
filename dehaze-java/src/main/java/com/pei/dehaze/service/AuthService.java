@@ -11,6 +11,4 @@ public interface AuthService {
     void logout();
 
     CaptchaResult getCaptcha();
-
-    LoginResult refreshToken(String refreshToken);
 }

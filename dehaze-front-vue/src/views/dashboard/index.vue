@@ -36,7 +36,11 @@
         :sm="12"
         :lg="6"
       >
-        <el-card shadow="hover" class="stat-card" @click="router.push(item.link)">
+        <el-card
+          shadow="hover"
+          class="stat-card"
+          @click="router.push(item.link)"
+        >
           <div class="stat-card-inner">
             <div class="stat-icon-wrap" :style="{ background: item.bg }">
               <el-icon class="stat-icon"><component :is="item.icon" /></el-icon>
@@ -57,7 +61,8 @@
           <template #header>
             <div class="card-header">
               <span class="header-title">
-                <el-icon class="header-icon"><TrendCharts /></el-icon>近7天任务处理趋势
+                <el-icon class="header-icon"><TrendCharts /></el-icon
+                >近7天任务处理趋势
               </span>
               <el-tag type="info" size="small" effect="plain">单位：次</el-tag>
             </div>
@@ -91,14 +96,29 @@
           </el-button>
         </div>
       </template>
-      <el-table :data="recentTasks" v-loading="taskLoading" empty-text="暂无任务记录">
-        <el-table-column label="任务ID" prop="taskId" width="280" show-overflow-tooltip />
+      <el-table
+        :data="recentTasks"
+        v-loading="taskLoading"
+        empty-text="暂无任务记录"
+      >
+        <el-table-column
+          label="任务ID"
+          prop="taskId"
+          width="280"
+          show-overflow-tooltip
+        />
         <el-table-column label="类型" width="120" align="center">
-          <template #default="{ row }">{{ taskTypeLabel[row.taskType] ?? row.taskType }}</template>
+          <template #default="{ row }">{{
+            taskTypeLabel[row.taskType] ?? row.taskType
+          }}</template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :color="statusTagColor[row.status]" effect="dark" size="small">
+            <el-tag
+              :color="statusTagColor[row.status]"
+              effect="dark"
+              size="small"
+            >
               {{ statusLabel[row.status] }}
             </el-tag>
           </template>
@@ -114,7 +134,9 @@
           </template>
         </el-table-column>
         <el-table-column label="创建时间" width="180" align="center">
-          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+          <template #default="{ row }">{{
+            formatTime(row.createdAt)
+          }}</template>
         </el-table-column>
       </el-table>
     </el-card>
@@ -416,17 +438,17 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .dashboard-container {
+  min-height: calc(100vh - var(--navbar-height));
   padding: 16px;
   background: var(--el-bg-color-page);
-  min-height: calc(100vh - var(--navbar-height));
 }
 
 .welcome-card {
   margin-bottom: 16px;
-  border-radius: 12px;
-  border: none;
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: #fff;
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
 
   :deep(.el-card__body) {
     padding: 24px 28px;
@@ -434,29 +456,29 @@ onUnmounted(() => {
 
   .welcome-inner {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
     flex-wrap: wrap;
     gap: 20px;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .welcome-left {
     display: flex;
-    align-items: center;
     gap: 16px;
+    align-items: center;
   }
 
   .user-avatar {
     width: 64px;
     height: 64px;
-    border-radius: 50%;
-    border: 3px solid rgba(255, 255, 255, 0.4);
     object-fit: cover;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgb(255 255 255 / 10%);
+    border: 3px solid rgb(255 255 255 / 40%);
+    border-radius: 50%;
   }
 
   .greeting {
-    margin: 0 0 6px 0;
+    margin: 0 0 6px;
     font-size: 20px;
     font-weight: 600;
     color: #fff;
@@ -465,7 +487,7 @@ onUnmounted(() => {
   .subtitle {
     margin: 0;
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgb(255 255 255 / 80%);
   }
 
   .welcome-right {
@@ -476,23 +498,23 @@ onUnmounted(() => {
   .quick-entry {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 6px;
+    align-items: center;
     padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.25s;
-    color: #fff;
     font-size: 12px;
+    color: #fff;
+    cursor: pointer;
+    background: rgb(255 255 255 / 15%);
+    border: 1px solid rgb(255 255 255 / 20%);
+    border-radius: 10px;
+    transition: all 0.25s;
 
     .entry-icon {
       font-size: 22px;
     }
 
     &:hover {
-      background: rgba(255, 255, 255, 0.25);
+      background: rgb(255 255 255 / 25%);
       transform: translateY(-2px);
     }
   }
@@ -504,14 +526,14 @@ onUnmounted(() => {
 
 .stat-card {
   margin-bottom: 12px;
-  border-radius: 12px;
-  border: none;
   cursor: pointer;
+  border: none;
+  border-radius: 12px;
   transition: all 0.25s;
 
   &:hover {
+    box-shadow: 0 8px 20px rgb(0 0 0 / 8%);
     transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   }
 
   :deep(.el-card__body) {
@@ -520,18 +542,18 @@ onUnmounted(() => {
 
   .stat-card-inner {
     display: flex;
-    align-items: center;
     gap: 16px;
+    align-items: center;
   }
 
   .stat-icon-wrap {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
     width: 56px;
     height: 56px;
     border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
 
     .stat-icon {
       font-size: 28px;
@@ -546,14 +568,14 @@ onUnmounted(() => {
   .stat-value {
     font-size: 24px;
     font-weight: 700;
-    color: var(--el-text-color-primary);
     line-height: 1.2;
+    color: var(--el-text-color-primary);
   }
 
   .stat-label {
+    margin-top: 4px;
     font-size: 13px;
     color: var(--el-text-color-secondary);
-    margin-top: 4px;
   }
 }
 
@@ -562,9 +584,9 @@ onUnmounted(() => {
 }
 
 .chart-card {
-  border-radius: 12px;
-  border: none;
   height: 100%;
+  border: none;
+  border-radius: 12px;
 
   .card-header {
     display: flex;
@@ -573,8 +595,8 @@ onUnmounted(() => {
 
     .header-title {
       display: flex;
-      align-items: center;
       gap: 6px;
+      align-items: center;
       font-size: 15px;
       font-weight: 600;
       color: var(--el-text-color-primary);
@@ -593,8 +615,8 @@ onUnmounted(() => {
 }
 
 .recent-card {
-  border-radius: 12px;
   border: none;
+  border-radius: 12px;
 
   .card-header {
     display: flex;
@@ -603,8 +625,8 @@ onUnmounted(() => {
 
     .header-title {
       display: flex;
-      align-items: center;
       gap: 6px;
+      align-items: center;
       font-size: 15px;
       font-weight: 600;
       color: var(--el-text-color-primary);
@@ -617,15 +639,15 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .welcome-card .welcome-inner {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .welcome-right {
-    width: 100%;
     justify-content: space-between;
+    width: 100%;
   }
 }
 </style>

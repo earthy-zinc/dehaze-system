@@ -12,10 +12,14 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery"
-            ><template #icon><el-icon><Search /></el-icon></template>搜索</el-button
+            ><template #icon
+              ><el-icon><Search /></el-icon></template
+            >搜索</el-button
           >
           <el-button @click="resetQuery">
-            <template #icon><el-icon><Refresh /></el-icon></template>
+            <template #icon
+              ><el-icon><Refresh /></el-icon
+            ></template>
             重置</el-button
           >
         </el-form-item>
@@ -29,7 +33,9 @@
           type="success"
           @click="openDialog(0)"
         >
-          <template #icon><el-icon><Plus /></el-icon></template>
+          <template #icon
+            ><el-icon><Plus /></el-icon
+          ></template>
           新增</el-button
         >
       </template>

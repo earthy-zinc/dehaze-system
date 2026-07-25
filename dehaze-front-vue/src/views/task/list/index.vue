@@ -12,7 +12,9 @@
           <el-radio-button value="FAILED">失败</el-radio-button>
           <el-radio-button value="CANCELLED">已取消</el-radio-button>
         </el-radio-group>
-        <el-button @click="loadTaskList"><el-icon><Refresh /></el-icon>刷新</el-button>
+        <el-button @click="loadTaskList"
+          ><el-icon><Refresh /></el-icon>刷新</el-button
+        >
       </div>
     </el-card>
 
@@ -104,7 +106,10 @@
             {{ taskStore.currentTask.taskId }}
           </el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :color="statusTagColor[taskStore.currentTask.status]" effect="dark">
+            <el-tag
+              :color="statusTagColor[taskStore.currentTask.status]"
+              effect="dark"
+            >
               {{ statusLabel[taskStore.currentTask.status] }}
             </el-tag>
           </el-descriptions-item>

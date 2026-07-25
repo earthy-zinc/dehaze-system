@@ -1,9 +1,7 @@
 <script lang="ts" setup>
 import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
-import {
-  IMAGE_TYPE_LABELS,
-} from "@/enums/ImageTypeEnum";
+import { IMAGE_TYPE_LABELS } from "@/enums/ImageTypeEnum";
 import {
   Dataset,
   DatasetAPI,
@@ -88,7 +86,10 @@ async function handleQuery() {
       imageData = data.list;
       totalPages.value = Math.ceil(data.total / queryParams.pageSize!);
       // 若当前选中类型不在可用类型中，回退到第一个可用类型
-      if (availableTypes.value.length > 0 && !availableTypes.value.includes(selectedType.value)) {
+      if (
+        availableTypes.value.length > 0 &&
+        !availableTypes.value.includes(selectedType.value)
+      ) {
         selectedType.value = availableTypes.value[0];
       }
       switchImageUrl();
@@ -132,7 +133,11 @@ function selectImage(itemId: number) {
     const haze = imgs.find((i) => i.type === "hazy");
     const clear = imgs.find((i) => i.type === "clear");
     if (haze && clear) {
-      emit("onSelected", haze.originUrl || haze.url, clear.originUrl || clear.url);
+      emit(
+        "onSelected",
+        haze.originUrl || haze.url,
+        clear.originUrl || clear.url
+      );
     }
   }
 }

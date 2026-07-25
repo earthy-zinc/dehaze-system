@@ -157,7 +157,9 @@ const getImageTypeInfo = (type: string) =>
  * - 其他 → 原值回显
  * - 空 → 未标注
  */
-const formatHazeLevel = (level?: string): {
+const formatHazeLevel = (
+  level?: string
+): {
   label: string;
   color: string;
 } | null => {
@@ -217,7 +219,11 @@ const uniqueArray = (arr: DatasetItemVO[]) => {
 /** 将数据项下所有图片（含 clear/hazy/trans/depth/segment）展平为展示图片列表 */
 const extractAllImagesFromItem = (item: DatasetItemVO): DisplayImage[] => {
   const result: DisplayImage[] = [];
-  const pushImage = (img: ImageUrlVO | undefined, itemId: number, sceneType?: string) => {
+  const pushImage = (
+    img: ImageUrlVO | undefined,
+    itemId: number,
+    sceneType?: string
+  ) => {
     if (!img) return;
     result.push({
       itemId,
@@ -876,7 +882,8 @@ export default function DatasetDetail() {
 
   const [datasetInfo, setDatasetInfo] = useState<Dataset | null>(null);
   const [imageData, setImageData] = useState<DatasetItemVO[]>([]);
-  const [annotationFilter, setAnnotationFilter] = useState<AnnotationFilter>("annotated");
+  const [annotationFilter, setAnnotationFilter] =
+    useState<AnnotationFilter>("annotated");
 
   // 展示模式
   const [mode, setMode] = useState<DisplayMode>("waterfall");

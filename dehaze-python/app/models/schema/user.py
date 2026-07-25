@@ -93,9 +93,7 @@ class PasswordForm(BaseModel):
 
 class LoginData(BaseModel):
     """登录响应数据"""
-    tokenType: str = Field(description="Token 类型")
-    accessToken: str = Field(description="访问令牌")
-    refreshToken: Optional[str] = Field(default=None, description="刷新令牌")
+    sessionId: str = Field(description="会话ID")
     user: dict = Field(description="用户信息")
 
 

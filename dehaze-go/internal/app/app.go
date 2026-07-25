@@ -230,9 +230,9 @@ func (a *Application) Init() error {
 	// 公开路由（无需认证）
 	router.RegisterNoAuthRoutes(v1, authApi)
 
-	// 需要JWT认证保护的路由
+	// 需要Session认证保护的路由
 	protectedV1 := v1.Group("")
-	protectedV1.Use(middleware.JWTAuth())
+	protectedV1.Use(middleware.SessionAuth())
 	protectedV1.Use(middleware.UserContextMiddleware())
 	router.RegisterAuthRoutes(protectedV1, authApi)
 	router.RegisterSysUserRoutes(protectedV1, sysUserApi)
@@ -266,18 +266,27 @@ func (a *Application) Init() error {
 
 // Run 启动所有服务并阻塞等待关闭信号
 func (a *Application) Run() error {
+	errCh := make(chan error, 1)
 	go func() {
 		if err := a.Server.Run(); err != nil && err != http.ErrServerClosed {
-			logger.Error("WEB服务启动失败", zap.Error(err))
-			os.Exit(1)
+			errCh <- err
 		}
 	}()
 
-	// 阻塞等待系统中断信号
-	sig := a.Server.WaitForShutdown()
-	logger.Info("接收到关闭信号，开始优雅关闭...", zap.String("signal", sig.String()))
+	sigCh := make(chan os.Signal, 1)
+	go func() {
+		sigCh <- a.Server.WaitForShutdown()
+	}()
 
-	return a.shutdown()
+	select {
+	case err := <-errCh:
+		logger.Error("WEB服务启动失败", zap.Error(err))
+		_ = a.shutdown()
+		return err
+	case sig := <-sigCh:
+		logger.Info("接收到关闭信号，开始优雅关闭...", zap.String("signal", sig.String()))
+		return a.shutdown()
+	}
 }
 
 // shutdown 按依赖反序关闭所有资源
@@ -336,7 +345,7 @@ func (a *Application) shutdown() error {
 		logger.Info("数据库连接已关闭")
 	}
 
-	// 6) 日志（最后刷新，保证上面的日志都写入）
+	// 7) 日志（最后刷新，保证上面的日志都写入）
 	logger.Info("所有资源已关闭，刷新日志缓冲区")
 	logger.Sync()
 
@@ -368,7 +377,7 @@ func (a *Application) readinessHandler() gingin.HandlerFunc {
 				allHealthy = false
 				return
 			}
-			if err := sqlDB.Ping(); err != nil {
+			if err := sqlDB.PingContext(ctx); err != nil {
 				components["db"] = "DOWN"
 				allHealthy = false
 				return

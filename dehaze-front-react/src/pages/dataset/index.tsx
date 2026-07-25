@@ -76,7 +76,7 @@ export default function DatasetList() {
 
   useEffect(() => {
     loadData(queryParams);
-  }, [queryParams, refreshFlag]); // eslint-disable-line
+  }, [queryParams, refreshFlag]);
 
   const refreshList = useCallback(() => setRefreshFlag((prev) => prev + 1), []);
 
