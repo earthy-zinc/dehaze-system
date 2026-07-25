@@ -3,6 +3,7 @@ html.dark .login-container {
 }
 
 .login-container {
+  padding-top: var(--titlebar-h, 0);
   overflow-y: auto;
   background: url("@/assets/images/login-bg.jpg") no-repeat center right;
 

@@ -10,6 +10,7 @@ func RegisterNoAuthRoutes(rg *gin.RouterGroup, authApi *api.AuthApi) gin.IRoutes
 	{
 		authRouter.POST("login", authApi.Login)
 		authRouter.GET("captcha", authApi.Captcha)
+		authRouter.POST("refresh", authApi.RefreshToken)
 	}
 	return authRouter
 }
@@ -19,7 +20,6 @@ func RegisterAuthRoutes(rg *gin.RouterGroup, authApi *api.AuthApi) gin.IRoutes {
 	{
 		authRouter.POST("logout", authApi.Logout)
 		authRouter.GET("me", authApi.GetAuthInfo)
-		authRouter.POST("refresh", authApi.RefreshToken)
 	}
 	return authRouter
 }

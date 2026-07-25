@@ -10,6 +10,8 @@ export interface LoginData {
   captchaKey?: string;
   /** 验证码 */
   captchaCode?: string;
+  /** 记住我（前端控制 Token 存储策略，不发送给后端） */
+  rememberMe?: boolean;
 }
 
 /**

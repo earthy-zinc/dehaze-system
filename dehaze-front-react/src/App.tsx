@@ -1,11 +1,12 @@
 import router from "@/router";
 import defaultSettings from "@/settings";
 import { RootState } from "@/store";
+import TitleBar from "@/components/TitleBar";
 import { ConfigProvider, message, theme, Watermark } from "antd";
 import { SizeType } from "antd/es/config-provider/SizeContext";
 import enUS from "antd/locale/en_US";
 import zhCN from "antd/locale/zh_CN";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { RouterProvider } from "react-router-dom";
 import { ThemeEnum } from "./enums/ThemeEnum";
@@ -21,6 +22,15 @@ function App() {
   const appStore = useSelector((state: RootState) => state.app);
   const settingsStore = useSelector((state: RootState) => state.settings);
   const systemTheme = useSystemTheme();
+
+  const isElectron = !!window.electronAPI;
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--titlebar-h",
+      isElectron ? "var(--titlebar-height)" : "0px"
+    );
+  }, [isElectron]);
 
   const locale = useMemo(() => {
     switch (appStore.language) {
@@ -51,6 +61,7 @@ function App() {
   return (
     <>
       {contextHolder}
+      {isElectron && <TitleBar />}
       <ConfigProvider
         locale={locale}
         componentSize={appStore.size as SizeType}

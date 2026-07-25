@@ -1,11 +1,10 @@
 import { resetRouter } from "@/router";
 import { store } from "@/store";
+import { clearAccessToken, setAccessToken } from "@/utils/auth";
 
 import {
   AuthAPI,
   LoginData,
-  REFRESH_TOKEN_KEY,
-  TOKEN_KEY,
   UserAPI,
   UserInfo,
 } from "dehaze-sdk-js";
@@ -18,21 +17,16 @@ export const useUserStore = defineStore("user", () => {
 
   /** 登录 */
   async function login(loginData: LoginData) {
-    const { tokenType, accessToken, refreshToken } =
-      await AuthAPI.login(loginData);
-    localStorage.setItem(TOKEN_KEY, tokenType + " " + accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    const { tokenType, accessToken } = await AuthAPI.login(loginData);
+    const rememberMe = loginData.rememberMe !== false;
+    setAccessToken(tokenType + " " + accessToken, rememberMe);
   }
 
-  /** 刷新 accessToken */
-  async function refreshAccessToken(refreshToken: string) {
-    const {
-      tokenType,
-      accessToken,
-      refreshToken: newRefreshToken,
-    } = await AuthAPI.refreshToken(refreshToken);
-    localStorage.setItem(TOKEN_KEY, tokenType + " " + accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+  /** 刷新 accessToken（refreshToken 由 httpOnly Cookie 自动携带） */
+  async function refreshAccessToken() {
+    const { tokenType, accessToken } = await AuthAPI.refreshToken();
+    const rememberMe = !!localStorage.getItem("rememberMe");
+    setAccessToken(tokenType + " " + accessToken, rememberMe);
   }
 
   /** 获取用户信息（昵称、头像、角色、权限） */
@@ -48,15 +42,13 @@ export const useUserStore = defineStore("user", () => {
   /** 登出 */
   async function logout() {
     await AuthAPI.logout();
-    localStorage.setItem(TOKEN_KEY, "");
-    localStorage.setItem(REFRESH_TOKEN_KEY, "");
+    clearAccessToken();
     location.reload();
   }
 
   /** 清除 token 并重置路由 */
   function resetToken() {
-    localStorage.setItem(TOKEN_KEY, "");
-    localStorage.setItem(REFRESH_TOKEN_KEY, "");
+    clearAccessToken();
     resetRouter();
   }
 

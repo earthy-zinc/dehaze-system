@@ -1,4 +1,14 @@
 declare global {
+  interface ElectronAPI {
+    minimize: () => void;
+    toggleMaximize: () => void;
+    close: () => void;
+  }
+
+  interface Window {
+    electronAPI?: ElectronAPI;
+  }
+
   /**
    * 页签对象
    */

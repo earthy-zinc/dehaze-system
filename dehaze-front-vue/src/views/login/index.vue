@@ -1,7 +1,10 @@
 <template>
   <div class="login-container">
     <!-- 顶部 -->
-    <div class="absolute-lt flex-x-end p-3 w-full">
+    <div
+      class="absolute-lt flex-x-end p-3 w-full"
+      style="top: var(--titlebar-h, 0px)"
+    >
       <el-switch
         v-model="isDark"
         :active-icon="Moon"
@@ -84,6 +87,13 @@
           </div>
         </el-form-item>
 
+        <!-- 记住我 -->
+        <div class="flex-x-between w-full mb-4">
+          <el-checkbox v-model="loginData.rememberMe">
+            记住我（7天内免登录）
+          </el-checkbox>
+        </div>
+
         <!-- 登录按钮 -->
         <el-button
           :loading="loading"
@@ -141,6 +151,7 @@ const { height } = useWindowSize();
 const loginData = ref<LoginData>({
   username: "admin",
   password: "123456",
+  rememberMe: true,
 });
 
 const loginRules = computed(() => {
@@ -255,6 +266,7 @@ html.dark .login-container {
 
 .login-container {
   overflow-y: auto;
+  padding-top: var(--titlebar-h, 0px);
   background: url("@/assets/images/login-bg.jpg") no-repeat center right;
 
   @apply wh-full flex-center;

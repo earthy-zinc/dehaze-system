@@ -38,11 +38,11 @@ class AuthAPI {
   /**
    * 刷新Token（使用当前请求的 refreshToken）
    */
-  static refreshToken(refreshToken: string) {
+  static refreshToken(refreshToken?: string) {
     return request<any, RefreshResult>({
       url: "/api/v1/auth/refresh",
       method: "post",
-      data: { refreshToken },
+      data: refreshToken ? { refreshToken } : {},
     });
   }
 

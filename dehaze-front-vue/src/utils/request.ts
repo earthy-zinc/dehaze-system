@@ -1,4 +1,5 @@
 import { useUserStoreHook } from "@/store/modules/user";
+import { clearAccessToken, getAccessToken } from "@/utils/auth";
 
 import type { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import {
@@ -6,15 +7,11 @@ import {
   configPythonAxios,
   javaService,
   pythonService,
-  REFRESH_TOKEN_KEY,
   ResponseData,
   ResultEnum,
-  TOKEN_KEY,
 } from "dehaze-sdk-js";
 
-// token 刷新状态：是否正在刷新中
 let isRefreshing = false;
-// 等待 token 刷新完成后重发的请求队列
 let pendingQueue: Array<{
   service: AxiosInstance;
   config: InternalAxiosRequestConfig;
@@ -22,9 +19,6 @@ let pendingQueue: Array<{
   reject: (reason: any) => void;
 }> = [];
 
-/**
- * 显示重新登录弹框
- */
 function showReloginDialog() {
   ElMessageBox.confirm("当前页面已失效，请重新登录", "提示", {
     confirmButtonText: "确定",
@@ -37,44 +31,26 @@ function showReloginDialog() {
   });
 }
 
-/**
- * 处理 token 失效：尝试刷新 token 后重发请求，刷新失败则弹框重新登录
- *
- * @param error 原始错误
- * @param service 对应的 axios 实例（用于重发请求）
- */
 function handleTokenInvalid(error: any, service: AxiosInstance): Promise<any> {
   const userStore = useUserStoreHook();
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
-  // 无 refreshToken，直接弹框重新登录
-  if (!refreshToken) {
-    showReloginDialog();
-    return Promise.reject(error);
-  }
-
-  // 正在刷新中，将当前请求加入队列等待
   if (isRefreshing) {
     return new Promise((resolve, reject) => {
       pendingQueue.push({ service, config: error.config!, resolve, reject });
     });
   }
 
-  // 发起刷新
   isRefreshing = true;
   return userStore
-    .refreshAccessToken(refreshToken)
+    .refreshAccessToken()
     .then(() => {
-      // 刷新成功，重发队列中等待的请求
       pendingQueue.forEach(({ service: svc, config, resolve, reject }) => {
         svc.request(config).then(resolve).catch(reject);
       });
       pendingQueue = [];
-      // 重发原始请求
       return service.request(error.config!);
     })
     .catch((err) => {
-      // 刷新失败，清空队列并弹框重新登录
       pendingQueue.forEach(({ reject }) => reject(err));
       pendingQueue = [];
       showReloginDialog();
@@ -85,9 +61,6 @@ function handleTokenInvalid(error: any, service: AxiosInstance): Promise<any> {
     });
 }
 
-/**
- * 创建响应错误处理函数（绑定到具体的 axios 实例，用于刷新后重发）
- */
 function createOnResponseError(service: AxiosInstance) {
   return (error: any) => {
     if (error.response?.data) {
@@ -97,7 +70,6 @@ function createOnResponseError(service: AxiosInstance) {
       }
       ElMessage.error(msg || "系统出错");
     } else if (error.request) {
-      // 请求已发出但无响应（网络断开、超时、CORS）
       ElMessage.error("网络异常，请检查网络连接");
     } else {
       ElMessage.error(error.message || "请求发送失败");
@@ -115,7 +87,7 @@ export default function configRequest() {
       };
     },
     onResponseError: createOnResponseError(javaService),
-    getToken: () => localStorage.getItem(TOKEN_KEY),
+    getToken: () => getAccessToken(),
   });
   configPythonAxios({
     onRequest: (config: InternalAxiosRequestConfig) => {
@@ -125,6 +97,6 @@ export default function configRequest() {
       };
     },
     onResponseError: createOnResponseError(pythonService),
-    getToken: () => localStorage.getItem(TOKEN_KEY),
+    getToken: () => getAccessToken(),
   });
 }

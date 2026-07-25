@@ -2,6 +2,8 @@ package security
 
 import (
 	"net"
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -39,7 +41,6 @@ func (c *CustomClaims) GetDataScope() int8 {
 }
 
 func ClearToken(c *gin.Context) {
-	// 增加cookie Authorization 向来源的web添加
 	host, _, err := net.SplitHostPort(c.Request.Host)
 	if err != nil {
 		host = c.Request.Host
@@ -50,10 +51,10 @@ func ClearToken(c *gin.Context) {
 	} else {
 		c.SetCookie("Authorization", "", -1, "/", host, false, false)
 	}
+	ClearRefreshTokenCookies(c)
 }
 
 func SetToken(c *gin.Context, token string, maxAge int) {
-	// 增加cookie Authorization 向来源的web添加
 	host, _, err := net.SplitHostPort(c.Request.Host)
 	if err != nil {
 		host = c.Request.Host
@@ -64,6 +65,48 @@ func SetToken(c *gin.Context, token string, maxAge int) {
 	} else {
 		c.SetCookie("Authorization", token, maxAge, "/", host, false, false)
 	}
+}
+
+func SetRefreshTokenCookies(c *gin.Context, refreshToken string, rememberMe bool) {
+	maxAge := -1
+	if rememberMe {
+		maxAge = 7 * 24 * 3600
+	}
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refreshToken",
+		Value:    refreshToken,
+		MaxAge:   maxAge,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "rememberMe",
+		Value:    strconv.FormatBool(rememberMe),
+		MaxAge:   maxAge,
+		Path:     "/",
+		HttpOnly: false,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func ClearRefreshTokenCookies(c *gin.Context) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refreshToken",
+		Value:    "",
+		MaxAge:   0,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "rememberMe",
+		Value:    "",
+		MaxAge:   0,
+		Path:     "/",
+		HttpOnly: false,
+		SameSite: http.SameSiteLaxMode,
+	})
 }
 
 func GetToken(c *gin.Context) string {

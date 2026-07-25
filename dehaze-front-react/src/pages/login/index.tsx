@@ -1,4 +1,5 @@
-import { AuthAPI, LoginData, TOKEN_KEY } from "dehaze-sdk-js";
+import { AuthAPI, LoginData } from "dehaze-sdk-js";
+import { getAccessToken } from "@/utils/auth";
 import { ThemeEnum } from "@/enums/ThemeEnum";
 import defaultSettings from "@/settings";
 import { DisPatchType } from "@/store";
@@ -12,7 +13,16 @@ import {
   SunOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Form, Input, Switch, Tag, Tooltip } from "antd";
+import {
+  Button,
+  Card,
+  Checkbox,
+  Form,
+  Input,
+  Switch,
+  Tag,
+  Tooltip,
+} from "antd";
 import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -25,6 +35,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [isCapslock, setIsCapslock] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -39,7 +50,7 @@ export default function Login() {
 
   useEffect(() => {
     // 已登录用户访问登录页 -> 直接跳转首页
-    if (localStorage.getItem(TOKEN_KEY)) {
+    if (getAccessToken()) {
       navigate("/", { replace: true });
       return;
     }
@@ -53,7 +64,7 @@ export default function Login() {
     captchaCode: string;
   }) => {
     setLoading(true);
-    const loginData: LoginData = { ...values, captchaKey };
+    const loginData: LoginData = { ...values, captchaKey, rememberMe };
     dispatch(login(loginData))
       .then(() => {
         const query = new URLSearchParams(location.search);
@@ -87,7 +98,10 @@ export default function Login() {
 
   return (
     <div className="login-container">
-      <div className="absolute-lt flex-x-end p-3 w-full">
+      <div
+        className="absolute-lt flex-x-end p-3 w-full"
+        style={{ top: "var(--titlebar-h, 0px)" }}
+      >
         <Switch
           checkedChildren={<MoonOutlined />}
           unCheckedChildren={<SunOutlined />}
@@ -162,6 +176,14 @@ export default function Login() {
                 )
               }
             />
+          </Form.Item>
+          <Form.Item>
+            <Checkbox
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+            >
+              记住我（7天内免登录）
+            </Checkbox>
           </Form.Item>
           <Form.Item>
             <Button

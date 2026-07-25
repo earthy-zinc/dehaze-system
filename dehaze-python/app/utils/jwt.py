@@ -25,21 +25,6 @@ class JWTUtils:
         data_scope: int | None = None,
         expires_delta: timedelta | None = None,
     ) -> str:
-        """
-        生成访问令牌
-
-        Args:
-            user_id: 用户ID
-            username: 用户名
-            roles: 角色列表
-            perms: 权限列表（合并进 authorities，与 Go 一致）
-            dept_id: 部门ID
-            data_scope: 数据权限范围
-            expires_delta: 过期时间增量，默认使用配置
-
-        Returns:
-            JWT Token 字符串
-        """
         jti = str(uuid4())
         now = datetime.now(timezone.utc)
 
@@ -61,4 +46,25 @@ class JWTUtils:
             "iat": now,
         }
 
+        return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm="HS256")
+
+    @staticmethod
+    def create_refresh_token(
+        user_id: int,
+        username: str,
+        expires_delta: timedelta | None = None,
+    ) -> str:
+        if expires_delta is None:
+            ttl = getattr(settings, "JWT_REFRESH_TOKEN_EXPIRES", 7 * 24 * 3600)
+            expires_delta = timedelta(seconds=ttl)
+
+        now = datetime.now(timezone.utc)
+        payload = {
+            "jti": str(uuid4()),
+            "sub": username,
+            "userId": user_id,
+            "type": "refresh",
+            "exp": now + expires_delta,
+            "iat": now,
+        }
         return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm="HS256")

@@ -16,7 +16,6 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.model.dto.CaptchaResult;
 import com.pei.dehaze.model.dto.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
-import com.pei.dehaze.model.dto.RefreshTokenForm;
 import com.pei.dehaze.plugin.captcha.CaptchaProperties;
 import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.security.util.JwtUtils;
@@ -178,8 +177,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public LoginResult refreshToken(RefreshTokenForm form) {
-        String refreshTokenStr = form.getRefreshToken();
+    public LoginResult refreshToken(String refreshTokenStr) {
         if (CharSequenceUtil.isBlank(refreshTokenStr)) {
             throw new BusinessException(ResultCode.PARAM_IS_NULL);
         }

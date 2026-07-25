@@ -23,4 +23,7 @@ public class LoginForm {
     @NotBlank(message = "验证码不能为空")
     @Schema(description = "验证码")
     private String captchaCode;
+
+    @Schema(description = "记住我（控制 refreshToken Cookie 的 Max-Age：true=7天，false=会话级）")
+    private Boolean rememberMe;
 }

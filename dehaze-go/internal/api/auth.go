@@ -66,9 +66,9 @@ func (a *AuthApi) Login(c *gin.Context) {
 		return
 	}
 
-	// 设置Token到Cookie
 	if result != nil {
-		security.SetToken(c, result.AccessToken, int(result.Expires/1000)) // 毫秒转秒
+		rememberMe := req.RememberMe != nil && *req.RememberMe
+		security.SetRefreshTokenCookies(c, result.RefreshToken, rememberMe)
 	}
 
 	common.OkWithDetailed(result, common.SUCCESS.Msg, c)
@@ -88,6 +88,7 @@ func (a *AuthApi) Logout(c *gin.Context) {
 		return
 	}
 
+	security.ClearRefreshTokenCookies(c)
 	common.OkWithMessage(common.SUCCESS.Msg, c)
 }
 
@@ -124,17 +125,25 @@ func (a *AuthApi) GetAuthInfo(c *gin.Context) {
 // @Success 200 {object} common.Response{data=dto.LoginResult}
 // @Router /api/v1/auth/refresh [post]
 func (a *AuthApi) RefreshToken(c *gin.Context) {
-	token := security.GetToken(c)
-	if token == "" {
+	refreshToken, _ := c.Cookie("refreshToken")
+	if refreshToken == "" {
+		var req bo.RefreshTokenRequest
+		if err := c.ShouldBind(&req); err == nil {
+			refreshToken = req.RefreshToken
+		}
+	}
+	if refreshToken == "" {
 		_ = c.Error(common.NewBizError(common.TOKEN_INVALID, common.TOKEN_INVALID.Msg))
 		return
 	}
 
-	result, err := a.authService.RefreshToken(c.Request.Context(), token)
+	result, err := a.authService.RefreshToken(c.Request.Context(), refreshToken)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
+	rememberMeStr, _ := c.Cookie("rememberMe")
+	security.SetRefreshTokenCookies(c, result.RefreshToken, rememberMeStr == "true")
 	common.OkWithDetailed(result, common.SUCCESS.Msg, c)
 }

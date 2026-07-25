@@ -11,7 +11,6 @@ import lombok.Data;
 @Schema(description = "刷新令牌请求")
 public class RefreshTokenForm {
 
-    @NotBlank(message = "刷新令牌不能为空")
-    @Schema(description = "刷新令牌")
+    @Schema(description = "刷新令牌（使用 httpOnly Cookie 时可为空，从 Cookie 中读取）")
     private String refreshToken;
 }

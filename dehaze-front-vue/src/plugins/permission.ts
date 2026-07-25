@@ -1,19 +1,30 @@
-import { TOKEN_KEY } from "dehaze-sdk-js";
+import { getAccessToken } from "@/utils/auth";
 import router from "@/router";
 import { usePermissionStore, useUserStore } from "@/store";
 import NProgress from "@/utils/nprogress";
 import { RouteRecordRaw } from "vue-router";
 
 export function setupPermission() {
-  // 白名单路由
   const whiteList = ["/login"];
 
   router.beforeEach(async (to, from, next) => {
     NProgress.start();
-    const hasToken = localStorage.getItem(TOKEN_KEY);
+
+    let hasToken = getAccessToken();
+
+    // accessToken 不存在，尝试用 httpOnly Cookie 中的 refreshToken 刷新
+    if (!hasToken) {
+      const userStore = useUserStore();
+      try {
+        await userStore.refreshAccessToken();
+        hasToken = getAccessToken();
+      } catch {
+        await userStore.resetToken();
+      }
+    }
+
     if (hasToken) {
       if (to.path === "/login") {
-        // 如果已登录，跳转首页
         next({ path: "/" });
         NProgress.done();
       } else {
@@ -21,7 +32,6 @@ export function setupPermission() {
         const hasRoles =
           userStore.user.roles && userStore.user.roles.length > 0;
         if (hasRoles) {
-          // 未匹配到任何路由，跳转404
           if (to.matched.length === 0) {
             from.name ? next({ name: from.name }) : next("/404");
           } else {
@@ -37,7 +47,6 @@ export function setupPermission() {
             });
             next({ ...to, replace: true });
           } catch (error) {
-            // 获取用户信息失败：清除token并跳转登录页
             await userStore.resetToken();
             next(`/login?redirect=${to.path}`);
             NProgress.done();
@@ -45,7 +54,6 @@ export function setupPermission() {
         }
       }
     } else {
-      // 未登录可以访问白名单页面
       if (whiteList.indexOf(to.path) !== -1) {
         next();
       } else {

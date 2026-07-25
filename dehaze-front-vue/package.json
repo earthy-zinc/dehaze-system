@@ -59,6 +59,7 @@
   "build": {
     "appId": "com.pei.dehaze-front-desktop",
     "productName": "dehaze-front-desktop-vue",
+    "icon": "public/favicon.ico",
     "files": [
       "out/**/*"
     ],

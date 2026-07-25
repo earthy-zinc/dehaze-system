@@ -53,6 +53,7 @@
   "build": {
     "appId": "com.pei.dehaze-front-desktop-react",
     "productName": "dehaze-front-desktop-vue-react",
+    "icon": "public/favicon.ico",
     "files": [
       "out/**/*"
     ],

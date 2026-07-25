@@ -32,7 +32,7 @@ const layout = computed(() => settingsStore.layout);
 <style lang="scss" scoped>
 .has-logo {
   .el-scrollbar {
-    height: calc(100vh - $navbar-height);
+    height: calc(100vh - #{$navbar-height} - var(--titlebar-h, 0px));
   }
 }
 </style>

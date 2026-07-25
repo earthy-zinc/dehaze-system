@@ -111,7 +111,7 @@ watch(route, () => {
 <style lang="scss" scoped>
 .fixed-header {
   position: fixed;
-  top: 0;
+  top: var(--titlebar-h, 0px);
   right: 0;
   z-index: 9;
   width: calc(100% - $sidebar-width);
@@ -120,7 +120,7 @@ watch(route, () => {
 
 .sidebar-container {
   position: fixed;
-  top: 0;
+  top: var(--titlebar-h, 0px);
   bottom: 0;
   left: 0;
   z-index: 999;
@@ -144,7 +144,7 @@ watch(route, () => {
 
 .layout-top {
   .fixed-header {
-    top: $navbar-height;
+    top: calc(#{$navbar-height} + var(--titlebar-h, 0px));
     width: 100%;
   }
 
@@ -172,8 +172,8 @@ watch(route, () => {
   }
 
   .main-container {
-    min-height: calc(100vh - $navbar-height);
-    padding-top: $navbar-height;
+    min-height: calc(100vh - #{$navbar-height} - var(--titlebar-h, 0px));
+    padding-top: calc(#{$navbar-height} + var(--titlebar-h, 0px));
     margin-left: 0;
   }
 }
@@ -203,7 +203,7 @@ watch(route, () => {
   .mix-container {
     display: flex;
     height: 100%;
-    padding-top: $navbar-height;
+    padding-top: calc(#{$navbar-height} + var(--titlebar-h, 0px));
 
     .mix-container__left {
       position: relative;
@@ -242,7 +242,7 @@ watch(route, () => {
       margin-left: 0;
 
       .fixed-header {
-        top: $navbar-height;
+        top: calc(#{$navbar-height} + var(--titlebar-h, 0px));
       }
     }
   }
@@ -334,7 +334,7 @@ watch(route, () => {
     }
 
     .main-container {
-      padding-top: $navbar-height;
+      padding-top: calc(#{$navbar-height} + var(--titlebar-h, 0px));
       margin-left: 0;
       overflow: hidden;
     }

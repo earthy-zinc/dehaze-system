@@ -1,5 +1,6 @@
 <template>
   <el-config-provider :locale="locale" :size="size">
+    <TitleBar v-if="isElectron" />
     <!-- 开启水印 -->
     <el-watermark
       v-if="watermarkEnabled"
@@ -22,6 +23,15 @@ import { useAppStore, useSettingsStore } from "@/store";
 
 const appStore = useAppStore();
 const settingsStore = useSettingsStore();
+
+const isElectron = computed(() => !!window.electronAPI);
+
+watchEffect(() => {
+  document.documentElement.style.setProperty(
+    "--titlebar-h",
+    isElectron.value ? "36px" : "0px"
+  );
+});
 
 const locale = computed(() => appStore.locale);
 const size = computed(() => appStore.size as SizeEnum);

@@ -15,6 +15,7 @@ from app.config import settings
 from app.repository.user_repository import user_repository
 from app.utils.jwt import JWTUtils
 from app.utils.password import check_password_async
+from jose import jwt
 from PIL import Image, ImageDraw, ImageFont
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,10 +80,15 @@ class AuthService:
             dept_id=user.dept_id,
             data_scope=data_scope,
         )
+        refresh_token = JWTUtils.create_refresh_token(
+            user_id=user.id,
+            username=user.username,
+        )
 
         return {
             "tokenType": "Bearer",
             "accessToken": access_token,
+            "refreshToken": refresh_token,
             "user": {
                 "id": user.id,
                 "username": user.username,
@@ -187,44 +193,49 @@ class AuthService:
     @staticmethod
     async def refresh_token(
         db: AsyncSession,
-        user_id: int,
+        refresh_token_str: str,
         redis: Redis,
     ) -> dict:
-        """
-        刷新访问令牌
-
-        Args:
-            db: 异步数据库会话
-            user_id: 用户ID
-            redis: Redis 客户端
-
-        Returns:
-            新的访问令牌
-
-        Raises:
-            BusinessException: 用户不存在或已禁用
-        """
         from app.core.code import ResultCode
         from app.core.exceptions import BusinessException
 
-        # 验证用户状态
+        try:
+            payload = jwt.decode(
+                refresh_token_str, settings.JWT_SECRET_KEY, algorithms=["HS256"]
+            )
+        except Exception:
+            raise BusinessException(ResultCode.TOKEN_INVALID, "刷新令牌无效")
+
+        if payload.get("type") != "refresh":
+            raise BusinessException(ResultCode.TOKEN_INVALID, "令牌类型错误")
+
+        jti = payload.get("jti")
+        if jti and await redis.exists(f"token:blacklist:{jti}"):
+            raise BusinessException(ResultCode.TOKEN_INVALID, "刷新令牌已失效")
+
+        user_id = payload.get("userId")
+        if not user_id:
+            raise BusinessException(ResultCode.TOKEN_INVALID, "刷新令牌无效")
+
+        if jti:
+            ttl = getattr(settings, "JWT_REFRESH_TOKEN_EXPIRES", 7 * 24 * 3600)
+            await redis.setex(f"token:blacklist:{jti}", ttl, "1")
+
         user = await user_repository.get_by_id(db, user_id)
         if not user:
             raise BusinessException(ResultCode.USER_NOT_EXIST, "用户不存在")
         if user.status != 1:
             raise BusinessException(ResultCode.USER_ACCOUNT_LOCKED, "用户已被禁用")
 
-        # 查询用户角色
         roles = await user_repository.get_user_role_codes(db, user.id)
         from app.repository.role_repository import role_repository
         from app.service.menu_service import MenuService
         data_scope = await role_repository.get_maximum_data_scope(db, roles)
         perms = await MenuService.list_role_perms(db, redis, set(roles))
 
-        # 使用 JWT 工具类生成 Token
         if user.username is None:
             raise BusinessException("用户信息不完整")
-        access_token = JWTUtils.create_access_token(
+        new_access_token = JWTUtils.create_access_token(
             user_id=user.id,
             username=user.username,
             roles=roles,
@@ -232,10 +243,15 @@ class AuthService:
             dept_id=user.dept_id,
             data_scope=data_scope,
         )
+        new_refresh_token = JWTUtils.create_refresh_token(
+            user_id=user.id,
+            username=user.username,
+        )
 
         return {
             "tokenType": "Bearer",
-            "accessToken": access_token,
+            "accessToken": new_access_token,
+            "refreshToken": new_refresh_token,
             "user": {
                 "id": user.id,
                 "username": user.username,

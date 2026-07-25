@@ -11,27 +11,27 @@
 /* 侧边栏：参考 §5.2 Level 3 阴影 */
 .side-bar {
   position: sticky;
-  top: 0;
+  top: var(--titlebar-h, 0);
   left: 0;
   z-index: 11;
   width: $sidebar-width;
   height: 100vh;
   background-color: #fff !important;
   border-right: 1px solid #eef0f3;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 2px 0 8px rgb(0 0 0 / 4%);
 }
 
 .layout-left {
   display: flex;
   flex: 1;
-  min-width: 0;
   flex-direction: column;
+  min-width: 0;
 }
 
 /* 顶部导航栏：参考 §6.4 顶部导航栏 */
 .header {
   position: sticky;
-  top: 0;
+  top: var(--titlebar-h, 0);
   z-index: 10;
   display: flex;
   align-items: center;
@@ -40,7 +40,7 @@
   padding: 0 24px;
   background-color: #fff;
   border-bottom: 1px solid #eef0f3;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
 }
 
 /* 内容区域 */

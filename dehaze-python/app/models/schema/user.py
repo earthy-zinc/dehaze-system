@@ -45,6 +45,7 @@ class LoginForm(BaseModel):
     password: str = Field(..., min_length=1, description="密码")
     captchaKey: str = Field(..., description="验证码Key")
     captchaCode: str = Field(..., description="验证码")
+    rememberMe: Optional[bool] = Field(default=None, description="记住我")
 
 
 class RegisterForm(BaseModel):
@@ -94,6 +95,7 @@ class LoginData(BaseModel):
     """登录响应数据"""
     tokenType: str = Field(description="Token 类型")
     accessToken: str = Field(description="访问令牌")
+    refreshToken: Optional[str] = Field(default=None, description="刷新令牌")
     user: dict = Field(description="用户信息")
 
 

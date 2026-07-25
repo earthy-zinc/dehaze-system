@@ -1,4 +1,10 @@
-import { AuthAPI, UserAPI, LoginData, TOKEN_KEY, UserInfo } from "dehaze-sdk-js";
+import {
+  AuthAPI,
+  UserAPI,
+  LoginData,
+  UserInfo,
+} from "dehaze-sdk-js";
+import { clearAccessToken, setAccessToken } from "@/utils/auth";
 
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { persistReducer } from "redux-persist";
@@ -17,7 +23,19 @@ export const login = createAsyncThunk(
   async (loginData: LoginData) => {
     const response = await AuthAPI.login(loginData);
     const { tokenType, accessToken } = response;
-    localStorage.setItem(TOKEN_KEY, `${tokenType} ${accessToken}`);
+    const rememberMe = loginData.rememberMe !== false;
+    setAccessToken(`${tokenType} ${accessToken}`, rememberMe);
+    return response;
+  }
+);
+
+export const refreshAccessToken = createAsyncThunk(
+  "user/refreshAccessToken",
+  async () => {
+    const response = await AuthAPI.refreshToken();
+    const { tokenType, accessToken } = response;
+    const rememberMe = !!localStorage.getItem("rememberMe");
+    setAccessToken(`${tokenType} ${accessToken}`, rememberMe);
     return response;
   }
 );
@@ -32,7 +50,7 @@ export const getUserInfo = createAsyncThunk("user/getUserInfo", async () => {
 
 export const logout = createAsyncThunk("user/logout", async () => {
   await AuthAPI.logout();
-  localStorage.removeItem(TOKEN_KEY);
+  clearAccessToken();
   return {};
 });
 
@@ -41,7 +59,7 @@ const userSlice = createSlice({
   initialState,
   reducers: {
     resetToken: (state) => {
-      localStorage.removeItem(TOKEN_KEY);
+      clearAccessToken();
       state.user = { roles: [], perms: [] };
     },
   },

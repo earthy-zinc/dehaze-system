@@ -31,6 +31,9 @@ export default defineConfig({
       root: resolve(__dirname),
       server: {
         port: env.VITE_ELECTRON_PORT,
+        fs: {
+          allow: [resolve(__dirname), resolve(__dirname, "..")],
+        },
       },
       build: {
         rollupOptions: {
