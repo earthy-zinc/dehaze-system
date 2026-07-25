@@ -1,11 +1,15 @@
 packages:
-  - 'dehaze-doc'
-  - 'dehaze-sdk-js'
-  - 'dehaze-uniapp'
-  - 'dehaze-taro'
-  - 'dehaze-front-vue'
-  - 'dehaze-front-react'
+  - dehaze-doc
+  - dehaze-sdk-js
+  - dehaze-uniapp
+  - dehaze-taro
+  - dehaze-front-vue
+  - dehaze-front-react
+
+onlyBuiltDependencies:
+  - esbuild
+
 overrides:
-  stylelint-config-recommended: "^17.0.0"
-  "@vue/server-renderer": "3.5.39"
-  "@tarojs/webpack5-prebundle>enhanced-resolve": "5.17.1"
+  '@tarojs/webpack5-prebundle>enhanced-resolve': 5.17.1
+  '@vue/server-renderer': 3.5.39
+  stylelint-config-recommended: ^17.0.0
