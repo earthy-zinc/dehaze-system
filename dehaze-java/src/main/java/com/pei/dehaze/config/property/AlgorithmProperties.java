@@ -22,7 +22,7 @@ public class AlgorithmProperties {
     private int connectTimeout = 5000;
 
     /** 读取超时（毫秒），预测/评估可较长时间 */
-    private int readTimeout = 30000;
+    private int readTimeout = 120000;
 
     /** 最大重试次数 */
     private int maxRetry = 3;

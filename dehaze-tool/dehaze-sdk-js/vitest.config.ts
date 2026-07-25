@@ -22,8 +22,8 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
 
     // 超时配置
-    testTimeout: 60000,
-    hookTimeout: 60000,
+    testTimeout: 120000,
+    hookTimeout: 120000,
 
     // 覆盖率配置（集成测试不生成代码覆盖率）
     coverage: {

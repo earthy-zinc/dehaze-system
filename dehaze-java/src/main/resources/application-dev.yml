@@ -197,7 +197,7 @@ algorithm:
     # 连接超时（毫秒）
     connect-timeout: 5000
     # 读取超时（毫秒）—— 预测/评估可耗时较长
-    read-timeout: 30000
+    read-timeout: 120000
     # 最大重试次数
     max-retry: 3
     # 重试初始退避（毫秒），指数增长
