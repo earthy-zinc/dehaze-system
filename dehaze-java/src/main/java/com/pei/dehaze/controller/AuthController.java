@@ -5,6 +5,7 @@ import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.dto.CaptchaResult;
 import com.pei.dehaze.model.dto.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
+import com.pei.dehaze.model.dto.RegisterForm;
 import com.pei.dehaze.model.vo.UserInfoVO;
 import com.pei.dehaze.plugin.ratelimit.annotation.RateLimit;
 import com.pei.dehaze.service.AuthService;
@@ -38,6 +39,16 @@ public class AuthController {
         boolean rememberMe = Boolean.TRUE.equals(form.getRememberMe());
         setSessionCookie(response, loginResult.getSessionId(), rememberMe);
         return Result.success(loginResult);
+    }
+
+    @Operation(summary = "注册")
+    @RateLimit(key = "rate_limit:register:", timeWindow = 60, maxRequests = 10,
+            type = RateLimit.LimitType.IP, message = "注册请求过于频繁，请60秒后再试")
+    @PostMapping("/register")
+    public Result<LoginResult> register(@RequestBody @Valid RegisterForm form, HttpServletResponse response) {
+        LoginResult result = authService.register(form);
+        setSessionCookie(response, result.getSessionId(), false);
+        return Result.success(result);
     }
 
     @Operation(summary = "注销")

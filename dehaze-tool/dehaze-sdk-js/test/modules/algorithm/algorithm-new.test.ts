@@ -5,7 +5,7 @@ import { expectBizErrorOrUndefined } from "#/utils/assertion";
 describe("算法管理新增端点测试", () => {
   beforeAll(async () => {
     await login();
-  }, 30000);
+  });
 
   afterAll(async () => {
     await logout();
@@ -24,7 +24,7 @@ describe("算法管理新增端点测试", () => {
     };
     const id = (await AlgorithmAPI.add(form)) as unknown as number;
     testAlgorithmId = typeof id === "number" ? id : Number(id);
-  }, 10000);
+  });
 
   afterAll(async () => {
     if (testAlgorithmId) {

@@ -42,7 +42,6 @@ export class TestCleanupRegistry {
    */
   async executeAll(): Promise<void> {
     const errors: Array<{ index: number; error: unknown }> = [];
-    // 按 LIFO 顺序执行（后注册的先执行）
     for (let i = this.tasks.length - 1; i >= 0; i--) {
       try {
         await this.tasks[i]!();
@@ -50,25 +49,9 @@ export class TestCleanupRegistry {
         errors.push({ index: i, error: e });
       }
     }
-    // 清空已执行的任务
     this.tasks = [];
-    // 如果有错误，可以选择记录（当前静默处理）
     if (errors.length > 0) {
       console.warn(`[TestCleanupRegistry] ${errors.length} 个清理任务失败（已忽略）`);
     }
-  }
-
-  /**
-   * 获取当前注册的清理任务数量
-   */
-  get size(): number {
-    return this.tasks.length;
-  }
-
-  /**
-   * 清空所有已注册任务（不执行）
-   */
-  clear(): void {
-    this.tasks = [];
   }
 }

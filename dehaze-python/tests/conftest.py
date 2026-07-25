@@ -110,6 +110,8 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         await conn.run_sync(MockBase.metadata.drop_all)
 
 
+
+
 @pytest.fixture
 def mock_redis() -> MockRedis:
     """Mock Redis 客户端"""
@@ -117,16 +119,25 @@ def mock_redis() -> MockRedis:
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncGenerator[AsyncClient, None]:
+async def client(mock_redis: MockRedis) -> AsyncGenerator[AsyncClient, None]:
     """
-    异步测试客户端
-    用于 API 接口测试
+    异步测试客户端，重写 Redis 依赖为 MockRedis
     """
+    from app.dependencies.redis import get_redis_client, get_redis
+
+    async def _override_redis():
+        return mock_redis
+
+    fastapi_app.dependency_overrides[get_redis_client] = _override_redis
+    fastapi_app.dependency_overrides[get_redis] = _override_redis
+
     async with AsyncClient(
         transport=ASGITransport(app=fastapi_app),
         base_url="http://test",
     ) as client:
         yield client
+
+    fastapi_app.dependency_overrides.pop(get_redis_client, None)
 
 
 @pytest.fixture

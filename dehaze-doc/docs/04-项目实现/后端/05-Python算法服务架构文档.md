@@ -667,7 +667,7 @@ flowchart TB
 
 | 用途 | Key 格式 | TTL | 说明 |
 |------|----------|-----|------|
-| 验证码 | `captcha:{key}` | 5min | 登录验证码 |
+| 验证码 | `captcha_code:{key}` | 5min | 登录验证码 |
 | Token 黑名单 | `token:blacklist:{jti}` | Token 剩余有效期 | JWT 注销 |
 | 任务状态 | `task:cache:{task_id}` | 24h | 导出任务进度缓存 |
 | 任务取消标志 | `task:cancel:{task_id}` | 5min | 标记任务取消 |

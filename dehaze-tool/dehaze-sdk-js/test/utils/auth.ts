@@ -9,8 +9,8 @@ import { SESSION_KEY } from "@/enums";
 import { AuthAPI, configJavaAxios } from "../../index";
 import type { InternalAxiosRequestConfig } from "axios";
 import FormData from "form-data";
-import { execSync } from "child_process";
-import { backendProfile } from "../config/backend";
+import { CAPTCHA_KEY_PREFIX } from "../config/backend";
+import { getRedis } from "./redis";
 
 let currentSessionId: string = "";
 
@@ -19,19 +19,23 @@ const TEST_CREDENTIALS = {
   password: process.env.TEST_PASSWORD || "123456",
 };
 
-function getCaptchaCodeFromRedis(captchaKey: string): string {
-  const redisKey = `${backendProfile.captchaKeyPrefix}${captchaKey}`;
-  return execSync(
-    `docker exec -i ${backendProfile.redisContainer} redis-cli -a ${backendProfile.redisPassword} -n ${backendProfile.captchaRedisDB} get ${redisKey}`,
-    { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
-  ).trim();
+async function getCaptchaCodeFromRedis(captchaKey: string): Promise<string> {
+  const redisKey = `${CAPTCHA_KEY_PREFIX}${captchaKey}`;
+  const redis = getRedis();
+  const code = await redis.get(redisKey);
+  return code || "";
 }
 
 export async function login(): Promise<string> {
+  if (currentSessionId) {
+    globalThis.localStorage.setItem(SESSION_KEY, currentSessionId);
+    return currentSessionId;
+  }
+
   try {
     const captcha = await AuthAPI.getCaptcha();
 
-    const captchaCode = getCaptchaCodeFromRedis(captcha.captchaKey);
+    const captchaCode = await getCaptchaCodeFromRedis(captcha.captchaKey);
     if (!captchaCode) {
       throw new Error(`验证码已过期或不存在: ${captcha.captchaKey}`);
     }
@@ -43,20 +47,20 @@ export async function login(): Promise<string> {
     });
     currentSessionId = result.sessionId;
 
+    if (!currentSessionId) {
+      throw new Error("登录成功但 sessionId 为空");
+    }
+
     globalThis.localStorage.setItem(SESSION_KEY, currentSessionId);
 
     configJavaAxios({
       onRequest: (config: InternalAxiosRequestConfig) => {
-        if (currentSessionId) {
-          config.headers["X-Session-Id"] = currentSessionId;
-        }
-
+        config.headers["X-Session-Id"] = currentSessionId;
         if (config.data instanceof FormData) {
           delete config.headers["Content-Type"];
           const formHeaders = config.data.getHeaders();
           Object.assign(config.headers, formHeaders);
         }
-
         return config;
       },
     });
@@ -68,14 +72,4 @@ export async function login(): Promise<string> {
   }
 }
 
-export async function logout(): Promise<void> {
-  try {
-    await AuthAPI.logout();
-  } catch (error) {
-    console.error("登出失败:", error);
-  } finally {
-    currentSessionId = "";
-    globalThis.localStorage.removeItem(SESSION_KEY);
-    configJavaAxios({});
-  }
-}
+export async function logout(): Promise<void> {}

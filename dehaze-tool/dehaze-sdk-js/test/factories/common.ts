@@ -1,12 +1,6 @@
 import { faker } from "@faker-js/faker";
 import { nanoid } from "nanoid";
 
-/** 每次测试可重置种子，保证可复现 */
-export const seedTestData = (seed: number = 20240101) => {
-  faker.seed(seed);
-  counter = 1;
-};
-
 let counter = 1;
 const next = () => counter++;
 

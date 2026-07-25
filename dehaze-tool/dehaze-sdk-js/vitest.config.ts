@@ -25,25 +25,16 @@ export default defineConfig({
     testTimeout: 60000,
     hookTimeout: 60000,
 
-    // Mock 配置
-    mockReset: true,
-    restoreMocks: true,
-    clearMocks: true,
-
     // 覆盖率配置（集成测试不生成代码覆盖率）
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
       include: ["src/**/*.{js,ts}"],
       exclude: ["node_modules/", "dist/", "test/", "src/**/*.d.ts", "src/types/**"],
-      // 不设置阈值（集成测试仅验证 API 可用性，不覆盖源代码）
     },
-
-    // 全局并发
-    maxConcurrency: 10,
 
     // 集成测试共享同一后端实例（Redis/MySQL），并行运行会导致缓存污染和数据竞争
     // 必须串行执行以保证测试隔离性和可重复性
     fileParallelism: false,
-    },
+  },
 });

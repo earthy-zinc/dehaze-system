@@ -306,11 +306,12 @@ mysql -u root -p < sql/schema.sql
 
 # 3. 启动服务
 cd dehaze-java
-mvn clean install
-mvn spring-boot:run -DskipTests
+mvn clean compile
+
+mvn spring-boot:run
 
 # 4. 打包
-mvn package -DskipTests
+mvn package
 ```
 访问接口文档: http://localhost:8989/doc.html
 

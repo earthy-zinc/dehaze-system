@@ -11,6 +11,7 @@ import BasicLayout from "@/layout";
 import ErrorPage403 from "@/pages/error/403";
 import ErrorPage404 from "@/pages/error/404";
 import Login from "@/pages/login";
+import Register from "@/pages/register";
 import lazyLoad from "@/router/LazyLoad";
 import {
   ApartmentOutlined,
@@ -253,6 +254,11 @@ const router = createBrowserRouter([
   {
     path: "login",
     element: <Login />,
+    errorElement: <ErrorPage404 />,
+  },
+  {
+    path: "register",
+    element: <Register />,
     errorElement: <ErrorPage404 />,
   },
   {

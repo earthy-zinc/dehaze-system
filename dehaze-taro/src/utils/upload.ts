@@ -126,6 +126,7 @@ export function uploadImage(
   fileName: string,
   onProgress?: (progress: number) => void
 ): Promise<FileInfo> {
+  // @ts-ignore TARO_ENV is a compile-time constant injected by Taro compiler
   if (process.env.TARO_ENV === "h5") {
     return uploadInH5(filePath, fileName, onProgress);
   }

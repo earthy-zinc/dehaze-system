@@ -10,7 +10,7 @@ import {
 describe("数据集接口测试", () => {
   beforeAll(async () => {
     await login();
-  }, 30000);
+  });
 
   afterAll(async () => {
     await logout();

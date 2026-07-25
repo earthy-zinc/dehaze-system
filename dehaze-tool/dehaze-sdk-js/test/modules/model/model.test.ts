@@ -6,7 +6,7 @@ import { createPredictionForm, createEvaluationForm } from "#/factories/model";
 describe("预测与评估 API 测试", () => {
   beforeAll(async () => {
     await login();
-  }, 30000);
+  });
 
   afterAll(async () => {
     await logout();

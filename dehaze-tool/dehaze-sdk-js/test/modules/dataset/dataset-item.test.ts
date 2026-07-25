@@ -15,7 +15,7 @@ describe("数据项接口测试", () => {
     await login();
     const form = createDatasetForm({ type: "图像去雾" });
     testDatasetId = await DatasetAPI.add(form);
-  }, 30000);
+  });
 
   afterAll(async () => {
     try {

@@ -25,7 +25,7 @@ describe("文件管理接口测试", () => {
     // 计算 MD5
     const buffer = fs.readFileSync(testFilePath);
     testFileMd5 = crypto.createHash("md5").update(buffer).digest("hex");
-  }, 30000);
+  });
 
   afterAll(async () => {
     // 清理上传的文件

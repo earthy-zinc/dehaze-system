@@ -36,12 +36,13 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRES: int = 604800  # 刷新令牌过期时间（秒），默认 7 天
 
     # 验证码配置
-    CAPTCHA_LENGTH: int = 4  # 验证码字符数
-    CAPTCHA_WIDTH: int = 120  # 验证码图片宽度
-    CAPTCHA_HEIGHT: int = 40  # 验证码图片高度
-    CAPTCHA_FONT_SIZE: int = 24  # 验证码字体大小
-    CAPTCHA_NOISE_LINES: int = 5  # 干扰线数量
-    CAPTCHA_EXPIRES: int = 300  # 验证码过期时间（秒），默认 5 分钟
+    CAPTCHA_KEY_PREFIX: str = "captcha_code:"  # 验证码 Redis key 前缀，与 Java/Go 保持一致
+    CAPTCHA_LENGTH: int = 4
+    CAPTCHA_WIDTH: int = 120
+    CAPTCHA_HEIGHT: int = 40
+    CAPTCHA_FONT_SIZE: int = 24
+    CAPTCHA_NOISE_LINES: int = 5
+    CAPTCHA_EXPIRES: int = 300
 
     # 共享密码（从 .env 加载）
     DEHAZE_PASSWORD: str = Field(default="")

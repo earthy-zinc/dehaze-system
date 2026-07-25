@@ -41,7 +41,7 @@ describe("图片文件接口测试", () => {
     });
     const item = await DatasetItemAPI.add(itemForm);
     testItemId = item.id;
-  }, 30000);
+  });
 
   afterAll(async () => {
     // 清理上传的图片

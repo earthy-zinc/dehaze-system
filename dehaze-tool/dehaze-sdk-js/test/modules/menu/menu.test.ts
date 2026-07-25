@@ -37,7 +37,7 @@ describe("菜单管理接口测试", () => {
 
   beforeAll(async () => {
     await login();
-  }, 30000);
+  });
 
   afterAll(async () => {
     // 清理测试创建的菜单（从后往前删除，先删子菜单）

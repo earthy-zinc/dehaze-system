@@ -10,6 +10,7 @@ import lombok.Data;
 public class LoginRequest {
     private String username;
     private String password;
+    private String nickname;
     private String captchaCode;
     private String captchaKey;
 }

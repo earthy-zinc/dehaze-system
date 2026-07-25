@@ -5,6 +5,14 @@ export class LoginData {
   captchaCode?: string = undefined;
 }
 
+export class RegisterData {
+  username: string = '';
+  password: string = '';
+  nickname: string = '';
+  captchaKey?: string = undefined;
+  captchaCode?: string = undefined;
+}
+
 export class LoginUser {
   id: number = 0;
   username: string = '';

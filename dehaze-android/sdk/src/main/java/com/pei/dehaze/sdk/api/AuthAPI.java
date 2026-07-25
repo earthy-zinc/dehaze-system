@@ -1,5 +1,8 @@
 package com.pei.dehaze.sdk.api;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.pei.dehaze.sdk.ApiCallback;
 import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Result;
@@ -18,6 +21,17 @@ public class AuthAPI {
 
     public static void login(LoginRequest request, ApiCallback<LoginResponse> callback) {
         Call<Result<LoginResponse>> call = DehazeSDK.getInstance().getAuthApiService().login(request);
+        call.enqueue(callback);
+    }
+
+    public static void register(LoginRequest request, ApiCallback<LoginResponse> callback) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("username", request.getUsername());
+        body.put("password", request.getPassword());
+        body.put("captchaKey", request.getCaptchaKey());
+        body.put("captchaCode", request.getCaptchaCode());
+        body.put("nickname", request.getNickname());
+        Call<Result<LoginResponse>> call = DehazeSDK.getInstance().getAuthApiService().register(body);
         call.enqueue(callback);
     }
 

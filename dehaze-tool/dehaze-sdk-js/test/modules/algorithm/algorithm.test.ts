@@ -6,7 +6,7 @@ import { createAlgorithmForm, createAlgorithmQuery } from "#/factories/algorithm
 describe("算法管理接口测试", () => {
   beforeAll(async () => {
     await login();
-  }, 30000);
+  });
 
   afterAll(async () => {
     await logout();

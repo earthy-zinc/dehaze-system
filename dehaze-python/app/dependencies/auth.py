@@ -6,6 +6,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
 from app.core.code import ResultCode
+from app.dependencies.redis import get_redis_client
 from app.models.base import set_current_user_id
 
 oauth2_scheme = HTTPBearer(auto_error=False)
@@ -43,6 +44,7 @@ def _split_authorities(authorities: list) -> tuple[list[str], list[str]]:
 async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme),
+    redis = Depends(get_redis_client),
 ) -> UserContext:
     if credentials and credentials.credentials.startswith("dhak_"):
         from app.service.api_key_service import ApiKeyService
@@ -58,8 +60,6 @@ async def get_current_user(
             detail=ResultCode.ACCESS_UNAUTHORIZED.msg,
         )
 
-    from app.dependencies.redis import get_redis_client
-    redis = await get_redis_client()
     if not redis:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -75,12 +75,9 @@ async def get_current_user(
 
     session = json.loads(session_json.decode() if isinstance(session_json, bytes) else session_json)
 
-    from app.dependencies.redis import get_redis_client
-    redis2 = await get_redis_client()
-    if redis2:
-        ttl = await redis2.ttl(SESSION_PREFIX + session_id)
-        if ttl > 0 and ttl < RENEW_THRESHOLD:
-            await redis2.expire(SESSION_PREFIX + session_id, SESSION_TTL)
+    ttl = await redis.ttl(SESSION_PREFIX + session_id)
+    if ttl > 0 and ttl < RENEW_THRESHOLD:
+        await redis.expire(SESSION_PREFIX + session_id, SESSION_TTL)
 
     user_id = session.get("userId")
     if not user_id:

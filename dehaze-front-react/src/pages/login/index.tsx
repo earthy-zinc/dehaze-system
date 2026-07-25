@@ -193,6 +193,9 @@ export default function Login() {
           <span>用户名: admin</span>
           <span className="ml-4"> 密码: 123456</span>
         </div>
+        <div className="text-center mt-4">
+          <a href="/register">没有账号？立即注册</a>
+        </div>
       </Card>
       <div className="absolute bottom-1 text-[10px] text-center">
         <p>

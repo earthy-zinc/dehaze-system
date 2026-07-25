@@ -5,22 +5,16 @@ import { expectBizErrorOrUndefined } from "#/utils/assertion";
 describe("图像输入历史记录 API 测试", () => {
   beforeAll(async () => {
     await login();
-  }, 30000);
-
-  afterAll(async () => {
-    await logout();
   });
 
   const createdIds: number[] = [];
 
   afterAll(async () => {
-    // 清理所有创建的历史记录
+    await logout();
     for (const id of createdIds) {
       try {
         await ImageInputHistoryAPI.deleteById(id);
-      } catch (_) {
-        /* 忽略 */
-      }
+      } catch {}
     }
   });
 

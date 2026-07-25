@@ -8,7 +8,7 @@ import { DEPTS } from "#/factories/constants";
 describe("部门管理接口测试", () => {
   beforeAll(async () => {
     await login();
-  }, 30000);
+  });
 
   afterAll(async () => {
     await logout();

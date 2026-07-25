@@ -6,7 +6,7 @@ import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const whiteList = ["/login", "/403", "/404"];
+const whiteList = ["/login", "/register", "/403", "/404"];
 
 export const usePermission = () => {
   const location = useLocation();

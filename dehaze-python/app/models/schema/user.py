@@ -53,6 +53,8 @@ class RegisterForm(BaseModel):
     username: str = Field(..., min_length=1, description="用户名")
     password: str = Field(..., min_length=1, description="密码")
     nickname: str = Field(..., min_length=1, max_length=64, description="昵称")
+    captchaKey: str = Field(..., description="验证码Key")
+    captchaCode: str = Field(..., description="验证码")
 
     @field_validator('nickname')
     @classmethod

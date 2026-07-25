@@ -24,6 +24,26 @@ class AuthService {
     await _dio.post<Map<String, dynamic>>(ApiConstants.authLogout);
   }
 
+  Future<LoginResponse> register({
+    required String username,
+    required String password,
+    required String nickname,
+    required String captchaKey,
+    required String captchaCode,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConstants.authLogin.replaceAll('login', 'register'),
+      data: {
+        'username': username,
+        'password': password,
+        'nickname': nickname,
+        'captchaKey': captchaKey,
+        'captchaCode': captchaCode,
+      },
+    );
+    return LoginResponse.fromJson(response.data!['data'] as Map<String, dynamic>);
+  }
+
   Future<CaptchaResponse> getCaptcha() async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.authCaptcha,

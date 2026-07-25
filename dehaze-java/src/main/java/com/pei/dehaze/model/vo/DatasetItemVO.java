@@ -1,6 +1,7 @@
 package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -14,6 +15,7 @@ import java.util.List;
  * @since 2024-12-07
  */
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "数据项详情视图对象")
 public class DatasetItemVO {
 

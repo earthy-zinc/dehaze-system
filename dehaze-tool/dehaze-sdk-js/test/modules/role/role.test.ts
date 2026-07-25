@@ -10,7 +10,7 @@ describe("角色管理接口测试", () => {
 
   beforeAll(async () => {
     await login();
-  }, 30000);
+  });
 
   afterAll(async () => {
     for (const roleId of createdRoleIds) {

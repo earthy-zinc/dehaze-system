@@ -23,8 +23,7 @@ function buildAxiosConfig(baseURL: string): InterceptorCallbacks {
       config.baseURL = baseURL;
       const sid = sessionStore.get();
       if (sid) {
-        if (!config.headers) config.headers = {} as Record<string, string>;
-        config.headers['X-Session-Id'] = sid;
+        config.headers.set('X-Session-Id', sid);
       }
       return config;
     },

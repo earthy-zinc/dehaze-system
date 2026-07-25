@@ -81,10 +81,9 @@ async def update_algorithm(
 @router.put("/{algorithm_id}/status", response_model=Result[None], summary="修改算法状态")
 async def update_algorithm_status(
     algorithm_id: int,
-    body: dict = Body(...),
+    status: int = Body(..., embed=True),
     db: AsyncSession = Depends(get_db),
 ):
-    status = body.get("status")
     await AlgorithmService.update_status(db, algorithm_id, status)
     return success(msg="算法状态更新成功")
 

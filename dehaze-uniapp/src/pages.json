@@ -18,6 +18,13 @@
       }
     },
     {
+      "path": "pages/register/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": ""
+      }
+    },
+    {
       "path": "pages/dataset/index",
       "style": {
         "navigationStyle": "custom",

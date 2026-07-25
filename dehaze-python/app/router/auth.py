@@ -3,11 +3,12 @@ import logging
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.core.result import Result, success
+from app.config import settings
 from app.database import get_db
 from app.dependencies.auth import UserContext, SESSION_COOKIE, SESSION_TTL, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.user import (CaptchaData, CurrentUserVO, LoginData,
-                                    LoginForm)
+                                    LoginForm, RegisterForm)
 from app.repository.login_log_repository import login_log_repository
 from app.service.auth_service import AuthService
 from app.utils.user_agent import parse_user_agent
@@ -54,7 +55,7 @@ async def login(
 
     captcha_valid = await AuthService.verify_captcha(redis, request.captchaKey, request.captchaCode)
     if not captcha_valid:
-        stored_captcha = await redis.get(f"captcha:{request.captchaKey}")
+        stored_captcha = await redis.get(f"{settings.CAPTCHA_KEY_PREFIX}{request.captchaKey}")
         if stored_captcha is None:
             await login_log_repository.create_log(
                 db, None, request.username, client_ip, 0,
@@ -124,6 +125,19 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={"code": ResultCode.USERNAME_OR_PASSWORD_ERROR.code, "msg": f"{str(e)}，剩余 {remaining} 次尝试机会", "data": None},
         )
+
+
+@router.post("/register", response_model=Result[LoginData], summary="用户注册")
+async def register(
+    request: RegisterForm,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+):
+    result = await AuthService.register(db, redis, request.username, request.password, request.nickname,
+                                         request.captchaKey, request.captchaCode)
+    _set_session_cookie(response, result.get("sessionId", ""), False)
+    return success(result)
 
 
 @router.post("/logout", response_model=Result[None], summary="用户注销")

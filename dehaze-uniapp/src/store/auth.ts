@@ -35,8 +35,7 @@ export const useAuthStore = defineStore("auth", () => {
           userInfo.value = null;
         }
       }
-    } catch {
-    }
+    } catch {}
   }
 
   async function login(data: LoginData): Promise<LoginResult> {
@@ -49,8 +48,7 @@ export const useAuthStore = defineStore("auth", () => {
       const user = await AuthAPI.getCurrentUser();
       userInfo.value = user;
       uni.setStorageSync(USER_INFO_KEY, JSON.stringify(user));
-    } catch {
-    }
+    } catch {}
 
     return result;
   }
@@ -58,8 +56,7 @@ export const useAuthStore = defineStore("auth", () => {
   async function logout(): Promise<void> {
     try {
       await AuthAPI.logout();
-    } catch {
-    }
+    } catch {}
 
     sessionId.value = "";
     userInfo.value = null;

@@ -11,7 +11,7 @@ describe("API密钥管理", () => {
 
   beforeAll(async () => {
     await login();
-  }, 30000);
+  });
 
   afterAll(async () => {
     await cleanup.executeAll();
@@ -73,9 +73,9 @@ describe("API密钥管理", () => {
         headers: { Authorization: `Bearer ${createdKey.apiKey}` },
       });
 
-      expect(response.data.code).toBe("00000");
-      expect(response.data.data.userId).toBeDefined();
-      expect(response.data.data.username).toBeDefined();
+      const userInfo = response as any;
+      expect(userInfo.userId).toBeDefined();
+      expect(userInfo.username).toBeDefined();
     });
 
     test("使用无效API密钥应返回401", async () => {

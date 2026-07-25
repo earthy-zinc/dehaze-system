@@ -4,7 +4,7 @@ import NProgress from "@/utils/nprogress";
 import { RouteRecordRaw } from "vue-router";
 
 export function setupPermission() {
-  const whiteList = ["/login"];
+  const whiteList = ["/login", "/register"];
 
   router.beforeEach(async (to, from, next) => {
     NProgress.start();

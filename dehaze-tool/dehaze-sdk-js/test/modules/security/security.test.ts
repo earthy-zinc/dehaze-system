@@ -21,7 +21,7 @@ import { TestCleanupRegistry } from "#/utils/cleanup";
 describe("安全性测试", () => {
   beforeAll(async () => {
     await login();
-  }, 30000);
+  });
 
   afterAll(async () => {
     await logout();

@@ -5,6 +5,7 @@ import cn.hutool.captcha.CaptchaUtil;
 import cn.hutool.captcha.generator.CodeGenerator;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.json.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.enums.CaptchaTypeEnum;
 import com.pei.dehaze.common.exception.BusinessException;
@@ -12,9 +13,16 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.model.dto.CaptchaResult;
 import com.pei.dehaze.model.dto.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
+import com.pei.dehaze.model.dto.RegisterForm;
+import com.pei.dehaze.model.entity.SysRole;
+import com.pei.dehaze.model.entity.SysUser;
+import com.pei.dehaze.model.entity.SysUserRole;
 import com.pei.dehaze.plugin.captcha.CaptchaProperties;
 import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.service.AuthService;
+import com.pei.dehaze.service.SysRoleService;
+import com.pei.dehaze.service.SysUserRoleService;
+import com.pei.dehaze.service.SysUserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -25,14 +33,17 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.awt.*;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -46,6 +57,10 @@ public class AuthServiceImpl implements AuthService {
     private final CodeGenerator codeGenerator;
     private final Font captchaFont;
     private final CaptchaProperties captchaProperties;
+    private final PasswordEncoder passwordEncoder;
+    private final SysUserService sysUserService;
+    private final SysRoleService sysRoleService;
+    private final SysUserRoleService sysUserRoleService;
 
     private static final String LOGIN_FAIL_PREFIX = "login:fail:";
     private static final int MAX_LOGIN_ATTEMPTS = 5;
@@ -104,6 +119,83 @@ public class AuthServiceImpl implements AuthService {
         session.set("deptId", userDetails.getDeptId());
         session.set("dataScope", userDetails.getDataScope());
         session.set("nickname", userDetails.getNickname());
+        List<String> authorities = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+        session.set("authorities", authorities);
+
+        redisTemplate.opsForValue().set(
+                SecurityConstants.SESSION_PREFIX + sessionId,
+                session.toString(),
+                SESSION_TTL,
+                TimeUnit.SECONDS);
+
+        return LoginResult.builder()
+                .sessionId(sessionId)
+                .user(LoginResult.UserInfo.builder()
+                        .id(userDetails.getUserId())
+                        .username(userDetails.getUsername())
+                        .nickname(userDetails.getNickname())
+                        .build())
+                .build();
+    }
+
+    @Override
+    public LoginResult register(RegisterForm form) {
+        String cacheKey = SecurityConstants.CAPTCHA_CODE_PREFIX + form.getCaptchaKey();
+        String cacheVerifyCode = redisTemplate.opsForValue().get(cacheKey);
+        if (cacheVerifyCode == null) {
+            throw new BusinessException(ResultCode.VERIFY_CODE_TIMEOUT);
+        }
+        if (!codeGenerator.verify(cacheVerifyCode, form.getCaptchaCode())) {
+            throw new BusinessException(ResultCode.VERIFY_CODE_ERROR);
+        }
+        redisTemplate.delete(cacheKey);
+
+        String username = form.getUsername().toLowerCase().trim();
+
+        long userCount = sysUserService.count(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUsername, username)
+                .eq(SysUser::getDeleted, 0));
+        if (userCount > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS, "用户名已被注册");
+        }
+
+        SysUser user = new SysUser();
+        user.setUsername(username);
+        user.setNickname(form.getNickname().trim());
+        user.setPassword(passwordEncoder.encode(form.getPassword()));
+        user.setGender(1);
+        user.setStatus(1);
+        user.setDeleted(0);
+        sysUserService.save(user);
+
+        SysRole guestRole = sysRoleService.getOne(new LambdaQueryWrapper<SysRole>()
+                .eq(SysRole::getCode, "GUEST")
+                .eq(SysRole::getStatus, 1)
+                .eq(SysRole::getDeleted, 0));
+        if (guestRole != null) {
+            SysUserRole userRole = new SysUserRole(user.getId(), guestRole.getId());
+            sysUserRoleService.save(userRole);
+        }
+
+        SysUserDetails userDetails = new SysUserDetails();
+        userDetails.setUserId(user.getId());
+        userDetails.setUsername(user.getUsername());
+        userDetails.setNickname(user.getNickname());
+        userDetails.setDeptId(null);
+        userDetails.setDataScope(guestRole != null ? guestRole.getDataScope() : null);
+        userDetails.setAuthorities(guestRole != null
+                ? Set.of(new SimpleGrantedAuthority("ROLE_GUEST"))
+                : Set.of());
+
+        String sessionId = IdUtil.fastSimpleUUID();
+        JSONObject session = new JSONObject();
+        session.set("userId", userDetails.getUserId());
+        session.set("username", userDetails.getUsername());
+        session.set("nickname", userDetails.getNickname());
+        session.set("deptId", userDetails.getDeptId());
+        session.set("dataScope", userDetails.getDataScope());
         List<String> authorities = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());

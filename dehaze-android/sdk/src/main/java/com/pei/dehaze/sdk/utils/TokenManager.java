@@ -43,4 +43,11 @@ public class TokenManager {
             return sessionId != null && !sessionId.isEmpty();
         }
     }
+
+    private static final String CODE_TOKEN_INVALID = "A0230";
+    private static final String CODE_TOKEN_FORBIDDEN = "A0231";
+
+    public static boolean isTokenInvalidCode(String code) {
+        return CODE_TOKEN_INVALID.equals(code) || CODE_TOKEN_FORBIDDEN.equals(code);
+    }
 }

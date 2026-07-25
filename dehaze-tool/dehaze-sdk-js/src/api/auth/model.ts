@@ -6,6 +6,14 @@ export interface LoginData {
   rememberMe?: boolean;
 }
 
+export interface RegisterData {
+  username: string;
+  password: string;
+  nickname: string;
+  captchaKey?: string;
+  captchaCode?: string;
+}
+
 export interface LoginUser {
   id: number;
   username: string;

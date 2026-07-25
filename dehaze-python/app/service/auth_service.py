@@ -8,7 +8,7 @@ from io import BytesIO
 
 from app.config import settings
 from app.repository.user_repository import user_repository
-from app.utils.password import check_password_async
+from app.utils.password import check_password_async, hash_password_async
 from PIL import Image, ImageDraw, ImageFont
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,6 +75,74 @@ class AuthService:
         }
 
     @staticmethod
+    async def register(
+        db: AsyncSession,
+        redis: Redis,
+        username: str,
+        password: str,
+        nickname: str,
+        captcha_key: str,
+        captcha_code: str,
+    ) -> dict:
+        from app.core.code import ResultCode
+        from app.core.exceptions import BusinessException
+
+        stored_captcha = await redis.get(f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}")
+        if not stored_captcha:
+            raise BusinessException(ResultCode.VERIFY_CODE_TIMEOUT, "验证码已过期")
+        if isinstance(stored_captcha, bytes):
+            stored_captcha = stored_captcha.decode()
+        if stored_captcha.lower() != captcha_code.lower():
+            raise BusinessException(ResultCode.VERIFY_CODE_ERROR, "验证码错误")
+        await redis.delete(f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}")
+
+        username = username.lower().strip()
+        from sqlalchemy import select, exists
+        from app.models.entity.sys_user import SysRole, SysUserRole, SysUser
+        dup_result = await db.execute(
+            select(exists().where(SysUser.username == username, SysUser.deleted == 0))
+        )
+        if dup_result.scalar():
+            raise BusinessException(ResultCode.DATA_EXISTS, "用户名已被注册")
+
+        hashed = await hash_password_async(password)
+        user = SysUser(username=username, nickname=nickname.strip(), password=hashed,
+                       gender=1, status=1, deleted=0)
+        db.add(user)
+        await db.flush()
+
+        guest_result = await db.execute(
+            select(SysRole).where(SysRole.code == "GUEST", SysRole.status == 1, SysRole.deleted == 0)
+        )
+        guest_role = guest_result.scalar()
+        if guest_role:
+            db.add(SysUserRole(user_id=user.id, role_id=guest_role.id))
+            await db.flush()
+
+        data_scope = guest_role.data_scope if guest_role else 0
+
+        session_id = str(uuid.uuid4())
+        authorities = ["ROLE_GUEST"] if guest_role else []
+
+        session_data = json.dumps({
+            "userId": user.id,
+            "username": user.username,
+            "nickname": user.nickname,
+            "deptId": None,
+            "dataScope": data_scope,
+            "authorities": authorities,
+        })
+
+        await redis.setex(f"session:{session_id}", SESSION_TTL, session_data)
+
+        await db.commit()
+
+        return {
+            "sessionId": session_id,
+            "user": {"id": user.id, "username": user.username, "nickname": user.nickname},
+        }
+
+    @staticmethod
     async def get_captcha(redis: Redis) -> dict:
         captcha_text = "".join(
             secrets.choice(string.ascii_uppercase + string.digits)
@@ -87,7 +155,7 @@ class AuthService:
 
         captcha_key = str(uuid.uuid4())
 
-        await redis.setex(f"captcha:{captcha_key}", settings.CAPTCHA_EXPIRES, captcha_text)
+        await redis.setex(f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}", settings.CAPTCHA_EXPIRES, captcha_text)
 
         return {
             "captchaKey": captcha_key,
@@ -123,7 +191,7 @@ class AuthService:
 
     @staticmethod
     async def verify_captcha(redis: Redis, captcha_key: str, captcha_code: str) -> bool:
-        stored_captcha = await redis.get(f"captcha:{captcha_key}")
+        stored_captcha = await redis.get(f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}")
 
         if not stored_captcha:
             return False
@@ -134,6 +202,6 @@ class AuthService:
         result = stored_captcha.lower() == captcha_code.lower()
 
         if result:
-            await redis.delete(f"captcha:{captcha_key}")
+            await redis.delete(f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}")
 
         return result

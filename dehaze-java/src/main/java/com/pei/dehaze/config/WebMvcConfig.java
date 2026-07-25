@@ -2,7 +2,6 @@ package com.pei.dehaze.config;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -11,9 +10,7 @@ import org.hibernate.validator.HibernateValidator;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.validation.beanvalidation.SpringConstraintValidatorFactory;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -25,33 +22,14 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
-        // 注意：必须使用 extendMessageConverters（而非 configureMessageConverters），
-        // 否则会替换 Spring Boot 默认的转换器列表，导致 ResourceHttpMessageConverter 丢失，
-        // 进而使 ResponseEntity<Resource>（如文件下载）回退到 Jackson 序列化，
-        // 返回错误的 Content-Type: application/json 而非图片真实的 MIME 类型。
-
-        MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jackson2HttpMessageConverter.getObjectMapper();
-        objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-
-        // 注册 JavaTimeModule 以支持 Java 8 日期时间类型（LocalDateTime、LocalDate、LocalTime 等）
-        objectMapper.registerModule(new JavaTimeModule());
-
-        // 项目使用数据库自增 ID（非雪花 ID），Long 值不会超过 JS 安全整数范围（2^53-1），无需转为字符串
-        SimpleModule simpleModule = new SimpleModule();
-        objectMapper.registerModule(simpleModule);
-
-        jackson2HttpMessageConverter.setObjectMapper(objectMapper);
-
-        // 移除默认的 Jackson 转换器，替换为使用自定义 ObjectMapper 的实例
-        converters.removeIf(c -> c instanceof MappingJackson2HttpMessageConverter);
-        // add(0, ...) 后加的在前，按期望优先级逆序插入：
-        // 最终顺序 = ByteArray(0) > Jackson(1) > String(2) > 默认
-        // ByteArrayHttpMessageConverter 必须在 Jackson 之前，否则 byte[] 返回值
-        // (如 springdoc /v3/api-docs) 会被 Jackson 序列化为 base64 字符串
-        converters.add(0, jackson2HttpMessageConverter);
-        converters.add(0, new StringHttpMessageConverter());
-        converters.add(0, new ByteArrayHttpMessageConverter());
+        for (HttpMessageConverter<?> converter : converters) {
+            if (converter instanceof MappingJackson2HttpMessageConverter jacksonConverter) {
+                ObjectMapper objectMapper = jacksonConverter.getObjectMapper();
+                objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
+                objectMapper.registerModule(new JavaTimeModule());
+                break;
+            }
+        }
     }
 
     @Bean

@@ -1,3 +1,5 @@
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
@@ -35,5 +37,7 @@ async def delete_api_key(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await ApiKeyService.delete_api_key(db, user.id, key_id)
+    deleted = await ApiKeyService.delete_api_key(db, user.id, key_id)
+    if not deleted:
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "API Key 不存在")
     return success(msg="一切ok")

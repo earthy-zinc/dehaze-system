@@ -1,6 +1,6 @@
 import { SESSION_KEY } from "dehaze-sdk-js";
 
-const WHITE_LIST = ["pages/login/index"];
+const WHITE_LIST = ["pages/login/index", "pages/register/index"];
 const LOGIN_PATH = "pages/login/index";
 const HOME_PATH = "pages/home/index";
 

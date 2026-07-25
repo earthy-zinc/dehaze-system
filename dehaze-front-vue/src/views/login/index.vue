@@ -109,6 +109,10 @@
           <span>{{ $t("login.username") }}: admin</span>
           <span class="ml-4"> {{ $t("login.password") }}: 123456</span>
         </div>
+
+        <div class="text-center mt-4">
+          <router-link to="/register">没有账号？立即注册</router-link>
+        </div>
       </el-form>
     </el-card>
 

@@ -3,6 +3,7 @@ export default defineAppConfig({
     "pages/home/index",
     "pages/dataset/index",
     "pages/login/index",
+    "pages/register/index",
     "pages/dashboard/index",
     "pages/system/user/index",
     "pages/system/user/detail",

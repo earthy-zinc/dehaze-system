@@ -35,6 +35,7 @@ public class SessionFilter extends OncePerRequestFilter {
     private static final long SESSION_TTL = 604800L;
     private static final long RENEW_THRESHOLD = 86400L;
     private static final String API_KEY_PREFIX = "dhak_";
+    private static final String BEARER_PREFIX = "Bearer ";
 
     public SessionFilter(StringRedisTemplate redisTemplate, ApiKeyService apiKeyService) {
         this.redisTemplate = redisTemplate;
@@ -48,6 +49,9 @@ public class SessionFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
+            authHeader = authHeader.substring(BEARER_PREFIX.length());
+        }
         if (authHeader != null && authHeader.startsWith(API_KEY_PREFIX)) {
             Authentication authentication = apiKeyService.authenticateByKey(authHeader);
             if (authentication == null) {
