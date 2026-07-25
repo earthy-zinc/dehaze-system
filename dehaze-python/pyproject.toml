@@ -52,7 +52,7 @@ dependencies = [
     "setuptools>=80.0.0",
     "ninja>=1.11.0",
     # WPXNet Neighborhood Attention（仅 Linux 有预编译 wheel，Windows 需 WSL2）
-    "natten>=0.17.0; sys_platform == 'linux'",
+    "natten==0.21.5+torch290cu128; sys_platform == 'linux'",
     # 工具
     "python-dotenv>=1.1.1",
     "pyyaml>=6.0.1",
@@ -62,7 +62,7 @@ dependencies = [
     "prometheus-client>=0.21.0",
     "starlette-exporter>=0.23.0",
     # GPU 监控
-    "pynvml>=11.5.0",
+    "nvidia-ml-py>=11.5.0",
     "python-json-logger>=4.0.0",
 ]
 
@@ -79,6 +79,7 @@ test = [
 
 [tool.uv]
 index-url = "https://mirrors.aliyun.com/pypi/simple/"
+find-links = ["https://whl.natten.org/"]
 
 # PyTorch CUDA 版本源（GPU 版本）
 # 阿里云镜像默认提供 CPU 版本 wheel，需从 PyTorch 官方源获取 CUDA 版本
