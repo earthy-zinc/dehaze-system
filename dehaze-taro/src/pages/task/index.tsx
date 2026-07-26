@@ -9,13 +9,14 @@ import { Navbar, Loading, Empty } from "@taroify/core";
 import { ArrowLeft } from "@taroify/icons";
 import { TaskAPI } from "dehaze-sdk-js";
 import { confirmDialog } from "@/utils/dialog";
-import type { TaskVO, TaskQuery, TaskStatus } from "dehaze-sdk-js";
+import type { TaskCategory, TaskVO, TaskQuery, TaskStatus } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
 import { getErrorMessage } from "@/utils/error";
 import {
   POLLING_INTERVAL,
   POLLING_STATUSES,
   STATUS_FILTERS,
+  CATEGORY_FILTERS,
   PAGE_SIZE,
 } from "./constants";
 import TaskCard from "./components/TaskCard";
@@ -29,6 +30,7 @@ const TaskPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"" | TaskStatus>("");
+  const [categoryFilter, setCategoryFilter] = useState<"" | TaskCategory>("");
   const [pageNum, setPageNum] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
@@ -53,26 +55,30 @@ const TaskPage: React.FC = () => {
   // ==================== 数据加载 ====================
 
   /** 加载任务列表（第一页） */
-  const loadTaskList = useCallback(async (status: "" | TaskStatus) => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const query: TaskQuery = {
-        pageNum: 1,
-        pageSize: PAGE_SIZE,
-        status: status || undefined,
-      };
-      const res = await TaskAPI.getPage(query);
-      const list = (res.list as unknown as TaskVO[]) || [];
-      setTaskList(list);
-      setPageNum(1);
-      setHasMore(list.length < (res.total || 0));
-    } catch (err: unknown) {
-      setLoadError(getErrorMessage(err, "加载失败，请重试"));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadTaskList = useCallback(
+    async (status: "" | TaskStatus, category: "" | TaskCategory) => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const query: TaskQuery = {
+          pageNum: 1,
+          pageSize: PAGE_SIZE,
+          status: status || undefined,
+          taskCategory: category || undefined,
+        };
+        const res = await TaskAPI.getPage(query);
+        const list = (res.list as unknown as TaskVO[]) || [];
+        setTaskList(list);
+        setPageNum(1);
+        setHasMore(list.length < (res.total || 0));
+      } catch (err: unknown) {
+        setLoadError(getErrorMessage(err, "加载失败，请重试"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   /** 加载更多（下一页） */
   const loadMore = useCallback(async () => {
@@ -83,6 +89,7 @@ const TaskPage: React.FC = () => {
         pageNum: nextPage,
         pageSize: PAGE_SIZE,
         status: statusFilter || undefined,
+        taskCategory: categoryFilter || undefined,
       };
       const res = await TaskAPI.getPage(query);
       const list = (res.list as unknown as TaskVO[]) || [];
@@ -95,7 +102,7 @@ const TaskPage: React.FC = () => {
         icon: "none",
       });
     }
-  }, [loading, hasMore, pageNum, statusFilter]);
+  }, [loading, hasMore, pageNum, statusFilter, categoryFilter]);
 
   // ==================== 轮询逻辑 ====================
 
@@ -165,11 +172,11 @@ const TaskPage: React.FC = () => {
   // ==================== 生命周期 ====================
 
   useLoad(() => {
-    loadTaskList(statusFilter);
+    loadTaskList(statusFilter, categoryFilter);
   });
 
   usePullDownRefresh(() => {
-    loadTaskList(statusFilter).finally(() => {
+    loadTaskList(statusFilter, categoryFilter).finally(() => {
       Taro.stopPullDownRefresh();
     });
   });
@@ -185,9 +192,19 @@ const TaskPage: React.FC = () => {
     (status: "" | TaskStatus) => {
       setStatusFilter(status);
       stopPolling();
-      loadTaskList(status);
+      loadTaskList(status, categoryFilter);
     },
-    [stopPolling, loadTaskList]
+    [stopPolling, loadTaskList, categoryFilter],
+  );
+
+  /** 任务类别筛选变化 */
+  const handleCategoryChange = useCallback(
+    (category: "" | TaskCategory) => {
+      setCategoryFilter(category);
+      stopPolling();
+      loadTaskList(statusFilter, category);
+    },
+    [stopPolling, loadTaskList, statusFilter],
   );
 
   /** 查看任务详情 */
@@ -278,6 +295,19 @@ const TaskPage: React.FC = () => {
         </Navbar.NavLeft>
       </Navbar>
 
+      {/* 任务类别筛选 */}
+      <View className="category-bar">
+        {CATEGORY_FILTERS.map((filter) => (
+          <View
+            key={filter.value}
+            className={`category-item ${categoryFilter === filter.value ? "active" : ""}`}
+            onClick={() => handleCategoryChange(filter.value)}
+          >
+            <Text>{filter.label}</Text>
+          </View>
+        ))}
+      </View>
+
       {/* 状态筛选 */}
       <ScrollView scrollX className="filter-bar" enhanced showScrollbar={false}>
         {STATUS_FILTERS.map((filter) => (
@@ -300,7 +330,7 @@ const TaskPage: React.FC = () => {
         ) : loadError && taskList.length === 0 ? (
           <ErrorState
             message={loadError}
-            onRetry={() => loadTaskList(statusFilter)}
+            onRetry={() => loadTaskList(statusFilter, categoryFilter)}
           />
         ) : taskList.length === 0 ? (
           <Empty>

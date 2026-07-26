@@ -1,4 +1,4 @@
-import type { TaskStatus } from "dehaze-sdk-js";
+import type { TaskCategory, TaskStatus } from "dehaze-sdk-js";
 
 // ==================== 常量定义 ====================
 
@@ -25,6 +25,13 @@ export const STATUS_FILTERS: { label: string; value: "" | TaskStatus }[] = [
   { label: "已取消", value: "CANCELLED" },
 ];
 
+/** 任务类别筛选选项 */
+export const CATEGORY_FILTERS: { label: string; value: "" | TaskCategory }[] = [
+  { label: "全部", value: "" },
+  { label: "导入", value: "import" },
+  { label: "导出", value: "export" },
+];
+
 /** 状态标签映射 */
 export const STATUS_TAG: Record<
   TaskStatus,
@@ -40,9 +47,18 @@ export const STATUS_TAG: Record<
 /** 任务类型映射 */
 export const TASK_TYPE_LABEL: Record<string, string> = {
   dataset_export: "数据集导出",
-  item_download: "数据项下载",
-  batch_download: "批量下载",
-  custom_export: "自定义导出",
+  user_export: "用户导出",
+  role_export: "角色导出",
+  dept_export: "部门导出",
+  menu_export: "菜单导出",
+  dict_export: "字典导出",
+  algorithm_export: "算法导出",
+  user_import: "用户导入",
+  role_import: "角色导入",
+  dept_import: "部门导入",
+  menu_import: "菜单导入",
+  dict_import: "字典导入",
+  algorithm_import: "算法导入",
 };
 
 /** 每页条数 */
