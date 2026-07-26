@@ -10,6 +10,7 @@ import {
   Edit,
   Delete,
 } from "@element-plus/icons-vue";
+import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
 
 defineOptions({
   name: "AlgorithmList",
@@ -293,6 +294,11 @@ onMounted(() => {
             <el-icon><Delete /></el-icon>
             删除
           </el-button>
+          <ImportExportToolbar
+            module="algorithm"
+            :query-params="queryParams"
+            @import-complete="handleQuery"
+          />
           <span class="result-tip">
             共 <strong>{{ list.length }}</strong> 个算法
             <span v-if="selectedType !== 'all'">

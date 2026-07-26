@@ -28,27 +28,36 @@
 
     <el-card class="table-container" shadow="never">
       <template #header>
-        <el-button
-          v-hasPerm="['sys:menu:add']"
-          type="success"
-          @click="openDialog(0)"
-        >
-          <template #icon
-            ><el-icon><Plus /></el-icon
-          ></template>
-          新增</el-button
-        >
-        <el-button
-          v-hasPerm="['sys:menu:delete']"
-          :disabled="ids.length === 0"
-          type="danger"
-          @click="handleDelete()"
-        >
-          <template #icon
-            ><el-icon><Delete /></el-icon
-          ></template>
-          删除</el-button
-        >
+        <div class="flex justify-between items-center">
+          <div>
+            <el-button
+              v-hasPerm="['sys:menu:add']"
+              type="success"
+              @click="openDialog(0)"
+            >
+              <template #icon
+                ><el-icon><Plus /></el-icon
+              ></template>
+              新增</el-button
+            >
+            <el-button
+              v-hasPerm="['sys:menu:delete']"
+              :disabled="ids.length === 0"
+              type="danger"
+              @click="handleDelete()"
+            >
+              <template #icon
+                ><el-icon><Delete /></el-icon
+              ></template>
+              删除</el-button
+            >
+          </div>
+          <ImportExportToolbar
+            module="menu"
+            :query-params="queryParams"
+            @import-complete="handleQuery"
+          />
+        </div>
       </template>
 
       <el-table
@@ -355,6 +364,7 @@ import {
   Refresh,
   Search,
 } from "@element-plus/icons-vue";
+import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
 import { usePermissionStoreHook } from "@/store/modules/permission";
 import { useUserStore } from "@/store";
 

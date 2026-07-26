@@ -3,15 +3,25 @@
   <div class="app-container">
     <!-- 状态筛选 -->
     <el-card class="search-container" shadow="never">
-      <div class="flex items-center justify-between">
-        <el-radio-group v-model="statusFilter" @change="handleStatusChange">
-          <el-radio-button value="">全部</el-radio-button>
-          <el-radio-button value="PENDING">待执行</el-radio-button>
-          <el-radio-button value="PROCESSING">执行中</el-radio-button>
-          <el-radio-button value="COMPLETED">已完成</el-radio-button>
-          <el-radio-button value="FAILED">失败</el-radio-button>
-          <el-radio-button value="CANCELLED">已取消</el-radio-button>
-        </el-radio-group>
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
+          <el-radio-group
+            v-model="categoryFilter"
+            @change="handleCategoryChange"
+          >
+            <el-radio-button value="">全部类别</el-radio-button>
+            <el-radio-button value="import">导入</el-radio-button>
+            <el-radio-button value="export">导出</el-radio-button>
+          </el-radio-group>
+          <el-radio-group v-model="statusFilter" @change="handleStatusChange">
+            <el-radio-button value="">全部</el-radio-button>
+            <el-radio-button value="PENDING">待执行</el-radio-button>
+            <el-radio-button value="PROCESSING">执行中</el-radio-button>
+            <el-radio-button value="COMPLETED">已完成</el-radio-button>
+            <el-radio-button value="FAILED">失败</el-radio-button>
+            <el-radio-button value="CANCELLED">已取消</el-radio-button>
+          </el-radio-group>
+        </div>
         <el-button @click="loadTaskList"
           ><el-icon><Refresh /></el-icon>刷新</el-button
         >
@@ -64,25 +74,34 @@
             {{ formatTime(row.completedAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center" fixed="right">
+        <el-table-column label="操作" width="240" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleDetail(row)">
+            <el-button type="primary" link @click="handleDetail(row as TaskVO)">
               详情
             </el-button>
             <el-button
               v-if="canCancel(row.status)"
               type="warning"
               link
-              @click="handleCancel(row)"
+              @click="handleCancel(row as TaskVO)"
             >
               取消
             </el-button>
             <el-button
-              v-if="row.status === 'COMPLETED'"
+              v-if="row.status === 'COMPLETED' && isImportTask(row.taskType)"
+              type="primary"
+              link
+              :loading="downloadLoadingId === row.taskId"
+              @click="handleDownload(row as TaskVO)"
+            >
+              查看结果
+            </el-button>
+            <el-button
+              v-if="row.status === 'COMPLETED' && !isImportTask(row.taskType)"
               type="success"
               link
               :loading="downloadLoadingId === row.taskId"
-              @click="handleDownload(row)"
+              @click="handleDownload(row as TaskVO)"
             >
               下载
             </el-button>
@@ -177,7 +196,7 @@
 </template>
 
 <script lang="ts" setup>
-import { TaskVO, TaskQuery } from "dehaze-sdk-js";
+import { TaskVO, TaskQuery, TaskCategory } from "dehaze-sdk-js";
 import { Refresh } from "@element-plus/icons-vue";
 import { useTaskStore } from "@/store";
 
@@ -196,6 +215,8 @@ const queryParams = reactive<TaskQuery>({
 
 // 状态筛选值（空字符串表示全部）
 const statusFilter = ref("");
+// 类别筛选值（空字符串表示全部）
+const categoryFilter = ref<"" | TaskCategory>("");
 
 // 详情弹窗
 const detailVisible = ref(false);
@@ -228,7 +249,25 @@ const taskTypeLabel: Record<string, string> = {
   item_download: "数据项下载",
   batch_download: "批量下载",
   custom_export: "自定义导出",
+  user_export: "用户导出",
+  role_export: "角色导出",
+  dept_export: "部门导出",
+  menu_export: "菜单导出",
+  dict_export: "字典导出",
+  algorithm_export: "算法导出",
+  user_import: "用户导入",
+  role_import: "角色导入",
+  dept_import: "部门导入",
+  menu_import: "菜单导入",
+  dict_import: "字典导入",
+  algorithm_import: "算法导入",
 };
+
+// 判断是否为导入任务
+function isImportTask(taskType?: string): boolean {
+  if (!taskType) return false;
+  return taskType.endsWith("_import");
+}
 
 // 需要轮询的任务状态
 const POLLING_STATUSES = ["PENDING", "PROCESSING"];
@@ -286,7 +325,17 @@ async function loadTaskList() {
  * 状态筛选变化
  */
 function handleStatusChange() {
-  queryParams.status = statusFilter.value || undefined;
+  queryParams.status = (statusFilter.value || undefined) as TaskQuery["status"];
+  queryParams.pageNum = 1;
+  loadTaskList();
+}
+
+/**
+ * 类别筛选变化
+ */
+function handleCategoryChange() {
+  queryParams.taskCategory = (categoryFilter.value ||
+    undefined) as TaskQuery["taskCategory"];
   queryParams.pageNum = 1;
   loadTaskList();
 }

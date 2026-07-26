@@ -16,6 +16,7 @@ import {
   Search,
   Setting,
 } from "@element-plus/icons-vue";
+import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
 
 const props = defineProps<{
   listType: string;
@@ -257,6 +258,12 @@ onMounted(() => {
           <el-icon><Delete /></el-icon>
           删除
         </el-button>
+        <ImportExportToolbar
+          :module="isDatasetList ? 'dataset' : 'algorithm'"
+          :importable="!isDatasetList"
+          :query-params="queryParams"
+          @import-complete="handleQuery"
+        />
       </div>
 
       <el-table

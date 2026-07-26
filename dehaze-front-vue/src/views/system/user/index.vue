@@ -77,37 +77,12 @@
                 >
               </div>
               <div>
-                <el-dropdown split-button>
-                  导入
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item @click="downloadTemplate">
-                        <el-icon>
-                          <Download />
-                        </el-icon>
-                        下载模板
-                      </el-dropdown-item>
-                      <el-dropdown-item @click="openDialog('user-import')">
-                        <el-icon>
-                          <Top />
-                        </el-icon>
-                        导入数据
-                      </el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-                <el-button
-                  class="ml-3"
-                  :loading="exportLoading"
-                  @click="handleExport"
-                >
-                  <template #icon>
-                    <el-icon>
-                      <Download />
-                    </el-icon>
-                  </template>
-                  导出
-                </el-button>
+                <ImportExportToolbar
+                  module="user"
+                  :query-params="queryParams"
+                  :extra-import-params="{ deptId: queryParams.deptId }"
+                  @import-complete="handleQuery"
+                />
               </div>
             </div>
           </template>
@@ -293,47 +268,6 @@
         </el-form-item>
       </el-form>
 
-      <!-- 用户导入表单 -->
-      <el-form
-        v-else-if="dialog.type === 'user-import'"
-        :model="importData"
-        label-width="100px"
-      >
-        <el-form-item label="部门">
-          <el-tree-select
-            v-model="importData.deptId"
-            :data="deptList"
-            check-strictly
-            filterable
-            placeholder="请选择部门"
-          />
-        </el-form-item>
-
-        <el-form-item label="Excel文件">
-          <el-upload
-            ref="uploadRef"
-            :auto-upload="false"
-            :file-list="importData.fileList"
-            :limit="1"
-            :on-change="handleFileChange"
-            :on-exceed="handleFileExceed"
-            accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-            action=""
-            drag
-          >
-            <el-icon class="el-icon--upload">
-              <UploadFilled />
-            </el-icon>
-            <div class="el-upload__text">
-              将文件拖到此处，或
-              <em>点击上传</em>
-            </div>
-            <template #tip>
-              <div>xls/xlsx files</div>
-            </template>
-          </el-upload>
-        </el-form-item>
-      </el-form>
       <!-- 弹窗底部操作按钮 -->
       <template #footer>
         <div class="dialog-footer">
@@ -363,25 +297,19 @@ import {
 
 import {
   Delete,
-  Download,
   Edit,
   Plus,
   Refresh,
   RefreshLeft,
   Search,
-  Top,
-  UploadFilled,
 } from "@element-plus/icons-vue";
 
-import type { UploadInstance } from "element-plus";
-import { genFileId } from "element-plus";
+import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
 
 const queryFormRef = ref(ElForm); // 查询表单
 const userFormRef = ref(ElForm); // 用户表单
-const uploadRef = ref<UploadInstance>(); // 上传组件
 
 const loading = ref(false); //  加载状态
-const exportLoading = ref(false); // 导出加载状态
 const removeIds = ref([]); // 删除用户ID集合 用于批量删除
 const queryParams = reactive<UserQuery>({
   pageNum: 1,
@@ -414,13 +342,6 @@ const dialog = reactive({
 // 用户表单数据
 const formData = reactive<UserForm>({
   status: 1,
-});
-
-// 用户导入数据
-const importData = reactive({
-  deptId: undefined,
-  file: undefined,
-  fileList: [],
 });
 
 // 校验规则
@@ -524,7 +445,7 @@ async function loadDeptOptions() {
 /**
  * 打开弹窗
  *
- * @param type 弹窗类型  用户表单：user-form | 用户导入：user-import
+ * @param type 弹窗类型  用户表单：user-form
  * @param id 用户ID
  */
 async function openDialog(type: string, id?: number) {
@@ -542,18 +463,13 @@ async function openDialog(type: string, id?: number) {
     } else {
       dialog.title = "新增用户";
     }
-  } else if (dialog.type === "user-import") {
-    // 用户导入弹窗
-    dialog.title = "导入用户";
-    dialog.width = 600;
-    await loadDeptOptions();
   }
 }
 
 /**
  * 关闭弹窗
  *
- * @param type 弹窗类型  用户表单：user-form | 用户导入：user-import
+ * @param type 弹窗类型  用户表单：user-form
  */
 function closeDialog() {
   dialog.visible = false;
@@ -563,9 +479,6 @@ function closeDialog() {
 
     formData.id = undefined;
     formData.status = 1;
-  } else if (dialog.type === "user-import") {
-    importData.file = undefined;
-    importData.fileList = [];
   }
 }
 
@@ -594,20 +507,6 @@ const handleSubmit = useThrottleFn(() => {
             .finally(() => (loading.value = false));
         }
       }
-    });
-  } else if (dialog.type === "user-import") {
-    if (!importData?.deptId) {
-      ElMessage.warning("请选择部门");
-      return false;
-    }
-    if (!importData?.file) {
-      ElMessage.warning("上传Excel文件不能为空");
-      return false;
-    }
-    UserAPI.import(importData?.deptId, importData?.file).then(() => {
-      ElMessage.success("导入用户成功");
-      closeDialog();
-      resetQuery();
     });
   }
 }, 3000);
@@ -641,75 +540,6 @@ function handleDelete(row?: any) {
       });
     })
     .catch(() => {});
-}
-
-/** 下载导入模板 */
-function downloadTemplate() {
-  UserAPI.downloadTemplate().then((response: any) => {
-    const fileData = response.data;
-    const fileName = decodeURI(
-      response.headers["content-disposition"].split(";")[1].split("=")[1]
-    );
-    const fileType =
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8";
-
-    const blob = new Blob([fileData], { type: fileType });
-    const downloadUrl = window.URL.createObjectURL(blob);
-
-    const downloadLink = document.createElement("a");
-    downloadLink.href = downloadUrl;
-    downloadLink.download = fileName;
-
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-
-    document.body.removeChild(downloadLink);
-    window.URL.revokeObjectURL(downloadUrl);
-  });
-}
-
-/** Excel文件 Change */
-function handleFileChange(file: any) {
-  importData.file = file.raw;
-}
-
-/** Excel文件 Exceed  */
-function handleFileExceed(files: any) {
-  uploadRef.value!.clearFiles();
-  const file = files[0];
-  file.uid = genFileId();
-  uploadRef.value!.handleStart(file);
-  importData.file = file;
-}
-
-/** 导出用户 */
-function handleExport() {
-  exportLoading.value = true;
-  UserAPI.export(queryParams)
-    .then((response: any) => {
-      const fileData = response.data;
-      const fileName = decodeURI(
-        response.headers["content-disposition"].split(";")[1].split("=")[1]
-      );
-      const fileType =
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8";
-
-      const blob = new Blob([fileData], { type: fileType });
-      const downloadUrl = window.URL.createObjectURL(blob);
-
-      const downloadLink = document.createElement("a");
-      downloadLink.href = downloadUrl;
-      downloadLink.download = fileName;
-
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-
-      document.body.removeChild(downloadLink);
-      window.URL.revokeObjectURL(downloadUrl);
-    })
-    .finally(() => {
-      exportLoading.value = false;
-    });
 }
 
 onMounted(async () => {

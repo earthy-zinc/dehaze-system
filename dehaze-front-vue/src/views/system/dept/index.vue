@@ -38,23 +38,32 @@
 
     <el-card class="table-container" shadow="never">
       <template #header>
-        <el-button
-          v-hasPerm="['sys:dept:add']"
-          type="success"
-          @click="openDialog(0, undefined)"
-          ><el-icon><Plus /></el-icon>新增</el-button
-        >
-        <el-button
-          v-hasPerm="['sys:dept:delete']"
-          :disabled="ids.length === 0"
-          type="danger"
-          @click="handleDelete()"
-        >
-          <el-icon>
-            <Delete />
-          </el-icon>
-          删除
-        </el-button>
+        <div class="flex justify-between items-center">
+          <div>
+            <el-button
+              v-hasPerm="['sys:dept:add']"
+              type="success"
+              @click="openDialog(0, undefined)"
+              ><el-icon><Plus /></el-icon>新增</el-button
+            >
+            <el-button
+              v-hasPerm="['sys:dept:delete']"
+              :disabled="ids.length === 0"
+              type="danger"
+              @click="handleDelete()"
+            >
+              <el-icon>
+                <Delete />
+              </el-icon>
+              删除
+            </el-button>
+          </div>
+          <ImportExportToolbar
+            module="dept"
+            :query-params="queryParams"
+            @import-complete="handleQuery"
+          />
+        </div>
       </template>
 
       <el-table
@@ -179,6 +188,7 @@ import {
   OptionType,
 } from "dehaze-sdk-js";
 import { Delete, Edit, Plus, Refresh, Search } from "@element-plus/icons-vue";
+import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
 
 const queryFormRef = ref(ElForm);
 const deptFormRef = ref(ElForm);

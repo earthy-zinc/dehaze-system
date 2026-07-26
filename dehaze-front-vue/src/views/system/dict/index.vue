@@ -25,18 +25,27 @@
 
     <el-card class="table-container" shadow="never">
       <template #header>
-        <el-button
-          v-hasPerm="['sys:dict:type:add']"
-          type="success"
-          @click="openDialog()"
-          ><el-icon><Plus /></el-icon>新增</el-button
-        >
-        <el-button
-          :disabled="ids.length === 0"
-          type="danger"
-          @click="handleDelete()"
-          ><el-icon><Delete /></el-icon>删除</el-button
-        >
+        <div class="flex justify-between items-center">
+          <div>
+            <el-button
+              v-hasPerm="['sys:dict:type:add']"
+              type="success"
+              @click="openDialog()"
+              ><el-icon><Plus /></el-icon>新增</el-button
+            >
+            <el-button
+              :disabled="ids.length === 0"
+              type="danger"
+              @click="handleDelete()"
+              ><el-icon><Delete /></el-icon>删除</el-button
+            >
+          </div>
+          <ImportExportToolbar
+            module="dict"
+            :query-params="queryParams"
+            @import-complete="handleQuery"
+          />
+        </div>
       </template>
       <el-table
         v-loading="loading"
@@ -170,6 +179,7 @@ import {
   Refresh,
   Search,
 } from "@element-plus/icons-vue";
+import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
 
 const queryFormRef = ref(ElForm);
 const dataFormRef = ref(ElForm);

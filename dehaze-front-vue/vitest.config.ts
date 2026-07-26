@@ -2,14 +2,52 @@ import storybookTest from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
 import path from "path";
 import { defineConfig, mergeConfig } from "vitest/config";
+import type { Plugin } from "vite";
 import viteConfig from "./vite.config";
 
 const pathSrc = path.resolve(__dirname, "src");
+
+// 测试环境跳过 CSS 文件加载，避免 element-plus 等 UI 库的 CSS 导入报错
+const cssStubPlugin: Plugin = {
+  name: "vitest-css-stub",
+  enforce: "pre",
+  resolveId(id) {
+    if (id.endsWith(".css")) {
+      return `\0css-stub:${id}`;
+    }
+    return null;
+  },
+  load(id) {
+    if (id.startsWith("\0css-stub:")) {
+      return "export default {};";
+    }
+    return null;
+  },
+};
+
+// 移除 element-plus 组件的 CSS 样式导入，避免 Node ESM 加载器无法处理 .css 文件
+const stripElementPlusStyleImportsPlugin: Plugin = {
+  name: "strip-element-plus-style-imports",
+  enforce: "post",
+  transform(code, id) {
+    if (id.endsWith(".vue") || id.endsWith(".tsx") || id.endsWith(".ts")) {
+      const stripped = code.replace(
+        /import\s+["'][^"']*element-plus[^"']*style[^"']*["'];?\s*/g,
+        ""
+      );
+      if (stripped !== code) {
+        return { code: stripped, map: null };
+      }
+    }
+    return null;
+  },
+};
 
 export default defineConfig((configEnv) =>
   mergeConfig(
     viteConfig(configEnv),
     defineConfig({
+      plugins: [cssStubPlugin, stripElementPlusStyleImportsPlugin],
       test: {
         projects: [
           {
@@ -42,6 +80,7 @@ export default defineConfig((configEnv) =>
                     include: ["vitest-canvas-mock"],
                   },
                 },
+                inline: [/element-plus/],
               },
 
               // 测试超时时间

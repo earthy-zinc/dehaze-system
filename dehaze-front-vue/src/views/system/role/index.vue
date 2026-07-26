@@ -24,19 +24,28 @@
 
     <el-card class="table-container" shadow="never">
       <template #header>
-        <el-button
-          v-hasPerm="['sys:role:add']"
-          type="success"
-          @click="openDialog()"
-          ><el-icon><Plus /></el-icon>新增</el-button
-        >
-        <el-button
-          v-hasPerm="['sys:role:delete']"
-          :disabled="ids.length === 0"
-          type="danger"
-          @click="handleDelete()"
-          ><el-icon><Delete /></el-icon>删除</el-button
-        >
+        <div class="flex justify-between items-center">
+          <div>
+            <el-button
+              v-hasPerm="['sys:role:add']"
+              type="success"
+              @click="openDialog()"
+              ><el-icon><Plus /></el-icon>新增</el-button
+            >
+            <el-button
+              v-hasPerm="['sys:role:delete']"
+              :disabled="ids.length === 0"
+              type="danger"
+              @click="handleDelete()"
+              ><el-icon><Delete /></el-icon>删除</el-button
+            >
+          </div>
+          <ImportExportToolbar
+            module="role"
+            :query-params="queryParams"
+            @import-complete="handleQuery"
+          />
+        </div>
       </template>
 
       <el-table
@@ -237,6 +246,7 @@ import {
   Refresh,
   Search,
 } from "@element-plus/icons-vue";
+import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
 
 defineOptions({
   name: "Role",
