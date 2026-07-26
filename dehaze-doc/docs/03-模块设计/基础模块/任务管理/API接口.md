@@ -20,6 +20,17 @@
 | `/api/v1/tasks/{taskId}/cancel` | POST | 取消任务 | - | F-TM-004 |
 | `/api/v1/tasks` | GET | 任务列表查询 | - | F-TM-005 |
 
+### 2.1 任务列表查询参数（TaskQuery）
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| pageNum | int | 否 | 页码，默认 1 |
+| pageSize | int | 否 | 每页条数，默认 10 |
+| status | string | 否 | 按任务状态筛选：`PENDING`/`PROCESSING`/`COMPLETED`/`FAILED`/`CANCELLED` |
+| taskType | string | 否 | 按任务类型筛选，支持逗号分隔多个（如 `user_export,user_import`） |
+| taskCategory | string | 否 | 按任务类别筛选：`import`（导入）/ `export`（导出），便于分类查看导入导出任务 |
+| createTimeStart / createTimeEnd | datetime | 否 | 创建时间范围筛选 |
+
 ## 3. 权限标识汇总
 
 > 任务管理模块基于数据隔离控制权限，用户只能操作自己创建的任务。
@@ -40,6 +51,7 @@
 | `B0305` | 任务结果已过期 | 下载已过期的任务结果 |
 | `B0306` | 任务结果不存在 | 下载未完成任务或结果文件已删除 |
 | `B0307` | 并发任务数超限 | 用户同类型未完成任务数超过限制 |
+| `B0308` | 导出任务并发超限 | 单用户导入导出任务并发数超限 |
 
 ## 5. 接口详情查询
 

@@ -16,16 +16,22 @@
 
 - 数据集分页展示（`DatasetList` 组件）
 - 数据集详情页支持图片瀑布流展示（`Waterfall` 组件）
-- 支持数据集导入导出（`DatasetAPI.export` 接口）
+- 数据集导出通过通用导入导出框架实现（`ImportExportAPI.export("dataset", ...)`）
 
-### 1.3 图像处理功能
+### 1.3 通用导入导出
+
+- `ImportExportToolbar` 组件为各列表页面提供统一的导入/导出/模板下载按钮
+- 支持用户/角色/部门/菜单/字典/数据集/算法模块的 Excel/CSV 导入导出
+- 复用任务列表查看异步导入导出任务进度
+
+### 1.4 图像处理功能
 
 - 实时摄像头捕获（`Camera` 组件）
 - 图像叠加对比（`OverlapImageShow` 组件）
 - 放大镜效果（`Magnifier` 组件）
 - 图像参数调节（对比度/亮度控制）
 
-### 1.4 算法集成
+### 1.5 算法集成
 
 - 算法工具栏支持参数配置（`AlgorithmToolBar` 组件）
 - 模型选择与预测结果可视化（`ModelAPI` 接口）
@@ -46,7 +52,7 @@
 - **状态管理**：Redux Toolkit 模块化划分，`store/modules` 下按业务领域拆分多个 slice
 - **桌面端集成**：通过 Electron 集成桌面端能力，相关代码位于 `electron` 目录（`electron/main/index.ts`、`electron/preload/index.ts`）
 - **样式方案**：UnoCSS 原子化 + Ant Design 实现统一视觉风格
-- **组件化**：Camera、OverlapImageShow、Magnifier、AlgorithmToolBar、DatasetList、Waterfall 等独立可复用组件
+- **组件化**：Camera、OverlapImageShow、Magnifier、AlgorithmToolBar、DatasetList、Waterfall、ImportExportToolbar 等独立可复用组件
 
 ## 4. 与 Vue3 前端的定位差异
 

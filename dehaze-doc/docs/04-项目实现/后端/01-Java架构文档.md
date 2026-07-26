@@ -22,6 +22,7 @@
 | 文件管理 | FileController / MinioFileService / FileUploadUtils | 适配多存储方案，支持本地/MinIO/OSS 存储，文件分片上传 |
 | 系统管理 | SysController + SysServiceImpl + SysMapper | RBAC 模型、部门树形结构管理 |
 | 算法管理 | SysAlgorithmController | 算法模型动态加载、Python 服务集成，对接 Python 端全部 29 种去雾算法 |
+| 通用导入导出 | GenericImportExportController / ImportExportService / ExportHandlerRegistry / ImportHandlerRegistry / GenericExportStrategy / GenericImportStrategy | Handler 模式 + 通用策略，Excel/CSV 导入导出，复用 sys_task 任务框架 |
 | 图像处理 | ImageUtils / FileService | 缩略图生成、EXIF 信息提取 |
 
 ### 1.2 项目难点与解决方案
@@ -648,9 +649,43 @@ flowchart LR
     Sources --> Topic --> Sink
 ```
 
-### 2.7 定时任务
+### 2.7 通用导入导出框架
 
-#### 2.7.1 当前方案：Spring @Scheduled（XXL-Job 仅集成框架）
+系统提供统一的导入导出能力，通过 **Handler 模式 + 通用策略** 实现复用，各业务模块只需实现 `ExportHandler`/`ImportHandler` 接口，不各自编写 Controller/Service。
+
+#### 2.7.1 核心组件
+
+| 组件 | 职责 |
+|------|------|
+| `GenericImportExportController` | 统一入口，提供 `/{module}/_export`、`/{module}/_import`、`/{module}/template` 接口 |
+| `ImportExportService` | 通用服务层：同步/异步判断、文件验证、Handler 路由、任务创建 |
+| `ExportHandlerRegistry` / `ImportHandlerRegistry` | 处理器注册表，启动时按 `getModule()` 自动注册 |
+| `TemplateManager` | 模板动态生成，根据 `getFieldConfigs()` 生成表头和示例数据 |
+| `ImportExportFileGenerator` | 文件生成器，封装 EasyExcel（Excel）和 Apache Commons CSV（CSV）流式写入 |
+| `GenericExportStrategy` / `GenericImportStrategy` | 通用任务策略，注册到 `TaskStrategyFactory`，处理所有 `xxx_export`/`xxx_import` 任务类型 |
+
+#### 2.7.2 Handler 接口
+
+- **ExportHandler**：`getModule()`、`estimateCount()`、`export()`、`getFieldConfigs()`
+- **ImportHandler**：`getModule()`、`getFieldConfigs()`、`importBatch()`、`getTemplateSampleData()`
+
+#### 2.7.3 已实现的处理器
+
+| 模块 | ExportHandler | ImportHandler |
+|------|--------------|--------------|
+| 用户管理 | UserExportHandler | UserImportHandler |
+| 角色管理 | RoleExportHandler | RoleImportHandler |
+| 部门管理 | DeptExportHandler | DeptImportHandler |
+| 菜单管理 | MenuExportHandler | MenuImportHandler |
+| 字典管理 | DictExportHandler | DictImportHandler |
+| 数据集管理 | DatasetExportHandler | -（仅导出） |
+| 算法管理 | AlgorithmExportHandler | AlgorithmImportHandler |
+
+> 详细的接口设计、处理器实现、三端对齐要点详见 [通用导入导出改造方案](../../05-改造计划/通用导入导出改造.md) 和 [任务管理/后端实现.md](../../03-模块设计/基础模块/任务管理/后端实现.md)。
+
+### 2.8 定时任务
+
+#### 2.8.1 当前方案：Spring @Scheduled（XXL-Job 仅集成框架）
 
 | 调度方式 | 适用场景 | 当前状态 |
 |----------|----------|----------|

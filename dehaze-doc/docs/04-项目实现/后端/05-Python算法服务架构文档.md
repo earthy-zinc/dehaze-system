@@ -1452,7 +1452,41 @@ flowchart TB
 
 ---
 
-### 2.16 技术栈总览
+### 2.16 通用导入导出框架
+
+系统提供统一的导入导出能力，通过 **Handler 模式 + 通用策略** 实现复用，各业务模块只需实现 `ExportHandler`/`ImportHandler` 接口，不各自编写 Router/Service。
+
+#### 2.16.1 核心组件
+
+| 组件 | 职责 |
+|------|------|
+| `ImportExportRouter` | 统一入口，提供 `/{module}/_export`、`/{module}/_import`、`/{module}/template` 接口 |
+| `ImportExportService` | 通用服务层：同步/异步判断、文件验证、Handler 路由、任务创建 |
+| `ExportHandlerRegistry` / `ImportHandlerRegistry` | 处理器注册表，启动时按 `get_module()` 自动注册 |
+| `TemplateManager` | 模板动态生成，根据 `get_field_configs()` 生成表头和示例数据 |
+| `ImportExportFileGenerator` | 文件生成器，封装 openpyxl（Excel）和 csv（CSV）流式写入 |
+| `GenericExportStrategy` / `GenericImportStrategy` | 通用任务策略，注册到 `ExportStrategyFactory`，处理所有 `xxx_export`/`xxx_import` 任务类型 |
+
+#### 2.16.2 Handler 接口
+
+- **ExportHandler**：`get_module()`、`estimate_count()`、`export()`、`get_field_configs()`
+- **ImportHandler**：`get_module()`、`get_field_configs()`、`import_batch()`、`get_template_sample_data()`
+
+#### 2.16.3 已实现的处理器
+
+| 模块 | ExportHandler | ImportHandler |
+|------|--------------|--------------|
+| 用户管理 | UserExportHandler | UserImportHandler |
+| 角色管理 | RoleExportHandler | RoleImportHandler |
+| 部门管理 | DeptExportHandler | DeptImportHandler |
+| 菜单管理 | MenuExportHandler | MenuImportHandler |
+| 字典管理 | DictExportHandler | DictImportHandler |
+| 数据集管理 | DatasetExportHandler | -（仅导出） |
+| 算法管理 | AlgorithmExportHandler | AlgorithmImportHandler |
+
+> 详细的接口设计、处理器实现、三端对齐要点详见 [通用导入导出改造方案](../../05-改造计划/通用导入导出改造.md) 和 [任务管理/后端实现.md](../../03-模块设计/基础模块/任务管理/后端实现.md)。
+
+### 2.17 技术栈总览
 
 | 分类 | 技术 | 版本 | 用途 |
 |------|------|------|------|
@@ -1473,6 +1507,7 @@ flowchart TB
 | **结构化日志** | python-json-logger | - | JSON 格式日志输出 |
 | **AI 推理** | PyTorch + torchvision | ≥ 2.9 | 深度学习推理引擎 |
 | **HTTP 客户端** | httpx | ≥ 0.28 | 异步 HTTP 客户端 |
+| **Excel** | openpyxl | ≥ 3.1 | Excel 导入导出 |
 | **容器** | Docker (NVIDIA CUDA 12.1) | - | GPU 推理容器化 |
 | **包管理** | uv | - | 快速 Python 包管理器 |
 | **测试** | pytest + pytest-asyncio | ≥ 8.0 | 异步单元/集成测试 |

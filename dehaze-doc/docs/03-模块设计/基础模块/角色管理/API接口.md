@@ -24,6 +24,8 @@
 | `/api/v1/roles/{roleId}/menuIds` | GET | 获取角色菜单 ID 集合 | - |
 | `/api/v1/roles/{roleId}/menus` | PUT | 分配菜单权限 | sys:role:edit |
 
+> **导入导出接口**：角色模块的导出（`GET/POST /api/v1/roles/_export`）、导入（`POST /api/v1/roles/_import`）、模板下载（`GET /api/v1/roles/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §8.2 通用CRUD接口模板，模块特定逻辑由 `RoleExportHandler`/`RoleImportHandler` 实现，详见 [后端实现.md](./后端实现.md)。
+
 ## 3. 权限标识汇总
 
 | 权限标识 | 功能 | 控制方式 |

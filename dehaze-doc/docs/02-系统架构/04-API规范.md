@@ -252,14 +252,21 @@ Authorization: Bearer <token>
 || `A0600` | 操作失败 | 操作执行失败 |
 || `A0601` | 操作已完成 | 操作已完成，请勿重复 |
 
-**文件上传 (A07xx)**
+**文件上传与导入导出 (A07xx)**
 
 | code | msg | 说明 |
 |------|-----|------|
 | `A0700` | 用户上传文件异常 | 文件上传通用错误 |
-| `A0701` | 用户上传文件类型不匹配 | 文件类型不支持 |
-| `A0702` | 用户上传文件太大 | 文件大小超限 |
-| `A0703` | 用户上传图片太大 | 图片大小超限 |
+| `A0701` | 文件格式不支持 | 上传非 Excel/CSV 文件 |
+| `A0702` | 文件大小超限 | 上传文件 > 20MB |
+| `A0703` | 文件内容为空 | 上传空文件或无数据行 |
+| `A0704` | 文件解析失败 | Excel/CSV 格式错误 |
+| `A0705` | 模板字段不匹配 | 导入文件表头与模板不一致 |
+| `A0706` | 必填字段为空 | 导入数据缺少必填字段 |
+| `A0707` | 数据校验失败 | 字段格式/唯一性校验不通过 |
+| `A0708` | 导入数据超出限制 | 单次导入超过 10 万行 |
+| `A0709` | 导出行数超出限制 | 单次导出超过 10 万行 |
+| `A0710` | 不支持该模块导入 | 数据集等不支持导入的模块 |
 
 #### B 类：系统端错误
 
@@ -283,6 +290,7 @@ Authorization: Bearer <token>
 | code | msg | 说明 |
 |------|-----|------|
 | `B0300` | 系统资源异常 | 资源异常通用 |
+| `B0308` | 导出任务并发超限 | 单用户导入导出任务并发数超限 |
 | `B0310` | 系统资源耗尽 | 资源不足 |
 | `B0320` | 系统资源访问异常 | 资源访问失败 |
 | `B0321` | 系统读取磁盘文件失败 | 磁盘读取失败 |
@@ -503,9 +511,84 @@ API Key 存储于共享数据库，**Java / Go / Python** 三个后端服务通�
 | `/{module}/{id}` | PUT | 修改 | `{module}:edit` |
 | `/{module}/{id}` | DELETE | 删除 | `{module}:delete` |
 | `/{module}/{ids}` | DELETE | 批量删除 | `{module}:delete` |
-| `/{module}/_export` | GET | 导出 | `{module}:export` |
+| `/{module}/_export` | GET | 导出（简单查询条件） | `{module}:export` |
+| `/{module}/_export` | POST | 导出（复杂查询条件） | `{module}:export` |
 | `/{module}/_import` | POST | 导入 | `{module}:import` |
-| `/{module}/template` | GET | 下载模板 | - |
+| `/{module}/template` | GET | 下载导入模板 | `{module}:import` |
+
+> **说明**：导入导出接口由通用框架 `GenericImportExportController` 统一实现，各模块只需实现 `ExportHandler`/`ImportHandler` 处理器，不各自定义 Controller。GET 导出用于简单查询条件（列表页筛选参数），POST 导出用于复杂查询条件（请求体传递），两者内部调用同一 Service 方法。
+
+#### 8.2.1 导出接口参数
+
+**GET/POST `/{module}/_export` 请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| format | string | 否 | 文件格式：`excel`（默认） / `csv` |
+| async | boolean | 否 | 是否强制异步：`true` / `false` / 不传（自动判断，数据量>1000 条走异步） |
+| fields | string | 否 | 导出字段，逗号分隔（不传则导出全部字段） |
+| + 模块特定查询参数 | - | 否 | 各模块列表查询参数（如 keywords/status 等，导出忽略分页参数） |
+
+**响应**：
+- **同步模式**（数据量小）：直接返回文件流
+  ```
+  Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+  Content-Disposition: attachment; filename="users_20260726_153000.xlsx"
+  Body: <文件二进制流>
+  ```
+- **异步模式**（数据量大）：返回 JSON
+  ```json
+  {
+    "code": "00000",
+    "msg": "导出任务已创建",
+    "data": { "taskId": "...", "status": "PENDING", "estimatedCount": 50000 }
+  }
+  ```
+
+#### 8.2.2 导入接口参数
+
+**POST `/{module}/_import` 请求参数**（multipart/form-data）：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| file | File | 是 | 上传的文件（Excel/CSV），≤20MB |
+| mode | string | 否 | 导入模式：`all`（全量，默认） / `partial`（部分，跳过错误行） |
+| async | boolean | 否 | 是否异步：`true` / `false` / 不传（数据量>1000 行自动异步） |
+| + 模块特定参数 | - | 否 | 如用户导入的 `deptId`、角色导入的 `defaultDataScope` 等 |
+
+**响应**：
+- **同步模式**：返回导入结果
+  ```json
+  {
+    "code": "00000",
+    "msg": "导入完成",
+    "data": {
+      "totalRows": 100, "successCount": 95, "failureCount": 5, "skippedCount": 0,
+      "errors": [{ "row": 3, "field": "username", "message": "用户名已存在" }],
+      "errorReportUrl": null
+    }
+  }
+  ```
+- **异步模式**：返回 taskId
+  ```json
+  { "code": "00000", "msg": "导入任务已创建", "data": { "taskId": "...", "status": "PENDING" } }
+  ```
+
+#### 8.2.3 模板下载接口
+
+**GET `/{module}/template?format=excel|csv`**：直接返回文件流（动态生成，包含表头和示例数据）。
+
+#### 8.2.4 支持导入导出的模块
+
+| 模块 | module 标识 | 导出 | 导入 | 备注 |
+|------|------------|------|------|------|
+| 用户管理 | `user` | ✅ | ✅ | - |
+| 角色管理 | `role` | ✅ | ✅ | - |
+| 部门管理 | `dept` | ✅ | ✅ | 树形导出为扁平结构 |
+| 菜单管理 | `menu` | ✅ | ✅ | 树形导出为扁平结构 |
+| 字典管理 | `dict` | ✅ | ✅ | 字典类型+字典数据 |
+| 数据集管理 | `dataset` | ✅ | ❌ | 仅导出（ZIP 打包） |
+| 算法管理 | `algorithm` | ✅ | ✅ | Excel/CSV 元数据，不含权重文件 |
 
 ---
 

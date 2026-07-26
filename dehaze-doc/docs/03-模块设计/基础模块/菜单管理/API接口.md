@@ -23,6 +23,8 @@
 | `/api/v1/menus/options` | GET | 菜单下拉选项（树形结构） | - | F-MM-007 |
 | `/api/v1/menus/routes` | GET | 路由列表（根据用户权限过滤） | - | F-MM-008 |
 
+> **导入导出接口**：菜单模块的导出（`GET/POST /api/v1/menus/_export`，树形导出为扁平结构）、导入（`POST /api/v1/menus/_import`）、模板下载（`GET /api/v1/menus/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §8.2 通用CRUD接口模板，模块特定逻辑由 `MenuExportHandler`/`MenuImportHandler` 实现，详见 [后端实现.md](./后端实现.md)。
+
 ## 3. 权限标识汇总
 
 | 权限标识 | 说明 | 控制范围 |
