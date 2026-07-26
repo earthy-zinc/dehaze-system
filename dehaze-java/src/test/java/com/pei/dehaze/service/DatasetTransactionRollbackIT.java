@@ -11,6 +11,7 @@ import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.form.DatasetAddForm;
+import com.pei.dehaze.model.vo.BatchDeleteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,6 +41,9 @@ class DatasetTransactionRollbackIT {
 
     @Autowired
     private SysDatasetService datasetService;
+
+    @Autowired
+    private DatasetOperationService datasetOperationService;
 
     @Autowired
     private SysDatasetMapper datasetMapper;
@@ -109,20 +114,26 @@ class DatasetTransactionRollbackIT {
     }
 
     /**
-     * 测试删除不存在的数据集时事务回滚
-     * 验证：当删除不存在的数据集抛出异常时，数据库状态应保持不变
+     * 测试删除不存在的数据集时标记失败
+     * 验证：当删除不存在的数据集时，结果中标记为失败
      */
     @Test
     @Transactional
-    @DisplayName("删除不存在的数据集应抛出异常")
-    void deleteDataset_NotExists_ShouldThrowException() {
+    @DisplayName("删除不存在的数据集应标记失败")
+    void deleteDataset_NotExists_ShouldMarkFailed() {
         // Arrange
         Long nonExistentId = 999999L;
 
-        // Act & Assert
-        assertThatThrownBy(() -> datasetService.deleteDataset(nonExistentId))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("数据集不存在");
+        // Act
+        BatchDeleteResult result = datasetOperationService.batchDeleteDatasets(List.of(nonExistentId));
+
+        // Assert
+        assertThat(result.getFailed()).isGreaterThan(0);
+        assertThat(result.getResults())
+                .anySatisfy(item -> {
+                    assertThat(item.getId()).isEqualTo(nonExistentId);
+                    assertThat(item.getStatus()).isEqualTo("failed");
+                });
     }
 
     /**
@@ -199,13 +210,13 @@ class DatasetTransactionRollbackIT {
     }
 
     /**
-     * 测试删除后再次删除应抛出异常
-     * 验证：删除已删除的数据集应该抛出异常
+     * 测试删除后再次删除应标记失败
+     * 验证：删除已删除的数据集应在结果中标记为失败
      */
     @Test
     @Transactional
-    @DisplayName("删除已删除的数据集应抛出异常")
-    void deleteDataset_AlreadyDeleted_ShouldThrowException() {
+    @DisplayName("删除已删除的数据集应标记失败")
+    void deleteDataset_AlreadyDeleted_ShouldMarkFailed() {
         // Arrange - 创建并删除数据集
         SysDataset dataset = new SysDataset();
         dataset.setName("待删除数据集_" + System.currentTimeMillis());
@@ -217,12 +228,16 @@ class DatasetTransactionRollbackIT {
         Long datasetId = dataset.getId();
 
         // Act - 第一次删除
-        datasetService.deleteDataset(datasetId);
+        datasetOperationService.batchDeleteDatasets(List.of(datasetId));
 
-        // Assert - 第二次删除应抛出异常
-        assertThatThrownBy(() -> datasetService.deleteDataset(datasetId))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("数据集不存在");
+        // Assert - 第二次删除应标记失败
+        BatchDeleteResult result = datasetOperationService.batchDeleteDatasets(List.of(datasetId));
+        assertThat(result.getFailed()).isGreaterThan(0);
+        assertThat(result.getResults())
+                .anySatisfy(item -> {
+                    assertThat(item.getId()).isEqualTo(datasetId);
+                    assertThat(item.getStatus()).isEqualTo("failed");
+                });
     }
 
     /**

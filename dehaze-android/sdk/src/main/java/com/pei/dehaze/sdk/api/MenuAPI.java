@@ -10,6 +10,7 @@ import com.pei.dehaze.sdk.model.menu.MenuForm;
 import com.pei.dehaze.sdk.model.menu.MenuVO;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import retrofit2.Call;
 
@@ -77,13 +78,14 @@ public class MenuAPI {
     }
 
     /**
-     * 删除菜单
+     * 删除菜单（支持批量）
      *
-     * @param id       菜单ID
+     * @param ids      菜单ID列表
      * @param callback 回调函数
      */
-    public static void deleteById(long id, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getMenuApiService().deleteMenu(id);
+    public static void deleteByIds(List<Long> ids, ApiCallback<Void> callback) {
+        String joined = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+        Call<Result<Void>> call = DehazeSDK.getInstance().getMenuApiService().deleteMenus(joined);
         call.enqueue(callback);
     }
 

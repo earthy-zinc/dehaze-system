@@ -99,7 +99,7 @@ export const useMenuManagement = () => {
     async (id: number) => {
       try {
         const { MenuAPI } = await import("dehaze-sdk-js");
-        await MenuAPI.deleteById(id);
+        await MenuAPI.deleteByIds(String(id));
         await fetchMenus();
         Taro.showToast({ title: "删除菜单成功", icon: "none" });
         return true;

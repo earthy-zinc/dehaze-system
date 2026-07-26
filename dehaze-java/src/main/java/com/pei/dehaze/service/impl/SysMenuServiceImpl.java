@@ -16,6 +16,8 @@ import com.pei.dehaze.converter.MenuConverter;
 import com.pei.dehaze.mapper.SysMenuMapper;
 import com.pei.dehaze.model.bo.RouteBO;
 import com.pei.dehaze.model.entity.SysMenu;
+import com.pei.dehaze.model.entity.SysRole;
+import com.pei.dehaze.model.entity.SysRoleMenu;
 import com.pei.dehaze.model.form.MenuForm;
 import com.pei.dehaze.model.query.MenuQuery;
 import com.pei.dehaze.model.vo.MenuVO;
@@ -23,6 +25,7 @@ import com.pei.dehaze.model.vo.RouteVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysMenuService;
 import com.pei.dehaze.service.SysRoleMenuService;
+import com.pei.dehaze.service.SysRoleService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.cache.annotation.CacheEvict;
@@ -49,6 +52,8 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     private final MenuConverter menuConverter;
 
     private final SysRoleMenuService roleMenuService;
+
+    private final SysRoleService roleService;
 
 
     /**
@@ -106,8 +111,17 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         String treePath = generateMenuTreePath(menuForm.getParentId());
         entity.setTreePath(treePath);
 
+        boolean isNew = menuForm.getId() == null;
         boolean result = this.saveOrUpdate(entity);
-        if (result && menuForm.getId() != null) {
+        if (result) {
+            if (isNew) {
+                // 新增菜单默认分配给超级管理员角色
+                SysRole rootRole = roleService.getOne(new LambdaQueryWrapper<SysRole>()
+                        .eq(SysRole::getCode, SystemConstants.ROOT_ROLE_CODE));
+                if (rootRole != null) {
+                    roleMenuService.save(new SysRoleMenu(rootRole.getId(), entity.getId()));
+                }
+            }
             roleMenuService.refreshRolePermsCache();
         }
         return result;
@@ -299,32 +313,50 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     }
 
     /**
-     * 删除菜单
+     * 批量删除菜单（级联删除子孙菜单，并清理角色-菜单关联）
      *
-     * @param id 菜单ID
+     * @param ids 菜单ID集合
      * @return 是否删除成功
      */
     @Override
     @CacheEvict(cacheNames = "menu", allEntries = true)
-    public boolean deleteMenu(Long id) {
-        // 检查菜单是否存在
-        SysMenu existingMenu = this.getById(id);
-        if (existingMenu == null) {
+    public boolean deleteMenu(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+
+        // 校验所有传入的菜单ID都存在
+        long existCount = this.count(new LambdaQueryWrapper<SysMenu>().in(SysMenu::getId, ids));
+        if (existCount != ids.size()) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在");
         }
 
-        boolean result = this.remove(new LambdaQueryWrapper<SysMenu>()
-                .eq(SysMenu::getId, id)
-                .or()
-                .apply("CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')", id));
+        // 一次性查询所有待删除菜单ID（传入ID + 子孙），合并去重
+        // 条件：id IN (ids) OR tree_path LIKE '%,id,%'（对每个 id 做 OR）
+        LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<SysMenu>()
+                .in(SysMenu::getId, ids);
+        for (Long id : ids) {
+            wrapper.or().apply("CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')", id);
+        }
+        List<Long> menuIds = this.list(wrapper).stream()
+                .map(SysMenu::getId).distinct().toList();
 
+        if (menuIds.isEmpty()) {
+            return true;
+        }
+
+        // 删除角色-菜单关联
+        roleMenuService.remove(new LambdaQueryWrapper<SysRoleMenu>()
+                .in(SysRoleMenu::getMenuId, menuIds));
+
+        // 删除菜单
+        boolean result = this.removeByIds(menuIds);
 
         // 刷新角色权限缓存
         if (result) {
             roleMenuService.refreshRolePermsCache();
         }
         return result;
-
     }
 
 

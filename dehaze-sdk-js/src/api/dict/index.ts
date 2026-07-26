@@ -64,11 +64,14 @@ class DictAPI {
 
   /**
    * 删除字典类型
+   * @param ids 字典类型ID，多个以英文逗号分割
+   * @param force 是否强制删除关联的字典数据
    */
-  static deleteDictTypes(ids: string) {
+  static deleteDictTypes(ids: string, force?: boolean) {
     return request({
       url: "/api/v1/dict/types/" + ids,
       method: "delete",
+      params: force ? { force: true } : undefined,
     });
   }
 

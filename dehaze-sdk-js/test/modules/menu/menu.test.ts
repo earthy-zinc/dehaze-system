@@ -37,7 +37,7 @@ describe("菜单管理接口测试", () => {
     // 清理测试创建的菜单（从后往前删除，先删子菜单）
     for (const menuId of createdMenuIds.reverse()) {
       try {
-        await MenuAPI.deleteById(menuId);
+        await MenuAPI.deleteByIds(String(menuId));
       } catch (error) {
         console.warn(`清理菜单失败: ${menuId}`, error);
       }
@@ -364,7 +364,7 @@ describe("菜单管理接口测试", () => {
     });
   });
 
-  describe("DELETE /api/v1/menus/{id} - 删除菜单", () => {
+  describe("DELETE /api/v1/menus/{ids} - 删除菜单", () => {
     test("正向测试：删除单个菜单并验证菜单真的被删除", async () => {
       // 创建测试菜单
       const form = createMenuForm({ parentId: 0 });
@@ -377,14 +377,38 @@ describe("菜单管理接口测试", () => {
       const menuId = createdMenu!.id!;
 
       // 删除菜单
-      await MenuAPI.deleteById(menuId);
+      await MenuAPI.deleteByIds(String(menuId));
 
       // 验证已删除
       await expectBizError(MenuAPI.getFormData(menuId), ["A0401"]);
     });
 
+    test("正向测试：批量删除多个菜单并验证全部被删除", async () => {
+      // 创建两个测试菜单
+      const form1 = createMenuForm({ parentId: 0 });
+      const form2 = createMenuForm({ parentId: 0 });
+      await MenuAPI.add(form1);
+      await MenuAPI.add(form2);
+
+      const list1 = await MenuAPI.getList(createMenuQuery({ keywords: form1.name! }));
+      const list2 = await MenuAPI.getList(createMenuQuery({ keywords: form2.name! }));
+      const menu1 = findMenuByName(list1, form1.name!);
+      const menu2 = findMenuByName(list2, form2.name!);
+      expect(menu1).not.toBeNull();
+      expect(menu2).not.toBeNull();
+      const id1 = menu1!.id!;
+      const id2 = menu2!.id!;
+
+      // 批量删除
+      await MenuAPI.deleteByIds(`${id1},${id2}`);
+
+      // 验证均已删除
+      await expectBizError(MenuAPI.getFormData(id1), ["A0401"]);
+      await expectBizError(MenuAPI.getFormData(id2), ["A0401"]);
+    });
+
     test("异常测试：删除不存在的菜单应抛出业务错误", async () => {
-      await expectBizError(MenuAPI.deleteById(99999999), ["A0401"]);
+      await expectBizError(MenuAPI.deleteByIds("99999999"), ["A0401"]);
     });
   });
 
@@ -394,7 +418,7 @@ describe("菜单管理接口测试", () => {
     afterAll(async () => {
       for (const menuId of createdMenuIds.reverse()) {
         try {
-          await MenuAPI.deleteById(menuId);
+          await MenuAPI.deleteByIds(String(menuId));
         } catch {}
       }
     });

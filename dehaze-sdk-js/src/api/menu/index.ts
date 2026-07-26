@@ -77,13 +77,13 @@ class MenuAPI {
   }
 
   /**
-   * 删除菜单
+   * 删除菜单（支持批量，路径参数逗号分隔）
    *
-   * @param id 菜单ID
+   * @param ids 菜单ID字符串，多个以英文逗号(,)分割
    */
-  static deleteById(id: number) {
+  static deleteByIds(ids: string) {
     return request({
-      url: "/api/v1/menus/" + id,
+      url: "/api/v1/menus/" + ids,
       method: "delete",
     });
   }

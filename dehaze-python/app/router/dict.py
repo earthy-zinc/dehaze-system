@@ -81,18 +81,20 @@ async def update_dict_type(
     return success(msg="修改成功")
 
 
-@router.delete("/types/{type_ids}", response_model=Result[None], summary="删除字典类型", description="存在关联字典数据时禁止删除")
+@router.delete("/types/{type_ids}", response_model=Result[None], summary="删除字典类型", description="force=true 时级联删除关联字典数据")
 @require_permission("sys:dict:type:delete")
 async def delete_dict_types(
     type_ids: str = Path(...),
+    force: bool = Query(default=False, description="是否强制删除关联的字典数据"),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
     try:
         id_list = [int(i) for i in type_ids.split(",")]
     except ValueError:
         raise BusinessException(ResultCode.PARAM_ERROR, "参数错误")
-    await DictTypeService.delete_dict_types(db, id_list)
+    await DictTypeService.delete_dict_types(db, redis, id_list, force=force)
     return success(msg="删除成功")
 
 

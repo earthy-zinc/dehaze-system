@@ -261,6 +261,27 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
 
         return options;
     }
+
+    /**
+     * 按字典类型编码批量删除字典数据，并清除对应下拉选项缓存
+     *
+     * @param typeCodes 字典类型编码列表
+     * @return 是否删除成功
+     */
+    @Override
+    public boolean deleteByTypeCodes(List<String> typeCodes) {
+        if (CollUtil.isEmpty(typeCodes)) {
+            return true;
+        }
+        boolean result = this.remove(new LambdaQueryWrapper<SysDict>()
+                .in(SysDict::getTypeCode, typeCodes));
+        for (String typeCode : typeCodes) {
+            if (CharSequenceUtil.isNotBlank(typeCode)) {
+                redisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + typeCode);
+            }
+        }
+        return result;
+    }
 }
 
 

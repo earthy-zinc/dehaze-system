@@ -182,8 +182,8 @@ func (s *DictTypeService) Update(ctx context.Context, id int64, form *bo.DictTyp
 }
 
 // Delete 删除字典类型
-// 根据文档要求：存在关联字典数据的字典类型禁止删除
-func (s *DictTypeService) Delete(ctx context.Context, ids []int64) error {
+// force=true 时级联删除关联的字典数据，force=false 时存在关联数据则禁止删除
+func (s *DictTypeService) Delete(ctx context.Context, ids []int64, force bool) error {
 	if len(ids) == 0 {
 		return common.NewBizError(common.PARAM_ERROR, "删除数据为空")
 	}
@@ -198,14 +198,22 @@ func (s *DictTypeService) Delete(ctx context.Context, ids []int64) error {
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "字典类型不存在")
 	}
 
-	// 检查是否存在关联的字典数据
 	if len(dictTypeCodes) > 0 {
-		count, err := s.dictRepo.CountByTypeCodes(ctx, dictTypeCodes)
-		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "检查关联字典数据失败", err)
-		}
-		if count > 0 {
-			return common.NewBizError(common.DATA_BIND_EXISTS, "存在关联的字典数据，无法删除")
+		if force {
+			if err := s.dictRepo.DeleteByTypeCodes(ctx, dictTypeCodes); err != nil {
+				return common.WrapBizError(common.DATABASE_ERROR, "级联删除字典数据失败", err)
+			}
+			for _, code := range dictTypeCodes {
+				s.clearOptionsCache(ctx, code)
+			}
+		} else {
+			count, err := s.dictRepo.CountByTypeCodes(ctx, dictTypeCodes)
+			if err != nil {
+				return common.WrapBizError(common.DATABASE_ERROR, "检查关联字典数据失败", err)
+			}
+			if count > 0 {
+				return common.NewBizError(common.DATA_BIND_EXISTS, "存在关联的字典数据，无法删除")
+			}
 		}
 	}
 

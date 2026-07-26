@@ -16,3 +16,11 @@ type Algorithm struct {
 	Size        string      `json:"size"`
 	Children    []Algorithm `json:"children"`
 }
+
+func (a *Algorithm) GetID() int64 {
+	return a.ID
+}
+
+func (a *Algorithm) GetParentID() int64 {
+	return a.ParentID
+}

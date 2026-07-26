@@ -184,19 +184,6 @@ func (r *AlgorithmRepository) UpdateStatus(ctx context.Context, id int64, status
 		Updates(map[string]interface{}{"status": status}).Error
 }
 
-// HasChildrenByParentIDs 检查指定父 ID 列表是否存在子算法
-func (r *AlgorithmRepository) HasChildrenByParentIDs(ctx context.Context, parentIDs []int64) (bool, error) {
-	if len(parentIDs) == 0 {
-		return false, nil
-	}
-	var count int64
-	err := r.db.WithContext(ctx).
-		Model(&model.SysAlgorithm{}).
-		Where("parent_id IN ?", parentIDs).
-		Count(&count).Error
-	return count > 0, err
-}
-
 // FindVersionsByAlgorithmID 查询算法版本历史（按创建时间降序）
 func (r *AlgorithmRepository) FindVersionsByAlgorithmID(ctx context.Context, algorithmID int64) ([]model.SysAlgorithmVersion, error) {
 	var versions []model.SysAlgorithmVersion

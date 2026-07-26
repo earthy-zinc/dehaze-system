@@ -1,8 +1,0 @@
-onlyBuiltDependencies:
-  - '@parcel/watcher'
-  - electron
-  - electron-winstaller
-  - esbuild
-
-overrides:
-  dehaze-sdk-js: link:../dehaze-sdk-js

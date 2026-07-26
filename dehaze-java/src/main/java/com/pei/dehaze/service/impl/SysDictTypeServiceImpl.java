@@ -172,7 +172,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteDictTypes(String idsStr) {
+    public boolean deleteDictTypes(String idsStr, boolean force) {
 
         if (CharSequenceUtil.isBlank(idsStr)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "删除数据为空");
@@ -196,12 +196,15 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
                 .map(SysDictType::getCode)
                 .toList();
 
-        // 校验字典类型下是否有字典数据
         if (CollUtil.isNotEmpty(dictTypeCodes)) {
-            long dictCount = dictItemService.count(new LambdaQueryWrapper<SysDict>()
-                    .in(SysDict::getTypeCode, dictTypeCodes));
-            if (dictCount > 0) {
-                throw new BusinessException(ResultCode.DATA_BIND_EXISTS, "存在关联的字典数据，无法删除");
+            if (force) {
+                dictItemService.deleteByTypeCodes(dictTypeCodes);
+            } else {
+                long dictCount = dictItemService.count(new LambdaQueryWrapper<SysDict>()
+                        .in(SysDict::getTypeCode, dictTypeCodes));
+                if (dictCount > 0) {
+                    throw new BusinessException(ResultCode.DATA_BIND_EXISTS, "存在关联的字典数据，无法删除");
+                }
             }
         }
         // 删除字典类型

@@ -20,7 +20,7 @@
 | `/api/v1/dict/types` | POST | 新增字典类型 | `sys:dict:type:add` | F-DM-002 |
 | `/api/v1/dict/types/{id}/form` | GET | 获取字典类型表单数据 | - | F-DM-003 |
 | `/api/v1/dict/types/{id}` | PUT | 修改字典类型 | `sys:dict:type:edit` | F-DM-003 |
-| `/api/v1/dict/types/{ids}` | DELETE | 删除字典类型（支持批量） | `sys:dict:type:delete` | F-DM-004 |
+| `/api/v1/dict/types/{ids}` | DELETE | 删除字典类型（支持批量，可选 `force=true` 级联删除关联字典数据） | `sys:dict:type:delete` | F-DM-004 |
 
 ### 2.2 字典数据接口
 
@@ -50,7 +50,7 @@
 |--------|------|---------|
 | `A0501` | 字典类型编码已存在 | 新增/编辑时编码重复 |
 | `A0501` | 字典值已存在 | 同一类型下字典值重复 |
-| `A0504` | 存在关联数据，无法删除 | 删除字典类型时存在字典数据 |
+| `A0504` | 存在关联数据，无法删除 | 删除字典类型时（`force=false`）存在字典数据 |
 
 ## 5. 接口详情查询
 

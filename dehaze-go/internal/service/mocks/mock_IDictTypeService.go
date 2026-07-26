@@ -74,17 +74,17 @@ func (_c *MockIDictTypeService_Create_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// Delete provides a mock function with given fields: ctx, ids
-func (_m *MockIDictTypeService) Delete(ctx context.Context, ids []int64) error {
-	ret := _m.Called(ctx, ids)
+// Delete provides a mock function with given fields: ctx, ids, force
+func (_m *MockIDictTypeService) Delete(ctx context.Context, ids []int64, force bool) error {
+	ret := _m.Called(ctx, ids, force)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []int64) error); ok {
-		r0 = rf(ctx, ids)
+	if rf, ok := ret.Get(0).(func(context.Context, []int64, bool) error); ok {
+		r0 = rf(ctx, ids, force)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -100,13 +100,14 @@ type MockIDictTypeService_Delete_Call struct {
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
 //   - ids []int64
-func (_e *MockIDictTypeService_Expecter) Delete(ctx interface{}, ids interface{}) *MockIDictTypeService_Delete_Call {
-	return &MockIDictTypeService_Delete_Call{Call: _e.mock.On("Delete", ctx, ids)}
+//   - force bool
+func (_e *MockIDictTypeService_Expecter) Delete(ctx interface{}, ids interface{}, force interface{}) *MockIDictTypeService_Delete_Call {
+	return &MockIDictTypeService_Delete_Call{Call: _e.mock.On("Delete", ctx, ids, force)}
 }
 
-func (_c *MockIDictTypeService_Delete_Call) Run(run func(ctx context.Context, ids []int64)) *MockIDictTypeService_Delete_Call {
+func (_c *MockIDictTypeService_Delete_Call) Run(run func(ctx context.Context, ids []int64, force bool)) *MockIDictTypeService_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]int64))
+		run(args[0].(context.Context), args[1].([]int64), args[2].(bool))
 	})
 	return _c
 }
@@ -116,7 +117,7 @@ func (_c *MockIDictTypeService_Delete_Call) Return(_a0 error) *MockIDictTypeServ
 	return _c
 }
 
-func (_c *MockIDictTypeService_Delete_Call) RunAndReturn(run func(context.Context, []int64) error) *MockIDictTypeService_Delete_Call {
+func (_c *MockIDictTypeService_Delete_Call) RunAndReturn(run func(context.Context, []int64, bool) error) *MockIDictTypeService_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }

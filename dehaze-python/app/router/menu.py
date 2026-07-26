@@ -83,15 +83,16 @@ async def update_menu(
     return success(msg="保存成功")
 
 
-@router.delete("/{menu_id}", response_model=Result[None], summary="删除菜单", description="级联删除子菜单和角色关联")
+@router.delete("/{ids}", response_model=Result[None], summary="删除菜单", description="级联删除子菜单和角色关联，支持批量删除")
 @require_permission("sys:menu:delete")
 async def delete_menu(
-    menu_id: int = Path(..., description="菜单ID"),
+    ids: str = Path(..., description="菜单ID，多个以英文逗号(,)分割"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await MenuService.delete_menu(db, redis, menu_id)
+    menu_ids = [int(i) for i in ids.split(",")]
+    await MenuService.delete_menu(db, redis, menu_ids)
     return success(msg="删除成功")
 
 

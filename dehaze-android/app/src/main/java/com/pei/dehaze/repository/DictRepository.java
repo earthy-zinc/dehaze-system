@@ -33,6 +33,10 @@ public class DictRepository {
         DictAPI.deleteDictTypes(ids, RepositoryAdapters.wrap(callback));
     }
 
+    public void deleteDictType(List<Long> ids, boolean force, RepositoryCallback<Void> callback) {
+        DictAPI.deleteDictTypes(ids, force, RepositoryAdapters.wrap(callback));
+    }
+
     public void getDictPage(DictQuery query, RepositoryCallback<PageResult<DictPageVO>> callback) {
         DictAPI.getDictPage(query, RepositoryAdapters.wrap(callback));
     }

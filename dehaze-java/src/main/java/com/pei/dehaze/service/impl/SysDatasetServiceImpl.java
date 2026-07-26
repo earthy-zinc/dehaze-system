@@ -404,23 +404,6 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     }
 
     @Override
-    public void deleteDataset(Long id) {
-        if (id == null || id <= 0) {
-            throw new BusinessException("数据集ID无效");
-        }
-
-        SysDataset dataset = this.getById(id);
-        if (dataset == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
-        }
-
-        if (!this.removeById(id)) {
-            throw new BusinessException("删除数据集失败");
-        }
-        self.evictAllDatasetsCache();
-    }
-
-    @Override
     @Cacheable(value = "dataset:options", key = "'all'")
     public List<Option<Long>> getOptions() {
         List<SysDataset> datasets = self.getAllDatasets();

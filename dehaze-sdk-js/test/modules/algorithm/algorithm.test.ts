@@ -309,6 +309,74 @@ describe("算法管理接口测试", () => {
       );
     });
 
+    test("级联删除：同时选中父算法和子算法应递归删除所有子孙算法", async () => {
+      const parentForm = createAlgorithmForm({ parentId: 0 });
+      const parentAlgorithmId = (await AlgorithmAPI.add(parentForm)) as number;
+
+      const childForm = createAlgorithmForm({ parentId: parentAlgorithmId });
+      const childAlgorithmId = (await AlgorithmAPI.add(childForm)) as number;
+
+      const grandChildForm = createAlgorithmForm({ parentId: childAlgorithmId });
+      const grandChildAlgorithmId = (await AlgorithmAPI.add(grandChildForm)) as number;
+
+      await AlgorithmAPI.deleteByIds([
+        parentAlgorithmId.toString(),
+        childAlgorithmId.toString(),
+        grandChildAlgorithmId.toString(),
+      ]);
+
+      await expectBizError(
+        AlgorithmAPI.getAlgorithmInfoById(parentAlgorithmId),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        AlgorithmAPI.getAlgorithmInfoById(childAlgorithmId),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        AlgorithmAPI.getAlgorithmInfoById(grandChildAlgorithmId),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
+    });
+
+    test("级联删除：仅选中父算法应递归删除所有子孙算法", async () => {
+      const parentForm = createAlgorithmForm({ parentId: 0 });
+      const parentAlgorithmId = (await AlgorithmAPI.add(parentForm)) as number;
+
+      const childForm = createAlgorithmForm({ parentId: parentAlgorithmId });
+      const childAlgorithmId = (await AlgorithmAPI.add(childForm)) as number;
+
+      const grandChildForm = createAlgorithmForm({ parentId: childAlgorithmId });
+      const grandChildAlgorithmId = (await AlgorithmAPI.add(grandChildForm)) as number;
+
+      await AlgorithmAPI.deleteByIds([parentAlgorithmId.toString()]);
+
+      await expectBizError(
+        AlgorithmAPI.getAlgorithmInfoById(parentAlgorithmId),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        AlgorithmAPI.getAlgorithmInfoById(childAlgorithmId),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        AlgorithmAPI.getAlgorithmInfoById(grandChildAlgorithmId),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
+    });
+
     test("完整 CRUD 生命周期：创建→读→更新→读→删除→验证不存在", async () => {
       // Create: 创建算法
       const createForm = createAlgorithmForm({ parentId: 0, description: "CRUD生命周期测试" });

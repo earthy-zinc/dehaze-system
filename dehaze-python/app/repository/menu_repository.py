@@ -63,50 +63,71 @@ class MenuRepository(BaseRepository[SysMenu]):
         await db.flush()
         return merged
 
-    async def delete_menu_and_children(
+    async def count_by_ids(
         self,
         db: AsyncSession,
-        menu_id: int,
+        menu_ids: list[int],
     ) -> int:
-        """删除菜单及其子菜单（使用 tree_path 匹配所有子节点）"""
-        stmt = delete(SysMenu).where(
-            or_(
-                SysMenu.id == menu_id,
-                func.concat(",", SysMenu.tree_path, ",").like(
-                    f"%,{menu_id},%"),
+        """统计给定ID集合中存在的菜单数量"""
+        if not menu_ids:
+            return 0
+        stmt = select(func.count()).select_from(SysMenu).where(SysMenu.id.in_(menu_ids))
+        result = await db.execute(stmt)
+        return int(result.scalar() or 0)
+
+    async def get_menu_ids_with_children_batch(
+        self,
+        db: AsyncSession,
+        menu_ids: list[int],
+    ) -> list[int]:
+        """获取所有传入菜单ID及其子孙菜单ID（合并去重）
+
+        条件：id IN (menu_ids) OR tree_path LIKE '%,id,%'（对每个 id 做 OR）
+        """
+        if not menu_ids:
+            return []
+        conditions = [SysMenu.id.in_(menu_ids)]
+        for menu_id in menu_ids:
+            conditions.append(
+                func.concat(",", SysMenu.tree_path, ",").like(f"%,{menu_id},%")
             )
-        )
+        stmt = select(SysMenu.id).where(or_(*conditions))
+        result = await db.execute(stmt)
+        return list({int(row[0]) for row in result.fetchall()})
+
+    async def delete_menus_by_ids(
+        self,
+        db: AsyncSession,
+        menu_ids: list[int],
+    ) -> int:
+        """根据ID集合批量删除菜单"""
+        if not menu_ids:
+            return 0
+        stmt = delete(SysMenu).where(SysMenu.id.in_(menu_ids))
         result = await db.execute(stmt)
         return result.rowcount
 
-    async def delete_role_menus_by_menu_id(
+    async def delete_role_menus_by_menu_ids(
         self,
         db: AsyncSession,
-        menu_id: int,
+        menu_ids: list[int],
     ) -> int:
-        """删除菜单的角色关联记录"""
-        # 先获取所有要删除的菜单ID（包含子菜单）
-        menu_ids = await self._get_menu_ids_with_children(db, menu_id)
-
+        """根据菜单ID集合批量删除角色-菜单关联记录"""
+        if not menu_ids:
+            return 0
         stmt = delete(SysRoleMenu).where(SysRoleMenu.menu_id.in_(menu_ids))
         result = await db.execute(stmt)
         return result.rowcount
 
-    async def _get_menu_ids_with_children(
+    async def save_role_menu(
         self,
         db: AsyncSession,
+        role_id: int,
         menu_id: int,
-    ) -> list[int]:
-        """获取菜单ID及其所有子菜单ID"""
-        stmt = select(SysMenu.id).where(
-            or_(
-                SysMenu.id == menu_id,
-                func.concat(",", SysMenu.tree_path, ",").like(
-                    f"%,{menu_id},%"),
-            )
-        )
-        result = await db.execute(stmt)
-        return [int(row[0]) for row in result.fetchall()]
+    ) -> None:
+        """新增角色-菜单关联"""
+        db.add(SysRoleMenu(role_id=role_id, menu_id=menu_id))
+        await db.flush()
 
     async def get_role_perms(
         self,

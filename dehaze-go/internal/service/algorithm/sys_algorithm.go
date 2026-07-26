@@ -10,6 +10,7 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/read"
@@ -23,11 +24,16 @@ import (
 type AlgorithmService struct {
 	algorithmRepo algorepo.IAlgorithmRepository
 	predLogRepo   predlog.IPredLogRepository
+	treeUtils     *utils.TreeDataUtils
 }
 
 // NewAlgorithmService 创建算法服务实例
 func NewAlgorithmService(algorithmRepo algorepo.IAlgorithmRepository, predLogRepo predlog.IPredLogRepository) *AlgorithmService {
-	return &AlgorithmService{algorithmRepo: algorithmRepo, predLogRepo: predLogRepo}
+	return &AlgorithmService{
+		algorithmRepo: algorithmRepo,
+		predLogRepo:   predLogRepo,
+		treeUtils:     utils.NewTreeDataUtils(),
+	}
 }
 
 // ====================
@@ -213,34 +219,36 @@ func (s *AlgorithmService) Update(ctx context.Context, id int64, form *bo.Algori
 	return nil
 }
 
-// Delete 删除算法
+// Delete 删除算法（级联删除子孙算法）
 func (s *AlgorithmService) Delete(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return common.NewBizError(common.PARAM_ERROR, "请选择要删除的算法")
 	}
 
-	// 校验算法是否存在
-	for _, id := range ids {
-		algorithm, err := s.algorithmRepo.FindByID(ctx, id)
-		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
-		}
-		if algorithm == nil {
-			return common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
-		}
-	}
-
-	// 检查是否有子算法
-	hasChildren, err := s.algorithmRepo.HasChildrenByParentIDs(ctx, ids)
+	allAlgorithms, err := s.algorithmRepo.FindAll(ctx, &query.AlgorithmQuery{})
 	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "检查子算法失败", err)
+		return common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
 	}
 
-	if hasChildren {
-		return common.NewBizError(common.DATA_BIND_EXISTS, "存在子算法，无法删除")
+	nodes := make([]utils.TreeDataNode, 0, len(allAlgorithms))
+	for i := range allAlgorithms {
+		nodes = append(nodes, &allAlgorithms[i])
 	}
 
-	if err := s.algorithmRepo.Delete(ctx, ids); err != nil {
+	allDeleteIDs := make(map[int64]bool)
+	for _, id := range ids {
+		allDeleteIDs[id] = true
+		for _, childID := range s.treeUtils.GetDescendantIDs(nodes, id) {
+			allDeleteIDs[childID] = true
+		}
+	}
+
+	idsToDelete := make([]int64, 0, len(allDeleteIDs))
+	for id := range allDeleteIDs {
+		idsToDelete = append(idsToDelete, id)
+	}
+
+	if err := s.algorithmRepo.Delete(ctx, idsToDelete); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除算法失败", err)
 	}
 	return nil

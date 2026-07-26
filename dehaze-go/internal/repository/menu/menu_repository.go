@@ -355,22 +355,55 @@ func (r *MenuRepository) ExistsByPerm(ctx context.Context, perm string, excludeI
 // Ensure MenuRepository implements IMenuRepository
 var _ IMenuRepository = (*MenuRepository)(nil)
 
-// DeleteCascade 级联删除菜单及其所有子孙菜单
-// 使用treePath字段查询所有子孙节点并批量删除
-func (r *MenuRepository) DeleteCascade(ctx context.Context, id int64) (int64, error) {
-	// 使用treePath级联删除：删除当前菜单及所有子孙菜单
-	// treePath格式为 "0,1,2"，通过CONCAT和LIKE查询所有包含当前ID的记录
-	// 参数化查询防止SQL注入
-	result := r.db.WithContext(ctx).
-		Where("id = ? OR CONCAT(',', tree_path, ',') LIKE CONCAT('%,', ?, ',%')", id, id).
-		Delete(&model.SysMenu{})
+// CountByIDs 统计给定ID集合中存在的菜单数量
+func (r *MenuRepository) CountByIDs(ctx context.Context, ids []int64) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.SysMenu{}).
+		Where("id IN ?", ids).
+		Count(&count).Error
+	return count, err
+}
+
+// DeleteCascadeByIDs 批量级联删除：删除所有传入ID对应的菜单及其子孙菜单
+// 条件：id IN (ids) OR tree_path LIKE '%,id,%'（对每个 id 做 OR）
+func (r *MenuRepository) DeleteCascadeByIDs(ctx context.Context, ids []int64) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	db := r.db.WithContext(ctx).
+		Model(&model.SysMenu{}).
+		Where("id IN ?", ids)
+	for _, id := range ids {
+		db = db.Or("CONCAT(',', tree_path, ',') LIKE CONCAT('%,', ?, ',%')", id)
+	}
+	result := db.Delete(&model.SysMenu{})
 	return result.RowsAffected, result.Error
 }
 
-// DeleteRoleMenuByMenuID 删除角色-菜单关联关系
-func (r *MenuRepository) DeleteRoleMenuByMenuID(ctx context.Context, menuID int64) error {
+// DeleteRoleMenuByMenuIDs 批量删除角色-菜单关联关系（含所有传入菜单及子孙菜单的关联）
+// 通过子查询一次性定位所有待删菜单ID（传入ID + 子孙），再删除其角色关联
+func (r *MenuRepository) DeleteRoleMenuByMenuIDs(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	// 动态构造子查询条件：id IN (?) OR tree_path LIKE '%,id,%' OR ...
+	// 使用原生 SQL 拼接 LIKE 部分（id 为 int64，无注入风险）
+	whereSQL := "id IN (?)"
+	args := []interface{}{ids}
+	for _, id := range ids {
+		whereSQL += " OR CONCAT(',', tree_path, ',') LIKE CONCAT('%,', ?, ',%')"
+		args = append(args, id)
+	}
 	return r.db.WithContext(ctx).
-		Exec("DELETE FROM sys_role_menu WHERE menu_id = ?", menuID).
+		Exec(`DELETE FROM sys_role_menu WHERE menu_id IN (SELECT id FROM sys_menu WHERE `+whereSQL+`)`, args...).
+		Error
+}
+
+// SaveRoleMenu 新增角色-菜单关联
+func (r *MenuRepository) SaveRoleMenu(ctx context.Context, roleID, menuID int64) error {
+	return r.db.WithContext(ctx).
+		Create(&model.SysRoleMenu{RoleID: roleID, MenuID: menuID}).
 		Error
 }
 

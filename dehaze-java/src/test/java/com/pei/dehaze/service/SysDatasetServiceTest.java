@@ -232,49 +232,6 @@ class SysDatasetServiceTest {
                 .hasMessageContaining("数据集不存在");
     }
 
-    // ==================== 删除数据集测试 ====================
-
-    /**
-     * 测试删除数据集 - 成功
-     * 测试目的：验证能够成功删除数据集
-     * 测试场景：数据集存在且可以被删除
-     * 验证内容：调用removeById成功，不清除异常
-     */
-    @Test
-    @DisplayName("测试删除数据集 - 成功")
-    void testDeleteDataset_Success() {
-        // Given
-        Long datasetId = 1L;
-        doReturn(sampleDataset).when(datasetService).getById(datasetId);
-        doReturn(true).when(datasetService).removeById(datasetId);
-
-        // When
-        datasetService.deleteDataset(datasetId);
-
-        // Then
-        verify(datasetService).getById(datasetId);
-        verify(datasetService).removeById(datasetId);
-    }
-
-    /**
-     * 测试删除数据集 - 失败抛出异常
-     * 测试目的：验证当数据集不存在或删除失败时抛出异常
-     * 测试场景：数据集不存在
-     * 验证内容：抛出BusinessException异常
-     */
-    @Test
-    @DisplayName("测试删除数据集 - 失败抛出异常")
-    void testDeleteDataset_Failure() {
-        // Given
-        Long datasetId = 1L;
-        doReturn(null).when(datasetService).getById(datasetId);
-
-        // When & Then
-        assertThatThrownBy(() -> datasetService.deleteDataset(datasetId))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("数据集不存在");
-    }
-
     // ==================== 创建数据集校验测试 ====================
 
     @Test

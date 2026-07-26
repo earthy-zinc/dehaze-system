@@ -29,8 +29,8 @@ public interface MenuApiService {
     @PUT("/api/v1/menus/{id}")
     Call<Result<Void>> updateMenu(@Path("id") long id, @Body MenuForm data);
 
-    @DELETE("/api/v1/menus/{id}")
-    Call<Result<Void>> deleteMenu(@Path("id") long id);
+    @DELETE("/api/v1/menus/{ids}")
+    Call<Result<Void>> deleteMenus(@Path("ids") String ids);
 
     @PATCH("/api/v1/menus/{id}")
     Call<Result<Void>> updateMenuVisible(@Path("id") long id, @Query("visible") int visible);

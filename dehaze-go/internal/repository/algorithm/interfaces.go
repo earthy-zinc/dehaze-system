@@ -38,9 +38,6 @@ type IAlgorithmRepository interface {
 	// UpdateStatus 更新算法状态
 	UpdateStatus(ctx context.Context, id int64, status int8) error
 
-	// HasChildrenByParentIDs 检查指定父 ID 列表是否存在子算法
-	HasChildrenByParentIDs(ctx context.Context, parentIDs []int64) (bool, error)
-
 	// FindVersionsByAlgorithmID 查询算法版本历史（按创建时间降序）
 	FindVersionsByAlgorithmID(ctx context.Context, algorithmID int64) ([]model.SysAlgorithmVersion, error)
 }

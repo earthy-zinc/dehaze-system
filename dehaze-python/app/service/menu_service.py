@@ -228,6 +228,11 @@ class MenuService:
 
         if is_new:
             merged = await menu_repository.create_menu(db, menu)
+            # 新增菜单默认分配给超级管理员角色
+            from app.repository.role_repository import ROOT_ROLE_CODE, role_repository
+            root_role = await role_repository.get_by_code(db, ROOT_ROLE_CODE)
+            if root_role:
+                await menu_repository.save_role_menu(db, root_role.id, merged.id)
         else:
             merged = await menu_repository.update_menu(db, menu)
 
@@ -464,28 +469,36 @@ class MenuService:
         }
 
     @staticmethod
-    async def delete_menu(db: AsyncSession, redis: Redis, menu_id: int) -> None:
+    async def delete_menu(db: AsyncSession, redis: Redis, menu_ids: list[int]) -> None:
         """
-        删除菜单（级联删除子菜单和角色关联）
+        批量删除菜单（级联删除子孙菜单，并清理角色-菜单关联）
 
         Args:
             db: 数据库会话
             redis: Redis 客户端
-            menu_id: 菜单ID
+            menu_ids: 菜单ID集合
 
         Raises:
-            BusinessException: 菜单不存在时抛出 RESOURCE_NOT_FOUND
+            BusinessException: 任意一个菜单不存在时抛出 RESOURCE_NOT_FOUND
         """
-        # 检查菜单是否存在
-        menu = await menu_repository.get_by_id(db, menu_id)
-        if not menu:
+        if not menu_ids:
+            return
+
+        # 校验所有传入的菜单ID都存在
+        exist_count = await menu_repository.count_by_ids(db, menu_ids)
+        if exist_count != len(menu_ids):
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在")
 
-        # 1. 删除角色-菜单关联
-        await menu_repository.delete_role_menus_by_menu_id(db, menu_id)
+        # 一次性查询所有待删除菜单ID（传入ID + 子孙），合并去重
+        all_menu_ids = await menu_repository.get_menu_ids_with_children_batch(db, menu_ids)
+        if not all_menu_ids:
+            return
 
-        # 2. 删除菜单及其子菜单
-        await menu_repository.delete_menu_and_children(db, menu_id)
+        # 1. 删除角色-菜单关联
+        await menu_repository.delete_role_menus_by_menu_ids(db, all_menu_ids)
+
+        # 2. 删除菜单
+        await menu_repository.delete_menus_by_ids(db, all_menu_ids)
 
         # 3. 清除缓存
         await MenuService._clear_menu_cache(db, redis)

@@ -167,7 +167,7 @@ describe("安全性测试", () => {
           const found = menuList[0];
           if (found?.id) {
             try {
-              await MenuAPI.deleteById(found.id);
+              await MenuAPI.deleteByIds(String(found.id));
             } catch {}
             expect(found.name).not.toContain("<script>");
           }

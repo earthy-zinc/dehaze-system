@@ -296,63 +296,6 @@ func (_c *MockIAlgorithmRepository_FindPage_Call) RunAndReturn(run func(context.
 	return _c
 }
 
-// HasChildrenByParentIDs provides a mock function with given fields: ctx, parentIDs
-func (_m *MockIAlgorithmRepository) HasChildrenByParentIDs(ctx context.Context, parentIDs []int64) (bool, error) {
-	ret := _m.Called(ctx, parentIDs)
-
-	if len(ret) == 0 {
-		panic("no return value specified for HasChildrenByParentIDs")
-	}
-
-	var r0 bool
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []int64) (bool, error)); ok {
-		return rf(ctx, parentIDs)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, []int64) bool); ok {
-		r0 = rf(ctx, parentIDs)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, []int64) error); ok {
-		r1 = rf(ctx, parentIDs)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockIAlgorithmRepository_HasChildrenByParentIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasChildrenByParentIDs'
-type MockIAlgorithmRepository_HasChildrenByParentIDs_Call struct {
-	*mock.Call
-}
-
-// HasChildrenByParentIDs is a helper method to define mock.On call
-//   - ctx context.Context
-//   - parentIDs []int64
-func (_e *MockIAlgorithmRepository_Expecter) HasChildrenByParentIDs(ctx interface{}, parentIDs interface{}) *MockIAlgorithmRepository_HasChildrenByParentIDs_Call {
-	return &MockIAlgorithmRepository_HasChildrenByParentIDs_Call{Call: _e.mock.On("HasChildrenByParentIDs", ctx, parentIDs)}
-}
-
-func (_c *MockIAlgorithmRepository_HasChildrenByParentIDs_Call) Run(run func(ctx context.Context, parentIDs []int64)) *MockIAlgorithmRepository_HasChildrenByParentIDs_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]int64))
-	})
-	return _c
-}
-
-func (_c *MockIAlgorithmRepository_HasChildrenByParentIDs_Call) Return(_a0 bool, _a1 error) *MockIAlgorithmRepository_HasChildrenByParentIDs_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockIAlgorithmRepository_HasChildrenByParentIDs_Call) RunAndReturn(run func(context.Context, []int64) (bool, error)) *MockIAlgorithmRepository_HasChildrenByParentIDs_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Update provides a mock function with given fields: ctx, _a1
 func (_m *MockIAlgorithmRepository) Update(ctx context.Context, _a1 *model.SysAlgorithm) error {
 	ret := _m.Called(ctx, _a1)

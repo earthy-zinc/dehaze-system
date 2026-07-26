@@ -68,12 +68,23 @@ public class DictAPI {
      * 删除字典类型
      *
      * @param ids      字典类型ID列表
+     * @param force    是否强制删除关联的字典数据
+     * @param callback 回调函数
+     */
+    public static void deleteDictTypes(List<Long> ids, boolean force, ApiCallback<Void> callback) {
+        String joined = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDictApiService().deleteDictTypes(joined, force);
+        call.enqueue(callback);
+    }
+
+    /**
+     * 删除字典类型（不强制删除关联数据）
+     *
+     * @param ids      字典类型ID列表
      * @param callback 回调函数
      */
     public static void deleteDictTypes(List<Long> ids, ApiCallback<Void> callback) {
-        String joined = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
-        Call<Result<Void>> call = DehazeSDK.getInstance().getDictApiService().deleteDictTypes(joined);
-        call.enqueue(callback);
+        deleteDictTypes(ids, false, callback);
     }
 
     /**

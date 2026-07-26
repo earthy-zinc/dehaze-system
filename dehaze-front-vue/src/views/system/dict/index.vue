@@ -293,15 +293,33 @@ function handleDelete(row?: any) {
     return;
   }
 
+  const forceDelete = ref(false);
   const confirmMsg = row
     ? `确认删除字典类型「${row.name}」吗？删除后不可恢复。`
     : "确认删除选中的字典类型吗？删除后不可恢复。";
-  ElMessageBox.confirm(confirmMsg, "警告", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  }).then(() => {
-    DictAPI.deleteDictTypes(dictTypeIds).then(() => {
+  ElMessageBox.confirm(
+    () =>
+      h("div", null, [
+        h("p", { style: "margin: 0 0 12px" }, confirmMsg),
+        h(
+          ElCheckbox,
+          {
+            modelValue: forceDelete.value,
+            "onUpdate:modelValue": (val: boolean) => {
+              forceDelete.value = val;
+            },
+          },
+          { default: () => "同时删除关联的字典数据" }
+        ),
+      ]),
+    "警告",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    }
+  ).then(() => {
+    DictAPI.deleteDictTypes(dictTypeIds, forceDelete.value).then(() => {
       ElMessage.success("删除成功");
       resetQuery();
     });

@@ -38,8 +38,6 @@ public interface SysDatasetService extends IService<SysDataset> {
 
     DatasetVO getDatasetById(Long id);
 
-    void deleteDataset(Long id);
-
     void incrementUsageCount(Long id);
 
     List<SysItemFile> getDatasetImages(Long datasetId, boolean recursive);

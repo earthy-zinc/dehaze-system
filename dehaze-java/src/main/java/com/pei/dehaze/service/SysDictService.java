@@ -66,4 +66,12 @@ public interface SysDictService extends IService<SysDict> {
      */
     List<Option<String>> listDictOptions(String typeCode);
 
+    /**
+     * 按字典类型编码批量删除字典数据，并清除对应下拉选项缓存
+     *
+     * @param typeCodes 字典类型编码列表
+     * @return 是否删除成功
+     */
+    boolean deleteByTypeCodes(List<String> typeCodes);
+
 }

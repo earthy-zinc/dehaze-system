@@ -43,6 +43,9 @@ class SysDatasetServiceIT {
     private SysDatasetService datasetService;
 
     @Autowired
+    private DatasetOperationService datasetOperationService;
+
+    @Autowired
     private SysDatasetMapper datasetMapper;
 
     @Autowired
@@ -214,7 +217,7 @@ class SysDatasetServiceIT {
         form.setType("USER");
         DatasetVO added = datasetService.addDataset(form);
 
-        datasetService.deleteDataset(added.getId());
+        datasetOperationService.batchDeleteDatasets(List.of(added.getId()));
 
         SysDataset deleted = datasetMapper.selectById(added.getId());
         assertNull(deleted);

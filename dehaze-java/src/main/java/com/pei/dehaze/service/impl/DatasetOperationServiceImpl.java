@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.FileBOFactory;
+import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.model.bo.ItemFileBO;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
@@ -33,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -399,87 +401,98 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         int succeeded = 0;
         int failed = 0;
         List<BatchDeleteResult.DeleteResultItem> results = new ArrayList<>();
-        List<Long> allDeletedDatasetIds = new ArrayList<>();
 
-        // 批量预检数据集存在性，避免循环内逐条 getById 触发 N+1 查询
+        // 批量预检数据集存在性
         Set<Long> existingDatasetIds = sysDatasetService.listByIds(datasetIds).stream()
                 .map(SysDataset::getId)
                 .collect(Collectors.toSet());
 
+        // 一次性合并所有存在的传入ID及其子孙（去重）
+        List<SysDataset> allDatasets = sysDatasetService.getAllDatasets();
+        Set<Long> allDatasetIdsToDelete = new HashSet<>();
         for (Long datasetId : datasetIds) {
-            try {
-                if (!existingDatasetIds.contains(datasetId)) {
-                    throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
+            if (!existingDatasetIds.contains(datasetId)) {
+                continue;
+            }
+            allDatasetIdsToDelete.addAll(
+                    TreeDataUtils.findDescendantIds(allDatasets, datasetId, SysDataset::getId, SysDataset::getParentId)
+            );
+        }
+
+        if (allDatasetIdsToDelete.isEmpty()) {
+            for (Long datasetId : datasetIds) {
+                failed++;
+                results.add(BatchDeleteResult.DeleteResultItem.builder()
+                        .id(datasetId)
+                        .status("failed")
+                        .message("数据集不存在")
+                        .errorCode("RESOURCE_NOT_FOUND")
+                        .build());
+            }
+            return BatchDeleteResult.builder().total(total).succeeded(succeeded).failed(failed).results(results).build();
+        }
+
+        // 从待删数据集中找出叶子节点（即没有子节点的节点），数据项只存在于叶子节点
+        Set<Long> leafDatasetIds = allDatasetIdsToDelete.stream()
+                .filter(id -> allDatasets.stream()
+                        .noneMatch(d -> allDatasetIdsToDelete.contains(d.getId())
+                                && d.getParentId() != null
+                                && d.getParentId().equals(id)
+                                && !d.getId().equals(id)))
+                .collect(Collectors.toSet());
+
+        // 一次性查询所有叶子节点下的数据项
+        List<Long> allItemIds = Collections.emptyList();
+        if (!leafDatasetIds.isEmpty()) {
+            List<SysDatasetItem> items = sysDatasetItemService.list(
+                    new LambdaQueryWrapper<SysDatasetItem>()
+                            .in(SysDatasetItem::getDatasetId, leafDatasetIds)
+            );
+            allItemIds = items.stream().map(SysDatasetItem::getId).toList();
+        }
+
+        // 一次性查询所有数据项的文件，逐个删除（MinIO 物理文件删除无法批量）
+        if (!allItemIds.isEmpty()) {
+            List<SysItemFile> allFiles = sysItemFileService.list(
+                    new LambdaQueryWrapper<SysItemFile>()
+                            .in(SysItemFile::getItemId, allItemIds)
+            );
+            for (SysItemFile itemFile : allFiles) {
+                try {
+                    sysItemFileService.deleteFile(itemFile.getId());
+                } catch (Exception e) {
+                    log.error("删除文件失败: fileId={}", itemFile.getId(), e);
                 }
+            }
+        }
 
-                // 获取该数据集及其所有子数据集的ID
-                List<Long> allDatasetIds = sysDatasetService.getDatasetAndDescendantIds(datasetId);
-                // 获取所有叶子节点数据集下的数据项
-                List<Long> leafDatasetIds = sysDatasetService.getLeafDatasetId(datasetId);
+        // 批量删除数据项
+        if (!allItemIds.isEmpty()) {
+            sysDatasetItemService.removeByIds(allItemIds);
+        }
 
-                // 批量查询所有叶子数据集下的数据项，避免 N+1 查询
-                List<Long> allItemIds = Collections.emptyList();
-                if (!leafDatasetIds.isEmpty()) {
-                    List<SysDatasetItem> items = sysDatasetItemService.list(
-                            new LambdaQueryWrapper<SysDatasetItem>()
-                                    .in(SysDatasetItem::getDatasetId, leafDatasetIds)
-                    );
-                    allItemIds = items.stream().map(SysDatasetItem::getId).toList();
-                }
+        // 批量删除数据集
+        sysDatasetService.removeByIds(allDatasetIdsToDelete);
+        sysDatasetService.evictAllDatasetsCache();
 
-                // 批量查询所有数据项的文件，避免 N+1 查询
-                if (!allItemIds.isEmpty()) {
-                    List<SysItemFile> allFiles = sysItemFileService.list(
-                            new LambdaQueryWrapper<SysItemFile>()
-                                    .in(SysItemFile::getItemId, allItemIds)
-                    );
-                    // 逐个删除文件（涉及 MinIO 物理文件删除，无法批量）
-                    for (SysItemFile itemFile : allFiles) {
-                        sysItemFileService.deleteFile(itemFile.getId());
-                    }
-                }
-
-                // 批量删除数据项
-                if (!allItemIds.isEmpty()) {
-                    sysDatasetItemService.removeByIds(allItemIds);
-                }
-
-                // 收集待删除的数据集 ID（去重），循环结束后统一批量删除
-                allDatasetIds = allDatasetIds.stream().distinct().toList();
-                allDeletedDatasetIds.addAll(allDatasetIds);
-
+        // 构建结果：存在的标记成功，不存在的标记失败
+        for (Long datasetId : datasetIds) {
+            if (existingDatasetIds.contains(datasetId)) {
                 succeeded++;
                 results.add(BatchDeleteResult.DeleteResultItem.builder()
                         .id(datasetId)
                         .status("success")
                         .build());
-
-            } catch (BusinessException e) {
+            } else {
                 failed++;
                 results.add(BatchDeleteResult.DeleteResultItem.builder()
                         .id(datasetId)
                         .status("failed")
-                        .message(e.getMessage())
+                        .message("数据集不存在")
                         .errorCode("RESOURCE_NOT_FOUND")
                         .build());
-            } catch (Exception e) {
-                failed++;
-                results.add(BatchDeleteResult.DeleteResultItem.builder()
-                        .id(datasetId)
-                        .status("failed")
-                        .message(e.getMessage())
-                        .errorCode("SYSTEM_ERROR")
-                        .build());
-                log.error("删除数据集失败: datasetId={}", datasetId, e);
             }
         }
-
-        // 批量删除所有成功的数据集，替代循环内逐条 removeById
-        if (!allDeletedDatasetIds.isEmpty()) {
-            sysDatasetService.removeByIds(allDeletedDatasetIds);
-        }
-
-        sysDatasetService.evictAllDatasetsCache();
 
         return BatchDeleteResult.builder()
                 .total(total)

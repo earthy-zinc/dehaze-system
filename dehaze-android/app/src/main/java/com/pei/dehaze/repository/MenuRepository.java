@@ -6,6 +6,7 @@ import com.pei.dehaze.sdk.model.menu.MenuForm;
 import com.pei.dehaze.sdk.model.menu.MenuQuery;
 import com.pei.dehaze.sdk.model.menu.MenuVO;
 
+import java.util.Collections;
 import java.util.List;
 
 public class MenuRepository {
@@ -33,6 +34,6 @@ public class MenuRepository {
     }
 
     public void deleteMenu(long id, RepositoryCallback<Void> callback) {
-        MenuAPI.deleteById(id, RepositoryAdapters.wrap(callback));
+        MenuAPI.deleteByIds(Collections.singletonList(id), RepositoryAdapters.wrap(callback));
     }
 }

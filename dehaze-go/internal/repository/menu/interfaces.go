@@ -68,12 +68,17 @@ type IMenuRepository interface {
 	// FindPermsByRoleCode 根据单个角色编码获取权限标识列表（用于缓存刷新）
 	FindPermsByRoleCode(ctx context.Context, roleCode string) ([]string, error)
 
-	// DeleteCascade 级联删除菜单及其所有子孙菜单
-	// 使用treePath字段查询所有子孙节点并批量删除
-	DeleteCascade(ctx context.Context, id int64) (int64, error)
+	// DeleteCascadeByIDs 批量级联删除：删除所有传入ID对应的菜单及其子孙菜单
+	DeleteCascadeByIDs(ctx context.Context, ids []int64) (int64, error)
 
-	// DeleteRoleMenuByMenuID 删除角色-菜单关联关系
-	DeleteRoleMenuByMenuID(ctx context.Context, menuID int64) error
+	// DeleteRoleMenuByMenuIDs 批量删除角色-菜单关联关系（含所有传入菜单及子孙菜单的关联）
+	DeleteRoleMenuByMenuIDs(ctx context.Context, ids []int64) error
+
+	// CountByIDs 统计给定ID集合中存在的菜单数量
+	CountByIDs(ctx context.Context, ids []int64) (int64, error)
+
+	// SaveRoleMenu 新增角色-菜单关联
+	SaveRoleMenu(ctx context.Context, roleID, menuID int64) error
 
 	// Transaction 执行事务
 	Transaction(ctx context.Context, fn func(repo IMenuRepository) error) error

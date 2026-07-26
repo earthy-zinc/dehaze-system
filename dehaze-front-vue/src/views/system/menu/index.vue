@@ -38,6 +38,17 @@
           ></template>
           新增</el-button
         >
+        <el-button
+          v-hasPerm="['sys:menu:delete']"
+          :disabled="ids.length === 0"
+          type="danger"
+          @click="handleDelete()"
+        >
+          <template #icon
+            ><el-icon><Delete /></el-icon
+          ></template>
+          删除</el-button
+        >
       </template>
 
       <el-table
@@ -51,7 +62,9 @@
         highlight-current-row
         row-key="id"
         @row-click="onRowClick"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column align="center" type="selection" width="55" />
         <el-table-column label="菜单名称" min-width="200">
           <template #default="scope">
             <svg-icon :icon-class="scope.row.icon" />
@@ -349,6 +362,7 @@ const queryFormRef = ref(ElForm);
 const menuFormRef = ref(ElForm);
 
 const loading = ref(false);
+const ids = ref<number[]>([]);
 const dialog = reactive({
   title: "",
   visible: false,
@@ -441,6 +455,11 @@ function onRowClick(row: MenuVO) {
   selectedRowMenuId.value = row.id;
 }
 
+/** 行复选框选中记录选中ID集合 */
+function handleSelectionChange(selection: any) {
+  ids.value = selection.map((item: any) => item.id);
+}
+
 /**
  * 打开表单弹窗
  *
@@ -503,30 +522,42 @@ function submitForm() {
 }
 
 /** 删除菜单 */
-function handleDelete(row: MenuVO) {
-  if (!row.id) {
-    ElMessage.warning("请勾选删除项");
-    return false;
-  }
-  const menuId = row.id;
-
-  ElMessageBox.confirm(
-    `确认删除菜单「${row.name}」吗？删除后不可恢复。`,
-    "警告",
-    {
+function handleDelete(row?: MenuVO) {
+  if (row) {
+    ElMessageBox.confirm(
+      `确认删除菜单「${row.name}」吗？删除后不可恢复。`,
+      "警告",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }
+    )
+      .then(() => {
+        MenuAPI.deleteByIds(String(row.id)).then(() => {
+          ElMessage.success("删除成功");
+          usePermissionStoreHook().generateRoutes(userStore.user.roles);
+          handleQuery();
+        });
+      })
+      .catch(() => ElMessage.info("已取消删除"));
+  } else if (ids.value.length > 0) {
+    ElMessageBox.confirm("确认删除选中的菜单吗？删除后不可恢复。", "警告", {
       confirmButtonText: "确定",
       cancelButtonText: "取消",
       type: "warning",
-    }
-  )
-    .then(() => {
-      MenuAPI.deleteById(menuId).then(() => {
-        ElMessage.success("删除成功");
-        usePermissionStoreHook().generateRoutes(userStore.user.roles);
-        handleQuery();
-      });
     })
-    .catch(() => ElMessage.info("已取消删除"));
+      .then(() => {
+        MenuAPI.deleteByIds(ids.value.join(",")).then(() => {
+          ElMessage.success("删除成功");
+          usePermissionStoreHook().generateRoutes(userStore.user.roles);
+          handleQuery();
+        });
+      })
+      .catch(() => ElMessage.info("已取消删除"));
+  } else {
+    ElMessage.warning("请勾选删除项");
+  }
 }
 
 /** 显示状态切换 */

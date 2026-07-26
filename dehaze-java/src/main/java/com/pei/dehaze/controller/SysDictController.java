@@ -135,9 +135,10 @@ public class SysDictController {
     @DeleteMapping("/types/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:dict:type:delete')")
     public Result<Void> deleteDictTypes(
-            @Parameter(description ="字典类型ID，多个以英文逗号(,)分割") @PathVariable String ids
+            @Parameter(description ="字典类型ID，多个以英文逗号(,)分割") @PathVariable String ids,
+            @Parameter(description = "是否强制删除关联的字典数据") @RequestParam(defaultValue = "false") boolean force
     ) {
-        boolean result = dictTypeService.deleteDictTypes(ids);
+        boolean result = dictTypeService.deleteDictTypes(ids, force);
         return Result.judge(result);
     }
 

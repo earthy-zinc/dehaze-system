@@ -224,6 +224,12 @@ class RoleRepository(BaseRepository[SysRole]):
         result = await db.execute(stmt)
         return [row[0] for row in result.fetchall() if row[0]]
 
+    async def get_by_code(self, db: AsyncSession, code: str) -> SysRole | None:
+        """根据角色编码查询角色"""
+        stmt = select(SysRole).where(SysRole.deleted == 0, SysRole.code == code)
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
 
 # 单例
 role_repository = RoleRepository()

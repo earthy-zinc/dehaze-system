@@ -34,6 +34,7 @@ const queryParams = reactive<any>({
 const list = ref<Algorithm[] | Dataset[]>([]);
 const total = ref(0);
 const selectedId = ref<number>();
+const ids = ref<number[]>([]);
 const selectedColumns = ref([
   "name",
   "type",
@@ -125,29 +126,53 @@ function handleShow<T extends Algorithm | Dataset>(row: T) {
   router.push(`/dataset/${selectedId.value}`);
 }
 
-function handleDelete(algorithmId: number) {
-  let tip = isDatasetList
-    ? "确认删除已选中的数据集？其中的图片也将一并删除！"
-    : "确认删除已选中的模型？";
-  if (!algorithmId) {
-    ElMessage.warning("请勾选删除项");
-    return false;
-  }
-  ElMessageBox.confirm(tip, "警告", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  })
-    .then(() => {
-      if (isDatasetList) {
-        DatasetAPI.deleteById(algorithmId);
-      } else {
-        AlgorithmAPI.deleteByIds([algorithmId.toString()]);
-      }
-      ElMessage.success("删除成功");
-      handleQuery();
+function handleDelete(row?: any) {
+  if (row) {
+    const tip = isDatasetList
+      ? `确认删除数据集「${row.name}」？其中的图片也将一并删除！`
+      : `确认删除模型「${row.name}」？`;
+    ElMessageBox.confirm(tip, "警告", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
     })
-    .catch(() => ElMessage.info("已取消删除"));
+      .then(() => {
+        if (isDatasetList) {
+          DatasetAPI.deleteById(row.id);
+        } else {
+          AlgorithmAPI.deleteByIds([row.id.toString()]);
+        }
+        ElMessage.success("删除成功");
+        handleQuery();
+      })
+      .catch(() => ElMessage.info("已取消删除"));
+  } else if (ids.value.length > 0) {
+    const tip = isDatasetList
+      ? `确认删除选中的 ${ids.value.length} 个数据集？其中的图片也将一并删除！`
+      : `确认删除选中的 ${ids.value.length} 个模型？`;
+    ElMessageBox.confirm(tip, "警告", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    })
+      .then(() => {
+        if (isDatasetList) {
+          DatasetAPI.batchDelete({ ids: ids.value });
+        } else {
+          AlgorithmAPI.deleteByIds(ids.value.map(String));
+        }
+        ElMessage.success("删除成功");
+        handleQuery();
+      })
+      .catch(() => ElMessage.info("已取消删除"));
+  } else {
+    ElMessage.warning("请勾选删除项");
+  }
+}
+
+/** 行复选框选中记录选中ID集合 */
+function handleSelectionChange(selection: any) {
+  ids.value = selection.map((item: any) => item.id);
 }
 
 const dialogRef = ref();
@@ -220,6 +245,21 @@ onMounted(() => {
     </div>
 
     <el-card class="table-container" shadow="never">
+      <div class="toolbar">
+        <el-button type="success" @click="openDialog('新增', {})">
+          <el-icon><Plus /></el-icon>
+          新增
+        </el-button>
+        <el-button
+          type="danger"
+          :disabled="ids.length === 0"
+          @click="handleDelete()"
+        >
+          <el-icon><Delete /></el-icon>
+          删除
+        </el-button>
+      </div>
+
       <el-table
         v-loading="loading"
         :data="list"
@@ -233,7 +273,9 @@ onMounted(() => {
         highlight-current-row
         row-key="id"
         @row-click="onRowClick"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column align="center" type="selection" width="55" />
         <el-table-column
           v-if="selectedColumns.includes('name')"
           label="名称"
@@ -325,7 +367,7 @@ onMounted(() => {
               link
               size="small"
               type="primary"
-              @click="handleDelete(scope.row.id)"
+              @click="handleDelete(scope.row)"
             >
               <el-icon><Delete /></el-icon>
               删除
@@ -358,6 +400,13 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .setting-button {
   margin-left: 12px;
 }

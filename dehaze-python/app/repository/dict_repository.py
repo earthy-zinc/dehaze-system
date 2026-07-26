@@ -9,7 +9,7 @@ from typing import Any
 from app.models.base import get_audit_update_values
 from app.models.entity.sys_dict import SysDict, SysDictType
 from app.repository.base import BaseRepository, escape_like
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -107,6 +107,14 @@ class DictRepository(BaseRepository[SysDict]):
         stmt = select(func.count()).where(SysDict.id.in_(dict_ids))
         result = await db.execute(stmt)
         return result.scalar() or 0
+
+    async def delete_by_type_codes(self, db: AsyncSession, type_codes: list[str]) -> int:
+        """根据类型编码列表批量删除字典数据"""
+        if not type_codes:
+            return 0
+        stmt = delete(SysDict).where(SysDict.type_code.in_(type_codes))
+        result = await db.execute(stmt)
+        return result.rowcount
 
     async def get_type_codes_by_ids(
         self, db: AsyncSession, dict_ids: list[int]

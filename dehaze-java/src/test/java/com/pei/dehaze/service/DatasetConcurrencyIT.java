@@ -1,5 +1,6 @@
 package com.pei.dehaze.service;
 
+import com.pei.dehaze.mapper.SysDatasetMapper;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.form.DatasetAddForm;
@@ -44,6 +45,9 @@ class DatasetConcurrencyIT {
     private SysDatasetService sysDatasetService;
 
     @Autowired
+    private SysDatasetMapper datasetMapper;
+
+    @Autowired
     private SysDatasetItemService sysDatasetItemService;
 
     @Autowired
@@ -86,7 +90,7 @@ class DatasetConcurrencyIT {
         // 清理测试数据集
         for (Long datasetId : createdDatasetIds) {
             try {
-                sysDatasetService.deleteDataset(datasetId);
+                datasetMapper.deleteById(datasetId);
             } catch (Exception e) {
                 // 忽略清理异常，可能是数据已经不存在
             }
@@ -188,7 +192,7 @@ class DatasetConcurrencyIT {
         for (Long datasetId : datasetIds) {
             Future<?> future = executorService.submit(() -> {
                 try {
-                    sysDatasetService.deleteDataset(datasetId);
+                    datasetOperationService.batchDeleteDatasets(List.of(datasetId));
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     failureCount.incrementAndGet();

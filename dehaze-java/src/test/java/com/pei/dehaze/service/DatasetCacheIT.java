@@ -39,6 +39,9 @@ class DatasetCacheIT {
     @Autowired
     private SysDatasetService datasetService;
 
+    @Autowired
+    private DatasetOperationService datasetOperationService;
+
     @Autowired(required = false)
     private CacheManager cacheManager;
 
@@ -218,7 +221,7 @@ class DatasetCacheIT {
         datasetService.calculateStatistics(datasetId);
 
         // Act - 删除数据集
-        datasetService.deleteDataset(datasetId);
+        datasetOperationService.batchDeleteDatasets(List.of(datasetId));
 
         // Assert - 数据集应该被删除（由于@Transactional会回滚，这里只验证方法正常执行）
         assertThat(datasetId).isNotNull();

@@ -135,10 +135,15 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
 
     @Override
     public boolean deleteAlgorithms(List<Long> ids) {
-        List<SysAlgorithm> children = this.list(new LambdaQueryWrapper<SysAlgorithm>()
-                .in(SysAlgorithm::getParentId, ids));
-        List<Long> childrenIds = children.stream().map(SysAlgorithm::getId).toList();
-        return this.removeByIds(CollUtil.addAll(ids, childrenIds));
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<SysAlgorithm> allAlgorithms = this.list();
+        Set<Long> allIds = new HashSet<>();
+        for (Long id : ids) {
+            allIds.addAll(TreeDataUtils.findDescendantIds(allAlgorithms, id, SysAlgorithm::getId, SysAlgorithm::getParentId));
+        }
+        return this.removeByIds(allIds);
     }
 
     /**

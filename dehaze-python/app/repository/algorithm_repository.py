@@ -5,7 +5,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import delete, or_, select, func, desc
+from sqlalchemy import delete, select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_algorithm import SysAlgorithm, SysAlgorithmVersion
@@ -45,15 +45,23 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         db: AsyncSession,
         algorithm_ids: list[int],
     ) -> list[int]:
-        """获取算法及其子算法 ID（用于删除）"""
-        stmt = select(SysAlgorithm.id).where(
-            or_(
-                SysAlgorithm.id.in_(algorithm_ids),
-                SysAlgorithm.parent_id.in_(algorithm_ids),
-            )
-        )
-        result = await db.execute(stmt)
-        return [row[0] for row in result.fetchall()]
+        """获取算法及其所有子孙算法 ID（BFS 递归，用于批量删除）"""
+        if not algorithm_ids:
+            return []
+        all_algorithms = await self.get_list_with_keywords(db)
+        if not all_algorithms:
+            return []
+
+        from collections import defaultdict
+        children_map: dict[int, list[SysAlgorithm]] = defaultdict(list)
+        for algo in all_algorithms:
+            children_map[algo.parent_id].append(algo)
+
+        from app.utils.tree import bfs_collect_ids
+        all_ids: set[int] = set()
+        for algorithm_id in algorithm_ids:
+            all_ids.update(bfs_collect_ids(algorithm_id, children_map))
+        return list(all_ids)
 
     async def delete_by_ids(
         self,

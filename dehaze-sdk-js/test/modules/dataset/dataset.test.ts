@@ -1,9 +1,10 @@
-import { DatasetAPI, BatchDeleteForm, TaskAPI } from "../../../index";
+import { DatasetAPI, DatasetItemAPI, BatchDeleteForm, TaskAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import {
   createDatasetForm,
   createDatasetUpdateForm,
   createDatasetQuery,
+  createDatasetItemForm,
 } from "#/factories/dataset";
 
 describe("数据集接口测试", () => {
@@ -262,6 +263,136 @@ describe("数据集接口测试", () => {
       if (result.failedItems) {
         expect(result.failedItems.length).toBe(2);
       }
+    });
+
+    test("级联删除：同时选中父数据集和子数据集应递归删除所有子孙数据集", async () => {
+      const parentForm = createDatasetForm();
+      const parentDatasetId = await DatasetAPI.add(parentForm);
+
+      const childForm = createDatasetForm({ parentId: parentDatasetId });
+      const childDatasetId = await DatasetAPI.add(childForm);
+
+      const grandChildForm = createDatasetForm({ parentId: childDatasetId });
+      const grandChildDatasetId = await DatasetAPI.add(grandChildForm);
+
+      const batchForm: BatchDeleteForm = {
+        ids: [parentDatasetId, childDatasetId, grandChildDatasetId],
+      };
+      const result = await DatasetAPI.batchDelete(batchForm);
+      expect(result).toBeDefined();
+      if (result.successIds) {
+        expect(result.successIds.length).toBe(3);
+      }
+
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(parentDatasetId),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(childDatasetId),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(grandChildDatasetId),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
+    });
+
+    test("级联删除：仅选中父数据集应递归删除所有子孙数据集", async () => {
+      const parentForm = createDatasetForm();
+      const parentDatasetId = await DatasetAPI.add(parentForm);
+
+      const childForm = createDatasetForm({ parentId: parentDatasetId });
+      const childDatasetId = await DatasetAPI.add(childForm);
+
+      const grandChildForm = createDatasetForm({ parentId: childDatasetId });
+      const grandChildDatasetId = await DatasetAPI.add(grandChildForm);
+
+      const batchForm: BatchDeleteForm = {
+        ids: [parentDatasetId],
+      };
+      const result = await DatasetAPI.batchDelete(batchForm);
+      expect(result).toBeDefined();
+      if (result.successIds) {
+        expect(result.successIds.length).toBe(1);
+      }
+
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(parentDatasetId),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(childDatasetId),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(grandChildDatasetId),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
+    });
+
+    test("级联删除：删除含数据项的父数据集应同时删除所有子孙数据集及数据项", async () => {
+      const parentForm = createDatasetForm();
+      const parentDatasetId = await DatasetAPI.add(parentForm);
+
+      const childForm = createDatasetForm({ parentId: parentDatasetId });
+      const childDatasetId = await DatasetAPI.add(childForm);
+
+      const itemForm1 = createDatasetItemForm(childDatasetId, {
+        name: "级联删除测试数据项1",
+      });
+      const item1 = await DatasetItemAPI.add(itemForm1);
+
+      const itemForm2 = createDatasetItemForm(childDatasetId, {
+        name: "级联删除测试数据项2",
+      });
+      const item2 = await DatasetItemAPI.add(itemForm2);
+
+      const batchForm: BatchDeleteForm = {
+        ids: [parentDatasetId],
+      };
+      const result = await DatasetAPI.batchDelete(batchForm);
+      expect(result).toBeDefined();
+      if (result.successIds) {
+        expect(result.successIds.length).toBe(1);
+      }
+
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(parentDatasetId),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(childDatasetId),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        DatasetItemAPI.getById(item1.id),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
+      await expectBizError(
+        DatasetItemAPI.getById(item2.id),
+        ["A0401", "B0001", "A0400"],
+        undefined,
+        true
+      );
     });
   });
 

@@ -111,7 +111,7 @@ public class SysDatasetController {
     }
 
     @Operation(
-            summary = "删除单个数据集",
+            summary = "删除数据集",
             description = "删除指定的数据集，支持级联删除。删除范围包括：数据集本身、所有子数据集、" +
                     "关联的图片文件、缩略图文件和统计缓存。删除操作不可逆，请谨慎使用。"
     )
@@ -121,7 +121,7 @@ public class SysDatasetController {
             @PathVariable
             Long id
     ) {
-        datasetService.deleteDataset(id);
+        datasetOperationService.batchDeleteDatasets(List.of(id));
         return Result.success();
     }
 

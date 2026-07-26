@@ -17,6 +17,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -85,13 +86,17 @@ public class SysMenuController {
     }
 
     @Operation(summary = "删除菜单")
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:menu:delete')")
     public Result<Void> deleteMenu(
-            @Parameter(description ="菜单ID，多个以英文(,)分割") @PathVariable("id") Long id
+            @Parameter(description ="菜单ID，多个以英文(,)分割") @PathVariable("ids") String ids
     ) {
-        boolean result = menuService.deleteMenu(id);
-        return Result.judge(result);
+        List<Long> idList = Arrays.stream(ids.split(","))
+                .map(String::trim)
+                .map(Long::valueOf)
+                .toList();
+        menuService.deleteMenu(idList);
+        return Result.success();
     }
 
     @Operation(summary = "修改菜单显示状态")

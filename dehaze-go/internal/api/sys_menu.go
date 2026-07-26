@@ -196,30 +196,24 @@ func (api *SysMenuApi) UpdateMenu(c *gin.Context) {
 
 // DeleteMenu 删除菜单
 // @Summary 删除菜单
-// @Description 删除菜单
+// @Description 删除菜单（支持批量删除，多个ID以英文逗号分隔；级联删除子菜单）
 // @Tags 菜单接口
 // @Accept application/json
 // @Produce application/json
-// @Param id path int true "菜单ID"
+// @Param ids path string true "菜单ID，多个以英文逗号(,)拼接"
 // @Success 200 {object} common.Response
-// @Router /api/v1/menus/{id} [delete]
+// @Router /api/v1/menus/{ids} [delete]
 func (api *SysMenuApi) DeleteMenu(c *gin.Context) {
-	// 获取路径参数
-	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "菜单ID格式不正确"))
-		return
-	}
-
-	// 调用服务删除菜单
 	ctx := c.Request.Context()
-	err = api.menuService.Delete(ctx, id)
+	ids, err := parseIDsFromCSV(c.Param("ids"))
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-
+	if err := api.menuService.Delete(ctx, ids); err != nil {
+		_ = c.Error(err)
+		return
+	}
 	common.OkWithMessage("删除菜单成功", c)
 }
 

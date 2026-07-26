@@ -75,10 +75,10 @@ public interface SysMenuService extends IService<SysMenu> {
     MenuForm getMenuForm(Long id);
 
     /**
-     * 删除菜单
+     * 批量删除菜单（级联删除子孙菜单，并清理角色-菜单关联）
      *
-     * @param id
-     * @return
+     * @param ids 菜单ID集合
+     * @return 是否删除成功
      */
-    boolean deleteMenu(Long id);
+    boolean deleteMenu(List<Long> ids);
 }

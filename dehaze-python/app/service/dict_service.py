@@ -249,14 +249,14 @@ class DictTypeService:
         return result
 
     @staticmethod
-    async def delete_dict_types(db: AsyncSession, type_ids: list[int]) -> bool:
+    async def delete_dict_types(db: AsyncSession, redis: Redis, type_ids: list[int], force: bool = False) -> bool:
         """
         删除字典类型
 
         业务规则:
         1. 校验字典类型是否存在
-        2. 检查是否存在关联的字典数据
-        3. 存在关联数据则禁止删除
+        2. force=False 时检查是否存在关联的字典数据，存在则禁止删除
+        3. force=True 时级联删除关联的字典数据
         """
         # 校验字典类型是否存在
         exist_count = await dict_type_repository.count_by_ids(db, type_ids)
@@ -267,12 +267,18 @@ class DictTypeService:
         dict_types = await dict_type_repository.get_by_ids(db, type_ids)
         type_codes = [dt.code for dt in dict_types if dt.code]
         if type_codes:
-            counts = await dict_repository.count_by_type_codes(db, type_codes)
-            for dt in dict_types:
-                if counts.get(dt.code, 0) > 0:
-                    raise BusinessException(
-                        ResultCode.DATA_BIND_EXISTS,
-                        "存在关联的字典数据，无法删除")
+            if force:
+                await dict_repository.delete_by_type_codes(db, type_codes)
+                cache = CacheService(redis)
+                for code in type_codes:
+                    await cache.delete(f"{DICT_OPTIONS_CACHE_PREFIX}{code}")
+            else:
+                counts = await dict_repository.count_by_type_codes(db, type_codes)
+                for dt in dict_types:
+                    if counts.get(dt.code, 0) > 0:
+                        raise BusinessException(
+                            ResultCode.DATA_BIND_EXISTS,
+                            "存在关联的字典数据，无法删除")
 
         result = await dict_type_repository.delete_by_ids(db, type_ids)
         return result > 0

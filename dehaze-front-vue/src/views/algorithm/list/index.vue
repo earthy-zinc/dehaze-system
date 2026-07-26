@@ -22,6 +22,7 @@ const queryParams = reactive<AlgorithmQuery>({
   keywords: "",
 });
 const list = ref<Algorithm[]>([]);
+const ids = ref<number[]>([]);
 /** 全量算法（用于构建类型树） */
 const allAlgorithms = ref<Algorithm[]>([]);
 /** 当前选中的类型节点（"all" 表示全部） */
@@ -123,28 +124,56 @@ function openDialog(type: string, row: Partial<Algorithm>) {
   dialogRef.value.open(type, row);
 }
 
-// 删除算法（带算法名确认文案）
-function handleDelete(row: Algorithm) {
-  ElMessageBox.confirm(
-    `确认删除算法「${row.name}」吗？删除后不可恢复。`,
-    "警告",
-    {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    }
-  )
-    .then(async () => {
-      await AlgorithmAPI.deleteByIds([row.id.toString()]);
-      ElMessage.success("删除成功");
-      handleQuery();
-    })
-    .catch((err) => {
-      // 仅用户取消时静默，接口错误需提示
-      if (err !== "cancel" && err !== "close") {
-        ElMessage.error("删除失败：" + (err.message || "未知错误"));
+// 删除算法（支持单行和批量）
+function handleDelete(row?: Algorithm) {
+  if (row) {
+    ElMessageBox.confirm(
+      `确认删除算法「${row.name}」吗？删除后不可恢复。`,
+      "警告",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
       }
-    });
+    )
+      .then(async () => {
+        await AlgorithmAPI.deleteByIds([row.id.toString()]);
+        ElMessage.success("删除成功");
+        handleQuery();
+      })
+      .catch((err) => {
+        if (err !== "cancel" && err !== "close") {
+          ElMessage.error("删除失败：" + (err.message || "未知错误"));
+        }
+      });
+  } else if (ids.value.length > 0) {
+    ElMessageBox.confirm(
+      `确认删除选中的 ${ids.value.length} 个算法吗？删除后不可恢复。`,
+      "警告",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }
+    )
+      .then(async () => {
+        await AlgorithmAPI.deleteByIds(ids.value.map(String));
+        ElMessage.success("删除成功");
+        handleQuery();
+      })
+      .catch((err) => {
+        if (err !== "cancel" && err !== "close") {
+          ElMessage.error("删除失败：" + (err.message || "未知错误"));
+        }
+      });
+  } else {
+    ElMessage.warning("请勾选删除项");
+  }
+}
+
+/** 行复选框选中记录选中ID集合 */
+function handleSelectionChange(selection: any) {
+  ids.value = selection.map((item: any) => item.id);
 }
 
 const statusMap: Record<
@@ -256,6 +285,14 @@ onMounted(() => {
             <el-icon><Plus /></el-icon>
             新增算法
           </el-button>
+          <el-button
+            type="danger"
+            :disabled="ids.length === 0"
+            @click="handleDelete()"
+          >
+            <el-icon><Delete /></el-icon>
+            删除
+          </el-button>
           <span class="result-tip">
             共 <strong>{{ list.length }}</strong> 个算法
             <span v-if="selectedType !== 'all'">
@@ -274,7 +311,9 @@ onMounted(() => {
           :default-expand-all="true"
           highlight-current-row
           row-key="id"
+          @selection-change="handleSelectionChange"
         >
+          <el-table-column align="center" type="selection" width="55" />
           <el-table-column
             v-if="selectedColumns.includes('name')"
             label="名称"

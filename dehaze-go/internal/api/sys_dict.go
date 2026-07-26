@@ -313,11 +313,12 @@ func (api *SysDictApi) UpdateDictType(c *gin.Context) {
 
 // DeleteDictTypes 删除字典类型
 // @Summary 删除字典类型
-// @Description 删除字典类型
+// @Description force=true 时级联删除关联的字典数据
 // @Tags 字典接口
 // @Accept application/json
 // @Produce application/json
 // @Param ids path string true "字典类型ID，多个以英文逗号(,)分割"
+// @Param force query bool false "是否强制删除关联的字典数据"
 // @Success 200 {object} common.Response
 // @Router /api/v1/dict/types/{ids} [delete]
 func (api *SysDictApi) DeleteDictTypes(c *gin.Context) {
@@ -326,7 +327,8 @@ func (api *SysDictApi) DeleteDictTypes(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	if err := api.dictTypeService.Delete(c.Request.Context(), ids); err != nil {
+	force := c.Query("force") == "true"
+	if err := api.dictTypeService.Delete(c.Request.Context(), ids, force); err != nil {
 		_ = c.Error(err)
 		return
 	}

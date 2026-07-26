@@ -15,6 +15,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/read"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	menurepo "github.com/earthyzinc/dehaze-go/internal/repository/menu"
+	rolerepo "github.com/earthyzinc/dehaze-go/internal/repository/role"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
@@ -31,10 +32,11 @@ type MenuService struct {
 	cache types.ICache
 
 	menuRepo menurepo.IMenuRepository
+	roleRepo rolerepo.IRoleRepository
 }
 
-func NewMenuService(cache types.ICache, menuRepo menurepo.IMenuRepository) *MenuService {
-	return &MenuService{cache: cache, menuRepo: menuRepo}
+func NewMenuService(cache types.ICache, menuRepo menurepo.IMenuRepository, roleRepo rolerepo.IRoleRepository) *MenuService {
+	return &MenuService{cache: cache, menuRepo: menuRepo, roleRepo: roleRepo}
 }
 
 func (s *MenuService) GetList(ctx context.Context, q *query.MenuQuery) ([]vo.MenuVO, error) {
@@ -149,6 +151,11 @@ func (s *MenuService) Create(ctx context.Context, form *bo.MenuForm) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "创建菜单失败", err)
 	}
 
+	// 新增菜单默认分配给超级管理员角色
+	if rootRole, err := s.roleRepo.FindByCode(ctx, "ROOT"); err == nil && rootRole != nil {
+		_ = s.menuRepo.SaveRoleMenu(ctx, rootRole.ID, menu.ID)
+	}
+
 	s.clearAllRolePermsCache(ctx)
 	return nil
 }
@@ -213,26 +220,29 @@ func (s *MenuService) Update(ctx context.Context, id int64, form *bo.MenuForm) e
 	return nil
 }
 
-func (s *MenuService) Delete(ctx context.Context, id int64) error {
-	// 检查菜单是否存在
-	menu, err := s.menuRepo.FindByID(ctx, id)
+func (s *MenuService) Delete(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	// 校验所有传入的菜单ID都存在
+	count, err := s.menuRepo.CountByIDs(ctx, ids)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询菜单失败", err)
 	}
-	if menu == nil {
+	if count != int64(len(ids)) {
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "菜单不存在")
 	}
 
 	// 使用事务包装删除操作，确保数据一致性
 	err = s.menuRepo.Transaction(ctx, func(txRepo menurepo.IMenuRepository) error {
-		// 级联删除：删除当前菜单及所有子孙菜单
-		_, delErr := txRepo.DeleteCascade(ctx, id)
-		if delErr != nil {
+		// 先删除角色-菜单关联关系（含所有传入菜单及子孙菜单的关联，须在菜单删除前执行，否则子查询找不到菜单）
+		if delErr := txRepo.DeleteRoleMenuByMenuIDs(ctx, ids); delErr != nil {
 			return delErr
 		}
 
-		// 删除角色-菜单关联关系
-		if delErr := txRepo.DeleteRoleMenuByMenuID(ctx, id); delErr != nil {
+		// 批量级联删除：删除所有传入菜单及其子孙菜单
+		if _, delErr := txRepo.DeleteCascadeByIDs(ctx, ids); delErr != nil {
 			return delErr
 		}
 		return nil

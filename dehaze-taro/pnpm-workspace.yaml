@@ -1,9 +1,0 @@
-onlyBuiltDependencies:
-  - esbuild
-  - unrs-resolver
-
-overrides:
-  dehaze-sdk-js: link:../dehaze-sdk-js
-
-patchedDependencies:
-  '@tarojs/vite-runner@4.2.1': patches/@tarojs__vite-runner@4.2.1.patch

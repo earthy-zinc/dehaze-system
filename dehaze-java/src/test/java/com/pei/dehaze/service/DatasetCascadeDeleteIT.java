@@ -41,6 +41,9 @@ class DatasetCascadeDeleteIT {
     private SysDatasetService datasetService;
 
     @Autowired
+    private DatasetOperationService datasetOperationService;
+
+    @Autowired
     private SysDatasetMapper datasetMapper;
 
     @Autowired
@@ -136,7 +139,7 @@ class DatasetCascadeDeleteIT {
         Long emptyDatasetId = emptyDataset.getId();
 
         // Act
-        datasetService.deleteDataset(emptyDatasetId);
+        datasetOperationService.batchDeleteDatasets(List.of(emptyDatasetId));
 
         // Assert
         assertThat(datasetMapper.selectById(emptyDatasetId)).isNull();
@@ -198,7 +201,7 @@ class DatasetCascadeDeleteIT {
         assertThat(datasetMapper.selectById(parentDatasetId)).isNotNull();
 
         // Act - 删除子数据集
-        datasetService.deleteDataset(childDatasetId);
+        datasetOperationService.batchDeleteDatasets(List.of(childDatasetId));
 
         // Assert - 父数据集仍然存在
         SysDataset parent = datasetMapper.selectById(parentDatasetId);

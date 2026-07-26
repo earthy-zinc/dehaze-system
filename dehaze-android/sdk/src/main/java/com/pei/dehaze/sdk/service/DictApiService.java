@@ -26,7 +26,7 @@ public interface DictApiService {
     Call<Result<Void>> updateDictType(@Path("id") int id, @Body DictTypeForm data);
 
     @DELETE("/api/v1/dict/types/{ids}")
-    Call<Result<Void>> deleteDictTypes(@Path("ids") String ids);
+    Call<Result<Void>> deleteDictTypes(@Path("ids") String ids, @Query("force") boolean force);
 
     @GET("/api/v1/dict/page")
     Call<Result<PageResult<DictPageVO>>> getDictPage(@Query("pageNum") int pageNum,

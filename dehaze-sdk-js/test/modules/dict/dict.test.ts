@@ -359,6 +359,31 @@ describe("字典管理接口测试", () => {
         }
       } catch (e) {}
     });
+
+    test("强制删除：force=true 时级联删除关联的字典数据", async () => {
+      const dictTypeForm = createDictTypeForm();
+      await DictAPI.addDictType(dictTypeForm);
+      const dictTypePageResult = await DictAPI.getDictTypePage(
+        createDictTypeQuery({ keywords: dictTypeForm.code! })
+      );
+      const dictType = dictTypePageResult.list.find((d) => d.code === dictTypeForm.code);
+      expect(dictType).toBeDefined();
+      const dictTypeId = dictType!.id;
+
+      const dictForm = createDictForm({
+        typeCode: dictTypeForm.code || "",
+      });
+      await DictAPI.addDict(dictForm);
+
+      await DictAPI.deleteDictTypes(dictTypeId!.toString(), true);
+
+      await expectBizError(DictAPI.getDictTypeForm(dictTypeId!), "A0401", "不存在");
+
+      const dictPageResult = await DictAPI.getDictPage(
+        createDictQuery({ typeCode: dictTypeForm.code!, pageSize: 1000 })
+      );
+      expect(dictPageResult.list.length).toBe(0);
+    });
   });
 
   describe("GET /api/v1/dict/{typeCode}/options - 字典下拉列表", () => {

@@ -27,7 +27,7 @@ type IDictTypeService interface {
 	Update(ctx context.Context, id int64, form *bo.DictTypeFormBO) error
 
 	// Delete 删除字典类型
-	Delete(ctx context.Context, ids []int64) error
+	Delete(ctx context.Context, ids []int64, force bool) error
 }
 
 // IDictService 字典数据服务接口

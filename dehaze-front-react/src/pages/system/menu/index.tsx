@@ -112,7 +112,7 @@ const MenuManagement: React.FC = () => {
 
   const handleDelete = useCallback(
     (record: MenuVO) => {
-      MenuAPI.deleteById(record.id!)
+      MenuAPI.deleteByIds(String(record.id))
         .then(() => {
           message.success(`菜单「${record.name}」删除成功`);
           refreshListAndRoutes();

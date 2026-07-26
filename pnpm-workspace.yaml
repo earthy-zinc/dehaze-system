@@ -7,11 +7,24 @@ packages:
   - dehaze-front-react
 
 onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@tarojs/binding'
+  - '@tarojs/cli'
+  - bufferutil
+  - core-js
+  - electron
+  - electron-winstaller
+  - es5-ext
   - esbuild
-  - "@tarojs/binding"
-  - "@tarojs/cli"
+  - msw
+  - unrs-resolver
+  - utf-8-validate
+  - vue-demi
 
 overrides:
   '@tarojs/webpack5-prebundle>enhanced-resolve': 5.17.1
   '@vue/server-renderer': 3.5.39
   stylelint-config-recommended: ^17.0.0
+
+patchedDependencies:
+  '@tarojs/vite-runner@4.2.1': dehaze-taro/patches/@tarojs__vite-runner@4.2.1.patch
