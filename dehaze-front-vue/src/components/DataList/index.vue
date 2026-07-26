@@ -177,12 +177,8 @@ function handleSelectionChange(selection: any) {
 
 const dialogRef = ref();
 
-function onEdit<T extends Algorithm | Dataset>(type: string, row: T) {
-  dialogRef.value.open(type, row);
-}
-
 function openDialog<T extends Algorithm | Dataset>(type: string, dataset: T) {
-  onEdit(type, dataset);
+  dialogRef.value.open(type, dataset);
 }
 
 function handleSettings() {}
@@ -246,7 +242,10 @@ onMounted(() => {
 
     <el-card class="table-container" shadow="never">
       <div class="toolbar">
-        <el-button type="success" @click="openDialog('新增', {})">
+        <el-button
+          type="success"
+          @click="openDialog('新增', {} as Algorithm | Dataset)"
+        >
           <el-icon><Plus /></el-icon>
           新增
         </el-button>
@@ -338,7 +337,7 @@ onMounted(() => {
               link
               size="small"
               type="primary"
-              @click="handleShow(scope.row)"
+              @click="handleShow(scope.row as Dataset | Algorithm)"
             >
               <svg-icon icon-class="eye-open" />
               查看
@@ -348,7 +347,7 @@ onMounted(() => {
               link
               size="small"
               type="primary"
-              @click="openDialog('新增', scope.row)"
+              @click="openDialog('新增', scope.row as Dataset | Algorithm)"
             >
               <el-icon><Plus /></el-icon>
               新增
@@ -358,7 +357,7 @@ onMounted(() => {
               link
               size="small"
               type="primary"
-              @click="openDialog('编辑', scope.row)"
+              @click="openDialog('编辑', scope.row as Dataset | Algorithm)"
             >
               <el-icon><Edit /></el-icon>
               编辑
