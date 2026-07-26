@@ -1,13 +1,13 @@
 /**
  * 任务状态信息（标签 + 颜色）
  */
-import type { TaskVO, TaskStatus } from 'dehaze-sdk-js';
+import type { TaskCategory, TaskVO, TaskStatus } from 'dehaze-sdk-js';
 import { theme } from '@/theme';
 
 /** 任务（SDK TaskVO 别名） */
 export type Task = TaskVO;
 
-export type { TaskStatus };
+export type { TaskStatus, TaskCategory };
 
 /** 任务状态枚举值（统一常量，避免散落的裸字符串） */
 export const TaskStatusEnum = {
@@ -29,11 +29,27 @@ export const TASK_STATUS_MAP: Record<
   CANCELLED: { label: '已取消', color: theme.colors.text.secondary, bgColor: `${theme.colors.text.secondary}15` },
 };
 
+/** 任务类别筛选选项 */
+export const CATEGORY_FILTERS: { label: string; value: 'ALL' | TaskCategory }[] = [
+  { label: '全部', value: 'ALL' },
+  { label: '导入', value: 'import' },
+  { label: '导出', value: 'export' },
+];
+
 export const TASK_TYPE_MAP: Record<string, string> = {
   dataset_export: '数据集导出',
-  item_download: '数据项下载',
-  batch_download: '批量下载',
-  custom_export: '自定义导出',
+  user_export: '用户导出',
+  role_export: '角色导出',
+  dept_export: '部门导出',
+  menu_export: '菜单导出',
+  dict_export: '字典导出',
+  algorithm_export: '算法导出',
+  user_import: '用户导入',
+  role_import: '角色导入',
+  dept_import: '部门导入',
+  menu_import: '菜单导入',
+  dict_import: '字典导入',
+  algorithm_import: '算法导入',
 };
 
 /** 终态：不再轮询 */

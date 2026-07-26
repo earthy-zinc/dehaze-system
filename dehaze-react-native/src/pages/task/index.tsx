@@ -17,10 +17,11 @@ import Icon from '@/components/Icon';
 import { theme } from '@/theme';
 import { taskApi } from './services/taskApi';
 import type { TaskPage } from './services/taskApi';
-import type { Task, TaskStatus } from './types';
+import type { Task, TaskCategory, TaskStatus } from './types';
 import {
   TASK_STATUS_MAP,
   TASK_TYPE_MAP,
+  CATEGORY_FILTERS,
   TaskStatusEnum,
   isTerminal,
   isCancellable,
@@ -36,6 +37,9 @@ const MAX_POLL_DURATION = 10 * 60 * 1000;
 const TaskScreen: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<
+    'ALL' | TaskCategory
+  >('ALL');
   const [isLoading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -59,6 +63,7 @@ const TaskScreen: React.FC = () => {
 
         const result: TaskPage = await taskApi.getPage({
           status: statusFilter === 'ALL' ? undefined : statusFilter,
+          taskCategory: categoryFilter === 'ALL' ? undefined : categoryFilter,
           pageNum: page,
           pageSize: PAGE_SIZE,
         });
@@ -79,7 +84,7 @@ const TaskScreen: React.FC = () => {
         setRefreshing(false);
       }
     },
-    [statusFilter],
+    [statusFilter, categoryFilter],
   );
 
   useFocusEffect(
@@ -153,6 +158,14 @@ const TaskScreen: React.FC = () => {
   const handleStatusFilterChange = useCallback(
     (status: TaskStatus | 'ALL') => {
       setStatusFilter(status);
+      setCurrentPage(1);
+    },
+    [],
+  );
+
+  const handleCategoryFilterChange = useCallback(
+    (category: 'ALL' | TaskCategory) => {
+      setCategoryFilter(category);
       setCurrentPage(1);
     },
     [],
@@ -335,6 +348,31 @@ const TaskScreen: React.FC = () => {
   return (
     <MainLayout title="任务中心">
       <View style={styles.container}>
+        {/* 任务类别筛选 */}
+        <View style={styles.categoryBar}>
+          {CATEGORY_FILTERS.map(f => {
+            const isActive = categoryFilter === f.value;
+            return (
+              <TouchableOpacity
+                key={f.value}
+                style={[
+                  styles.categoryChip,
+                  isActive && styles.activeCategoryChip,
+                ]}
+                onPress={() => handleCategoryFilterChange(f.value)}
+                activeOpacity={0.8}>
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    isActive && styles.activeCategoryChipText,
+                  ]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {/* 状态筛选 */}
         <View style={styles.filterBar}>
           {statusFilters.map(f => {
@@ -409,6 +447,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.secondary,
+  },
+  categoryBar: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: theme.colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.background.tertiary,
+  },
+  categoryChip: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: theme.colors.background.tertiary,
+  },
+  activeCategoryChip: {
+    backgroundColor: theme.colors.secondary,
+  },
+  categoryChipText: {
+    fontSize: 13,
+    color: theme.colors.text.secondary,
+    fontWeight: '500',
+  },
+  activeCategoryChipText: {
+    color: theme.colors.text.inverse,
   },
   filterBar: {
     flexDirection: 'row',
