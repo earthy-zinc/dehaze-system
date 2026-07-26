@@ -3,6 +3,7 @@ package websocket
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
@@ -61,30 +62,46 @@ func HandleWebSocket(c *gin.Context) {
 
 	// 注册连接
 	wsConn := manager.Register(userID, conn)
+
+	var writeMu sync.Mutex
+	done := make(chan struct{})
+
 	defer func() {
+		close(done)
 		manager.Unregister(wsConn)
+		writeMu.Lock()
 		_ = conn.Close()
+		writeMu.Unlock()
 	}()
 
-	// 发送连接成功消息
-	welcome, _ := json.Marshal(map[string]interface{}{
+	welcome, err := json.Marshal(map[string]interface{}{
 		"type":    "connected",
 		"message": "WebSocket 连接成功",
 		"user_id": userID,
 	})
+	if err != nil {
+		logger.Error("WebSocket welcome 消息序列化失败", zap.Error(err))
+		return
+	}
+	writeMu.Lock()
 	_ = conn.WriteMessage(websocket.TextMessage, welcome)
+	writeMu.Unlock()
 
-	// 启动 ping 计时器
 	go func() {
 		ticker := time.NewTicker(pingPeriod)
 		defer ticker.Stop()
 		for {
 			select {
+			case <-done:
+				return
 			case <-ticker.C:
+				writeMu.Lock()
 				conn.SetWriteDeadline(time.Now().Add(writeWait))
 				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+					writeMu.Unlock()
 					return
 				}
+				writeMu.Unlock()
 			}
 		}
 	}()
@@ -112,9 +129,15 @@ func HandleWebSocket(c *gin.Context) {
 			continue
 		}
 		if msg["type"] == "ping" {
-			pong, _ := json.Marshal(map[string]interface{}{"type": "pong"})
+			pong, err := json.Marshal(map[string]interface{}{"type": "pong"})
+			if err != nil {
+				logger.Error("WebSocket pong 消息序列化失败", zap.Error(err))
+				continue
+			}
+			writeMu.Lock()
 			conn.SetWriteDeadline(time.Now().Add(writeWait))
 			_ = conn.WriteMessage(websocket.TextMessage, pong)
+			writeMu.Unlock()
 		}
 	}
 }

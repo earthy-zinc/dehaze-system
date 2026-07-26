@@ -21,6 +21,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const maxBodySize = 5 << 20
+
 // Client Python 算法服务 HTTP 客户端 — 生产级实现
 // 特性：
 //   - HTTP 连接池（复用 TCP 连接，避免握手开销）
@@ -61,10 +63,7 @@ func NewClient(cfg options.Algorithm) *Client {
 		ResponseHeaderTimeout: timeout,
 	}
 
-	maxRetry := cfg.MaxRetry
-	if maxRetry < 0 {
-		maxRetry = 0
-	}
+	maxRetry := max(cfg.MaxRetry, 0)
 	backoff := time.Duration(cfg.RetryBackoffMs) * time.Millisecond
 	if cfg.RetryBackoffMs <= 0 {
 		backoff = 1000 * time.Millisecond
@@ -97,79 +96,8 @@ func NewClient(cfg options.Algorithm) *Client {
 	}
 }
 
-// PredictionRequest 预测请求
-type PredictionRequest struct {
-	AlgorithmID int64  `json:"algorithmId"`
-	ImageURL    string `json:"imageUrl"`
-	Params      string `json:"params,omitempty"`
-}
-
-// PredictionResponse 预测响应
-type PredictionResponse struct {
-	LogID              int64  `json:"logId"`
-	Status             string `json:"status"`
-	ResultURL          string `json:"resultUrl,omitempty"`
-	ResultThumbnailURL string `json:"resultThumbnailUrl,omitempty"`
-	Time               int    `json:"time,omitempty"`
-	ErrorMessage       string `json:"errorMessage,omitempty"`
-}
-
-// EvaluationRequest 评估请求
-type EvaluationRequest struct {
-	AlgorithmID int64  `json:"algorithmId"`
-	PredURL     string `json:"predUrl"`
-	GtURL       string `json:"gtUrl"`
-}
-
-// EvaluationResponse 评估响应
-type EvaluationResponse struct {
-	LogID        int64              `json:"logId"`
-	Status       string             `json:"status"`
-	Metrics      map[string]float64 `json:"metrics,omitempty"`
-	Time         int                `json:"time,omitempty"`
-	ErrorMessage string             `json:"errorMessage,omitempty"`
-}
-
-// Predict 调用 Python 预测服务
-func (c *Client) Predict(ctx context.Context, req *PredictionRequest) (*PredictionResponse, error) {
-	var resp PredictionResponse
-	if err := c.doPost(ctx, "/api/v1/prediction", req, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
-// Evaluate 调用 Python 评估服务
-func (c *Client) Evaluate(ctx context.Context, req *EvaluationRequest) (*EvaluationResponse, error) {
-	var resp EvaluationResponse
-	if err := c.doPost(ctx, "/api/v1/evaluation", req, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
-// GetPredTaskStatus 查询预测任务状态（用于异步轮询）
-func (c *Client) GetPredTaskStatus(ctx context.Context, taskID int64) (*PredictionResponse, error) {
-	var resp PredictionResponse
-	path := fmt.Sprintf("/api/v1/prediction/%d", taskID)
-	if err := c.doGet(ctx, path, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
-// GetEvalTaskStatus 查询评估任务状态（用于异步轮询）
-func (c *Client) GetEvalTaskStatus(ctx context.Context, taskID int64) (*EvaluationResponse, error) {
-	var resp EvaluationResponse
-	path := fmt.Sprintf("/api/v1/evaluation/%d", taskID)
-	if err := c.doGet(ctx, path, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
 // doPost 通用 POST 请求 — 集成熔断器 + 重试 + 幂等键
-func (c *Client) doPost(ctx context.Context, path string, reqBody interface{}, respBody interface{}) error {
+func (c *Client) doPost(ctx context.Context, path string, reqBody any, respBody any) error {
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return fmt.Errorf("序列化请求失败: %w", err)
@@ -196,11 +124,11 @@ func (c *Client) doPost(ctx context.Context, path string, reqBody interface{}, r
 }
 
 // doGet 通用 GET 请求 — 用于查询任务状态
-func (c *Client) doGet(ctx context.Context, path string, respBody interface{}) error {
+func (c *Client) doGet(ctx context.Context, path string, respBody any) error {
 	url := c.baseURL + path
 
 	exec := func() error {
-		return c.doGetWithRetry(ctx, url, respBody, path)
+		return c.doGetWithRetry(ctx, url, respBody)
 	}
 	if c.breaker != nil {
 		if err := c.breaker.Execute(exec); err != nil {
@@ -215,12 +143,7 @@ func (c *Client) doGet(ctx context.Context, path string, respBody interface{}) e
 }
 
 // doGetWithRetry 带指数退避的重试逻辑（GET 请求）
-func (c *Client) doGetWithRetry(
-	ctx context.Context,
-	url string,
-	respBody interface{},
-	path string,
-) error {
+func (c *Client) doGetWithRetry(ctx context.Context, url string, respBody any) error {
 	var lastErr error
 	backoff := c.backoff
 
@@ -234,7 +157,7 @@ func (c *Client) doGetWithRetry(
 			backoff *= 2
 		}
 
-		lastErr = c.doSingleGet(ctx, url, respBody, path)
+		lastErr = c.doSingleGet(ctx, url, respBody)
 		if lastErr == nil {
 			return nil
 		}
@@ -253,8 +176,7 @@ func (c *Client) doGetWithRetry(
 func (c *Client) doSingleGet(
 	ctx context.Context,
 	url string,
-	respBody interface{},
-	path string,
+	respBody any,
 ) error {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -282,7 +204,7 @@ func (c *Client) doSingleGet(
 	}
 	defer httpResp.Body.Close()
 
-	respBytes, err := io.ReadAll(httpResp.Body)
+	respBytes, err := io.ReadAll(io.LimitReader(httpResp.Body, maxBodySize))
 	if err != nil {
 		return fmt.Errorf("读取响应失败: %w", err)
 	}
@@ -307,6 +229,9 @@ func (c *Client) doSingleGet(
 		return fmt.Errorf("解析响应数据失败: %w", err)
 	}
 
+	logger.Info("算法服务调用成功",
+		zap.String("url", url),
+		zap.Duration("elapsed", time.Since(start)))
 	return nil
 }
 
@@ -321,7 +246,7 @@ func (c *Client) doPostWithRetry(
 	url string,
 	body []byte,
 	idempotencyKey string,
-	respBody interface{},
+	respBody any,
 	path string,
 ) error {
 	var lastErr error
@@ -364,7 +289,7 @@ func (c *Client) doSinglePost(
 	url string,
 	body []byte,
 	idempotencyKey string,
-	respBody interface{},
+	respBody any,
 	path string,
 ) error {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
@@ -397,13 +322,12 @@ func (c *Client) doSinglePost(
 	}
 	defer httpResp.Body.Close()
 
-	respBytes, err := io.ReadAll(httpResp.Body)
+	respBytes, err := io.ReadAll(io.LimitReader(httpResp.Body, maxBodySize))
 	if err != nil {
 		return fmt.Errorf("读取响应失败: %w", err)
 	}
 
 	if httpResp.StatusCode != http.StatusOK {
-		// 5xx → 可重试；4xx → 不可重试
 		logger.Error("算法服务返回错误",
 			zap.Int("status", httpResp.StatusCode),
 			zap.String("body", string(respBytes)))
