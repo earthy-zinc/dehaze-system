@@ -364,65 +364,6 @@ func (_c *MockIUserRepository_FindByID_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// FindExportUsers provides a mock function with given fields: ctx, q
-func (_m *MockIUserRepository) FindExportUsers(ctx context.Context, q *query.UserPageQuery) ([]read.UserExport, error) {
-	ret := _m.Called(ctx, q)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FindExportUsers")
-	}
-
-	var r0 []read.UserExport
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *query.UserPageQuery) ([]read.UserExport, error)); ok {
-		return rf(ctx, q)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, *query.UserPageQuery) []read.UserExport); ok {
-		r0 = rf(ctx, q)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]read.UserExport)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, *query.UserPageQuery) error); ok {
-		r1 = rf(ctx, q)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockIUserRepository_FindExportUsers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindExportUsers'
-type MockIUserRepository_FindExportUsers_Call struct {
-	*mock.Call
-}
-
-// FindExportUsers is a helper method to define mock.On call
-//   - ctx context.Context
-//   - q *query.UserPageQuery
-func (_e *MockIUserRepository_Expecter) FindExportUsers(ctx interface{}, q interface{}) *MockIUserRepository_FindExportUsers_Call {
-	return &MockIUserRepository_FindExportUsers_Call{Call: _e.mock.On("FindExportUsers", ctx, q)}
-}
-
-func (_c *MockIUserRepository_FindExportUsers_Call) Run(run func(ctx context.Context, q *query.UserPageQuery)) *MockIUserRepository_FindExportUsers_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*query.UserPageQuery))
-	})
-	return _c
-}
-
-func (_c *MockIUserRepository_FindExportUsers_Call) Return(_a0 []read.UserExport, _a1 error) *MockIUserRepository_FindExportUsers_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockIUserRepository_FindExportUsers_Call) RunAndReturn(run func(context.Context, *query.UserPageQuery) ([]read.UserExport, error)) *MockIUserRepository_FindExportUsers_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // FindPage provides a mock function with given fields: ctx, q
 func (_m *MockIUserRepository) FindPage(ctx context.Context, q *query.UserPageQuery) (*read.PageResult[read.UserPage], error) {
 	ret := _m.Called(ctx, q)

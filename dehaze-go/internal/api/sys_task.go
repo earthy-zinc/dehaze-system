@@ -28,12 +28,12 @@ func NewSysTaskApi(taskService *taskservice.TaskService) *SysTaskApi {
 // @Tags 任务接口
 // @Accept application/json
 // @Produce application/json
-// @Param form body bo.ExportTaskCreateForm true "任务创建表单"
+// @Param form body bo.TaskCreateForm true "任务创建表单"
 // @Param Idempotency-Key header string false "客户端幂等键"
 // @Success 200 {object} common.Response{data=vo.TaskVO}
 // @Router /api/v1/tasks [post]
 func (api *SysTaskApi) CreateTask(c *gin.Context) {
-	var form bo.ExportTaskCreateForm
+	var form bo.TaskCreateForm
 	if err := c.ShouldBindJSON(&form); err != nil {
 		_ = c.Error(err)
 		return
@@ -45,7 +45,7 @@ func (api *SysTaskApi) CreateTask(c *gin.Context) {
 		return
 	}
 	idempotencyKey := c.GetHeader("Idempotency-Key")
-	task, err := api.taskService.CreateExportTask(c.Request.Context(), form, userID, idempotencyKey)
+	task, err := api.taskService.CreateTask(c.Request.Context(), form.TaskType, form.Params, userID, idempotencyKey)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -65,11 +65,12 @@ func (api *SysTaskApi) GetTaskPage(c *gin.Context) {
 		return
 	}
 	q := &query.TaskPageQuery{
-		PageNum:  pageNum,
-		PageSize: pageSize,
-		Status:   c.Query("status"),
-		TaskType: c.Query("taskType"),
-		UserID:   userID,
+		PageNum:      pageNum,
+		PageSize:     pageSize,
+		Status:       c.Query("status"),
+		TaskType:     c.Query("taskType"),
+		TaskCategory: c.Query("taskCategory"),
+		UserID:       userID,
 	}
 	result, err := api.taskService.GetPage(ctx, q)
 	if err != nil {

@@ -28,16 +28,6 @@ type ITaskService interface {
 }
 
 // TaskMessage 异步任务消息
-// Payload 为业务自定义内容，由消费者解析处理
-// Total 用于进度估算，可为空
-// CreatedAt 用于追踪与幂等处理
-// TaskType 建议为: export/thumbnail/dataset 等
-// TaskID 必须唯一
-// TraceID 用于链路追踪
-// CreatedBy 可用于审计
-// Extra 预留扩展字段
-// 注意: Payload 需要是可序列化对象
-// 后续可按需加版本字段
 type TaskMessage struct {
 	TaskID    string         `json:"taskId"`
 	TaskType  string         `json:"taskType"`
@@ -54,6 +44,5 @@ type AsyncTaskExecutor interface {
 	Initialize() error
 	Shutdown() error
 	IsConnected() bool
-	PublishExportTask(ctx context.Context, taskID string, form bo.ExportTaskCreateForm) error
 	PublishTask(ctx context.Context, msg TaskMessage) error
 }

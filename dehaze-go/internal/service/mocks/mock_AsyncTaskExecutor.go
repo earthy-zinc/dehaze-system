@@ -5,8 +5,6 @@ package mocks
 import (
 	context "context"
 
-	bo "github.com/earthyzinc/dehaze-go/internal/model/bo"
-
 	mock "github.com/stretchr/testify/mock"
 
 	task "github.com/earthyzinc/dehaze-go/internal/service/task"
@@ -111,54 +109,6 @@ func (_c *MockAsyncTaskExecutor_IsConnected_Call) Return(_a0 bool) *MockAsyncTas
 }
 
 func (_c *MockAsyncTaskExecutor_IsConnected_Call) RunAndReturn(run func() bool) *MockAsyncTaskExecutor_IsConnected_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// PublishExportTask provides a mock function with given fields: ctx, taskID, form
-func (_m *MockAsyncTaskExecutor) PublishExportTask(ctx context.Context, taskID string, form bo.ExportTaskCreateForm) error {
-	ret := _m.Called(ctx, taskID, form)
-
-	if len(ret) == 0 {
-		panic("no return value specified for PublishExportTask")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, bo.ExportTaskCreateForm) error); ok {
-		r0 = rf(ctx, taskID, form)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockAsyncTaskExecutor_PublishExportTask_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PublishExportTask'
-type MockAsyncTaskExecutor_PublishExportTask_Call struct {
-	*mock.Call
-}
-
-// PublishExportTask is a helper method to define mock.On call
-//   - ctx context.Context
-//   - taskID string
-//   - form bo.ExportTaskCreateForm
-func (_e *MockAsyncTaskExecutor_Expecter) PublishExportTask(ctx interface{}, taskID interface{}, form interface{}) *MockAsyncTaskExecutor_PublishExportTask_Call {
-	return &MockAsyncTaskExecutor_PublishExportTask_Call{Call: _e.mock.On("PublishExportTask", ctx, taskID, form)}
-}
-
-func (_c *MockAsyncTaskExecutor_PublishExportTask_Call) Run(run func(ctx context.Context, taskID string, form bo.ExportTaskCreateForm)) *MockAsyncTaskExecutor_PublishExportTask_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(bo.ExportTaskCreateForm))
-	})
-	return _c
-}
-
-func (_c *MockAsyncTaskExecutor_PublishExportTask_Call) Return(_a0 error) *MockAsyncTaskExecutor_PublishExportTask_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockAsyncTaskExecutor_PublishExportTask_Call) RunAndReturn(run func(context.Context, string, bo.ExportTaskCreateForm) error) *MockAsyncTaskExecutor_PublishExportTask_Call {
 	_c.Call.Return(run)
 	return _c
 }

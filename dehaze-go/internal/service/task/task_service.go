@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
-	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
@@ -21,14 +20,18 @@ import (
 )
 
 const (
-	TASK_CACHE_PREFIX     = "export:task:"
+	TASK_CACHE_PREFIX     = "task:"
 	TASK_CANCEL_PREFIX    = "task:cancel:"
 	TASK_EXPIRE_HOURS     = 24 * time.Hour
 	TASK_CANCEL_EXPIRE_MS = 5 * time.Minute
 
 	// 幂等键 Redis 缓存前缀（映射 idempotency_key -> task_id）
-	IDEMPOTENCY_KEY_PREFIX      = "idempotency:task:"
-	IDEMPOTENCY_KEY_TTL         = 24 * time.Hour
+	IDEMPOTENCY_KEY_PREFIX = "idempotency:task:"
+	IDEMPOTENCY_KEY_TTL    = 24 * time.Hour
+
+	// 进度节流参数（与 Java/Python 三端对齐：2s/5%）
+	ProgressThrottleInterval = 2 * time.Second
+	ProgressThrottleStep     = 5
 )
 
 // TaskService 任务服务
@@ -93,14 +96,14 @@ func (ts *TaskService) GetPage(ctx context.Context, q *query.TaskPageQuery) (*vo
 	}, nil
 }
 
-// CreateExportTask 创建导出任务
+// CreateTask 创建通用异步任务
 // 统一任务接口为异步执行：同步创建任务记录（PENDING），资源存在性校验在异步策略中执行。
 // 即使任务执行器发布失败，也不阻断任务创建，仅记录日志，任务最终由异步策略或超时清理处理。
 // idempotencyKey 为客户端幂等键（可空），相同键返回已有任务，避免重复创建。
-func (ts *TaskService) CreateExportTask(ctx context.Context, form bo.ExportTaskCreateForm, userID int64, idempotencyKey string) (*model.SysTask, error) {
+// taskType 为任务类型（如 user_export/role_import 等），params 为任务参数（任意可序列化结构）。
+func (ts *TaskService) CreateTask(ctx context.Context, taskType string, params interface{}, userID int64, idempotencyKey string) (*model.SysTask, error) {
 	ctx = database.SetUserID(ctx, userID)
 
-	// 幂等去重：若提供了 idempotencyKey，先查 DB 再查 Redis 缓存
 	if idempotencyKey != "" {
 		existing, err := ts.taskRepo.FindByIdempotencyKey(ctx, idempotencyKey)
 		if err != nil {
@@ -113,7 +116,6 @@ func (ts *TaskService) CreateExportTask(ctx context.Context, form bo.ExportTaskC
 			return existing, nil
 		}
 
-		// 并发兜底：查 Redis 缓存
 		cacheKey := IDEMPOTENCY_KEY_PREFIX + idempotencyKey
 		if cachedTaskID, _ := ts.cache.Get(ctx, cacheKey); cachedTaskID != "" {
 			if cachedTask, _ := ts.taskRepo.FindByTaskID(ctx, cachedTaskID); cachedTask != nil {
@@ -124,7 +126,7 @@ func (ts *TaskService) CreateExportTask(ctx context.Context, form bo.ExportTaskC
 
 	taskIDStr := uuid.New().String()
 
-	paramsJSON, err := json.Marshal(form)
+	paramsJSON, err := json.Marshal(params)
 	if err != nil {
 		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "参数序列化失败", err)
 	}
@@ -134,11 +136,9 @@ func (ts *TaskService) CreateExportTask(ctx context.Context, form bo.ExportTaskC
 
 	task := model.SysTask{
 		TaskID:         taskIDStr,
-		TaskType:       model.TaskTypeDatasetExport,
+		TaskType:       model.TaskType(taskType),
 		Status:         model.TaskStatusPending,
 		Progress:       0,
-		TotalFiles:     0,
-		ProcessedFiles: 0,
 		Params:         string(paramsJSON),
 		ExpiresAt:      &expiresAt,
 		IdempotencyKey: nil,
@@ -154,7 +154,6 @@ func (ts *TaskService) CreateExportTask(ctx context.Context, form bo.ExportTaskC
 
 	ts.cacheTask(ctx, &task)
 
-	// 缓存幂等键映射
 	if idempotencyKey != "" {
 		idempotencyCacheKey := IDEMPOTENCY_KEY_PREFIX + idempotencyKey
 		if err := ts.cache.Set(ctx, idempotencyCacheKey, taskIDStr, IDEMPOTENCY_KEY_TTL); err != nil {
@@ -162,26 +161,77 @@ func (ts *TaskService) CreateExportTask(ctx context.Context, form bo.ExportTaskC
 		}
 	}
 
-	// 发布异步任务，失败时仅记录日志，不阻断任务创建
-	// 资源存在性校验在异步策略中执行，任务最终状态可能为 FAILED
 	if ts.taskExecutor == nil {
 		ts.logger.Warn("任务执行器未初始化，任务将保持 PENDING 状态",
 			zap.Int64("taskID", task.ID),
 			zap.String("taskIDStr", taskIDStr))
-	} else if err := ts.taskExecutor.PublishExportTask(ctx, task.TaskID, form); err != nil {
-		ts.logger.Warn("发布导出任务失败，任务保持 PENDING 状态",
+	} else if err := ts.taskExecutor.PublishTask(ctx, TaskMessage{
+		TaskID:    task.TaskID,
+		TaskType:  taskType,
+		Payload:   params,
+		CreatedAt: now,
+		CreatedBy: userID,
+	}); err != nil {
+		ts.logger.Warn("发布任务失败，任务保持 PENDING 状态",
 			zap.Int64("taskID", task.ID),
 			zap.String("taskIDStr", taskIDStr),
+			zap.String("taskType", taskType),
 			zap.Error(err))
 	}
 
-	ts.logger.Info("创建导出任务成功",
+	ts.logger.Info("创建任务成功",
 		zap.Int64("taskID", task.ID),
 		zap.String("taskIDStr", taskIDStr),
-		zap.String("type", form.Type),
+		zap.String("taskType", taskType),
 		zap.Int64("userID", userID))
 
 	return &task, nil
+}
+
+// UpdateTaskResult 更新任务结果（用于异步任务完成时写入结果和过期时间）
+func (ts *TaskService) UpdateTaskResult(ctx context.Context, taskIDStr string, result string, expiresAt time.Time) error {
+	task, err := ts.taskRepo.FindByTaskID(ctx, taskIDStr)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询任务失败", err)
+	}
+	if task == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "任务不存在")
+	}
+
+	now := time.Now()
+	fields := map[string]interface{}{
+		"status":       model.TaskStatusCompleted,
+		"progress":     100,
+		"result":       result,
+		"completed_at": &now,
+		"expires_at":   &expiresAt,
+	}
+	if err := ts.taskRepo.UpdateFields(ctx, task.ID, fields); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "更新任务结果失败", err)
+	}
+
+	task.Status = model.TaskStatusCompleted
+	task.Progress = 100
+	task.Result = result
+	task.CompletedAt = &now
+	task.ExpiresAt = &expiresAt
+	ts.cacheTask(ctx, task)
+
+	ts.pushTaskWsMessage(taskIDStr, task.CreateBy, "task_status", map[string]interface{}{
+		"status":        string(model.TaskStatusCompleted),
+		"progress":      100,
+		"result":        result,
+		"error_message": "",
+	})
+
+	return nil
+}
+
+// IsCancelled 检查任务是否已被取消（通过 Redis 取消标志判断）
+func (ts *TaskService) IsCancelled(ctx context.Context, taskIDStr string) bool {
+	cancelKey := TASK_CANCEL_PREFIX + taskIDStr
+	val, _ := ts.cache.Get(ctx, cancelKey)
+	return val == "true"
 }
 
 // GetTaskStatus 查询任务状态
@@ -359,17 +409,19 @@ func (ts *TaskService) RetryTask(ctx context.Context, taskIDStr string, userID i
 		return nil, common.NewBizError(common.DATA_STATE_NOT_ALLOW, "仅失败的任务可重试")
 	}
 
-	// 重置任务状态为 PENDING，清除错误信息
+	// 重置任务状态为 PENDING，清除错误信息，retryCount +1（与 Java/Python 三端对齐）
 	now := time.Now()
 	expiresAt := now.Add(TASK_EXPIRE_HOURS)
+	newRetryCount := task.RetryCount + 1
 	err = ts.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{
-		"status":        model.TaskStatusPending,
-		"progress":      0,
+		"status":          model.TaskStatusPending,
+		"progress":        0,
 		"processed_files": 0,
-		"error_message": "",
-		"started_at":    nil,
-		"completed_at":  nil,
-		"expires_at":    &expiresAt,
+		"error_message":   "",
+		"started_at":      nil,
+		"completed_at":    nil,
+		"expires_at":      &expiresAt,
+		"retry_count":     newRetryCount,
 	})
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "重置任务状态失败", err)
@@ -383,16 +435,23 @@ func (ts *TaskService) RetryTask(ctx context.Context, taskIDStr string, userID i
 	task.StartedAt = nil
 	task.CompletedAt = nil
 	task.ExpiresAt = &expiresAt
+	task.RetryCount = newRetryCount
 	ts.cacheTask(ctx, task)
 
-	// 重新发布到 MQ
-	var form bo.ExportTaskCreateForm
-	if err := json.Unmarshal([]byte(task.Params), &form); err != nil {
+	// 重新发布到 MQ（使用通用 PublishTask，payload 为原始 params JSON）
+	var payload interface{}
+	if err := json.Unmarshal([]byte(task.Params), &payload); err != nil {
 		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "解析任务参数失败", err)
 	}
 
 	if ts.taskExecutor != nil {
-		if err := ts.taskExecutor.PublishExportTask(ctx, task.TaskID, form); err != nil {
+		if err := ts.taskExecutor.PublishTask(ctx, TaskMessage{
+			TaskID:    task.TaskID,
+			TaskType:  string(task.TaskType),
+			Payload:   payload,
+			CreatedAt: now,
+			CreatedBy: userID,
+		}); err != nil {
 			ts.logger.Warn("重试发布任务失败，任务保持 PENDING 状态",
 				zap.String("taskID", taskIDStr), zap.Error(err))
 		}

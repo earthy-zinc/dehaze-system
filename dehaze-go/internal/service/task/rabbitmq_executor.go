@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/config/options"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
@@ -48,18 +47,6 @@ func (e *RabbitMQTaskExecutor) Shutdown() error {
 // IsConnected 返回 Publisher 连接是否活跃
 func (e *RabbitMQTaskExecutor) IsConnected() bool {
 	return e.publisher.IsConnected()
-}
-
-// PublishExportTask 发布导出任务
-// taskID 为任务 UUID（task.TaskID），非数据库自增主键
-func (e *RabbitMQTaskExecutor) PublishExportTask(ctx context.Context, taskID string, form bo.ExportTaskCreateForm) error {
-	msg := TaskMessage{
-		TaskID:    taskID,
-		TaskType:  "export",
-		Payload:   form,
-		CreatedAt: time.Now(),
-	}
-	return e.PublishTask(ctx, msg)
 }
 
 // PublishTask 发布通用任务消息

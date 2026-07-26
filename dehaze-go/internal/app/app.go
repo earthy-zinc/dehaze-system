@@ -32,6 +32,8 @@ import (
 	evalservice "github.com/earthyzinc/dehaze-go/internal/service/evaluation"
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	ihservice "github.com/earthyzinc/dehaze-go/internal/service/input_history"
+	importexportservice "github.com/earthyzinc/dehaze-go/internal/service/import_export"
+	"github.com/earthyzinc/dehaze-go/internal/service/import_export/handlers"
 	menuservice "github.com/earthyzinc/dehaze-go/internal/service/menu"
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
 	roleservice "github.com/earthyzinc/dehaze-go/internal/service/role"
@@ -162,6 +164,38 @@ func (a *Application) Init() error {
 	taskExecutor := a.taskExecutor
 	taskService := taskservice.NewTaskService(taskRepo, datasetRepo, cacheClient, zap.L(), taskExecutor)
 	itemFileService := fileservice.NewItemFileService(cacheClient, itemFileRepo, datasetItemRepo, fileService, taskExecutor)
+
+	importExportFileGenerator := importexportservice.NewFileGenerator()
+	importExportTemplateMgr := importexportservice.NewTemplateManager(importExportFileGenerator)
+	exportHandlers := []importexportservice.ExportHandler{
+		handlers.NewUserExportHandler(gormDB),
+		handlers.NewRoleExportHandler(gormDB),
+		handlers.NewDeptExportHandler(gormDB),
+		handlers.NewMenuExportHandler(gormDB),
+		handlers.NewDictExportHandler(gormDB),
+		handlers.NewDatasetExportHandler(gormDB, storageService),
+		handlers.NewAlgorithmExportHandler(gormDB),
+	}
+	importHandlers := []importexportservice.ImportHandler{
+		handlers.NewUserImportHandler(gormDB, deptRepo),
+		handlers.NewRoleImportHandler(gormDB),
+		handlers.NewDeptImportHandler(gormDB),
+		handlers.NewMenuImportHandler(gormDB),
+		handlers.NewDictImportHandler(gormDB),
+		handlers.NewAlgorithmImportHandler(gormDB),
+	}
+	exportRegistry := importexportservice.NewExportHandlerRegistry(exportHandlers)
+	importRegistry := importexportservice.NewImportHandlerRegistry(importHandlers)
+	importExportService := importexportservice.NewImportExportService(
+		exportRegistry,
+		importRegistry,
+		importExportFileGenerator,
+		importExportTemplateMgr,
+		storageService,
+		taskService,
+		importexportservice.NoOpVirusScanner{},
+		zap.L(),
+	)
 	datasetService := datasetservice.NewDatasetService(cacheClient, datasetRepo, datasetItemRepo, datasetStatsRepo, itemFileRepo, fileRepo)
 	datasetItemService := datasetservice.NewDatasetItemService(cacheClient, datasetItemRepo, datasetRepo, itemFileRepo, fileRepo, itemFileService)
 	datasetOperationService := datasetservice.NewDatasetOperationService(
@@ -174,6 +208,7 @@ func (a *Application) Init() error {
 		taskExecutor,
 	)
 	taskApi := api.NewSysTaskApi(taskService)
+	importExportApi := api.NewImportExportApi(importExportService)
 	inputHistoryService := ihservice.NewInputHistoryService(inputHistoryRepo)
 	algoClient := algo.NewClient(cfg.Algorithm)
 	predictionService := predservice.NewPredictionService(predLogRepo, algorithmRepo, algoClient, cacheClient)
@@ -246,6 +281,7 @@ func (a *Application) Init() error {
 	router.RegisterItemFileRoutes(protectedV1, itemFileApi)
 	router.RegisterAlgorithmRoutes(protectedV1, algorithmApi)
 	router.RegisterTaskRoutes(protectedV1, taskApi)
+	router.RegisterImportExportRoutes(protectedV1, importExportApi)
 	router.RegisterImageInputRoutes(protectedV1, inputHistoryApi)
 	router.RegisterPredictionRoutes(protectedV1, predictionApi)
 	router.RegisterEvaluationRoutes(protectedV1, evaluationApi)

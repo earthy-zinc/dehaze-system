@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"io"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
@@ -48,18 +47,6 @@ type IUserService interface {
 	// GetCurrentUserInfo 获取当前登录用户信息
 	GetCurrentUserInfo(ctx context.Context, userID int64) (*vo.UserInfoVO, error)
 
-	// ImportUsers 导入用户
-	ImportUsers(ctx context.Context, data []vo.UserImportVO) (*vo.ImportResultVO, error)
-
-	// ExportUsers 导出用户到Excel文件，返回临时文件路径
-	ExportUsers(ctx context.Context, q *query.UserPageQuery) (string, error)
-
 	// UpdatePassword 修改用户密码
 	UpdatePassword(ctx context.Context, id int64, password string) error
-
-	// ImportUsersFromFile 从文件导入用户
-	ImportUsersFromFile(ctx context.Context, file io.Reader) (*vo.ImportResultVO, error)
-
-	// DownloadImportTemplate 下载导入模板
-	DownloadImportTemplate(ctx context.Context) (string, error)
 }

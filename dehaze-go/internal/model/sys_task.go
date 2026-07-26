@@ -17,9 +17,20 @@ const (
 type TaskType string
 
 const (
-	TaskTypeDatasetExport TaskType = "dataset_export" // 数据集导出任务
-	TaskTypeItemDownload  TaskType = "item_download"  // 数据项下载任务
-	TaskTypeBatchDownload TaskType = "batch_download" // 批量下载任务
+	TaskTypeUserExport      TaskType = "user_export"
+	TaskTypeRoleExport      TaskType = "role_export"
+	TaskTypeDeptExport      TaskType = "dept_export"
+	TaskTypeMenuExport      TaskType = "menu_export"
+	TaskTypeDictExport      TaskType = "dict_export"
+	TaskTypeDatasetExport   TaskType = "dataset_export"
+	TaskTypeAlgorithmExport TaskType = "algorithm_export"
+
+	TaskTypeUserImport      TaskType = "user_import"
+	TaskTypeRoleImport      TaskType = "role_import"
+	TaskTypeDeptImport      TaskType = "dept_import"
+	TaskTypeMenuImport      TaskType = "menu_import"
+	TaskTypeDictImport      TaskType = "dict_import"
+	TaskTypeAlgorithmImport TaskType = "algorithm_import"
 )
 
 // SysTask 系统任务表

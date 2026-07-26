@@ -203,62 +203,6 @@ func (r *UserRepository) FindPageWithRoles(ctx context.Context, q *query.UserPag
 	return results, total, nil
 }
 
-// FindExportUsers 导出用户列表
-func (r *UserRepository) FindExportUsers(ctx context.Context, q *query.UserPageQuery) ([]read.UserExport, error) {
-	queryBuilder := r.db.WithContext(ctx).Table("sys_user u").
-		Select("u.username, u.nickname, u.mobile, u.email, u.status, " +
-			"CASE u.gender WHEN 1 THEN '男' WHEN 2 THEN '女' ELSE '未知' END as gender, " +
-			"d.name as dept_name, u.create_time").
-		Joins("LEFT JOIN sys_dept d ON u.dept_id = d.id").
-		Where("u.deleted = 0 AND u.username != 'root'")
-
-	if q.Keywords != "" {
-		keyword := "%" + q.Keywords + "%"
-		queryBuilder = queryBuilder.Where("u.username LIKE ? OR u.nickname LIKE ? OR u.mobile LIKE ?", keyword, keyword, keyword)
-	}
-	if q.Status != nil {
-		queryBuilder = queryBuilder.Where("u.status = ?", *q.Status)
-	}
-	if q.DeptId != nil {
-		queryBuilder = queryBuilder.Where("u.dept_id = ?", *q.DeptId)
-	}
-
-	var exportData []struct {
-		Username   string    `json:"username"`
-		Nickname   string    `json:"nickname"`
-		DeptName   string    `json:"dept_name"`
-		Gender     string    `json:"gender"`
-		Mobile     string    `json:"mobile"`
-		Email      string    `json:"email"`
-		Status     int8      `json:"status"`
-		CreateTime time.Time `json:"create_time"`
-	}
-
-	if err := queryBuilder.Find(&exportData).Error; err != nil {
-		return nil, err
-	}
-
-	userExports := make([]read.UserExport, 0, len(exportData))
-	for _, data := range exportData {
-		statusLabel := "禁用"
-		if data.Status == 1 {
-			statusLabel = "启用"
-		}
-		userExports = append(userExports, read.UserExport{
-			Username:    data.Username,
-			Nickname:    data.Nickname,
-			DeptName:    data.DeptName,
-			Gender:      data.Gender,
-			Mobile:      data.Mobile,
-			Email:       data.Email,
-			StatusLabel: statusLabel,
-			CreateTime:  data.CreateTime,
-		})
-	}
-
-	return userExports, nil
-}
-
 // ExistsRootInIDs 检查是否包含超级管理员
 func (r *UserRepository) ExistsRootInIDs(ctx context.Context, ids []int64) (bool, error) {
 	var count int64

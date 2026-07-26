@@ -73,11 +73,20 @@ var (
 	OPERATION_FAILED    = &ResultCode{"A0600", "操作失败"}
 	OPERATION_COMPLETED = &ResultCode{"A0601", "操作已完成"}
 
-	// A07xx: 文件上传
+	// A07xx: 文件上传与导入导出
 	USER_UPLOAD_FILE_ERROR          = &ResultCode{"A0700", "用户上传文件异常"}
 	USER_UPLOAD_FILE_TYPE_NOT_MATCH = &ResultCode{"A0701", "用户上传文件类型不匹配"}
 	USER_UPLOAD_FILE_SIZE_EXCEEDS   = &ResultCode{"A0702", "用户上传文件太大"}
 	USER_UPLOAD_IMAGE_SIZE_EXCEEDS  = &ResultCode{"A0703", "用户上传图片太大"}
+	IMPORT_FILE_EMPTY               = &ResultCode{"A0704", "上传文件为空或无数据行"}
+	IMPORT_FILE_PARSE_ERROR         = &ResultCode{"A0705", "文件解析失败"}
+	IMPORT_TEMPLATE_MISMATCH        = &ResultCode{"A0706", "导入文件表头与模板不一致"}
+	IMPORT_REQUIRED_FIELD_MISSING   = &ResultCode{"A0707", "必填字段为空"}
+	IMPORT_DATA_VALIDATE_ERROR      = &ResultCode{"A0708", "数据校验失败"}
+	IMPORT_ROWS_EXCEED_LIMIT        = &ResultCode{"A0709", "导入数据超出限制"}
+	EXPORT_ROWS_EXCEED_LIMIT        = &ResultCode{"A0710", "导出行数超出限制"}
+	MODULE_IMPORT_NOT_SUPPORTED     = &ResultCode{"A0711", "不支持该模块导入"}
+	MODULE_EXPORT_NOT_SUPPORTED     = &ResultCode{"A0712", "不支持该模块导出"}
 
 	// ========== B 类：系统端错误 ==========
 
@@ -99,6 +108,7 @@ var (
 	SYSTEM_RESOURCE_EXHAUSTION = &ResultCode{"B0310", "系统资源耗尽"}
 	SYSTEM_RESOURCE_ACCESS_ERR = &ResultCode{"B0320", "系统资源访问异常"}
 	SYSTEM_READ_DISK_FILE_ERR  = &ResultCode{"B0321", "系统读取磁盘文件失败"}
+	TASK_CONCURRENT_EXCEED     = &ResultCode{"B0308", "导入导出任务并发数超限"}
 
 	// ========== C 类：第三方服务错误 ==========
 
@@ -168,6 +178,15 @@ var allResultCodes = map[string]*ResultCode{
 	"A0701": USER_UPLOAD_FILE_TYPE_NOT_MATCH,
 	"A0702": USER_UPLOAD_FILE_SIZE_EXCEEDS,
 	"A0703": USER_UPLOAD_IMAGE_SIZE_EXCEEDS,
+	"A0704": IMPORT_FILE_EMPTY,
+	"A0705": IMPORT_FILE_PARSE_ERROR,
+	"A0706": IMPORT_TEMPLATE_MISMATCH,
+	"A0707": IMPORT_REQUIRED_FIELD_MISSING,
+	"A0708": IMPORT_DATA_VALIDATE_ERROR,
+	"A0709": IMPORT_ROWS_EXCEED_LIMIT,
+	"A0710": EXPORT_ROWS_EXCEED_LIMIT,
+	"A0711": MODULE_IMPORT_NOT_SUPPORTED,
+	"A0712": MODULE_EXPORT_NOT_SUPPORTED,
 
 	// B 类：系统端错误
 	"B0001": SYSTEM_EXECUTION_ERROR,
@@ -178,6 +197,7 @@ var allResultCodes = map[string]*ResultCode{
 	"B0211": RATE_LIMIT,
 	"B0220": DEGRADATION,
 	"B0300": SYSTEM_RESOURCE_ERROR,
+	"B0308": TASK_CONCURRENT_EXCEED,
 	"B0310": SYSTEM_RESOURCE_EXHAUSTION,
 	"B0320": SYSTEM_RESOURCE_ACCESS_ERR,
 	"B0321": SYSTEM_READ_DISK_FILE_ERR,

@@ -72,6 +72,14 @@ func (r *taskRepository) FindPage(ctx context.Context, q *query.TaskPageQuery) (
 	if q.TaskType != "" {
 		db = db.Where("task_type = ?", q.TaskType)
 	}
+	if q.TaskCategory != "" {
+		switch q.TaskCategory {
+		case "export":
+			db = db.Where("task_type LIKE ?", "%\\_export")
+		case "import":
+			db = db.Where("task_type LIKE ?", "%\\_import")
+		}
+	}
 	if q.UserID > 0 {
 		db = db.Where("create_by = ?", q.UserID)
 	}

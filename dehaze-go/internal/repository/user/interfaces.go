@@ -30,9 +30,6 @@ type IUserRepository interface {
 	// FindPageWithRoles 分页查询用户列表（含角色名称）
 	FindPageWithRoles(ctx context.Context, q *query.UserPageQuery, deptIDs []int64) ([]read.UserPageWithRoles, int64, error)
 
-	// FindExportUsers 导出用户列表
-	FindExportUsers(ctx context.Context, q *query.UserPageQuery) ([]read.UserExport, error)
-
 	// ExistsRootInIDs 检查是否包含超级管理员
 	ExistsRootInIDs(ctx context.Context, ids []int64) (bool, error)
 
