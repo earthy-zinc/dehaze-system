@@ -107,8 +107,7 @@ const PermissionDialog = forwardRef<PermissionDialogRef, PermissionDialogProps>(
     const handleCheck = useCallback(
       (
         checked:
-          | React.Key[]
-          | { checked: React.Key[]; halfChecked: React.Key[] }
+          React.Key[] | { checked: React.Key[]; halfChecked: React.Key[] }
       ) => {
         const keys = Array.isArray(checked) ? checked : checked.checked;
         setCheckedKeys(keys);

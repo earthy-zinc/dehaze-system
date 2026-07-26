@@ -1,4 +1,5 @@
 import { DeptAPI, type DeptQuery, type DeptVO } from "dehaze-sdk-js";
+import ImportExportToolbar from "@/components/ImportExportToolbar";
 import {
   Button,
   Card,
@@ -101,7 +102,7 @@ const DeptManagement: React.FC = () => {
 
   const handleDelete = useCallback(
     (record: DeptVO) => {
-      DeptAPI.deleteById(record.id!)
+      DeptAPI.deleteByIds(String(record.id))
         .then(() => {
           message.success(`部门「${record.name}」删除成功`);
           refreshList();
@@ -250,6 +251,11 @@ const DeptManagement: React.FC = () => {
                   新增
                 </Button>
               )}
+              <ImportExportToolbar
+                module="dept"
+                queryParams={queryParams}
+                onImportComplete={refreshList}
+              />
             </Space>
           </Form.Item>
         </Form>

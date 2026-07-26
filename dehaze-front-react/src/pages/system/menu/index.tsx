@@ -1,4 +1,5 @@
 import { MenuAPI, type MenuQuery, type MenuVO } from "dehaze-sdk-js";
+import ImportExportToolbar from "@/components/ImportExportToolbar";
 import { type DisPatchType, RootState } from "@/store";
 import { generateRoutes } from "@/store/modules/permissionSlice";
 import {
@@ -255,6 +256,11 @@ const MenuManagement: React.FC = () => {
               >
                 新增
               </Button>
+              <ImportExportToolbar
+                module="menu"
+                queryParams={queryParams}
+                onImportComplete={refreshListAndRoutes}
+              />
             </Space>
           </Form.Item>
         </Form>

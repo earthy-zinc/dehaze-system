@@ -6,6 +6,7 @@ import {
 import AlgorithmFormDialog, {
   type AlgorithmFormDialogRef,
 } from "@/pages/algorithm/components/AlgorithmFormDialog";
+import ImportExportToolbar from "@/components/ImportExportToolbar";
 import {
   DeleteOutlined,
   EditOutlined,
@@ -300,6 +301,11 @@ export default function AlgorithmList(): React.JSX.Element {
               >
                 新增
               </Button>
+              <ImportExportToolbar
+                module="algorithm"
+                queryParams={queryParams}
+                onImportComplete={refreshList}
+              />
             </Space>
           </Form.Item>
         </Form>

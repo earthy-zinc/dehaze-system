@@ -35,7 +35,12 @@ import React, {
   useState,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { type TaskVO, type TaskQuery, type TaskStatus } from "dehaze-sdk-js";
+import {
+  type TaskVO,
+  type TaskQuery,
+  type TaskStatus,
+  type TaskCategory,
+} from "dehaze-sdk-js";
 import "./index.scss";
 
 /** 轮询间隔（毫秒） */
@@ -53,9 +58,18 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 /** 任务类型映射 */
 const TASK_TYPE_MAP: Record<string, string> = {
   dataset_export: "数据集导出",
-  item_download: "数据项下载",
-  batch_download: "批量下载",
-  custom_export: "自定义导出",
+  user_export: "用户导出",
+  role_export: "角色导出",
+  dept_export: "部门导出",
+  menu_export: "菜单导出",
+  dict_export: "字典导出",
+  algorithm_export: "算法导出",
+  user_import: "用户导入",
+  role_import: "角色导入",
+  dept_import: "部门导入",
+  menu_import: "菜单导入",
+  dict_import: "字典导入",
+  algorithm_import: "算法导入",
 };
 
 /** 状态筛选选项 */
@@ -67,6 +81,19 @@ const STATUS_OPTIONS = [
   { label: "失败", value: "FAILED" },
   { label: "已取消", value: "CANCELLED" },
 ];
+
+/** 类别筛选选项 */
+const CATEGORY_OPTIONS = [
+  { label: "全部", value: "" },
+  { label: "导入", value: "import" },
+  { label: "导出", value: "export" },
+];
+
+/** 判断是否为导入任务 */
+const isImportTask = (taskType?: string): boolean => {
+  if (!taskType) return false;
+  return taskType.endsWith("_import");
+};
 
 /** 格式化日期时间 */
 function formatDateTime(value?: Date | string): string {
@@ -91,7 +118,8 @@ const TaskManagement: React.FC = () => {
   const [queryParams, setQueryParams] = useState<TaskQuery>({
     pageNum: 1,
     pageSize: 10,
-    status: "",
+    status: undefined,
+    taskCategory: undefined,
   });
   const [refreshFlag, setRefreshFlag] = useState(0);
 
@@ -116,12 +144,7 @@ const TaskManagement: React.FC = () => {
   const loadTaskList = useCallback(
     async (params: TaskQuery) => {
       try {
-        await dispatch(
-          fetchTaskList({
-            ...params,
-            status: params.status || undefined,
-          })
-        );
+        await dispatch(fetchTaskList(params));
       } catch (error: any) {
         message.error(error?.message || "任务列表加载失败");
       }
@@ -219,7 +242,16 @@ const TaskManagement: React.FC = () => {
     setQueryParams((prev) => ({
       ...prev,
       pageNum: 1,
-      status: value,
+      status: (value || undefined) as TaskStatus | undefined,
+    }));
+  }, []);
+
+  /** 类别筛选变化 */
+  const handleCategoryChange = useCallback((value: string) => {
+    setQueryParams((prev) => ({
+      ...prev,
+      pageNum: 1,
+      taskCategory: (value || undefined) as TaskCategory | undefined,
     }));
   }, []);
 
@@ -380,7 +412,7 @@ const TaskManagement: React.FC = () => {
       {
         title: "操作",
         key: "action",
-        width: 220,
+        width: 240,
         align: "center",
         fixed: "right",
         render: (_: unknown, record: TaskVO) => (
@@ -405,16 +437,27 @@ const TaskManagement: React.FC = () => {
                 取消
               </Button>
             )}
-            {record.status === "COMPLETED" && (
+            {record.status === "COMPLETED" && isImportTask(record.taskType) && (
               <Button
                 type="link"
                 size="small"
                 icon={<DownloadOutlined />}
                 onClick={() => handleDownload(record)}
               >
-                下载
+                查看结果
               </Button>
             )}
+            {record.status === "COMPLETED" &&
+              !isImportTask(record.taskType) && (
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<DownloadOutlined />}
+                  onClick={() => handleDownload(record)}
+                >
+                  下载
+                </Button>
+              )}
           </Space>
         ),
       },
@@ -428,7 +471,19 @@ const TaskManagement: React.FC = () => {
     <div className="task-management-container">
       {/* 状态筛选区域 */}
       <Card className="filter-card" size="small">
-        <Space>
+        <Space wrap>
+          <span>任务类别：</span>
+          <Radio.Group
+            buttonStyle="solid"
+            value={queryParams.taskCategory || ""}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+          >
+            {CATEGORY_OPTIONS.map((opt) => (
+              <Radio.Button key={opt.value} value={opt.value}>
+                {opt.label}
+              </Radio.Button>
+            ))}
+          </Radio.Group>
           <span>状态筛选：</span>
           <Radio.Group
             buttonStyle="solid"
@@ -483,7 +538,7 @@ const TaskManagement: React.FC = () => {
                 icon={<DownloadOutlined />}
                 onClick={() => currentTask && handleDownload(currentTask)}
               >
-                下载结果
+                {isImportTask(currentTask?.taskType) ? "查看结果" : "下载结果"}
               </Button>
             </Space>
           ) : currentTask?.status === "PENDING" ||

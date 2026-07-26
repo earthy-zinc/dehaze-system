@@ -1,4 +1,5 @@
 import { RoleAPI, type RolePageVO, type RoleQuery } from "dehaze-sdk-js";
+import ImportExportToolbar from "@/components/ImportExportToolbar";
 import { useHasPerm } from "@/hooks/usePermission";
 import {
   Button,
@@ -11,7 +12,6 @@ import {
   Space,
   Switch,
   Table,
-  Tag,
   type TableColumnsType,
 } from "antd";
 import {
@@ -350,6 +350,11 @@ const RoleManagement: React.FC = () => {
                   删除
                 </Button>
               )}
+              <ImportExportToolbar
+                module="role"
+                queryParams={queryParams}
+                onImportComplete={refreshList}
+              />
             </Space>
           </Form.Item>
         </Form>

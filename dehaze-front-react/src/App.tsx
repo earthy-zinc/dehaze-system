@@ -12,10 +12,8 @@ import { RouterProvider } from "react-router-dom";
 import { ThemeEnum } from "./enums/ThemeEnum";
 import useSystemTheme from "./hooks/useSystemTheme";
 
-/** 品牌主色（参考 UI/UX 设计规范 §2.1） */
+/** 品牌主色 */
 const BRAND_PRIMARY = "#3B82F6";
-/** 品牌渐变副色 */
-const BRAND_GRADIENT_END = "#6366F1";
 
 function App() {
   const [messageApi, contextHolder] = message.useMessage();
@@ -69,18 +67,18 @@ function App() {
           algorithm,
           cssVar: true,
           token: {
-            // 品牌主色（参考 UI/UX 设计规范 §2.1）
+            // 品牌主色
             colorPrimary: BRAND_PRIMARY,
             // 链接色
             colorLink: BRAND_PRIMARY,
-            // 圆角：卡片 16px，输入 8px，按钮 10px（参考 §5.1）
+            // 圆角：卡片 16px，输入 8px，按钮 10px
             borderRadius: 8,
             borderRadiusLG: 16,
             borderRadiusSM: 6,
-            // 字体栈（参考 §3.1）
+            // 字体栈
             fontFamily:
               "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
-            // 阴影（参考 §5.2 Level 1）
+            // 阴影
             boxShadow:
               "0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)",
             boxShadowSecondary:
@@ -149,10 +147,3 @@ function App() {
 }
 
 export default App;
-
-/** 暴露品牌色供其他模块使用 */
-export const BRAND_COLORS = {
-  primary: BRAND_PRIMARY,
-  gradientEnd: BRAND_GRADIENT_END,
-  gradient: `linear-gradient(135deg, ${BRAND_PRIMARY} 0%, ${BRAND_GRADIENT_END} 100%)`,
-};

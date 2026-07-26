@@ -2,6 +2,7 @@ import { DatasetAPI, type Dataset, type DatasetQuery } from "dehaze-sdk-js";
 import DatasetFormDialog, {
   type DatasetFormDialogRef,
 } from "@/pages/dataset/components/DatasetFormDialog";
+import ImportExportToolbar from "@/components/ImportExportToolbar";
 import {
   DeleteOutlined,
   EditOutlined,
@@ -249,6 +250,11 @@ export default function DatasetList() {
               >
                 新增
               </Button>
+              <ImportExportToolbar
+                module="dataset"
+                importable={false}
+                queryParams={queryParams}
+              />
             </Space>
           </Form.Item>
         </Form>

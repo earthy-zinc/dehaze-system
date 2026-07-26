@@ -3,6 +3,7 @@ import {
   type DictTypePageVO,
   type DictTypeQuery,
 } from "dehaze-sdk-js";
+import ImportExportToolbar from "@/components/ImportExportToolbar";
 import {
   Button,
   Card,
@@ -256,6 +257,11 @@ const DictManagement: React.FC = () => {
               >
                 删除
               </Button>
+              <ImportExportToolbar
+                module="dict"
+                queryParams={query}
+                onImportComplete={refreshList}
+              />
             </Space>
           </Form.Item>
         </Form>

@@ -5,12 +5,12 @@ import {
   type UserPageVO,
   type UserQuery,
 } from "dehaze-sdk-js";
+import ImportExportToolbar from "@/components/ImportExportToolbar";
 import { useDebounceFn } from "ahooks";
 import {
   Button,
   Card,
   DatePicker,
-  Dropdown,
   Empty,
   Form,
   Input,
@@ -23,24 +23,15 @@ import {
   Switch,
   Table,
   Tree,
-  TreeSelect,
-  Upload,
-  type MenuProps,
   type TableColumnsType,
-  type UploadFile,
 } from "antd";
 import {
   DeleteOutlined,
-  DownOutlined,
-  DownloadOutlined,
   EditOutlined,
-  ExportOutlined,
-  ImportOutlined,
   KeyOutlined,
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
-  UploadOutlined,
 } from "@ant-design/icons";
 import React, {
   useCallback,
@@ -66,30 +57,6 @@ function buildDeptTree(depts: DeptVO[]): any[] {
     key: dept.id,
     children: dept.children?.length ? buildDeptTree(dept.children) : undefined,
   }));
-}
-
-/** 递归转换部门数据为 TreeSelect 组件需要的格式 */
-function buildDeptTreeSelectData(depts: DeptVO[]): any[] {
-  return depts.map((dept) => ({
-    title: dept.name,
-    value: dept.id,
-    children: dept.children?.length
-      ? buildDeptTreeSelectData(dept.children)
-      : undefined,
-  }));
-}
-
-/** 下载二进制数据为文件 */
-function downloadBlob(data: ArrayBuffer, filename: string) {
-  const blob = new Blob([data]);
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
 
 const UserManagement: React.FC = () => {
@@ -130,17 +97,6 @@ const UserManagement: React.FC = () => {
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | undefined>(
     undefined
   );
-
-  // 导出loading
-  const [exportLoading, setExportLoading] = useState(false);
-
-  // 导入弹窗
-  const [importDialogVisible, setImportDialogVisible] = useState(false);
-  const [importLoading, setImportLoading] = useState(false);
-  const [importDeptId, setImportDeptId] = useState<number | undefined>(
-    undefined
-  );
-  const [importFileList, setImportFileList] = useState<UploadFile[]>([]);
 
   // ==================== 数据加载 ====================
 
@@ -333,82 +289,6 @@ const UserManagement: React.FC = () => {
         .finally(() => setStatusUpdatingId(undefined));
     },
     [refreshList]
-  );
-
-  /** 下载导入模板 */
-  const handleDownloadTemplate = useCallback(async () => {
-    try {
-      const data = await UserAPI.downloadTemplate();
-      downloadBlob(data, "用户导入模板.xlsx");
-      message.success("模板下载成功");
-    } catch (error: any) {
-      message.error(error?.message || "模板下载失败");
-    }
-  }, []);
-
-  /** 导出用户列表 */
-  const handleExport = useCallback(async () => {
-    setExportLoading(true);
-    try {
-      const data = await UserAPI.export(queryParams);
-      downloadBlob(data, "用户列表.xlsx");
-      message.success("导出成功");
-    } catch (error: any) {
-      message.error(error?.message || "导出失败");
-    } finally {
-      setExportLoading(false);
-    }
-  }, [queryParams]);
-
-  /** 打开导入弹窗 */
-  const handleOpenImport = useCallback(() => {
-    setImportDeptId(selectedDeptId);
-    setImportFileList([]);
-    setImportDialogVisible(true);
-  }, [selectedDeptId]);
-
-  /** 提交导入 */
-  const handleImportSubmit = useCallback(async () => {
-    if (importDeptId === undefined) {
-      message.warning("请选择所属部门");
-      return;
-    }
-    const file = importFileList[0]?.originFileObj as File | undefined;
-    if (!file) {
-      message.warning("请选择Excel文件");
-      return;
-    }
-    setImportLoading(true);
-    try {
-      await UserAPI.import(importDeptId, file);
-      message.success("导入成功");
-      setImportDialogVisible(false);
-      refreshList();
-    } catch (error: any) {
-      message.error(error?.message || "导入失败");
-    } finally {
-      setImportLoading(false);
-    }
-  }, [importDeptId, importFileList, refreshList]);
-
-  /** 导入下拉菜单点击 */
-  const importMenuItems: MenuProps["items"] = useMemo(
-    () => [
-      { key: "template", label: "下载模板", icon: <DownloadOutlined /> },
-      { key: "import", label: "导入数据", icon: <ImportOutlined /> },
-    ],
-    []
-  );
-
-  const handleImportMenuClick = useCallback(
-    ({ key }: { key: string }) => {
-      if (key === "template") {
-        handleDownloadTemplate();
-      } else if (key === "import") {
-        handleOpenImport();
-      }
-    },
-    [handleDownloadTemplate, handleOpenImport]
   );
 
   // ==================== 表格列定义 ====================
@@ -630,25 +510,14 @@ const UserManagement: React.FC = () => {
                 >
                   删除
                 </Button>
-                {/* 导入下拉菜单 */}
-                <Dropdown
-                  menu={{
-                    items: importMenuItems,
-                    onClick: handleImportMenuClick,
+                <ImportExportToolbar
+                  module="user"
+                  queryParams={queryParams}
+                  extraImportParams={{
+                    deptId: selectedDeptId,
                   }}
-                >
-                  <Button icon={<ImportOutlined />}>
-                    导入 <DownOutlined />
-                  </Button>
-                </Dropdown>
-                {/* 导出 */}
-                <Button
-                  icon={<ExportOutlined />}
-                  loading={exportLoading}
-                  onClick={handleExport}
-                >
-                  导出
-                </Button>
+                  onImportComplete={refreshList}
+                />
               </Space>
             </Form.Item>
           </Form>
@@ -682,52 +551,6 @@ const UserManagement: React.FC = () => {
 
       {/* 密码重置弹窗 */}
       <PasswordResetDialog ref={passwordDialogRef} onSuccess={refreshList} />
-
-      {/* 导入弹窗 */}
-      <Modal
-        title="导入用户"
-        open={importDialogVisible}
-        confirmLoading={importLoading}
-        onOk={handleImportSubmit}
-        onCancel={() => setImportDialogVisible(false)}
-        okText="确定"
-        cancelText="取消"
-        destroyOnHidden
-      >
-        <Form layout="vertical">
-          <Form.Item label="所属部门" required>
-            <TreeSelect
-              treeData={buildDeptTreeSelectData(deptList)}
-              value={importDeptId}
-              onChange={(value: number) => setImportDeptId(value)}
-              placeholder="请选择部门"
-              allowClear
-              treeDefaultExpandAll
-            />
-          </Form.Item>
-          <Form.Item label="Excel文件" required>
-            <Upload
-              accept=".xls,.xlsx"
-              maxCount={1}
-              fileList={importFileList}
-              beforeUpload={(file) => {
-                setImportFileList([
-                  {
-                    uid: file.uid,
-                    name: file.name,
-                    status: "done",
-                    originFileObj: file,
-                  } as UploadFile,
-                ]);
-                return false;
-              }}
-              onRemove={() => setImportFileList([])}
-            >
-              <Button icon={<UploadOutlined />}>选择文件</Button>
-            </Upload>
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 };
