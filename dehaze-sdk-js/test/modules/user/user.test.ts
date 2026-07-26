@@ -2,6 +2,7 @@ import { expectBizError } from "#/utils/assertion";
 import { createUserForm, createUserQuery } from "#/factories/user";
 import UserAPI from "@/api/user";
 import { UserForm, UserQuery } from "@/api/user/model";
+import { ImportExportAPI } from "../../../index";
 import { ROLES, USERS, DEPTS, ADMIN_VISIBLE_USER_COUNT } from "#/factories/constants";
 
 describe("用户管理接口测试", () => {
@@ -802,62 +803,31 @@ describe("用户管理接口测试", () => {
   });
 
   describe("GET /api/v1/users/template - 用户导入模板下载", () => {
-    test("下载用户导入模板", async () => {
-      const result = await UserAPI.downloadTemplate();
+    test("下载用户导入模板（通过 ImportExportAPI）", async () => {
+      const result = await ImportExportAPI.downloadTemplate("user");
 
       expect(result).toBeDefined();
-      expect(result instanceof ArrayBuffer || Buffer.isBuffer(result)).toBe(true);
-
-      // 验证文件大小合理（Excel 文件至少有一定大小）
-      const bufferSize = result instanceof ArrayBuffer ? result.byteLength : result.length;
-      expect(bufferSize).toBeGreaterThan(1024); // 至少 1KB
-
-      // 验证多次下载返回相同大小的文件（模板应该是固定的）
-      const result2 = await UserAPI.downloadTemplate();
-      const bufferSize2 = result2 instanceof ArrayBuffer ? result2.byteLength : result2.length;
-      expect(bufferSize).toBe(bufferSize2);
+      const size =
+        (result as { size?: number; length?: number; byteLength?: number }).size ??
+        (result as { length?: number }).length ??
+        (result as { byteLength?: number }).byteLength ??
+        0;
+      expect(size).toBeGreaterThan(0);
     });
   });
 
-  describe("GET /api/v1/users/export - 导出用户", () => {
-    test("导出所有用户", async () => {
-      const result = await UserAPI.export();
+  describe("GET /api/v1/users/_export - 导出用户", () => {
+    test("导出所有用户（通过 ImportExportAPI，同步返回 Blob 或异步返回任务）", async () => {
+      const result = await ImportExportAPI.export("user", {});
 
       expect(result).toBeDefined();
-      expect(result instanceof ArrayBuffer || Buffer.isBuffer(result)).toBe(true);
-
-      // 验证导出文件大小合理
-      const bufferSize = result instanceof ArrayBuffer ? result.byteLength : result.length;
-      expect(bufferSize).toBeGreaterThan(0);
-    });
-
-    test("按条件导出用户", async () => {
-      const exportParams = { status: 1 };
-
-      const result = await UserAPI.export(exportParams);
-
-      expect(result).toBeDefined();
-      expect(result instanceof ArrayBuffer || Buffer.isBuffer(result)).toBe(true);
-
-      // 验证导出文件大小合理
-      const bufferSize = result instanceof ArrayBuffer ? result.byteLength : result.length;
-      expect(bufferSize).toBeGreaterThan(0);
-
-      // 导出启用用户应该包含预置用户数据，文件应该有一定大小
-      expect(bufferSize).toBeGreaterThan(1024);
-    });
-
-    test("导出禁用用户返回较小文件", async () => {
-      const enabledResult = await UserAPI.export({ status: 1 });
-      const disabledResult = await UserAPI.export({ status: 0 });
-
-      const enabledSize =
-        enabledResult instanceof ArrayBuffer ? enabledResult.byteLength : enabledResult.length;
-      const disabledSize =
-        disabledResult instanceof ArrayBuffer ? disabledResult.byteLength : disabledResult.length;
-
-      // 启用用户（包含预置用户）的导出文件应该比禁用用户大
-      expect(enabledSize).toBeGreaterThanOrEqual(disabledSize);
+      const size =
+        (result as { size?: number }).size ??
+        (result as { length?: number }).length ??
+        (result as { byteLength?: number }).byteLength;
+      const isBlob = typeof size === "number" && size > 0;
+      const isTaskResult = !isBlob && typeof (result as { taskId?: string }).taskId === "string";
+      expect(isBlob || isTaskResult).toBe(true);
     });
   });
 

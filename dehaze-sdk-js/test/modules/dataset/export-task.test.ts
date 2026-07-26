@@ -107,105 +107,6 @@ describe("导出任务接口测试", () => {
     });
   });
 
-  describe("POST /api/v1/tasks - 创建数据项下载任务（item_download）", () => {
-    let itemId: number;
-
-    beforeAll(async () => {
-      const itemForm = createDatasetItemForm(testDatasetId, {
-        sceneType: "urban",
-        name: "下载任务测试数据项",
-      });
-      const item = await DatasetItemAPI.add(itemForm);
-      itemId = item.id;
-    });
-
-    afterAll(async () => {
-      try {
-        await DatasetItemAPI.deleteById(itemId);
-      } catch (e) {
-        // 忽略
-      }
-    });
-
-    test("正向测试：创建单个数据项下载任务", async () => {
-      const result = await TaskAPI.create({
-        type: "item_download",
-        targetId: itemId,
-      });
-      expect(result.taskId).toBeTruthy();
-      expect(typeof result.taskId).toBe("string");
-      expect(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).toContain(result.status);
-    });
-
-    test("参数校验：缺少targetId", async () => {
-      // 统一任务接口为异步执行：targetId 为 null 不是同步校验错误，
-      // 任务创建成功（PENDING），异步策略 validateParams 抛出异常，任务状态变为 FAILED。
-      const result = await TaskAPI.create({ type: "item_download" } as any);
-      expect(result.taskId).toBeDefined();
-      expect(result.status).toBe("PENDING");
-    });
-
-    test("边界测试：重复创建下载任务", async () => {
-      const task1 = await TaskAPI.create({
-        type: "item_download",
-        targetId: itemId,
-      });
-      expect(task1.taskId).toBeDefined();
-
-      const task2 = await TaskAPI.create({
-        type: "item_download",
-        targetId: itemId,
-      });
-      expect(task2.taskId).toBeDefined();
-      // 两次创建的任务ID应不同
-      expect(task1.taskId).not.toBe(task2.taskId);
-    });
-  });
-
-  describe("POST /api/v1/tasks - 批量下载数据项（batch_download）", () => {
-    test("正向测试：批量下载所有数据项", async () => {
-      const result = await TaskAPI.create({
-        type: "batch_download",
-        targetIds: testItemIds,
-        options: { structure: "by_item" },
-      });
-      expect(result.taskId).toBeTruthy();
-      expect(typeof result.taskId).toBe("string");
-      expect(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).toContain(result.status);
-    });
-
-    test("正向测试：扁平结构批量下载", async () => {
-      const result = await TaskAPI.create({
-        type: "batch_download",
-        targetIds: testItemIds,
-        options: { structure: "flat" },
-      });
-      expect(result.taskId).toBeTruthy();
-      expect(typeof result.taskId).toBe("string");
-    });
-
-    test("参数校验：空ID数组", async () => {
-      // 统一任务接口为异步执行：空 targetIds 不是同步校验错误（非 null），
-      // 任务创建成功（PENDING），异步执行时 listByIds 返回空列表，任务状态变为 FAILED。
-      const result = await TaskAPI.create({
-        type: "batch_download",
-        targetIds: [],
-      });
-      expect(result.taskId).toBeDefined();
-      expect(result.status).toBe("PENDING");
-    });
-
-    test("边界测试：单个数据项批量下载", async () => {
-      expect(testItemIds.length).toBeGreaterThan(0);
-
-      const result = await TaskAPI.create({
-        type: "batch_download",
-        targetIds: [testItemIds[0]!],
-      });
-      expect(result.taskId).toBeDefined();
-    });
-  });
-
   describe("综合测试：导出任务流程", () => {
     test("完整流程：创建数据集 -> 创建数据项 -> 导出", async () => {
       const datasetForm = createDatasetForm({ type: "图像去雾" });
@@ -215,7 +116,7 @@ describe("导出任务接口测试", () => {
         sceneType: "urban",
         name: "完整流程测试数据项",
       });
-      const item = await DatasetItemAPI.add(itemForm);
+      await DatasetItemAPI.add(itemForm);
 
       // 数据集导出
       const exportTask = await TaskAPI.create({
@@ -223,13 +124,6 @@ describe("导出任务接口测试", () => {
         targetId: datasetId,
       });
       expect(exportTask.taskId).toBeDefined();
-
-      // 数据项下载
-      const downloadTask = await TaskAPI.create({
-        type: "item_download",
-        targetId: item.id,
-      });
-      expect(downloadTask.taskId).toBeDefined();
 
       await DatasetAPI.deleteById(datasetId);
     });

@@ -21,7 +21,7 @@
     "clean": "rimraf dist",
     "build": "tsup",
     "dev": "tsup --watch",
-    "prepare": "npm run build",
+    "prepare": "pnpm run build",
     "test": "vitest --run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",

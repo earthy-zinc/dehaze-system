@@ -104,51 +104,6 @@ class UserAPI {
       method: "delete",
     });
   }
-
-  /**
-   * 下载用户导入模板
-   */
-  static downloadTemplate() {
-    return request({
-      url: "/api/v1/users/template",
-      method: "get",
-      responseType: "arraybuffer",
-    });
-  }
-
-  /**
-   * 导出用户
-   *
-   * @param queryParams
-   */
-  static export(queryParams?: Partial<UserQuery>) {
-    return request({
-      url: "/api/v1/users/_export",
-      method: "get",
-      params: queryParams,
-      responseType: "arraybuffer",
-    });
-  }
-
-  /**
-   * 导入用户（multipart/form-data）
-   *
-   * @param deptId 部门ID
-   * @param file Excel文件
-   */
-  static import(deptId: number, file: File) {
-    const formData = new FormData();
-    formData.append("file", file);
-    return request({
-      url: "/api/v1/users/_import",
-      method: "post",
-      params: { deptId },
-      data: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-  }
 }
 
 export default UserAPI;

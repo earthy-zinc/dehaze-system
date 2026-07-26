@@ -34,6 +34,28 @@ service.interceptors.response.use(
     const interceptors = configManager.getInterceptors();
 
     if (response.config.responseType === "arraybuffer" || response.config.responseType === "blob") {
+      const contentTypeRaw = response.headers["content-type"];
+      const contentType =
+        typeof contentTypeRaw === "string"
+          ? contentTypeRaw
+          : Array.isArray(contentTypeRaw)
+            ? (contentTypeRaw[0] ?? "")
+            : "";
+      if (contentType.includes("application/json") && response.data instanceof Blob) {
+        const text = await response.data.text();
+        const parsed = JSON.parse(text);
+        if (parsed.code !== ResultEnum.SUCCESS) {
+          const error = new Error(parsed?.msg || "Business error") as AxiosError;
+          error.response = response;
+          error.config = response.config;
+          error.name = "AxiosError";
+          error.isAxiosError = true;
+          return Promise.reject(error);
+        }
+        const result =
+          (await interceptors.onResponse?.({ ...response, data: parsed })) || parsed.data;
+        return result === null ? undefined : result;
+      }
       const result = (await interceptors.onResponse?.(response)) || response.data;
       return result;
     }

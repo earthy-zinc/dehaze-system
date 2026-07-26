@@ -2,13 +2,35 @@ import { PageQuery } from "@/types";
 
 /**
  * 任务类型
+ *
+ * - dataset_export: 数据集导出（通过 TaskAPI.create 直接创建）
+ * - {module}_export: 各模块导出任务（由 ImportExportAPI.export 内部创建）
+ * - {module}_import: 各模块导入任务（由 ImportExportAPI.import 内部创建）
  */
-export type TaskType = "dataset_export" | "item_download" | "batch_download" | "custom_export";
+export type TaskType =
+  | "dataset_export"
+  | "user_export"
+  | "role_export"
+  | "dept_export"
+  | "menu_export"
+  | "dict_export"
+  | "algorithm_export"
+  | "user_import"
+  | "role_import"
+  | "dept_import"
+  | "menu_import"
+  | "dict_import"
+  | "algorithm_import";
 
 /**
  * 任务状态
  */
 export type TaskStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+
+/**
+ * 任务类别
+ */
+export type TaskCategory = "import" | "export";
 
 /**
  * 任务创建表单
@@ -21,7 +43,7 @@ export interface TaskCreateForm {
   /** 目标资源ID列表（批量导出时使用） */
   targetIds?: number[];
   /** 导出选项配置（文件组织方式、包含类型等） */
-  options?: Record<string, any>;
+  options?: Record<string, unknown>;
 }
 
 /**
@@ -30,8 +52,10 @@ export interface TaskCreateForm {
 export interface TaskQuery extends PageQuery {
   /** 任务状态筛选 */
   status?: TaskStatus;
-  /** 任务类型筛选 */
-  taskType?: TaskType;
+  /** 任务类型筛选（支持逗号分隔多个） */
+  taskType?: string;
+  /** 任务类别筛选：import / export */
+  taskCategory?: TaskCategory;
 }
 
 /**

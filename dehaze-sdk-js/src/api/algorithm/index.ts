@@ -97,49 +97,6 @@ class AlgorithmAPI {
     });
   }
 
-  /** 导出单个算法（返回 JSON 文件） */
-  static exportAlgorithm(id: number) {
-    return request<any, Blob>({
-      url: `/api/v1/algorithms/${id}/_export`,
-      method: "get",
-      responseType: "blob",
-    });
-  }
-
-  /** 批量导出算法 */
-  static batchExport(ids: number[]) {
-    return request<any, Blob>({
-      url: "/api/v1/algorithms/_export",
-      method: "post",
-      data: ids,
-      responseType: "blob",
-    });
-  }
-
-  /** 校验导入包 */
-  static validateImport(file: File) {
-    const formData = new FormData();
-    formData.append("file", file);
-    return request<any, string>({
-      url: "/api/v1/algorithms/_import/validate",
-      method: "post",
-      data: formData,
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-  }
-
-  /** 导入算法 */
-  static importAlgorithm(file: File) {
-    const formData = new FormData();
-    formData.append("file", file);
-    return request({
-      url: "/api/v1/algorithms/_import",
-      method: "post",
-      data: formData,
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-  }
-
   /** 获取算法监控数据 */
   static getMonitorData(id: number) {
     return request<any, AlgorithmMonitorVO>({

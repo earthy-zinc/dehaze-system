@@ -7,6 +7,7 @@ import DeptAPI from "./src/api/dept";
 import DictAPI from "./src/api/dict";
 import FileAPI from "./src/api/file";
 import ImageInputHistoryAPI from "./src/api/image-input";
+import ImportExportAPI from "./src/api/import-export";
 import MenuAPI from "./src/api/menu";
 import ModelAPI from "./src/api/model";
 import RoleAPI from "./src/api/role";
@@ -22,6 +23,7 @@ export * from "./src/api/dept/model";
 export * from "./src/api/dict/model";
 export * from "./src/api/file/model";
 export * from "./src/api/image-input/model";
+export * from "./src/api/import-export/model";
 export * from "./src/api/menu/model";
 export * from "./src/api/model/model";
 export * from "./src/api/role/model";
@@ -51,6 +53,7 @@ export {
   DictAPI,
   FileAPI,
   ImageInputHistoryAPI,
+  ImportExportAPI,
   MenuAPI,
   ModelAPI,
   RoleAPI,

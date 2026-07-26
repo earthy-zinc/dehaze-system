@@ -1,4 +1,4 @@
-import { AlgorithmAPI, Algorithm } from "../../../index";
+import { AlgorithmAPI, Algorithm, ImportExportAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 
 describe("算法管理新增端点测试", () => {
@@ -105,39 +105,17 @@ describe("算法管理新增端点测试", () => {
     });
   });
 
-  describe("GET /api/v1/algorithms/{id}/_export - 导出", () => {
-    test("正向测试：导出算法 JSON（返回 Blob）", async () => {
-      const blob = await AlgorithmAPI.exportAlgorithm(testAlgorithmId);
-      expect(blob).toBeDefined();
-      // Node.js 环境下可能是 Blob/Buffer/string，验证有内容即可
-      const size = (blob as any)?.size ?? (blob as any)?.length ?? (blob as any)?.byteLength;
-      expect(size).toBeGreaterThan(0);
-    });
-  });
-
-  describe("POST /api/v1/algorithms/_import/validate - 导入校验", () => {
-    test("正向测试：校验合法 JSON 文件", async () => {
-      const jsonContent = JSON.stringify({
-        name: `TestImport_${Date.now()}`,
-        type: "TEST",
-        description: "导入测试",
-        version: "0.0.1",
-      });
-      const file = new File([jsonContent], "test_algorithm.json", { type: "application/json" });
-
-      const result = await AlgorithmAPI.validateImport(file);
+  describe("GET /api/v1/algorithms/{id}/_export - 算法导出（通过 ImportExportAPI）", () => {
+    test("正向测试：导出算法（同步返回 Blob 或异步返回任务）", async () => {
+      const result = await ImportExportAPI.export("algorithm", { id: testAlgorithmId });
       expect(result).toBeDefined();
-      expect(typeof result).toBe("string");
-    });
-
-    test("参数校验：空文件应报错", async () => {
-      const emptyFile = new File([], "empty.json", { type: "application/json" });
-      await expectBizError(
-        AlgorithmAPI.validateImport(emptyFile),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
-      );
+      const size =
+        (result as { size?: number }).size ??
+        (result as { length?: number }).length ??
+        (result as { byteLength?: number }).byteLength;
+      const isBlob = typeof size === "number" && size > 0;
+      const isTaskResult = !isBlob && typeof (result as { taskId?: string }).taskId === "string";
+      expect(isBlob || isTaskResult).toBe(true);
     });
   });
 });
