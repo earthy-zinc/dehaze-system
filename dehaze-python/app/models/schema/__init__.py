@@ -31,13 +31,14 @@ from app.models.schema.menu import (MenuForm, MenuFormVO, MenuIdPath,
 from app.models.schema.role import (MenuIdsBody, RoleForm, RoleFormVO,
                                     RoleIdPath, RoleIdsPath, RoleOptionVO,
                                     RolePageQuery, RolePageVO, StatusQuery)
-from app.models.schema.task import (ExportOptions, ExportTaskCreateForm,
-                                    TaskIdPath, TaskVO)
+from app.models.schema.task import (ExportTaskCreateForm, ExportTaskVO,
+                                    ImportErrorVO, ImportResultVO, ImportTaskVO,
+                                    TaskIdPath, TaskPageVO, TaskVO)
 from app.models.schema.user import (CaptchaData, CurrentUserVO, LoginData,
                                     LoginForm, PasswordForm,
                                     RegisterForm, UserCreateVO, UserDeleteVO,
                                     UserForm, UserFormVO, UserIdPath,
-                                    UserIdsPath, UserImportVO, UserInfoVO,
+                                    UserIdsPath, UserInfoVO,
                                     UserPageQuery, UserPageVO,
                                     UserStatusQuery)
 
@@ -71,7 +72,6 @@ __all__ = [
     "UserFormVO",
     "CurrentUserVO",
     "UserCreateVO",
-    "UserImportVO",
     "UserDeleteVO",
     # menu
     "MenuQuery",
@@ -134,7 +134,11 @@ __all__ = [
     "FileVO",
     # task
     "TaskIdPath",
-    "ExportOptions",
     "ExportTaskCreateForm",
     "TaskVO",
+    "TaskPageVO",
+    "ExportTaskVO",
+    "ImportTaskVO",
+    "ImportResultVO",
+    "ImportErrorVO",
 ]

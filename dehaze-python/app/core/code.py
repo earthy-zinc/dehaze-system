@@ -40,9 +40,16 @@ class ResultCode(Enum):
     DATA_BIND_EXISTS = ("A0504", "存在关联数据，无法删除")
 
     USER_UPLOAD_FILE_ERROR = ("A0700", "用户上传文件异常")
-    USER_UPLOAD_FILE_TYPE_NOT_MATCH = ("A0701", "用户上传文件类型不匹配")
-    USER_UPLOAD_FILE_SIZE_EXCEEDS = ("A0702", "用户上传文件太大")
-    USER_UPLOAD_IMAGE_SIZE_EXCEEDS = ("A0703", "用户上传图片太大")
+    USER_UPLOAD_FILE_TYPE_NOT_MATCH = ("A0701", "文件格式不支持")
+    USER_UPLOAD_FILE_SIZE_EXCEEDS = ("A0702", "文件大小超限")
+    IMPORT_FILE_EMPTY = ("A0703", "文件内容为空")
+    IMPORT_FILE_PARSE_ERROR = ("A0704", "文件解析失败")
+    IMPORT_TEMPLATE_MISMATCH = ("A0705", "模板字段不匹配")
+    IMPORT_REQUIRED_FIELD_EMPTY = ("A0706", "必填字段为空")
+    IMPORT_DATA_VALIDATE_ERROR = ("A0707", "数据校验失败")
+    IMPORT_ROWS_EXCEED_LIMIT = ("A0708", "导入数据超出限制")
+    EXPORT_ROWS_EXCEED_LIMIT = ("A0709", "导出行数超出限制")
+    MODULE_IMPORT_NOT_SUPPORTED = ("A0710", "不支持该模块导入")
 
     # 系统级错误码 B0xxx
     SYSTEM_EXECUTION_ERROR = ("B0001", "系统执行出错")
@@ -73,6 +80,7 @@ class ResultCode(Enum):
     TASK_PARAM_ERROR = ("B0305", "任务参数错误")
     TASK_CANCELLED = ("B0306", "任务已被取消")
     TASK_CONCURRENT_LIMIT = ("B0307", "同类型任务并发数已达上限")
+    TASK_CONCURRENT_EXCEED_LIMIT = ("B0308", "导入导出任务并发超限")
 
     # 文件模块错误码 B04xx
     FILE_NOT_FOUND = ("B0401", "文件不存在")

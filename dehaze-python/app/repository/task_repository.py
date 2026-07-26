@@ -90,6 +90,7 @@ class TaskRepository(BaseRepository[SysTask]):
         user_id: int,
         status: Optional[str] = None,
         task_type: Optional[str] = None,
+        task_category: Optional[str] = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysTask], int]:
@@ -100,6 +101,11 @@ class TaskRepository(BaseRepository[SysTask]):
             stmt = stmt.where(SysTask.status == status)
         if task_type:
             stmt = stmt.where(SysTask.task_type == task_type)
+        if task_category:
+            if task_category == 'import':
+                stmt = stmt.where(SysTask.task_type.like('%_import'))
+            elif task_category == 'export':
+                stmt = stmt.where(SysTask.task_type.like('%_export'))
 
         stmt = stmt.order_by(SysTask.create_time.desc())
         return await self.paginate(db, stmt, page, size)

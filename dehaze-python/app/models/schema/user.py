@@ -152,12 +152,6 @@ class UserCreateVO(BaseModel):
     nickname: str = Field(description="昵称")
 
 
-class UserImportVO(BaseModel):
-    """用户导入结果VO"""
-    successCount: int = Field(description="成功数量")
-    failedCount: int = Field(description="失败数量")
-
-
 class UserDeleteVO(BaseModel):
     """用户删除结果VO"""
     deleted_count: int = Field(description="删除数量")

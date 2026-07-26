@@ -77,6 +77,10 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     from app.router.task import router as task_router
     app.include_router(task_router)
 
+    # 通用导入导出路由
+    from app.router.import_export import router as import_export_router
+    app.include_router(import_export_router)
+
     # 预测路由（去雾处理核心入口）
     from app.router.prediction import router as prediction_router
     app.include_router(prediction_router)

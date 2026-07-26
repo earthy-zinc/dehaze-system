@@ -46,6 +46,8 @@ async def list_tasks(
         default=None, alias="status", description="状态筛选"),
     task_type: str | None = Query(
         default=None, alias="taskType", description="类型筛选"),
+    task_category: str | None = Query(
+        default=None, alias="taskCategory", description="任务类别筛选(import/export)"),
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
@@ -56,6 +58,7 @@ async def list_tasks(
 
     - **status**: 状态筛选（pending/processing/completed/failed/cancelled）
     - **taskType**: 类型筛选
+    - **taskCategory**: 类别筛选（import/export）
     - **pageNum**: 页码（从1开始）
     - **pageSize**: 每页数量（最大100）
     """
@@ -64,6 +67,7 @@ async def list_tasks(
         user_id=user.id,
         status=status_filter,
         task_type=task_type,
+        task_category=task_category,
         page=pageNum,
         size=pageSize,
     )
@@ -87,30 +91,17 @@ async def create_export_task(
     ),
 ):
     """
-    创建新的导出任务，支持批量导出数据集或数据项
+    创建新的任务（由通用导入导出框架内部调用，通常不直接暴露给前端）
 
-    - **type**: 导出类型
-      - dataset_export: 数据集导出
-      - item_download: 单个数据项下载
-      - batch_download: 批量数据项下载
-      - custom_export: 自定义导出
-    - **targetId**: 单个导出目标ID
-    - **targetIds**: 批量导出目标ID列表
-    - **options**: 导出选项
+    - **type**: 任务类型（user_export/role_export/.../user_import/...）
+    - **paramsJson**: 任务参数（JSON 字符串）
     - **Idempotency-Key** (请求头): 客户端幂等键，相同键返回已有任务
     """
-    # 转换 options 为字典
-    options_dict = None
-    if request.options:
-        options_dict = request.options.model_dump()
-
-    task_data = await TaskServiceAsync.create_export_task(
+    task_data = await TaskServiceAsync.create_task(
         db=db,
         redis=redis,
         task_type=request.type.value,
-        target_id=request.targetId,
-        target_ids=request.targetIds,
-        options=options_dict,
+        params_json=request.params_json,
         user_id=user.id,
         idempotency_key=idempotency_key,
     )
@@ -206,7 +197,7 @@ async def retry_task(
     """
     重试失败的任务（重放入口）
 
-    仅允许 FAILED 状态的任务重试，重置重试次数后重新投递到消息队列。
+    仅允许 FAILED 状态的任务重试，重试次数 +1 后重新投递到消息队列。
 
     - **task_id**: 任务ID（UUID格式）
     """

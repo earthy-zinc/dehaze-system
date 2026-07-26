@@ -1,7 +1,5 @@
-from io import BytesIO
 from typing import Optional
 
-import openpyxl
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.core.result import Result, success
@@ -11,28 +9,12 @@ from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.common import PageResult
 from app.models.schema.user import (PasswordForm, UserCreateVO,
                                     UserDeleteVO, UserForm, UserFormVO,
-                                    UserImportVO, UserPageVO)
+                                    UserPageVO)
 from app.service.user_service import UserService
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/users", tags=["用户管理"])
-
-
-@router.get("/template", summary="下载用户导入模板")
-async def download_template(
-    user: UserContext = Depends(get_current_user),
-):
-    output = UserService.generate_import_template()
-
-    return StreamingResponse(
-        output,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": "attachment; filename=user_import_template.xlsx",
-        },
-    )
 
 
 @router.get("/page", summary="获取用户分页列表", response_model=Result[PageResult[UserPageVO]])
@@ -94,62 +76,6 @@ async def get_user_page(
         "list": user_list,
         "total": total,
     })
-
-
-@router.get("/_export", summary="导出用户数据")
-async def export_users(
-    keywords: Optional[str] = Query(
-        default=None, description="关键词(用户名/昵称/手机号)"),
-    status: Optional[int] = Query(
-        default=None, ge=0, le=1, description="用户状态(1:启用;0:禁用)"),
-    deptId: Optional[int] = Query(default=None, description="部门ID"),
-    startTime: Optional[str] = Query(default=None, description="创建时间-开始时间"),
-    endTime: Optional[str] = Query(default=None, description="创建时间-结束时间"),
-    db: AsyncSession = Depends(get_db),
-    user: UserContext = Depends(get_current_user),
-):
-    output = await UserService.export_users(
-        db,
-        keywords=keywords,
-        status=status,
-        dept_id=deptId,
-        create_time_start=startTime,
-        create_time_end=endTime,
-    )
-
-    return StreamingResponse(
-        output,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": "attachment; filename=users_export.xlsx",
-        },
-    )
-
-
-@router.post("/_import", summary="导入用户数据", response_model=Result[UserImportVO])
-@require_permission("sys:user:add")
-async def import_users(
-    file: UploadFile = File(..., description="Excel 文件"),
-    deptId: int = Form(..., description="目标部门ID"),
-    db: AsyncSession = Depends(get_db),
-    user: UserContext = Depends(get_current_user),
-):
-    if not file.filename or not file.filename.endswith((".xls", ".xlsx")):
-        raise BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "仅支持 .xls 和 .xlsx 格式的文件")
-
-    contents = await file.read()
-    if len(contents) > 10 * 1024 * 1024:
-        raise BusinessException(ResultCode.USER_UPLOAD_FILE_SIZE_EXCEEDS, "文件大小超过限制（最大 10MB）")
-
-    wb = openpyxl.load_workbook(BytesIO(contents))
-    ws = wb.active
-
-    result = await UserService.import_users(db, ws, dept_id=deptId)
-
-    return success(
-        result,
-        msg=f'导入完成，成功{result["successCount"]}条，失败{result["failedCount"]}条',
-    )
 
 
 @router.post("", summary="新增用户", response_model=Result[UserCreateVO])
