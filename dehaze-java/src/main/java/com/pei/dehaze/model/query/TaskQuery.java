@@ -17,8 +17,8 @@ import lombok.EqualsAndHashCode;
 public class TaskQuery extends BasePageQuery {
 
     @Schema(
-            description = "任务类型：dataset_export-数据集导出, item_download-数据项下载, batch_download-批量下载, custom_export-自定义导出",
-            example = "dataset_export"
+            description = "任务类型（支持逗号分隔多个）：如 dataset_export, user_export, user_import 等",
+            example = "user_export"
     )
     private String taskType;
 
@@ -27,4 +27,10 @@ public class TaskQuery extends BasePageQuery {
             example = "PROCESSING"
     )
     private String status;
+
+    @Schema(
+            description = "任务类别筛选：import-导入, export-导出",
+            example = "export"
+    )
+    private String taskCategory;
 }

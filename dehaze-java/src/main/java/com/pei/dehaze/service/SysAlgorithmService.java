@@ -46,9 +46,4 @@ public interface SysAlgorithmService extends IService<SysAlgorithm> {
      * 获取算法监控数据
      */
     AlgorithmMonitorVO getMonitorData(Long id);
-
-    /**
-     * 导出算法配置JSON
-     */
-    String exportAlgorithmJson(Long id);
 }

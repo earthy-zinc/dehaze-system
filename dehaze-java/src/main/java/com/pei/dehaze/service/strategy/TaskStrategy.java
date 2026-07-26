@@ -1,6 +1,7 @@
 package com.pei.dehaze.service.strategy;
 
 import com.pei.dehaze.model.entity.SysTask;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -10,10 +11,11 @@ import java.util.Map;
 public interface TaskStrategy {
 
     /**
-     * 获取任务类型标识
-     * @return 任务类型（如：dataset_export、item_download、batch_download）
+     * 获取策略支持的任务类型列表
+     * <p>支持一个策略处理多个任务类型（如 GenericExportStrategy 处理所有 *_export 类型）
+     * @return 任务类型列表（如：dataset_export、user_export、user_import）
      */
-    String getTaskType();
+    List<String> getTaskTypes();
 
     /**
      * 执行任务
@@ -29,7 +31,6 @@ public interface TaskStrategy {
      * @param task 任务实体
      */
     default void cancel(SysTask task) {
-        // 默认空实现，子类按需覆盖
     }
 
     /**
@@ -37,6 +38,5 @@ public interface TaskStrategy {
      * @param params 任务参数
      */
     default void validateParams(Map<String, Object> params) {
-        // 默认空实现，子类按需覆盖
     }
 }

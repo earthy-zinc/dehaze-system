@@ -50,9 +50,16 @@ public enum ResultCode implements IResultCode {
     DATA_BIND_EXISTS("A0504", "存在关联数据，无法删除"),
 
     USER_UPLOAD_FILE_ERROR("A0700", "用户上传文件异常"),
-    USER_UPLOAD_FILE_TYPE_NOT_MATCH("A0701", "用户上传文件类型不匹配"),
-    USER_UPLOAD_FILE_SIZE_EXCEEDS("A0702", "用户上传文件太大"),
-    USER_UPLOAD_IMAGE_SIZE_EXCEEDS("A0703", "用户上传图片太大"),
+    USER_UPLOAD_FILE_TYPE_NOT_MATCH("A0701", "文件格式不支持"),
+    USER_UPLOAD_FILE_SIZE_EXCEEDS("A0702", "文件大小超限"),
+    IMPORT_FILE_EMPTY("A0703", "文件内容为空"),
+    IMPORT_FILE_PARSE_ERROR("A0704", "文件解析失败"),
+    IMPORT_TEMPLATE_MISMATCH("A0705", "模板字段不匹配"),
+    IMPORT_REQUIRED_FIELD_EMPTY("A0706", "必填字段为空"),
+    IMPORT_DATA_VALIDATE_ERROR("A0707", "数据校验失败"),
+    IMPORT_ROWS_EXCEED_LIMIT("A0708", "导入数据超出限制"),
+    EXPORT_ROWS_EXCEED_LIMIT("A0709", "导出行数超出限制"),
+    MODULE_IMPORT_NOT_SUPPORTED("A0710", "不支持该模块导入"),
 
     SYSTEM_EXECUTION_ERROR("B0001", "系统执行出错"),
     SYSTEM_EXECUTION_TIMEOUT("B0100", "系统执行超时"),
@@ -67,6 +74,7 @@ public enum ResultCode implements IResultCode {
     SYSTEM_RESOURCE_EXHAUSTION("B0310", "系统资源耗尽"),
     SYSTEM_RESOURCE_ACCESS_ERROR("B0320", "系统资源访问异常"),
     SYSTEM_READ_DISK_FILE_ERROR("B0321", "系统读取磁盘文件失败"),
+    TASK_CONCURRENT_EXCEED_LIMIT("B0308", "导入导出任务并发超限"),
 
     CALL_THIRD_PARTY_SERVICE_ERROR("C0001", "调用第三方服务出错"),
     MIDDLEWARE_SERVICE_ERROR("C0100", "中间件服务出错"),

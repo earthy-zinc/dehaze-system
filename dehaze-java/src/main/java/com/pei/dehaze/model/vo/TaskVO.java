@@ -19,8 +19,11 @@ public class TaskVO {
     @Schema(description = "任务ID", example = "uuid-xxx")
     private String taskId;
 
-    @Schema(description = "任务类型：dataset_export, item_download, batch_download, custom_export", example = "dataset_export")
+    @Schema(description = "任务类型：dataset_export, user_export, role_export, dept_export, menu_export, dict_export, algorithm_export, user_import 等", example = "dataset_export")
     private String taskType;
+
+    @Schema(description = "任务类别：import / export", example = "export")
+    private String taskCategory;
 
     @Schema(description = "任务状态：PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED", example = "PENDING")
     private String status;

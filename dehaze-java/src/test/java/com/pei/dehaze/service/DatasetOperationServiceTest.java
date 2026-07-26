@@ -7,16 +7,12 @@ import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.vo.BatchDeleteResult;
-import com.pei.dehaze.service.DatasetOperationService;
-import com.pei.dehaze.service.ImageProcessingService;
-import com.pei.dehaze.service.SysDatasetItemService;
-import com.pei.dehaze.service.SysDatasetService;
-import com.pei.dehaze.service.SysItemFileService;
 import com.pei.dehaze.service.impl.DatasetOperationServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -88,7 +84,7 @@ class DatasetOperationServiceTest {
 
         // deleteDatasetItemCascade 委托给 batchDeleteDatasetItemsCascadeWithResult
         when(sysDatasetItemService.listByIds(any())).thenReturn(Arrays.asList(sampleDatasetItem));
-        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(files);
+        when(sysItemFileService.list(ArgumentMatchers.<LambdaQueryWrapper<SysItemFile>>any())).thenReturn(files);
         when(sysItemFileService.deleteFile(anyLong())).thenReturn(true);
         when(sysDatasetItemService.removeByIds(any())).thenReturn(true);
 
@@ -97,7 +93,7 @@ class DatasetOperationServiceTest {
 
         // Then
         verify(sysDatasetItemService).listByIds(any());
-        verify(sysItemFileService).list(any(LambdaQueryWrapper.class));
+        verify(sysItemFileService).list(ArgumentMatchers.<LambdaQueryWrapper<SysItemFile>>any());
         verify(sysItemFileService).deleteFile(1L);
         verify(sysDatasetItemService).removeByIds(any());
     }
@@ -108,7 +104,7 @@ class DatasetOperationServiceTest {
         // Given
         Long datasetItemId = 999L;
         when(sysDatasetItemService.listByIds(any())).thenReturn(Collections.emptyList());
-        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+        when(sysItemFileService.list(ArgumentMatchers.<LambdaQueryWrapper<SysItemFile>>any())).thenReturn(Collections.emptyList());
 
         // When & Then
         assertThatThrownBy(() -> datasetOperationService.deleteDatasetItemCascade(datasetItemId))
@@ -138,7 +134,7 @@ class DatasetOperationServiceTest {
         when(sysDatasetService.getDatasetAndDescendantIds(2L)).thenReturn(Arrays.asList(2L));
         when(sysDatasetService.getLeafDatasetId(1L)).thenReturn(Arrays.asList(1L));
         when(sysDatasetService.getLeafDatasetId(2L)).thenReturn(Arrays.asList(2L));
-        when(sysDatasetItemService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
@@ -163,7 +159,7 @@ class DatasetOperationServiceTest {
                 .thenReturn(Arrays.asList(1L, 2L, 3L));
         when(sysDatasetService.getLeafDatasetId(1L))
                 .thenReturn(Arrays.asList(2L, 3L));
-        when(sysDatasetItemService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
@@ -210,7 +206,7 @@ class DatasetOperationServiceTest {
         when(sysDatasetService.getLeafDatasetId(1L)).thenReturn(Arrays.asList(1L));
         when(sysDatasetService.getDatasetAndDescendantIds(2L)).thenReturn(Arrays.asList(2L));
         when(sysDatasetService.getLeafDatasetId(2L)).thenReturn(Arrays.asList(2L));
-        when(sysDatasetItemService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
@@ -238,7 +234,7 @@ class DatasetOperationServiceTest {
         when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(ds1, ds2));
         when(sysDatasetService.getDatasetAndDescendantIds(anyLong())).thenReturn(Arrays.asList(1L));
         when(sysDatasetService.getLeafDatasetId(anyLong())).thenReturn(Arrays.asList(1L));
-        when(sysDatasetItemService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When

@@ -1,8 +1,5 @@
 package com.pei.dehaze.controller;
 
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
-import com.pei.dehaze.common.enums.AlgorithmStatusEnum;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.converter.AlgorithmConverter;
@@ -23,16 +20,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -145,124 +135,6 @@ public class SysAlgorithmController {
             @Parameter(description = "目标版本ID") @RequestParam Long versionId) {
         versionService.rollbackToVersion(id, versionId);
         return Result.success();
-    }
-
-    // ==================== 导入导出 ====================
-
-    @Operation(summary = "导出单个算法（配置JSON）")
-    @GetMapping("/{id}/_export")
-    @PreAuthorize("@ss.hasPerm('sys:algorithm:export')")
-    public ResponseEntity<Resource> exportAlgorithm(
-            @Parameter(description = "算法ID") @PathVariable Long id) {
-        String json = algorithmService.exportAlgorithmJson(id);
-        ByteArrayResource resource = new ByteArrayResource(json.getBytes(StandardCharsets.UTF_8));
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=algorithm_" + id + ".json")
-                .body(resource);
-    }
-
-    @Operation(summary = "批量导出算法")
-    @PostMapping("/_export")
-    @PreAuthorize("@ss.hasPerm('sys:algorithm:export')")
-    public ResponseEntity<Resource> batchExport(
-            @Parameter(description = "算法ID列表") @RequestBody List<Long> ids) {
-        StringBuilder sb = new StringBuilder("[\n");
-        for (int i = 0; i < ids.size(); i++) {
-            sb.append(algorithmService.exportAlgorithmJson(ids.get(i)));
-            if (i < ids.size() - 1) {
-                sb.append(",\n");
-            }
-        }
-        sb.append("\n]");
-        ByteArrayResource resource = new ByteArrayResource(sb.toString().getBytes(StandardCharsets.UTF_8));
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=algorithms_batch.json")
-                .body(resource);
-    }
-
-    @Operation(summary = "校验导入包")
-    @PostMapping("/_import/validate")
-    @PreAuthorize("@ss.hasPerm('sys:algorithm:import')")
-    public Result<String> validateImport(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) {
-            return Result.failed("导入文件不能为空");
-        }
-
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".json")) {
-            return Result.failed("仅支持 .json 格式的算法导出文件");
-        }
-
-        try {
-            String json = new String(file.getBytes(), StandardCharsets.UTF_8);
-            JSONObject root = JSONUtil.parseObj(json);
-
-            // 校验必填字段
-            String name = root.getStr("name");
-            if (name == null || name.isBlank()) {
-                return Result.failed("导入文件缺少必填字段: name");
-            }
-            String type = root.getStr("type");
-            if (type == null || type.isBlank()) {
-                return Result.failed("导入文件缺少必填字段: type");
-            }
-
-            return Result.success("校验通过: 算法名称=" + name + ", 类型=" + type);
-        } catch (Exception e) {
-            return Result.failed("导入文件解析失败: " + e.getMessage());
-        }
-    }
-
-    @Operation(summary = "导入算法")
-    @PostMapping("/_import")
-    @PreAuthorize("@ss.hasPerm('sys:algorithm:import')")
-    public Result<Void> importAlgorithm(@RequestParam("file") MultipartFile file) {
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".json")) {
-            return Result.failed("仅支持 .json 格式的算法导出文件");
-        }
-
-        try {
-            String json = new String(file.getBytes(), StandardCharsets.UTF_8);
-            JSONObject root = JSONUtil.parseObj(json);
-
-            // 解析并校验必填字段
-            String name = root.getStr("name");
-            if (name == null || name.isBlank()) {
-                return Result.failed("导入失败: 缺少算法名称");
-            }
-
-            String type = root.getStr("type");
-            String description = root.getStr("description", "");
-            String importPath = root.getStr("importPath", "");
-            String flops = root.getStr("flops", "");
-            String params = root.getStr("params", "");
-            String version = root.getStr("version", "0.0.1");
-
-            // 检查名称是否已存在
-            if (algorithmService.getAllAlgorithms().stream()
-                    .anyMatch(a -> name.equals(a.getName()))) {
-                return Result.failed("算法名称 '" + name + "' 已存在");
-            }
-
-            // 构建算法表单
-            AlgorithmForm form = new AlgorithmForm();
-            form.setName(name);
-            form.setType(type);
-            form.setParentId(0L); // 导入的算法默认为顶级
-            form.setDescription(description);
-            form.setImportPath(importPath);
-            form.setStatus(AlgorithmStatusEnum.DRAFT.getValue()); // 导入后为草稿状态
-
-            algorithmService.addAlgorithm(form);
-            return Result.success();
-        } catch (Exception e) {
-            return Result.failed("导入失败: " + e.getMessage());
-        }
     }
 
     // ==================== 性能监控 ====================

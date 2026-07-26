@@ -117,37 +117,4 @@
             t1.username = #{username} AND t1.deleted=0
     </select>
 
-    <!-- 获取用户导出列表 -->
-    <select id="listExportUsers" resultType="com.pei.dehaze.model.vo.UserExportVO">
-        SELECT
-            u.username,
-            u.nickname,
-            u.mobile,
-            CASE u.gender
-                WHEN 1 THEN '男'
-                WHEN 2 THEN '女'
-                ELSE '未知'
-            END gender,
-            d.NAME AS dept_name,
-            u.create_time
-        FROM
-            sys_user u
-                LEFT JOIN sys_dept d ON u.dept_id = d.id
-        <where>
-            u.deleted = 0 AND u.username != 'root'
-            <if test='keywords!=null and keywords.trim() neq ""'>
-                AND (u.username LIKE CONCAT('%',#{keywords},'%')
-                OR u.nickname LIKE CONCAT('%',#{keywords},'%')
-                OR u.mobile LIKE CONCAT('%',#{keywords},'%'))
-            </if>
-            <if test='status!=null'>
-                AND u.status = #{status}
-            </if>
-            <if test='deptId!=null'>
-                AND concat(',',concat(d.tree_path,',',d.id),',') like concat('%,',#{deptId},',%')
-            </if>
-        </where>
-        GROUP BY u.id
-    </select>
-
 </mapper>

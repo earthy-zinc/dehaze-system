@@ -3,7 +3,6 @@ package com.pei.dehaze.service.impl;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.text.CharSequenceUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
@@ -267,40 +266,6 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         monitor.setSuccessRate(Math.round(successRate * 100.0) / 100.0);
 
         return monitor;
-    }
-
-    @Override
-    public String exportAlgorithmJson(Long id) {
-        SysAlgorithm algorithm = this.getById(id);
-        if (algorithm == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
-        }
-
-        // 获取父算法名称用于导入参考
-        String parentName = "";
-        if (algorithm.getParentId() != null && !algorithm.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
-            SysAlgorithm parent = this.getById(algorithm.getParentId());
-            parentName = parent != null ? parent.getName() : "";
-        }
-
-        Map<String, Object> exportData = new LinkedHashMap<>();
-        exportData.put("formatVersion", "1.0");
-        exportData.put("name", algorithm.getName());
-        exportData.put("type", algorithm.getType());
-        exportData.put("parentName", parentName);
-        exportData.put("version", algorithm.getVersion());
-        exportData.put("description", algorithm.getDescription());
-        exportData.put("importPath", algorithm.getImportPath());
-        exportData.put("flops", algorithm.getFlops());
-        exportData.put("params", algorithm.getParams());
-        exportData.put("status", algorithm.getStatus());
-        exportData.put("statusLabel", Arrays.stream(AlgorithmStatusEnum.values())
-                .filter(e -> e.getValue().equals(algorithm.getStatus()))
-                .map(AlgorithmStatusEnum::getLabel)
-                .findFirst().orElse(""));
-        exportData.put("exportTime", LocalDateTime.now().toString());
-
-        return JSONUtil.toJsonPrettyStr(exportData);
     }
 
     /**

@@ -14,6 +14,7 @@ import com.pei.dehaze.config.WebSocketMessageRelay;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.form.ExportTaskCreateForm;
+import com.pei.dehaze.model.query.TaskQuery;
 import com.pei.dehaze.model.vo.TaskVO;
 import com.pei.dehaze.service.TaskService;
 import com.pei.dehaze.service.TaskExecutor;
@@ -27,9 +28,12 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * 任务服务实现
@@ -276,21 +280,142 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
 
     @Override
     public PageResult<TaskVO> listMyTasks(int pageNum, int pageSize) {
+        return listMyTasks(buildQuery(pageNum, pageSize, null, null, null));
+    }
+
+    @Override
+    public PageResult<TaskVO> listMyTasks(TaskQuery query) {
         Long currentUserId = SecurityUtils.getUserId();
         if (currentUserId == null) {
             throw new BusinessException("用户未登录");
         }
 
-        Page<SysTask> page = new Page<>(pageNum, pageSize);
-        IPage<SysTask> taskPage = this.page(page, new LambdaQueryWrapper<SysTask>()
-                .eq(SysTask::getCreateBy, currentUserId)
-                .orderByDesc(SysTask::getCreateTime));
+        LambdaQueryWrapper<SysTask> wrapper = new LambdaQueryWrapper<SysTask>()
+                .eq(SysTask::getCreateBy, currentUserId);
 
+        if (StrUtil.isNotBlank(query.getTaskType())) {
+            List<String> types = Arrays.stream(query.getTaskType().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+            if (types.size() == 1) {
+                wrapper.eq(SysTask::getTaskType, types.get(0));
+            } else if (!types.isEmpty()) {
+                wrapper.in(SysTask::getTaskType, types);
+            }
+        }
+
+        if (StrUtil.isNotBlank(query.getStatus())) {
+            wrapper.eq(SysTask::getStatus, query.getStatus());
+        }
+
+        if (StrUtil.isNotBlank(query.getTaskCategory())) {
+            List<String> typesOfCategory = resolveTypesByCategory(query.getTaskCategory());
+            if (typesOfCategory != null) {
+                if (typesOfCategory.isEmpty()) {
+                    wrapper.eq(SysTask::getTaskType, "__none__");
+                } else {
+                    wrapper.in(SysTask::getTaskType, typesOfCategory);
+                }
+            }
+        }
+
+        wrapper.orderByDesc(SysTask::getCreateTime);
+
+        Page<SysTask> page = new Page<>(query.getPageNum(), query.getPageSize());
+        IPage<SysTask> taskPage = this.page(page, wrapper);
         IPage<TaskVO> voPage = taskPage.convert(this::convertToTaskVO);
 
         log.info("查询用户任务列表: userId={}, total={}", currentUserId, taskPage.getTotal());
 
         return PageResult.success(voPage);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateTaskCompleted(String taskId, String result, LocalDateTime expiresAt) {
+        SysTask sysTask = getTaskEntity(taskId);
+        if (sysTask == null) {
+            throw new BusinessException("任务不存在: " + taskId);
+        }
+        sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
+        sysTask.setProgress(100);
+        sysTask.setResult(result);
+        sysTask.setCompletedAt(LocalDateTime.now());
+        sysTask.setExpiresAt(expiresAt);
+        this.updateById(sysTask);
+
+        String cacheKey = TaskConstants.TASK_CACHE_PREFIX + taskId;
+        redisTemplate.opsForValue().set(cacheKey, sysTask, TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);
+
+        pushTaskStatusMessage(sysTask, TaskConstants.STATUS_COMPLETED, result, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateTaskFailed(String taskId, String errorMessage) {
+        SysTask sysTask = getTaskEntity(taskId);
+        if (sysTask == null) {
+            throw new BusinessException("任务不存在: " + taskId);
+        }
+        sysTask.setStatus(TaskConstants.STATUS_FAILED);
+        sysTask.setErrorMessage(errorMessage);
+        sysTask.setCompletedAt(LocalDateTime.now());
+        this.updateById(sysTask);
+
+        String cacheKey = TaskConstants.TASK_CACHE_PREFIX + taskId;
+        redisTemplate.opsForValue().set(cacheKey, sysTask, TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);
+
+        pushTaskStatusMessage(sysTask, TaskConstants.STATUS_FAILED, null, errorMessage);
+    }
+
+    private TaskQuery buildQuery(int pageNum, int pageSize, String taskType, String status, String taskCategory) {
+        TaskQuery query = new TaskQuery();
+        query.setPageNum(pageNum);
+        query.setPageSize(pageSize);
+        query.setTaskType(taskType);
+        query.setStatus(status);
+        query.setTaskCategory(taskCategory);
+        return query;
+    }
+
+    /**
+     * 根据任务类别反查任务类型列表（用于按类别筛选）
+     * <p>由于 sys_task 表无 task_category 字段，这里通过类型后缀推断。
+     */
+    private List<String> resolveTypesByCategory(String category) {
+        if (TaskConstants.CATEGORY_IMPORT.equalsIgnoreCase(category)) {
+            return List.of(
+                    TaskConstants.TYPE_USER_IMPORT, TaskConstants.TYPE_ROLE_IMPORT,
+                    TaskConstants.TYPE_DEPT_IMPORT, TaskConstants.TYPE_MENU_IMPORT,
+                    TaskConstants.TYPE_DICT_IMPORT, TaskConstants.TYPE_ALGORITHM_IMPORT
+            );
+        }
+        if (TaskConstants.CATEGORY_EXPORT.equalsIgnoreCase(category)) {
+            return List.of(
+                    TaskConstants.TYPE_DATASET_EXPORT,
+                    TaskConstants.TYPE_USER_EXPORT, TaskConstants.TYPE_ROLE_EXPORT,
+                    TaskConstants.TYPE_DEPT_EXPORT, TaskConstants.TYPE_MENU_EXPORT,
+                    TaskConstants.TYPE_DICT_EXPORT, TaskConstants.TYPE_ALGORITHM_EXPORT
+            );
+        }
+        return null;
+    }
+
+    private void pushTaskStatusMessage(SysTask task, String status, String result, String errorMessage) {
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "task_status");
+            message.put("task_id", task.getTaskId());
+            message.put("status", status);
+            message.put("progress", task.getProgress());
+            message.put("result", result);
+            message.put("error_message", errorMessage);
+            message.put("timestamp", LocalDateTime.now().toString());
+            wsMessageRelay.publishToUser(task.getCreateBy(), message);
+        } catch (Exception e) {
+            log.warn("WebSocket 推送失败（不影响任务执行）: {}", e.getMessage());
+        }
     }
 
     private SysTask getTaskEntity(String taskId) {
@@ -309,6 +434,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         TaskVO taskVO = new TaskVO();
         taskVO.setTaskId(sysTask.getTaskId());
         taskVO.setTaskType(sysTask.getTaskType());
+        taskVO.setTaskCategory(TaskConstants.getCategoryByType(sysTask.getTaskType()));
         taskVO.setStatus(sysTask.getStatus());
         taskVO.setProgress(sysTask.getProgress());
         taskVO.setTotalFiles(sysTask.getTotalFiles());

@@ -135,8 +135,12 @@ public class TaskExecutorImpl implements TaskExecutor {
 
     /**
      * 构建参数Map
+     * <p>优先使用 paramsJson（通用导入导出框架使用），其次回退到 form 整体序列化（数据集导出/下载使用）
      */
     private Map<String, Object> buildParams(ExportTaskCreateForm form) {
+        if (form.getParamsJson() != null && !form.getParamsJson().isBlank()) {
+            return JSONUtil.toBean(form.getParamsJson(), Map.class);
+        }
         String json = JSONUtil.toJsonStr(form);
         return JSONUtil.toBean(json, Map.class);
     }

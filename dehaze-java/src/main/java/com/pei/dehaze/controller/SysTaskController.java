@@ -32,7 +32,7 @@ public class SysTaskController {
     @PostMapping
     @Operation(
         summary = "创建任务",
-        description = "创建异步任务，支持多种任务类型：dataset_export（数据集导出）、item_download（数据项下载）、batch_download（批量下载）、custom_export（自定义导出）"
+        description = "创建异步任务，支持多种任务类型：dataset_export（数据集导出）、user_export（用户导出）、role_export（角色导出）、user_import（用户导入）等"
     )
     public Result<TaskVO> createTask(
             @Valid @RequestBody ExportTaskCreateForm form,
@@ -101,9 +101,9 @@ public class SysTaskController {
     @GetMapping
     @Operation(
         summary = "分页查询任务列表",
-        description = "查询当前用户的任务列表，支持分页"
+        description = "查询当前用户的任务列表，支持按任务类型、类别、状态筛选"
     )
     public PageResult<TaskVO> listMyTasks(@ParameterObject TaskQuery query) {
-        return taskService.listMyTasks(query.getPageNum(), query.getPageSize());
+        return taskService.listMyTasks(query);
     }
 }

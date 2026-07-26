@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.form.ExportTaskCreateForm;
+import com.pei.dehaze.model.query.TaskQuery;
 import com.pei.dehaze.model.vo.TaskVO;
 
 /**
@@ -62,4 +63,29 @@ public interface TaskService extends IService<SysTask> {
      * @return 分页结果
      */
     PageResult<TaskVO> listMyTasks(int pageNum, int pageSize);
+
+    /**
+     * 分页查询当前用户的任务列表（支持按任务类型、类别筛选）
+     *
+     * @param query 查询参数
+     * @return 分页结果
+     */
+    PageResult<TaskVO> listMyTasks(TaskQuery query);
+
+    /**
+     * 任务执行完成后更新状态（供 GenericExportStrategy/GenericImportStrategy 调用）
+     *
+     * @param taskId     任务ID（UUID）
+     * @param result     结果数据（导出为下载URL，导入为结果JSON）
+     * @param expiresAt  过期时间
+     */
+    void updateTaskCompleted(String taskId, String result, java.time.LocalDateTime expiresAt);
+
+    /**
+     * 任务执行失败时更新状态
+     *
+     * @param taskId       任务ID（UUID）
+     * @param errorMessage 错误信息
+     */
+    void updateTaskFailed(String taskId, String errorMessage);
 }

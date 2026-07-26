@@ -7,11 +7,8 @@ import com.pei.dehaze.model.dto.UserAuthInfo;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.query.UserPageQuery;
-import com.pei.dehaze.model.vo.UserExportVO;
 import com.pei.dehaze.plugin.mybatis.annotation.DataPermission;
 import org.apache.ibatis.annotations.Mapper;
-
-import java.util.List;
 
 /**
  * 用户持久层
@@ -47,13 +44,4 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
      * @return
      */
     UserAuthInfo getUserAuthInfo(String username);
-
-    /**
-     * 获取导出用户列表
-     *
-     * @param queryParams
-     * @return
-     */
-    @DataPermission(deptAlias = "u")
-    List<UserExportVO> listExportUsers(UserPageQuery queryParams);
 }

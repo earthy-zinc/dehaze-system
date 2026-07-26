@@ -65,8 +65,8 @@ class TaskServiceTest {
     @BeforeEach
     void setUp() {
         mockForm = new ExportTaskCreateForm();
-        mockForm.setType("dataset");
-        mockForm.setTargetId(1L);
+        mockForm.setType("dataset_export");
+        mockForm.setParamsJson("{\"module\":\"dataset\",\"query\":{\"datasetId\":1}}");
 
         // Mock redisTemplate behavior
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -99,19 +99,18 @@ class TaskServiceTest {
     // ==================== 创建导出任务测试 ====================
 
     /**
-     * 测试创建导出任务 - 单个数据集导出
-     * 测试场景：创建单个数据集的导出任务
+     * 测试创建导出任务 - 数据集导出
+     * 测试场景：创建数据集的导出任务
      * 验证内容：
      * 1. 方法被正确调用
      * 2. 返回任务VO对象
      */
     @Test
-    @DisplayName("createTask - 创建单个数据集导出任务")
-    void testCreateTask_SingleDataset() {
+    @DisplayName("createTask - 创建数据集导出任务")
+    void testCreateTask_DatasetExport() {
         // Arrange
-        mockForm.setType("dataset");
-        mockForm.setTargetId(1L);
-        mockForm.setTargetIds(null);
+        mockForm.setType("dataset_export");
+        mockForm.setParamsJson("{\"module\":\"dataset\",\"query\":{\"datasetId\":1}}");
 
         try (MockedStatic<SecurityUtils> mockedSecurityUtils = mockStatic(SecurityUtils.class)) {
             mockedSecurityUtils.when(SecurityUtils::getUserId).thenReturn(1L);
@@ -128,19 +127,18 @@ class TaskServiceTest {
     }
 
     /**
-     * 测试创建导出任务 - 批量数据集导出
-     * 测试场景：创建多个数据集的批量导出任务
+     * 测试创建导出任务 - 批量数据项下载
+     * 测试场景：创建多个数据项的批量下载任务
      * 验证内容：
      * 1. 方法被正确调用
-     * 2. 批量导出参数正确传递
+     * 2. 批量下载参数正确传递
      */
     @Test
-    @DisplayName("createTask - 创建批量数据集导出任务")
-    void testCreateTask_BatchDatasets() {
+    @DisplayName("createTask - 创建批量数据项下载任务")
+    void testCreateTask_BatchItemsDownload() {
         // Arrange
-        mockForm.setType("batch_items");
-        mockForm.setTargetId(null);
-        mockForm.setTargetIds(java.util.Arrays.asList(1L, 2L, 3L));
+        mockForm.setType("dataset_export");
+        mockForm.setParamsJson("{\"module\":\"dataset\",\"query\":{\"itemIds\":[1,2,3]}}");
 
         try (MockedStatic<SecurityUtils> mockedSecurityUtils = mockStatic(SecurityUtils.class)) {
             mockedSecurityUtils.when(SecurityUtils::getUserId).thenReturn(1L);
@@ -166,13 +164,8 @@ class TaskServiceTest {
     @DisplayName("createTask - 包含导出选项")
     void testCreateTask_WithOptions() {
         // Arrange
-        mockForm.setType("dataset");
-        mockForm.setTargetId(1L);
-        ExportTaskCreateForm.ExportOptions options = new ExportTaskCreateForm.ExportOptions();
-        options.setStructure("flat");
-        options.setIncludeTypes(java.util.Arrays.asList("clear", "hazy"));
-        options.setIncludeThumbnail(true);
-        mockForm.setOptions(options);
+        mockForm.setType("dataset_export");
+        mockForm.setParamsJson("{\"module\":\"dataset\",\"query\":{\"datasetId\":1,\"options\":{\"structure\":\"flat\",\"includeTypes\":[\"clear\",\"hazy\"],\"includeThumbnail\":true}}}");
 
         try (MockedStatic<SecurityUtils> mockedSecurityUtils = mockStatic(SecurityUtils.class)) {
             mockedSecurityUtils.when(SecurityUtils::getUserId).thenReturn(1L);

@@ -1,41 +1,27 @@
 package com.pei.dehaze.controller;
 
-import com.alibaba.excel.EasyExcelFactory;
-import com.alibaba.excel.ExcelWriter;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
-import com.pei.dehaze.common.util.ExcelUtils;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.query.UserPageQuery;
-import com.pei.dehaze.model.vo.UserExportVO;
-import com.pei.dehaze.model.vo.UserImportVO;
 import com.pei.dehaze.model.vo.UserPageVO;
 import com.pei.dehaze.plugin.dupsubmit.annotation.PreventDuplicateSubmit;
-import com.pei.dehaze.plugin.easyexcel.UserImportListener;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.ServletOutputStream;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.util.Map;
 
 /**
  * 用户控制器
@@ -105,7 +91,7 @@ public class SysUserController {
     @PreAuthorize("@ss.hasPerm('sys:user:password:reset')")
     public Result<Void> updatePassword(
             @Parameter(description = "用户ID") @PathVariable Long userId,
-            @RequestBody java.util.Map<String, String> body
+            @RequestBody Map<String, String> body
     ) {
         String password = body.get("password");
         boolean result = userService.updatePassword(userId, password);
@@ -125,43 +111,5 @@ public class SysUserController {
                 .set(SysUser::getUpdateBy, currentUserId)
         );
         return Result.judge(result);
-    }
-
-    @Operation(summary = "用户导入模板下载")
-    @GetMapping("/template")
-    public void downloadTemplate(HttpServletResponse response) throws IOException {
-        String fileName = "用户导入模板.xlsx";
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition",
-                "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
-
-        String fileClassPath = "excel-templates" + File.separator + fileName;
-        InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(fileClassPath);
-
-        ServletOutputStream outputStream = response.getOutputStream();
-        try (ExcelWriter excelWriter = EasyExcelFactory.write(outputStream).withTemplate(inputStream).build()) {
-            excelWriter.finish();
-        }
-    }
-
-    @Operation(summary = "导入用户")
-    @PostMapping("/_import")
-    public Result<String> importUsers(@Parameter(description = "部门ID") Long deptId, MultipartFile file) throws IOException {
-        UserImportListener listener = new UserImportListener(deptId);
-        String msg = ExcelUtils.importExcel(file.getInputStream(), UserImportVO.class, listener);
-        return Result.success(msg);
-    }
-
-    @Operation(summary = "导出用户")
-    @GetMapping("/_export")
-    public void exportUsers(UserPageQuery queryParams, HttpServletResponse response) throws IOException {
-        String fileName = "用户列表.xlsx";
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition",
-                "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
-
-        List<UserExportVO> exportUserList = userService.listExportUsers(queryParams);
-        EasyExcelFactory.write(response.getOutputStream(), UserExportVO.class).sheet("用户列表")
-                .doWrite(exportUserList);
     }
 }

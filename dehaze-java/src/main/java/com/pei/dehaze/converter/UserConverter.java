@@ -6,7 +6,6 @@ import com.pei.dehaze.common.enums.GenderEnum;
 import com.pei.dehaze.model.bo.UserBO;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
-import com.pei.dehaze.model.vo.UserImportVO;
 import com.pei.dehaze.model.vo.UserInfoVO;
 import com.pei.dehaze.model.vo.UserPageVO;
 import org.mapstruct.Mapper;
@@ -52,17 +51,4 @@ public interface UserConverter {
             @Mapping(target = "perms", ignore = true),
     })
     UserInfoVO toUserInfoVo(SysUser entity);
-
-    @Mappings({
-            @Mapping(target = "createTime", ignore = true),
-            @Mapping(target = "updateTime", ignore = true),
-            @Mapping(target = "avatar", ignore = true),
-            @Mapping(target = "deleted", ignore = true),
-            @Mapping(target = "deptId", ignore = true),
-            @Mapping(target = "gender", ignore = true),
-            @Mapping(target = "id", ignore = true),
-            @Mapping(target = "password", ignore = true),
-            @Mapping(target = "status", ignore = true),
-    })
-    SysUser importVo2Entity(UserImportVO vo);
 }

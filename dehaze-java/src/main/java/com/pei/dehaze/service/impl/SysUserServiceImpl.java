@@ -20,7 +20,6 @@ import com.pei.dehaze.model.dto.UserAuthInfo;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.query.UserPageQuery;
-import com.pei.dehaze.model.vo.UserExportVO;
 import com.pei.dehaze.model.vo.UserInfoVO;
 import com.pei.dehaze.model.vo.UserPageVO;
 import com.pei.dehaze.security.service.PermissionService;
@@ -236,17 +235,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         return userAuthInfo;
     }
 
-
-    /**
-     * 获取导出用户列表
-     *
-     * @param queryParams 查询参数
-     * @return {@link List<UserExportVO>} 导出用户列表
-     */
-    @Override
-    public List<UserExportVO> listExportUsers(UserPageQuery queryParams) {
-        return this.baseMapper.listExportUsers(queryParams);
-    }
 
     /**
      * 获取登录用户信息

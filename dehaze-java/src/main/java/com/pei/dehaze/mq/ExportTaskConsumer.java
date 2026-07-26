@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * 导出任务消费者
  * <p>
  * 消费 task.export 队列消息，调用 {@link TaskExecutor#executeExportTask} 执行任务。
- * 通过策略模式统一处理所有导出类型（dataset_export / item_download / batch_download / custom_export）。
+ * 通过策略模式统一处理所有导出类型（dataset_export / user_export / role_export 等）。
  *
  * @author earthyzinc
  * @since 2024/4/18
