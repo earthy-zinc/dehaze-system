@@ -8,7 +8,9 @@ provider:
 
 ## 代码修改原则
 
-- 每次对话请务必查阅项目根目录 `README.md` 了解项目整体架构
+
+
+当代码改动影响了模块接口、数据流或架构设计时，同步更新 `dehaze-doc` 中对应的设计文档。
 
 ### 禁止兼容历史烂逻辑
 - 发现新逻辑与历史逻辑矛盾、或历史设计不规范时，**直接修改为新逻辑**，不要做无谓的兜底和兼容
@@ -29,7 +31,15 @@ provider:
 - 修改代码需要同步修改文档对应位置，确保文档和代码一致
 - 遇到项目架构、代码细节设计、代码规范方面的问题，务必不要直接改，请查阅dehaze-doc了解整体架构后才可修改
 
-对于一个功能的变更，如果涉及到API以及请求/响应参数增删改，需要同步检查和变更
+## 开发规则
+
+开发前应查阅 `dehaze-doc` 中的相关文档，仅检索与当前任务直接相关的部分，避免全量阅读：
+
+- **系统架构**：`dehaze-doc/docs/02-系统架构/` — 总体架构、环境兼容性、数据库设计、API 规范、测试架构、部署架构
+- **模块设计**：`dehaze-doc/docs/03-模块设计/[模块]/` — 需求规格、API 接口、后端/前端实现、测试用例
+- **项目实现**：`dehaze-doc/docs/04-项目实现/` — 各技术栈（Vue/React/Taro/Flutter/Android/Java/Go/Python）的架构文档
+
+对于一个功能的变更，如果涉及到API请求/响应参数增删改、数据流、架构设计，需要同步检查和变更
 - dehaze-java、dehaze-python、dehaze-go 三个后端、以及单元测试
 - dehaze-sdk-js、dehaze-android/sdk SDK层，以及SDK接口测试 dehaze-sdk-js/test
 - dehaze-front-react、dehaze-front-vue、dehaze_flutter、dehaze-react-native、dehaze-android、dehaze-uniapp、dehaze-taro使用到这个API的地方
