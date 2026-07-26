@@ -189,6 +189,10 @@ function resolvePath(routePath: string) {
   }
 }
 
+.el-sub-menu .el-sub-menu__icon-arrow {
+  margin-right: -8px;
+}
+
 .el-menu-item:hover {
   background-color: $menu-hover;
 }

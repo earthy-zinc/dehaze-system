@@ -770,7 +770,6 @@ onUnmounted(() => {
 
 .flex-center {
   width: 64vw;
-  overflow-y: auto;
 
   .example {
     padding-top: 100px;
