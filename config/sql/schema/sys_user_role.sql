@@ -4,8 +4,8 @@
 -- ============================================================
 -- 设计思路:
 -- 用户-角色多对多关联表。联合主键 (user_id, role_id) 防止重复分配。
+-- 关联表不使用逻辑删除与审计字段，权限变更直接覆盖。
 -- ------------------------------------------------------------
-
 DROP TABLE IF EXISTS `sys_user_role`;
 CREATE TABLE `sys_user_role`
 (
@@ -14,5 +14,5 @@ CREATE TABLE `sys_user_role`
     PRIMARY KEY (`user_id`, `role_id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
-  COLLATE = utf8mb4_general_ci COMMENT = '用户和角色关联表'
+  COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户和角色关联表'
   ROW_FORMAT = DYNAMIC;
