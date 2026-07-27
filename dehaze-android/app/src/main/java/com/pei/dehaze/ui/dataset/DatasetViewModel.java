@@ -4,7 +4,9 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.pei.dehaze.repository.DatasetRepository;
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.api.DatasetAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
@@ -18,7 +20,7 @@ import java.util.List;
  */
 public class DatasetViewModel extends BaseViewModel {
 
-    private final DatasetRepository repository;
+    private final DatasetRepository repository = new DatasetRepository();
 
     private final MutableLiveData<List<Dataset>> rootDatasets = new MutableLiveData<>();
     private final MutableLiveData<List<Dataset>> searchResults = new MutableLiveData<>();
@@ -29,10 +31,6 @@ public class DatasetViewModel extends BaseViewModel {
     private int searchPageNum = 1;
     private final int searchPageSize = 20;
     private long searchTotal = 0;
-
-    public DatasetViewModel() {
-        repository = new DatasetRepository();
-    }
 
     public LiveData<List<Dataset>> getRootDatasets() {
         return rootDatasets;
@@ -51,15 +49,15 @@ public class DatasetViewModel extends BaseViewModel {
      */
     public void loadRoots() {
         searchMode = false;
-        repository.getDatasetChildren(0, withLoading(data ->
-                rootDatasets.postValue(data != null ? data : new ArrayList<>())));
+        DatasetAPI.getChildren(0, RepositoryAdapters.wrap(withLoading(data ->
+                rootDatasets.postValue(data != null ? data : new ArrayList<>()))));
     }
 
     /**
      * 懒加载子节点
      */
     public void loadChildren(long parentId, RepositoryCallback<List<Dataset>> callback) {
-        repository.getDatasetChildren(parentId, callback);
+        DatasetAPI.getChildren(parentId, RepositoryAdapters.wrap(callback));
     }
 
     /**
@@ -85,7 +83,7 @@ public class DatasetViewModel extends BaseViewModel {
         query.setPageNum(searchPageNum);
         query.setPageSize(searchPageSize);
         query.setKeywords(keywords);
-        repository.getDatasetList(query, withLoading(data -> {
+        DatasetAPI.getList(query, RepositoryAdapters.wrap(withLoading(data -> {
             searchTotal = data != null ? data.getTotal() : 0;
             List<Dataset> list = data != null ? data.getList() : new ArrayList<>();
             if (searchPageNum == 1) {
@@ -96,7 +94,7 @@ public class DatasetViewModel extends BaseViewModel {
                 merged.addAll(list);
                 searchResults.postValue(merged);
             }
-        }));
+        })));
     }
 
     public long getSearchTotal() {
@@ -116,30 +114,30 @@ public class DatasetViewModel extends BaseViewModel {
      * 新增数据集
      */
     public void addDataset(Dataset form) {
-        repository.addDataset(form, withLoading(v -> {
+        DatasetAPI.add(form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("新增数据集成功");
             reload();
-        }));
+        })));
     }
 
     /**
      * 修改数据集
      */
     public void updateDataset(long id, Dataset form) {
-        repository.updateDataset(id, form, withLoading(v -> {
+        DatasetAPI.update(id, form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("修改数据集成功");
             reload();
-        }));
+        })));
     }
 
     /**
      * 删除数据集
      */
     public void deleteDataset(long id) {
-        repository.deleteDataset(id, withLoading(v -> {
+        DatasetAPI.delete(id, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除数据集成功");
             reload();
-        }));
+        })));
     }
 
     /**

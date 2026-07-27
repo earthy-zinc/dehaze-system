@@ -3,22 +3,18 @@ package com.pei.dehaze.ui.profile.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.pei.dehaze.repository.ProfileRepository;
+import com.pei.dehaze.repository.RepositoryAdapters;
+import com.pei.dehaze.sdk.api.AuthAPI;
+import com.pei.dehaze.sdk.api.UserAPI;
 import com.pei.dehaze.sdk.utils.TokenManager;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.user.UserInfo;
 
 public class ProfileViewModel extends BaseViewModel {
 
-    private final ProfileRepository profileRepository;
-
     private final MutableLiveData<UserInfo> userInfo = new MutableLiveData<>();
     private final MutableLiveData<Boolean> logoutSuccess = new MutableLiveData<>(false);
     private final MutableLiveData<Boolean> notLoggedIn = new MutableLiveData<>(false);
-
-    public ProfileViewModel() {
-        profileRepository = new ProfileRepository();
-    }
 
     public void loadUserInfo() {
         if (!TokenManager.hasToken()) {
@@ -27,11 +23,11 @@ public class ProfileViewModel extends BaseViewModel {
             return;
         }
         notLoggedIn.setValue(false);
-        profileRepository.getUserInfo(withLoading(userInfo::postValue));
+        UserAPI.getInfo(RepositoryAdapters.wrap(withLoading(userInfo::postValue)));
     }
 
     public void logout() {
-        profileRepository.logout(withLoading(v -> logoutSuccess.postValue(true)));
+        AuthAPI.logout(RepositoryAdapters.wrap(withLoading(v -> logoutSuccess.postValue(true))));
     }
 
     public LiveData<UserInfo> getUserInfo() {

@@ -19,11 +19,13 @@ import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
+import com.pei.dehaze.sdk.model.prediction.DehazeParams;
 import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.ui.evaluation.adapter.EvaluationLogAdapter;
 import com.pei.dehaze.ui.evaluation.adapter.MetricAdapter;
 import com.pei.dehaze.ui.evaluation.viewmodel.EvaluationViewModel;
+import com.pei.dehaze.utils.StatePlaceholder;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.utils.UriUtils;
@@ -38,6 +40,7 @@ public class EvaluationActivity extends AppCompatActivity {
 
     private EvaluationViewModel evaluationViewModel;
     private ActivityEvaluationBinding binding;
+    private StatePlaceholder statePlaceholder;
 
     private final List<Option> algorithmOptions = new ArrayList<>();
     private MetricAdapter metricAdapter;
@@ -82,6 +85,10 @@ public class EvaluationActivity extends AppCompatActivity {
         evaluationLogAdapter = new EvaluationLogAdapter();
         binding.rvHistory.setLayoutManager(new LinearLayoutManager(this));
         binding.rvHistory.setAdapter(evaluationLogAdapter);
+
+        statePlaceholder = new StatePlaceholder(binding.statePlaceholder.getRoot());
+        statePlaceholder.showEmpty("请先执行去雾处理", R.drawable.ic_image);
+        binding.tvMetricsEmpty.setVisibility(View.VISIBLE);
     }
 
     private void onPredictClick() {
@@ -93,7 +100,7 @@ public class EvaluationActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("确认处理")
                 .setMessage("确认开始去雾处理？")
-                .setPositiveButton("确定", (d, w) -> evaluationViewModel.predict(algorithmId))
+                .setPositiveButton("确定", (d, w) -> evaluationViewModel.predict(algorithmId, new DehazeParams()))
                 .setNegativeButton("取消", null)
                 .show();
     }
@@ -133,8 +140,13 @@ public class EvaluationActivity extends AppCompatActivity {
             evaluationLogAdapter.submitList(logs);
             binding.tvHistoryEmpty.setVisibility(logs == null || logs.isEmpty() ? View.VISIBLE : View.GONE);
         });
-        evaluationViewModel.getLoading().observe(this, isLoading ->
-                binding.progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE));
+        evaluationViewModel.getLoading().observe(this, isLoading -> {
+            boolean loading = isLoading != null && isLoading;
+            binding.progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+            if (loading) {
+                statePlaceholder.showLoading("正在处理中…");
+            }
+        });
         evaluationViewModel.getError().observe(this, errorMessage -> {
             if (!TextUtils.isEmpty(errorMessage)) {
                 ToastUtils.showShort(this, errorMessage);
@@ -177,12 +189,18 @@ public class EvaluationActivity extends AppCompatActivity {
 
     private void onPredictionResult(PredResult result) {
         if (result == null) return;
+        statePlaceholder.hide();
         binding.btnEvaluate.setEnabled(true);
+        if (result.getResultUrl() != null) {
+            Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(result.getResultUrl()))
+                    .placeholder(R.drawable.ic_image)
+                    .error(R.drawable.ic_broken_image)
+                    .into(binding.ivResult);
+        }
     }
 
     private void onEvaluationResult(EvalResult result) {
         if (result == null) return;
-        binding.cardEvaluationResult.setVisibility(View.VISIBLE);
         PredEvalTaskStatus status = result.getStatus();
         if (status == PredEvalTaskStatus.FAILED) {
             binding.tvStatus.setText("评估结论：失败 - " + (result.getErrorMessage() != null ? result.getErrorMessage() : ""));

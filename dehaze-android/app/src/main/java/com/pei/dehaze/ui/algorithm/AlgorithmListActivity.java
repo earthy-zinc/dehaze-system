@@ -3,10 +3,7 @@ package com.pei.dehaze.ui.algorithm;
 import androidx.appcompat.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
@@ -15,7 +12,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityAlgorithmListBinding;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
-import com.pei.dehaze.sdk.model.algorithm.AlgorithmFavorite;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
 import com.pei.dehaze.ui.algorithm.adapter.AlgorithmAdapter;
 import com.pei.dehaze.ui.algorithm.viewmodel.AlgorithmViewModel;
@@ -24,7 +20,6 @@ import com.pei.dehaze.utils.ToastUtils;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 public class AlgorithmListActivity extends AppCompatActivity {
 
@@ -76,15 +71,7 @@ public class AlgorithmListActivity extends AppCompatActivity {
             public void onToggleStatus(Algorithm algorithm) {
                 showStatusTransitionDialog(algorithm);
             }
-
-            @Override
-            public void onToggleFavorite(Algorithm algorithm) {
-                algorithmViewModel.toggleFavorite(algorithm.getId());
-            }
         });
-
-        algorithmAdapter.setOnSelectionChangedListener(selectedIds ->
-                binding.tvSelectionInfo.setText("已选中 " + selectedIds.size() + " 个算法"));
 
         binding.btnSearch.setOnClickListener(v -> {
             String keywords = binding.etKeywords.getText().toString().trim();
@@ -99,35 +86,6 @@ public class AlgorithmListActivity extends AppCompatActivity {
         });
 
         binding.btnAdd.setOnClickListener(v -> showAlgorithmFormDialog(null));
-
-        binding.btnCompare.setOnClickListener(v -> {
-            if (!algorithmAdapter.isSelectionMode()) {
-                algorithmAdapter.setSelectionMode(true);
-                updateSelectionModeUI(true);
-                ToastUtils.showShort(this, "长按或勾选要对比的算法（至少2个）");
-            } else {
-                showCompareConfirmDialog();
-            }
-        });
-
-        binding.btnCancelSelect.setOnClickListener(v -> {
-            algorithmAdapter.clearSelection();
-            algorithmAdapter.setSelectionMode(false);
-            updateSelectionModeUI(false);
-        });
-
-        binding.btnSelectAll.setOnClickListener(v -> algorithmAdapter.selectAll());
-
-        binding.btnFavorites.setOnClickListener(v -> algorithmViewModel.loadFavorites());
-    }
-
-    private void updateSelectionModeUI(boolean selectionMode) {
-        binding.btnCancelSelect.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        binding.btnSelectAll.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        binding.tvSelectionInfo.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
-        binding.btnAdd.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
-        binding.btnFavorites.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
-        binding.btnCompare.setText(selectionMode ? "开始对比" : "对比");
     }
 
     private void initViewModel() {
@@ -154,25 +112,6 @@ public class AlgorithmListActivity extends AppCompatActivity {
             if (result != null && !result.isEmpty()) {
                 ToastUtils.showShort(this, result);
                 algorithmViewModel.clearOperationResult();
-                if (result.startsWith("删除") || result.startsWith("状态")) {
-                    if (algorithmAdapter.isSelectionMode()) {
-                        algorithmAdapter.setSelectionMode(false);
-                        updateSelectionModeUI(false);
-                    }
-                }
-            }
-        });
-
-        algorithmViewModel.getCompareResult().observe(this, compareList -> {
-            if (compareList != null && !compareList.isEmpty()) {
-                showCompareResultDialog(compareList);
-                algorithmViewModel.clearCompareResult();
-            }
-        });
-
-        algorithmViewModel.getFavoriteList().observe(this, favorites -> {
-            if (favorites != null) {
-                showFavoritesDialog(favorites);
             }
         });
     }
@@ -208,82 +147,6 @@ public class AlgorithmListActivity extends AppCompatActivity {
                     AlgorithmStatus newStatus = nextStatuses.get(which);
                     algorithmViewModel.updateAlgorithmStatus(algorithm.getId(), newStatus);
                 })
-                .show();
-    }
-
-    private void showCompareConfirmDialog() {
-        Set<Long> selectedIds = algorithmAdapter.getSelectedIds();
-        if (selectedIds.size() < 2) {
-            ToastUtils.showShort(this, "对比至少需要选择2个算法");
-            return;
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("算法对比")
-                .setMessage("确认对比选中的 " + selectedIds.size() + " 个算法吗？")
-                .setPositiveButton("确定", (dialog, which) -> {
-                    String ids = algorithmAdapter.getSelectedIdsString();
-                    algorithmViewModel.compareAlgorithms(ids);
-                })
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    private void showCompareResultDialog(List<Algorithm> compareList) {
-        View view = LayoutInflater.from(this).inflate(R.layout.dialog_algorithm_compare, null);
-        LinearLayout container = view.findViewById(R.id.container_compare_items);
-        TextView tvSummary = view.findViewById(R.id.tv_compare_summary);
-
-        for (Algorithm algorithm : compareList) {
-            View itemView = LayoutInflater.from(this).inflate(R.layout.item_algorithm_compare, container, false);
-            ((TextView) itemView.findViewById(R.id.tv_name)).setText(StringUtils.safe(algorithm.getName()));
-            ((TextView) itemView.findViewById(R.id.tv_type)).setText("类型: " + StringUtils.safe(algorithm.getType()));
-            ((TextView) itemView.findViewById(R.id.tv_params)).setText("参数量: " + StringUtils.safe(algorithm.getParams()));
-            ((TextView) itemView.findViewById(R.id.tv_flops)).setText("FLOPs: " + StringUtils.safe(algorithm.getFlops()));
-            AlgorithmStatus status = algorithm.getStatus();
-            ((TextView) itemView.findViewById(R.id.tv_status)).setText("状态: " + (status != null ? status.getLabel() : ""));
-            ((TextView) itemView.findViewById(R.id.tv_description)).setText(StringUtils.safe(algorithm.getDescription()));
-            container.addView(itemView);
-        }
-
-        StringBuilder summary = new StringBuilder("共对比 " + compareList.size() + " 个算法\n");
-        for (Algorithm algorithm : compareList) {
-            summary.append("• ").append(StringUtils.safe(algorithm.getName()))
-                    .append("（参数: ").append(StringUtils.safe(algorithm.getParams()))
-                    .append(", FLOPs: ").append(StringUtils.safe(algorithm.getFlops()))
-                    .append("）\n");
-        }
-        tvSummary.setText(summary.toString());
-
-        new AlertDialog.Builder(this)
-                .setTitle("算法对比结果")
-                .setView(view)
-                .setPositiveButton("关闭", null)
-                .show();
-
-        algorithmAdapter.setSelectionMode(false);
-        updateSelectionModeUI(false);
-    }
-
-    private void showFavoritesDialog(List<AlgorithmFavorite> favorites) {
-        if (favorites.isEmpty()) {
-            ToastUtils.showShort(this, "暂无收藏的算法");
-            return;
-        }
-        String[] items = new String[favorites.size()];
-        for (int i = 0; i < favorites.size(); i++) {
-            AlgorithmFavorite fav = favorites.get(i);
-            items[i] = "算法ID: " + fav.getAlgorithmId() + "（收藏时间: " + StringUtils.safe(fav.getCreateTime()) + "）";
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("收藏夹（" + favorites.size() + "）")
-                .setItems(items, (dialog, which) -> {
-                    AlgorithmFavorite fav = favorites.get(which);
-                    Intent intent = new Intent(this, AlgorithmDetailActivity.class);
-                    Long algId = fav.getAlgorithmId();
-                    intent.putExtra("algorithm_id", algId != null ? algId : 0L);
-                    startActivity(intent);
-                })
-                .setPositiveButton("关闭", null)
                 .show();
     }
 

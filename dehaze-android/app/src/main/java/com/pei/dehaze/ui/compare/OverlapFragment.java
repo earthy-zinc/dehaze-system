@@ -18,11 +18,13 @@ import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
+import com.pei.dehaze.utils.StatePlaceholder;
 
 public class OverlapFragment extends Fragment {
 
     private CompareViewModel compareViewModel;
     private FragmentOverlapBinding binding;
+    private StatePlaceholder statePlaceholder;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -36,8 +38,16 @@ public class OverlapFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         compareViewModel = new ViewModelProvider(requireActivity()).get(CompareViewModel.class);
 
+        statePlaceholder = new StatePlaceholder(binding.statePlaceholder.getRoot());
+        statePlaceholder.showEmpty("请先完成去雾处理", R.drawable.ic_image_compare);
+
         compareViewModel.getUploadedFile().observe(getViewLifecycleOwner(), this::showOriginal);
         compareViewModel.getPredictionResult().observe(getViewLifecycleOwner(), this::showDehazed);
+        compareViewModel.getLoading().observe(getViewLifecycleOwner(), isLoading -> {
+            if (isLoading != null && isLoading) {
+                statePlaceholder.showLoading("正在处理中…");
+            }
+        });
 
         binding.seekBarOverlap.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -68,6 +78,7 @@ public class OverlapFragment extends Fragment {
 
     private void showDehazed(PredResult result) {
         if (result == null || result.getResultUrl() == null) return;
+        statePlaceholder.hide();
         Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(result.getResultUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)

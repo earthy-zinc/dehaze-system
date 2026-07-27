@@ -30,6 +30,7 @@ import com.pei.dehaze.sdk.model.prediction.DehazeParams;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.ui.common.adapter.PredictionLogAdapter;
 import com.pei.dehaze.ui.presentation.viewmodel.PresentationViewModel;
+import com.pei.dehaze.utils.StatePlaceholder;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.utils.UriUtils;
@@ -46,6 +47,7 @@ public class PresentationActivity extends AppCompatActivity {
 
     private PresentationViewModel presentationViewModel;
     private ActivityPresentationBinding binding;
+    private StatePlaceholder statePlaceholder;
 
     private final List<Option> algorithmOptions = new ArrayList<>();
     private long presetAlgorithmId = 0L;
@@ -100,6 +102,9 @@ public class PresentationActivity extends AppCompatActivity {
                 (tab, position) -> tab.setText(position == 0 ? "原图" : "去雾结果"))
                 .attach();
 
+        statePlaceholder = new StatePlaceholder(binding.statePlaceholder.getRoot());
+        statePlaceholder.showEmpty("请上传图片并点击\"开始去雾处理\"", R.drawable.ic_image);
+
         historyAdapter = new PredictionLogAdapter();
         binding.rvHistory.setLayoutManager(new LinearLayoutManager(this));
         binding.rvHistory.setAdapter(historyAdapter);
@@ -142,8 +147,13 @@ public class PresentationActivity extends AppCompatActivity {
             historyAdapter.submitList(logs);
             binding.tvHistoryEmpty.setVisibility(logs == null || logs.isEmpty() ? View.VISIBLE : View.GONE);
         });
-        presentationViewModel.getLoading().observe(this, isLoading ->
-                binding.progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE));
+        presentationViewModel.getLoading().observe(this, isLoading -> {
+            boolean loading = isLoading != null && isLoading;
+            binding.progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+            if (loading) {
+                statePlaceholder.showLoading("正在处理中…");
+            }
+        });
         presentationViewModel.getError().observe(this, errorMessage -> {
             if (!TextUtils.isEmpty(errorMessage)) {
                 ToastUtils.showShort(this, errorMessage);
@@ -167,6 +177,7 @@ public class PresentationActivity extends AppCompatActivity {
                 .error(R.drawable.ic_broken_image)
                 .into(binding.ivOriginal);
         pagerAdapter.setOriginalUrl(resolved);
+        statePlaceholder.hide();
     }
 
     private void updateAlgorithmSpinner(List<Option> options) {
@@ -195,7 +206,7 @@ public class PresentationActivity extends AppCompatActivity {
 
     private void onPredictionResult(PredResult result) {
         if (result == null) return;
-        binding.cardResult.setVisibility(View.VISIBLE);
+        statePlaceholder.hide();
         pagerAdapter.setResultUrl(DehazeSDK.getInstance().resolveUrl(result.getResultUrl()));
         Long algorithmId = getCurrentAlgorithmId();
         if (algorithmId != null) {

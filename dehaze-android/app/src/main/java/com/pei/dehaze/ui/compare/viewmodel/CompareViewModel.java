@@ -3,8 +3,11 @@ package com.pei.dehaze.ui.compare.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
-import com.pei.dehaze.repository.SharedRepository;
+import com.pei.dehaze.sdk.api.AlgorithmAPI;
+import com.pei.dehaze.sdk.api.FileAPI;
+import com.pei.dehaze.sdk.api.ModelAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.evaluation.EvalParam;
@@ -25,8 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompareViewModel extends BaseViewModel {
 
-    private final SharedRepository sharedRepository;
-
     private final MutableLiveData<FileInfo> uploadedFile = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> algorithmOptions = new MutableLiveData<>();
     private final MutableLiveData<PredResult> predictionResult = new MutableLiveData<>();
@@ -36,20 +37,16 @@ public class CompareViewModel extends BaseViewModel {
 
     private String originalImageUrl;
 
-    public CompareViewModel() {
-        sharedRepository = new SharedRepository();
-    }
-
     public void uploadImage(File imageFile) {
-        sharedRepository.uploadImage(imageFile, withLoading(fileInfo -> {
+        FileAPI.upload(imageFile, RepositoryAdapters.wrap(withLoading(fileInfo -> {
             uploadedFile.postValue(fileInfo);
             originalImageUrl = fileInfo.getUrl();
             operationResult.postValue("图片上传成功");
-        }));
+        })));
     }
 
     public void loadAlgorithmOptions() {
-        sharedRepository.getAlgorithmOptions(withLoading(algorithmOptions::postValue));
+        AlgorithmAPI.getOption(RepositoryAdapters.wrap(withLoading(algorithmOptions::postValue)));
     }
 
     public void predict(long algorithmId, DehazeParams params) {
@@ -66,14 +63,14 @@ public class CompareViewModel extends BaseViewModel {
         param.setAlgorithmId(algorithmId);
         param.setImageUrl(originalImageUrl);
         param.setParams(params);
-        sharedRepository.getPrediction(param, withLoading(result -> {
+        ModelAPI.predictAndWait(param, RepositoryAdapters.wrap(withLoading(result -> {
             if (result.getStatus() == PredEvalTaskStatus.FAILED) {
                 error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "去雾处理失败");
                 return;
             }
             predictionResult.postValue(result);
             operationResult.postValue("去雾处理完成");
-        }));
+        })));
     }
 
     public void predictMultiple(List<Long> algorithmIds, DehazeParams params) {
@@ -98,7 +95,7 @@ public class CompareViewModel extends BaseViewModel {
             param.setAlgorithmId(algorithmId);
             param.setImageUrl(originalImageUrl);
             param.setParams(params);
-            sharedRepository.getPrediction(param, new RepositoryCallback<PredResult>() {
+            ModelAPI.predictAndWait(param, RepositoryAdapters.wrap(new RepositoryCallback<PredResult>() {
                 @Override
                 public void onSuccess(PredResult result) {
                     if (result.getStatus() == PredEvalTaskStatus.FAILED) {
@@ -125,7 +122,7 @@ public class CompareViewModel extends BaseViewModel {
                     }
                     error.postValue(errorMessage);
                 }
-            });
+            }));
         }
     }
 
@@ -138,19 +135,19 @@ public class CompareViewModel extends BaseViewModel {
         param.setAlgorithmId(algorithmId);
         param.setPredUrl(predUrl);
         param.setGtUrl(gtUrl);
-        sharedRepository.getEvaluation(param, withLoading(result -> {
+        ModelAPI.evaluateAndWait(param, RepositoryAdapters.wrap(withLoading(result -> {
             if (result.getStatus() == PredEvalTaskStatus.FAILED) {
                 error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "评估失败");
                 return;
             }
             evaluationResult.postValue(result);
             operationResult.postValue("评估完成");
-        }));
+        })));
     }
 
     public void loadPredictionLogs() {
-        sharedRepository.listPredictionLogs(1, 20, withLoading(logs ->
-                predictionLogs.postValue(logs != null ? logs : new ArrayList<>())));
+        ModelAPI.listPredictionLogs(null, 1, 20, RepositoryAdapters.wrapPage(withLoading(logs ->
+                predictionLogs.postValue(logs != null ? logs : new ArrayList<>()))));
     }
 
     public LiveData<FileInfo> getUploadedFile() {

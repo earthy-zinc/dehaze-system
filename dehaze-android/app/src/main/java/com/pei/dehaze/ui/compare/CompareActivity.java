@@ -31,6 +31,7 @@ import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.prediction.DehazeParams;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
+import com.pei.dehaze.utils.StatePlaceholder;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.utils.UriUtils;
@@ -46,6 +47,7 @@ public class CompareActivity extends AppCompatActivity {
 
     private CompareViewModel compareViewModel;
     private ActivityCompareBinding binding;
+    private StatePlaceholder statePlaceholder;
 
     private final List<Option> algorithmOptions = new ArrayList<>();
     private final Set<Long> selectedAlgorithmIds = new HashSet<>();
@@ -85,7 +87,8 @@ public class CompareActivity extends AppCompatActivity {
                 (tab, position) -> tab.setText(position == 0 ? "并排对比" : "重叠对比"))
                 .attach();
 
-        binding.tvEmpty.setVisibility(View.VISIBLE);
+        statePlaceholder = new StatePlaceholder(binding.statePlaceholder.getRoot());
+        statePlaceholder.showEmpty("请先上传图片并选择算法", R.drawable.ic_image_compare);
     }
 
     private void addCurrentAlgorithm() {
@@ -143,8 +146,13 @@ public class CompareActivity extends AppCompatActivity {
         compareViewModel.getAlgorithmOptions().observe(this, this::updateAlgorithmSpinner);
         compareViewModel.getPredictionResult().observe(this, this::onPredictionResult);
         compareViewModel.getMultiPredictionResults().observe(this, this::onMultiPredictionResults);
-        compareViewModel.getLoading().observe(this, isLoading ->
-                binding.progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE));
+        compareViewModel.getLoading().observe(this, isLoading -> {
+            boolean loading = isLoading != null && isLoading;
+            binding.progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+            if (loading) {
+                statePlaceholder.showLoading("正在处理中…");
+            }
+        });
         compareViewModel.getError().observe(this, errorMessage -> {
             if (!TextUtils.isEmpty(errorMessage)) {
                 ToastUtils.showShort(this, errorMessage);
@@ -178,7 +186,7 @@ public class CompareActivity extends AppCompatActivity {
 
     private void onPredictionResult(PredResult result) {
         if (result == null) return;
-        binding.tvEmpty.setVisibility(View.GONE);
+        statePlaceholder.hide();
         new AlertDialog.Builder(this)
                 .setTitle("处理完成")
                 .setMessage("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms"))
@@ -187,10 +195,8 @@ public class CompareActivity extends AppCompatActivity {
     }
 
     private void onMultiPredictionResults(java.util.Map<Long, PredResult> results) {
-        if (results == null) return;
-        if (!results.isEmpty()) {
-            binding.tvEmpty.setVisibility(View.GONE);
-        }
+        if (results == null || results.isEmpty()) return;
+        statePlaceholder.hide();
         int success = results.size();
         int total = selectedAlgorithmIds.size();
         ToastUtils.showShort(this, "完成 " + success + "/" + total + " 个算法处理");

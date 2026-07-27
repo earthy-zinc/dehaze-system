@@ -5,8 +5,9 @@ import android.util.Patterns;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.pei.dehaze.repository.AuthRepository;
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.api.AuthAPI;
 import com.pei.dehaze.sdk.model.auth.CaptchaResponse;
 import com.pei.dehaze.sdk.model.auth.LoginRequest;
 import com.pei.dehaze.sdk.model.auth.LoginResponse;
@@ -27,10 +28,8 @@ public class LoginViewModel extends ViewModel {
     private final MutableLiveData<String> loginError = new MutableLiveData<>("");
     private final MutableLiveData<Boolean> loginSuccess = new MutableLiveData<>(false);
 
-    private final AuthRepository authRepository = new AuthRepository();
-
     public void loadCaptcha() {
-        authRepository.getCaptcha(new RepositoryCallback<CaptchaResponse>() {
+        AuthAPI.getCaptcha(RepositoryAdapters.wrap(new RepositoryCallback<CaptchaResponse>() {
             @Override
             public void onSuccess(CaptchaResponse data) {
                 captchaKey.postValue(data.getCaptchaKey());
@@ -41,7 +40,7 @@ public class LoginViewModel extends ViewModel {
             public void onError(String errorMessage) {
                 loginError.postValue("获取验证码失败: " + errorMessage);
             }
-        });
+        }));
     }
 
     public void login() {
@@ -70,7 +69,7 @@ public class LoginViewModel extends ViewModel {
         request.setCaptchaKey(captchaKey.getValue());
         request.setRememberMe(Boolean.TRUE.equals(rememberMe.getValue()));
 
-        authRepository.login(request, new RepositoryCallback<LoginResponse>() {
+        AuthAPI.login(request, RepositoryAdapters.wrap(new RepositoryCallback<LoginResponse>() {
             @Override
             public void onSuccess(LoginResponse data) {
                 TokenManager.setSessionId(data.getSessionId());
@@ -84,7 +83,7 @@ public class LoginViewModel extends ViewModel {
                 loginError.postValue("登录失败: " + errorMessage);
                 loadCaptcha();
             }
-        });
+        }));
     }
 
     private boolean isUserNameValid(String username) {

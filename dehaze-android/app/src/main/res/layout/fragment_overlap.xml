@@ -34,6 +34,12 @@
             android:layout_gravity="center"
             android:background="@android:color/holo_red_light" />
 
+        <include
+            android:id="@+id/state_placeholder"
+            layout="@layout/view_state_placeholder"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
     </FrameLayout>
 
     <TextView

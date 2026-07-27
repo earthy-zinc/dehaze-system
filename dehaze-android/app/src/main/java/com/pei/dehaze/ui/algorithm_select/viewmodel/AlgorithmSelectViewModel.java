@@ -3,8 +3,9 @@ package com.pei.dehaze.ui.algorithm_select.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.pei.dehaze.repository.AlgorithmSelectRepository;
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.api.AlgorithmSelectAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmCompareVO;
 import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmRecommendVO;
@@ -16,29 +17,23 @@ import java.util.List;
 
 public class AlgorithmSelectViewModel extends BaseViewModel {
 
-    private final AlgorithmSelectRepository repository;
-
     private final MutableLiveData<List<AlgorithmRecommendVO>> recommendList = new MutableLiveData<>();
     private final MutableLiveData<List<FavoriteVO>> favoriteList = new MutableLiveData<>();
     private final MutableLiveData<List<AlgorithmCompareVO>> compareResult = new MutableLiveData<>();
     private final MutableLiveData<FavoriteToggleResult> favoriteToggleResult = new MutableLiveData<>();
 
-    public AlgorithmSelectViewModel() {
-        repository = new AlgorithmSelectRepository();
-    }
-
     public void recommend(String imageUrl, int topN) {
-        repository.recommend(imageUrl, topN, withLoading(data ->
-                recommendList.postValue(data != null ? data : new ArrayList<>())));
+        AlgorithmSelectAPI.recommend(imageUrl, topN, RepositoryAdapters.wrap(withLoading(data ->
+                recommendList.postValue(data != null ? data : new ArrayList<>()))));
     }
 
     public void loadFavorites() {
-        repository.listFavorites(withLoading(data ->
-                favoriteList.postValue(data != null ? data : new ArrayList<>())));
+        AlgorithmSelectAPI.listFavorites(RepositoryAdapters.wrap(withLoading(data ->
+                favoriteList.postValue(data != null ? data : new ArrayList<>()))));
     }
 
     public void toggleFavorite(long algorithmId) {
-        repository.toggleFavorite(algorithmId, new RepositoryCallback<FavoriteToggleResult>() {
+        AlgorithmSelectAPI.toggleFavorite(algorithmId, RepositoryAdapters.wrap(new RepositoryCallback<FavoriteToggleResult>() {
             @Override
             public void onSuccess(FavoriteToggleResult data) {
                 favoriteToggleResult.postValue(data);
@@ -49,12 +44,12 @@ public class AlgorithmSelectViewModel extends BaseViewModel {
             public void onError(String errorMessage) {
                 error.postValue(errorMessage);
             }
-        });
+        }));
     }
 
     public void compare(List<Long> algorithmIds, String imageUrl) {
-        repository.compare(algorithmIds, imageUrl, withLoading(data ->
-                compareResult.postValue(data != null ? data : new ArrayList<>())));
+        AlgorithmSelectAPI.compare(algorithmIds, imageUrl, RepositoryAdapters.wrap(withLoading(data ->
+                compareResult.postValue(data != null ? data : new ArrayList<>()))));
     }
 
     public LiveData<List<AlgorithmRecommendVO>> getRecommendList() {

@@ -10,6 +10,7 @@ import com.pei.dehaze.databinding.ActivityAlgorithmDetailBinding;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
 import com.pei.dehaze.ui.algorithm.viewmodel.AlgorithmViewModel;
+import com.pei.dehaze.ui.algorithm_select.viewmodel.AlgorithmSelectViewModel;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 
@@ -21,6 +22,7 @@ import java.util.List;
 public class AlgorithmDetailActivity extends AppCompatActivity {
 
     private AlgorithmViewModel algorithmViewModel;
+    private AlgorithmSelectViewModel selectViewModel;
     private ActivityAlgorithmDetailBinding binding;
 
     private long algorithmId;
@@ -64,7 +66,7 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
 
         binding.btnFavorite.setOnClickListener(v -> {
             if (currentAlgorithm != null) {
-                algorithmViewModel.toggleFavorite(currentAlgorithm.getId());
+                selectViewModel.toggleFavorite(currentAlgorithm.getId());
             }
         });
 
@@ -77,6 +79,7 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
 
     private void initViewModel() {
         algorithmViewModel = new ViewModelProvider(this).get(AlgorithmViewModel.class);
+        selectViewModel = new ViewModelProvider(this).get(AlgorithmSelectViewModel.class);
     }
 
     private void setupObservers() {
@@ -101,6 +104,20 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
                 if (algorithmId > 0) {
                     algorithmViewModel.loadAlgorithmDetail(algorithmId);
                 }
+            }
+        });
+
+        selectViewModel.getError().observe(this, errorMessage -> {
+            if (errorMessage != null && !errorMessage.isEmpty()) {
+                ToastUtils.showShort(this, errorMessage);
+                selectViewModel.clearError();
+            }
+        });
+
+        selectViewModel.getOperationResult().observe(this, result -> {
+            if (result != null && !result.isEmpty()) {
+                ToastUtils.showShort(this, result);
+                selectViewModel.clearOperationResult();
             }
         });
     }

@@ -3,7 +3,6 @@ package com.pei.dehaze.sdk.service;
 import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
-import com.pei.dehaze.sdk.model.algorithm.AlgorithmFavorite;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatusForm;
 
 import java.util.List;
@@ -18,27 +17,19 @@ import retrofit2.http.Query;
 import retrofit2.http.Path;
 
 /**
- * 算法相关API服务接口
+ * 算法管理API服务接口
+ * 仅包含算法管理模块的 CRUD/状态/版本等接口；
+ * 收藏/对比/推荐请使用 {@link AlgorithmSelectApiService}（/api/v1/algorithm-select）
  */
 public interface AlgorithmApiService {
-    // Algorithm APIs
     @GET("/api/v1/algorithms")
     Call<Result<List<Algorithm>>> getAlgorithmList(@Query("keywords") String keywords);
-
-    @GET("/api/v1/algorithms/compare")
-    Call<Result<List<Algorithm>>> compareAlgorithms(@Query("ids") String ids);
 
     @GET("/api/v1/algorithms/options")
     Call<Result<List<Option>>> getAlgorithmOptions();
 
-    @GET("/api/v1/algorithms/favorites")
-    Call<Result<List<AlgorithmFavorite>>> listFavorites();
-
     @GET("/api/v1/algorithms/{id}")
     Call<Result<Algorithm>> getAlgorithmInfo(@Path("id") long id);
-
-    @POST("/api/v1/algorithms/{id}/favorite")
-    Call<Result<Void>> toggleFavorite(@Path("id") long id);
 
     @POST("/api/v1/algorithms")
     Call<Result<Void>> addAlgorithm(@Body Algorithm data);

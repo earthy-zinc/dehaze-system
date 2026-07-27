@@ -3,12 +3,16 @@ package com.pei.dehaze.ui.system.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.pei.dehaze.repository.UserRepository;
-import com.pei.dehaze.ui.common.BaseViewModel;
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.api.DeptAPI;
+import com.pei.dehaze.sdk.api.RoleAPI;
+import com.pei.dehaze.sdk.api.UserAPI;
+import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.PageResult;
+import com.pei.dehaze.sdk.model.role.RoleQuery;
 import com.pei.dehaze.sdk.model.user.UserForm;
 import com.pei.dehaze.sdk.model.user.UserPageVO;
 import com.pei.dehaze.sdk.model.user.UserQuery;
@@ -18,8 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserViewModel extends BaseViewModel {
-
-    private final UserRepository userRepository;
 
     private final MutableLiveData<List<UserPageVO>> userList = new MutableLiveData<>();
     private final MutableLiveData<Long> total = new MutableLiveData<>(0L);
@@ -35,50 +37,46 @@ public class UserViewModel extends BaseViewModel {
     private String startTime;
     private String endTime;
 
-    public UserViewModel() {
-        userRepository = new UserRepository();
-    }
-
     public void loadUsers() {
         UserQuery query = buildQuery();
-        userRepository.getUsers(query, withLoading(data -> {
+        UserAPI.getPage(query, RepositoryAdapters.wrap(withLoading(data -> {
             userList.postValue(data.getList());
             total.postValue(data.getTotal());
-        }));
+        })));
     }
 
     public void loadUserForm(int userId) {
-        userRepository.getUserForm(userId, withLoading(userForm::postValue));
+        UserAPI.getFormData(userId, RepositoryAdapters.wrap(withLoading(userForm::postValue)));
     }
 
     public void addUser(UserForm form) {
-        userRepository.addUser(form, withLoading(v -> {
+        UserAPI.add(form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("新增用户成功");
             loadUsers();
-        }));
+        })));
     }
 
     public void updateUser(int id, UserForm form) {
-        userRepository.updateUser(id, form, withLoading(v -> {
+        UserAPI.update(id, form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("修改用户成功");
             loadUsers();
-        }));
+        })));
     }
 
     public void deleteUsers(List<Long> ids) {
-        userRepository.deleteUsers(ids, withLoading(v -> {
+        UserAPI.deleteByIds(ids, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除用户成功");
             loadUsers();
-        }));
+        })));
     }
 
     public void updateUserPassword(int id, String password) {
-        userRepository.updateUserPassword(id, password,
-                withLoading(v -> operationResult.postValue("重置密码成功")));
+        UserAPI.updatePassword(id, password,
+                RepositoryAdapters.wrap(withLoading(v -> operationResult.postValue("重置密码成功"))));
     }
 
     public void updateUserStatus(long id, EnableStatus status) {
-        userRepository.updateUserStatus(id, status, new RepositoryCallback<Void>() {
+        UserAPI.updateStatus(id, status, RepositoryAdapters.wrap(new RepositoryCallback<Void>() {
             @Override
             public void onSuccess(Void data) {
                 operationResult.postValue("状态切换成功");
@@ -89,29 +87,29 @@ public class UserViewModel extends BaseViewModel {
             public void onError(String errorMessage) {
                 error.postValue(errorMessage);
             }
-        });
+        }));
     }
 
     public void downloadTemplate(String filePath) {
-        userRepository.downloadTemplate(filePath,
-                withLoading(v -> operationResult.postValue("模板下载成功:" + filePath)));
+        UserAPI.downloadTemplate(filePath,
+                RepositoryAdapters.wrap(withLoading(v -> operationResult.postValue("模板下载成功:" + filePath))));
     }
 
     public void exportUsers(String filePath) {
         UserQuery query = buildQuery();
-        userRepository.exportUsers(query, filePath,
-                withLoading(v -> operationResult.postValue("导出成功:" + filePath)));
+        UserAPI.export(query, filePath,
+                RepositoryAdapters.wrap(withLoading(v -> operationResult.postValue("导出成功:" + filePath))));
     }
 
     public void importUsers(int deptId, File file) {
-        userRepository.importUsers(deptId, file, withLoading(v -> {
+        UserAPI.importUsers(deptId, file, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("导入成功");
             loadUsers();
-        }));
+        })));
     }
 
     public void loadDeptOptions() {
-        userRepository.getDeptOptions(new RepositoryCallback<List<Option>>() {
+        DeptAPI.getOptions(RepositoryAdapters.wrap(new RepositoryCallback<List<Option>>() {
             @Override
             public void onSuccess(List<Option> data) {
                 deptOptions.postValue(data);
@@ -121,11 +119,11 @@ public class UserViewModel extends BaseViewModel {
             public void onError(String errorMessage) {
                 error.postValue(errorMessage);
             }
-        });
+        }));
     }
 
     public void loadRoleOptions() {
-        userRepository.getRoleOptions(new RepositoryCallback<List<Option>>() {
+        RoleAPI.getOptions(new RoleQuery(), RepositoryAdapters.wrap(new RepositoryCallback<List<Option>>() {
             @Override
             public void onSuccess(List<Option> data) {
                 roleOptions.postValue(data);
@@ -135,7 +133,7 @@ public class UserViewModel extends BaseViewModel {
             public void onError(String errorMessage) {
                 error.postValue(errorMessage);
             }
-        });
+        }));
     }
 
     private UserQuery buildQuery() {

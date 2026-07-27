@@ -4,7 +4,6 @@ import com.pei.dehaze.sdk.api.AlgorithmAPI;
 import com.pei.dehaze.sdk.api.DatasetAPI;
 import com.pei.dehaze.sdk.api.ModelAPI;
 import com.pei.dehaze.sdk.api.TaskAPI;
-import com.pei.dehaze.sdk.api.UserAPI;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmQuery;
@@ -13,7 +12,6 @@ import com.pei.dehaze.sdk.model.dataset.DatasetQuery;
 import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
 import com.pei.dehaze.sdk.model.task.TaskQuery;
 import com.pei.dehaze.sdk.model.task.TaskVO;
-import com.pei.dehaze.sdk.model.user.UserInfo;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -49,10 +47,6 @@ public class DashboardRepository {
         public long getHistoryCount() {
             return historyCount;
         }
-    }
-
-    public void getUserInfo(RepositoryCallback<UserInfo> callback) {
-        UserAPI.getInfo(RepositoryAdapters.wrap(callback));
     }
 
     public void getStats(RepositoryCallback<StatsData> callback) {
@@ -142,9 +136,5 @@ public class DashboardRepository {
         return tree.stream().mapToLong(a ->
                 (a.getChildren() != null ? countAlgorithms(a.getChildren()) : 0) + 1
         ).sum();
-    }
-
-    public void getRecentActivities(RepositoryCallback<List<PredictionLogVO>> callback) {
-        ModelAPI.listPredictionLogs(null, 1, 10, RepositoryAdapters.wrapPage(callback));
     }
 }

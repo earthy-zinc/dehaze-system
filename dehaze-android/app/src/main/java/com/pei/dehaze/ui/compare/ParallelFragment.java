@@ -17,6 +17,7 @@ import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
+import com.pei.dehaze.utils.StatePlaceholder;
 
 import java.util.Map;
 
@@ -24,6 +25,7 @@ public class ParallelFragment extends Fragment {
 
     private CompareViewModel compareViewModel;
     private FragmentParallelBinding binding;
+    private StatePlaceholder statePlaceholder;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -37,9 +39,17 @@ public class ParallelFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         compareViewModel = new ViewModelProvider(requireActivity()).get(CompareViewModel.class);
 
+        statePlaceholder = new StatePlaceholder(binding.statePlaceholder.getRoot());
+        statePlaceholder.showEmpty("请先完成去雾处理", R.drawable.ic_image_compare);
+
         compareViewModel.getUploadedFile().observe(getViewLifecycleOwner(), this::showOriginal);
         compareViewModel.getPredictionResult().observe(getViewLifecycleOwner(), this::showDehazed);
         compareViewModel.getMultiPredictionResults().observe(getViewLifecycleOwner(), this::showMultiResults);
+        compareViewModel.getLoading().observe(getViewLifecycleOwner(), isLoading -> {
+            if (isLoading != null && isLoading) {
+                statePlaceholder.showLoading("正在处理中…");
+            }
+        });
     }
 
     private void showOriginal(FileInfo fileInfo) {
@@ -51,8 +61,8 @@ public class ParallelFragment extends Fragment {
     }
 
     private void showDehazed(PredResult result) {
-        if (result == null) return;
-        if (result.getResultUrl() == null) return;
+        if (result == null || result.getResultUrl() == null) return;
+        statePlaceholder.hide();
         Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(result.getResultUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
@@ -64,6 +74,7 @@ public class ParallelFragment extends Fragment {
         if (results == null || results.isEmpty()) return;
         PredResult first = results.values().iterator().next();
         if (first.getResultUrl() == null) return;
+        statePlaceholder.hide();
         Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(first.getResultUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)

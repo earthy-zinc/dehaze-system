@@ -3,7 +3,6 @@ package com.pei.dehaze.ui.algorithm.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -20,10 +19,8 @@ import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.AlgorithmViewHolder> {
 
@@ -32,11 +29,6 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
         void onEdit(Algorithm algorithm);
         void onDelete(Algorithm algorithm);
         void onToggleStatus(Algorithm algorithm);
-        void onToggleFavorite(Algorithm algorithm);
-    }
-
-    public interface OnSelectionChangedListener {
-        void onSelectionChanged(Set<Long> selectedIds);
     }
 
     private static class Node {
@@ -56,16 +48,9 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
     private final List<Node> flatNodes = new ArrayList<>();
     private final List<Algorithm> rootAlgorithms = new ArrayList<>();
     private OnAlgorithmActionListener actionListener;
-    private OnSelectionChangedListener selectionListener;
-    private boolean selectionMode = false;
-    private final Set<Long> selectedIds = new HashSet<>();
 
     public void setOnAlgorithmActionListener(OnAlgorithmActionListener listener) {
         this.actionListener = listener;
-    }
-
-    public void setOnSelectionChangedListener(OnSelectionChangedListener listener) {
-        this.selectionListener = listener;
     }
 
     public void setData(List<Algorithm> algorithms) {
@@ -125,56 +110,6 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
         }
     }
 
-    public void setSelectionMode(boolean selectionMode) {
-        this.selectionMode = selectionMode;
-        if (!selectionMode) {
-            selectedIds.clear();
-        }
-        notifyItemRangeChanged(0, getItemCount());
-    }
-
-    public boolean isSelectionMode() {
-        return selectionMode;
-    }
-
-    public void selectAll() {
-        for (Node node : flatNodes) {
-            selectedIds.add(node.algorithm.getId());
-        }
-        notifyItemRangeChanged(0, getItemCount());
-        notifySelectionChanged();
-    }
-
-    public void clearSelection() {
-        selectedIds.clear();
-        notifyItemRangeChanged(0, getItemCount());
-        notifySelectionChanged();
-    }
-
-    public Set<Long> getSelectedIds() {
-        return new HashSet<>(selectedIds);
-    }
-
-    public String getSelectedIdsString() {
-        if (selectedIds.isEmpty()) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (Long id : selectedIds) {
-            if (sb.length() > 0) {
-                sb.append(",");
-            }
-            sb.append(id);
-        }
-        return sb.toString();
-    }
-
-    private void notifySelectionChanged() {
-        if (selectionListener != null) {
-            selectionListener.onSelectionChanged(new HashSet<>(selectedIds));
-        }
-    }
-
     @Override
     public int getItemCount() {
         return flatNodes.size();
@@ -194,7 +129,6 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
     }
 
     class AlgorithmViewHolder extends RecyclerView.ViewHolder {
-        private CheckBox cbSelect;
         private TextView tvName;
         private TextView tvType;
         private TextView tvDescription;
@@ -207,11 +141,9 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
         private TextView tvEdit;
         private TextView tvDelete;
         private TextView tvToggleStatus;
-        private TextView tvFavorite;
 
         AlgorithmViewHolder(@NonNull View itemView) {
             super(itemView);
-            cbSelect = itemView.findViewById(R.id.cb_select);
             tvName = itemView.findViewById(R.id.tv_algorithm_name);
             tvType = itemView.findViewById(R.id.tv_algorithm_type);
             tvDescription = itemView.findViewById(R.id.tv_algorithm_description);
@@ -224,7 +156,6 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
             tvEdit = itemView.findViewById(R.id.tv_edit);
             tvDelete = itemView.findViewById(R.id.tv_delete);
             tvToggleStatus = itemView.findViewById(R.id.tv_toggle_status);
-            tvFavorite = itemView.findViewById(R.id.tv_favorite);
         }
 
         void bind(Node node) {
@@ -235,7 +166,6 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
             tvParams.setText(StringUtils.safe(algorithm.getParams()));
             tvFlops.setText(StringUtils.safe(algorithm.getFlops()));
 
-            // 状态 Chip
             AlgorithmStatus status = algorithm.getStatus() != null ? algorithm.getStatus() : AlgorithmStatus.DRAFT;
             chipStatus.setText(status.getLabel());
             chipStatus.setChipBackgroundColor(ColorStateList.valueOf(statusColor(status)));
@@ -257,24 +187,6 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
                 ivExpand.setOnClickListener(null);
             }
 
-            if (selectionMode) {
-                cbSelect.setVisibility(View.VISIBLE);
-                cbSelect.setChecked(selectedIds.contains(algorithm.getId()));
-                cbSelect.setOnCheckedChangeListener((button, checked) -> {
-                    if (checked) {
-                        selectedIds.add(algorithm.getId());
-                    } else {
-                        selectedIds.remove(algorithm.getId());
-                    }
-                    notifySelectionChanged();
-                });
-                hideActions();
-            } else {
-                cbSelect.setVisibility(View.GONE);
-                cbSelect.setOnCheckedChangeListener(null);
-                showActions();
-            }
-
             tvView.setOnClickListener(v -> {
                 if (actionListener != null) actionListener.onView(algorithm);
             });
@@ -287,36 +199,6 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
             tvToggleStatus.setOnClickListener(v -> {
                 if (actionListener != null) actionListener.onToggleStatus(algorithm);
             });
-            tvFavorite.setOnClickListener(v -> {
-                if (actionListener != null) actionListener.onToggleFavorite(algorithm);
-            });
-
-            itemView.setOnLongClickListener(v -> {
-                if (!selectionMode) {
-                    setSelectionMode(true);
-                    selectedIds.add(algorithm.getId());
-                    notifyItemRangeChanged(0, getItemCount());
-                    notifySelectionChanged();
-                    return true;
-                }
-                return false;
-            });
-        }
-
-        private void showActions() {
-            tvView.setVisibility(View.VISIBLE);
-            tvEdit.setVisibility(View.VISIBLE);
-            tvDelete.setVisibility(View.VISIBLE);
-            tvToggleStatus.setVisibility(View.VISIBLE);
-            tvFavorite.setVisibility(View.VISIBLE);
-        }
-
-        private void hideActions() {
-            tvView.setVisibility(View.GONE);
-            tvEdit.setVisibility(View.GONE);
-            tvDelete.setVisibility(View.GONE);
-            tvToggleStatus.setVisibility(View.GONE);
-            tvFavorite.setVisibility(View.GONE);
         }
 
     }
@@ -324,12 +206,12 @@ public class AlgorithmAdapter extends RecyclerView.Adapter<AlgorithmAdapter.Algo
     private int statusColor(AlgorithmStatus status) {
         if (status == null) return 0xFF9E9E9E;
         switch (status) {
-            case DRAFT: return 0xFF9E9E9E; // 草稿-灰
-            case TESTING: return 0xFFFF9800; // 测试中-橙
-            case PENDING_AUDIT: return 0xFF2196F3; // 待审核-蓝
-            case PUBLISHED: return 0xFF4CAF50; // 已发布-绿
-            case DISABLED: return 0xFFE53935; // 已停用-红
-            case ARCHIVED: return 0xFF607D8B; // 已归档-深灰
+            case DRAFT: return 0xFF9E9E9E;
+            case TESTING: return 0xFFFF9800;
+            case PENDING_AUDIT: return 0xFF2196F3;
+            case PUBLISHED: return 0xFF4CAF50;
+            case DISABLED: return 0xFFE53935;
+            case ARCHIVED: return 0xFF607D8B;
             default: return 0xFF9E9E9E;
         }
     }

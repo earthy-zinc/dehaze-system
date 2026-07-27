@@ -135,10 +135,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                android:visibility="gone"
                 app:cardCornerRadius="8dp"
-                app:cardElevation="4dp"
-                tools:visibility="visible">
+                app:cardElevation="4dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -162,10 +160,22 @@
                         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
                         app:tabTextColor="@android:color/white" />
 
-                    <androidx.viewpager2.widget.ViewPager2
-                        android:id="@+id/view_pager"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="400dp" />
+                        android:layout_height="400dp">
+
+                        <androidx.viewpager2.widget.ViewPager2
+                            android:id="@+id/view_pager"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+
+                        <include
+                            android:id="@+id/state_placeholder"
+                            layout="@layout/view_state_placeholder"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+
+                    </FrameLayout>
 
                     <TextView
                         android:id="@+id/tv_algorithm_info"

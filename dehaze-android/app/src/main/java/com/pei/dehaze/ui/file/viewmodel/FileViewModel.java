@@ -4,7 +4,8 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.pei.dehaze.repository.FileRepository;
-import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.repository.RepositoryAdapters;
+import com.pei.dehaze.sdk.api.FileAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
@@ -18,7 +19,7 @@ import java.util.List;
  */
 public class FileViewModel extends BaseViewModel {
 
-    private final FileRepository fileRepository;
+    private final FileRepository fileRepository = new FileRepository();
 
     private final MutableLiveData<List<FileInfo>> fileList = new MutableLiveData<>();
     private final MutableLiveData<FileInfo> fileDetail = new MutableLiveData<>();
@@ -27,10 +28,6 @@ public class FileViewModel extends BaseViewModel {
     private int pageSize = 10;
     private String keywords = "";
     private long total = 0;
-
-    public FileViewModel() {
-        fileRepository = new FileRepository();
-    }
 
     /**
      * 加载文件列表（首页）
@@ -61,7 +58,7 @@ public class FileViewModel extends BaseViewModel {
     }
 
     private void fetchFiles() {
-        fileRepository.getFiles(pageNum, pageSize, keywords, withLoading(data -> {
+        FileAPI.getFilePage(pageNum, pageSize, keywords, RepositoryAdapters.wrap(withLoading(data -> {
             List<FileInfo> files = data.getList();
             FileViewModel.this.total = data.getTotal();
             if (pageNum == 1) {
@@ -74,17 +71,17 @@ public class FileViewModel extends BaseViewModel {
                 current.addAll(files);
                 fileList.postValue(current);
             }
-        }));
+        })));
     }
 
     /**
      * 上传文件
      */
     public void uploadFile(File file) {
-        fileRepository.uploadFile(file, withLoading(f -> {
+        FileAPI.upload(file, RepositoryAdapters.wrap(withLoading(f -> {
             operationResult.postValue("上传成功: " + f.getName());
             loadFiles();
-        }, msg -> error.postValue("上传失败: " + msg)));
+        }, msg -> error.postValue("上传失败: " + msg))));
     }
 
     /**
@@ -100,18 +97,18 @@ public class FileViewModel extends BaseViewModel {
      * 删除文件
      */
     public void deleteFile(long fileId) {
-        fileRepository.deleteFile(fileId, withLoading(v -> {
+        FileAPI.delete(fileId, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除成功");
             loadFiles();
-        }, msg -> error.postValue("删除失败: " + msg)));
+        }, msg -> error.postValue("删除失败: " + msg))));
     }
 
     /**
      * 查看文件详情
      */
     public void getFileDetail(long fileId) {
-        fileRepository.getFileDetail(fileId, withLoading(fileDetail::postValue,
-                msg -> error.postValue("查询详情失败: " + msg)));
+        FileAPI.getFileDetail(fileId, RepositoryAdapters.wrap(withLoading(fileDetail::postValue,
+                msg -> error.postValue("查询详情失败: " + msg))));
     }
 
     public LiveData<List<FileInfo>> getFileList() {

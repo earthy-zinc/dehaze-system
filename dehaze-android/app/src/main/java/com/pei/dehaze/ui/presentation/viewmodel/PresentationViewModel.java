@@ -3,8 +3,10 @@ package com.pei.dehaze.ui.presentation.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.pei.dehaze.repository.AlgorithmRepository;
-import com.pei.dehaze.repository.SharedRepository;
+import com.pei.dehaze.repository.RepositoryAdapters;
+import com.pei.dehaze.sdk.api.AlgorithmAPI;
+import com.pei.dehaze.sdk.api.FileAPI;
+import com.pei.dehaze.sdk.api.ModelAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
@@ -22,9 +24,6 @@ import java.util.List;
 
 public class PresentationViewModel extends BaseViewModel {
 
-    private final SharedRepository sharedRepository;
-    private final AlgorithmRepository algorithmRepository;
-
     private final MutableLiveData<FileInfo> uploadedFile = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> algorithmOptions = new MutableLiveData<>();
     private final MutableLiveData<Algorithm> algorithmDetail = new MutableLiveData<>();
@@ -33,29 +32,24 @@ public class PresentationViewModel extends BaseViewModel {
 
     private String originalImageUrl;
 
-    public PresentationViewModel() {
-        sharedRepository = new SharedRepository();
-        algorithmRepository = new AlgorithmRepository();
-    }
-
     public void uploadImage(File imageFile) {
-        sharedRepository.uploadImage(imageFile, withLoading(fileInfo -> {
+        FileAPI.upload(imageFile, RepositoryAdapters.wrap(withLoading(fileInfo -> {
             uploadedFile.postValue(fileInfo);
             originalImageUrl = fileInfo.getUrl();
             operationResult.postValue("图片上传成功");
-        }));
+        })));
     }
 
     public void loadAlgorithmOptions() {
-        sharedRepository.getAlgorithmOptions(withLoading(algorithmOptions::postValue));
+        AlgorithmAPI.getOption(RepositoryAdapters.wrap(withLoading(algorithmOptions::postValue)));
     }
 
     public void loadAlgorithms(AlgorithmQuery query) {
-        algorithmRepository.getAlgorithms(query, withLoading(algorithms -> { }));
+        AlgorithmAPI.getList(query, RepositoryAdapters.wrap(withLoading(algorithms -> { })));
     }
 
     public void getAlgorithmDetail(long id) {
-        algorithmRepository.getAlgorithmDetail(id, withLoading(algorithmDetail::postValue));
+        AlgorithmAPI.getAlgorithmInfoById(id, RepositoryAdapters.wrap(withLoading(algorithmDetail::postValue)));
     }
 
     public void predict(long algorithmId, DehazeParams params) {
@@ -72,7 +66,7 @@ public class PresentationViewModel extends BaseViewModel {
         param.setAlgorithmId(algorithmId);
         param.setImageUrl(originalImageUrl);
         param.setParams(params);
-        sharedRepository.getPrediction(param, withLoading(result -> {
+        ModelAPI.predictAndWait(param, RepositoryAdapters.wrap(withLoading(result -> {
             if (result.getStatus() == PredEvalTaskStatus.FAILED) {
                 error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "去雾处理失败");
                 return;
@@ -80,12 +74,12 @@ public class PresentationViewModel extends BaseViewModel {
             predictionResult.postValue(result);
             operationResult.postValue("去雾处理完成");
             loadHistory();
-        }));
+        })));
     }
 
     public void loadHistory() {
-        sharedRepository.listPredictionLogs(1, 20, withLoading(logs ->
-                historyList.postValue(logs != null ? logs : new ArrayList<>())));
+        ModelAPI.listPredictionLogs(null, 1, 20, RepositoryAdapters.wrapPage(withLoading(logs ->
+                historyList.postValue(logs != null ? logs : new ArrayList<>()))));
     }
 
     public LiveData<FileInfo> getUploadedFile() {

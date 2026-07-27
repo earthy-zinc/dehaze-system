@@ -3,8 +3,9 @@ package com.pei.dehaze.ui.task.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.TaskRepository;
+import com.pei.dehaze.sdk.api.TaskAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.task.TaskCreateForm;
@@ -21,7 +22,7 @@ import java.util.List;
  */
 public class TaskViewModel extends BaseViewModel {
 
-    private final TaskRepository taskRepository;
+    private final TaskRepository taskRepository = new TaskRepository();
 
     private final MutableLiveData<List<TaskVO>> taskList = new MutableLiveData<>();
     private final MutableLiveData<TaskVO> taskDetail = new MutableLiveData<>();
@@ -32,10 +33,6 @@ public class TaskViewModel extends BaseViewModel {
     private TaskStatus statusFilter;
     private TaskType typeFilter;
     private long total = 0;
-
-    public TaskViewModel() {
-        taskRepository = new TaskRepository();
-    }
 
     /**
      * 加载任务列表（首页）
@@ -80,7 +77,7 @@ public class TaskViewModel extends BaseViewModel {
         query.setPageSize(pageSize);
         query.setStatus(statusFilter);
         query.setTaskType(typeFilter);
-        taskRepository.getTasks(query, withLoading(data -> {
+        TaskAPI.getTaskPage(query, RepositoryAdapters.wrap(withLoading(data -> {
             List<TaskVO> tasks = data.getList();
             TaskViewModel.this.total = data.getTotal();
             if (pageNum == 1) {
@@ -93,28 +90,28 @@ public class TaskViewModel extends BaseViewModel {
                 current.addAll(tasks);
                 taskList.postValue(current);
             }
-        }));
+        })));
     }
 
     /**
      * 创建任务
      */
     public void createTask(TaskCreateForm form) {
-        taskRepository.createTask(form, withLoading(task -> {
+        TaskAPI.createTask(form, RepositoryAdapters.wrap(withLoading(task -> {
             createdTask.postValue(task);
             operationResult.postValue("任务创建成功: " + task.getTaskId());
             loadTasks();
-        }, msg -> error.postValue("创建失败: " + msg)));
+        }, msg -> error.postValue("创建失败: " + msg))));
     }
 
     /**
      * 取消任务
      */
     public void cancelTask(String taskId) {
-        taskRepository.cancelTask(taskId, withLoading(v -> {
+        TaskAPI.cancelTask(taskId, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("任务已取消");
             loadTasks();
-        }, msg -> error.postValue("取消失败: " + msg)));
+        }, msg -> error.postValue("取消失败: " + msg))));
     }
 
     /**
@@ -130,8 +127,8 @@ public class TaskViewModel extends BaseViewModel {
      * 查看任务详情
      */
     public void getTaskDetail(String taskId) {
-        taskRepository.getTask(taskId, withLoading(taskDetail::postValue,
-                msg -> error.postValue("查询详情失败: " + msg)));
+        TaskAPI.getTask(taskId, RepositoryAdapters.wrap(withLoading(taskDetail::postValue,
+                msg -> error.postValue("查询详情失败: " + msg))));
     }
 
     public LiveData<List<TaskVO>> getTaskList() {

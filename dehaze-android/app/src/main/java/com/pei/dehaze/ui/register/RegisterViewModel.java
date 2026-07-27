@@ -5,8 +5,9 @@ import android.util.Patterns;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.pei.dehaze.repository.AuthRepository;
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.api.AuthAPI;
 import com.pei.dehaze.sdk.model.auth.CaptchaResponse;
 import com.pei.dehaze.sdk.model.auth.LoginRequest;
 import com.pei.dehaze.sdk.model.auth.LoginResponse;
@@ -27,10 +28,8 @@ public class RegisterViewModel extends ViewModel {
     private final MutableLiveData<String> error = new MutableLiveData<>("");
     private final MutableLiveData<Boolean> registerSuccess = new MutableLiveData<>(false);
 
-    private final AuthRepository authRepository = new AuthRepository();
-
     public void loadCaptcha() {
-        authRepository.getCaptcha(new RepositoryCallback<CaptchaResponse>() {
+        AuthAPI.getCaptcha(RepositoryAdapters.wrap(new RepositoryCallback<CaptchaResponse>() {
             @Override
             public void onSuccess(CaptchaResponse data) {
                 captchaKey.postValue(data.getCaptchaKey());
@@ -41,7 +40,7 @@ public class RegisterViewModel extends ViewModel {
             public void onError(String errorMessage) {
                 error.postValue("获取验证码失败: " + errorMessage);
             }
-        });
+        }));
     }
 
     public void register() {
@@ -75,7 +74,7 @@ public class RegisterViewModel extends ViewModel {
         request.setCaptchaCode(captchaCode.getValue());
         request.setCaptchaKey(captchaKey.getValue());
 
-        authRepository.register(request, new RepositoryCallback<LoginResponse>() {
+        AuthAPI.register(request, RepositoryAdapters.wrap(new RepositoryCallback<LoginResponse>() {
             @Override
             public void onSuccess(LoginResponse data) {
                 loading.postValue(false);
@@ -88,7 +87,7 @@ public class RegisterViewModel extends ViewModel {
                 error.postValue("注册失败: " + errorMessage);
                 loadCaptcha();
             }
-        });
+        }));
     }
 
     private boolean isUserNameValid(String username) {

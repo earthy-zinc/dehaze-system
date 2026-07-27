@@ -3,12 +3,15 @@ package com.pei.dehaze.ui.system.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.pei.dehaze.repository.RoleRepository;
-import com.pei.dehaze.ui.common.BaseViewModel;
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.api.MenuAPI;
+import com.pei.dehaze.sdk.api.RoleAPI;
+import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.EnableStatus;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.PageResult;
+import com.pei.dehaze.sdk.model.menu.MenuQuery;
 import com.pei.dehaze.sdk.model.menu.MenuVO;
 import com.pei.dehaze.sdk.model.role.RoleForm;
 import com.pei.dehaze.sdk.model.role.RolePageVO;
@@ -18,8 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RoleViewModel extends BaseViewModel {
-
-    private final RoleRepository roleRepository;
 
     private final MutableLiveData<List<RolePageVO>> roleList = new MutableLiveData<>();
     private final MutableLiveData<Long> total = new MutableLiveData<>(0L);
@@ -32,45 +33,41 @@ public class RoleViewModel extends BaseViewModel {
     private int pageSize = 10;
     private String keywords = "";
 
-    public RoleViewModel() {
-        roleRepository = new RoleRepository();
-    }
-
     public void loadRoles() {
         RoleQuery query = buildQuery();
-        roleRepository.getRoles(query, withLoading(data -> {
+        RoleAPI.getPage(query, RepositoryAdapters.wrap(withLoading(data -> {
             roleList.postValue(data.getList());
             total.postValue(data.getTotal());
-        }));
+        })));
     }
 
     public void loadRoleForm(int id) {
-        roleRepository.getRoleForm(id, withLoading(roleForm::postValue));
+        RoleAPI.getFormData(id, RepositoryAdapters.wrap(withLoading(roleForm::postValue)));
     }
 
     public void addRole(RoleForm form) {
-        roleRepository.addRole(form, withLoading(v -> {
+        RoleAPI.add(form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("新增角色成功");
             loadRoles();
-        }));
+        })));
     }
 
     public void updateRole(int id, RoleForm form) {
-        roleRepository.updateRole(id, form, withLoading(v -> {
+        RoleAPI.update(id, form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("修改角色成功");
             loadRoles();
-        }));
+        })));
     }
 
     public void deleteRoles(List<Long> ids) {
-        roleRepository.deleteRoles(ids, withLoading(v -> {
+        RoleAPI.deleteByIds(ids, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除角色成功");
             loadRoles();
-        }));
+        })));
     }
 
     public void updateRoleStatus(long id, EnableStatus status) {
-        roleRepository.updateRoleStatus(id, status, new RepositoryCallback<Void>() {
+        RoleAPI.updateStatus(id, status, RepositoryAdapters.wrap(new RepositoryCallback<Void>() {
             @Override
             public void onSuccess(Void data) {
                 operationResult.postValue("状态切换成功");
@@ -81,11 +78,11 @@ public class RoleViewModel extends BaseViewModel {
             public void onError(String errorMessage) {
                 error.postValue(errorMessage);
             }
-        });
+        }));
     }
 
     public void loadRoleOptions() {
-        roleRepository.getRoleOptions(new RepositoryCallback<List<Option>>() {
+        RoleAPI.getOptions(new RoleQuery(), RepositoryAdapters.wrap(new RepositoryCallback<List<Option>>() {
             @Override
             public void onSuccess(List<Option> data) {
                 roleOptions.postValue(data);
@@ -95,11 +92,11 @@ public class RoleViewModel extends BaseViewModel {
             public void onError(String errorMessage) {
                 error.postValue(errorMessage);
             }
-        });
+        }));
     }
 
     public void loadMenuList() {
-        roleRepository.getMenuList(new RepositoryCallback<List<MenuVO>>() {
+        MenuAPI.getList(new MenuQuery(), RepositoryAdapters.wrap(new RepositoryCallback<List<MenuVO>>() {
             @Override
             public void onSuccess(List<MenuVO> data) {
                 menuList.postValue(data);
@@ -109,11 +106,11 @@ public class RoleViewModel extends BaseViewModel {
             public void onError(String errorMessage) {
                 error.postValue(errorMessage);
             }
-        });
+        }));
     }
 
     public void loadRoleMenuIds(int roleId) {
-        roleRepository.getRoleMenuIds(roleId, new RepositoryCallback<List<Integer>>() {
+        RoleAPI.getRoleMenuIds(roleId, RepositoryAdapters.wrap(new RepositoryCallback<List<Integer>>() {
             @Override
             public void onSuccess(List<Integer> data) {
                 roleMenuIds.postValue(data);
@@ -123,12 +120,12 @@ public class RoleViewModel extends BaseViewModel {
             public void onError(String errorMessage) {
                 error.postValue(errorMessage);
             }
-        });
+        }));
     }
 
     public void assignMenus(int roleId, List<Integer> menuIds) {
-        roleRepository.updateRoleMenus(roleId, menuIds,
-                withLoading(v -> operationResult.postValue("权限分配成功")));
+        RoleAPI.updateRoleMenus(roleId, menuIds,
+                RepositoryAdapters.wrap(withLoading(v -> operationResult.postValue("权限分配成功"))));
     }
 
     private RoleQuery buildQuery() {

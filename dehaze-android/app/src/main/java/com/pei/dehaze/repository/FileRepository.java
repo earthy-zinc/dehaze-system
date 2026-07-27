@@ -3,8 +3,6 @@ package com.pei.dehaze.repository;
 import android.os.Environment;
 
 import com.pei.dehaze.sdk.api.FileAPI;
-import com.pei.dehaze.sdk.model.PageResult;
-import com.pei.dehaze.sdk.model.file.FileInfo;
 
 import java.io.File;
 
@@ -12,20 +10,6 @@ import java.io.File;
  * 文件管理 Repository
  */
 public class FileRepository {
-
-    /**
-     * 分页查询文件列表
-     */
-    public void getFiles(int pageNum, int pageSize, String keywords, RepositoryCallback<PageResult<FileInfo>> callback) {
-        FileAPI.getFilePage(pageNum, pageSize, keywords, RepositoryAdapters.wrap(callback));
-    }
-
-    /**
-     * 上传文件
-     */
-    public void uploadFile(File file, RepositoryCallback<FileInfo> callback) {
-        FileAPI.upload(file, RepositoryAdapters.wrap(callback));
-    }
 
     /**
      * 下载文件到应用专属下载目录（无需存储权限）
@@ -55,19 +39,5 @@ public class FileRepository {
                 callback.onError(errorMessage);
             }
         }));
-    }
-
-    /**
-     * 删除文件
-     */
-    public void deleteFile(long fileId, RepositoryCallback<Void> callback) {
-        FileAPI.delete(fileId, RepositoryAdapters.wrap(callback));
-    }
-
-    /**
-     * 获取文件详情
-     */
-    public void getFileDetail(long fileId, RepositoryCallback<FileInfo> callback) {
-        FileAPI.getFileDetail(fileId, RepositoryAdapters.wrap(callback));
     }
 }

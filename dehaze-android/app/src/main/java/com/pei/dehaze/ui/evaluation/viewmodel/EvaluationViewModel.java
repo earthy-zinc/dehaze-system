@@ -3,8 +3,10 @@ package com.pei.dehaze.ui.evaluation.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.pei.dehaze.repository.AlgorithmRepository;
-import com.pei.dehaze.repository.SharedRepository;
+import com.pei.dehaze.repository.RepositoryAdapters;
+import com.pei.dehaze.sdk.api.AlgorithmAPI;
+import com.pei.dehaze.sdk.api.FileAPI;
+import com.pei.dehaze.sdk.api.ModelAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
@@ -23,9 +25,6 @@ import java.util.List;
 
 public class EvaluationViewModel extends BaseViewModel {
 
-    private final SharedRepository sharedRepository;
-    private final AlgorithmRepository algorithmRepository;
-
     private final MutableLiveData<FileInfo> hazyFile = new MutableLiveData<>();
     private final MutableLiveData<FileInfo> clearFile = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> algorithmOptions = new MutableLiveData<>();
@@ -34,47 +33,48 @@ public class EvaluationViewModel extends BaseViewModel {
     private final MutableLiveData<Algorithm> algorithmInfo = new MutableLiveData<>();
     private final MutableLiveData<List<EvaluationLogVO>> evaluationLogs = new MutableLiveData<>();
 
-    public EvaluationViewModel() {
-        sharedRepository = new SharedRepository();
-        algorithmRepository = new AlgorithmRepository();
-    }
-
     public void uploadHazyImage(File imageFile) {
-        sharedRepository.uploadImage(imageFile, withLoading(fileInfo -> {
+        FileAPI.upload(imageFile, RepositoryAdapters.wrap(withLoading(fileInfo -> {
             hazyFile.postValue(fileInfo);
             operationResult.postValue("有雾图上传成功");
-        }));
+        })));
     }
 
     public void uploadClearImage(File imageFile) {
-        sharedRepository.uploadImage(imageFile, withLoading(fileInfo -> {
+        FileAPI.upload(imageFile, RepositoryAdapters.wrap(withLoading(fileInfo -> {
             clearFile.postValue(fileInfo);
             operationResult.postValue("清晰图上传成功");
-        }));
+        })));
     }
 
     public void loadAlgorithmOptions() {
-        sharedRepository.getAlgorithmOptions(withLoading(algorithmOptions::postValue));
+        AlgorithmAPI.getOption(RepositoryAdapters.wrap(withLoading(algorithmOptions::postValue)));
     }
 
-    public void predict(long algorithmId) {
+    public void predict(long algorithmId, DehazeParams params) {
         FileInfo hazy = hazyFile.getValue();
         if (hazy == null || hazy.getUrl() == null) {
             error.setValue("请先上传有雾图片");
             return;
         }
+        DehazeParams actualParams = params != null ? params : new DehazeParams();
+        String invalidMsg = actualParams.validate();
+        if (invalidMsg != null) {
+            error.setValue(invalidMsg);
+            return;
+        }
         PredParam param = new PredParam();
         param.setAlgorithmId(algorithmId);
         param.setImageUrl(hazy.getUrl());
-        param.setParams(new DehazeParams());
-        sharedRepository.getPrediction(param, withLoading(result -> {
+        param.setParams(actualParams);
+        ModelAPI.predictAndWait(param, RepositoryAdapters.wrap(withLoading(result -> {
             if (result.getStatus() == PredEvalTaskStatus.FAILED) {
                 error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "去雾处理失败");
                 return;
             }
             predictionResult.postValue(result);
             operationResult.postValue("去雾处理完成，可进行评估");
-        }));
+        })));
     }
 
     public void evaluate(long algorithmId) {
@@ -92,7 +92,7 @@ public class EvaluationViewModel extends BaseViewModel {
         param.setAlgorithmId(algorithmId);
         param.setPredUrl(pred.getResultUrl());
         param.setGtUrl(clear.getUrl());
-        sharedRepository.getEvaluation(param, withLoading(result -> {
+        ModelAPI.evaluateAndWait(param, RepositoryAdapters.wrap(withLoading(result -> {
             if (result.getStatus() == PredEvalTaskStatus.FAILED) {
                 error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "评估失败");
                 return;
@@ -100,16 +100,16 @@ public class EvaluationViewModel extends BaseViewModel {
             evaluationResult.postValue(result);
             operationResult.postValue("评估完成");
             loadEvaluationLogs();
-        }));
+        })));
     }
 
     public void getAlgorithmInfo(int id) {
-        algorithmRepository.getAlgorithmDetail(id, withLoading(algorithmInfo::postValue));
+        AlgorithmAPI.getAlgorithmInfoById(id, RepositoryAdapters.wrap(withLoading(algorithmInfo::postValue)));
     }
 
     public void loadEvaluationLogs() {
-        sharedRepository.listEvaluationLogs(1, 20, withLoading(logs ->
-                evaluationLogs.postValue(logs != null ? logs : new ArrayList<>())));
+        ModelAPI.listEvaluationLogs(null, 1, 20, RepositoryAdapters.wrapPage(withLoading(logs ->
+                evaluationLogs.postValue(logs != null ? logs : new ArrayList<>()))));
     }
 
     public LiveData<FileInfo> getHazyFile() {

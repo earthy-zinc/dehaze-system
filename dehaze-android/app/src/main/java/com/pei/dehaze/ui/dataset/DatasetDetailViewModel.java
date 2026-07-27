@@ -4,6 +4,8 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.pei.dehaze.repository.DatasetRepository;
+import com.pei.dehaze.repository.RepositoryAdapters;
+import com.pei.dehaze.sdk.api.DatasetAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
@@ -24,7 +26,7 @@ import java.util.List;
  */
 public class DatasetDetailViewModel extends BaseViewModel {
 
-    private final DatasetRepository repository;
+    private final DatasetRepository repository = new DatasetRepository();
 
     private final MutableLiveData<Dataset> datasetInfo = new MutableLiveData<>();
     private final MutableLiveData<List<ImageItem>> items = new MutableLiveData<>();
@@ -40,10 +42,6 @@ public class DatasetDetailViewModel extends BaseViewModel {
 
     /** 当前展示的图片类型（clear/hazy/trans） */
     private ImageType currentImageType = ImageType.HAZY;
-
-    public DatasetDetailViewModel() {
-        repository = new DatasetRepository();
-    }
 
     public void setDatasetId(long id) {
         this.datasetId = id;
@@ -86,7 +84,7 @@ public class DatasetDetailViewModel extends BaseViewModel {
      */
     public void loadDatasetInfo() {
         if (datasetId <= 0) return;
-        repository.getDatasetById(datasetId, withLoading(datasetInfo::postValue));
+        DatasetAPI.getDatasetInfoById(datasetId, RepositoryAdapters.wrap(withLoading(datasetInfo::postValue)));
     }
 
     /**
@@ -95,10 +93,10 @@ public class DatasetDetailViewModel extends BaseViewModel {
     public void loadItems() {
         if (datasetId <= 0) return;
         ImageItemQuery query = buildQuery();
-        repository.getItems(query, withLoading(data -> {
+        DatasetAPI.getItems(query, RepositoryAdapters.wrap(withLoading(data -> {
             items.postValue(data != null ? data.getList() : new ArrayList<>());
             total.postValue(data != null ? data.getTotal() : 0L);
-        }));
+        })));
     }
 
     private ImageItemQuery buildQuery() {
@@ -157,10 +155,10 @@ public class DatasetDetailViewModel extends BaseViewModel {
         DatasetItemCreateForm form = new DatasetItemCreateForm();
         form.setDatasetId(datasetId);
         form.setName(name);
-        repository.createItem(form, withLoading(v -> {
+        DatasetAPI.createItem(form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("新增数据项成功");
             loadItems();
-        }));
+        })));
     }
 
     /**
@@ -169,20 +167,20 @@ public class DatasetDetailViewModel extends BaseViewModel {
     public void updateItem(long itemId, String name) {
         DatasetItemUpdateForm form = new DatasetItemUpdateForm();
         form.setName(name);
-        repository.updateItem(itemId, form, withLoading(v -> {
+        DatasetAPI.updateItem(itemId, form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("修改数据项成功");
             loadItems();
-        }));
+        })));
     }
 
     /**
      * 删除数据项
      */
     public void deleteItem(long itemId) {
-        repository.deleteItem(itemId, withLoading(v -> {
+        DatasetAPI.deleteItem(itemId, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除数据项成功");
             loadItems();
-        }));
+        })));
     }
 
     /**
@@ -199,32 +197,32 @@ public class DatasetDetailViewModel extends BaseViewModel {
      * 上传数据项图片
      */
     public void uploadItemFile(long datasetItemId, ImageType type, File file, String description) {
-        repository.uploadItemFile(datasetItemId, type, file, description,
-                withLoading(data -> {
+        DatasetAPI.uploadItemFile(datasetItemId, type, file, description,
+                RepositoryAdapters.wrap(withLoading(data -> {
                     operationResult.postValue("图片上传成功");
                     uploadedFile.postValue(data);
                     loadItems();
-                }));
+                })));
     }
 
     /**
      * 修改图片信息
      */
     public void updateItemFile(long fileId, ItemFileUpdateForm form) {
-        repository.updateItemFile(fileId, form, withLoading(v -> {
+        DatasetAPI.updateItemFile(fileId, form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("修改图片信息成功");
             loadItems();
-        }));
+        })));
     }
 
     /**
      * 删除图片
      */
     public void deleteItemFile(long fileId) {
-        repository.deleteItemFile(fileId, withLoading(v -> {
+        DatasetAPI.deleteItemFile(fileId, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除图片成功");
             loadItems();
-        }));
+        })));
     }
 
     /**

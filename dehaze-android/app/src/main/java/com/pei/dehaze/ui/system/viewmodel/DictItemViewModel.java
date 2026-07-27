@@ -3,9 +3,9 @@ package com.pei.dehaze.ui.system.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.pei.dehaze.repository.DictRepository;
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.ui.common.BaseViewModel;
-import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.api.DictAPI;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.dict.DictForm;
 import com.pei.dehaze.sdk.model.dict.DictPageVO;
@@ -15,8 +15,6 @@ import java.util.List;
 
 public class DictItemViewModel extends BaseViewModel {
 
-    private final DictRepository dictRepository;
-
     private final MutableLiveData<List<DictPageVO>> dictList = new MutableLiveData<>();
     private final MutableLiveData<Long> total = new MutableLiveData<>();
     private final MutableLiveData<DictForm> dictForm = new MutableLiveData<>();
@@ -24,10 +22,6 @@ public class DictItemViewModel extends BaseViewModel {
     private int currentPage = 1;
     private int pageSize = 10;
     private String currentTypeCode;
-
-    public DictItemViewModel() {
-        dictRepository = new DictRepository();
-    }
 
     public void loadDicts(String typeCode) {
         currentTypeCode = typeCode;
@@ -45,35 +39,35 @@ public class DictItemViewModel extends BaseViewModel {
         query.setPageNum(currentPage);
         query.setPageSize(pageSize);
         query.setTypeCode(currentTypeCode);
-        dictRepository.getDictPage(query, withLoading(page -> {
+        DictAPI.getDictPage(query, RepositoryAdapters.wrap(withLoading(page -> {
             dictList.postValue(page.getList());
             total.postValue(page.getTotal());
-        }));
+        })));
     }
 
     public void loadDictForm(int id) {
-        dictRepository.getDictForm(id, withLoading(dictForm::postValue));
+        DictAPI.getDictFormData(id, RepositoryAdapters.wrap(withLoading(dictForm::postValue)));
     }
 
     public void addDict(DictForm form) {
-        dictRepository.addDict(form, withLoading(v -> {
+        DictAPI.addDict(form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("新增字典数据成功");
             queryPage();
-        }));
+        })));
     }
 
     public void updateDict(int id, DictForm form) {
-        dictRepository.updateDict(id, form, withLoading(v -> {
+        DictAPI.updateDict(id, form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("修改字典数据成功");
             queryPage();
-        }));
+        })));
     }
 
     public void deleteDict(List<Long> ids) {
-        dictRepository.deleteDict(ids, withLoading(v -> {
+        DictAPI.deleteDictByIds(ids, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除字典数据成功");
             queryPage();
-        }));
+        })));
     }
 
     public String getCurrentTypeCode() {

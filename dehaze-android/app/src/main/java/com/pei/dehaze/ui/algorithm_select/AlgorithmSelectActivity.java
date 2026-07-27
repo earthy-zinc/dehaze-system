@@ -131,7 +131,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
 
             @Override
             public void onFavorite(Algorithm algorithm) {
-                algorithmViewModel.toggleFavorite(algorithm.getId());
+                viewModel.toggleFavorite(algorithm.getId());
             }
         });
 

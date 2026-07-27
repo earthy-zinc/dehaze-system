@@ -3,9 +3,10 @@ package com.pei.dehaze.ui.system.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.pei.dehaze.repository.DeptRepository;
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.api.DeptAPI;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.dept.DeptForm;
 import com.pei.dehaze.sdk.model.dept.DeptQuery;
@@ -16,8 +17,6 @@ import java.util.List;
 
 public class DeptViewModel extends BaseViewModel {
 
-    private final DeptRepository deptRepository;
-
     private final MutableLiveData<List<DeptVO>> deptList = new MutableLiveData<>();
     private final MutableLiveData<DeptForm> deptForm = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> deptOptions = new MutableLiveData<>();
@@ -25,43 +24,39 @@ public class DeptViewModel extends BaseViewModel {
     private String keywords = "";
     private Integer status;
 
-    public DeptViewModel() {
-        deptRepository = new DeptRepository();
-    }
-
     public void loadDepts() {
         DeptQuery query = buildQuery();
-        deptRepository.getDepts(query, withLoading(data ->
-                deptList.postValue(data != null ? data : new ArrayList<>())));
+        DeptAPI.getList(query, RepositoryAdapters.wrap(withLoading(data ->
+                deptList.postValue(data != null ? data : new ArrayList<>()))));
     }
 
     public void loadDeptForm(int id) {
-        deptRepository.getDeptForm(id, withLoading(deptForm::postValue));
+        DeptAPI.getFormData(id, RepositoryAdapters.wrap(withLoading(deptForm::postValue)));
     }
 
     public void addDept(DeptForm form) {
-        deptRepository.addDept(form, withLoading(v -> {
+        DeptAPI.add(form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("新增部门成功");
             loadDepts();
-        }));
+        })));
     }
 
     public void updateDept(int id, DeptForm form) {
-        deptRepository.updateDept(id, form, withLoading(v -> {
+        DeptAPI.update(id, form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("修改部门成功");
             loadDepts();
-        }));
+        })));
     }
 
     public void deleteDepts(List<Long> ids) {
-        deptRepository.deleteDepts(ids, withLoading(v -> {
+        DeptAPI.deleteByIds(ids, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除部门成功");
             loadDepts();
-        }));
+        })));
     }
 
     public void loadDeptOptions() {
-        deptRepository.getDeptOptions(new RepositoryCallback<List<Option>>() {
+        DeptAPI.getOptions(RepositoryAdapters.wrap(new RepositoryCallback<List<Option>>() {
             @Override
             public void onSuccess(List<Option> data) {
                 deptOptions.postValue(data);
@@ -71,7 +66,7 @@ public class DeptViewModel extends BaseViewModel {
             public void onError(String errorMessage) {
                 error.postValue(errorMessage);
             }
-        });
+        }));
     }
 
     private DeptQuery buildQuery() {

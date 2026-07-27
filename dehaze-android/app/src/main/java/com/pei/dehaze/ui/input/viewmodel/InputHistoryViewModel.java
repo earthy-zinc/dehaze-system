@@ -3,8 +3,9 @@ package com.pei.dehaze.ui.input.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.pei.dehaze.repository.InputHistoryRepository;
-import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.repository.RepositoryAdapters;
+import com.pei.dehaze.sdk.api.FileAPI;
+import com.pei.dehaze.sdk.api.InputHistoryAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
@@ -24,8 +25,6 @@ import java.util.List;
  */
 public class InputHistoryViewModel extends BaseViewModel {
 
-    private final InputHistoryRepository repository;
-
     private final MutableLiveData<List<InputHistoryVO>> historyList = new MutableLiveData<>();
     private final MutableLiveData<Long> total = new MutableLiveData<>(0L);
     private final MutableLiveData<SyncResultVO> syncResult = new MutableLiveData<>();
@@ -36,10 +35,6 @@ public class InputHistoryViewModel extends BaseViewModel {
     private String keywords = "";
     private InputSource inputSource;
     private Boolean favoriteOnly = false;
-
-    public InputHistoryViewModel() {
-        repository = new InputHistoryRepository();
-    }
 
     public LiveData<List<InputHistoryVO>> getHistoryList() {
         return historyList;
@@ -67,10 +62,10 @@ public class InputHistoryViewModel extends BaseViewModel {
 
     public void loadHistory() {
         InputHistoryQuery query = buildQuery();
-        repository.listHistory(query, withLoading(data -> {
+        InputHistoryAPI.listHistory(query, RepositoryAdapters.wrap(withLoading(data -> {
             historyList.postValue(data != null ? data.getList() : new ArrayList<>());
             total.postValue(data != null ? data.getTotal() : 0L);
-        }));
+        })));
     }
 
     private InputHistoryQuery buildQuery() {
@@ -122,45 +117,45 @@ public class InputHistoryViewModel extends BaseViewModel {
     }
 
     public void createHistory(InputHistoryForm form) {
-        repository.createHistory(form, withLoading(v -> {
+        InputHistoryAPI.createHistory(form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("新增历史记录成功");
             loadHistory();
-        }));
+        })));
     }
 
     public void updateHistory(long id, InputHistoryUpdateForm form) {
-        repository.updateHistory(id, form, withLoading(v -> {
+        InputHistoryAPI.updateHistory(id, form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("修改历史记录成功");
             loadHistory();
-        }));
+        })));
     }
 
     public void deleteHistory(long id) {
-        repository.deleteHistory(id, withLoading(v -> {
+        InputHistoryAPI.deleteHistory(id, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除历史记录成功");
             loadHistory();
-        }));
+        })));
     }
 
     public void batchDeleteHistory(List<Long> ids) {
-        repository.batchDeleteHistory(ids, withLoading(v -> {
+        InputHistoryAPI.batchDeleteHistory(ids, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("批量删除成功");
             loadHistory();
-        }));
+        })));
     }
 
     public void clearHistory() {
-        repository.clearHistory(withLoading(v -> {
+        InputHistoryAPI.clearHistory(RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("清空历史记录成功");
             loadHistory();
-        }));
+        })));
     }
 
     public void syncHistory(List<InputHistoryForm> items) {
-        repository.syncHistory(items, withLoading(syncResult::postValue));
+        InputHistoryAPI.syncHistory(items, RepositoryAdapters.wrap(withLoading(syncResult::postValue)));
     }
 
     public void uploadFile(File file) {
-        repository.uploadFile(file, withLoading(uploadedFile::postValue));
+        FileAPI.upload(file, RepositoryAdapters.wrap(withLoading(uploadedFile::postValue)));
     }
 }
