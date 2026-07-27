@@ -24,7 +24,6 @@ import com.pei.dehaze.service.prediction.PredictionContext;
 import com.pei.dehaze.service.prediction.PredictionInterceptorChain;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -43,9 +42,6 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
     private final SysFileService sysFileService;
     private final PredLogAsyncTask asyncTask;
     private final PredictionInterceptorChain interceptorChain;
-
-    @Value("${file.datasetBaseUrl}")
-    private String datasetBaseUrl;
 
     @Override
     public PredictionResultVO predict(PredictionForm form) {
@@ -155,24 +151,11 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
     private String resolveImageUrl(PredictionForm form, SysFile originFile) {
         if (form.getFileId() != null) {
             if (originFile != null && CharSequenceUtil.isNotBlank(originFile.getUrl())) {
-                return toAbsoluteUrl(originFile.getUrl());
+                return originFile.getUrl();
             }
             log.warn("文件不存在或 URL 为空: fileId={}", form.getFileId());
             return null;
         }
-        return toAbsoluteUrl(form.getImageUrl());
-    }
-
-    private String toAbsoluteUrl(String url) {
-        if (CharSequenceUtil.isBlank(url)) {
-            return url;
-        }
-        if (url.startsWith("http://") || url.startsWith("https://")) {
-            return url;
-        }
-        if (url.startsWith("/dataset-api/")) {
-            return datasetBaseUrl + url.substring("/dataset-api".length());
-        }
-        return url;
+        return form.getImageUrl();
     }
 }

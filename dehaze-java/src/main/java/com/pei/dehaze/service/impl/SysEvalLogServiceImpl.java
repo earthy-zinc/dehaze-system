@@ -21,7 +21,6 @@ import com.pei.dehaze.service.SysEvalLogService;
 import com.pei.dehaze.service.SysFileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -39,9 +38,6 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
     private final SysFileService sysFileService;
     private final EvalLogAsyncTask asyncTask;
 
-    @Value("${file.datasetBaseUrl}")
-    private String datasetBaseUrl;
-
     @Override
     public EvaluationResultVO evaluate(EvaluationForm form) {
         SysAlgorithm algorithm = algorithmService.getById(form.getAlgorithmId());
@@ -49,8 +45,8 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
 
-        String predUrl = toAbsoluteUrl(form.getPredUrl() != null ? form.getPredUrl() : resolveFileUrl(form.getPredFileId(), "pred"));
-        String gtUrl = toAbsoluteUrl(form.getGtUrl() != null ? form.getGtUrl() : resolveFileUrl(form.getGtFileId(), "gt"));
+        String predUrl = form.getPredUrl() != null ? form.getPredUrl() : resolveFileUrl(form.getPredFileId(), "pred");
+        String gtUrl = form.getGtUrl() != null ? form.getGtUrl() : resolveFileUrl(form.getGtFileId(), "gt");
 
         SysEvalLog evalLog = new SysEvalLog();
         evalLog.setAlgorithmId(form.getAlgorithmId());
@@ -110,18 +106,5 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
             log.warn("文件不存在或 URL 为空: fileId={}", fileId);
         }
         throw new BusinessException(ResultCode.PARAM_ERROR, "缺少" + ("pred".equals(type) ? "预测" : "参考") + "图片");
-    }
-
-    private String toAbsoluteUrl(String url) {
-        if (CharSequenceUtil.isBlank(url)) {
-            return url;
-        }
-        if (url.startsWith("http://") || url.startsWith("https://")) {
-            return url;
-        }
-        if (url.startsWith("/dataset-api/")) {
-            return datasetBaseUrl + url.substring("/dataset-api".length());
-        }
-        return url;
     }
 }

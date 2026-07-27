@@ -253,7 +253,7 @@ def main():
     parser.add_argument("--db-password", required=True)
     parser.add_argument("--db-name", default="dehaze")
     parser.add_argument("--dataset-path", required=True, help="数据集根目录（对应 file.datasetPath）")
-    parser.add_argument("--dataset-base-url", required=True, help="nginx-dataset 基础 URL（对应 file.datasetBaseUrl）")
+    parser.add_argument("--dataset-base-url", required=True, help="nginx-dataset 静态服务 URL（如 http://127.0.0.1:9000/datasets）")
     parser.add_argument("--dataset-id", type=int, help="仅初始化指定数据集 ID（不指定则初始化所有叶子数据集）")
     parser.add_argument("--haze-format", choices=["auto", "ots", "haze4k"], default="auto",
                         help="haze_level 解析格式：auto(默认) / ots(A=,beta=) / haze4k(beta=,A=)")

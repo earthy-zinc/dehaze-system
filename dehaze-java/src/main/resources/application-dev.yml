@@ -134,12 +134,10 @@ file:
   # 上传类型 (目前支持minio OSS、local 本地存储)
   type: minio
   # 上传文件基于url（用户主动上传的文件走 MinIO + Java 下载接口）
-  # 与 datasetBaseUrl 一致使用 127.0.0.1，避免 localhost 在浏览器跨域判定中与 127.0.0.1 视为不同 origin
+  # 使用 127.0.0.1，避免 localhost 在浏览器跨域判定中与 127.0.0.1 视为不同 origin
   baseUrl: http://127.0.0.1:8989/api/v1/files/download
   # 数据集根目录（nginx-dataset 容器挂载的宿主机路径）
   datasetPath: D:/DeepLearning/dataset
-  # nginx-dataset 静态服务基础 URL（数据集源文件由此直服，不经过 MinIO）
-  datasetBaseUrl: http://127.0.0.1:9000
   # 本地存储
   local:
     uploadPath: /data/workspace/dehaze-system/upload

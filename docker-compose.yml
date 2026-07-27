@@ -90,8 +90,8 @@ services:
       - pei-network
 
   # Nginx 静态文件服务
-  # 通过项目根目录下的 datasets/models 符号链接（指向 D:\DeepLearning）统一管理数据
-  # 数据集图片 URL：http://127.0.0.1:9000/{dataset_path}/{subdir}/{filename}
+  # 通过项目根目录下的 datasets、models 符号链接（指向 D:\DeepLearning）统一管理数据
+  # 数据集图片 URL：http://127.0.0.1:9000/datasets/{dataset_path}/{subdir}/{filename}
   # 模型权重 URL：http://127.0.0.1:9000/models/{algorithm_path}
   nginx-dataset:
     image: nginx:alpine
@@ -100,7 +100,7 @@ services:
     ports:
       - "9000:80"
     volumes:
-      - ./datasets:/usr/share/nginx/html:ro
+      - ./datasets:/usr/share/nginx/html/datasets:ro
       - ./models:/usr/share/nginx/html/models:ro
       - ./config/nginx/dataset.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
