@@ -9,7 +9,7 @@ class RoleAPI {
    * @param queryParams
    */
   static getPage(queryParams?: RoleQuery) {
-    return request<any, RolePageResult>({
+    return request<RolePageResult>({
       url: "/api/v1/roles/page",
       method: "get",
       params: queryParams,
@@ -20,7 +20,7 @@ class RoleAPI {
    * 获取角色下拉数据源
    */
   static getOptions() {
-    return request<any, OptionType[]>({
+    return request<OptionType[]>({
       url: "/api/v1/roles/options",
       method: "get",
     });
@@ -32,7 +32,7 @@ class RoleAPI {
    * @param roleId
    */
   static getRoleMenuIds(roleId: number) {
-    return request<any, number[]>({
+    return request<number[]>({
       url: "/api/v1/roles/" + roleId + "/menuIds",
       method: "get",
     });
@@ -58,7 +58,7 @@ class RoleAPI {
    * @param id 角色ID
    */
   static getFormData(id: number) {
-    return request<any, RoleForm>({
+    return request<RoleForm>({
       url: "/api/v1/roles/" + id + "/form",
       method: "get",
     });

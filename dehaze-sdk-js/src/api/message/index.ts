@@ -21,7 +21,7 @@ import {
 
 class MessageAPI {
   static getPage(queryParams?: MessageQuery) {
-    return request<any, PageResult<MessageVO[]>>({
+    return request<PageResult<MessageVO[]>>({
       url: "/api/v1/messages",
       method: "get",
       params: queryParams,
@@ -29,14 +29,14 @@ class MessageAPI {
   }
 
   static getUnreadCount() {
-    return request<any, UnreadCountVO>({
+    return request<UnreadCountVO>({
       url: "/api/v1/messages/unread-count",
       method: "get",
     });
   }
 
   static getDetail(id: number) {
-    return request<any, MessageVO>({
+    return request<MessageVO>({
       url: "/api/v1/messages/" + id,
       method: "get",
     });
@@ -50,7 +50,7 @@ class MessageAPI {
   }
 
   static markAllRead(type?: string) {
-    return request<any, ReadAllResult>({
+    return request<ReadAllResult>({
       url: "/api/v1/messages/read-all",
       method: "put",
       params: type ? { type } : undefined,
@@ -65,7 +65,7 @@ class MessageAPI {
   }
 
   static search(queryParams: MessageSearchQuery) {
-    return request<any, PageResult<MessageVO[]>>({
+    return request<PageResult<MessageVO[]>>({
       url: "/api/v1/messages/search",
       method: "get",
       params: queryParams,
@@ -73,7 +73,7 @@ class MessageAPI {
   }
 
   static send(data: MessageSendRequest) {
-    return request<any, MessageSendResult>({
+    return request<MessageSendResult>({
       url: "/api/v1/messages/send",
       method: "post",
       data,
@@ -83,7 +83,7 @@ class MessageAPI {
 
 class AnnouncementAPI {
   static getPage(queryParams?: AnnouncementQuery) {
-    return request<any, PageResult<AnnouncementVO[]>>({
+    return request<PageResult<AnnouncementVO[]>>({
       url: "/api/v1/announcements/page",
       method: "get",
       params: queryParams,
@@ -91,7 +91,7 @@ class AnnouncementAPI {
   }
 
   static create(data: AnnouncementForm) {
-    return request<any, { id: number }>({
+    return request<{ id: number }>({
       url: "/api/v1/announcements",
       method: "post",
       data,
@@ -99,7 +99,7 @@ class AnnouncementAPI {
   }
 
   static getDetail(id: number) {
-    return request<any, AnnouncementVO>({
+    return request<AnnouncementVO>({
       url: "/api/v1/announcements/" + id,
       method: "get",
     });
@@ -121,7 +121,7 @@ class AnnouncementAPI {
   }
 
   static send(id: number) {
-    return request<any, AnnouncementSendResult>({
+    return request<AnnouncementSendResult>({
       url: `/api/v1/announcements/${id}/send`,
       method: "post",
     });
@@ -137,7 +137,7 @@ class AnnouncementAPI {
 
 class MessageTemplateAPI {
   static getPage(queryParams?: MessageTemplateQuery) {
-    return request<any, PageResult<MessageTemplateVO[]>>({
+    return request<PageResult<MessageTemplateVO[]>>({
       url: "/api/v1/message-templates/page",
       method: "get",
       params: queryParams,
@@ -145,7 +145,7 @@ class MessageTemplateAPI {
   }
 
   static getDetail(id: number) {
-    return request<any, MessageTemplateVO>({
+    return request<MessageTemplateVO>({
       url: "/api/v1/message-templates/" + id,
       method: "get",
     });
@@ -162,7 +162,7 @@ class MessageTemplateAPI {
 
 class NotificationSettingAPI {
   static get() {
-    return request<any, NotificationSettings>({
+    return request<NotificationSettings>({
       url: "/api/v1/notification-settings",
       method: "get",
     });

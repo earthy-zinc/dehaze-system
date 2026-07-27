@@ -16,7 +16,7 @@ class DictAPI {
    * @param queryParams
    */
   static getDictTypePage(queryParams: DictTypeQuery) {
-    return request<any, DictTypePageResult>({
+    return request<DictTypePageResult>({
       url: "/api/v1/dict/types/page",
       method: "get",
       params: queryParams,
@@ -29,7 +29,7 @@ class DictAPI {
    * @param id
    */
   static getDictTypeForm(id: number) {
-    return request<any, DictTypeForm>({
+    return request<DictTypeForm>({
       url: "/api/v1/dict/types/" + id + "/form",
       method: "get",
     });
@@ -81,7 +81,7 @@ class DictAPI {
    * @param typeCode 字典类型编码
    */
   static getDictOptions(typeCode: string) {
-    return request<any, OptionType[]>({
+    return request<OptionType[]>({
       url: "/api/v1/dict/" + typeCode + "/options",
       method: "get",
     });
@@ -91,7 +91,7 @@ class DictAPI {
    * 字典分页列表
    */
   static getDictPage(queryParams: DictQuery) {
-    return request<any, DictPageResult>({
+    return request<DictPageResult>({
       url: "/api/v1/dict/page",
       method: "get",
       params: queryParams,
@@ -104,7 +104,7 @@ class DictAPI {
    * @param id
    */
   static getDictFormData(id: number) {
-    return request<any, DictForm>({
+    return request<DictForm>({
       url: "/api/v1/dict/" + id + "/form",
       method: "get",
     });

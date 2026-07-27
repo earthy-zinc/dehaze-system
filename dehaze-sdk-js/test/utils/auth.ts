@@ -3,7 +3,7 @@
  * 提供登录、登出等功能
  *
  * 登录流程：获取验证码 → 从 Redis 读取验证码值 → 携带验证码登录
- * 支持多后端切换（Java/Python/Go），各后端验证码在 Redis 中的存储方式有差异
+ * 三端验证码统一存于 Redis db0，key 前缀为 captcha_code:
  */
 import fs from "fs";
 import path from "path";
@@ -11,18 +11,16 @@ import { SESSION_KEY } from "@/enums";
 import { AuthAPI, configAxios } from "../../index";
 import type { InternalAxiosRequestConfig } from "axios";
 import FormData from "form-data";
-import { CAPTCHA_KEY_PREFIX } from "../config/backend";
 import { getRedis } from "./redis";
 
 const SESSION_CACHE_FILE = path.resolve(__dirname, "..", "..", ".session-cache.json");
 const CACHE_MAX_AGE_MS = 30 * 60 * 1000;
+const CAPTCHA_KEY_PREFIX = process.env.CAPTCHA_KEY_PREFIX || "captcha_code:";
 
 let currentSessionId: string = "";
+let activeUser: string = "";
 
-const TEST_CREDENTIALS = {
-  username: process.env.TEST_USERNAME || "admin",
-  password: process.env.TEST_PASSWORD || "12345678",
-};
+const DEFAULT_PASSWORD = process.env.TEST_PASSWORD || "12345678";
 
 async function getCaptchaCode(captchaKey: string): Promise<string> {
   const redisKey = `${CAPTCHA_KEY_PREFIX}${captchaKey}`;
@@ -48,35 +46,44 @@ function setupAxiosInterceptor() {
   });
 }
 
-export async function login(): Promise<string> {
-  if (currentSessionId) {
+function readSessionCache(): Record<string, { sessionId: string; createdAt: number }> {
+  try {
+    if (fs.existsSync(SESSION_CACHE_FILE)) {
+      return JSON.parse(fs.readFileSync(SESSION_CACHE_FILE, "utf-8"));
+    }
+  } catch {}
+  return {};
+}
+
+function writeSessionCache(cache: Record<string, { sessionId: string; createdAt: number }>): void {
+  try {
+    fs.writeFileSync(SESSION_CACHE_FILE, JSON.stringify(cache), "utf-8");
+  } catch {}
+}
+
+export async function login(username: string = "admin"): Promise<string> {
+  if (activeUser === username && currentSessionId) {
     globalThis.localStorage.setItem(SESSION_KEY, currentSessionId);
     return currentSessionId;
   }
 
-  try {
-    if (fs.existsSync(SESSION_CACHE_FILE)) {
-      const cached = JSON.parse(fs.readFileSync(SESSION_CACHE_FILE, "utf-8"));
-      if (
-        cached.sessionId &&
-        cached.createdAt &&
-        Date.now() - cached.createdAt < CACHE_MAX_AGE_MS
-      ) {
-        currentSessionId = cached.sessionId;
-        globalThis.localStorage.setItem(SESSION_KEY, currentSessionId);
-        setupAxiosInterceptor();
-        return currentSessionId;
-      }
-    }
-  } catch {}
+  const cache = readSessionCache();
+  const cached = cache[username];
+  if (cached?.sessionId && Date.now() - cached.createdAt < CACHE_MAX_AGE_MS) {
+    currentSessionId = cached.sessionId;
+    activeUser = username;
+    globalThis.localStorage.setItem(SESSION_KEY, currentSessionId);
+    setupAxiosInterceptor();
+    return currentSessionId;
+  }
 
   try {
     const captcha = await AuthAPI.getCaptcha();
-
     const captchaCode = await getCaptchaCode(captcha.captchaKey);
 
     const result = await AuthAPI.login({
-      ...TEST_CREDENTIALS,
+      username,
+      password: DEFAULT_PASSWORD,
       captchaKey: captcha.captchaKey,
       captchaCode,
     });
@@ -86,16 +93,12 @@ export async function login(): Promise<string> {
       throw new Error("登录成功但 sessionId 为空");
     }
 
+    activeUser = username;
     globalThis.localStorage.setItem(SESSION_KEY, currentSessionId);
     setupAxiosInterceptor();
 
-    try {
-      fs.writeFileSync(
-        SESSION_CACHE_FILE,
-        JSON.stringify({ sessionId: currentSessionId, createdAt: Date.now() }),
-        "utf-8"
-      );
-    } catch {}
+    cache[username] = { sessionId: currentSessionId, createdAt: Date.now() };
+    writeSessionCache(cache);
 
     return currentSessionId;
   } catch (error) {
@@ -104,11 +107,22 @@ export async function login(): Promise<string> {
   }
 }
 
-export async function logout(): Promise<void> {
+export async function logout(username?: string): Promise<void> {
+  const user = username || activeUser;
   await AuthAPI.logout();
   currentSessionId = "";
+  if (user === activeUser) {
+    activeUser = "";
+  }
   globalThis.localStorage.removeItem(SESSION_KEY);
-  try {
-    fs.unlinkSync(SESSION_CACHE_FILE);
-  } catch {}
+
+  const cache = readSessionCache();
+  delete cache[user];
+  if (Object.keys(cache).length === 0) {
+    try {
+      fs.unlinkSync(SESSION_CACHE_FILE);
+    } catch {}
+  } else {
+    writeSessionCache(cache);
+  }
 }

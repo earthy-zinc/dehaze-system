@@ -12,7 +12,7 @@ import {
 class AlgorithmAPI {
   /** 算法树形表格 */
   static getList(queryParams?: AlgorithmQuery) {
-    return request<any, Algorithm[]>({
+    return request<Algorithm[]>({
       url: "/api/v1/algorithms",
       method: "get",
       params: queryParams,
@@ -21,7 +21,7 @@ class AlgorithmAPI {
 
   /** 获取模型下拉选项列表 */
   static getOption() {
-    return request<any, OptionType[]>({
+    return request<OptionType[]>({
       url: "/api/v1/algorithms/options",
       method: "get",
     });
@@ -29,7 +29,7 @@ class AlgorithmAPI {
 
   /** 获取算法详情 */
   static getAlgorithmInfoById(id: number) {
-    return request<any, Algorithm>({
+    return request<Algorithm>({
       url: "/api/v1/algorithms/" + id,
       method: "get",
     });
@@ -73,7 +73,7 @@ class AlgorithmAPI {
 
   /** 获取算法版本历史 */
   static getVersions(id: number) {
-    return request<any, AlgorithmVersionVO[]>({
+    return request<AlgorithmVersionVO[]>({
       url: `/api/v1/algorithms/${id}/versions`,
       method: "get",
     });
@@ -99,7 +99,7 @@ class AlgorithmAPI {
 
   /** 获取算法监控数据 */
   static getMonitorData(id: number) {
-    return request<any, AlgorithmMonitorVO>({
+    return request<AlgorithmMonitorVO>({
       url: `/api/v1/algorithms/${id}/monitor`,
       method: "get",
     });
@@ -107,7 +107,7 @@ class AlgorithmAPI {
 
   /** 获取算法统计报表 */
   static getMonitorStats(id: number) {
-    return request<any, AlgorithmMonitorVO>({
+    return request<AlgorithmMonitorVO>({
       url: `/api/v1/algorithms/${id}/monitor/stats`,
       method: "get",
     });

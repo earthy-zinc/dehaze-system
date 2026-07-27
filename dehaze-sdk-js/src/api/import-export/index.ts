@@ -25,7 +25,7 @@ class ImportExportAPI {
     if (fields && fields.length > 0) {
       query.fields = fields.join(",");
     }
-    return request<unknown, ExportResult | Blob>({
+    return request<ExportResult | Blob>({
       url: `/api/v1/${module}/_export`,
       method: "get",
       params: query,
@@ -43,7 +43,7 @@ class ImportExportAPI {
    * @param data 查询参数（请求体传递）
    */
   static exportByPost(module: ExportModule, data: ExportRequest) {
-    return request<unknown, ExportResult | Blob>({
+    return request<ExportResult | Blob>({
       url: `/api/v1/${module}/_export`,
       method: "post",
       data,
@@ -69,7 +69,7 @@ class ImportExportAPI {
         formData.append(key, String(value));
       }
     });
-    return request<unknown, ImportResult | ImportTaskResult>({
+    return request<ImportResult | ImportTaskResult>({
       url: `/api/v1/${module}/_import`,
       method: "post",
       data: formData,
@@ -84,7 +84,7 @@ class ImportExportAPI {
    * @param format 文件格式：excel(默认) / csv
    */
   static downloadTemplate(module: ImportModule, format: "excel" | "csv" = "excel") {
-    return request<unknown, Blob>({
+    return request<Blob>({
       url: `/api/v1/${module}/template`,
       method: "get",
       params: { format },

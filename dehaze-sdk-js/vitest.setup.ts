@@ -2,11 +2,21 @@
  * Vitest 全局测试环境配置
  * 在所有测试之前加载，提供 Node.js 环境下缺失的浏览器 API polyfill
  */
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 import { afterAll, beforeAll } from "vitest";
 import { service } from "./src/utils/request";
-import { backendProfile } from "./test/config/backend";
 import { login } from "./test/utils/auth";
 import { disconnectRedis, getRedis } from "./test/utils/redis";
+
+// 根据 TEST_BACKEND 加载对应的 .env.{type} 文件
+// 系统环境变量优先级高于 .env 文件（dotenv 默认 override:false）
+const backend = process.env.TEST_BACKEND || "java";
+const envFile = path.resolve(__dirname, `.env.${backend}`);
+if (fs.existsSync(envFile)) {
+  dotenv.config({ path: envFile });
+}
 
 class LocalStorageMock {
   private store: Record<string, string> = {};
@@ -46,8 +56,7 @@ Object.defineProperty(globalThis, "localStorage", {
 });
 
 // 配置后端 baseURL（Node.js 环境无浏览器 origin，需显式指定）
-// 通过 TEST_BACKEND 环境变量切换 java / python / go 后端
-service.defaults.baseURL = process.env.TEST_BASE_URL || backendProfile.baseURL;
+service.defaults.baseURL = process.env.BACKEND_URL || "http://127.0.0.1:8989";
 
 beforeAll(async () => {
   try {

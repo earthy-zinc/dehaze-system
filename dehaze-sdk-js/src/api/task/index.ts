@@ -9,7 +9,7 @@ class TaskAPI {
    * @param data 任务创建表单
    */
   static create(data: TaskCreateForm) {
-    return request<any, TaskVO>({
+    return request<TaskVO>({
       url: "/api/v1/tasks",
       method: "post",
       data,
@@ -22,7 +22,7 @@ class TaskAPI {
    * @param taskId 任务ID
    */
   static getStatus(taskId: string) {
-    return request<any, TaskVO>({
+    return request<TaskVO>({
       url: `/api/v1/tasks/${taskId}`,
       method: "get",
     });
@@ -34,7 +34,7 @@ class TaskAPI {
    * @param taskId 任务ID
    */
   static download(taskId: string) {
-    return request<any, Blob>({
+    return request<Blob>({
       url: `/api/v1/tasks/${taskId}/download`,
       method: "get",
       responseType: "blob",
@@ -47,7 +47,7 @@ class TaskAPI {
    * @param taskId 任务ID
    */
   static cancel(taskId: string) {
-    return request<any, void>({
+    return request<void>({
       url: `/api/v1/tasks/${taskId}`,
       method: "delete",
     });
@@ -59,7 +59,7 @@ class TaskAPI {
    * @param query 查询参数
    */
   static getPage(query?: TaskQuery) {
-    return request<any, PageResult<TaskVO[]>>({
+    return request<PageResult<TaskVO[]>>({
       url: "/api/v1/tasks",
       method: "get",
       params: query,

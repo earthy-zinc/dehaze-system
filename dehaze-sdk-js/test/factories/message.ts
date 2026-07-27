@@ -1,7 +1,9 @@
 import { AnnouncementForm, MessageSendRequest } from "@/api/message/model";
 import { uniqueName } from "./common";
 
-export function createAnnouncementForm(overrides: Partial<AnnouncementForm> = {}): AnnouncementForm {
+export function createAnnouncementForm(
+  overrides: Partial<AnnouncementForm> = {}
+): AnnouncementForm {
   return {
     title: uniqueName("test_公告"),
     content: "测试公告内容",
@@ -12,7 +14,9 @@ export function createAnnouncementForm(overrides: Partial<AnnouncementForm> = {}
   };
 }
 
-export function createMessageSendRequest(overrides: Partial<MessageSendRequest> = {}): MessageSendRequest {
+export function createMessageSendRequest(
+  overrides: Partial<MessageSendRequest> = {}
+): MessageSendRequest {
   return {
     type: "business",
     title: uniqueName("test_消息"),

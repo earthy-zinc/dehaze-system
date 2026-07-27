@@ -10,7 +10,7 @@ class FileAPI {
    * @returns Promise<FileInfo | null> 文件已存在则返回文件信息，否则返回 null
    */
   static uploadCheck(md5: string) {
-    return request<any, FileInfo | null>({
+    return request<FileInfo | null>({
       url: "/api/v1/files/check",
       method: "get",
       params: { md5 },
@@ -34,7 +34,7 @@ class FileAPI {
       formData.append("modelId", modelId.toString());
     }
     formData.append("file", file);
-    return request<any, FileInfo>({
+    return request<FileInfo>({
       url: "/api/v1/files",
       method: "post",
       data: formData,
@@ -51,7 +51,7 @@ class FileAPI {
    * @param fileId 文件ID
    */
   static deleteById(fileId: number) {
-    return request<any, void>({
+    return request<void>({
       url: "/api/v1/files",
       method: "delete",
       params: { fileId },
@@ -64,7 +64,7 @@ class FileAPI {
    * @param query 查询参数
    */
   static getPage(query?: FileQuery) {
-    return request<any, PageResult<FileInfo[]>>({
+    return request<PageResult<FileInfo[]>>({
       url: "/api/v1/files/page",
       method: "get",
       params: query,
@@ -77,7 +77,7 @@ class FileAPI {
    * @param fileId 文件ID
    */
   static getById(fileId: number) {
-    return request<any, FileInfo>({
+    return request<FileInfo>({
       url: `/api/v1/files/${fileId}`,
       method: "get",
     });
@@ -89,7 +89,7 @@ class FileAPI {
    * @param objectName 文件存储对象名
    */
   static download(objectName: string) {
-    return request<any, Blob>({
+    return request<Blob>({
       url: `/api/v1/files/download/${objectName}`,
       method: "get",
       responseType: "blob",

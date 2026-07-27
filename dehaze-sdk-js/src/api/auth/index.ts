@@ -3,7 +3,7 @@ import { AuthUserInfo, CaptchaResult, LoginData, LoginResult, RegisterData } fro
 
 class AuthAPI {
   static login(data: LoginData) {
-    return request<any, LoginResult>({
+    return request<LoginResult>({
       url: "/api/v1/auth/login",
       method: "post",
       data: data,
@@ -11,7 +11,7 @@ class AuthAPI {
   }
 
   static register(data: RegisterData) {
-    return request<any, LoginResult>({
+    return request<LoginResult>({
       url: "/api/v1/auth/register",
       method: "post",
       data: data,
@@ -26,14 +26,14 @@ class AuthAPI {
   }
 
   static getCurrentUser() {
-    return request<any, AuthUserInfo>({
+    return request<AuthUserInfo>({
       url: "/api/v1/auth/me",
       method: "get",
     });
   }
 
   static getCaptcha() {
-    return request<any, CaptchaResult>({
+    return request<CaptchaResult>({
       url: "/api/v1/auth/captcha",
       method: "get",
     });

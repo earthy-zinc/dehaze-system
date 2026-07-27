@@ -7,7 +7,7 @@ class UserAPI {
    * 登录成功后获取用户信息（昵称、头像、权限集合和角色集合）
    */
   static getInfo() {
-    return request<any, UserInfo>({
+    return request<UserInfo>({
       url: "/api/v1/auth/me",
       method: "get",
     });
@@ -19,7 +19,7 @@ class UserAPI {
    * @param queryParams
    */
   static getPage(queryParams: UserQuery) {
-    return request<any, PageResult<UserPageVO[]>>({
+    return request<PageResult<UserPageVO[]>>({
       url: "/api/v1/users/page",
       method: "get",
       params: queryParams,
@@ -32,7 +32,7 @@ class UserAPI {
    * @param userId
    */
   static getFormData(userId: number) {
-    return request<any, UserForm>({
+    return request<UserForm>({
       url: "/api/v1/users/" + userId + "/form",
       method: "get",
     });

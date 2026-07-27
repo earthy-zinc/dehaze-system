@@ -102,7 +102,7 @@ describe("用户管理接口测试", () => {
       const result = await UserAPI.getPage(query);
 
       expect(result).toBeDefined();
-      // 预置的3个用户都是启用状态
+      // 预置的8个用户都是启用状态
       expect(result.total).toBeGreaterThanOrEqual(ADMIN_VISIBLE_USER_COUNT);
 
       // 验证所有返回的用户状态都是启用
@@ -110,8 +110,17 @@ describe("用户管理接口测试", () => {
         expect(item.status).toBe(1);
       });
 
-      // 验证预置用户存在（admin 只能看到 admin 和 test，root 因数据权限不可见）
-      const visiblePresetUsernames: string[] = [USERS.ADMIN.username, USERS.TEST.username];
+      // 验证预置用户存在（ADMIN 角色 data_scope=0=ALL，可见所有预置用户）
+      const visiblePresetUsernames: string[] = [
+        USERS.ROOT.username,
+        USERS.ADMIN.username,
+        USERS.TEST.username,
+        USERS.DEPT_ADMIN.username,
+        USERS.USER.username,
+        USERS.VIP1.username,
+        USERS.VIP2.username,
+        USERS.SVIP.username,
+      ];
       const foundPresetUsers = result.list.filter((u) =>
         visiblePresetUsernames.includes(u.username!)
       );

@@ -7,7 +7,7 @@ class MenuAPI {
    * 获取路由列表
    */
   static getRoutes() {
-    return request<any, RouteVO[]>({
+    return request<RouteVO[]>({
       url: "/api/v1/menus/routes",
       method: "get",
     });
@@ -19,7 +19,7 @@ class MenuAPI {
    * @param queryParams
    */
   static getList(queryParams: MenuQuery) {
-    return request<any, MenuVO[]>({
+    return request<MenuVO[]>({
       url: "/api/v1/menus",
       method: "get",
       params: queryParams,
@@ -30,7 +30,7 @@ class MenuAPI {
    * 获取菜单下拉数据源
    */
   static getOptions() {
-    return request<any, OptionType[]>({
+    return request<OptionType[]>({
       url: "/api/v1/menus/options",
       method: "get",
     });
@@ -42,7 +42,7 @@ class MenuAPI {
    * @param id
    */
   static getFormData(id: number) {
-    return request<any, MenuForm>({
+    return request<MenuForm>({
       url: "/api/v1/menus/" + id + "/form",
       method: "get",
     });
@@ -55,7 +55,7 @@ class MenuAPI {
    * @returns void (后端不返回创建的菜单ID)
    */
   static add(data: MenuForm) {
-    return request<any, void>({
+    return request<void>({
       url: "/api/v1/menus",
       method: "post",
       data: data,

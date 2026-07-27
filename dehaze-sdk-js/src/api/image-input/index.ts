@@ -5,7 +5,7 @@ import { HistoryForm, HistoryQuery, HistoryUpdateForm, InputHistoryVO } from "./
 class ImageInputHistoryAPI {
   /** 分页查询历史记录 */
   static getPage(query?: HistoryQuery) {
-    return request<any, PageResult<InputHistoryVO[]>>({
+    return request<PageResult<InputHistoryVO[]>>({
       url: "/api/v1/image-input/history",
       method: "get",
       params: query,
@@ -14,7 +14,7 @@ class ImageInputHistoryAPI {
 
   /** 获取历史记录详情 */
   static getById(id: number) {
-    return request<any, InputHistoryVO>({
+    return request<InputHistoryVO>({
       url: `/api/v1/image-input/history/${id}`,
       method: "get",
     });
@@ -22,7 +22,7 @@ class ImageInputHistoryAPI {
 
   /** 创建历史记录 */
   static create(data: HistoryForm) {
-    return request<any, number>({
+    return request<number>({
       url: "/api/v1/image-input/history",
       method: "post",
       data,
@@ -48,7 +48,7 @@ class ImageInputHistoryAPI {
 
   /** 批量删除历史记录 */
   static batchDelete(ids: number[]) {
-    return request<any, number>({
+    return request<number>({
       url: "/api/v1/image-input/history/batch",
       method: "delete",
       data: { ids },
@@ -57,7 +57,7 @@ class ImageInputHistoryAPI {
 
   /** 清空所有历史记录 */
   static clearAll() {
-    return request<any, number>({
+    return request<number>({
       url: "/api/v1/image-input/history/clear",
       method: "delete",
     });
@@ -65,7 +65,7 @@ class ImageInputHistoryAPI {
 
   /** 同步本地与云端历史记录 */
   static sync() {
-    return request<any, number>({
+    return request<number>({
       url: "/api/v1/image-input/history/sync",
       method: "post",
     });

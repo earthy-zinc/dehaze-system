@@ -3,7 +3,7 @@ import { ApiKeyCreateForm, ApiKeyVO } from "./model";
 
 class ApiKeyAPI {
   static create(data: ApiKeyCreateForm) {
-    return request<any, ApiKeyVO>({
+    return request<ApiKeyVO>({
       url: "/api/v1/auth/api-keys",
       method: "post",
       data: data,
@@ -11,7 +11,7 @@ class ApiKeyAPI {
   }
 
   static list() {
-    return request<any, ApiKeyVO[]>({
+    return request<ApiKeyVO[]>({
       url: "/api/v1/auth/api-keys",
       method: "get",
     });

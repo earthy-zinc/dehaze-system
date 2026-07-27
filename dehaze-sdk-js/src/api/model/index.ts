@@ -22,7 +22,7 @@ function sleep(ms: number): Promise<void> {
 class ModelAPI {
   /** 执行模型预测（去雾处理），返回 logId + status */
   static predict(data: PredictionForm) {
-    return request<any, PredictionResultVO>({
+    return request<PredictionResultVO>({
       url: "/api/v1/prediction",
       method: "post",
       data,
@@ -31,7 +31,7 @@ class ModelAPI {
 
   /** 查询预测任务状态 */
   static getPredTaskStatus(taskId: number) {
-    return request<any, PredictionResultVO>({
+    return request<PredictionResultVO>({
       url: `/api/v1/prediction/${taskId}`,
       method: "get",
     });
@@ -78,7 +78,7 @@ class ModelAPI {
 
   /** 获取预测日志分页列表 */
   static getPredLogs(query?: PredLogQuery) {
-    return request<any, PageResult<PredLogVO[]>>({
+    return request<PageResult<PredLogVO[]>>({
       url: "/api/v1/prediction/logs",
       method: "get",
       params: query,
@@ -87,7 +87,7 @@ class ModelAPI {
 
   /** 执行效果评估（PSNR/SSIM/LPIPS等），返回 logId + status */
   static evaluate(data: EvaluationForm) {
-    return request<any, EvaluationResultVO>({
+    return request<EvaluationResultVO>({
       url: "/api/v1/evaluation",
       method: "post",
       data,
@@ -96,7 +96,7 @@ class ModelAPI {
 
   /** 查询评估任务状态 */
   static getEvalTaskStatus(taskId: number) {
-    return request<any, EvaluationResultVO>({
+    return request<EvaluationResultVO>({
       url: `/api/v1/evaluation/${taskId}`,
       method: "get",
     });
@@ -143,7 +143,7 @@ class ModelAPI {
 
   /** 获取评估日志分页列表 */
   static getEvalLogs(query?: EvalLogQuery) {
-    return request<any, PageResult<EvalLogVO[]>>({
+    return request<PageResult<EvalLogVO[]>>({
       url: "/api/v1/evaluation/logs",
       method: "get",
       params: query,

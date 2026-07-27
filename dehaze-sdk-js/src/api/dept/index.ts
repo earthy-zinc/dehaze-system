@@ -9,7 +9,7 @@ class DeptAPI {
    * @param queryParams
    */
   static getList(queryParams?: DeptQuery) {
-    return request<any, DeptVO[]>({
+    return request<DeptVO[]>({
       url: "/api/v1/depts",
       method: "get",
       params: queryParams,
@@ -20,7 +20,7 @@ class DeptAPI {
    * 部门下拉列表
    */
   static getOptions() {
-    return request<any, OptionType[]>({
+    return request<OptionType[]>({
       url: "/api/v1/depts/options",
       method: "get",
     });
@@ -32,7 +32,7 @@ class DeptAPI {
    * @param id 部门ID
    */
   static getFormData(id: number) {
-    return request<any, DeptForm>({
+    return request<DeptForm>({
       url: "/api/v1/depts/" + id + "/form",
       method: "get",
     });

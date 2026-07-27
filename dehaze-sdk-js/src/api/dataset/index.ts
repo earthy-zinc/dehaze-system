@@ -28,7 +28,7 @@ class DatasetAPI {
    * @param queryParams 查询参数
    */
   static getList(queryParams?: DatasetQuery) {
-    return request<any, PageResult<Dataset[]>>({
+    return request<PageResult<Dataset[]>>({
       url: "/api/v1/datasets",
       method: "get",
       params: queryParams,
@@ -40,7 +40,7 @@ class DatasetAPI {
    * @param parentId 父数据集ID
    */
   static getChildren(parentId: number) {
-    return request<any, Dataset[]>({
+    return request<Dataset[]>({
       url: `/api/v1/datasets/children/${parentId}`,
       method: "get",
     });
@@ -50,7 +50,7 @@ class DatasetAPI {
    * 获取数据集下拉选项列表
    */
   static getOptions() {
-    return request<any, OptionType[]>({
+    return request<OptionType[]>({
       url: "/api/v1/datasets/options",
       method: "get",
     });
@@ -61,7 +61,7 @@ class DatasetAPI {
    * @param id 数据集ID
    */
   static getDatasetInfoById(id: number) {
-    return request<any, Dataset>({
+    return request<Dataset>({
       url: `/api/v1/datasets/${id}`,
       method: "get",
     });
@@ -72,7 +72,7 @@ class DatasetAPI {
    * @param data 数据集创建表单
    */
   static add(data: DatasetAddForm) {
-    return request<any, number>({
+    return request<number>({
       url: "/api/v1/datasets",
       method: "post",
       data: data,
@@ -85,7 +85,7 @@ class DatasetAPI {
    * @param data 数据集更新表单
    */
   static update(id: number, data: DatasetUpdateForm) {
-    return request<any, Dataset>({
+    return request<Dataset>({
       url: `/api/v1/datasets/${id}`,
       method: "put",
       data: data,
@@ -108,7 +108,7 @@ class DatasetAPI {
    * @param data 批量删除表单
    */
   static batchDelete(data: BatchDeleteForm) {
-    return request<any, BatchDeleteResultVO>({
+    return request<BatchDeleteResultVO>({
       url: "/api/v1/datasets/batch",
       method: "delete",
       data: data,
@@ -125,7 +125,7 @@ class DatasetItemAPI {
    * @param queryParams 查询参数
    */
   static getList(queryParams?: DatasetItemQuery) {
-    return request<any, PageResult<DatasetItemVO[]>>({
+    return request<PageResult<DatasetItemVO[]>>({
       url: "/api/v1/dataset-items",
       method: "get",
       params: queryParams,
@@ -137,7 +137,7 @@ class DatasetItemAPI {
    * @param data 数据项创建表单
    */
   static add(data: DatasetItemCreateForm) {
-    return request<any, DatasetItemVO>({
+    return request<DatasetItemVO>({
       url: "/api/v1/dataset-items",
       method: "post",
       data: data,
@@ -149,7 +149,7 @@ class DatasetItemAPI {
    * @param id 数据项ID
    */
   static getById(id: number) {
-    return request<any, DatasetItemVO>({
+    return request<DatasetItemVO>({
       url: `/api/v1/dataset-items/${id}`,
       method: "get",
     });
@@ -161,7 +161,7 @@ class DatasetItemAPI {
    * @param data 数据项更新表单
    */
   static update(id: number, data: DatasetItemUpdateForm) {
-    return request<any, DatasetItemVO>({
+    return request<DatasetItemVO>({
       url: `/api/v1/dataset-items/${id}`,
       method: "put",
       data: data,
@@ -184,7 +184,7 @@ class DatasetItemAPI {
    * @param data 上传表单（使用FormData）
    */
   static uploadImagePair(data: FormData) {
-    return request<any, DatasetItemVO>({
+    return request<DatasetItemVO>({
       url: "/api/v1/dataset-items/upload",
       method: "post",
       data: data,
@@ -199,7 +199,7 @@ class DatasetItemAPI {
    * @param data 批量上传表单（使用FormData）
    */
   static batchUpload(data: FormData) {
-    return request<any, BatchUploadResultVO>({
+    return request<BatchUploadResultVO>({
       url: "/api/v1/dataset-items/batch",
       method: "post",
       data: data,
@@ -214,7 +214,7 @@ class DatasetItemAPI {
    * @param data 批量删除表单
    */
   static batchDelete(data: BatchDeleteForm) {
-    return request<any, BatchOperationResultVO>({
+    return request<BatchOperationResultVO>({
       url: "/api/v1/dataset-items/batch",
       method: "delete",
       data: data,
@@ -231,7 +231,7 @@ class ItemFileAPI {
    * @param data 上传表单（使用FormData）
    */
   static upload(data: FormData) {
-    return request<any, ImageUrlVO>({
+    return request<ImageUrlVO>({
       url: "/api/v1/item-files",
       method: "post",
       data: data,
@@ -246,7 +246,7 @@ class ItemFileAPI {
    * @param id 图片ID
    */
   static getById(id: number) {
-    return request<any, ImageUrlVO>({
+    return request<ImageUrlVO>({
       url: `/api/v1/item-files/${id}`,
       method: "get",
     });
@@ -281,7 +281,7 @@ class ItemFileAPI {
    * @param data 批量删除表单
    */
   static batchDelete(data: BatchDeleteForm) {
-    return request<any, BatchDeleteResultVO>({
+    return request<BatchDeleteResultVO>({
       url: "/api/v1/item-files/batch",
       method: "delete",
       data: data,

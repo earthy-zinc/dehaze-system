@@ -439,7 +439,7 @@ describe("字典管理接口测试", () => {
         await DictAPI.addDict(dictForm);
         // 查询并记录创建的字典ID用于清理
         const dictPage = await DictAPI.getDictPage(
-          createDictQuery({ typeCode: testTypeCode, keywords: dictForm.name, pageSize: 100 })
+          createDictQuery({ typeCode: testTypeCode, keywords: dictForm.name!, pageSize: 100 })
         );
         const created = dictPage.list.find((d) => d.name === dictForm.name);
         if (created?.id) createdDictIds.push(created.id);
