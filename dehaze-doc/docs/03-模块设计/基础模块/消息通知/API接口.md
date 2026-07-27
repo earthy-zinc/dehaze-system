@@ -694,10 +694,3 @@
 | `TEMPLATE_DISABLED` | 模板已禁用 | 使用已禁用的模板发送消息 |
 | `TEMPLATE_VAR_MISSING` | 模板变量缺失 | 使用模板但未提供全部必填变量 |
 | `SETTING_NOT_FOUND` | 通知设置不存在 | 用户未初始化通知设置 |
-
-## 7. 接口详情查询
-
-> 接口的详细请求参数、响应结构、Schema 定义可通过以下方式获取：
->
-> 1. **API 文档 MCP**：调用 `read_project_oas_yfcdew` 获取 OpenAPI Spec
-> 2. **Swagger UI**：访问 `/swagger-ui/index.html`（开发环境）
