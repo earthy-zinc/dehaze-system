@@ -32,7 +32,7 @@ test.describe("用户登录流程", () => {
     await page.locator('input[type="text"]').first().fill("invalid_user");
     await page.locator('input[type="password"]').fill("wrong_password");
     // 填写验证码
-    await page.locator('input[type="text"]').nth(2).fill("123456");
+    await page.locator('input[type="text"]').nth(2).fill("12345678");
 
     // 点击登录按钮
     await page.locator('.login-form button[type="button"]').first().click();
@@ -48,9 +48,9 @@ test.describe("用户登录流程", () => {
   test("应该成功登录并跳转到首页", async ({ page }) => {
     // 填写有效的用户名和密码（根据页面提示）
     await page.locator('input[type="text"]').first().fill("admin");
-    await page.locator('input[type="password"]').fill("123456");
+    await page.locator('input[type="password"]').fill("12345678");
     // 填写验证码
-    await page.locator('input[type="text"]').nth(2).fill("123456");
+    await page.locator('input[type="text"]').nth(2).fill("12345678");
 
     // 点击登录按钮
     await page.locator('.login-form button[type="button"]').first().click();
@@ -74,7 +74,7 @@ test.describe("用户登录流程", () => {
     await page.locator('input[type="text"]').first().fill("testuser");
     await page.locator('input[type="password"]').fill("password123");
     // 填写验证码
-    await page.locator('input[type="text"]').nth(2).fill("123456");
+    await page.locator('input[type="text"]').nth(2).fill("12345678");
 
     // 勾选"记住我"复选框（如果存在）
     const rememberCheckbox = page.locator('input[type="checkbox"]').first();
@@ -105,9 +105,9 @@ test.describe("用户登录流程", () => {
   test("应该支持通过键盘 Enter 键登录", async ({ page }) => {
     // 填写用户名和密码
     await page.locator('input[type="text"]').first().fill("admin");
-    await page.locator('input[type="password"]').fill("123456");
+    await page.locator('input[type="password"]').fill("12345678");
     // 填写验证码
-    await page.locator('input[type="text"]').nth(2).fill("123456");
+    await page.locator('input[type="text"]').nth(2).fill("12345678");
 
     // 在密码框按 Enter 键
     await page.locator('input[type="password"]').press("Enter");
@@ -124,9 +124,9 @@ test.describe("用户登录流程", () => {
   test("应该支持登出功能", async ({ page }) => {
     // 先登录
     await page.locator('input[type="text"]').first().fill("admin");
-    await page.locator('input[type="password"]').fill("123456");
+    await page.locator('input[type="password"]').fill("12345678");
     // 填写验证码
-    await page.locator('input[type="text"]').nth(2).fill("123456");
+    await page.locator('input[type="text"]').nth(2).fill("12345678");
     await page.locator('.login-form button[type="button"]').first().click();
 
     // 等待登录成功

@@ -55,7 +55,7 @@ func TestCaptcha_Expired(t *testing.T) {
 
 	loginBody := map[string]string{
 		"username":    "admin",
-		"password":    "123456",
+		"password":    "12345678",
 		"captchaKey":  captchaKey,
 		"captchaCode": "000000",
 	}
@@ -77,7 +77,7 @@ func TestLogin_Success_Admin(t *testing.T) {
 
 	loginBody := map[string]string{
 		"username":    "admin",
-		"password":    "123456",
+		"password":    "12345678",
 		"captchaKey":  captchaKey,
 		"captchaCode": testCode,
 	}
@@ -131,7 +131,7 @@ func TestLogin_WrongCaptcha(t *testing.T) {
 
 	loginBody := map[string]string{
 		"username":    "admin",
-		"password":    "123456",
+		"password":    "12345678",
 		"captchaKey":  captchaKey,
 		"captchaCode": "000000",
 	}
@@ -166,7 +166,7 @@ func TestSession_FakeSession_AccessProtectedRoute(t *testing.T) {
 }
 
 func TestSession_Admin_GetAuthInfo(t *testing.T) {
-	sessionID := tu.LoginAndGetSessionID(t, "admin", "123456")
+	sessionID := tu.LoginAndGetSessionID(t, "admin", "12345678")
 
 	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, sessionID)
 
@@ -191,7 +191,7 @@ func TestSession_Admin_GetAuthInfo(t *testing.T) {
 }
 
 func TestSession_TestUser_GetAuthInfo(t *testing.T) {
-	sessionID := tu.LoginAndGetSessionID(t, "test", "123456")
+	sessionID := tu.LoginAndGetSessionID(t, "test", "12345678")
 
 	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, sessionID)
 
@@ -217,7 +217,7 @@ func TestSession_TestUser_GetAuthInfo(t *testing.T) {
 // ============================================================
 
 func TestLogout_SessionInvalidated(t *testing.T) {
-	sessionID := tu.LoginAndGetSessionID(t, "admin", "123456")
+	sessionID := tu.LoginAndGetSessionID(t, "admin", "12345678")
 
 	w := tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, sessionID)
 	require.Equal(t, http.StatusOK, w.Code)

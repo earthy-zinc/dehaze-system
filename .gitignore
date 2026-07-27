@@ -462,3 +462,7 @@ dehaze-sdk-js/test/resources
 **/.torch_extensions
 
 dehaze-sdk-js/.session-cache.json
+
+# 项目根目录数据
+/datasets
+/models

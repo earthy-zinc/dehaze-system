@@ -107,7 +107,7 @@
         <!-- 账号密码提示 -->
         <div class="mt-10 text-sm">
           <span>{{ $t("login.username") }}: admin</span>
-          <span class="ml-4"> {{ $t("login.password") }}: 123456</span>
+          <span class="ml-4"> {{ $t("login.password") }}: 12345678</span>
         </div>
 
         <div class="text-center mt-4">
@@ -151,7 +151,7 @@ const { height } = useWindowSize();
 
 const loginData = ref<LoginData>({
   username: "admin",
-  password: "123456",
+  password: "12345678",
   rememberMe: true,
 });
 

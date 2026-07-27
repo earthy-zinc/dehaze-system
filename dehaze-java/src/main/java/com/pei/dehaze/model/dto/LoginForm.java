@@ -13,7 +13,7 @@ public class LoginForm {
     private String username;
 
     @NotBlank(message = "密码不能为空")
-    @Schema(description = "密码", example = "123456")
+    @Schema(description = "密码", example = "12345678")
     private String password;
 
     @NotBlank(message = "验证码Key不能为空")

@@ -110,7 +110,7 @@ export default function Login() {
         <Form
           form={form}
           className="login-form"
-          initialValues={{ username: "admin", password: "123456" }}
+          initialValues={{ username: "admin", password: "12345678" }}
           onFinish={handleLogin}
         >
           <Form.Item
@@ -191,7 +191,7 @@ export default function Login() {
         </Form>
         <div className="mt-10 text-sm">
           <span>用户名: admin</span>
-          <span className="ml-4"> 密码: 123456</span>
+          <span className="ml-4"> 密码: 12345678</span>
         </div>
         <div className="text-center mt-4">
           <a href="/register">没有账号？立即注册</a>

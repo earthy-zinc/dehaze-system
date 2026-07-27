@@ -260,7 +260,7 @@ func (h *UserImportHandler) ImportBatch(rows []map[string]interface{}, options i
 		mobile, _ := row["mobile"].(string)
 		email, _ := row["email"].(string)
 
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("12345678"), bcrypt.DefaultCost)
 		if err != nil {
 			failureCount++
 			errors = append(errors, import_export.ImportError{Row: rowNum, Field: "password", Message: "密码加密失败"})

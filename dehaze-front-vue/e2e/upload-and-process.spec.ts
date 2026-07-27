@@ -6,7 +6,7 @@ test.describe("图片上传和去雾处理流程", () => {
   async function login(page: any) {
     await page.goto("/login");
     await page.locator('input[type="text"]').first().fill("admin");
-    await page.locator('input[type="password"]').fill("123456");
+    await page.locator('input[type="password"]').fill("12345678");
     await page.locator('input[type="text"]').nth(2).fill("123456");
     await page.locator('.login-form button[type="button"]').first().click();
     await page.waitForURL(/\/(home|dashboard|index)/, { timeout: 30000 });

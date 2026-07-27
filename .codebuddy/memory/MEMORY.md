@@ -21,7 +21,7 @@
 - **调试脚本**：`scripts/debug_helper.py <command>` - 包含登录逻辑 + API 调试
   - `compare /api/v1/xxx [METHOD] [BODY]` - 三端对比同一 API 确保一致性
   - `curl <backend> /api/v1/xxx [METHOD] [BODY]` - 单端请求
-- 开发账号：admin / 123456
+- 开发账号：admin / 12345678
 
 ### 后端生命周期管理
 - **统一脚本**：`scripts/run.py <command> [args...]`

@@ -130,12 +130,12 @@ class Settings(BaseSettings):
 
     # 模型权重文件存储配置
     # Nginx 静态服务（nginx-dataset 容器）下 /models 路径的基础 URL，
-    # 算法权重文件通过 HTTP 下载到本地缓存后由 torch.load 加载，解除 Python 服务与 trained_model/ 目录的强耦合。
+    # Python 服务通过 HTTP 下载到本地缓存后由 torch.load 加载，解除 Python 服务与 trained_model/ 目录的强耦合。
     # 算法权重访问 URL = {MODEL_BASE_URL}/{algorithm.path}，如 http://127.0.0.1:9000/models/AECR-Net/NH_train.pk
     MODEL_BASE_URL: str = "http://127.0.0.1:9000/models"
     # 本地缓存目录：首次下载后缓存到此目录，二次加载直接读缓存。
-    # 默认指向项目内 trained_model/，本地开发时无需重复下载占用空间
-    MODEL_CACHE_DIR: str = "./trained_model"
+    # 指向项目根目录 models/，本地开发时无需重复下载占用空间
+    MODEL_CACHE_DIR: str = "../models"
     # Nginx 不可用时是否降级到本地缓存（仅当本地已存在缓存文件时生效）
     MODEL_FALLBACK_TO_LOCAL: bool = True
 

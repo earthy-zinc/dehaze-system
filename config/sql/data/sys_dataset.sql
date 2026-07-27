@@ -53,62 +53,62 @@ values (10, 8, '图像去雾', 'OTS', null,
         'RESIDE/OTS', '12.86 GB', 1, 0, '2024-11-11 19:42:54', '2024-11-11 19:42:54', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (14, 0, '图像去雾', 'RESIDE-6k', null,
+values (11, 0, '图像去雾', 'RESIDE-6k', null,
         '虽然没有直接提到名为RESIDE-6k的数据集，但我们可以假设这可能是一个包含大约6000张图像的RESIDE数据集的一个子集。如果这是对RESIDE数据集的特定版本，则它可能专注于一个特定的场景（室内或室外）或者用于特定目的（比如训练或测试）。然而，由于没有具体的信息，我们无法确定其确切组成。通常，这样的数据集会包含成对的清晰和模糊图像，以便于模型学习如何从模糊图像恢复清晰图像。',
         'RESIDE-6k', '1.52 GB', 1, 0, '2024-11-12 22:22:42', '2024-11-12 22:22:42', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (15, 14, '图像去雾', 'RESIDE-6k-train', null,
+values (12, 11, '图像去雾', 'RESIDE-6k-train', null,
         'RESIDE-6k 训练集 用于模型的学习阶段，让模型通过大量样本学习如何执行任务。', 'RESIDE-6k/train', '1,021.78 MB',
         1, 0, '2024-11-12 22:23:05', '2024-11-12 22:23:05', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (16, 14, '图像去雾', 'RESIDE-6k-test', null,
+values (13, 11, '图像去雾', 'RESIDE-6k-test', null,
         'RESIDE-6k  测试集 用于评估经过训练后的模型性能，看其在未见过的数据上的表现如何。', 'RESIDE-6k/test', '532.3 MB',
         1, 0, '2024-11-12 22:23:16', '2024-11-12 22:23:16', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (17, 0, '图像去雾', 'RESIDE-IN', null,
+values (14, 0, '图像去雾', 'RESIDE-IN', null,
         '这个名称可能指的是RESIDE数据集中专注于室内场景的部分。结合RESIDE数据集的描述，我们可以合理推测RESIDE-IN可能主要包含了ITS（Indoor Training Set），即室内训练集。该集合包括了13,990个合成的模糊图像，这些图像是基于NYU2和米德尔伯里立体数据库中的1,399个清晰室内图像生成的1。此外，SOTS（Synthetic Objective Testing Set）中的部分室内图像也可能被包含在内，用于评估算法性能。',
         'RESIDE-IN', '8.74 GB', 1, 0, '2024-11-12 22:23:48', '2024-11-12 22:23:48', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (18, 17, '图像去雾', 'RESIDE-IN-train', null,
+values (15, 14, '图像去雾', 'RESIDE-IN-train', null,
         'RESIDE-IN 训练集 用于模型的学习阶段，让模型通过大量样本学习如何执行任务。', 'RESIDE-IN/train', '8.36 GB',
         1, 0, '2024-11-12 22:24:10', '2024-11-12 22:24:10', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (19, 17, '图像去雾', 'RESIDE-IN-test', null,
+values (16, 14, '图像去雾', 'RESIDE-IN-test', null,
         'RESIDE-IN 测试集 用于评估经过训练后的模型性能，看其在未见过的数据上的表现如何。', 'RESIDE-IN/test', '392.11 MB',
         1, 0, '2024-11-12 22:25:09', '2024-11-12 22:25:09', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (20, 0, '图像去雾', 'RESIDE-OUT', null,
+values (17, 0, '图像去雾', 'RESIDE-OUT', null,
         '同样，RESIDE-OUT可能是指RESIDE数据集中专注于室外场景的部分。这意味着它可能主要由OTS（Outdoor Training Set）构成，该集合包括72,135张合成的户外模糊图像，这些图像是基于北京实时天气的真实室外图像生成的2。SOTS中的一部分室外图像也可能会被纳入其中，用于测试目的。',
         'RESIDE-OUT', '83.03 GB', 1, 0, '2024-11-12 22:26:09', '2024-11-12 22:26:09', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (21, 20, '图像去雾', 'RESIDE-OUT-train', null,
+values (18, 17, '图像去雾', 'RESIDE-OUT-train', null,
         'RESIDE-OUT 训练集 用于模型的学习阶段，让模型通过大量样本学习如何执行任务。', 'RESIDE-OUT/train', '82.89 GB',
         1, 0, '2024-11-12 22:26:47', '2024-11-12 22:26:47', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (22, 20, '图像去雾', 'RESIDE-OUT-test', null,
+values (19, 17, '图像去雾', 'RESIDE-OUT-test', null,
         'RESIDE-OUT 测试集 用于评估经过训练后的模型性能，看其在未见过的数据上的表现如何。', 'RESIDE-OUT/test',
         '140.19 MB', 1, 0, '2024-11-12 22:27:08', '2024-11-12 22:27:08', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (23, 0, '图像去雾', 'RSHAZE', null,
+values (20, 0, '图像去雾', 'RSHAZE', null,
         'REHAZE数据集是专为图像去雾研究设计的，旨在提供更真实的雾霾条件下的图像。它由苏黎世联邦理工大学等机构发布，包含有雾和无雾图像对，这些图像是在受控环境中使用专业设备拍摄的，以模拟不同的雾霾条件。不过，具体的细节（如图像数量、场景类型等）需要查阅原始论文或官方发布页面来获取准确信息。',
         'RSHAZE', '40.41 GB', 1, 0, '2024-11-12 22:28:28', '2024-11-12 22:28:28', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (24, 23, '图像去雾', 'RSHAZE-train', null,
+values (21, 20, '图像去雾', 'RSHAZE-train', null,
         'REHAZE 训练集 用于模型的学习阶段，让模型通过大量样本学习如何执行任务。', 'RSHAZE/train', '38.39 GB', 1,
         0, '2024-11-12 22:28:47', '2024-11-12 22:28:47', 2, 2);
 insert into sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                          create_time, update_time, create_by, update_by)
-values (25, 23, '图像去雾', 'RSHAZE-test', null,
+values (22, 20, '图像去雾', 'RSHAZE-test', null,
         'REHAZE 测试集 用于评估经过训练后的模型性能，看其在未见过的数据上的表现如何。', 'RSHAZE/test', '2.02 GB', 1,
         0, '2024-11-12 22:28:54', '2024-11-12 22:28:54', 2, 2);
 

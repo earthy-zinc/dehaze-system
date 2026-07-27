@@ -21,7 +21,7 @@ let currentSessionId: string = "";
 
 const TEST_CREDENTIALS = {
   username: process.env.TEST_USERNAME || "admin",
-  password: process.env.TEST_PASSWORD || "123456",
+  password: process.env.TEST_PASSWORD || "12345678",
 };
 
 async function getCaptchaCode(captchaKey: string): Promise<string> {
