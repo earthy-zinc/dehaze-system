@@ -63,5 +63,3 @@ configAxios({
   },
   onResponseError: handleResponseError,
 });
-
-export const sdkReady = true;

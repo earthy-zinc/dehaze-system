@@ -43,11 +43,12 @@
       </view>
 
       <!-- 空状态 -->
-      <view v-else class="empty-state">
-        <up-empty mode="image" text="暂无对比数据" />
-        <text class="empty-hint">请先完成去雾处理</text>
-        <button class="back-btn" @click="handleBack">返回处理页</button>
-      </view>
+      <CompareEmptyState
+        v-else
+        text="暂无对比数据"
+        hint="请先完成去雾处理"
+        btn-color="#3b82f6"
+      />
 
       <!-- 操作按钮 -->
       <view v-if="hasImages" class="action-section">
@@ -78,6 +79,7 @@
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
+import CompareEmptyState from "@/components/common/CompareEmptyState.vue";
 import { useProcessingStore } from "@/store/processing";
 
 const store = useProcessingStore();
@@ -107,9 +109,6 @@ function handleFilter() {
 }
 function handleMetrics() {
   uni.redirectTo({ url: "/pages/metrics/index" });
-}
-function handleBack() {
-  uni.navigateBack();
 }
 
 onMounted(() => {
@@ -217,25 +216,5 @@ onMounted(() => {
   &:active {
     background: rgba(59, 130, 246, 0.15);
   }
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 120rpx 0;
-}
-.empty-hint {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.4);
-  margin: 16rpx 0 32rpx;
-}
-.back-btn {
-  padding: 16rpx 48rpx;
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 16rpx;
-  font-size: 28rpx;
 }
 </style>

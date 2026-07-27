@@ -72,10 +72,7 @@
         </view>
       </view>
 
-      <view v-else class="empty-state">
-        <up-empty mode="image" text="暂无处理结果" />
-        <button class="back-btn" @click="handleBack">返回处理页</button>
-      </view>
+      <CompareEmptyState v-else text="暂无处理结果" btn-color="#10b981" />
     </view>
   </PageLayout>
 </template>
@@ -84,6 +81,7 @@
 import { ref, computed, reactive, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
+import CompareEmptyState from "@/components/common/CompareEmptyState.vue";
 import { useProcessingStore } from "@/store/processing";
 import type { SliderChangeEvent } from "@/types/uni-events";
 
@@ -210,9 +208,6 @@ function applyPreset(p: Preset) {
 function switchPage(url: string) {
   uni.redirectTo({ url });
 }
-function handleBack() {
-  uni.navigateBack();
-}
 
 onMounted(() => {
   if (!hasImages.value)
@@ -300,21 +295,5 @@ onMounted(() => {
   &:active {
     background: rgba(16, 185, 129, 0.15);
   }
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 120rpx 0;
-}
-.back-btn {
-  margin-top: 32rpx;
-  padding: 16rpx 48rpx;
-  background: #10b981;
-  color: #fff;
-  border: none;
-  border-radius: 16rpx;
-  font-size: 28rpx;
 }
 </style>

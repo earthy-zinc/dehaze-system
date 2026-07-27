@@ -5,13 +5,13 @@
 /**
  * 格式化文件大小
  * @param bytes 字节数（接受 number 或数字字符串）
- * @returns 形如 "1.2 KB" / "3.45 MB" / "-（空值时）"
+ * @returns 形如 "1.23 KB" / "3.45 MB" / "-（空值时）"
  */
 export function formatFileSize(bytes: number | string): string {
   const n = typeof bytes === "string" ? parseInt(bytes, 10) : bytes;
   if (!n || isNaN(n)) return "-";
   if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(2)} KB`;
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 

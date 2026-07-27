@@ -50,6 +50,55 @@
         </view>
       </view>
 
+      <!-- 智能推荐 -->
+      <view
+        v-if="
+          processingStore.hasImage &&
+          !loading &&
+          !error &&
+          (recommendLoading || recommendList.length > 0)
+        "
+        class="recommend-section"
+      >
+        <text class="section-label">智能推荐</text>
+        <view v-if="recommendLoading" class="recommend-loading">
+          <up-loading-icon mode="circle" size="28" color="#8b5cf6" />
+          <text class="recommend-loading-text">推荐算法中...</text>
+        </view>
+        <view v-else class="recommend-list">
+          <view
+            v-for="item in recommendList"
+            :key="item.algorithmId"
+            class="recommend-card"
+            :class="{ selected: selectedId === item.algorithmId }"
+            @click="handleSelectRecommend(item)"
+          >
+            <view class="recommend-header">
+              <view class="recommend-name-wrap">
+                <text class="recommend-name">{{ item.algorithmName }}</text>
+                <text v-if="item.type" class="recommend-type">{{
+                  item.type
+                }}</text>
+              </view>
+              <view class="recommend-actions">
+                <text class="recommend-score"
+                  >推荐分 {{ item.score.toFixed(2) }}</text
+                >
+                <u-icon
+                  v-if="selectedId === item.algorithmId"
+                  name="checkmark-circle-fill"
+                  size="22"
+                  color="#8b5cf6"
+                />
+              </view>
+            </view>
+            <text v-if="item.reason" class="recommend-reason">{{
+              item.reason
+            }}</text>
+          </view>
+        </view>
+      </view>
+
       <!-- 加载状态 -->
       <view v-if="loading" class="loading-container">
         <up-loading-icon mode="circle" size="40" color="#8b5cf6" />
@@ -198,7 +247,9 @@ import type { Algorithm } from "dehaze-sdk-js";
 import {
   getAlgorithmFavorites,
   toggleAlgorithmFavorite,
+  recommendAlgorithms,
 } from "@/api/algorithm";
+import type { AlgorithmRecommendVO } from "@/api/algorithm";
 import { getErrorMessage } from "@/utils/error";
 
 // ==================== 状态 ====================
@@ -216,6 +267,10 @@ const favoriteIds = ref<Set<number>>(new Set());
 const onlyFavorites = ref(false);
 /** 收藏切换中的算法ID，防止重复点击 */
 const togglingIds = ref<Set<number>>(new Set());
+/** 智能推荐结果 */
+const recommendList = ref<AlgorithmRecommendVO[]>([]);
+/** 推荐加载中 */
+const recommendLoading = ref(false);
 
 // ==================== 计算属性 ====================
 
@@ -294,6 +349,30 @@ async function handleToggleFavorite(algorithm: Algorithm) {
   }
 }
 
+/** 加载智能推荐 */
+async function loadRecommendations() {
+  if (!processingStore.originUrl) return;
+  recommendLoading.value = true;
+  try {
+    const list = await recommendAlgorithms(processingStore.originUrl, 3);
+    recommendList.value = list || [];
+  } catch {
+    recommendList.value = [];
+  } finally {
+    recommendLoading.value = false;
+  }
+}
+
+/** 选择推荐算法 */
+function handleSelectRecommend(item: AlgorithmRecommendVO) {
+  const algorithm = algorithmList.value.find((a) => a.id === item.algorithmId);
+  if (algorithm) {
+    handleSelect(algorithm);
+  } else {
+    uni.showToast({ title: "该算法不在可用列表中", icon: "none" });
+  }
+}
+
 /** 下一步：跳转到处理页 */
 function handleNext() {
   if (!selectedAlgorithm.value) {
@@ -318,6 +397,9 @@ function handleNext() {
 onMounted(() => {
   // 允许无图浏览算法列表；“下一步”按钮会检查是否已选图片
   loadAlgorithms();
+  if (processingStore.hasImage) {
+    loadRecommendations();
+  }
 });
 </script>
 
@@ -415,6 +497,88 @@ onMounted(() => {
 .preview-size {
   font-size: 24rpx;
   color: #9ca3af;
+}
+
+/* 智能推荐 */
+.recommend-section {
+  margin-bottom: 24rpx;
+}
+.recommend-loading {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 40rpx 0;
+  justify-content: center;
+}
+.recommend-loading-text {
+  font-size: 28rpx;
+  color: #9ca3af;
+}
+.recommend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-top: 16rpx;
+}
+.recommend-card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  border: 2rpx solid transparent;
+  transition: all 0.2s ease;
+
+  &.selected {
+    border-color: #8b5cf6;
+    background: #faf5ff;
+    box-shadow: 0 4rpx 16rpx rgba(139, 92, 246, 0.15);
+  }
+  &:active {
+    transform: scale(0.98);
+  }
+}
+.recommend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+.recommend-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex: 1;
+  min-width: 0;
+}
+.recommend-name {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1f2937;
+}
+.recommend-type {
+  font-size: 22rpx;
+  color: #8b5cf6;
+  background: #ede9fe;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+}
+.recommend-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+.recommend-score {
+  font-size: 24rpx;
+  color: #8b5cf6;
+  font-weight: 600;
+}
+.recommend-reason {
+  display: block;
+  font-size: 26rpx;
+  color: #6b7280;
+  line-height: 1.5;
 }
 
 /* 算法列表 */

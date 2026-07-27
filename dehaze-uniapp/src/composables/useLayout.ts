@@ -12,13 +12,6 @@ export function useLayout() {
   /** 侧边栏可见状态 */
   const sidebarVisible = ref(false);
 
-  // ==================== 侧边栏控制 ====================
-
-  /** 打开侧边栏 */
-  const openSidebar = () => {
-    sidebarVisible.value = true;
-  };
-
   /** 关闭侧边栏 */
   const closeSidebar = () => {
     sidebarVisible.value = false;
@@ -30,9 +23,7 @@ export function useLayout() {
   };
 
   return {
-    // 侧边栏控制
     sidebarVisible,
-    openSidebar,
     closeSidebar,
     toggleSidebar,
   };

@@ -44,3 +44,13 @@ export function toggleAlgorithmFavorite(
 export function getAlgorithmFavorites(): Promise<AlgorithmFavorite[]> {
   return service.get("/api/v1/algorithm-select/favorites");
 }
+
+export function recommendAlgorithms(
+  imageUrl: string,
+  topN?: number
+): Promise<AlgorithmRecommendVO[]> {
+  return service.post("/api/v1/algorithm-select/recommend", {
+    imageUrl,
+    topN,
+  });
+}

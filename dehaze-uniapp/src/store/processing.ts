@@ -69,14 +69,6 @@ export const useProcessingStore = defineStore("processing", () => {
 
   // ==================== 计算属性 ====================
 
-  /** 是否可以开始处理 */
-  const canProcess = computed(
-    () =>
-      status.value === "algorithm" &&
-      currentImage.value &&
-      selectedAlgorithm.value
-  );
-
   /** 是否有图片 */
   const hasImage = computed(() => !!currentImage.value);
 
@@ -162,7 +154,6 @@ export const useProcessingStore = defineStore("processing", () => {
     errorMessage,
 
     // 计算属性
-    canProcess,
     hasImage,
     hasAlgorithm,
     isCompleted,

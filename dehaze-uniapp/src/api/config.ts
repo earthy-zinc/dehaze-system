@@ -50,8 +50,5 @@ function getDatasetBaseURL(): string {
 /** 数据集静态文件基础路径 */
 export const DATASET_BASE_URL = getDatasetBaseURL();
 
-/** 请求超时时间（毫秒） */
-export const REQUEST_TIMEOUT = 30000;
-
 /** 用户信息本地存储 key */
 export const USER_INFO_KEY = "user_info";
