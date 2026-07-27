@@ -1,8 +1,6 @@
 import { MenuAPI, RouteVO } from "dehaze-sdk-js";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import React from "react";
-import { persistReducer } from "redux-persist";
-import storage from "redux-persist/lib/storage";
 
 interface PermissionState {
   routes: RouteVO[];
@@ -26,8 +24,8 @@ const filterAsyncRoutes = (routes: RouteVO[], roles: string[]): RouteVO[] => {
     const tmpRoute = { ...route } as RouteVO;
     if (!hasPermission(roles, tmpRoute)) return;
     if (tmpRoute.component === "Layout") {
-      tmpRoute.component = React.lazy(() => import("@/layout/index"));
-    } else {
+      tmpRoute.component = undefined;
+    } else if (tmpRoute.component) {
       tmpRoute.component = React.lazy(
         () => import(`../../pages/${tmpRoute.component}.tsx`)
       );
@@ -72,10 +70,5 @@ const permissionSlice = createSlice({
   },
 });
 
-const permissionConfig = {
-  key: "permission",
-  storage,
-};
-
 export const { setRoutes, setMixLeftMenus } = permissionSlice.actions;
-export default persistReducer(permissionConfig, permissionSlice.reducer);
+export default permissionSlice.reducer;

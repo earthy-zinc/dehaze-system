@@ -12,6 +12,9 @@ export const usePermission = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const userStore = useSelector((state: RootState) => state.user);
+  const permissionRoutes = useSelector(
+    (state: RootState) => state.permission.routes
+  );
   const dispatch = useDispatch<DisPatchType>();
 
   useEffect(() => {
@@ -33,13 +36,16 @@ export const usePermission = () => {
         return;
       }
 
-      if (!hasRoles) {
+      if (!hasRoles || permissionRoutes.length === 0) {
         try {
-          const resultAction = await dispatch(getUserInfo());
-          if (!getUserInfo.fulfilled.match(resultAction)) {
-            throw new Error("获取用户信息失败");
+          let roles = userStore.user.roles || [];
+          if (!hasRoles) {
+            const resultAction = await dispatch(getUserInfo());
+            if (!getUserInfo.fulfilled.match(resultAction)) {
+              throw new Error("获取用户信息失败");
+            }
+            roles = resultAction.payload.roles || [];
           }
-          const roles = resultAction.payload.roles || [];
           await dispatch(generateRoutes(roles));
         } catch {
           dispatch(resetToken());
@@ -51,7 +57,13 @@ export const usePermission = () => {
 
       NProgress.done();
     })();
-  }, [dispatch, location.pathname, navigate, userStore.user.roles]);
+  }, [
+    dispatch,
+    location.pathname,
+    navigate,
+    userStore.user.roles,
+    permissionRoutes.length,
+  ]);
 };
 
 export const useHasPerm = () => {

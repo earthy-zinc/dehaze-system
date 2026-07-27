@@ -106,7 +106,7 @@
     "@types/lodash": "^4.17.21",
     "@types/node": "^24.10.4",
     "@types/prop-types": "^15.7.15",
-    "@types/react": "^19.2.7",
+    "@types/react": "^19.2.3",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.51.0",
     "@typescript-eslint/parser": "^8.51.0",

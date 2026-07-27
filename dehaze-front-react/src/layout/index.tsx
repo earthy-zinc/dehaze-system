@@ -2,27 +2,50 @@ import { LayoutEnum } from "@/enums/LayoutEnum";
 import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
 import { usePermission } from "@/hooks/usePermission";
 import { TopMenu } from "@/layout/components/MenuBar/TopMenu";
+import { routesToRouteObjects } from "@/router";
+import lazyLoad from "@/router/LazyLoad";
 import { RootState } from "@/store";
 import "./index.scss";
-import { Layout } from "antd";
+import { Layout, Spin } from "antd";
 import { Content, Header } from "antd/es/layout/layout";
-import Sider from "antd/es/layout/Sider";
-import React from "react";
+import Sider from "antd/es/layout/sider";
+import React, { lazy, useMemo } from "react";
 import { useSelector } from "react-redux";
-import { Outlet } from "react-router-dom";
+import { Navigate, RouteObject, useRoutes } from "react-router-dom";
 import { SideMenu } from "./components/MenuBar/SideMenu";
 import { NavBar } from "./components/NavBar";
 
-/** 侧边栏宽度（参考 UI/UX 设计规范 §3.2 侧边菜单） */
 const SIDEBAR_WIDTH = 220;
 const SIDEBAR_WIDTH_COLLAPSED = 64;
 
-const BasicLayout: React.FC = (props: any) => {
-  // 激活路由守卫：未登录跳转 /login，登录后自动拉取用户信息与动态路由
+const BasicLayout: React.FC = () => {
   usePermission();
   const settingsStore = useSelector((state: RootState) => state.settings);
   const appStore = useSelector((state: RootState) => state.app);
+  const permissionRoutes = useSelector(
+    (state: RootState) => state.permission.routes
+  );
   const collapsed = appStore.sidebarStatus === SidebarStatusEnum.COLLAPSED;
+  const routesLoaded = permissionRoutes.length > 0;
+
+  const routes = useMemo<RouteObject[]>(
+    () => [
+      { index: true, element: <Navigate to="home" replace /> },
+      {
+        path: "home",
+        element: lazyLoad(lazy(() => import("@/pages/home"))),
+      },
+      ...routesToRouteObjects(permissionRoutes),
+      {
+        path: "*",
+        element: lazyLoad(lazy(() => import("@/pages/error/404"))),
+      },
+    ],
+    [permissionRoutes]
+  );
+
+  const element = useRoutes(routes);
+
   return (
     <Layout className="main-container">
       {settingsStore.layout !== LayoutEnum.TOP && (
@@ -42,7 +65,20 @@ const BasicLayout: React.FC = (props: any) => {
           {settingsStore.layout === LayoutEnum.TOP ? <TopMenu /> : <NavBar />}
         </Header>
         <Content>
-          <Outlet />
+          {routesLoaded ? (
+            element
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "100%",
+              }}
+            >
+              <Spin size="large" />
+            </div>
+          )}
         </Content>
       </Layout>
     </Layout>

@@ -1,12 +1,20 @@
+import AlgorithmIcon from "@/assets/icons/algorithm.svg";
 import CompareIcon from "@/assets/icons/compare.svg";
 import DatasetIcon from "@/assets/icons/dataset.svg";
+import DictIcon from "@/assets/icons/dict.svg";
+import EditIcon from "@/assets/icons/edit.svg";
 import HazeIcon from "@/assets/icons/haze.svg";
+import MenuIcon from "@/assets/icons/menu.svg";
+import MessageIcon from "@/assets/icons/message.svg";
 import ModelIcon from "@/assets/icons/model.svg";
 import OverlapIcon from "@/assets/icons/overlap.svg";
 import ParallelIcon from "@/assets/icons/parallel.svg";
 import PresentationIcon from "@/assets/icons/presentation.svg";
-import SegmentationIcon from "@/assets/icons/segmentation.svg";
+import RoleIcon from "@/assets/icons/role.svg";
+import SystemIcon from "@/assets/icons/system.svg";
 import TaskIcon from "@/assets/icons/todolist.svg";
+import TreeIcon from "@/assets/icons/tree.svg";
+import UserIcon from "@/assets/icons/user.svg";
 import BasicLayout from "@/layout";
 import ErrorPage403 from "@/pages/error/403";
 import ErrorPage404 from "@/pages/error/404";
@@ -14,260 +22,136 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import lazyLoad from "@/router/LazyLoad";
 import {
-  ApartmentOutlined,
-  BookOutlined,
-  HomeOutlined,
-  MenuOutlined,
-  SafetyOutlined,
-  SettingOutlined,
+  BarChartOutlined,
+  BellOutlined,
+  FileOutlined,
+  FlagOutlined,
+  PictureOutlined,
+  UnorderedListOutlined,
 } from "@ant-design/icons";
-import UserIcon from "@/assets/icons/user.svg";
-import React, { lazy } from "react";
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import React from "react";
+import { createBrowserRouter, Navigate, RouteObject } from "react-router-dom";
+import { RouteVO } from "dehaze-sdk-js";
 
-export const menuItems = [
-  {
-    key: "Home",
-    label: "首页",
-    icon: <HomeOutlined />,
-    path: "/home",
-  },
-  {
-    key: "Dataset",
-    label: "数据集",
-    icon: <DatasetIcon />,
-    path: "/dataset",
-  },
-  {
-    key: "Algorithm",
-    label: "模型管理",
-    icon: <ModelIcon />,
-    path: "/algorithm",
-  },
-  {
-    key: "Presentation",
-    label: "算法展示",
-    icon: <PresentationIcon />,
-    path: "/presentation",
-    children: [
-      {
-        key: "Dehaze",
-        label: "图像去雾",
-        icon: <HazeIcon />,
-        path: "/presentation/dehaze",
-      },
-      {
-        key: "Segmentation",
-        label: "图像分割",
-        icon: <SegmentationIcon />,
-        path: "/presentation/segmentation",
-      },
-    ],
-  },
-  {
-    key: "Compare",
-    label: "算法比较",
-    icon: <CompareIcon />,
-    path: "/compare",
-    children: [
-      {
-        key: "Overlap",
-        label: "重叠对比",
-        icon: <OverlapIcon />,
-        path: "/compare/overlap",
-      },
-      {
-        key: "Parallel",
-        label: "并行对比",
-        icon: <ParallelIcon />,
-        path: "/compare/parallel",
-      },
-    ],
-  },
-  {
-    key: "Task",
-    label: "任务中心",
-    icon: <TaskIcon />,
-    path: "/task",
-  },
-  {
-    key: "System",
-    label: "系统管理",
-    icon: <SettingOutlined />,
-    path: "/system",
-    children: [
-      {
-        key: "Dept",
-        label: "部门管理",
-        icon: <ApartmentOutlined />,
-        path: "/system/dept",
-      },
-      {
-        key: "Dict",
-        label: "字典管理",
-        icon: <BookOutlined />,
-        path: "/system/dict",
-      },
-      {
-        key: "Menu",
-        label: "菜单管理",
-        icon: <MenuOutlined />,
-        path: "/system/menu",
-      },
-      {
-        key: "Role",
-        label: "角色管理",
-        icon: <SafetyOutlined />,
-        path: "/system/role",
-      },
-      {
-        key: "User",
-        label: "用户管理",
-        icon: <UserIcon />,
-        path: "/system/user",
-      },
-    ],
-  },
-];
+const iconMap: Record<string, React.ReactNode> = {
+  algorithm: <AlgorithmIcon />,
+  compare: <CompareIcon />,
+  dataset: <DatasetIcon />,
+  dict: <DictIcon />,
+  edit: <EditIcon />,
+  evaluation: <BarChartOutlined />,
+  haze: <HazeIcon />,
+  image: <PictureOutlined />,
+  list: <UnorderedListOutlined />,
+  menu: <MenuIcon />,
+  message: <MessageIcon />,
+  model: <ModelIcon />,
+  overlap: <OverlapIcon />,
+  parallel: <ParallelIcon />,
+  presentation: <PresentationIcon />,
+  role: <RoleIcon />,
+  system: <SystemIcon />,
+  tree: <TreeIcon />,
+  user: <UserIcon />,
+  bell: <BellOutlined />,
+  "el-icon-Flag": <FlagOutlined />,
+  "el-icon-Files": <FileOutlined />,
+};
+
+export function getIcon(name?: string): React.ReactNode | undefined {
+  if (!name) return undefined;
+  return iconMap[name];
+}
+
+export function resolveFullPath(parentPath: string, childPath: string): string {
+  if (!childPath) return parentPath;
+  if (childPath.startsWith("/")) return childPath;
+  if (!parentPath || parentPath === "/") return `/${childPath}`;
+  return `${parentPath.replace(/\/$/, "")}/${childPath}`;
+}
+
+export function routesToRouteObjects(
+  routes: RouteVO[],
+  parentPath = ""
+): RouteObject[] {
+  return routes.map((route) => {
+    const fullPath = resolveFullPath(parentPath, route.path || "");
+    const path = (route.path || "").replace(/^\//, "");
+    const children: RouteObject[] = [];
+
+    if (route.redirect) {
+      children.push({
+        index: true,
+        element: <Navigate to={route.redirect} replace />,
+      });
+    }
+    if (route.children?.length) {
+      children.push(...routesToRouteObjects(route.children, fullPath));
+    }
+
+    const obj: RouteObject = { path };
+    if (route.component) {
+      obj.element = lazyLoad(route.component);
+    }
+    if (children.length) {
+      obj.children = children;
+    }
+    return obj;
+  });
+}
+
+export function routesToMenuItems(
+  routes: RouteVO[],
+  parentPath = ""
+): {
+  key: string;
+  label: string;
+  icon?: React.ReactNode;
+  children?: unknown[];
+}[] {
+  return routes
+    .filter((route) => !route.meta?.hidden)
+    .map((route) => {
+      const fullPath = resolveFullPath(parentPath, route.path || "");
+      const visibleChildren = route.children?.filter(
+        (child) => !child.meta?.hidden
+      );
+      const item: {
+        key: string;
+        label: string;
+        icon?: React.ReactNode;
+        children?: unknown[];
+      } = {
+        key: fullPath,
+        label: route.meta?.title || "",
+        icon: getIcon(route.meta?.icon),
+      };
+      if (visibleChildren?.length) {
+        item.children = routesToMenuItems(visibleChildren, fullPath);
+      }
+      return item;
+    });
+}
 
 const router = createBrowserRouter([
   {
-    path: "/",
-    element: <BasicLayout />,
-    errorElement: <ErrorPage404 />,
-    children: [
-      {
-        index: true,
-        element: <Navigate to="home" replace />,
-      },
-      {
-        path: "home",
-        element: lazyLoad(lazy(() => import("@/pages/home"))),
-      },
-      {
-        // 图像输入页（不在菜单中显示，通过导航跳转访问）
-        path: "image-input",
-        element: lazyLoad(lazy(() => import("@/pages/image-input"))),
-      },
-      {
-        path: "dataset",
-        children: [
-          {
-            index: true,
-            element: lazyLoad(lazy(() => import("@/pages/dataset"))),
-          },
-          {
-            path: ":id",
-            element: lazyLoad(
-              lazy(() => import("@/pages/dataset/DatasetDetail"))
-            ),
-          },
-        ],
-      },
-      {
-        path: "algorithm",
-        children: [
-          {
-            index: true,
-            element: lazyLoad(lazy(() => import("@/pages/algorithm"))),
-          },
-          {
-            // 算法选择页（不在菜单中显示）
-            path: "select",
-            element: lazyLoad(lazy(() => import("@/pages/algorithm-select"))),
-          },
-        ],
-      },
-      {
-        path: "presentation",
-        children: [
-          {
-            index: true,
-            element: <Navigate to="dehaze" replace />,
-          },
-          {
-            path: "dehaze",
-            element: lazyLoad(
-              lazy(() => import("@/pages/presentation/dehaze"))
-            ),
-          },
-          {
-            path: "segmentation",
-            element: lazyLoad(
-              lazy(() => import("@/pages/presentation/segmentation"))
-            ),
-          },
-        ],
-      },
-      {
-        path: "compare",
-        children: [
-          {
-            index: true,
-            element: <Navigate to="overlap" replace />,
-          },
-          {
-            path: "overlap",
-            element: lazyLoad(lazy(() => import("@/pages/compare/overlap"))),
-          },
-          {
-            path: "parallel",
-            element: lazyLoad(lazy(() => import("@/pages/compare/parallel"))),
-          },
-        ],
-      },
-      {
-        path: "task",
-        element: lazyLoad(lazy(() => import("@/pages/task"))),
-      },
-      {
-        path: "system",
-        children: [
-          {
-            index: true,
-            element: <Navigate to="dept" replace />,
-          },
-          {
-            path: "dept",
-            element: lazyLoad(lazy(() => import("@/pages/system/dept"))),
-          },
-          {
-            path: "dict",
-            element: lazyLoad(lazy(() => import("@/pages/system/dict"))),
-          },
-          {
-            path: "menu",
-            element: lazyLoad(lazy(() => import("@/pages/system/menu"))),
-          },
-          {
-            path: "role",
-            element: lazyLoad(lazy(() => import("@/pages/system/role"))),
-          },
-          {
-            path: "user",
-            element: lazyLoad(lazy(() => import("@/pages/system/user"))),
-          },
-        ],
-      },
-    ],
-  },
-  {
-    path: "login",
+    path: "/login",
     element: <Login />,
     errorElement: <ErrorPage404 />,
   },
   {
-    path: "register",
+    path: "/register",
     element: <Register />,
     errorElement: <ErrorPage404 />,
   },
   {
-    path: "403",
+    path: "/403",
     element: <ErrorPage403 />,
   },
   {
-    path: "*",
-    element: <ErrorPage404 />,
+    path: "/*",
+    element: <BasicLayout />,
+    errorElement: <ErrorPage404 />,
   },
 ]);
 
