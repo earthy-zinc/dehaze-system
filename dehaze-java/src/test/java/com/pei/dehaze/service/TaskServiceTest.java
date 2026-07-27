@@ -1,5 +1,6 @@
 package com.pei.dehaze.service;
 
+import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.config.WebSocketMessageRelay;
 import com.pei.dehaze.mapper.SysTaskMapper;
@@ -120,7 +121,7 @@ class TaskServiceTest {
 
             // Assert
             assertNotNull(result);
-            assertEquals("PENDING", result.getStatus());
+            assertEquals(TaskConstants.STATUS_PENDING, result.getStatus());
             assertNotNull(result.getTaskId());
             assertEquals(0, result.getProgress());
         }
@@ -148,7 +149,7 @@ class TaskServiceTest {
 
             // Assert
             assertNotNull(result);
-            assertEquals("PENDING", result.getStatus());
+            assertEquals(TaskConstants.STATUS_PENDING, result.getStatus());
             assertNotNull(result.getTaskId());
         }
     }
@@ -175,7 +176,7 @@ class TaskServiceTest {
 
             // Assert
             assertNotNull(result);
-            assertEquals("PENDING", result.getStatus());
+            assertEquals(TaskConstants.STATUS_PENDING, result.getStatus());
             assertNotNull(result.getTaskId());
         }
     }
@@ -197,7 +198,7 @@ class TaskServiceTest {
 
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);
-        sysTask.setStatus("PENDING");
+        sysTask.setStatus(TaskConstants.STATUS_PENDING);
         sysTask.setProgress(0);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
@@ -208,7 +209,7 @@ class TaskServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(taskId, result.getTaskId());
-        assertEquals("PENDING", result.getStatus());
+        assertEquals(TaskConstants.STATUS_PENDING, result.getStatus());
     }
 
     /**
@@ -226,7 +227,7 @@ class TaskServiceTest {
 
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);
-        sysTask.setStatus("PROCESSING");
+        sysTask.setStatus(TaskConstants.STATUS_PROCESSING);
         sysTask.setProgress(50);
         sysTask.setTotalFiles(100);
         sysTask.setProcessedFiles(50);
@@ -239,7 +240,7 @@ class TaskServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(taskId, result.getTaskId());
-        assertEquals("PROCESSING", result.getStatus());
+        assertEquals(TaskConstants.STATUS_PROCESSING, result.getStatus());
         assertEquals(50, result.getProgress());
     }
 
@@ -258,7 +259,7 @@ class TaskServiceTest {
 
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);
-        sysTask.setStatus("COMPLETED");
+        sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
         sysTask.setProgress(100);
         sysTask.setResult("http://test.com/export.zip");
 
@@ -270,7 +271,7 @@ class TaskServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(taskId, result.getTaskId());
-        assertEquals("COMPLETED", result.getStatus());
+        assertEquals(TaskConstants.STATUS_COMPLETED, result.getStatus());
         assertEquals("http://test.com/export.zip", result.getDownloadUrl());
     }
 
@@ -289,7 +290,7 @@ class TaskServiceTest {
 
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);
-        sysTask.setStatus("FAILED");
+        sysTask.setStatus(TaskConstants.STATUS_FAILED);
         sysTask.setErrorMessage("导出失败：文件不存在");
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
@@ -300,7 +301,7 @@ class TaskServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(taskId, result.getTaskId());
-        assertEquals("FAILED", result.getStatus());
+        assertEquals(TaskConstants.STATUS_FAILED, result.getStatus());
         assertEquals("导出失败：文件不存在", result.getError());
     }
 
@@ -320,7 +321,7 @@ class TaskServiceTest {
 
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);
-        sysTask.setStatus("COMPLETED");
+        sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
         sysTask.setResult("http://test.com/export.zip");
         sysTask.setExpiresAt(LocalDateTime.now().plusHours(1));
 
@@ -348,7 +349,7 @@ class TaskServiceTest {
 
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);
-        sysTask.setStatus("PENDING");
+        sysTask.setStatus(TaskConstants.STATUS_PENDING);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
@@ -373,7 +374,7 @@ class TaskServiceTest {
 
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);
-        sysTask.setStatus("COMPLETED");
+        sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
         sysTask.setResult("http://test.com/export.zip");
         sysTask.setExpiresAt(LocalDateTime.now().minusHours(1));
 
@@ -403,7 +404,7 @@ class TaskServiceTest {
         SysTask sysTask = new SysTask();
         sysTask.setId(1L);
         sysTask.setTaskId(taskId);
-        sysTask.setStatus("PENDING");
+        sysTask.setStatus(TaskConstants.STATUS_PENDING);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
         doNothing().when(valueOperations).set(anyString(), any(), anyLong(), any());
@@ -430,7 +431,7 @@ class TaskServiceTest {
         SysTask sysTask = new SysTask();
         sysTask.setId(2L);
         sysTask.setTaskId(taskId);
-        sysTask.setStatus("PROCESSING");
+        sysTask.setStatus(TaskConstants.STATUS_PROCESSING);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
         doNothing().when(valueOperations).set(anyString(), any(), anyLong(), any());
@@ -457,7 +458,7 @@ class TaskServiceTest {
         SysTask sysTask = new SysTask();
         sysTask.setId(3L);
         sysTask.setTaskId(taskId);
-        sysTask.setStatus("COMPLETED");
+        sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 

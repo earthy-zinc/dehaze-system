@@ -148,7 +148,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     /**
      * 更新任务状态
      */
-    private void updateTaskStatus(SysTask task, String status, String result, String errorMessage) {
+    private void updateTaskStatus(SysTask task, int status, String result, String errorMessage) {
         task.setStatus(status);
 
         LocalDateTime now = LocalDateTime.now();
@@ -181,7 +181,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     /**
      * 通过 WebSocket 推送任务状态变更（对齐 Python 消息格式）
      */
-    private void pushTaskStatusMessage(SysTask task, String status, String result, String errorMessage) {
+    private void pushTaskStatusMessage(SysTask task, int status, String result, String errorMessage) {
         try {
             Map<String, Object> message = new HashMap<>();
             message.put("type", "task_status");

@@ -5,6 +5,7 @@ import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysEvalLogMapper;
@@ -61,14 +62,14 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         }
         evalLog.setPredUrl(predUrl);
         evalLog.setGtUrl(gtUrl);
-        evalLog.setStatus("processing");
+        evalLog.setStatus(LogStatusEnum.PROCESSING);
         this.save(evalLog);
 
         asyncTask.execute(evalLog.getId(), form.getAlgorithmId(), predUrl, gtUrl);
 
         EvaluationResultVO vo = new EvaluationResultVO();
         vo.setLogId(evalLog.getId());
-        vo.setStatus("processing");
+        vo.setStatus(LogStatusEnum.PROCESSING);
         return vo;
     }
 

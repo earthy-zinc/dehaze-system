@@ -23,10 +23,10 @@ public class TaskQuery extends BasePageQuery {
     private String taskType;
 
     @Schema(
-            description = "任务状态：PENDING-等待中, PROCESSING-处理中, COMPLETED-已完成, FAILED-失败, CANCELLED-已取消",
-            example = "PROCESSING"
+            description = "任务状态：1=待处理,2=处理中,3=已完成,4=失败,5=已取消",
+            example = "2"
     )
-    private String status;
+    private Integer status;
 
     @Schema(
             description = "任务类别筛选：import-导入, export-导出",

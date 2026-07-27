@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -38,6 +39,12 @@ public class SysItemFile {
 
     @Schema(description = "使用次数")
     private Long usageCount;
+
+    /**
+     * 逻辑删除标识(0:未删除;1:已删除)
+     */
+    @TableLogic
+    private Integer deleted;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

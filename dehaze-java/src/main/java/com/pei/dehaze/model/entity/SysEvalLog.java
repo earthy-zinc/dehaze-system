@@ -3,6 +3,7 @@ package com.pei.dehaze.model.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.pei.dehaze.common.base.BaseEntity;
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -29,7 +30,7 @@ public class SysEvalLog extends BaseEntity {
 
     private Integer time;
 
-    private String status;
+    private LogStatusEnum status;
 
     private String errorMessage;
 

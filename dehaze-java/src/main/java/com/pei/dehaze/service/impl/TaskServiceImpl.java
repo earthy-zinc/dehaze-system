@@ -148,7 +148,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("任务不存在: " + taskId);
         }
 
-        if (!TaskConstants.STATUS_COMPLETED.equals(sysTask.getStatus())) {
+        if (sysTask.getStatus() == null || sysTask.getStatus() != TaskConstants.STATUS_COMPLETED) {
             throw new BusinessException("任务未完成，无法下载: status=" + sysTask.getStatus());
         }
 
@@ -178,12 +178,13 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("任务不存在: " + taskId);
         }
 
-        if (TaskConstants.STATUS_COMPLETED.equals(sysTask.getStatus()) ||
-            TaskConstants.STATUS_FAILED.equals(sysTask.getStatus())) {
+        if (sysTask.getStatus() != null
+                && (sysTask.getStatus() == TaskConstants.STATUS_COMPLETED
+                || sysTask.getStatus() == TaskConstants.STATUS_FAILED)) {
             throw new BusinessException("任务已完成或失败，无法取消: status=" + sysTask.getStatus());
         }
 
-        if (TaskConstants.STATUS_CANCELLED.equals(sysTask.getStatus())) {
+        if (sysTask.getStatus() != null && sysTask.getStatus() == TaskConstants.STATUS_CANCELLED) {
             throw new BusinessException("任务已取消: " + taskId);
         }
 
@@ -237,7 +238,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("无权操作他人任务");
         }
 
-        if (!TaskConstants.STATUS_FAILED.equals(sysTask.getStatus())) {
+        if (sysTask.getStatus() == null || sysTask.getStatus() != TaskConstants.STATUS_FAILED) {
             throw new BusinessException("仅失败任务可重试");
         }
 
@@ -305,7 +306,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             }
         }
 
-        if (StrUtil.isNotBlank(query.getStatus())) {
+        if (query.getStatus() != null) {
             wrapper.eq(SysTask::getStatus, query.getStatus());
         }
 
@@ -369,7 +370,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         pushTaskStatusMessage(sysTask, TaskConstants.STATUS_FAILED, null, errorMessage);
     }
 
-    private TaskQuery buildQuery(int pageNum, int pageSize, String taskType, String status, String taskCategory) {
+    private TaskQuery buildQuery(int pageNum, int pageSize, String taskType, Integer status, String taskCategory) {
         TaskQuery query = new TaskQuery();
         query.setPageNum(pageNum);
         query.setPageSize(pageSize);
@@ -402,7 +403,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         return null;
     }
 
-    private void pushTaskStatusMessage(SysTask task, String status, String result, String errorMessage) {
+    private void pushTaskStatusMessage(SysTask task, Integer status, String result, String errorMessage) {
         try {
             Map<String, Object> message = new HashMap<>();
             message.put("type", "task_status");
@@ -440,8 +441,9 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         taskVO.setTotalFiles(sysTask.getTotalFiles());
         taskVO.setProcessedFiles(sysTask.getProcessedFiles());
 
-        if (TaskConstants.STATUS_COMPLETED.equals(sysTask.getStatus()) &&
-            StrUtil.isNotBlank(sysTask.getResult())) {
+        if (sysTask.getStatus() != null
+                && sysTask.getStatus() == TaskConstants.STATUS_COMPLETED
+                && StrUtil.isNotBlank(sysTask.getResult())) {
             taskVO.setDownloadUrl(sysTask.getResult());
         }
 

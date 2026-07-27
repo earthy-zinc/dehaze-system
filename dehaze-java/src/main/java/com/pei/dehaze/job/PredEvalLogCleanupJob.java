@@ -1,6 +1,7 @@
 package com.pei.dehaze.job;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.mapper.SysEvalLogMapper;
 import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.model.entity.SysEvalLog;
@@ -16,8 +17,8 @@ import java.time.LocalDateTime;
 /**
  * 预测/评估日志僵尸任务恢复
  *
- * <p>服务重启或异步线程异常退出可能残留 status=processing 的记录，
- * 每 60 秒扫描超时（10 分钟未更新）记录并标记为 failed。
+ * <p>服务重启或异步线程异常退出可能残留 status=处理中 的记录，
+ * 每 60 秒扫描超时（10 分钟未更新）记录并标记为 失败。
  */
 @Slf4j
 @Component
@@ -36,12 +37,12 @@ public class PredEvalLogCleanupJob {
             LocalDateTime threshold = LocalDateTime.now().minusMinutes(10);
 
             var stuckPred = new LambdaQueryWrapper<SysPredLog>()
-                    .eq(SysPredLog::getStatus, "processing")
+                    .eq(SysPredLog::getStatus, LogStatusEnum.PROCESSING)
                     .lt(SysPredLog::getUpdateTime, threshold);
             int predCount = markStuckPredAsFailed(stuckPred);
 
             var stuckEval = new LambdaQueryWrapper<SysEvalLog>()
-                    .eq(SysEvalLog::getStatus, "processing")
+                    .eq(SysEvalLog::getStatus, LogStatusEnum.PROCESSING)
                     .lt(SysEvalLog::getUpdateTime, threshold);
             int evalCount = markStuckEvalAsFailed(stuckEval);
 
@@ -58,7 +59,7 @@ public class PredEvalLogCleanupJob {
         for (SysPredLog log : stuck) {
             SysPredLog update = new SysPredLog();
             update.setId(log.getId());
-            update.setStatus("failed");
+            update.setStatus(LogStatusEnum.FAILED);
             update.setErrorMessage(STUCK_ERROR_MSG);
             predLogMapper.updateById(update);
         }
@@ -70,7 +71,7 @@ public class PredEvalLogCleanupJob {
         for (SysEvalLog log : stuck) {
             SysEvalLog update = new SysEvalLog();
             update.setId(log.getId());
-            update.setStatus("failed");
+            update.setStatus(LogStatusEnum.FAILED);
             update.setErrorMessage(STUCK_ERROR_MSG);
             evalLogMapper.updateById(update);
         }

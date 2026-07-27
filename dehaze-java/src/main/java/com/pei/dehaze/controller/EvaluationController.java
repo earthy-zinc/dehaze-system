@@ -3,6 +3,7 @@ package com.pei.dehaze.controller;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.form.EvaluationForm;
@@ -47,10 +48,10 @@ public class EvaluationController {
         EvaluationResultVO result = new EvaluationResultVO();
         result.setLogId(evalLog.getId());
         result.setStatus(evalLog.getStatus());
-        if ("completed".equals(evalLog.getStatus())) {
+        if (LogStatusEnum.COMPLETED == evalLog.getStatus()) {
             result.setMetrics(parseMetrics(evalLog.getResult()));
             result.setTime(evalLog.getTime());
-        } else if ("failed".equals(evalLog.getStatus())) {
+        } else if (LogStatusEnum.FAILED == evalLog.getStatus()) {
             result.setErrorMessage(evalLog.getErrorMessage());
             result.setTime(evalLog.getTime());
         }

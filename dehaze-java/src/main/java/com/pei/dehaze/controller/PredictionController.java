@@ -1,6 +1,7 @@
 package com.pei.dehaze.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.form.PredictionForm;
@@ -42,10 +43,10 @@ public class PredictionController {
         PredictionResultVO result = new PredictionResultVO();
         result.setLogId(predLog.getId());
         result.setStatus(predLog.getStatus());
-        if ("completed".equals(predLog.getStatus())) {
+        if (LogStatusEnum.COMPLETED == predLog.getStatus()) {
             result.setResultUrl(predLog.getPredUrl());
             result.setTime(predLog.getTime());
-        } else if ("failed".equals(predLog.getStatus())) {
+        } else if (LogStatusEnum.FAILED == predLog.getStatus()) {
             result.setErrorMessage(predLog.getErrorMessage());
             result.setTime(predLog.getTime());
         }

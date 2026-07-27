@@ -5,6 +5,7 @@ import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysPredLogMapper;
@@ -84,14 +85,14 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
             predLog.setOriginMd5(originFile.getMd5());
         }
         predLog.setOriginUrl(imageUrl);
-        predLog.setStatus("processing");
+        predLog.setStatus(LogStatusEnum.PROCESSING);
         this.save(predLog);
 
         asyncTask.execute(predLog.getId(), form.getAlgorithmId(), imageUrl, form.getParams());
 
         PredictionResultVO vo = new PredictionResultVO();
         vo.setLogId(predLog.getId());
-        vo.setStatus("processing");
+        vo.setStatus(LogStatusEnum.PROCESSING);
         return vo;
     }
 
@@ -111,13 +112,13 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
         predLog.setPredFileId(result.getResultFileId());
         predLog.setPredMd5(result.getResultMd5());
         predLog.setPredUrl(result.getResultUrl());
-        predLog.setStatus("completed");
+        predLog.setStatus(LogStatusEnum.COMPLETED);
         predLog.setTime(elapsed);
         this.save(predLog);
 
         PredictionResultVO vo = new PredictionResultVO();
         vo.setLogId(predLog.getId());
-        vo.setStatus("completed");
+        vo.setStatus(LogStatusEnum.COMPLETED);
         vo.setResultUrl(result.getResultUrl());
         vo.setTime(elapsed);
         return vo;

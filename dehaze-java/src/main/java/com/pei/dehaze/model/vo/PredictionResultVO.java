@@ -1,5 +1,6 @@
 package com.pei.dehaze.model.vo;
 
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -10,8 +11,8 @@ public class PredictionResultVO {
     @Schema(description = "预测日志ID")
     private Long logId;
 
-    @Schema(description = "任务状态：processing/completed/failed")
-    private String status;
+    @Schema(description = "任务状态：1=处理中,2=已完成,3=失败")
+    private LogStatusEnum status;
 
     @Schema(description = "处理后的图片URL（status=completed 时返回）")
     private String resultUrl;

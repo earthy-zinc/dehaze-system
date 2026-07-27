@@ -1,6 +1,7 @@
 package com.pei.dehaze.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
@@ -10,7 +11,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -62,7 +62,7 @@ class TaskServiceIT {
         SysTask task = new SysTask();
         task.setTaskId(testTaskId);
         task.setTaskType("DATASET_EXPORT");
-        task.setStatus("pending");
+        task.setStatus(TaskConstants.STATUS_PENDING);
         task.setProgress(0);
         task.setTotalFiles(0);
         task.setProcessedFiles(0);
@@ -74,7 +74,7 @@ class TaskServiceIT {
         SysTask fromDb = selectByTaskId(testTaskId);
         assertNotNull(fromDb);
         assertEquals(testTaskId, fromDb.getTaskId());
-        assertEquals("pending", fromDb.getStatus());
+        assertEquals(TaskConstants.STATUS_PENDING, fromDb.getStatus());
     }
 
     /**
@@ -90,7 +90,7 @@ class TaskServiceIT {
         SysTask task = new SysTask();
         task.setTaskId(testTaskId);
         task.setTaskType("DATASET_EXPORT");
-        task.setStatus("processing");
+        task.setStatus(TaskConstants.STATUS_PROCESSING);
         task.setProgress(50);
         task.setTotalFiles(100);
         task.setProcessedFiles(50);
@@ -102,7 +102,7 @@ class TaskServiceIT {
 
         assertNotNull(result);
         assertEquals(testTaskId, result.getTaskId());
-        assertEquals("processing", result.getStatus());
+        assertEquals(TaskConstants.STATUS_PROCESSING, result.getStatus());
         assertEquals(50, result.getProgress());
     }
 
@@ -151,7 +151,7 @@ class TaskServiceIT {
         SysTask task = new SysTask();
         task.setTaskId(testTaskId);
         task.setTaskType("DATASET_EXPORT");
-        task.setStatus("completed");
+        task.setStatus(TaskConstants.STATUS_COMPLETED);
         task.setProgress(100);
         task.setTotalFiles(100);
         task.setProcessedFiles(100);
@@ -165,7 +165,7 @@ class TaskServiceIT {
         TaskVO result = taskService.getTaskStatus(testTaskId);
 
         assertNotNull(result);
-        assertEquals("completed", result.getStatus());
+        assertEquals(TaskConstants.STATUS_COMPLETED, result.getStatus());
         assertEquals(100, result.getProgress());
         assertNotNull(result.getDownloadUrl());
         assertTrue(result.getDownloadUrl().contains("download"));
@@ -184,7 +184,7 @@ class TaskServiceIT {
         SysTask task = new SysTask();
         task.setTaskId(testTaskId);
         task.setTaskType("DATASET_EXPORT");
-        task.setStatus("failed");
+        task.setStatus(TaskConstants.STATUS_FAILED);
         task.setProgress(60);
         task.setTotalFiles(100);
         task.setProcessedFiles(60);
@@ -197,7 +197,7 @@ class TaskServiceIT {
         TaskVO result = taskService.getTaskStatus(testTaskId);
 
         assertNotNull(result);
-        assertEquals("failed", result.getStatus());
+        assertEquals(TaskConstants.STATUS_FAILED, result.getStatus());
         assertEquals(60, result.getProgress());
         assertNotNull(result.getError());
         assertTrue(result.getError().contains("失败"));
@@ -216,7 +216,7 @@ class TaskServiceIT {
         SysTask task = new SysTask();
         task.setTaskId(testTaskId);
         task.setTaskType("DATASET_EXPORT");
-        task.setStatus("processing");
+        task.setStatus(TaskConstants.STATUS_PROCESSING);
         task.setProgress(30);
         task.setTotalFiles(100);
         task.setProcessedFiles(30);
@@ -230,7 +230,7 @@ class TaskServiceIT {
         // 验证任务状态
         SysTask fromDb = selectByTaskId(testTaskId);
         assertNotNull(fromDb);
-        assertEquals("cancelled", fromDb.getStatus());
+        assertEquals(TaskConstants.STATUS_CANCELLED, fromDb.getStatus());
     }
 
     /**
@@ -310,7 +310,7 @@ class TaskServiceIT {
         SysTask task = new SysTask();
         task.setTaskId(testTaskId);
         task.setTaskType("DATASET_EXPORT");
-        task.setStatus("processing");
+        task.setStatus(TaskConstants.STATUS_PROCESSING);
         task.setProgress(0);
         task.setTotalFiles(100);
         task.setProcessedFiles(0);

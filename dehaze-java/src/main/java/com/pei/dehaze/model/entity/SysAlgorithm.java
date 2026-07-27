@@ -41,7 +41,7 @@ public class SysAlgorithm extends BaseEntity {
     private String version;
 
     /**
-     * 算法状态：0-草稿, 1-测试中, 2-待审核, 3-已发布, 4-已停用, 5-已归档
+     * 算法状态：1-草稿, 2-测试中, 3-待审核, 4-已发布, 5-已停用, 6-已归档
      */
     private Integer status;
 
@@ -59,6 +59,12 @@ public class SysAlgorithm extends BaseEntity {
      * 审核备注（驳回时必填）
      */
     private String auditRemark;
+
+    /**
+     * 逻辑删除标识(0:未删除;1:已删除)
+     */
+    @TableLogic
+    private Integer deleted;
 
     /**
      * 是否为终态（已发布/已停用/已归档）

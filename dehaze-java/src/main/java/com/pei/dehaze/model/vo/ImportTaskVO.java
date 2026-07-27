@@ -15,6 +15,6 @@ public class ImportTaskVO {
     @Schema(description = "任务ID")
     private String taskId;
 
-    @Schema(description = "任务状态：PENDING / PROCESSING / COMPLETED / FAILED / CANCELLED")
-    private String status;
+    @Schema(description = "任务状态：1=待处理,2=处理中,3=已完成,4=失败,5=已取消")
+    private Integer status;
 }

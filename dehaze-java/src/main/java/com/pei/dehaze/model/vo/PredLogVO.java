@@ -1,6 +1,7 @@
 package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -34,8 +35,8 @@ public class PredLogVO {
     @Schema(description = "处理时间（毫秒）")
     private Integer time;
 
-    @Schema(description = "任务状态：processing/completed/failed")
-    private String status;
+    @Schema(description = "任务状态：1=处理中,2=已完成,3=失败")
+    private LogStatusEnum status;
 
     @Schema(description = "失败错误信息")
     private String errorMessage;

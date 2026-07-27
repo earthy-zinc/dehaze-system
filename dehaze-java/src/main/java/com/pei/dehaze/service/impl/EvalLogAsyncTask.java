@@ -1,6 +1,7 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.json.JSONObject;
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.mapper.SysEvalLogMapper;
 import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.service.client.PythonAlgorithmClient;
@@ -37,7 +38,7 @@ public class EvalLogAsyncTask {
                 SysEvalLog update = new SysEvalLog();
                 update.setId(logId);
                 update.setTime(elapsed);
-                update.setStatus("failed");
+                update.setStatus(LogStatusEnum.FAILED);
                 update.setErrorMessage(result.getStr("errorMessage"));
                 evalLogMapper.updateById(update);
                 log.error("评估失败(Python): algorithmId={}, evalLogId={}, error={}",
@@ -49,7 +50,7 @@ public class EvalLogAsyncTask {
             update.setId(logId);
             update.setTime(elapsed);
             update.setResult(result.getStr("metrics"));
-            update.setStatus("completed");
+            update.setStatus(LogStatusEnum.COMPLETED);
             evalLogMapper.updateById(update);
 
             log.info("评估完成: algorithmId={}, evalLogId={}, time={}ms",
@@ -59,7 +60,7 @@ public class EvalLogAsyncTask {
             SysEvalLog update = new SysEvalLog();
             update.setId(logId);
             update.setTime(elapsed);
-            update.setStatus("failed");
+            update.setStatus(LogStatusEnum.FAILED);
             update.setErrorMessage(e.getMessage());
             evalLogMapper.updateById(update);
 

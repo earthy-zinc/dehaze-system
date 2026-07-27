@@ -1,5 +1,6 @@
 package com.pei.dehaze.model.vo;
 
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -12,8 +13,8 @@ public class EvaluationResultVO {
     @Schema(description = "评估日志ID")
     private Long logId;
 
-    @Schema(description = "任务状态：processing/completed/failed")
-    private String status;
+    @Schema(description = "任务状态：1=处理中,2=已完成,3=失败")
+    private LogStatusEnum status;
 
     @Schema(description = "评估指标结果（PSNR/SSIM/LPIPS/NIQE/等，status=completed 时返回）")
     private Map<String, Double> metrics;

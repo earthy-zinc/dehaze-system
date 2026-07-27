@@ -1,6 +1,7 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.json.JSONObject;
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.service.client.PythonAlgorithmClient;
@@ -37,7 +38,7 @@ public class PredLogAsyncTask {
                 SysPredLog update = new SysPredLog();
                 update.setId(logId);
                 update.setTime(elapsed);
-                update.setStatus("failed");
+                update.setStatus(LogStatusEnum.FAILED);
                 update.setErrorMessage(result.getStr("errorMessage"));
                 predLogMapper.updateById(update);
                 log.error("预测失败(Python): algorithmId={}, predLogId={}, error={}",
@@ -50,7 +51,7 @@ public class PredLogAsyncTask {
             update.setTime(elapsed);
             update.setPredUrl(result.getStr("resultUrl"));
             update.setPredMd5(result.getStr("resultMd5"));
-            update.setStatus("completed");
+            update.setStatus(LogStatusEnum.COMPLETED);
             predLogMapper.updateById(update);
 
             log.info("预测完成: algorithmId={}, predLogId={}, time={}ms",
@@ -60,7 +61,7 @@ public class PredLogAsyncTask {
             SysPredLog update = new SysPredLog();
             update.setId(logId);
             update.setTime(elapsed);
-            update.setStatus("failed");
+            update.setStatus(LogStatusEnum.FAILED);
             update.setErrorMessage(e.getMessage());
             predLogMapper.updateById(update);
 

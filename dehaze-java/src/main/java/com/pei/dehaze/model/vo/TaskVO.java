@@ -25,8 +25,8 @@ public class TaskVO {
     @Schema(description = "任务类别：import / export", example = "export")
     private String taskCategory;
 
-    @Schema(description = "任务状态：PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED", example = "PENDING")
-    private String status;
+    @Schema(description = "任务状态：1=待处理,2=处理中,3=已完成,4=失败,5=已取消", example = "1")
+    private Integer status;
 
     @Schema(description = "进度（0-100）", example = "0")
     private Integer progress;

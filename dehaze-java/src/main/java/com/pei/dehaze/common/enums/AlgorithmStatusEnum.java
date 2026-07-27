@@ -16,12 +16,12 @@ import java.util.Set;
 @Getter
 public enum AlgorithmStatusEnum implements IBaseEnum<Integer> {
 
-    DRAFT(0, "草稿"),
-    TESTING(1, "测试中"),
-    PENDING_REVIEW(2, "待审核"),
-    PUBLISHED(3, "已发布"),
-    DISABLED(4, "已停用"),
-    ARCHIVED(5, "已归档");
+    DRAFT(1, "草稿"),
+    TESTING(2, "测试中"),
+    PENDING_REVIEW(3, "待审核"),
+    PUBLISHED(4, "已发布"),
+    DISABLED(5, "已停用"),
+    ARCHIVED(6, "已归档");
 
     @JsonValue
     @EnumValue

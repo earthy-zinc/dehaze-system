@@ -126,7 +126,7 @@ class ImportExportServiceTest {
         when(exportHandler.estimateCount(anyMap())).thenReturn(50000L);
         TaskVO taskVO = new TaskVO();
         taskVO.setTaskId("task-async-001");
-        taskVO.setStatus("PENDING");
+        taskVO.setStatus(TaskConstants.STATUS_PENDING);
         when(taskService.createTask(any(ExportTaskCreateForm.class), isNull())).thenReturn(taskVO);
 
         Object result = importExportService.export("user", Map.of(), "excel", null, null, response);
@@ -134,7 +134,7 @@ class ImportExportServiceTest {
         assertInstanceOf(ExportTaskVO.class, result);
         ExportTaskVO vo = (ExportTaskVO) result;
         assertEquals("task-async-001", vo.getTaskId());
-        assertEquals("PENDING", vo.getStatus());
+        assertEquals(TaskConstants.STATUS_PENDING, vo.getStatus());
         assertEquals(50000L, vo.getEstimatedCount());
         verify(fileService, never()).uploadFile(anyString(), any(), anyLong(), anyString());
     }
@@ -158,7 +158,7 @@ class ImportExportServiceTest {
         when(exportHandler.estimateCount(anyMap())).thenReturn(10L);
         TaskVO taskVO = new TaskVO();
         taskVO.setTaskId("task-force-async");
-        taskVO.setStatus("PENDING");
+        taskVO.setStatus(TaskConstants.STATUS_PENDING);
         when(taskService.createTask(any(ExportTaskCreateForm.class), isNull())).thenReturn(taskVO);
 
         Object result = importExportService.export("user", Map.of(), "excel", true, null, response);
@@ -319,7 +319,7 @@ class ImportExportServiceTest {
                 .thenReturn("http://minio/temp/imports/abc.csv");
         TaskVO taskVO = new TaskVO();
         taskVO.setTaskId("task-import-001");
-        taskVO.setStatus("PENDING");
+        taskVO.setStatus(TaskConstants.STATUS_PENDING);
         when(taskService.createTask(any(ExportTaskCreateForm.class), isNull())).thenReturn(taskVO);
 
         Object ret = importExportService.importData("user", file, "all", null, null);
@@ -327,7 +327,7 @@ class ImportExportServiceTest {
         assertInstanceOf(ImportTaskVO.class, ret);
         ImportTaskVO vo = (ImportTaskVO) ret;
         assertEquals("task-import-001", vo.getTaskId());
-        assertEquals("PENDING", vo.getStatus());
+        assertEquals(TaskConstants.STATUS_PENDING, vo.getStatus());
         verify(importHandler, never()).importBatch(anyList(), any(), any());
     }
 

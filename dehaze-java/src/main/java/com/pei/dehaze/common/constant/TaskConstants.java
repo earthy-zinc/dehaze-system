@@ -71,19 +71,19 @@ public final class TaskConstants {
 
     // ========== 任务状态 ==========
     /** 待处理 */
-    public static final String STATUS_PENDING = "PENDING";
+    public static final int STATUS_PENDING = 1;
     /** 处理中 */
-    public static final String STATUS_PROCESSING = "PROCESSING";
+    public static final int STATUS_PROCESSING = 2;
     /** 已完成 */
-    public static final String STATUS_COMPLETED = "COMPLETED";
+    public static final int STATUS_COMPLETED = 3;
     /** 已失败 */
-    public static final String STATUS_FAILED = "FAILED";
+    public static final int STATUS_FAILED = 4;
     /** 已取消 */
-    public static final String STATUS_CANCELLED = "CANCELLED";
+    public static final int STATUS_CANCELLED = 5;
 
     // ========== 终态集合 ==========
     /** 任务终态集合（已完成 / 已失败 / 已取消），用于幂等检查 */
-    public static final Set<String> TERMINAL_STATUSES = Set.of(
+    public static final Set<Integer> TERMINAL_STATUSES = Set.of(
             STATUS_COMPLETED,
             STATUS_FAILED,
             STATUS_CANCELLED

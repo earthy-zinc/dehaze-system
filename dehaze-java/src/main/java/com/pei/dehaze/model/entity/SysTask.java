@@ -27,7 +27,7 @@ public class SysTask extends BaseEntity {
 
     private String taskType;
 
-    private String status;
+    private Integer status;
 
     private Integer progress;
 
