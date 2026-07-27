@@ -399,12 +399,12 @@ func buildRouteVO(route read.MenuRouteRead, childrenMap map[int64][]read.MenuRou
 		Hidden: route.Visible == 0,
 	}
 
-	if route.Type == enum.MenuTypeCatalog && route.KeepAlive == 1 {
+	if route.Type == enum.MenuTypeMenu && route.KeepAlive == 1 {
 		keepAlive := true
 		meta.KeepAlive = &keepAlive
 	}
 
-	if route.Type == enum.MenuTypeMenu && route.AlwaysShow == 1 {
+	if route.Type == enum.MenuTypeCatalog && route.AlwaysShow == 1 {
 		alwaysShow := true
 		meta.AlwaysShow = &alwaysShow
 	}

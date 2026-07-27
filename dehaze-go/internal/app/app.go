@@ -18,6 +18,7 @@ import (
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
 	ihrepo "github.com/earthyzinc/dehaze-go/internal/repository/input_history"
 	menurepo "github.com/earthyzinc/dehaze-go/internal/repository/menu"
+	msgrepo "github.com/earthyzinc/dehaze-go/internal/repository/message"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 	rolerepo "github.com/earthyzinc/dehaze-go/internal/repository/role"
 	taskrepo "github.com/earthyzinc/dehaze-go/internal/repository/task"
@@ -34,6 +35,7 @@ import (
 	ihservice "github.com/earthyzinc/dehaze-go/internal/service/input_history"
 	importexportservice "github.com/earthyzinc/dehaze-go/internal/service/import_export"
 	"github.com/earthyzinc/dehaze-go/internal/service/import_export/handlers"
+	msgservice "github.com/earthyzinc/dehaze-go/internal/service/message"
 	menuservice "github.com/earthyzinc/dehaze-go/internal/service/menu"
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
 	roleservice "github.com/earthyzinc/dehaze-go/internal/service/role"
@@ -141,6 +143,13 @@ func (a *Application) Init() error {
 	predLogRepo := predrepo.NewPredLogRepository(gormDB)
 	apiKeyRepo := apikeyrepo.NewApiKeyRepository(gormDB)
 
+	// message module repositories
+	msgRepo := msgrepo.NewMessageRepository(gormDB)
+	msgTplRepo := msgrepo.NewMessageTemplateRepository(gormDB)
+	annRepo := msgrepo.NewAnnouncementRepository(gormDB)
+	notifySettingRepo := msgrepo.NewNotificationSettingRepository(gormDB)
+	userLookupRepo := msgrepo.NewUserLookupRepository(gormDB)
+
 	// services
 	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo)
 	authService := authservice.NewAuthService(cacheClient, userService, gormDB)
@@ -216,6 +225,12 @@ func (a *Application) Init() error {
 	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algorithmRepo, algoClient)
 	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService)
 
+	// message module services
+	messageService := msgservice.NewMessageService(msgRepo, msgTplRepo)
+	announcementService := msgservice.NewAnnouncementService(annRepo, userLookupRepo, messageService)
+	messageTemplateService := msgservice.NewMessageTemplateService(msgTplRepo)
+	notificationSettingService := msgservice.NewNotificationSettingService(notifySettingRepo)
+
 	// 启动 MQ Consumer 消费死信队列
 	// 注意：Go 后端不消费 export 主队列（由 Java/Python 执行任务），
 	// 仅消费 DLQ 以更新任务状态为 FAILED
@@ -250,6 +265,12 @@ func (a *Application) Init() error {
 	predictionApi := api.NewSysPredictionApi(predictionService)
 	evaluationApi := api.NewSysEvaluationApi(evaluationService)
 	apiKeyApi := api.NewApiKeyApi(apiKeyService)
+
+	// message module apis
+	messageApi := api.NewMessageApi(messageService)
+	announcementApi := api.NewAnnouncementApi(announcementService)
+	messageTemplateApi := api.NewMessageTemplateApi(messageTemplateService)
+	notificationSettingApi := api.NewNotificationSettingApi(notificationSettingService)
 
 	// routes
 	engine := a.Server.GetEngine()
@@ -286,6 +307,10 @@ func (a *Application) Init() error {
 	router.RegisterPredictionRoutes(protectedV1, predictionApi)
 	router.RegisterEvaluationRoutes(protectedV1, evaluationApi)
 	router.RegisterApiKeyRoutes(protectedV1, apiKeyApi)
+	router.RegisterMessageRoutes(protectedV1, messageApi)
+	router.RegisterNotificationSettingRoutes(protectedV1, notificationSettingApi)
+	router.RegisterAnnouncementRoutes(protectedV1, announcementApi)
+	router.RegisterMessageTemplateRoutes(protectedV1, messageTemplateApi)
 
 	middleware.ApiKeyAuth = func(ctx context.Context, rawKey string) (*security.CustomClaims, error) {
 		authInfo, err := apiKeyService.AuthenticateByKey(ctx, rawKey)
