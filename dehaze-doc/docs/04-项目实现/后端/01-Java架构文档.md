@@ -189,7 +189,7 @@ dehaze-java/
 │           ├── application-test.yml    # 测试配置
 │           ├── application-test-h2.yml # H2 内存数据库测试
 │           ├── application-test-tc.yml # TestContainers 测试
-│           ├── db/                     # 测试 SQL（init.sql + h2/，schema.sql 和 data.sql 由 Maven 从 config/sql/ 自动复制）
+│           ├── db/                     # 测试 SQL（init.sql + h2/，schema/ 和 data/ 目录由 Maven 从 config/sql/ 自动复制）
 │           └── templates/              # 代码生成模板
 ```
 

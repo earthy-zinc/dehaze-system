@@ -383,9 +383,15 @@ sequenceDiagram
 
 ```http
 POST /api/v1/auth/login HTTP/1.1
-Content-Type: application/x-www-form-urlencoded
+Content-Type: application/json
 
-username=admin&password=123456
+{
+  "username": "admin",
+  "password": "123456",
+  "captchaKey": "abc123",
+  "captchaCode": "8v9a",
+  "rememberMe": false
+}
 ```
 
 **响应：**
@@ -395,12 +401,17 @@ username=admin&password=123456
   "code": "00000",
   "msg": "一切ok",
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "tokenType": "Bearer",
-    "expires": 3600
+    "sessionId": "a1b2c3d4...",
+    "user": {
+      "id": 1,
+      "username": "admin",
+      "nickname": "管理员"
+    }
   }
 }
 ```
+
+> `sessionId` 通过 `Set-Cookie: X-Session-Id={sessionId}` 自动下发给 Web 端；移动端需从响应数据中提取并存储，后续请求通过 `X-Session-Id` 请求头传递。详见 [认证管理/API接口.md](../../03-模块设计/基础模块/认证管理/API接口.md)。
 
 ### 6.3 Token 使用
 
