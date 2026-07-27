@@ -25,7 +25,7 @@ func (h *DeptExportHandler) GetModule() string { return "dept" }
 func (h *DeptExportHandler) EstimateCount(params map[string]interface{}) int64 {
 	q := buildDeptQuery(params)
 	var count int64
-	tx := h.db.Model(&model.SysDept{}).Where("deleted = 0")
+	tx := h.db.Model(&model.SysDept{})
 	if q.Keywords != "" {
 		like := "%" + q.Keywords + "%"
 		tx = tx.Where("name LIKE ?", like)
@@ -59,7 +59,7 @@ type deptExportProvider struct {
 func (p *deptExportProvider) FetchBatch(pageNum, pageSize int) [][]interface{} {
 	q := buildDeptQuery(p.ctx.QueryParams)
 	var depts []model.SysDept
-	tx := p.db.Model(&model.SysDept{}).Where("deleted = 0")
+	tx := p.db.Model(&model.SysDept{})
 	if q.Keywords != "" {
 		like := "%" + q.Keywords + "%"
 		tx = tx.Where("name LIKE ?", like)
@@ -158,7 +158,7 @@ func (h *DeptImportHandler) ImportBatch(rows []map[string]interface{}, options i
 		status := parseStatus(row, "statusLabel", 1)
 
 		var exists int64
-		h.db.Model(&model.SysDept{}).Where("name = ? AND parent_id = ? AND deleted = 0", name, parentID).Count(&exists)
+		h.db.Model(&model.SysDept{}).Where("name = ? AND parent_id = ?", name, parentID).Count(&exists)
 		if exists > 0 {
 			failureCount++
 			errors = append(errors, import_export.ImportError{Row: rowNum, Field: "name", Message: "同级下部门名称已存在: " + name})
@@ -178,7 +178,7 @@ func (h *DeptImportHandler) ImportBatch(rows []map[string]interface{}, options i
 
 		if parentID > 0 {
 			var parent model.SysDept
-			if err := h.db.WithContext(ctx).Where("id = ? AND deleted = 0", parentID).First(&parent).Error; err == nil {
+			if err := h.db.WithContext(ctx).Where("id = ?", parentID).First(&parent).Error; err == nil {
 				dept.TreePath = parent.TreePath + fmt.Sprintf(",%d", parentID)
 			}
 		} else {

@@ -12,11 +12,11 @@ type PredictionRequest struct {
 }
 
 type PredictionResponse struct {
-	LogID              int64  `json:"logId"`
-	Status             string `json:"status"`
+	LogID              int64 `json:"logId"`
+	Status             int8  `json:"status"`
 	ResultURL          string `json:"resultUrl,omitempty"`
 	ResultThumbnailURL string `json:"resultThumbnailUrl,omitempty"`
-	Time               int    `json:"time,omitempty"`
+	Time               int   `json:"time,omitempty"`
 	ErrorMessage       string `json:"errorMessage,omitempty"`
 }
 

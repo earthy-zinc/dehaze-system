@@ -2,7 +2,7 @@ package model
 
 // SysItemFile 项文件关联表
 type SysItemFile struct {
-	ID              int64   `gorm:"primaryKey;autoIncrement;column:id;comment:id" json:"id"`
+	BaseModel
 	ItemID          int64   `gorm:"column:item_id;type:bigint;not null;comment:所属数据项id" json:"itemId"`
 	FileID          int64   `gorm:"column:file_id;type:bigint;not null;comment:文件id" json:"fileId"`
 	ThumbnailFileID *int64  `gorm:"column:thumbnail_file_id;type:bigint;comment:缩略图文件id" json:"thumbnailFileId"`
@@ -12,4 +12,6 @@ type SysItemFile struct {
 	Width           *int    `gorm:"column:width;type:int;comment:图片宽度" json:"width"`
 	Height          *int    `gorm:"column:height;type:int;comment:图片高度" json:"height"`
 	Description     *string `gorm:"column:description;type:varchar(255);comment:描述" json:"description"`
+	UsageCount      int64   `gorm:"column:usage_count;type:bigint;default:0;comment:使用次数" json:"usageCount"`
+	Deleted         int8    `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
 }

@@ -25,7 +25,7 @@ func (h *RoleExportHandler) GetModule() string { return "role" }
 func (h *RoleExportHandler) EstimateCount(params map[string]interface{}) int64 {
 	q := buildRoleQuery(params)
 	var count int64
-	tx := h.db.Model(&model.SysRole{}).Where("deleted = 0")
+	tx := h.db.Model(&model.SysRole{})
 	if q.Keywords != "" {
 		like := "%" + q.Keywords + "%"
 		tx = tx.Where("name LIKE ? OR code LIKE ?", like, like)
@@ -55,7 +55,7 @@ type roleExportProvider struct {
 
 func (p *roleExportProvider) FetchBatch(pageNum, pageSize int) [][]interface{} {
 	q := buildRoleQuery(p.ctx.QueryParams)
-	tx := p.db.Model(&model.SysRole{}).Where("deleted = 0")
+	tx := p.db.Model(&model.SysRole{})
 	if q.Keywords != "" {
 		like := "%" + q.Keywords + "%"
 		tx = tx.Where("name LIKE ? OR code LIKE ?", like, like)
@@ -145,7 +145,7 @@ func (h *RoleImportHandler) ImportBatch(rows []map[string]interface{}, options i
 		}
 
 		var exists int64
-		h.db.Model(&model.SysRole{}).Where("code = ? AND deleted = 0", code).Count(&exists)
+		h.db.Model(&model.SysRole{}).Where("code = ?", code).Count(&exists)
 		if exists > 0 {
 			failureCount++
 			errors = append(errors, import_export.ImportError{Row: rowNum, Field: "code", Message: "角色编码已存在: " + code})

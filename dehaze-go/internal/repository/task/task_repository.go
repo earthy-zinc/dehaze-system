@@ -66,8 +66,8 @@ func (r *taskRepository) FindPage(ctx context.Context, q *query.TaskPageQuery) (
 	}
 
 	db := r.db.WithContext(ctx).Model(&model.SysTask{})
-	if q.Status != "" {
-		db = db.Where("status = ?", q.Status)
+	if q.Status != nil {
+		db = db.Where("status = ?", *q.Status)
 	}
 	if q.TaskType != "" {
 		db = db.Where("task_type = ?", q.TaskType)
@@ -90,7 +90,7 @@ func (r *taskRepository) FindPage(ctx context.Context, q *query.TaskPageQuery) (
 	}
 
 	var tasks []model.SysTask
-	if err := db.Order("created_at DESC").
+	if err := db.Order("create_time DESC").
 		Offset((pageNum - 1) * pageSize).
 		Limit(pageSize).
 		Find(&tasks).Error; err != nil {
@@ -102,7 +102,7 @@ func (r *taskRepository) FindPage(ctx context.Context, q *query.TaskPageQuery) (
 		t := &tasks[i]
 		item := read.Task{
 			TaskID:         t.TaskID,
-			Status:         string(t.Status),
+			Status:         int8(t.Status),
 			Progress:       t.Progress,
 			TotalFiles:     t.TotalFiles,
 			ProcessedFiles: t.ProcessedFiles,

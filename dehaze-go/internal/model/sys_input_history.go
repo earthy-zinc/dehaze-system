@@ -11,7 +11,7 @@ type SysInputHistory struct {
 	ResultThumbnailURL   *string `gorm:"column:result_thumbnail_url;type:varchar(500);comment:结果缩略图URL" json:"resultThumbnailUrl"`
 	AlgorithmID          *int64  `gorm:"column:algorithm_id;type:bigint;comment:算法ID" json:"algorithmId"`
 	AlgorithmName        *string `gorm:"column:algorithm_name;type:varchar(100);comment:算法名称（冗余）" json:"algorithmName"`
-	AlgorithmParams      *string `gorm:"column:algorithm_params;type:text;comment:算法参数（JSON）" json:"algorithmParams"`
+	AlgorithmParams      *string `gorm:"column:algorithm_params;type:json;comment:算法参数（JSON）" json:"algorithmParams"`
 	ProcessingTime       *int    `gorm:"column:processing_time;type:int;comment:处理耗时（毫秒）" json:"processingTime"`
 	Status               *int8   `gorm:"column:status;type:tinyint;default:3;comment:处理状态（1=成功，2=失败，3=处理中）" json:"status"`
 	InputSource          *string `gorm:"column:input_source;type:varchar(20);comment:图片来源（upload/camera/sample）" json:"inputSource"`

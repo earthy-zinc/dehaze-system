@@ -138,7 +138,7 @@ func (s *AuthService) Register(ctx context.Context, req *bo.RegisterRequest, cli
 
 	var existingCount int64
 	if err := s.db.WithContext(ctx).Model(&model.SysUser{}).
-		Where("username = ? AND deleted = 0", username).Count(&existingCount).Error; err != nil {
+		Where("username = ?", username).Count(&existingCount).Error; err != nil {
 		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "检查用户名失败", err)
 	}
 	if existingCount > 0 {
@@ -164,7 +164,7 @@ func (s *AuthService) Register(ctx context.Context, req *bo.RegisterRequest, cli
 
 	var guestRole model.SysRole
 	if err := s.db.WithContext(ctx).
-		Where("code = ? AND status = 1 AND deleted = 0", "GUEST").
+		Where("code = ? AND status = 1", "GUEST").
 		First(&guestRole).Error; err == nil {
 		userRole := &model.SysUserRole{UserID: user.ID, RoleID: guestRole.ID}
 		s.db.WithContext(ctx).Create(userRole)

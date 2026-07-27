@@ -1,13 +1,11 @@
 package model
 
-import "time"
-
-// SysAlgorithmFavorite 算法收藏表（Python 端独有功能，Go 端兼容实现）
+// SysAlgorithmFavorite 算法收藏表
 type SysAlgorithmFavorite struct {
-	ID          int64     `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
-	UserID      int64     `gorm:"column:user_id;type:bigint;not null;uniqueIndex:uk_user_algorithm;comment:用户ID" json:"userId"`
-	AlgorithmID int64     `gorm:"column:algorithm_id;type:bigint;not null;uniqueIndex:uk_user_algorithm;comment:算法ID" json:"algorithmId"`
-	CreatedAt   time.Time `gorm:"column:create_time;type:datetime;autoCreateTime;comment:收藏时间" json:"createTime"`
+	BaseModel
+	UserID      int64 `gorm:"column:user_id;type:bigint;not null;uniqueIndex:uk_user_algorithm;comment:用户ID" json:"userId"`
+	AlgorithmID int64 `gorm:"column:algorithm_id;type:bigint;not null;uniqueIndex:uk_user_algorithm;comment:算法ID" json:"algorithmId"`
+	Deleted     int8  `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
 }
 
 func (SysAlgorithmFavorite) TableName() string {

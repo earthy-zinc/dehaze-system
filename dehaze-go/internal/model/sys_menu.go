@@ -11,10 +11,12 @@ type SysMenu struct {
 	Component  string    `gorm:"column:component;type:varchar(128);comment:组件路径(vue页面完整路径，省略.vue后缀)" json:"component"`
 	Perm       string    `gorm:"column:perm;type:varchar(128);comment:权限标识" json:"perm"`
 	Visible    int8      `gorm:"column:visible;type:tinyint;not null;default:1;comment:显示状态(1-显示;0-隐藏)" json:"visible"`
+	Status     int8      `gorm:"column:status;type:tinyint;not null;default:1;comment:状态(1:启用;0:禁用)" json:"status"`
 	Sort       int       `gorm:"column:sort;type:int;default:0;comment:排序" json:"sort"`
 	Icon       string    `gorm:"column:icon;type:varchar(64);default:'';comment:菜单图标" json:"icon"`
 	Redirect   string    `gorm:"column:redirect;type:varchar(128);comment:跳转路径" json:"redirect"`
 	AlwaysShow int8      `gorm:"column:always_show;type:tinyint;comment:【目录】只有一个子路由是否始终显示(1:是 0:否)" json:"alwaysShow"`
 	KeepAlive  int8      `gorm:"column:keep_alive;type:tinyint;comment:【菜单】是否开启页面缓存(1:是 0:否)" json:"keepAlive"`
+	Deleted    int8      `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
 	Roles      []SysRole `gorm:"many2many:sys_role_menu;joinForeignKey:menu_id;joinReferences:role_id"`
 }

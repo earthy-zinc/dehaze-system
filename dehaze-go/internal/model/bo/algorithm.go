@@ -2,12 +2,12 @@ package bo
 
 // AlgorithmStatus 算法生命周期状态
 const (
-	AlgorithmStatusDraft     = 0 // 草稿
-	AlgorithmStatusTesting   = 1 // 测试中
-	AlgorithmStatusAuditing  = 2 // 待审核
-	AlgorithmStatusPublished = 3 // 已发布
-	AlgorithmStatusDisabled  = 4 // 已停用
-	AlgorithmStatusArchived  = 5 // 已归档
+	AlgorithmStatusDraft     = 1 // 草稿
+	AlgorithmStatusTesting   = 2 // 测试中
+	AlgorithmStatusAuditing  = 3 // 待审核
+	AlgorithmStatusPublished = 4 // 已发布
+	AlgorithmStatusDisabled  = 5 // 已停用
+	AlgorithmStatusArchived  = 6 // 已归档
 )
 
 // AlgorithmFormBO 算法表单业务对象
@@ -19,7 +19,7 @@ type AlgorithmFormBO struct {
 	Path        string `json:"path" binding:"omitempty,max=255"`
 	ImportPath  string `json:"importPath" binding:"omitempty,max=255"`
 	Description string `json:"description" binding:"omitempty,max=255"`
-	Status      int8   `json:"status" binding:"oneof=0 1 2 3 4 5"`
+	Status      int8   `json:"status" binding:"oneof=1 2 3 4 5 6"`
 }
 
 // allowedTransitions 定义允许的状态流转映射

@@ -22,10 +22,6 @@ import (
 const (
 	predCachePrefix = "pred:"
 	predCacheTTL    = 24 * time.Hour
-
-	StatusProcessing = "processing"
-	StatusCompleted  = "completed"
-	StatusFailed     = "failed"
 )
 
 // PredictionService 去雾预测服务
@@ -42,12 +38,12 @@ func NewPredictionService(repo predrepo.IPredLogRepository, algoRepo algorepo.IA
 
 // PredictionResult 预测结果 VO
 type PredictionResult struct {
-	LogID              int64  `json:"logId"`
-	Status             string `json:"status"`
-	ResultURL          string `json:"resultUrl,omitempty"`
-	ResultThumbnailURL string `json:"resultThumbnailUrl,omitempty"`
-	Time               int    `json:"time,omitempty"`
-	ErrorMessage       string `json:"errorMessage,omitempty"`
+	LogID              int64           `json:"logId"`
+	Status             model.LogStatus `json:"status"`
+	ResultURL          string          `json:"resultUrl,omitempty"`
+	ResultThumbnailURL string          `json:"resultThumbnailUrl,omitempty"`
+	Time               int             `json:"time,omitempty"`
+	ErrorMessage       string          `json:"errorMessage,omitempty"`
 }
 
 // Predict 提交去雾预测任务（异步）
@@ -68,21 +64,21 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 			var cached algo.PredictionResponse
 			if json.Unmarshal([]byte(cachedStr), &cached) == nil {
 				predLog := &model.SysPredLog{
+					BaseModel:   model.BaseModel{CreateBy: userID},
 					AlgorithmID: algorithmID,
 					OriginMD5:   imageMD5,
 					OriginURL:   imageURL,
 					PredMD5:     utils.MD5Hex(cached.ResultURL),
 					PredURL:     cached.ResultURL,
 					Time:        cached.Time,
-					Status:      StatusCompleted,
-					CreateBy:    &userID,
+					Status:      model.LogStatusCompleted,
 				}
 				if err := s.repo.Create(ctx, predLog); err != nil {
 					logger.Error("写入缓存命中预测日志失败", zap.Error(err))
 				}
 				return &PredictionResult{
 					LogID:              predLog.ID,
-					Status:             StatusCompleted,
+					Status:             model.LogStatusCompleted,
 					ResultURL:          cached.ResultURL,
 					ResultThumbnailURL: cached.ResultThumbnailURL,
 					Time:               cached.Time,
@@ -92,11 +88,11 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 	}
 
 	predLog := &model.SysPredLog{
+		BaseModel:   model.BaseModel{CreateBy: userID},
 		AlgorithmID: algorithmID,
 		OriginMD5:   imageMD5,
 		OriginURL:   imageURL,
-		Status:      StatusProcessing,
-		CreateBy:    &userID,
+		Status:      model.LogStatusProcessing,
 	}
 	if err := s.repo.Create(ctx, predLog); err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建预测日志失败", err)
@@ -107,7 +103,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 
 	return &PredictionResult{
 		LogID:  logID,
-		Status: StatusProcessing,
+		Status: model.LogStatusProcessing,
 	}, nil
 }
 
@@ -129,19 +125,19 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 			zap.Int64("logID", logID),
 			zap.Error(err))
 		errMsg := err.Error()
-		if updateErr := s.repo.UpdateStatus(ctx, logID, StatusFailed, errMsg, elapsed); updateErr != nil {
+		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
 		return
 	}
 
-	if resp.Status == StatusProcessing {
+	if model.LogStatus(resp.Status) == model.LogStatusProcessing {
 		var pollErr error
 		resp, pollErr = s.pollPredTask(ctx, resp.LogID)
 		if pollErr != nil {
 			elapsed := int(time.Since(startTime).Seconds())
 			errMsg := pollErr.Error()
-			if updateErr := s.repo.UpdateStatus(ctx, logID, StatusFailed, errMsg, elapsed); updateErr != nil {
+			if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 				logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 			}
 			return
@@ -150,15 +146,15 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 
 	elapsed := int(time.Since(startTime).Seconds())
 
-	if resp.Status == StatusFailed {
+	if model.LogStatus(resp.Status) == model.LogStatusFailed {
 		errMsg := resp.ErrorMessage
-		if updateErr := s.repo.UpdateStatus(ctx, logID, StatusFailed, errMsg, elapsed); updateErr != nil {
+		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
 		return
 	}
 
-	if err := s.repo.UpdateResult(ctx, logID, StatusCompleted, resp.ResultURL, utils.MD5Hex(resp.ResultURL), resp.Time); err != nil {
+	if err := s.repo.UpdateResult(ctx, logID, model.LogStatusCompleted, resp.ResultURL, utils.MD5Hex(resp.ResultURL), resp.Time); err != nil {
 		logger.Error("更新预测日志完成状态失败", zap.Int64("logID", logID), zap.Error(err))
 	}
 
@@ -199,7 +195,7 @@ func (s *PredictionService) pollPredTask(ctx context.Context, pythonLogID int64)
 				zap.Error(err))
 			continue
 		}
-		if result.Status == StatusCompleted || result.Status == StatusFailed {
+		if model.LogStatus(result.Status) == model.LogStatusCompleted || model.LogStatus(result.Status) == model.LogStatusFailed {
 			return result, nil
 		}
 	}
@@ -221,10 +217,10 @@ func (s *PredictionService) GetTaskStatus(ctx context.Context, id int64) (*Predi
 		Status: log.Status,
 	}
 	switch log.Status {
-	case StatusCompleted:
+	case model.LogStatusCompleted:
 		result.ResultURL = log.PredURL
 		result.Time = log.Time
-	case StatusFailed:
+	case model.LogStatusFailed:
 		if log.ErrorMessage != nil {
 			result.ErrorMessage = *log.ErrorMessage
 		}

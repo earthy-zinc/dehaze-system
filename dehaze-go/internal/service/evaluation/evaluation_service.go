@@ -18,12 +18,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const (
-	StatusProcessing = "processing"
-	StatusCompleted  = "completed"
-	StatusFailed     = "failed"
-)
-
 // EvaluationService 去雾效果评估服务
 type EvaluationService struct {
 	repo     evalrepo.IEvalLogRepository
@@ -37,11 +31,11 @@ func NewEvaluationService(repo evalrepo.IEvalLogRepository, algoRepo algorepo.IA
 
 // EvaluationResult 评估结果 VO
 type EvaluationResult struct {
-	LogID        int64                `json:"logId"`
-	Status       string               `json:"status"`
-	Metrics      map[string]float64   `json:"metrics,omitempty"`
-	Time         int                  `json:"time,omitempty"`
-	ErrorMessage string               `json:"errorMessage,omitempty"`
+	LogID        int64           `json:"logId"`
+	Status       model.LogStatus `json:"status"`
+	Metrics      map[string]float64 `json:"metrics,omitempty"`
+	Time         int             `json:"time,omitempty"`
+	ErrorMessage string          `json:"errorMessage,omitempty"`
 }
 
 // Evaluate 提交效果评估任务（异步）
@@ -54,13 +48,13 @@ func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, pre
 	}
 
 	evalLog := &model.SysEvalLog{
+		BaseModel:   model.BaseModel{CreateBy: userID},
 		AlgorithmID: algorithmID,
 		PredMD5:     utils.MD5Hex(predURL),
 		PredURL:     predURL,
 		GtMD5:       utils.MD5Hex(gtURL),
 		GtURL:       gtURL,
-		Status:      StatusProcessing,
-		CreateBy:    &userID,
+		Status:      model.LogStatusProcessing,
 	}
 	if err := s.repo.Create(ctx, evalLog); err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建评估日志失败", err)
@@ -71,7 +65,7 @@ func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, pre
 
 	return &EvaluationResult{
 		LogID:  logID,
-		Status: StatusProcessing,
+		Status: model.LogStatusProcessing,
 	}, nil
 }
 
@@ -93,19 +87,19 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 			zap.Int64("logID", logID),
 			zap.Error(err))
 		errMsg := err.Error()
-		if updateErr := s.repo.UpdateStatus(ctx, logID, StatusFailed, errMsg, elapsed); updateErr != nil {
+		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
 		return
 	}
 
-	if resp.Status == StatusProcessing {
+	if model.LogStatus(resp.Status) == model.LogStatusProcessing {
 		var pollErr error
 		resp, pollErr = s.pollEvalTask(ctx, resp.LogID)
 		if pollErr != nil {
 			elapsed := int(time.Since(startTime).Seconds())
 			errMsg := pollErr.Error()
-			if updateErr := s.repo.UpdateStatus(ctx, logID, StatusFailed, errMsg, elapsed); updateErr != nil {
+			if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 				logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 			}
 			return
@@ -114,9 +108,9 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 
 	elapsed := int(time.Since(startTime).Seconds())
 
-	if resp.Status == StatusFailed {
+	if model.LogStatus(resp.Status) == model.LogStatusFailed {
 		errMsg := resp.ErrorMessage
-		if updateErr := s.repo.UpdateStatus(ctx, logID, StatusFailed, errMsg, elapsed); updateErr != nil {
+		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
 		return
@@ -124,7 +118,7 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 
 	metricsJSON, _ := json.Marshal(resp.Metrics)
 	resultStr := string(metricsJSON)
-	if err := s.repo.UpdateResult(ctx, logID, StatusCompleted, resultStr, resp.Time); err != nil {
+	if err := s.repo.UpdateResult(ctx, logID, model.LogStatusCompleted, resultStr, resp.Time); err != nil {
 		logger.Error("更新评估日志完成状态失败", zap.Int64("logID", logID), zap.Error(err))
 	}
 
@@ -153,7 +147,7 @@ func (s *EvaluationService) pollEvalTask(ctx context.Context, pythonLogID int64)
 				zap.Error(err))
 			continue
 		}
-		if result.Status == StatusCompleted || result.Status == StatusFailed {
+		if model.LogStatus(result.Status) == model.LogStatusCompleted || model.LogStatus(result.Status) == model.LogStatusFailed {
 			return result, nil
 		}
 	}
@@ -175,12 +169,12 @@ func (s *EvaluationService) GetTaskStatus(ctx context.Context, id int64) (*Evalu
 		Status: log.Status,
 	}
 	switch log.Status {
-	case StatusCompleted:
+	case model.LogStatusCompleted:
 		if log.Result != nil {
 			_ = json.Unmarshal([]byte(*log.Result), &result.Metrics)
 		}
 		result.Time = log.Time
-	case StatusFailed:
+	case model.LogStatusFailed:
 		if log.ErrorMessage != nil {
 			result.ErrorMessage = *log.ErrorMessage
 		}

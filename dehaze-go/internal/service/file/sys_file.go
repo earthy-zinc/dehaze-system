@@ -46,7 +46,7 @@ func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.File
 	// 2. MD5 去重判断
 	existingFile, err := s.fileRepo.FindByMD5(ctx, md5Hash)
 	if err == nil && existingFile != nil {
-		logger.Info("文件秒传命中", zap.String("md5", md5Hash), zap.Int("fileID", existingFile.ID))
+		logger.Info("文件秒传命中", zap.String("md5", md5Hash), zap.Int64("fileID", existingFile.ID))
 		return *existingFile, nil
 	}
 
@@ -66,6 +66,7 @@ func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.File
 
 	// 5. 写入元数据（事务）
 	sysFile := model.SysFile{
+		BaseModel:  model.BaseModel{CreatedAt: now, UpdatedAt: now},
 		Type:       utils.StringPtr(extension),
 		URL:        utils.StringPtr(fileURL),
 		Name:       fileHeader.Filename,
@@ -73,8 +74,6 @@ func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.File
 		Size:       fmt.Sprintf("%d", fileHeader.Size),
 		Path:       uploadPath,
 		MD5:        md5Hash,
-		CreatedAt:  now,
-		UpdatedAt:  now,
 	}
 
 	createdFile, err := s.fileRepo.Create(ctx, &sysFile)
@@ -84,7 +83,7 @@ func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.File
 		return model.SysFile{}, common.WrapBizError(common.DATABASE_ERROR, "保存文件记录失败", err)
 	}
 
-	logger.Info("文件上传成功", zap.Int("fileID", createdFile.ID), zap.String("md5", md5Hash))
+	logger.Info("文件上传成功", zap.Int64("fileID", createdFile.ID), zap.String("md5", md5Hash))
 	return *createdFile, nil
 }
 

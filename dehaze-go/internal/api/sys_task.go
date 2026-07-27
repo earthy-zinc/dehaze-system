@@ -67,10 +67,15 @@ func (api *SysTaskApi) GetTaskPage(c *gin.Context) {
 	q := &query.TaskPageQuery{
 		PageNum:      pageNum,
 		PageSize:     pageSize,
-		Status:       c.Query("status"),
 		TaskType:     c.Query("taskType"),
 		TaskCategory: c.Query("taskCategory"),
 		UserID:       userID,
+	}
+	if statusStr := c.Query("status"); statusStr != "" {
+		if statusVal, err := strconv.ParseInt(statusStr, 10, 8); err == nil {
+			s := int8(statusVal)
+			q.Status = &s
+		}
 	}
 	result, err := api.taskService.GetPage(ctx, q)
 	if err != nil {

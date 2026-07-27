@@ -3,7 +3,6 @@ package model
 import "time"
 
 // SysAlgorithm 算法模型表
-// 对齐 config/sql/schema.sql 中 sys_algorithm 表定义
 type SysAlgorithm struct {
 	BaseModel
 	ParentID    int64      `gorm:"column:parent_id;type:bigint;default:0;comment:模型的父id" json:"parentId"`
@@ -17,8 +16,9 @@ type SysAlgorithm struct {
 	Flops       string     `gorm:"column:flops;type:varchar(255);comment:模型浮点运算次数" json:"flops"`
 	ImportPath  string     `gorm:"column:import_path;type:varchar(255);comment:模型代码导入路径" json:"importPath"`
 	Description string     `gorm:"column:description;type:varchar(2048);comment:针对该模型的详细描述" json:"description"`
-	Status      int8       `gorm:"column:status;type:tinyint(1);default:0;comment:状态(0:草稿;1:测试中;2:待审核;3:已发布;4:已停用;5:已归档)" json:"status"`
+	Status      int8       `gorm:"column:status;type:tinyint;not null;default:1;comment:状态(1:草稿;2:测试中;3:待审核;4:已发布;5:已停用;6:已归档)" json:"status"`
 	AuditBy     *int64     `gorm:"column:audit_by;type:bigint;comment:审核人ID" json:"auditBy"`
 	AuditTime   *time.Time `gorm:"column:audit_time;type:datetime;comment:审核时间" json:"auditTime"`
 	AuditRemark *string    `gorm:"column:audit_remark;type:varchar(500);comment:审核备注" json:"auditRemark"`
+	Deleted     int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
 }

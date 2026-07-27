@@ -29,7 +29,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id int64) (*model.SysUser
 	var user model.SysUser
 	err := r.db.WithContext(ctx).
 		InstanceSet("skip_data_scope", true).
-		Where("id = ? AND deleted = 0", id).
+		Where("id = ?", id).
 		First(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -41,7 +41,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id int64) (*model.SysUser
 func (r *UserRepository) ExistsByUsername(ctx context.Context, username string, excludeID ...int64) (bool, error) {
 	var count int64
 	query := r.db.WithContext(ctx).Model(&model.SysUser{}).
-		Where("username = ? AND deleted = 0", username)
+		Where("username = ?", username)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
 	}
@@ -56,7 +56,7 @@ func (r *UserRepository) ExistsByMobile(ctx context.Context, mobile string, excl
 	}
 	var count int64
 	query := r.db.WithContext(ctx).Model(&model.SysUser{}).
-		Where("mobile = ? AND deleted = 0", mobile)
+		Where("mobile = ?", mobile)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
 	}
@@ -71,7 +71,7 @@ func (r *UserRepository) ExistsByEmail(ctx context.Context, email string, exclud
 	}
 	var count int64
 	query := r.db.WithContext(ctx).Model(&model.SysUser{}).
-		Where("email = ? AND deleted = 0", email)
+		Where("email = ?", email)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
 	}
@@ -87,7 +87,7 @@ func (r *UserRepository) FindPage(ctx context.Context, q *query.UserPageQuery) (
 	// 基础计数查询（不含 GROUP BY）
 	countDB := r.db.WithContext(ctx).Model(&model.SysUser{}).
 		Table("sys_user su").
-		Where("su.deleted = 0 AND su.username != 'root'")
+		Where("su.username != 'root'")
 
 	// 主数据查询（含 GROUP BY 用于聚合角色名称）
 	dataDB := r.db.WithContext(ctx).Model(&model.SysUser{}).
@@ -100,7 +100,7 @@ func (r *UserRepository) FindPage(ctx context.Context, q *query.UserPageQuery) (
 		Joins("LEFT JOIN sys_dept sd ON su.dept_id = sd.id").
 		Joins("LEFT JOIN sys_user_role sur ON su.id = sur.user_id").
 		Joins("LEFT JOIN sys_role sr ON sur.role_id = sr.id AND sr.deleted = 0").
-		Where("su.deleted = 0 AND su.username != 'root'").
+		Where("su.username != 'root'").
 		Group("su.id")
 
 	// 构建查询条件（两个查询共用）
@@ -466,7 +466,7 @@ func (r *UserRepository) GetFormData(ctx context.Context, userID int64) (*bo.Use
 		Model(&model.SysUser{}).
 		InstanceSet("skip_data_scope", true).
 		Select("id, username, nickname, mobile, email, gender, avatar, dept_id, status").
-		Where("id = ? AND deleted = 0", userID).
+		Where("id = ?", userID).
 		Scan(&form).Error
 	if err != nil {
 		return nil, err
@@ -522,7 +522,7 @@ func (r *UserRepository) UpdateWithRoles(ctx context.Context, userID int64, upda
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 更新用户
 		if err := tx.Model(&model.SysUser{}).
-			Where("id = ? AND deleted = 0", userID).
+			Where("id = ?", userID).
 			Updates(updates).Error; err != nil {
 			return err
 		}

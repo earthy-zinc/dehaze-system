@@ -26,7 +26,7 @@ func NewDeptRepository(db *gorm.DB) *DeptRepository {
 func (r *DeptRepository) FindByID(ctx context.Context, id int64) (*model.SysDept, error) {
 	var dept model.SysDept
 	err := r.db.WithContext(ctx).
-		Where("id = ? AND deleted = 0", id).
+		Where("id = ?", id).
 		First(&dept).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -37,8 +37,7 @@ func (r *DeptRepository) FindByID(ctx context.Context, id int64) (*model.SysDept
 // FindAll 查询所有部门
 func (r *DeptRepository) FindAll(ctx context.Context, q *query.DeptQuery) ([]model.SysDept, error) {
 	var depts []model.SysDept
-	db := r.db.WithContext(ctx).Model(&model.SysDept{}).
-		Where("deleted = 0")
+	db := r.db.WithContext(ctx).Model(&model.SysDept{})
 
 	if q != nil {
 		if q.Keywords != "" {
@@ -58,7 +57,7 @@ func (r *DeptRepository) FindAll(ctx context.Context, q *query.DeptQuery) ([]mod
 func (r *DeptRepository) FindByParentID(ctx context.Context, parentID int64) ([]model.SysDept, error) {
 	var depts []model.SysDept
 	err := r.db.WithContext(ctx).
-		Where("parent_id = ? AND deleted = 0", parentID).
+		Where("parent_id = ?", parentID).
 		Order("sort ASC").
 		Find(&depts).Error
 	return depts, err
@@ -69,7 +68,7 @@ func (r *DeptRepository) FindIDByName(ctx context.Context, name string) (int64, 
 	var id int64
 	err := r.db.WithContext(ctx).
 		Model(&model.SysDept{}).
-		Where("name = ? AND deleted = 0", name).
+		Where("name = ?", name).
 		Pluck("id", &id).Error
 	return id, err
 }
@@ -101,7 +100,7 @@ func (r *DeptRepository) HasChildren(ctx context.Context, id int64) (bool, error
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&model.SysDept{}).
-		Where("parent_id = ? AND deleted = 0", id).
+		Where("parent_id = ?", id).
 		Count(&count).Error
 	return count > 0, err
 }
@@ -111,7 +110,7 @@ func (r *DeptRepository) HasUsers(ctx context.Context, deptID int64) (bool, erro
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&model.SysUser{}).
-		Where("dept_id = ? AND deleted = 0", deptID).
+		Where("dept_id = ?", deptID).
 		Count(&count).Error
 	return count > 0, err
 }
@@ -131,7 +130,7 @@ func (r *DeptRepository) HasUsersInBatch(ctx context.Context, deptIDs []int64) (
 	err := r.db.WithContext(ctx).
 		Model(&model.SysUser{}).
 		Select("dept_id, COUNT(*) as cnt").
-		Where("dept_id IN ? AND deleted = 0", deptIDs).
+		Where("dept_id IN ?", deptIDs).
 		Group("dept_id").
 		Scan(&counts).Error
 	if err != nil {
@@ -161,7 +160,7 @@ func (r *DeptRepository) FindIDsByNames(ctx context.Context, names []string) (ma
 	err := r.db.WithContext(ctx).
 		Model(&model.SysDept{}).
 		Select("name, id").
-		Where("name IN ? AND deleted = 0", names).
+		Where("name IN ?", names).
 		Scan(&pairs).Error
 	if err != nil {
 		return nil, err
@@ -186,7 +185,7 @@ func (r *DeptRepository) GetOptions(ctx context.Context) ([]read.Option, error) 
 	err := r.db.WithContext(ctx).
 		Model(&model.SysDept{}).
 		Select("id as value, name as label, parent_id as parent_id").
-		Where("status = 1 AND deleted = 0").
+		Where("status = 1").
 		Order("sort ASC").
 		Scan(&rawOptions).Error
 	if err != nil {
@@ -222,7 +221,7 @@ func (r *DeptRepository) GetFormData(ctx context.Context, deptID int64) (*bo.Dep
 	err := r.db.WithContext(ctx).
 		Model(&model.SysDept{}).
 		Select("id, name, parent_id, tree_path, sort, status").
-		Where("id = ? AND deleted = 0", deptID).
+		Where("id = ?", deptID).
 		Scan(&form).Error
 	if err != nil {
 		return nil, err
@@ -250,7 +249,7 @@ func (r *DeptRepository) GetSubDeptIDs(ctx context.Context, deptID int64) ([]int
 	err = r.db.WithContext(ctx).
 		Model(&model.SysDept{}).
 		Select("id").
-		Where("(tree_path LIKE ? OR id = ?) AND deleted = 0", prefix+"%", deptID).
+		Where("tree_path LIKE ? OR id = ?", prefix+"%", deptID).
 		Scan(&ids).Error
 	return ids, err
 }

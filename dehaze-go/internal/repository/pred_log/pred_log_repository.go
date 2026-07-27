@@ -15,8 +15,8 @@ type IPredLogRepository interface {
 	FindByAlgorithmAndMD5(ctx context.Context, algorithmID int64, originMD5 string) (*model.SysPredLog, error)
 	FindPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error)
 	GetMonitorStats(ctx context.Context, algorithmID int64) (*MonitorStats, error)
-	UpdateResult(ctx context.Context, id int64, status, predURL, predMD5 string, time int) error
-	UpdateStatus(ctx context.Context, id int64, status, errorMessage string, time int) error
+	UpdateResult(ctx context.Context, id int64, status model.LogStatus, predURL, predMD5 string, time int) error
+	UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error
 	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
 }
 
@@ -78,7 +78,7 @@ func (r *predLogRepository) FindPage(ctx context.Context, algorithmID int64, pag
 	return list, total, nil
 }
 
-func (r *predLogRepository) UpdateResult(ctx context.Context, id int64, status, predURL, predMD5 string, time int) error {
+func (r *predLogRepository) UpdateResult(ctx context.Context, id int64, status model.LogStatus, predURL, predMD5 string, time int) error {
 	return r.db.WithContext(ctx).Model(&model.SysPredLog{}).
 		Where("id = ?", id).
 		Updates(map[string]any{
@@ -89,7 +89,7 @@ func (r *predLogRepository) UpdateResult(ctx context.Context, id int64, status, 
 		}).Error
 }
 
-func (r *predLogRepository) UpdateStatus(ctx context.Context, id int64, status, errorMessage string, time int) error {
+func (r *predLogRepository) UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error {
 	updates := map[string]any{
 		"status": status,
 		"time":   time,
@@ -104,24 +104,18 @@ func (r *predLogRepository) UpdateStatus(ctx context.Context, id int64, status, 
 
 func (r *predLogRepository) MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error) {
 	result := r.db.WithContext(ctx).Model(&model.SysPredLog{}).
-		Where("status = ? AND update_time < ?", "processing", threshold).
+		Where("status = ? AND update_time < ?", model.LogStatusProcessing, threshold).
 		Updates(map[string]any{
-			"status":        "failed",
+			"status":        model.LogStatusFailed,
 			"error_message": "任务执行超时，服务可能已重启",
 		})
 	return int(result.RowsAffected), result.Error
 }
 
 // GetMonitorStats 获取算法监控统计数据
-// 对齐 Java SysAlgorithmServiceImpl#getMonitorData 的统计口径：
-//   - callCount: 该算法的总调用次数
-//   - todayCallCount: 今日（>= 今日 0 点）的调用次数
-//   - avgTime: time IS NOT NULL 记录的平均处理时间
-//   - successCount: time IS NOT NULL 且 pred_url 非空 的记录数（用于计算成功率）
 func (r *predLogRepository) GetMonitorStats(ctx context.Context, algorithmID int64) (*MonitorStats, error) {
 	stats := &MonitorStats{}
 
-	// 总调用次数
 	if err := r.db.WithContext(ctx).
 		Model(&model.SysPredLog{}).
 		Where("algorithm_id = ?", algorithmID).
@@ -129,7 +123,6 @@ func (r *predLogRepository) GetMonitorStats(ctx context.Context, algorithmID int
 		return nil, err
 	}
 
-	// 今日调用次数
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	if err := r.db.WithContext(ctx).
@@ -139,7 +132,6 @@ func (r *predLogRepository) GetMonitorStats(ctx context.Context, algorithmID int
 		return nil, err
 	}
 
-	// 平均处理时间（time IS NOT NULL 的记录）
 	row := r.db.WithContext(ctx).
 		Model(&model.SysPredLog{}).
 		Where("algorithm_id = ? AND time IS NOT NULL", algorithmID).
@@ -149,7 +141,6 @@ func (r *predLogRepository) GetMonitorStats(ctx context.Context, algorithmID int
 		return nil, err
 	}
 
-	// 成功数（time IS NOT NULL 且 pred_url 非空，对齐 Java 实现）
 	if err := r.db.WithContext(ctx).
 		Model(&model.SysPredLog{}).
 		Where("algorithm_id = ? AND time IS NOT NULL AND pred_url IS NOT NULL AND pred_url <> ''", algorithmID).

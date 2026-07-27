@@ -218,7 +218,7 @@ func (ts *TaskService) UpdateTaskResult(ctx context.Context, taskIDStr string, r
 	ts.cacheTask(ctx, task)
 
 	ts.pushTaskWsMessage(taskIDStr, task.CreateBy, "task_status", map[string]interface{}{
-		"status":        string(model.TaskStatusCompleted),
+		"status":        model.TaskStatusCompleted,
 		"progress":      100,
 		"result":        result,
 		"error_message": "",
@@ -256,8 +256,8 @@ func (ts *TaskService) DownloadExportFile(ctx context.Context, taskIDStr string)
 	}
 
 	if task.Status != model.TaskStatusCompleted {
-		ts.logger.Warn("任务未完成，无法下载", zap.String("taskID", taskIDStr), zap.String("status", string(task.Status)))
-		return "", common.NewBizError(common.DATA_STATE_NOT_ALLOW, fmt.Sprintf("任务未完成，当前状态: %s", task.Status))
+		ts.logger.Warn("任务未完成，无法下载", zap.String("taskID", taskIDStr), zap.Int8("status", int8(task.Status)))
+		return "", common.NewBizError(common.DATA_STATE_NOT_ALLOW, fmt.Sprintf("任务未完成，当前状态: %d", task.Status))
 	}
 
 	if task.IsExpired() {
@@ -287,7 +287,7 @@ func (ts *TaskService) CancelTask(ctx context.Context, taskIDStr string, userID 
 	}
 
 	if task.IsCompleted() {
-		ts.logger.Warn("任务已完成或失败，无法取消", zap.String("taskID", taskIDStr), zap.String("status", string(task.Status)))
+		ts.logger.Warn("任务已完成或失败，无法取消", zap.String("taskID", taskIDStr), zap.Int8("status", int8(task.Status)))
 		return common.NewBizError(common.DATA_STATE_NOT_ALLOW, "任务已完成或失败，无法取消")
 	}
 
@@ -318,7 +318,7 @@ func (ts *TaskService) CancelTask(ctx context.Context, taskIDStr string, userID 
 
 	// WebSocket 推送任务取消
 	ts.pushTaskWsMessage(taskIDStr, task.CreateBy, "task_status", map[string]interface{}{
-		"status":        string(model.TaskStatusCancelled),
+		"status":        model.TaskStatusCancelled,
 		"progress":      task.Progress,
 		"result":        nil,
 		"error_message": nil,
@@ -372,7 +372,7 @@ func (ts *TaskService) cacheTask(ctx context.Context, task *model.SysTask) {
 func (ts *TaskService) ConvertToTaskVO(task *model.SysTask) *vo.TaskVO {
 	result := &vo.TaskVO{
 		TaskID:         task.TaskID,
-		Status:         string(task.Status),
+		Status:         int8(task.Status),
 		Progress:       task.Progress,
 		TotalFiles:     task.TotalFiles,
 		ProcessedFiles: task.ProcessedFiles,
@@ -459,7 +459,7 @@ func (ts *TaskService) RetryTask(ctx context.Context, taskIDStr string, userID i
 
 	// WebSocket 推送重试
 	ts.pushTaskWsMessage(taskIDStr, task.CreateBy, "task_status", map[string]interface{}{
-		"status":        string(model.TaskStatusPending),
+		"status":        model.TaskStatusPending,
 		"progress":      0,
 		"result":        nil,
 		"error_message": nil,
@@ -523,7 +523,7 @@ func (ts *TaskService) UpdateTaskStatus(ctx context.Context, taskIDStr string, s
 
 	// WebSocket 推送状态变更
 	ts.pushTaskWsMessage(taskIDStr, task.CreateBy, "task_status", map[string]interface{}{
-		"status":        string(status),
+		"status":        status,
 		"progress":      task.Progress,
 		"result":        task.Result,
 		"error_message": errorMessage,
@@ -559,7 +559,7 @@ func (ts *TaskService) UpdateTaskProgress(ctx context.Context, taskIDStr string,
 	// WebSocket 推送进度
 	ts.pushTaskWsMessage(taskIDStr, task.CreateBy, "task_progress", map[string]interface{}{
 		"progress":        progress,
-		"status":          string(model.TaskStatusProcessing),
+		"status":          model.TaskStatusProcessing,
 		"processed_files": current,
 		"total_files":     total,
 	})

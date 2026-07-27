@@ -129,7 +129,9 @@ func (r *DatasetItemFileRepository) createOrReuseFile(ctx context.Context, tx *g
 		urlPtr = utils.StringPtr(file.URL)
 	}
 
+	now := time.Now()
 	newFile := model.SysFile{
+		BaseModel: model.BaseModel{CreatedAt: now, UpdatedAt: now},
 		Type:       fileTypePtr,
 		URL:        urlPtr,
 		Name:       file.Name,
@@ -137,8 +139,6 @@ func (r *DatasetItemFileRepository) createOrReuseFile(ctx context.Context, tx *g
 		Path:       file.Path,
 		Size:       fmt.Sprintf("%d", file.Size),
 		MD5:        file.MD5,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
 	}
 
 	if err := tx.WithContext(ctx).Create(&newFile).Error; err != nil {

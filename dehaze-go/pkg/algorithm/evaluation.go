@@ -13,7 +13,7 @@ type EvaluationRequest struct {
 
 type EvaluationResponse struct {
 	LogID        int64              `json:"logId"`
-	Status       string             `json:"status"`
+	Status       int8               `json:"status"`
 	Metrics      map[string]float64 `json:"metrics,omitempty"`
 	Time         int                `json:"time,omitempty"`
 	ErrorMessage string             `json:"errorMessage,omitempty"`

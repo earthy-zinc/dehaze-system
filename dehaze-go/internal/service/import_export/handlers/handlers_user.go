@@ -27,10 +27,10 @@ func (h *UserExportHandler) GetModule() string { return "user" }
 func (h *UserExportHandler) EstimateCount(params map[string]interface{}) int64 {
 	q := buildUserQuery(params)
 	var count int64
-	h.db.Model(&model.SysUser{}).Where("deleted = 0").Count(&count)
+	h.db.Model(&model.SysUser{}).Count(&count)
 	if q.Keywords != "" {
 		like := "%" + q.Keywords + "%"
-		h.db.Model(&model.SysUser{}).Where("deleted = 0 AND (username LIKE ? OR nickname LIKE ? OR mobile LIKE ?)", like, like, like).Count(&count)
+		h.db.Model(&model.SysUser{}).Where("(username LIKE ? OR nickname LIKE ? OR mobile LIKE ?)", like, like, like).Count(&count)
 	}
 	return count
 }
@@ -60,7 +60,7 @@ type userExportProvider struct {
 func (p *userExportProvider) FetchBatch(pageNum, pageSize int) [][]interface{} {
 	var users []model.SysUser
 	q := buildUserQuery(p.ctx.QueryParams)
-	tx := p.db.Model(&model.SysUser{}).Where("deleted = 0")
+	tx := p.db.Model(&model.SysUser{})
 	if q.Keywords != "" {
 		like := "%" + q.Keywords + "%"
 		tx = tx.Where("username LIKE ? OR nickname LIKE ? OR mobile LIKE ?", like, like, like)
@@ -88,7 +88,7 @@ func (p *userExportProvider) FetchBatch(pageNum, pageSize int) [][]interface{} {
 	deptNameMap := make(map[int64]string)
 	if len(deptIDs) > 0 {
 		var depts []model.SysDept
-		p.db.Where("id IN ? AND deleted = 0", deptIDs).Find(&depts)
+		p.db.Where("id IN ?", deptIDs).Find(&depts)
 		for _, d := range depts {
 			deptNameMap[d.ID] = d.Name
 		}
@@ -228,7 +228,7 @@ func (h *UserImportHandler) ImportBatch(rows []map[string]interface{}, options i
 		}
 
 		var existingCount int64
-		h.db.Model(&model.SysUser{}).Where("username = ? AND deleted = 0", username).Count(&existingCount)
+		h.db.Model(&model.SysUser{}).Where("username = ?", username).Count(&existingCount)
 		if existingCount > 0 {
 			failureCount++
 			errors = append(errors, import_export.ImportError{Row: rowNum, Field: "username", Message: "用户名已存在"})

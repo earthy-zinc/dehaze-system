@@ -21,7 +21,7 @@ func NewDatasetRepository(db *gorm.DB) *DatasetRepository {
 func (r *DatasetRepository) FindByID(ctx context.Context, id int64) (*model.SysDataset, error) {
 	var dataset model.SysDataset
 	err := r.db.WithContext(ctx).
-		Where("id = ? AND deleted = ?", id, 0).
+		Where("id = ?", id).
 		First(&dataset).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -32,7 +32,6 @@ func (r *DatasetRepository) FindByID(ctx context.Context, id int64) (*model.SysD
 func (r *DatasetRepository) FindAll(ctx context.Context) ([]model.SysDataset, error) {
 	var datasets []model.SysDataset
 	err := r.db.WithContext(ctx).
-		Where("deleted = ?", 0).
 		Order("id ASC").
 		Find(&datasets).Error
 	return datasets, err
@@ -41,7 +40,7 @@ func (r *DatasetRepository) FindAll(ctx context.Context) ([]model.SysDataset, er
 func (r *DatasetRepository) FindAllActive(ctx context.Context) ([]model.SysDataset, error) {
 	var datasets []model.SysDataset
 	err := r.db.WithContext(ctx).
-		Where("status = ? AND deleted = ?", 1, 0).
+		Where("status = ?", 1).
 		Find(&datasets).Error
 	return datasets, err
 }
@@ -57,7 +56,7 @@ func (r *DatasetRepository) FindRootPage(ctx context.Context, q *query.DatasetQu
 	}
 
 	db := r.db.WithContext(ctx).Model(&model.SysDataset{}).
-		Where("parent_id = ? AND deleted = ?", ROOT_NODE_ID, 0)
+		Where("parent_id = ?", ROOT_NODE_ID)
 
 	if q != nil && q.Keywords != "" {
 		keyword := "%" + q.Keywords + "%"
@@ -88,7 +87,7 @@ func (r *DatasetRepository) FindRootPage(ctx context.Context, q *query.DatasetQu
 func (r *DatasetRepository) FindByParentID(ctx context.Context, parentID int64) ([]model.SysDataset, error) {
 	var datasets []model.SysDataset
 	err := r.db.WithContext(ctx).
-		Where("parent_id = ? AND deleted = ?", parentID, 0).
+		Where("parent_id = ?", parentID).
 		Order("id ASC").
 		Find(&datasets).Error
 	return datasets, err
@@ -100,7 +99,7 @@ func (r *DatasetRepository) FindByParentIDs(ctx context.Context, parentIDs []int
 	}
 	var datasets []model.SysDataset
 	err := r.db.WithContext(ctx).
-		Where("parent_id IN ? AND deleted = ?", parentIDs, 0).
+		Where("parent_id IN ?", parentIDs).
 		Order("id ASC").
 		Find(&datasets).Error
 	return datasets, err
@@ -115,7 +114,7 @@ func (r *DatasetRepository) CountHasChildren(ctx context.Context, parentIDs []in
 	var counts []CountByDatasetResult
 	err := r.db.WithContext(ctx).Model(&model.SysDataset{}).
 		Select("parent_id AS dataset_id, COUNT(*) AS cnt").
-		Where("parent_id IN ? AND deleted = ?", parentIDs, 0).
+		Where("parent_id IN ?", parentIDs).
 		Group("parent_id").
 		Scan(&counts).Error
 	if err != nil {
@@ -131,7 +130,7 @@ func (r *DatasetRepository) CountHasChildren(ctx context.Context, parentIDs []in
 func (r *DatasetRepository) ExistsByParentIDAndName(ctx context.Context, parentID int64, name string, excludeID int64) (bool, error) {
 	var count int64
 	db := r.db.WithContext(ctx).Model(&model.SysDataset{}).
-		Where("parent_id = ? AND name = ? AND deleted = ?", parentID, name, 0)
+		Where("parent_id = ? AND name = ?", parentID, name)
 	if excludeID > 0 {
 		db = db.Where("id != ?", excludeID)
 	}
@@ -165,7 +164,7 @@ func (r *DatasetRepository) SoftDeleteByIDs(ctx context.Context, ids []int64, up
 func (r *DatasetRepository) GetFormData(ctx context.Context, datasetID int64) (*model.SysDataset, error) {
 	var dataset model.SysDataset
 	err := r.db.WithContext(ctx).
-		Where("id = ? AND deleted = ?", datasetID, 0).
+		Where("id = ?", datasetID).
 		First(&dataset).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

@@ -139,7 +139,7 @@ func (r *AlgorithmRepository) FindOptions(ctx context.Context) ([]read.Option, e
 	var algorithms []model.SysAlgorithm
 	err := r.db.WithContext(ctx).
 		Model(&model.SysAlgorithm{}).
-		Where("status = ?", 3).
+		Where("status = ?", 4).
 		Select("id, name").
 		Find(&algorithms).Error
 	if err != nil {

@@ -28,7 +28,7 @@ func NewRoleRepository(db *gorm.DB) *RoleRepository {
 func (r *RoleRepository) FindByID(ctx context.Context, id int64) (*model.SysRole, error) {
 	var role model.SysRole
 	err := r.db.WithContext(ctx).
-		Where("id = ? AND deleted = 0", id).
+		Where("id = ?", id).
 		First(&role).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -43,7 +43,7 @@ func (r *RoleRepository) FindByIDs(ctx context.Context, ids []int64) ([]*model.S
 	}
 	var roles []*model.SysRole
 	err := r.db.WithContext(ctx).
-		Where("id IN ? AND deleted = 0", ids).
+		Where("id IN ?", ids).
 		Find(&roles).Error
 	return roles, err
 }
@@ -52,7 +52,7 @@ func (r *RoleRepository) FindByIDs(ctx context.Context, ids []int64) ([]*model.S
 func (r *RoleRepository) FindByCode(ctx context.Context, code string) (*model.SysRole, error) {
 	var role model.SysRole
 	err := r.db.WithContext(ctx).
-		Where("code = ? AND deleted = 0", code).
+		Where("code = ?", code).
 		First(&role).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -64,7 +64,7 @@ func (r *RoleRepository) FindByCode(ctx context.Context, code string) (*model.Sy
 func (r *RoleRepository) ExistsByCode(ctx context.Context, code string, excludeID ...int64) (bool, error) {
 	var count int64
 	query := r.db.WithContext(ctx).Model(&model.SysRole{}).
-		Where("code = ? AND deleted = 0", code)
+		Where("code = ?", code)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
 	}
@@ -76,7 +76,7 @@ func (r *RoleRepository) ExistsByCode(ctx context.Context, code string, excludeI
 func (r *RoleRepository) ExistsByName(ctx context.Context, name string, excludeID ...int64) (bool, error) {
 	var count int64
 	query := r.db.WithContext(ctx).Model(&model.SysRole{}).
-		Where("name = ? AND deleted = 0", name)
+		Where("name = ?", name)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
 	}
@@ -90,8 +90,7 @@ func (r *RoleRepository) FindPage(ctx context.Context, q *query.RolePageQuery) (
 	var total int64
 
 	db := r.db.WithContext(ctx).Model(&model.SysRole{}).
-		Select("id, name, code, sort, status, data_scope, create_time").
-		Where("deleted = 0")
+		Select("id, name, code, sort, status, data_scope, create_time")
 
 	// 构建查询条件
 	if q.Keywords != "" {
@@ -136,7 +135,7 @@ func (r *RoleRepository) FindOptions(ctx context.Context, isRoot bool) ([]read.O
 	query := r.db.WithContext(ctx).
 		Model(&model.SysRole{}).
 		Select("id as value, name as label").
-		Where("status = 1 AND deleted = 0").
+		Where("status = 1").
 		Order("sort ASC")
 
 	// 非超级管理员不显示超级管理员角色
@@ -283,7 +282,7 @@ func (r *RoleRepository) GetFormData(ctx context.Context, roleID int64) (*read.R
 	err := r.db.WithContext(ctx).
 		Model(&model.SysRole{}).
 		Select("id, name, code, sort, status, data_scope").
-		Where("id = ? AND deleted = 0", roleID).
+		Where("id = ?", roleID).
 		Scan(&form).Error
 	if err != nil {
 		return nil, err
@@ -304,7 +303,6 @@ func (r *RoleRepository) GetMinimumDataScope(ctx context.Context, roleCodes []st
 		Model(&model.SysRole{}).
 		Select("MIN(data_scope)").
 		Where("code IN ?", roleCodes).
-		Where("deleted = 0").
 		Scan(&scope).Error
 	if err != nil {
 		return nil, err

@@ -13,7 +13,7 @@ type AlgorithmVersionVO struct {
 	// 变更日志
 	ChangeLog *string `json:"changeLog"`
 	// 状态
-	Status *int `json:"status"`
+	Status *int8 `json:"status"`
 	// 是否当前活跃版本
 	IsActive *bool `json:"isActive"`
 	// 模型文件ID

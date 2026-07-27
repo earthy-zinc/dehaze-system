@@ -3,7 +3,7 @@ package query
 // TaskPageQuery 任务分页查询对象
 type TaskPageQuery struct {
 	// 任务状态（可选）
-	Status string `json:"status"`
+	Status *int8 `json:"status"`
 	// 任务类型（可选）
 	TaskType string `json:"taskType"`
 	// 任务类别（可选）：import / export

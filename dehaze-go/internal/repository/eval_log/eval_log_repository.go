@@ -13,8 +13,8 @@ type IEvalLogRepository interface {
 	Create(ctx context.Context, log *model.SysEvalLog) error
 	FindByID(ctx context.Context, id int64) (*model.SysEvalLog, error)
 	FindPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
-	UpdateResult(ctx context.Context, id int64, status string, result string, time int) error
-	UpdateStatus(ctx context.Context, id int64, status, errorMessage string, time int) error
+	UpdateResult(ctx context.Context, id int64, status model.LogStatus, result string, time int) error
+	UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error
 	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
 }
 
@@ -56,7 +56,7 @@ func (r *evalLogRepository) FindPage(ctx context.Context, algorithmID int64, pag
 	return list, total, nil
 }
 
-func (r *evalLogRepository) UpdateResult(ctx context.Context, id int64, status string, result string, time int) error {
+func (r *evalLogRepository) UpdateResult(ctx context.Context, id int64, status model.LogStatus, result string, time int) error {
 	return r.db.WithContext(ctx).Model(&model.SysEvalLog{}).
 		Where("id = ?", id).
 		Updates(map[string]any{
@@ -66,7 +66,7 @@ func (r *evalLogRepository) UpdateResult(ctx context.Context, id int64, status s
 		}).Error
 }
 
-func (r *evalLogRepository) UpdateStatus(ctx context.Context, id int64, status, errorMessage string, time int) error {
+func (r *evalLogRepository) UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error {
 	updates := map[string]any{
 		"status": status,
 		"time":   time,
@@ -81,9 +81,9 @@ func (r *evalLogRepository) UpdateStatus(ctx context.Context, id int64, status, 
 
 func (r *evalLogRepository) MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error) {
 	result := r.db.WithContext(ctx).Model(&model.SysEvalLog{}).
-		Where("status = ? AND update_time < ?", "processing", threshold).
+		Where("status = ? AND update_time < ?", model.LogStatusProcessing, threshold).
 		Updates(map[string]any{
-			"status":        "failed",
+			"status":        model.LogStatusFailed,
 			"error_message": "任务执行超时，服务可能已重启",
 		})
 	return int(result.RowsAffected), result.Error
