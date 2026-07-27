@@ -3,10 +3,11 @@ import { View, Text, Image, ScrollView, Input } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Search, Star, StarOutlined } from "@taroify/icons";
 import CompareNavbar from "@/components/compare/CompareNavbar";
-import { AlgorithmAPI } from "dehaze-sdk-js";
+import { AlgorithmAPI, service } from "dehaze-sdk-js";
 import type { Algorithm } from "dehaze-sdk-js";
 import EmptyState from "@/components/common/EmptyState";
 import { getErrorMessage } from "@/utils/error";
+import { apiConfig } from "@/config/api";
 import AlgorithmDetailPopup from "./components/AlgorithmDetailPopup";
 import AlgorithmTreeNode from "./components/AlgorithmTreeNode";
 import {
@@ -19,6 +20,14 @@ import {
 } from "./utils";
 import "./index.less";
 
+interface AlgorithmRecommendVO {
+  algorithmId: number;
+  algorithmName: string;
+  score: number;
+  reason?: string;
+  type?: string;
+}
+
 const AlgorithmSelectPage: React.FC = () => {
   const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +38,10 @@ const AlgorithmSelectPage: React.FC = () => {
   const [detailAlgorithm, setDetailAlgorithm] = useState<Algorithm | null>(
     null
   );
+  const [recommendations, setRecommendations] = useState<
+    AlgorithmRecommendVO[]
+  >([]);
+  const [recommendLoading, setRecommendLoading] = useState(false);
 
   // 加载算法树
   const fetchAlgorithms = useCallback(async () => {
@@ -36,7 +49,6 @@ const AlgorithmSelectPage: React.FC = () => {
       setLoading(true);
       const data = await AlgorithmAPI.getList();
       setAlgorithms(data || []);
-      // 默认展开第一层分类
       const firstLevelIds = (data || []).map((item) => item.id);
       setExpandedKeys(new Set(firstLevelIds));
     } catch (error: unknown) {
@@ -82,15 +94,44 @@ const AlgorithmSelectPage: React.FC = () => {
     [algorithms]
   );
 
-  // 智能推荐：从已发布叶子算法中按类型权重排序取前3
-  const recommendedAlgorithms = useMemo(() => {
-    const published = allLeafAlgorithms.filter(
-      (a) => a.status === PUBLISHED_STATUS
-    );
-    return published
-      .sort((a, b) => getTypeWeight(b.type) - getTypeWeight(a.type))
-      .slice(0, 3);
-  }, [allLeafAlgorithms]);
+  // 智能推荐：调用 Python 后端 /api/v1/algorithm-select/recommend
+  // 仅当图片为后端可访问的远程 URL 时调用，本地图片跳过
+  const hasRemoteImage = !!(
+    currentImageUrl && currentImageUrl.startsWith("http")
+  );
+
+  useEffect(() => {
+    if (!hasRemoteImage) {
+      setRecommendations([]);
+      return;
+    }
+    setRecommendLoading(true);
+    service
+      .post<any, AlgorithmRecommendVO[]>(
+        "/api/v1/algorithm-select/recommend",
+        { imageUrl: currentImageUrl },
+        { baseURL: apiConfig.python }
+      )
+      .then((data) => setRecommendations(data || []))
+      .catch(() => setRecommendations([]))
+      .finally(() => setRecommendLoading(false));
+  }, [hasRemoteImage, currentImageUrl]);
+
+  // 根据推荐 VO 解析出完整 Algorithm（优先从树中取，取不到则用 VO 字段构造）
+  const resolveRecommendAlgorithm = useCallback(
+    (vo: AlgorithmRecommendVO): Algorithm => {
+      const found = allLeafAlgorithms.find((a) => a.id === vo.algorithmId);
+      if (found) return found;
+      return {
+        id: vo.algorithmId,
+        parentId: 0,
+        name: vo.algorithmName || `算法${vo.algorithmId}`,
+        type: vo.type || "",
+        description: "",
+      } as Algorithm;
+    },
+    [allLeafAlgorithms]
+  );
 
   // 收藏的算法列表
   const favoriteAlgorithms = useMemo(() => {
@@ -142,8 +183,12 @@ const AlgorithmSelectPage: React.FC = () => {
   }, []);
 
   // 渲染推荐卡片
-  const renderRecommendCard = (algorithm: Algorithm, index: number) => {
+  const renderRecommendCard = (vo: AlgorithmRecommendVO, index: number) => {
+    const algorithm = resolveRecommendAlgorithm(vo);
     const isFav = favoriteIds.has(algorithm.id);
+    const reasonText = vo.reason
+      ? `${vo.reason} · 匹配度 ${Math.round(vo.score)}%`
+      : `匹配度 ${Math.round(vo.score)}%`;
     return (
       <View
         key={algorithm.id}
@@ -164,7 +209,7 @@ const AlgorithmSelectPage: React.FC = () => {
             <Text className="recommend-desc">{algorithm.description}</Text>
           )}
           <View className="recommend-reason">
-            <Text>推荐算法 · 适合当前图片</Text>
+            <Text>{reasonText}</Text>
           </View>
         </View>
         <View
@@ -227,15 +272,23 @@ const AlgorithmSelectPage: React.FC = () => {
         )}
 
         {/* 智能推荐区域 */}
-        {!searchKeyword && recommendedAlgorithms.length > 0 && (
+        {!searchKeyword && hasRemoteImage && (
           <View className="recommend-section">
             <View className="section-header">
               <Text className="section-title">智能推荐</Text>
               <Text className="section-hint">基于当前图片分析</Text>
             </View>
             <View className="recommend-list">
-              {recommendedAlgorithms.map((algo, idx) =>
-                renderRecommendCard(algo, idx)
+              {recommendLoading ? (
+                <View className="loading-state">
+                  <Text>正在分析图片并生成推荐...</Text>
+                </View>
+              ) : recommendations.length > 0 ? (
+                recommendations.map((vo, idx) => renderRecommendCard(vo, idx))
+              ) : (
+                <View className="loading-state">
+                  <Text>暂无推荐算法，请从下方算法树选择</Text>
+                </View>
               )}
             </View>
           </View>

@@ -68,7 +68,7 @@ export function useLayout(): LayoutState {
           isLandscape: width > height,
         });
       } catch (error) {
-        console.warn("[useLayout] Failed to get system info:", error);
+        void error;
       }
     };
 
@@ -130,10 +130,7 @@ export function useStatusBarHeight(): number {
       const sysInfo = Taro.getSystemInfoSync();
       setHeight(sysInfo.statusBarHeight || 0);
     } catch (error) {
-      console.warn(
-        "[useStatusBarHeight] Failed to get statusBarHeight:",
-        error
-      );
+      void error;
     }
   }, []);
 

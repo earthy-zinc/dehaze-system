@@ -102,7 +102,7 @@ export default function configRequest(): void {
       }
       return {
         ...config,
-        baseURL: apiConfig.java,
+        baseURL: config.baseURL || apiConfig.java,
       };
     },
     onResponseError,

@@ -129,8 +129,7 @@ export const ImageInputService = {
       });
       return res.tempFilePath;
     } catch (error) {
-      console.warn("图片压缩失败，使用原图:", error);
-      // 压缩失败时返回原图路径
+      void error;
       return path;
     }
   },

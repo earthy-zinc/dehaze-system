@@ -9,7 +9,12 @@ import { Navbar, Loading, Empty } from "@taroify/core";
 import { ArrowLeft } from "@taroify/icons";
 import { TaskAPI } from "dehaze-sdk-js";
 import { confirmDialog } from "@/utils/dialog";
-import type { TaskCategory, TaskVO, TaskQuery, TaskStatus } from "dehaze-sdk-js";
+import type {
+  TaskCategory,
+  TaskVO,
+  TaskQuery,
+  TaskStatus,
+} from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
 import { getErrorMessage } from "@/utils/error";
 import {
@@ -77,7 +82,7 @@ const TaskPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [],
+    []
   );
 
   /** 加载更多（下一页） */
@@ -194,7 +199,7 @@ const TaskPage: React.FC = () => {
       stopPolling();
       loadTaskList(status, categoryFilter);
     },
-    [stopPolling, loadTaskList, categoryFilter],
+    [stopPolling, loadTaskList, categoryFilter]
   );
 
   /** 任务类别筛选变化 */
@@ -204,7 +209,7 @@ const TaskPage: React.FC = () => {
       stopPolling();
       loadTaskList(statusFilter, category);
     },
-    [stopPolling, loadTaskList, statusFilter],
+    [stopPolling, loadTaskList, statusFilter]
   );
 
   /** 查看任务详情 */
