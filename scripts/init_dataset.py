@@ -123,42 +123,42 @@ def get_leaf_dataset_ids(cur) -> list[tuple[int, str, str]]:
 
 
 def count_items(cur, dataset_id: int) -> int:
-    cur.execute("SELECT COUNT(*) FROM sys_dataset_item WHERE dataset_id = %s", (dataset_id,))
+    cur.execute("SELECT COUNT(*) FROM sys_dataset_item WHERE dataset_id = %s AND deleted = 0", (dataset_id,))
     return cur.fetchone()[0]
 
 
 def delete_dataset_items(cur, conn, dataset_id: int):
-    """级联删除数据集的所有数据项及关联文件记录（用于 --regenerate）。"""
-    cur.execute("SELECT id FROM sys_dataset_item WHERE dataset_id = %s", (dataset_id,))
+    """级联逻辑删除数据集的所有数据项及关联文件记录（用于 --regenerate）。"""
+    cur.execute("SELECT id FROM sys_dataset_item WHERE dataset_id = %s AND deleted = 0", (dataset_id,))
     item_ids = [r[0] for r in cur.fetchall()]
     if not item_ids:
         return
 
     placeholders = ",".join(["%s"] * len(item_ids))
 
-    cur.execute(f"SELECT file_id, thumbnail_file_id FROM sys_item_file WHERE item_id IN ({placeholders})", item_ids)
+    cur.execute(f"SELECT file_id, thumbnail_file_id FROM sys_item_file WHERE item_id IN ({placeholders}) AND deleted = 0", item_ids)
     file_ids = {fid for row in cur.fetchall() for fid in row if fid}
 
-    cur.execute(f"DELETE FROM sys_item_file WHERE item_id IN ({placeholders})", item_ids)
-    cur.execute(f"DELETE FROM sys_dataset_item WHERE id IN ({placeholders})", item_ids)
+    cur.execute(f"UPDATE sys_item_file SET deleted = 1 WHERE item_id IN ({placeholders})", item_ids)
+    cur.execute(f"UPDATE sys_dataset_item SET deleted = 1 WHERE id IN ({placeholders})", item_ids)
 
     if file_ids:
         placeholders = ",".join(["%s"] * len(file_ids))
-        cur.execute(f"DELETE FROM sys_file WHERE id IN ({placeholders})", list(file_ids))
+        cur.execute(f"UPDATE sys_file SET deleted = 1 WHERE id IN ({placeholders})", list(file_ids))
 
     conn.commit()
 
 
 def insert_file_record(cur, conn, *, name, object_name, size_bytes, ext, url, md5, path) -> int:
     """插入 sys_file（MD5 去重），返回 file_id。"""
-    cur.execute("SELECT id FROM sys_file WHERE md5 = %s", (md5,))
+    cur.execute("SELECT id FROM sys_file WHERE md5 = %s AND deleted = 0", (md5,))
     row = cur.fetchone()
     if row:
         return row[0]
 
     cur.execute(
-        "INSERT INTO sys_file (name, object_name, size, size_bytes, type, url, md5, path, create_time) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())",
+        "INSERT INTO sys_file (name, object_name, size, size_bytes, type, url, md5, path) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
         (name, object_name, human_size(size_bytes), size_bytes, ext, url, md5, path),
     )
     return cur.lastrowid

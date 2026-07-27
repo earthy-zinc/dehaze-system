@@ -146,15 +146,15 @@ def scan_wpx_pairs(dataset_root: Path) -> list[dict]:
 
 
 def find_file_id_by_md5(cur, md5: str) -> Optional[int]:
-    cur.execute("SELECT id FROM sys_file WHERE md5 = %s", (md5,))
+    cur.execute("SELECT id FROM sys_file WHERE md5 = %s AND deleted = 0", (md5,))
     row = cur.fetchone()
     return row[0] if row else None
 
 
 def insert_file_record(cur, *, name, object_name, size_bytes, ext, url, md5, path) -> int:
     cur.execute(
-        "INSERT INTO sys_file (name, object_name, size, size_bytes, type, url, md5, path, create_time) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())",
+        "INSERT INTO sys_file (name, object_name, size, size_bytes, type, url, md5, path) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
         (name, object_name, human_size(size_bytes), size_bytes, ext, url, md5, path),
     )
     return cur.lastrowid
