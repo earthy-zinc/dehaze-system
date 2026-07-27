@@ -44,10 +44,9 @@ class SysAlgorithm(BaseModel):
         String(255), comment='模型代码导入路径')
     description: Mapped[Optional[str]] = mapped_column(
         String(2048), comment='针对该模型的详细描述')
-    # 状态机：0=草稿 1=测试中 2=待审核 3=已发布 4=已停用 5=已归档
-    # (Java SysAlgorithm.status 使用 Integer, 支持状态机)
+    # 状态机：1=草稿 2=测试中 3=待审核 4=已发布 5=已停用 6=已归档
     status: Mapped[int] = mapped_column(
-        mysql_types.TINYINT, default=0, comment='状态(0:草稿;1:测试中;2:待审核;3:已发布;4:已停用;5:已归档)')
+        mysql_types.TINYINT, default=1, comment='状态(1:草稿;2:测试中;3:待审核;4:已发布;5:已停用;6:已归档)')
     # 审核字段 (对齐 Java schema/sys_algorithm.sql: audit_by bigint, audit_remark varchar(500))
     audit_by: Mapped[Optional[int]] = mapped_column(
         BigInteger, comment='审核人ID')
@@ -55,6 +54,8 @@ class SysAlgorithm(BaseModel):
         DateTime, comment='审核时间')
     audit_remark: Mapped[Optional[str]] = mapped_column(
         String(500), comment='审核备注')
+    deleted: Mapped[int] = mapped_column(
+        mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')
 
 
 class SysAlgorithmVersion(BaseModel):
@@ -78,3 +79,5 @@ class SysAlgorithmVersion(BaseModel):
     model_file_id: Mapped[Optional[int]] = mapped_column(BigInteger, comment='模型文件ID')
     is_active: Mapped[Optional[int]] = mapped_column(
         mysql_types.TINYINT(1), default=0, comment='是否当前活跃版本')
+    deleted: Mapped[int] = mapped_column(
+        mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')

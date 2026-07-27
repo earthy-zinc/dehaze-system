@@ -6,8 +6,9 @@ from typing import Optional
 
 from app.database import Base
 from app.models.base import BaseModel
-from sqlalchemy import (CHAR, Index, Integer,
+from sqlalchemy import (CHAR, BigInteger, Index, Integer,
                         String, Text)
+from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -19,7 +20,7 @@ class SysFile(BaseModel):
     )
 
     id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True, comment='文件id')
+        BigInteger, primary_key=True, autoincrement=True, comment='文件id')
     type: Mapped[Optional[str]] = mapped_column(
         String(100), nullable=True, comment='文件类型')
     url: Mapped[Optional[str]] = mapped_column(
@@ -36,3 +37,5 @@ class SysFile(BaseModel):
         String(255), nullable=False, comment='文件路径')
     md5: Mapped[str] = mapped_column(CHAR(32), nullable=False, unique=True,
                                      comment='文件的MD5值，用于比对文件是否相同')
+    deleted: Mapped[int] = mapped_column(
+        mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')

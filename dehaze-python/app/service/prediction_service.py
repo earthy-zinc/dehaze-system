@@ -31,6 +31,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_algorithm import SysAlgorithm
 from app.models.entity.sys_file import SysFile
+from app.models.enum.log_status import LogStatus
 from app.repository.algorithm_repository import algorithm_repository
 from app.repository.file_repository import file_repository
 from app.repository.pred_eval_log_repository import pred_log_repository
@@ -181,7 +182,7 @@ class PredictionService:
         # 8. 立即返回 processing
         return {
             "logId": log_id,
-            "status": "processing",
+            "status": LogStatus.PROCESSING.value,
         }
 
     async def _write_completed_log(
@@ -219,7 +220,7 @@ class PredictionService:
 
         result = {
             "logId": log_id,
-            "status": "completed",
+            "status": LogStatus.COMPLETED.value,
             "resultUrl": pred_url,
             "resultMd5": pred_md5,
             "resultThumbnailUrl": None,
@@ -315,7 +316,7 @@ class PredictionService:
                     await pred_log_repository.update_status(
                         db=db,
                         log_id=log_id,
-                        status="failed",
+                        status=LogStatus.FAILED.value,
                         error_message=error_msg,
                         time_ms=elapsed_ms,
                     )

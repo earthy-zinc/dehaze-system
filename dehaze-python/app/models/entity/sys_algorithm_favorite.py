@@ -3,6 +3,7 @@
 """
 from sqlalchemy import BigInteger, Index, DateTime, UniqueConstraint
 from datetime import datetime, timezone
+from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -24,3 +25,5 @@ class SysAlgorithmFavorite(Base):
     create_time: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), comment='收藏时间'
     )
+    deleted: Mapped[int] = mapped_column(
+        mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')

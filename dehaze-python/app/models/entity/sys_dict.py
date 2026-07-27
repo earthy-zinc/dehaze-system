@@ -19,10 +19,12 @@ class SysDict(BaseModel):
     value: Mapped[str] = mapped_column(String(50), default='', comment='字典项值')
     sort: Mapped[int] = mapped_column(Integer, default=0, comment='排序')
     status: Mapped[int] = mapped_column(
-        mysql_types.TINYINT, default=0, comment='状态(1:正常;0:禁用)')
+        mysql_types.TINYINT, default=1, comment='状态(1:正常;0:禁用)')
     defaulted: Mapped[int] = mapped_column(
         mysql_types.TINYINT, default=0, comment='是否默认(1:是;0:否)')
     remark: Mapped[str] = mapped_column(String(255), default='', comment='备注')
+    deleted: Mapped[int] = mapped_column(
+        mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')
 
 
 class SysDictType(BaseModel):
@@ -37,5 +39,7 @@ class SysDictType(BaseModel):
     name: Mapped[str] = mapped_column(String(50), default='', comment='类型名称')
     code: Mapped[str] = mapped_column(String(50), default='', comment='类型编码')
     status: Mapped[int] = mapped_column(
-        mysql_types.TINYINT, default=0, comment='状态(0:正常;1:禁用)')
+        mysql_types.TINYINT, default=1, comment='状态(1:正常;0:禁用)')
     remark: Mapped[str | None] = mapped_column(String(255), comment='备注')
+    deleted: Mapped[int] = mapped_column(
+        mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')

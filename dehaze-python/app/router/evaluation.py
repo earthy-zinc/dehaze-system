@@ -20,6 +20,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.auth import get_current_user, UserContext
 from app.database import get_db
+from app.models.enum.log_status import LogStatus
 from app.models.schema.common import PageResult
 from app.repository.pred_eval_log_repository import eval_log_repository
 from app.service.evaluation_service import evaluation_service
@@ -46,7 +47,7 @@ class EvaluationRequest(BaseModel):
 class EvaluationResponse(BaseModel):
     """评估响应：POST 返回 logId+status；GET 根据 status 返回不同字段"""
     logId: Optional[int] = Field(default=None, description="评估日志ID")
-    status: str = Field(description="任务状态：processing/completed/failed")
+    status: int = Field(description="任务状态(1:处理中;2:已完成;3:失败)")
     metrics: Optional[dict[str, float]] = Field(default=None, description="评估指标（completed 时返回）")
     time: int = Field(default=0, description="处理时间(毫秒)")
     errorMessage: Optional[str] = Field(default=None, description="失败错误信息（failed 时返回）")
@@ -70,7 +71,7 @@ async def evaluate(
     )
     return success(EvaluationResponse(
         logId=result.get("logId"),
-        status=result.get("status", "processing"),
+        status=result.get("status", LogStatus.PROCESSING.value),
     ))
 
 
@@ -82,7 +83,7 @@ class EvaluationLogVO(BaseModel):
     predUrl: Optional[str] = Field(default=None, validation_alias="pred_url", serialization_alias="predUrl", description="预测图URL")
     gtMd5: Optional[str] = Field(default=None, validation_alias="gt_md5", serialization_alias="gtMd5", description="GT图MD5")
     gtUrl: Optional[str] = Field(default=None, validation_alias="gt_url", serialization_alias="gtUrl", description="GT图URL")
-    status: Optional[str] = Field(default=None, description="任务状态：processing/completed/failed")
+    status: Optional[int] = Field(default=None, description="任务状态(1:处理中;2:已完成;3:失败)")
     errorMessage: Optional[str] = Field(default=None, validation_alias="error_message", serialization_alias="errorMessage", description="失败错误信息")
     time: Optional[int] = Field(default=None, description="评估耗时(秒)")
     result: Optional[dict] = Field(default=None, description="评估指标 JSON")
@@ -144,7 +145,7 @@ async def get_evaluation_task(
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "评估任务不存在")
 
     resp = EvaluationResponse(logId=log.id, status=log.status)
-    if log.status == "completed":
+    if log.status == LogStatus.COMPLETED.value:
         if isinstance(log.result, str) and log.result:
             try:
                 resp.metrics = json.loads(log.result)
@@ -153,7 +154,7 @@ async def get_evaluation_task(
         elif isinstance(log.result, dict):
             resp.metrics = log.result
         resp.time = log.time or 0
-    elif log.status == "failed":
+    elif log.status == LogStatus.FAILED.value:
         resp.errorMessage = log.error_message
         resp.time = log.time or 0
     return success(resp)

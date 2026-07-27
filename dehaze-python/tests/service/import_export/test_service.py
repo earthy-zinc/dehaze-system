@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from app.core.code import ResultCode
 from app.core.constants import MAX_ROWS, MAX_IMPORT_FILE_SIZE, SYNC_THRESHOLD
 from app.core.exceptions import BusinessException
+from app.models.enum.task_enum import TaskStatus
 from app.service.import_export.models import (ImportError, ImportOptions,
                                               ImportResult)
 
@@ -153,7 +154,7 @@ class TestExport:
         handler = _AsyncExportHandler("user", SYNC_THRESHOLD + 1)
         export_handler_registry.get_handler = MagicMock(return_value=handler)
 
-        task_data = {"task_id": "task-001", "status": "PENDING"}
+        task_data = {"task_id": "task-001", "status": TaskStatus.PENDING.value}
         with patch("app.service.import_export_service.export_handler_registry", export_handler_registry), \
              patch("app.service.import_export_service.TaskServiceAsync") as TaskSvc:
             TaskSvc.create_task = AsyncMock(return_value=task_data)
@@ -164,7 +165,7 @@ class TestExport:
             )
             assert isinstance(result, dict)
             assert result["taskId"] == "task-001"
-            assert result["status"] == "PENDING"
+            assert result["status"] == TaskStatus.PENDING.value
             assert result["estimatedCount"] == SYNC_THRESHOLD + 1
             TaskSvc.create_task.assert_awaited_once()
 
@@ -299,7 +300,7 @@ class TestImportData:
         content = _valid_csv_bytes(rows_data)
         file = _make_upload_file("test.csv", content, "text/csv")
 
-        task_data = {"task_id": "task-import-001", "status": "PENDING"}
+        task_data = {"task_id": "task-import-001", "status": TaskStatus.PENDING.value}
         with patch("app.service.import_export_service.import_handler_registry", import_handler_registry), \
              patch("app.service.import_export_service.TaskServiceAsync") as TaskSvc, \
              patch("app.service.import_export_service._upload_import_file", new=AsyncMock(return_value="temp/imports/abc.csv")):
@@ -310,7 +311,7 @@ class TestImportData:
                 db=None, redis=None, module="user", file=file, user_id=1
             )
             assert ret["taskId"] == "task-import-001"
-            assert ret["status"] == "PENDING"
+            assert ret["status"] == TaskStatus.PENDING.value
             TaskSvc.create_task.assert_awaited_once()
 
     @pytest.mark.asyncio

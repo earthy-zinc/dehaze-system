@@ -2,15 +2,15 @@
 任务相关枚举
 """
 
-from enum import Enum
+from enum import Enum, IntEnum
 
 
-class TaskStatus(str, Enum):
-    PENDING = 'PENDING'
-    PROCESSING = 'PROCESSING'
-    COMPLETED = 'COMPLETED'
-    FAILED = 'FAILED'
-    CANCELLED = 'CANCELLED'
+class TaskStatus(IntEnum):
+    PENDING = 1
+    PROCESSING = 2
+    COMPLETED = 3
+    FAILED = 4
+    CANCELLED = 5
 
 
 class TaskType(str, Enum):

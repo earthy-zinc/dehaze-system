@@ -22,7 +22,7 @@ class TaskVO(BaseModel):
     id: int = Field(description="任务主键ID")
     taskId: str = Field(description="任务ID（UUID）")
     taskType: str = Field(description="任务类型")
-    status: str = Field(description="任务状态")
+    status: int = Field(description="任务状态(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)")
     progress: int = Field(description="执行进度(0-100)")
     totalFiles: int = Field(default=0, description="总文件数")
     processedFiles: Optional[int] = Field(default=0, description="已处理文件数")
@@ -45,13 +45,13 @@ class TaskPageVO(BaseModel):
 
 class ExportTaskVO(BaseModel):
     taskId: str = Field(description="任务ID")
-    status: str = Field(description="任务状态")
+    status: int = Field(description="任务状态(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)")
     estimatedCount: int = Field(default=0, description="预估数据量")
 
 
 class ImportTaskVO(BaseModel):
     taskId: str = Field(description="任务ID")
-    status: str = Field(description="任务状态")
+    status: int = Field(description="任务状态(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)")
 
 
 class ImportErrorVO(BaseModel):

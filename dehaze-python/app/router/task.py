@@ -42,8 +42,8 @@ def _dict_to_task_data(task_data: dict) -> TaskData:
 
 @router.get("", response_model=Result[TaskPageVO], summary="查询任务列表")
 async def list_tasks(
-    status_filter: str | None = Query(
-        default=None, alias="status", description="状态筛选"),
+    status_filter: int | None = Query(
+        default=None, alias="status", description="状态筛选(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)"),
     task_type: str | None = Query(
         default=None, alias="taskType", description="类型筛选"),
     task_category: str | None = Query(
@@ -56,7 +56,7 @@ async def list_tasks(
     """
     查询当前用户的任务列表（分页+状态筛选）
 
-    - **status**: 状态筛选（pending/processing/completed/failed/cancelled）
+    - **status**: 状态筛选（1:待处理/2:处理中/3:已完成/4:失败/5:已取消）
     - **taskType**: 类型筛选
     - **taskCategory**: 类别筛选（import/export）
     - **pageNum**: 页码（从1开始）

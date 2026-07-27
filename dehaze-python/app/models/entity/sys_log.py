@@ -5,9 +5,11 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import CHAR, JSON, Column, DateTime, Index, Integer, String, Text, BigInteger
+from sqlalchemy.dialects import mysql as mysql_types
 
 from app.database import Base
 from app.models.base import BaseModel
+from app.models.enum.log_status import LogStatus
 
 
 class SysPredLog(BaseModel):
@@ -29,7 +31,7 @@ class SysPredLog(BaseModel):
     pred_md5 = Column(CHAR(32), nullable=False, comment='预测图像md5值')
     pred_url = Column(Text, nullable=False, comment='预测图像url')
     time = Column(Integer, default=0, comment='推理时间（秒）')
-    status = Column(String(20), nullable=False, default='completed', comment='任务状态：processing/completed/failed')
+    status = Column(mysql_types.TINYINT, nullable=False, default=LogStatus.COMPLETED.value, comment='任务状态(1:处理中;2:已完成;3:失败)')
     error_message = Column(Text, nullable=True, comment='失败错误信息')
 
 
@@ -52,7 +54,7 @@ class SysEvalLog(BaseModel):
     gt_md5 = Column(CHAR(32), nullable=False, comment='真值图像md5值')
     gt_url = Column(Text, nullable=False, comment='真值图像url')
     time = Column(Integer, default=0, comment='评估时间（秒）')
-    status = Column(String(20), nullable=False, default='completed', comment='任务状态：processing/completed/failed')
+    status = Column(mysql_types.TINYINT, nullable=False, default=LogStatus.COMPLETED.value, comment='任务状态(1:处理中;2:已完成;3:失败)')
     error_message = Column(Text, nullable=True, comment='失败错误信息')
     result = Column(JSON, comment='预测结果')
 

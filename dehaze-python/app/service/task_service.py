@@ -164,7 +164,7 @@ class TaskServiceAsync:
     async def list_tasks(
         db: AsyncSession,
         user_id: int,
-        status: Optional[str] = None,
+        status: Optional[int] = None,
         task_type: Optional[str] = None,
         task_category: Optional[str] = None,
         page: int = 1,

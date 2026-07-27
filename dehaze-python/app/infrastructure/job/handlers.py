@@ -421,8 +421,8 @@ async def cleanup_stuck_pred_eval_logs() -> str:
     """
     回收预测/评估僵尸任务
 
-    扫描 status='processing' AND update_time < NOW() - 10 MINUTE 的记录，
-    标记为 status='failed', error_message='任务执行超时，服务可能已重启'。
+    扫描 status=1(处理中) AND update_time < NOW() - 10 MINUTE 的记录，
+    标记为 status=3(失败), error_message='任务执行超时，服务可能已重启'。
     与 Java PredEvalLogCleanupJob、Go cleanupStuckPredEvalLogs 对齐。
 
     CRON 建议: 0 * * * * ? （每 60 秒）

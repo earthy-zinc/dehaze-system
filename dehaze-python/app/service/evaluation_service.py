@@ -14,6 +14,7 @@ import time
 from typing import Optional
 
 from app.database import get_db_session
+from app.models.enum.log_status import LogStatus
 from app.repository.pred_eval_log_repository import eval_log_repository
 from app.service.prediction_service import prediction_service
 from app.utils.file import calculate_bytes_md5
@@ -109,7 +110,7 @@ class EvaluationService:
         # 6. 立即返回 processing
         return {
             "logId": log_id,
-            "status": "processing",
+            "status": LogStatus.PROCESSING.value,
         }
 
     async def _execute_async(
@@ -161,7 +162,7 @@ class EvaluationService:
                     await eval_log_repository.update_status(
                         db=db,
                         log_id=log_id,
-                        status="failed",
+                        status=LogStatus.FAILED.value,
                         error_message=error_msg,
                         time_ms=elapsed_ms,
                     )

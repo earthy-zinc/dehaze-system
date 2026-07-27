@@ -42,7 +42,7 @@ class SysDataset(BaseModel):
         mysql_types.TINYINT, default=0, comment='逻辑删除标识(1:已删除;0:未删除)')
 
 
-class SysDatasetItem(Base):
+class SysDatasetItem(BaseModel):
     __tablename__ = 'sys_dataset_item'
     __table_args__ = (
         Index('idx_dataset_id', 'dataset_id'),
@@ -54,10 +54,8 @@ class SysDatasetItem(Base):
     dataset_id: Mapped[int] = mapped_column(
         BigInteger, nullable=False, comment='所属数据集id')
     name: Mapped[str | None] = mapped_column(String(64), comment='数据项名称')
-    create_time: Mapped[str | None] = mapped_column(
-        String(32), comment='创建时间')
-    update_time: Mapped[str | None] = mapped_column(
-        String(32), comment='更新时间')
+    deleted: Mapped[int] = mapped_column(
+        mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')
 
 
 class SysItemFile(Base):
@@ -82,3 +80,5 @@ class SysItemFile(Base):
     haze_level: Mapped[str] = mapped_column(
         String(32), default='未标注', comment='雾霾程度标识，支持多种规范：light/medium/heavy（人工分级），beta=0.5（β参数），A=0.8,beta=0.2（大气光A+β双参数），空值表示未标注或无雾')
     description: Mapped[str | None] = mapped_column(String(255), comment='描述')
+    deleted: Mapped[int] = mapped_column(
+        mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')

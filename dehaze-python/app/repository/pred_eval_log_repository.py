@@ -10,6 +10,7 @@ from sqlalchemy import select, func, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_log import SysPredLog, SysEvalLog
+from app.models.enum.log_status import LogStatus
 from app.repository.base import BaseRepository
 
 
@@ -35,7 +36,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
             pred_md5="",
             pred_url="",
             time=0,
-            status="processing",
+            status=LogStatus.PROCESSING.value,
         )
         return await self.create(db, log)
 
@@ -52,7 +53,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
             update(SysPredLog)
             .where(SysPredLog.id == log_id)
             .values(
-                status="completed",
+                status=LogStatus.COMPLETED.value,
                 pred_md5=pred_md5,
                 pred_url=pred_url,
                 time=time_ms // 1000,
@@ -65,7 +66,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         self,
         db: AsyncSession,
         log_id: int,
-        status: str,
+        status: int,
         error_message: str,
         time_ms: int,
     ) -> None:
@@ -104,7 +105,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
             pred_md5=pred_md5,
             pred_url=pred_url,
             time=time_ms // 1000,
-            status="completed",
+            status=LogStatus.COMPLETED.value,
         )
         return await self.create(db, log)
 
@@ -131,11 +132,11 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         stmt = (
             update(SysPredLog)
             .where(
-                SysPredLog.status == "processing",
+                SysPredLog.status == LogStatus.PROCESSING.value,
                 SysPredLog.update_time < threshold,
             )
             .values(
-                status="failed",
+                status=LogStatus.FAILED.value,
                 error_message="任务执行超时，服务可能已重启",
             )
         )
@@ -170,7 +171,7 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
             gt_md5=gt_md5,
             gt_url=gt_url,
             time=0,
-            status="processing",
+            status=LogStatus.PROCESSING.value,
         )
         return await self.create(db, log)
 
@@ -186,7 +187,7 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
             update(SysEvalLog)
             .where(SysEvalLog.id == log_id)
             .values(
-                status="completed",
+                status=LogStatus.COMPLETED.value,
                 result=json.dumps(result) if isinstance(result, dict) else result,
                 time=time_ms // 1000,
             )
@@ -198,7 +199,7 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
         self,
         db: AsyncSession,
         log_id: int,
-        status: str,
+        status: int,
         error_message: str,
         time_ms: int,
     ) -> None:
@@ -238,7 +239,7 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
             gt_md5=gt_md5,
             gt_url=gt_url,
             time=time_ms // 1000,
-            status="completed",
+            status=LogStatus.COMPLETED.value,
             result=json.dumps(result) if isinstance(result, dict) else result,
         )
         return await self.create(db, log)
@@ -266,11 +267,11 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
         stmt = (
             update(SysEvalLog)
             .where(
-                SysEvalLog.status == "processing",
+                SysEvalLog.status == LogStatus.PROCESSING.value,
                 SysEvalLog.update_time < threshold,
             )
             .values(
-                status="failed",
+                status=LogStatus.FAILED.value,
                 error_message="任务执行超时，服务可能已重启",
             )
         )

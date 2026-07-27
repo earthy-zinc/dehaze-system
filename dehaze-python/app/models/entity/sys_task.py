@@ -8,6 +8,7 @@ from typing import Optional
 from app.models.base import BaseModel
 from sqlalchemy import (BigInteger, DateTime, Index, Integer, String,
                         Text)
+from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -27,8 +28,8 @@ class SysTask(BaseModel):
         String(64), nullable=False, unique=True, comment='任务ID')
     task_type: Mapped[str] = mapped_column(
         String(32), nullable=False, comment='任务类型')
-    status: Mapped[str] = mapped_column(
-        String(16), nullable=False, comment='任务状态')
+    status: Mapped[int] = mapped_column(
+        mysql_types.TINYINT, nullable=False, default=1, comment='任务状态(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)')
     progress: Mapped[int] = mapped_column(Integer, default=0, comment='任务进度')
     total_files: Mapped[Optional[int]] = mapped_column(Integer, comment='总文件数')
     processed_files: Mapped[int] = mapped_column(

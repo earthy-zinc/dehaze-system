@@ -18,6 +18,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.auth import get_current_user, UserContext
 from app.database import get_db
+from app.models.enum.log_status import LogStatus
 from app.models.schema.common import PageResult
 from app.repository.pred_eval_log_repository import pred_log_repository
 from app.service.prediction_service import prediction_service
@@ -40,7 +41,7 @@ class PredictionRequest(BaseModel):
 class PredictionResponse(BaseModel):
     """预测响应：POST 返回 logId+status；GET 根据 status 返回不同字段"""
     logId: Optional[int] = Field(default=None, description="预测日志ID")
-    status: str = Field(description="任务状态：processing/completed/failed")
+    status: int = Field(description="任务状态(1:处理中;2:已完成;3:失败)")
     resultUrl: Optional[str] = Field(default=None, description="处理后的图片URL（completed 时返回）")
     resultThumbnailUrl: Optional[str] = Field(default=None, description="缩略图URL（completed 时返回）")
     time: int = Field(default=0, description="处理时间(毫秒)")
@@ -84,7 +85,7 @@ async def predict(
 
     return success(PredictionResponse(
         logId=result.get("logId"),
-        status=result.get("status", "processing"),
+        status=result.get("status", LogStatus.PROCESSING.value),
         resultUrl=result.get("resultUrl"),
         resultThumbnailUrl=result.get("resultThumbnailUrl"),
         time=result.get("time", 0),
@@ -99,7 +100,7 @@ class PredictionLogVO(BaseModel):
     originUrl: Optional[str] = Field(default=None, validation_alias="origin_url", serialization_alias="originUrl", description="原图URL")
     predMd5: Optional[str] = Field(default=None, validation_alias="pred_md5", serialization_alias="predMd5", description="预测结果MD5")
     predUrl: Optional[str] = Field(default=None, validation_alias="pred_url", serialization_alias="predUrl", description="预测结果URL")
-    status: Optional[str] = Field(default=None, description="任务状态：processing/completed/failed")
+    status: Optional[int] = Field(default=None, description="任务状态(1:处理中;2:已完成;3:失败)")
     errorMessage: Optional[str] = Field(default=None, validation_alias="error_message", serialization_alias="errorMessage", description="失败错误信息")
     time: Optional[int] = Field(default=None, description="推理耗时(秒)")
     createTime: Optional[datetime] = Field(default=None, validation_alias="create_time", serialization_alias="createTime", description="创建时间")
@@ -142,10 +143,10 @@ async def get_prediction_task(
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "预测任务不存在")
 
     resp = PredictionResponse(logId=log.id, status=log.status)
-    if log.status == "completed":
+    if log.status == LogStatus.COMPLETED.value:
         resp.resultUrl = log.pred_url
         resp.time = log.time or 0
-    elif log.status == "failed":
+    elif log.status == LogStatus.FAILED.value:
         resp.errorMessage = log.error_message
         resp.time = log.time or 0
     return success(resp)

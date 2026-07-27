@@ -97,7 +97,7 @@ class AlgorithmService:
             path=data.get("path", ""),
             import_path=data.get("importPath", ""),
             description=data.get("description", ""),
-            status=data.get("status", 0),
+            status=data.get("status", AlgorithmStatus.DRAFT),
             version=data.get("version"),
         )
 
@@ -173,9 +173,9 @@ class AlgorithmService:
         """
         修改算法状态（对齐 Java validateStatusTransition 逻辑）
 
-        - 校验目标状态是合法枚举值 (0-5)
-        - 终态(已发布3/已停用4)不允许变更，已归档(5)除外
-        - 不允许直接跳转到已发布(3)，必须从待审核(2)流转
+        - 校验目标状态是合法枚举值 (1-6)
+        - 终态(已发布4/已停用5)不允许变更，已归档(6)除外
+        - 不允许直接跳转到已发布(4)，必须从待审核(3)流转
         """
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
