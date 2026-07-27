@@ -79,6 +79,7 @@ async def predict(
         image_url=image_url,
         params=params,
         user_id=user.id,
+        file_id=body.fileId,
     )
 
     return success(PredictionResponse(

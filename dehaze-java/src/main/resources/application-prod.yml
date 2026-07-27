@@ -100,11 +100,9 @@ management:
 file:
   # OSS 类型 (目前支持aliyun、minio)
   type: minio
-  # 是否基于 datasetPath 初始化数据集
-  init: false
   # 上传文件基于url
   baseUrl: http://10.16.12.65:8989/api/v1/files/download
-  # 初始化数据集所在文件夹
+  # 数据集根目录
   datasetPath: /app/dataset
   # nginx-dataset 静态服务基础 URL
   datasetBaseUrl: http://127.0.0.1:9000

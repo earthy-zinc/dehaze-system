@@ -9,6 +9,7 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.model.entity.SysAlgorithm;
+import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.model.form.PredictionForm;
 import com.pei.dehaze.model.query.PredLogQuery;
@@ -17,6 +18,9 @@ import com.pei.dehaze.model.vo.PredictionResultVO;
 import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysPredLogService;
+import com.pei.dehaze.service.prediction.InterceptedResult;
+import com.pei.dehaze.service.prediction.PredictionContext;
+import com.pei.dehaze.service.prediction.PredictionInterceptorChain;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +29,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,26 +41,47 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
     private final SysAlgorithmService algorithmService;
     private final SysFileService sysFileService;
     private final PredLogAsyncTask asyncTask;
+    private final PredictionInterceptorChain interceptorChain;
 
     @Value("${file.datasetBaseUrl}")
     private String datasetBaseUrl;
 
     @Override
     public PredictionResultVO predict(PredictionForm form) {
+        long startTimeMs = System.currentTimeMillis();
+
         SysAlgorithm algorithm = algorithmService.getById(form.getAlgorithmId());
         if (algorithm == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
 
-        String imageUrl = resolveImageUrl(form);
+        SysFile originFile = form.getFileId() != null ? sysFileService.getById(form.getFileId()) : null;
+        String imageUrl = resolveImageUrl(form, originFile);
         if (CharSequenceUtil.isBlank(imageUrl)) {
             throw new BusinessException("图片来源不能为空，请提供 fileId 或 imageUrl");
+        }
+
+        PredictionContext context = PredictionContext.builder()
+                .algorithm(algorithm)
+                .fileId(form.getFileId())
+                .imageUrl(imageUrl)
+                .originFile(originFile)
+                .params(form.getParams())
+                .startTimeMs(startTimeMs)
+                .build();
+
+        Optional<InterceptedResult> hit = interceptorChain.intercept(context);
+        if (hit.isPresent()) {
+            return buildCompletedResult(form, algorithm, originFile, imageUrl, hit.get(), startTimeMs);
         }
 
         SysPredLog predLog = new SysPredLog();
         predLog.setAlgorithmId(form.getAlgorithmId());
         if (form.getFileId() != null) {
             predLog.setOriginFileId(form.getFileId());
+        }
+        if (originFile != null) {
+            predLog.setOriginMd5(originFile.getMd5());
         }
         predLog.setOriginUrl(imageUrl);
         predLog.setStatus("processing");
@@ -66,6 +92,34 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
         PredictionResultVO vo = new PredictionResultVO();
         vo.setLogId(predLog.getId());
         vo.setStatus("processing");
+        return vo;
+    }
+
+    private PredictionResultVO buildCompletedResult(PredictionForm form, SysAlgorithm algorithm, SysFile originFile,
+                                                    String imageUrl, InterceptedResult result, long startTimeMs) {
+        int elapsed = (int) (System.currentTimeMillis() - startTimeMs);
+
+        SysPredLog predLog = new SysPredLog();
+        predLog.setAlgorithmId(algorithm.getId());
+        if (form.getFileId() != null) {
+            predLog.setOriginFileId(form.getFileId());
+        }
+        if (originFile != null) {
+            predLog.setOriginMd5(originFile.getMd5());
+        }
+        predLog.setOriginUrl(imageUrl);
+        predLog.setPredFileId(result.getResultFileId());
+        predLog.setPredMd5(result.getResultMd5());
+        predLog.setPredUrl(result.getResultUrl());
+        predLog.setStatus("completed");
+        predLog.setTime(elapsed);
+        this.save(predLog);
+
+        PredictionResultVO vo = new PredictionResultVO();
+        vo.setLogId(predLog.getId());
+        vo.setStatus("completed");
+        vo.setResultUrl(result.getResultUrl());
+        vo.setTime(elapsed);
         return vo;
     }
 
@@ -97,11 +151,10 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
         return voPage;
     }
 
-    private String resolveImageUrl(PredictionForm form) {
+    private String resolveImageUrl(PredictionForm form, SysFile originFile) {
         if (form.getFileId() != null) {
-            com.pei.dehaze.model.entity.SysFile sysFile = sysFileService.getById(form.getFileId());
-            if (sysFile != null && CharSequenceUtil.isNotBlank(sysFile.getUrl())) {
-                return toAbsoluteUrl(sysFile.getUrl());
+            if (originFile != null && CharSequenceUtil.isNotBlank(originFile.getUrl())) {
+                return toAbsoluteUrl(originFile.getUrl());
             }
             log.warn("文件不存在或 URL 为空: fileId={}", form.getFileId());
             return null;

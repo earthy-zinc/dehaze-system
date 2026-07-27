@@ -12,6 +12,7 @@ from app.models.entity.sys_log import SysPredLog, SysEvalLog, SysOperationLog, S
 from app.models.entity.sys_menu import SysMenu, SysRoleMenu
 from app.models.entity.sys_task import SysTask
 from app.models.entity.sys_user import SysUser, SysRole, SysUserRole
+from app.models.entity.sys_wpx_file import SysWpxFile
 
 __all__ = [
     # 文件相关
@@ -42,4 +43,6 @@ __all__ = [
     'SysLoginLog',
     # 任务
     'SysTask',
+    # WPX 文件映射
+    'SysWpxFile',
 ]

@@ -8,6 +8,8 @@ from typing import Optional
 from sqlalchemy import delete, select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.models.entity.sys_algorithm import SysAlgorithm, SysAlgorithmVersion
 from app.models.entity.sys_log import SysPredLog
 from app.repository.base import BaseRepository
@@ -62,6 +64,26 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         for algorithm_id in algorithm_ids:
             all_ids.update(bfs_collect_ids(algorithm_id, children_map))
         return list(all_ids)
+
+    async def get_root_algorithm(
+        self,
+        db: AsyncSession,
+        algorithm_id: int,
+    ) -> SysAlgorithm:
+        """获取算法的根节点（parent_id == 0 的祖先）"""
+        algorithm = await self.get_by_id(db, algorithm_id)
+        if algorithm is None:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "当前算法不存在")
+
+        all_algorithms = await self.get_list_with_keywords(db)
+        id_to_node = {a.id: a for a in all_algorithms}
+
+        while algorithm.parent_id != 0:
+            parent = id_to_node.get(algorithm.parent_id)
+            if parent is None:
+                raise BusinessException("无法获取算法根节点")
+            algorithm = parent
+        return algorithm
 
     async def delete_by_ids(
         self,

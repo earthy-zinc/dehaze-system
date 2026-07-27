@@ -29,6 +29,7 @@ from app.models.entity import (
     SysEvalLog,
     SysOperationLog,
     SysTask,
+    SysWpxFile,
 )
 # 枚举类型
 from app.models.enum import (
@@ -56,6 +57,7 @@ __all__ = [
     'SysEvalLog',
     'SysOperationLog',
     'SysTask',
+    'SysWpxFile',
     # 枚举
     'TaskStatus',
     'TaskType',

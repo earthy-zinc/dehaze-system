@@ -168,7 +168,10 @@ dehaze-python/
 │   │   ├── task_tracker.py           # 任务追踪管理器（优雅关闭 + 跨 Worker Redis 同步）
 │   │   ├── websocket_service.py      # WebSocket 连接管理（跨 Worker Redis Pub/Sub）
 │   │   ├── file_service.py           # 文件服务（MinIO 上传/下载/删除）
-│   │   ├── prediction_service.py     # 去雾推理服务（PyTorch + run_in_executor）
+│   │   ├── prediction_service.py     # 去雾推理服务（PyTorch + run_in_executor + 拦截器链）
+│   │   ├── prediction/               # 预测拦截器包（可插拔插件）
+│   │   │   ├── interceptor.py        # PredictionInterceptor ABC + 责任链
+│   │   │   └── wpxnet_interceptor.py # WPXNet 预查询拦截器（sys_wpx_file 表查表短路）
 │   │   ├── file_events.py            # 文件事件总线（FileCreatedEvent / FileDeletedEvent）
 │   │   ├── storage/                  # 存储抽象层（策略模式）
 │   │   │   ├── base.py               # StorageService 抽象基类
@@ -1486,7 +1489,88 @@ flowchart TB
 
 > 详细的接口设计、处理器实现、三端对齐要点详见 [通用导入导出改造方案](../../05-改造计划/通用导入导出改造.md) 和 [任务管理/后端实现.md](../../03-模块设计/基础模块/任务管理/后端实现.md)。
 
-### 2.17 技术栈总览
+### 2.17 预测流程插件化（拦截器链）
+
+预测主流程通过 **责任链模式** 支持可插拔拦截器，新增预查询/缓存逻辑无需修改 `PredictionService.predict()` 主流程，只需实现 `PredictionInterceptor` 接口并在 `_build_interceptor_chain()` 中注册。
+
+#### 2.17.1 核心组件
+
+| 组件 | 路径 | 职责 |
+|------|------|------|
+| `PredictionContext` | `service/prediction/interceptor.py` | 请求上下文（algorithm / file_id / image_url / origin_file / params） |
+| `InterceptedResult` | `service/prediction/interceptor.py` | 拦截命中后返回的结果（result_url / result_md5 / result_file_id） |
+| `PredictionInterceptor` (ABC) | `service/prediction/interceptor.py` | 拦截器抽象基类，子类实现 `intercept(context)` |
+| `PredictionInterceptorChain` | `service/prediction/interceptor.py` | 责任链：按注册顺序执行，第一个命中即短路 |
+| `WpxNetPredictionInterceptor` | `service/prediction/wpxnet_interceptor.py` | WPXNet 预查询：通过 `sys_wpx_file` 表查表短路 |
+
+#### 2.17.2 执行流程
+
+```
+POST /api/v1/prediction
+    ↓
+校验算法、查询原始文件（fileId 存在时）
+    ↓
+调用拦截器链 interceptorChain.intercept(context)
+    ↓
+┌──────────────────────────────────────┐
+│  命中（返回非 None）                  │
+│  • 写 completed 日志                  │
+│  • 返回完整结果（含 resultUrl）       │
+│  • 不下载图片、不调用算法             │
+└──────────────────────────────────────┘
+    ↓ 未命中
+下载图片、计算 MD5
+    ↓
+查询 Redis 运行时缓存（24h TTL）
+    ↓
+┌──────────────────────────────────────┐
+│  缓存命中                             │
+│  • 写 completed 日志                  │
+│  • 返回完整结果                       │
+└──────────────────────────────────────┘
+    ↓ 未命中
+创建 processing 日志，提交 asyncio.create_task
+立即返回 { logId, status: "processing" }
+```
+
+#### 2.17.3 WPXNet 预查询拦截器
+
+针对 WPXNet 系列子算法（如 `WPXNet/DENSE-HAZE`、`WPXNet/NH-HAZE`），系统已通过 `scripts/init_wpx_file.py` 预计算并写入 `sys_wpx_file` 表的 MD5 映射（origin_md5 → new_file_id）。
+
+命中条件：
+1. 算法根节点名称包含 `WPXNet`
+2. 请求携带 `fileId` 且对应 `SysFile.md5` 在 `sys_wpx_file` 表中存在映射
+3. 映射的 `new_file_id` 对应的 `SysFile` 记录存在
+
+命中后直接返回 `new_file.url` 作为结果，跳过 PyTorch 推理，响应时延从秒级降至毫秒级。
+
+> 前置数据由 [scripts/init_wpx_file.py](../../../scripts/init_wpx_file.py) 建立，WPX 预处理图通过 nginx-dataset（端口 9000）静态服务访问，不走 MinIO。
+
+#### 2.17.4 新增拦截器示例
+
+```python
+class MyInterceptor(PredictionInterceptor):
+    async def intercept(self, context: PredictionContext) -> Optional[InterceptedResult]:
+        if not self._should_handle(context):
+            return None
+        return InterceptedResult(
+            result_url="...",
+            result_md5="...",
+            result_file_id=None,
+        )
+```
+
+在 `prediction_service.py` 的 `_build_interceptor_chain()` 中注册：
+
+```python
+def _build_interceptor_chain() -> PredictionInterceptorChain:
+    return PredictionInterceptorChain([
+        WpxNetPredictionInterceptor(),
+        MyInterceptor(),
+    ])
+```
+
+### 2.18 技术栈总览
 
 | 分类 | 技术 | 版本 | 用途 |
 |------|------|------|------|

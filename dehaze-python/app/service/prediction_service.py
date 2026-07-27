@@ -2,6 +2,7 @@
 预测服务 —— 编排算法预测流程（异步任务模式）
 
 调用算法模块的 dehaze() 函数，管理输入/输出/存储
+- 可插拔拦截器链（如 WPXNet 预查询）：命中即短路，不调用算法
 - 基于 (algorithmId, imageMd5) 的 Redis 缓存（24h TTL）
 - 预测日志写入 sys_pred_log，状态机：processing → completed/failed
 - POST 立即返回 logId + status=processing，asyncio.create_task 后台执行
@@ -29,8 +30,16 @@ from app.infrastructure.metrics.inference_metrics import record_inference_metric
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_algorithm import SysAlgorithm
+from app.models.entity.sys_file import SysFile
 from app.repository.algorithm_repository import algorithm_repository
+from app.repository.file_repository import file_repository
 from app.repository.pred_eval_log_repository import pred_log_repository
+from app.service.prediction import (
+    InterceptedResult,
+    PredictionContext,
+    PredictionInterceptorChain,
+)
+from app.service.prediction.wpxnet_interceptor import WpxNetPredictionInterceptor
 from app.utils.file import calculate_bytes_md5
 from algorithm.config import algorithm_config
 
@@ -44,6 +53,13 @@ PREDICTION_CACHE_TTL = 24 * 60 * 60
 # 限制并发数避免线程过多导致 GIL 争抢和内存爆炸。
 _inference_executor = ThreadPoolExecutor(
     max_workers=2, thread_name_prefix="algo-inference")
+
+
+def _build_interceptor_chain() -> PredictionInterceptorChain:
+    """构建预测拦截器责任链（新增插件在此注册）"""
+    return PredictionInterceptorChain([
+        WpxNetPredictionInterceptor(),
+    ])
 
 
 class PredictionService:
@@ -61,69 +77,92 @@ class PredictionService:
         "DarkChannelPrior": "DCP",
     }
 
+    def __init__(self):
+        self._interceptor_chain = _build_interceptor_chain()
+
     async def predict(
         self,
         algorithm_id: int,
         image_url: str,
         params: Optional[dict] = None,
         user_id: Optional[int] = None,
+        file_id: Optional[int] = None,
     ) -> dict:
         """
         提交预测任务（异步）
 
         流程：
-        1. 校验算法、下载图片、计算 MD5
-        2. 命中缓存 → 直接写 completed 日志并返回完整结果
-        3. 未命中 → 创建 processing 日志，提交 asyncio.create_task 后立即返回
+        1. 校验算法
+        2. 命中拦截器（如 WPXNet 预查询） → 直接写 completed 日志并返回完整结果
+        3. 下载图片、计算 MD5，命中 Redis 缓存 → 直接写 completed 日志并返回完整结果
+        4. 未命中 → 创建 processing 日志，提交 asyncio.create_task 后立即返回
 
         Returns:
-            缓存命中：{logId, status: "completed", resultUrl, resultMd5, time}
-            未命中：  {logId, status: "processing"}
+            命中：{logId, status: "completed", resultUrl, resultMd5, time}
+            未命中：{logId, status: "processing"}
         """
         start = time.time()
 
         # 1. 从数据库获取算法信息
         algorithm = await self.get_algorithm(algorithm_id)
 
-        # 2. 下载输入图片
+        # 2. 如果 fileId 存在，查询原始文件（含 md5），供拦截器使用
+        origin_file: Optional[SysFile] = None
+        if file_id is not None:
+            async with async_session_factory() as db:
+                origin_file = await file_repository.get_by_id(db, file_id)
+
+        # 3. 调用拦截器链（命中即短路，不调用算法）
+        context = PredictionContext(
+            algorithm=algorithm,
+            file_id=file_id,
+            image_url=image_url,
+            origin_file=origin_file,
+            params=params,
+            start_time_ms=int(start * 1000),
+        )
+        intercepted = await self._interceptor_chain.intercept(context)
+        if intercepted is not None:
+            elapsed = int((time.time() - start) * 1000)
+            logger.info(
+                "预测拦截器命中: algorithmId=%s, resultUrl=%s",
+                algorithm_id, intercepted.result_url,
+            )
+            return await self._write_completed_log(
+                algorithm_id=algorithm_id,
+                origin_md5=origin_file.md5 if origin_file else "",
+                origin_url=image_url,
+                pred_md5=intercepted.result_md5,
+                pred_url=intercepted.result_url,
+                pred_file_id=intercepted.result_file_id,
+                origin_file_id=file_id,
+                time_ms=elapsed,
+                user_id=user_id,
+            )
+
+        # 4. 下载输入图片
         image_bytes = await self.download_image(image_url)
         image_md5 = calculate_bytes_md5(image_bytes)
 
-        # 3. 查询 Redis 缓存（基于 algorithmId + imageMd5）
+        # 5. 查询 Redis 缓存（基于 algorithmId + imageMd5）
         cache_key = f"prediction:{algorithm_id}:{image_md5}"
         cached = await self._get_cached_prediction(cache_key)
         if cached is not None:
             elapsed = int((time.time() - start) * 1000)
             logger.info("预测缓存命中: algorithmId=%s, md5=%s", algorithm_id, image_md5)
+            return await self._write_completed_log(
+                algorithm_id=algorithm_id,
+                origin_md5=image_md5,
+                origin_url=image_url,
+                pred_md5=cached.get("resultMd5", ""),
+                pred_url=cached["resultUrl"],
+                origin_file_id=file_id,
+                time_ms=elapsed,
+                user_id=user_id,
+                extra=cached,
+            )
 
-            # 缓存命中直接写 completed 日志并返回完整结果
-            from app.models.base import set_current_user_id
-            set_current_user_id(user_id)
-            try:
-                async with get_db_session() as db:
-                    log = await pred_log_repository.create_log(
-                        db=db,
-                        algorithm_id=algorithm_id,
-                        origin_md5=image_md5,
-                        origin_url=image_url,
-                        pred_md5=cached.get("resultMd5", ""),
-                        pred_url=cached["resultUrl"],
-                        time_ms=elapsed,
-                    )
-                    log_id = log.id
-            finally:
-                set_current_user_id(None)
-
-            return {
-                "logId": log_id,
-                "status": "completed",
-                "resultUrl": cached["resultUrl"],
-                "resultMd5": cached.get("resultMd5", ""),
-                "resultThumbnailUrl": cached.get("resultThumbnailUrl"),
-                "time": elapsed,
-            }
-
-        # 4. 缓存未命中：创建 processing 日志
+        # 6. 缓存未命中：创建 processing 日志
         from app.models.base import set_current_user_id
         set_current_user_id(user_id)
         try:
@@ -133,12 +172,13 @@ class PredictionService:
                     algorithm_id=algorithm_id,
                     origin_md5=image_md5,
                     origin_url=image_url,
+                    origin_file_id=file_id,
                 )
                 log_id = log.id
         finally:
             set_current_user_id(None)
 
-        # 5. 提交异步任务（不等待完成）
+        # 7. 提交异步任务（不等待完成）
         loop = asyncio.get_running_loop()
         loop.create_task(self._execute_async(
             log_id=log_id,
@@ -150,11 +190,56 @@ class PredictionService:
             user_id=user_id,
         ))
 
-        # 6. 立即返回 processing
+        # 8. 立即返回 processing
         return {
             "logId": log_id,
             "status": "processing",
         }
+
+    async def _write_completed_log(
+        self,
+        algorithm_id: int,
+        origin_md5: str,
+        origin_url: str,
+        pred_md5: str,
+        pred_url: str,
+        time_ms: int,
+        user_id: Optional[int] = None,
+        origin_file_id: Optional[int] = None,
+        pred_file_id: Optional[int] = None,
+        extra: Optional[dict] = None,
+    ) -> dict:
+        """写 completed 日志并返回完整结果（拦截器命中 / 缓存命中共用）"""
+        from app.models.base import set_current_user_id
+        set_current_user_id(user_id)
+        try:
+            async with get_db_session() as db:
+                log = await pred_log_repository.create_log(
+                    db=db,
+                    algorithm_id=algorithm_id,
+                    origin_md5=origin_md5,
+                    origin_url=origin_url,
+                    pred_md5=pred_md5,
+                    pred_url=pred_url,
+                    time_ms=time_ms,
+                    origin_file_id=origin_file_id,
+                    pred_file_id=pred_file_id,
+                )
+                log_id = log.id
+        finally:
+            set_current_user_id(None)
+
+        result = {
+            "logId": log_id,
+            "status": "completed",
+            "resultUrl": pred_url,
+            "resultMd5": pred_md5,
+            "resultThumbnailUrl": None,
+            "time": time_ms,
+        }
+        if extra:
+            result["resultThumbnailUrl"] = extra.get("resultThumbnailUrl")
+        return result
 
     async def _execute_async(
         self,
