@@ -13,6 +13,8 @@ import { FileAPI, ModelAPI } from "dehaze-sdk-js";
 import { UploadFile, UploadUserFile } from "element-plus";
 
 const algorithmStore = useAlgorithmStore();
+
+defineOptions({ name: "PresentationDehaze" });
 const imageShowStore = useImageShowStore();
 
 const { imageInfo } = toRefs(imageShowStore);

@@ -201,7 +201,7 @@ import { Refresh } from "@element-plus/icons-vue";
 import { useTaskStore } from "@/store";
 
 defineOptions({
-  name: "TaskCenter",
+  name: "TaskList",
   inheritAttrs: false,
 });
 

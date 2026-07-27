@@ -71,7 +71,7 @@
               link
               size="small"
               type="primary"
-              @click.stop="openDictDialog(scope.row)"
+              @click.stop="openDictDialog(scope.row as DictTypePageVO)"
               ><el-icon><Collection /></el-icon>字典数据</el-button
             >
             <el-button
@@ -161,7 +161,7 @@
 
 <script lang="ts" setup>
 defineOptions({
-  name: "DictType",
+  name: "SystemDict",
   inheritAttrs: false,
 });
 
@@ -180,6 +180,7 @@ import {
   Search,
 } from "@element-plus/icons-vue";
 import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
+import { ElCheckbox } from "element-plus";
 
 const queryFormRef = ref(ElForm);
 const dataFormRef = ref(ElForm);
@@ -315,6 +316,7 @@ function handleDelete(row?: any) {
           ElCheckbox,
           {
             modelValue: forceDelete.value,
+            // @ts-ignore
             "onUpdate:modelValue": (val: boolean) => {
               forceDelete.value = val;
             },

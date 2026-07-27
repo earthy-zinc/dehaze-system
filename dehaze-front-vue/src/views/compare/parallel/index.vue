@@ -4,6 +4,8 @@ import { hexToRGBA } from "@/utils";
 import { CSSProperties } from "vue";
 
 const imageShowStore = useImageShowStore();
+
+defineOptions({ name: "CompareParallel" });
 const { imageInfo, magnifierInfo, scaleX, scaleY, mouse } =
   toRefs(imageShowStore);
 const { images, brightness, contrast, saturate } = toRefs(imageInfo.value);

@@ -281,7 +281,7 @@
 
 <script lang="ts" setup>
 defineOptions({
-  name: "User",
+  name: "SystemUser",
   inheritAttrs: false,
 });
 

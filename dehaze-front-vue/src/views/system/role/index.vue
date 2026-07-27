@@ -249,7 +249,7 @@ import {
 import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
 
 defineOptions({
-  name: "Role",
+  name: "SystemRole",
   inheritAttrs: false,
 });
 

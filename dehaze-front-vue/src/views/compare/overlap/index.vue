@@ -12,6 +12,8 @@ interface MetricItem {
 import { Setting } from "@element-plus/icons-vue";
 
 const imageShowStore = useImageShowStore();
+
+defineOptions({ name: "CompareOverlap" });
 const { modelId } = toRefs(imageShowStore);
 const state = reactive({
   magnifier: {

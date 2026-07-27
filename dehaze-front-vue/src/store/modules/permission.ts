@@ -29,11 +29,35 @@ const hasPermission = (roles: string[], route: RouteRecordRaw) => {
 };
 
 /**
+ * 根据组件路径或路由路径生成 PascalCase 唯一路由名称
+ * 用于 keep-alive 的 include 匹配（必须与 SFC 的 name 选项一致）
+ *
+ * 规则：取组件路径（Layout 类型取路由路径），去除 "index" 段，连字符转驼峰，各段拼接为 PascalCase
+ * 例："system/user/index" → "SystemUser"，"image-input/index" → "ImageInput"
+ */
+function generateRouteName(routePath: string, componentPath?: string): string {
+  const source =
+    !componentPath || componentPath === "Layout" ? routePath : componentPath;
+  const segments = source
+    .replace(/^\//, "")
+    .split("/")
+    .filter((s) => s && s !== "index");
+  return segments
+    .map((segment) =>
+      segment
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join("")
+    )
+    .join("");
+}
+
+/**
  * 递归过滤有权限的动态路由
  *
  * @param routes 接口返回所有的动态路由
  * @param roles 用户角色集合
- * @param parentPath 父级完整路径（用于生成唯一 name，避免 Vue Router 4 的 name 冲突）
+ * @param parentPath 父级完整路径（用于递归拼接子路由的完整路径）
  * @returns 返回用户有权限的动态路由
  */
 const filterAsyncRoutes = (
@@ -45,11 +69,14 @@ const filterAsyncRoutes = (
   routes.forEach((route) => {
     const tmpRoute = { ...route } as RouteRecordRaw; // 深拷贝 route 对象 避免污染
     if (hasPermission(roles, tmpRoute)) {
-      // 生成基于完整路径的唯一 name，避免 Vue Router 4 在多个子路由同名时只能注册第一个的问题
-      // 例如：/algorithm/list 与 /dataset/list 在原后端逻辑下 name 都为 "List"
       const fullPath = resolveFullPath(parentPath, tmpRoute.path);
-      if (fullPath) {
-        tmpRoute.name = fullPath;
+      // 生成 PascalCase 路由名称，用于 keep-alive include 匹配（须与 SFC name 一致）
+      const routeName = generateRouteName(
+        tmpRoute.path,
+        tmpRoute.component?.toString()
+      );
+      if (routeName) {
+        tmpRoute.name = routeName;
       }
       // 如果是顶级目录，替换为 Layout 组件
       if (tmpRoute.component?.toString() == "Layout") {
