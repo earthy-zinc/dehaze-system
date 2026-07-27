@@ -30,7 +30,7 @@ class SysAlgorithm(BaseModel):
     type: Mapped[str] = mapped_column(String(100), default='', comment='模型类型')
     name: Mapped[str] = mapped_column(
         String(64), nullable=False, comment='模型名称')
-    # 版本号 (对齐 Java schema.sql: varchar(50))
+    # 版本号 (对齐 Java schema/sys_algorithm.sql: varchar(50))
     version: Mapped[Optional[str]] = mapped_column(
         String(50), nullable=True, comment='算法版本号')
     img: Mapped[Optional[str]] = mapped_column(Text, comment='模型图片')
@@ -48,7 +48,7 @@ class SysAlgorithm(BaseModel):
     # (Java SysAlgorithm.status 使用 Integer, 支持状态机)
     status: Mapped[int] = mapped_column(
         mysql_types.TINYINT, default=0, comment='状态(0:草稿;1:测试中;2:待审核;3:已发布;4:已停用;5:已归档)')
-    # 审核字段 (对齐 Java schema.sql: audit_by bigint, audit_remark varchar(500))
+    # 审核字段 (对齐 Java schema/sys_algorithm.sql: audit_by bigint, audit_remark varchar(500))
     audit_by: Mapped[Optional[int]] = mapped_column(
         BigInteger, comment='审核人ID')
     audit_time: Mapped[Optional[datetime]] = mapped_column(
@@ -60,7 +60,7 @@ class SysAlgorithm(BaseModel):
 class SysAlgorithmVersion(BaseModel):
     """算法版本历史表 (对齐 Java SysAlgorithmVersion.java + BaseEntity)
 
-    字段完全对齐 config/sql/schema.sql 中 sys_algorithm_version 表定义.
+    字段完全对齐 config/sql/schema/sys_algorithm_version.sql 中表定义.
     """
     __tablename__ = 'sys_algorithm_version'
     __table_args__ = (

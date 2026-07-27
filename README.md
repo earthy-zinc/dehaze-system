@@ -296,9 +296,10 @@ DehazeSDK.Builder()
 ### 后端启动
 
 #### Java后端
-```bash
-# 1. 执行数据库初始化脚本
-mysql -u root -p < sql/schema.sql
+```powershell
+# 1. 执行数据库初始化脚本（先建表后插数据，均按文件名顺序执行）
+Get-ChildItem config/sql/schema/*.sql | Sort-Object Name | ForEach-Object { Get-Content $_.FullName | mysql -u root -p dehaze }
+Get-ChildItem config/sql/data/*.sql | Sort-Object Name | ForEach-Object { Get-Content $_.FullName | mysql -u root -p dehaze }
 
 # 2. 修改配置文件
 # 编辑 src/main/resources/application-dev.yml

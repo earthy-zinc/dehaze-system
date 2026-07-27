@@ -342,7 +342,7 @@
     <build>
         <finalName>${project.artifactId}</finalName>
         <plugins>
-            <!-- 从根目录 config/sql 复制 schema.sql 和 data.sql 到测试 classpath，统一维护 -->
+            <!-- 从根目录 config/sql 复制建表和初始化数据到测试 classpath，统一维护 -->
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
                 <executions>
@@ -356,11 +356,12 @@
                             <outputDirectory>${project.build.testOutputDirectory}/db</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.basedir}/../config/sql</directory>
-                                    <includes>
-                                        <include>schema.sql</include>
-                                        <include>data.sql</include>
-                                    </includes>
+                                    <directory>${project.basedir}/../config/sql/schema</directory>
+                                    <targetPath>schema</targetPath>
+                                </resource>
+                                <resource>
+                                    <directory>${project.basedir}/../config/sql/data</directory>
+                                    <targetPath>data</targetPath>
                                 </resource>
                             </resources>
                         </configuration>
