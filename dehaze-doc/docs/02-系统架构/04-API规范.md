@@ -411,7 +411,7 @@ Content-Type: application/json
 }
 ```
 
-> `sessionId` 通过 `Set-Cookie: X-Session-Id={sessionId}` 自动下发给 Web 端；移动端需从响应数据中提取并存储，后续请求通过 `X-Session-Id` 请求头传递。详见 [认证管理/API接口.md](../../03-模块设计/基础模块/认证管理/API接口.md)。
+> `sessionId` 通过 `Set-Cookie: X-Session-Id={sessionId}` 自动下发给 Web 端；移动端需从响应数据中提取并存储，后续请求通过 `X-Session-Id` 请求头传递。详见 [认证管理/API接口.md](../03-模块设计/基础模块/认证管理/API接口.md)。
 
 ### 6.3 Token 使用
 
@@ -637,7 +637,7 @@ API Key 存储于共享数据库，**Java / Go / Python** 三个后端服务通�
 
 #### 8.3.4 僵尸任务恢复
 
-服务重启后可能残留 `status=processing` 的僵尸记录，由定时任务每 60 秒扫描 `update_time < NOW() - INTERVAL 10 MINUTE` 的记录标记为 `failed`，详见 [任务管理/后端实现.md](../../03-模块设计/基础模块/任务管理/后端实现.md)。
+服务重启后可能残留 `status=processing` 的僵尸记录，由定时任务每 60 秒扫描 `update_time < NOW() - INTERVAL 10 MINUTE` 的记录标记为 `failed`，详见 [任务管理/后端实现.md](../03-模块设计/基础模块/任务管理/后端实现.md)。
 
 ---
 
