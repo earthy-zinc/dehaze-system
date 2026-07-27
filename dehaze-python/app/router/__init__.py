@@ -96,3 +96,13 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     # 算法选择路由（智能推荐/收藏/对比）
     from app.router.algorithm_select import router as algorithm_select_router
     app.include_router(algorithm_select_router)
+
+    # 消息通知模块路由
+    from app.router.message import router as message_router
+    from app.router.announcement import router as announcement_router
+    from app.router.message_template import router as message_template_router
+    from app.router.notification_setting import router as notification_setting_router
+    app.include_router(message_router)
+    app.include_router(announcement_router)
+    app.include_router(message_template_router)
+    app.include_router(notification_setting_router)

@@ -11,6 +11,8 @@ XXL-Job 定时任务 Handler
 - cleanupOrphanFiles:      孤儿文件清理（每天凌晨 4 点）
 - cleanupTempFiles:        临时文件清理（每 6 小时）
 - cleanupStuckPredEvalLogs: 回收预测/评估僵尸任务（每 60 秒）
+- cleanupExpiredMessages:  清理过期消息（每天凌晨 4 点）
+- sendScheduledAnnouncements: 发送定时公告（每分钟）
 """
 
 from __future__ import annotations
@@ -448,6 +450,78 @@ async def cleanup_stuck_pred_eval_logs() -> str:
             logger.warning(msg)
         else:
             msg = "回收预测/评估僵尸任务: 无"
+            logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+# ==================== 消息通知定时任务 ====================
+
+
+@xxl_handler.register(name="cleanupExpiredMessages")
+async def cleanup_expired_messages() -> str:
+    """
+    清理过期消息
+
+    删除 expires_at < NOW() 的消息记录（物理删除）。
+    分批处理，每批 500 条，避免长时间锁表。
+    与 Java MessageCleanupJob、Go cleanupExpiredMessages 对齐。
+
+    CRON 建议: 0 0 4 * * ? （每天凌晨 4 点）
+    """
+    from app.repository.message_repository import message_repository
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        now = datetime.now()
+        async with get_db_session() as db:
+            total = await message_repository.delete_expired(db, now, batch_size=500)
+
+        msg = f"过期消息清理完成: 已删除={total}"
+        logger.info(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="sendScheduledAnnouncements")
+async def send_scheduled_announcements() -> str:
+    """
+    发送定时公告
+
+    扫描 status=2(待发送) AND send_time <= NOW() 的公告，
+    逐条调用 AnnouncementService.send 完成投递。
+    与 Java AnnouncementScheduleJob、Go sendScheduledAnnouncements 对齐。
+
+    CRON 建议: 0 * * * * ? （每分钟）
+    """
+    from app.repository.announcement_repository import announcement_repository
+    from app.service.announcement_service import AnnouncementService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        now = datetime.now()
+        sent_total = 0
+        failed = 0
+
+        async with get_db_session() as db:
+            pending = await announcement_repository.get_scheduled_pending(db, now)
+
+        for announcement in pending:
+            try:
+                async with get_db_session() as db:
+                    await AnnouncementService.send(db, announcement.id)
+                    sent_total += 1
+            except Exception as e:
+                failed += 1
+                logger.warning(f"定时公告发送失败 id={announcement.id}: {e}")
+
+        if sent_total > 0 or failed > 0:
+            msg = f"定时公告发送: 成功={sent_total}, 失败={failed}"
+            logger.info(msg)
+        else:
+            msg = "定时公告发送: 无待发送公告"
             logger.debug(msg)
         return msg
     finally:
