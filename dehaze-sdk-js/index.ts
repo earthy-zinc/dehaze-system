@@ -9,6 +9,11 @@ import FileAPI from "./src/api/file";
 import ImageInputHistoryAPI from "./src/api/image-input";
 import ImportExportAPI from "./src/api/import-export";
 import MenuAPI from "./src/api/menu";
+import MessageAPI, {
+  AnnouncementAPI,
+  MessageTemplateAPI,
+  NotificationSettingAPI,
+} from "./src/api/message";
 import ModelAPI from "./src/api/model";
 import RoleAPI from "./src/api/role";
 import TaskAPI from "./src/api/task";
@@ -25,6 +30,7 @@ export * from "./src/api/file/model";
 export * from "./src/api/image-input/model";
 export * from "./src/api/import-export/model";
 export * from "./src/api/menu/model";
+export * from "./src/api/message/model";
 export * from "./src/api/model/model";
 export * from "./src/api/role/model";
 export * from "./src/api/task/model";
@@ -45,6 +51,7 @@ export type { AxiosAdapter, AxiosError, AxiosResponse, InternalAxiosRequestConfi
 export {
   AlgorithmAPI,
   ApiKeyAPI,
+  AnnouncementAPI,
   AuthAPI,
   DatasetAPI,
   DatasetItemAPI,
@@ -55,7 +62,10 @@ export {
   ImageInputHistoryAPI,
   ImportExportAPI,
   MenuAPI,
+  MessageAPI,
+  MessageTemplateAPI,
   ModelAPI,
+  NotificationSettingAPI,
   RoleAPI,
   TaskAPI,
   UserAPI,

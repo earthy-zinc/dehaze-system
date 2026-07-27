@@ -10,12 +10,11 @@ import {
   DatasetItemUpdateForm,
   DatasetItemVO,
   DatasetQuery,
-  DatasetOption,
   DatasetUpdateForm,
   ImageUrlVO,
   ItemFileUpdateForm,
 } from "./model";
-import { PageResult } from "@/types";
+import { OptionType, PageResult } from "@/types";
 import request from "@/utils/request";
 
 /**
@@ -51,7 +50,7 @@ class DatasetAPI {
    * 获取数据集下拉选项列表
    */
   static getOptions() {
-    return request<any, DatasetOption[]>({
+    return request<any, OptionType[]>({
       url: "/api/v1/datasets/options",
       method: "get",
     });

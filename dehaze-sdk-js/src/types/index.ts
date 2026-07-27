@@ -11,8 +11,8 @@ export interface ResponseData<T = any> {
  * 分页查询参数
  */
 export interface PageQuery {
-  pageNum: number;
-  pageSize: number;
+  pageNum?: number;
+  pageSize?: number;
 }
 
 /**

@@ -1,17 +1,7 @@
-/**
- * 文件API类型声明
- */
+import { PageQuery } from "@/types";
 
-/**
- * 文件查询参数
- */
-export interface FileQuery {
-  /** 关键字（文件名或文件类型模糊匹配） */
+export interface FileQuery extends PageQuery {
   keywords?: string;
-  /** 页码，默认 1 */
-  pageNum?: number;
-  /** 每页数量，默认 10 */
-  pageSize?: number;
 }
 
 /**

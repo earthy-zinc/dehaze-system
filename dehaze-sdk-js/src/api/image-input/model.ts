@@ -1,3 +1,5 @@
+import { PageQuery } from "@/types";
+
 /** 历史记录创建表单 */
 export interface HistoryForm {
   originalImageUrl?: string;
@@ -18,9 +20,7 @@ export interface HistoryUpdateForm {
 }
 
 /** 历史记录查询参数 */
-export interface HistoryQuery {
-  pageNum?: number;
-  pageSize?: number;
+export interface HistoryQuery extends PageQuery {
   status?: number;
   inputSource?: string;
   isFavorite?: boolean;

@@ -5,17 +5,10 @@ import { PageQuery } from "@/types";
 /**
  * 数据集查询参数
  */
-export interface DatasetQuery {
-  /** 搜索关键字 */
+export interface DatasetQuery extends PageQuery {
   keyword?: string;
-  /** 数据集类型筛选 */
   type?: string;
-  /** 状态筛选：1-启用，0-禁用 */
   status?: string;
-  /** 页码 */
-  pageNum?: number;
-  /** 每页大小 */
-  pageSize?: number;
 }
 
 /**
@@ -106,18 +99,6 @@ export interface Dataset {
   createTime?: Date | string;
   /** 数据集最后修改时间 */
   updateTime?: Date | string;
-}
-
-/**
- * 数据集下拉选项
- */
-export interface DatasetOption {
-  /** 数据集ID */
-  value: number;
-  /** 数据集名称 */
-  label: string;
-  /** 子选项列表 */
-  children?: DatasetOption[];
 }
 
 // ==================== 数据项相关类型 ====================

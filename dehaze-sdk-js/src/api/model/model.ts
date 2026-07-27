@@ -1,3 +1,5 @@
+import { PageQuery } from "@/types";
+
 // ===== 预测/评估 API 类型（对应 Java PredictionController/EvaluationController） =====
 
 /** 预测/评估任务状态：processing-处理中 / completed-已完成 / failed-失败 */
@@ -44,9 +46,7 @@ export interface PredLogVO {
 }
 
 /** 预测日志查询 */
-export interface PredLogQuery {
-  pageNum?: number;
-  pageSize?: number;
+export interface PredLogQuery extends PageQuery {
   algorithmId?: number;
 }
 
@@ -89,9 +89,7 @@ export interface EvalLogVO {
 }
 
 /** 评估日志查询 */
-export interface EvalLogQuery {
-  pageNum?: number;
-  pageSize?: number;
+export interface EvalLogQuery extends PageQuery {
   algorithmId?: number;
 }
 
