@@ -6,7 +6,6 @@
 
 import asyncio
 import json
-import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -19,7 +18,8 @@ from app.repository.algorithm_repository import (
     AlgorithmStatus,
 )
 from app.utils.datetime_utils import format_time
-from app.utils.file import get_file_size
+from app.utils.file import convert_size
+from algorithm.model_loader import check_model_exists
 
 
 class AlgorithmService:
@@ -101,9 +101,12 @@ class AlgorithmService:
             version=data.get("version"),
         )
 
-        # 如果路径是有效文件，获取文件大小（同步文件 I/O 移至线程池）
-        if "path" in data and await asyncio.to_thread(os.path.isfile, data["path"]):
-            algorithm.size = await asyncio.to_thread(get_file_size, data["path"])
+        # path 指向具体文件时，通过 Nginx 静态服务校验可访问性并回填 size
+        path_value = data.get("path", "")
+        if path_value:
+            size_bytes = await asyncio.to_thread(check_model_exists, path_value)
+            if size_bytes is not None:
+                algorithm.size = convert_size(size_bytes)
 
         created = await algorithm_repository.create(db, algorithm)
         return created.id
@@ -125,8 +128,11 @@ class AlgorithmService:
             update_data["name"] = data["name"]
         if "path" in data:
             update_data["path"] = data["path"]
-            if await asyncio.to_thread(os.path.isfile, data["path"]):
-                update_data["size"] = await asyncio.to_thread(get_file_size, data["path"])
+            path_value = data["path"]
+            if path_value:
+                size_bytes = await asyncio.to_thread(check_model_exists, path_value)
+                if size_bytes is not None:
+                    update_data["size"] = convert_size(size_bytes)
         if "importPath" in data:
             update_data["import_path"] = data["importPath"]
         if "description" in data:

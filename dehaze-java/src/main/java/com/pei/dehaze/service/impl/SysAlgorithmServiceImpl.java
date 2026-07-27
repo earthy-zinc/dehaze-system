@@ -1,8 +1,9 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
@@ -10,14 +11,13 @@ import com.pei.dehaze.common.enums.AlgorithmStatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.ResultCode;
-import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.TreeDataUtils;
+import com.pei.dehaze.config.property.ModelProperties;
 import com.pei.dehaze.converter.AlgorithmConverter;
 import com.pei.dehaze.mapper.SysAlgorithmMapper;
 import com.pei.dehaze.mapper.SysEvalLogMapper;
 import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.model.entity.SysAlgorithm;
-import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.model.form.AlgorithmAuditForm;
 import com.pei.dehaze.model.form.AlgorithmForm;
@@ -27,6 +27,7 @@ import com.pei.dehaze.model.vo.AlgorithmVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysAlgorithmService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
  * @author earthy-zinc
  * @since 2024-06-08 18:35:44
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, SysAlgorithm> implements SysAlgorithmService {
@@ -44,6 +46,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     private final AlgorithmConverter algorithmConverter;
     private final SysPredLogMapper sysPredLogMapper;
     private final SysEvalLogMapper sysEvalLogMapper;
+    private final ModelProperties modelProperties;
 
     @Override
     public List<SysAlgorithm> getAllAlgorithms() {
@@ -116,8 +119,9 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     @Override
     public Long addAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
-        if (FileUtil.isFile(sysAlgorithm.getPath())) {
-            sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
+        Long sizeBytes = checkModelExists(sysAlgorithm.getPath());
+        if (sizeBytes != null) {
+            sysAlgorithm.setSize(readableSize(sizeBytes));
         }
         this.save(sysAlgorithm);
         return sysAlgorithm.getId();
@@ -126,10 +130,56 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     @Override
     public boolean updateAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
-        if (FileUtil.isFile(sysAlgorithm.getPath())) {
-            sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
+        Long sizeBytes = checkModelExists(sysAlgorithm.getPath());
+        if (sizeBytes != null) {
+            sysAlgorithm.setSize(readableSize(sizeBytes));
         }
         return this.updateById(sysAlgorithm);
+    }
+
+    /**
+     * 通过 HTTP HEAD 请求校验模型权重文件是否可访问
+     *
+     * 复用 nginx-dataset 静态服务（/models 路径），sys_algorithm.path 为相对路径，
+     * 拼接为 {modelProperties.baseUrl}/{path} 后发起 HEAD 请求。
+     *
+     * @param relativePath 算法 path 字段（如 "AECR-Net/NH_train.pk"）
+     * @return 文件字节数；不可访问或异常时返回 null
+     */
+    private Long checkModelExists(String relativePath) {
+        if (CharSequenceUtil.isBlank(relativePath)) {
+            return null;
+        }
+        String url = modelProperties.getBaseUrl().replaceAll("/+$", "")
+                + "/" + relativePath.replaceAll("^/+", "");
+        try (HttpResponse response = HttpRequest.head(url)
+                .timeout(modelProperties.getReadTimeout())
+                .execute()) {
+            if (response.getStatus() != 200) {
+                return null;
+            }
+            String contentLength = response.header("Content-Length");
+            if (CharSequenceUtil.isBlank(contentLength)) {
+                return null;
+            }
+            return Long.parseLong(contentLength);
+        } catch (Exception e) {
+            log.warn("模型权重校验失败: url={}, error={}", url, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 字节数转可读大小字符串（与 Python convert_size 对齐）
+     */
+    private String readableSize(long bytes) {
+        if (bytes == 0) {
+            return "0B";
+        }
+        String[] units = {"B", "KB", "MB", "GB", "TB", "PB"};
+        int digit = (int) (Math.log(bytes) / Math.log(1024));
+        double size = bytes / Math.pow(1024, digit);
+        return String.format("%.2f %s", size, units[digit]);
     }
 
     @Override

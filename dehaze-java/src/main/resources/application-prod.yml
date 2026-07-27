@@ -127,6 +127,13 @@ springdoc:
   swagger-ui:
     enabled: false
 
+# 模型权重文件存储配置（复用 nginx-dataset 静态服务 /models 路径）
+algorithm:
+  model:
+    baseUrl: http://127.0.0.1:9000/models
+    connect-timeout: 5000
+    read-timeout: 10000
+
 # knife4j (生产环境禁用)
 knife4j:
   enable: false

@@ -214,6 +214,14 @@ algorithm:
     circuit-breaker-half-open-delay: 30000
     # 服务间调用 API Key（M2M 认证，需与 DB 中 admin 用户的 API Key 一致）
     api-key: dhak_m2m_internal_python_service_key_2024
+  # 模型权重文件存储配置（复用 nginx-dataset 静态服务 /models 路径）
+  model:
+    # 算法权重访问 URL = {baseUrl}/{algorithm.path}，如 http://127.0.0.1:9000/models/AECR-Net/NH_train.pk
+    baseUrl: http://127.0.0.1:9000/models
+    # HTTP HEAD 校验连接超时（毫秒）
+    connect-timeout: 5000
+    # HTTP HEAD 校验读取超时（毫秒）
+    read-timeout: 10000
 
 # 验证码配置
 captcha:

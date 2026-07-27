@@ -6,7 +6,7 @@ from torch import nn as nn
 import numpy as np
 import math
 
-from algorithm.config import Config
+from algorithm.model_loader import resolve_model_path
 
 from .dcn import ModulatedDeformConvPack, modulated_deform_conv
 
@@ -14,7 +14,8 @@ from .network_swinir import RSTB
 from .ridcp_utils import ResBlock, CombineQuantBlock
 from .vgg_arch import VGGFeatureExtractor
 
-WEIGHT_PATH = os.path.join(Config.MODEL_PATH, 'RIDCP/weight_for_matching_dehazing_Flickr.pth')
+# 二级权重文件的相对路径，实际下载在 VectorQuantizer.__init__ 中触发
+WEIGHT_RELATIVE_PATH = 'RIDCP/weight_for_matching_dehazing_Flickr.pth'
 
 
 class DCNv2Pack(ModulatedDeformConvPack):
@@ -52,7 +53,7 @@ class VectorQuantizer(nn.Module):
     _____________________________________________
     """
 
-    def __init__(self, n_e, e_dim, weight_path=WEIGHT_PATH, beta=0.25,
+    def __init__(self, n_e, e_dim, weight_path=None, beta=0.25,
                  LQ_stage=False, use_weight=True, weight_alpha=1.0):
         super().__init__()
         self.n_e = int(n_e)
@@ -62,6 +63,8 @@ class VectorQuantizer(nn.Module):
         self.use_weight = use_weight
         self.weight_alpha = weight_alpha
         if self.use_weight:
+            if weight_path is None:
+                weight_path = resolve_model_path(WEIGHT_RELATIVE_PATH)
             self.weight = nn.Parameter(torch.load(weight_path))
             self.weight.requires_grad = False
         self.embedding = nn.Embedding(self.n_e, self.e_dim)

@@ -590,6 +590,44 @@ API Key 存储于共享数据库，**Java / Go / Python** 三个后端服务通�
 | 数据集管理 | `dataset` | ✅ | ❌ | 仅导出（ZIP 打包） |
 | 算法管理 | `algorithm` | ✅ | ✅ | Excel/CSV 元数据，不含权重文件 |
 
+### 8.3 预测/评估异步任务接口
+
+预测与评估为计算密集型任务，统一采用**异步任务模式**：POST 立即返回 `logId + status="processing"`，前端通过 GET 轮询直到终态（`completed` / `failed`）。
+
+#### 8.3.1 POST `/api/v1/prediction`
+
+请求体不变（`PredictionForm`）。响应变更：
+
+```json
+{
+  "code": "00000",
+  "data": { "logId": 88, "status": "processing" }
+}
+```
+
+`PredictionResultVO` 字段：
+
+| 字段 | 类型 | 返回时机 |
+|------|------|---------|
+| `logId` | Long | POST + GET |
+| `status` | String | POST + GET（`processing`/`completed`/`failed`） |
+| `resultUrl` | String | GET `completed` 时 |
+| `resultThumbnailUrl` | String | GET `completed` 时 |
+| `time` | int | GET `completed`/`failed` 时 |
+| `errorMessage` | String | GET `failed` 时 |
+
+#### 8.3.2 GET `/api/v1/prediction/{taskId}`
+
+根据 `status` 返回不同字段：`processing` 仅返回 `logId + status`；`completed` 返回完整结果；`failed` 返回 `errorMessage + time`。
+
+#### 8.3.3 POST `/api/v1/evaluation` 与 GET `/api/v1/evaluation/{taskId}`
+
+同预测模式。`EvaluationResultVO` 在 `completed` 时返回 `metrics`（`Map<String,Double>`），`failed` 时返回 `errorMessage`。
+
+#### 8.3.4 僵尸任务恢复
+
+服务重启后可能残留 `status=processing` 的僵尸记录，由定时任务每 60 秒扫描 `update_time < NOW() - INTERVAL 10 MINUTE` 的记录标记为 `failed`，详见 [任务管理/后端实现.md](../../03-模块设计/基础模块/任务管理/后端实现.md)。
+
 ---
 
 ## 9. 错误处理规范

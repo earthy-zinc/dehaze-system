@@ -429,7 +429,7 @@ values (12, 0, '图像去雾', 'DCPDN', null, 'DCPDN/netG_epoch_8.pth', '255.55 
         3, '2024-11-13 12:40:03', '2024-11-13 12:40:03', 2, 2);
 insert into sys_algorithm (id, parent_id, type, name, img, path, size, params, flops, import_path, description,
                            status, create_time, update_time, create_by, update_by)
-values (13, 0, '图像去雾', 'DCP', null, '/', null, null, null, 'algorithm.DCP.run',
+values (13, 0, '图像去雾', 'DCP', null, '', null, null, null, 'algorithm.DCP.run',
         'DCP 是由何凯明等人在2009年提出的经典去雾算法，基于暗原色先验理论。该算法假设无雾图像的局部区域中至少有一个颜色通道的亮度值非常低。通过估计大气光和透射率，DCP 能够有效地去除图像中的雾霾，恢复图像的清晰度',
         3, '2024-11-13 12:40:13', '2024-11-13 12:40:13', 2, 2);
 insert into sys_algorithm (id, parent_id, type, name, img, path, size, params, flops, import_path, description,
@@ -798,7 +798,7 @@ values (76, 0, '图像去雾', 'MB-TaylorFormer', null, 'MB-TaylorFormer', null,
         3, '2024-11-13 13:24:57', '2024-11-13 13:24:57', 2, 2);
 insert into sys_algorithm (id, parent_id, type, name, img, path, size, params, flops, import_path, description,
                            status, create_time, update_time, create_by, update_by)
-values (77, 76, '图像去雾', 'dense-haze', null, 'MB-TaylorFormer', null, null, null, 'algorithm.MB-TaylorFormer.run',
+values (77, 76, '图像去雾', 'dense-haze', null, '', null, null, null, 'algorithm.MB-TaylorFormer.run',
         'MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度',
         3, '2024-11-13 13:28:22', '2024-11-13 13:28:22', 2, 2);
 insert into sys_algorithm (id, parent_id, type, name, img, path, size, params, flops, import_path, description,
@@ -827,7 +827,7 @@ values (81, 76, '图像去雾', 'ohaze', null, 'MB-TaylorFormer/ohaze-MB-TaylorF
         3, '2024-11-13 13:28:49', '2024-11-13 13:28:49', 2, 2);
 insert into sys_algorithm (id, parent_id, type, name, img, path, size, params, flops, import_path, description,
                            status, create_time, update_time, create_by, update_by)
-values (82, 76, '图像去雾', 'ots', null, 'MB-TaylorFormer', null, null, null, 'algorithm.MB-TaylorFormer.run',
+values (82, 76, '图像去雾', 'ots', null, '', null, null, null, 'algorithm.MB-TaylorFormer.run',
         'MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度',
         3, '2024-11-13 13:29:00', '2024-11-13 13:29:00', 2, 2);
 insert into sys_algorithm (id, parent_id, type, name, img, path, size, params, flops, import_path, description,
