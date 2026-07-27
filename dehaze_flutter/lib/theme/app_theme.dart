@@ -757,20 +757,4 @@ class AppTheme {
         return shadowLevel2;
     }
   }
-
-  /// 获取成功/错误/警告等状态颜色
-  static Color getStatusColor(String status, {bool isDark = false}) {
-    switch (status.toLowerCase()) {
-      case 'success':
-        return successColor;
-      case 'warning':
-        return warningColor;
-      case 'error':
-        return errorColor;
-      case 'info':
-        return infoColor;
-      default:
-        return isDark ? darkTextPrimary : lightTextPrimary;
-    }
-  }
 }

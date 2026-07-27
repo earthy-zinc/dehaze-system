@@ -9,6 +9,7 @@ import '../models/algorithm_model.dart';
 /// - getAlgorithmOptions: 获取算法下拉选项
 /// - getAlgorithmList: 获取算法树形列表
 /// - getAlgorithmDetail: 获取算法详情
+/// - recommendAlgorithms: 智能推荐算法
 class AlgorithmService {
   const AlgorithmService(this._dio);
 
@@ -49,5 +50,25 @@ class AlgorithmService {
       '${ApiConstants.algorithm}/$id',
     );
     return AlgorithmModel.fromJson(response.data!['data'] as Map<String, dynamic>);
+  }
+
+  /// 智能推荐算法
+  ///
+  /// POST /algorithm-select/recommend
+  Future<List<AlgorithmRecommend>> recommendAlgorithms({
+    required String imageUrl,
+    int topN = 3,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConstants.algorithmSelectRecommend,
+      data: {
+        'imageUrl': imageUrl,
+        'topN': topN,
+      },
+    );
+    final list = response.data!['data'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => AlgorithmRecommend.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

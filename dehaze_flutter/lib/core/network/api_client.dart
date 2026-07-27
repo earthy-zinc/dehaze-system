@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -40,7 +42,7 @@ class ApiClient {
         requestHeader: false,
         responseHeader: false,
         error: true,
-        logPrint: (obj) => debugPrint('[DIO] $obj'),
+        logPrint: (obj) => developer.log('[DIO] $obj', name: 'dio'),
       ));
     }
 

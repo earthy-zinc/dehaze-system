@@ -98,6 +98,41 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> register({
+    required String username,
+    required String password,
+    required String nickname,
+    required String captchaKey,
+    required String captchaCode,
+  }) async {
+    state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
+
+    try {
+      final response = await _authService.register(
+        username: username,
+        password: password,
+        nickname: nickname,
+        captchaKey: captchaKey,
+        captchaCode: captchaCode,
+      );
+
+      await _tokenStorage.saveSessionId(response.sessionId);
+
+      final user = await _authService.getCurrentUser();
+
+      state = AuthState(
+        user: user,
+        sessionId: response.sessionId,
+        status: AuthStatus.authenticated,
+      );
+    } catch (e) {
+      state = AuthState(
+        status: AuthStatus.error,
+        errorMessage: extractErrorMessage(e),
+      );
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _authService.logout();

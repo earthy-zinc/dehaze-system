@@ -131,3 +131,26 @@ extension AlgorithmListExtension on List<AlgorithmModel> {
     return result;
   }
 }
+
+/// 智能推荐结果
+@JsonSerializable()
+class AlgorithmRecommend {
+  const AlgorithmRecommend({
+    required this.algorithmId,
+    required this.algorithmName,
+    required this.score,
+    required this.reason,
+    required this.type,
+  });
+
+  factory AlgorithmRecommend.fromJson(Map<String, dynamic> json) =>
+      _$AlgorithmRecommendFromJson(json);
+
+  final int algorithmId;
+  final String algorithmName;
+  final double score;
+  final String reason;
+  final String type;
+
+  Map<String, dynamic> toJson() => _$AlgorithmRecommendToJson(this);
+}

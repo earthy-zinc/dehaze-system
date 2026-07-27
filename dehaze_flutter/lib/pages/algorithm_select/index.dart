@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/network/api_result.dart';
 import '../../models/algorithm_model.dart';
+import '../../models/file_model.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/ui_utils.dart';
+import '../image_input/models/image_input_model.dart';
 import '../image_input/providers/image_input_provider.dart';
 
 /// 算法选择页面
@@ -26,6 +28,11 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
   bool _isUploading = false;
   String? _errorMessage;
   String _searchQuery = '';
+
+  List<AlgorithmRecommend> _recommendations = [];
+  bool _isRecommending = false;
+  String? _recommendError;
+  FileUploadResponse? _uploadedFile;
 
   List<AlgorithmModel> get _filteredAlgorithms {
     final query = _searchQuery.trim().toLowerCase();
@@ -93,11 +100,7 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
     setState(() => _isUploading = true);
 
     try {
-      final fileService = ref.read(fileServiceProvider);
-      final uploadResult = await fileService.uploadBytes(
-        bytes,
-        selectedImage.filename,
-      );
+      final uploadResult = await _ensureUploaded(selectedImage);
 
       if (!mounted) return;
 
@@ -122,6 +125,74 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
     }
   }
 
+  /// 确保图片已上传，返回上传结果（带缓存，避免重复上传）
+  Future<FileUploadResponse> _ensureUploaded(
+      SelectedImageModel selectedImage) async {
+    if (_uploadedFile != null) return _uploadedFile!;
+    final fileService = ref.read(fileServiceProvider);
+    _uploadedFile = await fileService.uploadBytes(
+      selectedImage.bytes!,
+      selectedImage.filename,
+    );
+    return _uploadedFile!;
+  }
+
+  /// 加载智能推荐算法
+  Future<void> _loadRecommendations() async {
+    final selectedImage = ref.read(selectedImageProvider);
+    if (selectedImage == null) {
+      showSnackBar(context, '请先选择图片');
+      return;
+    }
+
+    setState(() {
+      _isRecommending = true;
+      _recommendError = null;
+    });
+
+    try {
+      // 样例图片有可访问的远程 URL，直接使用；
+      // 上传/拍照图片需先上传获取可访问 URL
+      String imageUrl;
+      if (selectedImage.url.startsWith('http')) {
+        imageUrl = selectedImage.url;
+      } else {
+        final uploadResult = await _ensureUploaded(selectedImage);
+        imageUrl = uploadResult.url;
+      }
+
+      final service = ref.read(algorithmServiceProvider);
+      final recommendations =
+          await service.recommendAlgorithms(imageUrl: imageUrl, topN: 3);
+
+      if (mounted) {
+        setState(() {
+          _recommendations = recommendations;
+          _isRecommending = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _recommendError = extractErrorMessage(e);
+          _isRecommending = false;
+        });
+      }
+    }
+  }
+
+  /// 通过推荐结果选中对应算法
+  void _selectRecommendation(AlgorithmRecommend recommend) {
+    final algorithm =
+        _algorithms.where((a) => a.id == recommend.algorithmId).firstOrNull;
+    if (algorithm != null) {
+      ref.read(processingProvider.notifier).setSelectedAlgorithm(algorithm);
+      showSnackBar(context, '已选择: ${algorithm.name}');
+    } else {
+      showSnackBar(context, '未找到算法: ${recommend.algorithmName}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final processingState = ref.watch(processingProvider);
@@ -138,6 +209,9 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
 
             // 搜索框
             SliverToBoxAdapter(child: _buildSearchBar(theme)),
+
+            // 智能推荐区域
+            SliverToBoxAdapter(child: _buildRecommendationSection(theme)),
 
             // 内容区域
             SliverPadding(
@@ -210,6 +284,79 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
               ),
             ),
             const SizedBox(height: 12),
+          ],
+        ),
+      );
+
+  Widget _buildRecommendationSection(ThemeData theme) => Container(
+        padding: ResponsiveUtils.getResponsivePadding(context),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          border: Border(
+            bottom: BorderSide(color: theme.dividerColor, width: 1),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.auto_awesome,
+                    color: AppTheme.techGreen, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  '智能推荐',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _isRecommending ? null : _loadRecommendations,
+                  icon: _isRecommending
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh, size: 18),
+                  label: const Text('获取推荐'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_recommendError != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  _recommendError!,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+            if (_recommendations.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  children: _recommendations
+                      .map((r) => _RecommendationCard(
+                            recommend: r,
+                            onTap: () => _selectRecommendation(r),
+                          ))
+                      .toList(),
+                ),
+              )
+            else if (!_isRecommending && _recommendError == null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  '选择图片后点击"获取推荐"，系统将根据图片特征推荐最合适的算法',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
           ],
         ),
       );
@@ -441,6 +588,107 @@ class _AlgorithmCard extends StatelessWidget {
               if (isSelected)
                 Icon(Icons.check_circle, color: AppTheme.brandBlue, size: 24),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 推荐算法卡片
+class _RecommendationCard extends StatelessWidget {
+  const _RecommendationCard({
+    required this.recommend,
+    required this.onTap,
+  });
+
+  final AlgorithmRecommend recommend;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: AppTheme.techGreen.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              border: Border.all(
+                color: AppTheme.techGreen.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.techGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.auto_awesome,
+                      color: AppTheme.techGreen, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              recommend.algorithmName,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.techGreen.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '匹配度 ${recommend.score.toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: AppTheme.techGreen,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        recommend.reason,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right,
+                    color: theme.colorScheme.onSurfaceVariant),
+              ],
+            ),
           ),
         ),
       ),

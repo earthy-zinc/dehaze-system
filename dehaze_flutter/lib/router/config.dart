@@ -17,6 +17,7 @@ import '../pages/image_input/index.dart';
 import '../pages/login/index.dart';
 import '../pages/processing/index.dart';
 import '../pages/profile/index.dart';
+import '../pages/register/index.dart';
 import '../pages/task_history/index.dart';
 
 /// 应用路由配置
@@ -31,6 +32,7 @@ class AppRouterConfig {
   // 基础路由
   static const String home = '/home';
   static const String login = '/login';
+  static const String register = '/register';
   static const String profile = '/profile';
 
   // 处理流程路由
@@ -57,7 +59,7 @@ class AppRouterConfig {
   static String getDatasetDetailPath(int id) => '/dataset/$id';
 
   /// 登录态白名单（无需登录即可访问）
-  static const List<String> publicRoutes = [login, home];
+  static const List<String> publicRoutes = [login, register, home];
 
   /// 检查路由是否为当前活跃路由
   static bool isActiveRoute(BuildContext context, String route) {
@@ -83,6 +85,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRouterConfig.login,
         name: 'login',
         builder: (context, state) => const LoginPage(),
+      ),
+      // 注册页（无 ShellRoute 包裹）
+      GoRoute(
+        path: AppRouterConfig.register,
+        name: 'register',
+        builder: (context, state) => const RegisterPage(),
       ),
       // 主布局路由
       ShellRoute(
@@ -207,17 +215,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     ),
     redirect: (context, state) {
       final isLoggedIn = authState.isAuthenticated;
-      final isGoingToLogin = state.matchedLocation == AppRouterConfig.login;
+      final isGoingToAuthPage = state.matchedLocation == AppRouterConfig.login ||
+          state.matchedLocation == AppRouterConfig.register;
       final isPublicRoute =
           AppRouterConfig.publicRoutes.contains(state.matchedLocation);
 
       // 未登录访问受保护路由 → 跳转登录
-      if (!isLoggedIn && !isPublicRoute && !isGoingToLogin) {
+      if (!isLoggedIn && !isPublicRoute && !isGoingToAuthPage) {
         return AppRouterConfig.login;
       }
 
-      // 已登录访问登录页 → 跳转首页
-      if (isLoggedIn && isGoingToLogin) {
+      // 已登录访问登录/注册页 → 跳转首页
+      if (isLoggedIn && isGoingToAuthPage) {
         return AppRouterConfig.home;
       }
 

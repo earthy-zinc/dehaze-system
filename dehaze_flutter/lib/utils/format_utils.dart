@@ -2,14 +2,14 @@
 class FormatUtils {
   const FormatUtils._();
 
-  /// 将字节数格式化为带单位的可读字符串（统一保留 1 位小数）
+  /// 将字节数格式化为带单位的可读字符串（统一保留 2 位小数）
   ///
   /// - < 1 KB → "N B"
-  /// - < 1 MB → "N.N KB"
-  /// - 否则    → "N.N MB"
+  /// - < 1 MB → "N.NN KB"
+  /// - 否则    → "N.NN MB"
   static String formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(2)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
   }
 }

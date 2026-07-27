@@ -35,6 +35,9 @@ class ApiConstants {
   static const String algorithmExport = '$algorithm/_export';
   static const String algorithmImport = '$algorithm/_import';
 
+  static const String algorithmSelect = '/algorithm-select';
+  static const String algorithmSelectRecommend = '$algorithmSelect/recommend';
+
   static const String predictionLogs = '$prediction/logs';
   static const String evaluationLogs = '$evaluation/logs';
 

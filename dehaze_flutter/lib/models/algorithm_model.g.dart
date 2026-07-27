@@ -79,3 +79,35 @@ const _$AlgorithmStatusEnumMap = {
   AlgorithmStatus.disabled: 0,
   AlgorithmStatus.auditing: 2,
 };
+
+AlgorithmRecommend _$AlgorithmRecommendFromJson(Map<String, dynamic> json) =>
+    $checkedCreate(
+      'AlgorithmRecommend',
+      json,
+      ($checkedConvert) {
+        final val = AlgorithmRecommend(
+          algorithmId: $checkedConvert(
+            'algorithm_id',
+            (v) => (v as num).toInt(),
+          ),
+          algorithmName: $checkedConvert('algorithm_name', (v) => v as String),
+          score: $checkedConvert('score', (v) => (v as num).toDouble()),
+          reason: $checkedConvert('reason', (v) => v as String),
+          type: $checkedConvert('type', (v) => v as String),
+        );
+        return val;
+      },
+      fieldKeyMap: const {
+        'algorithmId': 'algorithm_id',
+        'algorithmName': 'algorithm_name',
+      },
+    );
+
+Map<String, dynamic> _$AlgorithmRecommendToJson(AlgorithmRecommend instance) =>
+    <String, dynamic>{
+      'algorithm_id': instance.algorithmId,
+      'algorithm_name': instance.algorithmName,
+      'score': instance.score,
+      'reason': instance.reason,
+      'type': instance.type,
+    };
