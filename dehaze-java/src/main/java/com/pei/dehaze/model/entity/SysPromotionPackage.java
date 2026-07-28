@@ -1,0 +1,30 @@
+package com.pei.dehaze.model.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.common.base.BaseEntity;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.io.Serial;
+
+@Data
+@EqualsAndHashCode(callSuper = false)
+@TableName("sys_promotion_package")
+public class SysPromotionPackage extends BaseEntity {
+
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    private Long promotionId;
+
+    private Long packageId;
+
+    private String discountType;
+
+    private Long discountValue;
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+}
