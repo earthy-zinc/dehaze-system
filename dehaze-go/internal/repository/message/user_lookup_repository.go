@@ -2,8 +2,11 @@ package message
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
+	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -22,6 +25,22 @@ func (r *UserLookupRepository) FindAllUserIDs(ctx context.Context) ([]int64, err
 		Where("deleted = 0 AND status = 1").
 		Pluck("id", &ids).Error
 	return ids, err
+}
+
+func (r *UserLookupRepository) FindUserIDsByLevel(ctx context.Context, level int) ([]int64, error) {
+	levelCode := fmt.Sprintf("level_%d", level)
+	var ids []int64
+	err := r.db.WithContext(ctx).
+		Table("sys_member m").
+		Joins("INNER JOIN sys_user u ON m.user_id = u.id").
+		Where("m.level_code = ? AND m.deleted = 0 AND m.status = 1 AND u.deleted = 0 AND u.status = 1", levelCode).
+		Pluck("m.user_id", &ids).Error
+	return ids, err
+}
+
+func (r *UserLookupRepository) FindUserIDsByTag(ctx context.Context, tag string) ([]int64, error) {
+	logger.Warn("按用户标签查询暂未实现：数据库缺少用户标签表", zap.String("tag", tag))
+	return nil, nil
 }
 
 var _ IUserLookupRepository = (*UserLookupRepository)(nil)

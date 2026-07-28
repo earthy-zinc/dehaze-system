@@ -42,6 +42,7 @@ type IOrderRepository interface {
 	FindPageMyOrders(ctx context.Context, userID int64, q *query.MyOrderQuery) ([]OrderWithUser, int64, error)
 	FindPage(ctx context.Context, q *query.OrderPageQuery) ([]OrderWithUser, int64, error)
 	FindPendingExpired(ctx context.Context, before time.Time) ([]model.SysOrder, error)
+	FindPaidExpired(ctx context.Context, before time.Time) ([]model.SysOrder, error)
 	CountByStatus(ctx context.Context, status int8) (int64, error)
 	SumRevenue(ctx context.Context, startTime, endTime string) (int64, error)
 	SumRefund(ctx context.Context, startTime, endTime string) (int64, error)

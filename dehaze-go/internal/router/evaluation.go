@@ -9,7 +9,7 @@ import (
 func RegisterEvaluationRoutes(rg *gin.RouterGroup, evaluationApi *api.SysEvaluationApi) {
 	evaluationGroup := rg.Group("/evaluation")
 
-	evaluationGroup.POST("", middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 5}), evaluationApi.Evaluate)          // 执行效果评估
-	evaluationGroup.GET("/:id", evaluationApi.GetEvaluationLog) // 查询评估状态
-	evaluationGroup.GET("/logs", evaluationApi.ListEvaluationLogs) // 评估日志列表
+	evaluationGroup.POST("", middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 5}), evaluationApi.Evaluate) // 执行效果评估
+	evaluationGroup.GET("/:id", evaluationApi.GetEvaluationLog)                                                     // 查询评估状态
+	evaluationGroup.GET("/logs", evaluationApi.ListEvaluationLogs)                                                  // 评估日志列表
 }

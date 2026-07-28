@@ -15,6 +15,7 @@ import (
 	deptrepo "github.com/earthyzinc/dehaze-go/internal/repository/dept"
 	dictrepo "github.com/earthyzinc/dehaze-go/internal/repository/dict"
 	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
+	fbrepo "github.com/earthyzinc/dehaze-go/internal/repository/feedback"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
 	ihrepo "github.com/earthyzinc/dehaze-go/internal/repository/input_history"
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
@@ -34,14 +35,16 @@ import (
 	deptservice "github.com/earthyzinc/dehaze-go/internal/service/dept"
 	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
 	evalservice "github.com/earthyzinc/dehaze-go/internal/service/evaluation"
+	fbservice "github.com/earthyzinc/dehaze-go/internal/service/feedback"
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
-	ihservice "github.com/earthyzinc/dehaze-go/internal/service/input_history"
 	importexportservice "github.com/earthyzinc/dehaze-go/internal/service/import_export"
 	"github.com/earthyzinc/dehaze-go/internal/service/import_export/handlers"
+	ihservice "github.com/earthyzinc/dehaze-go/internal/service/input_history"
 	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
-	msgservice "github.com/earthyzinc/dehaze-go/internal/service/message"
 	menuservice "github.com/earthyzinc/dehaze-go/internal/service/menu"
+	msgservice "github.com/earthyzinc/dehaze-go/internal/service/message"
 	orderservice "github.com/earthyzinc/dehaze-go/internal/service/order"
+	paymentsvc "github.com/earthyzinc/dehaze-go/internal/service/payment"
 	pkgsaleservice "github.com/earthyzinc/dehaze-go/internal/service/pkgsale"
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
 	roleservice "github.com/earthyzinc/dehaze-go/internal/service/role"
@@ -62,8 +65,9 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/earthyzinc/dehaze-go/pkg/storage"
-	dehazevalidator "github.com/earthyzinc/dehaze-go/pkg/validator"
 	"github.com/earthyzinc/dehaze-go/pkg/websocket"
+	"github.com/earthyzinc/dehaze-go/pkg/xxljob"
+	dehazevalidator "github.com/earthyzinc/dehaze-go/pkg/validator"
 	gingin "github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -74,6 +78,7 @@ type Application struct {
 	*gin.Server
 	taskExecutor taskservice.AsyncTaskExecutor
 	consumer     *mq.Consumer
+	publisher    *mq.Publisher
 }
 
 func New() *Application {
@@ -171,6 +176,11 @@ func (a *Application) Init() error {
 	refundRepo := orderrepo.NewRefundRecordRepository(gormDB)
 	autoRenewRepo := orderrepo.NewAutoRenewRepository(gormDB)
 
+	// feedback module repositories
+	ratingRepo := fbrepo.NewRatingRepository(gormDB)
+	feedbackRepo := fbrepo.NewFeedbackRepository(gormDB)
+	feedbackReplyRepo := fbrepo.NewFeedbackReplyRepository(gormDB)
+
 	// services
 	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo)
 	authService := authservice.NewAuthService(cacheClient, userService, gormDB)
@@ -241,9 +251,7 @@ func (a *Application) Init() error {
 	importExportApi := api.NewImportExportApi(importExportService)
 	inputHistoryService := ihservice.NewInputHistoryService(inputHistoryRepo)
 	algoClient := algo.NewClient(cfg.Algorithm)
-	predictionService := predservice.NewPredictionService(predLogRepo, algorithmRepo, algoClient, cacheClient)
 	evalLogRepo := evalrepo.NewEvalLogRepository(gormDB)
-	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algorithmRepo, algoClient)
 	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService)
 
 	// message module services
@@ -252,15 +260,32 @@ func (a *Application) Init() error {
 	messageTemplateService := msgservice.NewMessageTemplateService(msgTplRepo)
 	notificationSettingService := msgservice.NewNotificationSettingService(notifySettingRepo)
 
-	// member module services
-	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo)
+	// member module services（需在 predictionService 之前构造，预测/评估需调用权益校验）
+	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient)
+
+	predictionService := predservice.NewPredictionService(predLogRepo, algorithmRepo, algoClient, cacheClient, memberService)
+	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algorithmRepo, algoClient, memberService)
 
 	// package & order module services
-	packageService := pkgsaleservice.NewPackageService(gormDB, packageRepo, couponRepo, userCouponRepo, memberBenefitRepo)
+	packageService := pkgsaleservice.NewPackageService(gormDB, packageRepo, couponRepo, userCouponRepo, memberBenefitRepo, cacheClient)
 	couponService := pkgsaleservice.NewCouponService(gormDB, couponRepo, userCouponRepo)
-	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, memberRepo)
+	paymentSvc := paymentsvc.NewPaymentChannelService(cfg.Payment)
+	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, memberRepo, paymentSvc, cacheClient)
 
-	// 启动 MQ Consumer 消费死信队列
+	// feedback module services
+	var alertPublisher *mq.Publisher
+	if cfg.RabbitMQ.Enabled {
+		alertPublisher = mq.NewPublisher(cfg.RabbitMQ, zap.L())
+		if err := alertPublisher.Connect(); err != nil {
+			logger.Error("MQ Publisher（低分告警）连接失败，低分告警事件将无法发布", zap.Error(err))
+		}
+	}
+	a.publisher = alertPublisher
+	lowRatingAlertService := fbservice.NewLowRatingAlertService(gormDB, ratingRepo, messageService, alertPublisher, zap.L())
+	ratingService := fbservice.NewRatingService(gormDB, ratingRepo, predLogRepo, memberService, cacheClient, lowRatingAlertService, zap.L())
+	feedbackService := fbservice.NewFeedbackService(gormDB, feedbackRepo, feedbackReplyRepo, cacheClient)
+
+	// 启动 MQ Consumer 消费死信队列与低分告警队列
 	// 注意：Go 后端不消费 export 主队列（由 Java/Python 执行任务），
 	// 仅消费 DLQ 以更新任务状态为 FAILED
 	if cfg.RabbitMQ.Enabled {
@@ -271,13 +296,23 @@ func (a *Application) Init() error {
 			if err := a.consumer.ConsumeDLQ("export", taskService.HandleDLQMessage); err != nil {
 				logger.Error("注册死信队列 Consumer 失败", zap.Error(err))
 			}
-			logger.Info("MQ Consumer 已启动，消费 export 死信队列")
+			if err := a.consumer.Consume("low_rating_alert", lowRatingAlertService.HandleMessage); err != nil {
+				logger.Error("注册低分告警队列 Consumer 失败", zap.Error(err))
+			}
+			logger.Info("MQ Consumer 已启动，消费 export 死信队列与 low_rating_alert 队列")
 		}
 	}
 
-	// 启动定时清理任务（清理过期任务、失败记录、预测/评估僵尸任务等）
-	// 同时启动订单定时任务（超时取消、自动续费、优惠券过期）
-	job.InitJobs(storageService, predLogRepo, evalLogRepo, orderService)
+	// 启动 XXL-Job 执行器并注册定时任务
+	xxlExecutor := xxljob.Init(cfg)
+	if xxlExecutor != nil {
+		job.InitJobs(xxlExecutor, storageService, predLogRepo, evalLogRepo, orderService, announcementService, messageService, memberService)
+		go func() {
+			if err := xxlExecutor.Run(); err != nil {
+				logger.Error("XXL-Job 执行器运行失败", zap.Error(err))
+			}
+		}()
+	}
 
 	// apis
 	authApi := api.NewAuthApi(authService)
@@ -308,6 +343,10 @@ func (a *Application) Init() error {
 	// package & order module apis
 	packageApi := api.NewPackageApi(packageService, couponService)
 	orderApi := api.NewOrderApi(orderService)
+	paymentApi := api.NewPaymentApi(paymentSvc, orderService)
+
+	// feedback module apis
+	feedbackApi := api.NewFeedbackApi(ratingService, feedbackService)
 
 	// routes
 	engine := a.Server.GetEngine()
@@ -322,6 +361,7 @@ func (a *Application) Init() error {
 
 	// 公开路由（无需认证）
 	router.RegisterNoAuthRoutes(v1, authApi)
+	router.RegisterPaymentRoutes(v1, paymentApi)
 
 	// 需要Session认证保护的路由
 	protectedV1 := v1.Group("")
@@ -351,6 +391,7 @@ func (a *Application) Init() error {
 	router.RegisterMemberRoutes(protectedV1, memberApi)
 	router.RegisterPackageRoutes(protectedV1, packageApi)
 	router.RegisterOrderRoutes(protectedV1, orderApi)
+	router.RegisterFeedbackRoutes(protectedV1, feedbackApi)
 
 	middleware.ApiKeyAuth = func(ctx context.Context, rawKey string) (*security.CustomClaims, error) {
 		authInfo, err := apiKeyService.AuthenticateByKey(ctx, rawKey)
@@ -404,6 +445,7 @@ func (a *Application) shutdown() error {
 
 	// 1) 停止定时任务
 	job.StopJobs()
+	xxljob.Stop()
 
 	// 2) HTTP Server
 	if err := a.Server.Stop(ctx); err != nil {
@@ -427,6 +469,16 @@ func (a *Application) shutdown() error {
 			errs = append(errs, fmt.Errorf("TaskExecutor: %w", err))
 		} else {
 			logger.Info("任务执行器已关闭")
+		}
+	}
+
+	// 4.1) 低分告警 MQ Publisher
+	if a.publisher != nil {
+		if err := a.publisher.Close(); err != nil {
+			logger.Error("关闭低分告警 MQ Publisher 失败", zap.Error(err))
+			errs = append(errs, fmt.Errorf("AlertPublisher: %w", err))
+		} else {
+			logger.Info("低分告警 MQ Publisher 已关闭")
 		}
 	}
 

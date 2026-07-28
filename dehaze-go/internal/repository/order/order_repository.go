@@ -163,6 +163,14 @@ func (r *OrderRepository) FindPendingExpired(ctx context.Context, before time.Ti
 	return list, err
 }
 
+func (r *OrderRepository) FindPaidExpired(ctx context.Context, before time.Time) ([]model.SysOrder, error) {
+	var list []model.SysOrder
+	err := r.db.WithContext(ctx).
+		Where("status = 2 AND package_expire_time < ? AND deleted = 0", before).
+		Find(&list).Error
+	return list, err
+}
+
 func (r *OrderRepository) CountByStatus(ctx context.Context, status int8) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).

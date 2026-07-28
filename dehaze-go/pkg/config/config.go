@@ -19,6 +19,8 @@ type AppConfig struct {
 	Kafka     options.Kafka     `mapstructure:"kafka" json:"kafka" yaml:"kafka"`
 	Cors      options.CORS      `mapstructure:"cors" json:"cors" yaml:"cors"`
 	Session   options.Session   `mapstructure:"session" json:"session" yaml:"session"`
+	XxlJob    options.XxlJob    `mapstructure:"xxljob" json:"xxljob" yaml:"xxljob"`
+	Payment   options.Payment   `mapstructure:"payment" json:"payment" yaml:"payment"`
 }
 
 var (

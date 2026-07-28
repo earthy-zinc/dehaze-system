@@ -12,6 +12,8 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	msgrepo "github.com/earthyzinc/dehaze-go/internal/repository/message"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type AnnouncementService struct {
@@ -245,6 +247,29 @@ func (s *AnnouncementService) Cancel(ctx context.Context, id int64) error {
 	return nil
 }
 
+func (s *AnnouncementService) SendScheduled(ctx context.Context) error {
+	pending, err := s.annRepo.FindPendingScheduled(ctx, time.Now())
+	if err != nil {
+		return fmt.Errorf("查询待发送定时公告失败: %w", err)
+	}
+
+	sentTotal := 0
+	failed := 0
+	for _, ann := range pending {
+		if _, err := s.Send(ctx, ann.ID); err != nil {
+			failed++
+			logger.Warn("定时公告发送失败", zap.Int64("id", ann.ID), zap.Error(err))
+			continue
+		}
+		sentTotal++
+	}
+
+	if sentTotal > 0 || failed > 0 {
+		logger.Info("定时公告发送完成", zap.Int("success", sentTotal), zap.Int("failed", failed))
+	}
+	return nil
+}
+
 func (s *AnnouncementService) resolveTargetUserIDs(ctx context.Context, ann *model.SysAnnouncement) ([]int64, error) {
 	switch ann.TargetScope {
 	case "all":
@@ -261,9 +286,32 @@ func (s *AnnouncementService) resolveTargetUserIDs(ctx context.Context, ann *mod
 		}
 		return params.UserIDs, nil
 	case "level":
-		return s.userRepo.FindAllUserIDs(ctx)
+		if ann.TargetParams == "" {
+			return nil, nil
+		}
+		var params struct {
+			Level int `json:"level"`
+		}
+		if err := json.Unmarshal([]byte(ann.TargetParams), &params); err != nil {
+			return nil, common.WrapBizError(common.PARAM_ERROR, "解析等级参数失败", err)
+		}
+		if params.Level < 0 {
+			return nil, common.NewBizError(common.PARAM_ERROR, "等级参数不正确")
+		}
+		return s.userRepo.FindUserIDsByLevel(ctx, params.Level)
+	case "tag":
+		if ann.TargetParams == "" {
+			return nil, nil
+		}
+		var params struct {
+			Tag string `json:"tag"`
+		}
+		if err := json.Unmarshal([]byte(ann.TargetParams), &params); err != nil {
+			return nil, common.WrapBizError(common.PARAM_ERROR, "解析标签参数失败", err)
+		}
+		return s.userRepo.FindUserIDsByTag(ctx, params.Tag)
 	default:
-		return s.userRepo.FindAllUserIDs(ctx)
+		return nil, common.NewBizError(common.PARAM_ERROR, "不支持的发送范围: "+ann.TargetScope)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
+	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
 	algo "github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -26,14 +27,15 @@ const (
 
 // PredictionService 去雾预测服务
 type PredictionService struct {
-	repo     predrepo.IPredLogRepository
-	algoRepo algorepo.IAlgorithmRepository
-	client   *algo.Client
-	cache    types.ICache
+	repo      predrepo.IPredLogRepository
+	algoRepo  algorepo.IAlgorithmRepository
+	client    *algo.Client
+	cache     types.ICache
+	memberSvc memberservice.IMemberService
 }
 
-func NewPredictionService(repo predrepo.IPredLogRepository, algoRepo algorepo.IAlgorithmRepository, client *algo.Client, cache types.ICache) *PredictionService {
-	return &PredictionService{repo: repo, algoRepo: algoRepo, client: client, cache: cache}
+func NewPredictionService(repo predrepo.IPredLogRepository, algoRepo algorepo.IAlgorithmRepository, client *algo.Client, cache types.ICache, memberSvc memberservice.IMemberService) *PredictionService {
+	return &PredictionService{repo: repo, algoRepo: algoRepo, client: client, cache: cache, memberSvc: memberSvc}
 }
 
 // PredictionResult 预测结果 VO
@@ -47,13 +49,19 @@ type PredictionResult struct {
 }
 
 // Predict 提交去雾预测任务（异步）
-// 流程：校验算法 → 检查缓存 → 写日志(processing) → 启动 goroutine 执行 → 立即返回
+// 流程：校验算法 → 校验权益扣减配额 → 检查缓存 → 写日志(processing) → 启动 goroutine 执行 → 立即返回
 func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imageURL string, params string, userID int64) (*PredictionResult, error) {
 	if _, err := s.algoRepo.FindByID(ctx, algorithmID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
 		}
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+	}
+
+	if s.memberSvc != nil {
+		if err := s.memberSvc.CheckAndDeductQuota(ctx, userID, memberservice.QuotaTypeDehaze); err != nil {
+			return nil, err
+		}
 	}
 
 	imageMD5 := utils.MD5Hex(imageURL)
@@ -99,7 +107,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 	}
 
 	logID := predLog.ID
-	go s.executeAsync(logID, algorithmID, imageURL, params, imageMD5)
+	go s.executeAsync(logID, algorithmID, imageURL, params, imageMD5, userID)
 
 	return &PredictionResult{
 		LogID:  logID,
@@ -108,7 +116,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 }
 
 // executeAsync 异步执行预测任务，更新日志状态
-func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, params, imageMD5 string) {
+func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, params, imageMD5 string, userID int64) {
 	ctx := context.Background()
 	startTime := time.Now()
 
@@ -128,6 +136,7 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
+		s.refundQuota(userID)
 		return
 	}
 
@@ -140,6 +149,7 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 			if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 				logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 			}
+			s.refundQuota(userID)
 			return
 		}
 	}
@@ -151,6 +161,7 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
+		s.refundQuota(userID)
 		return
 	}
 
@@ -173,6 +184,15 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 	logger.Info("异步去雾预测完成",
 		zap.Int64("algorithmID", algorithmID),
 		zap.Int64("logID", logID))
+}
+
+// refundQuota 预测失败时回补用户配额
+func (s *PredictionService) refundQuota(userID int64) {
+	if s.memberSvc != nil {
+		if err := s.memberSvc.RefundQuota(context.Background(), userID, memberservice.QuotaTypeDehaze); err != nil {
+			logger.Warn("回补预测配额失败", zap.Int64("userID", userID), zap.Error(err))
+		}
+	}
 }
 
 // pollPredTask 轮询 Python 预测任务状态直到终态

@@ -75,6 +75,7 @@ var (
 	SIGN_IN_ALREADY       = &ResultCode{"A0512", "今日已签到"}
 	GROWTH_INSUFFICIENT   = &ResultCode{"A0513", "成长值不足"}
 	BENEFIT_CONFIG_INVALID = &ResultCode{"A0514", "权益配置无效"}
+	QUOTA_EXCEEDED        = &ResultCode{"A0515", "配额已用尽"}
 
 	// 套餐模块业务错误码 A052x
 	PACKAGE_NOT_FOUND    = &ResultCode{"A0520", "套餐不存在"}
@@ -101,6 +102,15 @@ var (
 	PAYMENT_AMOUNT_MISMATCH = &ResultCode{"A0538", "支付金额与订单金额不一致"}
 	DUPLICATE_ORDER       = &ResultCode{"A0539", "短时间内重复下单"}
 	REFUND_ALREADY_EXISTS = &ResultCode{"A053A", "该订单已存在退款申请"}
+
+	// 反馈评价模块业务错误码 A054x
+	RATING_ALREADY_EXISTS    = &ResultCode{"A0540", "该处理记录已评价"}
+	RATING_NOT_FOUND         = &ResultCode{"A0541", "评价不存在"}
+	RATING_EXPIRED           = &ResultCode{"A0542", "已超过评价时限"}
+	FEEDBACK_NOT_FOUND       = &ResultCode{"A0543", "反馈不存在"}
+	FEEDBACK_CLOSED         = &ResultCode{"A0544", "反馈已关闭"}
+	FEEDBACK_LIMIT_EXCEEDED  = &ResultCode{"A0545", "今日反馈次数已达上限"}
+	PREDICTION_LOG_NOT_FOUND = &ResultCode{"A0546", "处理记录不存在"}
 
 	// A06xx: 操作相关
 	OPERATION_FAILED    = &ResultCode{"A0600", "操作失败"}
@@ -211,6 +221,7 @@ var allResultCodes = map[string]*ResultCode{
 	"A0512": SIGN_IN_ALREADY,
 	"A0513": GROWTH_INSUFFICIENT,
 	"A0514": BENEFIT_CONFIG_INVALID,
+	"A0515": QUOTA_EXCEEDED,
 	// 套餐模块 A052x
 	"A0520": PACKAGE_NOT_FOUND,
 	"A0521": PACKAGE_OFF_SHELF,
@@ -235,6 +246,14 @@ var allResultCodes = map[string]*ResultCode{
 	"A0538": PAYMENT_AMOUNT_MISMATCH,
 	"A0539": DUPLICATE_ORDER,
 	"A053A": REFUND_ALREADY_EXISTS,
+	// 反馈评价模块 A054x
+	"A0540": RATING_ALREADY_EXISTS,
+	"A0541": RATING_NOT_FOUND,
+	"A0542": RATING_EXPIRED,
+	"A0543": FEEDBACK_NOT_FOUND,
+	"A0544": FEEDBACK_CLOSED,
+	"A0545": FEEDBACK_LIMIT_EXCEEDED,
+	"A0546": PREDICTION_LOG_NOT_FOUND,
 	"A0600": OPERATION_FAILED,
 	"A0601": OPERATION_COMPLETED,
 	"A0700": USER_UPLOAD_FILE_ERROR,

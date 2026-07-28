@@ -10,6 +10,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
 	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
+	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
 	algo "github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
@@ -20,13 +21,14 @@ import (
 
 // EvaluationService 去雾效果评估服务
 type EvaluationService struct {
-	repo     evalrepo.IEvalLogRepository
-	algoRepo algorepo.IAlgorithmRepository
-	client   *algo.Client
+	repo      evalrepo.IEvalLogRepository
+	algoRepo  algorepo.IAlgorithmRepository
+	client    *algo.Client
+	memberSvc memberservice.IMemberService
 }
 
-func NewEvaluationService(repo evalrepo.IEvalLogRepository, algoRepo algorepo.IAlgorithmRepository, client *algo.Client) *EvaluationService {
-	return &EvaluationService{repo: repo, algoRepo: algoRepo, client: client}
+func NewEvaluationService(repo evalrepo.IEvalLogRepository, algoRepo algorepo.IAlgorithmRepository, client *algo.Client, memberSvc memberservice.IMemberService) *EvaluationService {
+	return &EvaluationService{repo: repo, algoRepo: algoRepo, client: client, memberSvc: memberSvc}
 }
 
 // EvaluationResult 评估结果 VO
@@ -39,12 +41,19 @@ type EvaluationResult struct {
 }
 
 // Evaluate 提交效果评估任务（异步）
+// 流程：校验算法 → 校验权益扣减配额 → 写日志(processing) → 启动 goroutine 执行 → 立即返回
 func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, predURL, gtURL string, userID int64) (*EvaluationResult, error) {
 	if _, err := s.algoRepo.FindByID(ctx, algorithmID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
 		}
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+	}
+
+	if s.memberSvc != nil {
+		if err := s.memberSvc.CheckAndDeductQuota(ctx, userID, memberservice.QuotaTypeEvaluate); err != nil {
+			return nil, err
+		}
 	}
 
 	evalLog := &model.SysEvalLog{
@@ -61,7 +70,7 @@ func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, pre
 	}
 
 	logID := evalLog.ID
-	go s.executeAsync(logID, algorithmID, predURL, gtURL)
+	go s.executeAsync(logID, algorithmID, predURL, gtURL, userID)
 
 	return &EvaluationResult{
 		LogID:  logID,
@@ -70,7 +79,7 @@ func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, pre
 }
 
 // executeAsync 异步执行评估任务，更新日志状态
-func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtURL string) {
+func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtURL string, userID int64) {
 	ctx := context.Background()
 	startTime := time.Now()
 
@@ -90,6 +99,7 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
+		s.refundQuota(userID)
 		return
 	}
 
@@ -102,6 +112,7 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 			if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 				logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 			}
+			s.refundQuota(userID)
 			return
 		}
 	}
@@ -113,6 +124,7 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
+		s.refundQuota(userID)
 		return
 	}
 
@@ -125,6 +137,16 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 	logger.Info("异步效果评估完成",
 		zap.Int64("algorithmID", algorithmID),
 		zap.Int64("logID", logID))
+}
+
+// refundQuota 评估失败时回补用户配额
+func (s *EvaluationService) refundQuota(userID int64) {
+	if s.memberSvc != nil {
+		ctx := context.Background()
+		if err := s.memberSvc.RefundQuota(ctx, userID, memberservice.QuotaTypeEvaluate); err != nil {
+			logger.Warn("回补评估配额失败", zap.Int64("userID", userID), zap.Error(err))
+		}
+	}
 }
 
 // pollEvalTask 轮询 Python 评估任务状态直到终态

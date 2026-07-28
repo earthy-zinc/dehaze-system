@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"time"
@@ -13,25 +14,38 @@ import (
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	orderrepo "github.com/earthyzinc/dehaze-go/internal/repository/order"
 	pkgsalerepo "github.com/earthyzinc/dehaze-go/internal/repository/pkgsale"
+	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	paymentsvc "github.com/earthyzinc/dehaze-go/internal/service/payment"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 const (
 	orderExpireMinutes = 30
 	timeFormat         = "2006-01-02 15:04:05"
+
+	orderDetailCacheTTL    = 5 * time.Minute
+	orderCreateLockTTL     = 10 * time.Second
+	paymentCallbackLockTTL = 30 * time.Second
+	autoRenewMaxFailCount  = 3
+
+	orderJobLockTTL = 5 * time.Minute
 )
 
 type OrderService struct {
-	db               *gorm.DB
-	orderRepo        orderrepo.IOrderRepository
-	paymentRepo      orderrepo.IPaymentRecordRepository
-	refundRepo       orderrepo.IRefundRecordRepository
-	autoRenewRepo    orderrepo.IAutoRenewRepository
-	packageRepo      pkgsalerepo.IPackageRepository
-	couponRepo       pkgsalerepo.ICouponRepository
-	userCouponRepo   pkgsalerepo.IUserCouponRepository
-	memberRepo       memberrepo.IMemberRepository
+	db             *gorm.DB
+	orderRepo      orderrepo.IOrderRepository
+	paymentRepo    orderrepo.IPaymentRecordRepository
+	refundRepo     orderrepo.IRefundRecordRepository
+	autoRenewRepo  orderrepo.IAutoRenewRepository
+	packageRepo    pkgsalerepo.IPackageRepository
+	couponRepo     pkgsalerepo.ICouponRepository
+	userCouponRepo pkgsalerepo.IUserCouponRepository
+	memberRepo     memberrepo.IMemberRepository
+	paymentSvc     paymentsvc.IPaymentChannelService
+	cache          types.ICache
 }
 
 func NewOrderService(
@@ -44,17 +58,21 @@ func NewOrderService(
 	couponRepo pkgsalerepo.ICouponRepository,
 	userCouponRepo pkgsalerepo.IUserCouponRepository,
 	memberRepo memberrepo.IMemberRepository,
+	paymentSvc paymentsvc.IPaymentChannelService,
+	cache types.ICache,
 ) *OrderService {
 	return &OrderService{
-		db:            db,
-		orderRepo:     orderRepo,
-		paymentRepo:   paymentRepo,
-		refundRepo:    refundRepo,
-		autoRenewRepo: autoRenewRepo,
-		packageRepo:   packageRepo,
-		couponRepo:    couponRepo,
+		db:             db,
+		orderRepo:      orderRepo,
+		paymentRepo:    paymentRepo,
+		refundRepo:     refundRepo,
+		autoRenewRepo:  autoRenewRepo,
+		packageRepo:    packageRepo,
+		couponRepo:     couponRepo,
 		userCouponRepo: userCouponRepo,
-		memberRepo:    memberRepo,
+		memberRepo:     memberRepo,
+		paymentSvc:     paymentSvc,
+		cache:          cache,
 	}
 }
 
@@ -68,6 +86,15 @@ func (s *OrderService) Create(ctx context.Context, userID int64, form *bo.OrderC
 	}
 	if p.Status != 1 {
 		return nil, common.NewBizError(common.PACKAGE_OFF_SHELF, "套餐已下架")
+	}
+
+	lockKey := fmt.Sprintf("order:create:lock:%d:%d", userID, form.PackageID)
+	if s.cache != nil {
+		token, ok, _ := s.cache.Lock(ctx, lockKey, orderCreateLockTTL)
+		if !ok {
+			return nil, common.NewBizError(common.DUPLICATE_ORDER, "请勿短时间内重复下单")
+		}
+		defer func() { _, _ = s.cache.Unlock(ctx, lockKey, token) }()
 	}
 
 	orderNo := generateOrderNo()
@@ -161,9 +188,19 @@ func (s *OrderService) Create(ctx context.Context, userID int64, form *bo.OrderC
 		PayMethod: payMethod,
 		Paid:      paid,
 	}
-	if !paid && (payMethod == "wechat" || payMethod == "alipay") {
-		result.PayURL = ""
-		result.QRCode = ""
+	if !paid && (payMethod == "wechat" || payMethod == "alipay") && s.paymentSvc != nil {
+		payResult, payErr := s.paymentSvc.CreateOrder(ctx, &paymentsvc.UnifiedOrderRequest{
+			OrderNo:     orderNo,
+			Amount:      payableAmount,
+			Description: p.Name,
+			PayMethod:   payMethod,
+		})
+		if payErr != nil {
+			logger.Error("支付渠道下单失败", zap.String("orderNo", orderNo), zap.Error(payErr))
+		} else if payResult != nil {
+			result.PayURL = payResult.PayURL
+			result.QRCode = payResult.QRCode
+		}
 	}
 	return result, nil
 }
@@ -272,6 +309,16 @@ func (s *OrderService) ListMy(ctx context.Context, userID int64, q *query.MyOrde
 }
 
 func (s *OrderService) GetDetail(ctx context.Context, orderNo string) (*vo.OrderDetailVO, error) {
+	cacheKey := fmt.Sprintf("order:detail:%s", orderNo)
+	if s.cache != nil {
+		if cached, err := s.cache.Get(ctx, cacheKey); err == nil && cached != "" {
+			var detail vo.OrderDetailVO
+			if err := json.Unmarshal([]byte(cached), &detail); err == nil {
+				return &detail, nil
+			}
+		}
+	}
+
 	o, err := s.orderRepo.FindByOrderNo(ctx, orderNo)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询订单失败", err)
@@ -330,7 +377,20 @@ func (s *OrderService) GetDetail(ctx context.Context, orderNo string) (*vo.Order
 	user, _ := s.findUsernameByUserID(ctx, o.UserID)
 	detail.Username = user
 
+	if s.cache != nil {
+		if data, err := json.Marshal(detail); err == nil {
+			_ = s.cache.Set(ctx, cacheKey, string(data), orderDetailCacheTTL)
+		}
+	}
+
 	return detail, nil
+}
+
+func (s *OrderService) invalidateOrderDetailCache(ctx context.Context, orderNo string) {
+	if s.cache == nil {
+		return
+	}
+	_ = s.cache.Delete(ctx, fmt.Sprintf("order:detail:%s", orderNo))
 }
 
 func (s *OrderService) Cancel(ctx context.Context, orderNo string, reason string) error {
@@ -345,7 +405,7 @@ func (s *OrderService) Cancel(ctx context.Context, orderNo string, reason string
 		return common.NewBizError(common.ORDER_STATUS_INVALID, "订单状态不允许此操作")
 	}
 
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txOrderRepo := orderrepo.NewOrderRepository(tx)
 		txUserCouponRepo := pkgsalerepo.NewUserCouponRepository(tx)
 
@@ -364,6 +424,11 @@ func (s *OrderService) Cancel(ctx context.Context, orderNo string, reason string
 		}
 		return nil
 	})
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "取消订单失败", err)
+	}
+	s.invalidateOrderDetailCache(ctx, orderNo)
+	return nil
 }
 
 func (s *OrderService) Pay(ctx context.Context, orderNo string, req *bo.PayRequest) (*vo.PayResult, error) {
@@ -399,6 +464,20 @@ func (s *OrderService) Pay(ctx context.Context, orderNo string, req *bo.PayReque
 		}
 		result.Paid = true
 		_ = s.packageRepo.IncrementSalesCount(ctx, o.PackageID, 1)
+		s.invalidateOrderDetailCache(ctx, orderNo)
+	} else if s.paymentSvc != nil {
+		payResult, payErr := s.paymentSvc.CreateOrder(ctx, &paymentsvc.UnifiedOrderRequest{
+			OrderNo:     orderNo,
+			Amount:      o.PayableAmount,
+			Description: o.PackageName,
+			PayMethod:   req.PayMethod,
+		})
+		if payErr != nil {
+			return nil, common.WrapBizError(common.OPERATION_FAILED, "调用支付渠道下单失败", payErr)
+		}
+		result.Paid = false
+		result.PayURL = payResult.PayURL
+		result.QRCode = payResult.QRCode
 	} else {
 		result.Paid = false
 	}
@@ -441,7 +520,7 @@ func (s *OrderService) ApplyRefund(ctx context.Context, userID int64, orderNo st
 		Status:       1,
 	}
 
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txRefundRepo := orderrepo.NewRefundRecordRepository(tx)
 		txOrderRepo := orderrepo.NewOrderRepository(tx)
 
@@ -452,6 +531,11 @@ func (s *OrderService) ApplyRefund(ctx context.Context, userID int64, orderNo st
 			"status": 5,
 		})
 	})
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "申请退款失败", err)
+	}
+	s.invalidateOrderDetailCache(ctx, orderNo)
+	return nil
 }
 
 func (s *OrderService) UpdateAutoRenewConfig(ctx context.Context, userID int64, form *bo.AutoRenewConfigForm) error {
@@ -576,24 +660,81 @@ func (s *OrderService) ApproveRefund(ctx context.Context, auditorID, refundID in
 		return common.NewBizError(common.ORDER_STATUS_INVALID, "退款状态不允许此操作")
 	}
 
+	o, err := s.orderRepo.FindByID(ctx, rr.OrderID)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询订单失败", err)
+	}
+	if o == nil {
+		return common.NewBizError(common.ORDER_NOT_FOUND, "订单不存在")
+	}
+
+	channel := ""
+	if rr.Channel != nil {
+		channel = *rr.Channel
+	}
+	if channel == "" {
+		if o.PayMethod != nil {
+			channel = *o.PayMethod
+		} else {
+			channel = "mock"
+		}
+	}
+
+	if s.paymentSvc != nil {
+		refundResult, refundErr := s.paymentSvc.Refund(ctx, &paymentsvc.RefundRequest{
+			OrderNo:   o.OrderNo,
+			PaymentNo: rr.RefundNo,
+			Channel:   channel,
+			Amount:    rr.RefundAmount,
+			Reason:    rr.Reason,
+		})
+		if refundErr != nil {
+			logger.Error("调用支付渠道退款失败", zap.String("orderNo", o.OrderNo), zap.Error(refundErr))
+			return common.WrapBizError(common.OPERATION_FAILED, "调用支付渠道退款失败", refundErr)
+		}
+		if !refundResult.Success {
+			errMsg := refundResult.ErrorMessage
+			if errMsg == "" {
+				errMsg = "渠道退款失败"
+			}
+			_ = s.refundRepo.Update(ctx, refundID, map[string]interface{}{
+				"status":        3,
+				"audit_time":    time.Now(),
+				"auditor_id":    auditorID,
+				"audit_remark":  form.Remark,
+				"error_message": errMsg,
+			})
+			return common.NewBizError(common.OPERATION_FAILED, errMsg)
+		}
+	}
+
 	now := time.Now()
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txRefundRepo := orderrepo.NewRefundRecordRepository(tx)
 		txOrderRepo := orderrepo.NewOrderRepository(tx)
 
-		if err := txRefundRepo.Update(ctx, refundID, map[string]interface{}{
-			"status":        2,
-			"audit_time":    now,
-			"auditor_id":    auditorID,
-			"audit_remark":  form.Remark,
-			"refund_time":   now,
-		}); err != nil {
+		updates := map[string]interface{}{
+			"status":       2,
+			"audit_time":   now,
+			"auditor_id":   auditorID,
+			"audit_remark": form.Remark,
+			"refund_time":  now,
+		}
+		if s.paymentSvc != nil {
+			updates["channel"] = channel
+		}
+		if err := txRefundRepo.Update(ctx, refundID, updates); err != nil {
 			return err
 		}
 		return txOrderRepo.Update(ctx, rr.OrderID, map[string]interface{}{
 			"status": 6,
 		})
 	})
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "审核退款失败", err)
+	}
+	s.invalidateOrderDetailCache(ctx, o.OrderNo)
+	return nil
 }
 
 func (s *OrderService) RejectRefund(ctx context.Context, auditorID, refundID int64, form *bo.RefundAuditForm) error {
@@ -704,6 +845,15 @@ func (s *OrderService) GetStats(ctx context.Context, startTime, endTime string) 
 }
 
 func (s *OrderService) CancelExpiredOrders(ctx context.Context) error {
+	if s.cache != nil {
+		token, ok, _ := s.cache.Lock(ctx, "job:order:cancel_expired:lock", orderJobLockTTL)
+		if !ok {
+			logger.Info("取消超时订单任务已被其他实例持有，跳过执行")
+			return nil
+		}
+		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:cancel_expired:lock", token) }()
+	}
+
 	list, err := s.orderRepo.FindPendingExpired(ctx, time.Now())
 	if err != nil {
 		return err
@@ -717,11 +867,221 @@ func (s *OrderService) CancelExpiredOrders(ctx context.Context) error {
 	return nil
 }
 
+func (s *OrderService) CompleteExpiredOrders(ctx context.Context) error {
+	if s.cache != nil {
+		token, ok, _ := s.cache.Lock(ctx, "job:order:complete_expired:lock", orderJobLockTTL)
+		if !ok {
+			logger.Info("归档到期订单任务已被其他实例持有，跳过执行")
+			return nil
+		}
+		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:complete_expired:lock", token) }()
+	}
+
+	list, err := s.orderRepo.FindPaidExpired(ctx, time.Now())
+	if err != nil {
+		return err
+	}
+	for _, o := range list {
+		_ = s.orderRepo.Update(ctx, o.ID, map[string]interface{}{
+			"status": 3,
+		})
+	}
+	return nil
+}
+
 func (s *OrderService) ProcessAutoRenewals(ctx context.Context) error {
+	if s.cache != nil {
+		token, ok, _ := s.cache.Lock(ctx, "job:order:auto_renew:lock", orderJobLockTTL)
+		if !ok {
+			logger.Info("自动续费任务已被其他实例持有，跳过执行")
+			return nil
+		}
+		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:auto_renew:lock", token) }()
+	}
+
+	dueList, err := s.autoRenewRepo.FindDueRenewals(ctx, time.Now())
+	if err != nil {
+		return fmt.Errorf("查询到期自动续费记录失败: %w", err)
+	}
+
+	for _, ar := range dueList {
+		if err := s.processSingleAutoRenewal(ctx, &ar); err != nil {
+			logger.Error("处理自动续费失败",
+				zap.Int64("userId", ar.UserID),
+				zap.Int64("packageId", ar.PackageID),
+				zap.Error(err))
+		}
+	}
+	return nil
+}
+
+func (s *OrderService) processSingleAutoRenewal(ctx context.Context, ar *model.SysAutoRenew) error {
+	p, err := s.packageRepo.FindByID(ctx, ar.PackageID)
+	if err != nil {
+		return err
+	}
+	if p == nil || p.Status != 1 {
+		_ = s.autoRenewRepo.Update(ctx, ar.ID, map[string]interface{}{
+			"status":       0,
+			"close_reason": "套餐已下架",
+		})
+		return nil
+	}
+
+	member, _ := s.memberRepo.FindByUserID(ctx, ar.UserID)
+	if member == nil || member.Status != 1 {
+		_ = s.autoRenewRepo.Update(ctx, ar.ID, map[string]interface{}{
+			"status":       0,
+			"close_reason": "会员不存在或已冻结",
+		})
+		return nil
+	}
+
+	orderNo := generateOrderNo()
+	now := time.Now()
+	expireTime := now.Add(orderExpireMinutes * time.Minute)
+
+	order := &model.SysOrder{
+		OrderNo:       orderNo,
+		UserID:        ar.UserID,
+		PackageID:     p.ID,
+		PackageName:   p.Name,
+		PackageLevel:  p.LevelCode,
+		PeriodDays:    p.PeriodDays,
+		OriginalPrice: p.OriginalPrice,
+		DiscountAmount: p.OriginalPrice - p.SalePrice,
+		PayableAmount: p.SalePrice,
+		Status:        1,
+		ExpireTime:    expireTime,
+		IsAutoRenew:   1,
+	}
+
+	if err := s.orderRepo.Create(ctx, order); err != nil {
+		return err
+	}
+
+	if ar.PayMethod == "balance" {
+		if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			return s.completePaymentInTx(ctx, tx, order)
+		}); err != nil {
+			return err
+		}
+		_ = s.packageRepo.IncrementSalesCount(ctx, p.ID, 1)
+	} else if s.paymentSvc != nil {
+		_, payErr := s.paymentSvc.CreateOrder(ctx, &paymentsvc.UnifiedOrderRequest{
+			OrderNo:     orderNo,
+			Amount:      p.SalePrice,
+			Description: p.Name + "(自动续费)",
+			PayMethod:   ar.PayMethod,
+		})
+		if payErr != nil {
+			_ = s.autoRenewRepo.Update(ctx, ar.ID, map[string]interface{}{
+				"fail_count": ar.FailCount + 1,
+			})
+			if ar.FailCount+1 >= autoRenewMaxFailCount {
+				_ = s.autoRenewRepo.Update(ctx, ar.ID, map[string]interface{}{
+					"status":       0,
+					"close_reason": "连续扣款失败超过限制",
+				})
+			}
+			return payErr
+		}
+	}
+
+	nextRenew := now.AddDate(0, 0, p.PeriodDays)
+	return s.autoRenewRepo.Update(ctx, ar.ID, map[string]interface{}{
+		"fail_count":         0,
+		"next_renew_time":    nextRenew,
+		"last_renew_order_id": order.ID,
+	})
+}
+
+func (s *OrderService) HandlePaymentCallback(ctx context.Context, channel, orderNo, channelNo string, amount int64, success bool, rawContent string) error {
+	o, err := s.orderRepo.FindByOrderNo(ctx, orderNo)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询订单失败", err)
+	}
+	if o == nil {
+		return common.NewBizError(common.ORDER_NOT_FOUND, "订单不存在")
+	}
+	if o.Status != 1 {
+		return nil
+	}
+
+	lockKey := fmt.Sprintf("payment:callback:lock:%s", orderNo)
+	if s.cache != nil {
+		token, ok, _ := s.cache.Lock(ctx, lockKey, paymentCallbackLockTTL)
+		if !ok {
+			return common.NewBizError(common.REPEAT_SUBMIT_ERROR, "正在处理支付回调，请勿重复提交")
+		}
+		defer func() { _, _ = s.cache.Unlock(ctx, lockKey, token) }()
+	}
+
+	now := time.Now()
+	payment := &model.SysPaymentRecord{
+		OrderID:         o.ID,
+		UserID:          o.UserID,
+		PaymentNo:       channelNo,
+		Channel:         channel,
+		Amount:          amount,
+		Status:          2,
+		CallbackTime:    &now,
+		CallbackContent: rawContent,
+	}
+	if !success {
+		payment.Status = 3
+	}
+
+	if err := s.paymentRepo.Create(ctx, payment); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "创建支付记录失败", err)
+	}
+
+	if success {
+		err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			txOrderRepo := orderrepo.NewOrderRepository(tx)
+			txMemberRepo := memberrepo.NewMemberRepository(tx)
+
+			effectiveTime := now
+			packageExpireTime := now.AddDate(0, 0, o.PeriodDays)
+
+			member, _ := txMemberRepo.FindByUserID(ctx, o.UserID)
+			if member != nil && member.ExpireTime != nil && member.ExpireTime.After(now) {
+				effectiveTime = *member.ExpireTime
+				packageExpireTime = effectiveTime.AddDate(0, 0, o.PeriodDays)
+			}
+
+			if err := txOrderRepo.Update(ctx, o.ID, map[string]interface{}{
+				"status":              2,
+				"paid_amount":         amount,
+				"paid_time":           now,
+				"pay_method":          channel,
+				"effective_time":      effectiveTime,
+				"package_expire_time": packageExpireTime,
+			}); err != nil {
+				return err
+			}
+			return s.updateMemberAfterPaymentInTx(ctx, txMemberRepo, o.UserID, o.PackageLevel, amount, &packageExpireTime)
+		})
+		if err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "支付回调处理失败", err)
+		}
+		_ = s.packageRepo.IncrementSalesCount(ctx, o.PackageID, 1)
+	}
+
+	s.invalidateOrderDetailCache(ctx, orderNo)
 	return nil
 }
 
 func (s *OrderService) ExpireUserCoupons(ctx context.Context) error {
+	if s.cache != nil {
+		token, ok, _ := s.cache.Lock(ctx, "job:order:expire_coupons:lock", orderJobLockTTL)
+		if !ok {
+			logger.Info("过期优惠券标记任务已被其他实例持有，跳过执行")
+			return nil
+		}
+		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:expire_coupons:lock", token) }()
+	}
+
 	list, err := s.userCouponRepo.FindExpired(ctx, time.Now())
 	if err != nil {
 		return err

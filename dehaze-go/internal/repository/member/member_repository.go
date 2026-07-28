@@ -96,6 +96,14 @@ func (r *MemberRepository) FindPageWithUser(ctx context.Context, q *query.Member
 	return list, total, err
 }
 
+func (r *MemberRepository) FindAllActive(ctx context.Context) ([]model.SysMember, error) {
+	var list []model.SysMember
+	err := r.db.WithContext(ctx).
+		Where("deleted = 0 AND status = 1").
+		Find(&list).Error
+	return list, err
+}
+
 func (r *MemberRepository) UpdateLevel(ctx context.Context, userID int64, updates map[string]interface{}) error {
 	return r.db.WithContext(ctx).
 		Model(&model.SysMember{}).
@@ -122,6 +130,34 @@ func (r *MemberRepository) Update(ctx context.Context, userID int64, updates map
 		Model(&model.SysMember{}).
 		Where("user_id = ? AND deleted = 0", userID).
 		Updates(updates).Error
+}
+
+func (r *MemberRepository) IncrementQuotaUsed(ctx context.Context, userID int64, quotaType string, delta int) error {
+	column := "monthly_dehaze_used"
+	if quotaType == "evaluate" {
+		column = "monthly_evaluate_used"
+	}
+	return r.db.WithContext(ctx).
+		Model(&model.SysMember{}).
+		Where("user_id = ? AND deleted = 0", userID).
+		Update(column, gorm.Expr(column+" + ?", delta)).Error
+}
+
+func (r *MemberRepository) ResetMonthlyQuota(ctx context.Context, userID int64, dehazeQuota, evaluateQuota, quotaMonth int) error {
+	return r.db.WithContext(ctx).
+		Model(&model.SysMember{}).
+		Where("user_id = ? AND deleted = 0", userID).
+		Updates(map[string]interface{}{
+			"monthly_dehaze_quota":   dehazeQuota,
+			"monthly_dehaze_used":    0,
+			"monthly_evaluate_quota": evaluateQuota,
+			"monthly_evaluate_used":  0,
+			"quota_reset_month":      quotaMonth,
+		}).Error
+}
+
+func (r *MemberRepository) CreateQuotaArchive(ctx context.Context, quota *model.SysMemberQuota) error {
+	return r.db.WithContext(ctx).Create(quota).Error
 }
 
 func (r *MemberRepository) Transaction(ctx context.Context, fn func(repo IMemberRepository) error) error {

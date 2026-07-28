@@ -12,10 +12,14 @@ type IMemberRepository interface {
 	FindByUserID(ctx context.Context, userID int64) (*model.SysMember, error)
 	FindWithUserByUserID(ctx context.Context, userID int64) (*MemberWithUser, error)
 	FindPageWithUser(ctx context.Context, q *query.MemberPageQuery) ([]MemberWithUser, int64, error)
+	FindAllActive(ctx context.Context) ([]model.SysMember, error)
 	UpdateLevel(ctx context.Context, userID int64, updates map[string]interface{}) error
 	UpdateGrowth(ctx context.Context, userID int64, growthValue int64) error
 	UpdateStatus(ctx context.Context, userID int64, updates map[string]interface{}) error
 	Update(ctx context.Context, userID int64, updates map[string]interface{}) error
+	IncrementQuotaUsed(ctx context.Context, userID int64, quotaType string, delta int) error
+	ResetMonthlyQuota(ctx context.Context, userID int64, dehazeQuota, evaluateQuota, quotaMonth int) error
+	CreateQuotaArchive(ctx context.Context, quota *model.SysMemberQuota) error
 	Transaction(ctx context.Context, fn func(repo IMemberRepository) error) error
 }
 

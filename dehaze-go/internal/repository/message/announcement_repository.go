@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
@@ -27,6 +28,14 @@ func (r *AnnouncementRepository) FindByID(ctx context.Context, id int64) (*model
 		return nil, err
 	}
 	return &ann, nil
+}
+
+func (r *AnnouncementRepository) FindPendingScheduled(ctx context.Context, before time.Time) ([]model.SysAnnouncement, error) {
+	var list []model.SysAnnouncement
+	err := r.db.WithContext(ctx).
+		Where("status = 2 AND send_time <= ? AND deleted = 0", before).
+		Find(&list).Error
+	return list, err
 }
 
 func (r *AnnouncementRepository) FindPage(ctx context.Context, q *query.AnnouncementQuery) ([]model.SysAnnouncement, int64, error) {

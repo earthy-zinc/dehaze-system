@@ -24,10 +24,13 @@ type IOrderService interface {
 	ApproveRefund(ctx context.Context, auditorID, refundID int64, form *bo.RefundAuditForm) error
 	RejectRefund(ctx context.Context, auditorID, refundID int64, form *bo.RefundAuditForm) error
 	GetStats(ctx context.Context, startTime, endTime string) (*vo.OrderStatsVO, error)
+
+	HandlePaymentCallback(ctx context.Context, channel, orderNo, channelNo string, amount int64, success bool, rawContent string) error
 }
 
 type IOrderJobRunner interface {
 	CancelExpiredOrders(ctx context.Context) error
+	CompleteExpiredOrders(ctx context.Context) error
 	ProcessAutoRenewals(ctx context.Context) error
 	ExpireUserCoupons(ctx context.Context) error
 }

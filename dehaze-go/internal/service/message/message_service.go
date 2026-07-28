@@ -11,6 +11,8 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	msgrepo "github.com/earthyzinc/dehaze-go/internal/repository/message"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type MessageService struct {
@@ -203,6 +205,17 @@ func (s *MessageService) MarkAllRead(ctx context.Context, userID int64, msgType 
 func (s *MessageService) Delete(ctx context.Context, ids []int64, userID int64) error {
 	if err := s.msgRepo.SoftDelete(ctx, ids, userID); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除消息失败", err)
+	}
+	return nil
+}
+
+func (s *MessageService) CleanupExpired(ctx context.Context) error {
+	total, err := s.msgRepo.DeleteExpiredBatch(ctx, time.Now(), 500)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "清理过期消息失败", err)
+	}
+	if total > 0 {
+		logger.Info("过期消息清理完成", zap.Int64("count", total))
 	}
 	return nil
 }

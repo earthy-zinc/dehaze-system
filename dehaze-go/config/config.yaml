@@ -243,3 +243,30 @@ kafka:
     - "localhost:9092"
   topic: "dehaze.logs"
   clientId: "dehaze-go"
+
+# XXL-Job 定时任务配置
+xxljob:
+  enabled: true
+  server-addr: "http://127.0.0.1:14980/xxl-job-admin"
+  access-token: "${DEHAZE_PASSWORD}"
+  executor-port: "9997"
+  registry-key: "xxl-job-executor-dehaze-go"
+
+# 支付渠道配置（默认关闭，未启用时降级为 mock）
+payment:
+  wechat:
+    enabled: false
+    appId: ""
+    mchId: ""
+    mchKey: ""
+    notifyUrl: "http://127.0.0.1:8990/api/v1/payments/wechat/callback"
+    apiKey: ""
+    apiClientKey: ""
+    baseUrl: "https://api.mch.weixin.qq.com"
+  alipay:
+    enabled: false
+    appId: ""
+    privateKey: ""
+    publicKey: ""
+    notifyUrl: "http://127.0.0.1:8990/api/v1/payments/alipay/callback"
+    gateway: "https://openapi.alipay.com/gateway.do"

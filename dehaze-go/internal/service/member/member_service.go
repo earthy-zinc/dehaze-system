@@ -2,6 +2,8 @@ package member
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -9,16 +11,24 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
+	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 const (
-	signInBaseGrowth   = 3
-	signInBonusGrowth  = 20
-	signInBonusCycle   = 7
-	timeFormat         = "2006-01-02 15:04:05"
-	dateFormat         = "2006-01-02"
+	signInBaseGrowth  = 3
+	signInBonusGrowth = 20
+	signInBonusCycle  = 7
+	timeFormat        = "2006-01-02 15:04:05"
+	dateFormat        = "2006-01-02"
+
+	memberProfileCacheTTL   = 10 * time.Minute
+	memberBenefitCacheTTL   = 30 * time.Minute
+	quotaCounterCacheTTL    = 35 * 24 * time.Hour
+	quotaResetJobLockTTL    = 10 * time.Minute
 )
 
 var levelNames = map[string]string{
@@ -34,6 +44,7 @@ type MemberService struct {
 	benefitRepo   memberrepo.IMemberBenefitRepository
 	growthLogRepo memberrepo.IMemberGrowthLogRepository
 	signInRepo    memberrepo.IMemberSignInRepository
+	cache         types.ICache
 }
 
 func NewMemberService(
@@ -42,6 +53,7 @@ func NewMemberService(
 	benefitRepo memberrepo.IMemberBenefitRepository,
 	growthLogRepo memberrepo.IMemberGrowthLogRepository,
 	signInRepo memberrepo.IMemberSignInRepository,
+	cache types.ICache,
 ) *MemberService {
 	return &MemberService{
 		db:            db,
@@ -49,10 +61,21 @@ func NewMemberService(
 		benefitRepo:   benefitRepo,
 		growthLogRepo: growthLogRepo,
 		signInRepo:    signInRepo,
+		cache:         cache,
 	}
 }
 
 func (s *MemberService) GetProfile(ctx context.Context, userID int64) (*vo.MemberProfileVO, error) {
+	cacheKey := fmt.Sprintf("member:profile:%d", userID)
+	if s.cache != nil {
+		if cached, err := s.cache.Get(ctx, cacheKey); err == nil && cached != "" {
+			var profile vo.MemberProfileVO
+			if err := json.Unmarshal([]byte(cached), &profile); err == nil && profile.UserID > 0 {
+				return &profile, nil
+			}
+		}
+	}
+
 	mu, err := s.memberRepo.FindWithUserByUserID(ctx, userID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询会员信息失败", err)
@@ -61,19 +84,19 @@ func (s *MemberService) GetProfile(ctx context.Context, userID int64) (*vo.Membe
 		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "会员不存在")
 	}
 
-	benefit, err := s.benefitRepo.FindByLevelCode(ctx, mu.LevelCode)
+	benefit, err := s.findBenefitByLevelCode(ctx, mu.LevelCode)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+		return nil, err
 	}
 
-	benefits, err := s.benefitRepo.FindAll(ctx)
+	benefits, err := s.findAllBenefits(ctx)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+		return nil, err
 	}
 
 	nextLevelGrowth, progressPercent := calcGrowthProgress(mu.LevelCode, mu.GrowthValue, benefit, benefits)
 
-	return &vo.MemberProfileVO{
+	profile := &vo.MemberProfileVO{
 		UserID:               mu.UserID,
 		Username:             mu.Username,
 		Nickname:             mu.Nickname,
@@ -90,7 +113,68 @@ func (s *MemberService) GetProfile(ctx context.Context, userID int64) (*vo.Membe
 		MonthlyEvaluateUsed:  mu.MonthlyEvaluateUsed,
 		Benefits:             toBenefitVO(benefit),
 		Status:               int(mu.Status),
-	}, nil
+	}
+
+	if s.cache != nil {
+		if data, err := json.Marshal(profile); err == nil {
+			_ = s.cache.Set(ctx, cacheKey, string(data), memberProfileCacheTTL)
+		}
+	}
+	return profile, nil
+}
+
+func (s *MemberService) findBenefitByLevelCode(ctx context.Context, levelCode string) (*model.SysMemberBenefit, error) {
+	cacheKey := fmt.Sprintf("member:benefit:%s", levelCode)
+	if s.cache != nil {
+		if cached, err := s.cache.Get(ctx, cacheKey); err == nil && cached != "" {
+			var b model.SysMemberBenefit
+			if err := json.Unmarshal([]byte(cached), &b); err == nil && b.LevelCode != "" {
+				return &b, nil
+			}
+		}
+	}
+	b, err := s.benefitRepo.FindByLevelCode(ctx, levelCode)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+	}
+	if b != nil && s.cache != nil {
+		if data, err := json.Marshal(b); err == nil {
+			_ = s.cache.Set(ctx, cacheKey, string(data), memberBenefitCacheTTL)
+		}
+	}
+	return b, nil
+}
+
+func (s *MemberService) findAllBenefits(ctx context.Context) ([]model.SysMemberBenefit, error) {
+	if s.cache != nil {
+		if cached, err := s.cache.Get(ctx, "member:benefits:all"); err == nil && cached != "" {
+			var list []model.SysMemberBenefit
+			if err := json.Unmarshal([]byte(cached), &list); err == nil && len(list) > 0 {
+				return list, nil
+			}
+		}
+	}
+	list, err := s.benefitRepo.FindAll(ctx)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+	}
+	if s.cache != nil && len(list) > 0 {
+		if data, err := json.Marshal(list); err == nil {
+			_ = s.cache.Set(ctx, "member:benefits:all", string(data), memberBenefitCacheTTL)
+		}
+	}
+	return list, nil
+}
+
+func (s *MemberService) invalidateMemberCache(ctx context.Context, userID int64, levelCode string) {
+	if s.cache == nil {
+		return
+	}
+	_ = s.cache.Delete(ctx, fmt.Sprintf("member:profile:%d", userID))
+	if levelCode != "" {
+		_ = s.cache.Delete(ctx, fmt.Sprintf("member:benefit:%s", levelCode))
+	}
+	_ = s.cache.Delete(ctx, "member:benefits:all")
 }
 
 func (s *MemberService) ListGrowthLogs(ctx context.Context, userID int64, q *query.GrowthLogQuery) (*vo.PageResult[vo.GrowthLogVO], error) {
@@ -143,9 +227,9 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 	}
 	totalGrowth := signInBaseGrowth + bonusGrowth
 
-	benefits, err := s.benefitRepo.FindAll(ctx)
+	benefits, err := s.findAllBenefits(ctx)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+		return nil, err
 	}
 
 	member, err := s.memberRepo.FindByUserID(ctx, userID)
@@ -158,6 +242,7 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 
 	newGrowthValue := member.GrowthValue + int64(totalGrowth)
 
+	var newLevel string
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txMemberRepo := memberrepo.NewMemberRepository(tx)
 		txGrowthLogRepo := memberrepo.NewMemberGrowthLogRepository(tx)
@@ -200,7 +285,7 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 			return err
 		}
 
-		newLevel := determineLevelByGrowth(benefits, newGrowthValue)
+		newLevel = determineLevelByGrowth(benefits, newGrowthValue)
 		if newLevel != member.LevelCode {
 			if err := txMemberRepo.Update(ctx, userID, map[string]interface{}{
 				"level_code":   newLevel,
@@ -215,6 +300,8 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "签到失败", err)
 	}
+
+	s.invalidateMemberCache(ctx, userID, newLevel)
 
 	return &vo.SignInResultVO{
 		SignDate:       today.Format(dateFormat),
@@ -289,14 +376,14 @@ func (s *MemberService) GetMemberDetail(ctx context.Context, userID int64) (*vo.
 		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "会员不存在")
 	}
 
-	benefit, err := s.benefitRepo.FindByLevelCode(ctx, mu.LevelCode)
+	benefit, err := s.findBenefitByLevelCode(ctx, mu.LevelCode)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+		return nil, err
 	}
 
-	benefits, err := s.benefitRepo.FindAll(ctx)
+	benefits, err := s.findAllBenefits(ctx)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+		return nil, err
 	}
 
 	nextLevelGrowth, progressPercent := calcGrowthProgress(mu.LevelCode, mu.GrowthValue, benefit, benefits)
@@ -364,7 +451,11 @@ func (s *MemberService) AdjustLevel(ctx context.Context, userID, operatorID int6
 		updates["become_member_time"] = time.Now()
 	}
 
-	return s.memberRepo.UpdateLevel(ctx, userID, updates)
+	if err := s.memberRepo.UpdateLevel(ctx, userID, updates); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "等级调整失败", err)
+	}
+	s.invalidateMemberCache(ctx, userID, form.LevelCode)
+	return nil
 }
 
 func (s *MemberService) AdjustGrowth(ctx context.Context, userID, operatorID int64, form *bo.MemberGrowthAdjustForm) error {
@@ -388,14 +479,15 @@ func (s *MemberService) AdjustGrowth(ctx context.Context, userID, operatorID int
 		newGrowth = 0
 	}
 
-	benefits, err := s.benefitRepo.FindAll(ctx)
+	benefits, err := s.findAllBenefits(ctx)
 	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+		return err
 	}
 
 	actualChange := int(newGrowth - member.GrowthValue)
 
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	var newLevel string
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txMemberRepo := memberrepo.NewMemberRepository(tx)
 		txGrowthLogRepo := memberrepo.NewMemberGrowthLogRepository(tx)
 
@@ -414,7 +506,7 @@ func (s *MemberService) AdjustGrowth(ctx context.Context, userID, operatorID int
 			return err
 		}
 
-		newLevel := determineLevelByGrowth(benefits, newGrowth)
+		newLevel = determineLevelByGrowth(benefits, newGrowth)
 		if newLevel != member.LevelCode {
 			if err := txMemberRepo.Update(ctx, userID, map[string]interface{}{
 				"level_code":   newLevel,
@@ -426,6 +518,11 @@ func (s *MemberService) AdjustGrowth(ctx context.Context, userID, operatorID int
 
 		return nil
 	})
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "成长值调整失败", err)
+	}
+	s.invalidateMemberCache(ctx, userID, newLevel)
+	return nil
 }
 
 func (s *MemberService) UpdateStatus(ctx context.Context, userID int64, form *bo.MemberStatusForm) error {
@@ -443,26 +540,34 @@ func (s *MemberService) UpdateStatus(ctx context.Context, userID int64, form *bo
 
 	if form.Status == 0 {
 		now := time.Now()
-		return s.memberRepo.UpdateStatus(ctx, userID, map[string]interface{}{
+		if err := s.memberRepo.UpdateStatus(ctx, userID, map[string]interface{}{
 			"status":        0,
 			"frozen_reason": form.Reason,
 			"frozen_time":   now,
-		})
+		}); err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "状态更新失败", err)
+		}
+		s.invalidateMemberCache(ctx, userID, member.LevelCode)
+		return nil
 	}
 
-	return s.memberRepo.UpdateStatus(ctx, userID, map[string]interface{}{
+	if err := s.memberRepo.UpdateStatus(ctx, userID, map[string]interface{}{
 		"status": 1,
-	})
+	}); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "状态更新失败", err)
+	}
+	s.invalidateMemberCache(ctx, userID, member.LevelCode)
+	return nil
 }
 
 func (s *MemberService) ListBenefits(ctx context.Context) ([]vo.BenefitVO, error) {
-	list, err := s.benefitRepo.FindAll(ctx)
+	list, err := s.findAllBenefits(ctx)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+		return nil, err
 	}
 	vos := make([]vo.BenefitVO, 0, len(list))
-	for _, b := range list {
-		vos = append(vos, toBenefitVO(&b))
+	for i := range list {
+		vos = append(vos, toBenefitVO(&list[i]))
 	}
 	return vos, nil
 }
@@ -516,7 +621,223 @@ func (s *MemberService) UpdateBenefit(ctx context.Context, levelCode string, for
 		return nil
 	}
 
-	return s.benefitRepo.Update(ctx, levelCode, updates)
+	if err := s.benefitRepo.Update(ctx, levelCode, updates); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "权益配置更新失败", err)
+	}
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, fmt.Sprintf("member:benefit:%s", levelCode))
+		_ = s.cache.Delete(ctx, "member:benefits:all")
+	}
+	return nil
+}
+
+func (s *MemberService) AwardGrowth(ctx context.Context, userID int64, changeType string, changeValue int, reason, relatedID string) error {
+	if changeValue == 0 {
+		return nil
+	}
+
+	member, err := s.memberRepo.FindByUserID(ctx, userID)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询会员信息失败", err)
+	}
+	if member == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "会员不存在")
+	}
+
+	newGrowth := member.GrowthValue + int64(changeValue)
+	if newGrowth < 0 {
+		newGrowth = 0
+	}
+
+	benefits, err := s.findAllBenefits(ctx)
+	if err != nil {
+		return err
+	}
+
+	var newLevel string
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txMemberRepo := memberrepo.NewMemberRepository(tx)
+		txGrowthLogRepo := memberrepo.NewMemberGrowthLogRepository(tx)
+
+		if err := txMemberRepo.UpdateGrowth(ctx, userID, newGrowth); err != nil {
+			return err
+		}
+
+		if err := txGrowthLogRepo.Create(ctx, &model.SysMemberGrowthLog{
+			UserID:      userID,
+			ChangeType:  changeType,
+			ChangeValue: changeValue,
+			Balance:     newGrowth,
+			RelatedID:   relatedID,
+			Reason:      reason,
+		}); err != nil {
+			return err
+		}
+
+		newLevel = determineLevelByGrowth(benefits, newGrowth)
+		if newLevel != member.LevelCode {
+			if err := txMemberRepo.Update(ctx, userID, map[string]interface{}{
+				"level_code":   newLevel,
+				"level_source": "growth",
+			}); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "成长值奖励失败", err)
+	}
+	s.invalidateMemberCache(ctx, userID, newLevel)
+	return nil
+}
+
+// CheckAndDeductQuota 校验并扣减会员配额（使用 Redis DECR 原子操作，异步落库）
+func (s *MemberService) CheckAndDeductQuota(ctx context.Context, userID int64, quotaType QuotaType) error {
+	member, err := s.memberRepo.FindByUserID(ctx, userID)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询会员信息失败", err)
+	}
+	if member == nil {
+		return common.NewBizError(common.MEMBER_NOT_FOUND, "会员不存在")
+	}
+	if member.Status != 1 {
+		return common.NewBizError(common.MEMBER_FROZEN, "会员已冻结")
+	}
+
+	var quota, used int
+	if quotaType == QuotaTypeDehaze {
+		quota = member.MonthlyDehazeQuota
+		used = member.MonthlyDehazeUsed
+	} else {
+		quota = member.MonthlyEvaluateQuota
+		used = member.MonthlyEvaluateUsed
+	}
+
+	if quota <= 0 {
+		return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
+	}
+
+	if s.cache != nil {
+		counterKey := fmt.Sprintf("member:quota:%d:%s", userID, quotaType)
+		remainingStr, err := s.cache.Get(ctx, counterKey)
+		if err != nil || remainingStr == "" {
+			remaining := int64(quota - used)
+			if remaining <= 0 {
+				return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
+			}
+			_ = s.cache.Set(ctx, counterKey, remaining, quotaCounterCacheTTL)
+		}
+
+		newVal, decErr := s.cache.Decr(ctx, counterKey)
+		if decErr != nil {
+			logger.Warn("Redis DECR 配额扣减失败，降级为数据库校验", zap.Int64("userID", userID), zap.String("quotaType", string(quotaType)), zap.Error(decErr))
+		} else {
+			if newVal < 0 {
+				_, _ = s.cache.Incr(ctx, counterKey)
+				return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
+			}
+			go s.asyncPersistQuotaUsed(userID, quotaType)
+			return nil
+		}
+	}
+
+	if used >= quota {
+		return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
+	}
+	if err := s.memberRepo.IncrementQuotaUsed(ctx, userID, string(quotaType), 1); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "扣减配额失败", err)
+	}
+	return nil
+}
+
+func (s *MemberService) asyncPersistQuotaUsed(userID int64, quotaType QuotaType) {
+	ctx := context.Background()
+	if err := s.memberRepo.IncrementQuotaUsed(ctx, userID, string(quotaType), 1); err != nil {
+		logger.Error("异步落库配额扣减失败", zap.Int64("userID", userID), zap.String("quotaType", string(quotaType)), zap.Error(err))
+	}
+}
+
+// RefundQuota 回补会员配额（预测/评估失败时调用，回补缓存计数器并异步回补数据库）
+func (s *MemberService) RefundQuota(ctx context.Context, userID int64, quotaType QuotaType) error {
+	if s.cache != nil {
+		counterKey := fmt.Sprintf("member:quota:%d:%s", userID, quotaType)
+		if _, err := s.cache.Incr(ctx, counterKey); err != nil {
+			logger.Warn("回补配额 Incr 失败", zap.Int64("userID", userID), zap.String("quotaType", string(quotaType)), zap.Error(err))
+		}
+	}
+	if err := s.memberRepo.IncrementQuotaUsed(ctx, userID, string(quotaType), -1); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "回补配额失败", err)
+	}
+	return nil
+}
+
+// ResetMonthlyQuota 重置所有活跃会员的月度配额（每月初执行）
+func (s *MemberService) ResetMonthlyQuota(ctx context.Context) error {
+	if s.cache != nil {
+		lockKey := "job:member:quota:reset:lock"
+		token, ok, _ := s.cache.Lock(ctx, lockKey, quotaResetJobLockTTL)
+		if !ok {
+			logger.Info("月度配额重置任务已被其他实例持有，跳过执行")
+			return nil
+		}
+		defer func() { _, _ = s.cache.Unlock(ctx, lockKey, token) }()
+	}
+
+	now := time.Now()
+	quotaMonth := now.Year()*100 + int(now.Month())
+
+	benefits, err := s.findAllBenefits(ctx)
+	if err != nil {
+		return err
+	}
+	benefitMap := make(map[string]*model.SysMemberBenefit, len(benefits))
+	for i := range benefits {
+		benefitMap[benefits[i].LevelCode] = &benefits[i]
+	}
+
+	members, err := s.memberRepo.FindAllActive(ctx)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询活跃会员失败", err)
+	}
+
+	successCount := 0
+	for _, m := range members {
+		dehazeQuota := 0
+		evaluateQuota := 0
+		if b, ok := benefitMap[m.LevelCode]; ok {
+			dehazeQuota = b.MonthlyDehazeQuota
+			evaluateQuota = b.MonthlyEvaluateQuota
+		}
+
+		archive := &model.SysMemberQuota{
+			UserID:        m.UserID,
+			QuotaMonth:    quotaMonth,
+			LevelCode:     m.LevelCode,
+			DehazeQuota:   m.MonthlyDehazeQuota,
+			DehazeUsed:    m.MonthlyDehazeUsed,
+			EvaluateQuota: m.MonthlyEvaluateQuota,
+			EvaluateUsed:  m.MonthlyEvaluateUsed,
+			ResetTime:     now,
+		}
+		_ = s.memberRepo.CreateQuotaArchive(ctx, archive)
+
+		if err := s.memberRepo.ResetMonthlyQuota(ctx, m.UserID, dehazeQuota, evaluateQuota, quotaMonth); err != nil {
+			logger.Error("重置会员月度配额失败", zap.Int64("userID", m.UserID), zap.Error(err))
+			continue
+		}
+
+		if s.cache != nil {
+			_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", m.UserID, QuotaTypeDehaze))
+			_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", m.UserID, QuotaTypeEvaluate))
+			s.invalidateMemberCache(ctx, m.UserID, m.LevelCode)
+		}
+		successCount++
+	}
+
+	logger.Info("月度配额重置完成", zap.Int("total", len(members)), zap.Int("success", successCount))
+	return nil
 }
 
 func getLevelName(levelCode string) string {

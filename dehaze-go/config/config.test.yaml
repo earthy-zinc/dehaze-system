@@ -84,3 +84,11 @@ cache:
     type: local
     maxRetries: 3
     retryDelay: 100
+
+# XXL-Job 定时任务配置（测试环境禁用）
+xxljob:
+  enabled: false
+  server-addr: ""
+  access-token: ""
+  executor-port: "9997"
+  registry-key: "xxl-job-executor-dehaze-go"

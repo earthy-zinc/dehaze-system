@@ -2,6 +2,7 @@ package message
 
 import (
 	"context"
+	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
@@ -19,6 +20,7 @@ type IMessageRepository interface {
 	MarkRead(ctx context.Context, id, userID int64) (int64, error)
 	MarkAllRead(ctx context.Context, userID int64, msgType string) (int64, error)
 	SoftDelete(ctx context.Context, ids []int64, userID int64) error
+	DeleteExpiredBatch(ctx context.Context, before time.Time, batchSize int) (int64, error)
 }
 
 // IMessageTemplateRepository 消息模板仓储接口
@@ -40,6 +42,7 @@ type INotificationSettingRepository interface {
 type IAnnouncementRepository interface {
 	FindByID(ctx context.Context, id int64) (*model.SysAnnouncement, error)
 	FindPage(ctx context.Context, q *query.AnnouncementQuery) ([]model.SysAnnouncement, int64, error)
+	FindPendingScheduled(ctx context.Context, before time.Time) ([]model.SysAnnouncement, error)
 	Create(ctx context.Context, ann *model.SysAnnouncement) (int64, error)
 	Update(ctx context.Context, id int64, updates map[string]interface{}) error
 	SoftDelete(ctx context.Context, id int64) error
@@ -48,4 +51,6 @@ type IAnnouncementRepository interface {
 // IUserLookupRepository 用户查询接口（用于公告发送时查询目标用户）
 type IUserLookupRepository interface {
 	FindAllUserIDs(ctx context.Context) ([]int64, error)
+	FindUserIDsByLevel(ctx context.Context, level int) ([]int64, error)
+	FindUserIDsByTag(ctx context.Context, tag string) ([]int64, error)
 }

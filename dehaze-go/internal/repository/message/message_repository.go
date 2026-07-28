@@ -156,4 +156,22 @@ func (r *MessageRepository) SoftDelete(ctx context.Context, ids []int64, userID 
 		Update("deleted", 1).Error
 }
 
+func (r *MessageRepository) DeleteExpiredBatch(ctx context.Context, before time.Time, batchSize int) (int64, error) {
+	var total int64
+	for {
+		result := r.db.WithContext(ctx).
+			Where("expires_at < ? AND deleted = 0", before).
+			Limit(batchSize).
+			Delete(&model.SysMessage{})
+		if result.Error != nil {
+			return total, result.Error
+		}
+		total += result.RowsAffected
+		if result.RowsAffected < int64(batchSize) {
+			break
+		}
+	}
+	return total, nil
+}
+
 var _ IMessageRepository = (*MessageRepository)(nil)

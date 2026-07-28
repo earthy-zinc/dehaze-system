@@ -8,6 +8,13 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 )
 
+type QuotaType string
+
+const (
+	QuotaTypeDehaze   QuotaType = "dehaze"
+	QuotaTypeEvaluate QuotaType = "evaluate"
+)
+
 type IMemberService interface {
 	GetProfile(ctx context.Context, userID int64) (*vo.MemberProfileVO, error)
 	ListGrowthLogs(ctx context.Context, userID int64, q *query.GrowthLogQuery) (*vo.PageResult[vo.GrowthLogVO], error)
@@ -20,4 +27,8 @@ type IMemberService interface {
 	UpdateStatus(ctx context.Context, userID int64, form *bo.MemberStatusForm) error
 	ListBenefits(ctx context.Context) ([]vo.BenefitVO, error)
 	UpdateBenefit(ctx context.Context, levelCode string, form *bo.BenefitForm) error
+	AwardGrowth(ctx context.Context, userID int64, changeType string, changeValue int, reason, relatedID string) error
+	CheckAndDeductQuota(ctx context.Context, userID int64, quotaType QuotaType) error
+	RefundQuota(ctx context.Context, userID int64, quotaType QuotaType) error
+	ResetMonthlyQuota(ctx context.Context) error
 }

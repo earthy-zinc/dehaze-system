@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
@@ -11,12 +12,14 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	pkgsalerepo "github.com/earthyzinc/dehaze-go/internal/repository/pkgsale"
+	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"gorm.io/gorm"
 )
 
 const (
-	timeFormat = "2006-01-02 15:04:05"
+	timeFormat         = "2006-01-02 15:04:05"
+	packageDetailCacheTTL = 10 * time.Minute
 )
 
 var levelNames = map[string]string{
@@ -33,11 +36,12 @@ var periodNames = map[string]string{
 }
 
 type PackageService struct {
-	db            *gorm.DB
-	packageRepo   pkgsalerepo.IPackageRepository
-	couponRepo    pkgsalerepo.ICouponRepository
+	db             *gorm.DB
+	packageRepo    pkgsalerepo.IPackageRepository
+	couponRepo     pkgsalerepo.ICouponRepository
 	userCouponRepo pkgsalerepo.IUserCouponRepository
-	benefitRepo   memberrepo.IMemberBenefitRepository
+	benefitRepo    memberrepo.IMemberBenefitRepository
+	cache          types.ICache
 }
 
 func NewPackageService(
@@ -46,13 +50,15 @@ func NewPackageService(
 	couponRepo pkgsalerepo.ICouponRepository,
 	userCouponRepo pkgsalerepo.IUserCouponRepository,
 	benefitRepo memberrepo.IMemberBenefitRepository,
+	cache types.ICache,
 ) *PackageService {
 	return &PackageService{
-		db:            db,
-		packageRepo:   packageRepo,
-		couponRepo:    couponRepo,
+		db:             db,
+		packageRepo:    packageRepo,
+		couponRepo:     couponRepo,
 		userCouponRepo: userCouponRepo,
-		benefitRepo:   benefitRepo,
+		benefitRepo:    benefitRepo,
+		cache:          cache,
 	}
 }
 
@@ -79,6 +85,16 @@ func (s *PackageService) ListOnSale(ctx context.Context) ([]vo.PackageDetailVO, 
 }
 
 func (s *PackageService) GetDetail(ctx context.Context, id int64) (*vo.PackageDetailVO, error) {
+	cacheKey := fmt.Sprintf("package:detail:%d", id)
+	if s.cache != nil {
+		if cached, err := s.cache.Get(ctx, cacheKey); err == nil && cached != "" {
+			var detail vo.PackageDetailVO
+			if err := json.Unmarshal([]byte(cached), &detail); err == nil && detail.ID > 0 {
+				return &detail, nil
+			}
+		}
+	}
+
 	p, err := s.packageRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询套餐失败", err)
@@ -96,8 +112,21 @@ func (s *PackageService) GetDetail(ctx context.Context, id int64) (*vo.PackageDe
 		benefitMap[benefits[i].LevelCode] = &benefits[i]
 	}
 
-	vo := s.toPackageDetailVO(p, benefitMap)
-	return &vo, nil
+	detail := s.toPackageDetailVO(p, benefitMap)
+
+	if s.cache != nil {
+		if data, err := json.Marshal(detail); err == nil {
+			_ = s.cache.Set(ctx, cacheKey, string(data), packageDetailCacheTTL)
+		}
+	}
+	return &detail, nil
+}
+
+func (s *PackageService) invalidatePackageCache(ctx context.Context, id int64) {
+	if s.cache == nil {
+		return
+	}
+	_ = s.cache.Delete(ctx, fmt.Sprintf("package:detail:%d", id))
 }
 
 func (s *PackageService) CalculatePrice(ctx context.Context, userID, packageID int64, userCouponID *int64) (*vo.PriceResult, error) {
@@ -286,6 +315,7 @@ func (s *PackageService) Update(ctx context.Context, id int64, form *bo.PackageF
 	if err := s.packageRepo.Update(ctx, id, updates); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "更新套餐失败", err)
 	}
+	s.invalidatePackageCache(ctx, id)
 	return nil
 }
 
@@ -301,6 +331,7 @@ func (s *PackageService) UpdateStatus(ctx context.Context, id int64, status int)
 	if err := s.packageRepo.UpdateStatus(ctx, id, int8(status)); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "更新套餐状态失败", err)
 	}
+	s.invalidatePackageCache(ctx, id)
 	return nil
 }
 
@@ -329,6 +360,9 @@ func (s *PackageService) DeleteByIDs(ctx context.Context, ids []int64) error {
 
 	if err := s.packageRepo.DeleteByIDs(ctx, ids); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除套餐失败", err)
+	}
+	for _, id := range ids {
+		s.invalidatePackageCache(ctx, id)
 	}
 	return nil
 }

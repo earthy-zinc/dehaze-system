@@ -15,12 +15,11 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	xxl "github.com/xxl-job/xxl-job-executor-go"
 	"go.uber.org/zap"
 )
 
 const (
-	// 清理间隔时间
-	CleanupInterval = 1 * time.Hour
 	// 失败记录保留时间（7天）
 	FailedRecordRetention = 7 * 24 * time.Hour
 
@@ -31,18 +30,15 @@ const (
 	stuckPending     = 24 * time.Hour      // PENDING 24小时未启动
 
 	// 预测/评估僵尸任务清理（对齐 Java PredEvalLogCleanupJob）
-	predEvalCleanupInterval = 1 * time.Minute
-	predEvalStuckThreshold  = 10 * time.Minute
+	predEvalStuckThreshold = 10 * time.Minute
 )
 
 // CleanupJob 清理任务管理器
 type CleanupJob struct {
-	running        bool
 	cacheClient    types.ICache
 	storageService StorageService
 	predLogRepo    predrepo.IPredLogRepository
 	evalLogRepo    evalrepo.IEvalLogRepository
-	cancelFunc     context.CancelFunc
 }
 
 // StorageService 存储服务接口（仅声明 cleanup 所需方法）
@@ -53,7 +49,6 @@ type StorageService interface {
 // NewCleanupJob 创建清理任务管理器
 func NewCleanupJob(storageSvc StorageService, predLogRepo predrepo.IPredLogRepository, evalLogRepo evalrepo.IEvalLogRepository) *CleanupJob {
 	return &CleanupJob{
-		running:        false,
 		cacheClient:    cache.GetCache(),
 		storageService: storageSvc,
 		predLogRepo:    predLogRepo,
@@ -61,55 +56,22 @@ func NewCleanupJob(storageSvc StorageService, predLogRepo predrepo.IPredLogRepos
 	}
 }
 
-// Start 启动清理任务
-func (j *CleanupJob) Start() {
-	if j.running {
-		logger.Warn("清理任务已在运行")
-		return
-	}
-
-	ctx, cancel := context.WithCancel(database.SetUserID(context.Background(), common.SystemUserID))
-	j.cancelFunc = cancel
-	j.running = true
-
-	logger.Info("启动清理任务")
-
-	go j.run(ctx)
-}
-
-// Stop 停止清理任务
-func (j *CleanupJob) Stop() {
-	if !j.running {
-		return
-	}
-
-	logger.Info("停止清理任务")
-	j.cancelFunc()
-	j.running = false
-}
-
-// run 执行清理任务循环
-func (j *CleanupJob) run(ctx context.Context) {
-	ticker := time.NewTicker(CleanupInterval)
-	defer ticker.Stop()
-	predEvalTicker := time.NewTicker(predEvalCleanupInterval)
-	defer predEvalTicker.Stop()
-
-	// 立即执行一次清理
+func (j *CleanupJob) HandleCleanupExpiredTasks(ctx context.Context, param *xxl.RunReq) string {
 	j.executeCleanup(ctx)
-	j.cleanupStuckPredEvalLogs(ctx)
+	return "success"
+}
 
-	for {
-		select {
-		case <-ctx.Done():
-			logger.Info("清理任务已停止")
-			return
-		case <-ticker.C:
-			j.executeCleanup(ctx)
-		case <-predEvalTicker.C:
-			j.cleanupStuckPredEvalLogs(ctx)
-		}
+func (j *CleanupJob) HandleCleanupStuckTasks(ctx context.Context, param *xxl.RunReq) string {
+	if err := j.cleanupStuckTasks(ctx); err != nil {
+		logger.Error("清理僵死任务失败", zap.Error(err))
+		return "failed: " + err.Error()
 	}
+	return "success"
+}
+
+func (j *CleanupJob) HandleCleanupStuckPredEvalLogs(ctx context.Context, param *xxl.RunReq) string {
+	j.cleanupStuckPredEvalLogs(ctx)
+	return "success"
 }
 
 // cleanupStuckPredEvalLogs 回收预测/评估僵尸任务
@@ -133,22 +95,8 @@ func (j *CleanupJob) cleanupStuckPredEvalLogs(ctx context.Context) {
 }
 
 // executeCleanup 执行清理操作
-// 使用分布式锁防止多实例并发执行清理任务
 // 各步骤独立执行，某一步失败不阻断后续步骤
 func (j *CleanupJob) executeCleanup(ctx context.Context) {
-	// 分布式锁：防止多实例并发清理
-	lockKey := "cleanup:job"
-	token, acquired, lockErr := j.cacheClient.Lock(ctx, lockKey, CleanupInterval-time.Minute)
-	if lockErr != nil {
-		logger.Warn("获取清理任务锁失败，跳过本次清理", zap.Error(lockErr))
-		return
-	}
-	if !acquired {
-		logger.Debug("其他实例正在执行清理任务，跳过")
-		return
-	}
-	defer j.cacheClient.Unlock(ctx, lockKey, token)
-
 	logger.Info("开始执行清理任务")
 
 	// 1. 清理失败的缩略图生成记录
@@ -164,11 +112,6 @@ func (j *CleanupJob) executeCleanup(ctx context.Context) {
 	// 3. 清理过期任务（对齐 Python cleanupExpiredTasks）
 	if err := j.cleanupExpiredTasks(ctx); err != nil {
 		logger.Error("清理过期任务失败", zap.Error(err))
-	}
-
-	// 4. 回收僵死任务（对齐 Python cleanupStuckTasks）
-	if err := j.cleanupStuckTasks(ctx); err != nil {
-		logger.Error("回收僵死任务失败", zap.Error(err))
 	}
 
 	logger.Info("清理任务执行完成")
