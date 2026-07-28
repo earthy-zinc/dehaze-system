@@ -16,11 +16,6 @@ class TestConfig:
         """验证测试环境变量"""
         assert os.getenv("APP_ENV") == "testing"
 
-    def test_jwt_secret_key_set(self):
-        """验证 JWT 密钥已设置"""
-        assert os.getenv("JWT_SECRET_KEY") is not None
-        assert len(os.getenv("JWT_SECRET_KEY", "")) >= 32
-
 
 class TestSettings:
     """测试配置类"""
@@ -31,13 +26,6 @@ class TestSettings:
 
         assert settings.APP_NAME == "Dehaze API"
         assert settings.APP_VERSION == "1.0.0"
-
-    def test_jwt_config(self):
-        """验证 JWT 配置"""
-        from app.config import settings
-
-        assert settings.JWT_ACCESS_TOKEN_EXPIRES > 0
-        assert settings.JWT_REFRESH_TOKEN_EXPIRES > 0
 
     def test_captcha_config(self):
         """验证验证码配置"""

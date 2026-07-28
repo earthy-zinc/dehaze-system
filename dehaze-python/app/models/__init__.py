@@ -27,7 +27,6 @@ from app.models.entity import (
     SysItemFile,
     SysPredLog,
     SysEvalLog,
-    SysOperationLog,
     SysTask,
     SysWpxFile,
 )
@@ -55,7 +54,6 @@ __all__ = [
     'SysItemFile',
     'SysPredLog',
     'SysEvalLog',
-    'SysOperationLog',
     'SysTask',
     'SysWpxFile',
     # 枚举

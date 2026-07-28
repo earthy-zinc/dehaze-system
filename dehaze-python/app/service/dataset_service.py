@@ -19,9 +19,11 @@ from typing import Any
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.models.base import get_current_user_id
 from app.models.entity.sys_dataset import (SysDataset, SysDatasetItem,
                                            SysItemFile)
 from app.repository.dataset_repository import dataset_repository
+from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.service.file_service import FileService
 from app.utils.datetime_utils import format_time
 from redis.asyncio import Redis
@@ -706,6 +708,14 @@ class DatasetService:
 
         await DatasetService._evict_all_cache(redis)
 
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=get_current_user_id(),
+            target_type="dataset",
+            target_id=dataset_ids,
+            action="delete",
+            module="dataset",
+        )
+
         return {
             "total": total,
             "succeeded": succeeded,
@@ -931,6 +941,14 @@ class DatasetItemService:
             await dataset_repository.delete_items_by_ids(db, success_ids)
 
         await DatasetService._evict_all_cache(redis)
+
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=get_current_user_id(),
+            target_type="dataset_item",
+            target_id=item_ids,
+            action="delete",
+            module="dataset",
+        )
 
         return {
             "successCount": len(success_ids),

@@ -7,12 +7,12 @@ router = APIRouter(tags=["WebSocket"])
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: str = Query(..., description="JWT Token 用于认证"),
+    sessionId: str = Query(..., description="Session ID 用于认证"),
 ):
     """
     WebSocket 连接端点
 
-    连接方式: ws://host/ws?token=YOUR_JWT_TOKEN
+    连接方式: ws://host/ws?sessionId=YOUR_SESSION_ID
 
     支持的消息类型:
     - ping: 心跳检测，返回 pong
@@ -29,4 +29,4 @@ async def websocket_endpoint(
     - online_users: 在线用户列表
     - error: 错误消息
     """
-    await WebSocketService.handle_connection(websocket, token)
+    await WebSocketService.handle_connection(websocket, sessionId)

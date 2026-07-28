@@ -12,6 +12,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.database import close_db, init_db
+from app.dependencies.mongo import close_mongo, init_mongo_indexes
 from app.dependencies.redis import (check_redis_health, close_redis,
                                     get_redis_client)
 
@@ -83,6 +84,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     redis = await get_redis_client()
     app.state.redis = redis
     await check_redis_health()
+
+    # 启动缓存失效广播订阅（多实例 L1 缓存一致性）
+    from app.infrastructure.cache.cache import start_cache_invalidation_listener
+    await start_cache_invalidation_listener()
+
+    # 初始化 MongoDB 索引（login_log / audit_log）
+    await init_mongo_indexes()
 
     # 初始化任务追踪器
     from app.service.task_tracker import init_task_tracker
@@ -200,10 +208,23 @@ async def _graceful_shutdown(app: FastAPI) -> None:
         logger.info("GPU 指标采集器已停止")
 
     # 7. 关闭 Redis 连接
+    # 7.1 停止缓存失效广播订阅
+    try:
+        from app.infrastructure.cache.cache import stop_cache_invalidation_listener
+        await stop_cache_invalidation_listener()
+        logger.info("缓存失效广播订阅已停止")
+    except Exception as e:
+        logger.warning("停止缓存失效广播订阅失败: %s", e)
+
+    # 7.2 关闭 Redis 连接
     await close_redis()
     logger.info("Redis 连接已关闭")
 
-    # 8. 关闭数据库连接
+    # 8. 关闭 MongoDB 连接
+    await close_mongo()
+    logger.info("MongoDB 连接已关闭")
+
+    # 9. 关闭数据库连接
     await close_db()
     logger.info("数据库连接已关闭")
 

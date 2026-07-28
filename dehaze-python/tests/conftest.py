@@ -18,7 +18,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 设置测试环境变量
 os.environ["APP_ENV"] = "testing"
-os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key-for-testing-32chars!"
 os.environ["DEHAZE_PASSWORD"] = "test_password"
 
 from app.main import app as fastapi_app

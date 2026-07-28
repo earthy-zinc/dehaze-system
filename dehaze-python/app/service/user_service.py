@@ -11,8 +11,10 @@ from typing import Any
 
 from app.config import settings
 from app.core.exceptions import BusinessException
+from app.models.base import get_current_user_id
 from app.models.entity.sys_user import SysUser
 from app.repository.dept_repository import dept_repository
+from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.repository.user_repository import user_repository
 from app.utils.password import hash_password_async
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -306,6 +308,14 @@ class UserService:
         hashed_password = await hash_password_async(new_password)
         user.password = hashed_password
 
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=get_current_user_id(),
+            target_type="user",
+            target_id=user_id,
+            action="password_change",
+            module="user",
+        )
+
     @staticmethod
     async def delete_users(db: AsyncSession, ids: str) -> dict[str, int]:
         """
@@ -333,6 +343,14 @@ class UserService:
 
         if ids_to_delete:
             await user_repository.soft_delete_by_ids(db, ids_to_delete)
+
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=get_current_user_id(),
+            target_type="user",
+            target_id=ids,
+            action="delete",
+            module="user",
+        )
 
         return {"deleted_count": len(ids_to_delete), "protected_count": len(protected_ids)}
 

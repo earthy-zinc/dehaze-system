@@ -8,12 +8,14 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
+from app.models.base import get_current_user_id
 from app.models.entity.sys_member import SysMember
 from app.models.entity.sys_member_sign_in import SysMemberSignIn
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_growth_log_repository import member_growth_log_repository
 from app.repository.member_repository import member_repository
 from app.repository.member_sign_in_repository import member_sign_in_repository
+from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 import json
 import logging
 
@@ -175,7 +177,7 @@ class MemberService:
     async def get_profile(db: AsyncSession, user_id: int) -> dict:
         data = await member_repository.get_with_user(db, user_id)
         if not data:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会员不存在")
+            raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
 
         member = data["member"]
         benefit = await member_benefit_repository.get_by_level_code(db, member.level_code)
@@ -236,7 +238,7 @@ class MemberService:
     async def sign_in(db: AsyncSession, user_id: int) -> dict:
         member = await member_repository.get_by_user_id(db, user_id)
         if not member:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会员不存在")
+            raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
 
         today = date.today()
         existing = await member_sign_in_repository.get_by_user_and_date(db, user_id, today)
@@ -358,7 +360,7 @@ class MemberService:
     async def get_member_detail(db: AsyncSession, user_id: int) -> dict:
         data = await member_repository.get_with_user(db, user_id)
         if not data:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会员不存在")
+            raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
 
         member = data["member"]
         benefit = await member_benefit_repository.get_by_level_code(db, member.level_code)
@@ -403,7 +405,7 @@ class MemberService:
 
         member = await member_repository.get_by_user_id(db, user_id)
         if not member:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会员不存在")
+            raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
 
         old_level = member.level_code
         member.level_code = form["levelCode"]
@@ -420,6 +422,16 @@ class MemberService:
         await _invalidate_member_cache(user_id=user_id, level_code=old_level)
         await _invalidate_member_cache(level_code=form["levelCode"])
 
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=operator_id,
+            target_type="member",
+            target_id=user_id,
+            action="level_change",
+            module="member",
+            before_value={"levelCode": old_level},
+            after_value=form.dict() if hasattr(form, "dict") else form,
+        )
+
     @staticmethod
     async def adjust_growth(db: AsyncSession, user_id: int, form: dict, operator_id: int) -> None:
         if not form.get("reason"):
@@ -431,7 +443,7 @@ class MemberService:
 
         member = await member_repository.get_by_user_id(db, user_id)
         if not member:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会员不存在")
+            raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
 
         new_growth = member.growth_value + change_value
         if new_growth < 0:
@@ -456,6 +468,15 @@ class MemberService:
             await _invalidate_member_cache(user_id=user_id, level_code=old_level)
             await _invalidate_member_cache(level_code=member.level_code)
 
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=operator_id,
+            target_type="member",
+            target_id=user_id,
+            action="growth_change",
+            module="member",
+            after_value=form.dict() if hasattr(form, "dict") else form,
+        )
+
     @staticmethod
     async def update_status(db: AsyncSession, user_id: int, form: dict) -> None:
         status = form["status"]
@@ -466,8 +487,9 @@ class MemberService:
 
         member = await member_repository.get_by_user_id(db, user_id)
         if not member:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会员不存在")
+            raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
 
+        old_status = member.status
         if status == 0:
             member.status = 0
             member.frozen_reason = reason
@@ -477,6 +499,16 @@ class MemberService:
 
         await db.flush()
         await _invalidate_member_cache(user_id=user_id)
+
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=get_current_user_id(),
+            target_type="member",
+            target_id=user_id,
+            action="status_change",
+            module="member",
+            before_value={"status": old_status},
+            after_value=form.dict() if hasattr(form, "dict") else form,
+        )
 
     @staticmethod
     async def list_benefits(db: AsyncSession) -> list[dict]:
@@ -564,6 +596,15 @@ class MemberService:
                 redis = await get_redis_client()
                 await redis.setex(cache_key, ttl, max(0, remaining - 1))
             await redis_operation_with_fallback(_init_cache, default=None, operation_name=f"quota_cache_init:{quota_type}")
+
+            mongo_audit_log_repository.create_audit_async(
+                operator_id=get_current_user_id(),
+                target_type="member",
+                target_id=user_id,
+                action="quota_deduct",
+                module="member",
+                after_value={"quota_type": quota_type, "amount": 1},
+            )
             return
 
         if result == -1:
@@ -571,6 +612,15 @@ class MemberService:
 
         setattr(member, used_field, used + 1)
         await db.flush()
+
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=get_current_user_id(),
+            target_type="member",
+            target_id=user_id,
+            action="quota_deduct",
+            module="member",
+            after_value={"quota_type": quota_type, "amount": 1},
+        )
 
     @staticmethod
     async def restore_quota(db: AsyncSession, user_id: int, quota_type: str) -> None:

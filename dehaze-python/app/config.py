@@ -9,15 +9,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # 所有环境都需要设置密钥
-        if not self.JWT_SECRET_KEY:
-            raise ValueError(
-                "必须设置 JWT_SECRET_KEY 环境变量。"
-                "开发环境可使用: export JWT_SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
-            )
-
     model_config = SettingsConfigDict(
         env_file="../.env",
         env_file_encoding="utf-8",
@@ -29,11 +20,6 @@ class Settings(BaseSettings):
     APP_NAME: str = "Dehaze API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
-
-    # JWT 配置 - 必须通过环境变量设置，无安全默认值
-    JWT_SECRET_KEY: str = Field(default="")  # 必须设置，启动时会校验
-    JWT_ACCESS_TOKEN_EXPIRES: int = 7200  # 访问令牌过期时间（秒），默认 2 小时
-    JWT_REFRESH_TOKEN_EXPIRES: int = 604800  # 刷新令牌过期时间（秒），默认 7 天
 
     # 验证码配置
     CAPTCHA_KEY_PREFIX: str = "captcha_code:"  # 验证码 Redis key 前缀，与 Java/Go 保持一致
@@ -67,6 +53,11 @@ class Settings(BaseSettings):
         return f"mysql+aiomysql://{self.DB_USER}:{self.DEHAZE_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
 
     # Redis 配置
+    # 推荐 db 隔离方案（与 Java/Go 端一致）：
+    #   db=0  业务缓存（可丢失，当前使用）
+    #   db=1  Session + 分布式锁（需后续迁移，避免缓存 flush 影响会话）
+    #   db=2  限流计数器（限流/防重复提交/登录失败计数）
+    # 当前不强制分库，所有数据仍在 db=0，避免破坏现有 Session
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
@@ -92,6 +83,13 @@ class Settings(BaseSettings):
         if self.DEHAZE_PASSWORD:
             return f"redis://:{self.DEHAZE_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
+    # MongoDB 配置（审计日志：login_log / audit_log）
+    MONGO_DB_NAME: str = "dehaze"
+
+    @property
+    def MONGO_URI(self) -> str:
+        return f"mongodb://root:{self.DEHAZE_PASSWORD}@127.0.0.1:27017/{self.MONGO_DB_NAME}?authSource=admin"
 
     # MinIO 配置
     MINIO_ENDPOINT: str = "127.0.0.1:9110"
@@ -254,6 +252,22 @@ class Settings(BaseSettings):
     IP_BLACKLIST_DURATION: int = 3600  # 自动封禁时长（秒），默认 1 小时
     IP_BLACKLIST_TRACKING_WINDOW: int = 60  # 异常请求追踪窗口（秒）
 
+    # 登录失败锁定（与 Java/Go 端一致：login:fail:{username} 计数器）
+    LOGIN_FAIL_MAX_ATTEMPTS: int = 5  # 最大失败次数
+    LOGIN_FAIL_LOCK_MINUTES: int = 30  # 锁定时长（分钟）
+
+    # 限流中间件（基于 IP + 路径的固定窗口限流）
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_WINDOW_SECONDS: int = 60  # 时间窗口（秒）
+    RATE_LIMIT_MAX_REQUESTS: int = 60  # 单窗口最大请求数
+
+    # 防重复提交中间件（基于 user_id + method + uri + body_hash）
+    ANTI_REPEAT_ENABLED: bool = True
+    ANTI_REPEAT_TTL_SECONDS: int = 5  # 锁定时长（秒）
+
+    # 缓存失效广播（多实例 L1 缓存一致性）
+    CACHE_INVALIDATION_CHANNEL: str = "cache:invalidation"
+
     # ===== WebSocket 跨 Worker 配置 =====
     WS_REDIS_CHANNEL: str = "dehaze:ws:broadcast"  # Pub/Sub 频道名
     WS_ONLINE_KEY: str = "dehaze:ws:online_users"  # 在线用户 Redis sorted set key
@@ -354,8 +368,6 @@ class ProductionSettings(Settings):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 生产环境强制校验关键配置
-        if not self.JWT_SECRET_KEY or len(self.JWT_SECRET_KEY) < 32:
-            raise ValueError("生产环境必须设置 JWT_SECRET_KEY 环境变量且长度 >= 32")
         if not self.DEHAZE_PASSWORD:
             raise ValueError("生产环境必须设置 DEHAZE_PASSWORD 环境变量")
         # 生产环境 CORS_ORIGINS 必须从环境变量配置（禁止使用 localhost 白名单）

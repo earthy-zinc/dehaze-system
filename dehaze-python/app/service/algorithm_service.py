@@ -80,6 +80,12 @@ class AlgorithmService:
         return await algorithm_repository.get_algorithm_options(db)
 
     @staticmethod
+    async def list_all_algorithms(db: AsyncSession) -> list[dict[str, Any]]:
+        """获取所有算法扁平列表（不构建树形结构），用于前端下拉选择"""
+        algorithms = await algorithm_repository.get_list_with_keywords(db, None)
+        return [AlgorithmService._to_vo(algo) for algo in algorithms]
+
+    @staticmethod
     async def get_algorithm_by_id(db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
         """根据 ID 获取算法信息"""
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)

@@ -12,6 +12,7 @@ from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
 from app.infrastructure.cache.redis_lock import acquire_lock, release_lock, try_lock_or_raise, LockAcquireError
+from app.models.base import get_current_user_id
 from app.models.entity.sys_auto_renew import SysAutoRenew
 from app.models.entity.sys_coupon import SysCoupon
 from app.models.entity.sys_member import SysMember
@@ -26,6 +27,7 @@ from app.repository.auto_renew_repository import auto_renew_repository
 from app.repository.coupon_repository import coupon_repository, user_coupon_repository
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_repository import member_repository
+from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.repository.order_repository import order_repository, ORDER_STATUS_MAP, ORDER_STATUS_REVERSE_MAP
 from app.repository.package_repository import package_repository
 from app.repository.payment_record_repository import payment_record_repository
@@ -330,6 +332,14 @@ class OrderService:
 
             if pay_method == "balance":
                 await _complete_balance_payment(db, order)
+                mongo_audit_log_repository.create_audit_async(
+                    operator_id=user_id,
+                    target_type="order",
+                    target_id=order.order_no,
+                    action="create",
+                    module="order",
+                    after_value=form.dict() if hasattr(form, "dict") else form,
+                )
                 return {
                     "orderNo": order.order_no,
                     "payMethod": pay_method,
@@ -338,6 +348,14 @@ class OrderService:
 
             pay_result = await payment_channel_service.unified_order(
                 pay_method, order_no, payable_amount, pkg.name,
+            )
+            mongo_audit_log_repository.create_audit_async(
+                operator_id=user_id,
+                target_type="order",
+                target_id=order.order_no,
+                action="create",
+                module="order",
+                after_value=form.dict() if hasattr(form, "dict") else form,
             )
             return {
                 "orderNo": order.order_no,
@@ -461,6 +479,15 @@ class OrderService:
         await db.flush()
         await _invalidate_order_detail_cache(order_no)
 
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=user_id,
+            target_type="order",
+            target_id=order_no,
+            action="cancel",
+            module="order",
+            after_value={"reason": reason},
+        )
+
     @staticmethod
     async def get_detail(db: AsyncSession, order_no: str, user_id: Optional[int] = None) -> dict:
         cache_key = f"order:detail:{order_no}"
@@ -577,6 +604,15 @@ class OrderService:
         await db.flush()
         await _invalidate_order_detail_cache(order_no)
 
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=user_id,
+            target_type="order",
+            target_id=order_no,
+            action="refund_apply",
+            module="order",
+            after_value=form.dict() if hasattr(form, "dict") else form,
+        )
+
     @staticmethod
     async def approve_refund(db: AsyncSession, refund_id: int, form: dict, auditor_id: int) -> None:
         refund = await refund_record_repository.get_by_id(db, refund_id)
@@ -630,6 +666,15 @@ class OrderService:
         await db.flush()
         await _invalidate_order_detail_cache(order.order_no)
 
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=auditor_id,
+            target_type="order",
+            target_id=refund_id,
+            action="refund_approve",
+            module="order",
+            after_value=form.dict() if hasattr(form, "dict") else form,
+        )
+
     @staticmethod
     async def reject_refund(db: AsyncSession, refund_id: int, form: dict, auditor_id: int) -> None:
         refund = await refund_record_repository.get_by_id(db, refund_id)
@@ -653,6 +698,15 @@ class OrderService:
         order.status = 2
         await db.flush()
         await _invalidate_order_detail_cache(order.order_no)
+
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=auditor_id,
+            target_type="order",
+            target_id=refund_id,
+            action="refund_reject",
+            module="order",
+            after_value=form.dict() if hasattr(form, "dict") else form,
+        )
 
     @staticmethod
     async def list_refunds(db: AsyncSession, query: dict) -> dict:

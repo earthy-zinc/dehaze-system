@@ -6,12 +6,15 @@
 - SingleFlight：防缓存击穿（热点 key 失效瞬间合并并发加载）
 - 空值缓存：防缓存穿透
 - Prometheus 指标：缓存命中率可观测
+- 多实例缓存失效广播：通过 Redis Pub/Sub 同步 L1 缓存失效
 
 读流程：L1 -> L2 -> (SingleFlight 聚合) -> 返回并回填
 写流程：先写 L2 -> 再写 L1（Cache-Aside Pattern）
 """
+import asyncio
 import json
 import logging
+import uuid
 from typing import Any, Awaitable, Callable, Optional, TypeVar
 
 from redis.asyncio import Redis
@@ -34,6 +37,12 @@ CACHE_TTL_DAY = 86400
 # 进程级单例：L1 本地缓存和 SingleFlight 跨请求共享，否则防热 key 失效
 _shared_l1: Optional[TTLCache] = None
 _shared_singleflight: Optional[SingleFlight] = None
+
+# 本实例标识，用于 Pub/Sub 防自消费
+_INSTANCE_ID = str(uuid.uuid4())
+
+# Pub/Sub 监听任务
+_pubsub_task: Optional[asyncio.Task] = None
 
 
 def _get_shared_l1() -> Optional[TTLCache]:
@@ -221,6 +230,7 @@ class CacheService:
         注意：redis.delete 返回被删除的 key 数量，key 不存在时返回 0。
         此处返回 True 表示删除操作已执行（不要求 key 必须存在），
         Redis 不可用时由 redis_operation_with_fallback 记录日志并返回默认值。
+        同时发布 Pub/Sub 失效消息，通知其他实例清除 L1 缓存。
         """
         # 先删 L2
         await redis_operation_with_fallback(
@@ -231,10 +241,15 @@ class CacheService:
         # 再删 L1
         if self._l1 is not None:
             self._l1.delete(key)
+        # 广播失效消息，通知其他实例清除 L1
+        await _publish_invalidation("key", key)
         return True
 
     async def delete_pattern(self, pattern: str) -> int:
-        """按通配符删除缓存（先删 L2 再删 L1）"""
+        """按通配符删除缓存（先删 L2 再删 L1）
+
+        同时发布 Pub/Sub 失效消息，通知其他实例按 pattern 清除 L1 缓存。
+        """
         async def _delete_by_pattern() -> int:
             keys = []
             async for key in self.redis.scan_iter(match=pattern):
@@ -252,6 +267,9 @@ class CacheService:
         # 同步删除 L1 中匹配的 key
         if self._l1 is not None:
             self._l1.delete_pattern(pattern)
+
+        # 广播失效消息，通知其他实例清除 L1
+        await _publish_invalidation("pattern", pattern)
 
         return count
 
@@ -356,3 +374,135 @@ class DeptCacheKeys:
     @classmethod
     def all_patterns(cls) -> list[str]:
         return ["dept:tree*", "dept:options*"]
+
+
+async def _publish_invalidation(msg_type: str, key: str) -> None:
+    """发布缓存失效消息到 Pub/Sub 频道，通知其他实例清除 L1 缓存。
+
+    Args:
+        msg_type: 消息类型，"key"（单个 key）或 "pattern"（通配符）
+        key: 缓存 key 或 pattern
+    """
+    payload = json.dumps({
+        "type": msg_type,
+        "key": key,
+        "senderId": _INSTANCE_ID,
+    })
+
+    async def _publish():
+        from app.dependencies.redis import get_redis_client
+        redis = await get_redis_client()
+        await redis.publish(get_settings().CACHE_INVALIDATION_CHANNEL, payload)
+
+    await redis_operation_with_fallback(
+        operation=_publish,
+        default=None,
+        operation_name=f"cache_invalidation_publish:{msg_type}:{key}",
+    )
+
+
+async def start_cache_invalidation_listener() -> None:
+    """启动缓存失效广播订阅。
+
+    在应用启动时调用（lifespan），订阅 CACHE_INVALIDATION_CHANNEL 频道，
+    收到其他实例发布的失效消息时清除本地 L1 缓存。
+    忽略自己发送的消息（通过 senderId 判断）。
+    """
+    global _pubsub_task
+    if _pubsub_task is not None:
+        return
+
+    settings = get_settings()
+    if not settings.CACHE_L1_ENABLED:
+        logger.debug("L1 缓存未启用，跳过缓存失效广播订阅")
+        return
+
+    _pubsub_task = asyncio.create_task(_subscription_loop())
+    logger.info(
+        "缓存失效广播订阅已启动: channel=%s, instanceId=%s",
+        settings.CACHE_INVALIDATION_CHANNEL, _INSTANCE_ID,
+    )
+
+
+async def _subscription_loop() -> None:
+    """订阅缓存失效频道的循环任务，断开时自动重连。"""
+    settings = get_settings()
+    channel = settings.CACHE_INVALIDATION_CHANNEL
+
+    while True:
+        try:
+            from app.dependencies.redis import get_redis_client
+            redis = await get_redis_client()
+            pubsub = redis.pubsub()
+            await pubsub.subscribe(channel)
+            logger.info("已订阅缓存失效频道: %s", channel)
+
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                await _handle_invalidation_message(message["data"])
+
+            await pubsub.unsubscribe(channel)
+            await pubsub.aclose()
+        except asyncio.CancelledError:
+            logger.info("缓存失效广播订阅任务已取消")
+            break
+        except Exception as e:
+            logger.error("缓存失效 Pub/Sub 异常: %s, 3秒后重连", e, exc_info=True)
+            await asyncio.sleep(3)
+
+
+async def _handle_invalidation_message(data: str) -> None:
+    """处理收到的缓存失效消息，清除本地 L1 缓存。
+
+    忽略自己发送的消息（通过 senderId 判断）。
+    """
+    try:
+        msg = json.loads(data)
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.warning("缓存失效消息解析失败: %s", e)
+        return
+
+    sender_id = msg.get("senderId")
+    if sender_id == _INSTANCE_ID:
+        return
+
+    msg_type = msg.get("type")
+    key = msg.get("key")
+    if not key:
+        return
+
+    l1 = _get_shared_l1()
+    if l1 is None:
+        return
+
+    if msg_type == "key":
+        l1.delete(key)
+    elif msg_type == "pattern":
+        l1.delete_pattern(key)
+    else:
+        logger.warning("未知的缓存失效消息类型: %s", msg_type)
+        return
+
+    logger.debug(
+        "收到缓存失效消息并清除本地 L1: type=%s, key=%s, from=%s",
+        msg_type, key, sender_id,
+    )
+
+
+async def stop_cache_invalidation_listener() -> None:
+    """停止缓存失效广播订阅。
+
+    在应用关闭时调用（lifespan）。
+    """
+    global _pubsub_task
+    if _pubsub_task is None:
+        return
+
+    _pubsub_task.cancel()
+    try:
+        await _pubsub_task
+    except asyncio.CancelledError:
+        pass
+    _pubsub_task = None
+    logger.info("缓存失效广播订阅已停止")

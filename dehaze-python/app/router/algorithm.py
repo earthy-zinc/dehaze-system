@@ -45,6 +45,16 @@ async def get_algorithm_options(
 
 
 @router.get(
+    "/list", response_model=Result[list[AlgorithmVO]], summary="获取所有算法扁平列表"
+)
+async def list_all_algorithms(
+    db: AsyncSession = Depends(get_db),
+):
+    algorithms = await AlgorithmService.list_all_algorithms(db)
+    return success(algorithms)
+
+
+@router.get(
     "/{algorithm_id}", response_model=Result[AlgorithmVO], summary="获取算法详情"
 )
 async def get_algorithm(

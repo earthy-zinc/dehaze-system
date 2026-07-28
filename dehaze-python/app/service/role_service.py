@@ -8,7 +8,9 @@ from typing import Any
 
 from app.core.exceptions import BusinessException
 from app.core.code import ResultCode
+from app.models.base import get_current_user_id
 from app.models.entity.sys_user import SysRole
+from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.repository.role_repository import role_repository
 from app.repository.user_repository import user_repository
 from redis.asyncio import Redis
@@ -248,6 +250,14 @@ class RoleService:
             role = roles_map[role_id]
             await RoleService._clear_role_perms_cache(redis, role.code)
 
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=get_current_user_id(),
+            target_type="role",
+            target_id=ids,
+            action="delete",
+            module="role",
+        )
+
     @staticmethod
     async def update_role_status(
         db: AsyncSession,
@@ -279,6 +289,15 @@ class RoleService:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "超级管理员角色不可禁用")
 
         await role_repository.update_by_id(db, role_id, {"status": status})
+
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=get_current_user_id(),
+            target_type="role",
+            target_id=role_id,
+            action="status_change",
+            module="role",
+            after_value=status,
+        )
 
     @staticmethod
     async def get_role_menu_ids(db: AsyncSession, role_id: int) -> list[int]:
@@ -339,6 +358,15 @@ class RoleService:
 
         # 清除角色权限缓存
         await RoleService._clear_role_perms_cache(redis, role.code)
+
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=get_current_user_id(),
+            target_type="role",
+            target_id=role_id,
+            action="update",
+            module="role",
+            after_value=menu_ids,
+        )
 
     @staticmethod
     async def _clear_role_perms_cache(redis: Redis, role_code: str):

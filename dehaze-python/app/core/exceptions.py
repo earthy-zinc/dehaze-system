@@ -4,7 +4,6 @@ import traceback
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from app.middleware.non_null_response import NonNullJSONResponse as JSONResponse
-from jose import JWTError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
@@ -82,19 +81,6 @@ def register_exception_handlers(app: FastAPI):
                 "errors": error_details,
                 "traceId": _get_trace_id(),
             },
-        )
-
-    @app.exception_handler(JWTError)
-    async def jwt_exception_handler(request: Request, exc: JWTError):
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={
-                "code": ResultCode.TOKEN_INVALID.code,
-                "msg": ResultCode.TOKEN_INVALID.msg,
-                "data": None,
-                "traceId": _get_trace_id(),
-            },
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     @app.exception_handler(HTTPException)

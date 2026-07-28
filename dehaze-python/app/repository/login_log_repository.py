@@ -1,21 +1,16 @@
-"""
-登录日志 Repository
-"""
+from datetime import datetime, timezone
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.entity.sys_log import SysLoginLog
-from app.repository.base import BaseRepository
+from app.config import settings
+from app.dependencies.mongo import get_mongo_client
+from app.models.entity.mongo_log import LoginLogDocument
 
 
-class LoginLogRepository(BaseRepository[SysLoginLog]):
-    """登录日志 Repository"""
-
-    model = SysLoginLog
+class LoginLogRepository:
+    """登录日志 Repository（MongoDB 实现）"""
 
     async def create_log(
         self,
-        db: AsyncSession,
+        db,
         user_id: int | None,
         username: str,
         ip: str,
@@ -24,36 +19,21 @@ class LoginLogRepository(BaseRepository[SysLoginLog]):
         browser: str = "",
         os: str = "",
         location: str = "",
-    ) -> SysLoginLog:
-        """
-        创建登录日志
-
-        Args:
-            db: 数据库会话
-            user_id: 用户ID（登录失败时可能为 None）
-            username: 登录用户名
-            ip: 登录IP
-            status: 登录状态(1:成功;0:失败)
-            message: 登录消息
-            browser: 浏览器类型
-            os: 操作系统
-            location: 登录地点
-
-        Returns:
-            创建的日志记录
-        """
-        log = SysLoginLog(
-            user_id=user_id,
-            username=username,
-            ip=ip,
-            status=status,
-            message=message,
-            browser=browser,
-            os=os,
-            location=location,
-        )
-        return await self.create(db, log)
-
+    ) -> dict:
+        doc = {
+            "user_id": user_id,
+            "username": username,
+            "ip": ip,
+            "location": location,
+            "browser": browser,
+            "os": os,
+            "status": status,
+            "message": message,
+            "create_time": datetime.now(timezone.utc),
+        }
+        result = await get_mongo_client()[settings.MONGO_DB_NAME][LoginLogDocument.COLLECTION].insert_one(doc)
+        doc["_id"] = result.inserted_id
+        return doc
 
 
 login_log_repository = LoginLogRepository()

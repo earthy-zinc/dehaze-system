@@ -10,7 +10,7 @@ from app.models.entity.sys_dict import SysDict, SysDictType
 from app.models.entity.sys_feedback import SysFeedback
 from app.models.entity.sys_feedback_reply import SysFeedbackReply
 from app.models.entity.sys_file import SysFile
-from app.models.entity.sys_log import SysPredLog, SysEvalLog, SysOperationLog, SysLoginLog
+from app.models.entity.sys_log import SysPredLog, SysEvalLog
 from app.models.entity.sys_member import SysMember
 from app.models.entity.sys_member_benefit import SysMemberBenefit
 from app.models.entity.sys_member_growth_log import SysMemberGrowthLog
@@ -55,8 +55,6 @@ __all__ = [
     # 日志
     'SysPredLog',
     'SysEvalLog',
-    'SysOperationLog',
-    'SysLoginLog',
     # 任务
     'SysTask',
     # 会员

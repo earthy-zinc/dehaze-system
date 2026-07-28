@@ -262,7 +262,7 @@ class RatingRepository(BaseRepository[SysRating]):
                 "algorithmName": row.algorithm_name or "",
                 "averageRating": round(float(row.avg_rating or 0), 2),
                 "totalRatings": total,
-                "lowRatingRate": round(low / total, 4) if total > 0 else 0,
+                "lowRatingRate": round(low * 100 / total, 2) if total > 0 else 0,
             })
 
         return {

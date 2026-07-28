@@ -13,6 +13,7 @@ from app.repository.dict_repository import dict_repository
 from app.repository.file_repository import file_repository
 from app.repository.login_log_repository import login_log_repository
 from app.repository.menu_repository import menu_repository
+from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.repository.role_repository import role_repository
 from app.repository.task_repository import task_repository
 from app.repository.user_repository import user_repository
@@ -29,4 +30,5 @@ __all__ = [
     "file_repository",
     "task_repository",
     "login_log_repository",
+    "mongo_audit_log_repository",
 ]

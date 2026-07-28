@@ -19,12 +19,12 @@ from typing import Any, Optional
 from app.config import settings
 from app.dependencies.redis import get_redis_client
 from fastapi import WebSocket, WebSocketDisconnect
-from jose import jwt
-from jose.exceptions import ExpiredSignatureError, JWTError
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
 logger = logging.getLogger(__name__)
+
+SESSION_PREFIX = "session:"
 
 
 @dataclass
@@ -352,23 +352,21 @@ class WebSocketService:
     """WebSocket 服务类（异步版本）"""
 
     @staticmethod
-    async def verify_token(token: str) -> dict[str, Any] | None:
-        """验证 JWT Token"""
-        if not token:
+    async def verify_session(session_id: str) -> dict[str, Any] | None:
+        """验证 Session"""
+        if not session_id:
             return None
 
         try:
-            payload = jwt.decode(
-                token,
-                settings.JWT_SECRET_KEY,
-                algorithms=["HS256"]
-            )
-            return payload
-        except ExpiredSignatureError:
-            logger.warning("Token 已过期")
-            return None
-        except JWTError as e:
-            logger.warning(f"Token 验证失败: {e}")
+            redis = await get_redis_client()
+            session_json = await redis.get(SESSION_PREFIX + session_id)
+            if not session_json:
+                return None
+            if isinstance(session_json, bytes):
+                session_json = session_json.decode()
+            return json.loads(session_json)
+        except Exception as e:
+            logger.warning(f"Session 验证失败: {e}")
             return None
 
     @staticmethod
@@ -385,11 +383,10 @@ class WebSocketService:
             logger.error(f"广播关闭通知失败: {e}")
 
     @staticmethod
-    async def handle_connection(websocket: WebSocket, token: str):
+    async def handle_connection(websocket: WebSocket, session_id: str):
         """处理 WebSocket 连接"""
-        # 验证 Token
-        payload = await WebSocketService.verify_token(token)
-        if not payload:
+        session = await WebSocketService.verify_session(session_id)
+        if not session:
             await websocket.accept()
             await websocket.send_json({
                 "type": "error",
@@ -398,8 +395,8 @@ class WebSocketService:
             await websocket.close(code=4001)
             return
 
-        user_id = payload.get("user_id")
-        username = payload.get("username", "")
+        user_id = session.get("userId")
+        username = session.get("username", "")
 
         if not user_id:
             await websocket.accept()

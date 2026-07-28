@@ -16,6 +16,8 @@ dependencies = [
     "pymysql>=1.1.2",
     # 缓存
     "redis>=6.4.0",
+    # MongoDB（审计日志）
+    "motor>=3.6.0",
     # 对象存储
     "minio>=7.2.18",
     # 安全

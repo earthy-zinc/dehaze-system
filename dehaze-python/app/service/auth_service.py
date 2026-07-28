@@ -7,6 +7,8 @@ import uuid
 from io import BytesIO
 
 from app.config import settings
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.repository.user_repository import user_repository
 from app.utils.password import check_password_async, hash_password_async
 from PIL import Image, ImageDraw, ImageFont
@@ -17,6 +19,8 @@ SESSION_PREFIX = "session:"
 SESSION_TTL = 7 * 24 * 3600
 SESSION_COOKIE = "X-Session-Id"
 
+LOGIN_FAIL_PREFIX = "login:fail:"
+
 
 class AuthService:
     @staticmethod
@@ -26,19 +30,28 @@ class AuthService:
         username: str,
         password: str,
     ) -> dict:
+        fail_key = LOGIN_FAIL_PREFIX + username
+        fail_count_str = await redis.get(fail_key)
+        fail_count = int(fail_count_str) if fail_count_str else 0
+        if fail_count >= settings.LOGIN_FAIL_MAX_ATTEMPTS:
+            raise BusinessException(
+                ResultCode.PASSWORD_ENTER_EXCEED_LIMIT,
+                f"账号已被锁定，请{settings.LOGIN_FAIL_LOCK_MINUTES}分钟后再试",
+            )
+
         user = await user_repository.get_by_username(db, username)
 
         if not user:
-            raise ValueError("用户名或密码错误")
+            await AuthService._fail_login(redis, fail_key)
 
         if user.password is None:
-            raise ValueError("用户密码未设置")
+            await AuthService._fail_login(redis, fail_key)
         is_valid = await check_password_async(password, user.password)
         if not is_valid:
-            raise ValueError("用户名或密码错误")
+            await AuthService._fail_login(redis, fail_key)
 
         if user.status != 1:
-            raise ValueError("用户已被禁用")
+            raise BusinessException(ResultCode.USER_ACCOUNT_LOCKED, "用户已被禁用")
 
         roles = await user_repository.get_user_role_codes(db, user.id)
 
@@ -48,7 +61,9 @@ class AuthService:
         perms = await MenuService.list_role_perms(db, redis, set(roles))
 
         if user.username is None:
-            raise ValueError("用户信息不完整")
+            raise BusinessException(ResultCode.USER_LOGIN_ERROR, "用户信息不完整")
+
+        await redis.delete(fail_key)
 
         session_id = str(uuid.uuid4())
 
@@ -73,6 +88,22 @@ class AuthService:
                 "nickname": user.nickname,
             },
         }
+
+    @staticmethod
+    async def _fail_login(redis: Redis, fail_key: str) -> None:
+        count = await redis.incr(fail_key)
+        if count == 1:
+            await redis.expire(fail_key, settings.LOGIN_FAIL_LOCK_MINUTES * 60)
+        remaining = settings.LOGIN_FAIL_MAX_ATTEMPTS - count
+        if remaining <= 0:
+            raise BusinessException(
+                ResultCode.PASSWORD_ENTER_EXCEED_LIMIT,
+                f"账号已被锁定，请{settings.LOGIN_FAIL_LOCK_MINUTES}分钟后再试",
+            )
+        raise BusinessException(
+            ResultCode.USERNAME_OR_PASSWORD_ERROR,
+            f"用户名或密码错误，剩余{remaining}次尝试机会",
+        )
 
     @staticmethod
     async def register(

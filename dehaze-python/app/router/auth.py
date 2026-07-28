@@ -21,9 +21,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["认证中心"])
 
-MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_DURATION = 900
-
 
 def _set_session_cookie(response: Response, session_id: str, remember_me: bool):
     max_age = SESSION_TTL if remember_me else None
@@ -76,24 +73,9 @@ async def login(
             )
 
     username = request.username.lower().strip()
-    lockout_key = f"login:lockout:{username}"
-    attempts_key = f"login:attempts:{username}"
-
-    is_locked = await redis.get(lockout_key)
-    if is_locked:
-        ttl = await redis.ttl(lockout_key)
-        await login_log_repository.create_log(
-            db, None, username, client_ip, 0,
-            f"账户已锁定，剩余 {ttl // 60} 分钟", browser, os_name
-        )
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={"code": "AUTH_001", "msg": f"账户已锁定，请 {ttl // 60} 分钟后重试", "data": None},
-        )
 
     try:
         result = await AuthService.login(db, redis, username, request.password)
-        await redis.delete(attempts_key)
         user_data = result.get("user", {})
         await login_log_repository.create_log(
             db, user_data.get("id"), username, client_ip, 1,
@@ -102,29 +84,12 @@ async def login(
         remember_me = request.rememberMe if request.rememberMe is not None else False
         _set_session_cookie(response, result.get("sessionId", ""), remember_me)
         return success(result)
-    except ValueError as e:
-        attempts = await redis.incr(attempts_key)
-        if attempts == 1:
-            await redis.expire(attempts_key, LOCKOUT_DURATION)
-
+    except BusinessException as e:
         await login_log_repository.create_log(
             db, None, username, client_ip, 0,
-            str(e), browser, os_name
+            e.message, browser, os_name
         )
-
-        if attempts >= MAX_LOGIN_ATTEMPTS:
-            await redis.setex(lockout_key, LOCKOUT_DURATION, "1")
-            await redis.delete(attempts_key)
-            return JSONResponse(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                content={"code": "AUTH_001", "msg": f"登录失败次数过多，账户已锁定 {LOCKOUT_DURATION // 60} 分钟", "data": None},
-            )
-
-        remaining = MAX_LOGIN_ATTEMPTS - attempts
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"code": ResultCode.USERNAME_OR_PASSWORD_ERROR.code, "msg": f"{str(e)}，剩余 {remaining} 次尝试机会", "data": None},
-        )
+        raise
 
 
 @router.post("/register", response_model=Result[LoginData], summary="用户注册")
