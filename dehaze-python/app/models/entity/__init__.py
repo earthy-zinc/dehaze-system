@@ -9,6 +9,11 @@ from app.models.entity.sys_dept import SysDept
 from app.models.entity.sys_dict import SysDict, SysDictType
 from app.models.entity.sys_file import SysFile
 from app.models.entity.sys_log import SysPredLog, SysEvalLog, SysOperationLog, SysLoginLog
+from app.models.entity.sys_member import SysMember
+from app.models.entity.sys_member_benefit import SysMemberBenefit
+from app.models.entity.sys_member_growth_log import SysMemberGrowthLog
+from app.models.entity.sys_member_quota import SysMemberQuota
+from app.models.entity.sys_member_sign_in import SysMemberSignIn
 from app.models.entity.sys_menu import SysMenu, SysRoleMenu
 from app.models.entity.sys_task import SysTask
 from app.models.entity.sys_user import SysUser, SysRole, SysUserRole
@@ -43,6 +48,12 @@ __all__ = [
     'SysLoginLog',
     # 任务
     'SysTask',
+    # 会员
+    'SysMember',
+    'SysMemberBenefit',
+    'SysMemberGrowthLog',
+    'SysMemberQuota',
+    'SysMemberSignIn',
     # WPX 文件映射
     'SysWpxFile',
 ]

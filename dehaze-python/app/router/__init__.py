@@ -106,3 +106,7 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     app.include_router(announcement_router)
     app.include_router(message_template_router)
     app.include_router(notification_setting_router)
+
+    # 会员管理模块路由
+    from app.router.member import router as member_router
+    app.include_router(member_router)
