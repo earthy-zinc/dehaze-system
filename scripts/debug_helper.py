@@ -24,43 +24,38 @@ DehazeSystem 调试辅助脚本
 BACKENDS = {
     "java": {
         "base": "http://127.0.0.1:8989",
-        "captcha_db": 0,
-        "captcha_key_prefix": "captcha_code:",
-        "strip_quotes": False,
     },
     "go": {
         "base": "http://127.0.0.1:8990",
-        "captcha_db": 0,
-        "captcha_key_prefix": "captcha_code:",
-        "strip_quotes": False,
     },
     "python": {
         "base": "http://127.0.0.1:8991",
-        "captcha_db": 0,
-        "captcha_key_prefix": "captcha:",
-        "strip_quotes": False,
     },
 }
 
 USERNAME = "admin"
-PASSWORD = "123456"
-REDIS_CONTAINER = "redis"
-REDIS_PASSWORD = "12345678"
+PASSWORD = "12345678"
 
 BACKEND_NAMES = list(BACKENDS.keys())
 
 
 # ── 通用工具 ──────────────────────────────────────
 
-def http_request(url, method="GET", token=None, body=None):
+def http_request(url, method="GET", token=None, body=None, session_id=None):
     """发送 HTTP 请求，返回解析后的 JSON"""
     headers = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    if session_id:
+        headers["X-Session-Id"] = session_id
     data = None
     if body:
         if isinstance(body, str):
-            data = body.encode("utf-8")
+            try:
+                parsed = json.loads(body)
+                data = json.dumps(parsed).encode("utf-8")
+            except json.JSONDecodeError:
+                data = body.encode("utf-8")
         else:
             data = json.dumps(body).encode("utf-8")
         headers["Content-Type"] = "application/json"
@@ -81,8 +76,8 @@ def get_captcha_code(captcha_key, db, prefix, strip_quotes):
     """从 Redis 读取验证码"""
     redis_key = f"{prefix}{captcha_key}"
     cmd = [
-        "docker", "exec", "-i", REDIS_CONTAINER,
-        "redis-cli", "-a", REDIS_PASSWORD, "-n", str(db),
+        "docker", "exec", "-i", "redis",
+        "redis-cli", "-a", PASSWORD, "-n", str(db),
         "get", redis_key,
     ]
     result = subprocess.run(
@@ -95,7 +90,7 @@ def get_captcha_code(captcha_key, db, prefix, strip_quotes):
 
 
 def login(backend):
-    """登录指定后端，返回 accessToken"""
+    """登录指定后端，返回 sessionId"""
     cfg = BACKENDS[backend]
     base = cfg["base"]
 
@@ -114,9 +109,9 @@ def login(backend):
     # 2. 从 Redis 读取验证码
     captcha_code = get_captcha_code(
         captcha_key,
-        cfg["captcha_db"],
-        cfg["captcha_key_prefix"],
-        cfg["strip_quotes"],
+        0,
+        "captcha_code:",
+        False,
     )
     if not captcha_code:
         print(f"[{backend}] 验证码已过期或不存在: {captcha_key}", file=sys.stderr)
@@ -141,7 +136,7 @@ def login(backend):
     if not isinstance(login_data, dict):
         print(f"[{backend}] 登录失败: 响应格式异常", file=sys.stderr)
         return None
-    return login_data["accessToken"]
+    return login_data["sessionId"]
 
 
 def get_token(backend):
@@ -179,12 +174,12 @@ def cmd_compare(args):
 
     results = {}
     for name in BACKEND_NAMES:
-        token = get_token(name)
-        if not token:
+        session_id = get_token(name)
+        if not session_id:
             results[name] = {"error": "login failed"}
             continue
         url = BACKENDS[name]["base"] + path
-        result = http_request(url, method=method, token=token, body=body)
+        result = http_request(url, method=method, session_id=session_id, body=body)
         results[name] = result
 
     # 对比输出
@@ -252,11 +247,11 @@ def cmd_curl(args):
         print(f"未知后端: {backend}，可选: {BACKEND_NAMES}")
         return
 
-    token = get_token(backend)
-    if not token:
+    session_id = get_token(backend)
+    if not session_id:
         return
     url = BACKENDS[backend]["base"] + path
-    result = http_request(url, method=method, token=token, body=body)
+    result = http_request(url, method=method, session_id=session_id, body=body)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
@@ -272,6 +267,11 @@ def main():
 
     cmd = sys.argv[1]
     args = sys.argv[2:]
+
+    # 支持 - 作为 body 占位符，从 stdin 读取（避免 shell 转义问题）
+    if "-" in args:
+        stdin_body = sys.stdin.read().strip()
+        args = [a if a != "-" else stdin_body for a in args]
 
     if cmd not in COMMANDS:
         print(f"未知命令: {cmd}")
