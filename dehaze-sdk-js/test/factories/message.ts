@@ -1,5 +1,6 @@
 import { AnnouncementForm, MessageSendRequest } from "@/api/message/model";
 import { uniqueName } from "./common";
+import { USERS } from "./constants";
 
 export function createAnnouncementForm(
   overrides: Partial<AnnouncementForm> = {}
@@ -21,7 +22,7 @@ export function createMessageSendRequest(
     type: "business",
     title: uniqueName("test_消息"),
     content: "测试消息正文",
-    recipientIds: [1],
+    recipientIds: [USERS.ADMIN.id],
     bizModule: "test",
     bizId: uniqueName("biz"),
     priority: 2,

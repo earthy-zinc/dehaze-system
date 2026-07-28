@@ -5,6 +5,7 @@ export interface ResponseData<T = any> {
   code: string;
   data: T;
   msg: string;
+  traceId: string;
 }
 
 /**
