@@ -2,7 +2,7 @@ import { CouponForm, PackageForm, PackageQuery, CouponQuery } from "@/api/packag
 import { pageQuery, uniqueName } from "./common";
 
 /** 分转换为元 */
-const yuan = (v: number) => v * 100;
+const yuan = (v: number) => Math.round(v * 100);
 
 export function createPackageForm(overrides: Partial<PackageForm> = {}): PackageForm {
   return {
