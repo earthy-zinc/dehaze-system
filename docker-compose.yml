@@ -388,18 +388,18 @@ services:
       - pei-network
 
   xxl-job-admin:
-    image: xuxueli/xxl-job-admin:3.1.0
+    image: xuxueli/xxl-job-admin:3.3.0
     container_name: xxl-job-admin
     restart: unless-stopped
     ports:
       - "14980:8080"
     environment:
-      - PARAMS=--spring.datasource.url=jdbc:mysql://mysql:3306/xxl_job?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=${DEHAZE_PASSWORD}
+      - PARAMS=--spring.datasource.url=jdbc:mysql://mysql:3306/xxl_job?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai --spring.datasource.username=root --spring.datasource.password=${DEHAZE_PASSWORD} --xxl.job.accessToken=${DEHAZE_PASSWORD}
       - JAVA_OPTS=-Xmx512m
     volumes:
       - xxl-job-logs:/data/applogs
+    depends_on:
+      - mysql
     networks:
       - pei-network
 
