@@ -45,6 +45,7 @@ class ResultCode(Enum):
     SIGN_IN_ALREADY = ("A0512", "今日已签到")
     GROWTH_INSUFFICIENT = ("A0513", "成长值不足")
     BENEFIT_CONFIG_INVALID = ("A0514", "权益配置无效")
+    QUOTA_EXCEEDED = ("A0515", "当月次数已用完，请升级会员")
 
     # 套餐模块业务错误码 A052x
     PACKAGE_NOT_FOUND = ("A0520", "套餐不存在")
@@ -71,6 +72,15 @@ class ResultCode(Enum):
     PAYMENT_AMOUNT_MISMATCH = ("A0538", "支付金额与订单金额不一致")
     DUPLICATE_ORDER = ("A0539", "短时间内重复下单")
     REFUND_ALREADY_EXISTS = ("A053A", "该订单已存在退款申请")
+
+    # 反馈评价模块业务错误码 A054x
+    RATING_ALREADY_EXISTS = ("A0540", "该处理记录已评价")
+    RATING_NOT_FOUND = ("A0541", "评价不存在")
+    RATING_EXPIRED = ("A0542", "已超过评价时限")
+    FEEDBACK_NOT_FOUND = ("A0543", "反馈不存在")
+    FEEDBACK_CLOSED = ("A0544", "反馈已关闭")
+    FEEDBACK_LIMIT_EXCEEDED = ("A0545", "今日反馈次数已达上限")
+    PREDICTION_LOG_NOT_FOUND = ("A0546", "处理记录不存在")
 
     USER_UPLOAD_FILE_ERROR = ("A0700", "用户上传文件异常")
     USER_UPLOAD_FILE_TYPE_NOT_MATCH = ("A0701", "文件格式不支持")

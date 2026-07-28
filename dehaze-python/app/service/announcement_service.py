@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_announcement import SysAnnouncement
+from app.models.entity.sys_dept import SysDept
 from app.models.entity.sys_message import SysMessage
 from app.models.entity.sys_user import SysUser
 from app.repository.announcement_repository import announcement_repository
@@ -237,6 +238,29 @@ class AnnouncementService:
                 "SELECT user_id FROM sys_member WHERE level_code = :level_code AND deleted = 0 AND status = 1"
             )
             result = await db.execute(stmt, {"level_code": level_code})
+            return [row[0] for row in result.fetchall()]
+
+        if target_scope == "tag":
+            if not target_params:
+                return []
+            tags = target_params.get("tags")
+            if not tags:
+                tag = target_params.get("tag")
+                tags = [tag] if tag else []
+            if not tags:
+                return []
+            stmt = (
+                select(SysUser.id)
+                .join(SysDept, SysUser.dept_id == SysDept.id)
+                .where(
+                    SysUser.deleted == 0,
+                    SysUser.status == 1,
+                    SysDept.deleted == 0,
+                    SysDept.status == 1,
+                    SysDept.name.in_(tags),
+                )
+            )
+            result = await db.execute(stmt)
             return [row[0] for row in result.fetchall()]
 
         return []

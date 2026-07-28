@@ -1,3 +1,5 @@
+import json
+import logging
 import random
 from datetime import datetime, timedelta
 from typing import Optional
@@ -7,6 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.dependencies.redis import get_redis_client
+from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
+from app.infrastructure.cache.redis_lock import acquire_lock, release_lock, try_lock_or_raise, LockAcquireError
 from app.models.entity.sys_auto_renew import SysAutoRenew
 from app.models.entity.sys_coupon import SysCoupon
 from app.models.entity.sys_member import SysMember
@@ -25,13 +30,18 @@ from app.repository.order_repository import order_repository, ORDER_STATUS_MAP, 
 from app.repository.package_repository import package_repository
 from app.repository.payment_record_repository import payment_record_repository
 from app.repository.refund_record_repository import refund_record_repository, REFUND_STATUS_REVERSE_MAP
+from app.service.payment_channel_service import payment_channel_service
+
+logger = logging.getLogger(__name__)
 
 ORDER_EXPIRE_MINUTES = 30
-PAYMENT_LOCK_PREFIX = "payment:lock:"
-ORDER_LOCK_PREFIX = "order:lock:"
+PAYMENT_LOCK_TTL = 600
+ORDER_LOCK_TTL = 5
 REFUND_TIME_LIMIT_DAYS = 7
 
 PAY_METHODS = {"wechat", "alipay", "balance", "combined"}
+
+ORDER_DETAIL_CACHE_TTL = 600
 
 
 def _format_dt(dt: Optional[datetime]) -> Optional[str]:
@@ -127,6 +137,14 @@ def _build_admin_order_vo(order: SysOrder, username: str) -> dict:
     return vo
 
 
+async def _invalidate_order_detail_cache(order_no: str) -> None:
+    cache_key = f"order:detail:{order_no}"
+    async def _del():
+        redis = await get_redis_client()
+        await redis.delete(cache_key)
+    await redis_operation_with_fallback(_del, default=None, operation_name="order_cache_invalidate")
+
+
 async def _activate_member_benefits(db: AsyncSession, order: SysOrder) -> None:
     member = await member_repository.get_by_user_id(db, order.user_id)
     if not member:
@@ -157,6 +175,14 @@ async def _activate_member_benefits(db: AsyncSession, order: SysOrder) -> None:
     member.total_consumption = (member.total_consumption or 0) + order.paid_amount
     await db.flush()
 
+    async def _invalidate_member_cache():
+        redis = await get_redis_client()
+        await redis.delete(f"member:level:{order.user_id}")
+        await redis.delete(f"member:benefit:{pkg.level_code}")
+        await redis.delete(f"member:quota:{order.user_id}:dehaze")
+        await redis.delete(f"member:quota:{order.user_id}:evaluate")
+    await redis_operation_with_fallback(_invalidate_member_cache, default=None, operation_name="member_cache_invalidate")
+
 
 async def _complete_balance_payment(db: AsyncSession, order: SysOrder) -> None:
     now = datetime.now()
@@ -183,10 +209,39 @@ async def _complete_balance_payment(db: AsyncSession, order: SysOrder) -> None:
         await coupon_repository.increment_used_qty(db, _get_coupon_template_id(order.coupon_id))
 
     await _activate_member_benefits(db, order)
+    await _invalidate_order_detail_cache(order.order_no)
 
 
 def _get_coupon_template_id(user_coupon_id: int) -> int:
     return user_coupon_id
+
+
+async def _process_callback_success(db: AsyncSession, order: SysOrder, channel_payment_no: str, callback_raw: dict) -> None:
+    """支付回调成功业务逻辑：写流水、更新订单状态、激活权益、清缓存"""
+    now = datetime.now()
+    payment = SysPaymentRecord(
+        order_id=order.id,
+        user_id=order.user_id,
+        payment_no=channel_payment_no,
+        channel=order.pay_method,
+        amount=order.payable_amount,
+        status=2,
+        callback_time=now,
+        callback_content=json.dumps(callback_raw, ensure_ascii=False),
+    )
+    await payment_record_repository.create(db, payment)
+
+    order.status = 2
+    order.paid_amount = order.payable_amount
+    order.paid_time = now
+    await db.flush()
+
+    if order.coupon_id:
+        await user_coupon_repository.consume_coupon(db, order.coupon_id, order.id)
+        await coupon_repository.increment_used_qty(db, _get_coupon_template_id(order.coupon_id))
+
+    await _activate_member_benefits(db, order)
+    await _invalidate_order_detail_cache(order.order_no)
 
 
 class OrderService:
@@ -200,88 +255,99 @@ class OrderService:
         if pay_method not in PAY_METHODS:
             raise BusinessException(ResultCode.PARAM_ERROR, "不支持的支付方式")
 
-        pkg = await package_repository.get_by_id(db, package_id)
-        if not pkg or pkg.deleted == 1:
-            raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
-        if pkg.status != 1:
-            raise BusinessException(ResultCode.PACKAGE_OFF_SHELF)
+        lock_key = f"order:lock:{user_id}:{package_id}"
+        try:
+            lock_token = await try_lock_or_raise(lock_key, ORDER_LOCK_TTL, "请勿短时间内重复下单")
+        except LockAcquireError as e:
+            raise BusinessException(ResultCode.DUPLICATE_ORDER, str(e))
 
-        original_price = pkg.sale_price
-        discount_amount = 0
-        coupon_amount = 0
+        try:
+            pkg = await package_repository.get_by_id(db, package_id)
+            if not pkg or pkg.deleted == 1:
+                raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
+            if pkg.status != 1:
+                raise BusinessException(ResultCode.PACKAGE_OFF_SHELF)
 
-        if coupon_id:
-            user_coupon = await user_coupon_repository.get_by_id(db, coupon_id)
-            if not user_coupon:
-                raise BusinessException(ResultCode.COUPON_NOT_FOUND)
-            if user_coupon.user_id != user_id:
-                raise BusinessException(ResultCode.BUSINESS_ERROR, "优惠券不属于当前用户")
-            if user_coupon.status != 1:
-                raise BusinessException(ResultCode.COUPON_STATUS_INVALID)
-            if user_coupon.expire_time and user_coupon.expire_time < datetime.now():
-                raise BusinessException(ResultCode.COUPON_EXPIRED)
+            original_price = pkg.sale_price
+            discount_amount = 0
+            coupon_amount = 0
 
-            coupon_template = await coupon_repository.get_by_id(db, user_coupon.coupon_id)
-            if not coupon_template:
-                raise BusinessException(ResultCode.COUPON_NOT_FOUND)
-            if coupon_template.applicable_scope and package_id not in coupon_template.applicable_scope:
-                raise BusinessException(ResultCode.COUPON_NOT_APPLICABLE)
+            if coupon_id:
+                user_coupon = await user_coupon_repository.get_by_id(db, coupon_id)
+                if not user_coupon:
+                    raise BusinessException(ResultCode.COUPON_NOT_FOUND)
+                if user_coupon.user_id != user_id:
+                    raise BusinessException(ResultCode.BUSINESS_ERROR, "优惠券不属于当前用户")
+                if user_coupon.status != 1:
+                    raise BusinessException(ResultCode.COUPON_STATUS_INVALID)
+                if user_coupon.expire_time and user_coupon.expire_time < datetime.now():
+                    raise BusinessException(ResultCode.COUPON_EXPIRED)
 
-            base_price = original_price - discount_amount
-            if coupon_template.type == "full_reduction":
-                if base_price >= (coupon_template.threshold or 0):
+                coupon_template = await coupon_repository.get_by_id(db, user_coupon.coupon_id)
+                if not coupon_template:
+                    raise BusinessException(ResultCode.COUPON_NOT_FOUND)
+                if coupon_template.applicable_scope and package_id not in coupon_template.applicable_scope:
+                    raise BusinessException(ResultCode.COUPON_NOT_APPLICABLE)
+
+                base_price = original_price - discount_amount
+                if coupon_template.type == "full_reduction":
+                    if base_price >= (coupon_template.threshold or 0):
+                        coupon_amount = coupon_template.face_value
+                elif coupon_template.type == "discount":
+                    coupon_amount = base_price * (100 - coupon_template.face_value) // 100
+                elif coupon_template.type == "no_threshold":
                     coupon_amount = coupon_template.face_value
-            elif coupon_template.type == "discount":
-                coupon_amount = base_price * (100 - coupon_template.face_value) // 100
-            elif coupon_template.type == "no_threshold":
-                coupon_amount = coupon_template.face_value
-            elif coupon_template.type == "trial":
-                coupon_amount = base_price
+                elif coupon_template.type == "trial":
+                    coupon_amount = base_price
 
-            locked = await user_coupon_repository.lock_coupon(db, coupon_id)
-            if not locked:
-                raise BusinessException(ResultCode.COUPON_LOCK_FAILED)
+                locked = await user_coupon_repository.lock_coupon(db, coupon_id)
+                if not locked:
+                    raise BusinessException(ResultCode.COUPON_LOCK_FAILED)
 
-        payable_amount = max(0, original_price - discount_amount - coupon_amount)
-        order_no = _gen_order_no()
-        now = datetime.now()
+            payable_amount = max(0, original_price - discount_amount - coupon_amount)
+            order_no = _gen_order_no()
+            now = datetime.now()
 
-        order = SysOrder(
-            order_no=order_no,
-            user_id=user_id,
-            package_id=package_id,
-            package_name=pkg.name,
-            package_level=pkg.level_code,
-            period_days=pkg.period_days,
-            original_price=original_price,
-            discount_amount=discount_amount,
-            coupon_id=coupon_id,
-            coupon_amount=coupon_amount,
-            payable_amount=payable_amount,
-            paid_amount=0,
-            pay_method=pay_method,
-            status=1,
-            expire_time=now + timedelta(minutes=ORDER_EXPIRE_MINUTES),
-            is_auto_renew=0,
-        )
-        await order_repository.create(db, order)
+            order = SysOrder(
+                order_no=order_no,
+                user_id=user_id,
+                package_id=package_id,
+                package_name=pkg.name,
+                package_level=pkg.level_code,
+                period_days=pkg.period_days,
+                original_price=original_price,
+                discount_amount=discount_amount,
+                coupon_id=coupon_id,
+                coupon_amount=coupon_amount,
+                payable_amount=payable_amount,
+                paid_amount=0,
+                pay_method=pay_method,
+                status=1,
+                expire_time=now + timedelta(minutes=ORDER_EXPIRE_MINUTES),
+                is_auto_renew=0,
+            )
+            await order_repository.create(db, order)
 
-        if pay_method == "balance":
-            await _complete_balance_payment(db, order)
+            if pay_method == "balance":
+                await _complete_balance_payment(db, order)
+                return {
+                    "orderNo": order.order_no,
+                    "payMethod": pay_method,
+                    "paid": True,
+                }
+
+            pay_result = await payment_channel_service.unified_order(
+                pay_method, order_no, payable_amount, pkg.name,
+            )
             return {
                 "orderNo": order.order_no,
                 "payMethod": pay_method,
-                "paid": True,
+                "payUrl": pay_result.pay_url,
+                "qrCode": pay_result.qr_code,
+                "paid": False,
             }
-
-        pay_url = f"https://mock-pay.example.com/{order_no}"
-        return {
-            "orderNo": order.order_no,
-            "payMethod": pay_method,
-            "payUrl": pay_url,
-            "qrCode": pay_url,
-            "paid": False,
-        }
+        finally:
+            await release_lock(lock_key, lock_token)
 
     @staticmethod
     async def pay(db: AsyncSession, order_no: str, form: dict, user_id: int) -> dict:
@@ -314,14 +380,61 @@ class OrderService:
                 "paid": True,
             }
 
-        pay_url = f"https://mock-pay.example.com/{order_no}"
+        order.pay_method = pay_method
+        await db.flush()
+
+        pkg = await package_repository.get_by_id(db, order.package_id)
+        pay_result = await payment_channel_service.unified_order(
+            pay_method, order_no, order.payable_amount, pkg.name if pkg else order.package_name,
+        )
         return {
             "orderNo": order.order_no,
             "payMethod": pay_method,
-            "payUrl": pay_url,
-            "qrCode": pay_url,
+            "payUrl": pay_result.pay_url,
+            "qrCode": pay_result.qr_code,
             "paid": False,
         }
+
+    @staticmethod
+    async def handle_payment_callback(db: AsyncSession, channel: str, headers: dict, body: bytes) -> bool:
+        callback = await payment_channel_service.verify_callback(channel, headers, body)
+        if not callback.success:
+            logger.warning("支付回调失败 channel=%s orderNo=%s raw=%s", channel, callback.order_no, callback.raw)
+            return False
+
+        order = await order_repository.get_by_order_no(db, callback.order_no)
+        if not order:
+            logger.warning("支付回调订单不存在 orderNo=%s", callback.order_no)
+            return False
+
+        if order.status == 2 or order.status == 3:
+            logger.info("支付回调幂等返回 orderNo=%s", callback.order_no)
+            return True
+
+        if order.status != 1:
+            logger.warning("支付回调订单状态异常 orderNo=%s status=%s", callback.order_no, order.status)
+            return False
+
+        if callback.amount != order.payable_amount:
+            logger.error("支付回调金额不一致 orderNo=%s expected=%s actual=%s", order.order_no, order.payable_amount, callback.amount)
+            raise BusinessException(ResultCode.PAYMENT_AMOUNT_MISMATCH)
+
+        lock_key = f"payment:lock:{order.order_no}"
+        lock_token = await acquire_lock(lock_key, PAYMENT_LOCK_TTL)
+        if lock_token is None:
+            logger.info("支付回调获取锁失败，幂等返回 orderNo=%s", order.order_no)
+            return True
+
+        try:
+            existing = await payment_record_repository.get_by_payment_no(db, callback.channel_payment_no)
+            if existing:
+                return True
+
+            order.pay_method = channel
+            await _process_callback_success(db, order, callback.channel_payment_no, callback.raw)
+            return True
+        finally:
+            await release_lock(lock_key, lock_token)
 
     @staticmethod
     async def cancel(db: AsyncSession, order_no: str, reason: str, user_id: int) -> None:
@@ -337,12 +450,35 @@ class OrderService:
         if order.coupon_id:
             await user_coupon_repository.release_coupon(db, order.coupon_id)
 
+        if order.status == 1 and order.pay_method in ("wechat", "alipay"):
+            try:
+                await payment_channel_service.close_order(order.pay_method, order_no)
+            except Exception as e:
+                logger.warning("关闭渠道订单失败 orderNo=%s: %s", order_no, e)
+
         order.status = 4
         order.cancel_reason = reason
         await db.flush()
+        await _invalidate_order_detail_cache(order_no)
 
     @staticmethod
     async def get_detail(db: AsyncSession, order_no: str, user_id: Optional[int] = None) -> dict:
+        cache_key = f"order:detail:{order_no}"
+
+        async def _get_cache():
+            redis = await get_redis_client()
+            data = await redis.get(cache_key)
+            return data
+
+        cached_raw = await redis_operation_with_fallback(_get_cache, default=None, operation_name="order_cache_get")
+        if cached_raw:
+            try:
+                cached = json.loads(cached_raw)
+            except (json.JSONDecodeError, TypeError):
+                cached = None
+            if cached and (user_id is None or cached.get("userId") == user_id or cached.get("_admin") is True):
+                return cached
+
         data = await order_repository.get_with_user(db, order_no)
         if not data:
             raise BusinessException(ResultCode.ORDER_NOT_FOUND)
@@ -363,6 +499,13 @@ class OrderService:
         refund = await refund_record_repository.get_by_order_id(db, order.id)
         if refund:
             vo["refundRecord"] = _refund_to_vo(refund, order.order_no, data.get("username") or "")
+
+        vo["_admin"] = user_id is None
+
+        async def _set_cache():
+            redis = await get_redis_client()
+            await redis.setex(cache_key, ORDER_DETAIL_CACHE_TTL, json.dumps(vo, ensure_ascii=False, default=str))
+        await redis_operation_with_fallback(_set_cache, default=None, operation_name="order_cache_set")
 
         return vo
 
@@ -432,6 +575,7 @@ class OrderService:
 
         order.status = 5
         await db.flush()
+        await _invalidate_order_detail_cache(order_no)
 
     @staticmethod
     async def approve_refund(db: AsyncSession, refund_id: int, form: dict, auditor_id: int) -> None:
@@ -446,17 +590,45 @@ class OrderService:
         if not order:
             raise BusinessException(ResultCode.ORDER_NOT_FOUND)
 
+        channel = order.pay_method or "balance"
+        channel_refund_no = None
+        refund_success = True
+        error_message = None
+
+        if channel in ("wechat", "alipay"):
+            payments = await payment_record_repository.list_by_order_id(db, order.id)
+            channel_payment_no = payments[0].payment_no if payments else ""
+            try:
+                result = await payment_channel_service.refund(
+                    channel, order.order_no, channel_payment_no,
+                    refund.refund_amount, order.paid_amount,
+                )
+                channel_refund_no = result.channel_refund_no
+                refund_success = result.success
+                error_message = result.error_message
+            except Exception as e:
+                logger.error("渠道退款失败 refundId=%s: %s", refund_id, e)
+                refund_success = False
+                error_message = str(e)
+
         now = datetime.now()
-        refund.status = 2
         refund.audit_time = now
         refund.auditor_id = auditor_id
         refund.audit_remark = form.get("remark", "")
-        refund.refund_time = now
-        refund.channel = order.pay_method
-        await db.flush()
+        refund.channel = channel
 
-        order.status = 6
+        if refund_success:
+            refund.status = 2
+            refund.refund_time = now
+            refund.channel_refund_no = channel_refund_no
+            order.status = 6
+        else:
+            refund.status = 3
+            refund.error_message = error_message
+            order.status = 2
+
         await db.flush()
+        await _invalidate_order_detail_cache(order.order_no)
 
     @staticmethod
     async def reject_refund(db: AsyncSession, refund_id: int, form: dict, auditor_id: int) -> None:
@@ -480,6 +652,7 @@ class OrderService:
 
         order.status = 2
         await db.flush()
+        await _invalidate_order_detail_cache(order.order_no)
 
     @staticmethod
     async def list_refunds(db: AsyncSession, query: dict) -> dict:
@@ -657,8 +830,14 @@ class OrderService:
         for order in orders:
             if order.coupon_id:
                 await user_coupon_repository.release_coupon(db, order.coupon_id)
+            if order.pay_method in ("wechat", "alipay"):
+                try:
+                    await payment_channel_service.close_order(order.pay_method, order.order_no)
+                except Exception as e:
+                    logger.warning("超时关单失败 orderNo=%s: %s", order.order_no, e)
             order.status = 4
             order.cancel_reason = "超时未支付，系统自动取消"
+            await _invalidate_order_detail_cache(order.order_no)
             count += 1
         if count > 0:
             await db.flush()
@@ -670,7 +849,98 @@ class OrderService:
         count = 0
         for order in orders:
             order.status = 3
+            await _invalidate_order_detail_cache(order.order_no)
             count += 1
         if count > 0:
             await db.flush()
         return count
+
+    @staticmethod
+    async def execute_renewal(db: AsyncSession) -> int:
+        from app.config import settings
+        from app.service.message_service import MessageService
+
+        due_configs = await auto_renew_repository.list_due(db)
+        success_count = 0
+        fail_count = 0
+
+        for config in due_configs:
+            if config.fail_count >= settings.AUTO_RENEW_RETRY_MAX:
+                config.status = 0
+                config.close_reason = f"连续扣款失败 {settings.AUTO_RENEW_RETRY_MAX} 次，自动关闭"
+                await db.flush()
+
+                try:
+                    await MessageService.send(db, {
+                        "type": "business",
+                        "title": "自动续费失败通知",
+                        "content": f"您的套餐自动续费已连续失败 {settings.AUTO_RENEW_RETRY_MAX} 次，自动续费已关闭，请手动续费以保持会员权益。",
+                        "recipientIds": [config.user_id],
+                        "bizModule": "auto_renew",
+                        "bizId": str(config.id),
+                        "priority": 2,
+                    })
+                except Exception as e:
+                    logger.warning("发送自动续费失败通知失败 configId=%s: %s", config.id, e)
+                continue
+
+            pkg = await package_repository.get_by_id(db, config.package_id)
+            if not pkg:
+                continue
+
+            order_no = _gen_order_no()
+            now = datetime.now()
+            payable_amount = int(pkg.sale_price * settings.AUTO_RENEW_DISCOUNT)
+
+            order = SysOrder(
+                order_no=order_no,
+                user_id=config.user_id,
+                package_id=config.package_id,
+                package_name=pkg.name,
+                package_level=pkg.level_code,
+                period_days=pkg.period_days,
+                original_price=pkg.sale_price,
+                discount_amount=pkg.sale_price - payable_amount,
+                coupon_id=None,
+                coupon_amount=0,
+                payable_amount=payable_amount,
+                paid_amount=0,
+                pay_method=config.pay_method,
+                status=1,
+                expire_time=now + timedelta(minutes=ORDER_EXPIRE_MINUTES),
+                is_auto_renew=1,
+            )
+            await order_repository.create(db, order)
+
+            renew_success = False
+            try:
+                if config.pay_method == "balance":
+                    await _complete_balance_payment(db, order)
+                    renew_success = True
+                else:
+                    pay_result = await payment_channel_service.unified_order(
+                        config.pay_method, order_no, payable_amount, pkg.name,
+                    )
+                    logger.info("自动续费代扣下单成功 orderNo=%s payUrl=%s", order_no, pay_result.pay_url)
+                    renew_success = True
+            except Exception as e:
+                logger.error("自动续费扣款失败 configId=%s orderNo=%s: %s", config.id, order_no, e)
+                renew_success = False
+
+            if renew_success:
+                config.fail_count = 0
+                config.next_renew_time = order.package_expire_time or (now + timedelta(days=pkg.period_days))
+                config.last_renew_order_id = order.id
+                success_count += 1
+            else:
+                config.fail_count += 1
+                if config.fail_count < settings.AUTO_RENEW_RETRY_MAX:
+                    config.next_renew_time = now + timedelta(hours=settings.AUTO_RENEW_RETRY_INTERVAL_HOURS)
+                else:
+                    config.status = 0
+                    config.close_reason = f"连续扣款失败 {settings.AUTO_RENEW_RETRY_MAX} 次，自动关闭"
+                fail_count += 1
+
+            await db.flush()
+
+        return success_count

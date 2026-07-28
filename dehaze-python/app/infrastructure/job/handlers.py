@@ -16,6 +16,8 @@ XXL-Job 定时任务 Handler
 - expireOrders:            订单超时自动取消（每 5 分钟）
 - completeExpiredOrders:   已支付订单到期归档（每天凌晨 3 点）
 - expireUserCoupons:       用户优惠券过期处理（每天凌晨 4 点）
+- autoRenewTask:           自动续费扣款（每天凌晨 8 点）
+- resetMonthlyQuota:       会员月度配额重置（每月 1 日凌晨 0 点）
 """
 
 from __future__ import annotations
@@ -615,6 +617,68 @@ async def expire_user_coupons() -> str:
             logger.info(msg)
         else:
             msg = "用户优惠券过期处理: 无"
+            logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="autoRenewTask")
+async def auto_renew_task() -> str:
+    """
+    自动续费扣款
+
+    扫描 sys_auto_renew WHERE status=1(生效中) AND next_renew_time <= NOW()，
+    按支付方式发起代扣：
+      - balance: 直接扣减余额并完成订单
+      - wechat/alipay: 调用支付渠道 unified_order 下单
+    成功后更新 next_renew_time，失败累计 retry_count，超过 AUTO_RENEW_RETRY_MAX 后停用。
+    与 Java AutoRenewJob、Go autoRenewTask 对齐。
+
+    CRON 建议: 0 0 8 * * ? （每天凌晨 8 点）
+    """
+    from app.service.order_service import OrderService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            success_count = await OrderService.execute_renewal(db)
+
+        if success_count > 0:
+            msg = f"自动续费扣款完成: 成功={success_count}"
+            logger.info(msg)
+        else:
+            msg = "自动续费扣款: 无待处理配置"
+            logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="resetMonthlyQuota")
+async def reset_monthly_quota() -> str:
+    """
+    会员月度配额重置
+
+    每月 1 日扫描 sys_member WHERE quota_reset_month != 当前月份，
+    按当前等级权益重置 monthly_dehaze_quota/monthly_evaluate_quota 字段，
+    并将 used 字段清零，quota_reset_month 更新为当前月份。
+    与 Java MemberQuotaResetJob、Go resetMonthlyQuota 对齐。
+
+    CRON 建议: 0 0 0 1 * ? （每月 1 日凌晨 0 点）
+    """
+    from app.service.member_service import MemberService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            count = await MemberService.reset_monthly_quota(db)
+
+        if count > 0:
+            msg = f"会员月度配额重置完成: 已重置={count}"
+            logger.info(msg)
+        else:
+            msg = "会员月度配额重置: 无待处理记录"
             logger.debug(msg)
         return msg
     finally:

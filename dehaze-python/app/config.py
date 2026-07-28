@@ -159,7 +159,7 @@ class Settings(BaseSettings):
     XXLJOB_ACCESS_TOKEN: str = "default_token"
     XXLJOB_EXECUTOR_APP_NAME: str = "xxl-job-executor-dehaze-python"
     XXLJOB_EXECUTOR_HOST: str = "0.0.0.0"
-    XXLJOB_EXECUTOR_PORT: int = 9999
+    XXLJOB_EXECUTOR_PORT: int = 9998
     XXLJOB_EXECUTOR_LOG_PATH: str = "logs/pyxxl.log"  # 执行器自身运行日志
     XXLJOB_TASK_LOG_DIR: str = "logs/xxljob-tasks"  # 调度任务执行日志目录
     XXLJOB_PID_FILE: str = "logs/pyxxl.pid"  # 执行器子进程 PID 文件
@@ -265,6 +265,29 @@ class Settings(BaseSettings):
     TASK_HEARTBEAT_INTERVAL: int = 30  # 任务心跳间隔（秒）
     TASK_REDIS_TTL: int = 3600  # Redis 任务状态 TTL（秒）
 
+    # ===== 支付渠道配置 =====
+    PAYMENT_WECHAT_ENABLED: bool = False
+    PAYMENT_WECHAT_APP_ID: str = ""
+    PAYMENT_WECHAT_MCH_ID: str = ""
+    PAYMENT_WECHAT_API_V3_KEY: str = ""
+    PAYMENT_WECHAT_CERT_SERIAL_NO: str = ""
+    PAYMENT_WECHAT_PRIVATE_KEY_PATH: str = ""
+    PAYMENT_WECHAT_NOTIFY_URL: str = ""
+    PAYMENT_WECHAT_REFUND_NOTIFY_URL: str = ""
+    PAYMENT_WECHAT_BASE_URL: str = "https://api.mch.weixin.qq.com"
+
+    PAYMENT_ALIPAY_ENABLED: bool = False
+    PAYMENT_ALIPAY_APP_ID: str = ""
+    PAYMENT_ALIPAY_PRIVATE_KEY: str = ""
+    PAYMENT_ALIPAY_PUBLIC_KEY: str = ""
+    PAYMENT_ALIPAY_NOTIFY_URL: str = ""
+    PAYMENT_ALIPAY_BASE_URL: str = "https://openapi.alipay.com/gateway.do"
+
+    # 自动续费配置
+    AUTO_RENEW_RETRY_MAX: int = 3
+    AUTO_RENEW_RETRY_INTERVAL_HOURS: int = 2
+    AUTO_RENEW_DISCOUNT: float = 0.95
+
 
 class DevelopmentSettings(Settings):
     """开发环境配置"""
@@ -287,9 +310,10 @@ class DevelopmentSettings(Settings):
     # 文件访问基础 URL（与 Java 端 file.baseUrl 一致，统一使用 127.0.0.1 避免 localhost DNS 解析开销）
     FILE_BASE_URL: str = "http://127.0.0.1:8989/api/v1/files/download"
 
-    # XXL-Job 配置（Docker 中未运行 xxl-job-admin，关闭避免启动卡住）
-    XXLJOB_ENABLED: bool = False
+    # XXL-Job 配置（与 docker-compose 的 xxl-job-admin 3.3.0 对齐，accessToken 复用 DEHAZE_PASSWORD）
+    XXLJOB_ENABLED: bool = True
     XXLJOB_ADMIN_URL: str = "http://127.0.0.1:14980/xxl-job-admin/api/"
+    XXLJOB_ACCESS_TOKEN: str = os.getenv("DEHAZE_PASSWORD", "12345678")
 
     # RabbitMQ 配置
     RABBITMQ_ENABLED: bool = True
@@ -311,9 +335,10 @@ class ProductionSettings(Settings):
     REDIS_HOST: str = "192.168.31.3"
     MINIO_ENDPOINT: str = "192.168.31.3:9110"
 
-    # XXL-Job 配置（生产环境启用）
+    # XXL-Job 配置（生产环境启用，accessToken 复用 DEHAZE_PASSWORD）
     XXLJOB_ENABLED: bool = True
-    XXLJOB_ADMIN_URL: str = "http://192.168.31.3:8080/xxl-job-admin/api/"
+    XXLJOB_ADMIN_URL: str = "http://192.168.31.3:14980/xxl-job-admin/api/"
+    XXLJOB_ACCESS_TOKEN: str = os.getenv("DEHAZE_PASSWORD", "12345678")
 
     # RabbitMQ 配置（生产环境启用）
     RABBITMQ_ENABLED: bool = True

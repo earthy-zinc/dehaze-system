@@ -58,12 +58,20 @@ class EvaluationService:
         提交效果评估任务（异步）
 
         流程：
-        1. 校验算法、并行下载 pred/gt 图片、计算 MD5
-        2. 创建 processing 日志
-        3. 提交 asyncio.create_task 后台执行
-        4. 立即返回 {logId, status: "processing"}
+        1. 权益校验 + Redis 原子扣减评估配额
+        2. 校验算法、并行下载 pred/gt 图片、计算 MD5
+        3. 创建 processing 日志
+        4. 提交 asyncio.create_task 后台执行
+        5. 立即返回 {logId, status: "processing"}
         """
         logger.info("评估请求: algorithmId=%s", algorithm_id)
+
+        from app.database import get_db_session
+        from app.service.member_service import MemberService
+
+        if user_id is not None:
+            async with get_db_session() as db:
+                await MemberService.check_and_deduct_quota(db, user_id, "evaluate")
 
         # 1. 校验算法存在
         await prediction_service.get_algorithm(algorithm_id)
@@ -166,6 +174,9 @@ class EvaluationService:
                         error_message=error_msg,
                         time_ms=elapsed_ms,
                     )
+                    if user_id is not None:
+                        from app.service.member_service import MemberService
+                        await MemberService.restore_quota(db, user_id, "evaluate")
             except Exception as update_err:
                 logger.error(
                     "更新评估日志失败状态失败: logId=%s, error=%s",

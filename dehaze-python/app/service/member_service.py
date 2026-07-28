@@ -1,20 +1,44 @@
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.dependencies.redis import get_redis_client
+from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
 from app.models.entity.sys_member import SysMember
 from app.models.entity.sys_member_sign_in import SysMemberSignIn
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_growth_log_repository import member_growth_log_repository
 from app.repository.member_repository import member_repository
 from app.repository.member_sign_in_repository import member_sign_in_repository
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+MEMBER_LEVEL_CACHE_TTL = 1800
+MEMBER_BENEFIT_CACHE_TTL = 3600
 
 SIGN_IN_BASE_GROWTH = 3
 SIGN_IN_BONUS_GROWTH = 20
 SIGN_IN_BONUS_INTERVAL = 7
+
+_QUOTA_DEDUCT_LUA = """
+local key = KEYS[1]
+local remaining = redis.call('get', key)
+if remaining then
+    local val = tonumber(remaining)
+    if val <= 0 then
+        return -1
+    end
+    return redis.call('decr', key)
+else
+    return nil
+end
+"""
 
 BENEFIT_FIELD_MAP = {
     "levelName": "level_name",
@@ -113,6 +137,36 @@ async def _check_and_adjust_level(db: AsyncSession, member: SysMember) -> None:
         member.level_code = target_level
         member.level_source = "growth"
         await db.flush()
+
+
+async def _invalidate_member_cache(user_id: Optional[int] = None, level_code: Optional[str] = None) -> None:
+    keys = []
+    if user_id is not None:
+        keys.append(f"member:level:{user_id}")
+    if level_code is not None:
+        keys.append(f"member:benefit:{level_code}")
+    keys.append("member:benefit:all")
+    if not keys:
+        return
+
+    async def _del():
+        redis = await get_redis_client()
+        await redis.delete(*keys)
+
+    await redis_operation_with_fallback(_del, default=None, operation_name="member_cache_invalidate")
+
+
+def _quota_key(user_id: int, quota_type: str) -> str:
+    return f"member:quota:{user_id}:{quota_type}"
+
+
+def _quota_ttl_seconds() -> int:
+    now = datetime.now()
+    if now.month == 12:
+        next_month = datetime(now.year + 1, 1, 1)
+    else:
+        next_month = datetime(now.year, now.month + 1, 1)
+    return max(1, int((next_month - now).total_seconds()))
 
 
 class MemberService:
@@ -351,6 +405,7 @@ class MemberService:
         if not member:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会员不存在")
 
+        old_level = member.level_code
         member.level_code = form["levelCode"]
         member.level_source = "admin"
 
@@ -362,6 +417,8 @@ class MemberService:
             member.become_member_time = datetime.now()
 
         await db.flush()
+        await _invalidate_member_cache(user_id=user_id, level_code=old_level)
+        await _invalidate_member_cache(level_code=form["levelCode"])
 
     @staticmethod
     async def adjust_growth(db: AsyncSession, user_id: int, form: dict, operator_id: int) -> None:
@@ -393,7 +450,11 @@ class MemberService:
             operator_id=operator_id,
         )
 
+        old_level = member.level_code
         await _check_and_adjust_level(db, member)
+        if member.level_code != old_level:
+            await _invalidate_member_cache(user_id=user_id, level_code=old_level)
+            await _invalidate_member_cache(level_code=member.level_code)
 
     @staticmethod
     async def update_status(db: AsyncSession, user_id: int, form: dict) -> None:
@@ -415,11 +476,32 @@ class MemberService:
             member.status = 1
 
         await db.flush()
+        await _invalidate_member_cache(user_id=user_id)
 
     @staticmethod
     async def list_benefits(db: AsyncSession) -> list[dict]:
+        cache_key = "member:benefit:all"
+
+        async def _get_cache():
+            redis = await get_redis_client()
+            return await redis.get(cache_key)
+
+        cached_raw = await redis_operation_with_fallback(_get_cache, default=None, operation_name="member_benefit_list_cache_get")
+        if cached_raw:
+            try:
+                return json.loads(cached_raw)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
         benefits = await member_benefit_repository.list_all(db)
-        return [_benefit_to_vo(b) for b in benefits]
+        result = [_benefit_to_vo(b) for b in benefits]
+
+        async def _set_cache():
+            redis = await get_redis_client()
+            await redis.setex(cache_key, MEMBER_BENEFIT_CACHE_TTL, json.dumps(result, ensure_ascii=False, default=str))
+        await redis_operation_with_fallback(_set_cache, default=None, operation_name="member_benefit_list_cache_set")
+
+        return result
 
     @staticmethod
     async def update_benefit(db: AsyncSession, level_code: str, form: dict) -> None:
@@ -432,3 +514,128 @@ class MemberService:
                 setattr(benefit, snake_key, form[camel_key])
 
         await db.flush()
+        await _invalidate_member_cache(level_code=level_code)
+
+    @staticmethod
+    async def check_and_deduct_quota(db: AsyncSession, user_id: int, quota_type: str) -> None:
+        """权益校验 + Redis 原子扣减 + 异步落库
+
+        Args:
+            db: 数据库会话
+            user_id: 用户ID
+            quota_type: "dehaze" 或 "evaluate"
+
+        Raises:
+            BusinessException: 会员不存在/已冻结/次数用完
+        """
+        if quota_type not in ("dehaze", "evaluate"):
+            raise BusinessException(ResultCode.PARAM_ERROR, f"不支持的配额类型: {quota_type}")
+
+        member = await member_repository.get_by_user_id(db, user_id)
+        if not member:
+            raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
+        if member.status != 1:
+            raise BusinessException(ResultCode.MEMBER_FROZEN)
+
+        quota_field = f"monthly_{quota_type}_quota"
+        used_field = f"monthly_{quota_type}_used"
+        quota = getattr(member, quota_field, 0) or 0
+        used = getattr(member, used_field, 0) or 0
+        remaining = quota - used
+
+        if remaining <= 0:
+            raise BusinessException(ResultCode.QUOTA_EXCEEDED)
+
+        cache_key = _quota_key(user_id, quota_type)
+        ttl = _quota_ttl_seconds()
+
+        async def _deduct_via_redis():
+            redis = await get_redis_client()
+            result = await redis.eval(_QUOTA_DEDUCT_LUA, 1, cache_key)
+            return result
+
+        result = await redis_operation_with_fallback(_deduct_via_redis, default=None, operation_name=f"quota_deduct:{quota_type}")
+
+        if result is None:
+            setattr(member, used_field, used + 1)
+            await db.flush()
+
+            async def _init_cache():
+                redis = await get_redis_client()
+                await redis.setex(cache_key, ttl, max(0, remaining - 1))
+            await redis_operation_with_fallback(_init_cache, default=None, operation_name=f"quota_cache_init:{quota_type}")
+            return
+
+        if result == -1:
+            raise BusinessException(ResultCode.QUOTA_EXCEEDED)
+
+        setattr(member, used_field, used + 1)
+        await db.flush()
+
+    @staticmethod
+    async def restore_quota(db: AsyncSession, user_id: int, quota_type: str) -> None:
+        """归还配额（任务失败时调用）"""
+        if quota_type not in ("dehaze", "evaluate"):
+            raise BusinessException(ResultCode.PARAM_ERROR, f"不支持的配额类型: {quota_type}")
+
+        member = await member_repository.get_by_user_id(db, user_id)
+        if not member:
+            return
+
+        used_field = f"monthly_{quota_type}_used"
+        used = getattr(member, used_field, 0) or 0
+        if used > 0:
+            setattr(member, used_field, used - 1)
+            await db.flush()
+
+        cache_key = _quota_key(user_id, quota_type)
+        async def _incr():
+            redis = await get_redis_client()
+            await redis.incr(cache_key)
+        await redis_operation_with_fallback(_incr, default=None, operation_name=f"quota_restore:{quota_type}")
+
+    @staticmethod
+    async def reset_monthly_quota(db: AsyncSession) -> int:
+        """月度配额重置：按当前等级权益重置所有会员的当月配额
+
+        Returns:
+            已重置的会员数量
+        """
+        now = datetime.now()
+        current_month = int(now.strftime("%Y%m"))
+
+        stmt = select(SysMember).where(
+            SysMember.deleted == 0,
+            SysMember.quota_reset_month != current_month,
+        )
+        result = await db.execute(stmt)
+        members = result.scalars().all()
+
+        if not members:
+            return 0
+
+        benefits = await member_benefit_repository.list_all(db)
+        benefit_map = {b.level_code: b for b in benefits}
+
+        count = 0
+        for member in members:
+            benefit = benefit_map.get(member.level_code)
+            if benefit:
+                member.monthly_dehaze_quota = benefit.monthly_dehaze_quota
+                member.monthly_evaluate_quota = benefit.monthly_evaluate_quota
+            member.monthly_dehaze_used = 0
+            member.monthly_evaluate_used = 0
+            member.quota_reset_month = current_month
+            count += 1
+
+        await db.flush()
+
+        async def _invalidate_quota_cache():
+            redis = await get_redis_client()
+            keys = [f"member:quota:{m.user_id}:dehaze" for m in members] + \
+                   [f"member:quota:{m.user_id}:evaluate" for m in members]
+            if keys:
+                await redis.delete(*keys)
+        await redis_operation_with_fallback(_invalidate_quota_cache, default=None, operation_name="quota_reset_cache_invalidate")
+
+        return count

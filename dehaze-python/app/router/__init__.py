@@ -118,3 +118,7 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     # 订单管理模块路由
     from app.router.order import router as order_router
     app.include_router(order_router)
+
+    # 反馈评价模块路由
+    from app.router.feedback import router as feedback_router
+    app.include_router(feedback_router)

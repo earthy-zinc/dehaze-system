@@ -7,6 +7,8 @@ from app.models.entity.sys_algorithm import SysAlgorithm
 from app.models.entity.sys_dataset import SysDataset, SysDatasetItem, SysItemFile
 from app.models.entity.sys_dept import SysDept
 from app.models.entity.sys_dict import SysDict, SysDictType
+from app.models.entity.sys_feedback import SysFeedback
+from app.models.entity.sys_feedback_reply import SysFeedbackReply
 from app.models.entity.sys_file import SysFile
 from app.models.entity.sys_log import SysPredLog, SysEvalLog, SysOperationLog, SysLoginLog
 from app.models.entity.sys_member import SysMember
@@ -23,6 +25,7 @@ from app.models.entity.sys_package import SysPackage
 from app.models.entity.sys_coupon import SysCoupon
 from app.models.entity.sys_user_coupon import SysUserCoupon
 from app.models.entity.sys_promotion import SysPromotion, SysPromotionPackage
+from app.models.entity.sys_rating import SysRating
 from app.models.entity.sys_task import SysTask
 from app.models.entity.sys_user import SysUser, SysRole, SysUserRole
 from app.models.entity.sys_wpx_file import SysWpxFile
@@ -75,4 +78,8 @@ __all__ = [
     'SysUserCoupon',
     'SysPromotion',
     'SysPromotionPackage',
+    # 反馈评价
+    'SysRating',
+    'SysFeedback',
+    'SysFeedbackReply',
 ]

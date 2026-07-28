@@ -92,6 +92,11 @@ class PredictionService:
         """
         start = time.time()
 
+        if user_id is not None:
+            from app.service.member_service import MemberService
+            async with get_db_session() as db:
+                await MemberService.check_and_deduct_quota(db, user_id, "dehaze")
+
         # 1. 从数据库获取算法信息
         algorithm = await self.get_algorithm(algorithm_id)
 
@@ -320,6 +325,9 @@ class PredictionService:
                         error_message=error_msg,
                         time_ms=elapsed_ms,
                     )
+                    if user_id is not None:
+                        from app.service.member_service import MemberService
+                        await MemberService.restore_quota(db, user_id, "dehaze")
             except Exception as update_err:
                 logger.error(
                     "更新预测日志失败状态失败: logId=%s, error=%s",
