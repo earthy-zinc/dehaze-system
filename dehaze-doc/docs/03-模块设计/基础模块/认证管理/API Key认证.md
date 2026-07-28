@@ -13,18 +13,18 @@
 
 ### 2.1 什么是 API Key
 
-API Key 是面向**机器对机器（M2M）调用**与**第三方系统集成**场景的长期身份凭证。与登录签发的 JWT Token 不同，API Key 由用户主动创建并自行保管，**默认永不过期**，适用于脚本调用、定时任务、外部系统对接等无法走交互式登录流程的场景。
+API Key 是面向**机器对机器（M2M）调用**与**第三方系统集成**场景的长期身份凭证。与登录签发的 Session 不同，API Key 由用户主动创建并自行保管，**默认永不过期**，适用于脚本调用、定时任务、外部系统对接等无法走交互式登录流程的场景。
 
-### 2.2 与 JWT Token 的对比
+### 2.2 与 Session 的对比
 
-| 维度 | JWT Token | API Key |
+| 维度 | Session | API Key |
 |------|-----------|---------|
-| **签发方式** | 用户名密码登录后自动签发 | 用户在系统中主动创建 |
-| **有效期** | 默认 2 小时（可配置） | 默认永不过期，可选设置过期时间 |
+| **签发方式** | 用户名密码登录后自动创建 | 用户在系统中主动创建 |
+| **有效期** | 默认 7 天（滑动续期） | 默认永不过期，可选设置过期时间 |
 | **适用场景** | 浏览器/客户端交互式会话 | 脚本、定时任务、第三方系统集成 |
-| **凭证前缀** | 无固定前缀（JWT 结构） | 固定前缀 `dhak_` |
-| **携带方式** | `Authorization: Bearer {token}` | `Authorization: Bearer dhak_xxx` |
-| **失效方式** | 过期或加入黑名单 | 用户主动删除/吊销 |
+| **凭证前缀** | 无固定前缀（UUID） | 固定前缀 `dhak_` |
+| **携带方式** | `Cookie: X-Session-Id={sessionId}` | `Authorization: Bearer dhak_xxx` |
+| **失效方式** | 过期或注销时删除 | 用户主动删除/吊销 |
 
 ### 2.3 核心价值
 
@@ -139,7 +139,7 @@ Authorization: Bearer <token>
 
 ## 4. 使用 API Key 进行认证
 
-创建 API Key 后，在请求头中通过 `Authorization: Bearer` 携带即可，与 JWT Token 的携带方式保持一致：
+创建 API Key 后，在请求头中通过 `Authorization: Bearer` 携带：
 
 ```http
 GET /api/v1/datasets/page?pageNum=1&pageSize=10 HTTP/1.1

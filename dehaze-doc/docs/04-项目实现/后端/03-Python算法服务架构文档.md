@@ -117,7 +117,7 @@ dehaze-python/
 │   │   ├── result.py                  # 统一响应封装（Result 泛型 / success / error）
 │   │   └── exceptions.py             # BusinessException + 全局异常处理器注册
 │   ├── dependencies/                  # FastAPI 依赖注入
-│   │   ├── auth.py                    # JWT 认证依赖（UserContext / get_current_user / get_current_user_optional）
+│   │   ├── auth.py                    # Session 认证依赖（UserContext / get_current_user / get_current_user_optional）
 │   │   └── redis.py                   # Redis 连接池 / 单例管理 / 健康检查
 │   ├── decorators/                    # 横切关注点装饰器
 │   │   ├── permission.py             # 权限检查装饰器（require_permission / require_any_permission）
@@ -189,7 +189,6 @@ dehaze-python/
 │   │   │       └── custom_export.py
 │   │   └── ...                        # 其他业务 Service
 │   └── utils/                         # 工具层
-│       ├── jwt.py                     # JWT 工具（create_token / decode_token）
 │       ├── password.py                # 密码工具（bcrypt + 专用线程池）
 │       ├── file.py                    # 文件工具（calculate_bytes_md5）
 │       ├── datetime_utils.py          # 日期时间工具（format_time）
@@ -229,7 +228,7 @@ flowchart TB
         IPBlacklist["IP 黑名单"]
         OpLog["操作日志"]
         Trace["TraceID"]
-        JWT["JWT 认证<br/>get_current_user"]
+        SessionAuth["Session 认证<br/>get_current_user"]
         Permission["权限校验<br/>@require_permission"]
     end
 
@@ -301,7 +300,7 @@ flowchart TB
 | **Models 层** | `models/` | ORM 实体、Schema 定义、Enum 常量 | 被 Router / Service / Repository 依赖 |
 | **Core 层** | `core/` | 统一错误码、响应封装、业务异常 | 被所有层依赖 |
 | **基础设施层** | `infrastructure/` | 日志、缓存、消息队列、定时任务、指标采集 | 被所有层依赖 |
-| **工具层** | `utils/` | JWT、密码、文件、日期、树形结构等纯函数工具 | 被 Service / Repository / Router 依赖 |
+| **工具层** | `utils/` | 密码、文件、日期、树形结构等纯函数工具 | 被 Service / Repository / Router 依赖 |
 
 #### 2.2.3 依赖注入策略
 
@@ -315,7 +314,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     Router["Router Handler"] --> Depends["Depends(get_current_user)"]
-    Depends --> JWT["JWT 解析 → UserContext<br/>set_current_user_id"]
+    Depends --> SessionAuth["Session 校验 → UserContext<br/>set_current_user_id"]
     Router --> Depends2["Depends(get_db)"]
     Depends2 --> Session["AsyncSession"]
     Router --> Depends3["@require_permission('sys:user:add')"]
@@ -363,11 +362,6 @@ flowchart LR
 class Settings(BaseSettings):
     # 应用基础
     APP_NAME / APP_VERSION / DEBUG
-
-    # JWT 配置（启动时强制校验非空）
-    JWT_SECRET_KEY
-    JWT_ACCESS_TOKEN_EXPIRES       # 访问令牌 2h
-    JWT_REFRESH_TOKEN_EXPIRES      # 刷新令牌 7d
 
     # 验证码配置
     CAPTCHA_LENGTH / CAPTCHA_WIDTH / CAPTCHA_HEIGHT
@@ -439,13 +433,11 @@ class Settings(BaseSettings):
 
 ```bash
 # .env
-JWT_SECRET_KEY=your-jwt-secret-key
 DEHAZE_PASSWORD=shared-password-for-mysql-redis-minio
 ```
 
 **安全校验**：
-- `Settings.__init__` 在所有环境校验 `JWT_SECRET_KEY` 非空
-- `ProductionSettings.__init__` 额外校验密钥长度 ≥ 32 且 `DEHAZE_PASSWORD` 非空
+- `ProductionSettings.__init__` 校验 `DEHAZE_PASSWORD` 非空
 
 > **设计取舍**：`DEHAZE_PASSWORD` 被复用为 MySQL、Redis、MinIO、RabbitMQ 的统一密码，简化部署但单点泄露即全盘沦陷。生产环境应通过独立 Secret 管理各组件凭证（未来改进）。
 
@@ -614,7 +606,7 @@ flowchart LR
     end
 
     subgraph Cache["Redis (缓存与会话)"]
-        Session["验证码/Token黑名单"]
+        Session["验证码/Session存储"]
         Task["任务状态/取消标志"]
         Cache_["业务缓存（部门树/字典/角色权限）"]
         WS["WebSocket在线状态/Pub/Sub"]
@@ -671,7 +663,7 @@ flowchart TB
 | 用途 | Key 格式 | TTL | 说明 |
 |------|----------|-----|------|
 | 验证码 | `captcha_code:{key}` | 5min | 登录验证码 |
-| Token 黑名单 | `token:blacklist:{jti}` | Token 剩余有效期 | JWT 注销 |
+| 用户会话 | `session:{sessionId}` | 7天 | Session 存储，滑动续期 |
 | 任务状态 | `task:cache:{task_id}` | 24h | 导出任务进度缓存 |
 | 任务取消标志 | `task:cancel:{task_id}` | 5min | 标记任务取消 |
 | 任务运行状态 | `task:running:{task_id}` | 1h（心跳续期） | TaskTracker 跨 Worker 全局视图 |
@@ -1023,10 +1015,9 @@ app/infrastructure/job/
 
 | 组件 | 实现 | 说明 |
 |------|------|------|
-| JWT | python-jose (HS256) | AccessToken + RefreshToken |
-| Token 验证 | `Depends(get_current_user)` | 自动解析 → UserContext → `set_current_user_id` |
-| Token 可选验证 | `Depends(get_current_user_optional)` | 未登录返回 None（不设置 user_id） |
-| Token 黑名单 | Redis `token:blacklist:{jti}` | 注销时将 JTI 加入黑名单 |
+| Session 认证 | Redis `session:{sessionId}` | 存储 userId、username、authorities，TTL 7 天，剩余 < 24h 自动续期 |
+| 用户上下文 | `Depends(get_current_user)` | 自动解析 Session → UserContext → `set_current_user_id` |
+| 可选验证 | `Depends(get_current_user_optional)` | 未登录返回 None（不设置 user_id） |
 | 密码加密 | bcrypt（`utils/password.py`） | 密码哈希，专用线程池异步执行 |
 | 验证码 | Redis 存储 + Pillow 生成 | 可配置长度/尺寸/字体/干扰线/过期时间 |
 
@@ -1073,7 +1064,7 @@ fnmatch 双向匹配: sys:user:* ↔ sys:user:add
 |----------|----------|------|
 | SQL 注入 | SQLAlchemy 参数化查询 | ORM 层面天然防护 |
 | XSS | `validate_no_xss` 输入校验 | Schema 层面校验 HTML 标签和 javascript: 协议 |
-| CSRF | JWT Token 认证（非 Cookie） | API 接口无需 CSRF 保护 |
+| CSRF | Session Cookie（SameSite=Lax） | 跨站请求不携带 Cookie |
 | CORS | CORSMiddleware | 限制允许的 Origin |
 | 暴力破解 | 验证码 + IP 黑名单 | 异常请求自动封禁 |
 | 限流 | `rate_limit` 装饰器 | 基于 Redis 计数，默认 60 次/分钟 |
@@ -1081,7 +1072,7 @@ fnmatch 双向匹配: sys:user:* ↔ sys:user:add
 
 > **XSS 防护**：`app/models/schema/common.py` 的 `validate_no_xss` 校验器在 Pydantic Schema 层拦截 HTML 标签和 `javascript:` 协议，已覆盖 dataset/dept/dict/menu/role/user 全部用户输入模型；`app/service/dataset_service.py` 和 `dept_service.py` 额外在 Service 层通过 `_XSS_PATTERN` 正则做二次校验。
 >
-> **Token 刷新**：`auth.py` 的 `refresh_token` 端点在签发新 Token 时，将旧 Token 的 jti 加入 Redis 黑名单（TTL = 旧 Token 剩余有效期），防止旧 Token 被重放。
+> **Session 注销**：`auth.py` 的注销端点直接从 Redis 删除 Session，使会话立即失效。
 
 ---
 
@@ -1205,7 +1196,7 @@ PROMETHEUS_GPU_COLLECT_INTERVAL = 5  # 秒
 | **定时任务** | ✅ pyxxl XXL-Job (5 个任务已注册) | 仅集成 Executor，未注册 @XxlJob | Ticker → XXL-Job | Python 端落地最多 |
 | **日志** | Python logging + JSON | SLF4J + Logback | Zap | 格式/级别统一 |
 | **日志管道** | 未实现 → Kafka(规划) | Kafka 死代码已删除 | 未实现 → Kafka(规划) | 统一规划 |
-| **认证** | python-jose JWT | Spring Security + JWT | 自研中间件 + JWT | Token 格式互通 |
+| **认证** | Redis Session | Spring Security + Session | 自研中间件 + Session | Session 机制互通 |
 | **权限** | RBAC (Depends + @require_permission 装饰器) | RBAC (@PreAuthorize) | RBAC (中间件) | 权限标识一致 |
 | **数据权限** | SQLAlchemy 查询装饰(规划) | MyBatis-Plus 拦截器 | GORM Plugin (Callback) | 语义一致，Go DataScope 当前永不生效 |
 | **自动填充** | SQLAlchemy Event + ContextVar | MetaObjectHandler | GORM Callback | 字段名一致 |
@@ -1312,8 +1303,8 @@ flowchart LR
     Prometheus --> IPBlacklist["IP 黑名单<br/>IPBlacklistMiddleware"]
     IPBlacklist --> OpLog["操作日志<br/>OperationLogMiddleware"]
     OpLog --> Trace["TraceID<br/>TraceMiddleware"]
-    Trace --> JWT["JWT 认证<br/>Depends(get_current_user)"]
-    JWT --> Permission["权限校验<br/>@require_permission 装饰器"]
+    Trace --> SessionAuth["Session 认证<br/>Depends(get_current_user)"]
+    SessionAuth --> Permission["权限校验<br/>@require_permission 装饰器"]
     Permission --> Handler["业务处理"]
 ```
 
@@ -1326,7 +1317,7 @@ flowchart LR
 | `IPBlacklistMiddleware` | ASGI 中间件 | IP 黑名单检查 + 异常请求自动封禁 | 全局 |
 | `OperationLogMiddleware` | ASGI 中间件 | 请求/响应全链路记录（异步写入 MySQL） | 全局（排除健康检查等路径） |
 | `TraceMiddleware` | BaseHTTPMiddleware | TraceID 生成 / 透传 / 回写响应头 | 全局 |
-| `get_current_user` | FastAPI Depends | JWT Token 验证、UserContext 注入、Token 黑名单检查 | 受保护路由 |
+| `get_current_user` | FastAPI Depends | Session 验证、UserContext 注入 | 受保护路由 |
 | `get_current_user_optional` | FastAPI Depends | 未登录返回 None（不设置 user_id） | 可选认证路由 |
 | `require_permission` | 函数装饰器 | RBAC 权限校验（支持通配符匹配） | 受保护路由 |
 | `rate_limit` | 函数装饰器 | 接口限流（基于 Redis 计数） | 受保护路由 |
@@ -1403,7 +1394,7 @@ flowchart LR
 flowchart TB
     E1["BusinessException"] -->|400| R1["自定义 ResultCode"]
     E2["RequestValidationError"] -->|400| R2["PARAM_ERROR<br/>提取首个校验错误"]
-    E3["JWTError"] -->|401| R3["TOKEN_INVALID"]
+    E3["Session 无效/过期"] -->|401| R3["TOKEN_INVALID"]
     E4["SQLAlchemyError"] -->|500| R4["DATABASE_ERROR<br/>脱敏后返回"]
     E5["Exception (兜底)"] -->|500| R5["SYSTEM_EXECUTION_ERROR<br/>开发环境含类型名"]
 ```
@@ -1418,7 +1409,7 @@ flowchart TB
 
 | 端点 | 协议 | 认证方式 |
 |------|------|----------|
-| `/ws?token=JWT_TOKEN` | 原生 WebSocket | URL Query 参数传递 JWT |
+| `/ws?sessionId=SESSION_ID` | 原生 WebSocket | URL Query 参数传递 Session ID |
 
 #### 2.15.2 跨 Worker 通信架构
 
@@ -1583,7 +1574,6 @@ def _build_interceptor_chain() -> PredictionInterceptorChain:
 | **数据库迁移** | Alembic | - | Schema 版本管理 |
 | **缓存** | redis-py (asyncio) | ≥ 6.4 | 异步 Redis 客户端 |
 | **对象存储** | MinIO Python SDK | ≥ 7.2 | 文件/图像存储 |
-| **认证** | python-jose | ≥ 3.3 | JWT Token (HS256) |
 | **密码加密** | bcrypt | ≥ 4.0 | 密码哈希 |
 | **Schema 校验** | Pydantic | ≥ 2.0 | 请求/响应校验、配置管理 |
 | **配置管理** | pydantic-settings | ≥ 2.0 | 环境变量绑定、多环境配置 |

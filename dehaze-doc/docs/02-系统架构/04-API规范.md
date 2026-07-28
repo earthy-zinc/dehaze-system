@@ -40,7 +40,8 @@
 
 | 请求头 | 是否必填 | 说明 | 示例 |
 |--------|---------|------|------|
-| `Authorization` | 是（鉴权接口） | JWT Token | `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `X-Session-Id` | 是（鉴权接口） | Session ID | `a1b2c3d4...`（Web 端通过 Cookie 自动携带） |
+| `Authorization` | 是（API Key 接口） | API Key 凭证 | `Bearer dhak_a1b2c3d4...` |
 | `Content-Type` | 是（POST/PUT/PATCH） | 请求内容类型 | `application/json` |
 | `Accept` | 否 | 期望响应格式 | `application/json` |
 
@@ -150,7 +151,7 @@
 
 ```http
 GET /api/v1/users/page?pageNum=1&pageSize=10&keywords=admin HTTP/1.1
-Authorization: Bearer <token>
+Cookie: X-Session-Id=<sessionId>
 ```
 
 ### 4.3 分页响应示例
@@ -217,8 +218,8 @@ Authorization: Bearer <token>
 | `A0212` | 客户端认证失败 | OAuth 客户端认证失败 |
 | `A0213` | 验证码已过期 | 验证码超时 |
 | `A0214` | 验证码错误 | 验证码不匹配 |
-| `A0230` | token无效或已过期 | JWT Token 失效 |
-| `A0231` | token已被禁止访问 | Token 已加入黑名单 |
+| `A0230` | token无效或已过期 | Session 不存在或已过期 |
+| `A0231` | token已被禁止访问 | Session 已失效或已注销 |
 
 **权限相关 (A03xx)**
 
@@ -355,9 +356,9 @@ Authorization: Bearer <token>
 
 ## 6. 认证机制
 
-### 6.1 JWT Token 认证
+### 6.1 Session 认证
 
-系统采用 JWT（JSON Web Token）进行身份认证，Token 通过 `Authorization` 请求头传递。
+系统采用 Session 进行身份认证，Session ID 通过 Cookie（`X-Session-Id`）或请求头传递，由 Redis 管理会话状态。
 
 **认证流程：**
 
@@ -369,11 +370,11 @@ sequenceDiagram
 
     Client->>Server: POST /api/v1/auth/login (username, password)
     Server->>Server: 校验凭证
-    Server->>Redis: 存储 Token 信息
-    Server-->>Client: { accessToken, tokenType, expires }
-    
-    Client->>Server: GET /api/v1/auth/me (Authorization: Bearer <token>)
-    Server->>Redis: 校验 Token 状态
+    Server->>Redis: 存储 Session 信息
+    Server-->>Client: { sessionId, user } (Set-Cookie: X-Session-Id)
+
+    Client->>Server: GET /api/v1/auth/me (Cookie: X-Session-Id)
+    Server->>Redis: 校验 Session 状态
     Server-->>Client: { code: "00000", data: {...} }
 ```
 
@@ -413,25 +414,25 @@ Content-Type: application/json
 
 > `sessionId` 通过 `Set-Cookie: X-Session-Id={sessionId}` 自动下发给 Web 端；移动端需从响应数据中提取并存储，后续请求通过 `X-Session-Id` 请求头传递。详见 [认证管理/API接口.md](../03-模块设计/基础模块/认证管理/API接口.md)。
 
-### 6.3 Token 使用
+### 6.3 Session 使用
 
-所有需要认证的接口须在请求头携带 Token：
+所有需要认证的接口须通过 Cookie 或请求头携带 Session ID：
 
 ```http
 GET /api/v1/auth/me HTTP/1.1
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Cookie: X-Session-Id=a1b2c3d4...
 ```
 
 ### 6.4 退出登录
 
 ```http
 DELETE /api/v1/auth/logout HTTP/1.1
-Authorization: Bearer <token>
+Cookie: X-Session-Id=<sessionId>
 ```
 
 ### 6.5 API Key 认证
 
-除 JWT Token 外，系统支持 **API Key** 作为长期身份凭证，面向脚本调用、定时任务、第三方系统集成等机器对机器（M2M）场景。API Key 默认永不过期，可选设置过期时间。
+除 Session 认证外，系统支持 **API Key** 作为长期身份凭证，面向脚本调用、定时任务、第三方系统集成等机器对机器（M2M）场景。API Key 默认永不过期，可选设置过期时间。
 
 **凭证格式：**
 
@@ -439,7 +440,7 @@ API Key 明文带固定前缀 `dhak_`，例如 `dhak_a1b2c3d4e5f6...`。
 
 **携带方式：**
 
-与 JWT Token 一致，通过 `Authorization: Bearer` 请求头携带：
+通过 `Authorization: Bearer` 请求头携带：
 
 ```http
 GET /api/v1/datasets/page?pageNum=1&pageSize=10 HTTP/1.1
@@ -661,7 +662,7 @@ axios.interceptors.response.use(
     // HTTP 错误处理
     const status = error.response?.status;
     if (status === 401) {
-      // Token 失效，跳转登录
+      // Session 失效，跳转登录
       redirectToLogin();
     }
     return Promise.reject(error);

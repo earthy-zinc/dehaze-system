@@ -767,7 +767,7 @@ flowchart LR
 |--------|------|------|----------|
 | CorsFilter | `CorsConfig.java` | 跨域资源共享，order=-101（先于 Security） | 全局 |
 | TraceIdFilter | `filter/TraceIdFilter.java` | TraceID 生成/透传/回写 MDC | 全局 |
-| JwtValidationFilter | `filter/JwtValidationFilter.java` | JWT Token 验证、SecurityContext 注入 | 受保护路由 |
+| SessionFilter | `filter/SessionFilter.java` | Session 验证、SecurityContext 注入 | 受保护路由 |
 | SecurityFilterChain | `SecurityConfig.java` | Spring Security 认证/授权链 | 全局 |
 | RequestLogFilter | `filter/RequestLogFilter.java` | 请求 URI 日志 | 全局 |
 
@@ -795,8 +795,7 @@ http
 
 | 组件 | 实现 | 说明 |
 |------|------|------|
-| JWT | Hutool JWT | AccessToken（`security.jwt.ttl` 秒有效期） |
-| Token 黑名单 | Redis `BLACKLIST_TOKEN:` | 注销时将 JTI 加入黑名单 |
+| Session 认证 | Redis `session:{sessionId}` | 存储 userId、username、authorities，TTL 7 天，剩余 < 24h 自动续期 |
 | 密码加密 | BCryptPasswordEncoder | Spring Security 标准实现 |
 | 验证码 | Hutool Captcha | 支持圆圈/GIF/干扰线/扭曲多种类型 |
 | UserDetails | SysUserDetailsService | 从数据库加载用户信息 |
@@ -1143,7 +1142,7 @@ flowchart TB
 |------|------|------|
 | 协议 | STOMP over WebSocket | 消息语义化 |
 | 兼容 | SockJS | 浏览器不支持 WebSocket 时降级 |
-| 认证 | JWT Token 解析 | CONNECT 帧中提取用户信息 |
+| 认证 | Session 验证 | CONNECT 帧中提取用户信息 |
 
 #### 2.15.2 端点配置
 
@@ -1189,7 +1188,7 @@ flowchart TB
 | **分布式锁/限流** | Redisson | 3.24.3 | 分布式锁、令牌桶限流 |
 | **熔断器** | Resilience4j | 2.2.0 | 熔断/重试/限流 |
 | **日志** | SLF4J + Logback + logstash-logback-encoder | 7.4 | 结构化日志（含 JSON 编码器） |
-| **认证** | Hutool JWT | 5.8.40 | JWT Token |
+| **认证** | Redis Session | - | Session 认证（TTL 7 天，自动续期） |
 | **校验** | Hibernate Validator | - | 参数校验 |
 | **API 文档** | Knife4j (OpenAPI 3) | 4.3.0 | Swagger API 文档 |
 | **对象转换** | MapStruct | 1.5.5.Final | 编译期对象转换 |
