@@ -28,7 +28,7 @@
 - **🌐 全栈开发**: 前后端分离架构,支持Vue/React双前端方案,Java/Go/Python多后端技术栈
 - **📱 多端支持**: Web端、Android App、React Native、Taro小程序、Electron桌面应用
 - **⚡ 实时处理**: WebSocket实时推送去雾进度,异步任务处理提高系统吞吐量
-- **🔐 安全可靠**: JWT+RBAC权限模型,Redis分布式锁,完善的安全防护机制
+- **🔐 安全可靠**: Session+RBAC权限模型,Redis分布式锁,完善的安全防护机制
 - **🚀 高性能**: GPU加速推理,Redis缓存优化,支持Docker容器化部署
 
 ---
@@ -117,7 +117,7 @@ graph TB
 
 #### Java后端 (dehaze-java)
 - **核心框架**: Spring Boot 3.3 + JDK 17
-- **安全框架**: Spring Security 6 + JWT
+- **安全框架**: Spring Security 6 + Session（Redis 管理）
 - **ORM框架**: MyBatis-Plus 3.5
 - **数据库**: MySQL 8.0 + MongoDB
 - **缓存**: Redis 6.0+ + Redisson分布式锁
@@ -126,7 +126,7 @@ graph TB
 - **监控**: Prometheus + Grafana + Actuator
 
 **核心功能模块**:
-- 用户管理: JWT令牌认证,RBAC权限模型
+- 用户管理: Session认证,RBAC权限模型
 - 文件管理: 多存储方案适配,支持分片上传
 - 系统管理: 部门树形结构,数据权限控制
 - 算法管理: 动态加载模型,支持12+种算法
@@ -141,7 +141,7 @@ graph TB
 - **核心框架**: Gin + GORM
 - **版本要求**: Go 1.25+
 - **数据库**: MySQL + MongoDB + Redis
-- **安全机制**: JWT + RBAC
+- **安全机制**: Session + RBAC
 - **接口文档**: Swagger
 
 **优势特点**:
