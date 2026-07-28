@@ -187,7 +187,7 @@ class MemberService:
         today = date.today()
         existing = await member_sign_in_repository.get_by_user_and_date(db, user_id, today)
         if existing:
-            raise BusinessException(ResultCode.BUSINESS_ERROR, "SIGN_IN_ALREADY")
+            raise BusinessException(ResultCode.SIGN_IN_ALREADY)
 
         yesterday = today - timedelta(days=1)
         yesterday_continuous = await member_sign_in_repository.get_latest_continuous_days(db, user_id, yesterday)

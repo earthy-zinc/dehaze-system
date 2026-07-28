@@ -1,0 +1,242 @@
+from datetime import datetime, timedelta
+from typing import Optional
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
+from app.models.entity.sys_coupon import SysCoupon
+from app.models.entity.sys_user_coupon import SysUserCoupon
+from app.models.entity.sys_member import SysMember
+from app.models.entity.sys_user import SysUser
+from app.repository.coupon_repository import coupon_repository, user_coupon_repository
+
+
+def _format_dt(dt: Optional[datetime]) -> Optional[str]:
+    if dt is None:
+        return None
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _parse_dt(s: str) -> datetime:
+    return datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
+
+
+def _calc_expire_time(coupon: SysCoupon, receive_time: datetime) -> Optional[datetime]:
+    if coupon.valid_type == "fixed":
+        return coupon.valid_end
+    if coupon.valid_type == "relative" and coupon.valid_days:
+        return receive_time + timedelta(days=coupon.valid_days)
+    return None
+
+
+def _coupon_to_vo(coupon: SysCoupon) -> dict:
+    return {
+        "id": coupon.id,
+        "name": coupon.name,
+        "type": coupon.type,
+        "faceValue": coupon.face_value,
+        "threshold": coupon.threshold,
+        "validType": coupon.valid_type,
+        "validStart": _format_dt(coupon.valid_start),
+        "validEnd": _format_dt(coupon.valid_end),
+        "validDays": coupon.valid_days,
+        "totalQty": coupon.total_qty,
+        "issuedQty": coupon.issued_qty,
+        "usedQty": coupon.used_qty,
+        "perUserLimit": coupon.per_user_limit,
+        "applicableScope": coupon.applicable_scope,
+        "status": coupon.status,
+        "createTime": _format_dt(coupon.create_time),
+    }
+
+
+class CouponService:
+
+    @staticmethod
+    async def create(db: AsyncSession, form: dict) -> dict:
+        coupon = SysCoupon(
+            name=form["name"],
+            type=form["type"],
+            face_value=form["faceValue"],
+            threshold=form.get("threshold"),
+            valid_type=form["validType"],
+            valid_start=_parse_dt(form["validStart"]) if form.get("validStart") else None,
+            valid_end=_parse_dt(form["validEnd"]) if form.get("validEnd") else None,
+            valid_days=form.get("validDays"),
+            total_qty=form["totalQty"],
+            per_user_limit=form["perUserLimit"],
+            applicable_scope=form.get("applicableScope"),
+            status=form.get("status", 1),
+        )
+        await coupon_repository.create(db, coupon)
+        return {"id": coupon.id}
+
+    @staticmethod
+    async def update(db: AsyncSession, coupon_id: int, form: dict) -> None:
+        coupon = await coupon_repository.get_by_id(db, coupon_id)
+        if not coupon:
+            raise BusinessException(ResultCode.COUPON_NOT_FOUND)
+        coupon.name = form["name"]
+        coupon.type = form["type"]
+        coupon.face_value = form["faceValue"]
+        coupon.threshold = form.get("threshold")
+        coupon.valid_type = form["validType"]
+        coupon.valid_start = _parse_dt(form["validStart"]) if form.get("validStart") else None
+        coupon.valid_end = _parse_dt(form["validEnd"]) if form.get("validEnd") else None
+        coupon.valid_days = form.get("validDays")
+        coupon.total_qty = form["totalQty"]
+        coupon.per_user_limit = form["perUserLimit"]
+        coupon.applicable_scope = form.get("applicableScope")
+        if form.get("status") is not None:
+            coupon.status = form["status"]
+        await db.flush()
+
+    @staticmethod
+    async def delete_by_ids(db: AsyncSession, ids: list[int]) -> None:
+        for coupon_id in ids:
+            coupon = await coupon_repository.get_by_id(db, coupon_id)
+            if not coupon:
+                raise BusinessException(ResultCode.COUPON_NOT_FOUND)
+        await coupon_repository.soft_delete_by_ids(db, ids)
+
+    @staticmethod
+    async def get_page(db: AsyncSession, query: dict) -> dict:
+        items, total = await coupon_repository.get_page(
+            db,
+            query["pageNum"],
+            query["pageSize"],
+            name=query.get("name"),
+            type=query.get("type"),
+            status=query.get("status"),
+        )
+        list_data = [_coupon_to_vo(c) for c in items]
+        return {"list": list_data, "total": total}
+
+    @staticmethod
+    async def batch_distribute(db: AsyncSession, form: dict) -> dict:
+        coupon_id = form["couponId"]
+        coupon = await coupon_repository.get_by_id(db, coupon_id)
+        if not coupon:
+            raise BusinessException(ResultCode.COUPON_NOT_FOUND)
+        if coupon.status != 1:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "优惠券已禁用")
+
+        target_scope = form["targetScope"]
+        user_ids: list[int] = []
+
+        if target_scope == "users":
+            user_ids = form.get("userIds") or []
+        elif target_scope == "level":
+            level_codes = form.get("levelCodes") or []
+            if level_codes:
+                stmt = select(SysMember.user_id).where(
+                    SysMember.deleted == 0,
+                    SysMember.level_code.in_(level_codes),
+                )
+                result = await db.execute(stmt)
+                user_ids = list(result.scalars().all())
+        elif target_scope == "all":
+            stmt = select(SysUser.id).where(SysUser.deleted == 0, SysUser.status == 1)
+            result = await db.execute(stmt)
+            user_ids = list(result.scalars().all())
+
+        success_count = 0
+        fail_count = 0
+        now = datetime.now()
+        expire_time = _calc_expire_time(coupon, now)
+
+        for uid in user_ids:
+            try:
+                existing_count = await user_coupon_repository.count_by_user_and_coupon(db, uid, coupon_id)
+                if existing_count >= coupon.per_user_limit:
+                    fail_count += 1
+                    continue
+
+                if coupon.total_qty != -1 and coupon.issued_qty + success_count >= coupon.total_qty:
+                    fail_count += 1
+                    continue
+
+                user_coupon = SysUserCoupon(
+                    user_id=uid,
+                    coupon_id=coupon_id,
+                    status=1,
+                    receive_time=now,
+                    expire_time=expire_time,
+                )
+                await user_coupon_repository.create(db, user_coupon)
+                success_count += 1
+            except Exception:
+                fail_count += 1
+
+        if success_count > 0:
+            coupon.issued_qty += success_count
+            await db.flush()
+
+        return {"successCount": success_count, "failCount": fail_count}
+
+    @staticmethod
+    async def receive(db: AsyncSession, coupon_id: int, user_id: int) -> dict:
+        coupon = await coupon_repository.get_by_id(db, coupon_id)
+        if not coupon:
+            raise BusinessException(ResultCode.COUPON_NOT_FOUND)
+        if coupon.status != 1:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "优惠券已禁用")
+
+        if coupon.total_qty != -1 and coupon.issued_qty >= coupon.total_qty:
+            raise BusinessException(ResultCode.COUPON_STOCK_EMPTY)
+
+        existing_count = await user_coupon_repository.count_by_user_and_coupon(db, user_id, coupon_id)
+        if existing_count >= coupon.per_user_limit:
+            raise BusinessException(ResultCode.COUPON_LIMIT_EXCEEDED)
+
+        success = await coupon_repository.increment_issued_qty_with_limit(db, coupon_id)
+        if not success:
+            raise BusinessException(ResultCode.COUPON_STOCK_EMPTY)
+
+        now = datetime.now()
+        expire_time = _calc_expire_time(coupon, now)
+        user_coupon = SysUserCoupon(
+            user_id=user_id,
+            coupon_id=coupon_id,
+            status=1,
+            receive_time=now,
+            expire_time=expire_time,
+        )
+        await user_coupon_repository.create(db, user_coupon)
+        return {"userCouponId": user_coupon.id}
+
+    @staticmethod
+    async def list_my(db: AsyncSession, user_id: int, status: Optional[int]) -> list[dict]:
+        user_coupons = await user_coupon_repository.list_by_user(db, user_id, status)
+        if not user_coupons:
+            return []
+        coupon_ids = list({uc.coupon_id for uc in user_coupons})
+        coupons = await coupon_repository.get_by_ids(db, coupon_ids)
+        coupon_map = {c.id: c for c in coupons}
+
+        result = []
+        for uc in user_coupons:
+            coupon = coupon_map.get(uc.coupon_id)
+            if not coupon:
+                continue
+            result.append({
+                "id": uc.id,
+                "couponId": uc.coupon_id,
+                "couponName": coupon.name,
+                "type": coupon.type,
+                "faceValue": coupon.face_value,
+                "threshold": coupon.threshold,
+                "status": uc.status,
+                "receiveTime": _format_dt(uc.receive_time),
+                "expireTime": _format_dt(uc.expire_time),
+                "usedTime": _format_dt(uc.used_time),
+                "usedOrderId": uc.used_order_id,
+                "applicableScope": coupon.applicable_scope,
+            })
+        return result
+
+    @staticmethod
+    async def expire_user_coupons(db: AsyncSession) -> int:
+        return await user_coupon_repository.expire_coupons(db)

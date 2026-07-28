@@ -15,6 +15,14 @@ from app.models.entity.sys_member_growth_log import SysMemberGrowthLog
 from app.models.entity.sys_member_quota import SysMemberQuota
 from app.models.entity.sys_member_sign_in import SysMemberSignIn
 from app.models.entity.sys_menu import SysMenu, SysRoleMenu
+from app.models.entity.sys_order import SysOrder
+from app.models.entity.sys_payment_record import SysPaymentRecord
+from app.models.entity.sys_refund_record import SysRefundRecord
+from app.models.entity.sys_auto_renew import SysAutoRenew
+from app.models.entity.sys_package import SysPackage
+from app.models.entity.sys_coupon import SysCoupon
+from app.models.entity.sys_user_coupon import SysUserCoupon
+from app.models.entity.sys_promotion import SysPromotion, SysPromotionPackage
 from app.models.entity.sys_task import SysTask
 from app.models.entity.sys_user import SysUser, SysRole, SysUserRole
 from app.models.entity.sys_wpx_file import SysWpxFile
@@ -56,4 +64,15 @@ __all__ = [
     'SysMemberSignIn',
     # WPX 文件映射
     'SysWpxFile',
+    # 订单管理
+    'SysOrder',
+    'SysPaymentRecord',
+    'SysRefundRecord',
+    'SysAutoRenew',
+    # 套餐管理
+    'SysPackage',
+    'SysCoupon',
+    'SysUserCoupon',
+    'SysPromotion',
+    'SysPromotionPackage',
 ]

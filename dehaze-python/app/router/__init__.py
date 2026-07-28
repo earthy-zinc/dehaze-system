@@ -110,3 +110,11 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     # 会员管理模块路由
     from app.router.member import router as member_router
     app.include_router(member_router)
+
+    # 套餐管理模块路由（含优惠券）
+    from app.router.package import router as package_router
+    app.include_router(package_router)
+
+    # 订单管理模块路由
+    from app.router.order import router as order_router
+    app.include_router(order_router)

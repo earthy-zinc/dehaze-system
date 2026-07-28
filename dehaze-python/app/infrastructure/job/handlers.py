@@ -13,6 +13,9 @@ XXL-Job 定时任务 Handler
 - cleanupStuckPredEvalLogs: 回收预测/评估僵尸任务（每 60 秒）
 - cleanupExpiredMessages:  清理过期消息（每天凌晨 4 点）
 - sendScheduledAnnouncements: 发送定时公告（每分钟）
+- expireOrders:            订单超时自动取消（每 5 分钟）
+- completeExpiredOrders:   已支付订单到期归档（每天凌晨 3 点）
+- expireUserCoupons:       用户优惠券过期处理（每天凌晨 4 点）
 """
 
 from __future__ import annotations
@@ -522,6 +525,96 @@ async def send_scheduled_announcements() -> str:
             logger.info(msg)
         else:
             msg = "定时公告发送: 无待发送公告"
+            logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+# ==================== 订单与套餐定时任务 ====================
+
+
+@xxl_handler.register(name="expireOrders")
+async def expire_orders() -> str:
+    """
+    订单超时自动取消
+
+    扫描 status=1(待支付) AND expire_time < NOW() 的订单，
+    释放已锁定优惠券，更新状态为 cancelled，cancel_reason 标记为超时。
+    与 Java OrderExpireJob、Go expireOrders 对齐。
+
+    CRON 建议: 0 0/5 * * * ? （每 5 分钟）
+    """
+    from app.service.order_service import OrderService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            count = await OrderService.expire_orders(db)
+
+        if count > 0:
+            msg = f"订单超时取消: 已取消={count}"
+            logger.info(msg)
+        else:
+            msg = "订单超时取消: 无"
+            logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="completeExpiredOrders")
+async def complete_expired_orders() -> str:
+    """
+    已支付订单到期归档
+
+    扫描 status=2(已支付) AND package_expire_time < NOW() 的订单，
+    更新状态为 completed（归档）。
+    与 Java OrderCompleteJob、Go completeExpiredOrders 对齐。
+
+    CRON 建议: 0 0 3 * * ? （每天凌晨 3 点）
+    """
+    from app.service.order_service import OrderService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            count = await OrderService.complete_expired_orders(db)
+
+        if count > 0:
+            msg = f"订单到期归档: 已归档={count}"
+            logger.info(msg)
+        else:
+            msg = "订单到期归档: 无"
+            logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="expireUserCoupons")
+async def expire_user_coupons() -> str:
+    """
+    用户优惠券过期处理
+
+    扫描 sys_user_coupon WHERE expire_time < NOW() AND status = 1(未使用)，
+    批量更新 status=3(已过期)。
+    与 Java CouponExpireJob、Go expireUserCoupons 对齐。
+
+    CRON 建议: 0 0 4 * * ? （每天凌晨 4 点）
+    """
+    from app.service.coupon_service import CouponService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            count = await CouponService.expire_user_coupons(db)
+
+        if count > 0:
+            msg = f"用户优惠券过期处理: 已过期={count}"
+            logger.info(msg)
+        else:
+            msg = "用户优惠券过期处理: 无"
             logger.debug(msg)
         return msg
     finally:
