@@ -44,6 +44,8 @@ public enum ResultCode implements IResultCode {
     PARAM_IS_NULL("A0410", "请求必填参数为空"),
 
     BUSINESS_ERROR("A0500", "业务异常"),
+    SIGN_IN_ALREADY("SIGN_IN_ALREADY", "今日已签到"),
+    MEMBER_NOT_FOUND("MEMBER_NOT_FOUND", "会员不存在"),
     DATA_EXISTS("A0501", "数据已存在"),
     DATA_STATE_NOT_ALLOW("A0502", "数据状态不允许"),
     OPERATION_NOT_ALLOW("A0503", "操作不允许"),
