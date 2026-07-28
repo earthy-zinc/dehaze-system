@@ -7,25 +7,21 @@ const modules = import.meta.glob("../../views/**/**.vue");
 const Layout = () => import("@/layout/index.vue");
 
 /**
- * Use meta.role to determine if the current user has permission
+ * 判断用户是否拥有路由权限
  *
- * @param roles 用户角色集合
- * @param route 路由
- * @returns
+ * 规则：
+ * - 超级管理员（ROOT）拥有所有权限
+ * - 路由未配置 meta.roles 时，所有已登录用户均可访问
+ * - 路由配置了 meta.roles 时，用户角色须在列表中
  */
 const hasPermission = (roles: string[], route: RouteRecordRaw) => {
-  if (route.meta && route.meta.roles) {
-    // 角色【超级管理员】拥有所有权限，忽略校验
-    if (roles.includes("ROOT")) {
-      return true;
-    }
-    return roles.some((role) => {
-      if (route.meta?.roles) {
-        return route.meta.roles.includes(role);
-      }
-    });
+  if (roles.includes("ROOT")) {
+    return true;
   }
-  return false;
+  if (route.meta && route.meta.roles && route.meta.roles.length > 0) {
+    return roles.some((role) => route.meta!.roles!.includes(role));
+  }
+  return true;
 };
 
 /**
@@ -58,12 +54,14 @@ function generateRouteName(routePath: string, componentPath?: string): string {
  * @param routes 接口返回所有的动态路由
  * @param roles 用户角色集合
  * @param parentPath 父级完整路径（用于递归拼接子路由的完整路径）
+ * @param parentName 父级路由名称（用于避免子路由名称与父级冲突）
  * @returns 返回用户有权限的动态路由
  */
 const filterAsyncRoutes = (
   routes: RouteVO[],
   roles: string[],
-  parentPath = ""
+  parentPath = "",
+  parentName = ""
 ) => {
   const asyncRoutes: RouteRecordRaw[] = [];
   routes.forEach((route) => {
@@ -75,7 +73,8 @@ const filterAsyncRoutes = (
         tmpRoute.path,
         tmpRoute.component?.toString()
       );
-      if (routeName) {
+      // 仅在名称非空且与父级名称不同时设置，避免 Vue Router 嵌套路由名称冲突
+      if (routeName && routeName !== parentName) {
         tmpRoute.name = routeName;
       }
       // 如果是顶级目录，替换为 Layout 组件
@@ -92,7 +91,7 @@ const filterAsyncRoutes = (
       }
 
       if (tmpRoute.children) {
-        tmpRoute.children = filterAsyncRoutes(route.children, roles, fullPath);
+        tmpRoute.children = filterAsyncRoutes(route.children, roles, fullPath, routeName);
       }
 
       asyncRoutes.push(tmpRoute);

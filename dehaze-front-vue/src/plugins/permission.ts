@@ -43,7 +43,7 @@ export function setupPermission() {
           router.addRoute(route);
         });
         next({ ...to, replace: true });
-      } catch {
+      } catch (e) {
         await userStore.resetToken();
         next(`/login?redirect=${to.path}`);
         NProgress.done();

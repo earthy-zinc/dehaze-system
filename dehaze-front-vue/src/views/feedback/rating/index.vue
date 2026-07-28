@@ -34,12 +34,7 @@
             placeholder="最低"
             style="width: 90px"
           >
-            <el-option
-              v-for="n in 5"
-              :key="n"
-              :label="n + '星'"
-              :value="n"
-            />
+            <el-option v-for="n in 5" :key="n" :label="n + '星'" :value="n" />
           </el-select>
           <span style="margin: 0 6px">-</span>
           <el-select
@@ -48,12 +43,7 @@
             placeholder="最高"
             style="width: 90px"
           >
-            <el-option
-              v-for="n in 5"
-              :key="n"
-              :label="n + '星'"
-              :value="n"
-            />
+            <el-option v-for="n in 5" :key="n" :label="n + '星'" :value="n" />
           </el-select>
         </el-form-item>
 
@@ -136,11 +126,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column
-          label="评价内容"
-          min-width="200"
-          show-overflow-tooltip
-        >
+        <el-table-column label="评价内容" min-width="200" show-overflow-tooltip>
           <template #default="scope">
             <span>{{ (scope.row as RatingPageVO).comment || "-" }}</span>
           </template>
@@ -148,9 +134,7 @@
 
         <el-table-column label="标签" width="200">
           <template #default="scope">
-            <template
-              v-if="(scope.row as RatingPageVO).tags?.length"
-            >
+            <template v-if="(scope.row as RatingPageVO).tags?.length">
               <el-tag
                 v-for="(tag, idx) in (scope.row as RatingPageVO).tags!.slice(
                   0,
@@ -166,9 +150,7 @@
                 size="small"
                 type="info"
                 style="margin: 2px"
-                >+{{
-                  (scope.row as RatingPageVO).tags!.length - 3
-                }}</el-tag
+                >+{{ (scope.row as RatingPageVO).tags!.length - 3 }}</el-tag
               >
             </template>
             <span v-else>-</span>
@@ -194,7 +176,9 @@
               @click="handleHide(scope.row as RatingPageVO)"
             >
               <el-icon><Hide /></el-icon
-              >{{ (scope.row as RatingPageVO).isHidden === 1 ? "显示" : "隐藏" }}
+              >{{
+                (scope.row as RatingPageVO).isHidden === 1 ? "显示" : "隐藏"
+              }}
             </el-button>
             <el-button
               v-hasPerm="['feedback:rating:reply']"
@@ -221,9 +205,7 @@
     <el-dialog v-model="detailDialog.visible" title="评价详情" width="700px">
       <el-descriptions v-if="detailData" :column="2" border>
         <el-descriptions-item label="用户名">{{
-          detailData.isAnonymous === 1
-            ? "匿名用户"
-            : detailData.username || "-"
+          detailData.isAnonymous === 1 ? "匿名用户" : detailData.username || "-"
         }}</el-descriptions-item>
         <el-descriptions-item label="算法">{{
           detailData.algorithmName
@@ -254,19 +236,14 @@
         }}</el-descriptions-item>
       </el-descriptions>
 
-      <el-card
-        v-if="detailData"
-        shadow="never"
-        style="margin-top: 12px"
-      >
+      <el-card v-if="detailData" shadow="never" style="margin-top: 12px">
         <template #header>评价内容</template>
-        <div style="white-space: pre-wrap">{{ detailData.comment || "无" }}</div>
+        <div style="white-space: pre-wrap">
+          {{ detailData.comment || "无" }}
+        </div>
       </el-card>
 
-      <div
-        v-if="detailData?.imageUrls?.length"
-        style="margin-top: 12px"
-      >
+      <div v-if="detailData?.imageUrls?.length" style="margin-top: 12px">
         <div style="margin-bottom: 8px">图片预览</div>
         <el-image
           v-for="(url, idx) in detailData.imageUrls"
@@ -288,7 +265,7 @@
         <div style="white-space: pre-wrap">{{ detailData.adminReply }}</div>
         <div
           v-if="detailData.replyTime"
-          style=" margin-top: 8px;color: #909399"
+          style="margin-top: 8px; color: #909399"
         >
           回复时间：{{ detailData.replyTime }}
         </div>
@@ -321,9 +298,7 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleReplySubmit"
-            >确 定</el-button
-          >
+          <el-button type="primary" @click="handleReplySubmit">确 定</el-button>
           <el-button @click="closeReplyDialog">取 消</el-button>
         </div>
       </template>
@@ -334,6 +309,7 @@
 <script lang="ts" setup>
 import {
   FeedbackAPI,
+  AlgorithmAPI,
   RatingQuery,
   RatingPageVO,
   RatingDetailVO,
@@ -363,12 +339,13 @@ const queryParams = reactive<RatingQuery>({
   pageSize: 10,
 });
 
-const algorithmOptions = [
-  { value: 1, label: "去雾算法A" },
-  { value: 2, label: "去雾算法B" },
-  { value: 3, label: "暗通道先验" },
-  { value: 4, label: "Retinex" },
-];
+const algorithmOptions = ref<{ value: number; label: string }[]>([]);
+
+onMounted(() => {
+  AlgorithmAPI.listAll().then((list) => {
+    algorithmOptions.value = list.map((a) => ({ value: a.id, label: a.name }));
+  });
+});
 
 function handleTimeRangeChange(val: [string, string] | null) {
   if (val && val.length === 2) {
