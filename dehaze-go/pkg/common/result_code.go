@@ -69,8 +69,38 @@ var (
 	OPERATION_NOT_ALLOW  = &ResultCode{"A0503", "操作不允许"}
 	DATA_BIND_EXISTS     = &ResultCode{"A0504", "存在关联数据，无法删除"}
 
-	// 会员模块业务错误码
-	SIGN_IN_ALREADY = &ResultCode{"SIGN_IN_ALREADY", "今日已签到"}
+	// 会员模块业务错误码 A051x
+	MEMBER_NOT_FOUND      = &ResultCode{"A0510", "会员不存在"}
+	MEMBER_FROZEN         = &ResultCode{"A0511", "会员已冻结"}
+	SIGN_IN_ALREADY       = &ResultCode{"A0512", "今日已签到"}
+	GROWTH_INSUFFICIENT   = &ResultCode{"A0513", "成长值不足"}
+	BENEFIT_CONFIG_INVALID = &ResultCode{"A0514", "权益配置无效"}
+
+	// 套餐模块业务错误码 A052x
+	PACKAGE_NOT_FOUND    = &ResultCode{"A0520", "套餐不存在"}
+	PACKAGE_OFF_SHELF    = &ResultCode{"A0521", "套餐已下架"}
+	PACKAGE_HAS_ORDERS   = &ResultCode{"A0522", "套餐下已有关联订单，无法删除"}
+	COUPON_NOT_FOUND     = &ResultCode{"A0523", "优惠券不存在"}
+	COUPON_EXPIRED       = &ResultCode{"A0524", "优惠券已过期"}
+	COUPON_ALREADY_USED  = &ResultCode{"A0525", "优惠券已使用"}
+	COUPON_STOCK_EMPTY   = &ResultCode{"A0526", "优惠券已领完"}
+	COUPON_NOT_APPLICABLE = &ResultCode{"A0527", "优惠券不适用于该套餐"}
+	COUPON_LIMIT_EXCEEDED = &ResultCode{"A0528", "超过每人限领数量"}
+	COUPON_STATUS_INVALID = &ResultCode{"A0529", "优惠券状态无效"}
+	COUPON_LOCK_FAILED    = &ResultCode{"A052A", "优惠券锁定失败"}
+
+	// 订单模块业务错误码 A053x
+	ORDER_NOT_FOUND       = &ResultCode{"A0530", "订单不存在"}
+	ORDER_STATUS_INVALID  = &ResultCode{"A0531", "订单状态不允许此操作"}
+	ORDER_EXPIRED         = &ResultCode{"A0532", "订单已超时"}
+	ORDER_ALREADY_PAID    = &ResultCode{"A0533", "订单已支付"}
+	REFUND_TIME_EXCEEDED  = &ResultCode{"A0534", "超过退款时限"}
+	REFUND_USAGE_EXCEEDED = &ResultCode{"A0535", "权益使用超限"}
+	REFUND_NOT_SUPPORTED  = &ResultCode{"A0536", "该套餐不支持退款"}
+	REFUND_NOT_FOUND      = &ResultCode{"A0537", "退款记录不存在"}
+	PAYMENT_AMOUNT_MISMATCH = &ResultCode{"A0538", "支付金额与订单金额不一致"}
+	DUPLICATE_ORDER       = &ResultCode{"A0539", "短时间内重复下单"}
+	REFUND_ALREADY_EXISTS = &ResultCode{"A053A", "该订单已存在退款申请"}
 
 	// A06xx: 操作相关
 	OPERATION_FAILED    = &ResultCode{"A0600", "操作失败"}
@@ -175,7 +205,36 @@ var allResultCodes = map[string]*ResultCode{
 	"A0502": DATA_STATE_NOT_ALLOW,
 	"A0503": OPERATION_NOT_ALLOW,
 	"A0504": DATA_BIND_EXISTS,
-	"SIGN_IN_ALREADY": SIGN_IN_ALREADY,
+	// 会员模块 A051x
+	"A0510": MEMBER_NOT_FOUND,
+	"A0511": MEMBER_FROZEN,
+	"A0512": SIGN_IN_ALREADY,
+	"A0513": GROWTH_INSUFFICIENT,
+	"A0514": BENEFIT_CONFIG_INVALID,
+	// 套餐模块 A052x
+	"A0520": PACKAGE_NOT_FOUND,
+	"A0521": PACKAGE_OFF_SHELF,
+	"A0522": PACKAGE_HAS_ORDERS,
+	"A0523": COUPON_NOT_FOUND,
+	"A0524": COUPON_EXPIRED,
+	"A0525": COUPON_ALREADY_USED,
+	"A0526": COUPON_STOCK_EMPTY,
+	"A0527": COUPON_NOT_APPLICABLE,
+	"A0528": COUPON_LIMIT_EXCEEDED,
+	"A0529": COUPON_STATUS_INVALID,
+	"A052A": COUPON_LOCK_FAILED,
+	// 订单模块 A053x
+	"A0530": ORDER_NOT_FOUND,
+	"A0531": ORDER_STATUS_INVALID,
+	"A0532": ORDER_EXPIRED,
+	"A0533": ORDER_ALREADY_PAID,
+	"A0534": REFUND_TIME_EXCEEDED,
+	"A0535": REFUND_USAGE_EXCEEDED,
+	"A0536": REFUND_NOT_SUPPORTED,
+	"A0537": REFUND_NOT_FOUND,
+	"A0538": PAYMENT_AMOUNT_MISMATCH,
+	"A0539": DUPLICATE_ORDER,
+	"A053A": REFUND_ALREADY_EXISTS,
 	"A0600": OPERATION_FAILED,
 	"A0601": OPERATION_COMPLETED,
 	"A0700": USER_UPLOAD_FILE_ERROR,

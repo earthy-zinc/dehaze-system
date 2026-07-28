@@ -20,6 +20,8 @@ import (
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	menurepo "github.com/earthyzinc/dehaze-go/internal/repository/menu"
 	msgrepo "github.com/earthyzinc/dehaze-go/internal/repository/message"
+	orderrepo "github.com/earthyzinc/dehaze-go/internal/repository/order"
+	pkgsalerepo "github.com/earthyzinc/dehaze-go/internal/repository/pkgsale"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 	rolerepo "github.com/earthyzinc/dehaze-go/internal/repository/role"
 	taskrepo "github.com/earthyzinc/dehaze-go/internal/repository/task"
@@ -39,6 +41,8 @@ import (
 	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
 	msgservice "github.com/earthyzinc/dehaze-go/internal/service/message"
 	menuservice "github.com/earthyzinc/dehaze-go/internal/service/menu"
+	orderservice "github.com/earthyzinc/dehaze-go/internal/service/order"
+	pkgsaleservice "github.com/earthyzinc/dehaze-go/internal/service/pkgsale"
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
 	roleservice "github.com/earthyzinc/dehaze-go/internal/service/role"
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
@@ -158,6 +162,15 @@ func (a *Application) Init() error {
 	memberGrowthLogRepo := memberrepo.NewMemberGrowthLogRepository(gormDB)
 	memberSignInRepo := memberrepo.NewMemberSignInRepository(gormDB)
 
+	// package & order module repositories
+	packageRepo := pkgsalerepo.NewPackageRepository(gormDB)
+	couponRepo := pkgsalerepo.NewCouponRepository(gormDB)
+	userCouponRepo := pkgsalerepo.NewUserCouponRepository(gormDB)
+	orderRepo := orderrepo.NewOrderRepository(gormDB)
+	paymentRepo := orderrepo.NewPaymentRecordRepository(gormDB)
+	refundRepo := orderrepo.NewRefundRecordRepository(gormDB)
+	autoRenewRepo := orderrepo.NewAutoRenewRepository(gormDB)
+
 	// services
 	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo)
 	authService := authservice.NewAuthService(cacheClient, userService, gormDB)
@@ -242,6 +255,11 @@ func (a *Application) Init() error {
 	// member module services
 	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo)
 
+	// package & order module services
+	packageService := pkgsaleservice.NewPackageService(gormDB, packageRepo, couponRepo, userCouponRepo, memberBenefitRepo)
+	couponService := pkgsaleservice.NewCouponService(gormDB, couponRepo, userCouponRepo)
+	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, memberRepo)
+
 	// 启动 MQ Consumer 消费死信队列
 	// 注意：Go 后端不消费 export 主队列（由 Java/Python 执行任务），
 	// 仅消费 DLQ 以更新任务状态为 FAILED
@@ -258,7 +276,8 @@ func (a *Application) Init() error {
 	}
 
 	// 启动定时清理任务（清理过期任务、失败记录、预测/评估僵尸任务等）
-	job.InitJobs(storageService, predLogRepo, evalLogRepo)
+	// 同时启动订单定时任务（超时取消、自动续费、优惠券过期）
+	job.InitJobs(storageService, predLogRepo, evalLogRepo, orderService)
 
 	// apis
 	authApi := api.NewAuthApi(authService)
@@ -285,6 +304,10 @@ func (a *Application) Init() error {
 
 	// member module apis
 	memberApi := api.NewMemberApi(memberService)
+
+	// package & order module apis
+	packageApi := api.NewPackageApi(packageService, couponService)
+	orderApi := api.NewOrderApi(orderService)
 
 	// routes
 	engine := a.Server.GetEngine()
@@ -326,6 +349,8 @@ func (a *Application) Init() error {
 	router.RegisterAnnouncementRoutes(protectedV1, announcementApi)
 	router.RegisterMessageTemplateRoutes(protectedV1, messageTemplateApi)
 	router.RegisterMemberRoutes(protectedV1, memberApi)
+	router.RegisterPackageRoutes(protectedV1, packageApi)
+	router.RegisterOrderRoutes(protectedV1, orderApi)
 
 	middleware.ApiKeyAuth = func(ctx context.Context, rawKey string) (*security.CustomClaims, error) {
 		authInfo, err := apiKeyService.AuthenticateByKey(ctx, rawKey)
