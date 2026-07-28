@@ -32,8 +32,8 @@
 2. **缓存穿透防护:** 采用布隆过滤器 + 空值缓存防止大量恶意请求不存在的数据导致缓存穿透，显著降低数据库查询压力
 3. **异步任务处理优化:** 采用 CompletableFuture 构建异步处理链，分为三个阶段处理去雾操作，提高系统吞吐量，降低响应延迟
 4. **多存储方案适配:** 利用策略模式构建接口 FileService 实现多存储方案适配，如本地存储、MinIO、阿里云 OSS，提升系统可扩展性
-5. **用户输入及权限校验:** @Validate + 自定义 @DataPermission 注解 + Mybatis 拦截器动态拼接 SQL 查询用户权限，进而利用 JWT、Spring Security 和 Redis，通过用户 ID 查询存储在 Redis 中当前用户权限，从而判断是否准许放行，后端针对传入参数通过注解验证，提供安全、无状态、分布式友好的身份验证和授权机制，提高系统健壮性
-6. **三层安全防护设计:** JWT 签名验证 → Redis 权限校验 → 方法级 @DataPermission 注解，整体基于 RBAC 模型，实现细粒度的权限控制，涵盖接口方法和按钮级别
+5. **用户输入及权限校验:** @Validate + 自定义 @DataPermission 注解 + Mybatis 拦截器动态拼接 SQL 查询用户权限，进而利用 Session、Spring Security 和 Redis，通过用户 ID 查询存储在 Redis 中当前用户权限，从而判断是否准许放行，后端针对传入参数通过注解验证，提供安全、分布式友好的身份验证和授权机制，提高系统健壮性
+6. **三层安全防护设计:** SessionFilter 会话校验 → Redis 权限校验 → 方法级 @DataPermission 注解，整体基于 RBAC 模型，实现细粒度的权限控制，涵盖接口方法和按钮级别
 7. **项目管理:** 利用接口、枚举、泛型定义后端常量，通过继承、实现等面向对象方法统一后端响应结构体，构建全局系统异常处理器，区分开发和生产配置，提高开发效率和可维护性
 8. **性能监控:** 利用 Prometheus + Grafana 通过监控指标分析系统瓶颈，优化系统性能
 9. **日志管理:** 规划接入 ELK 日志系统，结合日志采集、日志分析、日志可视化等功能，提高系统日志处理效率，轻松分析日志，快速定位问题
@@ -72,7 +72,7 @@ sequenceDiagram
 
 #### 1.5.3 安全性增强
 
-- 实现 JWT 动态过期（根据用户登录时间动态计算）
+- 实现 Session 动态续期（剩余 < 24h 自动续期，TTL 7 天）
 - 增加 IP 黑白名单过滤
 - 敏感操作二次验证（如短信/邮件验证码）
 
@@ -101,7 +101,7 @@ dehaze-java/
 │   │   │   ├── SystemApplication.java  # SpringBoot 启动入口
 │   │   │   ├── common/                 # 公共基础模块
 │   │   │   │   ├── base/               # 基类（BaseEntity/BasePageQuery/IBaseEnum）
-│   │   │   │   ├── constant/           # 常量定义（JWT/Security/Task）
+│   │   │   │   ├── constant/           # 常量定义（Security/Session/Task）
 │   │   │   │   ├── enums/              # 业务枚举（状态/类型/权限范围）
 │   │   │   │   ├── exception/          # 异常体系（BusinessException + 全局处理器）
 │   │   │   │   ├── model/              # 公共模型（Option）
@@ -201,7 +201,7 @@ flowchart TB
         direction LR
         CORS["跨域 CorsFilter"]
         Captcha["验证码 CaptchaFilter"]
-        JWT["JWT JwtValidationFilter"]
+        Session["SessionFilter 会话校验"]
         SecurityChain["Spring Security FilterChain"]
     end
 
@@ -241,7 +241,7 @@ flowchart TB
 
 | 层级 | 包路径 | 职责 | 依赖方向 |
 |------|--------|------|----------|
-| **Filter 链** | `filter/` + Spring Security | 请求拦截、JWT 校验、验证码、跨域 | ← 外部请求 |
+| **Filter 链** | `filter/` + Spring Security | 请求拦截、Session 校验、验证码、跨域 | ← 外部请求 |
 | **Controller 层** | `controller/` | 参数绑定与校验、调用 Service、统一响应 | → Service |
 | **Service 层** | `service/` | 业务逻辑编排、事务边界、缓存交互 | → Mapper + plugin |
 | **Mapper 层** | `mapper/` | 数据库 CRUD、SQL 构建、数据权限 | → MyBatis-Plus |
@@ -316,7 +316,7 @@ spring:
   cache:         # Spring Cache 配置（Redis 后端）
   jackson:       # JSON 序列化配置
   servlet:       # 文件上传限制
-security:        # 安全配置（JWT 密钥/TTL、忽略路径）
+security:        # 安全配置（Session TTL、忽略路径）
 management:      # Actuator 监控配置
 file:            # 文件存储配置（MinIO/Local）
 springdoc:       # Swagger API 文档配置
@@ -753,8 +753,8 @@ flowchart LR
 flowchart LR
     Req["请求"] --> CORS["跨域处理<br/>CorsFilter<br/>order=-101"]
     CORS --> Trace["TraceID 透传<br/>TraceIdFilter"]
-    Trace --> JWT["JWT 校验<br/>JwtValidationFilter"]
-    JWT --> Security["Spring Security<br/>FilterChain"]
+    Trace --> Session["Session 校验<br/>SessionFilter"]
+    Session --> Security["Spring Security<br/>FilterChain"]
     Security --> Permission["权限校验<br/>@PreAuthorize"]
     Permission --> Handler["业务处理<br/>Controller"]
 ```
@@ -831,7 +831,7 @@ flowchart LR
 | XSS 过滤 | `util/XssUtils.java` | HTML 标签清洗 |
 | 路径安全 | `util/PathSecurityUtil.java` | 路径穿越检测、安全路径拼接 |
 | 安全上下文 | `security/util/SecurityUtils.java` | 获取当前用户 ID/部门/角色/数据权限 |
-| JWT 工具 | `security/util/JwtUtils.java` | Token 解析、Authentication 构建 |
+| Session 工具 | `security/util/SessionUtils.java` | 会话 ID 生成、用户身份构建 |
 
 #### 2.8.3 插件化扩展组件
 
@@ -990,7 +990,7 @@ management:
 | **消息队列** | ✅ RabbitMQ（消费者 TODO 桩） | ✅ RabbitMQ（已实现） | 共享 Exchange/Queue |
 | **定时任务** | @Scheduled + XXL-Job（仅 Executor） | Ticker + XXL-Job（规划） | 共享 XXL-Job Admin |
 | **日志** | Logback | Zap | 格式/级别统一 |
-| **认证** | Spring Security + JWT | 自研中间件 + JWT | Token 格式互通 |
+| **认证** | Spring Security + Session | 自研中间件 + Session | Session ID 互通 |
 | **权限** | RBAC (@PreAuthorize) | RBAC (中间件) | 权限标识一致 |
 | **数据权限** | MyBatis-Plus 拦截器 | GORM Plugin (DataScopePlugin) | 语义一致 |
 | **自动填充** | MetaObjectHandler | GORM Callback | 字段名一致 |
