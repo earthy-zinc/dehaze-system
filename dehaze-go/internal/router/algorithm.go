@@ -15,7 +15,8 @@ func RegisterAlgorithmRoutes(rg *gin.RouterGroup, algorithmApi *api.AlgorithmApi
 		// 必须在 /:id 之前注册，避免被 /:id 参数路由匹配
 		algorithmRouterGroup.GET("", algorithmApi.GetList)            // 获取算法树形表格
 		algorithmRouterGroup.GET("/compare", algorithmApi.Compare)    // 算法对比
-		algorithmRouterGroup.GET("/options", algorithmApi.GetOptions) // 获取模型下拉选项列表
+		algorithmRouterGroup.GET("/options", algorithmApi.GetOptions)  // 获取模型下拉选项列表
+		algorithmRouterGroup.GET("/list", algorithmApi.ListAll)        // 获取所有算法扁平列表
 		algorithmRouterGroup.GET("/favorites", algorithmApi.ListFavorites)
 		algorithmRouterGroup.GET("/favorites/check", algorithmApi.CheckFavorite)
 

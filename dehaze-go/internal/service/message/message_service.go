@@ -2,7 +2,9 @@ package message
 
 import (
 	"context"
+	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -10,18 +12,25 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	msgrepo "github.com/earthyzinc/dehaze-go/internal/repository/message"
+	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"go.uber.org/zap"
 )
 
+const (
+	unreadCountCachePrefix = "msg:unread:"
+	unreadCountCacheTTL    = 10 * time.Minute
+)
+
 type MessageService struct {
-	msgRepo     msgrepo.IMessageRepository
-	tplRepo     msgrepo.IMessageTemplateRepository
+	msgRepo msgrepo.IMessageRepository
+	tplRepo msgrepo.IMessageTemplateRepository
+	cache   types.ICache
 }
 
-func NewMessageService(msgRepo msgrepo.IMessageRepository, tplRepo msgrepo.IMessageTemplateRepository) *MessageService {
-	return &MessageService{msgRepo: msgRepo, tplRepo: tplRepo}
+func NewMessageService(msgRepo msgrepo.IMessageRepository, tplRepo msgrepo.IMessageTemplateRepository, cache types.ICache) *MessageService {
+	return &MessageService{msgRepo: msgRepo, tplRepo: tplRepo, cache: cache}
 }
 
 var varPattern = regexp.MustCompile(`\{(\w+)\}`)
@@ -90,10 +99,6 @@ func (s *MessageService) Send(ctx context.Context, form *bo.MessageSendForm) (*v
 	}
 
 	expiresAt := calcExpiresAt(form.Type)
-	extraStr := ""
-	if len(form.Extra) > 0 {
-		extraStr = toJSONString(form.Extra)
-	}
 
 	msgs := make([]model.SysMessage, 0, len(form.RecipientIDs))
 	for _, rid := range form.RecipientIDs {
@@ -107,7 +112,7 @@ func (s *MessageService) Send(ctx context.Context, form *bo.MessageSendForm) (*v
 			BizID:       form.BizID,
 			Priority:    priority,
 			JumpURL:     form.JumpURL,
-			Extra:       extraStr,
+			Extra:       form.Extra,
 			ReadStatus:  0,
 			Deleted:     0,
 			ExpiresAt:   expiresAt,
@@ -118,6 +123,8 @@ func (s *MessageService) Send(ctx context.Context, form *bo.MessageSendForm) (*v
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建消息失败", err)
 	}
+
+	s.invalidateUnreadCount(ctx, form.RecipientIDs...)
 
 	return &vo.MessageSendResultVO{MessageIDs: ids}, nil
 }
@@ -159,6 +166,7 @@ func (s *MessageService) GetDetail(ctx context.Context, id, userID int64) (*vo.M
 		msg.ReadStatus = 1
 		now := time.Now()
 		msg.ReadTime = &now
+		s.invalidateUnreadCount(ctx, userID)
 	}
 
 	return &vo.MessageDetailVO{
@@ -173,17 +181,41 @@ func (s *MessageService) GetDetail(ctx context.Context, id, userID int64) (*vo.M
 		ReadStatus:      int(msg.ReadStatus),
 		ReadTime:        formatTime(msg.ReadTime),
 		JumpURL:         msg.JumpURL,
-		Extra:           parseJSONToInterface(msg.Extra),
+		Extra:           msg.Extra,
 		CreateTime:      formatTimeVal(msg.CreatedAt),
 	}, nil
 }
 
 func (s *MessageService) GetUnreadCount(ctx context.Context, userID int64) (*vo.UnreadCountVO, error) {
+	cacheKey := fmt.Sprintf("%s%d", unreadCountCachePrefix, userID)
+	if s.cache != nil {
+		if cached, err := s.cache.Get(ctx, cacheKey); err == nil && cached != "" {
+			if count, parseErr := strconv.ParseInt(cached, 10, 64); parseErr == nil {
+				return &vo.UnreadCountVO{Count: count}, nil
+			}
+		}
+	}
 	count, err := s.msgRepo.CountUnread(ctx, userID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询未读消息数失败", err)
 	}
+	if s.cache != nil {
+		_ = s.cache.Set(ctx, cacheKey, strconv.FormatInt(count, 10), unreadCountCacheTTL)
+	}
 	return &vo.UnreadCountVO{Count: count}, nil
+}
+
+func (s *MessageService) invalidateUnreadCount(ctx context.Context, userIDs ...int64) {
+	if s.cache == nil {
+		return
+	}
+	keys := make([]string, 0, len(userIDs))
+	for _, uid := range userIDs {
+		keys = append(keys, fmt.Sprintf("%s%d", unreadCountCachePrefix, uid))
+	}
+	if len(keys) > 0 {
+		_ = s.cache.Delete(ctx, keys...)
+	}
 }
 
 func (s *MessageService) MarkRead(ctx context.Context, id, userID int64) error {
@@ -191,6 +223,7 @@ func (s *MessageService) MarkRead(ctx context.Context, id, userID int64) error {
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "标记已读失败", err)
 	}
+	s.invalidateUnreadCount(ctx, userID)
 	return nil
 }
 
@@ -199,6 +232,7 @@ func (s *MessageService) MarkAllRead(ctx context.Context, userID int64, msgType 
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "全部标记已读失败", err)
 	}
+	s.invalidateUnreadCount(ctx, userID)
 	return &vo.ReadAllResultVO{AffectedCount: affected}, nil
 }
 
@@ -206,6 +240,7 @@ func (s *MessageService) Delete(ctx context.Context, ids []int64, userID int64) 
 	if err := s.msgRepo.SoftDelete(ctx, ids, userID); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除消息失败", err)
 	}
+	s.invalidateUnreadCount(ctx, userID)
 	return nil
 }
 

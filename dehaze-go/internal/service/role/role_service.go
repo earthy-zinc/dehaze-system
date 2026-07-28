@@ -11,9 +11,11 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	menurepo "github.com/earthyzinc/dehaze-go/internal/repository/menu"
 	rolerepo "github.com/earthyzinc/dehaze-go/internal/repository/role"
+	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
 	"github.com/earthyzinc/dehaze-go/internal/service/mapper"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 )
 
@@ -41,17 +43,19 @@ var dataScopeLabelMap = map[int8]string{
 
 // RoleService 角色服务
 type RoleService struct {
-	cache    types.ICache
-	roleRepo rolerepo.IRoleRepository
-	menuRepo menurepo.IMenuRepository
+	cache       types.ICache
+	roleRepo    rolerepo.IRoleRepository
+	menuRepo    menurepo.IMenuRepository
+	auditLogSvc *auditlogservice.AuditLogService
 }
 
 // NewRoleService 创建角色服务实例
-func NewRoleService(cache types.ICache, roleRepo rolerepo.IRoleRepository, menuRepo menurepo.IMenuRepository) *RoleService {
+func NewRoleService(cache types.ICache, roleRepo rolerepo.IRoleRepository, menuRepo menurepo.IMenuRepository, auditLogSvc *auditlogservice.AuditLogService) *RoleService {
 	return &RoleService{
-		cache:    cache,
-		roleRepo: roleRepo,
-		menuRepo: menuRepo,
+		cache:       cache,
+		roleRepo:    roleRepo,
+		menuRepo:    menuRepo,
+		auditLogSvc: auditLogSvc,
 	}
 }
 
@@ -242,6 +246,10 @@ func (s *RoleService) UpdateStatus(ctx context.Context, id int64, status int8) e
 	// 刷新权限缓存
 	s.refreshRolePermsCache(ctx, role.Code)
 
+	if s.auditLogSvc != nil {
+		s.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "role", id, "status_change", "role", role.Status, status, database.GetIP(ctx), database.GetUserAgent(ctx))
+	}
+
 	return nil
 }
 
@@ -298,6 +306,10 @@ func (s *RoleService) Delete(ctx context.Context, ids []int64) error {
 		_ = s.cache.Delete(ctx, keys...)
 	}
 
+	if s.auditLogSvc != nil {
+		s.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "role", ids, "delete", "role", roleCodes, nil, database.GetIP(ctx), database.GetUserAgent(ctx))
+	}
+
 	return nil
 }
 
@@ -340,6 +352,10 @@ func (s *RoleService) AssignMenus(ctx context.Context, roleID int64, menuIDs []i
 
 	// 刷新权限缓存
 	s.refreshRolePermsCache(ctx, role.Code)
+
+	if s.auditLogSvc != nil {
+		s.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "role", roleID, "update", "role", nil, menuIDs, database.GetIP(ctx), database.GetUserAgent(ctx))
+	}
 
 	return nil
 }

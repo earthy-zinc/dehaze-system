@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
-	"github.com/earthyzinc/dehaze-go/pkg/security"
+	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
@@ -30,22 +31,38 @@ const (
 )
 
 // HandleWebSocket 处理 WebSocket 连接请求
-// 通过 query 参数 token 进行 JWT 认证（对齐 Python 端方案）
+// 通过 Cookie 或 query 参数 sessionId 进行 Session 认证
 func HandleWebSocket(c *gin.Context) {
-	tokenStr := c.Query("token")
-	if tokenStr == "" {
+	sessionID := c.Query("sessionId")
+	if sessionID == "" {
+		if cookie, err := c.Cookie(middleware.SessionCookieName); err == nil && cookie != "" {
+			sessionID = cookie
+		}
+	}
+	if sessionID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "认证失败，请重新登录"})
 		return
 	}
 
-	jwtUtil := security.NewJWT()
-	claims, err := jwtUtil.ParseToken(tokenStr)
-	if err != nil {
+	cacheClient := cache.GetCache()
+	if cacheClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"message": "缓存服务未就绪"})
+		return
+	}
+
+	sessionJSON, err := cacheClient.Get(c.Request.Context(), middleware.SessionPrefix+sessionID)
+	if err != nil || sessionJSON == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "认证失败，请重新登录"})
 		return
 	}
 
-	userID := claims.UserID
+	var session middleware.SessionData
+	if err := json.Unmarshal([]byte(sessionJSON), &session); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "认证失败，请重新登录"})
+		return
+	}
+
+	userID := session.UserID
 
 	manager := GetManager()
 	if manager == nil {

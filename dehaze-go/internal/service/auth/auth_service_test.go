@@ -40,7 +40,7 @@ func setupTest(t *testing.T) *testFixture {
 	t.Helper()
 	mockCache := mocks.NewMockICache(t)
 	mockUserService := mocks.NewMockIUserService(t)
-	svc := NewAuthService(mockCache, mockUserService, nil).(*AuthService)
+	svc := NewAuthService(mockCache, mockUserService, nil, nil).(*AuthService)
 	return &testFixture{
 		cache:       mockCache,
 		userService: mockUserService,
@@ -77,7 +77,7 @@ func TestLogin_NilRequest(t *testing.T) {
 	f := setupTest(t)
 	ctx := context.Background()
 
-	result, err := f.authService.Login(ctx, nil, "192.168.1.100")
+	result, err := f.authService.Login(ctx, nil, "192.168.1.100", "")
 
 	assert.Nil(t, result)
 	assertBizError(t, err, common.PARAM_ERROR)
@@ -98,7 +98,7 @@ func TestLogin_IPLocked(t *testing.T) {
 
 	f.cache.EXPECT().Get(mock.Anything, "login:fail:ip:"+clientIP).Return("5", nil).Once()
 
-	result, err := f.authService.Login(ctx, req, clientIP)
+	result, err := f.authService.Login(ctx, req, clientIP, "")
 
 	assert.Nil(t, result)
 	assertBizError(t, err, common.PASSWORD_ENTER_EXCEED_LIMIT)
@@ -120,7 +120,7 @@ func TestLogin_UsernameLocked(t *testing.T) {
 	mockCacheGetNotFound(f.cache, "login:fail:ip:"+clientIP)
 	f.cache.EXPECT().Get(mock.Anything, "login:fail:user:zhangsan").Return("5", nil).Once()
 
-	result, err := f.authService.Login(ctx, req, clientIP)
+	result, err := f.authService.Login(ctx, req, clientIP, "")
 
 	assert.Nil(t, result)
 	assertBizError(t, err, common.PASSWORD_ENTER_EXCEED_LIMIT)
@@ -142,7 +142,7 @@ func TestLogin_UsernameNormalization(t *testing.T) {
 	mockCacheGetNotFound(f.cache, "login:fail:ip:"+clientIP)
 	f.cache.EXPECT().Get(mock.Anything, "login:fail:user:zhangsan").Return("5", nil).Once()
 
-	result, err := f.authService.Login(ctx, req, clientIP)
+	result, err := f.authService.Login(ctx, req, clientIP, "")
 
 	assert.Nil(t, result)
 	assertBizError(t, err, common.PASSWORD_ENTER_EXCEED_LIMIT)

@@ -43,18 +43,16 @@ func (s *NotificationSettingService) Update(ctx context.Context, userID int64, f
 		setting.DndEnabled = boolToInt8(*form.DndEnabled)
 	}
 	if form.DndStart != nil {
-		t, err := time.ParseInLocation(dndTimeFormat, *form.DndStart, time.Local)
-		if err != nil {
+		if _, err := time.ParseInLocation(dndTimeFormat, *form.DndStart, time.Local); err != nil {
 			return common.NewBizError(common.PARAM_ERROR, "免打扰开始时间格式不正确")
 		}
-		setting.DndStart = &t
+		setting.DndStart = *form.DndStart
 	}
 	if form.DndEnd != nil {
-		t, err := time.ParseInLocation(dndTimeFormat, *form.DndEnd, time.Local)
-		if err != nil {
+		if _, err := time.ParseInLocation(dndTimeFormat, *form.DndEnd, time.Local); err != nil {
 			return common.NewBizError(common.PARAM_ERROR, "免打扰结束时间格式不正确")
 		}
-		setting.DndEnd = &t
+		setting.DndEnd = *form.DndEnd
 	}
 	if form.Preferences != nil {
 		prefs := vo.NotificationPreferences{
@@ -89,8 +87,6 @@ func (s *NotificationSettingService) getOrCreateDefault(ctx context.Context, use
 		return setting, nil
 	}
 
-	defaultStart, _ := time.Parse(dndTimeFormat, "22:00:00")
-	defaultEnd, _ := time.Parse(dndTimeFormat, "08:00:00")
 	defaultPrefs := vo.NotificationPreferences{
 		TypeChannels:   make(map[string]vo.TypeChannel),
 		ModuleSwitches: make(map[string]bool),
@@ -99,8 +95,8 @@ func (s *NotificationSettingService) getOrCreateDefault(ctx context.Context, use
 		UserID:      userID,
 		PushEnabled: 1,
 		DndEnabled:  0,
-		DndStart:    &defaultStart,
-		DndEnd:      &defaultEnd,
+		DndStart:    "22:00:00",
+		DndEnd:      "08:00:00",
 		Preferences: toJSONString(defaultPrefs),
 	}
 
@@ -114,8 +110,8 @@ func (s *NotificationSettingService) toVO(setting *model.SysNotificationSetting)
 	result := &vo.NotificationSettingsVO{
 		PushEnabled: setting.PushEnabled == 1,
 		DndEnabled:  setting.DndEnabled == 1,
-		DndStart:    formatDndTime(setting.DndStart),
-		DndEnd:      formatDndTime(setting.DndEnd),
+		DndStart:    setting.DndStart,
+		DndEnd:      setting.DndEnd,
 		Preferences: vo.NotificationPreferences{
 			TypeChannels:   make(map[string]vo.TypeChannel),
 			ModuleSwitches: make(map[string]bool),
@@ -131,13 +127,6 @@ func (s *NotificationSettingService) toVO(setting *model.SysNotificationSetting)
 		result.Preferences.ModuleSwitches = make(map[string]bool)
 	}
 	return result
-}
-
-func formatDndTime(t *time.Time) string {
-	if t == nil {
-		return ""
-	}
-	return t.Format(dndTimeFormat)
 }
 
 func boolToInt8(b bool) int8 {

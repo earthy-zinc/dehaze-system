@@ -12,7 +12,9 @@ import (
 	menurepo "github.com/earthyzinc/dehaze-go/internal/repository/menu"
 	rolerepo "github.com/earthyzinc/dehaze-go/internal/repository/role"
 	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
+	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,19 +23,21 @@ var ErrInvalidPassword = common.NewBizError(common.USERNAME_OR_PASSWORD_ERROR, "
 
 // UserService 用户服务
 type UserService struct {
-	userRepo userrepo.IUserRepository
-	roleRepo rolerepo.IRoleRepository
-	deptRepo deptrepo.IDeptRepository
-	menuRepo menurepo.IMenuRepository
+	userRepo    userrepo.IUserRepository
+	roleRepo    rolerepo.IRoleRepository
+	deptRepo    deptrepo.IDeptRepository
+	menuRepo    menurepo.IMenuRepository
+	auditLogSvc *auditlogservice.AuditLogService
 }
 
 // NewUserService 创建用户服务实例
-func NewUserService(userRepo userrepo.IUserRepository, roleRepo rolerepo.IRoleRepository, deptRepo deptrepo.IDeptRepository, menuRepo menurepo.IMenuRepository) *UserService {
+func NewUserService(userRepo userrepo.IUserRepository, roleRepo rolerepo.IRoleRepository, deptRepo deptrepo.IDeptRepository, menuRepo menurepo.IMenuRepository, auditLogSvc *auditlogservice.AuditLogService) *UserService {
 	return &UserService{
-		userRepo: userRepo,
-		roleRepo: roleRepo,
-		deptRepo: deptRepo,
-		menuRepo: menuRepo,
+		userRepo:    userRepo,
+		roleRepo:    roleRepo,
+		deptRepo:    deptRepo,
+		menuRepo:    menuRepo,
+		auditLogSvc: auditLogSvc,
 	}
 }
 
@@ -309,6 +313,9 @@ func (s *UserService) Delete(ctx context.Context, ids []int64) error {
 	if err := s.userRepo.SoftDeleteWithTime(ctx, ids, time.Now()); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除用户失败", err)
 	}
+	if s.auditLogSvc != nil {
+		s.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "user", ids, "delete", "user", nil, nil, database.GetIP(ctx), database.GetUserAgent(ctx))
+	}
 	return nil
 }
 
@@ -329,6 +336,9 @@ func (s *UserService) UpdatePassword(ctx context.Context, id int64, password str
 
 	if err := s.userRepo.UpdatePasswordWithTime(ctx, id, string(hashedPassword), time.Now()); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "更新密码失败", err)
+	}
+	if s.auditLogSvc != nil {
+		s.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "user", id, "password_change", "user", nil, nil, database.GetIP(ctx), database.GetUserAgent(ctx))
 	}
 	return nil
 }

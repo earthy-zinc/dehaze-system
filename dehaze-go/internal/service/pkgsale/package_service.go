@@ -510,11 +510,11 @@ func intPtr(v int) *int {
 }
 
 func isCouponApplicable(c *model.SysCoupon, packageID int64) bool {
-	if c.ApplicableScope == "" {
+	if !c.ApplicableScope.Valid || c.ApplicableScope.String == "" {
 		return true
 	}
 	var scope []int64
-	if err := json.Unmarshal([]byte(c.ApplicableScope), &scope); err != nil {
+	if err := json.Unmarshal([]byte(c.ApplicableScope.String), &scope); err != nil {
 		return true
 	}
 	if len(scope) == 0 {

@@ -126,6 +126,32 @@ func (s *AlgorithmService) GetOptions(ctx context.Context) ([]vo.Option, error) 
 	return mapper.OptionsFromRead(readOptions), nil
 }
 
+// ListAll 获取所有算法扁平列表（不构建树形）
+func (s *AlgorithmService) ListAll(ctx context.Context) ([]vo.AlgorithmVO, error) {
+	algorithms, err := s.algorithmRepo.FindAll(ctx, &query.AlgorithmQuery{})
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法列表失败", err)
+	}
+	voList := make([]vo.AlgorithmVO, 0, len(algorithms))
+	for _, item := range algorithms {
+		voList = append(voList, vo.AlgorithmVO{
+			ID:          item.ID,
+			ParentID:    item.ParentID,
+			Name:        item.Name,
+			Type:        item.Type,
+			Img:         item.Img,
+			Description: item.Description,
+			Path:        item.Path,
+			Flops:       item.Flops,
+			Params:      item.Params,
+			ImportPath:  item.ImportPath,
+			Status:      item.Status,
+			Size:        item.Size,
+		})
+	}
+	return voList, nil
+}
+
 // GetFormData 获取算法表单数据
 func (s *AlgorithmService) GetFormData(ctx context.Context, id int64) (*bo.AlgorithmFormBO, error) {
 	algorithm, err := s.algorithmRepo.FindByID(ctx, id)

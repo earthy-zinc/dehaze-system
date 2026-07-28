@@ -65,6 +65,10 @@ session:
     path: /
 
 
+mongo:
+  uri: "mongodb://root:${DEHAZE_PASSWORD}@127.0.0.1:27017/dehaze_test?authSource=admin"
+  database: "dehaze_test"
+
 cache:
   # 缓存类型：redis/local/multi
   type: redis
@@ -72,6 +76,11 @@ cache:
     enabled: true
     addr: localhost:6379
     password: "${DEHAZE_PASSWORD}"
+    # Redis db 隔离规范（推荐配置，不强制分库以避免破坏现有 Session）：
+    #   db=0 业务缓存
+    #   db=1 Session + 分布式锁（需后续迁移）
+    #   db=2 限流计数器
+    # 测试环境使用 db=4 与开发环境（db=0）隔离
     db: 4
     useCluster: false
     timeout: 5

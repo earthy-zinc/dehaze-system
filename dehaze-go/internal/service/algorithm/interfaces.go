@@ -24,6 +24,9 @@ type IAlgorithmService interface {
 	// GetOptions 获取算法下拉选项
 	GetOptions(ctx context.Context) ([]vo.Option, error)
 
+	// ListAll 获取所有算法扁平列表
+	ListAll(ctx context.Context) ([]vo.AlgorithmVO, error)
+
 	// GetFormData 获取算法表单数据
 	GetFormData(ctx context.Context, id int64) (*bo.AlgorithmFormBO, error)
 

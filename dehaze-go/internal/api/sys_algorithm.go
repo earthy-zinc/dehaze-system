@@ -65,6 +65,17 @@ func (api *AlgorithmApi) GetOptions(c *gin.Context) {
 	common.OkWithData(options, c)
 }
 
+// ListAll 获取所有算法扁平列表
+func (api *AlgorithmApi) ListAll(c *gin.Context) {
+	ctx := c.Request.Context()
+	result, err := api.algorithmService.ListAll(ctx)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithDetailed(result, "查询成功", c)
+}
+
 // GetById 根据ID获取算法信息
 func (api *AlgorithmApi) GetById(c *gin.Context) {
 	ctx := c.Request.Context()

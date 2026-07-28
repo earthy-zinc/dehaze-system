@@ -14,7 +14,7 @@ type SysMessage struct {
 	BizID       string     `gorm:"column:biz_id;type:varchar(64);comment:业务ID" json:"bizId"`
 	Priority    int8       `gorm:"column:priority;type:tinyint;not null;default:2;comment:优先级" json:"priority"`
 	JumpURL     string     `gorm:"column:jump_url;type:varchar(255);comment:跳转链接" json:"jumpUrl"`
-	Extra       string     `gorm:"column:extra;type:json;comment:扩展数据JSON" json:"extra"`
+	Extra       map[string]interface{} `gorm:"column:extra;type:json;serializer:json;comment:扩展数据JSON" json:"extra"`
 	ReadStatus  int8       `gorm:"column:read_status;type:tinyint;not null;default:0;comment:已读状态(0:未读;1:已读)" json:"readStatus"`
 	ReadTime    *time.Time `gorm:"column:read_time;type:datetime;comment:已读时间" json:"readTime"`
 	Deleted     int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:用户删除标识" json:"deleted"`

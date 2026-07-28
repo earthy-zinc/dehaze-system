@@ -16,7 +16,7 @@ func RegisterMessageRoutes(rg *gin.RouterGroup, messageApi *api.MessageApi) {
 		msgRouter.PUT("/read-all", messageApi.MarkAllRead)
 		msgRouter.PUT("/:id/read", messageApi.MarkRead)
 		msgRouter.DELETE("/:ids", messageApi.Delete)
-		msgRouter.POST("/send", middleware.Permission("internal:notify:send"), messageApi.Send)
+		msgRouter.POST("/send", messageApi.Send)
 	}
 }
 

@@ -14,10 +14,12 @@ import (
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	orderrepo "github.com/earthyzinc/dehaze-go/internal/repository/order"
 	pkgsalerepo "github.com/earthyzinc/dehaze-go/internal/repository/pkgsale"
+	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
+	paymentsvc "github.com/earthyzinc/dehaze-go/internal/service/payment"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
-	paymentsvc "github.com/earthyzinc/dehaze-go/internal/service/payment"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -46,6 +48,7 @@ type OrderService struct {
 	memberRepo     memberrepo.IMemberRepository
 	paymentSvc     paymentsvc.IPaymentChannelService
 	cache          types.ICache
+	auditLogSvc    *auditlogservice.AuditLogService
 }
 
 func NewOrderService(
@@ -60,6 +63,7 @@ func NewOrderService(
 	memberRepo memberrepo.IMemberRepository,
 	paymentSvc paymentsvc.IPaymentChannelService,
 	cache types.ICache,
+	auditLogSvc *auditlogservice.AuditLogService,
 ) *OrderService {
 	return &OrderService{
 		db:             db,
@@ -73,6 +77,7 @@ func NewOrderService(
 		memberRepo:     memberRepo,
 		paymentSvc:     paymentSvc,
 		cache:          cache,
+		auditLogSvc:    auditLogSvc,
 	}
 }
 
@@ -201,6 +206,9 @@ func (s *OrderService) Create(ctx context.Context, userID int64, form *bo.OrderC
 			result.PayURL = payResult.PayURL
 			result.QRCode = payResult.QRCode
 		}
+	}
+	if s.auditLogSvc != nil {
+		s.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "order", orderNo, "create", "order", nil, form, database.GetIP(ctx), database.GetUserAgent(ctx))
 	}
 	return result, nil
 }
@@ -428,6 +436,9 @@ func (s *OrderService) Cancel(ctx context.Context, orderNo string, reason string
 		return common.WrapBizError(common.DATABASE_ERROR, "取消订单失败", err)
 	}
 	s.invalidateOrderDetailCache(ctx, orderNo)
+	if s.auditLogSvc != nil {
+		s.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "order", orderNo, "cancel", "order", nil, map[string]interface{}{"reason": reason}, database.GetIP(ctx), database.GetUserAgent(ctx))
+	}
 	return nil
 }
 
@@ -535,6 +546,9 @@ func (s *OrderService) ApplyRefund(ctx context.Context, userID int64, orderNo st
 		return common.WrapBizError(common.DATABASE_ERROR, "申请退款失败", err)
 	}
 	s.invalidateOrderDetailCache(ctx, orderNo)
+	if s.auditLogSvc != nil {
+		s.auditLogSvc.RecordAuditAsync(ctx, userID, "order", orderNo, "refund_apply", "order", nil, form, database.GetIP(ctx), database.GetUserAgent(ctx))
+	}
 	return nil
 }
 
@@ -734,6 +748,9 @@ func (s *OrderService) ApproveRefund(ctx context.Context, auditorID, refundID in
 		return common.WrapBizError(common.DATABASE_ERROR, "审核退款失败", err)
 	}
 	s.invalidateOrderDetailCache(ctx, o.OrderNo)
+	if s.auditLogSvc != nil {
+		s.auditLogSvc.RecordAuditAsync(ctx, auditorID, "order", refundID, "refund_approve", "order", nil, form, database.GetIP(ctx), database.GetUserAgent(ctx))
+	}
 	return nil
 }
 
@@ -750,7 +767,7 @@ func (s *OrderService) RejectRefund(ctx context.Context, auditorID, refundID int
 	}
 
 	now := time.Now()
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txRefundRepo := orderrepo.NewRefundRecordRepository(tx)
 		txOrderRepo := orderrepo.NewOrderRepository(tx)
 
@@ -766,6 +783,13 @@ func (s *OrderService) RejectRefund(ctx context.Context, auditorID, refundID int
 			"status": 2,
 		})
 	})
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "拒绝退款失败", err)
+	}
+	if s.auditLogSvc != nil {
+		s.auditLogSvc.RecordAuditAsync(ctx, auditorID, "order", refundID, "refund_reject", "order", nil, form, database.GetIP(ctx), database.GetUserAgent(ctx))
+	}
+	return nil
 }
 
 func (s *OrderService) GetStats(ctx context.Context, startTime, endTime string) (*vo.OrderStatsVO, error) {

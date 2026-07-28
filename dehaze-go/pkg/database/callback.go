@@ -31,6 +31,12 @@ type dataScopeContextKey struct{}
 // deptIDContextKey 上下文键，用于存储部门ID
 type deptIDContextKey struct{}
 
+// ipContextKey 上下文键，用于存储客户端 IP
+type ipContextKey struct{}
+
+// userAgentContextKey 上下文键，用于存储客户端 User-Agent
+type userAgentContextKey struct{}
+
 // SetUserID 设置当前请求的用户ID到上下文
 // 通常在认证中间件中调用
 func SetUserID(ctx context.Context, userID int64) context.Context {
@@ -71,6 +77,32 @@ func GetDeptID(ctx context.Context) int64 {
 		return deptID
 	}
 	return 0
+}
+
+// SetIP 设置客户端 IP 到上下文
+func SetIP(ctx context.Context, ip string) context.Context {
+	return context.WithValue(ctx, ipContextKey{}, ip)
+}
+
+// GetIP 从上下文获取客户端 IP
+func GetIP(ctx context.Context) string {
+	if ip, ok := ctx.Value(ipContextKey{}).(string); ok {
+		return ip
+	}
+	return ""
+}
+
+// SetUserAgent 设置客户端 User-Agent 到上下文
+func SetUserAgent(ctx context.Context, ua string) context.Context {
+	return context.WithValue(ctx, userAgentContextKey{}, ua)
+}
+
+// GetUserAgent 从上下文获取客户端 User-Agent
+func GetUserAgent(ctx context.Context) string {
+	if ua, ok := ctx.Value(userAgentContextKey{}).(string); ok {
+		return ua
+	}
+	return ""
 }
 
 // RegisterGormCallbacks 注册GORM回调

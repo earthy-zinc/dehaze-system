@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
+	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
@@ -152,4 +153,13 @@ func ClearSessionCookie(c *gin.Context) {
 		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	})
+}
+
+func unauthorized(c *gin.Context) {
+	c.JSON(http.StatusUnauthorized, common.Response{
+		Code: common.TOKEN_INVALID.Code,
+		Data: map[string]any{},
+		Msg:  common.TOKEN_INVALID.Msg,
+	})
+	c.Abort()
 }

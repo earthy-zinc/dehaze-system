@@ -10,7 +10,7 @@ import (
 )
 
 type IAuthService interface {
-	Login(ctx context.Context, req *bo.LoginRequest, clientIP string) (*dto.LoginResult, error)
+	Login(ctx context.Context, req *bo.LoginRequest, clientIP, userAgent string) (*dto.LoginResult, error)
 	Register(ctx context.Context, req *bo.RegisterRequest, clientIP string) (*dto.LoginResult, error)
 	Logout(c *gin.Context) error
 	GetCaptcha(ctx context.Context, clientIP string) (*dto.CaptchaResult, error)

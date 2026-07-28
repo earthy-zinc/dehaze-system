@@ -51,6 +51,8 @@ func (s *AnnouncementService) Create(ctx context.Context, userID int64, form *bo
 
 	if form.TargetParams != nil {
 		ann.TargetParams = toJSONString(form.TargetParams)
+	} else {
+		ann.TargetParams = "{}"
 	}
 
 	if form.SendTime != nil && *form.SendTime != "" {

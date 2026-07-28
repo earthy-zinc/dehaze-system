@@ -42,7 +42,8 @@ func (a *AuthApi) Login(c *gin.Context) {
 	}
 
 	clientIP := c.ClientIP()
-	result, err := a.authService.Login(c.Request.Context(), &req, clientIP)
+	userAgent := c.GetHeader("User-Agent")
+	result, err := a.authService.Login(c.Request.Context(), &req, clientIP, userAgent)
 	if err != nil {
 		_ = c.Error(err)
 		return

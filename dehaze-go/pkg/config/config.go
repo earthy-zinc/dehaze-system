@@ -13,6 +13,7 @@ type AppConfig struct {
 	System    options.System    `mapstructure:"system" json:"system" yaml:"system"`
 	Captcha   options.Captcha   `mapstructure:"captcha" json:"captcha" yaml:"captcha"`
 	DB        options.DB        `mapstructure:"db" json:"db" yaml:"db"`
+	Mongo     options.Mongo     `mapstructure:"mongo" json:"mongo" yaml:"mongo"`
 	File      options.File      `mapstructure:"file" json:"file" yaml:"file"`
 	Algorithm options.Algorithm `mapstructure:"algorithm" json:"algorithm" yaml:"algorithm"`
 	RabbitMQ  options.RabbitMQ  `mapstructure:"rabbitmq" json:"rabbitmq" yaml:"rabbitmq"`

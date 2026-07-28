@@ -64,8 +64,8 @@ func SetupAuthRouter() *gin.Engine {
 	deptRepo := deptrepo.NewDeptRepository(gormDB)
 	menuRepo := menurepo.NewMenuRepository(gormDB)
 
-	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo)
-	authService := authservice.NewAuthService(cacheClient, userService, gormDB)
+	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo, nil)
+	authService := authservice.NewAuthService(cacheClient, userService, nil, gormDB)
 	authApi := api.NewAuthApi(authService)
 
 	v1 := engine.Group("/api/v1")

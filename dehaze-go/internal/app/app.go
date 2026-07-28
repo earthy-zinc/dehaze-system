@@ -11,6 +11,7 @@ import (
 	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
 	afrepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm_favorite"
 	apikeyrepo "github.com/earthyzinc/dehaze-go/internal/repository/api_key"
+	auditlogrepo "github.com/earthyzinc/dehaze-go/internal/repository/audit_log"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	deptrepo "github.com/earthyzinc/dehaze-go/internal/repository/dept"
 	dictrepo "github.com/earthyzinc/dehaze-go/internal/repository/dict"
@@ -18,6 +19,7 @@ import (
 	fbrepo "github.com/earthyzinc/dehaze-go/internal/repository/feedback"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
 	ihrepo "github.com/earthyzinc/dehaze-go/internal/repository/input_history"
+	loginlogrepo "github.com/earthyzinc/dehaze-go/internal/repository/login_log"
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	menurepo "github.com/earthyzinc/dehaze-go/internal/repository/menu"
 	msgrepo "github.com/earthyzinc/dehaze-go/internal/repository/message"
@@ -30,6 +32,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/router"
 	algoservice "github.com/earthyzinc/dehaze-go/internal/service/algorithm"
 	apikeyservice "github.com/earthyzinc/dehaze-go/internal/service/api_key"
+	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
 	authservice "github.com/earthyzinc/dehaze-go/internal/service/auth"
 	datasetservice "github.com/earthyzinc/dehaze-go/internal/service/dataset"
 	deptservice "github.com/earthyzinc/dehaze-go/internal/service/dept"
@@ -40,6 +43,7 @@ import (
 	importexportservice "github.com/earthyzinc/dehaze-go/internal/service/import_export"
 	"github.com/earthyzinc/dehaze-go/internal/service/import_export/handlers"
 	ihservice "github.com/earthyzinc/dehaze-go/internal/service/input_history"
+	loginlogservice "github.com/earthyzinc/dehaze-go/internal/service/login_log"
 	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
 	menuservice "github.com/earthyzinc/dehaze-go/internal/service/menu"
 	msgservice "github.com/earthyzinc/dehaze-go/internal/service/message"
@@ -60,6 +64,7 @@ import (
 	_ "github.com/earthyzinc/dehaze-go/pkg/database/sqlite"
 	"github.com/earthyzinc/dehaze-go/pkg/job"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/earthyzinc/dehaze-go/pkg/mongo"
 	"github.com/earthyzinc/dehaze-go/pkg/mq"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin"
@@ -69,6 +74,8 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/xxljob"
 	dehazevalidator "github.com/earthyzinc/dehaze-go/pkg/validator"
 	gingin "github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
+	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
 
@@ -76,9 +83,10 @@ import (
 // 目标：显式 wiring（构造函数注入）+ 清晰启动链路，避免运行时 DI 容器。
 type Application struct {
 	*gin.Server
-	taskExecutor taskservice.AsyncTaskExecutor
-	consumer     *mq.Consumer
-	publisher    *mq.Publisher
+	taskExecutor   taskservice.AsyncTaskExecutor
+	consumer       *mq.Consumer
+	publisher      *mq.Publisher
+	auditLogService *auditlogservice.AuditLogService
 }
 
 func New() *Application {
@@ -122,6 +130,13 @@ func (a *Application) Init() error {
 		if _, err := websocket.InitManager(redisClient); err != nil {
 			logger.Error("WebSocket 管理器初始化失败", zap.Error(err))
 		}
+	}
+
+	// 3.2) MongoDB（审计日志）
+	if err := mongo.InitMongo(); err != nil {
+		logger.Error("MongoDB 初始化失败，审计日志功能不可用", zap.Error(err))
+	} else {
+		a.initMongoIndexes()
 	}
 
 	// 4) HTTP Server
@@ -182,11 +197,21 @@ func (a *Application) Init() error {
 	feedbackReplyRepo := fbrepo.NewFeedbackReplyRepository(gormDB)
 
 	// services
-	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo)
-	authService := authservice.NewAuthService(cacheClient, userService, gormDB)
+
+	// audit log services (MongoDB)
+	mongoDB := mongo.GetMongoDatabase("")
+	var loginLogService *loginlogservice.LoginLogService
+	if mongoDB != nil {
+		loginLogRepo := loginlogrepo.NewLoginLogRepository(mongoDB)
+		auditLogRepo := auditlogrepo.NewAuditLogRepository(mongoDB)
+		loginLogService = loginlogservice.NewLoginLogService(loginLogRepo)
+		a.auditLogService = auditlogservice.NewAuditLogService(auditLogRepo)
+	}
+	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo, a.auditLogService)
+	authService := authservice.NewAuthService(cacheClient, userService, loginLogService, gormDB)
 	algorithmService := algoservice.NewAlgorithmService(algorithmRepo, predLogRepo)
 	menuService := menuservice.NewMenuService(cacheClient, menuRepo, roleRepo)
-	roleService := roleservice.NewRoleService(cacheClient, roleRepo, menuRepo)
+	roleService := roleservice.NewRoleService(cacheClient, roleRepo, menuRepo, a.auditLogService)
 	deptService := deptservice.NewDeptService(cacheClient, deptRepo)
 	dictTypeService := dictservice.NewDictTypeService(gormDB, dictTypeRepo, dictRepo, cacheClient)
 	dictService := dictservice.NewDictService(dictRepo, dictTypeRepo, cacheClient)
@@ -246,6 +271,7 @@ func (a *Application) Init() error {
 		itemFileRepo,
 		fileRepo,
 		taskExecutor,
+		a.auditLogService,
 	)
 	taskApi := api.NewSysTaskApi(taskService)
 	importExportApi := api.NewImportExportApi(importExportService)
@@ -255,13 +281,13 @@ func (a *Application) Init() error {
 	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService)
 
 	// message module services
-	messageService := msgservice.NewMessageService(msgRepo, msgTplRepo)
+	messageService := msgservice.NewMessageService(msgRepo, msgTplRepo, cacheClient)
 	announcementService := msgservice.NewAnnouncementService(annRepo, userLookupRepo, messageService)
 	messageTemplateService := msgservice.NewMessageTemplateService(msgTplRepo)
 	notificationSettingService := msgservice.NewNotificationSettingService(notifySettingRepo)
 
 	// member module services（需在 predictionService 之前构造，预测/评估需调用权益校验）
-	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient)
+	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient, a.auditLogService)
 
 	predictionService := predservice.NewPredictionService(predLogRepo, algorithmRepo, algoClient, cacheClient, memberService)
 	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algorithmRepo, algoClient, memberService)
@@ -270,7 +296,7 @@ func (a *Application) Init() error {
 	packageService := pkgsaleservice.NewPackageService(gormDB, packageRepo, couponRepo, userCouponRepo, memberBenefitRepo, cacheClient)
 	couponService := pkgsaleservice.NewCouponService(gormDB, couponRepo, userCouponRepo)
 	paymentSvc := paymentsvc.NewPaymentChannelService(cfg.Payment)
-	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, memberRepo, paymentSvc, cacheClient)
+	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, memberRepo, paymentSvc, cacheClient, a.auditLogService)
 
 	// feedback module services
 	var alertPublisher *mq.Publisher
@@ -398,8 +424,7 @@ func (a *Application) Init() error {
 		if err != nil {
 			return nil, err
 		}
-		j := security.NewJWT()
-		claims := j.CreateClaims(authInfo)
+		claims := security.CreateClaims(authInfo)
 		return &claims, nil
 	}
 
@@ -498,6 +523,12 @@ func (a *Application) shutdown() error {
 		logger.Info("数据库连接已关闭")
 	}
 
+	// 6.1) MongoDB
+	if err := mongo.Close(); err != nil {
+		logger.Error("关闭MongoDB连接失败", zap.Error(err))
+		errs = append(errs, fmt.Errorf("MongoDB: %w", err))
+	}
+
 	// 7) 日志（最后刷新，保证上面的日志都写入）
 	logger.Info("所有资源已关闭，刷新日志缓冲区")
 	logger.Sync()
@@ -506,6 +537,32 @@ func (a *Application) shutdown() error {
 		return fmt.Errorf("优雅关闭时发生 %d 个错误: %v", len(errs), errs)
 	}
 	return nil
+}
+
+// initMongoIndexes 创建 MongoDB 索引
+func (a *Application) initMongoIndexes() {
+	db := mongo.GetMongoDatabase("")
+	if db == nil {
+		return
+	}
+
+	loginLogIndexes := []mongodriver.IndexModel{
+		{Keys: bson.D{{Key: "userId", Value: 1}, {Key: "createTime", Value: -1}}},
+		{Keys: bson.D{{Key: "createTime", Value: -1}}},
+		{Keys: bson.D{{Key: "status", Value: 1}}},
+	}
+	if _, err := db.Collection("login_log").Indexes().CreateMany(context.Background(), loginLogIndexes); err != nil {
+		logger.Error("创建login_log索引失败", zap.Error(err))
+	}
+
+	auditLogIndexes := []mongodriver.IndexModel{
+		{Keys: bson.D{{Key: "operatorId", Value: 1}, {Key: "createTime", Value: -1}}},
+		{Keys: bson.D{{Key: "targetType", Value: 1}, {Key: "targetId", Value: 1}, {Key: "createTime", Value: -1}}},
+		{Keys: bson.D{{Key: "module", Value: 1}, {Key: "createTime", Value: -1}}},
+	}
+	if _, err := db.Collection("audit_log").Indexes().CreateMany(context.Background(), auditLogIndexes); err != nil {
+		logger.Error("创建audit_log索引失败", zap.Error(err))
+	}
 }
 
 // readinessHandler Readiness 探针处理函数

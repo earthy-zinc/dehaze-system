@@ -11,6 +11,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/dto"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
+	loginlogservice "github.com/earthyzinc/dehaze-go/internal/service/login_log"
 	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -28,20 +29,63 @@ import (
 )
 
 type AuthService struct {
-	cacheClient types.ICache
-	userService userservice.IUserService
-	db          *gorm.DB
+	cacheClient     types.ICache
+	userService     userservice.IUserService
+	loginLogService *loginlogservice.LoginLogService
+	db              *gorm.DB
 }
 
-func NewAuthService(cacheClient types.ICache, userService userservice.IUserService, db *gorm.DB) IAuthService {
+func NewAuthService(cacheClient types.ICache, userService userservice.IUserService, loginLogService *loginlogservice.LoginLogService, db *gorm.DB) IAuthService {
 	return &AuthService{
-		cacheClient: cacheClient,
-		userService: userService,
-		db:          db,
+		cacheClient:     cacheClient,
+		userService:     userService,
+		loginLogService: loginLogService,
+		db:              db,
 	}
 }
 
-func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP string) (*dto.LoginResult, error) {
+func (s *AuthService) recordLogin(ctx context.Context, userID *int64, username, ip, userAgent string, status int, message string) {
+	if s.loginLogService == nil {
+		return
+	}
+	browser, osName := parseUserAgent(userAgent)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Error("登录日志写入panic", zap.Any("panic", r))
+			}
+		}()
+		_ = s.loginLogService.RecordLogin(ctx, userID, username, ip, status, message, browser, osName, "")
+	}()
+}
+
+func parseUserAgent(ua string) (browser, os string) {
+	switch {
+	case strings.Contains(ua, "Windows"):
+		os = "Windows"
+	case strings.Contains(ua, "Mac OS"):
+		os = "macOS"
+	case strings.Contains(ua, "Android"):
+		os = "Android"
+	case strings.Contains(ua, "iPhone") || strings.Contains(ua, "iPad"):
+		os = "iOS"
+	case strings.Contains(ua, "Linux"):
+		os = "Linux"
+	}
+	switch {
+	case strings.Contains(ua, "Edg/"):
+		browser = "Edge"
+	case strings.Contains(ua, "Chrome/"):
+		browser = "Chrome"
+	case strings.Contains(ua, "Firefox/"):
+		browser = "Firefox"
+	case strings.Contains(ua, "Safari/"):
+		browser = "Safari"
+	}
+	return
+}
+
+func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP, userAgent string) (*dto.LoginResult, error) {
 	if req == nil {
 		return nil, common.NewBizError(common.PARAM_ERROR, "登录请求不能为空")
 	}
@@ -50,11 +94,13 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP 
 	password := req.Password
 
 	if err := s.checkLoginFailCount(ctx, clientIP, username); err != nil {
+		s.recordLogin(ctx, nil, username, clientIP, userAgent, 0, err.Error())
 		return nil, err
 	}
 
 	if !s.VerifyCaptcha(ctx, req.CaptchaKey, req.CaptchaCode) {
 		s.incrementLoginFailCount(ctx, clientIP, username)
+		s.recordLogin(ctx, nil, username, clientIP, userAgent, 0, "验证码错误")
 		return nil, common.NewBizError(common.VERIFY_CODE_ERROR, "验证码错误")
 	}
 
@@ -66,10 +112,12 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP 
 			zap.String("username", username),
 			zap.String("clientIP", clientIP),
 			zap.Error(err))
+		s.recordLogin(ctx, nil, username, clientIP, userAgent, 0, err.Error())
 		return nil, err
 	}
 
 	if user.Status != 1 {
+		s.recordLogin(ctx, &user.UserId, username, clientIP, userAgent, 0, "用户已被禁用")
 		return nil, common.NewBizError(common.USER_ACCOUNT_LOCKED, "用户已被禁用")
 	}
 
@@ -113,6 +161,8 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP 
 	logger.Info("用户登录成功",
 		zap.String("username", username),
 		zap.String("clientIP", clientIP))
+
+	s.recordLogin(ctx, &user.UserId, username, clientIP, userAgent, 1, "登录成功")
 
 	return &dto.LoginResult{
 		SessionID: sessionID,
@@ -212,8 +262,6 @@ func (s *AuthService) Logout(c *gin.Context) error {
 			logger.Error("注销失败：删除Session失败", zap.Error(err))
 		}
 	}
-
-	security.ClearToken(c)
 
 	if claims, err := security.GetClaims(c); err == nil && claims != nil {
 		username := claims.Subject

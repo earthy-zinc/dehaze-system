@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	TASK_CACHE_PREFIX     = "task:"
+	TASK_CACHE_PREFIX     = "task:running:"
 	TASK_CANCEL_PREFIX    = "task:cancel:"
 	TASK_EXPIRE_HOURS     = 24 * time.Hour
 	TASK_CANCEL_EXPIRE_MS = 5 * time.Minute

@@ -12,6 +12,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
+	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
@@ -37,6 +38,7 @@ type DatasetOperationService struct {
 	taskExecutor         taskservice.AsyncTaskExecutor
 	pairedImageValidator *PairedImageValidator
 	treeUtils            *utils.TreeDataUtils
+	auditLogSvc          *auditlogservice.AuditLogService
 }
 
 // NewDatasetOperationService 创建数据集操作服务
@@ -48,6 +50,7 @@ func NewDatasetOperationService(
 	itemFileRepo filerepo.IItemFileRepository,
 	fileRepo filerepo.IFileRepository,
 	taskExecutor taskservice.AsyncTaskExecutor,
+	auditLogSvc *auditlogservice.AuditLogService,
 ) *DatasetOperationService {
 	return &DatasetOperationService{
 		cache:                cache,
@@ -59,6 +62,7 @@ func NewDatasetOperationService(
 		taskExecutor:         taskExecutor,
 		pairedImageValidator: NewPairedImageValidator(),
 		treeUtils:            utils.NewTreeDataUtils(),
+		auditLogSvc:          auditLogSvc,
 	}
 }
 
@@ -477,6 +481,10 @@ func (dos *DatasetOperationService) DeleteDatasetItemCascade(ctx context.Context
 		zap.Int64("datasetID", datasetID),
 		zap.Int("files", len(filePaths)))
 
+	if dos.auditLogSvc != nil {
+		dos.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "dataset_item", itemID, "delete", "dataset", nil, map[string]interface{}{"itemId": itemID, "datasetId": datasetID}, database.GetIP(ctx), database.GetUserAgent(ctx))
+	}
+
 	return nil
 }
 
@@ -606,6 +614,10 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 		zap.Int("deleted", len(idsToDelete)),
 		zap.Int("items", len(itemIDs)),
 		zap.Int("files", len(fileIDs)))
+
+	if dos.auditLogSvc != nil {
+		dos.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "dataset", req.IDs, "delete", "dataset", nil, req, database.GetIP(ctx), database.GetUserAgent(ctx))
+	}
 
 	return &BatchDeleteResult{
 		Total:      len(req.IDs),

@@ -23,7 +23,7 @@ import (
 )
 
 // ROUTE_CACHE_KEY Redis中路由缓存key
-const ROUTE_CACHE_KEY = "menu::routes"
+const ROUTE_CACHE_KEY = "menu:routes"
 
 // ROUTE_CACHE_EXPIRATION 路由缓存过期时间（1小时）
 const ROUTE_CACHE_EXPIRATION = time.Hour

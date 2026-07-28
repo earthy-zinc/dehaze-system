@@ -159,6 +159,10 @@ cache:
     enabled: true
     addr: 127.0.0.1:6379
     password: ${DEHAZE_PASSWORD}
+    # Redis db 隔离规范（推荐配置，不强制分库以避免破坏现有 Session）：
+    #   db=0 业务缓存（当前使用）
+    #   db=1 Session + 分布式锁（需后续迁移）
+    #   db=2 限流计数器
     db: 0
     useCluster: false
     timeout: 5
@@ -224,6 +228,10 @@ rabbitmq:
   exchange: "dehaze.tasks"
   exchangeType: "direct"
   routingKeyPrefix: "task"
+
+mongo:
+  uri: "mongodb://root:${DEHAZE_PASSWORD}@127.0.0.1:27017/dehaze?authSource=admin"
+  database: "dehaze"
 
 file:
   type: minio # 存储类型：minio/local

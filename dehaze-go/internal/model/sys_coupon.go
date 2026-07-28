@@ -1,24 +1,27 @@
 package model
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
 type SysCoupon struct {
 	BaseModel
-	Name            string `gorm:"column:name;type:varchar(64);not null;comment:优惠券名称" json:"name"`
-	Type            string `gorm:"column:type;type:varchar(32);not null;index:idx_type;comment:类型" json:"type"`
-	FaceValue       int64  `gorm:"column:face_value;type:bigint;not null;default:0;comment:面值" json:"faceValue"`
-	Threshold       *int64 `gorm:"column:threshold;type:bigint;comment:使用门槛" json:"threshold"`
-	ValidType       string `gorm:"column:valid_type;type:varchar(16);not null;comment:有效期类型" json:"validType"`
-	ValidStart      *time.Time `gorm:"column:valid_start;type:datetime;comment:有效期开始" json:"validStart"`
-	ValidEnd        *time.Time `gorm:"column:valid_end;type:datetime;comment:有效期结束" json:"validEnd"`
-	ValidDays       *int   `gorm:"column:valid_days;type:int;comment:领取后有效天数" json:"validDays"`
-	TotalQty        int    `gorm:"column:total_qty;type:int;not null;default:-1;comment:发放总量" json:"totalQty"`
-	IssuedQty       int    `gorm:"column:issued_qty;type:int;not null;default:0;comment:已发放数量" json:"issuedQty"`
-	UsedQty         int    `gorm:"column:used_qty;type:int;not null;default:0;comment:已使用数量" json:"usedQty"`
-	PerUserLimit    int    `gorm:"column:per_user_limit;type:int;not null;default:1;comment:每人限领" json:"perUserLimit"`
-	ApplicableScope string `gorm:"column:applicable_scope;type:json;comment:适用套餐ID列表" json:"applicableScope"`
-	Status          int8   `gorm:"column:status;type:tinyint;not null;default:1;index:idx_status;comment:状态" json:"status"`
-	Deleted         int8   `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
+	Name            string         `gorm:"column:name;type:varchar(64);not null;comment:优惠券名称" json:"name"`
+	Type            string         `gorm:"column:type;type:varchar(32);not null;index:idx_type;comment:类型" json:"type"`
+	FaceValue       int64          `gorm:"column:face_value;type:bigint;not null;default:0;comment:面值" json:"faceValue"`
+	Threshold       *int64         `gorm:"column:threshold;type:bigint;comment:使用门槛" json:"threshold"`
+	ValidType       string         `gorm:"column:valid_type;type:varchar(16);not null;comment:有效期类型" json:"validType"`
+	ValidStart      *time.Time     `gorm:"column:valid_start;type:datetime;comment:有效期开始" json:"validStart"`
+	ValidEnd        *time.Time     `gorm:"column:valid_end;type:datetime;comment:有效期结束" json:"validEnd"`
+	ValidDays       *int           `gorm:"column:valid_days;type:int;comment:领取后有效天数" json:"validDays"`
+	TotalQty        int            `gorm:"column:total_qty;type:int;not null;default:-1;comment:发放总量" json:"totalQty"`
+	IssuedQty       int            `gorm:"column:issued_qty;type:int;not null;default:0;comment:已发放数量" json:"issuedQty"`
+	UsedQty         int            `gorm:"column:used_qty;type:int;not null;default:0;comment:已使用数量" json:"usedQty"`
+	PerUserLimit    int            `gorm:"column:per_user_limit;type:int;not null;default:1;comment:每人限领" json:"perUserLimit"`
+	ApplicableScope sql.NullString `gorm:"column:applicable_scope;type:json;comment:适用套餐ID列表" json:"applicableScope"`
+	Status          int8           `gorm:"column:status;type:tinyint;not null;default:1;index:idx_status;comment:状态" json:"status"`
+	Deleted         int8           `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
 }
 
 func (SysCoupon) TableName() string {

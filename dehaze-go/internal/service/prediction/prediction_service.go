@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	predCachePrefix = "pred:"
+	predCachePrefix = "prediction:"
 	predCacheTTL    = 24 * time.Hour
 )
 

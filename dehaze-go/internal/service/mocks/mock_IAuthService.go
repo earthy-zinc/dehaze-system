@@ -241,9 +241,9 @@ func (_c *MockIAuthService_IsTokenBlacklisted_Call) RunAndReturn(run func(contex
 	return _c
 }
 
-// Login provides a mock function with given fields: ctx, req, clientIP
-func (_m *MockIAuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP string) (*dto.LoginResult, error) {
-	ret := _m.Called(ctx, req, clientIP)
+// Login provides a mock function with given fields: ctx, req, clientIP, userAgent
+func (_m *MockIAuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP string, userAgent string) (*dto.LoginResult, error) {
+	ret := _m.Called(ctx, req, clientIP, userAgent)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Login")
@@ -251,19 +251,19 @@ func (_m *MockIAuthService) Login(ctx context.Context, req *bo.LoginRequest, cli
 
 	var r0 *dto.LoginResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *bo.LoginRequest, string) (*dto.LoginResult, error)); ok {
-		return rf(ctx, req, clientIP)
+	if rf, ok := ret.Get(0).(func(context.Context, *bo.LoginRequest, string, string) (*dto.LoginResult, error)); ok {
+		return rf(ctx, req, clientIP, userAgent)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *bo.LoginRequest, string) *dto.LoginResult); ok {
-		r0 = rf(ctx, req, clientIP)
+	if rf, ok := ret.Get(0).(func(context.Context, *bo.LoginRequest, string, string) *dto.LoginResult); ok {
+		r0 = rf(ctx, req, clientIP, userAgent)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*dto.LoginResult)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *bo.LoginRequest, string) error); ok {
-		r1 = rf(ctx, req, clientIP)
+	if rf, ok := ret.Get(1).(func(context.Context, *bo.LoginRequest, string, string) error); ok {
+		r1 = rf(ctx, req, clientIP, userAgent)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -280,13 +280,14 @@ type MockIAuthService_Login_Call struct {
 //   - ctx context.Context
 //   - req *bo.LoginRequest
 //   - clientIP string
-func (_e *MockIAuthService_Expecter) Login(ctx interface{}, req interface{}, clientIP interface{}) *MockIAuthService_Login_Call {
-	return &MockIAuthService_Login_Call{Call: _e.mock.On("Login", ctx, req, clientIP)}
+//   - userAgent string
+func (_e *MockIAuthService_Expecter) Login(ctx interface{}, req interface{}, clientIP interface{}, userAgent interface{}) *MockIAuthService_Login_Call {
+	return &MockIAuthService_Login_Call{Call: _e.mock.On("Login", ctx, req, clientIP, userAgent)}
 }
 
-func (_c *MockIAuthService_Login_Call) Run(run func(ctx context.Context, req *bo.LoginRequest, clientIP string)) *MockIAuthService_Login_Call {
+func (_c *MockIAuthService_Login_Call) Run(run func(ctx context.Context, req *bo.LoginRequest, clientIP string, userAgent string)) *MockIAuthService_Login_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*bo.LoginRequest), args[2].(string))
+		run(args[0].(context.Context), args[1].(*bo.LoginRequest), args[2].(string), args[3].(string))
 	})
 	return _c
 }
@@ -296,7 +297,7 @@ func (_c *MockIAuthService_Login_Call) Return(_a0 *dto.LoginResult, _a1 error) *
 	return _c
 }
 
-func (_c *MockIAuthService_Login_Call) RunAndReturn(run func(context.Context, *bo.LoginRequest, string) (*dto.LoginResult, error)) *MockIAuthService_Login_Call {
+func (_c *MockIAuthService_Login_Call) RunAndReturn(run func(context.Context, *bo.LoginRequest, string, string) (*dto.LoginResult, error)) *MockIAuthService_Login_Call {
 	_c.Call.Return(run)
 	return _c
 }

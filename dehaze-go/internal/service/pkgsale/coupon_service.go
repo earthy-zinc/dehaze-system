@@ -2,6 +2,7 @@ package pkgsale
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -79,7 +80,7 @@ func (s *CouponService) ListMy(ctx context.Context, userID int64, status *int) (
 			v.Type = c.Type
 			v.FaceValue = c.FaceValue
 			v.Threshold = c.Threshold
-			v.ApplicableScope = parseScope(c.ApplicableScope)
+			v.ApplicableScope = parseScope(c.ApplicableScope.String)
 		}
 
 		vos = append(vos, v)
@@ -164,7 +165,7 @@ func (s *CouponService) GetPage(ctx context.Context, q *query.CouponPageQuery) (
 			IssuedQty:    c.IssuedQty,
 			UsedQty:      c.UsedQty,
 			PerUserLimit: c.PerUserLimit,
-			ApplicableScope: parseScope(c.ApplicableScope),
+			ApplicableScope: parseScope(c.ApplicableScope.String),
 			Status:       int(c.Status),
 			CreateTime:   c.CreatedAt.Format(timeFormat),
 		}
@@ -221,7 +222,7 @@ func (s *CouponService) Create(ctx context.Context, form *bo.CouponForm) (*vo.Co
 	if form.ApplicableScope != nil && len(form.ApplicableScope) > 0 {
 		data, err := json.Marshal(form.ApplicableScope)
 		if err == nil {
-			c.ApplicableScope = string(data)
+			c.ApplicableScope = sql.NullString{String: string(data), Valid: true}
 		}
 	}
 
