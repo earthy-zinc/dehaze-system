@@ -24,33 +24,45 @@ import lazyLoad from "@/router/LazyLoad";
 import {
   BarChartOutlined,
   BellOutlined,
+  CrownOutlined,
   FileOutlined,
   FlagOutlined,
+  GiftOutlined,
+  MessageOutlined,
   PictureOutlined,
+  ShopOutlined,
   UnorderedListOutlined,
+  WalletOutlined,
 } from "@ant-design/icons";
-import React from "react";
+import React, { lazy } from "react";
 import { createBrowserRouter, Navigate, RouteObject } from "react-router-dom";
 import { RouteVO } from "dehaze-sdk-js";
 
 const iconMap: Record<string, React.ReactNode> = {
   algorithm: <AlgorithmIcon />,
+  announcement: <BellOutlined />,
   compare: <CompareIcon />,
+  coupon: <GiftOutlined />,
   dataset: <DatasetIcon />,
   dict: <DictIcon />,
   edit: <EditIcon />,
   evaluation: <BarChartOutlined />,
+  feedback: <MessageOutlined />,
   haze: <HazeIcon />,
   image: <PictureOutlined />,
   list: <UnorderedListOutlined />,
+  member: <CrownOutlined />,
   menu: <MenuIcon />,
   message: <MessageIcon />,
   model: <ModelIcon />,
+  order: <WalletOutlined />,
   overlap: <OverlapIcon />,
+  package: <ShopOutlined />,
   parallel: <ParallelIcon />,
   presentation: <PresentationIcon />,
   role: <RoleIcon />,
   system: <SystemIcon />,
+  template: <FileOutlined />,
   tree: <TreeIcon />,
   user: <UserIcon />,
   bell: <BellOutlined />,
@@ -70,13 +82,35 @@ export function resolveFullPath(parentPath: string, childPath: string): string {
   return `${parentPath.replace(/\/$/, "")}/${childPath}`;
 }
 
+const pageModules = import.meta.glob("@/pages/**/index.tsx");
+
+const lazyPages: Record<
+  string,
+  React.LazyExoticComponent<React.ComponentType<any>>
+> = {};
+for (const [key, loader] of Object.entries(pageModules)) {
+  const path = key.replace(/^\/src\/pages\//, "").replace(/\.tsx$/, "");
+  lazyPages[path] = lazy(
+    loader as () => Promise<{ default: React.ComponentType<any> }>
+  );
+}
+
+const ComingSoon = lazy(() => import("@/pages/coming-soon/index"));
+
+function resolveComponent(
+  componentPath: string
+): React.LazyExoticComponent<React.ComponentType<any>> {
+  return lazyPages[componentPath] || ComingSoon;
+}
+
 export function routesToRouteObjects(
   routes: RouteVO[],
   parentPath = ""
 ): RouteObject[] {
   return routes.map((route) => {
-    const fullPath = resolveFullPath(parentPath, route.path || "");
-    const path = (route.path || "").replace(/^\//, "");
+    const rawPath = route.path || "";
+    const path = parentPath ? rawPath.replace(/^\//, "") : rawPath;
+    const fullPath = resolveFullPath(parentPath, rawPath);
     const children: RouteObject[] = [];
 
     if (route.redirect) {
@@ -90,8 +124,8 @@ export function routesToRouteObjects(
     }
 
     const obj: RouteObject = { path };
-    if (route.component) {
-      obj.element = lazyLoad(route.component);
+    if (typeof route.component === "string" && route.component) {
+      obj.element = lazyLoad(resolveComponent(route.component));
     }
     if (children.length) {
       obj.children = children;

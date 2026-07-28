@@ -35,6 +35,50 @@ const BasicLayout: React.FC = () => {
         path: "home",
         element: lazyLoad(lazy(() => import("@/pages/home"))),
       },
+      {
+        path: "message",
+        element: lazyLoad(lazy(() => import("@/pages/message"))),
+      },
+      {
+        path: "message/detail",
+        element: lazyLoad(lazy(() => import("@/pages/message/detail"))),
+      },
+      {
+        path: "message/settings",
+        element: lazyLoad(lazy(() => import("@/pages/message/settings"))),
+      },
+      {
+        path: "member/center",
+        element: lazyLoad(lazy(() => import("@/pages/member/center"))),
+      },
+      {
+        path: "member/growth-logs",
+        element: lazyLoad(lazy(() => import("@/pages/member/growth-logs"))),
+      },
+      {
+        path: "package/shop",
+        element: lazyLoad(lazy(() => import("@/pages/package/shop"))),
+      },
+      {
+        path: "order/my",
+        element: lazyLoad(lazy(() => import("@/pages/order/my"))),
+      },
+      {
+        path: "order/detail",
+        element: lazyLoad(lazy(() => import("@/pages/order/detail"))),
+      },
+      {
+        path: "feedback/my-ratings",
+        element: lazyLoad(lazy(() => import("@/pages/feedback/my-ratings"))),
+      },
+      {
+        path: "feedback/my",
+        element: lazyLoad(lazy(() => import("@/pages/feedback/my"))),
+      },
+      {
+        path: "feedback/detail",
+        element: lazyLoad(lazy(() => import("@/pages/feedback/detail"))),
+      },
       ...routesToRouteObjects(permissionRoutes),
       {
         path: "*",

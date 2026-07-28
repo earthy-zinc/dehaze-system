@@ -5,7 +5,7 @@ import {
 } from "dehaze-sdk-js";
 import AlgorithmFormDialog, {
   type AlgorithmFormDialogRef,
-} from "@/pages/algorithm/components/AlgorithmFormDialog";
+} from "@/pages/algorithm/list/components/AlgorithmFormDialog";
 import ImportExportToolbar from "@/components/ImportExportToolbar";
 import {
   DeleteOutlined,

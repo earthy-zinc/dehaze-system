@@ -1,0 +1,26 @@
+.rating-management-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 16px;
+
+  .search-card {
+    flex-shrink: 0;
+  }
+
+  .table-card {
+    flex: 1;
+    overflow: hidden;
+  }
+}
+
+.detail-section {
+  margin-bottom: 12px;
+
+  .reply-time {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--ant-color-text-secondary);
+  }
+}

@@ -95,7 +95,7 @@ export default function Overlap() {
   const handleGenerateImage = () => {
     setActivePage("loading");
     ModelAPI.predictAndWait({
-      algorithmId: Number(selectedModel.value) || 1,
+      algorithmId: Number(selectedModel?.value) || 1,
       imageUrl: image1,
     })
       .then((res) => {
@@ -123,7 +123,9 @@ export default function Overlap() {
   useEffect(() => {
     AlgorithmAPI.getOption().then((options) => {
       setModelOptions(options);
-      setSelectedModel(options[0]);
+      if (options.length > 0) {
+        setSelectedModel(options[0]);
+      }
     });
   }, []);
 
@@ -175,7 +177,7 @@ export default function Overlap() {
           <h3 className={"text-align-center"}>选择去雾模型</h3>
           <Cascader
             className={"ml-20"}
-            defaultValue={[selectedModel.value || 1]}
+            defaultValue={[selectedModel?.value || 1]}
             options={modelOptions}
             onChange={handleChange}
           />

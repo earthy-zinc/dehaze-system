@@ -1,6 +1,5 @@
 import { MenuAPI, RouteVO } from "dehaze-sdk-js";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import React from "react";
 
 interface PermissionState {
   routes: RouteVO[];
@@ -25,10 +24,6 @@ const filterAsyncRoutes = (routes: RouteVO[], roles: string[]): RouteVO[] => {
     if (!hasPermission(roles, tmpRoute)) return;
     if (tmpRoute.component === "Layout") {
       tmpRoute.component = undefined;
-    } else if (tmpRoute.component) {
-      tmpRoute.component = React.lazy(
-        () => import(`../../pages/${tmpRoute.component}.tsx`)
-      );
     }
     if (tmpRoute.children) {
       tmpRoute.children = filterAsyncRoutes(route.children, roles);

@@ -1,0 +1,43 @@
+.rating-card-modal {
+  .algorithm-tip {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 12px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ant-color-primary);
+    background: var(--ant-color-primary-bg);
+    border-radius: 6px;
+  }
+
+  .tag-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+
+    .ant-tag-checkable {
+      cursor: pointer;
+    }
+
+    .tag-count-hint {
+      margin-left: 8px;
+      font-size: 12px;
+      color: var(--ant-color-text-secondary);
+    }
+  }
+
+  .upload-text {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--ant-color-text-secondary);
+  }
+
+  .upload-tip {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--ant-color-text-secondary);
+  }
+}

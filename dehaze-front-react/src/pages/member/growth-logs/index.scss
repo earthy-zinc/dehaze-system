@@ -1,0 +1,86 @@
+.growth-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 1000px;
+  height: 100%;
+  padding: 16px;
+  margin: 0 auto;
+
+  .page-header {
+    margin-bottom: 4px;
+
+    .header-title {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+
+      .title-text {
+        font-size: 22px;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .search-card {
+    flex-shrink: 0;
+  }
+
+  .table-card {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .type-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+
+    &.tag-dehaze {
+      color: #409eff;
+      background: #ecf5ff;
+    }
+
+    &.tag-evaluate {
+      color: #13c2c2;
+      background: #e6fffb;
+    }
+
+    &.tag-rating {
+      color: #fa8c16;
+      background: #fff7e6;
+    }
+
+    &.tag-sign_in,
+    &.tag-sign_in_bonus {
+      color: #52c41a;
+      background: #f6ffed;
+    }
+
+    &.tag-consume {
+      color: #722ed1;
+      background: #f9f0ff;
+    }
+
+    &.tag-refund_deduct {
+      color: #f5222d;
+      background: #fff1f0;
+    }
+
+    &.tag-admin_adjust {
+      color: #8c8c8c;
+      background: #fafafa;
+    }
+  }
+
+  .value-up {
+    font-weight: 600;
+    color: #52c41a;
+  }
+
+  .value-down {
+    font-weight: 600;
+    color: #f5222d;
+  }
+}

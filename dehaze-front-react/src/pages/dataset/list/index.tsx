@@ -1,7 +1,7 @@
 import { DatasetAPI, type Dataset, type DatasetQuery } from "dehaze-sdk-js";
 import DatasetFormDialog, {
   type DatasetFormDialogRef,
-} from "@/pages/dataset/components/DatasetFormDialog";
+} from "@/pages/dataset/list/components/DatasetFormDialog";
 import ImportExportToolbar from "@/components/ImportExportToolbar";
 import {
   DeleteOutlined,

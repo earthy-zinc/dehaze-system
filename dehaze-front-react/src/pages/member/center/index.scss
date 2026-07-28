@@ -1,0 +1,286 @@
+.member-center {
+  max-width: 960px;
+  padding: 24px 20px 40px;
+  margin: 0 auto;
+
+  .level-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    color: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+
+    .level-info {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .level-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 80px;
+      height: 80px;
+      background: rgb(255 255 255 / 18%);
+      border-radius: 50%;
+      backdrop-filter: blur(4px);
+    }
+
+    .level-detail {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .level-name {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+    }
+
+    .level-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      font-size: 13px;
+      color: rgb(255 255 255 / 92%);
+
+      .meta-item {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+      }
+
+      .growth-maintain {
+        color: rgb(255 255 255 / 75%);
+      }
+    }
+
+    .level-actions {
+      display: flex;
+      gap: 10px;
+    }
+  }
+
+  .growth-card {
+    margin-bottom: 20px;
+    border-radius: 12px;
+
+    .growth-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .growth-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .growth-current {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1677ff;
+    }
+
+    .growth-footer {
+      margin-top: 12px;
+      font-size: 13px;
+      color: rgb(0 0 0 / 45%);
+
+      .growth-gap {
+        margin: 0 4px;
+        font-size: 15px;
+        color: #1677ff;
+      }
+    }
+
+    .max-level-text {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: #fa8c16;
+    }
+  }
+
+  .benefit-card {
+    margin-bottom: 20px;
+    border-radius: 12px;
+
+    .benefit-item {
+      padding: 16px 12px;
+      text-align: center;
+      background: rgb(0 0 0 / 2%);
+      border-radius: 10px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        box-shadow: 0 4px 12px rgb(0 0 0 / 6%);
+        transform: translateY(-2px);
+      }
+
+      .benefit-label {
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: rgb(0 0 0 / 45%);
+      }
+
+      .benefit-value {
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 1.2;
+        color: #1677ff;
+      }
+
+      .benefit-sub {
+        margin-top: 6px;
+        font-size: 12px;
+        color: rgb(0 0 0 / 35%);
+      }
+    }
+
+    .unlocked-features {
+      padding-top: 18px;
+      margin-top: 18px;
+      border-top: 1px dashed rgb(0 0 0 / 10%);
+
+      .features-title {
+        margin-bottom: 10px;
+        font-size: 13px;
+        color: rgb(0 0 0 / 45%);
+      }
+
+      .features-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+    }
+  }
+
+  .signin-card {
+    border-radius: 12px;
+
+    .signin-stats {
+      display: flex;
+      gap: 32px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      background: rgb(0 0 0 / 2%);
+      border-radius: 8px;
+
+      .stat-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .stat-label {
+          font-size: 12px;
+          color: rgb(0 0 0 / 45%);
+        }
+
+        .stat-value {
+          font-size: 18px;
+          font-weight: 600;
+          color: #1677ff;
+        }
+      }
+    }
+
+    .calendar-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+
+      .cell-day {
+        font-size: 14px;
+        color: rgb(0 0 0 / 88%);
+      }
+
+      .signed-icon {
+        color: #fa8c16;
+      }
+
+      &.signed .cell-day {
+        font-weight: 600;
+        color: #fa8c16;
+      }
+
+      &.today .cell-day {
+        font-weight: 700;
+        color: #1677ff;
+      }
+    }
+  }
+
+  .bonus-tip {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 2000;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 16px 28px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    pointer-events: none;
+    background: linear-gradient(135deg, #fa8c16, #d4380d);
+    border-radius: 50px;
+    box-shadow: 0 8px 32px rgb(250 140 22 / 40%);
+    transform: translate(-50%, -50%);
+    animation: bonus-pop 0.4s ease-out;
+  }
+
+  @keyframes bonus-pop {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -30%) scale(0.5);
+    }
+
+    60% {
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+
+  @media (width <= 768px) {
+    .level-card {
+      flex-direction: column;
+      gap: 18px;
+      padding: 24px 20px;
+      text-align: center;
+
+      .level-info {
+        flex-direction: column;
+      }
+
+      .level-meta {
+        justify-content: center;
+      }
+    }
+
+    .signin-stats {
+      flex-wrap: wrap;
+      gap: 16px !important;
+    }
+  }
+}

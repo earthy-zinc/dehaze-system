@@ -1,0 +1,32 @@
+.coupon-management-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 16px;
+
+  .search-card {
+    flex-shrink: 0;
+  }
+
+  .table-card {
+    flex: 1;
+    overflow: hidden;
+
+    .table-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+  }
+
+  .face-value {
+    font-weight: 600;
+    color: #ff4d4f;
+  }
+
+  .text-secondary {
+    color: var(--ant-color-text-secondary, #999);
+  }
+}

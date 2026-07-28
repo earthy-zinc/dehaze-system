@@ -14,6 +14,7 @@ import "./index.scss";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { MessageIcon } from "./MessageIcon";
 import { Settings } from "./Settings";
 
 export const NavBar: React.FC = () => {
@@ -69,13 +70,16 @@ export const NavBar: React.FC = () => {
         <Breadcrumb items={[{ title: "首页" }]} />
       </div>
       <div className="navbar-right">
+        <MessageIcon />
         <Dropdown className="settings-item" menu={{ items }}>
           <div className="flex-center h100%">
-            <img
-              src={userStore.user.avatar}
-              className="rounded-full ml-10px w24px h24px"
-              alt=""
-            />
+            {userStore.user.avatar && (
+              <img
+                src={userStore.user.avatar}
+                className="rounded-full ml-10px w24px h24px"
+                alt=""
+              />
+            )}
             <span style={{ minWidth: "60px" }}>{userStore.user.username}</span>
           </div>
         </Dropdown>

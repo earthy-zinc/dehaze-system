@@ -1,0 +1,126 @@
+.my-ratings-container {
+  max-width: 960px;
+  padding: 24px 20px 40px;
+  margin: 0 auto;
+
+  .page-header {
+    margin-bottom: 20px;
+
+    .title-text {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--ant-color-text);
+      letter-spacing: 0.5px;
+    }
+  }
+
+  .rating-list {
+    min-height: 240px;
+  }
+
+  .rating-card {
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    background: var(--ant-color-bg-container);
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: 10px;
+    transition: all 0.25s ease;
+
+    &:hover {
+      border-color: var(--ant-color-primary-border);
+      box-shadow: 0 4px 16px rgb(0 0 0 / 6%);
+    }
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+
+    .header-left {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .algo-icon {
+        font-size: 18px;
+        color: var(--ant-color-primary);
+      }
+
+      .algo-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--ant-color-text);
+      }
+    }
+
+    .header-right {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+
+      .time-text {
+        font-size: 12px;
+        color: var(--ant-color-text-secondary);
+      }
+    }
+  }
+
+  .card-comment {
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ant-color-text);
+    background: var(--ant-color-fill-quaternary);
+    border-radius: 6px;
+  }
+
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .card-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .reply-card {
+    background: var(--ant-color-fill-quaternary);
+
+    .reply-header {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ant-color-primary);
+
+      .reply-time {
+        margin-left: auto;
+        font-size: 12px;
+        font-weight: 400;
+        color: var(--ant-color-text-secondary);
+      }
+    }
+
+    .reply-content {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--ant-color-text);
+    }
+  }
+
+  .pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+  }
+}

@@ -1,0 +1,59 @@
+.feedback-stats-container {
+  height: 100%;
+  padding: 16px;
+  overflow: auto;
+
+  .filter-card {
+    flex-shrink: 0;
+    margin-bottom: 16px;
+
+    .filter-label {
+      margin-right: 8px;
+    }
+  }
+
+  .stat-cards {
+    margin-bottom: 4px;
+  }
+
+  .section-card {
+    margin-top: 16px;
+  }
+
+  .stat-card {
+    text-align: center;
+
+    .stat-label {
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--ant-color-text-secondary);
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--ant-color-text);
+
+      .unit {
+        margin-left: 4px;
+        font-size: 14px;
+        font-weight: normal;
+        color: var(--ant-color-text-secondary);
+      }
+    }
+  }
+
+  .card-title {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    font-weight: 600;
+  }
+
+  .keyword-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    min-height: 60px;
+  }
+}

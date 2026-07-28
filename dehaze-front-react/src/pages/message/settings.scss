@@ -1,0 +1,143 @@
+.notification-settings {
+  max-width: 720px;
+  padding: 24px 20px 40px;
+  margin: 0 auto;
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+
+    .header-title {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .title-text {
+        font-size: 22px;
+        font-weight: 600;
+        color: #1f2937;
+      }
+    }
+  }
+
+  .settings-section {
+    margin-bottom: 20px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+
+    .section-header {
+      padding: 16px 20px;
+      background: #f9fafb;
+      border-bottom: 1px solid #f0f0f0;
+
+      .section-title {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 15px;
+        font-weight: 600;
+        color: #1f2937;
+
+        .section-icon {
+          font-size: 18px;
+          color: #3b82f6;
+        }
+      }
+
+      .section-desc {
+        display: block;
+        margin-top: 4px;
+        margin-left: 26px;
+        font-size: 12px;
+        color: #6b7280;
+      }
+    }
+
+    .section-body {
+      padding: 8px 20px;
+    }
+  }
+
+  .switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .switch-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .label-text {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1f2937;
+      }
+
+      .label-desc {
+        font-size: 12px;
+        color: #6b7280;
+      }
+
+      .type-label {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+
+        .type-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+
+        &.type-announcement .type-dot {
+          background: #3b82f6;
+        }
+
+        &.type-business .type-dot {
+          background: #13c2c2;
+        }
+
+        &.type-member .type-dot {
+          background: #fa8c16;
+        }
+      }
+    }
+  }
+
+  .dnd-time-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    padding: 16px 0 12px;
+    margin-top: 8px;
+    border-top: 1px dashed #f0f0f0;
+
+    .time-picker-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      label {
+        font-size: 12px;
+        color: #6b7280;
+      }
+    }
+
+    .time-separator {
+      padding-bottom: 8px;
+      font-size: 14px;
+      color: #6b7280;
+    }
+  }
+}
