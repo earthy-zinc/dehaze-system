@@ -10,6 +10,7 @@ export function setupStore(app: App<Element>) {
 
 export * from "./modules/algorithm";
 export * from "./modules/app";
+export * from "./modules/notification";
 export * from "./modules/permission";
 export * from "./modules/settings";
 export * from "./modules/tagsView";
