@@ -17,7 +17,9 @@ CREATE TABLE `sys_promotion_package`
     `discount_type`   varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '折扣类型(percent:百分比;fixed:固定金额)',
     `discount_value` bigint                                                         NOT NULL DEFAULT 0 COMMENT '折扣值（百分比时为0-100，固定金额时为分）',
     `create_time`     datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`     datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`       bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
+    `update_by`       bigint                                                         NULL DEFAULT NULL COMMENT '更新人ID',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_promotion_package` (`promotion_id`, `package_id`) USING BTREE,
     INDEX `idx_package_id` (`package_id`) USING BTREE
