@@ -23,6 +23,7 @@
 | `/api/v1/algorithms` | GET | 获取算法树形表格 | - | F-M05-001 |
 | `/api/v1/algorithms/{id}` | GET | 根据ID获取算法详情 | - | F-M05-002 |
 | `/api/v1/algorithms/options` | GET | 获取算法下拉选项 | - | F-M05-001 |
+| `/api/v1/algorithms/list` | GET | 获取所有算法扁平列表（不分页，不构建树形） | - | F-M05-001 |
 | `/api/v1/algorithms` | POST | 新增算法 | `sys:algorithm:add` | F-M05-003 |
 | `/api/v1/algorithms/{id}` | PUT | 修改算法 | `sys:algorithm:edit` | F-M05-005 |
 | `/api/v1/algorithms/{id}/status` | PUT | 修改算法状态 | `sys:algorithm:edit` | F-M05-006 |
