@@ -69,6 +69,9 @@ var (
 	OPERATION_NOT_ALLOW  = &ResultCode{"A0503", "操作不允许"}
 	DATA_BIND_EXISTS     = &ResultCode{"A0504", "存在关联数据，无法删除"}
 
+	// 会员模块业务错误码
+	SIGN_IN_ALREADY = &ResultCode{"SIGN_IN_ALREADY", "今日已签到"}
+
 	// A06xx: 操作相关
 	OPERATION_FAILED    = &ResultCode{"A0600", "操作失败"}
 	OPERATION_COMPLETED = &ResultCode{"A0601", "操作已完成"}
@@ -172,6 +175,7 @@ var allResultCodes = map[string]*ResultCode{
 	"A0502": DATA_STATE_NOT_ALLOW,
 	"A0503": OPERATION_NOT_ALLOW,
 	"A0504": DATA_BIND_EXISTS,
+	"SIGN_IN_ALREADY": SIGN_IN_ALREADY,
 	"A0600": OPERATION_FAILED,
 	"A0601": OPERATION_COMPLETED,
 	"A0700": USER_UPLOAD_FILE_ERROR,

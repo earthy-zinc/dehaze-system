@@ -17,6 +17,7 @@ import (
 	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
 	ihrepo "github.com/earthyzinc/dehaze-go/internal/repository/input_history"
+	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	menurepo "github.com/earthyzinc/dehaze-go/internal/repository/menu"
 	msgrepo "github.com/earthyzinc/dehaze-go/internal/repository/message"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
@@ -35,6 +36,7 @@ import (
 	ihservice "github.com/earthyzinc/dehaze-go/internal/service/input_history"
 	importexportservice "github.com/earthyzinc/dehaze-go/internal/service/import_export"
 	"github.com/earthyzinc/dehaze-go/internal/service/import_export/handlers"
+	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
 	msgservice "github.com/earthyzinc/dehaze-go/internal/service/message"
 	menuservice "github.com/earthyzinc/dehaze-go/internal/service/menu"
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
@@ -150,6 +152,12 @@ func (a *Application) Init() error {
 	notifySettingRepo := msgrepo.NewNotificationSettingRepository(gormDB)
 	userLookupRepo := msgrepo.NewUserLookupRepository(gormDB)
 
+	// member module repositories
+	memberRepo := memberrepo.NewMemberRepository(gormDB)
+	memberBenefitRepo := memberrepo.NewMemberBenefitRepository(gormDB)
+	memberGrowthLogRepo := memberrepo.NewMemberGrowthLogRepository(gormDB)
+	memberSignInRepo := memberrepo.NewMemberSignInRepository(gormDB)
+
 	// services
 	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo)
 	authService := authservice.NewAuthService(cacheClient, userService, gormDB)
@@ -231,6 +239,9 @@ func (a *Application) Init() error {
 	messageTemplateService := msgservice.NewMessageTemplateService(msgTplRepo)
 	notificationSettingService := msgservice.NewNotificationSettingService(notifySettingRepo)
 
+	// member module services
+	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo)
+
 	// 启动 MQ Consumer 消费死信队列
 	// 注意：Go 后端不消费 export 主队列（由 Java/Python 执行任务），
 	// 仅消费 DLQ 以更新任务状态为 FAILED
@@ -272,6 +283,9 @@ func (a *Application) Init() error {
 	messageTemplateApi := api.NewMessageTemplateApi(messageTemplateService)
 	notificationSettingApi := api.NewNotificationSettingApi(notificationSettingService)
 
+	// member module apis
+	memberApi := api.NewMemberApi(memberService)
+
 	// routes
 	engine := a.Server.GetEngine()
 
@@ -311,6 +325,7 @@ func (a *Application) Init() error {
 	router.RegisterNotificationSettingRoutes(protectedV1, notificationSettingApi)
 	router.RegisterAnnouncementRoutes(protectedV1, announcementApi)
 	router.RegisterMessageTemplateRoutes(protectedV1, messageTemplateApi)
+	router.RegisterMemberRoutes(protectedV1, memberApi)
 
 	middleware.ApiKeyAuth = func(ctx context.Context, rawKey string) (*security.CustomClaims, error) {
 		authInfo, err := apiKeyService.AuthenticateByKey(ctx, rawKey)
