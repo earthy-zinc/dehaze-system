@@ -22,6 +22,10 @@ let activeUser: string = "";
 
 const DEFAULT_PASSWORD = process.env.TEST_PASSWORD || "12345678";
 
+function getCacheKey(username: string): string {
+  return `${process.env.TEST_BACKEND || "java"}:${username}`;
+}
+
 async function getCaptchaCode(captchaKey: string): Promise<string> {
   const redisKey = `${CAPTCHA_KEY_PREFIX}${captchaKey}`;
   const redis = getRedis();
@@ -62,16 +66,17 @@ function writeSessionCache(cache: Record<string, { sessionId: string; createdAt:
 }
 
 export async function login(username: string = "admin"): Promise<string> {
-  if (activeUser === username && currentSessionId) {
+  const cacheKey = getCacheKey(username);
+  if (activeUser === cacheKey && currentSessionId) {
     globalThis.localStorage.setItem(SESSION_KEY, currentSessionId);
     return currentSessionId;
   }
 
   const cache = readSessionCache();
-  const cached = cache[username];
+  const cached = cache[cacheKey];
   if (cached?.sessionId && Date.now() - cached.createdAt < CACHE_MAX_AGE_MS) {
     currentSessionId = cached.sessionId;
-    activeUser = username;
+    activeUser = cacheKey;
     globalThis.localStorage.setItem(SESSION_KEY, currentSessionId);
     setupAxiosInterceptor();
     return currentSessionId;
@@ -93,11 +98,11 @@ export async function login(username: string = "admin"): Promise<string> {
       throw new Error("登录成功但 sessionId 为空");
     }
 
-    activeUser = username;
+    activeUser = cacheKey;
     globalThis.localStorage.setItem(SESSION_KEY, currentSessionId);
     setupAxiosInterceptor();
 
-    cache[username] = { sessionId: currentSessionId, createdAt: Date.now() };
+    cache[cacheKey] = { sessionId: currentSessionId, createdAt: Date.now() };
     writeSessionCache(cache);
 
     return currentSessionId;
@@ -108,16 +113,16 @@ export async function login(username: string = "admin"): Promise<string> {
 }
 
 export async function logout(username?: string): Promise<void> {
-  const user = username || activeUser;
+  const cacheKey = username ? getCacheKey(username) : activeUser;
   await AuthAPI.logout();
   currentSessionId = "";
-  if (user === activeUser) {
+  if (cacheKey === activeUser) {
     activeUser = "";
   }
   globalThis.localStorage.removeItem(SESSION_KEY);
 
   const cache = readSessionCache();
-  delete cache[user];
+  delete cache[cacheKey];
   if (Object.keys(cache).length === 0) {
     try {
       fs.unlinkSync(SESSION_CACHE_FILE);

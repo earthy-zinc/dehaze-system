@@ -442,7 +442,7 @@ describe("套餐管理模块接口测试", () => {
       });
 
       test("异常：库存为负数", async () => {
-        const form = createCouponForm({ totalQty: -1 });
+        const form = createCouponForm({ totalQty: -2 });
         await expectBizError(
           CouponAPI.add(form),
           ["A0400", "B0001", "ERR_BAD_REQUEST"],
