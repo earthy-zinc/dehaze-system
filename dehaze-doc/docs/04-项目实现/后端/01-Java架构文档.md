@@ -1,6 +1,6 @@
 # Java 后端 (dehaze-java)
 
-基于 JDK 17、Spring Boot 3.3、Spring Security 6、JWT、Redis、MyBatis-Plus、Knife4j 构建的前后端分离图像去雾系统后端。包括用户管理、角色管理、菜单管理、部门管理、字典管理等多个功能。后端自动生成接口文档，支持在线调试，提高开发效率。
+基于 JDK 17、Spring Boot 3.3、Spring Security 6、Redis、MyBatis-Plus、Knife4j 构建的前后端分离图像去雾系统后端。包括用户管理、角色管理、菜单管理、部门管理、字典管理等多个功能。后端自动生成接口文档，支持在线调试，提高开发效率。
 
 > 构建/运行/测试说明见项目根目录的 `README.md`。
 
@@ -10,7 +10,7 @@
 
 | 模块类型 | 核心实现类 | 关键技术点 |
 |------|------|------|
-| 安全认证 | JwtValidationFilter / SecurityConfig / SysUserDetailsService | JWT 令牌签发校验、Spring Security 鉴权 |
+| 安全认证 | SessionFilter / SecurityConfig / SysUserDetailsService | Redis Session 管理、Spring Security 鉴权 |
 | 文件管理 | FileController / MinioFileService / FileUploadUtils | 适配多存储方案，支持本地/MinIO/OSS 存储，文件分片上传 |
 | 系统管理 | SysController + SysServiceImpl + SysMapper | RBAC 模型、部门树形结构管理 |
 | 算法管理 | SysAlgorithmController | 算法模型动态加载、Python 服务集成，对接 Python 端全部 29 种去雾算法 |
