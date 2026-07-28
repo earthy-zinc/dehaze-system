@@ -101,7 +101,7 @@ describe("反馈评价模块接口测试", () => {
       const form = createRatingForm(99999999);
       await expectBizError(
         FeedbackAPI.createRating(form),
-        ["PREDICTION_LOG_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0546", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -115,7 +115,7 @@ describe("反馈评价模块接口测试", () => {
 
       await expectBizError(
         FeedbackAPI.createRating(form),
-        ["RATING_ALREADY_EXISTS", "A0501", "A0400", "ERR_BAD_REQUEST"],
+        ["A0540", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -163,7 +163,7 @@ describe("反馈评价模块接口测试", () => {
       const form = createRatingForm(testPredLogId);
       await expectBizError(
         FeedbackAPI.updateRating(99999999, form),
-        ["RATING_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0541", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -297,7 +297,7 @@ describe("反馈评价模块接口测试", () => {
     test("异常：评价不存在", async () => {
       await expectBizError(
         FeedbackAPI.hideRating(99999999),
-        ["RATING_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0541", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -333,7 +333,7 @@ describe("反馈评价模块接口测试", () => {
     test("异常：评价不存在", async () => {
       await expectBizError(
         FeedbackAPI.replyRating(99999999, "测试回复"),
-        ["RATING_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0541", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -479,7 +479,7 @@ describe("反馈评价模块接口测试", () => {
     test("异常：反馈不存在", async () => {
       await expectBizError(
         FeedbackAPI.getFeedbackDetail(99999999),
-        ["FEEDBACK_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0543", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -509,7 +509,7 @@ describe("反馈评价模块接口测试", () => {
     test("异常：反馈不存在", async () => {
       await expectBizError(
         FeedbackAPI.supplementFeedback(99999999, { content: "测试" }),
-        ["FEEDBACK_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0543", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -590,7 +590,7 @@ describe("反馈评价模块接口测试", () => {
     test("异常：反馈不存在", async () => {
       await expectBizError(
         FeedbackAPI.assignFeedback(99999999, { assigneeId: 2 }),
-        ["FEEDBACK_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0543", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -623,7 +623,7 @@ describe("反馈评价模块接口测试", () => {
     test("异常：反馈不存在", async () => {
       await expectBizError(
         FeedbackAPI.replyFeedback(99999999, createFeedbackReplyForm()),
-        ["FEEDBACK_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0543", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -659,7 +659,7 @@ describe("反馈评价模块接口测试", () => {
     test("异常：反馈不存在", async () => {
       await expectBizError(
         FeedbackAPI.updateFeedbackTags(99999999, ["标签"]),
-        ["FEEDBACK_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0543", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -688,7 +688,7 @@ describe("反馈评价模块接口测试", () => {
     test("异常：重复关闭已关闭反馈", async () => {
       await expectBizError(
         FeedbackAPI.closeFeedback(testFeedbackId, { closeReason: "再次关闭" }),
-        ["FEEDBACK_CLOSED", "ORDER_STATUS_INVALID", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0544", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -697,7 +697,7 @@ describe("反馈评价模块接口测试", () => {
     test("异常：反馈不存在", async () => {
       await expectBizError(
         FeedbackAPI.closeFeedback(99999999, { closeReason: "测试" }),
-        ["FEEDBACK_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0543", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );

@@ -84,7 +84,7 @@ describe("套餐管理模块接口测试", () => {
     test("异常：套餐不存在", async () => {
       await expectBizError(
         PackageAPI.getDetail(99999999),
-        ["PACKAGE_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0520", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -121,7 +121,7 @@ describe("套餐管理模块接口测试", () => {
     test("异常：套餐不存在", async () => {
       await expectBizError(
         PackageAPI.calculatePrice(99999999),
-        ["PACKAGE_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0520", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -251,7 +251,7 @@ describe("套餐管理模块接口测试", () => {
     test("异常：套餐不存在", async () => {
       await expectBizError(
         PackageAPI.getForm(99999999),
-        ["PACKAGE_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0520", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -296,7 +296,7 @@ describe("套餐管理模块接口测试", () => {
       const form = { ...originalForm };
       await expectBizError(
         PackageAPI.update(99999999, form),
-        ["PACKAGE_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0520", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -334,7 +334,7 @@ describe("套餐管理模块接口测试", () => {
     test("异常：套餐不存在", async () => {
       await expectBizError(
         PackageAPI.updateStatus(99999999, 1),
-        ["PACKAGE_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0520", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -364,7 +364,7 @@ describe("套餐管理模块接口测试", () => {
     test("异常：套餐不存在", async () => {
       await expectBizError(
         PackageAPI.deleteByIds("99999999"),
-        ["PACKAGE_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0520", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -525,7 +525,7 @@ describe("套餐管理模块接口测试", () => {
         const form = { ...originalForm, id: 99999999 };
         await expectBizError(
           CouponAPI.update(99999999, form),
-          ["COUPON_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+          ["A0523", "A0400", "ERR_BAD_REQUEST"],
           undefined,
           true
         );
@@ -552,7 +552,7 @@ describe("套餐管理模块接口测试", () => {
       test("异常：优惠券不存在", async () => {
         await expectBizError(
           CouponAPI.deleteByIds("99999999"),
-          ["COUPON_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+          ["A0523", "A0400", "ERR_BAD_REQUEST"],
           undefined,
           true
         );
@@ -601,7 +601,7 @@ describe("套餐管理模块接口测试", () => {
             targetScope: "users",
             userIds: [USERS.USER.id],
           }),
-          ["COUPON_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+          ["A0523", "A0400", "ERR_BAD_REQUEST"],
           undefined,
           true
         );
@@ -636,7 +636,7 @@ describe("套餐管理模块接口测试", () => {
       test("异常：优惠券不存在", async () => {
         await expectBizError(
           CouponAPI.receive(99999999),
-          ["COUPON_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+          ["A0523", "A0400", "ERR_BAD_REQUEST"],
           undefined,
           true
         );

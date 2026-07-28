@@ -85,7 +85,7 @@ describe("订单管理模块接口测试", () => {
       const form = createOrderCreateForm(99999999);
       await expectBizError(
         OrderAPI.create(form),
-        ["PACKAGE_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0520", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -105,7 +105,7 @@ describe("订单管理模块接口测试", () => {
       const form = createOrderCreateForm(offShelfPkg!.id!);
       await expectBizError(
         OrderAPI.create(form),
-        ["PACKAGE_OFF_SHELF", "PACKAGE_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0521", "A0520", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -177,7 +177,7 @@ describe("订单管理模块接口测试", () => {
     test("异常：订单不存在", async () => {
       await expectBizError(
         OrderAPI.getDetail("NON_EXISTENT_ORDER_NO_999999"),
-        ["ORDER_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0530", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -206,7 +206,7 @@ describe("订单管理模块接口测试", () => {
     test("异常：取消不存在的订单", async () => {
       await expectBizError(
         OrderAPI.cancel("NON_EXISTENT_ORDER_NO_999999", "测试取消"),
-        ["ORDER_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0530", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -215,7 +215,7 @@ describe("订单管理模块接口测试", () => {
     test("异常：重复取消订单", async () => {
       await expectBizError(
         OrderAPI.cancel(testOrderNo, "重复取消"),
-        ["ORDER_STATUS_INVALID", "ORDER_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0531", "A0530", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -244,7 +244,7 @@ describe("订单管理模块接口测试", () => {
     test("异常：订单不存在", async () => {
       await expectBizError(
         OrderAPI.pay("NON_EXISTENT_ORDER_NO_999999", { payMethod: "balance" }),
-        ["ORDER_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0530", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -287,7 +287,7 @@ describe("订单管理模块接口测试", () => {
           payMethod: "balance",
           enabled: true,
         }),
-        ["PACKAGE_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0520", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -357,7 +357,7 @@ describe("订单管理模块接口测试", () => {
     test("异常：订单不存在", async () => {
       await expectBizError(
         OrderAPI.applyRefund("NON_EXISTENT_ORDER_NO_999999", createRefundApplyForm()),
-        ["ORDER_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0530", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -534,7 +534,7 @@ describe("订单管理模块接口测试", () => {
     test("异常：退款记录不存在", async () => {
       await expectBizError(
         OrderAPI.approveRefund(99999999, { approved: true, remark: "测试" }),
-        ["REFUND_NOT_FOUND", "ORDER_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0537", "A0530", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -543,7 +543,7 @@ describe("订单管理模块接口测试", () => {
     test("异常：驳回不存在的退款记录", async () => {
       await expectBizError(
         OrderAPI.rejectRefund(99999999, { approved: false, remark: "测试" }),
-        ["REFUND_NOT_FOUND", "ORDER_NOT_FOUND", "A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0537", "A0530", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
