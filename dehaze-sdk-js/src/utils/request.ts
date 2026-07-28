@@ -1,5 +1,6 @@
 import { configManager } from "@/config";
 import { ResultEnum } from "@/enums/ResultEnum";
+import { ResponseData } from "@/types";
 import type {
   AxiosError,
   AxiosRequestConfig,
@@ -60,7 +61,7 @@ service.interceptors.response.use(
       return result;
     }
 
-    const { code, data } = response.data;
+    const { code, data } = response.data as ResponseData<any>;
     if (code !== ResultEnum.SUCCESS) {
       const error = new Error(response.data?.msg || "Business error") as AxiosError;
       error.response = response;

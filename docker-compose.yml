@@ -106,7 +106,7 @@ services:
     networks:
       - pei-network
 
-  # ElasticSearch (Single Node)
+  # ElasticSearch
   elasticsearch:
     image: elasticsearch:8.18.2
     container_name: elasticsearch
@@ -403,24 +403,7 @@ services:
     networks:
       - pei-network
 
-  tdengine:
-    image: tdengine/tdengine
-    container_name: tdengine
-    restart: unless-stopped
-    ports:
-      - "6030:6030"
-      - "6041:6041"
-      - "6043:6043"
-      - "6044-6049:6044-6049"
-      - "6044-6045:6044-6045/udp"
-      - "6060:6060"
-    volumes:
-      - tdengine-data:/var/lib/taos
-      - tdengine-logs:/var/log/taos
-    networks:
-      - pei-network
-
-  # Prometheus (监控采集)
+  # Prometheus
   prometheus:
     image: ubuntu/prometheus:2.50-22.04_stable
     container_name: prometheus
@@ -500,10 +483,6 @@ volumes:
   kafka-data:
     external: true
   xxl-job-logs:
-    external: true
-  tdengine-data:
-    external: true
-  tdengine-logs:
     external: true
   prometheus-data:
     external: true
