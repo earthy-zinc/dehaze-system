@@ -9,7 +9,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,11 +17,13 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
 import java.time.Duration;
+import java.util.UUID;
 
 /**
  * 缓存配置（L1 Caffeine + L2 Redis 多级缓存）
@@ -58,11 +59,16 @@ public class RedisCacheConfig {
 
     /**
      * 多级缓存管理器（@Primary，Spring Cache 注解使用此管理器）
+     *
+     * <p>每次应用启动生成唯一 senderId，用于 cache:invalidation Pub/Sub 防自消费。
      */
     @Bean
     @Primary
-    public CacheManager cacheManager(RedisCacheManager redisCacheManager, MeterRegistry meterRegistry) {
-        return new MultiLevelCacheManager(redisCacheManager, meterRegistry, Duration.ofMinutes(5));
+    public MultiLevelCacheManager cacheManager(RedisCacheManager redisCacheManager, MeterRegistry meterRegistry,
+                                               StringRedisTemplate stringRedisTemplate) {
+        String senderId = UUID.randomUUID().toString();
+        return new MultiLevelCacheManager(redisCacheManager, meterRegistry, Duration.ofMinutes(5),
+                stringRedisTemplate, senderId);
     }
 
     /**

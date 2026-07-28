@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.annotation.AuditLog;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysAutoRenewMapper;
@@ -92,6 +93,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @AuditLog(module = "order", action = "create", targetType = "order", targetIdSpel = "#result.orderNo", afterSpel = "#form")
     public PayResult create(OrderCreateForm form) {
         Long userId = SecurityUtils.getUserId();
         SysPackage pkg = packageMapper.selectById(form.getPackageId());
@@ -236,6 +238,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @AuditLog(module = "order", action = "cancel", targetType = "order", targetIdSpel = "#orderNo", afterSpel = "{reason:#reason}")
     public void cancel(String orderNo, String reason) {
         SysOrder order = getOrderByNo(orderNo);
         if (order.getStatus() != 1) {
@@ -395,6 +398,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @AuditLog(module = "order", action = "refund_apply", targetType = "order", targetIdSpel = "#orderNo", afterSpel = "#form")
     public void applyRefund(String orderNo, RefundApplyForm form) {
         SysOrder order = getOrderByNo(orderNo);
         if (order.getStatus() != 2 && order.getStatus() != 3) {
@@ -466,6 +470,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @AuditLog(module = "order", action = "refund_approve", targetType = "order", targetIdSpel = "#refundId", afterSpel = "#form")
     public void approveRefund(Long refundId, RefundAuditForm form) {
         SysRefundRecord refund = refundRecordMapper.selectById(refundId);
         if (refund == null) {
@@ -515,6 +520,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @AuditLog(module = "order", action = "refund_reject", targetType = "order", targetIdSpel = "#refundId", afterSpel = "#form")
     public void rejectRefund(Long refundId, RefundAuditForm form) {
         SysRefundRecord refund = refundRecordMapper.selectById(refundId);
         if (refund == null) {

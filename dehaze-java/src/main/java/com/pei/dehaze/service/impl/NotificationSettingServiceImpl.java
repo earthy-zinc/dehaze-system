@@ -22,7 +22,7 @@ import java.time.format.DateTimeFormatter;
 public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationSettingMapper, SysNotificationSetting> implements NotificationSettingService {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
-    private static final String DEFAULT_PREFERENCES = "{\"typeChannels\":{\"announcement\":{\"push\":true},\"business\":{\"push\":true},\"member\":{\"push\":true}},\"moduleSwitches\":{\"prediction\":true,\"feedback\":true,\"announcement\":true}}}";
+    private static final String DEFAULT_PREFERENCES = "{\"typeChannels\":{\"announcement\":{\"push\":true},\"business\":{\"push\":true},\"member\":{\"push\":true}},\"moduleSwitches\":{\"prediction\":true,\"feedback\":true,\"announcement\":true}}";
 
     @Override
     public NotificationSettingsVO get() {

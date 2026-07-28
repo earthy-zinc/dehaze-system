@@ -3,6 +3,7 @@ package com.pei.dehaze.config;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -20,12 +21,21 @@ public class MultiLevelCacheManager implements CacheManager {
     private final CacheManager l2CacheManager;
     private final MeterRegistry meterRegistry;
     private final Duration l1Expire;
+    private final StringRedisTemplate publisher;
+    private final String senderId;
     private final ConcurrentMap<String, Cache> cacheMap = new ConcurrentHashMap<>();
 
-    public MultiLevelCacheManager(CacheManager l2CacheManager, MeterRegistry meterRegistry, Duration l1Expire) {
+    public MultiLevelCacheManager(CacheManager l2CacheManager, MeterRegistry meterRegistry, Duration l1Expire,
+                                  StringRedisTemplate publisher, String senderId) {
         this.l2CacheManager = l2CacheManager;
         this.meterRegistry = meterRegistry;
         this.l1Expire = l1Expire;
+        this.publisher = publisher;
+        this.senderId = senderId;
+    }
+
+    public String getSenderId() {
+        return senderId;
     }
 
     @Override
@@ -35,8 +45,12 @@ public class MultiLevelCacheManager implements CacheManager {
             if (l2Cache == null) {
                 return null;
             }
-            return new MultiLevelCache(n, l1Expire, l2Cache, meterRegistry);
+            return new MultiLevelCache(n, l1Expire, l2Cache, meterRegistry, publisher, senderId);
         });
+    }
+
+    public Cache getCacheIfPresent(String name) {
+        return cacheMap.get(name);
     }
 
     @Override

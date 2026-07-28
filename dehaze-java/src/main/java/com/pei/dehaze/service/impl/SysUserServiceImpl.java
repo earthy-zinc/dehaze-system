@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.annotation.AuditLog;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
@@ -173,6 +174,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      * @return true|false
      */
     @Override
+    @AuditLog(module = "user", action = "delete", targetType = "user", targetIdSpel = "#idsStr")
     public boolean deleteUsers(String idsStr) {
         if (StrUtil.isBlank(idsStr)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "删除的用户数据为空");
@@ -191,6 +193,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      * @return true|false
      */
     @Override
+    @AuditLog(module = "user", action = "password_change", targetType = "user", targetIdSpel = "#userId")
     public boolean updatePassword(Long userId, String password) {
         if (StrUtil.isBlank(password)) {
             throw new BusinessException(ResultCode.PARAM_IS_NULL);

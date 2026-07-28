@@ -1,5 +1,6 @@
 package com.pei.dehaze.model.form;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -37,9 +38,11 @@ public class CouponForm {
     private String validType;
 
     @Schema(description = "有效期开始时间")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime validStart;
 
     @Schema(description = "有效期结束时间")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime validEnd;
 
     @Schema(description = "领取后有效天数")

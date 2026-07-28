@@ -4,7 +4,7 @@ public interface SecurityConstants {
 
     String CAPTCHA_CODE_PREFIX = "captcha_code:";
 
-    String ROLE_PERMS_PREFIX = "role_perms:";
+    String ROLE_PERMS_PREFIX = "role:perms:";
 
     String SESSION_PREFIX = "session:";
 

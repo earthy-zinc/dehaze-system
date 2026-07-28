@@ -53,6 +53,13 @@ public class SysAlgorithmController {
         return Result.success(options);
     }
 
+    @Operation(summary = "获取所有算法扁平列表")
+    @GetMapping("/list")
+    public Result<List<AlgorithmVO>> listAll() {
+        List<AlgorithmVO> list = algorithmService.listAll();
+        return Result.success(list);
+    }
+
     @Operation(summary = "根据ID获取算法信息")
     @GetMapping("/{id}")
     public Result<AlgorithmVO> getById(@PathVariable Long id) {

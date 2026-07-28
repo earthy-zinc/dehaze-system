@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.annotation.AuditLog;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysMemberGrowthLogMapper;
@@ -113,13 +114,19 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         }
 
         this.page(page, wrapper);
-        Map<Long, SysUser> userMap = userMapper.selectBatchIds(page.getRecords().stream()
-                        .map(SysMember::getUserId).distinct().toList())
-                .stream()
-                .collect(Collectors.toMap(SysUser::getId, u -> u));
+        List<SysMember> records = page.getRecords();
+        Map<Long, SysUser> userMap;
+        if (records.isEmpty()) {
+            userMap = Collections.emptyMap();
+        } else {
+            userMap = userMapper.selectBatchIds(records.stream()
+                            .map(SysMember::getUserId).distinct().toList())
+                    .stream()
+                    .collect(Collectors.toMap(SysUser::getId, u -> u));
+        }
 
         Page<MemberPageVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
-        result.setRecords(page.getRecords().stream().map(m -> {
+        result.setRecords(records.stream().map(m -> {
             SysUser u = userMap.get(m.getUserId());
             return toPageVO(m, u);
         }).toList());
@@ -150,6 +157,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @AuditLog(module = "member", action = "level_change", targetType = "member", targetIdSpel = "#userId", beforeSpel = "", afterSpel = "#form")
     public void adjustLevel(Long userId, MemberLevelAdjustForm form) {
         SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
                 .eq(SysMember::getUserId, userId));
@@ -180,6 +188,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @AuditLog(module = "member", action = "growth_change", targetType = "member", targetIdSpel = "#userId", afterSpel = "#form")
     public void adjustGrowth(Long userId, MemberGrowthAdjustForm form) {
         SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
                 .eq(SysMember::getUserId, userId));
@@ -209,6 +218,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @AuditLog(module = "member", action = "status_change", targetType = "member", targetIdSpel = "#userId", afterSpel = "#form")
     public void updateStatus(Long userId, MemberStatusForm form) {
         SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
                 .eq(SysMember::getUserId, userId));
@@ -387,6 +397,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     }
 
     @Override
+    @AuditLog(module = "member", action = "quota_deduct", targetType = "member", targetIdSpel = "#userId", afterSpel = "{quotaType:#quotaType,amount:#amount}")
     public boolean deductQuota(Long userId, String quotaType, int amount) {
         if (amount <= 0) {
             return true;

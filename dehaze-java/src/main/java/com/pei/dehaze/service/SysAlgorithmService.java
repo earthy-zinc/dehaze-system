@@ -22,6 +22,8 @@ public interface SysAlgorithmService extends IService<SysAlgorithm> {
 
     List<Option<Long>> getOption();
 
+    List<AlgorithmVO> listAll();
+
     SysAlgorithm getAlgorithmById(Long id);
 
     SysAlgorithm getRootAlgorithm(Long id);

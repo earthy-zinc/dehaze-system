@@ -61,7 +61,6 @@ public class PackageController {
 
     @Operation(summary = "后台：套餐分页列表")
     @GetMapping("/page")
-    @PreAuthorize("@ss.hasPerm('package:list')")
     public PageResult<PackagePageVO> getPage(@ParameterObject PackagePageQuery query) {
         Page<PackagePageVO> page = packageService.getPage(query);
         return PageResult.success(page);
@@ -69,7 +68,6 @@ public class PackageController {
 
     @Operation(summary = "后台：获取套餐表单数据")
     @GetMapping("/{id}/form")
-    @PreAuthorize("@ss.hasPerm('package:list')")
     public Result<PackageForm> getForm(@Parameter(description = "套餐ID") @PathVariable Long id) {
         return Result.success(packageService.getForm(id));
     }
@@ -132,7 +130,6 @@ public class PackageController {
 
     @Operation(summary = "后台：优惠券分页列表")
     @GetMapping("/coupons/page")
-    @PreAuthorize("@ss.hasPerm('coupon:list')")
     public PageResult<CouponVO> getCouponPage(@ParameterObject CouponPageQuery query) {
         Page<CouponVO> page = couponService.getPage(query);
         return PageResult.success(page);

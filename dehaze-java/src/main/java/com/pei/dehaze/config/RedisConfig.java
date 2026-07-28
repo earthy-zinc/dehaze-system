@@ -17,6 +17,15 @@ import static com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping.NON_FINA
 /**
  * Redis 配置
  *
+ * <p>Redis db 隔离推荐配置（当前所有数据均在 db=0，未分库）：
+ * <ul>
+ *   <li>db=0：业务缓存（当前默认）</li>
+ *   <li>db=1：Session + 分布式锁（TODO 后续迁移，需同步修改 Java/Go/Python 三端）</li>
+ *   <li>db=2：限流计数器（rate_limit / login:fail 等）</li>
+ * </ul>
+ * 注意：Session 当前存在 db=0，迁移到 db=1 需要同步修改三端（dehaze-java/go/python），
+ * 暂不执行迁移，避免破坏现有登录态。
+ *
  * @author earthyzinc
  * @since 2023/5/15
  */

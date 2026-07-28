@@ -56,7 +56,7 @@ public class AnnouncementController {
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('notify:announcement:edit')")
     public Result<Void> update(@Parameter(description = "公告ID") @PathVariable Long id,
-                               @Valid @RequestBody AnnouncementForm form) {
+                               @RequestBody AnnouncementForm form) {
         announcementService.update(id, form);
         return Result.success();
     }

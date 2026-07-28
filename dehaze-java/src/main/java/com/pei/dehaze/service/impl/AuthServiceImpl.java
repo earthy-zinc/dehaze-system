@@ -3,7 +3,10 @@ package com.pei.dehaze.service.impl;
 import cn.hutool.captcha.AbstractCaptcha;
 import cn.hutool.captcha.CaptchaUtil;
 import cn.hutool.captcha.generator.CodeGenerator;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.IdUtil;
+import cn.hutool.http.useragent.UserAgent;
+import cn.hutool.http.useragent.UserAgentUtil;
 import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.constant.SecurityConstants;
@@ -20,6 +23,7 @@ import com.pei.dehaze.model.entity.SysUserRole;
 import com.pei.dehaze.plugin.captcha.CaptchaProperties;
 import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.service.AuthService;
+import com.pei.dehaze.service.LoginLogService;
 import com.pei.dehaze.service.SysRoleService;
 import com.pei.dehaze.service.SysUserRoleService;
 import com.pei.dehaze.service.SysUserService;
@@ -61,6 +65,7 @@ public class AuthServiceImpl implements AuthService {
     private final SysUserService sysUserService;
     private final SysRoleService sysRoleService;
     private final SysUserRoleService sysUserRoleService;
+    private final LoginLogService loginLogService;
 
     private static final String LOGIN_FAIL_PREFIX = "login:fail:";
     private static final int MAX_LOGIN_ATTEMPTS = 5;
@@ -69,22 +74,27 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResult login(LoginForm form) {
+        String username = form.getUsername().toLowerCase().trim();
+
         String cacheKey = SecurityConstants.CAPTCHA_CODE_PREFIX + form.getCaptchaKey();
         String cacheVerifyCode = redisTemplate.opsForValue().get(cacheKey);
         if (cacheVerifyCode == null) {
+            recordLogin(null, username, 0, "验证码已过期");
             throw new BusinessException(ResultCode.VERIFY_CODE_TIMEOUT);
         }
         if (!codeGenerator.verify(cacheVerifyCode, form.getCaptchaCode())) {
+            recordLogin(null, username, 0, "验证码错误");
             throw new BusinessException(ResultCode.VERIFY_CODE_ERROR);
         }
         redisTemplate.delete(cacheKey);
 
-        String username = form.getUsername().toLowerCase().trim();
         String failKey = LOGIN_FAIL_PREFIX + username;
         String failCountStr = redisTemplate.opsForValue().get(failKey);
         Integer failCount = failCountStr != null ? Integer.parseInt(failCountStr) : null;
         if (failCount != null && failCount >= MAX_LOGIN_ATTEMPTS) {
-            throw new BusinessException("账户已被锁定，请" + LOCK_DURATION_MINUTES + "分钟后再试");
+            String msg = "账户已被锁定，请" + LOCK_DURATION_MINUTES + "分钟后再试";
+            recordLogin(null, username, 0, msg);
+            throw new BusinessException(msg);
         }
 
         UsernamePasswordAuthenticationToken authenticationToken =
@@ -99,18 +109,24 @@ public class AuthServiceImpl implements AuthService {
             }
             long remaining = MAX_LOGIN_ATTEMPTS - (count != null ? count : 0);
             if (remaining > 0) {
-                throw new BusinessException("用户名或密码错误，剩余" + remaining + "次尝试机会");
+                String msg = "用户名或密码错误，剩余" + remaining + "次尝试机会";
+                recordLogin(null, username, 0, msg);
+                throw new BusinessException(msg);
             } else {
-                throw new BusinessException("账户已被锁定，请" + LOCK_DURATION_MINUTES + "分钟后再试");
+                String msg = "账户已被锁定，请" + LOCK_DURATION_MINUTES + "分钟后再试";
+                recordLogin(null, username, 0, msg);
+                throw new BusinessException(msg);
             }
         } catch (Exception e) {
             log.error("认证过程发生非凭证类异常，未递增失败计数: username={}", username, e);
+            recordLogin(null, username, 0, "认证服务暂时不可用，请稍后重试");
             throw new BusinessException("认证服务暂时不可用，请稍后重试");
         }
 
         redisTemplate.delete(failKey);
 
         SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
+        recordLogin(userDetails.getUserId(), username, 1, "登录成功");
 
         String sessionId = IdUtil.fastSimpleUUID();
         JSONObject session = new JSONObject();
@@ -275,5 +291,41 @@ public class AuthServiceImpl implements AuthService {
             case LINE -> CaptchaUtil.createLineCaptcha(width, height, codeLength, interfereCount);
             case SHEAR -> CaptchaUtil.createShearCaptcha(width, height, codeLength, interfereCount);
         };
+    }
+
+    private void recordLogin(Long userId, String username, int status, String message) {
+        try {
+            ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            String ip = null;
+            String browser = null;
+            String os = null;
+            if (requestAttributes != null) {
+                HttpServletRequest request = requestAttributes.getRequest();
+                ip = getClientIp(request);
+                String userAgent = request.getHeader("User-Agent");
+                if (CharSequenceUtil.isNotBlank(userAgent)) {
+                    UserAgent ua = UserAgentUtil.parse(userAgent);
+                    browser = ua.getBrowser() != null ? ua.getBrowser().getName() : null;
+                    os = ua.getOs() != null ? ua.getOs().getName() : null;
+                }
+            }
+            loginLogService.recordLogin(userId, username, ip, status, message, browser, os, null);
+        } catch (Exception e) {
+            log.warn("记录登录日志失败: username={}, status={}", username, status, e);
+        }
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (CharSequenceUtil.isBlank(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (CharSequenceUtil.isBlank(ip) || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 }

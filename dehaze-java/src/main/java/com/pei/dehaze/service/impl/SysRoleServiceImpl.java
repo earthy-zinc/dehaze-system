@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.annotation.AuditLog;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
@@ -161,6 +162,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * @return {@link Boolean}
      */
     @Override
+    @AuditLog(module = "role", action = "status_change", targetType = "role", targetIdSpel = "#roleId", afterSpel = "#status")
     public boolean updateRoleStatus(Long roleId, Integer status) {
 
         SysRole role = this.getById(roleId);
@@ -184,6 +186,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * @return {@link Boolean}
      */
     @Override
+    @AuditLog(module = "role", action = "delete", targetType = "role", targetIdSpel = "#ids")
     public boolean deleteRoles(String ids) {
         if (StrUtil.isBlank(ids)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "删除的角色ID不能为空");
@@ -235,6 +238,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(cacheNames = "menu", key = "'routes'")
+    @AuditLog(module = "role", action = "update", targetType = "role", targetIdSpel = "#roleId", afterSpel = "#menuIds")
     public boolean assignMenusToRole(Long roleId, List<Long> menuIds) {
         SysRole role = this.getById(roleId);
         if (role == null) {

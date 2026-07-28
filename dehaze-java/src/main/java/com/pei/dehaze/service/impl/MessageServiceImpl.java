@@ -82,7 +82,6 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
 
         String type = form.getType();
         Integer priority = form.getPriority() != null ? form.getPriority() : 2;
-        String extraJson = form.getExtra() != null ? JSONUtil.toJsonStr(form.getExtra()) : null;
         LocalDateTime expiresAt = calcExpiresAt(type);
 
         List<Long> messageIds = new ArrayList<>();
@@ -97,7 +96,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             message.setBizId(form.getBizId());
             message.setPriority(priority);
             message.setJumpUrl(form.getJumpUrl());
-            message.setExtra(extraJson);
+            message.setExtra(form.getExtra());
             message.setReadStatus(0);
             message.setDeleted(0);
             message.setExpiresAt(expiresAt);
@@ -266,7 +265,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
                 .in(SysMessage::getId, idList)
                 .eq(SysMessage::getRecipientId, userId));
         if (unreadDeleted > 0) {
-            stringRedisTemplate.opsForValue().decrement(UNREAD_KEY_PREFIX + userId, unreadDeleted);
+            stringRedisTemplate.delete(UNREAD_KEY_PREFIX + userId);
         }
     }
 
@@ -307,25 +306,15 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
         vo.setSenderTypeLabel(message.getSenderType() != null && message.getSenderType() == 2 ? "管理员" : "系统");
         vo.setReadTime(message.getReadTime());
         vo.setJumpUrl(message.getJumpUrl());
-        if (CharSequenceUtil.isNotBlank(message.getExtra())) {
-            vo.setExtra(JSONUtil.parseObj(message.getExtra()));
-        }
+        vo.setExtra(message.getExtra());
         vo.setCreateTime(message.getCreateTime());
     }
 
     private void incrementUnreadCache(Long userId) {
-        String cacheKey = UNREAD_KEY_PREFIX + userId;
-        String cached = stringRedisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            stringRedisTemplate.opsForValue().increment(cacheKey);
-        }
+        stringRedisTemplate.delete(UNREAD_KEY_PREFIX + userId);
     }
 
     private void decrementUnreadCache(Long userId) {
-        String cacheKey = UNREAD_KEY_PREFIX + userId;
-        String cached = stringRedisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            stringRedisTemplate.opsForValue().decrement(cacheKey);
-        }
+        stringRedisTemplate.delete(UNREAD_KEY_PREFIX + userId);
     }
 }

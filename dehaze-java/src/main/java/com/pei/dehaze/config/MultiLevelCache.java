@@ -1,11 +1,13 @@
 package com.pei.dehaze.config;
 
+import cn.hutool.json.JSONObject;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.support.AbstractValueAdaptingCache;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Duration;
 import java.util.concurrent.Callable;
@@ -21,13 +23,18 @@ import com.github.benmanes.caffeine.cache.Caffeine;
  * <p>写流程：同时写入 L1 和 L2
  * <p>SingleFlight：相同 key 的并发回源请求合并，防缓存击穿
  * <p>空值缓存：通过 AbstractValueAdaptingCache 的 allowNullValues=true 机制缓存 null
+ * <p>多实例失效广播：evict/clear 时通过 Redis Pub/Sub（cache:invalidation 频道）通知其他实例清 L1
  */
 @Slf4j
 public class MultiLevelCache extends AbstractValueAdaptingCache {
 
+    static final String CACHE_INVALIDATION_CHANNEL = "cache:invalidation";
+
     private final String name;
     private final com.github.benmanes.caffeine.cache.Cache<Object, Object> l1Cache;
     private final Cache l2Cache;
+    private final StringRedisTemplate publisher;
+    private final String senderId;
 
     // SingleFlight：相同 key 的并发回源合并
     private final ConcurrentHashMap<Object, CompletableFuture<Object>> inFlight = new ConcurrentHashMap<>();
@@ -43,10 +50,14 @@ public class MultiLevelCache extends AbstractValueAdaptingCache {
             String name,
             Duration l1Expire,
             Cache l2Cache,
-            MeterRegistry meterRegistry) {
+            MeterRegistry meterRegistry,
+            StringRedisTemplate publisher,
+            String senderId) {
         super(true); // allowNullValues=true，启用空值缓存防穿透
         this.name = name;
         this.l2Cache = l2Cache;
+        this.publisher = publisher;
+        this.senderId = senderId;
         this.l1Cache = Caffeine.newBuilder()
                 .expireAfterWrite(l1Expire)
                 .maximumSize(1000)
@@ -161,11 +172,33 @@ public class MultiLevelCache extends AbstractValueAdaptingCache {
         // Cache-Aside：先删 L2 再删 L1
         l2Cache.evict(key);
         l1Cache.invalidate(key);
+        // 广播失效消息，通知其他实例清 L1
+        publishInvalidation(key);
     }
 
     @Override
     public void clear() {
         l2Cache.clear();
         l1Cache.invalidateAll();
+        publishInvalidation(null);
+    }
+
+    void clearLocal() {
+        l1Cache.invalidateAll();
+    }
+
+    private void publishInvalidation(Object key) {
+        if (publisher == null) {
+            return;
+        }
+        try {
+            JSONObject msg = new JSONObject();
+            msg.set("type", name);
+            msg.set("key", key != null ? key.toString() : null);
+            msg.set("senderId", senderId);
+            publisher.convertAndSend(CACHE_INVALIDATION_CHANNEL, msg.toString());
+        } catch (Exception e) {
+            log.warn("发布缓存失效消息失败（不影响本地失效）: cache={}, key={}", name, key, e);
+        }
     }
 }

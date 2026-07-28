@@ -11,7 +11,7 @@ public final class TaskConstants {
 
     // ========== Redis Key 前缀 ==========
     /** 任务状态缓存前缀 */
-    public static final String TASK_CACHE_PREFIX = "task:";
+    public static final String TASK_CACHE_PREFIX = "task:running:";
     /** 任务取消标识前缀 */
     public static final String TASK_CANCEL_PREFIX = "task:cancel:";
     /** 幂等键缓存前缀 */

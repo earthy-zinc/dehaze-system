@@ -2,6 +2,7 @@ package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.lang.Assert;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.pei.dehaze.annotation.AuditLog;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.FileBOFactory;
@@ -325,6 +326,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     }
 
     @Override
+    @AuditLog(module = "dataset", action = "delete", targetType = "dataset_item", targetIdSpel = "#datasetItemIds")
     public BatchOperationResultVO batchDeleteDatasetItemsCascadeWithResult(List<Long> datasetItemIds) {
         int successCount = 0;
         int failedCount = 0;
@@ -392,6 +394,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     }
 
     @Override
+    @AuditLog(module = "dataset", action = "delete", targetType = "dataset", targetIdSpel = "#datasetIds")
     public BatchDeleteResult batchDeleteDatasets(List<Long> datasetIds) {
         if (datasetIds == null || datasetIds.isEmpty()) {
             throw new BusinessException("删除的数据集ID列表不能为空");

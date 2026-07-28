@@ -108,6 +108,14 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     @Override
+    public List<AlgorithmVO> listAll() {
+        List<SysAlgorithm> algorithms = getAllAlgorithms();
+        return algorithms.stream()
+                .map(algorithmConverter::entity2Vo)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public SysAlgorithm getAlgorithmById(Long id) {
         SysAlgorithm cur = this.getById(id);
         if (cur == null) {

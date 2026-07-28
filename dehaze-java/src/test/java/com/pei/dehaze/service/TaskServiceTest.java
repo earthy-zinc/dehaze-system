@@ -413,7 +413,7 @@ class TaskServiceTest {
         taskService.cancelTask(taskId);
 
         // Assert
-        verify(valueOperations, atLeastOnce()).set(eq("task:" + taskId), any(), anyLong(), any());
+        verify(valueOperations, atLeastOnce()).set(eq("task:running:" + taskId), any(), anyLong(), any());
     }
 
     /**
@@ -440,7 +440,7 @@ class TaskServiceTest {
         taskService.cancelTask(taskId);
 
         // Assert
-        verify(valueOperations, atLeastOnce()).set(eq("task:" + taskId), any(), anyLong(), any());
+        verify(valueOperations, atLeastOnce()).set(eq("task:running:" + taskId), any(), anyLong(), any());
     }
 
     /**
