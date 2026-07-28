@@ -27,6 +27,14 @@ class AlgorithmAPI {
     });
   }
 
+  /** 获取所有算法扁平列表（不分页，不构建树形） */
+  static listAll() {
+    return request<Algorithm[]>({
+      url: "/api/v1/algorithms/list",
+      method: "get",
+    });
+  }
+
   /** 获取算法详情 */
   static getAlgorithmInfoById(id: number) {
     return request<Algorithm>({

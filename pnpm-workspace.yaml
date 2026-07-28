@@ -25,6 +25,8 @@ overrides:
   '@tarojs/webpack5-prebundle>enhanced-resolve': 5.17.1
   '@vue/server-renderer': 3.5.39
   stylelint-config-recommended: ^17.0.0
+  '@types/react': ^19.2.3
+  '@types/react-dom': ^19.2.3
 
 patchedDependencies:
   '@tarojs/vite-runner@4.2.1': dehaze-taro/patches/@tarojs__vite-runner@4.2.1.patch
