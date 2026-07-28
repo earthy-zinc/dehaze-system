@@ -41,8 +41,11 @@ import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.MemberService;
 import com.pei.dehaze.service.OrderService;
 import com.pei.dehaze.service.PackageService;
+import com.pei.dehaze.service.payment.PaymentChannelService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +59,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -83,6 +87,8 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
     private final SysUserCouponMapper userCouponMapper;
     private final PackageService packageService;
     private final MemberService memberService;
+    private final RedissonClient redissonClient;
+    private final List<PaymentChannelService> paymentChannelServices;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -95,35 +101,53 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         if (pkg.getStatus() != 1) {
             throw new BusinessException(ResultCode.PACKAGE_OFF_SHELF);
         }
-        var priceResult = packageService.calculatePrice(form.getPackageId(), form.getCouponId());
-        if (form.getCouponId() != null) {
-            lockCoupon(form.getCouponId(), userId);
+        String lockKey = "order:lock:" + userId + ":" + form.getPackageId();
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean locked;
+        try {
+            locked = lock.tryLock(0, 5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BusinessException(ResultCode.REPEAT_SUBMIT_ERROR);
         }
-        LocalDateTime now = LocalDateTime.now();
-        SysOrder order = new SysOrder();
-        order.setOrderNo(generateOrderNo());
-        order.setUserId(userId);
-        order.setPackageId(pkg.getId());
-        order.setPackageName(pkg.getName());
-        order.setPackageLevel(pkg.getLevelCode());
-        order.setPeriodDays(pkg.getPeriodDays());
-        order.setOriginalPrice(priceResult.getOriginalPrice());
-        order.setDiscountAmount(priceResult.getDiscountAmount());
-        order.setCouponId(form.getCouponId());
-        order.setCouponAmount(priceResult.getCouponAmount());
-        order.setPayableAmount(priceResult.getPayableAmount());
-        order.setPaidAmount(0L);
-        order.setPayMethod(form.getPayMethod());
-        order.setStatus(1);
-        order.setExpireTime(now.plusMinutes(ORDER_TIMEOUT_MINUTES));
-        order.setIsAutoRenew(0);
-        this.save(order);
+        if (!locked) {
+            throw new BusinessException(ResultCode.DUPLICATE_ORDER);
+        }
+        try {
+            var priceResult = packageService.calculatePrice(form.getPackageId(), form.getCouponId());
+            if (form.getCouponId() != null) {
+                lockCoupon(form.getCouponId(), userId);
+            }
+            LocalDateTime now = LocalDateTime.now();
+            SysOrder order = new SysOrder();
+            order.setOrderNo(generateOrderNo());
+            order.setUserId(userId);
+            order.setPackageId(pkg.getId());
+            order.setPackageName(pkg.getName());
+            order.setPackageLevel(pkg.getLevelCode());
+            order.setPeriodDays(pkg.getPeriodDays());
+            order.setOriginalPrice(priceResult.getOriginalPrice());
+            order.setDiscountAmount(priceResult.getDiscountAmount());
+            order.setCouponId(form.getCouponId());
+            order.setCouponAmount(priceResult.getCouponAmount());
+            order.setPayableAmount(priceResult.getPayableAmount());
+            order.setPaidAmount(0L);
+            order.setPayMethod(form.getPayMethod());
+            order.setStatus(1);
+            order.setExpireTime(now.plusMinutes(ORDER_TIMEOUT_MINUTES));
+            order.setIsAutoRenew(0);
+            this.save(order);
 
-        PayResult result = new PayResult();
-        result.setOrderNo(order.getOrderNo());
-        result.setPayMethod(form.getPayMethod());
-        result.setPaid(false);
-        return result;
+            PayResult result = new PayResult();
+            result.setOrderNo(order.getOrderNo());
+            result.setPayMethod(form.getPayMethod());
+            result.setPaid(false);
+            return result;
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
     }
 
     @Override
@@ -137,6 +161,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             throw new BusinessException(ResultCode.ORDER_EXPIRED);
         }
         order.setPayMethod(request.getPayMethod());
+        this.updateById(order);
         PayResult result = new PayResult();
         result.setOrderNo(orderNo);
         result.setPayMethod(request.getPayMethod());
@@ -145,12 +170,68 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             completePayment(order, request.getPayMethod());
             result.setPaid(true);
         } else {
-            SysPaymentRecord record = createPaymentRecord(order, request.getPayMethod(), 1);
-            result.setPayUrl("https://mock-pay.example.com/pay?orderNo=" + orderNo + "&method=" + request.getPayMethod());
-            result.setQrCode("pay://" + orderNo);
+            PaymentChannelService channel = getPaymentChannel(request.getPayMethod());
+            long amountFen = order.getPayableAmount() != null ? order.getPayableAmount() : 0L;
+            PaymentChannelService.UnifiedOrderResult orderResult =
+                    channel.unifiedOrder(orderNo, amountFen, order.getPackageName(), Map.of());
+            if (!orderResult.success()) {
+                throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, orderResult.errorMessage());
+            }
+            createPaymentRecord(order, request.getPayMethod(), 1);
+            result.setPayUrl(orderResult.payUrl());
+            result.setQrCode(orderResult.qrCode());
             result.setPaid(false);
         }
         return result;
+    }
+
+    @Override
+    public boolean handlePaymentCallback(String channelType, Map<String, String> params, String rawBody) {
+        PaymentChannelService channel = getPaymentChannel(channelType);
+        PaymentChannelService.CallbackVerifyResult verifyResult = channel.verifyCallback(params, rawBody);
+        if (!verifyResult.success()) {
+            log.warn("支付回调验签失败: channel={}, error={}", channelType, verifyResult.errorMessage());
+            return false;
+        }
+        String orderNo = verifyResult.orderNo();
+        if (orderNo == null) {
+            log.warn("支付回调缺少订单号: channel={}", channelType);
+            return false;
+        }
+        String lockKey = "payment:lock:" + orderNo;
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean locked;
+        try {
+            locked = lock.tryLock(300, 10, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+        if (!locked) {
+            log.info("支付回调重复，已跳过: orderNo={}", orderNo);
+            return true;
+        }
+        try {
+            SysOrder order = getOrderByNo(orderNo);
+            if (order.getStatus() == 2 || order.getStatus() == 3) {
+                return true;
+            }
+            if (order.getStatus() != 1) {
+                log.warn("支付回调订单状态异常: orderNo={}, status={}", orderNo, order.getStatus());
+                return false;
+            }
+            long expectedFen = order.getPayableAmount() != null ? order.getPayableAmount() : 0L;
+            if (verifyResult.amountFen() > 0 && verifyResult.amountFen() != expectedFen) {
+                log.error("支付回调金额不一致: orderNo={}, expected={}, actual={}", orderNo, expectedFen, verifyResult.amountFen());
+                return false;
+            }
+            completePayment(order, channelType);
+            return true;
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
     }
 
     @Override
@@ -394,20 +475,41 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             throw new BusinessException(ResultCode.ORDER_STATUS_INVALID);
         }
         Long operatorId = SecurityUtils.getUserId();
-        refund.setStatus(2);
+        SysOrder order = this.getById(refund.getOrderId());
+        if (order == null) {
+            throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
+        }
+
+        boolean refundOk = true;
+        if (!"balance".equals(order.getPayMethod())) {
+            try {
+                PaymentChannelService channel = getPaymentChannel(order.getPayMethod());
+                long totalFen = order.getPaidAmount() != null ? order.getPaidAmount() : 0L;
+                long refundFen = refund.getRefundAmount() != null ? refund.getRefundAmount() : 0L;
+                refundOk = channel.refund(order.getOrderNo(), refund.getRefundNo(),
+                        totalFen, refundFen, refund.getReason());
+            } catch (Exception e) {
+                log.error("渠道退款失败: orderNo={}, refundNo={}", order.getOrderNo(), refund.getRefundNo(), e);
+                refundOk = false;
+            }
+        }
+
+        if (refundOk) {
+            refund.setStatus(2);
+            refund.setRefundTime(LocalDateTime.now());
+            order.setStatus(6);
+        } else {
+            refund.setStatus(3);
+            refund.setErrorMessage("渠道退款失败，待人工重试");
+            order.setStatus(2);
+        }
         refund.setAuditTime(LocalDateTime.now());
         refund.setAuditorId(operatorId);
         refund.setAuditRemark(form.getRemark());
-        refund.setRefundTime(LocalDateTime.now());
         refundRecordMapper.updateById(refund);
-
-        SysOrder order = this.getById(refund.getOrderId());
-        if (order != null) {
-            order.setStatus(6);
-            this.updateById(order);
-            if (order.getCouponId() != null) {
-                unlockCoupon(order.getCouponId());
-            }
+        this.updateById(order);
+        if (refundOk && order.getCouponId() != null) {
+            unlockCoupon(order.getCouponId());
         }
     }
 
@@ -538,11 +640,48 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         log.info("自动续费执行完成: 共处理{}条", renewals.size());
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void completeExpiredOrders() {
+        List<SysOrder> expiredOrders = this.list(new LambdaQueryWrapper<SysOrder>()
+                .eq(SysOrder::getStatus, 2)
+                .lt(SysOrder::getPackageExpireTime, LocalDateTime.now()));
+        for (SysOrder order : expiredOrders) {
+            order.setStatus(3);
+            this.updateById(order);
+        }
+        log.info("订单到期归档: 共处理{}条", expiredOrders.size());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void expireUserCoupons() {
+        List<SysUserCoupon> expiredCoupons = userCouponMapper.selectList(new LambdaQueryWrapper<SysUserCoupon>()
+                .eq(SysUserCoupon::getStatus, 1)
+                .lt(SysUserCoupon::getExpireTime, LocalDateTime.now()));
+        for (SysUserCoupon coupon : expiredCoupons) {
+            coupon.setStatus(3);
+            userCouponMapper.updateById(coupon);
+        }
+        log.info("用户优惠券过期处理: 共处理{}条", expiredCoupons.size());
+    }
+
     private void executeSingleRenewal(SysAutoRenew renewal) {
         SysPackage pkg = packageMapper.selectById(renewal.getPackageId());
         if (pkg == null || pkg.getStatus() != 1) {
             throw new BusinessException(ResultCode.PACKAGE_NOT_FOUND);
         }
+        long amountFen = pkg.getSalePrice() != null ? pkg.getSalePrice() : 0L;
+
+        if (!"balance".equals(renewal.getPayMethod())) {
+            PaymentChannelService channel = getPaymentChannel(renewal.getPayMethod());
+            boolean deductOk = channel.autoDeduct(renewal.getId() + "-" + System.currentTimeMillis(),
+                    amountFen, "自动续费-" + pkg.getName(), null);
+            if (!deductOk) {
+                throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "自动续费扣款失败");
+            }
+        }
+
         SysOrder order = new SysOrder();
         order.setOrderNo(generateOrderNo());
         order.setUserId(renewal.getUserId());
@@ -571,6 +710,13 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         renewal.setNextRenewTime(order.getPackageExpireTime());
         renewal.setFailCount(0);
         autoRenewMapper.updateById(renewal);
+    }
+
+    private PaymentChannelService getPaymentChannel(String channelType) {
+        return paymentChannelServices.stream()
+                .filter(ch -> ch.getChannelType().equals(channelType))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ResultCode.PARAM_ERROR, "不支持的支付渠道: " + channelType));
     }
 
     private void completePayment(SysOrder order, String payMethod) {

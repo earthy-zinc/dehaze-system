@@ -33,4 +33,6 @@ public interface MemberService extends IService<SysMember> {
     void resetMonthlyQuota();
 
     void processExpiredMembers();
+
+    boolean deductQuota(Long userId, String quotaType, int amount);
 }

@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.mapper.SysMessageMapper;
 import com.pei.dehaze.model.entity.SysMessage;
 import com.pei.dehaze.security.util.SystemSecurityContext;
+import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -25,7 +25,7 @@ public class MessageCleanupJob {
 
     private final SysMessageMapper messageMapper;
 
-    @Scheduled(cron = "0 0 4 * * ?")
+    @XxlJob("cleanupExpiredMessages")
     public void cleanupExpiredMessages() {
         SystemSecurityContext.setSystemContext();
         try {
@@ -42,7 +42,7 @@ public class MessageCleanupJob {
                 if (ids.isEmpty()) {
                     break;
                 }
-                messageMapper.deleteBatchIds(ids);
+                messageMapper.physicalDeleteByIds(ids);
                 totalDeleted += ids.size();
             }
             if (totalDeleted > 0) {

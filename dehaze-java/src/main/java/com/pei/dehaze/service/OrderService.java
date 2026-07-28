@@ -20,12 +20,15 @@ import com.pei.dehaze.model.vo.PayResult;
 import com.pei.dehaze.model.vo.RefundRecordVO;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 public interface OrderService extends IService<SysOrder> {
 
     PayResult create(OrderCreateForm form);
 
     PayResult pay(String orderNo, PayRequest request);
+
+    boolean handlePaymentCallback(String channel, Map<String, String> params, String rawBody);
 
     void cancel(String orderNo, String reason);
 
@@ -52,4 +55,8 @@ public interface OrderService extends IService<SysOrder> {
     void expireOrders();
 
     void executeRenewal();
+
+    void completeExpiredOrders();
+
+    void expireUserCoupons();
 }

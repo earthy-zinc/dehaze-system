@@ -7,9 +7,9 @@ import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.security.util.SystemSecurityContext;
+import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -30,7 +30,7 @@ public class PredEvalLogCleanupJob {
     private final SysPredLogMapper predLogMapper;
     private final SysEvalLogMapper evalLogMapper;
 
-    @Scheduled(cron = "0 * * * * ?")
+    @XxlJob("cleanupStuckPredEvalLogs")
     public void cleanupStuckTasks() {
         SystemSecurityContext.setSystemContext();
         try {

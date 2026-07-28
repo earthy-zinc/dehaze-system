@@ -2,9 +2,9 @@ package com.pei.dehaze.job;
 
 import com.pei.dehaze.security.util.SystemSecurityContext;
 import com.pei.dehaze.service.OrderService;
+import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,7 +18,7 @@ public class AutoRenewJob {
 
     private final OrderService orderService;
 
-    @Scheduled(cron = "0 0 3 * * ?")
+    @XxlJob("autoRenew")
     public void executeRenewal() {
         SystemSecurityContext.setSystemContext();
         try {

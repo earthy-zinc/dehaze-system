@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.model.entity.SysAnnouncement;
 import com.pei.dehaze.security.util.SystemSecurityContext;
 import com.pei.dehaze.service.AnnouncementService;
+import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -23,7 +23,7 @@ public class AnnouncementScheduleJob {
 
     private final AnnouncementService announcementService;
 
-    @Scheduled(cron = "0 * * * * ?")
+    @XxlJob("sendScheduledAnnouncements")
     public void sendScheduledAnnouncements() {
         SystemSecurityContext.setSystemContext();
         try {

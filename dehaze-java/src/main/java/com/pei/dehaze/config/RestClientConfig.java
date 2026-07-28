@@ -32,6 +32,28 @@ public class RestClientConfig {
     private final AlgorithmProperties algorithmProperties;
 
     /**
+     * 通用 RestTemplate（带连接池），用于支付渠道等外部 HTTP 调用
+     */
+    @Bean(name = "paymentRestTemplate")
+    public RestTemplate paymentRestTemplate() {
+        PoolingHttpClientConnectionManager connManager = new PoolingHttpClientConnectionManager();
+        connManager.setMaxTotal(20);
+        connManager.setDefaultMaxPerRoute(10);
+        connManager.setDefaultConnectionConfig(ConnectionConfig.custom()
+                .setConnectTimeout(Timeout.ofSeconds(5))
+                .setSocketTimeout(Timeout.ofSeconds(15))
+                .build());
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setConnectionManager(connManager)
+                .evictIdleConnections(TimeValue.ofSeconds(30))
+                .build();
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
+        RestTemplate restTemplate = new RestTemplate(factory);
+        restTemplate.getInterceptors().add(traceIdInterceptor());
+        return restTemplate;
+    }
+
+    /**
      * 算法服务专用 RestTemplate（带连接池）
      */
     @Bean(name = "algorithmRestTemplate")

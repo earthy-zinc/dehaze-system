@@ -178,11 +178,11 @@ knife4j:
 xxl:
   job:
     # 定时任务开关
-    enabled: false
+    enabled: true
     admin:
       # 多个地址使用,分割
-      addresses: http://127.0.0.1:8080/xxl-job-admin
-    accessToken: default_token
+      addresses: http://127.0.0.1:14980/xxl-job-admin
+    accessToken: ${DEHAZE_PASSWORD:12345678}
     executor:
       appname: xxl-job-executor-${spring.application.name}
       address:
@@ -190,6 +190,7 @@ xxl:
       port: 9999
       logpath: /mnt/e/ProgramProject/new-dehaze/dehaze-java/logs/xxl-job
       logretentiondays: 30
+      timeout: 10
 
 # Python 算法服务配置
 algorithm:
@@ -327,3 +328,26 @@ kafka:
 # 读取根目录的 .env
 springdotenv:
   directory: ../
+
+# 支付渠道配置（默认关闭，启用时调用真实 SDK）
+payment:
+  wechat:
+    enabled: false
+    appId: ${WECHAT_PAY_APP_ID:}
+    mchId: ${WECHAT_PAY_MCH_ID:}
+    apiKey: ${WECHAT_PAY_API_KEY:}
+    privateKey: ${WECHAT_PAY_PRIVATE_KEY:}
+    publicKey: ${WECHAT_PAY_PUBLIC_KEY:}
+    notifyUrl: ${WECHAT_PAY_NOTIFY_URL:}
+    refundNotifyUrl: ${WECHAT_PAY_REFUND_NOTIFY_URL:}
+    baseUrl: ${WECHAT_PAY_BASE_URL:https://api.mch.weixin.qq.com}
+  alipay:
+    enabled: false
+    appId: ${ALIPAY_APP_ID:}
+    mchId: ${ALIPAY_MCH_ID:}
+    apiKey: ${ALIPAY_API_KEY:}
+    privateKey: ${ALIPAY_PRIVATE_KEY:}
+    publicKey: ${ALIPAY_PUBLIC_KEY:}
+    notifyUrl: ${ALIPAY_NOTIFY_URL:}
+    refundNotifyUrl: ${ALIPAY_REFUND_NOTIFY_URL:}
+    baseUrl: ${ALIPAY_BASE_URL:https://openapi.alipay.com}

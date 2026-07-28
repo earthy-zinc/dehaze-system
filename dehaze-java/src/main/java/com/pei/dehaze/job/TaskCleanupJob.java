@@ -6,10 +6,10 @@ import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.security.util.SystemSecurityContext;
+import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -40,7 +40,7 @@ public class TaskCleanupJob {
      * 1. 7天前 COMPLETED/CANCELLED 任务物理删除（用 createTime 判定，避免 completed_at 为 NULL 漏清理）
      * 2. 30天前所有非 PENDING/PROCESSING 任务物理删除（排除正在执行的任务）
      */
-    @Scheduled(cron = "0 0 2 * * ?")
+    @XxlJob("cleanupExpiredTasks")
     public void cleanupExpiredTasks() {
         SystemSecurityContext.setSystemContext();
         try {
@@ -76,7 +76,7 @@ public class TaskCleanupJob {
      * 1. PROCESSING 且 startedAt < 30分钟 → FAILED（基于开始时间判定，非 createTime）
      * 2. PENDING 且 createTime < 24小时 → FAILED
      */
-    @Scheduled(cron = "0 0 * * * ?")
+    @XxlJob("cleanupStuckTasks")
     public void cleanupStuckTasks() {
         SystemSecurityContext.setSystemContext();
         try {

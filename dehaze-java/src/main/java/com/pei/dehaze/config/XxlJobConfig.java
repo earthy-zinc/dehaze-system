@@ -41,6 +41,9 @@ public class XxlJobConfig {
     @Value("${xxl.job.executor.logretentiondays}")
     private int logRetentionDays;
 
+    @Value("${xxl.job.executor.timeout:10}")
+    private int timeout;
+
 
     @Bean
     public XxlJobSpringExecutor xxlJobExecutor() {
@@ -54,6 +57,7 @@ public class XxlJobConfig {
         xxlJobSpringExecutor.setAccessToken(accessToken);
         xxlJobSpringExecutor.setLogPath(logPath);
         xxlJobSpringExecutor.setLogRetentionDays(logRetentionDays);
+        xxlJobSpringExecutor.setTimeout(timeout);
 
         return xxlJobSpringExecutor;
     }

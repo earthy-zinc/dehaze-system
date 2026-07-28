@@ -164,6 +164,43 @@ public class RabbitMQConfig {
     }
 
     /**
+     * 低分告警队列（配置 DLX：过期或 reject 的消息进入死信队列）
+     */
+    @Bean
+    public Queue lowRatingAlertQueue() {
+        return QueueBuilder
+                .durable("task.low.rating.alert")
+                .withArgument("x-message-ttl", 86400000)
+                .withArgument("x-dead-letter-exchange", properties.getExchange().getName() + ".dlx")
+                .withArgument("x-dead-letter-routing-key", resolveRoutingKey("low.rating.alert.dlx"))
+                .build();
+    }
+
+    /**
+     * 低分告警死信队列
+     */
+    @Bean
+    public Queue lowRatingAlertDlxQueue() {
+        return QueueBuilder.durable("task.low.rating.alert.dlx").build();
+    }
+
+    /**
+     * 绑定低分告警队列到交换机
+     */
+    @Bean
+    public Binding lowRatingAlertBinding(Queue lowRatingAlertQueue, DirectExchange taskExchange) {
+        return BindingBuilder.bind(lowRatingAlertQueue).to(taskExchange).with(resolveRoutingKey("low.rating.alert"));
+    }
+
+    /**
+     * 绑定低分告警死信队列到死信交换机
+     */
+    @Bean
+    public Binding lowRatingAlertDlxBinding(Queue lowRatingAlertDlxQueue, DirectExchange taskDlxExchange) {
+        return BindingBuilder.bind(lowRatingAlertDlxQueue).to(taskDlxExchange).with(resolveRoutingKey("low.rating.alert.dlx"));
+    }
+
+    /**
      * 解析路由键
      */
     private String resolveRoutingKey(String queueName) {

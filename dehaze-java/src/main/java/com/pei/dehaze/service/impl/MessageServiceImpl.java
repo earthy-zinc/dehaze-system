@@ -20,9 +20,11 @@ import com.pei.dehaze.service.MessageService;
 import com.pei.dehaze.service.MessageTemplateService;
 import com.pei.dehaze.service.notify.MessagePushDispatcher;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -42,9 +44,11 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     );
     private static final Pattern VAR_PATTERN = Pattern.compile("\\{(\\w+)}");
     private static final int SUMMARY_LENGTH = 50;
+    private static final String UNREAD_KEY_PREFIX = "msg:unread:";
 
     private final MessageTemplateService messageTemplateService;
     private final MessagePushDispatcher pushDispatcher;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -99,6 +103,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             message.setExpiresAt(expiresAt);
             this.save(message);
             messageIds.add(message.getId());
+            incrementUnreadCache(recipientId);
             pushDispatcher.dispatch(message, recipientId);
         }
 
@@ -162,9 +167,18 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     @Override
     public UnreadCountVO getUnreadCount() {
         Long userId = SecurityUtils.getUserId();
-        long count = this.count(new LambdaQueryWrapper<SysMessage>()
-                .eq(SysMessage::getRecipientId, userId)
-                .eq(SysMessage::getReadStatus, 0));
+        String cacheKey = UNREAD_KEY_PREFIX + userId;
+        String cached = stringRedisTemplate.opsForValue().get(cacheKey);
+        long count;
+        if (cached != null) {
+            count = Long.parseLong(cached);
+        } else {
+            count = this.count(new LambdaQueryWrapper<SysMessage>()
+                    .eq(SysMessage::getRecipientId, userId)
+                    .eq(SysMessage::getReadStatus, 0));
+            stringRedisTemplate.opsForValue().set(cacheKey, String.valueOf(count),
+                    count == 0 ? Duration.ofMinutes(5) : Duration.ofHours(1));
+        }
         UnreadCountVO vo = new UnreadCountVO();
         vo.setCount(count);
         return vo;
@@ -190,6 +204,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
                     .set(SysMessage::getReadTime, readTime));
             message.setReadStatus(1);
             message.setReadTime(readTime);
+            decrementUnreadCache(userId);
         }
 
         MessageDetailVO vo = new MessageDetailVO();
@@ -201,12 +216,15 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     @Override
     public void markRead(Long id) {
         Long userId = SecurityUtils.getUserId();
-        this.update(new LambdaUpdateWrapper<SysMessage>()
+        int affected = this.getBaseMapper().update(null, new LambdaUpdateWrapper<SysMessage>()
                 .eq(SysMessage::getId, id)
                 .eq(SysMessage::getRecipientId, userId)
                 .eq(SysMessage::getReadStatus, 0)
                 .set(SysMessage::getReadStatus, 1)
                 .set(SysMessage::getReadTime, LocalDateTime.now()));
+        if (affected > 0) {
+            decrementUnreadCache(userId);
+        }
     }
 
     @Override
@@ -221,6 +239,9 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             wrapper.eq(SysMessage::getType, type);
         }
         int affected = this.getBaseMapper().update(null, wrapper);
+        if (affected > 0) {
+            stringRedisTemplate.delete(UNREAD_KEY_PREFIX + userId);
+        }
         ReadAllResultVO vo = new ReadAllResultVO();
         vo.setAffectedCount(affected);
         return vo;
@@ -237,9 +258,16 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
         if (idList.isEmpty()) {
             return;
         }
+        long unreadDeleted = this.count(new LambdaQueryWrapper<SysMessage>()
+                .in(SysMessage::getId, idList)
+                .eq(SysMessage::getRecipientId, userId)
+                .eq(SysMessage::getReadStatus, 0));
         this.remove(new LambdaQueryWrapper<SysMessage>()
                 .in(SysMessage::getId, idList)
                 .eq(SysMessage::getRecipientId, userId));
+        if (unreadDeleted > 0) {
+            stringRedisTemplate.opsForValue().decrement(UNREAD_KEY_PREFIX + userId, unreadDeleted);
+        }
     }
 
     @Override
@@ -283,5 +311,21 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             vo.setExtra(JSONUtil.parseObj(message.getExtra()));
         }
         vo.setCreateTime(message.getCreateTime());
+    }
+
+    private void incrementUnreadCache(Long userId) {
+        String cacheKey = UNREAD_KEY_PREFIX + userId;
+        String cached = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            stringRedisTemplate.opsForValue().increment(cacheKey);
+        }
+    }
+
+    private void decrementUnreadCache(Long userId) {
+        String cacheKey = UNREAD_KEY_PREFIX + userId;
+        String cached = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            stringRedisTemplate.opsForValue().decrement(cacheKey);
+        }
     }
 }
