@@ -56,8 +56,8 @@ func Init() *Server {
 		engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
-	// Prometheus 指标（需认证 + 管理员权限）
-	engine.GET("/metrics", middleware.JWTAuth(), middleware.RequireAdmin(), middleware.MetricsHandler())
+	// Prometheus 指标（内网免鉴权，通过网络层隔离保障安全）
+	engine.GET("/metrics", middleware.MetricsHandler())
 
 	return &Server{
 		engine: engine,

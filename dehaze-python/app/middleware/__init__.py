@@ -41,7 +41,6 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
         app.add_middleware(
             PrometheusMiddleware,
             app_name="dehaze-python",
-            prefix="dehaze",
             group_paths=True,
             skip_paths=["/health", "/ready",
                         "/metrics", "/docs", "/redoc", "/openapi.json"],

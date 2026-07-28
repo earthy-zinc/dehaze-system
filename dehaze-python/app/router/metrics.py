@@ -1,18 +1,16 @@
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import Response
 from starlette_exporter import handle_metrics
-
-from app.dependencies.auth import UserContext, get_current_user
 
 router = APIRouter(tags=["监控"])
 
 
 @router.get("/metrics", include_in_schema=False)
-async def metrics(request: Request, user: UserContext = Depends(get_current_user)):
+async def metrics(request: Request):
     """
-    Prometheus 指标采集端点（需认证 + 管理员权限）
+    Prometheus 指标采集端点（内网免鉴权，通过网络层隔离保障安全）
 
     返回 Prometheus 格式的指标数据，包括：
     - HTTP 请求量（http_requests_total）
@@ -22,9 +20,6 @@ async def metrics(request: Request, user: UserContext = Depends(get_current_user
     多 Worker 模式下（设置了 PROMETHEUS_MULTIPROC_DIR），
     通过 MultiProcessCollector 聚合所有 Worker 的指标。
     """
-    if not user.is_admin:
-        raise HTTPException(status_code=403, detail="需要管理员权限")
-
     # 多进程模式：使用 MultiProcessCollector 聚合所有 Worker 的指标
     if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
         from prometheus_client import (CONTENT_TYPE_LATEST, CollectorRegistry,

@@ -21,10 +21,10 @@ var (
 		[]string{"method", "path", "status"},
 	)
 
-	// httpRequestDuration HTTP 请求耗时
+	// httpRequestDuration HTTP 请求耗时（命名对齐 Java Spring Boot 的 http_server_requests_seconds）
 	httpRequestDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
+			Name:    "http_server_requests_seconds",
 			Help:    "Duration of HTTP requests in seconds",
 			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 		},
