@@ -15,6 +15,7 @@ from app.infrastructure.mq.connection import get_publisher
 from app.models.entity.sys_feedback import SysFeedback
 from app.models.entity.sys_feedback_reply import SysFeedbackReply
 from app.models.entity.sys_rating import SysRating
+from app.models.enum.log_status import LogStatus
 from app.repository.feedback_repository import (
     DAILY_FEEDBACK_LIMIT,
     FEEDBACK_STATUS_MAP,
@@ -25,7 +26,7 @@ from app.repository.feedback_repository import (
 )
 from app.repository.member_growth_log_repository import member_growth_log_repository
 from app.repository.member_repository import member_repository
-from app.service.member_service import _check_and_adjust_level
+from app.service.member_service import _check_and_adjust_level, _invalidate_member_cache
 
 logger = logging.getLogger(__name__)
 
@@ -193,12 +194,18 @@ class FeedbackService:
         if not pred_log:
             raise BusinessException(ResultCode.PREDICTION_LOG_NOT_FOUND)
 
+        if pred_log.status != LogStatus.COMPLETED.value:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "处理记录未完成")
+
+        if pred_log.create_by != user_id:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "无权评价他人的处理记录")
+
         existing = await rating_repository.get_by_pred_log_id(db, pred_log_id)
         if existing:
             raise BusinessException(ResultCode.RATING_ALREADY_EXISTS)
 
-        if pred_log.create_time:
-            time_diff = datetime.now(pred_log.create_time.tzinfo) - pred_log.create_time
+        if pred_log.update_time:
+            time_diff = datetime.now(pred_log.update_time.tzinfo) - pred_log.update_time
             if time_diff.days > RATING_TIME_LIMIT_DAYS:
                 raise BusinessException(ResultCode.RATING_EXPIRED)
 
@@ -214,9 +221,10 @@ class FeedbackService:
             image_urls=form.get("imageUrls"),
             is_anonymous=form.get("isAnonymous", 0),
         )
-        await rating_repository.create(db, rating)
 
-        await FeedbackService._award_rating_growth(db, redis, user_id, rating.id)
+        async with db.begin():
+            await rating_repository.create(db, rating)
+            await FeedbackService._award_rating_growth(db, redis, user_id, rating.id)
 
         cache = CacheService(redis)
         await cache.delete(RATING_STATS_CACHE_KEY)
@@ -256,7 +264,11 @@ class FeedbackService:
             operator_id=SYSTEM_USER_ID,
         )
 
+        old_level = member.level_code
         await _check_and_adjust_level(db, member)
+        if member.level_code != old_level:
+            await _invalidate_member_cache(user_id=user_id, level_code=old_level)
+            await _invalidate_member_cache(level_code=member.level_code)
 
         await redis.incr(count_key)
         await redis.expire(count_key, DAILY_COUNT_TTL)
@@ -406,13 +418,13 @@ class FeedbackService:
 
     @staticmethod
     async def create_feedback(db: AsyncSession, redis: Redis, user_id: int, form: dict) -> dict:
+        _validate_image_urls(form.get("images"), FEEDBACK_IMAGE_LIMIT)
+
         today = date.today().isoformat()
         count_key = FEEDBACK_DAILY_COUNT_KEY.format(user_id=user_id, date=today)
         current_count = await redis.get(count_key)
         if current_count is not None and int(current_count) >= DAILY_FEEDBACK_LIMIT:
             raise BusinessException(ResultCode.FEEDBACK_LIMIT_EXCEEDED)
-
-        _validate_image_urls(form.get("images"), FEEDBACK_IMAGE_LIMIT)
 
         feedback = SysFeedback(
             user_id=user_id,
@@ -598,7 +610,7 @@ class FeedbackService:
         feedback = await feedback_repository.get_by_id(db, feedback_id)
         if not feedback:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND)
-        feedback.tags = tags if tags else None
+        feedback.tags = tags if tags else []
         await db.flush()
 
     @staticmethod

@@ -68,6 +68,7 @@ async def evaluate(
         pred_url=body.predUrl,
         gt_url=body.gtUrl,
         user_id=user.id,
+        skip_quota_check=user.is_m2m,
     )
     return success(EvaluationResponse(
         logId=result.get("logId"),

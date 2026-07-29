@@ -177,7 +177,7 @@ class OrderRepository(BaseRepository[SysOrder]):
             revenue_stmt = revenue_stmt.where(SysOrder.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
         if end_time:
             revenue_stmt = revenue_stmt.where(SysOrder.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
-        total_revenue = (await db.execute(revenue_stmt)).scalar() or 0
+        total_revenue = int((await db.execute(revenue_stmt)).scalar() or 0)
 
         refund_stmt = select(func.coalesce(func.sum(SysOrder.paid_amount), 0)).where(
             SysOrder.deleted == 0,
@@ -187,7 +187,7 @@ class OrderRepository(BaseRepository[SysOrder]):
             refund_stmt = refund_stmt.where(SysOrder.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
         if end_time:
             refund_stmt = refund_stmt.where(SysOrder.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
-        total_refund = (await db.execute(refund_stmt)).scalar() or 0
+        total_refund = int((await db.execute(refund_stmt)).scalar() or 0)
 
         status_stmt = select(SysOrder.status, func.count()).where(SysOrder.deleted == 0).group_by(SysOrder.status)
         if start_time:

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import select, text
@@ -8,10 +8,9 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_announcement import SysAnnouncement
 from app.models.entity.sys_dept import SysDept
-from app.models.entity.sys_message import SysMessage
 from app.models.entity.sys_user import SysUser
 from app.repository.announcement_repository import announcement_repository
-from app.repository.message_repository import message_repository
+from app.service.message_service import MessageService
 
 ANNOUNCEMENT_TYPE_LABELS = {
     "maintenance": "系统维护",
@@ -117,14 +116,14 @@ class AnnouncementService:
     async def get_detail(db: AsyncSession, announcement_id: int) -> dict[str, Any]:
         announcement = await announcement_repository.get_by_id(db, announcement_id)
         if not announcement:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "公告不存在")
+            raise BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
         return _to_detail_vo(announcement)
 
     @staticmethod
     async def update(db: AsyncSession, announcement_id: int, data: dict[str, Any]) -> None:
         announcement = await announcement_repository.get_by_id(db, announcement_id)
         if not announcement:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "公告不存在")
+            raise BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
         if announcement.status not in (1, 2):
             raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "公告状态不允许编辑")
 
@@ -150,45 +149,33 @@ class AnnouncementService:
     async def delete(db: AsyncSession, announcement_id: int) -> None:
         announcement = await announcement_repository.get_by_id(db, announcement_id)
         if not announcement:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "公告不存在")
+            raise BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
         await announcement_repository.soft_delete(db, announcement_id)
 
     @staticmethod
     async def send(db: AsyncSession, announcement_id: int) -> int:
         announcement = await announcement_repository.get_by_id(db, announcement_id)
         if not announcement:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "公告不存在")
+            raise BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
         if announcement.status not in (1, 2):
-            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "公告状态不允许发送")
+            raise BusinessException(ResultCode.ANNOUNCEMENT_STATUS_INVALID, "公告状态不允许发送")
 
         target_user_ids = await AnnouncementService._resolve_targets(
             db, announcement.target_scope, announcement.target_params
         )
+        if not target_user_ids:
+            raise BusinessException(ResultCode.ANNOUNCEMENT_TARGET_EMPTY, "发送范围为空")
 
         priority = 3 if announcement.importance == 2 else 2
-        expires_at = datetime.now() + timedelta(days=30)
-
-        messages = [
-            SysMessage(
-                type="announcement",
-                title=announcement.title,
-                content=announcement.content,
-                sender_type=2,
-                recipient_id=uid,
-                biz_module="system",
-                biz_id=str(announcement.id),
-                priority=priority,
-                jump_url=None,
-                extra=None,
-                read_status=0,
-                deleted=0,
-                expires_at=expires_at,
-            )
-            for uid in target_user_ids
-        ]
-
-        if messages:
-            await message_repository.batch_create(db, messages)
+        await MessageService.send(db, {
+            "type": "announcement",
+            "title": announcement.title,
+            "content": announcement.content,
+            "recipientIds": target_user_ids,
+            "bizModule": "system",
+            "bizId": str(announcement.id),
+            "priority": priority,
+        })
 
         await announcement_repository.update_status(
             db,
@@ -203,9 +190,9 @@ class AnnouncementService:
     async def cancel(db: AsyncSession, announcement_id: int) -> None:
         announcement = await announcement_repository.get_by_id(db, announcement_id)
         if not announcement:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "公告不存在")
+            raise BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
         if announcement.status != 2:
-            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "公告状态不允许取消")
+            raise BusinessException(ResultCode.ANNOUNCEMENT_STATUS_INVALID, "公告状态不允许取消")
         await announcement_repository.update_status(db, announcement_id, status=4)
 
     @staticmethod

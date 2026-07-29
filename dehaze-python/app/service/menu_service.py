@@ -428,6 +428,8 @@ class MenuService:
                 default=[],
             )
             if perms:
+                if isinstance(perms, list) and len(perms) == 2 and isinstance(perms[0], str) and isinstance(perms[1], list):
+                    perms = perms[1]
                 all_perms.update(perms)
 
         return all_perms

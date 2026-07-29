@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.models.entity.sys_algorithm import SysAlgorithm
 from app.models.entity.sys_feedback import SysFeedback
 from app.models.entity.sys_feedback_reply import SysFeedbackReply
-from app.models.entity.sys_input_history import SysInputHistory
+from app.models.entity.sys_log import SysPredLog
 from app.models.entity.sys_rating import SysRating
 from app.models.entity.sys_user import SysUser
 from app.repository.base import BaseRepository, escape_like
@@ -25,8 +25,8 @@ DAILY_FEEDBACK_LIMIT = 5
 class RatingRepository(BaseRepository[SysRating]):
     model = SysRating
 
-    async def get_prediction_log(self, db: AsyncSession, pred_log_id: int) -> Optional[SysInputHistory]:
-        stmt = select(SysInputHistory).where(SysInputHistory.id == pred_log_id)
+    async def get_prediction_log(self, db: AsyncSession, pred_log_id: int) -> Optional[SysPredLog]:
+        stmt = select(SysPredLog).where(SysPredLog.id == pred_log_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -49,10 +49,10 @@ class RatingRepository(BaseRepository[SysRating]):
                 SysUser.username.label("username"),
                 SysUser.nickname.label("nickname"),
                 SysUser.avatar.label("avatar"),
-                SysInputHistory.algorithm_name.label("algorithm_name"),
+                SysAlgorithm.name.label("algorithm_name"),
             )
             .outerjoin(SysUser, SysRating.user_id == SysUser.id)
-            .outerjoin(SysInputHistory, SysRating.pred_log_id == SysInputHistory.id)
+            .outerjoin(SysAlgorithm, SysRating.algorithm_id == SysAlgorithm.id)
             .where(SysRating.id == rating_id, SysRating.deleted == 0)
         )
         result = await db.execute(stmt)
@@ -77,9 +77,9 @@ class RatingRepository(BaseRepository[SysRating]):
         stmt = (
             select(
                 SysRating,
-                SysInputHistory.algorithm_name.label("algorithm_name"),
+                SysAlgorithm.name.label("algorithm_name"),
             )
-            .outerjoin(SysInputHistory, SysRating.pred_log_id == SysInputHistory.id)
+            .outerjoin(SysAlgorithm, SysRating.algorithm_id == SysAlgorithm.id)
             .where(SysRating.user_id == user_id, SysRating.deleted == 0, SysRating.is_hidden == 0)
         )
 
@@ -117,10 +117,10 @@ class RatingRepository(BaseRepository[SysRating]):
                 SysUser.username.label("username"),
                 SysUser.nickname.label("nickname"),
                 SysUser.avatar.label("avatar"),
-                SysInputHistory.algorithm_name.label("algorithm_name"),
+                SysAlgorithm.name.label("algorithm_name"),
             )
             .outerjoin(SysUser, SysRating.user_id == SysUser.id)
-            .outerjoin(SysInputHistory, SysRating.pred_log_id == SysInputHistory.id)
+            .outerjoin(SysAlgorithm, SysRating.algorithm_id == SysAlgorithm.id)
             .where(SysRating.deleted == 0)
         )
 
@@ -181,7 +181,7 @@ class RatingRepository(BaseRepository[SysRating]):
             base = base.where(SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
 
         total_stmt = select(func.count()).select_from(base.subquery())
-        total_ratings = (await db.execute(total_stmt)).scalar() or 0
+        total_ratings = int((await db.execute(total_stmt)).scalar() or 0)
 
         avg_stmt = select(func.coalesce(func.avg(SysRating.rating), 0)).where(
             SysRating.deleted == 0
@@ -190,7 +190,8 @@ class RatingRepository(BaseRepository[SysRating]):
             avg_stmt = avg_stmt.where(SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
         if end_time:
             avg_stmt = avg_stmt.where(SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
-        average_rating = float((await db.execute(avg_stmt)).scalar() or 0)
+        avg_value = (await db.execute(avg_stmt)).scalar()
+        average_rating = round(float(avg_value or 0), 2)
 
         dist_stmt = select(SysRating.rating, func.count()).where(
             SysRating.deleted == 0
@@ -202,7 +203,7 @@ class RatingRepository(BaseRepository[SysRating]):
         dist_rows = (await db.execute(dist_stmt)).all()
         rating_distribution = {i: 0 for i in range(1, 6)}
         for r, c in dist_rows:
-            rating_distribution[r] = c
+            rating_distribution[r] = int(c)
 
         tags_stmt = select(SysRating.tags).where(
             SysRating.deleted == 0,
@@ -241,7 +242,7 @@ class RatingRepository(BaseRepository[SysRating]):
                 SysAlgorithm.name.label("algorithm_name"),
                 func.count().label("total"),
                 func.avg(SysRating.rating).label("avg_rating"),
-                func.sum(func.case((SysRating.rating <= 2, 1), else_=0)).label("low_count"),
+                func.sum(case((SysRating.rating <= 2, 1), else_=0)).label("low_count"),
             )
             .outerjoin(SysAlgorithm, SysRating.algorithm_id == SysAlgorithm.id)
             .where(SysRating.deleted == 0)
@@ -255,10 +256,10 @@ class RatingRepository(BaseRepository[SysRating]):
 
         algorithm_stats = []
         for row in algo_rows:
-            total = row.total
-            low = row.low_count or 0
+            total = int(row.total or 0)
+            low = int(row.low_count or 0)
             algorithm_stats.append({
-                "algorithmId": row.algorithm_id,
+                "algorithmId": int(row.algorithm_id) if row.algorithm_id is not None else None,
                 "algorithmName": row.algorithm_name or "",
                 "averageRating": round(float(row.avg_rating or 0), 2),
                 "totalRatings": total,
@@ -267,7 +268,7 @@ class RatingRepository(BaseRepository[SysRating]):
 
         return {
             "totalRatings": total_ratings,
-            "averageRating": round(average_rating, 2),
+            "averageRating": average_rating,
             "ratingDistribution": rating_distribution,
             "positiveTagRanking": positive_ranking,
             "negativeTagRanking": negative_ranking,
@@ -455,20 +456,20 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
             base_filter.append(SysFeedback.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
 
         total_stmt = select(func.count()).where(*base_filter)
-        total_feedback = (await db.execute(total_stmt)).scalar() or 0
+        total_feedback = int((await db.execute(total_stmt)).scalar() or 0)
 
         type_stmt = select(SysFeedback.feedback_type, func.count()).where(*base_filter).group_by(SysFeedback.feedback_type)
         type_rows = (await db.execute(type_stmt)).all()
         type_distribution = {t: 0 for t in ["suggestion", "bug", "experience", "complaint"]}
         for t, c in type_rows:
-            type_distribution[t] = c
+            type_distribution[t] = int(c)
 
         status_stmt = select(SysFeedback.status, func.count()).where(*base_filter).group_by(SysFeedback.status)
         status_rows = (await db.execute(status_stmt)).all()
         status_distribution = {s: 0 for s in ["pending", "processing", "replied", "closed"]}
         for s, c in status_rows:
             status_name = FEEDBACK_STATUS_REVERSE_MAP.get(s, "pending")
-            status_distribution[status_name] = c
+            status_distribution[status_name] = int(c)
 
         module_stmt = (
             select(SysFeedback.related_module, func.count())
@@ -477,7 +478,7 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
         )
         module_rows = (await db.execute(module_stmt)).all()
         module_distribution = [
-            {"module": m, "count": c}
+            {"module": m, "count": int(c)}
             for m, c in module_rows
         ]
 

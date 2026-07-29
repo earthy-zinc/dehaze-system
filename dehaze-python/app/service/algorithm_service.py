@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_algorithm import SysAlgorithm, SysAlgorithmVersion
 from app.repository.algorithm_repository import (
@@ -159,12 +160,15 @@ class AlgorithmService:
     async def delete_algorithms(db: AsyncSession, algorithm_ids: list[int]) -> int:
         """批量删除算法（包含子算法），对齐 Java deleteAlgorithms
 
-        Java: removeByIds 返回 false 时 Result.judge(false) → Result.failed()
-        Python: 无匹配记录时抛出 BusinessException（等价于 Result.failed）
+        Java/Python/Go: 任一算法不存在时抛 RESOURCE_NOT_FOUND
         """
+        all_algorithms = await algorithm_repository.get_list_with_keywords(db)
+        existing_ids = {a.id for a in all_algorithms}
+        for algorithm_id in algorithm_ids:
+            if algorithm_id not in existing_ids:
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
+
         ids_to_delete = await algorithm_repository.get_with_children_ids(db, algorithm_ids)
-        if not ids_to_delete:
-            raise BusinessException("删除失败，算法不存在")
         count = await algorithm_repository.delete_by_ids(db, ids_to_delete)
         return count
 

@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import success
 from app.database import get_db
+from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
-from app.models.schema.message import AnnouncementForm
+from app.models.schema.message import AnnouncementForm, AnnouncementUpdateForm
 from app.service.announcement_service import AnnouncementService
 
 router = APIRouter(
@@ -31,6 +32,7 @@ async def get_announcement_page(
 
 
 @router.post("", summary="创建公告")
+@require_permission("notify:announcement:add")
 async def create_announcement(
     body: AnnouncementForm,
     db: AsyncSession = Depends(get_db),
@@ -51,17 +53,19 @@ async def get_announcement_detail(
 
 
 @router.put("/{announcement_id}", summary="编辑公告")
+@require_permission("notify:announcement:edit")
 async def update_announcement(
+    body: AnnouncementUpdateForm,
     announcement_id: int = Path(...),
-    body: dict = None,
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await AnnouncementService.update(db, announcement_id, body or {})
+    await AnnouncementService.update(db, announcement_id, body.model_dump(exclude_unset=True))
     return success()
 
 
 @router.delete("/{announcement_id}", summary="删除公告")
+@require_permission("notify:announcement:delete")
 async def delete_announcement(
     announcement_id: int = Path(...),
     db: AsyncSession = Depends(get_db),
@@ -72,6 +76,7 @@ async def delete_announcement(
 
 
 @router.post("/{announcement_id}/send", summary="发送公告")
+@require_permission("notify:announcement:send")
 async def send_announcement(
     announcement_id: int = Path(...),
     db: AsyncSession = Depends(get_db),
@@ -82,6 +87,7 @@ async def send_announcement(
 
 
 @router.put("/{announcement_id}/cancel", summary="取消定时公告")
+@require_permission("notify:announcement:cancel")
 async def cancel_announcement(
     announcement_id: int = Path(...),
     db: AsyncSession = Depends(get_db),

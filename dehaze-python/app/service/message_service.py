@@ -1,12 +1,16 @@
+import logging
 import re
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.dependencies.redis import get_redis_client
 from app.models.entity.sys_message import SysMessage
+from app.models.entity.sys_user import SysUser
 from app.repository.message_repository import message_repository
 from app.repository.message_template_repository import message_template_repository
 
@@ -28,6 +32,39 @@ EXPIRY_DAYS = {
 
 VAR_PATTERN = re.compile(r"\{(\w+)\}")
 
+logger = logging.getLogger(__name__)
+
+UNREAD_COUNT_CACHE_PREFIX = "msg:unread:"
+UNREAD_COUNT_CACHE_TTL = 3600
+
+
+async def invalidate_unread_count_cache(*user_ids: int) -> None:
+    if not user_ids:
+        return
+    keys = [f"{UNREAD_COUNT_CACHE_PREFIX}{uid}" for uid in user_ids]
+    try:
+        redis = await get_redis_client()
+        await redis.delete(*keys)
+    except Exception as e:
+        logger.warning("失效未读数缓存失败: user_ids=%s err=%s", user_ids, e)
+
+
+async def _push_new_message_event(message: SysMessage) -> None:
+    try:
+        from app.service.websocket_service import manager as ws_manager
+        await ws_manager.send_personal(message.recipient_id, {
+            "event": "new_message",
+            "data": {
+                "id": message.id,
+                "type": message.type,
+                "title": message.title,
+                "priority": message.priority,
+                "createTime": _format_dt(message.create_time),
+            },
+        })
+    except Exception as e:
+        logger.debug("WebSocket 推送新消息事件失败（不影响主流程）: messageId=%s err=%s", message.id, e)
+
 
 def _format_dt(dt: Optional[datetime]) -> Optional[str]:
     if dt is None:
@@ -42,7 +79,7 @@ def _calc_expires_at(msg_type: str) -> datetime:
 
 def _render_template(template: str, variables: dict[str, str]) -> str:
     def replacer(m):
-        return variables.get(m.group(1), m.group(0))
+        return variables.get(m.group(1), "")
     return VAR_PATTERN.sub(replacer, template)
 
 
@@ -71,21 +108,17 @@ class MessageService:
         if template_code:
             template = await message_template_repository.get_by_code(db, template_code)
             if not template:
-                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模板不存在")
+                raise BusinessException(ResultCode.MESSAGE_TEMPLATE_NOT_FOUND, "模板不存在")
             if template.status == 0:
-                raise BusinessException(ResultCode.BUSINESS_ERROR, "模板已禁用")
+                raise BusinessException(ResultCode.TEMPLATE_DISABLED, "模板已禁用")
 
             variables = data.get("variables") or {}
-            required_vars = set()
-            if template.variables:
-                required_vars = {v["name"] for v in template.variables if "name" in v}
-            else:
-                required_vars = set(_extract_var_names(template.title_template))
-                required_vars |= set(_extract_var_names(template.content_template))
+            required_vars = set(_extract_var_names(template.title_template or ""))
+            required_vars |= set(_extract_var_names(template.content_template or ""))
 
             missing = required_vars - set(variables.keys())
             if missing:
-                raise BusinessException(ResultCode.PARAM_ERROR, f"模板变量缺失: {','.join(missing)}")
+                raise BusinessException(ResultCode.TEMPLATE_VAR_MISSING, f"模板变量缺失: {','.join(missing)}")
 
             title = _render_template(template.title_template, variables)
             content = _render_template(template.content_template, variables)
@@ -121,6 +154,9 @@ class MessageService:
             for rid in recipient_ids
         ]
         await message_repository.batch_create(db, messages)
+        await invalidate_unread_count_cache(*recipient_ids)
+        for m in messages:
+            await _push_new_message_event(m)
         return [m.id for m in messages]
 
     @staticmethod
@@ -154,17 +190,33 @@ class MessageService:
 
     @staticmethod
     async def get_unread_count(db: AsyncSession, user_id: int) -> int:
-        return await message_repository.count_unread(db, user_id)
+        cache_key = f"{UNREAD_COUNT_CACHE_PREFIX}{user_id}"
+        try:
+            redis = await get_redis_client()
+            cached = await redis.get(cache_key)
+            if cached is not None:
+                return int(cached)
+        except Exception as e:
+            logger.warning("读取未读数缓存失败: user_id=%s err=%s", user_id, e)
+        count = await message_repository.count_unread(db, user_id)
+        try:
+            redis = await get_redis_client()
+            ttl = 300 if count == 0 else UNREAD_COUNT_CACHE_TTL
+            await redis.set(cache_key, str(count), ex=ttl)
+        except Exception as e:
+            logger.warning("写入未读数缓存失败: user_id=%s err=%s", user_id, e)
+        return count
 
     @staticmethod
     async def get_detail(db: AsyncSession, user_id: int, message_id: int) -> dict[str, Any]:
         msg = await message_repository.get_by_id_and_recipient(db, message_id, user_id)
         if not msg:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
+            raise BusinessException(ResultCode.MESSAGE_NOT_FOUND, "消息不存在")
 
         if msg.read_status == 0:
             await message_repository.mark_read(db, message_id, user_id)
             await db.refresh(msg)
+            await invalidate_unread_count_cache(user_id)
 
         return {
             "id": msg.id,
@@ -186,9 +238,10 @@ class MessageService:
     async def mark_read(db: AsyncSession, user_id: int, message_id: int) -> None:
         msg = await message_repository.get_by_id_and_recipient(db, message_id, user_id)
         if not msg:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
+            raise BusinessException(ResultCode.MESSAGE_NOT_FOUND, "消息不存在")
         if msg.read_status == 0:
             await message_repository.mark_read(db, message_id, user_id)
+            await invalidate_unread_count_cache(user_id)
 
     @staticmethod
     async def mark_all_read(
@@ -196,11 +249,14 @@ class MessageService:
         user_id: int,
         type: Optional[str] = None,
     ) -> int:
-        return await message_repository.mark_all_read(db, user_id, type)
+        affected = await message_repository.mark_all_read(db, user_id, type)
+        await invalidate_unread_count_cache(user_id)
+        return affected
 
     @staticmethod
     async def delete_by_ids(db: AsyncSession, user_id: int, ids: list[int]) -> None:
         await message_repository.soft_delete_by_ids_and_recipient(db, ids, user_id)
+        await invalidate_unread_count_cache(user_id)
 
     @staticmethod
     async def search(
@@ -229,3 +285,37 @@ class MessageService:
             for m in items
         ]
         return {"list": list_data, "total": total, "pageNum": page, "pageSize": page_size}
+
+    @staticmethod
+    async def refresh_unread_count_cache(db: AsyncSession) -> int:
+        stmt = select(SysUser.id).where(
+            SysUser.deleted == 0,
+            SysUser.status == 1,
+        )
+        result = await db.execute(stmt)
+        user_ids = [row[0] for row in result.fetchall()]
+
+        if not user_ids:
+            logger.info("未读数缓存刷新: 无活跃用户")
+            return 0
+
+        redis = None
+        try:
+            redis = await get_redis_client()
+        except Exception as e:
+            logger.warning("Redis 不可用，未读数缓存刷新跳过: %s", e)
+            return 0
+
+        refreshed = 0
+        for user_id in user_ids:
+            count = await message_repository.count_unread(db, user_id)
+            cache_key = f"{UNREAD_COUNT_CACHE_PREFIX}{user_id}"
+            ttl = 300 if count == 0 else UNREAD_COUNT_CACHE_TTL
+            try:
+                await redis.set(cache_key, str(count), ex=ttl)
+                refreshed += 1
+            except Exception as e:
+                logger.warning("写入未读数缓存失败: user_id=%s err=%s", user_id, e)
+
+        logger.info("未读数缓存刷新完成: 共刷新 %s 个用户", refreshed)
+        return refreshed

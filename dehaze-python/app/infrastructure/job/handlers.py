@@ -18,6 +18,10 @@ XXL-Job 定时任务 Handler
 - expireUserCoupons:       用户优惠券过期处理（每天凌晨 4 点）
 - autoRenewTask:           自动续费扣款（每天凌晨 8 点）
 - resetMonthlyQuota:       会员月度配额重置（每月 1 日凌晨 0 点）
+- processExpiredMembers:  会员过期降级（每天凌晨 2 点）
+- retryFailedRefunds:     退款失败重试（每 30 分钟）
+- sendExpireReminders:    会员到期预警（每天 09:00）
+- refreshUnreadCountCache: 未读数缓存全量刷新（每小时）
 """
 
 from __future__ import annotations
@@ -679,6 +683,123 @@ async def reset_monthly_quota() -> str:
             logger.info(msg)
         else:
             msg = "会员月度配额重置: 无待处理记录"
+            logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="processExpiredMembers")
+async def process_expired_members() -> str:
+    """
+    会员过期降级处理
+
+    扫描 sys_member WHERE expire_time < NOW() AND level_source != 'growth' 的会员，
+    按成长值重算等级、置 level_source='growth'、清空 expire_time、刷新权益。
+    与 Java MemberExpireJob、Go processExpiredMembers 对齐。
+
+    CRON 建议: 0 0 2 * * ? （每天凌晨 2 点）
+    """
+    from app.service.member_service import MemberService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            count = await MemberService.process_expired_members(db)
+
+        if count > 0:
+            msg = f"会员过期降级处理完成: 已处理={count}"
+            logger.info(msg)
+        else:
+            msg = "会员过期降级处理: 无待处理记录"
+            logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="retryFailedRefunds")
+async def retry_failed_refunds() -> str:
+    """
+    退款失败重试
+
+    扫描 sys_refund_record WHERE status=3(退款失败) AND retry_count < 3 的记录，
+    重新调用渠道退款接口，重试次数达上限则标记为最终失败。
+    与 Java RefundRetryJob、Go retryFailedRefunds 对齐。
+
+    CRON 建议: 0 0/30 * * * ? （每 30 分钟）
+    """
+    from app.service.order_service import OrderService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            count = await OrderService.retry_failed_refunds(db)
+
+        if count > 0:
+            msg = f"退款失败重试完成: 已处理={count}"
+            logger.info(msg)
+        else:
+            msg = "退款失败重试: 无待处理记录"
+            logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="sendExpireReminders")
+async def send_expire_reminders() -> str:
+    """
+    会员到期预警
+
+    扫描 expire_time 在未来 7/3/1 天的会员，推送续费提醒站内信：
+      - 7 天：普通提醒
+      - 3 天：含降级权益对比
+      - 1 天：最后提醒
+    与 Java MemberExpireReminderJob、Go sendExpireReminders 对齐。
+
+    CRON 建议: 0 0 9 * * ? （每天 09:00）
+    """
+    from app.service.member_service import MemberService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            count = await MemberService.send_expire_reminders(db)
+
+        if count > 0:
+            msg = f"会员到期预警完成: 已发送={count}"
+            logger.info(msg)
+        else:
+            msg = "会员到期预警: 无待处理记录"
+            logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="refreshUnreadCountCache")
+async def refresh_unread_count_cache() -> str:
+    """
+    未读数缓存全量刷新
+
+    每小时扫描所有活跃用户，重新计算未读数并刷新 Redis 缓存。
+    与 Java UnreadCountRefreshJob、Go refreshUnreadCountCache 对齐。
+
+    CRON 建议: 0 0 * * * ? （每小时整点）
+    """
+    from app.service.message_service import MessageService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            count = await MessageService.refresh_unread_count_cache(db)
+
+        if count > 0:
+            msg = f"未读数缓存刷新完成: 已刷新={count}"
+            logger.info(msg)
+        else:
+            msg = "未读数缓存刷新: 无活跃用户"
             logger.debug(msg)
         return msg
     finally:

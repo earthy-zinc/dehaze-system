@@ -59,6 +59,7 @@ class ResultCode(Enum):
     COUPON_LIMIT_EXCEEDED = ("A0528", "超过每人限领数量")
     COUPON_STATUS_INVALID = ("A0529", "优惠券状态无效")
     COUPON_LOCK_FAILED = ("A052A", "优惠券锁定失败")
+    PACKAGE_IN_PROMOTION = ("A052B", "套餐参与进行中促销活动，无法下架")
 
     # 订单模块业务错误码 A053x
     ORDER_NOT_FOUND = ("A0530", "订单不存在")
@@ -81,6 +82,18 @@ class ResultCode(Enum):
     FEEDBACK_CLOSED = ("A0544", "反馈已关闭")
     FEEDBACK_LIMIT_EXCEEDED = ("A0545", "今日反馈次数已达上限")
     PREDICTION_LOG_NOT_FOUND = ("A0546", "处理记录不存在")
+
+    # 消息通知模块业务错误码 A055x
+    MESSAGE_NOT_FOUND = ("A0550", "消息不存在")
+    MESSAGE_NO_PERMISSION = ("A0551", "无权操作此消息")
+    ANNOUNCEMENT_NOT_FOUND = ("A0552", "公告不存在")
+    ANNOUNCEMENT_STATUS_INVALID = ("A0553", "公告状态不允许此操作")
+    ANNOUNCEMENT_TARGET_EMPTY = ("A0554", "发送范围为空")
+    MESSAGE_TEMPLATE_NOT_FOUND = ("A0555", "消息模板不存在")
+    TEMPLATE_VAR_MISSING = ("A0556", "模板变量缺失")
+    NOTIFICATION_SETTING_NOT_FOUND = ("A0557", "通知设置不存在")
+    TEMPLATE_DISABLED = ("A0558", "模板已禁用")
+    MESSAGE_ALREADY_READ = ("A0559", "消息已读")
 
     USER_UPLOAD_FILE_ERROR = ("A0700", "用户上传文件异常")
     USER_UPLOAD_FILE_TYPE_NOT_MATCH = ("A0701", "文件格式不支持")

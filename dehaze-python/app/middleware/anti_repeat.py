@@ -30,6 +30,15 @@ _EXCLUDE_PATHS = {
     "/favicon.ico",
 }
 
+_EXCLUDE_PREFIXES = {
+    "/api/v1/orders",
+    "/api/v1/prediction",
+    "/api/v1/evaluation",
+    "/api/v1/feedback/ratings",
+    "/api/v1/members/sign-in",
+}
+
+
 _WRITE_METHODS = {"POST", "PUT", "DELETE"}
 
 
@@ -106,11 +115,16 @@ class AntiRepeatMiddleware:
         if path in _EXCLUDE_PATHS:
             return await self.app(scope, receive, send)
 
+        if any(path.startswith(prefix) for prefix in _EXCLUDE_PREFIXES):
+            return await self.app(scope, receive, send)
+
         body = await _read_body(receive)
         body_hash = hashlib.md5(body).hexdigest() if body else ""
 
+        query_string = scope.get("query_string", b"").decode("latin-1")
+
         user_id = await _resolve_user_id(scope)
-        cache_key = f"anti_repeat:{user_id}:{method}:{path}:{body_hash}"
+        cache_key = f"anti_repeat:{user_id}:{method}:{path}:{query_string}:{body_hash}"
 
         redis = await get_redis_client()
         if not redis:

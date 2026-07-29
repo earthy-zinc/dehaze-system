@@ -128,6 +128,17 @@ class AnnouncementForm(BaseModel):
     expireTime: Optional[str] = None
 
 
+class AnnouncementUpdateForm(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=2, max_length=50, description="公告标题(2-50字符)")
+    content: Optional[str] = Field(default=None, min_length=1, description="公告内容")
+    type: Optional[str] = Field(default=None, min_length=1, description="公告类型")
+    importance: Optional[int] = Field(default=None, ge=1, le=2, description="重要级别(1:普通;2:重要)")
+    targetScope: Optional[str] = Field(default=None, min_length=1, description="发送范围")
+    targetParams: Optional[dict[str, Any]] = None
+    sendTime: Optional[str] = None
+    expireTime: Optional[str] = None
+
+
 class AnnouncementSendResult(BaseModel):
     sentCount: int
 

@@ -147,6 +147,7 @@ class MessageRepository(BaseRepository[SysMessage]):
         stmt = select(SysMessage).where(
             SysMessage.biz_module == biz_module,
             SysMessage.biz_id == biz_id,
+            SysMessage.deleted == 0,
         )
         result = await db.execute(stmt)
         return list(result.scalars().all())

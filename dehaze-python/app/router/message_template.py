@@ -41,6 +41,7 @@ async def get_template_detail(
 
 
 @router.put("/{template_id}", summary="编辑模板")
+@require_permission("notify:template:edit")
 async def update_template(
     template_id: int = Path(...),
     body: MessageTemplateForm = None,

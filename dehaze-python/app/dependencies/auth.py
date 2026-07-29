@@ -25,6 +25,7 @@ class UserContext(BaseModel):
     data_scope: Optional[int] = None
     roles: list[str] = []
     permissions: list[str] = []
+    is_m2m: bool = False
 
     @property
     def is_root(self) -> bool:
@@ -50,6 +51,7 @@ async def get_current_user(
         from app.service.api_key_service import ApiKeyService
         user_context = await ApiKeyService.authenticate_by_key(
             request.state.db, credentials.credentials)
+        user_context.is_m2m = True
         set_current_user_id(user_context.id)
         return user_context
 

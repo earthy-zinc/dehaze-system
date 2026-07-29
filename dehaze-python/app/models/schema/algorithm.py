@@ -85,7 +85,7 @@ class AlgorithmVO(BaseModel):
     flops: Optional[str] = Field(default=None, description="计算量")
     importPath: Optional[str] = Field(default=None, validation_alias="import_path", serialization_alias="importPath", description="导入路径")
     description: Optional[str] = Field(default=None, description="算法描述")
-    status: int = Field(description="状态(0:草稿;1:测试中;2:待审核;3:已发布;4:已停用;5:已归档)")
+    status: int = Field(description="状态(1:草稿;2:测试中;3:待审核;4:已发布;5:已停用;6:已归档)")
     version: Optional[str] = Field(default=None, description="版本号")
     auditBy: Optional[int] = Field(default=None, validation_alias="audit_by", serialization_alias="auditBy", description="审核人ID")
     auditTime: Optional[str] = Field(default=None, validation_alias="audit_time", serialization_alias="auditTime", description="审核时间")

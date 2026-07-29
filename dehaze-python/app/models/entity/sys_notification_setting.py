@@ -1,7 +1,7 @@
 from datetime import datetime, time
 from typing import Any, Optional
 
-from sqlalchemy import BigInteger, DateTime, JSON, Time
+from sqlalchemy import BigInteger, DateTime, JSON, SmallInteger, Time
 from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,7 +22,8 @@ class SysNotificationSetting(Base):
     dnd_start: Mapped[Optional[time]] = mapped_column(Time, nullable=True, default=time(22, 0), comment='免打扰开始时间')
     dnd_end: Mapped[Optional[time]] = mapped_column(Time, nullable=True, default=time(8, 0), comment='免打扰结束时间')
     preferences: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True, comment='细粒度偏好')
-    create_time: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, server_default=None, comment='创建时间')
-    update_time: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, server_default=None, comment='更新时间')
+    deleted: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')
+    create_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment='创建时间')
+    update_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment='更新时间')
+    create_by: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, comment='创建人ID')
+    update_by: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, comment='修改人ID')

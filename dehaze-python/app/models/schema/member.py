@@ -40,18 +40,18 @@ class MemberStatusForm(BaseModel):
 
 class BenefitForm(BaseModel):
     levelName: Optional[str] = None
-    growthMin: Optional[int] = None
-    growthMax: Optional[int] = None
-    monthlyDehazeQuota: Optional[int] = None
-    monthlyEvaluateQuota: Optional[int] = None
-    historyRetention: Optional[int] = None
-    batchLimit: Optional[int] = None
+    growthMin: Optional[int] = Field(default=None, ge=0)
+    growthMax: Optional[int] = Field(default=None, ge=0)
+    monthlyDehazeQuota: Optional[int] = Field(default=None, ge=0)
+    monthlyEvaluateQuota: Optional[int] = Field(default=None, ge=0)
+    historyRetention: Optional[int] = Field(default=None, ge=0)
+    batchLimit: Optional[int] = Field(default=None, ge=0)
     priority: Optional[int] = Field(default=None, ge=1, le=4)
     advancedParams: Optional[int] = Field(default=None, ge=0, le=1)
     hdExport: Optional[int] = Field(default=None, ge=0, le=1)
     reportExport: Optional[int] = Field(default=None, ge=0, le=1)
     batchDownload: Optional[int] = Field(default=None, ge=0, le=1)
-    sort: Optional[int] = None
+    sort: Optional[int] = Field(default=None, ge=0)
     status: Optional[int] = Field(default=None, ge=0, le=1)
 
 

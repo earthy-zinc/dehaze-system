@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
@@ -10,6 +10,7 @@ from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
 from app.models.base import get_current_user_id
 from app.models.entity.sys_member import SysMember
+from app.models.entity.sys_member_quota import SysMemberQuota
 from app.models.entity.sys_member_sign_in import SysMemberSignIn
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_growth_log_repository import member_growth_log_repository
@@ -133,11 +134,16 @@ def _calculate_level(benefits: list, growth_value: int) -> str:
 
 
 async def _check_and_adjust_level(db: AsyncSession, member: SysMember) -> None:
+    if member.level_source != "growth":
+        return
     benefits = await member_benefit_repository.list_ordered_by_growth_min(db)
     target_level = _calculate_level(benefits, member.growth_value)
     if target_level != member.level_code:
         member.level_code = target_level
-        member.level_source = "growth"
+        benefit = next((b for b in benefits if b.level_code == target_level), None)
+        if benefit:
+            member.monthly_dehaze_quota = benefit.monthly_dehaze_quota
+            member.monthly_evaluate_quota = benefit.monthly_evaluate_quota
         await db.flush()
 
 
@@ -145,6 +151,8 @@ async def _invalidate_member_cache(user_id: Optional[int] = None, level_code: Op
     keys = []
     if user_id is not None:
         keys.append(f"member:level:{user_id}")
+        keys.append(f"member:quota:{user_id}:dehaze")
+        keys.append(f"member:quota:{user_id}:evaluate")
     if level_code is not None:
         keys.append(f"member:benefit:{level_code}")
     keys.append("member:benefit:all")
@@ -286,12 +294,16 @@ class MemberService:
                 related_id=str(sign_in_record.id),
             )
 
+        old_level = member.level_code
         await _check_and_adjust_level(db, member)
+        if member.level_code != old_level:
+            await _invalidate_member_cache(user_id=user_id, level_code=old_level)
+            await _invalidate_member_cache(level_code=member.level_code)
 
         return {
             "signDate": _format_date(today),
             "continuousDays": continuous_days,
-            "growthValue": total_growth,
+            "growthValue": base_growth,
             "bonusGrowth": bonus_growth,
         }
 
@@ -414,9 +426,16 @@ class MemberService:
         expire_time = form.get("expireTime")
         if expire_time:
             member.expire_time = _parse_dt(expire_time)
+        else:
+            member.expire_time = None
 
         if member.become_member_time is None:
             member.become_member_time = datetime.now()
+
+        benefit = await member_benefit_repository.get_by_level_code(db, form["levelCode"])
+        if benefit:
+            member.monthly_dehaze_quota = benefit.monthly_dehaze_quota
+            member.monthly_evaluate_quota = benefit.monthly_evaluate_quota
 
         await db.flush()
         await _invalidate_member_cache(user_id=user_id, level_code=old_level)
@@ -654,9 +673,81 @@ class MemberService:
         now = datetime.now()
         current_month = int(now.strftime("%Y%m"))
 
+        benefits = await member_benefit_repository.list_all(db)
+        benefit_map = {b.level_code: b for b in benefits}
+
+        batch_size = 500
+        total_count = 0
+
+        while True:
+            stmt = (
+                select(SysMember)
+                .where(
+                    SysMember.deleted == 0,
+                    or_(
+                        SysMember.quota_reset_month.is_(None),
+                        SysMember.quota_reset_month != current_month,
+                    ),
+                )
+                .limit(batch_size)
+            )
+            result = await db.execute(stmt)
+            members = result.scalars().all()
+
+            if not members:
+                break
+
+            for member in members:
+                if member.quota_reset_month is not None:
+                    archive = SysMemberQuota(
+                        user_id=member.user_id,
+                        quota_month=member.quota_reset_month,
+                        level_code=member.level_code,
+                        dehaze_quota=member.monthly_dehaze_quota,
+                        dehaze_used=member.monthly_dehaze_used,
+                        evaluate_quota=member.monthly_evaluate_quota,
+                        evaluate_used=member.monthly_evaluate_used,
+                        reset_time=now,
+                    )
+                    db.add(archive)
+
+                benefit = benefit_map.get(member.level_code)
+                if benefit:
+                    member.monthly_dehaze_quota = benefit.monthly_dehaze_quota
+                    member.monthly_evaluate_quota = benefit.monthly_evaluate_quota
+                member.monthly_dehaze_used = 0
+                member.monthly_evaluate_used = 0
+                member.quota_reset_month = current_month
+                total_count += 1
+
+            await db.flush()
+
+            async def _invalidate_quota_cache(batch_members=members):
+                redis = await get_redis_client()
+                keys = [f"member:quota:{m.user_id}:dehaze" for m in batch_members] + \
+                       [f"member:quota:{m.user_id}:evaluate" for m in batch_members]
+                if keys:
+                    await redis.delete(*keys)
+            await redis_operation_with_fallback(_invalidate_quota_cache, default=None, operation_name="quota_reset_cache_invalidate")
+
+        return total_count
+
+    @staticmethod
+    async def process_expired_members(db: AsyncSession) -> int:
+        """会员过期降级处理
+
+        扫描 expire_time < NOW() AND level_source != 'growth' 的会员，
+        按成长值重算等级、置 level_source='growth'、清空 expire_time、刷新权益。
+
+        Returns:
+            已处理的会员数量
+        """
+        now = datetime.now()
         stmt = select(SysMember).where(
             SysMember.deleted == 0,
-            SysMember.quota_reset_month != current_month,
+            SysMember.expire_time.isnot(None),
+            SysMember.expire_time < now,
+            SysMember.level_source != "growth",
         )
         result = await db.execute(stmt)
         members = result.scalars().all()
@@ -664,28 +755,110 @@ class MemberService:
         if not members:
             return 0
 
-        benefits = await member_benefit_repository.list_all(db)
+        benefits = await member_benefit_repository.list_ordered_by_growth_min(db)
         benefit_map = {b.level_code: b for b in benefits}
 
         count = 0
         for member in members:
-            benefit = benefit_map.get(member.level_code)
+            old_level = member.level_code
+            target_level = _calculate_level(benefits, member.growth_value)
+            member.level_code = target_level
+            member.level_source = "growth"
+            member.expire_time = None
+            benefit = benefit_map.get(target_level)
             if benefit:
                 member.monthly_dehaze_quota = benefit.monthly_dehaze_quota
                 member.monthly_evaluate_quota = benefit.monthly_evaluate_quota
-            member.monthly_dehaze_used = 0
-            member.monthly_evaluate_used = 0
-            member.quota_reset_month = current_month
             count += 1
+            await _invalidate_member_cache(user_id=member.user_id, level_code=old_level)
+            await _invalidate_member_cache(level_code=target_level)
+
+            if target_level != old_level:
+                try:
+                    from app.service.message_service import MessageService
+                    old_benefit = benefit_map.get(old_level)
+                    new_benefit = benefit_map.get(target_level)
+                    await MessageService.send(db, {
+                        "type": "member",
+                        "recipientIds": [member.user_id],
+                        "bizModule": "member",
+                        "bizId": f"level_change:{member.user_id}:{int(now.timestamp())}",
+                        "templateCode": "member_downgrade_warning",
+                        "variables": {
+                            "currentLevel": old_benefit.level_name if old_benefit else old_level,
+                            "days": "0",
+                            "downgradeLevel": new_benefit.level_name if new_benefit else target_level,
+                        },
+                    })
+                except Exception as e:
+                    logger.warning(f"等级变更通知发送失败: userId={member.user_id}, old={old_level}, new={target_level}", exc_info=e)
 
         await db.flush()
-
-        async def _invalidate_quota_cache():
-            redis = await get_redis_client()
-            keys = [f"member:quota:{m.user_id}:dehaze" for m in members] + \
-                   [f"member:quota:{m.user_id}:evaluate" for m in members]
-            if keys:
-                await redis.delete(*keys)
-        await redis_operation_with_fallback(_invalidate_quota_cache, default=None, operation_name="quota_reset_cache_invalidate")
-
+        logger.info(f"会员过期降级处理完成: 共处理 {count} 条记录")
         return count
+
+    @staticmethod
+    async def send_expire_reminders(db: AsyncSession) -> int:
+        from app.service.message_service import MessageService
+
+        now = datetime.now()
+        benefits = await member_benefit_repository.list_ordered_by_growth_min(db)
+        benefit_map = {b.level_code: b for b in benefits}
+
+        day_template_map = {
+            7: ("expire_reminder_7d", "member_expire_reminder_7"),
+            3: ("expire_reminder_3d", "member_expire_reminder_3"),
+            1: ("expire_reminder_1d", "member_expire_reminder_1"),
+        }
+
+        sent_count = 0
+        for days, (biz_prefix, template_code) in day_template_map.items():
+            window_start = (now + timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
+            window_end = window_start + timedelta(days=1)
+
+            stmt = select(SysMember).where(
+                SysMember.deleted == 0,
+                SysMember.expire_time.isnot(None),
+                SysMember.expire_time >= window_start,
+                SysMember.expire_time < window_end,
+                SysMember.level_source != "growth",
+            )
+            result = await db.execute(stmt)
+            members = result.scalars().all()
+            if not members:
+                continue
+
+            for member in members:
+                try:
+                    current_benefit = benefit_map.get(member.level_code)
+                    variables = {
+                        "currentLevel": current_benefit.level_name if current_benefit else member.level_code,
+                        "days": str(days),
+                        "expireDate": member.expire_time.strftime("%Y-%m-%d") if member.expire_time else "",
+                    }
+                    if days == 3:
+                        target_level = _calculate_level(benefits, member.growth_value)
+                        downgrade_benefit = benefit_map.get(target_level)
+                        variables["downgradeLevel"] = downgrade_benefit.level_name if downgrade_benefit else target_level
+                        if current_benefit and downgrade_benefit:
+                            variables["benefitCompare"] = (
+                                f"去雾:{current_benefit.monthly_dehaze_quota}→{downgrade_benefit.monthly_dehaze_quota}次/月，"
+                                f"评估:{current_benefit.monthly_evaluate_quota}→{downgrade_benefit.monthly_evaluate_quota}次/月"
+                            )
+                        else:
+                            variables["benefitCompare"] = ""
+
+                    await MessageService.send(db, {
+                        "type": "member",
+                        "recipientIds": [member.user_id],
+                        "bizModule": "member",
+                        "bizId": f"{biz_prefix}:{member.user_id}:{now.strftime('%Y-%m-%d')}",
+                        "templateCode": template_code,
+                        "variables": variables,
+                    })
+                    sent_count += 1
+                except Exception as e:
+                    logger.warning(f"到期提醒发送失败: userId={member.user_id}, days={days}", exc_info=e)
+
+        logger.info(f"会员到期预警完成: 共发送 {sent_count} 条提醒")
+        return sent_count

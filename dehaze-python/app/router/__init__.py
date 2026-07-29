@@ -119,6 +119,10 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     from app.router.order import router as order_router
     app.include_router(order_router)
 
+    # 支付回调路由（无需认证，由支付平台调用）
+    from app.router.payment import router as payment_router
+    app.include_router(payment_router)
+
     # 反馈评价模块路由
     from app.router.feedback import router as feedback_router
     app.include_router(feedback_router)

@@ -208,14 +208,17 @@ async def _complete_balance_payment(db: AsyncSession, order: SysOrder) -> None:
 
     if order.coupon_id:
         await user_coupon_repository.consume_coupon(db, order.coupon_id, order.id)
-        await coupon_repository.increment_used_qty(db, _get_coupon_template_id(order.coupon_id))
+        await coupon_repository.increment_used_qty(db, await _get_coupon_template_id(db, order.coupon_id))
 
     await _activate_member_benefits(db, order)
     await _invalidate_order_detail_cache(order.order_no)
 
 
-def _get_coupon_template_id(user_coupon_id: int) -> int:
-    return user_coupon_id
+async def _get_coupon_template_id(db: AsyncSession, user_coupon_id: int) -> int:
+    uc = await user_coupon_repository.get_by_id(db, user_coupon_id)
+    if not uc:
+        raise BusinessException(ResultCode.COUPON_NOT_FOUND)
+    return uc.coupon_id
 
 
 async def _process_callback_success(db: AsyncSession, order: SysOrder, channel_payment_no: str, callback_raw: dict) -> None:
@@ -240,7 +243,7 @@ async def _process_callback_success(db: AsyncSession, order: SysOrder, channel_p
 
     if order.coupon_id:
         await user_coupon_repository.consume_coupon(db, order.coupon_id, order.id)
-        await coupon_repository.increment_used_qty(db, _get_coupon_template_id(order.coupon_id))
+        await coupon_repository.increment_used_qty(db, await _get_coupon_template_id(db, order.coupon_id))
 
     await _activate_member_benefits(db, order)
     await _invalidate_order_detail_cache(order.order_no)
@@ -270,8 +273,9 @@ class OrderService:
             if pkg.status != 1:
                 raise BusinessException(ResultCode.PACKAGE_OFF_SHELF)
 
-            original_price = pkg.sale_price
-            discount_amount = 0
+            original_price = pkg.original_price
+            sale_price = pkg.sale_price
+            discount_amount = original_price - sale_price
             coupon_amount = 0
 
             if coupon_id:
@@ -291,22 +295,26 @@ class OrderService:
                 if coupon_template.applicable_scope and package_id not in coupon_template.applicable_scope:
                     raise BusinessException(ResultCode.COUPON_NOT_APPLICABLE)
 
-                base_price = original_price - discount_amount
+                base_price = sale_price
                 if coupon_template.type == "full_reduction":
                     if base_price >= (coupon_template.threshold or 0):
                         coupon_amount = coupon_template.face_value
                 elif coupon_template.type == "discount":
-                    coupon_amount = base_price * (100 - coupon_template.face_value) // 100
+                    if 0 < coupon_template.face_value < 100:
+                        coupon_amount = base_price * (100 - coupon_template.face_value) // 100
                 elif coupon_template.type == "no_threshold":
                     coupon_amount = coupon_template.face_value
                 elif coupon_template.type == "trial":
                     coupon_amount = base_price
 
+                if coupon_amount > sale_price:
+                    coupon_amount = sale_price
+
                 locked = await user_coupon_repository.lock_coupon(db, coupon_id)
                 if not locked:
                     raise BusinessException(ResultCode.COUPON_LOCK_FAILED)
 
-            payable_amount = max(0, original_price - discount_amount - coupon_amount)
+            payable_amount = max(0, sale_price - coupon_amount)
             order_no = _gen_order_no()
             now = datetime.now()
 
@@ -330,25 +338,6 @@ class OrderService:
             )
             await order_repository.create(db, order)
 
-            if pay_method == "balance":
-                await _complete_balance_payment(db, order)
-                mongo_audit_log_repository.create_audit_async(
-                    operator_id=user_id,
-                    target_type="order",
-                    target_id=order.order_no,
-                    action="create",
-                    module="order",
-                    after_value=form.dict() if hasattr(form, "dict") else form,
-                )
-                return {
-                    "orderNo": order.order_no,
-                    "payMethod": pay_method,
-                    "paid": True,
-                }
-
-            pay_result = await payment_channel_service.unified_order(
-                pay_method, order_no, payable_amount, pkg.name,
-            )
             mongo_audit_log_repository.create_audit_async(
                 operator_id=user_id,
                 target_type="order",
@@ -357,11 +346,10 @@ class OrderService:
                 module="order",
                 after_value=form.dict() if hasattr(form, "dict") else form,
             )
+
             return {
                 "orderNo": order.order_no,
                 "payMethod": pay_method,
-                "payUrl": pay_result.pay_url,
-                "qrCode": pay_result.qr_code,
                 "paid": False,
             }
         finally:
@@ -462,13 +450,13 @@ class OrderService:
         if order.user_id != user_id:
             raise BusinessException(ResultCode.ORDER_NOT_FOUND)
 
-        if order.status not in (1, 2):
+        if order.status != 1:
             raise BusinessException(ResultCode.ORDER_STATUS_INVALID)
 
         if order.coupon_id:
             await user_coupon_repository.release_coupon(db, order.coupon_id)
 
-        if order.status == 1 and order.pay_method in ("wechat", "alipay"):
+        if order.pay_method in ("wechat", "alipay"):
             try:
                 await payment_channel_service.close_order(order.pay_method, order_no)
             except Exception as e:
@@ -661,7 +649,10 @@ class OrderService:
         else:
             refund.status = 3
             refund.error_message = error_message
-            order.status = 2
+            restore_status = 2
+            if order.package_expire_time and order.package_expire_time > now:
+                restore_status = 3
+            order.status = restore_status
 
         await db.flush()
         await _invalidate_order_detail_cache(order.order_no)
@@ -689,13 +680,15 @@ class OrderService:
             raise BusinessException(ResultCode.ORDER_NOT_FOUND)
 
         now = datetime.now()
+        restore_status = 2
+        if order.package_expire_time and order.package_expire_time > now:
+            restore_status = 3
+
         refund.status = 3
         refund.audit_time = now
         refund.auditor_id = auditor_id
         refund.audit_remark = form.get("remark", "")
-        await db.flush()
-
-        order.status = 2
+        order.status = restore_status
         await db.flush()
         await _invalidate_order_detail_cache(order.order_no)
 
@@ -760,7 +753,7 @@ class OrderService:
                 "packageId": row.package_id,
                 "packageName": row.package_name,
                 "count": row.count,
-                "revenue": row.revenue,
+                "revenue": int(row.revenue or 0),
             }
             for row in pkg_rows
         ]
@@ -782,7 +775,7 @@ class OrderService:
             {
                 "date": str(row.date),
                 "count": row.count,
-                "revenue": row.revenue,
+                "revenue": int(row.revenue or 0),
             }
             for row in daily_rows
         ]
@@ -791,7 +784,7 @@ class OrderService:
             "totalOrders": total_orders,
             "totalRevenue": total_revenue,
             "totalRefund": total_refund,
-            "refundRate": refund_rate,
+            "refundRate": float(refund_rate),
             "statusDistribution": status_distribution,
             "payMethodDistribution": pay_method_distribution,
             "packageDistribution": package_distribution,
@@ -953,7 +946,7 @@ class OrderService:
                 package_name=pkg.name,
                 package_level=pkg.level_code,
                 period_days=pkg.period_days,
-                original_price=pkg.sale_price,
+                original_price=pkg.original_price,
                 discount_amount=pkg.sale_price - payable_amount,
                 coupon_id=None,
                 coupon_amount=0,
@@ -998,3 +991,65 @@ class OrderService:
             await db.flush()
 
         return success_count
+
+    @staticmethod
+    async def retry_failed_refunds(db: AsyncSession) -> int:
+        max_retry_count = 3
+        stmt = select(SysRefundRecord).where(
+            SysRefundRecord.deleted == 0,
+            SysRefundRecord.status == 3,
+            SysRefundRecord.retry_count < max_retry_count,
+        )
+        result = await db.execute(stmt)
+        failed_refunds = result.scalars().all()
+
+        if not failed_refunds:
+            return 0
+
+        success_count = 0
+        final_fail_count = 0
+        for refund in failed_refunds:
+            order = await order_repository.get_by_id(db, refund.order_id)
+            if not order:
+                logger.warning("退款重试跳过: 退款记录%s对应订单不存在", refund.id)
+                continue
+
+            refund.retry_count = (refund.retry_count or 0) + 1
+            channel = order.pay_method or "balance"
+            refund_success = True
+            error_message = None
+
+            if channel in ("wechat", "alipay"):
+                payments = await payment_record_repository.list_by_order_id(db, order.id)
+                channel_payment_no = payments[0].payment_no if payments else ""
+                try:
+                    result_obj = await payment_channel_service.refund(
+                        channel, order.order_no, channel_payment_no,
+                        refund.refund_amount, order.paid_amount,
+                    )
+                    refund_success = result_obj.success
+                    error_message = result_obj.error_message
+                except Exception as e:
+                    logger.error("渠道退款重试失败 refundId=%s: %s", refund.id, e)
+                    refund_success = False
+                    error_message = str(e)
+
+            if refund_success:
+                refund.status = 2
+                refund.refund_time = datetime.now()
+                refund.error_message = None
+                order.status = 6
+                success_count += 1
+            else:
+                if not error_message:
+                    error_message = "渠道退款失败"
+                if refund.retry_count >= max_retry_count:
+                    error_message = f"{error_message}（已达重试上限，转为最终失败）"
+                    final_fail_count += 1
+                refund.error_message = error_message
+
+            await db.flush()
+
+        logger.info("退款失败重试完成: 总数=%s 成功=%s 最终失败=%s",
+                    len(failed_refunds), success_count, final_fail_count)
+        return len(failed_refunds)

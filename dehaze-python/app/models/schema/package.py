@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -29,15 +29,15 @@ class BenefitOverrides(BaseModel):
 
 class PackageForm(BaseModel):
     id: Optional[int] = None
-    name: str = Field(..., min_length=1, description="套餐名称")
+    name: str = Field(..., min_length=2, max_length=32, description="套餐名称")
     levelCode: str = Field(..., description="会员等级")
-    period: str = Field(..., description="计费周期")
-    periodDays: int = Field(..., ge=1, description="有效期天数")
-    originalPrice: int = Field(..., ge=0, description="原价(分)")
-    salePrice: int = Field(..., ge=0, description="促销价(分)")
-    description: Optional[str] = None
+    period: Literal["monthly", "quarterly", "yearly"] = Field(..., description="计费周期")
+    periodDays: int = Field(..., ge=1, le=365, description="有效期天数")
+    originalPrice: int = Field(..., ge=1, description="原价(分)")
+    salePrice: int = Field(..., ge=1, description="促销价(分)")
+    description: Optional[str] = Field(default=None, max_length=256, description="套餐描述")
     benefitOverrides: Optional[BenefitOverrides] = None
-    sort: Optional[int] = 0
+    sort: Optional[int] = Field(default=0, ge=0, le=999, description="排序值")
     status: Optional[int] = Field(default=0, ge=0, le=1)
 
 

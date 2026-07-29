@@ -53,6 +53,7 @@ class EvaluationService:
         pred_url: str,
         gt_url: str,
         user_id: Optional[int] = None,
+        skip_quota_check: bool = False,
     ) -> dict:
         """
         提交效果评估任务（异步）
@@ -69,7 +70,7 @@ class EvaluationService:
         from app.database import get_db_session
         from app.service.member_service import MemberService
 
-        if user_id is not None:
+        if user_id is not None and not skip_quota_check:
             async with get_db_session() as db:
                 await MemberService.check_and_deduct_quota(db, user_id, "evaluate")
 

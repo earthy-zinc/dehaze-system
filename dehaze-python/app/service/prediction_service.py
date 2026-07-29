@@ -76,6 +76,7 @@ class PredictionService:
         params: Optional[dict] = None,
         user_id: Optional[int] = None,
         file_id: Optional[int] = None,
+        skip_quota_check: bool = False,
     ) -> dict:
         """
         提交预测任务（异步）
@@ -92,7 +93,7 @@ class PredictionService:
         """
         start = time.time()
 
-        if user_id is not None:
+        if user_id is not None and not skip_quota_check:
             from app.service.member_service import MemberService
             async with get_db_session() as db:
                 await MemberService.check_and_deduct_quota(db, user_id, "dehaze")

@@ -39,10 +39,19 @@ BENEFIT_FIELDS = [
 ]
 
 PERIOD_NAMES = {
-    "monthly": "月包",
-    "quarterly": "季包",
-    "yearly": "年包",
+    "monthly": "月卡",
+    "quarterly": "季卡",
+    "yearly": "年卡",
 }
+
+VALID_PERIODS = {"monthly", "quarterly", "yearly"}
+
+
+def _validate_package_form(form: dict) -> None:
+    if form.get("salePrice", 0) > form.get("originalPrice", 0):
+        raise BusinessException(ResultCode.PARAM_ERROR, "促销价不能高于原价")
+    if form.get("period") not in VALID_PERIODS:
+        raise BusinessException(ResultCode.PARAM_ERROR, "计费周期非法")
 
 
 def _format_dt(dt: Optional[datetime]) -> Optional[str]:
@@ -89,7 +98,7 @@ def _promotion_to_vo(promotion: SysPromotion) -> dict:
 def _calc_daily_price(sale_price: int, period_days: int) -> int:
     if period_days <= 0:
         return 0
-    return sale_price // period_days
+    return (2 * sale_price + period_days) // (2 * period_days)
 
 
 async def _invalidate_package_cache(package_id: Optional[int] = None) -> None:
@@ -179,10 +188,9 @@ class PackageService:
         detail = _build_package_detail(pkg, benefit)
 
         active_promos = await promotion_repository.list_active_by_package_id(db, package_id)
-        if active_promos:
-            detail["activePromotions"] = [
-                _promotion_to_vo(item["promotion"]) for item in active_promos
-            ]
+        detail["activePromotions"] = [
+            _promotion_to_vo(item["promotion"]) for item in active_promos
+        ] if active_promos else []
 
         async def _set_cache():
             redis = await get_redis_client()
@@ -248,6 +256,7 @@ class PackageService:
 
     @staticmethod
     async def create(db: AsyncSession, form: dict) -> None:
+        _validate_package_form(form)
         existing = await package_repository.get_by_name(db, form["name"])
         if existing:
             raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已存在")
@@ -271,6 +280,11 @@ class PackageService:
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
             raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
+        _validate_package_form(form)
+        if pkg.name != form["name"]:
+            dup = await package_repository.get_by_name(db, form["name"])
+            if dup and dup.id != package_id:
+                raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已存在")
         pkg.name = form["name"]
         pkg.level_code = form["levelCode"]
         pkg.period = form["period"]
@@ -279,9 +293,8 @@ class PackageService:
         pkg.sale_price = form["salePrice"]
         pkg.description = form.get("description")
         pkg.benefit_overrides = form.get("benefitOverrides")
-        pkg.sort = form.get("sort", 0)
-        if form.get("status") is not None:
-            pkg.status = form["status"]
+        if form.get("sort") is not None:
+            pkg.sort = form["sort"]
         await db.flush()
         await _invalidate_package_cache(package_id)
 
@@ -290,6 +303,10 @@ class PackageService:
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
             raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
+        if status == 0:
+            active_promos = await promotion_repository.list_active_by_package_id(db, package_id)
+            if active_promos:
+                raise BusinessException(ResultCode.PACKAGE_IN_PROMOTION)
         pkg.status = status
         await db.flush()
         await _invalidate_package_cache(package_id)
@@ -300,6 +317,13 @@ class PackageService:
             pkg = await package_repository.get_by_id(db, package_id)
             if not pkg:
                 raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
+            order_count_stmt = select(func.count()).select_from(SysOrder).where(
+                SysOrder.package_id == package_id,
+                SysOrder.deleted == 0,
+            )
+            order_count = (await db.execute(order_count_stmt)).scalar() or 0
+            if order_count > 0:
+                raise BusinessException(ResultCode.PACKAGE_HAS_ORDERS)
         await package_repository.soft_delete_by_ids(db, ids)
         await _invalidate_package_cache()
 
@@ -314,14 +338,14 @@ class PackageService:
         if not pkg:
             raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
 
-        original_price = pkg.sale_price
+        sale_price = pkg.sale_price
         discount_amount = 0
 
         active_promos = await promotion_repository.list_active_by_package_id(db, package_id)
         for item in active_promos:
             pp = item["promotion_package"]
             if pp.discount_type == "percent":
-                discount_amount = max(discount_amount, original_price * pp.discount_value // 100)
+                discount_amount = max(discount_amount, sale_price * pp.discount_value // 100)
             else:
                 discount_amount = max(discount_amount, pp.discount_value)
 
@@ -345,7 +369,7 @@ class PackageService:
                 if package_id not in coupon.applicable_scope:
                     raise BusinessException(ResultCode.COUPON_NOT_APPLICABLE)
 
-            base_price = original_price - discount_amount
+            base_price = sale_price - discount_amount
             if coupon.type == "full_reduction":
                 if base_price >= (coupon.threshold or 0):
                     coupon_amount = coupon.face_value
@@ -356,9 +380,9 @@ class PackageService:
             elif coupon.type == "trial":
                 coupon_amount = base_price
 
-        payable_amount = max(0, original_price - discount_amount - coupon_amount)
+        payable_amount = max(0, sale_price - discount_amount - coupon_amount)
         return {
-            "originalPrice": original_price,
+            "originalPrice": pkg.original_price,
             "discountAmount": discount_amount,
             "couponAmount": coupon_amount,
             "payableAmount": payable_amount,
@@ -369,7 +393,7 @@ class PackageService:
         total_sales_stmt = select(func.coalesce(func.sum(SysPackage.sales_count), 0)).where(
             SysPackage.deleted == 0
         )
-        total_sales = (await db.execute(total_sales_stmt)).scalar() or 0
+        total_sales = int((await db.execute(total_sales_stmt)).scalar() or 0)
 
         revenue_stmt = select(
             func.coalesce(func.sum(SysOrder.paid_amount), 0)
@@ -377,7 +401,7 @@ class PackageService:
             SysOrder.deleted == 0,
             SysOrder.status.in_([2, 3]),
         )
-        total_revenue = (await db.execute(revenue_stmt)).scalar() or 0
+        total_revenue = int((await db.execute(revenue_stmt)).scalar() or 0)
 
         package_stats_stmt = (
             select(
@@ -395,7 +419,7 @@ class PackageService:
                 "packageId": row.package_id,
                 "packageName": row.package_name,
                 "salesCount": row.count,
-                "revenue": row.revenue,
+                "revenue": int(row.revenue),
             }
             for row in package_rows
         ]
@@ -417,7 +441,7 @@ class PackageService:
                 "levelCode": row.package_level,
                 "levelName": benefit_map[row.package_level].level_name if row.package_level in benefit_map else "",
                 "salesCount": row.count,
-                "revenue": row.revenue,
+                "revenue": int(row.revenue),
             }
             for row in level_rows
         ]
@@ -425,10 +449,16 @@ class PackageService:
         period_stats_stmt = (
             select(
                 SysPackage.period,
-                func.coalesce(func.sum(SysPackage.sales_count), 0).label("count"),
-                func.coalesce(func.sum(SysPackage.sales_count * SysPackage.sale_price), 0).label("revenue"),
+                func.count().label("count"),
+                func.coalesce(func.sum(SysOrder.paid_amount), 0).label("revenue"),
             )
-            .where(SysPackage.deleted == 0)
+            .select_from(SysOrder)
+            .join(SysPackage, SysOrder.package_id == SysPackage.id)
+            .where(
+                SysOrder.deleted == 0,
+                SysOrder.status.in_([2, 3]),
+                SysPackage.deleted == 0,
+            )
             .group_by(SysPackage.period)
         )
         period_rows = (await db.execute(period_stats_stmt)).all()
@@ -436,8 +466,8 @@ class PackageService:
             {
                 "period": row.period,
                 "periodName": PERIOD_NAMES.get(row.period, row.period),
-                "salesCount": row.count,
-                "revenue": row.revenue,
+                "salesCount": int(row.count),
+                "revenue": int(row.revenue),
             }
             for row in period_rows
         ]
@@ -445,12 +475,12 @@ class PackageService:
         coupon_issued_stmt = select(func.coalesce(func.sum(SysCoupon.issued_qty), 0)).where(
             SysCoupon.deleted == 0
         )
-        total_issued = (await db.execute(coupon_issued_stmt)).scalar() or 0
+        total_issued = int((await db.execute(coupon_issued_stmt)).scalar() or 0)
 
         coupon_used_stmt = select(func.coalesce(func.sum(SysCoupon.used_qty), 0)).where(
             SysCoupon.deleted == 0
         )
-        total_used = (await db.execute(coupon_used_stmt)).scalar() or 0
+        total_used = int((await db.execute(coupon_used_stmt)).scalar() or 0)
 
         usage_rate = (total_used / total_issued) if total_issued > 0 else 0
 

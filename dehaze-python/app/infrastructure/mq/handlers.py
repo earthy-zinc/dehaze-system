@@ -240,7 +240,7 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
                 "title": "收到低分评价",
                 "content": f"评价ID {rating_id}，评分 {rating_value} 星，评论：{comment or '无'}",
                 "recipientIds": admin_ids,
-                "priority": 2,
+                "priority": 3,
                 "bizModule": "feedback",
                 "bizId": f"rating:low:{rating_id}",
             })
@@ -251,7 +251,7 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
                 )
                 if low_count >= LOW_RATING_URGENT_COUNT:
                     await MessageService.send(db, {
-                        "type": "alert",
+                        "type": "critical_alert",
                         "title": "低分评价紧急告警",
                         "content": f"算法ID {algorithm_id} 在24小时内收到 {low_count} 条低分评价，请紧急处理",
                         "recipientIds": admin_ids,
@@ -269,7 +269,7 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
                         "title": "全局低分率严重告警",
                         "content": f"24小时内全局低分率达 {low_rate * 100:.1f}%，超过 {LOW_RATING_SEVERE_RATE * 100:.0f}% 阈值，请立即处理",
                         "recipientIds": admin_ids,
-                        "priority": 1,
+                        "priority": 2,
                         "bizModule": "feedback",
                         "bizId": f"rating:severe:{rating_id}",
                     })

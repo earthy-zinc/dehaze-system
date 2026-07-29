@@ -28,4 +28,5 @@ class SysRefundRecord(BaseModel):
     audit_remark: Mapped[Optional[str]] = mapped_column(String(256), nullable=True, comment='审核备注')
     refund_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment='退款完成时间')
     error_message: Mapped[Optional[str]] = mapped_column(String(512), nullable=True, comment='错误信息')
+    retry_count: Mapped[int] = mapped_column(mysql_types.TINYINT, nullable=False, default=0, comment='自动重试次数')
     deleted: Mapped[int] = mapped_column(mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识')

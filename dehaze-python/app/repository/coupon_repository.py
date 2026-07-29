@@ -172,5 +172,30 @@ class UserCouponRepository(BaseRepository[SysUserCoupon]):
         await db.flush()
         return result.rowcount
 
+    async def count_used_by_coupon_ids(self, db: AsyncSession, coupon_ids: list[int]) -> int:
+        if not coupon_ids:
+            return 0
+        stmt = select(func.count()).where(
+            SysUserCoupon.coupon_id.in_(coupon_ids),
+            SysUserCoupon.status == 2,
+            SysUserCoupon.deleted == 0,
+        )
+        return (await db.execute(stmt)).scalar() or 0
+
+    async def soft_delete_unused_by_coupon_ids(self, db: AsyncSession, coupon_ids: list[int]) -> None:
+        if not coupon_ids:
+            return
+        stmt = (
+            update(SysUserCoupon)
+            .where(
+                SysUserCoupon.coupon_id.in_(coupon_ids),
+                SysUserCoupon.status == 1,
+                SysUserCoupon.deleted == 0,
+            )
+            .values(deleted=1)
+        )
+        await db.execute(stmt)
+        await db.flush()
+
 
 user_coupon_repository = UserCouponRepository()

@@ -81,6 +81,7 @@ async def predict(
         params=params,
         user_id=user.id,
         file_id=body.fileId,
+        skip_quota_check=user.is_m2m,
     )
 
     return success(PredictionResponse(

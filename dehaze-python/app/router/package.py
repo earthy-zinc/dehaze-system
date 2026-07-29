@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import success
 from app.database import get_db
+from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.package import (CouponBatchDistributeForm, CouponForm,
                                         CouponQuery, PackageForm, PackageQuery)
@@ -28,6 +29,7 @@ async def list_on_sale(
 
 
 @router.post("", summary="新增套餐")
+@require_permission("package:add")
 async def add_package(
     body: PackageForm = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -88,7 +90,7 @@ async def get_sales_stats(
 
 @router.get("/coupons/my", summary="我的优惠券列表")
 async def list_my_coupons(
-    status: Optional[int] = Query(default=None, ge=0, le=3),
+    status: Optional[int] = Query(default=None, ge=1, le=4),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -97,6 +99,7 @@ async def list_my_coupons(
 
 
 @router.post("/coupons", summary="创建优惠券")
+@require_permission("package:coupon:add")
 async def add_coupon(
     body: CouponForm = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -107,6 +110,7 @@ async def add_coupon(
 
 
 @router.post("/coupons/batch", summary="批量发放优惠券")
+@require_permission("package:coupon:distribute")
 async def batch_distribute_coupon(
     body: CouponBatchDistributeForm = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -150,6 +154,7 @@ async def receive_coupon(
 
 
 @router.put("/coupons/{coupon_id}", summary="修改优惠券")
+@require_permission("package:coupon:edit")
 async def update_coupon(
     coupon_id: int = Path(...),
     body: CouponForm = Body(...),
@@ -161,6 +166,7 @@ async def update_coupon(
 
 
 @router.delete("/coupons/{ids}", summary="删除优惠券")
+@require_permission("package:coupon:delete")
 async def delete_coupons(
     ids: str = Path(...),
     db: AsyncSession = Depends(get_db),
@@ -182,6 +188,7 @@ async def get_package_detail(
 
 
 @router.put("/{package_id}", summary="修改套餐")
+@require_permission("package:edit")
 async def update_package(
     package_id: int = Path(...),
     body: PackageForm = Body(...),
@@ -203,6 +210,7 @@ async def get_package_form(
 
 
 @router.put("/{package_id}/status", summary="上架/下架")
+@require_permission("package:edit")
 async def update_package_status(
     package_id: int = Path(...),
     status: int = Query(..., ge=0, le=1),
@@ -214,6 +222,7 @@ async def update_package_status(
 
 
 @router.delete("/{ids}", summary="删除套餐")
+@require_permission("package:delete")
 async def delete_packages(
     ids: str = Path(...),
     db: AsyncSession = Depends(get_db),

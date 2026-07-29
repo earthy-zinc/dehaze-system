@@ -9,6 +9,14 @@ from app.models.entity.sys_user import SysUser
 from app.repository.base import BaseRepository, escape_like
 
 
+def parse_expire_time(s: str, *, is_end: bool) -> datetime:
+    fmt = "%Y-%m-%d %H:%M:%S" if " " in s else "%Y-%m-%d"
+    dt = datetime.strptime(s, fmt)
+    if " " not in s:
+        return dt.replace(hour=23, minute=59, second=59) if is_end else dt.replace(hour=0, minute=0, second=0)
+    return dt
+
+
 class MemberRepository(BaseRepository[SysMember]):
     model = SysMember
 
@@ -83,10 +91,10 @@ class MemberRepository(BaseRepository[SysMember]):
         if status is not None:
             stmt = stmt.where(SysMember.status == status)
         if expire_time_start:
-            start_dt = datetime.strptime(expire_time_start, "%Y-%m-%d %H:%M:%S")
+            start_dt = parse_expire_time(expire_time_start, is_end=False)
             stmt = stmt.where(SysMember.expire_time >= start_dt)
         if expire_time_end:
-            end_dt = datetime.strptime(expire_time_end, "%Y-%m-%d %H:%M:%S")
+            end_dt = parse_expire_time(expire_time_end, is_end=True)
             stmt = stmt.where(SysMember.expire_time <= end_dt)
         if growth_min is not None:
             stmt = stmt.where(SysMember.growth_value >= growth_min)
@@ -96,7 +104,7 @@ class MemberRepository(BaseRepository[SysMember]):
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = (await db.execute(count_stmt)).scalar() or 0
 
-        stmt = stmt.order_by(SysMember.create_time.desc(), SysMember.id.desc())
+        stmt = stmt.order_by(SysMember.become_member_time.desc(), SysMember.id.desc())
         stmt = stmt.offset((page - 1) * page_size).limit(page_size)
         result = await db.execute(stmt)
         rows = result.all()
