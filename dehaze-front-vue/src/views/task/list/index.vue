@@ -15,11 +15,11 @@
           </el-radio-group>
           <el-radio-group v-model="statusFilter" @change="handleStatusChange">
             <el-radio-button value="">全部</el-radio-button>
-            <el-radio-button value="PENDING">待执行</el-radio-button>
-            <el-radio-button value="PROCESSING">执行中</el-radio-button>
-            <el-radio-button value="COMPLETED">已完成</el-radio-button>
-            <el-radio-button value="FAILED">失败</el-radio-button>
-            <el-radio-button value="CANCELLED">已取消</el-radio-button>
+            <el-radio-button :value="1">待执行</el-radio-button>
+            <el-radio-button :value="2">执行中</el-radio-button>
+            <el-radio-button :value="3">已完成</el-radio-button>
+            <el-radio-button :value="4">失败</el-radio-button>
+            <el-radio-button :value="5">已取消</el-radio-button>
           </el-radio-group>
         </div>
         <el-button @click="loadTaskList"
@@ -88,7 +88,7 @@
               取消
             </el-button>
             <el-button
-              v-if="row.status === 'COMPLETED' && isImportTask(row.taskType)"
+              v-if="row.status === 3 && isImportTask(row.taskType)"
               type="primary"
               link
               :loading="downloadLoadingId === row.taskId"
@@ -97,7 +97,7 @@
               查看结果
             </el-button>
             <el-button
-              v-if="row.status === 'COMPLETED' && !isImportTask(row.taskType)"
+              v-if="row.status === 3 && !isImportTask(row.taskType)"
               type="success"
               link
               :loading="downloadLoadingId === row.taskId"
@@ -214,7 +214,7 @@ const queryParams = reactive<TaskQuery>({
 });
 
 // 状态筛选值（空字符串表示全部）
-const statusFilter = ref("");
+const statusFilter = ref<number | "">("");
 // 类别筛选值（空字符串表示全部）
 const categoryFilter = ref<"" | TaskCategory>("");
 
@@ -226,21 +226,21 @@ const cancelLoading = ref(false);
 const downloadLoadingId = ref<string | null>(null);
 
 // 状态标签颜色映射（按需求规格 5.3 节）
-const statusTagColor: Record<string, string> = {
-  PENDING: "#1890ff",
-  PROCESSING: "#1890ff",
-  COMPLETED: "#52c41a",
-  FAILED: "#ff4d4f",
-  CANCELLED: "#8c8c8c",
+const statusTagColor: Record<number, string> = {
+  1: "#1890ff",
+  2: "#1890ff",
+  3: "#52c41a",
+  4: "#ff4d4f",
+  5: "#8c8c8c",
 };
 
 // 状态标签文本映射
-const statusLabel: Record<string, string> = {
-  PENDING: "待执行",
-  PROCESSING: "执行中",
-  COMPLETED: "已完成",
-  FAILED: "失败",
-  CANCELLED: "已取消",
+const statusLabel: Record<number, string> = {
+  1: "待执行",
+  2: "执行中",
+  3: "已完成",
+  4: "失败",
+  5: "已取消",
 };
 
 // 任务类型文本映射
@@ -270,7 +270,7 @@ function isImportTask(taskType?: string): boolean {
 }
 
 // 需要轮询的任务状态
-const POLLING_STATUSES = ["PENDING", "PROCESSING"];
+const POLLING_STATUSES = [1, 2];
 
 /**
  * 格式化时间显示
@@ -285,10 +285,10 @@ function formatTime(t?: Date | string): string {
  * @param status 任务状态
  */
 function progressStatus(
-  status: string
+  status: number
 ): "" | "success" | "exception" | "warning" {
-  if (status === "COMPLETED") return "success";
-  if (status === "FAILED") return "exception";
+  if (status === 3) return "success";
+  if (status === 4) return "exception";
   return "";
 }
 
@@ -296,7 +296,7 @@ function progressStatus(
  * 判断任务是否可取消
  * @param status 任务状态
  */
-function canCancel(status: string): boolean {
+function canCancel(status: number): boolean {
   return POLLING_STATUSES.includes(status);
 }
 
@@ -371,7 +371,7 @@ async function handleCancel(task: TaskVO) {
     if (taskStore.currentTask?.taskId === task.taskId) {
       taskStore.currentTask = {
         ...taskStore.currentTask,
-        status: "CANCELLED",
+        status: 5,
         completedAt: new Date().toISOString(),
       };
     }

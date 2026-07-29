@@ -6,11 +6,7 @@
 
     <div v-loading="loading" class="rating-list">
       <template v-if="ratingList.length > 0">
-        <div
-          v-for="rating in ratingList"
-          :key="rating.id"
-          class="rating-card"
-        >
+        <div v-for="rating in ratingList" :key="rating.id" class="rating-card">
           <div class="card-header">
             <div class="header-left">
               <el-icon class="algo-icon"><Star /></el-icon>
@@ -54,11 +50,7 @@
             />
           </div>
 
-          <el-card
-            v-if="rating.adminReply"
-            class="reply-card"
-            shadow="never"
-          >
+          <el-card v-if="rating.adminReply" class="reply-card" shadow="never">
             <div class="reply-header">
               <el-icon><ChatLineRound /></el-icon>
               <span>管理员回复</span>

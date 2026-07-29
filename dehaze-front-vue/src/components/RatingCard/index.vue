@@ -13,7 +13,12 @@
       <span>{{ algorithmName }}</span>
     </div>
 
-    <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
+    <el-form
+      ref="formRef"
+      :model="formData"
+      :rules="formRules"
+      label-width="90px"
+    >
       <el-form-item label="整体评分" prop="rating">
         <el-rate
           v-model="formData.rating"
@@ -63,7 +68,9 @@
         >
           <el-icon class="upload-icon"><Plus /></el-icon>
         </el-upload>
-        <div class="upload-tip">支持 JPG/PNG/WEBP，单张不超过 5MB，最多 3 张</div>
+        <div class="upload-tip">
+          支持 JPG/PNG/WEBP，单张不超过 5MB，最多 3 张
+        </div>
       </el-form-item>
 
       <el-form-item label="匿名评价">

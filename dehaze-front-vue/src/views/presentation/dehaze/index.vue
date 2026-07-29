@@ -184,7 +184,7 @@ async function handleGenerateImage() {
   })
     .then(async (res) => {
       if (cancelFlag) return;
-      if (res.status === "failed") {
+      if (res.status === 3) {
         throw new Error(res.errorMessage || "去雾处理失败");
       }
       progress.value = 95;
@@ -328,7 +328,7 @@ async function handleStartBatch() {
           ? JSON.stringify(dehazeParams.value)
           : undefined,
       });
-      if (predRes.status === "failed") {
+      if (predRes.status === 3) {
         throw new Error(predRes.errorMessage || "处理失败");
       }
       task.resultUrl = predRes.resultUrl || "";

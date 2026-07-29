@@ -23,7 +23,9 @@
               <span :class="['status-tag', `tag-${feedback.status}`]">
                 {{ statusLabel(feedback.status) }}
               </span>
-              <span class="type-tag">{{ typeLabel(feedback.feedbackType) }}</span>
+              <span class="type-tag">{{
+                typeLabel(feedback.feedbackType)
+              }}</span>
               <span v-if="feedback.relatedModule" class="module-tag">
                 {{ moduleLabel(feedback.relatedModule) }}
               </span>

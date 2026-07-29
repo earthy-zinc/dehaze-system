@@ -22,28 +22,28 @@ const visible = computed({
 
 const taskStore = useTaskStore();
 
-const statusFilter = ref("");
+const statusFilter = ref<number | "">("");
 const categoryFilter = ref<"import" | "export" | "">("");
 
-const POLLING_STATUSES = ["PENDING", "PROCESSING"];
+const POLLING_STATUSES = [1, 2];
 
-const statusLabel: Record<string, string> = {
-  PENDING: "待执行",
-  PROCESSING: "执行中",
-  COMPLETED: "已完成",
-  FAILED: "失败",
-  CANCELLED: "已取消",
+const statusLabel: Record<number, string> = {
+  1: "待执行",
+  2: "执行中",
+  3: "已完成",
+  4: "失败",
+  5: "已取消",
 };
 
 const statusTagType: Record<
-  string,
+  number,
   "info" | "primary" | "success" | "danger" | "warning"
 > = {
-  PENDING: "info",
-  PROCESSING: "primary",
-  COMPLETED: "success",
-  FAILED: "danger",
-  CANCELLED: "warning",
+  1: "info",
+  2: "primary",
+  3: "success",
+  4: "danger",
+  5: "warning",
 };
 
 const taskTypeLabel: Record<string, string> = {
@@ -105,16 +105,16 @@ function handleFilterChange() {
   loadTaskList();
 }
 
-function canCancel(status: string): boolean {
+function canCancel(status: number): boolean {
   return POLLING_STATUSES.includes(status);
 }
 
 function progressStatus(
-  status: string
+  status: number
 ): "" | "success" | "exception" | "warning" {
-  if (status === "COMPLETED") return "success";
-  if (status === "FAILED") return "exception";
-  if (status === "CANCELLED") return "warning";
+  if (status === 3) return "success";
+  if (status === 4) return "exception";
+  if (status === 5) return "warning";
   return "";
 }
 
@@ -211,11 +211,11 @@ onUnmounted(() => {
           class="status-select"
           @change="handleFilterChange"
         >
-          <el-option label="待执行" value="PENDING" />
-          <el-option label="执行中" value="PROCESSING" />
-          <el-option label="已完成" value="COMPLETED" />
-          <el-option label="失败" value="FAILED" />
-          <el-option label="已取消" value="CANCELLED" />
+          <el-option label="待执行" :value="1" />
+          <el-option label="执行中" :value="2" />
+          <el-option label="已完成" :value="3" />
+          <el-option label="失败" :value="4" />
+          <el-option label="已取消" :value="5" />
         </el-select>
         <el-button @click="loadTaskList">刷新</el-button>
       </div>
@@ -271,7 +271,7 @@ onUnmounted(() => {
               取消
             </el-button>
             <el-button
-              v-if="row.status === 'COMPLETED'"
+              v-if="row.status === 3"
               type="success"
               link
               :loading="downloadLoadingId === row.taskId"
@@ -279,9 +279,7 @@ onUnmounted(() => {
             >
               下载
             </el-button>
-            <span v-if="!canCancel(row.status) && row.status !== 'COMPLETED'"
-              >-</span
-            >
+            <span v-if="!canCancel(row.status) && row.status !== 3">-</span>
           </template>
         </el-table-column>
       </el-table>

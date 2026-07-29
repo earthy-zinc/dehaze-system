@@ -239,24 +239,24 @@ const taskTypeLabel: Record<string, string> = {
   BATCH_DEHAZE: "批量去雾",
   EVALUATION: "算法评测",
 };
-const statusLabel: Record<string, string> = {
-  PENDING: "待执行",
-  PROCESSING: "执行中",
-  COMPLETED: "已完成",
-  FAILED: "失败",
-  CANCELLED: "已取消",
+const statusLabel: Record<number, string> = {
+  1: "待执行",
+  2: "执行中",
+  3: "已完成",
+  4: "失败",
+  5: "已取消",
 };
-const statusTagColor: Record<string, string> = {
-  PENDING: "#1890ff",
-  PROCESSING: "#1890ff",
-  COMPLETED: "#52c41a",
-  FAILED: "#ff4d4f",
-  CANCELLED: "#8c8c8c",
+const statusTagColor: Record<number, string> = {
+  1: "#1890ff",
+  2: "#1890ff",
+  3: "#52c41a",
+  4: "#ff4d4f",
+  5: "#8c8c8c",
 };
 
-function progressStatus(status: string) {
-  if (status === "COMPLETED") return "success";
-  if (status === "FAILED") return "exception";
+function progressStatus(status: number) {
+  if (status === 3) return "success";
+  if (status === 4) return "exception";
   return undefined;
 }
 
@@ -279,7 +279,7 @@ async function loadStats() {
     recentTasks.value = taskStore.taskList.slice(0, 5) || [];
     // 统计已完成
     completedTaskCount.value = recentTasks.value.filter(
-      (t) => t.status === "COMPLETED"
+      (t) => t.status === 3
     ).length;
     // 注意：这是最近5条的已完成数，仅作展示用，精确值需要单独接口
   } catch (e) {
@@ -387,12 +387,12 @@ function initPieChart() {
 // 根据最近任务数据更新饼图
 function updatePieChart(tasks: any[]) {
   if (!pieChart) return;
-  const counts: Record<string, number> = {
-    COMPLETED: 0,
-    PROCESSING: 0,
-    PENDING: 0,
-    FAILED: 0,
-    CANCELLED: 0,
+  const counts: Record<number, number> = {
+    3: 0,
+    2: 0,
+    1: 0,
+    4: 0,
+    5: 0,
   };
   tasks.forEach((t) => {
     if (counts[t.status] !== undefined) counts[t.status]++;
@@ -401,11 +401,11 @@ function updatePieChart(tasks: any[]) {
     series: [
       {
         data: [
-          { value: counts.COMPLETED, name: "已完成" },
-          { value: counts.PROCESSING, name: "执行中" },
-          { value: counts.PENDING, name: "待执行" },
-          { value: counts.FAILED, name: "失败" },
-          { value: counts.CANCELLED, name: "已取消" },
+          { value: counts[3], name: "已完成" },
+          { value: counts[2], name: "执行中" },
+          { value: counts[1], name: "待执行" },
+          { value: counts[4], name: "失败" },
+          { value: counts[5], name: "已取消" },
         ],
       },
     ],

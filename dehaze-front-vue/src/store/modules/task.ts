@@ -2,7 +2,7 @@
 import { TaskAPI, TaskVO, TaskQuery } from "dehaze-sdk-js";
 
 // 需要轮询的任务状态
-const POLLING_STATUSES = ["PENDING", "PROCESSING"];
+const POLLING_STATUSES = [1, 2];
 // 轮询间隔（毫秒）
 const POLLING_INTERVAL = 3000;
 
@@ -37,7 +37,7 @@ export const useTaskStore = defineStore("task", () => {
   /** 下载任务结果 */
   const downloadResult = async (taskId: string) => {
     const task = await TaskAPI.getStatus(taskId);
-    if (task.status !== "COMPLETED") {
+    if (task.status !== 3) {
       throw new Error("任务未完成，无法下载");
     }
     if (!task.downloadUrl) {

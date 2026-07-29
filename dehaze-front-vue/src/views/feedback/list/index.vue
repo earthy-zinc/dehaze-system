@@ -122,7 +122,9 @@
         </el-table-column>
         <el-table-column label="模块" width="120" align="center">
           <template #default="scope">
-            <span>{{ (scope.row as FeedbackPageVO).relatedModule || "-" }}</span>
+            <span>{{
+              (scope.row as FeedbackPageVO).relatedModule || "-"
+            }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
@@ -153,17 +155,8 @@
             <span v-else style="color: #909399">未分配</span>
           </template>
         </el-table-column>
-        <el-table-column
-          label="提交时间"
-          prop="createTime"
-          width="170"
-        />
-        <el-table-column
-          fixed="right"
-          label="操作"
-          width="320"
-          align="center"
-        >
+        <el-table-column label="提交时间" prop="createTime" width="170" />
+        <el-table-column fixed="right" label="操作" width="320" align="center">
           <template #default="scope">
             <el-button
               link
@@ -450,9 +443,7 @@
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleReplySubmit"
-            >确 定</el-button
-          >
+          <el-button type="primary" @click="handleReplySubmit">确 定</el-button>
           <el-button @click="replyDialog.visible = false">取 消</el-button>
         </div>
       </template>

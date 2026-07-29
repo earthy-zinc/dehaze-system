@@ -122,11 +122,7 @@
           </el-timeline>
         </el-card>
 
-        <el-card
-          v-if="detail.closeReason"
-          class="close-card"
-          shadow="never"
-        >
+        <el-card v-if="detail.closeReason" class="close-card" shadow="never">
           <template #header>
             <div class="card-header-title close-header">
               <el-icon><CircleClose /></el-icon>

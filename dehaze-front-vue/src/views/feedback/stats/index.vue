@@ -21,7 +21,8 @@
               <el-icon><Star /></el-icon><span class="tab-text">评价统计</span>
             </el-radio-button>
             <el-radio-button value="feedback">
-              <el-icon><ChatLineRound /></el-icon><span class="tab-text">反馈统计</span>
+              <el-icon><ChatLineRound /></el-icon
+              ><span class="tab-text">反馈统计</span>
             </el-radio-button>
           </el-radio-group>
         </el-form-item>
@@ -43,11 +44,7 @@
             <div class="stat-card">
               <div class="stat-label">平均评分</div>
               <div class="stat-value">{{ averageRating.toFixed(2) }}</div>
-              <el-rate
-                :model-value="averageRating"
-                disabled
-                allow-half
-              />
+              <el-rate :model-value="averageRating" disabled allow-half />
             </div>
           </el-card>
         </el-col>
@@ -89,11 +86,7 @@
           </div>
         </template>
         <el-table :data="ratingStats?.algorithmStats || []" border>
-          <el-table-column
-            label="算法"
-            prop="algorithmName"
-            min-width="160"
-          />
+          <el-table-column label="算法" prop="algorithmName" min-width="160" />
           <el-table-column label="平均评分" width="180" align="center">
             <template #default="scope">
               <el-rate
@@ -137,7 +130,9 @@
               <el-table-column label="相对占比" min-width="180">
                 <template #default="scope">
                   <el-progress
-                    :percentage="Math.round((scope.row.count * 100) / positiveMax)"
+                    :percentage="
+                      Math.round((scope.row.count * 100) / positiveMax)
+                    "
                     color="#52c41a"
                   />
                 </template>
@@ -161,7 +156,9 @@
               <el-table-column label="相对占比" min-width="180">
                 <template #default="scope">
                   <el-progress
-                    :percentage="Math.round((scope.row.count * 100) / negativeMax)"
+                    :percentage="
+                      Math.round((scope.row.count * 100) / negativeMax)
+                    "
                     color="#f5222d"
                   />
                 </template>
