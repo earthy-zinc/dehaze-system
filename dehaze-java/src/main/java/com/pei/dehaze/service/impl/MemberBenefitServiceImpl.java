@@ -10,6 +10,7 @@ import com.pei.dehaze.model.form.BenefitForm;
 import com.pei.dehaze.model.vo.BenefitVO;
 import com.pei.dehaze.service.MemberBenefitService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +18,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class MemberBenefitServiceImpl extends ServiceImpl<SysMemberBenefitMapper, SysMemberBenefit> implements MemberBenefitService {
+
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     public SysMemberBenefit getByLevelCode(String levelCode) {
@@ -87,6 +90,8 @@ public class MemberBenefitServiceImpl extends ServiceImpl<SysMemberBenefitMapper
             benefit.setStatus(form.getStatus());
         }
         this.updateById(benefit);
+        stringRedisTemplate.delete("member:benefit:" + levelCode);
+        stringRedisTemplate.delete("member:benefit:all");
     }
 
     private BenefitVO toVO(SysMemberBenefit benefit) {

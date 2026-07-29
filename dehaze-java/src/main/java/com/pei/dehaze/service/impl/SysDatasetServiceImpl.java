@@ -530,7 +530,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
 
         SysDataset dataset = this.getById(id);
         if (dataset == null) {
-            return null;
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
         }
 
         DatasetStatistics stats = self.getAllDatasetStats().get(id);

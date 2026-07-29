@@ -58,6 +58,23 @@ public class AsyncConfig implements AsyncConfigurer {
     }
 
     /**
+     * 消息推送执行线程池（APP推送/邮件/短信异步执行，不阻塞主流程）
+     */
+    @Bean("pushTaskExecutor")
+    public Executor pushTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(200);
+        executor.setKeepAliveSeconds(60);
+        executor.setThreadNamePrefix("message-push-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setTaskDecorator(asyncContextTaskDecorator());
+        executor.initialize();
+        return executor;
+    }
+
+    /**
      * 异步未捕获异常处理器：记录异常日志，避免静默丢失
      */
     @Override

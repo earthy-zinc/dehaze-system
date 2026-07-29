@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(prefix = "rabbitmq", name = "enabled", havingValue = "true")
 public class LowRatingAlertConsumer extends RabbitMQConsumer {
 
-    private static final String QUEUE_LOW_RATING_ALERT = "task.low.rating.alert";
+    private static final String QUEUE_LOW_RATING_ALERT = "feedback.low_rating";
 
     private final LowRatingAlertService lowRatingAlertService;
     private final RatingService ratingService;

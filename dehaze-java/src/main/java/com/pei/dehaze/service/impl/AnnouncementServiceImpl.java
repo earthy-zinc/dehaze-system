@@ -1,7 +1,6 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.text.CharSequenceUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,9 +9,9 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysAnnouncementMapper;
 import com.pei.dehaze.mapper.SysUserMapper;
 import com.pei.dehaze.model.entity.SysAnnouncement;
-import com.pei.dehaze.model.entity.SysMessage;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.AnnouncementForm;
+import com.pei.dehaze.model.form.MessageSendForm;
 import com.pei.dehaze.model.query.AnnouncementQuery;
 import com.pei.dehaze.model.vo.AnnouncementDetailVO;
 import com.pei.dehaze.model.vo.AnnouncementSendResultVO;
@@ -59,13 +58,16 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long create(AnnouncementForm form) {
+        if (form.getSendTime() != null && !form.getSendTime().isAfter(LocalDateTime.now())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "定时发送时间必须为未来时间");
+        }
         SysAnnouncement entity = new SysAnnouncement();
         entity.setTitle(form.getTitle());
         entity.setContent(form.getContent());
         entity.setType(form.getType());
         entity.setImportance(form.getImportance());
         entity.setTargetScope(form.getTargetScope());
-        entity.setTargetParams(form.getTargetParams() != null ? JSONUtil.toJsonStr(form.getTargetParams()) : null);
+        entity.setTargetParams(form.getTargetParams());
         entity.setSendTime(form.getSendTime());
         entity.setExpireTime(form.getExpireTime());
         entity.setSentCount(0);
@@ -97,16 +99,14 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     public AnnouncementDetailVO getDetail(Long id) {
         SysAnnouncement entity = this.getById(id);
         if (entity == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+            throw new BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND);
         }
         AnnouncementDetailVO vo = new AnnouncementDetailVO();
         copyToVO(entity, vo);
         vo.setContent(entity.getContent());
         vo.setImportanceLabel(IMPORTANCE_LABELS.get(entity.getImportance()));
         vo.setUpdateTime(entity.getUpdateTime());
-        if (CharSequenceUtil.isNotBlank(entity.getTargetParams())) {
-            vo.setTargetParams(JSONUtil.parseObj(entity.getTargetParams()).toBean(Map.class));
-        }
+        vo.setTargetParams(entity.getTargetParams());
         return vo;
     }
 
@@ -115,10 +115,10 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     public void update(Long id, AnnouncementForm form) {
         SysAnnouncement entity = this.getById(id);
         if (entity == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+            throw new BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND);
         }
-        if (entity.getStatus() == 3) {
-            throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW);
+        if (entity.getStatus() == 3 || entity.getStatus() == 4) {
+            throw new BusinessException(ResultCode.ANNOUNCEMENT_STATUS_INVALID);
         }
         if (form.getTitle() != null) {
             entity.setTitle(form.getTitle());
@@ -136,7 +136,7 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
             entity.setTargetScope(form.getTargetScope());
         }
         if (form.getTargetParams() != null) {
-            entity.setTargetParams(JSONUtil.toJsonStr(form.getTargetParams()));
+            entity.setTargetParams(form.getTargetParams());
         }
         if (form.getSendTime() != null) {
             entity.setSendTime(form.getSendTime());
@@ -151,7 +151,7 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     public void delete(Long id) {
         SysAnnouncement entity = this.getById(id);
         if (entity == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+            throw new BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND);
         }
         this.removeById(id);
     }
@@ -161,32 +161,26 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     public AnnouncementSendResultVO send(Long id) {
         SysAnnouncement entity = this.getById(id);
         if (entity == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+            throw new BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND);
+        }
+        if (entity.getStatus() != 1 && entity.getStatus() != 2) {
+            throw new BusinessException(ResultCode.ANNOUNCEMENT_STATUS_INVALID);
         }
 
         List<Long> recipientIds = resolveTargetUserIds(entity);
-        LocalDateTime expiresAt = LocalDateTime.now().plusDays(30);
-        String bizId = String.valueOf(id);
+        if (recipientIds.isEmpty()) {
+            throw new BusinessException(ResultCode.ANNOUNCEMENT_TARGET_EMPTY, "发送范围为空");
+        }
 
-        List<SysMessage> messages = new ArrayList<>();
-        for (Long recipientId : recipientIds) {
-            SysMessage message = new SysMessage();
-            message.setType("announcement");
-            message.setTitle(entity.getTitle());
-            message.setContent(entity.getContent());
-            message.setSenderType(2);
-            message.setRecipientId(recipientId);
-            message.setBizModule("system");
-            message.setBizId(bizId);
-            message.setPriority(entity.getImportance() != null && entity.getImportance() == 2 ? 3 : 2);
-            message.setReadStatus(0);
-            message.setDeleted(0);
-            message.setExpiresAt(expiresAt);
-            messages.add(message);
-        }
-        if (!messages.isEmpty()) {
-            messageService.saveBatch(messages);
-        }
+        MessageSendForm form = new MessageSendForm();
+        form.setType("announcement");
+        form.setTitle(entity.getTitle());
+        form.setContent(entity.getContent());
+        form.setRecipientIds(recipientIds);
+        form.setBizModule("system");
+        form.setBizId(String.valueOf(id));
+        form.setPriority(entity.getImportance() != null && entity.getImportance() == 2 ? 3 : 2);
+        messageService.send(form);
 
         entity.setStatus(3);
         entity.setSentCount(recipientIds.size());
@@ -202,10 +196,10 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     public void cancel(Long id) {
         SysAnnouncement entity = this.getById(id);
         if (entity == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+            throw new BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND);
         }
         if (entity.getStatus() != 2) {
-            throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW);
+            throw new BusinessException(ResultCode.ANNOUNCEMENT_STATUS_INVALID);
         }
         entity.setStatus(4);
         this.updateById(entity);
@@ -213,8 +207,8 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
 
     private List<Long> resolveTargetUserIds(SysAnnouncement entity) {
         String scope = entity.getTargetScope();
-        Map<String, Object> params = CharSequenceUtil.isNotBlank(entity.getTargetParams())
-                ? JSONUtil.parseObj(entity.getTargetParams()).toBean(Map.class) : Collections.emptyMap();
+        Map<String, Object> params = entity.getTargetParams() != null
+                ? entity.getTargetParams() : Collections.emptyMap();
         return switch (scope) {
             case "all" -> sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>()
                     .select(SysUser::getId))
@@ -225,6 +219,13 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
                     yield Collections.emptyList();
                 }
                 yield this.baseMapper.selectUserIdsByLevel(Integer.valueOf(level.toString()));
+            }
+            case "tag" -> {
+                Object tag = params.get("tag");
+                if (tag == null || CharSequenceUtil.isBlank(tag.toString())) {
+                    yield Collections.emptyList();
+                }
+                yield this.baseMapper.selectUserIdsByTag(tag.toString());
             }
             case "specified" -> {
                 Object userIds = params.get("userIds");

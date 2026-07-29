@@ -214,12 +214,19 @@ public class ImportExportFileGenerator {
 
         try (InputStreamReader reader = new InputStreamReader(pis, StandardCharsets.UTF_8);
              CSVParser parser = CSVFormat.DEFAULT.builder()
-                     .setHeader((String[]) null)
-                     .setSkipHeaderRecord(true)
                      .build()
                      .parse(reader)) {
 
-            Map<String, Integer> headerMap = parser.getHeaderMap();
+            // commons-csv 1.10 中 setHeader((String[]) null) 不会自动从首行读取 header
+            // 直接遍历首行作为 header，后续记录作为数据
+            Map<String, Integer> headerMap = new LinkedHashMap<>();
+            java.util.Iterator<CSVRecord> it = parser.iterator();
+            if (it.hasNext()) {
+                CSVRecord headerRecord = it.next();
+                for (int i = 0; i < headerRecord.size(); i++) {
+                    headerMap.put(headerRecord.get(i), i);
+                }
+            }
             Set<String> csvHeaders = headerMap.keySet();
             for (String required : requiredLabels) {
                 if (!csvHeaders.contains(required)) {
@@ -229,7 +236,8 @@ public class ImportExportFileGenerator {
             }
 
             int rowNum = 0;
-            for (CSVRecord record : parser) {
+            while (it.hasNext()) {
+                CSVRecord record = it.next();
                 rowNum++;
                 Map<String, Object> row = new LinkedHashMap<>();
                 for (Map.Entry<String, Integer> entry : headerMap.entrySet()) {

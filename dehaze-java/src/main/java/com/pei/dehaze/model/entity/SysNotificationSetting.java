@@ -2,18 +2,19 @@ package com.pei.dehaze.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.pei.dehaze.common.base.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serial;
-import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Data
+@EqualsAndHashCode(callSuper = false)
 @TableName("sys_notification_setting")
-public class SysNotificationSetting implements Serializable {
+public class SysNotificationSetting extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -30,11 +31,8 @@ public class SysNotificationSetting implements Serializable {
 
     private String preferences;
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime createTime;
-
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime updateTime;
+    @TableLogic
+    private Integer deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

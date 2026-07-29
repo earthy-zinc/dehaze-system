@@ -8,24 +8,24 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * 会员过期降级定时任务
- * 每日 02:00 扫描已过期且等级来源非 growth 的会员，按成长值重新计算等级。
+ * 会员到期预警定时任务
+ * 每日09:00扫描 expire_time 在未来 7/3/1 天的会员，推送续费提醒站内信。
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class MemberExpireJob {
+public class MemberExpireReminderJob {
 
     private final MemberService memberService;
 
-    @XxlJob("processExpiredMembers")
-    public void processExpiredMembers() {
+    @XxlJob("sendExpireReminders")
+    public void sendExpireReminders() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始执行会员过期降级检查...");
-            memberService.processExpiredMembers();
+            log.info("开始执行会员到期预警...");
+            memberService.sendExpireReminders();
         } catch (Exception e) {
-            log.error("会员过期降级处理失败", e);
+            log.error("会员到期预警处理失败", e);
         } finally {
             SystemSecurityContext.clearContext();
         }

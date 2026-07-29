@@ -14,6 +14,8 @@ public interface PaymentChannelService {
 
     boolean refund(String orderNo, String refundNo, long totalAmountFen, long refundAmountFen, String reason);
 
+    boolean closeOrder(String orderNo);
+
     boolean autoDeduct(String orderNo, long amountFen, String description, String payToken);
 
     record UnifiedOrderResult(boolean success, String payUrl, String qrCode, String errorMessage) {

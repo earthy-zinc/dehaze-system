@@ -2,7 +2,6 @@ package com.pei.dehaze.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.pei.dehaze.common.base.BaseEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -36,9 +35,5 @@ public class SysFile extends BaseEntity {
 
     private String md5;
 
-    /**
-     * 逻辑删除标识(0:未删除;1:已删除)
-     */
-    @TableLogic
     private Integer deleted;
 }

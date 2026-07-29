@@ -117,7 +117,7 @@ public class DefaultProgressCallback implements ProgressCallback {
             msg.put("processed_files", current);
             msg.put("total_files", total);
             msg.put("timestamp", LocalDateTime.now().toString());
-            wsMessageRelay.publishToUser(createBy, msg);
+            wsMessageRelay.publishToUser(createBy, WebSocketMessageRelay.DEST_TASK, msg);
         } catch (Exception e) {
             log.warn("WebSocket 进度推送失败（不影响任务执行）", e);
         }

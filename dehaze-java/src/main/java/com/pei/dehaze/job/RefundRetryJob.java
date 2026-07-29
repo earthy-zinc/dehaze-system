@@ -8,24 +8,24 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * 自动续费定时任务
- * 每小时执行一次，扫描到期自动续费记录，自动创建新订单并完成支付。
+ * 退款失败重试定时任务
+ * 每30分钟扫描退款失败的记录，重新调用渠道退款接口，重试次数达上限则标记为最终失败。
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AutoRenewJob {
+public class RefundRetryJob {
 
     private final OrderService orderService;
 
-    @XxlJob("autoRenew")
-    public void executeRenewal() {
+    @XxlJob("retryFailedRefunds")
+    public void retryFailedRefunds() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始执行自动续费...");
-            orderService.executeRenewal();
+            log.info("开始执行退款失败重试...");
+            orderService.retryFailedRefunds();
         } catch (Exception e) {
-            log.error("自动续费处理失败", e);
+            log.error("退款失败重试处理失败", e);
         } finally {
             SystemSecurityContext.clearContext();
         }

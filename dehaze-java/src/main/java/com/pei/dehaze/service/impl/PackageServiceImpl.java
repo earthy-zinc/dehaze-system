@@ -23,6 +23,7 @@ import com.pei.dehaze.model.entity.SysPackage;
 import com.pei.dehaze.model.entity.SysPromotion;
 import com.pei.dehaze.model.entity.SysPromotionPackage;
 import com.pei.dehaze.model.entity.SysUserCoupon;
+import com.pei.dehaze.model.form.BenefitOverrides;
 import com.pei.dehaze.model.form.PackageForm;
 import com.pei.dehaze.model.query.PackagePageQuery;
 import com.pei.dehaze.model.vo.PackageDetailVO;
@@ -46,6 +47,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -65,6 +67,7 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
     private final ObjectMapper objectMapper;
 
     @Override
+    @Transactional(readOnly = true)
     public List<PackageDetailVO> listOnSale() {
         List<SysPackage> packages = this.list(new LambdaQueryWrapper<SysPackage>()
                 .eq(SysPackage::getStatus, 1)
@@ -74,15 +77,20 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PackageDetailVO getDetail(Long id) {
         SysPackage pkg = this.getById(id);
         if (pkg == null) {
             throw new BusinessException(ResultCode.PACKAGE_NOT_FOUND);
         }
+        if (pkg.getStatus() == null || pkg.getStatus() != 1) {
+            throw new BusinessException(ResultCode.PACKAGE_OFF_SHELF);
+        }
         return toDetailVO(pkg);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<PackagePageVO> getPage(PackagePageQuery query) {
         Page<SysPackage> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysPackage> wrapper = new LambdaQueryWrapper<SysPackage>()
@@ -102,6 +110,7 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PackageForm getForm(Long id) {
         SysPackage pkg = this.getById(id);
         if (pkg == null) {
@@ -116,7 +125,7 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         form.setOriginalPrice(pkg.getOriginalPrice());
         form.setSalePrice(pkg.getSalePrice());
         form.setDescription(pkg.getDescription());
-        form.setBenefitOverrides(parseJsonToMap(pkg.getBenefitOverrides()));
+        form.setBenefitOverrides(parseBenefitOverrides(pkg.getBenefitOverrides()));
         form.setSort(pkg.getSort());
         form.setStatus(pkg.getStatus());
         return form;
@@ -139,7 +148,7 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         pkg.setOriginalPrice(form.getOriginalPrice());
         pkg.setSalePrice(form.getSalePrice());
         pkg.setDescription(form.getDescription());
-        pkg.setBenefitOverrides(serializeMapToJson(form.getBenefitOverrides()));
+        pkg.setBenefitOverrides(serializeBenefitOverrides(form.getBenefitOverrides()));
         pkg.setSort(form.getSort() != null ? form.getSort() : 0);
         pkg.setStatus(form.getStatus() != null ? form.getStatus() : 0);
         pkg.setSalesCount(0L);
@@ -169,12 +178,9 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         pkg.setOriginalPrice(form.getOriginalPrice());
         pkg.setSalePrice(form.getSalePrice());
         pkg.setDescription(form.getDescription());
-        pkg.setBenefitOverrides(serializeMapToJson(form.getBenefitOverrides()));
+        pkg.setBenefitOverrides(serializeBenefitOverrides(form.getBenefitOverrides()));
         if (form.getSort() != null) {
             pkg.setSort(form.getSort());
-        }
-        if (form.getStatus() != null) {
-            pkg.setStatus(form.getStatus());
         }
         this.updateById(pkg);
     }
@@ -207,6 +213,9 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         if (pkg == null) {
             throw new BusinessException(ResultCode.PACKAGE_NOT_FOUND);
         }
+        if (status == 0 && !getActivePromotions(id).isEmpty()) {
+            throw new BusinessException(ResultCode.PACKAGE_IN_PROMOTION);
+        }
         LambdaUpdateWrapper<SysPackage> wrapper = new LambdaUpdateWrapper<SysPackage>()
                 .eq(SysPackage::getId, id)
                 .set(SysPackage::getStatus, status);
@@ -214,6 +223,7 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PriceResult calculatePrice(Long packageId, Long userCouponId) {
         SysPackage pkg = this.getById(packageId);
         if (pkg == null) {
@@ -241,11 +251,24 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
     public SalesStatsVO getSalesStats() {
         SalesStatsVO stats = new SalesStatsVO();
         List<SysOrder> paidOrders = orderMapper.selectList(new LambdaQueryWrapper<SysOrder>()
-                .in(SysOrder::getStatus, 2, 3, 5, 6));
+                .in(SysOrder::getStatus, 2, 3));
         stats.setTotalSales((long) paidOrders.size());
         stats.setTotalRevenue(paidOrders.stream().mapToLong(o -> o.getPaidAmount() != null ? o.getPaidAmount() : 0).sum());
 
-        Map<Long, String> pkgNameMap = this.list().stream().collect(Collectors.toMap(SysPackage::getId, SysPackage::getName, (a, b) -> a));
+        List<SysPackage> allPackages = this.list();
+        Map<Long, SysPackage> pkgMap = allPackages.stream()
+                .collect(Collectors.toMap(SysPackage::getId, p -> p, (a, b) -> a));
+        Set<String> levelCodes = allPackages.stream()
+                .map(SysPackage::getLevelCode).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<String, SysMemberBenefit> benefitMap = new HashMap<>();
+        for (String code : levelCodes) {
+            SysMemberBenefit b = memberBenefitService.getByLevelCode(code);
+            if (b != null) {
+                benefitMap.put(code, b);
+            }
+        }
+
         Map<Long, SalesStatsVO.PackageStatItem> pkgStatsMap = new LinkedHashMap<>();
         Map<String, SalesStatsVO.LevelStatItem> levelStatsMap = new LinkedHashMap<>();
         Map<String, SalesStatsVO.PeriodStatItem> periodStatsMap = new LinkedHashMap<>();
@@ -262,31 +285,35 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
             pkgStatsMap.computeIfAbsent(order.getPackageId(), k -> {
                 SalesStatsVO.PackageStatItem item = new SalesStatsVO.PackageStatItem();
                 item.setPackageId(order.getPackageId());
-                item.setPackageName(pkgNameMap.getOrDefault(order.getPackageId(), order.getPackageName()));
+                SysPackage pkg = pkgMap.get(order.getPackageId());
+                item.setPackageName(pkg != null ? pkg.getName() : order.getPackageName());
                 item.setSalesCount(0L);
                 item.setRevenue(0L);
                 return item;
             });
-            pkgStatsMap.get(order.getPackageId()).setSalesCount(pkgStatsMap.get(order.getPackageId()).getSalesCount() + 1);
-            pkgStatsMap.get(order.getPackageId()).setRevenue(pkgStatsMap.get(order.getPackageId()).getRevenue() + (order.getPaidAmount() != null ? order.getPaidAmount() : 0));
+            SalesStatsVO.PackageStatItem pkgItem = pkgStatsMap.get(order.getPackageId());
+            pkgItem.setSalesCount(pkgItem.getSalesCount() + 1);
+            pkgItem.setRevenue(pkgItem.getRevenue() + (order.getPaidAmount() != null ? order.getPaidAmount() : 0));
 
-            SysPackage pkg = this.getById(order.getPackageId());
+            SysPackage pkg = pkgMap.get(order.getPackageId());
             if (pkg != null) {
                 levelStatsMap.computeIfAbsent(pkg.getLevelCode(), k -> {
                     SalesStatsVO.LevelStatItem item = new SalesStatsVO.LevelStatItem();
                     item.setLevelCode(pkg.getLevelCode());
-                    SysMemberBenefit benefit = memberBenefitService.getByLevelCode(pkg.getLevelCode());
+                    SysMemberBenefit benefit = benefitMap.get(pkg.getLevelCode());
                     item.setLevelName(benefit != null ? benefit.getLevelName() : pkg.getLevelCode());
                     item.setSalesCount(0L);
                     item.setRevenue(0L);
                     return item;
                 });
-                levelStatsMap.get(pkg.getLevelCode()).setSalesCount(levelStatsMap.get(pkg.getLevelCode()).getSalesCount() + 1);
-                levelStatsMap.get(pkg.getLevelCode()).setRevenue(levelStatsMap.get(pkg.getLevelCode()).getRevenue() + (order.getPaidAmount() != null ? order.getPaidAmount() : 0));
+                SalesStatsVO.LevelStatItem levelItem = levelStatsMap.get(pkg.getLevelCode());
+                levelItem.setSalesCount(levelItem.getSalesCount() + 1);
+                levelItem.setRevenue(levelItem.getRevenue() + (order.getPaidAmount() != null ? order.getPaidAmount() : 0));
 
                 if (periodStatsMap.containsKey(pkg.getPeriod())) {
-                    periodStatsMap.get(pkg.getPeriod()).setSalesCount(periodStatsMap.get(pkg.getPeriod()).getSalesCount() + 1);
-                    periodStatsMap.get(pkg.getPeriod()).setRevenue(periodStatsMap.get(pkg.getPeriod()).getRevenue() + (order.getPaidAmount() != null ? order.getPaidAmount() : 0));
+                    SalesStatsVO.PeriodStatItem periodItem = periodStatsMap.get(pkg.getPeriod());
+                    periodItem.setSalesCount(periodItem.getSalesCount() + 1);
+                    periodItem.setRevenue(periodItem.getRevenue() + (order.getPaidAmount() != null ? order.getPaidAmount() : 0));
                 }
             }
         }
@@ -310,9 +337,12 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         if (ppList.isEmpty()) {
             return 0;
         }
+        List<Long> promotionIds = ppList.stream().map(SysPromotionPackage::getPromotionId).distinct().toList();
+        Map<Long, SysPromotion> promotionMap = promotionMapper.selectBatchIds(promotionIds).stream()
+                .collect(Collectors.toMap(SysPromotion::getId, p -> p));
         long maxDiscount = 0;
         for (SysPromotionPackage pp : ppList) {
-            SysPromotion promotion = promotionMapper.selectById(pp.getPromotionId());
+            SysPromotion promotion = promotionMap.get(pp.getPromotionId());
             if (promotion == null || promotion.getStatus() != 1) {
                 continue;
             }
@@ -394,7 +424,7 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         vo.setPeriodDays(pkg.getPeriodDays());
         vo.setOriginalPrice(pkg.getOriginalPrice());
         vo.setSalePrice(pkg.getSalePrice());
-        vo.setDailyPrice(pkg.getPeriodDays() != null && pkg.getPeriodDays() > 0 ? pkg.getSalePrice() / pkg.getPeriodDays() : 0);
+        vo.setDailyPrice(pkg.getPeriodDays() != null && pkg.getPeriodDays() > 0 ? (2 * pkg.getSalePrice() + pkg.getPeriodDays()) / (2 * pkg.getPeriodDays()) : 0);
         vo.setSalesCount(pkg.getSalesCount());
         vo.setStatus(pkg.getStatus());
         vo.setCreateTime(pkg.getCreateTime());
@@ -412,15 +442,15 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         vo.setPeriodDays(pkg.getPeriodDays());
         vo.setOriginalPrice(pkg.getOriginalPrice());
         vo.setSalePrice(pkg.getSalePrice());
-        vo.setDailyPrice(pkg.getPeriodDays() != null && pkg.getPeriodDays() > 0 ? pkg.getSalePrice() / pkg.getPeriodDays() : 0);
+        vo.setDailyPrice(pkg.getPeriodDays() != null && pkg.getPeriodDays() > 0 ? (2 * pkg.getSalePrice() + pkg.getPeriodDays()) / (2 * pkg.getPeriodDays()) : 0);
         vo.setDescription(pkg.getDescription());
         vo.setSalesCount(pkg.getSalesCount());
-        vo.setBenefits(buildBenefits(benefit, pkg.getBenefitOverrides()));
+        vo.setBenefits(buildBenefits(benefit, parseBenefitOverrides(pkg.getBenefitOverrides())));
         vo.setActivePromotions(getActivePromotions(pkg.getId()));
         return vo;
     }
 
-    private Map<String, Integer> buildBenefits(SysMemberBenefit benefit, String overridesJson) {
+    private Map<String, Integer> buildBenefits(SysMemberBenefit benefit, BenefitOverrides overrides) {
         Map<String, Integer> benefits = new LinkedHashMap<>();
         if (benefit != null) {
             benefits.put("monthlyDehazeQuota", benefit.getMonthlyDehazeQuota());
@@ -433,9 +463,10 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
             benefits.put("reportExport", benefit.getReportExport());
             benefits.put("batchDownload", benefit.getBatchDownload());
         }
-        Map<String, Integer> overrides = parseJsonToMap(overridesJson);
         if (overrides != null) {
-            benefits.putAll(overrides);
+            Map<String, Integer> overridesMap = objectMapper.convertValue(overrides,
+                    new TypeReference<Map<String, Integer>>() {});
+            benefits.putAll(overridesMap);
         }
         return benefits;
     }
@@ -447,9 +478,12 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         if (ppList.isEmpty()) {
             return Collections.emptyList();
         }
+        List<Long> promotionIds = ppList.stream().map(SysPromotionPackage::getPromotionId).distinct().toList();
+        Map<Long, SysPromotion> promotionMap = promotionMapper.selectBatchIds(promotionIds).stream()
+                .collect(Collectors.toMap(SysPromotion::getId, p -> p));
         List<PromotionVO> result = new ArrayList<>();
         for (SysPromotionPackage pp : ppList) {
-            SysPromotion promotion = promotionMapper.selectById(pp.getPromotionId());
+            SysPromotion promotion = promotionMap.get(pp.getPromotionId());
             if (promotion == null || promotion.getStatus() != 1) {
                 continue;
             }
@@ -475,15 +509,14 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         return vo;
     }
 
-    private Map<String, Integer> parseJsonToMap(String json) {
+    private BenefitOverrides parseBenefitOverrides(String json) {
         if (CharSequenceUtil.isBlank(json)) {
             return null;
         }
         try {
-            return objectMapper.readValue(json, new TypeReference<Map<String, Integer>>() {});
+            return objectMapper.readValue(json, BenefitOverrides.class);
         } catch (JsonProcessingException e) {
-            log.warn("解析JSON Map失败: {}", json, e);
-            return null;
+            throw new BusinessException(ResultCode.BUSINESS_ERROR, "权益配置JSON解析失败");
         }
     }
 
@@ -511,27 +544,14 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         }
     }
 
-    private String serializeMapToJson(Map<String, Integer> map) {
-        if (map == null || map.isEmpty()) {
+    private String serializeBenefitOverrides(BenefitOverrides overrides) {
+        if (overrides == null) {
             return null;
         }
         try {
-            return objectMapper.writeValueAsString(map);
+            return objectMapper.writeValueAsString(overrides);
         } catch (JsonProcessingException e) {
-            log.warn("序列化Map到JSON失败", e);
-            return null;
-        }
-    }
-
-    private String serializeListToJson(List<Long> list) {
-        if (list == null || list.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(list);
-        } catch (JsonProcessingException e) {
-            log.warn("序列化List到JSON失败", e);
-            return null;
+            throw new BusinessException(ResultCode.BUSINESS_ERROR, "权益配置JSON序列化失败");
         }
     }
 }

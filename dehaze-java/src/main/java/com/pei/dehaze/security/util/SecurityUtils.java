@@ -97,4 +97,12 @@ public class SecurityUtils {
         Set<String> roles = getRoles();
         return roles.contains(SystemConstants.ROOT_ROLE_CODE);
     }
+
+    /**
+     * 是否管理员（ROOT 或 ADMIN 角色）
+     */
+    public static boolean isAdmin() {
+        Set<String> roles = getRoles();
+        return roles.contains(SystemConstants.ROOT_ROLE_CODE) || roles.contains("ADMIN");
+    }
 }

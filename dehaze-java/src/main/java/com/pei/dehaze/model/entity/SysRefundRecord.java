@@ -49,6 +49,8 @@ public class SysRefundRecord extends BaseEntity {
 
     private String errorMessage;
 
+    private Integer retryCount;
+
     @TableLogic
     private Integer deleted;
 

@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.filter.TraceIdFilter;
@@ -79,6 +80,7 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
     private String fileBaseUrl;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public IdVO createRating(RatingCreateForm form) {
         validateImageUrls(form.getImageUrls(), RATING_IMAGE_MAX_COUNT);
         Long userId = SecurityUtils.getUserId();
@@ -86,13 +88,19 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
         if (predLog == null) {
             throw new BusinessException(ResultCode.PREDICTION_LOG_NOT_FOUND);
         }
+        if (predLog.getStatus() != LogStatusEnum.COMPLETED) {
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW);
+        }
+        if (!userId.equals(predLog.getCreateBy())) {
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW);
+        }
         Long existCount = this.count(new LambdaQueryWrapper<SysRating>()
                 .eq(SysRating::getPredLogId, form.getPredLogId()));
         if (existCount > 0) {
             throw new BusinessException(ResultCode.RATING_ALREADY_EXISTS);
         }
-        if (predLog.getCreateTime() != null
-                && predLog.getCreateTime().isBefore(LocalDateTime.now().minusDays(30))) {
+        if (predLog.getUpdateTime() != null
+                && predLog.getUpdateTime().isBefore(LocalDateTime.now().minusDays(30))) {
             throw new BusinessException(ResultCode.RATING_EXPIRED);
         }
         SysRating rating = new SysRating();
@@ -203,12 +211,18 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
         }
 
         this.page(page, wrapper);
-        Map<Long, SysAlgorithm> algorithmMap = loadAlgorithmMap(page.getRecords());
-        Map<Long, SysUser> userMap = userMapper.selectBatchIds(page.getRecords().stream()
+        List<SysRating> records = page.getRecords();
+        if (records.isEmpty()) {
+            Page<RatingPageVO> empty = new Page<>(page.getCurrent(), page.getSize(), 0);
+            empty.setRecords(Collections.emptyList());
+            return empty;
+        }
+        Map<Long, SysAlgorithm> algorithmMap = loadAlgorithmMap(records);
+        Map<Long, SysUser> userMap = userMapper.selectBatchIds(records.stream()
                         .map(SysRating::getUserId).distinct().toList())
                 .stream().collect(Collectors.toMap(SysUser::getId, u -> u));
         Page<RatingPageVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
-        result.setRecords(page.getRecords().stream()
+        result.setRecords(records.stream()
                 .map(r -> toPageVO(r, algorithmMap.get(r.getAlgorithmId()),
                         userMap.get(r.getUserId())))
                 .toList());
@@ -267,29 +281,30 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
     }
 
     private RatingStatsVO calcRatingStats(LocalDateTime startTime, LocalDateTime endTime) {
-        LambdaQueryWrapper<SysRating> wrapper = new LambdaQueryWrapper<SysRating>()
-                .ge(startTime != null, SysRating::getCreateTime, startTime)
-                .le(endTime != null, SysRating::getCreateTime, endTime);
-        List<SysRating> ratings = this.list(wrapper);
-
         RatingStatsVO stats = new RatingStatsVO();
-        stats.setTotalRatings((long) ratings.size());
-        double avg = ratings.stream().mapToInt(SysRating::getRating).average().orElse(0);
-        stats.setAverageRating(Math.round(avg * 10) / 10.0);
 
         Map<Integer, Long> distribution = new LinkedHashMap<>();
         for (int i = 1; i <= 5; i++) {
             distribution.put(i, 0L);
         }
-        for (SysRating r : ratings) {
-            distribution.merge(r.getRating(), 1L, Long::sum);
+        long totalRatings = 0;
+        long ratingSum = 0;
+        for (Map<String, Object> row : baseMapper.selectRatingDistribution(startTime, endTime)) {
+            Integer rating = ((Number) row.get("rating")).intValue();
+            Long count = ((Number) row.get("cnt")).longValue();
+            distribution.put(rating, count);
+            totalRatings += count;
+            ratingSum += (long) rating * count;
         }
+        stats.setTotalRatings(totalRatings);
+        double avg = totalRatings > 0 ? (double) ratingSum / totalRatings : 0;
+        stats.setAverageRating(Math.round(avg * 10) / 10.0);
         stats.setRatingDistribution(distribution);
 
         Map<String, Long> positiveTagCount = new LinkedHashMap<>();
         Map<String, Long> negativeTagCount = new LinkedHashMap<>();
-        for (SysRating r : ratings) {
-            List<String> tags = parseList(r.getTags());
+        for (String tagsJson : baseMapper.selectAllTags(startTime, endTime)) {
+            List<String> tags = parseList(tagsJson);
             if (tags == null) continue;
             for (String tag : tags) {
                 if (POSITIVE_TAGS.contains(tag)) {
@@ -302,21 +317,20 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
         stats.setPositiveTagRanking(toTagCountList(positiveTagCount));
         stats.setNegativeTagRanking(toTagCountList(negativeTagCount));
 
-        Map<Long, List<SysRating>> algorithmGroups = ratings.stream()
-                .filter(r -> r.getAlgorithmId() != null)
-                .collect(Collectors.groupingBy(SysRating::getAlgorithmId));
         List<RatingStatsVO.AlgorithmStat> algorithmStats = new java.util.ArrayList<>();
-        for (Map.Entry<Long, List<SysRating>> entry : algorithmGroups.entrySet()) {
-            List<SysRating> group = entry.getValue();
-            SysAlgorithm algorithm = algorithmMapper.selectById(entry.getKey());
+        for (Map<String, Object> row : baseMapper.selectAlgorithmStats(startTime, endTime)) {
             RatingStatsVO.AlgorithmStat stat = new RatingStatsVO.AlgorithmStat();
-            stat.setAlgorithmId(entry.getKey());
-            stat.setAlgorithmName(algorithm != null ? algorithm.getName() : String.valueOf(entry.getKey()));
-            double algoAvg = group.stream().mapToInt(SysRating::getRating).average().orElse(0);
-            stat.setAverageRating(Math.round(algoAvg * 10) / 10.0);
-            stat.setTotalRatings((long) group.size());
-            long lowCount = group.stream().filter(r -> r.getRating() <= 2).count();
-            stat.setLowRatingRate(group.isEmpty() ? 0.0 : Math.round(lowCount * 10000.0 / group.size()) / 100.0);
+            Number algorithmId = (Number) row.get("algorithmId");
+            stat.setAlgorithmId(algorithmId != null ? algorithmId.longValue() : null);
+            stat.setAlgorithmName((String) row.get("algorithmName"));
+            Number avgRating = (Number) row.get("avgRating");
+            stat.setAverageRating(avgRating != null ? Math.round(avgRating.doubleValue() * 10) / 10.0 : 0.0);
+            Number total = (Number) row.get("total");
+            long totalLong = total != null ? total.longValue() : 0L;
+            stat.setTotalRatings(totalLong);
+            Number lowCount = (Number) row.get("lowCount");
+            long lowLong = lowCount != null ? lowCount.longValue() : 0L;
+            stat.setLowRatingRate(totalLong > 0 ? Math.round(lowLong * 10000.0 / totalLong) / 100.0 : 0.0);
             algorithmStats.add(stat);
         }
         stats.setAlgorithmStats(algorithmStats);
@@ -477,19 +491,15 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
 
     private void tryGrantGrowth(Long userId) {
         String key = "rating:daily:" + userId + ":" + LocalDate.now();
-        try {
-            String countStr = stringRedisTemplate.opsForValue().get(key);
-            int count = countStr != null ? Integer.parseInt(countStr) : 0;
-            if (count >= RATING_DAILY_GROWTH_LIMIT) {
-                return;
-            }
-            memberService.adjustGrowth(userId, new MemberGrowthAdjustForm(RATING_GROWTH_VALUE, "评价奖励"));
-            Long newCount = stringRedisTemplate.opsForValue().increment(key);
-            if (newCount != null && newCount == 1L) {
-                stringRedisTemplate.expire(key, Duration.ofHours(25));
-            }
-        } catch (Exception e) {
-            log.warn("评价成长值发放失败: userId={}", userId, e);
+        String countStr = stringRedisTemplate.opsForValue().get(key);
+        int count = countStr != null ? Integer.parseInt(countStr) : 0;
+        if (count >= RATING_DAILY_GROWTH_LIMIT) {
+            return;
+        }
+        memberService.adjustGrowth(userId, new MemberGrowthAdjustForm(RATING_GROWTH_VALUE, "评价奖励"));
+        Long newCount = stringRedisTemplate.opsForValue().increment(key);
+        if (newCount != null && newCount == 1L) {
+            stringRedisTemplate.expire(key, Duration.ofHours(25));
         }
     }
 
@@ -501,7 +511,7 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
         }
         try {
             String traceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
-            publisher.publish("low.rating.alert", String.valueOf(ratingId), traceId);
+            publisher.publish("feedback.low_rating", String.valueOf(ratingId), traceId);
         } catch (Exception e) {
             log.warn("低分告警消息发送失败: ratingId={}", ratingId, e);
         }

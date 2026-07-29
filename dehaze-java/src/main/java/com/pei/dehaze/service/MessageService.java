@@ -25,4 +25,6 @@ public interface MessageService extends IService<SysMessage> {
     void deleteByIds(String ids);
 
     Page<MessageVO> search(MessageSearchQuery query);
+
+    void refreshUnreadCountCache();
 }

@@ -169,10 +169,10 @@ public class RabbitMQConfig {
     @Bean
     public Queue lowRatingAlertQueue() {
         return QueueBuilder
-                .durable("task.low.rating.alert")
+                .durable("feedback.low_rating")
                 .withArgument("x-message-ttl", 86400000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName() + ".dlx")
-                .withArgument("x-dead-letter-routing-key", resolveRoutingKey("low.rating.alert.dlx"))
+                .withArgument("x-dead-letter-routing-key", resolveRoutingKey("feedback.low_rating.dlx"))
                 .build();
     }
 
@@ -181,7 +181,7 @@ public class RabbitMQConfig {
      */
     @Bean
     public Queue lowRatingAlertDlxQueue() {
-        return QueueBuilder.durable("task.low.rating.alert.dlx").build();
+        return QueueBuilder.durable("feedback.low_rating.dlx").build();
     }
 
     /**
@@ -189,7 +189,7 @@ public class RabbitMQConfig {
      */
     @Bean
     public Binding lowRatingAlertBinding(Queue lowRatingAlertQueue, DirectExchange taskExchange) {
-        return BindingBuilder.bind(lowRatingAlertQueue).to(taskExchange).with(resolveRoutingKey("low.rating.alert"));
+        return BindingBuilder.bind(lowRatingAlertQueue).to(taskExchange).with(resolveRoutingKey("feedback.low_rating"));
     }
 
     /**
@@ -197,7 +197,7 @@ public class RabbitMQConfig {
      */
     @Bean
     public Binding lowRatingAlertDlxBinding(Queue lowRatingAlertDlxQueue, DirectExchange taskDlxExchange) {
-        return BindingBuilder.bind(lowRatingAlertDlxQueue).to(taskDlxExchange).with(resolveRoutingKey("low.rating.alert.dlx"));
+        return BindingBuilder.bind(lowRatingAlertDlxQueue).to(taskDlxExchange).with(resolveRoutingKey("feedback.low_rating.dlx"));
     }
 
     /**

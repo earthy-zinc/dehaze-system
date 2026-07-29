@@ -18,7 +18,7 @@ import java.util.Map;
 @Slf4j
 @Tag(name = "14.支付回调")
 @RestController
-@RequestMapping("/api/v1/payments")
+@RequestMapping("/api/v1/orders/payment")
 @RequiredArgsConstructor
 public class PaymentCallbackController {
 
@@ -61,6 +61,7 @@ public class PaymentCallbackController {
         try {
             return new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         } catch (Exception e) {
+            log.error("读取支付回调请求体失败: {}", e.getMessage(), e);
             return "";
         }
     }

@@ -49,8 +49,8 @@ public class SecurityConfig {
                                 .requestMatchers("/api/v1/files/download/**").permitAll()
                                 .requestMatchers("/api/v1/auth/register").permitAll()
                                 .requestMatchers("/api/v1/auth/captcha").permitAll()
-                                .requestMatchers("/api/v1/payments/wechat/callback").permitAll()
-                                .requestMatchers("/api/v1/payments/alipay/callback").permitAll()
+                                .requestMatchers("/api/v1/orders/payment/wechat/callback").permitAll()
+                                .requestMatchers("/api/v1/orders/payment/alipay/callback").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .exceptionHandling(httpSecurityExceptionHandlingConfigurer ->

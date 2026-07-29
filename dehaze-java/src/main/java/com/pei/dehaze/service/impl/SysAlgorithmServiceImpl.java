@@ -196,6 +196,13 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
             return true;
         }
         List<SysAlgorithm> allAlgorithms = this.list();
+        Map<Long, SysAlgorithm> idToNodeMap = allAlgorithms.stream()
+                .collect(Collectors.toMap(SysAlgorithm::getId, a -> a));
+        for (Long id : ids) {
+            if (!idToNodeMap.containsKey(id)) {
+                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
+            }
+        }
         Set<Long> allIds = new HashSet<>();
         for (Long id : ids) {
             allIds.addAll(TreeDataUtils.findDescendantIds(allAlgorithms, id, SysAlgorithm::getId, SysAlgorithm::getParentId));

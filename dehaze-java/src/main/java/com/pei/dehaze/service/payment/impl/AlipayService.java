@@ -22,6 +22,7 @@ public class AlipayService implements PaymentChannelService {
     private static final String CHANNEL_TYPE = "alipay";
     private static final String PRECREATE_PATH = "/gateway.do?method=alipay.trade.precreate";
     private static final String REFUND_PATH = "/gateway.do?method=alipay.trade.refund";
+    private static final String CLOSE_PATH = "/gateway.do?method=alipay.trade.close";
 
     private final PaymentProperties paymentProperties;
     @Qualifier("paymentRestTemplate")
@@ -125,6 +126,31 @@ public class AlipayService implements PaymentChannelService {
         log.warn("支付宝代扣需签约协议，本次走预下单+用户主动支付流程: orderNo={}", orderNo);
         UnifiedOrderResult result = unifiedOrder(orderNo, amountFen, description, Map.of());
         return result.success();
+    }
+
+    @Override
+    public boolean closeOrder(String orderNo) {
+        if (!isEnabled()) {
+            log.info("支付宝关单(mock): orderNo={}", orderNo);
+            return true;
+        }
+        try {
+            PaymentProperties.ChannelConfig cfg = paymentProperties.getAlipay();
+            String url = cfg.getBaseUrl() + CLOSE_PATH;
+            Map<String, Object> bizContent = Map.of(
+                    "out_trade_no", orderNo
+            );
+            Map<String, Object> body = Map.of(
+                    "app_id", cfg.getAppId(),
+                    "method", "alipay.trade.close",
+                    "biz_content", bizContent
+            );
+            ResponseEntity<Map> resp = restTemplate.postForEntity(url, body, Map.class);
+            return resp.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("支付宝关单失败: orderNo={}", orderNo, e);
+            return false;
+        }
     }
 
     private UnifiedOrderResult mockOrder(String orderNo) {

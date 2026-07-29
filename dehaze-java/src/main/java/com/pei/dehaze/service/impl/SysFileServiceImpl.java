@@ -15,6 +15,7 @@ import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysWpxFileService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
@@ -23,6 +24,7 @@ import java.io.InputStream;
  * @author earthy-zinc
  * @since 2024-06-08 18:38:14
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> implements SysFileService {
@@ -43,11 +45,15 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
 
     @Override
     public SysFile saveFile(FileBO fileBO) {
-        // 先根据md5查询，如果存在则直接返回
-        SysFile sysFile = this.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, fileBO.getMd5()));
-        if (sysFile != null) return sysFile;
+        SysFile sysFile = baseMapper.selectByMd5IncludeDeleted(fileBO.getMd5());
+        if (sysFile != null) {
+            if (sysFile.getDeleted() != null && sysFile.getDeleted() == 1) {
+                baseMapper.hardDeleteById(sysFile.getId());
+            } else {
+                return sysFile;
+            }
+        }
 
-        // 如果不存在，则上传文件
         fileBO = fileService.uploadFile(fileBO);
         sysFile = SysFile.builder()
                 .name(fileBO.getName())
@@ -64,11 +70,15 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
 
     @Override
     public SysFile saveFileRecord(FileBO fileBO) {
-        // MD5 去重
-        SysFile sysFile = this.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, fileBO.getMd5()));
-        if (sysFile != null) return sysFile;
+        SysFile sysFile = baseMapper.selectByMd5IncludeDeleted(fileBO.getMd5());
+        if (sysFile != null) {
+            if (sysFile.getDeleted() != null && sysFile.getDeleted() == 1) {
+                baseMapper.hardDeleteById(sysFile.getId());
+            } else {
+                return sysFile;
+            }
+        }
 
-        // 仅创建 DB 记录，不上传到对象存储（文件由 nginx 直服）
         sysFile = SysFile.builder()
                 .name(fileBO.getName())
                 .objectName(fileBO.getObjectName())
@@ -108,7 +118,8 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
         if (!result) {
             throw new BusinessException("删除文件失败");
         }
-        return this.removeById(fileId);
+        baseMapper.hardDeleteById(fileId);
+        return true;
     }
 
     @Override

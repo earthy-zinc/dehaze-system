@@ -2,6 +2,7 @@ package com.pei.dehaze.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.common.base.BaseEntity;
 import lombok.Data;
@@ -28,6 +29,9 @@ public class SysFeedbackReply extends BaseEntity {
     private String replyType;
 
     private String attachments;
+
+    @TableLogic
+    private Integer deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

@@ -92,7 +92,7 @@ public class ExportDlxConsumer extends RabbitMQConsumer {
             message.put("result", null);
             message.put("error_message", sysTask.getErrorMessage());
             message.put("timestamp", LocalDateTime.now().toString());
-            wsMessageRelay.publishToUser(sysTask.getCreateBy(), message);
+            wsMessageRelay.publishToUser(sysTask.getCreateBy(), WebSocketMessageRelay.DEST_TASK, message);
         } catch (Exception e) {
             log.warn("[DLQ] WebSocket 推送失败: taskId={}", sysTask.getTaskId(), e);
         }

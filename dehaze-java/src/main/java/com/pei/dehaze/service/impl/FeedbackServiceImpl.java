@@ -128,13 +128,20 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
 
     @Override
     public FeedbackDetailVO getFeedbackDetail(Long id) {
+        Long userId = SecurityUtils.getUserId();
+        boolean isAdmin = SecurityUtils.isAdmin();
         SysFeedback feedback = this.getById(id);
         if (feedback == null) {
             throw new BusinessException(ResultCode.FEEDBACK_NOT_FOUND);
         }
+        if (!isAdmin && !feedback.getUserId().equals(userId)) {
+            throw new BusinessException(ResultCode.FEEDBACK_NOT_FOUND);
+        }
         FeedbackDetailVO vo = new FeedbackDetailVO();
         copyPageFields(feedback, vo);
-        vo.setContact(feedback.getContact());
+        if (isAdmin) {
+            vo.setContact(feedback.getContact());
+        }
         vo.setImages(parseList(feedback.getImages()));
         vo.setAssignedTime(feedback.getAssignedTime());
         vo.setCloseReason(feedback.getCloseReason());
@@ -142,7 +149,8 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
                 new LambdaQueryWrapper<SysFeedbackReply>()
                         .eq(SysFeedbackReply::getFeedbackId, id)
                         .orderByAsc(SysFeedbackReply::getId));
-        Map<Long, SysUser> userMap = userMapper.selectBatchIds(replies.stream()
+        Map<Long, SysUser> userMap = replies.isEmpty() ? Collections.emptyMap()
+                : userMapper.selectBatchIds(replies.stream()
                         .map(SysFeedbackReply::getReplierId).distinct().toList())
                 .stream().collect(Collectors.toMap(SysUser::getId, u -> u));
         vo.setReplies(replies.stream().map(r -> toReplyVO(r, userMap.get(r.getReplierId()))).toList());
@@ -156,10 +164,13 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
         if (feedback == null) {
             throw new BusinessException(ResultCode.FEEDBACK_NOT_FOUND);
         }
+        Long userId = SecurityUtils.getUserId();
+        if (!feedback.getUserId().equals(userId)) {
+            throw new BusinessException(ResultCode.FEEDBACK_NOT_FOUND);
+        }
         if (feedback.getStatus() == FEEDBACK_STATUS_CLOSED) {
             throw new BusinessException(ResultCode.FEEDBACK_CLOSED);
         }
-        Long userId = SecurityUtils.getUserId();
         SysFeedbackReply reply = new SysFeedbackReply();
         reply.setFeedbackId(id);
         reply.setReplierId(userId);
@@ -323,21 +334,18 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
     }
 
     private FeedbackStatsVO calcFeedbackStats(LocalDateTime startTime, LocalDateTime endTime) {
-        LambdaQueryWrapper<SysFeedback> wrapper = new LambdaQueryWrapper<SysFeedback>()
-                .ge(startTime != null, SysFeedback::getCreateTime, startTime)
-                .le(endTime != null, SysFeedback::getCreateTime, endTime);
-        List<SysFeedback> feedbacks = this.list(wrapper);
-
         FeedbackStatsVO stats = new FeedbackStatsVO();
-        stats.setTotalFeedback((long) feedbacks.size());
+        stats.setTotalFeedback(baseMapper.countTotal(startTime, endTime));
 
         Map<String, Long> typeDist = new LinkedHashMap<>();
         for (String t : FEEDBACK_TYPES) {
             typeDist.put(t, 0L);
         }
-        for (SysFeedback f : feedbacks) {
-            if (f.getFeedbackType() != null && typeDist.containsKey(f.getFeedbackType())) {
-                typeDist.merge(f.getFeedbackType(), 1L, Long::sum);
+        for (Map<String, Object> row : baseMapper.selectTypeDistribution(startTime, endTime)) {
+            String type = (String) row.get("feedbackType");
+            Long count = ((Number) row.get("cnt")).longValue();
+            if (type != null && typeDist.containsKey(type)) {
+                typeDist.put(type, count);
             }
         }
         stats.setTypeDistribution(typeDist);
@@ -346,19 +354,21 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
         for (String s : Arrays.asList("pending", "processing", "replied", "closed")) {
             statusDist.put(s, 0L);
         }
-        for (SysFeedback f : feedbacks) {
-            String status = STATUS_TO_STRING.get(f.getStatus());
+        for (Map<String, Object> row : baseMapper.selectStatusDistribution(startTime, endTime)) {
+            Integer statusVal = ((Number) row.get("status")).intValue();
+            Long count = ((Number) row.get("cnt")).longValue();
+            String status = STATUS_TO_STRING.get(statusVal);
             if (status != null) {
-                statusDist.merge(status, 1L, Long::sum);
+                statusDist.put(status, count);
             }
         }
         stats.setStatusDistribution(statusDist);
 
         Map<String, Long> moduleCount = new LinkedHashMap<>();
-        for (SysFeedback f : feedbacks) {
-            if (CharSequenceUtil.isNotBlank(f.getRelatedModule())) {
-                moduleCount.merge(f.getRelatedModule(), 1L, Long::sum);
-            }
+        for (Map<String, Object> row : baseMapper.selectModuleDistribution(startTime, endTime)) {
+            String module = (String) row.get("relatedModule");
+            Long count = ((Number) row.get("cnt")).longValue();
+            moduleCount.put(module, count);
         }
         stats.setModuleDistribution(moduleCount.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
@@ -370,45 +380,68 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
                 })
                 .toList());
 
-        List<Long> feedbackIds = feedbacks.stream().map(SysFeedback::getId).toList();
-        if (!feedbackIds.isEmpty()) {
-            List<SysFeedbackReply> allReplies = feedbackReplyMapper.selectList(
-                    new LambdaQueryWrapper<SysFeedbackReply>()
-                            .in(SysFeedbackReply::getFeedbackId, feedbackIds)
-                            .orderByAsc(SysFeedbackReply::getFeedbackId)
-                            .orderByAsc(SysFeedbackReply::getId));
-            Map<Long, List<SysFeedbackReply>> replyMap = allReplies.stream()
-                    .collect(Collectors.groupingBy(SysFeedbackReply::getFeedbackId));
+        Map<Long, java.time.LocalDateTime> firstReplyMap = new HashMap<>();
+        for (Map<String, Object> row : baseMapper.selectFirstReplyTimes(startTime, endTime)) {
+            Number feedbackId = (Number) row.get("feedbackId");
+            java.sql.Timestamp ts = (java.sql.Timestamp) row.get("firstReplyTime");
+            if (feedbackId != null && ts != null) {
+                firstReplyMap.put(feedbackId.longValue(), ts.toLocalDateTime());
+            }
+        }
 
-            long totalResponseTime = 0;
-            long responseCount = 0;
-            long totalCloseTime = 0;
-            long closeCount = 0;
-            for (SysFeedback f : feedbacks) {
-                List<SysFeedbackReply> replies = replyMap.get(f.getId());
-                if (replies != null && !replies.isEmpty()) {
-                    SysFeedbackReply firstReply = replies.get(0);
-                    if (f.getCreateTime() != null && firstReply.getCreateTime() != null) {
-                        totalResponseTime += java.time.Duration.between(
-                                f.getCreateTime(), firstReply.getCreateTime()).toMillis();
-                        responseCount++;
-                    }
-                }
-                if (f.getStatus() != null && f.getStatus() == FEEDBACK_STATUS_CLOSED
-                        && f.getCreateTime() != null && f.getUpdateTime() != null) {
-                    totalCloseTime += java.time.Duration.between(
-                            f.getCreateTime(), f.getUpdateTime()).toMillis();
-                    closeCount++;
+        long totalResponseTime = 0;
+        long responseCount = 0;
+        long totalCloseTime = 0;
+        long closeCount = 0;
+        for (Map<String, Object> row : baseMapper.selectFeedbackTimes(startTime, endTime)) {
+            Long feedbackId = ((Number) row.get("id")).longValue();
+            java.sql.Timestamp createTs = (java.sql.Timestamp) row.get("createTime");
+            java.sql.Timestamp updateTs = (java.sql.Timestamp) row.get("updateTime");
+            java.time.LocalDateTime createTime = createTs != null ? createTs.toLocalDateTime() : null;
+            java.time.LocalDateTime firstReplyTime = firstReplyMap.get(feedbackId);
+            if (createTime != null && firstReplyTime != null) {
+                totalResponseTime += java.time.Duration.between(createTime, firstReplyTime).toMillis();
+                responseCount++;
+            }
+            Integer statusVal = ((Number) row.get("status")).intValue();
+            if (statusVal != null && statusVal == FEEDBACK_STATUS_CLOSED
+                    && createTime != null && updateTs != null) {
+                totalCloseTime += java.time.Duration.between(createTime, updateTs.toLocalDateTime()).toMillis();
+                closeCount++;
+            }
+        }
+        stats.setAverageResponseTime(responseCount > 0 ? totalResponseTime / responseCount : 0L);
+        stats.setAverageCloseTime(closeCount > 0 ? totalCloseTime / closeCount : 0L);
+
+        stats.setTopKeywords(topKeywords(startTime, endTime, 10));
+        return stats;
+    }
+
+    private List<FeedbackStatsVO.KeywordCount> topKeywords(LocalDateTime startTime, LocalDateTime endTime, int limit) {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        String separators = " \t\n\r,，。.!！?？;；:：、\"'()（）[]【】{}/\\|";
+        for (Map<String, Object> row : baseMapper.selectTitleAndContent(startTime, endTime)) {
+            String title = (String) row.get("title");
+            String content = (String) row.get("content");
+            String text = (title != null ? title : "") + " " + (content != null ? content : "");
+            java.util.StringTokenizer tokenizer = new java.util.StringTokenizer(text, separators);
+            while (tokenizer.hasMoreTokens()) {
+                String word = tokenizer.nextToken();
+                if (word.length() >= 2) {
+                    counts.merge(word, 1L, Long::sum);
                 }
             }
-            stats.setAverageResponseTime(responseCount > 0 ? totalResponseTime / responseCount : 0L);
-            stats.setAverageCloseTime(closeCount > 0 ? totalCloseTime / closeCount : 0L);
-        } else {
-            stats.setAverageResponseTime(0L);
-            stats.setAverageCloseTime(0L);
         }
-        stats.setTopKeywords(Collections.emptyList());
-        return stats;
+        return counts.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(limit)
+                .map(e -> {
+                    FeedbackStatsVO.KeywordCount kc = new FeedbackStatsVO.KeywordCount();
+                    kc.setKeyword(e.getKey());
+                    kc.setCount(e.getValue());
+                    return kc;
+                })
+                .toList();
     }
 
     private Integer statusToInt(String status) {

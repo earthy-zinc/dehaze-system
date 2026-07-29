@@ -30,6 +30,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WebSocketMessageRelay implements MessageListener {
 
+    public static final String DEST_TASK = "/queue/task";
+    public static final String DEST_MESSAGE = "/queue/message";
+
     private final StringRedisTemplate stringRedisTemplate;
 
     private final SimpMessagingTemplate messagingTemplate;
@@ -44,19 +47,21 @@ public class WebSocketMessageRelay implements MessageListener {
     }
 
     /**
-     * 发布任务消息到指定用户（跨实例）
+     * 发布消息到指定用户的指定 STOMP 队列（跨实例）
      *
-     * @param userId  目标用户 ID
-     * @param message WebSocket 消息体
+     * @param userId      目标用户 ID
+     * @param destination STOMP 目的地（如 /queue/task、/queue/message）
+     * @param message     WebSocket 消息体
      */
-    public void publishToUser(Long userId, Map<String, Object> message) {
+    public void publishToUser(Long userId, String destination, Map<String, Object> message) {
         try {
             Map<String, Object> envelope = new HashMap<>();
             envelope.put("target_user_id", userId);
+            envelope.put("destination", destination);
             envelope.put("message", message);
             stringRedisTemplate.convertAndSend(TaskConstants.WS_CHANNEL, JSONUtil.toJsonStr(envelope));
         } catch (Exception e) {
-            log.warn("Redis Pub/Sub 发布失败（不影响任务执行）: userId={}", userId, e);
+            log.warn("Redis Pub/Sub 发布失败（不影响主流程）: userId={}, dest={}", userId, destination, e);
         }
     }
 
@@ -78,13 +83,16 @@ public class WebSocketMessageRelay implements MessageListener {
             }
             String userId = String.valueOf(userIdObj);
 
+            Object destObj = envelope.get("destination");
+            String destination = destObj != null ? String.valueOf(destObj) : DEST_TASK;
+
             @SuppressWarnings("unchecked")
             Map<String, Object> message = (Map<String, Object>) envelope.get("message");
             if (message == null) {
                 return;
             }
 
-            messagingTemplate.convertAndSendToUser(userId, "/queue/task", message);
+            messagingTemplate.convertAndSendToUser(userId, destination, message);
         } catch (Exception e) {
             log.warn("WebSocket 消息本地投递失败", e);
         }

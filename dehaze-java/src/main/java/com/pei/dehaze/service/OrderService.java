@@ -59,4 +59,6 @@ public interface OrderService extends IService<SysOrder> {
     void completeExpiredOrders();
 
     void expireUserCoupons();
+
+    void retryFailedRefunds();
 }

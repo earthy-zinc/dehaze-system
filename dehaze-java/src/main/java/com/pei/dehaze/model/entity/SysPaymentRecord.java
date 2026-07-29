@@ -2,6 +2,7 @@ package com.pei.dehaze.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.common.base.BaseEntity;
 import lombok.Data;
@@ -35,6 +36,9 @@ public class SysPaymentRecord extends BaseEntity {
     private String callbackContent;
 
     private String errorMessage;
+
+    @TableLogic
+    private Integer deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

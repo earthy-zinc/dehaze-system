@@ -97,7 +97,6 @@ public class OrderController {
 
     @Operation(summary = "后台：订单分页列表")
     @GetMapping("/page")
-    @PreAuthorize("@ss.hasPerm('order:list')")
     public PageResult<OrderPageVO> getPage(@ParameterObject OrderPageQuery query) {
         Page<OrderPageVO> page = orderService.getPage(query);
         return PageResult.success(page);
@@ -105,7 +104,6 @@ public class OrderController {
 
     @Operation(summary = "后台：退款审核列表")
     @GetMapping("/refunds/page")
-    @PreAuthorize("@ss.hasPerm('order:refund:audit')")
     public PageResult<RefundRecordVO> listRefunds(@ParameterObject RefundPageQuery query) {
         Page<RefundRecordVO> page = orderService.listRefunds(query);
         return PageResult.success(page);
@@ -113,7 +111,7 @@ public class OrderController {
 
     @Operation(summary = "后台：退款审核通过")
     @PutMapping("/refunds/{refundId}/approve")
-    @PreAuthorize("@ss.hasPerm('order:refund:audit')")
+    @PreAuthorize("@ss.hasPerm('order:refund:approve')")
     public Result<Void> approveRefund(@Parameter(description = "退款ID") @PathVariable Long refundId,
                                       @Valid @RequestBody RefundAuditForm form) {
         orderService.approveRefund(refundId, form);
@@ -122,7 +120,7 @@ public class OrderController {
 
     @Operation(summary = "后台：退款审核驳回")
     @PutMapping("/refunds/{refundId}/reject")
-    @PreAuthorize("@ss.hasPerm('order:refund:audit')")
+    @PreAuthorize("@ss.hasPerm('order:refund:approve')")
     public Result<Void> rejectRefund(@Parameter(description = "退款ID") @PathVariable Long refundId,
                                      @Valid @RequestBody RefundAuditForm form) {
         orderService.rejectRefund(refundId, form);
@@ -131,7 +129,6 @@ public class OrderController {
 
     @Operation(summary = "后台：订单统计")
     @GetMapping("/stats")
-    @PreAuthorize("@ss.hasPerm('order:stats')")
     public Result<OrderStatsVO> getStats(
             @Parameter(description = "开始时间(yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @Parameter(description = "结束时间(yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {

@@ -2,16 +2,18 @@ package com.pei.dehaze.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.common.base.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serial;
-import java.io.Serializable;
-import java.time.LocalDateTime;
 
 @Data
+@EqualsAndHashCode(callSuper = false)
 @TableName("sys_member_growth_log")
-public class SysMemberGrowthLog implements Serializable {
+public class SysMemberGrowthLog extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -30,7 +32,8 @@ public class SysMemberGrowthLog implements Serializable {
 
     private Long operatorId;
 
-    private LocalDateTime createTime;
+    @TableLogic
+    private Integer deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

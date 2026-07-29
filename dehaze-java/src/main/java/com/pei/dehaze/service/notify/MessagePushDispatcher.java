@@ -3,6 +3,7 @@ package com.pei.dehaze.service.notify;
 import com.pei.dehaze.model.entity.SysMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +18,7 @@ public class MessagePushDispatcher {
 
     private final List<MessagePushChannel> channels;
 
+    @Async("pushTaskExecutor")
     public void dispatch(SysMessage message, Long recipientId) {
         for (MessagePushChannel channel : channels) {
             if (!channel.isAvailable()) {

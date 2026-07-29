@@ -40,9 +40,6 @@ public class MessageVO {
     @Schema(description = "发送者类型(1:系统;2:管理员)")
     private Integer senderType;
 
-    @Schema(description = "发送者类型标签")
-    private String senderTypeLabel;
-
     @Schema(description = "已读时间")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime readTime;

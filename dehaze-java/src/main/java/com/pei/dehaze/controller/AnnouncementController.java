@@ -8,6 +8,7 @@ import com.pei.dehaze.model.query.AnnouncementQuery;
 import com.pei.dehaze.model.vo.AnnouncementDetailVO;
 import com.pei.dehaze.model.vo.AnnouncementSendResultVO;
 import com.pei.dehaze.model.vo.AnnouncementVO;
+import com.pei.dehaze.model.vo.IdVO;
 import com.pei.dehaze.service.AnnouncementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,9 +18,6 @@ import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Tag(name = "10.消息通知-公告管理")
 @RestController
@@ -39,11 +37,9 @@ public class AnnouncementController {
     @Operation(summary = "创建公告")
     @PostMapping
     @PreAuthorize("@ss.hasPerm('notify:announcement:add')")
-    public Result<Map<String, Long>> create(@Valid @RequestBody AnnouncementForm form) {
+    public Result<IdVO> create(@Valid @RequestBody AnnouncementForm form) {
         Long id = announcementService.create(form);
-        Map<String, Long> data = new HashMap<>();
-        data.put("id", id);
-        return Result.success(data);
+        return Result.success(new IdVO(id));
     }
 
     @Operation(summary = "公告详情")

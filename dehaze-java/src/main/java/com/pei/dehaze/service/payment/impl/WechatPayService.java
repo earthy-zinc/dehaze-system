@@ -22,6 +22,7 @@ public class WechatPayService implements PaymentChannelService {
     private static final String CHANNEL_TYPE = "wechat";
     private static final String UNIFIED_ORDER_PATH = "/v3/pay/transactions/native";
     private static final String REFUND_PATH = "/v3/refund/domestic/refunds";
+    private static final String CLOSE_ORDER_PATH = "/v3/pay/transactions/out-trade-no/%s/close";
 
     private final PaymentProperties paymentProperties;
     @Qualifier("paymentRestTemplate")
@@ -122,6 +123,24 @@ public class WechatPayService implements PaymentChannelService {
         log.warn("微信代扣需签约协议，本次走统一下单+用户主动支付流程: orderNo={}", orderNo);
         UnifiedOrderResult result = unifiedOrder(orderNo, amountFen, description, Map.of());
         return result.success();
+    }
+
+    @Override
+    public boolean closeOrder(String orderNo) {
+        if (!isEnabled()) {
+            log.info("微信关单(mock): orderNo={}", orderNo);
+            return true;
+        }
+        try {
+            PaymentProperties.ChannelConfig cfg = paymentProperties.getWechat();
+            String url = cfg.getBaseUrl() + String.format(CLOSE_ORDER_PATH, orderNo);
+            Map<String, Object> body = Map.of("mchid", cfg.getMchId());
+            ResponseEntity<Map> resp = restTemplate.postForEntity(url, body, Map.class);
+            return resp.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("微信关单失败: orderNo={}", orderNo, e);
+            return false;
+        }
     }
 
     private UnifiedOrderResult mockOrder(String orderNo) {

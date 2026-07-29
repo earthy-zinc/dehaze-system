@@ -191,7 +191,7 @@ public class TaskExecutorImpl implements TaskExecutor {
             message.put("result", result);
             message.put("error_message", errorMessage);
             message.put("timestamp", LocalDateTime.now().toString());
-            wsMessageRelay.publishToUser(task.getCreateBy(), message);
+            wsMessageRelay.publishToUser(task.getCreateBy(), WebSocketMessageRelay.DEST_TASK, message);
         } catch (Exception e) {
             log.debug("WebSocket 推送失败（不影响任务执行）: {}", e.getMessage());
         }

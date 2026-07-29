@@ -137,21 +137,21 @@ public class PackageController {
 
     @Operation(summary = "后台：创建优惠券")
     @PostMapping("/coupons")
-    @PreAuthorize("@ss.hasPerm('coupon:add')")
+    @PreAuthorize("@ss.hasPerm('package:coupon:add')")
     public Result<CouponCreateResult> addCoupon(@Valid @RequestBody CouponForm form) {
         return Result.success(couponService.create(form));
     }
 
     @Operation(summary = "后台：批量发放优惠券")
     @PostMapping("/coupons/batch")
-    @PreAuthorize("@ss.hasPerm('coupon:distribute')")
+    @PreAuthorize("@ss.hasPerm('package:coupon:distribute')")
     public Result<CouponBatchResult> batchDistribute(@Valid @RequestBody CouponBatchDistributeForm form) {
         return Result.success(couponService.batchDistribute(form));
     }
 
     @Operation(summary = "后台：修改优惠券")
     @PutMapping("/coupons/{id}")
-    @PreAuthorize("@ss.hasPerm('coupon:edit')")
+    @PreAuthorize("@ss.hasPerm('package:coupon:edit')")
     public Result<Void> updateCoupon(@Parameter(description = "优惠券ID") @PathVariable Long id,
                                      @Valid @RequestBody CouponForm form) {
         couponService.update(id, form);
@@ -160,7 +160,7 @@ public class PackageController {
 
     @Operation(summary = "后台：删除优惠券")
     @DeleteMapping("/coupons/{ids}")
-    @PreAuthorize("@ss.hasPerm('coupon:delete')")
+    @PreAuthorize("@ss.hasPerm('package:coupon:delete')")
     public Result<Void> deleteCoupons(@Parameter(description = "优惠券ID（逗号分隔）") @PathVariable String ids) {
         couponService.deleteByIds(ids);
         return Result.success();

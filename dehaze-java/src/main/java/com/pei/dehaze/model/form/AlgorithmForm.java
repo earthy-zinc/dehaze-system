@@ -36,10 +36,7 @@ public class AlgorithmForm {
     @Schema(description = "算法描述")
     private String description;
 
-    /**
-     * 状态(1:正常;0:禁用)
-     */
-    @Schema(description = "算法状态(1:正常;0:禁用)")
+    @Schema(description = "算法状态(1:草稿;2:测试中;3:待审核;4:已发布;5:已停用;6:已归档)")
     private Integer status;
 
 }

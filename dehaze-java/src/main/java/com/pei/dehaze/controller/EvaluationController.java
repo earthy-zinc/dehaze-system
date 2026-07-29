@@ -70,13 +70,9 @@ public class EvaluationController {
             return null;
         }
         JSONObject json = JSONUtil.parseObj(resultJson);
-        JSONObject metricsJson = json.getJSONObject("metrics");
-        if (metricsJson == null) {
-            return null;
-        }
         Map<String, Double> metrics = new LinkedHashMap<>();
-        for (String key : metricsJson.keySet()) {
-            metrics.put(key, metricsJson.getDouble(key));
+        for (String key : json.keySet()) {
+            metrics.put(key, json.getDouble(key));
         }
         return metrics;
     }

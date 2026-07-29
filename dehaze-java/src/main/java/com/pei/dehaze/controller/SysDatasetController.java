@@ -1,9 +1,11 @@
 package com.pei.dehaze.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.model.form.BatchDeleteRequest;
 import com.pei.dehaze.model.form.DatasetAddForm;
 import com.pei.dehaze.model.form.DatasetUpdateForm;
@@ -121,6 +123,9 @@ public class SysDatasetController {
             @PathVariable
             Long id
     ) {
+        if (datasetService.getById(id) == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
+        }
         datasetOperationService.batchDeleteDatasets(List.of(id));
         return Result.success();
     }

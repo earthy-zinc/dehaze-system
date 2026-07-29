@@ -209,7 +209,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             message.put("result", null);
             message.put("error_message", null);
             message.put("timestamp", LocalDateTime.now().toString());
-            wsMessageRelay.publishToUser(sysTask.getCreateBy(), message);
+            wsMessageRelay.publishToUser(sysTask.getCreateBy(), WebSocketMessageRelay.DEST_TASK, message);
         } catch (Exception e) {
             log.warn("WebSocket 推送取消通知失败（不影响任务执行）: taskId={}", taskId, e);
         }
@@ -413,7 +413,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             message.put("result", result);
             message.put("error_message", errorMessage);
             message.put("timestamp", LocalDateTime.now().toString());
-            wsMessageRelay.publishToUser(task.getCreateBy(), message);
+            wsMessageRelay.publishToUser(task.getCreateBy(), WebSocketMessageRelay.DEST_TASK, message);
         } catch (Exception e) {
             log.warn("WebSocket 推送失败（不影响任务执行）: {}", e.getMessage());
         }

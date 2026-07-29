@@ -35,4 +35,6 @@ public interface MemberService extends IService<SysMember> {
     void processExpiredMembers();
 
     boolean deductQuota(Long userId, String quotaType, int amount);
+
+    void sendExpireReminders();
 }

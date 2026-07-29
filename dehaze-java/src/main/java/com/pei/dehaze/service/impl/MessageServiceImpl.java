@@ -1,16 +1,18 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.text.CharSequenceUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.config.WebSocketMessageRelay;
 import com.pei.dehaze.mapper.SysMessageMapper;
+import com.pei.dehaze.mapper.SysUserMapper;
 import com.pei.dehaze.model.entity.SysMessage;
 import com.pei.dehaze.model.entity.SysMessageTemplate;
+import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.MessageSendForm;
 import com.pei.dehaze.model.query.MessageQuery;
 import com.pei.dehaze.model.query.MessageSearchQuery;
@@ -20,16 +22,19 @@ import com.pei.dehaze.service.MessageService;
 import com.pei.dehaze.service.MessageTemplateService;
 import com.pei.dehaze.service.notify.MessagePushDispatcher;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage> implements MessageService {
@@ -43,12 +48,14 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             "critical_alert", "严重告警"
     );
     private static final Pattern VAR_PATTERN = Pattern.compile("\\{(\\w+)}");
-    private static final int SUMMARY_LENGTH = 50;
     private static final String UNREAD_KEY_PREFIX = "msg:unread:";
+    private static final DateTimeFormatter WS_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final MessageTemplateService messageTemplateService;
     private final MessagePushDispatcher pushDispatcher;
     private final StringRedisTemplate stringRedisTemplate;
+    private final WebSocketMessageRelay webSocketMessageRelay;
+    private final SysUserMapper userMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -69,15 +76,22 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
         if (CharSequenceUtil.isNotBlank(form.getTemplateCode())) {
             SysMessageTemplate template = messageTemplateService.getByCode(form.getTemplateCode());
             if (template == null) {
-                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模板不存在");
+                throw new BusinessException(ResultCode.MESSAGE_TEMPLATE_NOT_FOUND);
             }
             if (template.getStatus() != null && template.getStatus() == 0) {
-                throw new BusinessException(ResultCode.BUSINESS_ERROR, "模板已禁用");
+                throw new BusinessException(ResultCode.TEMPLATE_DISABLED);
             }
             Map<String, String> variables = form.getVariables() != null ? form.getVariables() : Collections.emptyMap();
             validateTemplateVariables(template, variables);
             title = renderTemplate(template.getTitleTemplate(), variables);
             content = renderTemplate(template.getContentTemplate(), variables);
+        } else {
+            if (CharSequenceUtil.isBlank(title)) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "消息标题不能为空");
+            }
+            if (CharSequenceUtil.isBlank(content)) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "消息正文不能为空");
+            }
         }
 
         String type = form.getType();
@@ -102,8 +116,9 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             message.setExpiresAt(expiresAt);
             this.save(message);
             messageIds.add(message.getId());
-            incrementUnreadCache(recipientId);
+            invalidateUnreadCache(recipientId);
             pushDispatcher.dispatch(message, recipientId);
+            pushNewMessageEvent(message, recipientId);
         }
 
         MessageSendResultVO vo = new MessageSendResultVO();
@@ -111,14 +126,31 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
         return vo;
     }
 
+    private void pushNewMessageEvent(SysMessage message, Long recipientId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", message.getId());
+        data.put("type", message.getType());
+        data.put("title", message.getTitle());
+        data.put("priority", message.getPriority());
+        data.put("createTime", message.getCreateTime() != null
+                ? message.getCreateTime().format(WS_TIME_FORMATTER) : null);
+        Map<String, Object> event = new HashMap<>();
+        event.put("event", "new_message");
+        event.put("data", data);
+        webSocketMessageRelay.publishToUser(recipientId, WebSocketMessageRelay.DEST_MESSAGE, event);
+    }
+
     private void validateTemplateVariables(SysMessageTemplate template, Map<String, String> variables) {
-        if (CharSequenceUtil.isBlank(template.getVariables())) {
-            return;
+        String title = template.getTitleTemplate() != null ? template.getTitleTemplate() : "";
+        String content = template.getContentTemplate() != null ? template.getContentTemplate() : "";
+        Set<String> requiredVars = new HashSet<>();
+        Matcher matcher = VAR_PATTERN.matcher(title + " " + content);
+        while (matcher.find()) {
+            requiredVars.add(matcher.group(1));
         }
-        for (Object def : JSONUtil.parseArray(template.getVariables())) {
-            String varName = ((cn.hutool.json.JSONObject) def).getStr("name");
+        for (String varName : requiredVars) {
             if (!variables.containsKey(varName)) {
-                throw new BusinessException(ResultCode.PARAM_ERROR, "模板变量缺失: " + varName);
+                throw new BusinessException(ResultCode.TEMPLATE_VAR_MISSING, "模板变量缺失: " + varName);
             }
         }
     }
@@ -191,7 +223,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
                 .eq(SysMessage::getId, id)
                 .eq(SysMessage::getRecipientId, userId));
         if (message == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+            throw new BusinessException(ResultCode.MESSAGE_NOT_FOUND);
         }
 
         if (message.getReadStatus() != null && message.getReadStatus() == 0) {
@@ -203,7 +235,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
                     .set(SysMessage::getReadTime, readTime));
             message.setReadStatus(1);
             message.setReadTime(readTime);
-            decrementUnreadCache(userId);
+            invalidateUnreadCache(userId);
         }
 
         MessageDetailVO vo = new MessageDetailVO();
@@ -213,6 +245,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void markRead(Long id) {
         Long userId = SecurityUtils.getUserId();
         int affected = this.getBaseMapper().update(null, new LambdaUpdateWrapper<SysMessage>()
@@ -222,7 +255,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
                 .set(SysMessage::getReadStatus, 1)
                 .set(SysMessage::getReadTime, LocalDateTime.now()));
         if (affected > 0) {
-            decrementUnreadCache(userId);
+            invalidateUnreadCache(userId);
         }
     }
 
@@ -288,11 +321,19 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     private MessageVO toMessageVO(SysMessage message) {
         MessageVO vo = new MessageVO();
         copyToVO(message, vo);
-        String content = message.getContent();
-        String summary = content != null && content.length() > SUMMARY_LENGTH
-                ? content.substring(0, SUMMARY_LENGTH) : content;
-        vo.setSummary(summary);
+        vo.setSummary(summary(message.getContent()));
         return vo;
+    }
+
+    private String summary(String content) {
+        if (content == null) {
+            return null;
+        }
+        int[] codePoints = content.codePoints().toArray();
+        if (codePoints.length <= 50) {
+            return content;
+        }
+        return new String(codePoints, 0, 50);
     }
 
     private void copyToVO(SysMessage message, MessageVO vo) {
@@ -303,18 +344,34 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
         vo.setPriority(message.getPriority());
         vo.setReadStatus(message.getReadStatus());
         vo.setSenderType(message.getSenderType());
-        vo.setSenderTypeLabel(message.getSenderType() != null && message.getSenderType() == 2 ? "管理员" : "系统");
         vo.setReadTime(message.getReadTime());
         vo.setJumpUrl(message.getJumpUrl());
         vo.setExtra(message.getExtra());
         vo.setCreateTime(message.getCreateTime());
     }
 
-    private void incrementUnreadCache(Long userId) {
+    private void invalidateUnreadCache(Long userId) {
         stringRedisTemplate.delete(UNREAD_KEY_PREFIX + userId);
     }
 
-    private void decrementUnreadCache(Long userId) {
-        stringRedisTemplate.delete(UNREAD_KEY_PREFIX + userId);
+    @Override
+    public void refreshUnreadCountCache() {
+        List<SysUser> users = userMapper.selectList(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getStatus, 1));
+        if (users.isEmpty()) {
+            log.info("未读数缓存刷新: 无活跃用户");
+            return;
+        }
+        int refreshed = 0;
+        for (SysUser user : users) {
+            Long userId = user.getId();
+            long count = this.count(new LambdaQueryWrapper<SysMessage>()
+                    .eq(SysMessage::getRecipientId, userId)
+                    .eq(SysMessage::getReadStatus, 0));
+            stringRedisTemplate.opsForValue().set(UNREAD_KEY_PREFIX + userId, String.valueOf(count),
+                    count == 0 ? Duration.ofMinutes(5) : Duration.ofHours(1));
+            refreshed++;
+        }
+        log.info("未读数缓存刷新完成: 共刷新{}个用户", refreshed);
     }
 }

@@ -73,9 +73,9 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
         form.setTitle(title);
         form.setContent(content);
         form.setRecipientIds(adminUserIds);
-        form.setBizModule("rating_alert");
+        form.setBizModule("feedback");
         form.setBizId(rating.getId() + ":normal");
-        form.setPriority(2);
+        form.setPriority(3);
         messageService.send(form);
         log.info("低分普通告警已发送: ratingId={}, rating={}", rating.getId(), rating.getRating());
         return true;
@@ -94,11 +94,11 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
         String content = String.format("算法[%s]在24小时内收到%d条以上低分评价，请紧急关注。", algorithmName, URGENT_LOW_RATING_COUNT);
 
         MessageSendForm form = new MessageSendForm();
-        form.setType("alert");
+        form.setType("critical_alert");
         form.setTitle(title);
         form.setContent(content);
         form.setRecipientIds(adminUserIds);
-        form.setBizModule("rating_alert");
+        form.setBizModule("feedback");
         form.setBizId(algorithmId + ":urgent");
         form.setPriority(1);
         messageService.send(form);
@@ -121,9 +121,9 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
         form.setTitle(title);
         form.setContent(content);
         form.setRecipientIds(adminUserIds);
-        form.setBizModule("rating_alert");
+        form.setBizModule("feedback");
         form.setBizId(LocalDate.now() + ":severe");
-        form.setPriority(1);
+        form.setPriority(2);
         messageService.send(form);
         log.info("低分严重告警已发送");
         return true;
@@ -141,27 +141,23 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
 
     private double calcDailyGlobalLowRatingRate() {
         LocalDateTime dayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime dayEnd = LocalDate.now().atTime(23, 59, 59);
-        List<SysRating> todayRatings = ratingMapper.selectList(new LambdaQueryWrapper<SysRating>()
-                .ge(SysRating::getCreateTime, dayStart)
-                .le(SysRating::getCreateTime, dayEnd));
-        if (todayRatings.isEmpty()) {
+        long lowCount = ratingMapper.countLowRatingsSince(LOW_RATING_THRESHOLD, dayStart);
+        long totalCount = ratingMapper.countRatingsSince(dayStart);
+        if (totalCount == 0) {
             return 0.0;
         }
-        long lowCount = todayRatings.stream()
-                .filter(r -> r.getRating() != null && r.getRating() <= LOW_RATING_THRESHOLD)
-                .count();
-        return (double) lowCount * 100 / todayRatings.size();
+        return (double) lowCount * 100 / totalCount;
     }
 
     private List<Long> getAdminUserIds() {
-        SysRole rootRole = roleMapper.selectOne(new LambdaQueryWrapper<SysRole>()
-                .eq(SysRole::getCode, SystemConstants.ROOT_ROLE_CODE));
-        if (rootRole == null) {
+        List<SysRole> roles = roleMapper.selectList(new LambdaQueryWrapper<SysRole>()
+                .in(SysRole::getCode, SystemConstants.ROOT_ROLE_CODE, "ADMIN"));
+        if (roles.isEmpty()) {
             return Collections.emptyList();
         }
+        List<Long> roleIds = roles.stream().map(SysRole::getId).toList();
         List<SysUserRole> userRoles = userRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
-                .eq(SysUserRole::getRoleId, rootRole.getId()));
+                .in(SysUserRole::getRoleId, roleIds));
         return userRoles.stream().map(SysUserRole::getUserId).distinct().toList();
     }
 }

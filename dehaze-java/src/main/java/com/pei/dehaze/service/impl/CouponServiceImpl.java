@@ -116,12 +116,14 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
             if (usedCount > 0) {
                 throw new BusinessException(ResultCode.DATA_BIND_EXISTS, "优惠券已发放使用，无法删除");
             }
+            userCouponMapper.delete(new LambdaQueryWrapper<SysUserCoupon>()
+                    .eq(SysUserCoupon::getCouponId, id)
+                    .eq(SysUserCoupon::getStatus, 1));
             this.removeById(id);
         }
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public CouponBatchResult batchDistribute(CouponBatchDistributeForm form) {
         SysCoupon coupon = this.getById(form.getCouponId());
         if (coupon == null) {
@@ -157,15 +159,22 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
         if ("fixed".equals(coupon.getValidType()) && coupon.getValidEnd() != null && now.isAfter(coupon.getValidEnd())) {
             throw new BusinessException(ResultCode.COUPON_EXPIRED);
         }
-        if (coupon.getTotalQty() != -1 && coupon.getIssuedQty() >= coupon.getTotalQty()) {
-            throw new BusinessException(ResultCode.COUPON_STOCK_EMPTY);
-        }
         Long receivedCount = userCouponMapper.selectCount(new LambdaQueryWrapper<SysUserCoupon>()
                 .eq(SysUserCoupon::getUserId, userId)
                 .eq(SysUserCoupon::getCouponId, couponId));
         if (receivedCount >= coupon.getPerUserLimit()) {
             throw new BusinessException(ResultCode.COUPON_LIMIT_EXCEEDED);
         }
+
+        int rows = baseMapper.update(null, new LambdaUpdateWrapper<SysCoupon>()
+                .eq(SysCoupon::getId, couponId)
+                .eq(SysCoupon::getStatus, 1)
+                .and(w -> w.eq(SysCoupon::getTotalQty, -1).or().apply("issued_qty < total_qty"))
+                .setSql("issued_qty = issued_qty + 1"));
+        if (rows == 0) {
+            throw new BusinessException(ResultCode.COUPON_STOCK_EMPTY);
+        }
+
         SysUserCoupon userCoupon = new SysUserCoupon();
         userCoupon.setUserId(userId);
         userCoupon.setCouponId(couponId);
@@ -177,11 +186,6 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
             userCoupon.setExpireTime(coupon.getValidEnd());
         }
         userCouponMapper.insert(userCoupon);
-
-        LambdaUpdateWrapper<SysCoupon> wrapper = new LambdaUpdateWrapper<SysCoupon>()
-                .eq(SysCoupon::getId, couponId)
-                .set(SysCoupon::getIssuedQty, coupon.getIssuedQty() + 1);
-        this.update(wrapper);
 
         return new CouponReceiveResult(userCoupon.getId());
     }
@@ -226,9 +230,16 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
         if (receivedCount >= coupon.getPerUserLimit()) {
             throw new BusinessException(ResultCode.COUPON_LIMIT_EXCEEDED);
         }
-        if (coupon.getTotalQty() != -1 && coupon.getIssuedQty() >= coupon.getTotalQty()) {
+
+        int rows = baseMapper.update(null, new LambdaUpdateWrapper<SysCoupon>()
+                .eq(SysCoupon::getId, coupon.getId())
+                .eq(SysCoupon::getStatus, 1)
+                .and(w -> w.eq(SysCoupon::getTotalQty, -1).or().apply("issued_qty < total_qty"))
+                .setSql("issued_qty = issued_qty + 1"));
+        if (rows == 0) {
             throw new BusinessException(ResultCode.COUPON_STOCK_EMPTY);
         }
+
         SysUserCoupon userCoupon = new SysUserCoupon();
         userCoupon.setUserId(userId);
         userCoupon.setCouponId(coupon.getId());
@@ -240,11 +251,6 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
             userCoupon.setExpireTime(coupon.getValidEnd());
         }
         userCouponMapper.insert(userCoupon);
-
-        LambdaUpdateWrapper<SysCoupon> wrapper = new LambdaUpdateWrapper<SysCoupon>()
-                .eq(SysCoupon::getId, coupon.getId())
-                .set(SysCoupon::getIssuedQty, coupon.getIssuedQty() + 1);
-        this.update(wrapper);
     }
 
     private List<Long> resolveTargetUserIds(String targetScope, List<String> levelCodes, List<Long> userIds) {

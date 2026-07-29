@@ -1,5 +1,8 @@
 package com.pei.dehaze.service.notify;
 
+import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.mapper.SysNotificationSettingMapper;
 import com.pei.dehaze.model.entity.SysMessage;
@@ -49,6 +52,22 @@ public class PushChannel implements MessagePushChannel {
         SysNotificationSetting setting = getSetting(recipientId);
         if (setting == null || setting.getPushEnabled() == null || setting.getPushEnabled() == 0) {
             return false;
+        }
+        JSONObject prefs = CharSequenceUtil.isNotBlank(setting.getPreferences())
+                ? JSONUtil.parseObj(setting.getPreferences()) : new JSONObject();
+        JSONObject typeChannels = prefs.getJSONObject("typeChannels");
+        if (typeChannels != null) {
+            JSONObject typeCfg = typeChannels.getJSONObject(message.getType());
+            if (typeCfg != null && Boolean.FALSE.equals(typeCfg.getBool("push", true))) {
+                return false;
+            }
+        }
+        if (CharSequenceUtil.isNotBlank(message.getBizModule())) {
+            JSONObject moduleSwitches = prefs.getJSONObject("moduleSwitches");
+            if (moduleSwitches != null
+                    && Boolean.FALSE.equals(moduleSwitches.getBool(message.getBizModule(), null))) {
+                return false;
+            }
         }
         return true;
     }

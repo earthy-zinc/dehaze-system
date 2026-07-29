@@ -6,6 +6,7 @@ import com.pei.dehaze.model.entity.SysMessage;
 import com.pei.dehaze.model.entity.SysNotificationSetting;
 import com.pei.dehaze.security.util.SystemSecurityContext;
 import com.pei.dehaze.service.MessageService;
+import com.pei.dehaze.service.notify.MessagePushDispatcher;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ public class DelayedPushJob {
     private final StringRedisTemplate stringRedisTemplate;
     private final SysNotificationSettingMapper settingMapper;
     private final MessageService messageService;
+    private final MessagePushDispatcher pushDispatcher;
 
     @XxlJob("processDelayedPush")
     public void processDelayedPush() {
@@ -55,6 +57,7 @@ public class DelayedPushJob {
             try {
                 SysMessage message = messageService.getById(Long.parseLong(messageId));
                 if (message != null) {
+                    pushDispatcher.dispatch(message, userId);
                     log.info("处理免打扰延迟推送: messageId={}, recipientId={}", message.getId(), userId);
                 }
             } catch (Exception e) {

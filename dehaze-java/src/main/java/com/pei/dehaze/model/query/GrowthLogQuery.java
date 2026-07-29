@@ -20,7 +20,4 @@ public class GrowthLogQuery extends BasePageQuery {
 
     @Schema(description = "结束时间")
     private LocalDate endTime;
-
-    @Schema(description = "用户ID（后台查询时使用，用户端忽略）")
-    private Long userId;
 }

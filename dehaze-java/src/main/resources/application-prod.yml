@@ -152,6 +152,7 @@ xxl:
       port: 9999
       logpath: /data/applogs/xxl-job/jobhandler
       logretentiondays: 30
+      timeout: 10
 
 # 验证码配置
 captcha:
