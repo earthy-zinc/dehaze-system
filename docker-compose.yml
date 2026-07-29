@@ -81,6 +81,8 @@ services:
       - MINIO_ACCESS_KEY=admin
       - MINIO_SECRET_KEY=${DEHAZE_PASSWORD}
       - MINIO_BROWSER_DEFAULT_LOCALE=zh_CN
+      # 开放内置 Prometheus 指标端点 /minio/v2/metrics/cluster（免鉴权，仅内网采集）
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
     volumes:
       - minio-data:/data
       - minio-config:/root/.minio
@@ -114,9 +116,12 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
       - rabbitmq-logs:/var/log/rabbitmq
+      # 启用 rabbitmq_prometheus 插件（15692 端口暴露指标）
+      - ./config/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     ports:
       - "15672:15672"
       - "5672:5672"
+      - "15692:15692"
     environment:
       - RABBITMQ_DEFAULT_USER=root
       - RABBITMQ_DEFAULT_PASS=${DEHAZE_PASSWORD}
@@ -180,11 +185,31 @@ services:
     restart: unless-stopped
     ports:
       - "4560:4560"
+      # Beats 输入端口（Filebeat 日志采集）
+      - "5044:5044"
     volumes:
-      - logstash-pipeline:/usr/share/logstash/pipeline
+      - ./config/logstash/pipeline:/usr/share/logstash/pipeline:ro
       - logstash-config:/usr/share/logstash/config
     depends_on:
       - elasticsearch
+    networks:
+      - pei-network
+
+  # Filebeat（采集三端 JSON 结构化日志 → Logstash）
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.18.2
+    container_name: filebeat
+    restart: unless-stopped
+    user: root
+    command: filebeat -e --strict.perms=false
+    volumes:
+      - ./config/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./dehaze-java/logs:/logs/java:ro
+      - ./dehaze-python/logs:/logs/python:ro
+      - ./dehaze-go/logs:/logs/go:ro
+      - filebeat-data:/usr/share/filebeat/data
+    depends_on:
+      - logstash
     networks:
       - pei-network
 
@@ -252,8 +277,24 @@ services:
       - "9091:9091"
     volumes:
       - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     command: --config.file=/etc/prometheus/prometheus.yml --web.listen-address=:9091
+    networks:
+      - pei-network
+
+  # AlertManager（告警通知，阈值规则见 config/prometheus/rules/）
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      # 部署前需将文件中的 SMTP 占位配置替换为真实值
+      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command: --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager
     networks:
       - pei-network
 
@@ -320,6 +361,41 @@ services:
     networks:
       - pei-network
 
+  # MongoDB Exporter
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.40.0
+    container_name: mongodb-exporter
+    restart: unless-stopped
+    ports:
+      - "9216:9216"
+    environment:
+      - MONGODB_URI=mongodb://root:${DEHAZE_PASSWORD}@mongodb:27017
+    networks:
+      - pei-network
+
+  # GPU DCGM Exporter（算法服务 GPU 推理监控）
+  # 依赖 NVIDIA GPU + nvidia-container-toolkit，通过 gpu profile 按需启动：
+  #   docker compose --profile gpu up -d dcgm-exporter
+  dcgm-exporter:
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.0-3.4.0-ubuntu22.04
+    container_name: dcgm-exporter
+    restart: unless-stopped
+    profiles:
+      - gpu
+    ports:
+      - "9400:9400"
+    cap_add:
+      - SYS_ADMIN
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - pei-network
+
 volumes:
   mysql-data:
     external: true
@@ -348,8 +424,6 @@ volumes:
     external: true
   kibana-config:
     external: true
-  logstash-pipeline:
-    external: true
   logstash-config:
     external: true
   rabbitmq-data:
@@ -362,3 +436,6 @@ volumes:
     external: true
   grafana-data:
     external: true
+  # 以下新增卷由 Docker 自动管理，无需手动创建
+  alertmanager-data:
+  filebeat-data:

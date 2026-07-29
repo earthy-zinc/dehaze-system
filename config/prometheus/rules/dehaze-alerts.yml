@@ -1,0 +1,86 @@
+# Dehaze 告警规则
+# 阈值定义见 dehaze-doc/docs/02-系统架构/06-部署架构.md 7.2 关键告警指标
+# 通知通道配置见 config/alertmanager/alertmanager.yml
+
+groups:
+  - name: dehaze-system
+    rules:
+      - alert: HighCpuUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "宿主机 CPU 使用率过高"
+          description: "实例 {{ $labels.instance }} CPU 使用率已持续 5 分钟超过 85%（当前 {{ $value | printf \"%.1f\" }}%）"
+
+      - alert: HighMemoryUsage
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "宿主机内存使用率过高"
+          description: "实例 {{ $labels.instance }} 内存使用率已持续 5 分钟超过 90%（当前 {{ $value | printf \"%.1f\" }}%）"
+
+      - alert: HighDiskUsage
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/", fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/", fstype!~"tmpfs|overlay"}) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "宿主机磁盘使用率过高"
+          description: "实例 {{ $labels.instance }} 根分区使用率已持续 10 分钟超过 85%（当前 {{ $value | printf \"%.1f\" }}%）"
+
+  - name: dehaze-application
+    rules:
+      # gpu job 为 profile 按需启动，刻意关闭时不视为宕机
+      - alert: ServiceDown
+        expr: up{job!="gpu"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "服务宕机：{{ $labels.job }}"
+          description: "指标采集目标 {{ $labels.job }}（{{ $labels.instance }}）已宕机超过 1 分钟"
+
+      - alert: JavaHigh5xxErrorRate
+        expr: sum(rate(http_server_requests_seconds_count{job="dehaze-java", status=~"5.."}[2m])) / sum(rate(http_server_requests_seconds_count{job="dehaze-java"}[2m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: java
+        annotations:
+          summary: "Java 后端 5xx 错误率过高"
+          description: "dehaze-java 5xx 错误率已持续 2 分钟超过 5%（当前 {{ $value | humanizePercentage }}）"
+
+      - alert: HighP99Latency
+        expr: |
+          max(histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket[5m])) by (le, job))) > 5
+          or max(histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job))) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "接口 P99 延迟过高"
+          description: "某后端服务 P99 延迟已持续 5 分钟超过 5s（当前 {{ $value | printf \"%.2f\" }}s）"
+
+  - name: dehaze-infrastructure
+    rules:
+      - alert: MysqlHighConnections
+        expr: mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.8
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL 连接数过高"
+          description: "MySQL 连接数已持续 3 分钟超过最大连接数的 80%（当前 {{ $value | humanizePercentage }}）"
+
+      - alert: RedisHighMemory
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis 内存使用过高"
+          description: "Redis 内存已持续 5 分钟超过 maxmemory 的 80%（当前 {{ $value | humanizePercentage }}）"

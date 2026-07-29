@@ -6,7 +6,7 @@
 
 - **基础路径**:
   - 算法管理: `/api/v1/algorithms`
-  - 算法导入导出: `/api/v1/algorithm`（通用导入导出框架，模块名 `algorithm` 为单数）
+  - 算法导入导出: `/api/v1/algorithms`（通用导入导出框架，模块名 `algorithm` 映射为复数路径）
   - 模型预测: `/api/v1/prediction`
   - 效果评估: `/api/v1/evaluation`
 - **公共约定**: 参见 [../../02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md)
@@ -38,14 +38,14 @@
 
 ### 2.2 算法导入/导出接口
 
-> 算法导入导出由**通用导入导出框架**统一调度，导出/导入范围为算法**元数据**（Excel/CSV），**不含模型权重文件**。模型权重文件托管在 nginx-dataset 静态服务，其上传/下载通过算法详情接口单独处理。模块名 `algorithm` 为单数，与算法 CRUD 路径 `/api/v1/algorithms`（复数）区分。通用框架详见 [任务管理/后端实现.md](../../基础模块/任务管理/后端实现.md)。
+> 算法导入导出由**通用导入导出框架**统一调度，导出/导入范围为算法**元数据**（Excel/CSV），**不含模型权重文件**。模型权重文件托管在 nginx-dataset 静态服务，其上传/下载通过算法详情接口单独处理。模块名 `algorithm` 映射为复数路径 `/api/v1/algorithms`，与算法 CRUD 路径统一。通用框架详见 [任务管理/后端实现.md](../../基础模块/任务管理/后端实现.md)。
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/algorithm/_export` | GET | 导出算法元数据（简单查询，同步返回文件流或异步返回任务） | `sys:algorithm:export` | F-M05-007 |
-| `/api/v1/algorithm/_export` | POST | 导出算法元数据（复杂查询条件，走异步任务） | `sys:algorithm:export` | F-M05-007 |
-| `/api/v1/algorithm/_import` | POST | 导入算法元数据（Excel/CSV，创建算法记录，状态=草稿） | `sys:algorithm:import` | F-M05-007 |
-| `/api/v1/algorithm/template` | GET | 下载导入模板（Excel/CSV） | `sys:algorithm:import` | F-M05-007 |
+| `/api/v1/algorithms/_export` | GET | 导出算法元数据（简单查询，同步返回文件流或异步返回任务） | `sys:algorithm:export` | F-M05-007 |
+| `/api/v1/algorithms/_export` | POST | 导出算法元数据（复杂查询条件，走异步任务） | `sys:algorithm:export` | F-M05-007 |
+| `/api/v1/algorithms/_import` | POST | 导入算法元数据（Excel/CSV，创建算法记录，状态=草稿） | `sys:algorithm:import` | F-M05-007 |
+| `/api/v1/algorithms/template` | GET | 下载导入模板（Excel/CSV） | `sys:algorithm:import` | F-M05-007 |
 
 **导出格式**：`.xlsx`（默认）或 `.csv`（通过 `format` 参数指定）
 

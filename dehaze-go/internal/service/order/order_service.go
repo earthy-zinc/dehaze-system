@@ -278,19 +278,7 @@ func (s *OrderService) updateMemberAfterPaymentInTx(ctx context.Context, txMembe
 
 	member, _ := txMemberRepo.FindByUserID(ctx, userID)
 	if member == nil {
-		now := time.Now()
-		newMember := &model.SysMember{
-			UserID:               userID,
-			LevelCode:            levelCode,
-			LevelSource:          "package",
-			TotalConsumption:     amount,
-			ExpireTime:           expireTime,
-			BecomeMemberTime:     &now,
-			Status:               1,
-			MonthlyDehazeQuota:   dehazeQuota,
-			MonthlyEvaluateQuota: evaluateQuota,
-		}
-		return txMemberRepo.Create(ctx, newMember)
+		return common.NewBizError(common.MEMBER_NOT_FOUND, "会员不存在")
 	}
 
 	updates := map[string]interface{}{
@@ -301,6 +289,10 @@ func (s *OrderService) updateMemberAfterPaymentInTx(ctx context.Context, txMembe
 		"status":                 1,
 		"monthly_dehaze_quota":   dehazeQuota,
 		"monthly_evaluate_quota": evaluateQuota,
+	}
+	if member.BecomeMemberTime == nil {
+		now := time.Now()
+		updates["become_member_time"] = now
 	}
 	return txMemberRepo.Update(ctx, userID, updates)
 }
@@ -723,17 +715,21 @@ func (s *OrderService) ApproveRefund(ctx context.Context, auditorID, refundID in
 			if errMsg == "" {
 				errMsg = "渠道退款失败"
 			}
-			_ = s.refundRepo.Update(ctx, refundID, map[string]interface{}{
-				"status":        3,
-				"audit_time":    time.Now(),
-				"auditor_id":    auditorID,
-				"audit_remark":  form.Remark,
-				"error_message": errMsg,
-			})
-			_ = s.orderRepo.Update(ctx, o.ID, map[string]interface{}{
-				"status": 2,
-			})
-			return common.NewBizError(common.OPERATION_FAILED, errMsg)
+		_ = s.refundRepo.Update(ctx, refundID, map[string]interface{}{
+			"status":        3,
+			"audit_time":    time.Now(),
+			"auditor_id":    auditorID,
+			"audit_remark":  form.Remark,
+			"error_message": errMsg,
+		})
+		restoreStatus := int8(2)
+		if o.PackageExpireTime != nil && o.PackageExpireTime.After(time.Now()) {
+			restoreStatus = 3
+		}
+		_ = s.orderRepo.Update(ctx, o.ID, map[string]interface{}{
+			"status": restoreStatus,
+		})
+		return common.NewBizError(common.OPERATION_FAILED, errMsg)
 		}
 	}
 

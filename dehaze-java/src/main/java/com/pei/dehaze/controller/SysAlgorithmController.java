@@ -8,20 +8,27 @@ import com.pei.dehaze.model.entity.SysAlgorithmVersion;
 import com.pei.dehaze.model.form.AlgorithmAuditForm;
 import com.pei.dehaze.model.form.AlgorithmForm;
 import com.pei.dehaze.model.form.AlgorithmVersionForm;
+import com.pei.dehaze.model.form.ExportRequest;
+import com.pei.dehaze.model.form.ImportRequest;
 import com.pei.dehaze.model.query.AlgorithmQuery;
 import com.pei.dehaze.model.vo.AlgorithmMonitorVO;
 import com.pei.dehaze.model.vo.AlgorithmVO;
 import com.pei.dehaze.model.vo.AlgorithmVersionVO;
 import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysAlgorithmVersionService;
+import com.pei.dehaze.service.importexport.ImportExportService;
+import com.pei.dehaze.service.importexport.TemplateManager;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -38,6 +45,8 @@ public class SysAlgorithmController {
     private final SysAlgorithmService algorithmService;
     private final SysAlgorithmVersionService versionService;
     private final AlgorithmConverter algorithmConverter;
+    private final ImportExportService importExportService;
+    private final TemplateManager templateManager;
 
     @Operation(summary = "获取算法树形表格")
     @GetMapping
@@ -156,8 +165,54 @@ public class SysAlgorithmController {
 
     @Operation(summary = "获取算法统计报表")
     @GetMapping("/{id}/monitor/stats")
-    public Result<AlgorithmMonitorVO> getMonitorStats(
-            @Parameter(description = "算法ID") @PathVariable Long id) {
-        return getMonitorData(id);
+    public Result<List<Map<String, Object>>> getMonitorStats(
+            @Parameter(description = "算法ID") @PathVariable Long id,
+            @Parameter(description = "统计天数，默认7天") @RequestParam(defaultValue = "7") Integer days) {
+        List<Map<String, Object>> stats = algorithmService.getMonitorStats(id, days);
+        return Result.success(stats);
+    }
+
+    // ==================== 导入导出（路径与算法 CRUD 统一为 /algorithms 复数） ====================
+
+    private static final String MODULE = "algorithm";
+
+    @Operation(summary = "导出算法元数据（GET，同步返回文件流或异步返回任务）")
+    @GetMapping("/_export")
+    @PreAuthorize("@ss.hasPerm('sys:algorithm:export')")
+    public Object export(ExportRequest req, HttpServletRequest httpRequest, HttpServletResponse response) {
+        Map<String, Object> queryParams = req.toQueryParams(httpRequest.getParameterMap());
+        Object result = importExportService.export(MODULE, queryParams, req.getFormat(),
+                req.getAsync(), req.getFieldList(), response);
+        return result != null ? Result.success(result) : null;
+    }
+
+    @Operation(summary = "导出算法元数据（POST，复杂查询条件）")
+    @PostMapping("/_export")
+    @PreAuthorize("@ss.hasPerm('sys:algorithm:export')")
+    public Object exportPost(@RequestBody com.pei.dehaze.model.form.ExportPostRequest req, HttpServletResponse response) {
+        Object result = importExportService.export(MODULE, req.getQueryParams(), req.getFormat(),
+                req.getAsync(), req.getFields(), response);
+        return result != null ? Result.success(result) : null;
+    }
+
+    @Operation(summary = "导入算法元数据")
+    @PostMapping("/_import")
+    @PreAuthorize("@ss.hasPerm('sys:algorithm:import')")
+    public Result<Object> importData(ImportRequest req,
+                                     @RequestParam("file") MultipartFile file,
+                                     HttpServletRequest httpRequest) {
+        Map<String, Object> extraParams = req.toExtraParams(httpRequest.getParameterMap());
+        Object result = importExportService.importData(MODULE, file, req.getModeOrDefault(),
+                req.getAsync(), extraParams);
+        return Result.success(result);
+    }
+
+    @Operation(summary = "下载算法导入模板")
+    @GetMapping("/template")
+    @PreAuthorize("@ss.hasPerm('sys:algorithm:import')")
+    public void downloadTemplate(@Parameter(description = "文件格式：excel(默认) / csv")
+                                 @RequestParam(defaultValue = "excel") String format,
+                                 HttpServletResponse response) {
+        templateManager.downloadTemplate(MODULE, format, response);
     }
 }

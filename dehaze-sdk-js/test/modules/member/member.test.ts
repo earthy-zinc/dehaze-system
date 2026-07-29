@@ -354,6 +354,14 @@ describe("会员管理模块接口测试", () => {
       expect(updated.monthlyDehazeQuota).toBe(200);
     });
 
+    test("异常：成长值下限大于上限", async () => {
+      const form = createBenefitForm({ growthMin: 5000, growthMax: 1000 });
+      await expectBizError(
+        MemberAPI.updateBenefit("level_1", form),
+        ["BENEFIT_CONFIG_INVALID", "A0514", "A0400", "ERR_BAD_REQUEST"],
+      );
+    });
+
     afterAll(async () => {
       // 恢复原始配置
       await MemberAPI.updateBenefit("level_1", {

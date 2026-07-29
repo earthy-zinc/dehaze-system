@@ -14,6 +14,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
+	"github.com/earthyzinc/dehaze-go/pkg/metrics"
 	"github.com/earthyzinc/dehaze-go/pkg/websocket"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -219,6 +220,8 @@ func (ts *TaskService) UpdateTaskResult(ctx context.Context, taskIDStr string, r
 	task.ExpiresAt = &expiresAt
 	ts.cacheTask(ctx, task)
 
+	recordTaskMetrics(task, "completed")
+
 	ts.pushTaskWsMessage(taskIDStr, task.CreateBy, "task_status", map[string]interface{}{
 		"status":        model.TaskStatusCompleted,
 		"progress":      100,
@@ -329,6 +332,8 @@ func (ts *TaskService) CancelTask(ctx context.Context, taskIDStr string, userID 
 	if err != nil {
 		ts.logger.Error("设置取消标志失败", zap.Error(err))
 	}
+
+	recordTaskMetrics(task, "cancelled")
 
 	// WebSocket 推送任务取消
 	ts.pushTaskWsMessage(taskIDStr, task.CreateBy, "task_status", map[string]interface{}{
@@ -535,6 +540,13 @@ func (ts *TaskService) UpdateTaskStatus(ctx context.Context, taskIDStr string, s
 	}
 	ts.cacheTask(ctx, task)
 
+	switch status {
+	case model.TaskStatusFailed:
+		recordTaskMetrics(task, "failed")
+	case model.TaskStatusCancelled:
+		recordTaskMetrics(task, "cancelled")
+	}
+
 	// WebSocket 推送状态变更
 	ts.pushTaskWsMessage(taskIDStr, task.CreateBy, "task_status", map[string]interface{}{
 		"status":        status,
@@ -601,6 +613,15 @@ func (ts *TaskService) UpdateRetryCount(ctx context.Context, taskIDStr string, r
 	task.RetryCount = retryCount
 	ts.cacheTask(ctx, task)
 	return nil
+}
+
+// recordTaskMetrics 记录任务终态指标，耗时优先取 started_at，未启动则取创建时间
+func recordTaskMetrics(task *model.SysTask, status string) {
+	start := task.CreatedAt
+	if task.StartedAt != nil {
+		start = *task.StartedAt
+	}
+	metrics.RecordTask(string(task.TaskType), status, time.Since(start).Seconds())
 }
 
 // pushTaskWsMessage 通过 WebSocket 推送任务消息（Redis Pub/Sub 跨实例投递，对齐 Python 消息格式）

@@ -14,6 +14,7 @@ import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysWpxFileService;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
     private final FileService fileService;
     private final SysWpxFileService sysWpxFileService;
     private final SysAlgorithmService sysAlgorithmService;
+    private final MeterRegistry meterRegistry;
 
     @Override
     public SysFile check(String md5) {
@@ -65,6 +67,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
                 .path(fileBO.getPath())
                 .build();
         this.save(sysFile);
+        meterRegistry.counter("dehaze_file_upload_total").increment();
         return sysFile;
     }
 

@@ -12,14 +12,14 @@ TASK_QUEUE_DEPTH = Gauge(
     ["task_type"],
 )
 
-TASK_PROCESSING_TOTAL = Counter(
-    "dehaze_task_processing_total",
+TASK_TOTAL = Counter(
+    "dehaze_task_total",
     "Total number of tasks processed",
     ["task_type", "status"],
 )
 
-TASK_PROCESSING_TIME = Histogram(
-    "dehaze_task_processing_time_seconds",
+TASK_DURATION = Histogram(
+    "dehaze_task_duration_seconds",
     "Task processing time in seconds",
     ["task_type", "status"],
     buckets=(1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0),
@@ -64,8 +64,8 @@ def record_task_completion(
         status: 任务状态 (success, failed, cancelled)
         duration_seconds: 任务处理耗时（秒）
     """
-    TASK_PROCESSING_TOTAL.labels(task_type=task_type, status=status).inc()
-    TASK_PROCESSING_TIME.labels(task_type=task_type, status=status).observe(duration_seconds)
+    TASK_TOTAL.labels(task_type=task_type, status=status).inc()
+    TASK_DURATION.labels(task_type=task_type, status=status).observe(duration_seconds)
     decrement_task_in_progress(task_type)
 
 

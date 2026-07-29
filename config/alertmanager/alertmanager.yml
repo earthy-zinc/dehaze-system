@@ -1,0 +1,58 @@
+# AlertManager 通知配置
+# 阈值规则见 config/prometheus/rules/dehaze-alerts.yml
+#
+# 部署前请将下方 SMTP 占位配置替换为真实值（勿将真实密码提交到 Git）：
+#   smtp.example.com:465        → 邮件服务器地址
+#   alerts@example.com          → 发件账号
+#   REPLACE_ME_SMTP_PASSWORD    → 发件密码/授权码
+#   ops@example.com             → 收件人
+# 可选钉钉/企业微信 Webhook 见文件底部注释。
+
+global:
+  smtp_smarthost: 'smtp.example.com:465'
+  smtp_from: 'alerts@example.com'
+  smtp_auth_username: 'alerts@example.com'
+  smtp_auth_password: 'REPLACE_ME_SMTP_PASSWORD'
+  smtp_require_tls: true
+  # 告警恢复后等待多长时间发送 Resolved 通知
+  resolve_timeout: 5m
+
+route:
+  receiver: 'email'
+  # 按严重级别分组，同组告警合并发送，降低噪音
+  group_by: ['alertname', 'severity', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - match:
+        severity: critical
+      receiver: 'email-critical'
+      repeat_interval: 1h
+
+receivers:
+  - name: 'email'
+    email_configs:
+      - to: 'ops@example.com'
+        send_resolved: true
+
+  - name: 'email-critical'
+    email_configs:
+      - to: 'ops@example.com'
+        send_resolved: true
+
+# critical 告警触发时，抑制同实例同告警名的 warning 通知
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+# 可选：钉钉/企业微信 Webhook 通知（按需启用）
+# 1. 部署一个 webhook 适配器（如 timonwong/prometheus-webhook-dingtalk）
+# 2. 在 route.routes 中追加指向下方 receiver 的路由
+#  - name: 'webhook'
+#    webhook_configs:
+#      - url: 'http://dingtalk-webhook:8060/dingtalk/ops/send'
+#        send_resolved: true

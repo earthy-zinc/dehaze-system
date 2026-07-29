@@ -565,6 +565,9 @@ class MemberService:
             if camel_key in form and form[camel_key] is not None:
                 setattr(benefit, snake_key, form[camel_key])
 
+        if benefit.growth_max and benefit.growth_max > 0 and benefit.growth_min > benefit.growth_max:
+            raise BusinessException(ResultCode.BENEFIT_CONFIG_INVALID, "成长值下限不能大于上限")
+
         await db.flush()
         await _invalidate_member_cache(level_code=level_code)
 

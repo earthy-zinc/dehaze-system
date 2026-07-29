@@ -220,6 +220,25 @@ func (s *AuthService) Register(ctx context.Context, req *bo.RegisterRequest, cli
 		s.db.WithContext(ctx).Create(userRole)
 	}
 
+	var defaultBenefit model.SysMemberBenefit
+	s.db.WithContext(ctx).Where("level_code = ? AND status = 1", "level_0").First(&defaultBenefit)
+	now := time.Now()
+	quotaMonth, _ := strconv.Atoi(now.Format("200601"))
+	member := &model.SysMember{
+		UserID:               user.ID,
+		LevelCode:            "level_0",
+		LevelSource:          "growth",
+		GrowthValue:          0,
+		TotalConsumption:     0,
+		Status:               1,
+		MonthlyDehazeQuota:   defaultBenefit.MonthlyDehazeQuota,
+		MonthlyEvaluateQuota: defaultBenefit.MonthlyEvaluateQuota,
+		MonthlyDehazeUsed:    0,
+		MonthlyEvaluateUsed:  0,
+		QuotaResetMonth:      &quotaMonth,
+	}
+	s.db.WithContext(ctx).Create(member)
+
 	s.resetLoginFailCount(ctx, clientIP, username)
 
 	sessionID := uuid.New().String()

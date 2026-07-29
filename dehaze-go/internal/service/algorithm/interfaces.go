@@ -50,4 +50,7 @@ type IAlgorithmService interface {
 
 	// GetMonitorData 获取算法监控数据
 	GetMonitorData(ctx context.Context, algorithmID int64) (*vo.AlgorithmMonitorVO, error)
+
+	// GetMonitorStatsReport 获取算法统计报表（按日聚合）
+	GetMonitorStatsReport(ctx context.Context, algorithmID int64, days int) ([]map[string]interface{}, error)
 }

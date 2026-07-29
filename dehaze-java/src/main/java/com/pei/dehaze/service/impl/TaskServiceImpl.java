@@ -20,6 +20,7 @@ import com.pei.dehaze.model.vo.TaskVO;
 import com.pei.dehaze.service.TaskService;
 import com.pei.dehaze.service.TaskExecutor;
 import com.pei.dehaze.security.util.SecurityUtils;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -52,6 +53,8 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
     private final RedisTemplate<String, Object> redisTemplate;
 
     private final WebSocketMessageRelay wsMessageRelay;
+
+    private final MeterRegistry meterRegistry;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -374,6 +377,8 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         String cacheKey = TaskConstants.TASK_CACHE_PREFIX + taskId;
         redisTemplate.opsForValue().set(cacheKey, sysTask, TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);
 
+        meterRegistry.counter("dehaze_task_total", "status", "completed").increment();
+
         pushTaskStatusMessage(sysTask, TaskConstants.STATUS_COMPLETED, result, null);
     }
 
@@ -391,6 +396,8 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
 
         String cacheKey = TaskConstants.TASK_CACHE_PREFIX + taskId;
         redisTemplate.opsForValue().set(cacheKey, sysTask, TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);
+
+        meterRegistry.counter("dehaze_task_total", "status", "failed").increment();
 
         pushTaskStatusMessage(sysTask, TaskConstants.STATUS_FAILED, null, errorMessage);
     }

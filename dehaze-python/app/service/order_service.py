@@ -150,7 +150,7 @@ async def _invalidate_order_detail_cache(order_no: str) -> None:
 async def _activate_member_benefits(db: AsyncSession, order: SysOrder) -> None:
     member = await member_repository.get_by_user_id(db, order.user_id)
     if not member:
-        return
+        raise BusinessException(ResultCode.MEMBER_NOT_FOUND, "会员不存在")
 
     pkg = await package_repository.get_by_id(db, order.package_id)
     if not pkg:

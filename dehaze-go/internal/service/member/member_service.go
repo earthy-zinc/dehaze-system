@@ -675,6 +675,25 @@ func (s *MemberService) UpdateBenefit(ctx context.Context, levelCode string, for
 		return nil
 	}
 
+	current, err := s.benefitRepo.FindByLevelCode(ctx, levelCode)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+	}
+	if current == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "权益配置不存在")
+	}
+	effectiveGrowthMin := current.GrowthMin
+	if form.GrowthMin != nil {
+		effectiveGrowthMin = *form.GrowthMin
+	}
+	effectiveGrowthMax := current.GrowthMax
+	if form.GrowthMax != nil {
+		effectiveGrowthMax = *form.GrowthMax
+	}
+	if effectiveGrowthMax > 0 && effectiveGrowthMin > effectiveGrowthMax {
+		return common.NewBizError(common.BENEFIT_CONFIG_INVALID, "成长值下限不能大于上限")
+	}
+
 	if err := s.benefitRepo.Update(ctx, levelCode, updates); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "权益配置更新失败", err)
 	}

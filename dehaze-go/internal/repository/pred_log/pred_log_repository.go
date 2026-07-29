@@ -15,6 +15,7 @@ type IPredLogRepository interface {
 	FindByAlgorithmAndMD5(ctx context.Context, algorithmID int64, originMD5 string) (*model.SysPredLog, error)
 	FindPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error)
 	GetMonitorStats(ctx context.Context, algorithmID int64) (*MonitorStats, error)
+	GetDailyStats(ctx context.Context, algorithmID int64, startTime time.Time) ([]DailyStat, error)
 	UpdateResult(ctx context.Context, id int64, status model.LogStatus, predURL, predMD5 string, time int) error
 	UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error
 	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
@@ -26,6 +27,14 @@ type MonitorStats struct {
 	TodayCallCount int64
 	AvgTime        float64
 	SuccessCount   int64
+}
+
+// DailyStat 按日聚合统计数据
+type DailyStat struct {
+	Date         string  `json:"date"`
+	CallCount    int64   `json:"callCount"`
+	AvgTime      float64 `json:"avgTime"`
+	SuccessCount int64   `json:"successCount"`
 }
 
 type predLogRepository struct {
@@ -148,5 +157,21 @@ func (r *predLogRepository) GetMonitorStats(ctx context.Context, algorithmID int
 		return nil, err
 	}
 
+	return stats, nil
+}
+
+// GetDailyStats 按日聚合查询预测日志统计
+func (r *predLogRepository) GetDailyStats(ctx context.Context, algorithmID int64, startTime time.Time) ([]DailyStat, error) {
+	var stats []DailyStat
+	err := r.db.WithContext(ctx).
+		Model(&model.SysPredLog{}).
+		Select("DATE(create_time) as date, COUNT(*) as call_count, COALESCE(AVG(`time`), 0) as avg_time, SUM(CASE WHEN pred_url IS NOT NULL AND pred_url <> '' THEN 1 ELSE 0 END) as success_count").
+		Where("algorithm_id = ? AND create_time >= ?", algorithmID, startTime).
+		Group("DATE(create_time)").
+		Order("date ASC").
+		Scan(&stats).Error
+	if err != nil {
+		return nil, err
+	}
 	return stats, nil
 }

@@ -44,11 +44,14 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     app.add_middleware(RateLimitMiddleware)
 
     # Prometheus 指标采集中间件（如果启用）
+    # prefix="http" 使指标名为 http_requests_total / http_request_duration_seconds，
+    # 与 Grafana 面板及三端监控规范对齐（starlette_exporter 默认前缀为 starlette）
     if prometheus_enabled:
         from starlette_exporter import PrometheusMiddleware
         app.add_middleware(
             PrometheusMiddleware,
             app_name="dehaze-python",
+            prefix="http",
             group_paths=True,
             skip_paths=["/health", "/ready",
                         "/metrics", "/docs", "/redoc", "/openapi.json"],

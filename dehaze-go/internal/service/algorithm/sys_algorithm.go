@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -254,8 +255,10 @@ func (s *AlgorithmService) Delete(ctx context.Context, ids []int64) error {
 	}
 
 	existingIDs := make(map[int64]bool, len(allAlgorithms))
+	algoByID := make(map[int64]*read.Algorithm, len(allAlgorithms))
 	for i := range allAlgorithms {
 		existingIDs[allAlgorithms[i].ID] = true
+		algoByID[allAlgorithms[i].ID] = &allAlgorithms[i]
 	}
 	for _, id := range ids {
 		if !existingIDs[id] {
@@ -273,6 +276,16 @@ func (s *AlgorithmService) Delete(ctx context.Context, ids []int64) error {
 		allDeleteIDs[id] = true
 		for _, childID := range s.treeUtils.GetDescendantIDs(nodes, id) {
 			allDeleteIDs[childID] = true
+		}
+	}
+
+	// 校验待删除算法的状态：只有草稿/已停用/已归档状态可删除
+	for id := range allDeleteIDs {
+		if algo, exists := algoByID[id]; exists && algo != nil {
+			if !bo.IsDeletable(int8(algo.Status)) {
+				return common.NewBizError(common.DATA_STATE_NOT_ALLOW,
+					fmt.Sprintf("算法[%s]当前状态不允许删除，请先停用或归档", algo.Name))
+			}
 		}
 	}
 
@@ -377,6 +390,44 @@ func (s *AlgorithmService) GetMonitorData(ctx context.Context, algorithmID int64
 		monitor.SuccessRate = math.Round(rate*100) / 100
 	}
 	return monitor, nil
+}
+
+// GetMonitorStatsReport 获取算法统计报表（按日聚合）
+func (s *AlgorithmService) GetMonitorStatsReport(ctx context.Context, algorithmID int64, days int) ([]map[string]interface{}, error) {
+	if days <= 0 {
+		days = 7
+	}
+	startTime := time.Now().AddDate(0, 0, -(days - 1)).Truncate(24 * time.Hour)
+
+	dailyStats, err := s.predLogRepo.GetDailyStats(ctx, algorithmID, startTime)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询统计报表失败", err)
+	}
+
+	// 构建日期索引
+	statByDate := make(map[string]predlog.DailyStat, len(dailyStats))
+	for _, ds := range dailyStats {
+		statByDate[ds.Date] = ds
+	}
+
+	// 填充每一天的数据（含无数据的日期）
+	result := make([]map[string]interface{}, 0, days)
+	now := time.Now()
+	for i := days - 1; i >= 0; i-- {
+		date := now.AddDate(0, 0, -i).Format("2006-01-02")
+		ds := statByDate[date]
+		var successRate float64
+		if ds.CallCount > 0 {
+			successRate = math.Round(float64(ds.SuccessCount)/float64(ds.CallCount)*100*100) / 100
+		}
+		result = append(result, map[string]interface{}{
+			"date":        date,
+			"callCount":   ds.CallCount,
+			"avgTime":     math.Round(ds.AvgTime*100) / 100,
+			"successRate": successRate,
+		})
+	}
+	return result, nil
 }
 
 func mapAlgorithmReadChildren(children []read.Algorithm) []vo.AlgorithmVO {

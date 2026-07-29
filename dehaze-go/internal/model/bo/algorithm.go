@@ -22,15 +22,22 @@ type AlgorithmFormBO struct {
 	Status      int8   `json:"status" binding:"oneof=1 2 3 4 5 6"`
 }
 
-// allowedTransitions 定义允许的状态流转映射
+// DeletableStatuses 可删除的算法状态（草稿、已停用、已归档）
+var DeletableStatuses = map[int8]bool{
+	AlgorithmStatusDraft:    true,
+	AlgorithmStatusDisabled: true,
+	AlgorithmStatusArchived: true,
+}
+
+// allowedTransitions 定义允许的状态流转映射（三端统一）
 // key: 当前状态, value: 允许跳转的目标状态集合
 var allowedTransitions = map[int8]map[int8]bool{
-	AlgorithmStatusDraft:     {AlgorithmStatusTesting: true, AlgorithmStatusAuditing: true},
-	AlgorithmStatusTesting:   {AlgorithmStatusAuditing: true, AlgorithmStatusDisabled: true},
-	AlgorithmStatusAuditing:  {AlgorithmStatusPublished: true, AlgorithmStatusDraft: true}, // 驳回回到草稿
+	AlgorithmStatusDraft:     {AlgorithmStatusTesting: true},
+	AlgorithmStatusTesting:   {AlgorithmStatusAuditing: true, AlgorithmStatusDraft: true},
+	AlgorithmStatusAuditing:  {AlgorithmStatusPublished: true, AlgorithmStatusTesting: true},
 	AlgorithmStatusPublished: {AlgorithmStatusDisabled: true, AlgorithmStatusArchived: true},
-	AlgorithmStatusDisabled:  {AlgorithmStatusTesting: true},
-	AlgorithmStatusArchived:  {}, // 单向，不可逆
+	AlgorithmStatusDisabled:  {AlgorithmStatusPublished: true, AlgorithmStatusArchived: true},
+	AlgorithmStatusArchived:  {},
 }
 
 // CanTransitionTo 校验状态流转是否合法
@@ -39,4 +46,9 @@ func CanTransitionTo(currentStatus, targetStatus int8) bool {
 		return target[targetStatus]
 	}
 	return false
+}
+
+// IsDeletable 校验算法状态是否允许删除
+func IsDeletable(status int8) bool {
+	return DeletableStatuses[status]
 }

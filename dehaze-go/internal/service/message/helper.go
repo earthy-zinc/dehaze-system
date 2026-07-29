@@ -41,11 +41,6 @@ var importanceLabels = map[int]string{
 	2: "重要",
 }
 
-var senderTypeLabels = map[int]string{
-	1: "系统",
-	2: "管理员",
-}
-
 func formatTime(t *time.Time) string {
 	if t == nil {
 		return ""

@@ -16,10 +16,11 @@ import (
 type AlgorithmApi struct {
 	algorithmService algoservice.IAlgorithmService
 	favRepo          favrepo.IAlgorithmFavoriteRepository
+	importExportApi  *ImportExportApi
 }
 
-func NewAlgorithmApi(algorithmService algoservice.IAlgorithmService, favRepo favrepo.IAlgorithmFavoriteRepository) *AlgorithmApi {
-	return &AlgorithmApi{algorithmService: algorithmService, favRepo: favRepo}
+func NewAlgorithmApi(algorithmService algoservice.IAlgorithmService, favRepo favrepo.IAlgorithmFavoriteRepository, importExportApi *ImportExportApi) *AlgorithmApi {
+	return &AlgorithmApi{algorithmService: algorithmService, favRepo: favRepo, importExportApi: importExportApi}
 }
 
 // GetList 获取算法树形表格
@@ -79,9 +80,21 @@ func (api *AlgorithmApi) ListAll(c *gin.Context) {
 // GetById 根据ID获取算法信息
 func (api *AlgorithmApi) GetById(c *gin.Context) {
 	ctx := c.Request.Context()
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	idStr := c.Param("id")
+	// gin 参数路由 /:id 会捕获静态路径（如 _export、template），
+	// 此处对非数字 id 转发到导入导出 handler
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+		switch idStr {
+		case "_export":
+			c.Set("importExportModule", "algorithm")
+			api.importExportApi.Export(c)
+		case "template":
+			c.Set("importExportModule", "algorithm")
+			api.importExportApi.DownloadTemplate(c)
+		default:
+			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+		}
 		return
 	}
 	form, err := api.algorithmService.GetFormData(ctx, id)
@@ -271,4 +284,26 @@ func (api *AlgorithmApi) GetMonitorData(c *gin.Context) {
 		return
 	}
 	common.OkWithData(monitor, c)
+}
+
+// GetMonitorStatsReport 获取算法统计报表（按日聚合）
+func (api *AlgorithmApi) GetMonitorStatsReport(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+		return
+	}
+	days := 7
+	if d := c.Query("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+	stats, err := api.algorithmService.GetMonitorStatsReport(ctx, id, days)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithData(stats, c)
 }

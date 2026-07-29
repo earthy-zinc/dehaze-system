@@ -20,6 +20,8 @@ describe("算法管理新增端点测试", () => {
   afterAll(async () => {
     if (testAlgorithmId) {
       try {
+        // 恢复为草稿状态后再删除（DELETABLE_STATUSES 仅允许草稿/已停用/已归档删除）
+        await AlgorithmAPI.updateStatus(testAlgorithmId, 1).catch(() => {});
         await AlgorithmAPI.deleteByIds([testAlgorithmId.toString()]);
       } catch (_) {}
     }
@@ -38,17 +40,21 @@ describe("算法管理新增端点测试", () => {
     });
 
     test("参数校验：无效状态值应提示错误", async () => {
-      await expectBizError(
-        AlgorithmAPI.updateStatus(testAlgorithmId, 99),
-        ["A0502", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.updateStatus(testAlgorithmId, 99), [
+        "A0502",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("异常测试：不存在的算法ID应报错", async () => {
-      await expectBizError(
-        AlgorithmAPI.updateStatus(99999999, 1),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.updateStatus(99999999, 1), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -96,12 +102,19 @@ describe("算法管理新增端点测试", () => {
     test("正向测试：获取监控统计报表", async () => {
       const stats = await AlgorithmAPI.getMonitorStats(testAlgorithmId);
       expect(stats).toBeDefined();
-      expect(typeof stats.callCount).toBe("number");
-      expect(stats.callCount).toBeGreaterThanOrEqual(0);
+      expect(Array.isArray(stats)).toBe(true);
+      expect(stats.length).toBeGreaterThan(0);
+      // 每条记录应包含 date、callCount、avgTime、successRate 字段
+      const first = stats[0] as Record<string, unknown>;
+      expect(typeof first.date).toBe("string");
+      expect(typeof first.callCount).toBe("number");
+      expect(typeof first.avgTime).toBe("number");
+      expect(typeof first.successRate).toBe("number");
+      expect(first.successRate as number).toBeLessThanOrEqual(100);
     });
   });
 
-  describe("GET /api/v1/algorithms/{id}/_export - 算法导出（通过 ImportExportAPI）", () => {
+  describe("GET /api/v1/algorithms/_export - 算法导出（通过 ImportExportAPI）", () => {
     test("正向测试：导出算法（同步返回 Blob 或异步返回任务）", async () => {
       const result = await ImportExportAPI.export("algorithm", { id: testAlgorithmId });
       expect(result).toBeDefined();

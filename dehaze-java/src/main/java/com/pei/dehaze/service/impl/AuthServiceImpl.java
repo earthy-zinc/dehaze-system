@@ -25,6 +25,7 @@ import com.pei.dehaze.plugin.captcha.CaptchaProperties;
 import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.service.AuthService;
 import com.pei.dehaze.service.LoginLogService;
+import com.pei.dehaze.service.MemberService;
 import com.pei.dehaze.service.SysRoleService;
 import com.pei.dehaze.service.SysUserRoleService;
 import com.pei.dehaze.service.SysUserService;
@@ -67,6 +68,7 @@ public class AuthServiceImpl implements AuthService {
     private final SysRoleService sysRoleService;
     private final SysUserRoleService sysUserRoleService;
     private final LoginLogService loginLogService;
+    private final MemberService memberService;
 
     @Override
     public LoginResult login(LoginForm form) {
@@ -209,6 +211,8 @@ public class AuthServiceImpl implements AuthService {
             SysUserRole userRole = new SysUserRole(user.getId(), guestRole.getId());
             sysUserRoleService.save(userRole);
         }
+
+        memberService.initMember(user.getId());
 
         SysUserDetails userDetails = new SysUserDetails();
         userDetails.setUserId(user.getId());

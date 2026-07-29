@@ -91,6 +91,10 @@ public class MemberBenefitServiceImpl extends ServiceImpl<SysMemberBenefitMapper
         if (form.getStatus() != null) {
             benefit.setStatus(form.getStatus());
         }
+        if (benefit.getGrowthMax() != null && benefit.getGrowthMax() > 0
+                && benefit.getGrowthMin() != null && benefit.getGrowthMin() > benefit.getGrowthMax()) {
+            throw new BusinessException(ResultCode.BENEFIT_CONFIG_INVALID, "成长值下限不能大于上限");
+        }
         this.updateById(benefit);
         stringRedisTemplate.delete("member:benefit:" + levelCode);
         stringRedisTemplate.delete("member:benefit:all");

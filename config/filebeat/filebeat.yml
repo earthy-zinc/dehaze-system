@@ -1,0 +1,52 @@
+# Filebeat 三端日志采集配置
+# 挂载约定（见 docker-compose.yml filebeat 服务）：
+#   /logs/java    → dehaze-java/logs
+#   /logs/python  → dehaze-python/logs
+#   /logs/go      → dehaze-go/logs
+# 目录结构为 logs/{yyyy-MM-dd}/{级别}.log，三端均为 JSON 结构化日志
+
+filebeat.inputs:
+  - type: filestream
+    id: dehaze-java
+    enabled: true
+    paths:
+      - /logs/java/*/*.log
+    parsers:
+      - ndjson:
+          keys_under_root: true
+          add_error_key: true
+    fields:
+      service: java
+    fields_under_root: true
+
+  - type: filestream
+    id: dehaze-python
+    enabled: true
+    paths:
+      - /logs/python/*/*.log
+    parsers:
+      - ndjson:
+          keys_under_root: true
+          add_error_key: true
+    fields:
+      service: python
+    fields_under_root: true
+
+  - type: filestream
+    id: dehaze-go
+    enabled: true
+    paths:
+      - /logs/go/*/*.log
+    parsers:
+      - ndjson:
+          keys_under_root: true
+          add_error_key: true
+    fields:
+      service: go
+    fields_under_root: true
+
+output.logstash:
+  hosts: ["logstash:5044"]
+
+logging.level: info
+logging.to_stderr: true

@@ -10,6 +10,7 @@ import com.pei.dehaze.model.vo.AlgorithmMonitorVO;
 import com.pei.dehaze.model.vo.AlgorithmVO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author earthy-zinc
@@ -48,4 +49,10 @@ public interface SysAlgorithmService extends IService<SysAlgorithm> {
      * 获取算法监控数据
      */
     AlgorithmMonitorVO getMonitorData(Long id);
+
+    /**
+     * 获取算法统计报表（按日聚合）
+     * @param days 统计天数，默认7天
+     */
+    List<Map<String, Object>> getMonitorStats(Long id, Integer days);
 }

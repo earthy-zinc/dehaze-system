@@ -15,6 +15,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/earthyzinc/dehaze-go/pkg/metrics"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -51,6 +52,7 @@ type PredictionResult struct {
 // Predict 提交去雾预测任务（异步）
 // 流程：校验算法 → 校验权益扣减配额 → 检查缓存 → 写日志(processing) → 启动 goroutine 执行 → 立即返回
 func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imageURL string, params string, userID int64) (*PredictionResult, error) {
+	startTime := time.Now()
 	algorithm, err := s.algoRepo.FindByID(ctx, algorithmID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
@@ -85,6 +87,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 				if err := s.repo.Create(ctx, predLog); err != nil {
 					logger.Error("写入缓存命中预测日志失败", zap.Error(err))
 				}
+				metrics.RecordPrediction("success", time.Since(startTime).Seconds())
 				return &PredictionResult{
 					LogID:              predLog.ID,
 					Status:             model.LogStatusCompleted,
@@ -137,6 +140,7 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
+		metrics.RecordPrediction("failure", time.Since(startTime).Seconds())
 		s.refundQuota(userID)
 		return
 	}
@@ -150,6 +154,7 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 			if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 				logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 			}
+			metrics.RecordPrediction("failure", time.Since(startTime).Seconds())
 			s.refundQuota(userID)
 			return
 		}
@@ -162,6 +167,7 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
+		metrics.RecordPrediction("failure", time.Since(startTime).Seconds())
 		s.refundQuota(userID)
 		return
 	}
@@ -181,6 +187,8 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 			_ = s.cache.Set(ctx, cacheKey, string(data), predCacheTTL)
 		}
 	}
+
+	metrics.RecordPrediction("success", time.Since(startTime).Seconds())
 
 	logger.Info("异步去雾预测完成",
 		zap.Int64("algorithmID", algorithmID),

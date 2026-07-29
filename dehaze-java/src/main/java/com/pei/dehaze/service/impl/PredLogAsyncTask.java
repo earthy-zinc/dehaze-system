@@ -5,6 +5,7 @@ import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.service.client.PythonAlgorithmClient;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -20,6 +21,7 @@ public class PredLogAsyncTask {
 
     private final SysPredLogMapper predLogMapper;
     private final PythonAlgorithmClient pythonClient;
+    private final MeterRegistry meterRegistry;
 
     @Async("datasetTaskExecutor")
     public void execute(Long logId, Long algorithmId, String imageUrl, String params) {
@@ -42,6 +44,7 @@ public class PredLogAsyncTask {
                 update.setStatus(LogStatusEnum.FAILED);
                 update.setErrorMessage(result.getStr("errorMessage"));
                 predLogMapper.updateById(update);
+                meterRegistry.counter("dehaze_prediction_total", "status", "failure").increment();
                 log.error("预测失败(Python): algorithmId={}, predLogId={}, error={}",
                         algorithmId, logId, result.getStr("errorMessage"));
                 return;
@@ -55,6 +58,7 @@ public class PredLogAsyncTask {
             update.setStatus(LogStatusEnum.COMPLETED);
             predLogMapper.updateById(update);
 
+            meterRegistry.counter("dehaze_prediction_total", "status", "success").increment();
             log.info("预测完成: algorithmId={}, predLogId={}, time={}ms",
                     algorithmId, logId, elapsed);
         } catch (Exception e) {
@@ -66,6 +70,7 @@ public class PredLogAsyncTask {
             update.setErrorMessage(e.getMessage());
             predLogMapper.updateById(update);
 
+            meterRegistry.counter("dehaze_prediction_total", "status", "failure").increment();
             log.error("预测失败: algorithmId={}, predLogId={}, error={}",
                     algorithmId, logId, e.getMessage(), e);
         }

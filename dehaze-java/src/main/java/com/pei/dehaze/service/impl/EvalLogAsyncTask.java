@@ -5,6 +5,7 @@ import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.mapper.SysEvalLogMapper;
 import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.service.client.PythonAlgorithmClient;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -20,6 +21,7 @@ public class EvalLogAsyncTask {
 
     private final SysEvalLogMapper evalLogMapper;
     private final PythonAlgorithmClient pythonClient;
+    private final MeterRegistry meterRegistry;
 
     @Async("datasetTaskExecutor")
     public void execute(Long logId, Long algorithmId, String predUrl, String gtUrl) {
@@ -42,6 +44,7 @@ public class EvalLogAsyncTask {
                 update.setStatus(LogStatusEnum.FAILED);
                 update.setErrorMessage(result.getStr("errorMessage"));
                 evalLogMapper.updateById(update);
+                meterRegistry.counter("dehaze_evaluation_total", "status", "failure").increment();
                 log.error("评估失败(Python): algorithmId={}, evalLogId={}, error={}",
                         algorithmId, logId, result.getStr("errorMessage"));
                 return;
@@ -54,6 +57,7 @@ public class EvalLogAsyncTask {
             update.setStatus(LogStatusEnum.COMPLETED);
             evalLogMapper.updateById(update);
 
+            meterRegistry.counter("dehaze_evaluation_total", "status", "success").increment();
             log.info("评估完成: algorithmId={}, evalLogId={}, time={}ms",
                     algorithmId, logId, elapsed);
         } catch (Exception e) {
@@ -65,6 +69,7 @@ public class EvalLogAsyncTask {
             update.setErrorMessage(e.getMessage());
             evalLogMapper.updateById(update);
 
+            meterRegistry.counter("dehaze_evaluation_total", "status", "failure").increment();
             log.error("评估失败: algorithmId={}, evalLogId={}, error={}",
                     algorithmId, logId, e.getMessage(), e);
         }

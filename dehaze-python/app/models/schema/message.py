@@ -38,7 +38,6 @@ class MessageDetailVO(BaseModel):
     content: str
     priority: int
     senderType: int
-    senderTypeLabel: str
     readStatus: int
     readTime: Optional[str] = None
     jumpUrl: Optional[str] = None

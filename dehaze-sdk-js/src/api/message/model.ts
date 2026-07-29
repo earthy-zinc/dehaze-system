@@ -19,7 +19,6 @@ export interface MessageVO {
   priority: number;
   readStatus: number;
   senderType: number;
-  senderTypeLabel?: string;
   readTime?: string;
   jumpUrl?: string;
   extra?: Record<string, any>;

@@ -23,8 +23,6 @@ TYPE_LABELS = {
     "critical_alert": "严重告警",
 }
 
-SENDER_TYPE_LABELS = {1: "系统", 2: "管理员"}
-
 EXPIRY_DAYS = {
     "alert": 7,
     "critical_alert": 90,
@@ -235,7 +233,6 @@ class MessageService:
             "content": msg.content,
             "priority": msg.priority,
             "senderType": msg.sender_type,
-            "senderTypeLabel": SENDER_TYPE_LABELS.get(msg.sender_type, ""),
             "readStatus": msg.read_status,
             "readTime": _format_dt(msg.read_time),
             "jumpUrl": msg.jump_url,

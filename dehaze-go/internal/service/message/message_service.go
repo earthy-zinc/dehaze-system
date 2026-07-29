@@ -200,19 +200,18 @@ func (s *MessageService) GetDetail(ctx context.Context, id, userID int64) (*vo.M
 	}
 
 	return &vo.MessageDetailVO{
-		ID:              msg.ID,
-		Type:            msg.Type,
-		TypeLabel:       messageTypeLabels[msg.Type],
-		Title:           msg.Title,
-		Content:         msg.Content,
-		Priority:        int(msg.Priority),
-		SenderType:      int(msg.SenderType),
-		SenderTypeLabel: senderTypeLabels[int(msg.SenderType)],
-		ReadStatus:      int(msg.ReadStatus),
-		ReadTime:        formatTime(msg.ReadTime),
-		JumpURL:         msg.JumpURL,
-		Extra:           msg.Extra,
-		CreateTime:      formatTimeVal(msg.CreatedAt),
+		ID:         msg.ID,
+		Type:       msg.Type,
+		TypeLabel:  messageTypeLabels[msg.Type],
+		Title:      msg.Title,
+		Content:    msg.Content,
+		Priority:   int(msg.Priority),
+		SenderType: int(msg.SenderType),
+		ReadStatus: int(msg.ReadStatus),
+		ReadTime:   formatTime(msg.ReadTime),
+		JumpURL:    msg.JumpURL,
+		Extra:      msg.Extra,
+		CreateTime: formatTimeVal(msg.CreatedAt),
 	}, nil
 }
 

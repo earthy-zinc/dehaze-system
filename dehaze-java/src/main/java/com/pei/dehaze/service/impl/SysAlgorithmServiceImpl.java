@@ -30,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -207,6 +208,14 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         for (Long id : ids) {
             allIds.addAll(TreeDataUtils.findDescendantIds(allAlgorithms, id, SysAlgorithm::getId, SysAlgorithm::getParentId));
         }
+        // 校验待删除算法的状态：只有草稿/已停用/已归档状态可删除
+        for (Long id : allIds) {
+            SysAlgorithm algo = idToNodeMap.get(id);
+            if (algo != null && !AlgorithmStatusEnum.DELETABLE_STATUSES.contains(algo.getStatus())) {
+                throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW,
+                        "算法[" + algo.getName() + "]当前状态不允许删除，请先停用或归档");
+            }
+        }
         return this.removeByIds(allIds);
     }
 
@@ -333,6 +342,48 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         return monitor;
     }
 
+    @Override
+    public List<Map<String, Object>> getMonitorStats(Long id, Integer days) {
+        SysAlgorithm algorithm = this.getById(id);
+        if (algorithm == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
+        }
+        int rangeDays = days != null && days > 0 ? days : 7;
+        LocalDateTime startTime = LocalDate.now().minusDays(rangeDays - 1).atStartOfDay();
+
+        List<SysPredLog> logs = sysPredLogMapper.selectList(new LambdaQueryWrapper<SysPredLog>()
+                .eq(SysPredLog::getAlgorithmId, id)
+                .ge(SysPredLog::getCreateTime, startTime));
+
+        // 按日期分组聚合
+        Map<LocalDate, List<SysPredLog>> byDate = logs.stream()
+                .collect(Collectors.groupingBy(log -> log.getCreateTime().toLocalDate()));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (int i = rangeDays - 1; i >= 0; i--) {
+            LocalDate date = LocalDate.now().minusDays(i);
+            List<SysPredLog> dayLogs = byDate.getOrDefault(date, Collections.emptyList());
+            long count = dayLogs.size();
+            double avgTime = dayLogs.stream()
+                    .filter(l -> l.getTime() != null)
+                    .mapToInt(SysPredLog::getTime)
+                    .average()
+                    .orElse(0.0);
+            long successCount = dayLogs.stream()
+                    .filter(l -> CharSequenceUtil.isNotBlank(l.getPredUrl()))
+                    .count();
+            double successRate = count > 0 ? (double) successCount / count * 100 : 0.0;
+
+            Map<String, Object> dayStat = new LinkedHashMap<>();
+            dayStat.put("date", date.toString());
+            dayStat.put("callCount", count);
+            dayStat.put("avgTime", Math.round(avgTime * 100.0) / 100.0);
+            dayStat.put("successRate", Math.round(successRate * 100.0) / 100.0);
+            result.add(dayStat);
+        }
+        return result;
+    }
+
     /**
      * 从 SecurityContext 获取当前登录用户 ID
      */
@@ -345,21 +396,27 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     /**
-     * 校验状态流转合法性
+     * 校验状态流转合法性（三端统一状态机）
+     * 草稿(1)→测试中(2)；测试中(2)→待审核(3)/草稿(1)；待审核(3)→已发布(4)/测试中(2)；
+     * 已发布(4)→已停用(5)/已归档(6)；已停用(5)→已发布(4)/已归档(6)；已归档(6)→终态不可变更
      */
+    private static final Map<Integer, Set<Integer>> ALLOWED_TRANSITIONS = Map.of(
+            AlgorithmStatusEnum.DRAFT.getValue(), Set.of(AlgorithmStatusEnum.TESTING.getValue()),
+            AlgorithmStatusEnum.TESTING.getValue(), Set.of(AlgorithmStatusEnum.PENDING_REVIEW.getValue(), AlgorithmStatusEnum.DRAFT.getValue()),
+            AlgorithmStatusEnum.PENDING_REVIEW.getValue(), Set.of(AlgorithmStatusEnum.PUBLISHED.getValue(), AlgorithmStatusEnum.TESTING.getValue()),
+            AlgorithmStatusEnum.PUBLISHED.getValue(), Set.of(AlgorithmStatusEnum.DISABLED.getValue(), AlgorithmStatusEnum.ARCHIVED.getValue()),
+            AlgorithmStatusEnum.DISABLED.getValue(), Set.of(AlgorithmStatusEnum.PUBLISHED.getValue(), AlgorithmStatusEnum.ARCHIVED.getValue()),
+            AlgorithmStatusEnum.ARCHIVED.getValue(), Set.of()
+    );
+
     private void validateStatusTransition(Integer currentStatus, Integer targetStatus) {
         if (currentStatus == null) {
             return;
         }
-        // 终态不允许变更
-        if (AlgorithmStatusEnum.FINAL_STATUSES.contains(currentStatus)
-                && !AlgorithmStatusEnum.ARCHIVED.getValue().equals(currentStatus)) {
-            throw new BusinessException("终态算法不允许修改状态");
-        }
-        // 不允许直接跳转到已发布
-        if (AlgorithmStatusEnum.PUBLISHED.getValue().equals(targetStatus)
-                && !AlgorithmStatusEnum.PENDING_REVIEW.getValue().equals(currentStatus)) {
-            throw new BusinessException("算法必须经过审核才能发布");
+        Set<Integer> allowed = ALLOWED_TRANSITIONS.get(currentStatus);
+        if (allowed == null || !allowed.contains(targetStatus)) {
+            throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW,
+                    "不允许将算法状态从 " + currentStatus + " 变更为 " + targetStatus);
         }
     }
 }

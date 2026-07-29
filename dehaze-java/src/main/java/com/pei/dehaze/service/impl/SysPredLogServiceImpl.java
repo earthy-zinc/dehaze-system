@@ -22,6 +22,7 @@ import com.pei.dehaze.service.SysPredLogService;
 import com.pei.dehaze.service.prediction.InterceptedResult;
 import com.pei.dehaze.service.prediction.PredictionContext;
 import com.pei.dehaze.service.prediction.PredictionInterceptorChain;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
     private final SysFileService sysFileService;
     private final PredLogAsyncTask asyncTask;
     private final PredictionInterceptorChain interceptorChain;
+    private final MeterRegistry meterRegistry;
 
     @Override
     public PredictionResultVO predict(PredictionForm form) {
@@ -111,6 +113,8 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
         predLog.setStatus(LogStatusEnum.COMPLETED);
         predLog.setTime(elapsed);
         this.save(predLog);
+
+        meterRegistry.counter("dehaze_prediction_total", "status", "success").increment();
 
         PredictionResultVO vo = new PredictionResultVO();
         vo.setLogId(predLog.getId());

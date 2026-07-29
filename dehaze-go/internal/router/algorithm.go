@@ -21,10 +21,12 @@ func RegisterAlgorithmRoutes(rg *gin.RouterGroup, algorithmApi *api.AlgorithmApi
 		algorithmRouterGroup.GET("/favorites/check", algorithmApi.CheckFavorite)
 
 		// /:id 及其子路径
+		// 注意：GET /:id 会捕获 _export、template 等静态路径，
+		// GetById handler 内部对非数字 id 转发到导入导出 handler
 		algorithmRouterGroup.GET("/:id", algorithmApi.GetById)                      // 根据ID获取算法信息
 		algorithmRouterGroup.GET("/:id/versions", algorithmApi.GetVersions)         // 获取算法版本历史
-		algorithmRouterGroup.GET("/:id/monitor", algorithmApi.GetMonitorData)       // 获取算法监控数据
-		algorithmRouterGroup.GET("/:id/monitor/stats", algorithmApi.GetMonitorData) // 获取算法监控统计报表（与 /monitor 返回相同结构）
+		algorithmRouterGroup.GET("/:id/monitor", algorithmApi.GetMonitorData)               // 获取算法监控数据
+		algorithmRouterGroup.GET("/:id/monitor/stats", algorithmApi.GetMonitorStatsReport)  // 获取算法统计报表（按日聚合）
 
 		// 写操作 - 需要权限校验 + 防重复提交
 		algorithmRouterGroup.POST("/:id/favorite", middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), algorithmApi.ToggleFavorite)                     // 切换收藏

@@ -10,13 +10,23 @@ import (
 
 var importExportModules = []string{"user", "role", "dept", "menu", "dict", "dataset", "algorithm"}
 
+// modulePathSegment 返回模块对应的 URL 路径段。
+// 算法模块 CRUD 使用复数 /algorithms，导入导出路径保持一致。
+func modulePathSegment(module string) string {
+	if module == "algorithm" {
+		return "algorithms"
+	}
+	return module
+}
+
 func RegisterImportExportRoutes(rg *gin.RouterGroup, importExportApi *api.ImportExportApi) {
 	for _, m := range importExportModules {
 		module := m
-		rg.GET("/"+module+"/_export", setModule(module), modulePermission("export"), importExportApi.Export)
-		rg.POST("/"+module+"/_export", setModule(module), modulePermission("export"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), importExportApi.ExportPost)
-		rg.POST("/"+module+"/_import", setModule(module), modulePermission("import"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 5}), importExportApi.Import)
-		rg.GET("/"+module+"/template", setModule(module), modulePermission("import"), importExportApi.DownloadTemplate)
+		path := modulePathSegment(module)
+		rg.GET("/"+path+"/_export", setModule(module), modulePermission("export"), importExportApi.Export)
+		rg.POST("/"+path+"/_export", setModule(module), modulePermission("export"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), importExportApi.ExportPost)
+		rg.POST("/"+path+"/_import", setModule(module), modulePermission("import"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 5}), importExportApi.Import)
+		rg.GET("/"+path+"/template", setModule(module), modulePermission("import"), importExportApi.DownloadTemplate)
 	}
 }
 

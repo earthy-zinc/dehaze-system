@@ -14,6 +14,7 @@ import (
 	algo "github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/earthyzinc/dehaze-go/pkg/metrics"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -100,6 +101,7 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
+		metrics.RecordEvaluation("failure", time.Since(startTime).Seconds())
 		s.refundQuota(userID)
 		return
 	}
@@ -113,6 +115,7 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 			if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 				logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 			}
+			metrics.RecordEvaluation("failure", time.Since(startTime).Seconds())
 			s.refundQuota(userID)
 			return
 		}
@@ -125,6 +128,7 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 		if updateErr := s.repo.UpdateStatus(ctx, logID, model.LogStatusFailed, errMsg, elapsed); updateErr != nil {
 			logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
+		metrics.RecordEvaluation("failure", time.Since(startTime).Seconds())
 		s.refundQuota(userID)
 		return
 	}
@@ -134,6 +138,8 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 	if err := s.repo.UpdateResult(ctx, logID, model.LogStatusCompleted, resultStr, resp.Time); err != nil {
 		logger.Error("更新评估日志完成状态失败", zap.Int64("logID", logID), zap.Error(err))
 	}
+
+	metrics.RecordEvaluation("success", time.Since(startTime).Seconds())
 
 	logger.Info("异步效果评估完成",
 		zap.Int64("algorithmID", algorithmID),

@@ -561,7 +561,11 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         } else {
             refund.setStatus(3);
             refund.setErrorMessage("渠道退款失败，待人工重试");
-            order.setStatus(2);
+            int restoreStatus = 2;
+            if (order.getPackageExpireTime() != null && order.getPackageExpireTime().isAfter(LocalDateTime.now())) {
+                restoreStatus = 3;
+            }
+            order.setStatus(restoreStatus);
         }
         refund.setAuditTime(LocalDateTime.now());
         refund.setAuditorId(operatorId);
@@ -591,7 +595,11 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
         SysOrder order = this.getById(refund.getOrderId());
         if (order != null && order.getStatus() == 5) {
-            order.setStatus(2);
+            int restoreStatus = 2;
+            if (order.getPackageExpireTime() != null && order.getPackageExpireTime().isAfter(LocalDateTime.now())) {
+                restoreStatus = 3;
+            }
+            order.setStatus(restoreStatus);
             this.updateById(order);
             invalidateOrderDetailCache(order.getOrderNo());
         }
@@ -907,47 +915,33 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
     private LocalDateTime activateMemberByPackage(Long userId, SysPackage pkg, LocalDateTime now) {
         SysMember member = memberService.getOne(new LambdaQueryWrapper<SysMember>()
                 .eq(SysMember::getUserId, userId));
+        if (member == null) {
+            throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
+        }
         LocalDateTime baseTime = now;
-        if (member != null && member.getExpireTime() != null && member.getExpireTime().isAfter(now)) {
+        if (member.getExpireTime() != null && member.getExpireTime().isAfter(now)) {
             baseTime = member.getExpireTime();
         }
         LocalDateTime expireTime = baseTime.plusDays(pkg.getPeriodDays() != null ? pkg.getPeriodDays() : 30);
         SysMemberBenefit benefit = memberBenefitService.getByLevelCode(pkg.getLevelCode());
 
-        if (member == null) {
-            member = new SysMember();
-            member.setUserId(userId);
-            member.setLevelCode(pkg.getLevelCode());
-            member.setLevelSource("package");
-            member.setGrowthValue(0L);
-            member.setTotalConsumption(pkg.getSalePrice() != null ? pkg.getSalePrice() : 0L);
-            member.setExpireTime(expireTime);
-            member.setBecomeMemberTime(now);
-            member.setStatus(1);
-            if (benefit != null) {
-                member.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
-                member.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
-            }
-            member.setMonthlyDehazeUsed(0);
-            member.setMonthlyEvaluateUsed(0);
-            member.setQuotaResetMonth(Integer.parseInt(now.format(DateTimeFormatter.ofPattern("yyyyMM"))));
-            memberService.save(member);
-        } else {
-            LambdaUpdateWrapper<SysMember> wrapper = new LambdaUpdateWrapper<SysMember>()
-                    .eq(SysMember::getUserId, userId)
-                    .set(SysMember::getLevelCode, pkg.getLevelCode())
-                    .set(SysMember::getLevelSource, "package")
-                    .set(SysMember::getExpireTime, expireTime)
-                    .set(SysMember::getStatus, 1)
-                    .set(SysMember::getTotalConsumption,
-                            (member.getTotalConsumption() != null ? member.getTotalConsumption() : 0L)
-                                    + (pkg.getSalePrice() != null ? pkg.getSalePrice() : 0L));
-            if (benefit != null) {
-                wrapper.set(SysMember::getMonthlyDehazeQuota, benefit.getMonthlyDehazeQuota());
-                wrapper.set(SysMember::getMonthlyEvaluateQuota, benefit.getMonthlyEvaluateQuota());
-            }
-            memberService.update(wrapper);
+        LambdaUpdateWrapper<SysMember> wrapper = new LambdaUpdateWrapper<SysMember>()
+                .eq(SysMember::getUserId, userId)
+                .set(SysMember::getLevelCode, pkg.getLevelCode())
+                .set(SysMember::getLevelSource, "package")
+                .set(SysMember::getExpireTime, expireTime)
+                .set(SysMember::getStatus, 1)
+                .set(SysMember::getTotalConsumption,
+                        (member.getTotalConsumption() != null ? member.getTotalConsumption() : 0L)
+                                + (pkg.getSalePrice() != null ? pkg.getSalePrice() : 0L));
+        if (benefit != null) {
+            wrapper.set(SysMember::getMonthlyDehazeQuota, benefit.getMonthlyDehazeQuota());
+            wrapper.set(SysMember::getMonthlyEvaluateQuota, benefit.getMonthlyEvaluateQuota());
         }
+        if (member.getBecomeMemberTime() == null) {
+            wrapper.set(SysMember::getBecomeMemberTime, now);
+        }
+        memberService.update(wrapper);
         invalidateMemberCache(userId);
         return expireTime;
     }

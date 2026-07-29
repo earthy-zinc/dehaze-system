@@ -422,6 +422,28 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void initMember(Long userId) {
+        SysMemberBenefit benefit = memberBenefitService.getByLevelCode("level_0");
+        SysMember member = new SysMember();
+        member.setUserId(userId);
+        member.setLevelCode("level_0");
+        member.setLevelSource("growth");
+        member.setGrowthValue(0L);
+        member.setTotalConsumption(0L);
+        member.setStatus(1);
+        if (benefit != null) {
+            member.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
+            member.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
+        }
+        member.setMonthlyDehazeUsed(0);
+        member.setMonthlyEvaluateUsed(0);
+        YearMonth ym = YearMonth.now();
+        member.setQuotaResetMonth(ym.getYear() * 100 + ym.getMonthValue());
+        this.save(member);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void sendExpireReminders() {
         LocalDateTime now = LocalDateTime.now();
         Map<Integer, String> dayToTemplate = Map.of(

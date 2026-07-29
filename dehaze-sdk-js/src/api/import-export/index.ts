@@ -9,6 +9,19 @@ import {
   ImportTaskResult,
 } from "./model";
 
+/**
+ * 模块标识到 URL 路径段的映射。
+ * 算法模块的 CRUD 路径为 /api/v1/algorithms（复数），
+ * 导入导出路径需与 CRUD 保持一致，故映射为 "algorithms"。
+ */
+const MODULE_PATH_SEGMENT: Record<string, string> = {
+  algorithm: "algorithms",
+};
+
+function modulePath(module: string): string {
+  return MODULE_PATH_SEGMENT[module] ?? module;
+}
+
 class ImportExportAPI {
   /**
    * 简单查询条件导出（GET）
@@ -26,7 +39,7 @@ class ImportExportAPI {
       query.fields = fields.join(",");
     }
     return request<ExportResult | Blob>({
-      url: `/api/v1/${module}/_export`,
+      url: `/api/v1/${modulePath(module)}/_export`,
       method: "get",
       params: query,
       responseType: "blob",
@@ -44,7 +57,7 @@ class ImportExportAPI {
    */
   static exportByPost(module: ExportModule, data: ExportRequest) {
     return request<ExportResult | Blob>({
-      url: `/api/v1/${module}/_export`,
+      url: `/api/v1/${modulePath(module)}/_export`,
       method: "post",
       data,
       responseType: "blob",
@@ -85,7 +98,7 @@ class ImportExportAPI {
    */
   static downloadTemplate(module: ImportModule, format: "excel" | "csv" = "excel") {
     return request<Blob>({
-      url: `/api/v1/${module}/template`,
+      url: `/api/v1/${modulePath(module)}/template`,
       method: "get",
       params: { format },
       responseType: "blob",
