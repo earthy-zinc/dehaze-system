@@ -18,7 +18,7 @@ CREATE TABLE `sys_package`
     `id`                bigint                                                         NOT NULL AUTO_INCREMENT COMMENT '主键',
     `name`              varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '套餐名称',
     `level_code`        varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '关联会员等级(level_1/level_2/level_3)',
-    `period`            varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '计费周期(month:月;quarter:季;year:年)',
+    `period`            varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '计费周期(monthly:月;quarterly:季;yearly:年)',
     `period_days`       int                                                            NOT NULL COMMENT '有效期天数',
     `original_price`    bigint                                                         NOT NULL COMMENT '原价（单位：分）',
     `sale_price`        bigint                                                         NOT NULL COMMENT '促销价（单位：分）',

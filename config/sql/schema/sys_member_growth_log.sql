@@ -8,7 +8,7 @@
 -- change_value 允许正负，balance 记录变动后余额便于核对。
 -- related_id 关联业务ID（订单号/任务ID/签到记录ID），便于溯源。
 -- operator_id 仅在管理员调整时记录，其他行为为用户自身操作。
--- 流水记录为只追加，不使用逻辑删除。
+-- 流水记录使用逻辑删除（deleted 字段），三端实体（Java/Python/Go）均映射该字段。
 -- 复合索引 (user_id, create_time) 优化用户成长值明细分页查询。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_member_growth_log`;
