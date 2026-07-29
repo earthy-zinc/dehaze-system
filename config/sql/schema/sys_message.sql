@@ -37,7 +37,7 @@ CREATE TABLE `sys_message`
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_recipient_read` (`recipient_id`, `read_status`) USING BTREE,
     INDEX `idx_recipient_list` (`recipient_id`, `deleted`, `create_time`) USING BTREE,
-    INDEX `idx_biz_dedup` (`biz_module`, `biz_id`) USING BTREE,
+    UNIQUE INDEX `uk_biz_dedup` (`biz_module`, `biz_id`) USING BTREE,
     INDEX `idx_expires_at` (`expires_at`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
