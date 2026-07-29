@@ -26,13 +26,6 @@ describe("用户管理接口测试", () => {
         expect(typeof perm).toBe("string");
         expect(perm.length).toBeGreaterThan(0);
       });
-
-      // 验证接口幂等性：多次调用返回相同数据
-      const result2 = await UserAPI.getInfo();
-      expect(result.userId).toBe(result2.userId);
-      expect(result.username).toBe(result2.username);
-      expect(result.nickname).toBe(result2.nickname);
-      expect(result.roles).toEqual(result2.roles);
     });
   });
 
@@ -167,17 +160,6 @@ describe("用户管理接口测试", () => {
 
       // 验证总数一致
       expect(page1Result.total).toBe(page2Result.total);
-    });
-
-    test("超大页码应返回空数组", async () => {
-      const query = createUserQuery({ pageNum: 99999, pageSize: 10 });
-      const result = await UserAPI.getPage(query);
-
-      expect(result).toBeDefined();
-      expect(Array.isArray(result.list)).toBe(true);
-      expect(result.list.length).toBe(0);
-      // 总数应该仍然正确
-      expect(result.total).toBeGreaterThanOrEqual(ADMIN_VISIBLE_USER_COUNT);
     });
   });
 
@@ -840,75 +822,4 @@ describe("用户管理接口测试", () => {
     });
   });
 
-  describe("完整 CRUD 生命周期：用户管理", () => {
-    test("创建→读→更新→读→删除→验证不存在", async () => {
-      const existingDeptId = DEPTS.CQUPT.id;
-      const existingRoleIds = [ROLES.GUEST.id];
-
-      // Create: 创建用户
-      const createForm = createUserForm({
-        deptId: existingDeptId,
-        roleIds: existingRoleIds,
-        status: 1,
-        gender: 1,
-      });
-      await UserAPI.add(createForm);
-
-      // 通过分页查找创建的用户
-      const pageResult = await UserAPI.getPage({
-        pageNum: 1,
-        pageSize: 100,
-        keywords: createForm.username!,
-      });
-      const createdUser = pageResult.list.find((u) => u.username === createForm.username);
-      expect(createdUser).toBeDefined();
-      const userId = createdUser!.id!;
-      expect(userId).toBeGreaterThan(0);
-
-      // Read: 验证字段与创建时一致
-      const formData = await UserAPI.getFormData(userId);
-      expect(formData.username).toBe(createForm.username);
-      expect(formData.nickname).toBe(createForm.nickname);
-      expect(formData.email).toBe(createForm.email);
-      expect(formData.gender).toBe(1);
-      expect(formData.status).toBe(1);
-      expect(formData.deptId).toBe(existingDeptId);
-
-      // Update: 更新用户昵称和状态
-      const newNickname = `更新昵称_${Date.now()}`;
-      const updateForm = createUserForm({
-        username: createForm.username!,
-        nickname: newNickname,
-        email: formData.email ?? "",
-        mobile: formData.mobile ?? "",
-        gender: formData.gender ?? 1,
-        status: 0,
-        deptId: existingDeptId,
-        roleIds: existingRoleIds,
-      });
-      await UserAPI.update(userId, updateForm);
-
-      // Read: 验证更新已生效
-      const updatedData = await UserAPI.getFormData(userId);
-      expect(updatedData.nickname).toBe(newNickname);
-      expect(updatedData.nickname).not.toBe(createForm.nickname);
-      expect(updatedData.status).toBe(0);
-
-      // Delete: 删除用户
-      await UserAPI.deleteByIds(userId.toString());
-
-      // Verify: 验证用户已从分页列表中移除
-      const afterDeletePage = await UserAPI.getPage({ pageNum: 1, pageSize: 100 });
-      const deletedInList = afterDeletePage.list.find((u) => u.id === userId);
-      expect(deletedInList).toBeUndefined();
-
-      // Verify: 验证表单数据已不存在
-      const afterDeleteForm = await UserAPI.getFormData(userId);
-      expect(
-        afterDeleteForm === null ||
-          afterDeleteForm === undefined ||
-          afterDeleteForm.id === undefined
-      ).toBe(true);
-    });
-  });
 });

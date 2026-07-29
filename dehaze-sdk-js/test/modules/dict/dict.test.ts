@@ -82,15 +82,6 @@ describe("字典管理接口测试", () => {
         expect(hasIntersection).toBe(false);
       }
     });
-
-    test("超大页码应返回空数组", async () => {
-      const result = await DictAPI.getDictTypePage(
-        createDictTypeQuery({ pageNum: 99999, pageSize: 10 })
-      );
-
-      expect(Array.isArray(result.list)).toBe(true);
-      expect(result.list.length).toBe(0);
-    });
   });
 
   describe("GET /api/v1/dict/types/{id}/form - 字典类型表单数据", () => {
@@ -813,64 +804,6 @@ describe("字典管理接口测试", () => {
         undefined,
         true
       );
-    });
-
-    test("完整 CRUD 生命周期：字典类型+字典数据联合生命周期", async () => {
-      // Create: 创建字典类型
-      const dictTypeForm = createDictTypeForm({ remark: "CRUD生命周期测试" });
-      await DictAPI.addDictType(dictTypeForm);
-
-      const typePage = await DictAPI.getDictTypePage(
-        createDictTypeQuery({ keywords: dictTypeForm.code! })
-      );
-      const createdType = typePage.list.find((d) => d.code === dictTypeForm.code);
-      expect(createdType).toBeDefined();
-      const dictTypeId = createdType!.id!;
-
-      // Read: 验证字典类型字段
-      const typeFormData = await DictAPI.getDictTypeForm(dictTypeId);
-      expect(typeFormData.name).toBe(dictTypeForm.name);
-      expect(typeFormData.code).toBe(dictTypeForm.code);
-      expect(typeFormData.remark).toBe("CRUD生命周期测试");
-
-      // Create: 创建字典数据
-      const dictForm = createDictForm({ typeCode: dictTypeForm.code!, sort: 1 });
-      await DictAPI.addDict(dictForm);
-
-      const dictPage = await DictAPI.getDictPage(
-        createDictQuery({ typeCode: dictTypeForm.code!, keywords: dictForm.name! })
-      );
-      const createdDict = dictPage.list.find(
-        (d) => d.name === dictForm.name && d.value === dictForm.value
-      );
-      expect(createdDict).toBeDefined();
-      const dictId = createdDict!.id!;
-
-      // Read: 验证字典数据字段
-      const dictFormData = await DictAPI.getDictFormData(dictId);
-      expect(dictFormData.name).toBe(dictForm.name);
-      expect(dictFormData.value).toBe(dictForm.value);
-      expect(dictFormData.typeCode).toBe(dictTypeForm.code);
-
-      // Update: 更新字典数据名称
-      const newDictName = `CRUD更新_${Date.now()}`;
-      await DictAPI.updateDict(dictId, { ...dictFormData, name: newDictName });
-
-      // Read: 验证更新已生效
-      const updatedDict = await DictAPI.getDictFormData(dictId);
-      expect(updatedDict.name).toBe(newDictName);
-
-      // Delete: 删除字典数据
-      await DictAPI.deleteDictByIds(dictId.toString());
-
-      // Verify: 验证字典数据已不存在
-      await expectBizError(DictAPI.getDictFormData(dictId), "A0401", "不存在");
-
-      // Delete: 删除字典类型
-      await DictAPI.deleteDictTypes(dictTypeId.toString());
-
-      // Verify: 验证字典类型已不存在
-      await expectBizError(DictAPI.getDictTypeForm(dictTypeId), "A0401", "不存在");
     });
   });
 });

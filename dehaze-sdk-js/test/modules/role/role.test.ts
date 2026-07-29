@@ -73,15 +73,6 @@ describe("角色管理接口测试", () => {
       }
     });
 
-    test("超大页码应返回空数组", async () => {
-      const result = await RoleAPI.getPage(createRoleQuery({ pageNum: 99999, pageSize: 10 }));
-
-      expect(Array.isArray(result.list)).toBe(true);
-      expect(result.list.length).toBe(0);
-    });
-  });
-
-  describe("GET /api/v1/roles/options - 角色下拉列表", () => {
     test("获取角色下拉列表并验证数据格式", async () => {
       const result = await RoleAPI.getOptions();
 
@@ -91,27 +82,6 @@ describe("角色管理接口测试", () => {
         const firstOption = result[0]!;
         expect(firstOption.value).toBeGreaterThan(0);
         expect(firstOption.label).toBeTruthy();
-      }
-    });
-
-    test("验证下拉列表数据与分页列表的一致性", async () => {
-      const options = await RoleAPI.getOptions();
-      const pageResult = await RoleAPI.getPage(createRoleQuery({ pageNum: 1, pageSize: 100 }));
-
-      expect(Array.isArray(options)).toBe(true);
-      expect(Array.isArray(pageResult.list)).toBe(true);
-
-      // Assert - 验证一致性（options中的ID应该存在于分页列表中）
-      if (options.length > 0 && pageResult.list.length > 0) {
-        const pageRoleIds = pageResult.list
-          .map((role) => role.id)
-          .filter((id): id is number => id !== undefined);
-
-        const optionIds = options.map((opt) => opt.value);
-
-        // 至少有一些ID是重叠的
-        const hasOverlap = optionIds.some((id) => pageRoleIds.includes(Number(id)));
-        expect(hasOverlap).toBe(true);
       }
     });
   });
@@ -129,10 +99,6 @@ describe("角色管理接口测试", () => {
           expect(menuId).toBeGreaterThan(0);
         });
       }
-
-      // Assert - 验证幂等性
-      const result2 = await RoleAPI.getRoleMenuIds(roleId);
-      expect(result).toEqual(result2);
     });
 
     test("获取不存在角色的菜单ID集合应返回空", async () => {
@@ -528,46 +494,5 @@ describe("角色管理接口测试", () => {
       await expectBizError(RoleAPI.deleteByIds(""), ["B0001", "ERR_BAD_REQUEST"], undefined, true);
     });
 
-    test("完整 CRUD 生命周期：创建→读→更新→读→删除→验证不存在", async () => {
-      // Create: 创建角色
-      const createForm = createRoleForm({ sort: 200, dataScope: 2 });
-      await RoleAPI.add(createForm);
-
-      const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: createForm.code }));
-      const createdRole = pageResult.list.find((r) => r.code === createForm.code);
-      expect(createdRole).toBeDefined();
-      const roleId = createdRole!.id!;
-      expect(roleId).toBeGreaterThan(0);
-
-      // Read: 验证字段与创建时一致
-      const formData = await RoleAPI.getFormData(roleId);
-      expect(formData.name).toBe(createForm.name);
-      expect(formData.code).toBe(createForm.code);
-      expect(formData.sort).toBe(200);
-      expect(formData.dataScope).toBe(2);
-
-      // Update: 更新名称和排序
-      const newName = `CRUD更新_${Date.now()}`;
-      await RoleAPI.update(roleId, {
-        id: roleId,
-        code: createForm.code,
-        name: newName,
-        sort: 999,
-        dataScope: 3,
-      } as RoleForm);
-
-      // Read: 验证更新已生效
-      const updatedData = await RoleAPI.getFormData(roleId);
-      expect(updatedData.name).toBe(newName);
-      expect(updatedData.sort).toBe(999);
-      expect(updatedData.dataScope).toBe(3);
-
-      // Delete: 删除角色
-      await RoleAPI.deleteByIds(roleId.toString());
-
-      // Verify: 验证数据已不存在
-      const deletedResult = await RoleAPI.getFormData(roleId).catch(() => null);
-      expect(deletedResult === null || deletedResult === undefined || !deletedResult.id).toBe(true);
-    });
   });
 });

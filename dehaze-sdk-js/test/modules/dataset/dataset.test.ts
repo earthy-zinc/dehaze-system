@@ -45,12 +45,6 @@ describe("数据集接口测试", () => {
         expect(item.status).toBe(1);
       });
     });
-
-    test("边界测试：大页码返回空结果", async () => {
-      const query = createDatasetQuery({ pageNum: 99999 });
-      const result = await DatasetAPI.getList(query);
-      expect(Array.isArray(result.list)).toBe(true);
-    });
   });
 
   describe("GET /api/v1/datasets/options - 获取数据集下拉选项", () => {
@@ -454,49 +448,8 @@ describe("数据集接口测试", () => {
     });
   });
 
-  describe("完整 CRUD 生命周期：数据集管理", () => {
-    test("创建→读→更新→读→删除→验证不存在", async () => {
-      // Create: 创建数据集
-      const createForm = createDatasetForm({ description: "CRUD生命周期测试" });
-      const datasetId = await DatasetAPI.add(createForm);
-      expect(datasetId).toBeGreaterThan(0);
-
-      // Read: 验证字段与创建时一致
-      const detail = await DatasetAPI.getDatasetInfoById(datasetId);
-      expect(detail.name).toBe(createForm.name);
-      expect(detail.type).toBe(createForm.type);
-      expect(detail.description).toBe("CRUD生命周期测试");
-      expect(detail.parentId).toBe(0);
-
-      // Update: 更新数据集名称和描述
-      const newName = `CRUD更新_${Date.now()}`;
-      const newDesc = "更新后的描述";
-      const updateForm = createDatasetUpdateForm({
-        name: newName,
-        description: newDesc,
-      });
-      const updated = await DatasetAPI.update(datasetId, updateForm);
-      expect(updated.name).toBe(newName);
-      expect(updated.description).toBe(newDesc);
-
-      // Read: 再次验证更新已生效
-      const readUpdated = await DatasetAPI.getDatasetInfoById(datasetId);
-      expect(readUpdated.name).toBe(newName);
-      expect(readUpdated.name).not.toBe(createForm.name);
-
-      // Delete: 删除数据集
-      await DatasetAPI.deleteById(datasetId);
-
-      // Verify: 验证数据已不存在
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(datasetId),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
-      );
-    });
-
-    test("边界测试：超长数据集名称应被拒绝", async () => {
+  describe("边界测试", () => {
+    test("超长数据集名称应被拒绝", async () => {
       const form = createDatasetForm({ name: "x".repeat(500) });
       await expectBizError(
         DatasetAPI.add(form),

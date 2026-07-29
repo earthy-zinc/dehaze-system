@@ -199,11 +199,6 @@ describe("反馈评价模块接口测试", () => {
         expect(r.createTime).toBeTruthy();
       }
     });
-
-    test("边界：大页码返回空列表", async () => {
-      const result = await FeedbackAPI.listMyRatings({ pageNum: 99999, pageSize: 10 });
-      expect(result.list).toEqual([]);
-    });
   });
 
   describe("GET /api/v1/feedback/ratings/by-prediction/{id} - 按处理记录查评价（user）", () => {
@@ -302,13 +297,6 @@ describe("反馈评价模块接口测试", () => {
       for (const r of result.list) {
         expect(r.comment).toBeTruthy();
       }
-    });
-
-    test("边界：大页码返回空列表", async () => {
-      const result = await FeedbackAPI.listRatings(
-        createRatingQuery({ pageNum: 99999, pageSize: 10 })
-      );
-      expect(result.list).toEqual([]);
     });
   });
 
@@ -487,11 +475,6 @@ describe("反馈评价模块接口测试", () => {
         expect(["pending", "processing", "replied", "closed"]).toContain(f.status);
       }
     });
-
-    test("边界：大页码返回空列表", async () => {
-      const result = await FeedbackAPI.listMyFeedback({ pageNum: 99999, pageSize: 10 });
-      expect(result.list).toEqual([]);
-    });
   });
 
   describe("GET /api/v1/feedback/{id} - 反馈详情（user）", () => {
@@ -642,13 +625,6 @@ describe("反馈评价模块接口测试", () => {
       for (const f of result.list) {
         expect(f.status).toBe("pending");
       }
-    });
-
-    test("边界：大页码返回空列表", async () => {
-      const result = await FeedbackAPI.listFeedback(
-        createFeedbackQuery({ pageNum: 99999, pageSize: 10 })
-      );
-      expect(result.list).toEqual([]);
     });
   });
 

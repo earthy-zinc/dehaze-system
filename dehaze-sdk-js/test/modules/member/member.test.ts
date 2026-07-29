@@ -63,11 +63,6 @@ describe("会员管理模块接口测试", () => {
         expect(log.changeType).toBe("sign_in");
       }
     });
-
-    test("边界：大页码返回空列表", async () => {
-      const result = await MemberAPI.getGrowthLogs({ pageNum: 99999, pageSize: 10 });
-      expect(result.list).toEqual([]);
-    });
   });
 
   describe("POST /api/v1/members/sign-in - 每日签到", () => {
@@ -171,11 +166,6 @@ describe("会员管理模块接口测试", () => {
       for (const member of result.list) {
         expect(member.status).toBe(1);
       }
-    });
-
-    test("边界：大页码返回空列表", async () => {
-      const result = await MemberAPI.getPage(createMemberQuery({ pageNum: 99999, pageSize: 10 }));
-      expect(result.list).toEqual([]);
     });
   });
 

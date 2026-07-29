@@ -12,11 +12,11 @@
 import dotenv from "dotenv";
 import path from "path";
 import { afterAll, beforeAll } from "vitest";
-import { service } from "./src/utils/request";
-import { login } from "./test/utils/auth";
-import { disconnectRedis } from "./test/utils/redis";
+import { service } from "@/utils/request";
+import { login } from "#/utils/auth";
+import { disconnectRedis } from "#/utils/redis";
 
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 class LocalStorageMock {
   private store: Record<string, string> = {};

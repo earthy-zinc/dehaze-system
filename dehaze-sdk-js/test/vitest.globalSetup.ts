@@ -17,10 +17,10 @@
  */
 import dotenv from "dotenv";
 import path from "path";
-import { getRedis, disconnectRedis } from "./test/utils/redis";
-import { resetMemberQuota, disconnectMysql } from "./test/utils/mysql";
+import { getRedis, disconnectRedis } from "#/utils/redis";
+import { resetMemberQuota, disconnectMysql } from "#/utils/mysql";
 
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const CACHE_PREFIXES = [
   "captcha_code:",

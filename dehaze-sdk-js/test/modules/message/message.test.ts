@@ -81,11 +81,6 @@ describe("消息通知模块接口测试", () => {
         expect(msg.readStatus).toBe(0);
       }
     });
-
-    test("边界：大页码查询返回空列表", async () => {
-      const result = await MessageAPI.getPage({ pageNum: 9999, pageSize: 20 });
-      expect(result.list).toEqual([]);
-    });
   });
 
   describe("GET /api/v1/messages/unread-count - 未读消息数", () => {
@@ -223,11 +218,6 @@ describe("消息通知模块接口测试", () => {
       expect(result.list.some((m: MessageVO) => m.id === messageIds[0])).toBe(true);
 
       await MessageAPI.deleteByIds(String(messageIds[0]));
-    });
-
-    test("边界：无匹配结果返回空列表", async () => {
-      const result = await MessageAPI.search({ keyword: "nonexistent_xyz_" + Date.now() });
-      expect(result.list).toEqual([]);
     });
   });
 

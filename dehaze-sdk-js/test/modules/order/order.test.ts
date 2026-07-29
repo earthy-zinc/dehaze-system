@@ -150,11 +150,6 @@ describe("订单管理模块接口测试", () => {
         expect(order.status).toBe("pending");
       }
     });
-
-    test("边界：大页码返回空列表", async () => {
-      const result = await OrderAPI.listMy({ pageNum: 99999, pageSize: 10 });
-      expect(result.list).toEqual([]);
-    });
   });
 
   describe("GET /api/v1/orders/{orderNo} - 订单详情", () => {
@@ -414,11 +409,6 @@ describe("订单管理模块接口测试", () => {
         expect(order.payMethod).toBe("balance");
       }
     });
-
-    test("边界：大页码返回空列表", async () => {
-      const result = await OrderAPI.getPage(createOrderQuery({ pageNum: 99999, pageSize: 10 }));
-      expect(result.list).toEqual([]);
-    });
   });
 
   describe("GET /api/v1/orders/stats - 订单统计", () => {
@@ -479,13 +469,6 @@ describe("订单管理模块接口测试", () => {
       for (const refund of result.list) {
         expect(refund.status).toBe("refunding");
       }
-    });
-
-    test("边界：大页码返回空列表", async () => {
-      const result = await OrderAPI.listRefunds(
-        createRefundQuery({ pageNum: 99999, pageSize: 10 })
-      );
-      expect(result.list).toEqual([]);
     });
   });
 

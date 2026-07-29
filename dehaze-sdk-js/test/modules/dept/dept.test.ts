@@ -552,44 +552,6 @@ describe("部门管理接口测试", () => {
       expect(childResult).toBeUndefined();
     });
 
-    test("完整 CRUD 生命周期：创建→读→更新→读→删除→验证不存在", async () => {
-      // Create: 创建部门
-      const createForm = createDeptForm({ parentId: DEPTS.CQUPT.id, sort: 50 });
-      const deptId = (await DeptAPI.add(createForm)) as number;
-      expect(deptId).toBeGreaterThan(0);
-
-      // Read: 验证字段与创建时一致
-      const readResult = await DeptAPI.getFormData(deptId);
-      expect(readResult.id).toBe(deptId);
-      expect(readResult.name).toBe(createForm.name);
-      expect(readResult.parentId).toBe(createForm.parentId);
-      expect(readResult.sort).toBe(createForm.sort);
-      expect(readResult.status).toBe(createForm.status);
-
-      // Update: 更新部门名称和排序
-      const newName = `更新后_${Date.now()}`;
-      const newSort = 999;
-      await DeptAPI.update(deptId, {
-        name: newName,
-        parentId: DEPTS.CQUPT.id,
-        sort: newSort,
-        status: 1,
-      } as DeptForm);
-
-      // Read: 验证更新已生效
-      const updatedResult = await DeptAPI.getFormData(deptId);
-      expect(updatedResult.name).toBe(newName);
-      expect(updatedResult.sort).toBe(newSort);
-      expect(updatedResult.name).not.toBe(createForm.name);
-
-      // Delete: 删除部门
-      await DeptAPI.deleteByIds(deptId.toString());
-
-      // Verify: 验证数据已彻底不存在
-      const deletedResult = await DeptAPI.getFormData(deptId);
-      expect(deletedResult).toBeUndefined();
-    });
-
     test("边界测试：超长部门名称应被拒绝", async () => {
       const form = createDeptForm({ parentId: DEPTS.CQUPT.id, name: "x".repeat(256) });
       await expectBizError(

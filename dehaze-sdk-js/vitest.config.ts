@@ -19,11 +19,11 @@ export default defineConfig({
     include: ["test/**/*.test.ts"],
 
     // 设置文件（每个测试文件执行前运行，仅做必要的环境初始化）
-    setupFiles: ["./vitest.setup.ts"],
+    setupFiles: ["./test/vitest.setup.ts"],
 
     // 全局设置（整个测试运行只执行一次，用于一次性清理 Redis 缓存）
     // 与 setupFiles 配合使用：globalSetup 清理一次，setupFiles 不再重复清理
-    globalSetup: "./vitest.globalSetup.ts",
+    globalSetup: "./test/vitest.globalSetup.ts",
 
     // 超时配置
     testTimeout: 120000,

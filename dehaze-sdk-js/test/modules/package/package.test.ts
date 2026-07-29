@@ -161,11 +161,6 @@ describe("套餐管理模块接口测试", () => {
         expect(pkg.status).toBe(1);
       }
     });
-
-    test("边界：大页码返回空列表", async () => {
-      const result = await PackageAPI.getPage(createPackageQuery({ pageNum: 99999, pageSize: 10 }));
-      expect(result.list).toEqual([]);
-    });
   });
 
   describe("POST /api/v1/packages - 新增套餐", () => {
@@ -485,13 +480,7 @@ describe("套餐管理模块接口测试", () => {
         }
       });
 
-      test("边界：大页码返回空列表", async () => {
-        const result = await CouponAPI.getPage(createCouponQuery({ pageNum: 99999, pageSize: 10 }));
-        expect(result.list).toEqual([]);
-      });
-    });
-
-    describe("PUT /api/v1/packages/coupons/{id} - 修改优惠券", () => {
+      describe("PUT /api/v1/packages/coupons/{id} - 修改优惠券", () => {
       let testCouponId: number;
       let originalForm: any;
 

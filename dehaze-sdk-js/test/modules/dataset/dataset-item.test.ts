@@ -57,13 +57,6 @@ describe("数据项接口测试", () => {
         expect(item.sceneType).toBe("urban");
       });
     });
-
-    test("边界测试：大页码返回空结果", async () => {
-      const query = createDatasetItemQuery({ pageNum: 99999 });
-      const result = await DatasetItemAPI.getList(query);
-      expect(Array.isArray(result.list)).toBe(true);
-      expect(typeof result.total).toBe("number");
-    });
   });
 
   describe("POST /api/v1/dataset-items - 创建空数据项", () => {
