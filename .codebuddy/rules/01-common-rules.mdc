@@ -47,4 +47,4 @@ provider:
 - 前端变更需要同步修改所有前端项目
 - 每次变更都需要更新 dehaze-doc 相关文档，确保文档反应最新状态
 
-如需启动/重启/停止 dehaze-java、dehaze-python、dehaze-go 应用，查阅项目根目录 README.md 获得启动指引，并告知用户，切勿私自重启和停止
+如需启动/重启/停止 dehaze-java、dehaze-python、dehaze-go 应用，三端后端统一通过 `scripts/run.py` 管理生命周期（启动/停止/重启/查看状态/查看日志），无需手动在各子项目目录下执行启动命令，日志统一存放在各服务 `logs/{yyyy-MM-dd}/` 目录下。可查阅项目根目录 README.md 获得启动指引，并告知用户，切勿私自重启和停止
