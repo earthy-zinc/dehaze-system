@@ -12,6 +12,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	pkgsalerepo "github.com/earthyzinc/dehaze-go/internal/repository/pkgsale"
+	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"gorm.io/gorm"
 )
@@ -20,17 +21,20 @@ type CouponService struct {
 	db             *gorm.DB
 	couponRepo     pkgsalerepo.ICouponRepository
 	userCouponRepo pkgsalerepo.IUserCouponRepository
+	cache          types.ICache
 }
 
 func NewCouponService(
 	db *gorm.DB,
 	couponRepo pkgsalerepo.ICouponRepository,
 	userCouponRepo pkgsalerepo.IUserCouponRepository,
+	cache types.ICache,
 ) *CouponService {
 	return &CouponService{
 		db:             db,
 		couponRepo:     couponRepo,
 		userCouponRepo: userCouponRepo,
+		cache:          cache,
 	}
 }
 
@@ -109,6 +113,20 @@ func (s *CouponService) Receive(ctx context.Context, userID, couponID int64) (*v
 	}
 	if count >= int64(c.PerUserLimit) {
 		return nil, common.NewBizError(common.BUSINESS_ERROR, "已超过每人限领数量")
+	}
+
+	if s.cache != nil {
+		rateKey := fmt.Sprintf("coupon:receive:rate:%d", userID)
+		rateCount, err := s.cache.Incr(ctx, rateKey)
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "频率限制检查失败", err)
+		}
+		if rateCount == 1 {
+			_, _ = s.cache.Expire(ctx, rateKey, 60*time.Second)
+		}
+		if rateCount > 5 {
+			return nil, common.NewBizError(common.RATE_LIMIT, "操作过于频繁，请稍后再试")
+		}
 	}
 
 	uc := &model.SysUserCoupon{

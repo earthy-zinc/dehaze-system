@@ -445,6 +445,73 @@ describe("会员管理模块接口测试", () => {
     });
   });
 
+  // ============ 保级机制验证 ============
+
+  describe("保级机制验证 - level_source 对自动降级的影响", () => {
+    beforeAll(async () => {
+      await login(USERS.ADMIN.username);
+    });
+
+    test("T-MM-084: level_source=admin 成长值变动不降级", async () => {
+      await MemberAPI.adjustLevel(USERS.VIP1.id, createLevelAdjustForm({ levelCode: "level_2" }));
+
+      const detail = await MemberAPI.getDetail(USERS.VIP1.id);
+      expect(detail.levelCode).toBe("level_2");
+      expect(detail.levelSource).toBe("admin");
+
+      const currentGrowth = detail.growthValue;
+      const changeValue = -(currentGrowth - 4000);
+      await MemberAPI.adjustGrowth(USERS.VIP1.id, createGrowthAdjustForm({ changeValue }));
+
+      const updated = await MemberAPI.getDetail(USERS.VIP1.id);
+      expect(updated.levelCode).toBe("level_2");
+      expect(updated.levelSource).toBe("admin");
+      expect(updated.growthValue).toBeLessThan(5000);
+    });
+
+    test("T-MM-085: level_source=growth 成长值变动触发降级", async () => {
+      const detail = await MemberAPI.getDetail(USERS.VIP2.id);
+      expect(detail.levelCode).toBe("level_2");
+      expect(detail.levelSource).toBe("growth");
+
+      const currentGrowth = detail.growthValue;
+      await MemberAPI.adjustGrowth(
+        USERS.VIP2.id,
+        createGrowthAdjustForm({ changeValue: -(currentGrowth - 4000) })
+      );
+
+      const updated = await MemberAPI.getDetail(USERS.VIP2.id);
+      expect(updated.levelCode).toBe("level_1");
+      expect(updated.levelSource).toBe("growth");
+      expect(updated.growthValue).toBe(4000);
+
+      const restoreDelta = 8000 - updated.growthValue;
+      await MemberAPI.adjustGrowth(
+        USERS.VIP2.id,
+        createGrowthAdjustForm({ changeValue: restoreDelta })
+      );
+      const restored = await MemberAPI.getDetail(USERS.VIP2.id);
+      expect(restored.levelCode).toBe("level_2");
+      expect(restored.levelSource).toBe("growth");
+      expect(restored.growthValue).toBe(8000);
+    });
+
+    test("T-MM-086: 边界 - 成长值恰好等于等级下限不降级", async () => {
+      await MemberAPI.adjustLevel(USERS.VIP1.id, createLevelAdjustForm({ levelCode: "level_2" }));
+
+      const detail = await MemberAPI.getDetail(USERS.VIP1.id);
+      const currentGrowth = detail.growthValue;
+      await MemberAPI.adjustGrowth(
+        USERS.VIP1.id,
+        createGrowthAdjustForm({ changeValue: 5000 - currentGrowth })
+      );
+
+      const updated = await MemberAPI.getDetail(USERS.VIP1.id);
+      expect(updated.levelCode).toBe("level_2");
+      expect(updated.growthValue).toBe(5000);
+    });
+  });
+
   // 测试结束后恢复 VIP1 原始状态并切回 admin，避免影响后续测试文件
   afterAll(async () => {
     try {

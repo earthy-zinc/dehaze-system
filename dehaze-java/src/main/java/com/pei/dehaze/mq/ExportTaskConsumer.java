@@ -4,6 +4,7 @@ import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.service.TaskExecutor;
+import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -37,8 +38,8 @@ public class ExportTaskConsumer extends RabbitMQConsumer {
      * 消息体为 taskId（数据库主键），Consumer 从 DB 重建 form 后执行。
      */
     @RabbitListener(queues = QUEUE_EXPORT)
-    public void onExportMessage(Message message) {
-        processMessage(message, QUEUE_EXPORT, this::handleExport);
+    public void onExportMessage(Message message, Channel channel) {
+        processMessage(message, channel, QUEUE_EXPORT, this::handleExport);
     }
 
     private void handleExport(String body, String traceId) throws Exception {

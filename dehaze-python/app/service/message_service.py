@@ -94,10 +94,24 @@ class MessageService:
         biz_module = data.get("bizModule")
         biz_id = data.get("bizId")
 
+        recipient_ids = data["recipientIds"]
+        message_ids: list[int] = []
+
         if biz_module and biz_id:
-            existing = await message_repository.find_by_biz(db, biz_module, biz_id)
-            if existing:
-                return [m.id for m in existing]
+            existing = await message_repository.find_by_biz_and_recipients(
+                db, biz_module, biz_id, recipient_ids
+            )
+            existing_map = {m.recipient_id: m.id for m in existing}
+            remaining = []
+            for rid in recipient_ids:
+                if rid in existing_map:
+                    message_ids.append(existing_map[rid])
+                else:
+                    remaining.append(rid)
+            recipient_ids = remaining
+
+        if not recipient_ids:
+            return message_ids
 
         template_code = data.get("templateCode")
         msg_type = data["type"]
@@ -130,7 +144,6 @@ class MessageService:
             if not content:
                 raise BusinessException(ResultCode.PARAM_ERROR, "消息正文不能为空")
 
-        recipient_ids = data["recipientIds"]
         jump_url = data.get("jumpUrl")
         extra = data.get("extra")
         expires_at = _calc_expires_at(msg_type)
@@ -157,7 +170,8 @@ class MessageService:
         await invalidate_unread_count_cache(*recipient_ids)
         for m in messages:
             await _push_new_message_event(m)
-        return [m.id for m in messages]
+        message_ids.extend(m.id for m in messages)
+        return message_ids
 
     @staticmethod
     async def get_page(
@@ -212,11 +226,6 @@ class MessageService:
         msg = await message_repository.get_by_id_and_recipient(db, message_id, user_id)
         if not msg:
             raise BusinessException(ResultCode.MESSAGE_NOT_FOUND, "消息不存在")
-
-        if msg.read_status == 0:
-            await message_repository.mark_read(db, message_id, user_id)
-            await db.refresh(msg)
-            await invalidate_unread_count_cache(user_id)
 
         return {
             "id": msg.id,

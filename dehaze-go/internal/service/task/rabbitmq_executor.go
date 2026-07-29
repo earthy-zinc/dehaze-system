@@ -84,7 +84,7 @@ func (e *RabbitMQTaskExecutor) PublishTask(ctx context.Context, msg TaskMessage)
 		}
 	}
 
-	routingKey := e.buildRoutingKey(msg.TaskType)
+	routingKey := "task.export"
 	body, err := json.Marshal(msg)
 	if err != nil {
 		return err
@@ -97,10 +97,4 @@ func (e *RabbitMQTaskExecutor) PublishTask(ctx context.Context, msg TaskMessage)
 	return err
 }
 
-func (e *RabbitMQTaskExecutor) buildRoutingKey(taskType string) string {
-	prefix := e.cfg.RoutingKeyPrefix
-	if prefix == "" {
-		prefix = "task"
-	}
-	return fmt.Sprintf("%s.%s", prefix, taskType)
-}
+

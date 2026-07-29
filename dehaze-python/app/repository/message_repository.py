@@ -152,6 +152,22 @@ class MessageRepository(BaseRepository[SysMessage]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def find_by_biz_and_recipients(
+        self,
+        db: AsyncSession,
+        biz_module: str,
+        biz_id: str,
+        recipient_ids: list[int],
+    ) -> list[SysMessage]:
+        stmt = select(SysMessage).where(
+            SysMessage.biz_module == biz_module,
+            SysMessage.biz_id == biz_id,
+            SysMessage.deleted == 0,
+            SysMessage.recipient_id.in_(recipient_ids),
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def batch_create(self, db: AsyncSession, messages: list[SysMessage]) -> list[SysMessage]:
         db.add_all(messages)
         await db.flush()

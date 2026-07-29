@@ -161,9 +161,10 @@ def _feedback_to_detail_vo(
     username: str = "",
     assignee_name: Optional[str] = None,
     replies: Optional[list] = None,
+    include_contact: bool = False,
 ) -> dict:
     vo = _feedback_to_page_vo(feedback, username, assignee_name)
-    vo["contact"] = feedback.contact
+    vo["contact"] = feedback.contact if include_contact else None
     vo["images"] = feedback.images
     vo["assignedTime"] = _format_dt(feedback.assigned_time)
     vo["closeReason"] = feedback.close_reason
@@ -337,6 +338,12 @@ class FeedbackService:
         user_id: int,
         pred_log_id: int,
     ) -> Optional[dict]:
+        pred_log = await rating_repository.get_prediction_log(db, pred_log_id)
+        if not pred_log:
+            raise BusinessException(ResultCode.PREDICTION_LOG_NOT_FOUND)
+        if pred_log.create_by != user_id:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "无权查询他人处理记录的评价")
+
         rating = await rating_repository.get_by_pred_log_id(db, pred_log_id)
         if not rating:
             return None
@@ -345,13 +352,18 @@ class FeedbackService:
         if not data:
             return None
 
-        return _rating_to_detail_vo(
+        vo = _rating_to_detail_vo(
             data["rating"],
             data.get("username") or "",
             data.get("nickname"),
             data.get("avatar"),
             data.get("algorithm_name") or "",
         )
+        if rating.is_anonymous == 1:
+            vo["userId"] = None
+            vo["username"] = None
+            vo["userAvatar"] = None
+        return vo
 
     @staticmethod
     async def list_paged_ratings(db: AsyncSession, query: dict) -> dict:
@@ -491,6 +503,7 @@ class FeedbackService:
             data.get("username") or "",
             data.get("assignee_name"),
             replies,
+            include_contact=is_admin,
         )
 
     @staticmethod
@@ -517,6 +530,10 @@ class FeedbackService:
             attachments=form.get("attachments"),
         )
         await feedback_reply_repository.create(db, reply)
+
+        if feedback.status == STATUS_REPLIED:
+            feedback.status = STATUS_PROCESSING
+            await db.flush()
 
     @staticmethod
     async def list_paged_feedback(db: AsyncSession, query: dict) -> dict:

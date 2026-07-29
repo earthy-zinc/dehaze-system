@@ -24,7 +24,11 @@ const MessageDetail: React.FC = () => {
       .then((data) => {
         setMessageData(data);
         if (data.readStatus === 0) {
-          MessageAPI.markRead(numId).catch(() => {});
+          MessageAPI.markRead(numId).then(() => {
+            setMessageData((prev) =>
+              prev ? { ...prev, readStatus: 1 } : prev
+            );
+          });
         }
       })
       .catch(() => setMessageData(null))

@@ -19,11 +19,11 @@
 | `/api/v1/feedback/ratings` | POST | 提交评分 | - |
 | `/api/v1/feedback/ratings/{id}` | PUT | 修改评分 | - |
 | `/api/v1/feedback/ratings/my` | GET | 我的评价列表 | - |
-| `/api/v1/feedback/ratings/by-prediction/{predictionLogId}` | GET | 按处理记录查评价 | - |
+| `/api/v1/feedback/ratings/by-prediction/{predictionLogId}` | GET | 按处理记录查评价（仅限本人处理记录） | - |
 | `/api/v1/feedback` | POST | 提交反馈 | - |
 | `/api/v1/feedback/my` | GET | 我的反馈列表 | - |
-| `/api/v1/feedback/{id}` | GET | 反馈详情 | - |
-| `/api/v1/feedback/{id}/supplement` | POST | 补充说明 | - |
+| `/api/v1/feedback/{id}` | GET | 反馈详情（非管理员仅限本人反馈） | - |
+| `/api/v1/feedback/{id}/supplement` | POST | 补充说明（仅限本人反馈） | - |
 
 ### 2.2 后台管理接口
 
@@ -88,10 +88,10 @@
 | 错误码 | 错误信息 | 触发场景 |
 |-------|---------|---------|
 | RATING_ALREADY_EXISTS | 该处理记录已评价 | 重复提交评价 |
-| RATING_NOT_FOUND | 评价不存在 | 查询/操作时评价不存在 |
-| RATING_EXPIRED | 已超过评价时限 | 处理完成超过 30 天后提交评价 |
+| RATING_NOT_FOUND | 评价不存在 | 查询/操作时评价不存在，或越权修改他人评价 |
+| RATING_EXPIRED | 已超过评价时限 | 处理完成超过 30 天后提交评价（仅创建时校验） |
 | FEEDBACK_NOT_FOUND | 反馈不存在 | 查询/操作时反馈不存在（含非管理员越权访问他人反馈） |
 | FEEDBACK_CLOSED | 反馈已关闭 | 对已关闭的反馈进行操作 |
 | FEEDBACK_LIMIT_EXCEEDED | 今日反馈次数已达上限 | 每用户每日超过 5 条反馈 |
 | PREDICTION_LOG_NOT_FOUND | 处理记录不存在 | 评价关联的处理记录不存在 |
-| OPERATION_NOT_ALLOW | 操作不允许 | 评价创建时处理记录未完成或不属于当前用户 |
+| OPERATION_NOT_ALLOW | 操作不允许 | 评价创建时处理记录未完成或不属于当前用户；越权查询他人处理记录的评价 |

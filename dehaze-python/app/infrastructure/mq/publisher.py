@@ -62,7 +62,7 @@ class Publisher(BaseRabbitMQClient):
         发布消息
 
         Args:
-            routing_key: 路由键（不含前缀，如 "export"）
+            routing_key: 路由键（完整队列名，如 "task.export"、"feedback.low_rating"）
             body: 消息体（自动 JSON 序列化）
             headers: 附加 AMQP Headers
             timeout: 等待连接可用的超时时间
@@ -70,7 +70,6 @@ class Publisher(BaseRabbitMQClient):
         if self._closed:
             raise RuntimeError("Publisher already closed")
 
-        # 等待连接就绪
         if not self._connected_event.is_set():
             try:
                 await asyncio.wait_for(self._connected_event.wait(), timeout=timeout)
@@ -78,8 +77,6 @@ class Publisher(BaseRabbitMQClient):
                 raise RuntimeError(
                     f"RabbitMQ Publisher 连接不可用（等待 {timeout}s 超时）"
                 )
-
-        full_routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{routing_key}"
 
         message = aio_pika.Message(
             body=json.dumps(body, default=str).encode(),
@@ -89,5 +86,5 @@ class Publisher(BaseRabbitMQClient):
         )
 
         assert self._exchange is not None
-        await self._exchange.publish(message, routing_key=full_routing_key)
-        logger.debug(f"消息已发布: routing_key={full_routing_key}")
+        await self._exchange.publish(message, routing_key=routing_key)
+        logger.debug(f"消息已发布: routing_key={routing_key}")

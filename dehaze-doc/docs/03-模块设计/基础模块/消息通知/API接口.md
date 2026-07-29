@@ -18,9 +18,9 @@
 |---------|------|---------|---------|-----------|
 | `/api/v1/messages` | GET | 消息列表（分页） | - | F-MN-002 |
 | `/api/v1/messages/unread-count` | GET | 未读消息数 | - | F-MN-003 |
-| `/api/v1/messages/{id}` | GET | 消息详情 | - | F-MN-003 |
-| `/api/v1/messages/{id}/read` | PUT | 标记单条已读 | - | F-MN-003 |
-| `/api/v1/messages/read-all` | PUT | 全部标记已读 | - | F-MN-003 |
+| `/api/v1/messages/{id}` | GET | 消息详情（仅查询，不触发已读） | - | F-MN-003 |
+| `/api/v1/messages/{id}/_read` | PATCH | 标记单条已读 | - | F-MN-003 |
+| `/api/v1/messages/_read-all` | PATCH | 全部标记已读 | - | F-MN-003 |
 | `/api/v1/messages/{ids}` | DELETE | 删除消息（支持批量） | - | F-MN-003 |
 | `/api/v1/messages/search` | GET | 搜索消息 | - | F-MN-003 |
 
@@ -29,7 +29,7 @@
 | 接口路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |---------|------|---------|---------|-----------|
 | `/api/v1/notification-settings` | GET | 获取通知偏好设置 | - | F-MN-004 |
-| `/api/v1/notification-settings` | PUT | 更新通知偏好设置 | - | F-MN-004 |
+| `/api/v1/notification-settings` | PATCH | 更新通知偏好设置（部分更新，深合并） | - | F-MN-004 |
 
 ### 2.2 后台管理接口
 
@@ -42,8 +42,8 @@
 | `/api/v1/announcements/{id}` | GET | 公告详情 | - | F-MN-005 |
 | `/api/v1/announcements/{id}` | PUT | 编辑公告（仅草稿/待发送） | `notify:announcement:edit` | F-MN-005 |
 | `/api/v1/announcements/{id}` | DELETE | 删除公告 | `notify:announcement:delete` | F-MN-005 |
-| `/api/v1/announcements/{id}/send` | POST | 立即发送公告 | `notify:announcement:send` | F-MN-005 |
-| `/api/v1/announcements/{id}/cancel` | PUT | 取消定时公告 | `notify:announcement:cancel` | F-MN-005 |
+| `/api/v1/announcements/{id}/_send` | POST | 立即发送公告 | `notify:announcement:send` | F-MN-005 |
+| `/api/v1/announcements/{id}/_cancel` | PATCH | 取消定时公告 | `notify:announcement:cancel` | F-MN-005 |
 
 **基础路径**：`/api/v1/message-templates`
 
@@ -128,7 +128,6 @@
 |----|------|
 | `all` | 全体用户 |
 | `level` | 按会员等级 |
-| `tag` | 按用户标签 |
 | `specified` | 指定用户 |
 
 ## 5. 接口详情
@@ -145,6 +144,8 @@
 | pageSize | int | 否 | 每页条数，默认 20 |
 | type | string | 否 | 按消息类型筛选：`inbox`/`announcement`/`business`/`member`/`alert`/`critical_alert` |
 | readStatus | int | 否 | 按已读状态筛选：`0`(未读)/`1`(已读) |
+
+> `summary` 字段为消息正文（content）前 50 字符截断生成，由后端在写入时计算并存储，前端直接展示。
 
 **响应数据**
 
@@ -194,6 +195,8 @@
 
 `GET /api/v1/messages/{id}`
 
+> 仅查询消息详情，不触发已读。前端在打开详情页后需显式调用 `PATCH /api/v1/messages/{id}/_read` 标记已读。
+
 **响应数据**
 
 ```json
@@ -219,7 +222,7 @@
 
 ### 5.4 标记单条已读
 
-`PUT /api/v1/messages/{id}/read`
+`PATCH /api/v1/messages/{id}/_read`
 
 **响应数据**
 
@@ -233,7 +236,7 @@
 
 ### 5.5 全部标记已读
 
-`PUT /api/v1/messages/read-all`
+`PATCH /api/v1/messages/_read-all`
 
 **请求参数**
 
@@ -322,7 +325,9 @@
 
 ### 5.9 更新通知偏好设置
 
-`PUT /api/v1/notification-settings`
+`PATCH /api/v1/notification-settings`
+
+> 部分更新：采用 2 层深合并策略，仅传入需修改的字段，未传入的字段保留原值。详见 [后端实现.md](./后端实现.md) §6.2。
 
 **请求参数**
 
@@ -425,7 +430,7 @@
 | content | string | 是 | 公告内容 |
 | type | string | 是 | 公告类型：`maintenance`/`feature`/`activity`/`operation` |
 | importance | int | 是 | 重要级别：`1`(普通)/`2`(重要) |
-| targetScope | string | 是 | 发送范围：`all`/`level`/`tag`/`specified` |
+| targetScope | string | 是 | 发送范围：`all`/`level`/`specified` |
 | targetParams | object | 否 | 范围参数，targetScope 为 `level` 时传 `{"level": 2}`，为 `specified` 时传 `{"userIds": [1,2,3]}` |
 | sendTime | datetime | 否 | 定时发送时间，不传则保存为草稿 |
 | expireTime | datetime | 否 | 过期时间 |
@@ -500,9 +505,11 @@
 
 ### 5.14 发送公告
 
-`POST /api/v1/announcements/{id}/send`
+`POST /api/v1/announcements/{id}/_send`
 
 > 将草稿或待发送状态的公告立即发送给目标用户。发送后状态变为已发送。
+
+> **公告发送流程**：创建公告时若不传 `sendTime` 则保存为草稿（status=1），传入未来时间则保存为待发送（status=2，由定时任务触发）。草稿/待发送状态均可调用本接口立即发送。
 
 **响应数据**
 
@@ -518,7 +525,7 @@
 
 ### 5.15 取消定时公告
 
-`PUT /api/v1/announcements/{id}/cancel`
+`PATCH /api/v1/announcements/{id}/_cancel`
 
 > 仅待发送（status=2）状态的公告可取消。取消后状态变为已取消。
 

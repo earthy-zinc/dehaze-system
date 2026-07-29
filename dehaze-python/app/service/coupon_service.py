@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.dependencies.redis import get_redis_client
+from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
 from app.models.entity.sys_coupon import SysCoupon
 from app.models.entity.sys_user_coupon import SysUserCoupon
 from app.models.entity.sys_member import SysMember
@@ -193,6 +195,23 @@ class CouponService:
         existing_count = await user_coupon_repository.count_by_user_and_coupon(db, user_id, coupon_id)
         if existing_count >= coupon.per_user_limit:
             raise BusinessException(ResultCode.COUPON_LIMIT_EXCEEDED)
+
+        rate_key = f"coupon:receive:rate:{user_id}"
+
+        async def _check_rate():
+            redis = await get_redis_client()
+            count = await redis.incr(rate_key)
+            if count == 1:
+                await redis.expire(rate_key, 60)
+            return count
+
+        count = await redis_operation_with_fallback(
+            operation=_check_rate,
+            default=0,
+            operation_name="coupon_receive_rate_limit",
+        )
+        if count and count > 5:
+            raise BusinessException(ResultCode.RATE_LIMIT)
 
         success = await coupon_repository.increment_issued_qty_with_limit(db, coupon_id)
         if not success:

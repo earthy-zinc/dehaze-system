@@ -294,7 +294,7 @@ func (a *Application) Init() error {
 
 	// package & order module services
 	packageService := pkgsaleservice.NewPackageService(gormDB, packageRepo, couponRepo, userCouponRepo, memberBenefitRepo, cacheClient)
-	couponService := pkgsaleservice.NewCouponService(gormDB, couponRepo, userCouponRepo)
+	couponService := pkgsaleservice.NewCouponService(gormDB, couponRepo, userCouponRepo, cacheClient)
 	paymentSvc := paymentsvc.NewPaymentChannelService(cfg.Payment)
 	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, memberRepo, memberBenefitRepo, paymentSvc, cacheClient, a.auditLogService)
 
@@ -319,13 +319,13 @@ func (a *Application) Init() error {
 		if err := a.consumer.Connect(); err != nil {
 			logger.Error("MQ Consumer 连接失败，死信队列将无法消费", zap.Error(err))
 		} else {
-			if err := a.consumer.ConsumeDLQ("export", taskService.HandleDLQMessage); err != nil {
-				logger.Error("注册死信队列 Consumer 失败", zap.Error(err))
-			}
-			if err := a.consumer.Consume("low_rating_alert", lowRatingAlertService.HandleMessage); err != nil {
-				logger.Error("注册低分告警队列 Consumer 失败", zap.Error(err))
-			}
-			logger.Info("MQ Consumer 已启动，消费 export 死信队列与 low_rating_alert 队列")
+		if err := a.consumer.ConsumeDLQ("task.export", taskService.HandleDLQMessage); err != nil {
+			logger.Error("注册死信队列 Consumer 失败", zap.Error(err))
+		}
+		if err := a.consumer.Consume("feedback.low_rating", lowRatingAlertService.HandleMessage); err != nil {
+			logger.Error("注册低分告警队列 Consumer 失败", zap.Error(err))
+		}
+			logger.Info("MQ Consumer 已启动，消费 export 死信队列与 feedback.low_rating 队列")
 		}
 	}
 
@@ -393,6 +393,7 @@ func (a *Application) Init() error {
 
 	// 需要Session认证保护的路由
 	protectedV1 := v1.Group("")
+	protectedV1.Use(middleware.ApiKeyAuthMiddleware())
 	protectedV1.Use(middleware.SessionAuth())
 	protectedV1.Use(middleware.UserContextMiddleware())
 	router.RegisterAuthRoutes(protectedV1, authApi)

@@ -50,32 +50,13 @@ async def login(
     user_agent = req.headers.get("user-agent", "")
     browser, os_name = parse_user_agent(user_agent)
 
-    captcha_valid = await AuthService.verify_captcha(redis, request.captchaKey, request.captchaCode)
-    if not captcha_valid:
-        stored_captcha = await redis.get(f"{settings.CAPTCHA_KEY_PREFIX}{request.captchaKey}")
-        if stored_captcha is None:
-            await login_log_repository.create_log(
-                db, None, request.username, client_ip, 0,
-                "验证码已过期", browser, os_name
-            )
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={"code": ResultCode.VERIFY_CODE_TIMEOUT.code, "msg": ResultCode.VERIFY_CODE_TIMEOUT.msg, "data": None},
-            )
-        else:
-            await login_log_repository.create_log(
-                db, None, request.username, client_ip, 0,
-                "验证码错误", browser, os_name
-            )
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={"code": ResultCode.VERIFY_CODE_ERROR.code, "msg": ResultCode.VERIFY_CODE_ERROR.msg, "data": None},
-            )
-
     username = request.username.lower().strip()
 
     try:
-        result = await AuthService.login(db, redis, username, request.password)
+        result = await AuthService.login(
+            db, redis, username, request.password, client_ip,
+            request.captchaKey, request.captchaCode,
+        )
         user_data = result.get("user", {})
         await login_log_repository.create_log(
             db, user_data.get("id"), username, client_ip, 1,
@@ -114,6 +95,9 @@ async def logout(
 ):
     session_id = request.cookies.get(SESSION_COOKIE) or request.headers.get(SESSION_COOKIE)
     if session_id:
+        # 清理多点登录索引
+        if user.username:
+            await redis.delete(f"session:user:{user.username}")
         await redis.delete(f"session:{session_id}")
 
     _clear_session_cookie(response)

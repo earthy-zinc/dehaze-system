@@ -38,7 +38,6 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     private static final Map<String, String> SCOPE_LABELS = Map.of(
             "all", "全体用户",
             "level", "按会员等级",
-            "tag", "按用户标签",
             "specified", "指定用户"
     );
     private static final Map<Integer, String> STATUS_LABELS = Map.of(
@@ -158,7 +157,6 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public AnnouncementSendResultVO send(Long id) {
         SysAnnouncement entity = this.getById(id);
         if (entity == null) {
@@ -173,23 +171,28 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
             throw new BusinessException(ResultCode.ANNOUNCEMENT_TARGET_EMPTY, "发送范围为空");
         }
 
-        MessageSendForm form = new MessageSendForm();
-        form.setType("announcement");
-        form.setTitle(entity.getTitle());
-        form.setContent(entity.getContent());
-        form.setRecipientIds(recipientIds);
-        form.setBizModule("system");
-        form.setBizId(String.valueOf(id));
-        form.setPriority(entity.getImportance() != null && entity.getImportance() == 2 ? 3 : 2);
-        messageService.send(form);
+        int batchSize = 500;
+        int total = recipientIds.size();
+        for (int i = 0; i < total; i += batchSize) {
+            List<Long> batch = recipientIds.subList(i, Math.min(i + batchSize, total));
+            MessageSendForm form = new MessageSendForm();
+            form.setType("announcement");
+            form.setTitle(entity.getTitle());
+            form.setContent(entity.getContent());
+            form.setRecipientIds(batch);
+            form.setBizModule("system");
+            form.setBizId(String.valueOf(id));
+            form.setPriority(entity.getImportance() != null && entity.getImportance() == 2 ? 3 : 2);
+            messageService.send(form);
+        }
 
         entity.setStatus(3);
-        entity.setSentCount(recipientIds.size());
+        entity.setSentCount(total);
         entity.setSendTime(LocalDateTime.now());
         this.updateById(entity);
 
         AnnouncementSendResultVO vo = new AnnouncementSendResultVO();
-        vo.setSentCount(recipientIds.size());
+        vo.setSentCount(total);
         return vo;
     }
 
@@ -221,13 +224,6 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
                     yield Collections.emptyList();
                 }
                 yield this.baseMapper.selectUserIdsByLevel(Integer.valueOf(level.toString()));
-            }
-            case "tag" -> {
-                Object tag = params.get("tag");
-                if (tag == null || CharSequenceUtil.isBlank(tag.toString())) {
-                    yield Collections.emptyList();
-                }
-                yield this.baseMapper.selectUserIdsByTag(tag.toString());
             }
             case "specified" -> {
                 Object userIds = params.get("userIds");

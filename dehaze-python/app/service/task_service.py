@@ -352,7 +352,7 @@ class TaskServiceAsync:
         if publisher is not None and publisher.is_connected:
             try:
                 await publisher.publish(
-                    routing_key="task.execute",
+                    routing_key="task.export",
                     body={
                         "db_task_id": db_task_id,
                         "task_id": task_id,

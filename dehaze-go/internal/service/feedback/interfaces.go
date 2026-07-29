@@ -13,7 +13,7 @@ type IRatingService interface {
 	CreateRating(ctx context.Context, userID int64, form *bo.RatingCreateForm) (int64, error)
 	UpdateRating(ctx context.Context, userID, ratingID int64, form *bo.RatingCreateForm) error
 	ListMyRatings(ctx context.Context, userID int64, pageNum, pageSize int) (*vo.PageResult[vo.MyRatingVO], error)
-	GetRatingByPrediction(ctx context.Context, predLogID int64) (*vo.RatingDetailVO, error)
+	GetRatingByPrediction(ctx context.Context, userID, predLogID int64) (*vo.RatingDetailVO, error)
 	ListPagedRatings(ctx context.Context, q *query.RatingPageQuery) (*vo.PageResult[vo.RatingPageVO], error)
 	HideRating(ctx context.Context, id int64) error
 	ReplyRating(ctx context.Context, id int64, content string) error

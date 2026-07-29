@@ -8,6 +8,7 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.http.useragent.UserAgent;
 import cn.hutool.http.useragent.UserAgentUtil;
 import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.enums.CaptchaTypeEnum;
@@ -67,11 +68,6 @@ public class AuthServiceImpl implements AuthService {
     private final SysUserRoleService sysUserRoleService;
     private final LoginLogService loginLogService;
 
-    private static final String LOGIN_FAIL_PREFIX = "login:fail:";
-    private static final int MAX_LOGIN_ATTEMPTS = 5;
-    private static final int LOCK_DURATION_MINUTES = 30;
-    private static final long SESSION_TTL = 604800L;
-
     @Override
     public LoginResult login(LoginForm form) {
         String username = form.getUsername().toLowerCase().trim();
@@ -88,11 +84,23 @@ public class AuthServiceImpl implements AuthService {
         }
         redisTemplate.delete(cacheKey);
 
-        String failKey = LOGIN_FAIL_PREFIX + username;
+        // ———— IP 纬度锁定检查 ————
+        String clientIp = getCurrentClientIp();
+        String ipFailKey = SecurityConstants.LOGIN_FAIL_IP_PREFIX + clientIp;
+        String ipFailCountStr = redisTemplate.opsForValue().get(ipFailKey);
+        int ipFailCount = parseIntSafe(ipFailCountStr);
+        if (ipFailCount >= SecurityConstants.MAX_LOGIN_ATTEMPTS) {
+            String msg = "IP登录失败次数过多，已临时锁定，请稍后重试";
+            recordLogin(null, username, 0, msg);
+            throw new BusinessException(msg);
+        }
+
+        // ———— 用户名纬度锁定检查 ————
+        String failKey = SecurityConstants.LOGIN_FAIL_PREFIX + username;
         String failCountStr = redisTemplate.opsForValue().get(failKey);
         Integer failCount = failCountStr != null ? Integer.parseInt(failCountStr) : null;
-        if (failCount != null && failCount >= MAX_LOGIN_ATTEMPTS) {
-            String msg = "账户已被锁定，请" + LOCK_DURATION_MINUTES + "分钟后再试";
+        if (failCount != null && failCount >= SecurityConstants.MAX_LOGIN_ATTEMPTS) {
+            String msg = "账户已被锁定，请" + SecurityConstants.LOCK_DURATION_MINUTES + "分钟后再试";
             recordLogin(null, username, 0, msg);
             throw new BusinessException(msg);
         }
@@ -103,17 +111,19 @@ public class AuthServiceImpl implements AuthService {
         try {
             authentication = authenticationManager.authenticate(authenticationToken);
         } catch (BadCredentialsException | UsernameNotFoundException e) {
+            // 同时递增 IP 和用户名纬度失败计数
+            incrementFailCount(ipFailKey);
             Long count = redisTemplate.opsForValue().increment(failKey);
             if (count != null && count == 1) {
-                redisTemplate.expire(failKey, LOCK_DURATION_MINUTES, TimeUnit.MINUTES);
+                redisTemplate.expire(failKey, SecurityConstants.LOCK_DURATION_MINUTES, TimeUnit.MINUTES);
             }
-            long remaining = MAX_LOGIN_ATTEMPTS - (count != null ? count : 0);
+            long remaining = SecurityConstants.MAX_LOGIN_ATTEMPTS - (count != null ? count : 0);
             if (remaining > 0) {
                 String msg = "用户名或密码错误，剩余" + remaining + "次尝试机会";
                 recordLogin(null, username, 0, msg);
                 throw new BusinessException(msg);
             } else {
-                String msg = "账户已被锁定，请" + LOCK_DURATION_MINUTES + "分钟后再试";
+                String msg = "账户已被锁定，请" + SecurityConstants.LOCK_DURATION_MINUTES + "分钟后再试";
                 recordLogin(null, username, 0, msg);
                 throw new BusinessException(msg);
             }
@@ -124,11 +134,16 @@ public class AuthServiceImpl implements AuthService {
         }
 
         redisTemplate.delete(failKey);
+        redisTemplate.delete(ipFailKey);
 
         SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
         recordLogin(userDetails.getUserId(), username, 1, "登录成功");
 
         String sessionId = IdUtil.fastSimpleUUID();
+
+        // 多点登录控制：删除旧 Session，仅保留最新
+        handleMultiPointSession(sessionId, username);
+
         JSONObject session = new JSONObject();
         session.set("userId", userDetails.getUserId());
         session.set("username", userDetails.getUsername());
@@ -143,7 +158,7 @@ public class AuthServiceImpl implements AuthService {
         redisTemplate.opsForValue().set(
                 SecurityConstants.SESSION_PREFIX + sessionId,
                 session.toString(),
-                SESSION_TTL,
+                SecurityConstants.SESSION_TTL,
                 TimeUnit.SECONDS);
 
         return LoginResult.builder()
@@ -220,7 +235,7 @@ public class AuthServiceImpl implements AuthService {
         redisTemplate.opsForValue().set(
                 SecurityConstants.SESSION_PREFIX + sessionId,
                 session.toString(),
-                SESSION_TTL,
+                SecurityConstants.SESSION_TTL,
                 TimeUnit.SECONDS);
 
         return LoginResult.builder()
@@ -253,6 +268,15 @@ public class AuthServiceImpl implements AuthService {
             sessionId = request.getHeader(SecurityConstants.SESSION_COOKIE_NAME);
         }
         if (sessionId != null) {
+            // 获取 username 以清理多点登录索引
+            String sessionJson = redisTemplate.opsForValue().get(SecurityConstants.SESSION_PREFIX + sessionId);
+            if (sessionJson != null) {
+                JSONObject session = JSONUtil.parseObj(sessionJson);
+                String username = session.getStr("username");
+                if (username != null) {
+                    redisTemplate.delete(SecurityConstants.SESSION_USER_PREFIX + username);
+                }
+            }
             redisTemplate.delete(SecurityConstants.SESSION_PREFIX + sessionId);
         }
         SecurityContextHolder.clearContext();
@@ -291,6 +315,44 @@ public class AuthServiceImpl implements AuthService {
             case LINE -> CaptchaUtil.createLineCaptcha(width, height, codeLength, interfereCount);
             case SHEAR -> CaptchaUtil.createShearCaptcha(width, height, codeLength, interfereCount);
         };
+    }
+
+    private void incrementFailCount(String key) {
+        Long count = redisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1) {
+            redisTemplate.expire(key, SecurityConstants.LOCK_DURATION_MINUTES, TimeUnit.MINUTES);
+        }
+    }
+
+    private int parseIntSafe(String str) {
+        if (str == null || str.isEmpty()) return 0;
+        try {
+            return Integer.parseInt(str);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private String getCurrentClientIp() {
+        ServletRequestAttributes requestAttributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (requestAttributes == null) return "unknown";
+        return getClientIp(requestAttributes.getRequest());
+    }
+
+    /**
+     * 多点登录控制：删除同一用户名下的旧 Session，仅保留最新。
+     * 通过 Redis key session:user:{username} 记录当前活跃 Session ID。
+     */
+    private void handleMultiPointSession(String newSessionId, String username) {
+        String userSessionKey = SecurityConstants.SESSION_USER_PREFIX + username;
+        String oldSessionId = redisTemplate.opsForValue().get(userSessionKey);
+        if (oldSessionId != null && !oldSessionId.isEmpty()) {
+            redisTemplate.delete(SecurityConstants.SESSION_PREFIX + oldSessionId);
+            log.info("多点登录：已删除旧Session, username={}, oldSessionId={}", username, oldSessionId);
+        }
+        redisTemplate.opsForValue().set(userSessionKey, newSessionId,
+                SecurityConstants.SESSION_TTL, TimeUnit.SECONDS);
     }
 
     private void recordLogin(Long userId, String username, int status, String message) {

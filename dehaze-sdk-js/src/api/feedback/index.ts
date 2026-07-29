@@ -10,6 +10,7 @@ import {
   FeedbackReplyForm,
   FeedbackStatsVO,
   FeedbackSupplementForm,
+  MyRatingVO,
   RatingCreateForm,
   RatingDetailVO,
   RatingPageVO,
@@ -40,7 +41,7 @@ class FeedbackAPI {
 
   /** 用户端：我的评价列表 */
   static listMyRatings(queryParams: { pageNum?: number; pageSize?: number }) {
-    return request<PageResult<RatingPageVO[]>>({
+    return request<PageResult<MyRatingVO[]>>({
       url: "/api/v1/feedback/ratings/my",
       method: "get",
       params: queryParams,

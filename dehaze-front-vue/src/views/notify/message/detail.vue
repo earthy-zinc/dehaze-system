@@ -119,6 +119,7 @@ function loadDetail() {
       message.value = data;
       if (data.readStatus === 0) {
         MessageAPI.markRead(id).then(() => {
+          message.value!.readStatus = 1;
           notificationStore.decrement();
         });
       }

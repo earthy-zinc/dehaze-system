@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -58,8 +59,15 @@ type queueTopology struct {
 	routingKey    string
 	dlqRoutingKey string
 	queueArgs     amqp.Table
+	retryQueues   []retryQueueSpec
 	// dlqOnly 为 true 时仅声明死信队列（ConsumeDLQ 场景）
 	dlqOnly bool
+}
+
+type retryQueueSpec struct {
+	name       string
+	routingKey string
+	args       amqp.Table
 }
 
 // NewConsumer 创建 RabbitMQ 消费者
@@ -247,12 +255,12 @@ func (c *Consumer) Consume(queue string, handler Handler) error {
 
 	exchange := c.resolveExchange()
 	dlxExchange := c.resolveDlxExchange()
-	dlqName := queue + ".dlq"
+	dlqName := queue + ".dlx"
 	routingKey := c.resolveRoutingKey(queue)
 	dlqRoutingKey := c.resolveDlxRoutingKey(queue)
 
-	// 主队列带 DLX 参数，消息过期/reject 后进入死信交换机
 	queueArgs := amqp.Table{
+		"x-message-ttl":             int32(86400000),
 		"x-dead-letter-exchange":    dlxExchange,
 		"x-dead-letter-routing-key": dlqRoutingKey,
 	}
@@ -265,6 +273,7 @@ func (c *Consumer) Consume(queue string, handler Handler) error {
 		routingKey:    routingKey,
 		dlqRoutingKey: dlqRoutingKey,
 		queueArgs:     queueArgs,
+		retryQueues:   c.buildRetryQueues(queue, exchange, routingKey),
 	}
 	if err := c.declareTopology(ch, topo); err != nil {
 		return err
@@ -306,7 +315,7 @@ func (c *Consumer) ConsumeDLQ(queue string, handler DLQHandler) error {
 		return errors.New("rabbitmq channel not available")
 	}
 
-	dlqName := queue + ".dlq"
+	dlqName := queue + ".dlx"
 
 	// 确保死信队列存在
 	topo := queueTopology{
@@ -366,7 +375,7 @@ func (c *Consumer) ConsumeDLQ(queue string, handler DLQHandler) error {
 }
 
 // handleMessage 处理单条消息，从 Headers 恢复 TraceID 和 traceparent
-// 处理失败时按 x-retry-count 进行分级重试，超阈值后 reject 入死信队列
+// 处理失败时按 x-retry-count 投递到对应级别的 TTL 重试队列，超阈值后 reject 入死信队列
 func (c *Consumer) handleMessage(d amqp.Delivery, handler Handler) {
 	// 从 AMQP Headers 恢复 TraceID 和 traceparent
 	traceID, traceParent := c.extractTraceInfo(d.Headers)
@@ -392,14 +401,13 @@ func (c *Consumer) handleMessage(d amqp.Delivery, handler Handler) {
 	if err := handler(ctx, d.Body); err != nil {
 		retryCount := c.getRetryCount(d.Headers)
 		if retryCount < MaxRetryCount {
-			// 未超阈值：递增 retry-count 后重新发布到主队列
 			newRetryCount := retryCount + 1
-			c.logger.Warn("消息处理失败，重新入队重试",
+			c.logger.Warn("消息处理失败，投递到重试队列",
 				zap.String("trace_id", traceID),
 				zap.Int("retryCount", newRetryCount),
 				zap.Int("maxRetry", MaxRetryCount),
 				zap.Error(err))
-			c.republishWithRetryCount(d, newRetryCount)
+			c.publishToRetryQueue(d, newRetryCount)
 		} else {
 			// 超阈值：reject 入死信队列（Nack with requeue=false → DLX → DLQ）
 			c.logger.Error("消息处理失败且已达最大重试次数，进入死信队列",
@@ -456,11 +464,10 @@ func extractUserID(headers amqp.Table) int64 {
 	}
 }
 
-// republishWithRetryCount 递增 x-retry-count 后重新发布消息到主队列
-func (c *Consumer) republishWithRetryCount(d amqp.Delivery, retryCount int) {
+// publishToRetryQueue 将失败消息投递到对应级别的 TTL 重试队列
+func (c *Consumer) publishToRetryQueue(d amqp.Delivery, retryCount int) {
 	ch := c.getChannel()
 	if ch == nil {
-		// channel 不可用时直接 reject 入死信
 		_ = d.Nack(false, false)
 		return
 	}
@@ -471,8 +478,11 @@ func (c *Consumer) republishWithRetryCount(d amqp.Delivery, retryCount int) {
 	}
 	headers["x-retry-count"] = retryCount
 
+	queue := d.RoutingKey
+
+	retryQueue := queue + ".retry." + strconv.Itoa(retryCount-1)
+	routingKey := c.resolveRoutingKey(retryQueue)
 	exchange := c.resolveExchange()
-	routingKey := d.RoutingKey
 
 	err := ch.PublishWithContext(context.Background(), exchange, routingKey, false, false, amqp.Publishing{
 		ContentType:  d.ContentType,
@@ -481,7 +491,7 @@ func (c *Consumer) republishWithRetryCount(d amqp.Delivery, retryCount int) {
 		Headers:      headers,
 	})
 	if err != nil {
-		c.logger.Error("重新发布消息失败，直接 reject 入死信", zap.Error(err))
+		c.logger.Error("投递消息到重试队列失败，直接 reject 入死信", zap.Error(err))
 		_ = d.Nack(false, false)
 		return
 	}
@@ -565,10 +575,7 @@ func (c *Consumer) resolveExchange() string {
 }
 
 func (c *Consumer) resolveRoutingKey(queue string) string {
-	if c.cfg.RoutingKeyPrefix != "" {
-		return c.cfg.RoutingKeyPrefix + "." + queue
-	}
-	return "task." + queue
+	return queue
 }
 
 // resolveDlxExchange 返回死信交换机名称（主交换机 + .dlx 后缀）
@@ -578,7 +585,7 @@ func (c *Consumer) resolveDlxExchange() string {
 
 // resolveDlxRoutingKey 返回死信路由键（主路由键 + .dlx 后缀）
 func (c *Consumer) resolveDlxRoutingKey(queue string) string {
-	return c.resolveRoutingKey(queue) + ".dlx"
+	return c.resolveRoutingKey(queue + ".dlx")
 }
 
 // declareTopology 在指定 channel 上声明队列拓扑（交换机、主队列、死信队列及绑定）
@@ -615,7 +622,35 @@ func (c *Consumer) declareTopology(ch *amqp.Channel, topo queueTopology) error {
 	if err := ch.QueueBind(topo.dlqName, topo.dlqRoutingKey, topo.dlxExchange, false, nil); err != nil {
 		return fmt.Errorf("bind DLQ: %w", err)
 	}
+
+	for _, rq := range topo.retryQueues {
+		if _, err := ch.QueueDeclare(rq.name, true, false, false, false, rq.args); err != nil {
+			return fmt.Errorf("declare retry queue %s: %w", rq.name, err)
+		}
+		if err := ch.QueueBind(rq.name, rq.routingKey, topo.exchange, false, nil); err != nil {
+			return fmt.Errorf("bind retry queue %s: %w", rq.name, err)
+		}
+	}
 	return nil
+}
+
+var retryDelays = []int32{5000, 30000, 300000}
+
+func (c *Consumer) buildRetryQueues(queue, exchange, mainRoutingKey string) []retryQueueSpec {
+	queues := make([]retryQueueSpec, 0, MaxRetryCount)
+	for i := 0; i < MaxRetryCount; i++ {
+		name := queue + ".retry." + strconv.Itoa(i)
+		queues = append(queues, retryQueueSpec{
+			name:       name,
+			routingKey: c.resolveRoutingKey(name),
+			args: amqp.Table{
+				"x-message-ttl":             retryDelays[i],
+				"x-dead-letter-exchange":    exchange,
+				"x-dead-letter-routing-key": mainRoutingKey,
+			},
+		})
+	}
+	return queues
 }
 
 // recordTopology 记录已声明的拓扑，用于重连后重新声明。重复声明是幂等的，无需去重

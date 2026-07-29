@@ -45,18 +45,31 @@ func (s *MessageService) Send(ctx context.Context, form *bo.MessageSendForm) (*v
 		return nil, common.NewBizError(common.PARAM_ERROR, "接收人列表不能为空")
 	}
 
+	recipientIDs := form.RecipientIDs
+	messageIDs := make([]int64, 0, len(recipientIDs))
+
 	if form.BizModule != "" && form.BizID != "" {
-		existing, err := s.msgRepo.FindByBizModuleAndBizID(ctx, form.BizModule, form.BizID)
+		existing, err := s.msgRepo.FindByBizModuleAndBizIDAndRecipientIDs(ctx, form.BizModule, form.BizID, recipientIDs)
 		if err != nil {
 			return nil, common.WrapBizError(common.DATABASE_ERROR, "幂等检查失败", err)
 		}
-		if len(existing) > 0 {
-			ids := make([]int64, 0, len(existing))
-			for _, m := range existing {
-				ids = append(ids, m.ID)
-			}
-			return &vo.MessageSendResultVO{MessageIDs: ids}, nil
+		existingMap := make(map[int64]int64, len(existing))
+		for _, m := range existing {
+			existingMap[m.RecipientID] = m.ID
 		}
+		remaining := make([]int64, 0, len(recipientIDs))
+		for _, rid := range recipientIDs {
+			if existingID, ok := existingMap[rid]; ok {
+				messageIDs = append(messageIDs, existingID)
+			} else {
+				remaining = append(remaining, rid)
+			}
+		}
+		recipientIDs = remaining
+	}
+
+	if len(recipientIDs) == 0 {
+		return &vo.MessageSendResultVO{MessageIDs: messageIDs}, nil
 	}
 
 	title := form.Title
@@ -102,8 +115,8 @@ func (s *MessageService) Send(ctx context.Context, form *bo.MessageSendForm) (*v
 
 	expiresAt := calcExpiresAt(form.Type)
 
-	msgs := make([]model.SysMessage, 0, len(form.RecipientIDs))
-	for _, rid := range form.RecipientIDs {
+	msgs := make([]model.SysMessage, 0, len(recipientIDs))
+	for _, rid := range recipientIDs {
 		msgs = append(msgs, model.SysMessage{
 			Type:        form.Type,
 			Title:       title,
@@ -126,13 +139,15 @@ func (s *MessageService) Send(ctx context.Context, form *bo.MessageSendForm) (*v
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建消息失败", err)
 	}
 
-	s.invalidateUnreadCount(ctx, form.RecipientIDs...)
+	messageIDs = append(messageIDs, ids...)
+
+	s.invalidateUnreadCount(ctx, recipientIDs...)
 
 	for i := range msgs {
 		s.pushNewMessageEvent(msgs[i])
 	}
 
-	return &vo.MessageSendResultVO{MessageIDs: ids}, nil
+	return &vo.MessageSendResultVO{MessageIDs: messageIDs}, nil
 }
 
 func (s *MessageService) pushNewMessageEvent(msg model.SysMessage) {
@@ -182,14 +197,6 @@ func (s *MessageService) GetDetail(ctx context.Context, id, userID int64) (*vo.M
 	}
 	if msg == nil || msg.Deleted == 1 || msg.RecipientID != userID {
 		return nil, common.NewBizError(common.MESSAGE_NOT_FOUND, "消息不存在")
-	}
-
-	if msg.ReadStatus == 0 {
-		_, _ = s.msgRepo.MarkRead(ctx, id, userID)
-		msg.ReadStatus = 1
-		now := time.Now()
-		msg.ReadTime = &now
-		s.invalidateUnreadCount(ctx, userID)
 	}
 
 	return &vo.MessageDetailVO{

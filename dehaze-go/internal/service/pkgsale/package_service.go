@@ -284,11 +284,11 @@ func validatePackageForm(form *bo.PackageForm) error {
 	if form.Name == "" {
 		return common.NewBizError(common.PARAM_ERROR, "套餐名称不能为空")
 	}
-	if form.OriginalPrice < 0 {
-		return common.NewBizError(common.PARAM_ERROR, "原价不能为负数")
+	if form.OriginalPrice < 1 {
+		return common.NewBizError(common.PARAM_ERROR, "原价必须大于0")
 	}
-	if form.SalePrice < 0 {
-		return common.NewBizError(common.PARAM_ERROR, "促销价不能为负数")
+	if form.SalePrice < 1 {
+		return common.NewBizError(common.PARAM_ERROR, "促销价必须大于0")
 	}
 	if form.SalePrice > form.OriginalPrice {
 		return common.NewBizError(common.PARAM_ERROR, "促销价不能高于原价")
@@ -457,11 +457,6 @@ func (s *PackageService) DeleteByIDs(ctx context.Context, ids []int64) error {
 }
 
 func (s *PackageService) GetSalesStats(ctx context.Context) (*vo.SalesStatsVO, error) {
-	list, err := s.packageRepo.FindAllOnSale(ctx)
-	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询套餐列表失败", err)
-	}
-
 	stats := &vo.SalesStatsVO{
 		PackageStats: make([]vo.PackageSalesStatItem, 0),
 		LevelStats:   make([]vo.LevelSalesStatItem, 0),
@@ -469,11 +464,13 @@ func (s *PackageService) GetSalesStats(ctx context.Context) (*vo.SalesStatsVO, e
 		CouponStats:  vo.CouponStatsVO{},
 	}
 
-	for _, p := range list {
-		stats.TotalSales += p.SalesCount
-	}
-
 	paidStatuses := []int8{2, 3}
+	totalSales, err := s.packageRepo.CountOrdersByStatus(ctx, paidStatuses)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询已支付订单数失败", err)
+	}
+	stats.TotalSales = totalSales
+
 	totalRevenue, err := s.packageRepo.SumPaidAmountByStatus(ctx, paidStatuses)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询订单收入失败", err)

@@ -122,7 +122,7 @@ class ResultCode(Enum):
     ALGORITHM_AUDIT_REMARK_REQUIRED = ("B0208", "驳回时必须填写原因")
     ALGORITHM_IMPORT_FORMAT_ERROR = ("B0209", "导入包格式错误")
     PREDICTION_TASK_NOT_FOUND = ("B0210", "预测任务不存在")
-    PREDICTION_TASK_EXPIRED = ("B0211", "预测任务结果已过期")
+    RATE_LIMIT = ("B0211", "系统速率限流")
     PREDICTION_IMAGE_FORMAT_UNSUPPORTED = ("B0212", "图片格式不支持")
     PREDICTION_GT_MISSING = ("B0213", "缺少清晰图（Ground Truth）")
     EVALUATION_TASK_NOT_FOUND = ("B0220", "评估任务不存在")

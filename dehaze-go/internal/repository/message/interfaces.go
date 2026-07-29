@@ -12,6 +12,7 @@ import (
 type IMessageRepository interface {
 	FindByID(ctx context.Context, id int64) (*model.SysMessage, error)
 	FindByBizModuleAndBizID(ctx context.Context, bizModule, bizID string) ([]model.SysMessage, error)
+	FindByBizModuleAndBizIDAndRecipientIDs(ctx context.Context, bizModule, bizID string, recipientIDs []int64) ([]model.SysMessage, error)
 	FindPage(ctx context.Context, userID int64, q *query.MessageQuery) ([]model.SysMessage, int64, error)
 	SearchPage(ctx context.Context, userID int64, q *query.MessageSearchQuery) ([]model.SysMessage, int64, error)
 	CountUnread(ctx context.Context, userID int64) (int64, error)
@@ -52,5 +53,4 @@ type IAnnouncementRepository interface {
 type IUserLookupRepository interface {
 	FindAllUserIDs(ctx context.Context) ([]int64, error)
 	FindUserIDsByLevel(ctx context.Context, level int) ([]int64, error)
-	FindUserIDsByTag(ctx context.Context, tag string) ([]int64, error)
 }

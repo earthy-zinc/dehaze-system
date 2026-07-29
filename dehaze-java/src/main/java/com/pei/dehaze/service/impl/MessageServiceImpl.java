@@ -60,15 +60,32 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MessageSendResultVO send(MessageSendForm form) {
+        List<Long> recipientIds = form.getRecipientIds();
+        List<Long> messageIds = new ArrayList<>();
+
         if (CharSequenceUtil.isNotBlank(form.getBizModule()) && CharSequenceUtil.isNotBlank(form.getBizId())) {
             List<SysMessage> existing = this.list(new LambdaQueryWrapper<SysMessage>()
                     .eq(SysMessage::getBizModule, form.getBizModule())
-                    .eq(SysMessage::getBizId, form.getBizId()));
-            if (!existing.isEmpty()) {
-                MessageSendResultVO vo = new MessageSendResultVO();
-                vo.setMessageIds(existing.stream().map(SysMessage::getId).toList());
-                return vo;
+                    .eq(SysMessage::getBizId, form.getBizId())
+                    .in(SysMessage::getRecipientId, recipientIds));
+            Map<Long, Long> existingMap = existing.stream()
+                    .collect(java.util.stream.Collectors.toMap(SysMessage::getRecipientId, SysMessage::getId));
+            List<Long> remaining = new ArrayList<>();
+            for (Long recipientId : recipientIds) {
+                Long existingId = existingMap.get(recipientId);
+                if (existingId != null) {
+                    messageIds.add(existingId);
+                } else {
+                    remaining.add(recipientId);
+                }
             }
+            recipientIds = remaining;
+        }
+
+        if (recipientIds.isEmpty()) {
+            MessageSendResultVO vo = new MessageSendResultVO();
+            vo.setMessageIds(messageIds);
+            return vo;
         }
 
         String title = form.getTitle();
@@ -98,8 +115,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
         Integer priority = form.getPriority() != null ? form.getPriority() : 2;
         LocalDateTime expiresAt = calcExpiresAt(type);
 
-        List<Long> messageIds = new ArrayList<>();
-        for (Long recipientId : form.getRecipientIds()) {
+        for (Long recipientId : recipientIds) {
             SysMessage message = new SysMessage();
             message.setType(type);
             message.setTitle(title);
@@ -224,18 +240,6 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
                 .eq(SysMessage::getRecipientId, userId));
         if (message == null) {
             throw new BusinessException(ResultCode.MESSAGE_NOT_FOUND);
-        }
-
-        if (message.getReadStatus() != null && message.getReadStatus() == 0) {
-            LocalDateTime readTime = LocalDateTime.now();
-            this.update(new LambdaUpdateWrapper<SysMessage>()
-                    .eq(SysMessage::getId, id)
-                    .eq(SysMessage::getReadStatus, 0)
-                    .set(SysMessage::getReadStatus, 1)
-                    .set(SysMessage::getReadTime, readTime));
-            message.setReadStatus(1);
-            message.setReadTime(readTime);
-            invalidateUnreadCache(userId);
         }
 
         MessageDetailVO vo = new MessageDetailVO();

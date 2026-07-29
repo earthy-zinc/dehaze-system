@@ -123,6 +123,66 @@ export enum ResultEnum {
   USER_UPLOAD_IMAGE_SIZE_EXCEEDS = "A0703",
 
   /**
+   * 套餐不存在
+   */
+  PACKAGE_NOT_FOUND = "A0520",
+
+  /**
+   * 套餐已下架
+   */
+  PACKAGE_OFF_SHELF = "A0521",
+
+  /**
+   * 套餐下已有关联订单，无法删除
+   */
+  PACKAGE_HAS_ORDERS = "A0522",
+
+  /**
+   * 优惠券不存在
+   */
+  COUPON_NOT_FOUND = "A0523",
+
+  /**
+   * 优惠券已过期
+   */
+  COUPON_EXPIRED = "A0524",
+
+  /**
+   * 优惠券已使用
+   */
+  COUPON_ALREADY_USED = "A0525",
+
+  /**
+   * 优惠券已领完
+   */
+  COUPON_STOCK_EMPTY = "A0526",
+
+  /**
+   * 优惠券不适用于该套餐
+   */
+  COUPON_NOT_APPLICABLE = "A0527",
+
+  /**
+   * 超过每人限领数量
+   */
+  COUPON_LIMIT_EXCEEDED = "A0528",
+
+  /**
+   * 优惠券状态无效
+   */
+  COUPON_STATUS_INVALID = "A0529",
+
+  /**
+   * 优惠券锁定失败
+   */
+  COUPON_LOCK_FAILED = "A052A",
+
+  /**
+   * 套餐参与进行中促销活动，无法下架
+   */
+  PACKAGE_IN_PROMOTION = "A052B",
+
+  /**
    * 系统执行出错
    */
   SYSTEM_EXECUTION_ERROR = "B0001",

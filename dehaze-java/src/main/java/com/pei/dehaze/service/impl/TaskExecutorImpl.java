@@ -74,7 +74,7 @@ public class TaskExecutorImpl implements TaskExecutor {
         }
 
         String traceId = MDC.get("traceId");
-        publisher.publish("export", taskId.toString(), traceId);
+        publisher.publish("task.export", taskId.toString(), traceId);
         log.info("任务已发布到 MQ: taskId={}, traceId={}", taskId, traceId);
     }
 

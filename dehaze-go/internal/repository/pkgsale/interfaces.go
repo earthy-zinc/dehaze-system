@@ -49,6 +49,7 @@ type IPackageRepository interface {
 	CountOrders(ctx context.Context, packageID int64) (int64, error)
 	FindActivePromotionsByPackageID(ctx context.Context, packageID int64) ([]PromotionWithPackage, error)
 	SumPaidAmountByStatus(ctx context.Context, statuses []int8) (int64, error)
+	CountOrdersByStatus(ctx context.Context, statuses []int8) (int64, error)
 	GetPackageOrderStats(ctx context.Context, statuses []int8) ([]PackageOrderStatRow, error)
 	GetLevelOrderStats(ctx context.Context, statuses []int8) ([]LevelOrderStatRow, error)
 	GetPeriodOrderStats(ctx context.Context, statuses []int8) ([]PeriodOrderStatRow, error)

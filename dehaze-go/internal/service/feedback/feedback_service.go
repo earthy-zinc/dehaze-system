@@ -198,7 +198,7 @@ func (s *FeedbackService) SupplementFeedback(ctx context.Context, userID, feedba
 		return common.NewBizError(common.FEEDBACK_NOT_FOUND, "反馈不存在")
 	}
 	if fb.UserID != userID {
-		return common.NewBizError(common.OPERATION_NOT_ALLOW, "无权操作他人反馈")
+		return common.NewBizError(common.FEEDBACK_NOT_FOUND, "反馈不存在")
 	}
 	if fb.Status == 4 {
 		return common.NewBizError(common.FEEDBACK_CLOSED, "反馈已关闭")

@@ -30,6 +30,7 @@ import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.CouponService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -49,6 +51,7 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
     private final SysUserMapper userMapper;
     private final SysMemberMapper memberMapper;
     private final ObjectMapper objectMapper;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -158,6 +161,14 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
         LocalDateTime now = LocalDateTime.now();
         if ("fixed".equals(coupon.getValidType()) && coupon.getValidEnd() != null && now.isAfter(coupon.getValidEnd())) {
             throw new BusinessException(ResultCode.COUPON_EXPIRED);
+        }
+        String rateLimitKey = "coupon:receive:rate:" + userId;
+        Long count = stringRedisTemplate.opsForValue().increment(rateLimitKey);
+        if (count != null && count == 1) {
+            stringRedisTemplate.expire(rateLimitKey, 60, TimeUnit.SECONDS);
+        }
+        if (count != null && count > 5) {
+            throw new BusinessException(ResultCode.RATE_LIMIT);
         }
         Long receivedCount = userCouponMapper.selectCount(new LambdaQueryWrapper<SysUserCoupon>()
                 .eq(SysUserCoupon::getUserId, userId)

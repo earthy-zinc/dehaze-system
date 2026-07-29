@@ -41,6 +41,17 @@ func (r *MessageRepository) FindByBizModuleAndBizID(ctx context.Context, bizModu
 	return msgs, err
 }
 
+func (r *MessageRepository) FindByBizModuleAndBizIDAndRecipientIDs(ctx context.Context, bizModule, bizID string, recipientIDs []int64) ([]model.SysMessage, error) {
+	if bizModule == "" || bizID == "" || len(recipientIDs) == 0 {
+		return nil, nil
+	}
+	var msgs []model.SysMessage
+	err := r.db.WithContext(ctx).
+		Where("biz_module = ? AND biz_id = ? AND deleted = 0 AND recipient_id IN ?", bizModule, bizID, recipientIDs).
+		Find(&msgs).Error
+	return msgs, err
+}
+
 func (r *MessageRepository) FindPage(ctx context.Context, userID int64, q *query.MessageQuery) ([]model.SysMessage, int64, error) {
 	pageNum := q.PageNum
 	if pageNum <= 0 {

@@ -7,17 +7,14 @@ import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.common.util.ResponseUtils;
-import com.pei.dehaze.service.ApiKeyService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -27,41 +24,23 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+/**
+ * Session 认证过滤器 — 纯 Session Cookie/Header 认证，不处理 API Key。
+ * API Key 认证由 {@link ApiKeyAuthenticationFilter} 独立负责。
+ */
 public class SessionFilter extends OncePerRequestFilter {
 
     private final StringRedisTemplate redisTemplate;
-    private final ApiKeyService apiKeyService;
 
-    private static final long SESSION_TTL = 604800L;
-    private static final long RENEW_THRESHOLD = 86400L;
-    private static final String API_KEY_PREFIX = "dhak_";
-    private static final String BEARER_PREFIX = "Bearer ";
-
-    public SessionFilter(StringRedisTemplate redisTemplate, ApiKeyService apiKeyService) {
+    public SessionFilter(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
-        this.apiKeyService = apiKeyService;
     }
 
     @Override
     protected void doFilterInternal(
-            @NonNull HttpServletRequest request, 
+            @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-
-        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
-            authHeader = authHeader.substring(BEARER_PREFIX.length());
-        }
-        if (authHeader != null && authHeader.startsWith(API_KEY_PREFIX)) {
-            Authentication authentication = apiKeyService.authenticateByKey(authHeader);
-            if (authentication == null) {
-                ResponseUtils.writeErrMsg(response, ResultCode.TOKEN_INVALID);
-                return;
-            }
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            chain.doFilter(request, response);
-            return;
-        }
 
         String sessionId = extractSessionId(request);
 
@@ -97,8 +76,9 @@ public class SessionFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         Long ttl = redisTemplate.getExpire(SecurityConstants.SESSION_PREFIX + sessionId, TimeUnit.SECONDS);
-        if (ttl != null && ttl > 0 && ttl < RENEW_THRESHOLD) {
-            redisTemplate.expire(SecurityConstants.SESSION_PREFIX + sessionId, SESSION_TTL, TimeUnit.SECONDS);
+        if (ttl != null && ttl > 0 && ttl < SecurityConstants.RENEW_THRESHOLD) {
+            redisTemplate.expire(SecurityConstants.SESSION_PREFIX + sessionId,
+                    SecurityConstants.SESSION_TTL, TimeUnit.SECONDS);
         }
 
         chain.doFilter(request, response);

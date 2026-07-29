@@ -27,6 +27,19 @@ export async function resetMemberQuota(userIds: number[]): Promise<void> {
   }
 }
 
+export async function createCompletedPredLog(
+  userId: number,
+  algorithmId: number = 13
+): Promise<number> {
+  const pool = getPool();
+  const [result] = await pool.execute(
+    `INSERT INTO sys_pred_log (algorithm_id, status, time, create_by, update_by, create_time, update_time)
+     VALUES (?, 2, 100, ?, ?, NOW(), NOW())`,
+    [algorithmId, userId, userId]
+  );
+  return (result as any).insertId;
+}
+
 export async function disconnectMysql(): Promise<void> {
   if (pool) {
     await pool.end();

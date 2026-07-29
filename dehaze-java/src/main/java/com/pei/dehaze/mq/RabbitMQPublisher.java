@@ -60,7 +60,6 @@ public class RabbitMQPublisher {
      * 解析路由键
      */
     private String resolveRoutingKey(String queueName) {
-        String prefix = properties.getExchange().getRoutingKeyPrefix();
-        return prefix + queueName;
+        return queueName;
     }
 }

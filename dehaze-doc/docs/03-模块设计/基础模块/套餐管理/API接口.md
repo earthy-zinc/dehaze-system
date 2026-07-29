@@ -64,7 +64,6 @@
 | discountAmount | Long | 促销折扣金额（分） |
 | couponAmount | Long | 优惠券抵扣金额（分） |
 | payableAmount | Long | 应付金额（分） |
-| promotion | PromotionVO | 命中的促销活动信息，无活动时为 null |
 
 **业务规则**：
 - 促销折扣取该套餐所有进行中活动的最大折扣值
@@ -123,3 +122,7 @@
 | COUPON_ALREADY_USED | 优惠券已使用 | 重复使用优惠券 |
 | COUPON_STOCK_EMPTY | 优惠券已领完 | 领取时库存为 0 |
 | COUPON_NOT_APPLICABLE | 优惠券不适用于该套餐 | 优惠券限定套餐与当前套餐不匹配 |
+| COUPON_LIMIT_EXCEEDED | 超过每人限领数量 | 领取时用户已领数量达到 per_user_limit |
+| COUPON_STATUS_INVALID | 优惠券状态无效 | 价格计算时用户券状态非可用（非未使用/已锁定） |
+| COUPON_LOCK_FAILED | 优惠券锁定失败 | 下单锁定优惠券时状态变更失败 |
+| PACKAGE_IN_PROMOTION | 套餐参与进行中促销活动，无法下架 | 下架时套餐关联进行中促销活动 |

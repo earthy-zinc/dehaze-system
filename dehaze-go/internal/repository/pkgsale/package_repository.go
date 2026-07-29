@@ -166,6 +166,15 @@ func (r *PackageRepository) SumPaidAmountByStatus(ctx context.Context, statuses 
 	return total, err
 }
 
+func (r *PackageRepository) CountOrdersByStatus(ctx context.Context, statuses []int8) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Table("sys_order").
+		Where("status IN ? AND deleted = 0", statuses).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *PackageRepository) GetPackageOrderStats(ctx context.Context, statuses []int8) ([]PackageOrderStatRow, error) {
 	var rows []PackageOrderStatRow
 	err := r.db.WithContext(ctx).

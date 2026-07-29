@@ -5,7 +5,7 @@
 -- 设计思路:
 -- 消息主表，存储所有投递给用户的消息记录（站内信/业务通知/会员通知/告警等）。
 -- 每条消息一行记录，recipient_id 标识接收人，type 区分消息类型。
--- 业务模块通过 biz_module + biz_id 实现幂等去重（如同一订单号不重复生成退款通知）。
+-- biz_module + biz_id + recipient_id 三元组唯一索引实现幂等去重，同一业务事件发给不同接收人不去重（仅当 biz_module/biz_id 均非空时防重，NULL 不防重）。
 -- read_status 字段管理已读/未读状态，用户阅读后自动标记并记录 read_time。
 -- deleted 字段为用户侧软删除（仅从当前用户视图移除），系统按 expires_at 定时物理清理过期记录。
 -- priority 字段控制推送策略：紧急消息走全渠道，低优先级仅站内信。
@@ -37,7 +37,7 @@ CREATE TABLE `sys_message`
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_recipient_read` (`recipient_id`, `read_status`) USING BTREE,
     INDEX `idx_recipient_list` (`recipient_id`, `deleted`, `create_time`) USING BTREE,
-    UNIQUE INDEX `uk_biz_dedup` (`biz_module`, `biz_id`) USING BTREE,
+    UNIQUE INDEX `uk_biz_dedup` (`biz_module`, `biz_id`, `recipient_id`) USING BTREE,
     INDEX `idx_expires_at` (`expires_at`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

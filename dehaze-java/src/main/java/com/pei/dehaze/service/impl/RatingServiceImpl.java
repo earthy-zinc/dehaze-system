@@ -133,7 +133,7 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
             throw new BusinessException(ResultCode.RATING_NOT_FOUND);
         }
         if (!rating.getUserId().equals(userId)) {
-            throw new BusinessException(ResultCode.FORBIDDEN_OPERATION, "仅本人可修改评价");
+            throw new BusinessException(ResultCode.RATING_NOT_FOUND);
         }
         rating.setRating(form.getRating());
         rating.setComment(form.getComment());
@@ -147,6 +147,14 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
 
     @Override
     public RatingDetailVO getRatingByPrediction(Long predLogId) {
+        Long userId = SecurityUtils.getUserId();
+        SysPredLog predLog = predLogMapper.selectById(predLogId);
+        if (predLog == null) {
+            throw new BusinessException(ResultCode.PREDICTION_LOG_NOT_FOUND);
+        }
+        if (!userId.equals(predLog.getCreateBy())) {
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW);
+        }
         SysRating rating = this.getOne(new LambdaQueryWrapper<SysRating>()
                 .eq(SysRating::getPredLogId, predLogId)
                 .last("LIMIT 1"));
@@ -420,6 +428,7 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
         vo.setCreateTime(rating.getCreateTime());
         vo.setUserId(rating.getUserId());
         if (rating.getIsAnonymous() != null && rating.getIsAnonymous() == 1) {
+            vo.setUserId(null);
             vo.setUsername(null);
             vo.setUserAvatar(null);
         } else {

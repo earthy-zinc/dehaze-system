@@ -75,7 +75,7 @@ async def delete_announcement(
     return success()
 
 
-@router.post("/{announcement_id}/send", summary="发送公告")
+@router.post("/{announcement_id}/_send", summary="发送公告")
 @require_permission("notify:announcement:send")
 async def send_announcement(
     announcement_id: int = Path(...),
@@ -86,7 +86,7 @@ async def send_announcement(
     return success({"sentCount": sent_count})
 
 
-@router.put("/{announcement_id}/cancel", summary="取消定时公告")
+@router.patch("/{announcement_id}/_cancel", summary="取消定时公告")
 @require_permission("notify:announcement:cancel")
 async def cancel_announcement(
     announcement_id: int = Path(...),

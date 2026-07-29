@@ -23,7 +23,7 @@ async def get_notification_settings(
     return success(data)
 
 
-@router.put("", summary="更新通知偏好设置")
+@router.patch("", summary="更新通知偏好设置")
 async def update_notification_settings(
     body: NotificationSettingsForm,
     db: AsyncSession = Depends(get_db),

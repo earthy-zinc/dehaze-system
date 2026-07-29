@@ -50,7 +50,7 @@ async def search_messages(
     return success(data)
 
 
-@router.put("/read-all", summary="全部标记已读")
+@router.patch("/_read-all", summary="全部标记已读")
 async def mark_all_read(
     type: Optional[str] = Query(default=None),
     db: AsyncSession = Depends(get_db),
@@ -80,7 +80,7 @@ async def get_message_detail(
     return success(data)
 
 
-@router.put("/{message_id}/read", summary="标记单条已读")
+@router.patch("/{message_id}/_read", summary="标记单条已读")
 async def mark_read(
     message_id: int = Path(...),
     db: AsyncSession = Depends(get_db),

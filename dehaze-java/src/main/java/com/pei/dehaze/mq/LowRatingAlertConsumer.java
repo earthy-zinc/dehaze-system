@@ -3,6 +3,7 @@ package com.pei.dehaze.mq;
 import com.pei.dehaze.model.entity.SysRating;
 import com.pei.dehaze.service.LowRatingAlertService;
 import com.pei.dehaze.service.RatingService;
+import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -22,8 +23,8 @@ public class LowRatingAlertConsumer extends RabbitMQConsumer {
     private final RatingService ratingService;
 
     @RabbitListener(queues = QUEUE_LOW_RATING_ALERT)
-    public void onLowRatingAlert(Message message) {
-        processMessage(message, QUEUE_LOW_RATING_ALERT, this::handleLowRatingAlert);
+    public void onLowRatingAlert(Message message, Channel channel) {
+        processMessage(message, channel, QUEUE_LOW_RATING_ALERT, this::handleLowRatingAlert);
     }
 
     private void handleLowRatingAlert(String body, String traceId) throws Exception {

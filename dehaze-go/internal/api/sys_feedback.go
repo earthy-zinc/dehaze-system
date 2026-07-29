@@ -98,7 +98,12 @@ func (api *FeedbackApi) GetRatingByPrediction(c *gin.Context) {
 		return
 	}
 
-	result, err := api.ratingService.GetRatingByPrediction(c.Request.Context(), predLogID)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	result, err := api.ratingService.GetRatingByPrediction(c.Request.Context(), userID, predLogID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -112,7 +117,7 @@ func (api *FeedbackApi) ListRatings(c *gin.Context) {
 		StartTime: c.Query("startTime"),
 		EndTime:   c.Query("endTime"),
 		PageNum:   1,
-		PageSize:  20,
+		PageSize:  10,
 	}
 	if v := c.Query("pageNum"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -296,7 +301,7 @@ func (api *FeedbackApi) ListFeedback(c *gin.Context) {
 		StartTime:     c.Query("startTime"),
 		EndTime:       c.Query("endTime"),
 		PageNum:       1,
-		PageSize:      20,
+		PageSize:      10,
 	}
 	if v := c.Query("pageNum"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -427,7 +432,7 @@ func (api *FeedbackApi) GetFeedbackStats(c *gin.Context) {
 
 func parsePagination(c *gin.Context) (int, int) {
 	pageNum := 1
-	pageSize := 20
+	pageSize := 10
 	if v := c.Query("pageNum"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			pageNum = n

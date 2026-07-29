@@ -15,6 +15,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.amqp.core.AcknowledgeMode;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -100,6 +101,7 @@ public class RabbitMQConfig {
         factory.setConcurrentConsumers(3);
         factory.setMaxConcurrentConsumers(10);
         factory.setPrefetchCount(10);
+        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
         factory.setDefaultRequeueRejected(false);
         return factory;
     }
@@ -133,9 +135,39 @@ public class RabbitMQConfig {
     public Queue exportQueue() {
         return QueueBuilder
                 .durable("task.export")
-                .withArgument("x-message-ttl", 86400000) // 24小时 TTL
+                .withArgument("x-message-ttl", 86400000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName() + ".dlx")
-                .withArgument("x-dead-letter-routing-key", resolveRoutingKey("export.dlx"))
+                .withArgument("x-dead-letter-routing-key", "task.export.dlx")
+                .build();
+    }
+
+    @Bean
+    public Queue exportRetryQueue0() {
+        return QueueBuilder
+                .durable("task.export.retry.0")
+                .withArgument("x-message-ttl", 5000)
+                .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
+                .withArgument("x-dead-letter-routing-key", "task.export")
+                .build();
+    }
+
+    @Bean
+    public Queue exportRetryQueue1() {
+        return QueueBuilder
+                .durable("task.export.retry.1")
+                .withArgument("x-message-ttl", 30000)
+                .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
+                .withArgument("x-dead-letter-routing-key", "task.export")
+                .build();
+    }
+
+    @Bean
+    public Queue exportRetryQueue2() {
+        return QueueBuilder
+                .durable("task.export.retry.2")
+                .withArgument("x-message-ttl", 300000)
+                .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
+                .withArgument("x-dead-letter-routing-key", "task.export")
                 .build();
     }
 
@@ -152,15 +184,27 @@ public class RabbitMQConfig {
      */
     @Bean
     public Binding exportBinding(Queue exportQueue, DirectExchange taskExchange) {
-        return BindingBuilder.bind(exportQueue).to(taskExchange).with(resolveRoutingKey("export"));
+        return BindingBuilder.bind(exportQueue).to(taskExchange).with("task.export");
     }
 
-    /**
-     * 绑定导出死信队列到死信交换机
-     */
+    @Bean
+    public Binding exportRetryBinding0(Queue exportRetryQueue0, DirectExchange taskExchange) {
+        return BindingBuilder.bind(exportRetryQueue0).to(taskExchange).with("task.export.retry.0");
+    }
+
+    @Bean
+    public Binding exportRetryBinding1(Queue exportRetryQueue1, DirectExchange taskExchange) {
+        return BindingBuilder.bind(exportRetryQueue1).to(taskExchange).with("task.export.retry.1");
+    }
+
+    @Bean
+    public Binding exportRetryBinding2(Queue exportRetryQueue2, DirectExchange taskExchange) {
+        return BindingBuilder.bind(exportRetryQueue2).to(taskExchange).with("task.export.retry.2");
+    }
+
     @Bean
     public Binding exportDlxBinding(Queue exportDlxQueue, DirectExchange taskDlxExchange) {
-        return BindingBuilder.bind(exportDlxQueue).to(taskDlxExchange).with(resolveRoutingKey("export.dlx"));
+        return BindingBuilder.bind(exportDlxQueue).to(taskDlxExchange).with("task.export.dlx");
     }
 
     /**
@@ -172,7 +216,37 @@ public class RabbitMQConfig {
                 .durable("feedback.low_rating")
                 .withArgument("x-message-ttl", 86400000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName() + ".dlx")
-                .withArgument("x-dead-letter-routing-key", resolveRoutingKey("feedback.low_rating.dlx"))
+                .withArgument("x-dead-letter-routing-key", "feedback.low_rating.dlx")
+                .build();
+    }
+
+    @Bean
+    public Queue lowRatingAlertRetryQueue0() {
+        return QueueBuilder
+                .durable("feedback.low_rating.retry.0")
+                .withArgument("x-message-ttl", 5000)
+                .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
+                .withArgument("x-dead-letter-routing-key", "feedback.low_rating")
+                .build();
+    }
+
+    @Bean
+    public Queue lowRatingAlertRetryQueue1() {
+        return QueueBuilder
+                .durable("feedback.low_rating.retry.1")
+                .withArgument("x-message-ttl", 30000)
+                .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
+                .withArgument("x-dead-letter-routing-key", "feedback.low_rating")
+                .build();
+    }
+
+    @Bean
+    public Queue lowRatingAlertRetryQueue2() {
+        return QueueBuilder
+                .durable("feedback.low_rating.retry.2")
+                .withArgument("x-message-ttl", 300000)
+                .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
+                .withArgument("x-dead-letter-routing-key", "feedback.low_rating")
                 .build();
     }
 
@@ -189,22 +263,30 @@ public class RabbitMQConfig {
      */
     @Bean
     public Binding lowRatingAlertBinding(Queue lowRatingAlertQueue, DirectExchange taskExchange) {
-        return BindingBuilder.bind(lowRatingAlertQueue).to(taskExchange).with(resolveRoutingKey("feedback.low_rating"));
+        return BindingBuilder.bind(lowRatingAlertQueue).to(taskExchange).with("feedback.low_rating");
     }
 
-    /**
-     * 绑定低分告警死信队列到死信交换机
-     */
+    @Bean
+    public Binding lowRatingAlertRetryBinding0(Queue lowRatingAlertRetryQueue0, DirectExchange taskExchange) {
+        return BindingBuilder.bind(lowRatingAlertRetryQueue0).to(taskExchange).with("feedback.low_rating.retry.0");
+    }
+
+    @Bean
+    public Binding lowRatingAlertRetryBinding1(Queue lowRatingAlertRetryQueue1, DirectExchange taskExchange) {
+        return BindingBuilder.bind(lowRatingAlertRetryQueue1).to(taskExchange).with("feedback.low_rating.retry.1");
+    }
+
+    @Bean
+    public Binding lowRatingAlertRetryBinding2(Queue lowRatingAlertRetryQueue2, DirectExchange taskExchange) {
+        return BindingBuilder.bind(lowRatingAlertRetryQueue2).to(taskExchange).with("feedback.low_rating.retry.2");
+    }
+
     @Bean
     public Binding lowRatingAlertDlxBinding(Queue lowRatingAlertDlxQueue, DirectExchange taskDlxExchange) {
-        return BindingBuilder.bind(lowRatingAlertDlxQueue).to(taskDlxExchange).with(resolveRoutingKey("feedback.low_rating.dlx"));
+        return BindingBuilder.bind(lowRatingAlertDlxQueue).to(taskDlxExchange).with("feedback.low_rating.dlx");
     }
 
-    /**
-     * 解析路由键
-     */
     private String resolveRoutingKey(String queueName) {
-        String prefix = properties.getExchange().getRoutingKeyPrefix();
-        return prefix + queueName;
+        return queueName;
     }
 }

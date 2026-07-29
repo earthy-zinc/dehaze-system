@@ -24,7 +24,7 @@ public class NotificationSettingController {
     }
 
     @Operation(summary = "更新通知偏好设置")
-    @PutMapping
+    @PatchMapping
     public Result<Void> update(@RequestBody NotificationSettingForm form) {
         notificationSettingService.update(form);
         return Result.success();

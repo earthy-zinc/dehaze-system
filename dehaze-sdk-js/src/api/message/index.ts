@@ -44,15 +44,15 @@ class MessageAPI {
 
   static markRead(id: number) {
     return request({
-      url: `/api/v1/messages/${id}/read`,
-      method: "put",
+      url: `/api/v1/messages/${id}/_read`,
+      method: "patch",
     });
   }
 
   static markAllRead(type?: string) {
     return request<ReadAllResult>({
-      url: "/api/v1/messages/read-all",
-      method: "put",
+      url: "/api/v1/messages/_read-all",
+      method: "patch",
       params: type ? { type } : undefined,
     });
   }
@@ -122,15 +122,15 @@ class AnnouncementAPI {
 
   static send(id: number) {
     return request<AnnouncementSendResult>({
-      url: `/api/v1/announcements/${id}/send`,
+      url: `/api/v1/announcements/${id}/_send`,
       method: "post",
     });
   }
 
   static cancel(id: number) {
     return request({
-      url: `/api/v1/announcements/${id}/cancel`,
-      method: "put",
+      url: `/api/v1/announcements/${id}/_cancel`,
+      method: "patch",
     });
   }
 }
@@ -171,7 +171,7 @@ class NotificationSettingAPI {
   static update(data: NotificationSettingsForm) {
     return request({
       url: "/api/v1/notification-settings",
-      method: "put",
+      method: "patch",
       data,
     });
   }

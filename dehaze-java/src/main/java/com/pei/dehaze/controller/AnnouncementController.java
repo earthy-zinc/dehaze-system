@@ -66,14 +66,14 @@ public class AnnouncementController {
     }
 
     @Operation(summary = "立即发送公告")
-    @PostMapping("/{id}/send")
+    @PostMapping("/{id}/_send")
     @PreAuthorize("@ss.hasPerm('notify:announcement:send')")
     public Result<AnnouncementSendResultVO> send(@Parameter(description = "公告ID") @PathVariable Long id) {
         return Result.success(announcementService.send(id));
     }
 
     @Operation(summary = "取消定时公告")
-    @PutMapping("/{id}/cancel")
+    @PatchMapping("/{id}/_cancel")
     @PreAuthorize("@ss.hasPerm('notify:announcement:cancel')")
     public Result<Void> cancel(@Parameter(description = "公告ID") @PathVariable Long id) {
         announcementService.cancel(id);

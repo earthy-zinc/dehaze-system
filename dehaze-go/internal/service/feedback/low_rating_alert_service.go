@@ -10,7 +10,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	fbrepo "github.com/earthyzinc/dehaze-go/internal/repository/feedback"
 	msgservice "github.com/earthyzinc/dehaze-go/internal/service/message"
-	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/mq"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -239,12 +238,7 @@ func (s *LowRatingAlertService) findAlgorithmName(ctx context.Context, algorithm
 }
 
 func (s *LowRatingAlertService) buildRoutingKey() string {
-	cfg := config.GetConfig()
-	prefix := cfg.RabbitMQ.RoutingKeyPrefix
-	if prefix == "" {
-		prefix = "task"
-	}
-	return fmt.Sprintf("%s.%s", prefix, lowRatingAlertQueue)
+	return lowRatingAlertQueue
 }
 
 var _ ILowRatingAlertService = (*LowRatingAlertService)(nil)

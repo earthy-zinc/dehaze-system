@@ -11,27 +11,31 @@ import {
 import { createPredictionForm } from "#/factories/model";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 import { getRedis } from "#/utils/redis";
+import { createCompletedPredLog } from "#/utils/mysql";
 import { USERS } from "#/factories/constants";
 
 describe("反馈评价模块接口测试", () => {
   const cleanup = new TestCleanupRegistry();
   const createdFeedbackIds: number[] = [];
   const createdRatingIds: number[] = [];
-  // 用户端测试账号（有会员记录的普通用户）
   const userAccount = USERS.USER.username;
+  const userId = USERS.USER.id;
 
-  // 创建一条预测日志作为评价关联（评分接口校验 sys_pred_log 记录）
   async function ensurePredictionLog(): Promise<number> {
     await login(userAccount);
-    const form = createPredictionForm({ algorithmId: 13 });
-    const result = await ModelAPI.predictAndWait(form, {
-      intervalMs: 2000,
-      timeoutMs: 120000,
-    });
-    if (!result.logId) {
-      throw new Error("创建预测日志失败");
+    try {
+      const form = createPredictionForm({ algorithmId: 13 });
+      const result = await ModelAPI.predictAndWait(form, {
+        intervalMs: 2000,
+        timeoutMs: 30000,
+      });
+      if (result.logId && result.status === 2) {
+        return result.logId;
+      }
+    } catch {
+      // 算法服务不可用时回退到直接创建已完成记录
     }
-    return result.logId;
+    return await createCompletedPredLog(userId, 13);
   }
 
   // 重置反馈每日次数限制（DAILY_FEEDBACK_LIMIT=5，测试创建反馈会超限）
@@ -224,6 +228,37 @@ describe("反馈评价模块接口测试", () => {
       const result = await FeedbackAPI.getRatingByPrediction(predLogId);
 
       expect(result === undefined || result === null).toBe(true);
+    });
+
+    test("正向测试：匿名评价不展示用户信息", async () => {
+      const predLogId = await ensurePredictionLog();
+      const createResult = await FeedbackAPI.createRating(
+        createRatingForm(predLogId, { isAnonymous: 1 })
+      );
+      createdRatingIds.push(createResult.id);
+
+      const result = await FeedbackAPI.getRatingByPrediction(predLogId);
+
+      expect(result).toBeDefined();
+      expect(result?.isAnonymous).toBe(1);
+      expect(result?.userId == null || result?.userId === undefined).toBe(true);
+      expect(result?.username == null || result?.username === undefined).toBe(true);
+      expect(result?.userAvatar == null || result?.userAvatar === undefined).toBe(true);
+    });
+
+    test("异常：越权查询他人处理记录的评价", async () => {
+      const predLogId = await ensurePredictionLog();
+      const createResult = await FeedbackAPI.createRating(createRatingForm(predLogId));
+      createdRatingIds.push(createResult.id);
+
+      await login(USERS.ADMIN.username);
+      await expectBizError(
+        FeedbackAPI.getRatingByPrediction(predLogId),
+        ["A0503", "A0400", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
+      await login(userAccount);
     });
   });
 
@@ -482,6 +517,20 @@ describe("反馈评价模块接口测试", () => {
       expect(Array.isArray(detail.replies)).toBe(true);
     });
 
+    test("验证：非管理员反馈详情 contact 隐藏", async () => {
+      const detail = await FeedbackAPI.getFeedbackDetail(testFeedbackId);
+
+      expect(detail).toBeDefined();
+      expect(detail.contact == null || detail.contact === undefined || detail.contact === "").toBe(
+        true
+      );
+
+      await login(USERS.ADMIN.username);
+      const adminDetail = await FeedbackAPI.getFeedbackDetail(testFeedbackId);
+      expect(adminDetail.contact).toBeTruthy();
+      await login(userAccount);
+    });
+
     test("异常：反馈不存在", async () => {
       await expectBizError(
         FeedbackAPI.getFeedbackDetail(99999999),
@@ -520,6 +569,35 @@ describe("反馈评价模块接口测试", () => {
         undefined,
         true
       );
+    });
+  });
+
+  describe("POST /api/v1/feedback/{id}/supplement - 补充说明重新打开状态（user→admin→user）", () => {
+    let testFeedbackId: number;
+
+    beforeAll(async () => {
+      await login(userAccount);
+      await resetFeedbackDailyLimit();
+      const result = await FeedbackAPI.createFeedback(createFeedbackForm());
+      testFeedbackId = result.id;
+      createdFeedbackIds.push(testFeedbackId);
+
+      await login(USERS.ADMIN.username);
+      await FeedbackAPI.replyFeedback(testFeedbackId, createFeedbackReplyForm());
+    });
+
+    test("验证：补充说明后状态从 replied 变为 processing", async () => {
+      await login(userAccount);
+
+      const detailBefore = await FeedbackAPI.getFeedbackDetail(testFeedbackId);
+      expect(detailBefore.status).toBe("replied");
+
+      await FeedbackAPI.supplementFeedback(testFeedbackId, {
+        content: "补充说明重新打开",
+      });
+
+      const detailAfter = await FeedbackAPI.getFeedbackDetail(testFeedbackId);
+      expect(detailAfter.status).toBe("processing");
     });
   });
 

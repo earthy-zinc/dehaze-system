@@ -16,10 +16,12 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 SESSION_PREFIX = "session:"
+SESSION_USER_PREFIX = "session:user:"
 SESSION_TTL = 7 * 24 * 3600
 SESSION_COOKIE = "X-Session-Id"
 
 LOGIN_FAIL_PREFIX = "login:fail:"
+LOGIN_FAIL_IP_PREFIX = "login:fail:ip:"
 
 
 class AuthService:
@@ -29,7 +31,20 @@ class AuthService:
         redis: Redis,
         username: str,
         password: str,
+        client_ip: str = "unknown",
+        captcha_key: str = "",
+        captcha_code: str = "",
     ) -> dict:
+        # IP 纬度锁定检查
+        ip_fail_key = f"{LOGIN_FAIL_IP_PREFIX}{client_ip}"
+        ip_fail_count_str = await redis.get(ip_fail_key)
+        ip_fail_count = int(ip_fail_count_str) if ip_fail_count_str else 0
+        if ip_fail_count >= settings.LOGIN_FAIL_MAX_ATTEMPTS:
+            raise BusinessException(
+                ResultCode.PASSWORD_ENTER_EXCEED_LIMIT,
+                "IP登录失败次数过多，已临时锁定，请稍后重试",
+            )
+
         fail_key = LOGIN_FAIL_PREFIX + username
         fail_count_str = await redis.get(fail_key)
         fail_count = int(fail_count_str) if fail_count_str else 0
@@ -39,16 +54,23 @@ class AuthService:
                 f"账号已被锁定，请{settings.LOGIN_FAIL_LOCK_MINUTES}分钟后再试",
             )
 
+        # 验证码校验（下沉到 service 层，失败计入锁定计数）
+        if not await AuthService.verify_captcha(redis, captcha_key, captcha_code):
+            await AuthService._fail_login(redis, fail_key, ip_fail_key)
+            raise BusinessException(ResultCode.VERIFY_CODE_ERROR, "验证码错误")
+
         user = await user_repository.get_by_username(db, username)
 
         if not user:
-            await AuthService._fail_login(redis, fail_key)
+            await AuthService._fail_login(redis, fail_key, ip_fail_key)
+            raise BusinessException(ResultCode.USERNAME_OR_PASSWORD_ERROR, "用户名或密码错误")
 
         if user.password is None:
-            await AuthService._fail_login(redis, fail_key)
+            await AuthService._fail_login(redis, fail_key, ip_fail_key)
+            raise BusinessException(ResultCode.USER_LOGIN_ERROR, "用户信息不完整")
         is_valid = await check_password_async(password, user.password)
         if not is_valid:
-            await AuthService._fail_login(redis, fail_key)
+            await AuthService._fail_login(redis, fail_key, ip_fail_key)
 
         if user.status != 1:
             raise BusinessException(ResultCode.USER_ACCOUNT_LOCKED, "用户已被禁用")
@@ -64,8 +86,12 @@ class AuthService:
             raise BusinessException(ResultCode.USER_LOGIN_ERROR, "用户信息不完整")
 
         await redis.delete(fail_key)
+        await redis.delete(ip_fail_key)
 
         session_id = str(uuid.uuid4())
+
+        # 多点登录控制：删除旧 Session，仅保留最新
+        await AuthService._handle_multi_point_session(redis, session_id, user.username)
 
         authorities = [f"ROLE_{r}" for r in roles] + list(perms)
 
@@ -90,7 +116,13 @@ class AuthService:
         }
 
     @staticmethod
-    async def _fail_login(redis: Redis, fail_key: str) -> None:
+    async def _fail_login(redis: Redis, fail_key: str, ip_fail_key: str = None) -> None:
+        # 递增 IP 纬度计数
+        if ip_fail_key:
+            ip_count = await redis.incr(ip_fail_key)
+            if ip_count == 1:
+                await redis.expire(ip_fail_key, settings.LOGIN_FAIL_LOCK_MINUTES * 60)
+
         count = await redis.incr(fail_key)
         if count == 1:
             await redis.expire(fail_key, settings.LOGIN_FAIL_LOCK_MINUTES * 60)
@@ -104,6 +136,17 @@ class AuthService:
             ResultCode.USERNAME_OR_PASSWORD_ERROR,
             f"用户名或密码错误，剩余{remaining}次尝试机会",
         )
+
+    @staticmethod
+    async def _handle_multi_point_session(redis: Redis, new_session_id: str, username: str) -> None:
+        """多点登录控制：删除同一用户名下的旧 Session，仅保留最新。"""
+        user_session_key = f"{SESSION_USER_PREFIX}{username}"
+        old_session_id = await redis.get(user_session_key)
+        if old_session_id:
+            old_session_id_str = old_session_id.decode() if isinstance(old_session_id, bytes) else old_session_id
+            if old_session_id_str:
+                await redis.delete(f"{SESSION_PREFIX}{old_session_id_str}")
+        await redis.setex(user_session_key, SESSION_TTL, new_session_id)
 
     @staticmethod
     async def register(

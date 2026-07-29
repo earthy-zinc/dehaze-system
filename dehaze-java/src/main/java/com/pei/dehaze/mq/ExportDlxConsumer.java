@@ -5,6 +5,7 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.config.WebSocketMessageRelay;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
+import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -40,8 +41,8 @@ public class ExportDlxConsumer extends RabbitMQConsumer {
     private final WebSocketMessageRelay wsMessageRelay;
 
     @RabbitListener(queues = QUEUE_EXPORT_DLX)
-    public void onDlxMessage(Message message) {
-        processMessage(message, QUEUE_EXPORT_DLX, this::handleDlx);
+    public void onDlxMessage(Message message, Channel channel) {
+        processDlxMessage(message, channel, QUEUE_EXPORT_DLX, this::handleDlx);
     }
 
     private void handleDlx(String body, String traceId) throws Exception {

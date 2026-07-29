@@ -301,17 +301,6 @@ func (s *AnnouncementService) resolveTargetUserIDs(ctx context.Context, ann *mod
 			return nil, common.NewBizError(common.PARAM_ERROR, "等级参数不正确")
 		}
 		return s.userRepo.FindUserIDsByLevel(ctx, params.Level)
-	case "tag":
-		if ann.TargetParams == "" {
-			return nil, nil
-		}
-		var params struct {
-			Tag string `json:"tag"`
-		}
-		if err := json.Unmarshal([]byte(ann.TargetParams), &params); err != nil {
-			return nil, common.WrapBizError(common.PARAM_ERROR, "解析标签参数失败", err)
-		}
-		return s.userRepo.FindUserIDsByTag(ctx, params.Tag)
 	default:
 		return nil, common.NewBizError(common.PARAM_ERROR, "不支持的发送范围: "+ann.TargetScope)
 	}

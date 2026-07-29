@@ -83,13 +83,13 @@ class Consumer(BaseRabbitMQClient):
             raise RuntimeError("Channel not connected")
 
         exchange = await self._channel.declare_exchange(
-            settings.RABBITMQ_EXCHANGE,
+            settings.RABBITMQ_EXCHANGE + ".dlx",
             aio_pika.ExchangeType(settings.RABBITMQ_EXCHANGE_TYPE),
             durable=True,
         )
 
         queue = await self._channel.declare_queue(queue_name, durable=True)
-        routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{queue_name}"
+        routing_key = queue_name
         await queue.bind(exchange, routing_key=routing_key)
         await queue.consume(self._make_callback(queue_name, handler))
         self._queues[queue_name] = queue
@@ -109,18 +109,24 @@ class Consumer(BaseRabbitMQClient):
             durable=True,
         )
 
+        dlx_exchange = await self._channel.declare_exchange(
+            settings.RABBITMQ_EXCHANGE + ".dlx",
+            aio_pika.ExchangeType(settings.RABBITMQ_EXCHANGE_TYPE),
+            durable=True,
+        )
+
         # 声明死信队列
         dlx_queue_name = f"{queue_name}.dlx"
         dlx_queue = await self._channel.declare_queue(
             dlx_queue_name,
             durable=True,
         )
-        dlx_routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{dlx_queue_name}"
-        await dlx_queue.bind(exchange, routing_key=dlx_routing_key)
+        dlx_routing_key = f"{queue_name}.dlx"
+        await dlx_queue.bind(dlx_exchange, routing_key=dlx_routing_key)
 
         # 声明重试队列（带 TTL，过期后重新路由到主队列）
         retry_delays = settings.RABBITMQ_RETRY_DELAYS
-        main_routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{queue_name}"
+        main_routing_key = queue_name
         for i, delay_ms in enumerate(retry_delays):
             retry_queue_name = f"{queue_name}.retry.{i}"
             retry_queue_obj = await self._channel.declare_queue(
@@ -132,7 +138,7 @@ class Consumer(BaseRabbitMQClient):
                     "x-dead-letter-routing-key": main_routing_key,
                 },
             )
-            retry_routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{retry_queue_name}"
+            retry_routing_key = f"{queue_name}.retry.{i}"
             await retry_queue_obj.bind(exchange, routing_key=retry_routing_key)
 
         # 声明主队列（配置 DLX：过期或 reject 的消息进入死信队列）
@@ -141,12 +147,12 @@ class Consumer(BaseRabbitMQClient):
             durable=True,
             arguments={
                 "x-message-ttl": 86400000,  # 24h TTL
-                "x-dead-letter-exchange": settings.RABBITMQ_EXCHANGE,
+                "x-dead-letter-exchange": settings.RABBITMQ_EXCHANGE + ".dlx",
                 "x-dead-letter-routing-key": dlx_routing_key,
             },
         )
 
-        routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{queue_name}"
+        routing_key = queue_name
         await queue.bind(exchange, routing_key=routing_key)
 
         await queue.consume(self._make_callback(queue_name, handler))
@@ -213,7 +219,7 @@ class Consumer(BaseRabbitMQClient):
         if retry_count < len(retry_delays):
             # 投递到对应级别的重试队列
             retry_queue = f"{queue_name}.retry.{retry_count}"
-            retry_routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{retry_queue}"
+            retry_routing_key = retry_queue
 
             exchange = await self._channel.declare_exchange(
                 settings.RABBITMQ_EXCHANGE,
@@ -239,10 +245,10 @@ class Consumer(BaseRabbitMQClient):
         else:
             # 超过最大重试次数，投递到死信队列
             dlx_queue = f"{queue_name}.dlx"
-            dlx_routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{dlx_queue}"
+            dlx_routing_key = dlx_queue
 
             exchange = await self._channel.declare_exchange(
-                settings.RABBITMQ_EXCHANGE,
+                settings.RABBITMQ_EXCHANGE + ".dlx",
                 aio_pika.ExchangeType(settings.RABBITMQ_EXCHANGE_TYPE),
                 durable=True,
             )

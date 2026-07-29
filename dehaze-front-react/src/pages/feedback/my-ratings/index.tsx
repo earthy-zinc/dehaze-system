@@ -1,4 +1,4 @@
-import { FeedbackAPI, type RatingPageVO } from "dehaze-sdk-js";
+import { FeedbackAPI, type MyRatingVO } from "dehaze-sdk-js";
 import {
   Card,
   Empty,
@@ -19,7 +19,7 @@ const PAGE_SIZE = 10;
 
 const MyRatings: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [list, setList] = useState<RatingPageVO[]>([]);
+  const [list, setList] = useState<MyRatingVO[]>([]);
   const [total, setTotal] = useState(0);
   const [pageNum, setPageNum] = useState(1);
 

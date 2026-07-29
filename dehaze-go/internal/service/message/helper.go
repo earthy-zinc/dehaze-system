@@ -26,7 +26,6 @@ var announcementTypeLabels = map[string]string{
 var targetScopeLabels = map[string]string{
 	"all":        "全体用户",
 	"level":      "按会员等级",
-	"tag":        "按用户标签",
 	"specified":  "指定用户",
 }
 

@@ -11,7 +11,7 @@ func RegisterPackageRoutes(rg *gin.RouterGroup, packageApi *api.PackageApi) {
 	{
 		pkgRouter.GET("", packageApi.ListOnSale)
 		pkgRouter.GET("/page", packageApi.GetPage)
-		pkgRouter.GET("/sales/stats", packageApi.GetSalesStats)
+		pkgRouter.GET("/sales/stats", middleware.Permission("package:sales"), packageApi.GetSalesStats)
 		pkgRouter.GET("/calculate-price", packageApi.CalculatePrice)
 		pkgRouter.POST("", middleware.Permission("package:add"), packageApi.Add)
 		pkgRouter.PUT("/:id", middleware.Permission("package:edit"), packageApi.Update)

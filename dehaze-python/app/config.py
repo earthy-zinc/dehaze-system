@@ -167,7 +167,7 @@ class Settings(BaseSettings):
     RABBITMQ_HOST: str = "localhost"
     RABBITMQ_PORT: int = 5672
     RABBITMQ_USER: str = "guest"
-    RABBITMQ_EXCHANGE: str = "dehaze.task"
+    RABBITMQ_EXCHANGE: str = "dehaze.tasks"
     RABBITMQ_EXCHANGE_TYPE: str = "direct"
     RABBITMQ_ROUTING_KEY_PREFIX: str = "task"
     RABBITMQ_RECONNECT_MAX_RETRIES: int = 0  # 0 表示无限重试

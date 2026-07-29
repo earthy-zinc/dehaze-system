@@ -50,21 +50,21 @@ public class MessageController {
         return PageResult.success(page);
     }
 
-    @Operation(summary = "消息详情（自动标记已读）")
+    @Operation(summary = "消息详情")
     @GetMapping("/{id}")
     public Result<MessageDetailVO> getDetail(@Parameter(description = "消息ID") @PathVariable Long id) {
         return Result.success(messageService.getDetail(id));
     }
 
     @Operation(summary = "标记单条已读")
-    @PutMapping("/{id}/read")
+    @PatchMapping("/{id}/_read")
     public Result<Void> markRead(@Parameter(description = "消息ID") @PathVariable Long id) {
         messageService.markRead(id);
         return Result.success();
     }
 
     @Operation(summary = "全部标记已读")
-    @PutMapping("/read-all")
+    @PatchMapping("/_read-all")
     public Result<ReadAllResultVO> markAllRead(@RequestParam(required = false) String type) {
         return Result.success(messageService.markAllRead(type));
     }

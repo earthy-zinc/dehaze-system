@@ -98,7 +98,7 @@ describe("消息通知模块接口测试", () => {
   });
 
   describe("GET /api/v1/messages/{id} - 消息详情", () => {
-    test("正向测试：查看消息详情并自动标记已读", async () => {
+    test("正向测试：查看消息详情不自动标记已读", async () => {
       const form = createMessageSendRequest();
       const { messageIds } = await MessageAPI.send(form);
       const id = messageIds[0]!;
@@ -108,8 +108,12 @@ describe("消息通知模块接口测试", () => {
       expect(detail.id).toBe(id);
       expect(detail.title).toBe(form.title);
       expect(detail.content).toBe(form.content);
-      expect(detail.readStatus).toBe(1);
-      expect(detail.readTime).toBeDefined();
+      expect(detail.readStatus).toBe(0);
+
+      await MessageAPI.markRead(id);
+      const readDetail = await MessageAPI.getDetail(id);
+      expect(readDetail.readStatus).toBe(1);
+      expect(readDetail.readTime).toBeDefined();
 
       await MessageAPI.deleteByIds(String(id));
     });
@@ -124,7 +128,7 @@ describe("消息通知模块接口测试", () => {
     });
   });
 
-  describe("PUT /api/v1/messages/{id}/read - 标记单条已读", () => {
+  describe("PATCH /api/v1/messages/{id}/_read - 标记单条已读", () => {
     test("正向测试：标记未读消息为已读", async () => {
       const form = createMessageSendRequest();
       const { messageIds } = await MessageAPI.send(form);
@@ -151,7 +155,7 @@ describe("消息通知模块接口测试", () => {
     });
   });
 
-  describe("PUT /api/v1/messages/read-all - 全部标记已读", () => {
+  describe("PATCH /api/v1/messages/_read-all - 全部标记已读", () => {
     test("正向测试：全部标记已读并返回受影响条数", async () => {
       const form1 = createMessageSendRequest();
       const form2 = createMessageSendRequest();
@@ -227,7 +231,7 @@ describe("消息通知模块接口测试", () => {
     });
   });
 
-  describe("GET/PUT /api/v1/notification-settings - 通知偏好设置", () => {
+  describe("GET/PATCH /api/v1/notification-settings - 通知偏好设置", () => {
     test("正向测试：获取通知设置", async () => {
       const settings = await NotificationSettingAPI.get();
       expect(settings).toBeDefined();

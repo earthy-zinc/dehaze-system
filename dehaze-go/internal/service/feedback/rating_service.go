@@ -173,10 +173,7 @@ func (s *RatingService) UpdateRating(ctx context.Context, userID, ratingID int64
 		return common.NewBizError(common.RATING_NOT_FOUND, "评价不存在")
 	}
 	if rating.UserID != userID {
-		return common.NewBizError(common.OPERATION_NOT_ALLOW, "无权修改他人评价")
-	}
-	if time.Since(rating.CreatedAt) > ratingTimeLimitDays*24*time.Hour {
-		return common.NewBizError(common.RATING_EXPIRED, "已超过评价时限")
+		return common.NewBizError(common.RATING_NOT_FOUND, "评价不存在")
 	}
 
 	if err := s.ratingRepo.Update(ctx, ratingID, map[string]interface{}{
@@ -205,7 +202,18 @@ func (s *RatingService) ListMyRatings(ctx context.Context, userID int64, pageNum
 	return &vo.PageResult[vo.MyRatingVO]{List: vos, Total: total}, nil
 }
 
-func (s *RatingService) GetRatingByPrediction(ctx context.Context, predLogID int64) (*vo.RatingDetailVO, error) {
+func (s *RatingService) GetRatingByPrediction(ctx context.Context, userID, predLogID int64) (*vo.RatingDetailVO, error) {
+	predLog, err := s.predLogRepo.FindByID(ctx, predLogID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, common.NewBizError(common.PREDICTION_LOG_NOT_FOUND, "处理记录不存在")
+		}
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询处理记录失败", err)
+	}
+	if predLog.CreateBy != userID {
+		return nil, common.NewBizError(common.OPERATION_NOT_ALLOW, "无权查询他人处理记录的评价")
+	}
+
 	rating, err := s.ratingRepo.FindByPredLogID(ctx, predLogID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询评价失败", err)
@@ -252,7 +260,6 @@ func (s *RatingService) HideRating(ctx context.Context, id int64) error {
 	}); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "隐藏评价失败", err)
 	}
-	s.invalidateRatingStatsCache(ctx)
 	return nil
 }
 
@@ -274,7 +281,6 @@ func (s *RatingService) ReplyRating(ctx context.Context, id int64, content strin
 	}); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "回复评价失败", err)
 	}
-	s.invalidateRatingStatsCache(ctx)
 	return nil
 }
 

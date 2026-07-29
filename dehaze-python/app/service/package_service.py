@@ -355,8 +355,8 @@ class PackageService:
             if not user_coupon:
                 raise BusinessException(ResultCode.COUPON_NOT_FOUND)
             if user_id and user_coupon.user_id != user_id:
-                raise BusinessException(ResultCode.BUSINESS_ERROR, "优惠券不属于当前用户")
-            if user_coupon.status != 1:
+                raise BusinessException(ResultCode.COUPON_NOT_FOUND)
+            if user_coupon.status not in (1, 4):
                 raise BusinessException(ResultCode.COUPON_STATUS_INVALID)
             if user_coupon.expire_time and user_coupon.expire_time < datetime.now():
                 raise BusinessException(ResultCode.COUPON_EXPIRED)
@@ -390,8 +390,9 @@ class PackageService:
 
     @staticmethod
     async def get_sales_stats(db: AsyncSession) -> dict:
-        total_sales_stmt = select(func.coalesce(func.sum(SysPackage.sales_count), 0)).where(
-            SysPackage.deleted == 0
+        total_sales_stmt = select(func.count()).select_from(SysOrder).where(
+            SysOrder.deleted == 0,
+            SysOrder.status.in_([2, 3]),
         )
         total_sales = int((await db.execute(total_sales_stmt)).scalar() or 0)
 

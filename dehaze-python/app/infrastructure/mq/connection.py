@@ -73,11 +73,11 @@ async def _register_handlers(consumer: Consumer) -> None:
         handle_low_rating_alert,
     )
 
-    await consumer.register("task.execute", handle_export_task)
-    logger.info("已注册消费者 handler: task.execute")
+    await consumer.register("task.export", handle_export_task)
+    logger.info("已注册消费者 handler: task.export")
 
-    await consumer.register_dlq("task.execute.dlx", handle_dlq_message)
-    logger.info("已注册死信队列 handler: task.execute.dlx")
+    await consumer.register_dlq("task.export.dlx", handle_dlq_message)
+    logger.info("已注册死信队列 handler: task.export.dlx")
 
     await consumer.register("feedback.low_rating", handle_low_rating_alert)
     logger.info("已注册消费者 handler: feedback.low_rating")
