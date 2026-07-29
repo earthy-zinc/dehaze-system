@@ -212,7 +212,7 @@ tmp*/
 .yarn-integrity
 .pnpm-debug.log*
 package-lock.json
-pnpm-lock.yaml
+# pnpm-lock.yaml
 yarn.lock
 
 # Node.js 日志（所有层级）
