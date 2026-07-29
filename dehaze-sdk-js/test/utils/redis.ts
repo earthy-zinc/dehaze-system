@@ -5,10 +5,11 @@ let redis: Redis | null = null;
 export function getRedis(): Redis {
   if (!redis) {
     redis = new Redis({
-      host: process.env.REDIS_HOST || "127.0.0.1",
-      port: Number(process.env.REDIS_PORT) || 6379,
-      password: process.env.REDIS_PASSWORD || "12345678",
-      db: Number(process.env.REDIS_DB) || 0,
+      host: process.env.DEHAZE_HOST || "127.0.0.1",
+      port: 6379,
+      password: process.env.DEHAZE_PASSWORD || "12345678",
+      db: 0,
+      maxRetriesPerRequest: 3,
     });
     redis.on("error", () => {});
   }

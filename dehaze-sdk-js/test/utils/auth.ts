@@ -22,7 +22,7 @@ let activeUser: string = "";
 const sessionStore = new Map<string, string>();
 
 async function getCaptchaCode(captchaKey: string): Promise<string> {
-  const redisKey = `${process.env.CAPTCHA_KEY_PREFIX || "captcha_code:"}${captchaKey}`;
+  const redisKey = `captcha_code:${captchaKey}`;
   const redis = getRedis();
   const code = await redis.get(redisKey);
   if (!code) {

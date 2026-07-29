@@ -32,7 +32,7 @@ db:
   driver: mysql
   type: mysql
   mysql:
-    host: localhost
+    host: ${DEHAZE_HOST}
     port: 3306
     database: dehaze_test
     username: root
@@ -42,7 +42,7 @@ db:
     parse-time: true
     loc: Local
   postgres:
-    host: localhost
+    host: ${DEHAZE_HOST}
     port: 5432
     database: dehaze
     username: postgres
@@ -66,7 +66,7 @@ session:
 
 
 mongo:
-  uri: "mongodb://root:${DEHAZE_PASSWORD}@127.0.0.1:27017/dehaze_test?authSource=admin"
+  uri: "mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:27017/dehaze_test?authSource=admin"
   database: "dehaze_test"
 
 cache:
@@ -74,7 +74,7 @@ cache:
   type: redis
   redis:
     enabled: true
-    addr: localhost:6379
+    addr: ${DEHAZE_HOST}:6379
     password: "${DEHAZE_PASSWORD}"
     # Redis db 隔离规范（推荐配置，不强制分库以避免破坏现有 Session）：
     #   db=0 业务缓存

@@ -5,11 +5,11 @@ let pool: mysql.Pool | null = null;
 function getPool(): mysql.Pool {
   if (!pool) {
     pool = mysql.createPool({
-      host: process.env.MYSQL_HOST || "127.0.0.1",
-      port: Number(process.env.MYSQL_PORT) || 3306,
-      user: process.env.MYSQL_USER || "root",
-      password: process.env.MYSQL_PASSWORD || process.env.REDIS_PASSWORD || "12345678",
-      database: process.env.MYSQL_DATABASE || "dehaze",
+      host: process.env.DEHAZE_HOST || "127.0.0.1",
+      port: 3306,
+      user: "root",
+      password: process.env.DEHAZE_PASSWORD || "12345678",
+      database: "dehaze",
       waitForConnections: true,
       connectionLimit: 5,
     });

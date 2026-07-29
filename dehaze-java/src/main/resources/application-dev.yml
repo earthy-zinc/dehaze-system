@@ -26,7 +26,7 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true
+    url: jdbc:mysql://${DEHAZE_HOST}:3306/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true
     username: root
     password: ${DEHAZE_PASSWORD}
     druid:
@@ -55,7 +55,7 @@ spring:
   data:
     redis:
       database: 0
-      host: localhost
+      host: ${DEHAZE_HOST}
       port: 6379
       password: ${DEHAZE_PASSWORD}
       timeout: 10s
@@ -70,7 +70,7 @@ spring:
           # 连接池中的最小空闲连接 默认0
           min-idle: 4
     mongodb:
-      uri: mongodb://root:${DEHAZE_PASSWORD}@localhost:27017/dehaze?authSource=admin
+      uri: mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:27017/dehaze?authSource=admin
   cache:
     enabled: true
     # 缓存类型 redis、none(不使用缓存)
@@ -134,7 +134,6 @@ file:
   # 上传类型 (目前支持minio OSS、local 本地存储)
   type: minio
   # 上传文件基于url（用户主动上传的文件走 MinIO + Java 下载接口）
-  # 使用 127.0.0.1，避免 localhost 在浏览器跨域判定中与 127.0.0.1 视为不同 origin
   baseUrl: http://127.0.0.1:8989/api/v1/files/download
   # 数据集根目录（nginx-dataset 容器挂载的宿主机路径）
   datasetPath: D:/DeepLearning/dataset
@@ -144,7 +143,7 @@ file:
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
-    endpoint: http://127.0.0.1:9110
+    endpoint: http://${DEHAZE_HOST}:9110
     # 访问凭据
     access-key: admin
     # 凭据密钥
@@ -181,7 +180,7 @@ xxl:
     enabled: true
     admin:
       # 多个地址使用,分割
-      addresses: http://127.0.0.1:14980/xxl-job-admin
+      addresses: http://${DEHAZE_HOST}:14980/xxl-job-admin
     accessToken: ${DEHAZE_PASSWORD:12345678}
     executor:
       appname: xxl-job-executor-${spring.application.name}
@@ -215,8 +214,8 @@ algorithm:
     api-key: dhak_m2m_internal_python_service_key_2024
   # 模型权重文件存储配置（复用 nginx-dataset 静态服务 /models 路径）
   model:
-    # 算法权重访问 URL = {baseUrl}/{algorithm.path}，如 http://127.0.0.1:9000/models/AECR-Net/NH_train.pk
-    baseUrl: http://127.0.0.1:9000/models
+    # 算法权重访问 URL = {baseUrl}/{algorithm.path}，如 http://{DEHAZE_HOST}:9000/models/AECR-Net/NH_train.pk
+    baseUrl: http://${DEHAZE_HOST}:9000/models
     # HTTP HEAD 校验连接超时（毫秒）
     connect-timeout: 5000
     # HTTP HEAD 校验读取超时（毫秒）
@@ -251,7 +250,7 @@ rabbitmq:
   # 是否启用 RabbitMQ
   enabled: true
   # RabbitMQ 连接 URL (amqp://user:password@host:port/vhost)
-  url: amqp://root:${DEHAZE_PASSWORD}@127.0.0.1:5672/%2F
+  url: amqp://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:5672/%2F
   # 交换机配置
   exchange:
     # 任务交换机名称 (与 Go 端保持一致)

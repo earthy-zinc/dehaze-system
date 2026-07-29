@@ -14,8 +14,11 @@
 
 ### 环境变量管理
 - 统一密码环境变量 `DEHAZE_PASSWORD=12345678` 管理所有基础设施密码
+- 统一基础设施主机地址 `DEHAZE_HOST`（`.env` 中配置），三端所有基础设施连接（MySQL/Redis/MongoDB/MinIO/RabbitMQ/Nginx/XXL-Job）使用此变量；后端服务间调用及自身 URL 保持 `127.0.0.1`（本地调试）
 - 三个后端（Go/Java/Python）共享相同 JWT 签名密钥，确保 JWT token 可互认
 - `.env` 文件位于 monorepo 根目录 `DehazeSystem/.env`
+- Go/Java 配置中使用 `${DEHAZE_HOST}` 占位符；Java 测试配置用 `${DEHAZE_HOST:127.0.0.1}` 带默认值
+- Python 通过 pydantic `model_validator` 从 `DEHAZE_HOST` 派生所有基础设施主机字段
 
 ### 调试辅助脚本
 - **调试脚本**：`scripts/debug_helper.py <command>` - 包含登录逻辑 + API 调试
@@ -50,8 +53,8 @@
 - 新增算法默认状态应为 0（草稿），不是 1（测试中）
 
 ### 文件存储双轨制
-- **用户上传文件**：存入 MinIO，`objectName` 格式 `upload/yyyyMMdd/md5.ext`，`url` 指向后端 download API（如 `http://127.0.0.1:8989/api/v1/files/download/...`）
-- **数据集文件**：由 nginx-dataset 容器（端口 9000）直服，不上传 MinIO；`objectName` 为相对路径（如 `Dense-Haze/clean/14_GT.png`），`url` 指向 nginx（如 `http://127.0.0.1:9000/...`）
+- **用户上传文件**：存入 MinIO，`objectName` 格式 `upload/yyyyMMdd/md5.ext`，`url` 指向后端 download API（如 `http://{DEHAZE_HOST}:8989/api/v1/files/download/...`）
+- **数据集文件**：由 nginx-dataset 容器（端口 9000）直服，不上传 MinIO；`objectName` 为相对路径（如 `Dense-Haze/clean/14_GT.png`），`url` 指向 nginx（如 `http://{DEHAZE_HOST}:9000/...`）
 - 数据集初始化由 Java `InitFile` 组件完成（`file.init=true` 时扫描磁盘），仅创建 DB 记录不上传 MinIO
 - 三端 download 接口统一逻辑：先查 DB，若 `url` 不以当前后端 download baseUrl 开头则 302 重定向到该 URL（处理 nginx 直服的数据集文件）
 

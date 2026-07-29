@@ -10,18 +10,13 @@
  * - 单个测试文件内的登录切换会命中 sessionStore 缓存，不会触发限流
  */
 import dotenv from "dotenv";
-import fs from "fs";
 import path from "path";
 import { afterAll, beforeAll } from "vitest";
 import { service } from "./src/utils/request";
 import { login } from "./test/utils/auth";
 import { disconnectRedis } from "./test/utils/redis";
 
-const backend = process.env.TEST_BACKEND || "java";
-const envFile = path.resolve(__dirname, `.env.${backend}`);
-if (fs.existsSync(envFile)) {
-  dotenv.config({ path: envFile });
-}
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 class LocalStorageMock {
   private store: Record<string, string> = {};

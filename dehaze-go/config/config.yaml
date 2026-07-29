@@ -128,7 +128,7 @@ db:
   driver: mysql
   type: mysql
   mysql:
-    host: 127.0.0.1
+    host: ${DEHAZE_HOST}
     port: 3306
     database: dehaze
     username: root
@@ -138,7 +138,7 @@ db:
     parse-time: true
     loc: Local
   postgres:
-    host: 127.0.0.1
+    host: ${DEHAZE_HOST}
     port: 5432
     database: dehaze
     username: postgres
@@ -157,7 +157,7 @@ cache:
   type: multi
   redis:
     enabled: true
-    addr: 127.0.0.1:6379
+    addr: ${DEHAZE_HOST}:6379
     password: ${DEHAZE_PASSWORD}
     # Redis db 隔离规范（推荐配置，不强制分库以避免破坏现有 Session）：
     #   db=0 业务缓存（当前使用）
@@ -224,13 +224,13 @@ algorithm:
 
 rabbitmq:
   enabled: true
-  url: "amqp://root:${DEHAZE_PASSWORD}@127.0.0.1:5672/%2F"
+  url: "amqp://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:5672/%2F"
   exchange: "dehaze.tasks"
   exchangeType: "direct"
   routingKeyPrefix: "task"
 
 mongo:
-  uri: "mongodb://root:${DEHAZE_PASSWORD}@127.0.0.1:27017/dehaze?authSource=admin"
+  uri: "mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:27017/dehaze?authSource=admin"
   database: "dehaze"
 
 file:
@@ -238,7 +238,7 @@ file:
   baseUrl: "http://127.0.0.1:8990/api/v1/files/download" # 文件访问基础URL
   maxSize: 104857600 # 单文件最大大小（字节），默认100MB
   minio:
-    endpoint: "127.0.0.1:9110"
+    endpoint: "${DEHAZE_HOST}:9110"
     accessKey: "admin"
     secretKey: "${DEHAZE_PASSWORD}"
     bucketName: "dehaze"
@@ -255,7 +255,7 @@ kafka:
 # XXL-Job 定时任务配置
 xxljob:
   enabled: true
-  server-addr: "http://127.0.0.1:14980/xxl-job-admin"
+  server-addr: "http://${DEHAZE_HOST}:14980/xxl-job-admin"
   access-token: "${DEHAZE_PASSWORD}"
   executor-port: "9997"
   registry-key: "xxl-job-executor-dehaze-go"

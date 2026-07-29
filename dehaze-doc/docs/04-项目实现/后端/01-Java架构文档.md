@@ -700,7 +700,7 @@ xxl:
   job:
     enabled: false                          # 开关
     admin:
-      addresses: http://127.0.0.1:8080/xxl-job-admin
+      addresses: http://${DEHAZE_HOST}:14980/xxl-job-admin
     accessToken: default_token
     executor:
       appname: xxl-job-executor-dehaze-java

@@ -91,8 +91,8 @@ services:
 
   # Nginx 静态文件服务
   # 通过项目根目录下的 datasets、models 符号链接（指向 D:\DeepLearning）统一管理数据
-  # 数据集图片 URL：http://127.0.0.1:9000/datasets/{dataset_path}/{subdir}/{filename}
-  # 模型权重 URL：http://127.0.0.1:9000/models/{algorithm_path}
+  # 数据集图片 URL：http://{DEHAZE_HOST}:9000/datasets/{dataset_path}/{subdir}/{filename}
+  # 模型权重 URL：http://{DEHAZE_HOST}:9000/models/{algorithm_path}
   nginx-dataset:
     image: nginx:alpine
     container_name: nginx-dataset

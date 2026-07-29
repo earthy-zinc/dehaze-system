@@ -25,9 +25,9 @@
     "test": "vitest --run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    "test:java": "cross-env TEST_BACKEND=java vitest --run",
-    "test:python": "cross-env TEST_BACKEND=python vitest --run",
-    "test:go": "cross-env TEST_BACKEND=go vitest --run",
+    "test:java": "cross-env BACKEND_URL=http://127.0.0.1:8989 vitest --run",
+    "test:python": "cross-env BACKEND_URL=http://127.0.0.1:8991 vitest --run",
+    "test:go": "cross-env BACKEND_URL=http://127.0.0.1:8990 vitest --run",
     "lint": "pnpm lint:eslint && pnpm lint:prettier",
     "lint:eslint": "eslint --fix ./src/**/*.ts ./test/**/*.ts ./index.ts",
     "lint:prettier": "prettier --write \"**/*.{ts,json,cjs}\""

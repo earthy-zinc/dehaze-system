@@ -14,13 +14,13 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.31.3:3306/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true
+    url: jdbc:mysql://${DEHAZE_HOST}:3306/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true
     username: root
     password: ${DEHAZE_PASSWORD}
   data:
     redis:
       database: 0
-      host: 192.168.31.3
+      host: ${DEHAZE_HOST}
       port: 6379
       password: ${DEHAZE_PASSWORD}
       timeout: 10s
@@ -35,7 +35,7 @@ spring:
           # 连接池中的最小空闲连接 默认0
           min-idle: 0
     mongodb:
-      uri: mongodb://root:${DEHAZE_PASSWORD}@192.168.31.3:27017/dehaze?authSource=admin
+      uri: mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:27017/dehaze?authSource=admin
   cache:
     enabled: true
     # 缓存类型 redis、none(不使用缓存)
@@ -110,7 +110,7 @@ file:
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
-    endpoint: http://192.168.31.3:9000
+    endpoint: http://${DEHAZE_HOST}:9110
     # 访问凭据
     access-key: admin
     # 凭据密钥
@@ -128,7 +128,7 @@ springdoc:
 # 模型权重文件存储配置（复用 nginx-dataset 静态服务 /models 路径）
 algorithm:
   model:
-    baseUrl: http://127.0.0.1:9000/models
+    baseUrl: http://${DEHAZE_HOST}:9000/models
     connect-timeout: 5000
     read-timeout: 10000
 
@@ -143,7 +143,7 @@ xxl:
     enabled: true
     admin:
       # 多个地址使用,分割
-      addresses: http://127.0.0.1:14980/xxl-job-admin
+      addresses: http://${DEHAZE_HOST}:14980/xxl-job-admin
     accessToken: ${DEHAZE_PASSWORD:12345678}
     executor:
       appname: xxl-job-executor-${spring.application.name}

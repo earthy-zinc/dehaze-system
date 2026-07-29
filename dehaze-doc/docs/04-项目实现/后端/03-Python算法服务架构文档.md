@@ -370,6 +370,9 @@ class Settings(BaseSettings):
     # 共享密码（从 .env 加载，复用为多服务密码）
     DEHAZE_PASSWORD
 
+    # 基础设施统一主机地址（从 .env 加载，DB_HOST/REDIS_HOST/MINIO_ENDPOINT 等均从此派生）
+    DEHAZE_HOST
+
     # 数据库配置
     DB_HOST / DB_PORT / DB_NAME / DB_USER
     DATABASE_POOL_SIZE / DATABASE_MAX_OVERFLOW / DATABASE_POOL_RECYCLE / DATABASE_ECHO

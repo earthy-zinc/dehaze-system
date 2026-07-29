@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,6 +36,9 @@ class Settings(BaseSettings):
 
     # 共享密码（从 .env 加载）
     DEHAZE_PASSWORD: str = Field(default="")
+
+    # 基础设施统一主机地址（从 .env 加载，MySQL/Redis/MongoDB/MinIO/RabbitMQ/Nginx/XXL-Job 等均使用此地址）
+    DEHAZE_HOST: str = Field(default="127.0.0.1")
 
     # 数据库配置
     DB_HOST: str = "localhost"
@@ -89,7 +92,7 @@ class Settings(BaseSettings):
 
     @property
     def MONGO_URI(self) -> str:
-        return f"mongodb://root:{self.DEHAZE_PASSWORD}@127.0.0.1:27017/{self.MONGO_DB_NAME}?authSource=admin"
+        return f"mongodb://root:{self.DEHAZE_PASSWORD}@{self.DEHAZE_HOST}:27017/{self.MONGO_DB_NAME}?authSource=admin"
 
     # MinIO 配置
     MINIO_ENDPOINT: str = "127.0.0.1:9110"
@@ -129,7 +132,7 @@ class Settings(BaseSettings):
     # 模型权重文件存储配置
     # Nginx 静态服务（nginx-dataset 容器）下 /models 路径的基础 URL，
     # Python 服务通过 HTTP 下载到本地缓存后由 torch.load 加载，解除 Python 服务与 trained_model/ 目录的强耦合。
-    # 算法权重访问 URL = {MODEL_BASE_URL}/{algorithm.path}，如 http://127.0.0.1:9000/models/AECR-Net/NH_train.pk
+    # 算法权重访问 URL = {MODEL_BASE_URL}/{algorithm.path}，如 http://{DEHAZE_HOST}:9000/models/AECR-Net/NH_train.pk
     MODEL_BASE_URL: str = "http://127.0.0.1:9000/models"
     # 本地缓存目录：首次下载后缓存到此目录，二次加载直接读缓存。
     # 指向项目根目录 models/，本地开发时无需重复下载占用空间
@@ -302,6 +305,16 @@ class Settings(BaseSettings):
     AUTO_RENEW_RETRY_INTERVAL_HOURS: int = 2
     AUTO_RENEW_DISCOUNT: float = 0.95
 
+    @model_validator(mode="after")
+    def _apply_dehaze_host(self):
+        self.DB_HOST = self.DEHAZE_HOST
+        self.REDIS_HOST = self.DEHAZE_HOST
+        self.RABBITMQ_HOST = self.DEHAZE_HOST
+        self.MINIO_ENDPOINT = f"{self.DEHAZE_HOST}:9110"
+        self.MODEL_BASE_URL = f"http://{self.DEHAZE_HOST}:9000/models"
+        self.XXLJOB_ADMIN_URL = f"http://{self.DEHAZE_HOST}:14980/xxl-job-admin/api/"
+        return self
+
 
 class DevelopmentSettings(Settings):
     """开发环境配置"""
@@ -309,29 +322,22 @@ class DevelopmentSettings(Settings):
     DEBUG: bool = True
     DATABASE_ECHO: bool = True
 
-    # 数据库配置
-    DB_HOST: str = "127.0.0.1"
-    DB_PORT: int = 3306
-
     # Redis 配置
-    REDIS_HOST: str = "127.0.0.1"
     REDIS_DB: int = 0
 
     # Session Cookie：开发环境 HTTP + Vite 代理前缀 /py-api，需关闭 Secure 并用 /
     SESSION_COOKIE_SECURE: bool = False
     SESSION_COOKIE_PATH: str = "/"
 
-    # 文件访问基础 URL（与 Java 端 file.baseUrl 一致，统一使用 127.0.0.1 避免 localhost DNS 解析开销）
+    # 文件访问基础 URL（与 Java 端 file.baseUrl 一致，指向本地调试的 Java 后端）
     FILE_BASE_URL: str = "http://127.0.0.1:8989/api/v1/files/download"
 
     # XXL-Job 配置（与 docker-compose 的 xxl-job-admin 3.3.0 对齐，accessToken 复用 DEHAZE_PASSWORD）
     XXLJOB_ENABLED: bool = True
-    XXLJOB_ADMIN_URL: str = "http://127.0.0.1:14980/xxl-job-admin/api/"
     XXLJOB_ACCESS_TOKEN: str = os.getenv("DEHAZE_PASSWORD", "12345678")
 
     # RabbitMQ 配置
     RABBITMQ_ENABLED: bool = True
-    RABBITMQ_HOST: str = "127.0.0.1"
     RABBITMQ_USER: str = "root"
 
 
@@ -345,18 +351,12 @@ class TestingSettings(Settings):
 class ProductionSettings(Settings):
     """生产环境配置"""
 
-    DB_HOST: str = "192.168.31.3"
-    REDIS_HOST: str = "192.168.31.3"
-    MINIO_ENDPOINT: str = "192.168.31.3:9110"
-
     # XXL-Job 配置（生产环境启用，accessToken 复用 DEHAZE_PASSWORD）
     XXLJOB_ENABLED: bool = True
-    XXLJOB_ADMIN_URL: str = "http://192.168.31.3:14980/xxl-job-admin/api/"
     XXLJOB_ACCESS_TOKEN: str = os.getenv("DEHAZE_PASSWORD", "12345678")
 
     # RabbitMQ 配置（生产环境启用）
     RABBITMQ_ENABLED: bool = True
-    RABBITMQ_HOST: str = "192.168.31.3"
     RABBITMQ_USER: str = "root"
 
     # 日志配置（生产环境启用 JSON 格式）

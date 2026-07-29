@@ -16,16 +16,11 @@
  * - Go: rate:limit:{prefix}:{ip}（ulule/limiter，已实现但未挂载到路由）
  */
 import dotenv from "dotenv";
-import fs from "fs";
 import path from "path";
-import Redis from "ioredis";
+import { getRedis, disconnectRedis } from "./test/utils/redis";
 import { resetMemberQuota, disconnectMysql } from "./test/utils/mysql";
 
-const backend = process.env.TEST_BACKEND || "java";
-const envFile = path.resolve(__dirname, `.env.${backend}`);
-if (fs.existsSync(envFile)) {
-  dotenv.config({ path: envFile });
-}
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const CACHE_PREFIXES = [
   "captcha_code:",
@@ -42,14 +37,7 @@ const CACHE_PREFIXES = [
 const RATE_LIMIT_PATTERNS = ["rate:limit:*"];
 
 export async function setup() {
-  const redis = new Redis({
-    host: process.env.REDIS_HOST || "127.0.0.1",
-    port: Number(process.env.REDIS_PORT) || 6379,
-    password: process.env.REDIS_PASSWORD || "12345678",
-    db: Number(process.env.REDIS_DB) || 0,
-    maxRetriesPerRequest: 3,
-  });
-  redis.on("error", () => {});
+  const redis = getRedis();
 
   try {
     for (const prefix of CACHE_PREFIXES) {
@@ -66,7 +54,7 @@ export async function setup() {
     }
   } catch {
   } finally {
-    await redis.quit();
+    await disconnectRedis();
   }
 
   try {

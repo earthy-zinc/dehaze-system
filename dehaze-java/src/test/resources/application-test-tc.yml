@@ -5,7 +5,7 @@ spring:
   data:
     redis:
       database: 0
-      host: localhost
+      host: ${DEHAZE_HOST:127.0.0.1}
       port: 6379
       password: ${DEHAZE_PASSWORD}
       timeout: 10s
@@ -20,7 +20,7 @@ spring:
           # 连接池中的最小空闲连接 默认0
           min-idle: 0
     mongodb:
-      uri: mongodb://root:${DEHAZE_PASSWORD}@localhost:27017/dehaze?authSource=admin
+      uri: mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST:127.0.0.1}:27017/dehaze?authSource=admin
   cache:
     type: none
   servlet:

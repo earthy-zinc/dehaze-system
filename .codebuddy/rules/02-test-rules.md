@@ -1,5 +1,5 @@
 ---
-description: 涵盖 dehaze-sdk-js 的 Vitest API 集成测试编写、运行与失败排查。当用户提到"dehaze-sdk-js"、"SDK-JS"、"vitest"、"API 接口测试"、"测试失败排查"等场景时触发
+description: 涵盖 dehaze-sdk-js 的 Vitest API 集成测试编写、运行与失败排查。当用户提到"dehaze-sdk-js"、"SDK-JS"、"API 接口测试"、"测试失败排查"、"运行dehaze-java/dehaze-python/dehaze-go集成测试"等场景时触发
 alwaysApply: false
 enabled: true
 updatedAt: 2026-07-11T01:03:00.000Z
@@ -72,13 +72,30 @@ cd dehaze-sdk-js && pnpm run lint
 
 **执行时机:** Lint 通过后
 
-为了节约上下文，仅运行当前编写的测试用例，严禁在未完成所有任务时运行所有测试用例，避免造成上下文爆炸。
+为了节约上下文，仅运行当前编写的测试用例，严禁在未完成所有任务时运行所有测试用例，避免造成上下文爆炸。集成测试通过 `BACKEND_URL` 环境变量指定被测后端地址
+
+可用 `cross-env BACKEND_URL=<url>` 前缀指定任意后端。
 
 运行示例：
 
 ```bash
-# 使用 testNamePattern 运行特定测试
-npx vitest run test/user/user.test.ts --testNamePattern="正向测试：获取当前登录用户信息并验证数据完整性"
+# 运行单个用例
+npx vitest run test/modules/<domain>/<api>.test.ts --testNamePattern="用例名称"
+
+# 运行整个测试文件
+npx vitest run test/modules/<domain>/<api>.test.ts
+
+# 运行所有测试
+# BACKEND_URL=http://127.0.0.1:8989
+pnpm test:java 
+
+# BACKEND_URL=http://127.0.0.1:8990
+pnpm test:go 
+
+# BACKEND_URL=http://127.0.0.1:8991
+pnpm test:python 
+
+
 ```
 
 **注意事项:**
@@ -119,10 +136,7 @@ npx vitest run test/user/user.test.ts --testNamePattern="正向测试：获取�
 1. 回到 **Step 2** 的用例清单
 2. 选取下一个用例,执行 **Step 3-6**
 3. 重复直到所有用例编写完成并通过测试
-4. 最后运行整个测试文件确保无回归:
-   ```bash
-   npx vitest run test/modules/<domain>/<api>.test.ts
-   ```
+4. 最后运行整个测试文件确保无回归
 
 ### Step8：质量检查
 
