@@ -77,6 +77,7 @@ func (ts *TaskService) GetPage(ctx context.Context, q *query.TaskPageQuery) (*vo
 		item := &readResult.List[i]
 		voList = append(voList, vo.TaskVO{
 			TaskID:         item.TaskID,
+			TaskType:       string(item.TaskType),
 			Status:         item.Status,
 			Progress:       item.Progress,
 			TotalFiles:     item.TotalFiles,

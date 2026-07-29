@@ -681,6 +681,12 @@ func (s *MemberService) UpdateBenefit(ctx context.Context, levelCode string, for
 	if s.cache != nil {
 		_ = s.cache.Delete(ctx, fmt.Sprintf("member:benefit:%s", levelCode))
 		_ = s.cache.Delete(ctx, "member:benefit:all")
+		if userIDs, err := s.memberRepo.FindUserIDsByLevelCode(ctx, levelCode); err == nil {
+			for _, uid := range userIDs {
+				_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", uid, QuotaTypeDehaze))
+				_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", uid, QuotaTypeEvaluate))
+			}
+		}
 	}
 	return nil
 }

@@ -43,11 +43,12 @@ type EvaluationResult struct {
 // Evaluate 提交效果评估任务（异步）
 // 流程：校验算法 → 校验权益扣减配额 → 写日志(processing) → 启动 goroutine 执行 → 立即返回
 func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, predURL, gtURL string, userID int64) (*EvaluationResult, error) {
-	if _, err := s.algoRepo.FindByID(ctx, algorithmID); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
-		}
+	algorithm, err := s.algoRepo.FindByID(ctx, algorithmID)
+	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+	}
+	if algorithm == nil {
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
 	}
 
 	if s.memberSvc != nil {

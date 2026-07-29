@@ -371,11 +371,11 @@ func (s *OrderService) GetDetail(ctx context.Context, orderNo string) (*vo.Order
 	paymentVOs := make([]vo.PaymentRecordVO, 0, len(payments))
 	for _, p := range payments {
 		pv := vo.PaymentRecordVO{
-			ID:        p.ID,
-			PaymentNo: p.PaymentNo,
-			Channel:   p.Channel,
-			Amount:    p.Amount,
-			Status:    int(p.Status),
+			ID:         p.ID,
+			PaymentNo:  p.PaymentNo,
+			Channel:    p.Channel,
+			Amount:     p.Amount,
+			Status:     int(p.Status),
 			CreateTime: p.CreateTime.Format(timeFormat),
 		}
 		if p.CallbackTime != nil {
@@ -948,6 +948,7 @@ func (s *OrderService) CompleteExpiredOrders(ctx context.Context) error {
 		_ = s.orderRepo.Update(ctx, o.ID, map[string]interface{}{
 			"status": 3,
 		})
+		s.invalidateOrderDetailCache(ctx, o.OrderNo)
 	}
 	return nil
 }
@@ -1007,18 +1008,18 @@ func (s *OrderService) processSingleAutoRenewal(ctx context.Context, ar *model.S
 	payableAmount := int64(float64(p.SalePrice) * 0.95)
 
 	order := &model.SysOrder{
-		OrderNo:       orderNo,
-		UserID:        ar.UserID,
-		PackageID:     p.ID,
-		PackageName:   p.Name,
-		PackageLevel:  p.LevelCode,
-		PeriodDays:    p.PeriodDays,
-		OriginalPrice: p.OriginalPrice,
+		OrderNo:        orderNo,
+		UserID:         ar.UserID,
+		PackageID:      p.ID,
+		PackageName:    p.Name,
+		PackageLevel:   p.LevelCode,
+		PeriodDays:     p.PeriodDays,
+		OriginalPrice:  p.OriginalPrice,
 		DiscountAmount: p.SalePrice - payableAmount,
-		PayableAmount: payableAmount,
-		Status:        1,
-		ExpireTime:    expireTime,
-		IsAutoRenew:   1,
+		PayableAmount:  payableAmount,
+		Status:         1,
+		ExpireTime:     expireTime,
+		IsAutoRenew:    1,
 	}
 
 	if err := s.orderRepo.Create(ctx, order); err != nil {
@@ -1058,8 +1059,8 @@ func (s *OrderService) processSingleAutoRenewal(ctx context.Context, ar *model.S
 
 	nextRenew := now.AddDate(0, 0, p.PeriodDays)
 	return s.autoRenewRepo.Update(ctx, ar.ID, map[string]interface{}{
-		"fail_count":         0,
-		"next_renew_time":    nextRenew,
+		"fail_count":          0,
+		"next_renew_time":     nextRenew,
 		"last_renew_order_id": order.ID,
 	})
 }
@@ -1252,10 +1253,10 @@ func (s *OrderService) RetryFailedRefunds(ctx context.Context) error {
 		now := time.Now()
 		if refundOk {
 			updates := map[string]interface{}{
-				"status":         2,
-				"refund_time":    now,
-				"retry_count":    newRetryCount,
-				"error_message":  "",
+				"status":        2,
+				"refund_time":   now,
+				"retry_count":   newRetryCount,
+				"error_message": "",
 			}
 			if err := s.refundRepo.Update(ctx, rr.ID, updates); err != nil {
 				logger.Error("更新退款记录失败", zap.Int64("refundId", rr.ID), zap.Error(err))
@@ -1264,6 +1265,7 @@ func (s *OrderService) RetryFailedRefunds(ctx context.Context) error {
 			if err := s.orderRepo.Update(ctx, o.ID, map[string]interface{}{"status": 6}); err != nil {
 				logger.Error("更新订单状态失败", zap.Int64("orderId", o.ID), zap.Error(err))
 			}
+			s.invalidateOrderDetailCache(ctx, o.OrderNo)
 			successCount++
 		} else {
 			if newRetryCount >= maxRetryCount {

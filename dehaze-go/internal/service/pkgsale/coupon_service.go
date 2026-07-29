@@ -46,14 +46,12 @@ func (s *CouponService) ListMy(ctx context.Context, userID int64, status *int) (
 	}
 	couponMap := make(map[int64]*model.SysCoupon)
 	if len(couponIDs) > 0 {
-		for _, cid := range couponIDs {
-			c, err := s.couponRepo.FindByID(ctx, cid)
-			if err != nil {
-				return nil, common.WrapBizError(common.DATABASE_ERROR, "查询优惠券模板失败", err)
-			}
-			if c != nil {
-				couponMap[cid] = c
-			}
+		coupons, err := s.couponRepo.FindByIDsIncludeDeleted(ctx, couponIDs)
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "查询优惠券模板失败", err)
+		}
+		for i := range coupons {
+			couponMap[coupons[i].ID] = &coupons[i]
 		}
 	}
 

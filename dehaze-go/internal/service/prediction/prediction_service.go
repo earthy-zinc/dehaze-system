@@ -40,22 +40,23 @@ func NewPredictionService(repo predrepo.IPredLogRepository, algoRepo algorepo.IA
 
 // PredictionResult 预测结果 VO
 type PredictionResult struct {
-	LogID              int64  `json:"logId"`
-	Status             string `json:"status"`
-	ResultURL          string `json:"resultUrl,omitempty"`
-	ResultThumbnailURL string `json:"resultThumbnailUrl,omitempty"`
-	Time               int    `json:"time,omitempty"`
-	ErrorMessage       string `json:"errorMessage,omitempty"`
+	LogID              int64           `json:"logId"`
+	Status             model.LogStatus `json:"status"`
+	ResultURL          string          `json:"resultUrl,omitempty"`
+	ResultThumbnailURL string          `json:"resultThumbnailUrl,omitempty"`
+	Time               int             `json:"time,omitempty"`
+	ErrorMessage       string          `json:"errorMessage,omitempty"`
 }
 
 // Predict 提交去雾预测任务（异步）
 // 流程：校验算法 → 校验权益扣减配额 → 检查缓存 → 写日志(processing) → 启动 goroutine 执行 → 立即返回
 func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imageURL string, params string, userID int64) (*PredictionResult, error) {
-	if _, err := s.algoRepo.FindByID(ctx, algorithmID); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
-		}
+	algorithm, err := s.algoRepo.FindByID(ctx, algorithmID)
+	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+	}
+	if algorithm == nil {
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
 	}
 
 	if s.memberSvc != nil {
@@ -86,7 +87,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 				}
 				return &PredictionResult{
 					LogID:              predLog.ID,
-					Status:             model.LogStatusCompleted.String(),
+					Status:             model.LogStatusCompleted,
 					ResultURL:          cached.ResultURL,
 					ResultThumbnailURL: cached.ResultThumbnailURL,
 					Time:               cached.Time,
@@ -111,7 +112,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 
 	return &PredictionResult{
 		LogID:  logID,
-		Status: model.LogStatusProcessing.String(),
+		Status: model.LogStatusProcessing,
 	}, nil
 }
 
@@ -234,7 +235,7 @@ func (s *PredictionService) GetTaskStatus(ctx context.Context, id int64) (*Predi
 
 	result := &PredictionResult{
 		LogID:  log.ID,
-		Status: log.Status.String(),
+		Status: log.Status,
 	}
 	switch log.Status {
 	case model.LogStatusCompleted:

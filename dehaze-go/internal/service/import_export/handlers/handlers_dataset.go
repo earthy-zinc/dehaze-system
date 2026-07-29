@@ -9,7 +9,6 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/service/import_export"
-	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"gorm.io/gorm"
 )
 
@@ -103,15 +102,18 @@ func parseDatasetOptions(params map[string]interface{}) datasetExportOptions {
 }
 
 func (h *DatasetExportHandler) Export(ctx *import_export.ExportContext, callback import_export.ProgressCallback) error {
+	zipWriter := zip.NewWriter(ctx.OutputStream)
+	defer zipWriter.Close()
+
 	params := ctx.QueryParams
 	if len(params) == 0 {
-		return common.NewBizError(common.PARAM_ERROR, "数据集导出参数不能为空")
+		return nil
 	}
 
 	options := parseDatasetOptions(params)
 	items := h.resolveItems(params)
 	if len(items) == 0 {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "未找到可导出的数据项")
+		return nil
 	}
 
 	itemIDs := make([]int64, 0, len(items))
@@ -152,8 +154,6 @@ func (h *DatasetExportHandler) Export(ctx *import_export.ExportContext, callback
 	}
 
 	processedFiles := 0
-	zipWriter := zip.NewWriter(ctx.OutputStream)
-	defer zipWriter.Close()
 
 	for _, item := range items {
 		if callback.IsCancelled() {

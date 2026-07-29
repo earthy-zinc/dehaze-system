@@ -102,6 +102,7 @@ func (r *taskRepository) FindPage(ctx context.Context, q *query.TaskPageQuery) (
 		t := &tasks[i]
 		item := read.Task{
 			TaskID:         t.TaskID,
+			TaskType:       string(t.TaskType),
 			Status:         int8(t.Status),
 			Progress:       t.Progress,
 			TotalFiles:     t.TotalFiles,

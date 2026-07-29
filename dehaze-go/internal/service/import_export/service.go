@@ -154,7 +154,7 @@ func (s *ImportExportService) createExportTask(ctx context.Context, module strin
 	if err != nil {
 		return nil, err
 	}
-	return ExportTaskResult{TaskID: task.TaskID, Status: "PENDING", EstimatedCount: count}, nil
+	return ExportTaskResult{TaskID: task.TaskID, Status: int8(model.TaskStatusPending), EstimatedCount: count}, nil
 }
 
 func (s *ImportExportService) Import(ctx context.Context, p *ImportParams) (interface{}, error) {
@@ -171,10 +171,11 @@ func (s *ImportExportService) Import(ctx context.Context, p *ImportParams) (inte
 		p.Mode = "all"
 	}
 
-	rowCount, err := s.countRows(p.File, p.FileHeader.Filename, handler.GetDynamicFieldConfigs())
+	rows, err := s.parseRows(p.File, p.FileHeader.Filename, handler.GetDynamicFieldConfigs())
 	if err != nil {
 		return nil, err
 	}
+	rowCount := len(rows)
 	if rowCount == 0 {
 		return nil, common.NewBizError(common.IMPORT_FILE_EMPTY, "上传文件为空或无数据行")
 	}
@@ -189,18 +190,16 @@ func (s *ImportExportService) Import(ctx context.Context, p *ImportParams) (inte
 	}
 
 	if shouldAsync {
+		if seeker, ok := p.File.(io.Seeker); ok {
+			_, _ = seeker.Seek(0, io.SeekStart)
+		}
 		return s.createImportTask(ctx, p)
 	}
 
-	return s.executeSyncImport(ctx, handler, p)
+	return s.executeSyncImportWithRows(ctx, handler, p, rows)
 }
 
-func (s *ImportExportService) executeSyncImport(ctx context.Context, handler ImportHandler, p *ImportParams) (ImportResultVO, error) {
-	rows, err := s.parseRows(p.File, p.FileHeader.Filename, handler.GetDynamicFieldConfigs())
-	if err != nil {
-		return ImportResultVO{}, err
-	}
-
+func (s *ImportExportService) executeSyncImportWithRows(ctx context.Context, handler ImportHandler, p *ImportParams, rows []map[string]interface{}) (ImportResultVO, error) {
 	options := ImportOptions{Mode: p.Mode, ExtraParams: p.ExtraParams}
 	result := handler.ImportBatch(rows, options, NoopProgressCallback{})
 
@@ -215,12 +214,17 @@ func (s *ImportExportService) executeSyncImport(ctx context.Context, handler Imp
 		}
 	}
 
+	errors := result.Errors
+	if errors == nil {
+		errors = []ImportError{}
+	}
+
 	return ImportResultVO{
 		TotalRows:      result.TotalRows,
 		SuccessCount:   result.SuccessCount,
 		FailureCount:   result.FailureCount,
 		SkippedCount:   result.SkippedCount,
-		Errors:         result.Errors,
+		Errors:         errors,
 		ErrorReportUrl: errorReportURL,
 	}, nil
 }
@@ -243,7 +247,7 @@ func (s *ImportExportService) createImportTask(ctx context.Context, p *ImportPar
 	if err != nil {
 		return ImportTaskResult{}, err
 	}
-	return ImportTaskResult{TaskID: task.TaskID, Status: "PENDING"}, nil
+	return ImportTaskResult{TaskID: task.TaskID, Status: int8(model.TaskStatusPending)}, nil
 }
 
 func (s *ImportExportService) ExecuteAsyncExport(ctx context.Context, task *model.SysTask, params map[string]interface{}, callback ProgressCallback) {

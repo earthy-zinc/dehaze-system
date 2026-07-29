@@ -169,6 +169,10 @@ func NewUserImportHandler(db *gorm.DB, deptRepo dept.IDeptRepository) *UserImpor
 
 func (h *UserImportHandler) GetModule() string { return "user" }
 
+func (h *UserImportHandler) GetDynamicFieldConfigs() []import_export.ImportFieldConfig {
+	return h.GetFieldConfigs()
+}
+
 func (h *UserImportHandler) GetFieldConfigs() []import_export.ImportFieldConfig {
 	return []import_export.ImportFieldConfig{
 		{Field: "username", Label: "用户名", Required: true},

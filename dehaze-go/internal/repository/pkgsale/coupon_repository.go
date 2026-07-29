@@ -28,6 +28,17 @@ func (r *CouponRepository) FindByID(ctx context.Context, id int64) (*model.SysCo
 	return &c, err
 }
 
+func (r *CouponRepository) FindByIDsIncludeDeleted(ctx context.Context, ids []int64) ([]model.SysCoupon, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var list []model.SysCoupon
+	err := r.db.WithContext(ctx).Unscoped().
+		Where("id IN ?", ids).
+		Find(&list).Error
+	return list, err
+}
+
 func (r *CouponRepository) FindPage(ctx context.Context, q *query.CouponPageQuery) ([]model.SysCoupon, int64, error) {
 	pageNum := q.PageNum
 	if pageNum <= 0 {

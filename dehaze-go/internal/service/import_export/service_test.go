@@ -269,7 +269,7 @@ func TestExport_Async_ReturnsTaskResult(t *testing.T) {
 	taskRes, ok := result.(ExportTaskResult)
 	assert.True(t, ok)
 	assert.Equal(t, "task-001", taskRes.TaskID)
-	assert.Equal(t, "PENDING", taskRes.Status)
+	assert.Equal(t, int8(1), taskRes.Status)
 	assert.Equal(t, int64(SyncThreshold+1), taskRes.EstimatedCount)
 	assert.Equal(t, 1, taskSvc.createCalls)
 	assert.Equal(t, "user_export", taskSvc.lastTaskType)
@@ -480,7 +480,7 @@ func TestImport_Async_ReturnsTaskResult(t *testing.T) {
 	taskRes, ok := result.(ImportTaskResult)
 	assert.True(t, ok)
 	assert.Equal(t, "task-001", taskRes.TaskID)
-	assert.Equal(t, "PENDING", taskRes.Status)
+	assert.Equal(t, int8(1), taskRes.Status)
 	assert.Equal(t, 1, taskSvc.createCalls)
 	assert.Equal(t, "user_import", taskSvc.lastTaskType)
 }

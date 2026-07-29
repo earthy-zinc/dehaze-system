@@ -118,14 +118,14 @@ type TaskRef struct {
 }
 
 type ExportTaskResult struct {
-	TaskID        string `json:"taskId"`
-	Status        string `json:"status"`
-	EstimatedCount int64 `json:"estimatedCount"`
+	TaskID         string `json:"taskId"`
+	Status         int8   `json:"status"`
+	EstimatedCount int64  `json:"estimatedCount"`
 }
 
 type ImportTaskResult struct {
 	TaskID string `json:"taskId"`
-	Status string `json:"status"`
+	Status int8   `json:"status"`
 }
 
 type ImportResultVO struct {

@@ -56,6 +56,7 @@ type IPackageRepository interface {
 
 type ICouponRepository interface {
 	FindByID(ctx context.Context, id int64) (*model.SysCoupon, error)
+	FindByIDsIncludeDeleted(ctx context.Context, ids []int64) ([]model.SysCoupon, error)
 	FindPage(ctx context.Context, q *query.CouponPageQuery) ([]model.SysCoupon, int64, error)
 	Create(ctx context.Context, c *model.SysCoupon) error
 	Update(ctx context.Context, id int64, updates map[string]interface{}) error
