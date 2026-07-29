@@ -28,6 +28,23 @@ _EXCLUDE_PATHS = {
     "/favicon.ico",
 }
 
+_PROXY_HEADERS = (b"x-forwarded-for", b"x-real-ip")
+
+
+def _get_client_ip(scope: Scope) -> str | None:
+    # 优先从代理头提取真实客户端 IP，与 Java RateLimitAspect.getClientIp() 对齐
+    for name, value in scope.get("headers", []):
+        if name in _PROXY_HEADERS:
+            ip = value.decode("latin-1").strip()
+            # X-Forwarded-For 可能包含多个 IP，取第一个（客户端真实 IP）
+            if "," in ip:
+                ip = ip.split(",")[0].strip()
+            if ip and ip.lower() != "unknown":
+                return ip
+    # 降级到 ASGI client（直连场景）
+    client = scope.get("client")
+    return client[0] if client else None
+
 
 async def _send_json_response(send: Send, status_code: int, content: dict):
     body = json.dumps(content, ensure_ascii=False).encode("utf-8")
@@ -62,11 +79,10 @@ class RateLimitMiddleware:
         if path in _EXCLUDE_PATHS:
             return await self.app(scope, receive, send)
 
-        client = scope.get("client")
-        if not client:
+        ip = _get_client_ip(scope)
+        if not ip:
             return await self.app(scope, receive, send)
 
-        ip = client[0]
         redis = await get_redis_client()
         if not redis:
             return await self.app(scope, receive, send)

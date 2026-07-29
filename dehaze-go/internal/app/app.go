@@ -384,6 +384,8 @@ func (a *Application) Init() error {
 	engine.GET("/ws", websocket.HandleWebSocket)
 
 	v1 := engine.Group("/api/v1")
+	// 全局 IP 限流兜底（使用 config.yaml 的 ip-limit-count/ip-limit-time）
+	v1.Use(middleware.IPRateLimiter())
 
 	// 公开路由（无需认证）
 	router.RegisterNoAuthRoutes(v1, authApi)

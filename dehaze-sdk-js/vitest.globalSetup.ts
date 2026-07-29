@@ -11,7 +11,7 @@
  * 3. 测试间状态污染，影响可重复性
  *
  * 三端限流 key 统一前缀为 rate:limit:：
- * - Java: rate:limit:login:{ip}:{class}#{method}（@RateLimit 注解，仅登录/注册限流）
+ * - Java: rate:limit:login:{ip}（@RateLimit 注解，仅登录/注册限流）
  * - Python: rate:limit:{path}:{ip}（RateLimitMiddleware，全局限流）
  * - Go: rate:limit:{prefix}:{ip}（ulule/limiter，已实现但未挂载到路由）
  */

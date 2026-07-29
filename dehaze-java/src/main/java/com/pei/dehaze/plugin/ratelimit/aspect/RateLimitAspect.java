@@ -9,14 +9,14 @@ import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.reflect.MethodSignature;
+import org.redisson.api.RAtomicLong;
 import org.redisson.api.RRateLimiter;
 import org.redisson.api.RateIntervalUnit;
 import org.redisson.api.RateType;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 
-import java.lang.reflect.Method;
+import java.util.concurrent.TimeUnit;
 
 @Aspect
 @Component
@@ -34,34 +34,40 @@ public class RateLimitAspect {
 
     @Around("@annotation(rateLimit)")
     public Object around(ProceedingJoinPoint joinPoint, RateLimit rateLimit) throws Throwable {
-        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        Method method = signature.getMethod();
+        // 构造限流key：{prefix}{ip|userId|global}
+        // 三端统一前缀为 rate:limit:，与 Python rate:limit:{path}:{ip} 共享命名空间
+        String key = buildRateLimitKey(rateLimit);
 
-        // 构造限流key
-        String key = buildRateLimitKey(rateLimit, method);
-
-        // 获取限流器
-        RRateLimiter rateLimiter = redissonClient.getRateLimiter(key);
-
-        // 初始化限流规则（只在首次设置）
-        if (!rateLimiter.isExists()) {
-            rateLimiter.trySetRate(
-                    RateType.OVERALL,
-                    rateLimit.maxRequests(),
-                    rateLimit.timeWindow(),
-                    RateIntervalUnit.SECONDS
-            );
-        }
-
-        // 尝试获取令牌
-        if (!rateLimiter.tryAcquire()) {
-            throw new RateLimitException(rateLimit.message());
+        if (rateLimit.limiter() == RateLimit.LimiterType.FIXED_WINDOW) {
+            // 固定窗口：INCR + EXPIRE，与 Python rate_limit.py 对齐
+            RAtomicLong counter = redissonClient.getAtomicLong(key);
+            long count = counter.incrementAndGet();
+            if (count == 1) {
+                counter.expire(rateLimit.timeWindow(), TimeUnit.SECONDS);
+            }
+            if (count > rateLimit.maxRequests()) {
+                throw new RateLimitException(rateLimit.message());
+            }
+        } else {
+            // 令牌桶：Redisson RRateLimiter（GCRA）
+            RRateLimiter rateLimiter = redissonClient.getRateLimiter(key);
+            if (!rateLimiter.isExists()) {
+                rateLimiter.trySetRate(
+                        RateType.OVERALL,
+                        rateLimit.maxRequests(),
+                        rateLimit.timeWindow(),
+                        RateIntervalUnit.SECONDS
+                );
+            }
+            if (!rateLimiter.tryAcquire()) {
+                throw new RateLimitException(rateLimit.message());
+            }
         }
 
         return joinPoint.proceed();
     }
 
-    private String buildRateLimitKey(RateLimit rateLimit, Method method) {
+    private String buildRateLimitKey(RateLimit rateLimit) {
         StringBuilder key = new StringBuilder(rateLimit.key());
 
         switch (rateLimit.type()) {
@@ -75,11 +81,6 @@ public class RateLimitAspect {
                 key.append("global");
                 break;
         }
-
-        key.append(":")
-                .append(method.getDeclaringClass().getName())
-                .append("#")
-                .append(method.getName());
 
         return key.toString();
     }

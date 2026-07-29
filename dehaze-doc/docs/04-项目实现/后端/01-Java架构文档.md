@@ -863,13 +863,17 @@ flowchart LR
 ```mermaid
 flowchart LR
     A["@RateLimit<br/>type=IP, maxRequests=10, timeWindow=60"] --> B["RateLimitAspect"]
-    B --> C["构建限流 Key<br/>rateLimit:{ip}:{class}#{method}"]
-    C --> D["Redisson RRateLimiter"]
-    D -->|获取令牌| E["执行业务"]
-    D -->|令牌不足| F["抛出 RateLimitException"]
+    B --> C["构建限流 Key<br/>rate:limit:{biz}:{ip}"]
+    C --> D{"limiter 属性"}
+    D -->|TOKEN_BUCKET| E["Redisson RRateLimiter<br/>GCRA 令牌桶"]
+    D -->|FIXED_WINDOW| F["RAtomicLong INCR+EXPIRE<br/>固定窗口（与 Python 对齐）"]
+    E -->|获取令牌| G["执行业务"]
+    E -->|令牌不足| H["抛出 RateLimitException"]
+    F -->|计数未超| G
+    F -->|计数超限| H
 ```
 
-限流维度支持：IP / USER / GLOBAL。
+限流维度支持：IP / USER / GLOBAL。算法通过 `limiter` 属性选择：`TOKEN_BUCKET`（默认，Redisson RRateLimiter）或 `FIXED_WINDOW`（RAtomicLong INCR+EXPIRE，与 Python rate_limit.py 对齐）。三端限流 key 前缀统一为 `rate:limit:`（Java 注解驱动仅作用于登录/注册，Python 为全局 ASGI 中间件，Go 全局兜底 + login/register 严格限流）。
 
 ### 2.9 日志系统
 

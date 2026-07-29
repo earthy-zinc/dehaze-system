@@ -1067,7 +1067,7 @@ fnmatch 双向匹配: sys:user:* ↔ sys:user:add
 | CSRF | Session Cookie（SameSite=Lax） | 跨站请求不携带 Cookie |
 | CORS | CORSMiddleware | 限制允许的 Origin |
 | 暴力破解 | 验证码 + IP 黑名单 | 异常请求自动封禁 |
-| 限流 | `rate_limit` 装饰器 | 基于 Redis 计数，默认 60 次/分钟 |
+| 限流 | `RateLimitMiddleware` (ASGI 中间件) | 基于 Redis INCR+EXPIRE 固定窗口，默认 60 次/分钟，支持 X-Forwarded-For/X-Real-IP 代理头 |
 | 防重复提交 | `repeat_submit` 装饰器 | 默认 5 秒内禁止重复提交 |
 
 > **XSS 防护**：`app/models/schema/common.py` 的 `validate_no_xss` 校验器在 Pydantic Schema 层拦截 HTML 标签和 `javascript:` 协议，已覆盖 dataset/dept/dict/menu/role/user 全部用户输入模型；`app/service/dataset_service.py` 和 `dept_service.py` 额外在 Service 层通过 `_XSS_PATTERN` 正则做二次校验。
@@ -1317,10 +1317,10 @@ flowchart LR
 | `IPBlacklistMiddleware` | ASGI 中间件 | IP 黑名单检查 + 异常请求自动封禁 | 全局 |
 | `OperationLogMiddleware` | ASGI 中间件 | 请求/响应全链路记录（异步写入 MySQL） | 全局（排除健康检查等路径） |
 | `TraceMiddleware` | BaseHTTPMiddleware | TraceID 生成 / 透传 / 回写响应头 | 全局 |
+| `RateLimitMiddleware` | ASGI 中间件 | IP+路径 固定窗口限流（Redis INCR+EXPIRE），支持 X-Forwarded-For/X-Real-IP 代理头 | 全局（排除健康检查等路径） |
 | `get_current_user` | FastAPI Depends | Session 验证、UserContext 注入 | 受保护路由 |
 | `get_current_user_optional` | FastAPI Depends | 未登录返回 None（不设置 user_id） | 可选认证路由 |
 | `require_permission` | 函数装饰器 | RBAC 权限校验（支持通配符匹配） | 受保护路由 |
-| `rate_limit` | 函数装饰器 | 接口限流（基于 Redis 计数） | 受保护路由 |
 | `repeat_submit` | 函数装饰器 | 防重复提交 | 受保护路由 |
 
 > 注：权限校验**仅通过 `require_permission` 装饰器**实现，不存在 `PermissionChecker` Depends 工厂。装饰器内部依赖 `get_current_user` 注入 `UserContext`。
