@@ -404,8 +404,8 @@ class Settings(BaseSettings):
     GRACEFUL_SHUTDOWN_TIMEOUT / GRACEFUL_SHUTDOWN_CANCEL_ON_TIMEOUT
 
     # 日志配置
-    LOG_LEVEL / LOG_FORMAT / LOG_DIR / LOG_FILE
-    LOG_MAX_BYTES / LOG_BACKUP_COUNT / LOG_ROTATION_TYPE / LOG_FORMAT_JSON
+    LOG_LEVEL / LOG_FORMAT / LOG_DIR / LOG_RETENTION_DAYS
+    LOG_ENABLE_CONSOLE / LOG_ENABLE_FILE / LOG_FORMAT_JSON
 
     # 安全防护
     RATE_LIMIT_ENABLED / RATE_LIMIT_DEFAULT_TIMES / RATE_LIMIT_DEFAULT_SECONDS
@@ -1094,12 +1094,12 @@ fnmatch 双向匹配: sys:user:* ↔ sys:user:add
 
 | 配置项 | 值 | 说明 |
 |--------|-----|------|
-| 格式 | `%(asctime)s - %(levelname)s --- [%(thread)d] %(name)s : %(message)s` | 含时间、级别、线程 ID、模块名 |
-| 文件路径 | `logs/dehaze-python.log` | 日志目录 |
-| 按大小切割 | 10MB / 保留 5 份 | `UTF8RotatingFileHandler` |
-| 按天切割 | 每天午夜 | `UTF8TimedRotatingFileHandler` |
+| 格式 | `%(asctime)s - %(levelname)s [%(trace_id)s] --- [%(thread)d] %(name)s : %(message)s` | 含时间、级别、TraceID、线程 ID、模块名 |
+| 文件路径 | `logs/{yyyy-MM-dd}/info.log`、`error.log` | 按日期分目录，info/error 分文件 |
+| 按日期切割 | 每天午夜切到新日期目录 | `DailyDirectoryFileHandler` |
+| 保留天数 | 30 天 | 超期日期目录自动清理 |
 | 控制台输出 | 同时输出 | 开发环境调试用 |
-| JSON 格式 | 生产环境启用 | `LOG_FORMAT_JSON=True`，注入 timestamp/level/logger/service/trace_id |
+| JSON 格式 | 文件始终 JSON；控制台生产环境 JSON | `LOG_FORMAT_JSON=True`，注入 timestamp/level/logger/service/trace_id |
 
 #### 2.9.3 TraceID 注入
 
@@ -1279,6 +1279,40 @@ uvicorn 收到 `SIGTERM/SIGINT` 后自动触发 Lifespan 关闭阶段，由 `_gr
 | **Docker** | NVIDIA CUDA 12.1 基础镜像 | uvicorn 多 Worker + GPU 推理 |
 
 > **多 Worker 注意事项**：XXL-Job executor、GPU 指标采集器、Prometheus 指标聚合通过 `app/lifecycle.py` 的 fcntl 文件锁主 Worker 守卫 + `PROMETHEUS_MULTIPROC_DIR` 环境变量统一处理，仅主 Worker 启动守护进程，多 Worker 指标通过 `MultiProcessCollector` 聚合。
+
+#### 2.12.4 本地开发启动
+
+本地开发统一通过项目根目录 `scripts/run.py` 管理三端后端的生命周期，避免手动在各子项目目录下执行启动命令：
+
+```bash
+# 启动单个服务
+python scripts/run.py run python
+
+# 启动全部后端
+python scripts/run.py run all
+
+# 停止 / 重启
+python scripts/run.py stop python
+python scripts/run.py restart go,python,java
+
+# 查看运行状态
+python scripts/run.py ps
+```
+
+启动后控制台输出（stdout/stderr）重定向到 `dehaze-python/logs/{yyyy-MM-dd}/console.log`（追加模式，不再覆盖历史）。应用自身日志按 [06-部署架构.md 7.3 日志规范](../../02-系统架构/06-部署架构.md) 写入 `logs/{yyyy-MM-dd}/info.log` 与 `error.log`。
+
+查看日志：
+
+```bash
+# 查看 console.log 最近 50 行（run.py 内置）
+python scripts/run.py logs python
+
+# 查看 info.log
+tail -f dehaze-python/logs/$(date +%F)/info.log
+
+# 查看错误日志
+cat dehaze-python/logs/$(date +%F)/error.log
+```
 
 ---
 

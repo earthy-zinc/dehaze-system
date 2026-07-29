@@ -50,7 +50,8 @@ func Init() error {
 		levels := cfg.Zap.Levels()
 		cores := make([]zapcore.Core, 0, len(levels))
 		for i := 0; i < len(levels); i++ {
-			core := NewZapCore(levels[i])
+			// 首个档（info）挂载控制台输出，其余档（error）仅写文件，避免控制台重复
+			core := NewZapCore(levels[i], levels[i].String(), i == 0)
 			cores = append(cores, core)
 		}
 

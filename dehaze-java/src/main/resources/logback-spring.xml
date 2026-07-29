@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- 日志级别从低到高分为TRACE < DEBUG < INFO < WARN < ERROR < FATAL，如果设置为WARN，则低于WARN的信息都不会输出 -->
+<!-- 统一日志规范：logs/{yyyy-MM-dd}/{级别}.log，按日期分目录，info/error 分文件，保留 30 天，总量上限 5GB -->
 <configuration>
 
     <!-- SpringBoot默认logback的配置 -->
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
     <springProperty scope="context" name="APP_NAME" source="spring.application.name"/>
-    <property name="LOG_HOME" value="./logs/${APP_NAME}"/>
+    <property name="LOG_HOME" value="./logs"/>
 
     <!--1. 输出到控制台（人类可读格式，用于开发调试）-->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -19,9 +20,13 @@
         </encoder>
     </appender>
 
-    <!-- 2. 输出到文件（JSON 结构化格式，供 ELK/Loki 采集） -->
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_HOME}/log.log</file>
+    <!-- 2. info 文件：INFO 及以上（JSON 结构化，供 ELK/Loki 采集） -->
+    <appender name="FILE_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/%d{yyyy-MM-dd}/info.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <fieldNames>
                 <timestamp>@timestamp</timestamp>
@@ -36,31 +41,54 @@
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <charset>UTF-8</charset>
         </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_HOME}/%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>10MB</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
-            <maxHistory>15</maxHistory>
-        </rollingPolicy>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>INFO</level>
         </filter>
     </appender>
 
-    <!-- 开发环境：控制台（人类可读）+ 文件（JSON 结构化） -->
+    <!-- 3. error 文件：仅 ERROR（便于快速排障/告警，是 info 的子集） -->
+    <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/%d{yyyy-MM-dd}/error.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <fieldNames>
+                <timestamp>@timestamp</timestamp>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <level>level</level>
+            </fieldNames>
+            <customFields>{"service":"${APP_NAME}"}</customFields>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <charset>UTF-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- 开发环境：控制台（人类可读）+ info/error 文件（JSON 结构化） -->
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="FILE"/>
+            <appender-ref ref="FILE_INFO"/>
+            <appender-ref ref="FILE_ERROR"/>
         </root>
     </springProfile>
 
-    <!-- 生产环境：控制台 + 文件（JSON 结构化） -->
+    <!-- 生产环境：控制台 + info/error 文件（JSON 结构化） -->
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="FILE"/>
+            <appender-ref ref="FILE_INFO"/>
+            <appender-ref ref="FILE_ERROR"/>
         </root>
     </springProfile>
 </configuration>

@@ -896,22 +896,36 @@ flowchart LR
         <encoder><Pattern>${CONSOLE_LOG_PATTERN}</Pattern></encoder>
     </appender>
 
-    <!-- 文件输出（按天切割 + 10MB 分片） -->
-    <appender name="FILE">
-        <file>./logs/${APP_NAME}/log.log</file>
+    <!-- info 文件：INFO 及以上（按日期分目录，保留 30 天，总量上限 5GB） -->
+    <appender name="FILE_INFO">
         <rollingPolicy>
-            <fileNamePattern>./logs/${APP_NAME}/%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>15</maxHistory>
+            <fileNamePattern>./logs/%d{yyyy-MM-dd}/info.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
         <filter><level>INFO</level></filter>
+    </appender>
+
+    <!-- error 文件：仅 ERROR（info 的子集，便于排障） -->
+    <appender name="FILE_ERROR">
+        <rollingPolicy>
+            <fileNamePattern>./logs/%d{yyyy-MM-dd}/error.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <filter>
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
     </appender>
 
     <!-- 开发环境：控制台 + 文件 -->
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="FILE"/>
+            <appender-ref ref="FILE_INFO"/>
+            <appender-ref ref="FILE_ERROR"/>
         </root>
     </springProfile>
 
@@ -919,7 +933,8 @@ flowchart LR
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="FILE"/>
+            <appender-ref ref="FILE_INFO"/>
+            <appender-ref ref="FILE_ERROR"/>
         </root>
     </springProfile>
 </configuration>
@@ -1058,6 +1073,40 @@ SpringBoot 内置 Graceful Shutdown 支持：
 spring:
   profiles:
     active: dev  # 可选: dev / prod / test
+```
+
+#### 2.12.4 本地开发启动
+
+本地开发统一通过项目根目录 `scripts/run.py` 管理三端后端的生命周期，避免手动在各子项目目录下执行启动命令：
+
+```bash
+# 启动单个服务
+python scripts/run.py run java
+
+# 启动全部后端
+python scripts/run.py run all
+
+# 停止 / 重启
+python scripts/run.py stop java
+python scripts/run.py restart go,python,java
+
+# 查看运行状态
+python scripts/run.py ps
+```
+
+启动后控制台输出（stdout/stderr）重定向到 `dehaze-java/logs/{yyyy-MM-dd}/console.log`（追加模式，不再覆盖历史）。应用自身日志按 [06-部署架构.md 7.3 日志规范](../../02-系统架构/06-部署架构.md) 写入 `logs/{yyyy-MM-dd}/info.log` 与 `error.log`。
+
+查看日志：
+
+```bash
+# 查看 console.log 最近 50 行（run.py 内置）
+python scripts/run.py logs java
+
+# 查看 info.log
+tail -f dehaze-java/logs/$(date +%F)/info.log
+
+# 查看错误日志
+cat dehaze-java/logs/$(date +%F)/error.log
 ```
 
 ### 2.13 统一响应与错误处理

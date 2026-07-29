@@ -11,34 +11,45 @@ import (
 )
 
 type ZapCore struct {
-	level       zapcore.Level
-	syncerCache map[string]zapcore.WriteSyncer
-	cacheMutex  sync.RWMutex
+	level         zapcore.Level
+	fileName      string
+	enableConsole bool
+	syncerCache   map[string]zapcore.WriteSyncer
+	cacheMutex    sync.RWMutex
 	zapcore.Core
 }
 
-func NewZapCore(level zapcore.Level) *ZapCore {
+func NewZapCore(level zapcore.Level, fileName string, enableConsole bool) *ZapCore {
 	entity := &ZapCore{
-		level:       level,
-		syncerCache: make(map[string]zapcore.WriteSyncer),
+		level:         level,
+		fileName:      fileName,
+		enableConsole: enableConsole,
+		syncerCache:   make(map[string]zapcore.WriteSyncer),
 	}
 	entity.Core = entity.buildCore()
 	return entity
 }
 
 // buildCore 构建日志 Core：文件输出使用 JSON 编码器（结构化，供 ELK/Loki 采集），
-// 控制台输出使用人类可读编码器。
+// 控制台输出使用人类可读编码器。控制台仅在首个（info）档挂载，避免重复输出。
 func (z *ZapCore) buildCore(formats ...string) zapcore.Core {
 	cfg := config.GetConfig()
-	levelEnabler := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
-		return l == z.level
+	fileEnabler := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
+		return l >= z.level
 	})
 
 	fileSyncer := z.fileSyncer(formats...)
-	fileCore := zapcore.NewCore(cfg.Zap.FileEncoder(), fileSyncer, levelEnabler)
+	fileCore := zapcore.NewCore(cfg.Zap.FileEncoder(), fileSyncer, fileEnabler)
 
-	if cfg.Zap.LogInConsole {
-		consoleCore := zapcore.NewCore(cfg.Zap.Encoder(), zapcore.AddSync(os.Stdout), levelEnabler)
+	if z.enableConsole && cfg.Zap.LogInConsole {
+		consoleLevel, err := zapcore.ParseLevel(cfg.Zap.Level)
+		if err != nil || consoleLevel < zapcore.DebugLevel {
+			consoleLevel = zapcore.InfoLevel
+		}
+		consoleEnabler := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
+			return l >= consoleLevel
+		})
+		consoleCore := zapcore.NewCore(cfg.Zap.Encoder(), zapcore.AddSync(os.Stdout), consoleEnabler)
 		return zapcore.NewTee(fileCore, consoleCore)
 	}
 	return fileCore
@@ -46,7 +57,7 @@ func (z *ZapCore) buildCore(formats ...string) zapcore.Core {
 
 // fileSyncer 返回文件切割 syncer（按级别/日期/自定义 formats 分文件），带缓存
 func (z *ZapCore) fileSyncer(formats ...string) zapcore.WriteSyncer {
-	cacheKey := z.level.String()
+	cacheKey := z.fileName
 	for _, f := range formats {
 		cacheKey += "_" + f
 	}
@@ -68,7 +79,7 @@ func (z *ZapCore) fileSyncer(formats ...string) zapcore.WriteSyncer {
 	cfg := config.GetConfig()
 	cutter := NewCutter(
 		cfg.Zap.Directory,
-		z.level.String(),
+		z.fileName,
 		cfg.Zap.RetentionDay,
 		CutterWithLayout(time.DateOnly),
 		CutterWithFormats(formats...),

@@ -295,6 +295,36 @@ DehazeSDK.Builder()
 
 ### 后端启动
 
+三端后端统一通过 `scripts/run.py` 管理生命周期（启动/停止/重启/查看状态/查看日志），无需手动在各子项目目录下执行启动命令：
+
+```bash
+# 启动单个服务
+python scripts/run.py run go      # Go:8990
+python scripts/run.py run python  # Python:8991
+python scripts/run.py run java    # Java:8989
+
+# 启动全部后端
+python scripts/run.py run all
+
+# 停止 / 重启
+python scripts/run.py stop go
+python scripts/run.py restart go,python,java
+
+# 查看运行状态
+python scripts/run.py ps
+
+# 查看日志（console.log 最近 N 行，默认 50）
+python scripts/run.py logs go
+```
+
+日志统一存放在各服务 `logs/{yyyy-MM-dd}/` 目录下（详见 [部署架构 - 日志规范](dehaze-doc/docs/02-系统架构/06-部署架构.md#73-日志规范)）：
+
+| 文件 | 说明 |
+|------|------|
+| `console.log` | `run.py` 重定向的启动/控制台输出（追加模式） |
+| `info.log` | 应用 INFO 及以上日志（JSON 结构化，供 ELK/Loki 采集） |
+| `error.log` | 应用 ERROR 日志（JSON 结构化，是 info 的子集） |
+
 #### Java后端
 ```powershell
 # 1. 执行数据库初始化脚本（先建表后插数据，均按文件名顺序执行）

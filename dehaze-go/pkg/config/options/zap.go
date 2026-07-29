@@ -18,17 +18,10 @@ type Zap struct {
 	RetentionDay  int    `mapstructure:"retention-day" json:"retention-day" yaml:"retention-day" validate:"gte=-1"`
 }
 
-// Levels 根据字符串转化为 zapcore.Levels
+// Levels 返回文件输出的级别分档：info（>=info，含 WARN/ERROR）与 error（>=error）两档。
+// 配置的 level 字段不参与文件分档，仅控制控制台最低输出级别（见 zap_core.buildCore）。
 func (c *Zap) Levels() []zapcore.Level {
-	levels := make([]zapcore.Level, 0, 7)
-	level, err := zapcore.ParseLevel(c.Level)
-	if err != nil {
-		level = zapcore.DebugLevel
-	}
-	for ; level <= zapcore.FatalLevel; level++ {
-		levels = append(levels, level)
-	}
-	return levels
+	return []zapcore.Level{zapcore.InfoLevel, zapcore.ErrorLevel}
 }
 
 func (c *Zap) Encoder() zapcore.Encoder {

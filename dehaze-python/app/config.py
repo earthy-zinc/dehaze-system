@@ -206,16 +206,13 @@ class Settings(BaseSettings):
 
     # 日志配置
     LOG_LEVEL: str = "INFO"  # 日志级别: DEBUG/INFO/WARNING/ERROR/CRITICAL
-    # 文本格式日志模板
+    # 文本格式日志模板（仅控制台非 JSON 模式使用）
     LOG_FORMAT: str = "%(asctime)s - %(levelname)s [%(trace_id)s] --- [%(thread)d] %(name)s : %(message)s"
     LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"  # 日期格式
-    LOG_DIR: str = "logs"  # 日志目录
-    LOG_FILE: str = "dehaze-python.log"  # 日志文件名
-    LOG_MAX_BYTES: int = 10 * 1024 * 1024  # 单个日志文件最大字节数（10MB）
-    LOG_BACKUP_COUNT: int = 5  # 保留的备份文件数量
+    LOG_DIR: str = "logs"  # 日志根目录，文件按 logs/{yyyy-MM-dd}/{级别}.log 组织
+    LOG_RETENTION_DAYS: int = 30  # 日志保留天数，超期日期目录自动清理
     LOG_ENABLE_CONSOLE: bool = True  # 是否启用控制台输出
     LOG_ENABLE_FILE: bool = True  # 是否启用文件输出
-    LOG_ROTATION_TYPE: str = "size"  # 轮转类型: size（基于大小）/ time（基于时间）
     LOG_FORMAT_JSON: bool = False  # 是否使用 JSON 结构化日志（生产环境推荐 True）
 
     # 用户管理配置
