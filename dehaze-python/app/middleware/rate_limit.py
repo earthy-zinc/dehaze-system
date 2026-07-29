@@ -82,7 +82,7 @@ class RateLimitMiddleware:
         count = await redis_operation_with_fallback(
             operation=_check,
             default=0,
-            operation_name=f"rate_limit:{path}",
+            operation_name=f"rate:limit:{path}",
         )
 
         if count and count > settings.RATE_LIMIT_MAX_REQUESTS:

@@ -54,10 +54,11 @@ function applySession(sessionId: string, username: string) {
 
 async function clearLoginRateLimit(): Promise<void> {
   const redis = getRedis();
-  // Java Redisson: rate_limit:login:{ip}:{class}#{method} + {rate_limit:login:...}:value + {rate_limit:login:...}:permits
+  // 三端限流 key 统一前缀为 rate:limit:
+  // Java Redisson: rate:limit:login:{ip}:{class}#{method} + {rate:limit:login:...}:value + {rate:limit:login:...}:permits
   // Python: rate:limit:/api/v1/auth/login:{ip}
   // Go: rate:limit:{prefix}:{ip}（未挂载到登录路由，预防性清理）
-  for (const pattern of ["*rate_limit:login:*", "*rate:limit:*/api/v1/auth/login:*"]) {
+  for (const pattern of ["*rate:limit:login:*", "*rate:limit:*/api/v1/auth/login:*"]) {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {
       await redis.del(keys);
