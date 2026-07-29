@@ -201,18 +201,23 @@ services:
     container_name: filebeat
     restart: unless-stopped
     user: root
-    command: filebeat -e --strict.perms=false
+    # 部分云内核（如腾讯云）/proc/stat 的 processes 计数溢出为负数，go-sysinfo 解析失败
+    # 导致 filebeat 无法启动；entrypoint 将清洗后的快照 bind 到容器内 /proc/stat 规避
+    # （compose 直接挂载 /proc/stat 在 runc 下不稳定）。宿主机内核正常时可移除该 mount
+    # 命令、cap_add 及 proc-stat 卷。重新生成快照：
+    #   sed -E 's/^(processes|procs_running|procs_blocked) -?[0-9]+/\1 0/' /proc/stat > config/filebeat/proc-stat
+    cap_add:
+      - SYS_ADMIN
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "mount --bind /usr/share/filebeat/proc-stat /proc/stat 2>/dev/null || true; exec /usr/bin/tini -- /usr/local/bin/docker-entrypoint filebeat -e --strict.perms=false"
     volumes:
       - ./config/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - ./dehaze-java/logs:/logs/java:ro
       - ./dehaze-python/logs:/logs/python:ro
       - ./dehaze-go/logs:/logs/go:ro
       - filebeat-data:/usr/share/filebeat/data
-      # 部分云内核（如腾讯云）/proc/stat 的 processes 计数溢出为负数，
-      # go-sysinfo 解析失败导致 filebeat 无法启动，此处挂载清洗后的快照规避。
-      # 宿主机内核正常时可删除本挂载；重新生成：
-      #   sed -E 's/^(processes|procs_running|procs_blocked) -?[0-9]+/\1 0/' /proc/stat > config/filebeat/proc-stat
-      - ./config/filebeat/proc-stat:/proc/stat:ro
+      - ./config/filebeat/proc-stat:/usr/share/filebeat/proc-stat:ro
     depends_on:
       - logstash
     networks:
