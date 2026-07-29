@@ -16,7 +16,7 @@ type MyRatingVO struct {
 
 type RatingPageVO struct {
 	MyRatingVO
-	UserID     int64  `json:"userId"`
+	UserID     int64  `json:"userId,omitempty"`
 	Username   string `json:"username,omitempty"`
 	UserAvatar string `json:"userAvatar,omitempty"`
 	IsHidden   int    `json:"isHidden"`

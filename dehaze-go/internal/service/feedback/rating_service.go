@@ -405,12 +405,12 @@ func (s *RatingService) buildRatingDetailVO(ctx context.Context, r *model.SysRat
 	v := &vo.RatingDetailVO{
 		RatingPageVO: vo.RatingPageVO{
 			MyRatingVO: myVO,
-			UserID:     r.UserID,
 			IsHidden:   int(r.IsHidden),
 		},
 		AlgorithmID: r.AlgorithmID,
 	}
 	if r.IsAnonymous == 0 {
+		v.UserID = r.UserID
 		username, avatar := s.findUserinfo(ctx, r.UserID)
 		v.Username = username
 		v.UserAvatar = avatar
