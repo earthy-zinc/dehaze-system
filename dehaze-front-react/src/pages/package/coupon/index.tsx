@@ -250,7 +250,7 @@ const CouponManagement: React.FC = () => {
         fixed: "right",
         render: (_: unknown, record: CouponVO) => (
           <Space size="small">
-            {hasPerm("coupon:edit") && (
+            {hasPerm("package:coupon:edit") && (
               <Button
                 type="link"
                 size="small"
@@ -260,7 +260,7 @@ const CouponManagement: React.FC = () => {
                 编辑
               </Button>
             )}
-            {hasPerm("coupon:distribute") && (
+            {hasPerm("package:coupon:distribute") && (
               <Button
                 type="link"
                 size="small"
@@ -270,7 +270,7 @@ const CouponManagement: React.FC = () => {
                 发放
               </Button>
             )}
-            {hasPerm("coupon:delete") && (
+            {hasPerm("package:coupon:delete") && (
               <Popconfirm
                 title={`确认删除优惠券「${record.name}」吗？删除后不可恢复。`}
                 onConfirm={() => handleDelete(record)}
@@ -341,7 +341,7 @@ const CouponManagement: React.FC = () => {
 
       <Card className="table-card" size="small">
         <div className="table-toolbar">
-          {hasPerm("coupon:add") && (
+          {hasPerm("package:coupon:add") && (
             <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
               新增
             </Button>

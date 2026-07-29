@@ -49,7 +49,7 @@
       <template #header>
         <div class="flex justify-between items-center">
           <el-button
-            v-hasPerm="['coupon:add']"
+            v-hasPerm="['package:coupon:add']"
             type="success"
             @click="openDialog()"
           >
@@ -127,7 +127,7 @@
         <el-table-column label="操作" fixed="right" width="220" align="center">
           <template #default="scope">
             <el-button
-              v-hasPerm="['coupon:edit']"
+              v-hasPerm="['package:coupon:edit']"
               link
               size="small"
               type="primary"
@@ -136,7 +136,7 @@
               <el-icon><Edit /></el-icon>编辑
             </el-button>
             <el-button
-              v-hasPerm="['coupon:distribute']"
+              v-hasPerm="['package:coupon:distribute']"
               link
               size="small"
               type="warning"
@@ -145,7 +145,7 @@
               <el-icon><Ticket /></el-icon>发放
             </el-button>
             <el-button
-              v-hasPerm="['coupon:delete']"
+              v-hasPerm="['package:coupon:delete']"
               link
               size="small"
               type="danger"
