@@ -47,13 +47,10 @@ async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme),
     redis = Depends(get_redis_client),
 ) -> UserContext:
-    if credentials and credentials.credentials.startswith("dhak_"):
-        from app.service.api_key_service import ApiKeyService
-        user_context = await ApiKeyService.authenticate_by_key(
-            request.state.db, credentials.credentials)
-        user_context.is_m2m = True
-        set_current_user_id(user_context.id)
-        return user_context
+    # 如果 API Key 中间件已注入用户上下文，直接返回
+    m2m_context = getattr(request.state, "user_context", None)
+    if m2m_context:
+        return UserContext(**m2m_context)
 
     session_id = request.cookies.get(SESSION_COOKIE) or request.headers.get(SESSION_COOKIE)
     if not session_id:

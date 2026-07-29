@@ -27,6 +27,10 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     from app.middleware.db import DBSessionMiddleware
     app.add_middleware(DBSessionMiddleware)
 
+    # API Key 认证中间件（独立于 Session，在 DBSession 之后因为需要 DB 查询）
+    from app.middleware.api_key_auth import ApiKeyAuthMiddleware
+    app.add_middleware(ApiKeyAuthMiddleware)
+
     # TraceID 中间件（确保日志和业务代码能获取 trace_id）
     app.add_middleware(TraceMiddleware)
 
@@ -63,6 +67,7 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
 
 __all__ = [
     'AntiRepeatMiddleware',
+    'ApiKeyAuthMiddleware',
     'IPBlacklistMiddleware',
     'RateLimitMiddleware',
     'TraceMiddleware',
