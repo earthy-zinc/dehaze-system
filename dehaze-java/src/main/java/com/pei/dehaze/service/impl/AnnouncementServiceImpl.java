@@ -148,6 +148,7 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         SysAnnouncement entity = this.getById(id);
         if (entity == null) {
@@ -193,6 +194,7 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void cancel(Long id) {
         SysAnnouncement entity = this.getById(id);
         if (entity == null) {

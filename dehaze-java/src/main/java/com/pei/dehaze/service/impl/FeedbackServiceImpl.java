@@ -80,6 +80,7 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
     private String fileBaseUrl;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public IdVO createFeedback(FeedbackCreateForm form) {
         validateImageUrls(form.getImages(), FEEDBACK_IMAGE_MAX_COUNT);
         Long userId = SecurityUtils.getUserId();
@@ -383,9 +384,9 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
         Map<Long, java.time.LocalDateTime> firstReplyMap = new HashMap<>();
         for (Map<String, Object> row : baseMapper.selectFirstReplyTimes(startTime, endTime)) {
             Number feedbackId = (Number) row.get("feedbackId");
-            java.sql.Timestamp ts = (java.sql.Timestamp) row.get("firstReplyTime");
-            if (feedbackId != null && ts != null) {
-                firstReplyMap.put(feedbackId.longValue(), ts.toLocalDateTime());
+            java.time.LocalDateTime firstReplyTime = (java.time.LocalDateTime) row.get("firstReplyTime");
+            if (feedbackId != null && firstReplyTime != null) {
+                firstReplyMap.put(feedbackId.longValue(), firstReplyTime);
             }
         }
 
@@ -395,9 +396,8 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
         long closeCount = 0;
         for (Map<String, Object> row : baseMapper.selectFeedbackTimes(startTime, endTime)) {
             Long feedbackId = ((Number) row.get("id")).longValue();
-            java.sql.Timestamp createTs = (java.sql.Timestamp) row.get("createTime");
-            java.sql.Timestamp updateTs = (java.sql.Timestamp) row.get("updateTime");
-            java.time.LocalDateTime createTime = createTs != null ? createTs.toLocalDateTime() : null;
+            java.time.LocalDateTime createTime = (java.time.LocalDateTime) row.get("createTime");
+            java.time.LocalDateTime updateTime = (java.time.LocalDateTime) row.get("updateTime");
             java.time.LocalDateTime firstReplyTime = firstReplyMap.get(feedbackId);
             if (createTime != null && firstReplyTime != null) {
                 totalResponseTime += java.time.Duration.between(createTime, firstReplyTime).toMillis();
@@ -405,8 +405,8 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
             }
             Integer statusVal = ((Number) row.get("status")).intValue();
             if (statusVal != null && statusVal == FEEDBACK_STATUS_CLOSED
-                    && createTime != null && updateTs != null) {
-                totalCloseTime += java.time.Duration.between(createTime, updateTs.toLocalDateTime()).toMillis();
+                    && createTime != null && updateTime != null) {
+                totalCloseTime += java.time.Duration.between(createTime, updateTime).toMillis();
                 closeCount++;
             }
         }

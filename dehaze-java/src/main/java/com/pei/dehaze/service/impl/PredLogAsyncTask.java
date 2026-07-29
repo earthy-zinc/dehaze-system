@@ -26,15 +26,16 @@ public class PredLogAsyncTask {
         long startTime = System.currentTimeMillis();
         try {
             JSONObject result = pythonClient.predict(algorithmId, imageUrl, params);
-            String status = result.getStr("status");
-            if ("processing".equals(status)) {
+            Integer status = result.getInt("status");
+            if (status != null && status == LogStatusEnum.PROCESSING.getValue()) {
                 Long pythonLogId = result.getLong("logId");
                 result = pollPredTask(pythonLogId);
             }
 
             int elapsed = (int) (System.currentTimeMillis() - startTime);
 
-            if ("failed".equals(result.getStr("status"))) {
+            Integer finalStatus = result.getInt("status");
+            if (finalStatus != null && finalStatus == LogStatusEnum.FAILED.getValue()) {
                 SysPredLog update = new SysPredLog();
                 update.setId(logId);
                 update.setTime(elapsed);
@@ -75,8 +76,8 @@ public class PredLogAsyncTask {
         while (System.currentTimeMillis() < deadline) {
             Thread.sleep(POLL_INTERVAL_MS);
             JSONObject result = pythonClient.getPredTaskStatus(pythonLogId);
-            String status = result.getStr("status");
-            if ("completed".equals(status) || "failed".equals(status)) {
+            Integer status = result.getInt("status");
+            if (status != null && (status == LogStatusEnum.COMPLETED.getValue() || status == LogStatusEnum.FAILED.getValue())) {
                 return result;
             }
         }

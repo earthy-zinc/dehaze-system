@@ -180,6 +180,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         }
         order.setPayMethod(request.getPayMethod());
         this.updateById(order);
+        invalidateOrderDetailCache(orderNo);
         PayResult result = new PayResult();
         result.setOrderNo(orderNo);
         result.setPayMethod(request.getPayMethod());
@@ -509,15 +510,12 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             vo.setStatus(REFUND_STATUS_MAP.get(statusVal != null ? statusVal.intValue() : 0));
             vo.setChannel((String) row.get("channel"));
             vo.setChannelRefundNo((String) row.get("channel_refund_no"));
-            java.sql.Timestamp applyTs = (java.sql.Timestamp) row.get("apply_time");
-            vo.setApplyTime(applyTs != null ? applyTs.toLocalDateTime() : null);
-            java.sql.Timestamp auditTs = (java.sql.Timestamp) row.get("audit_time");
-            vo.setAuditTime(auditTs != null ? auditTs.toLocalDateTime() : null);
+            vo.setApplyTime((java.time.LocalDateTime) row.get("apply_time"));
+            vo.setAuditTime((java.time.LocalDateTime) row.get("audit_time"));
             Number auditorId = (Number) row.get("auditor_id");
             vo.setAuditorId(auditorId != null ? auditorId.longValue() : null);
             vo.setAuditRemark((String) row.get("audit_remark"));
-            java.sql.Timestamp refundTs = (java.sql.Timestamp) row.get("refund_time");
-            vo.setRefundTime(refundTs != null ? refundTs.toLocalDateTime() : null);
+            vo.setRefundTime((java.time.LocalDateTime) row.get("refund_time"));
             vo.setErrorMessage((String) row.get("error_message"));
             records.add(vo);
         }
@@ -784,6 +782,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
                 refund.setErrorMessage(null);
                 order.setStatus(6);
                 this.updateById(order);
+                invalidateOrderDetailCache(order.getOrderNo());
                 successCount++;
             } else {
                 if (errorMessage == null) {

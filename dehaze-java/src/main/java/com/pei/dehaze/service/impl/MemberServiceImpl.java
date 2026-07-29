@@ -210,11 +210,11 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                 member.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
                 member.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
             }
-            stringRedisTemplate.delete("member:level:" + userId);
-            stringRedisTemplate.delete("member:quota:" + userId + ":dehaze");
-            stringRedisTemplate.delete("member:quota:" + userId + ":evaluate");
         }
         this.updateById(member);
+        stringRedisTemplate.delete("member:level:" + userId);
+        stringRedisTemplate.delete("member:quota:" + userId + ":dehaze");
+        stringRedisTemplate.delete("member:quota:" + userId + ":evaluate");
         recordGrowthLog(userId, "admin_adjust", actualChange, newGrowth,
                 null, "管理员调整成长值：" + form.getReason(), operatorId);
     }
@@ -306,11 +306,11 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                 member.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
                 member.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
             }
-            stringRedisTemplate.delete("member:level:" + userId);
-            stringRedisTemplate.delete("member:quota:" + userId + ":dehaze");
-            stringRedisTemplate.delete("member:quota:" + userId + ":evaluate");
         }
         this.updateById(member);
+        stringRedisTemplate.delete("member:level:" + userId);
+        stringRedisTemplate.delete("member:quota:" + userId + ":dehaze");
+        stringRedisTemplate.delete("member:quota:" + userId + ":evaluate");
 
         recordGrowthLog(userId, "sign_in", SIGN_IN_BASE_GROWTH, oldGrowth + SIGN_IN_BASE_GROWTH,
                 String.valueOf(signIn.getId()), "每日签到", null);
@@ -484,6 +484,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = "member", action = "quota_deduct", targetType = "member", targetIdSpel = "#userId", afterSpel = "{quotaType:#quotaType,amount:#amount}")
     public boolean deductQuota(Long userId, String quotaType, int amount) {
         if (amount <= 0) {

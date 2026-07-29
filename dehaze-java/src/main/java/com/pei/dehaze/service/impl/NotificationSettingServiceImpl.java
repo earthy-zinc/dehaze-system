@@ -5,6 +5,8 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pei.dehaze.mapper.SysNotificationSettingMapper;
 import com.pei.dehaze.model.entity.SysNotificationSetting;
 import com.pei.dehaze.model.form.NotificationSettingForm;
@@ -13,9 +15,11 @@ import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.NotificationSettingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,7 @@ public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationS
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void update(NotificationSettingForm form) {
         Long userId = SecurityUtils.getUserId();
         SysNotificationSetting setting = getOrCreateDefault(userId);
@@ -92,7 +97,14 @@ public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationS
         vo.setDndStart(setting.getDndStart() != null ? setting.getDndStart().format(TIME_FORMATTER) : null);
         vo.setDndEnd(setting.getDndEnd() != null ? setting.getDndEnd().format(TIME_FORMATTER) : null);
         if (CharSequenceUtil.isNotBlank(setting.getPreferences())) {
-            vo.setPreferences(JSONUtil.parseObj(setting.getPreferences()).toBean(java.util.Map.class));
+            try {
+                vo.setPreferences(new ObjectMapper().readValue(
+                        setting.getPreferences(),
+                        new TypeReference<Map<String, Object>>() {}
+                ));
+            } catch (Exception e) {
+                vo.setPreferences(JSONUtil.parseObj(setting.getPreferences()).toBean(Map.class));
+            }
         }
         return vo;
     }

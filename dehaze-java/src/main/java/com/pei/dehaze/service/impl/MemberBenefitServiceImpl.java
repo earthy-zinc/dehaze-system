@@ -12,6 +12,7 @@ import com.pei.dehaze.service.MemberBenefitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -42,6 +43,7 @@ public class MemberBenefitServiceImpl extends ServiceImpl<SysMemberBenefitMapper
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateByLevelCode(String levelCode, BenefitForm form) {
         SysMemberBenefit benefit = this.getByLevelCode(levelCode);
         if (benefit == null) {

@@ -63,7 +63,7 @@ public class ImportExportService {
                     "导出行数 " + count + " 超出限制 " + TaskConstants.MAX_ROWS);
         }
 
-        boolean shouldAsync = async != null ? async : count > TaskConstants.SYNC_THRESHOLD;
+        boolean shouldAsync = async != null ? async : count > TaskConstants.SYNC_THRESHOLD || handler.useDirectExport();
 
         if (shouldAsync) {
             return createExportTask(module, params, actualFormat, fields, count);
@@ -105,6 +105,10 @@ public class ImportExportService {
                 }
             }
         } catch (Exception e) {
+            response.reset();
+            if (e instanceof BusinessException be) {
+                throw be;
+            }
             throw new BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, "导出失败: " + e.getMessage());
         }
     }

@@ -26,15 +26,16 @@ public class EvalLogAsyncTask {
         long startTime = System.currentTimeMillis();
         try {
             JSONObject result = pythonClient.evaluate(algorithmId, predUrl, gtUrl);
-            String status = result.getStr("status");
-            if ("processing".equals(status)) {
+            Integer status = result.getInt("status");
+            if (status != null && status == LogStatusEnum.PROCESSING.getValue()) {
                 Long pythonLogId = result.getLong("logId");
                 result = pollEvalTask(pythonLogId);
             }
 
             int elapsed = (int) (System.currentTimeMillis() - startTime);
 
-            if ("failed".equals(result.getStr("status"))) {
+            Integer finalStatus = result.getInt("status");
+            if (finalStatus != null && finalStatus == LogStatusEnum.FAILED.getValue()) {
                 SysEvalLog update = new SysEvalLog();
                 update.setId(logId);
                 update.setTime(elapsed);
@@ -74,8 +75,8 @@ public class EvalLogAsyncTask {
         while (System.currentTimeMillis() < deadline) {
             Thread.sleep(POLL_INTERVAL_MS);
             JSONObject result = pythonClient.getEvalTaskStatus(pythonLogId);
-            String status = result.getStr("status");
-            if ("completed".equals(status) || "failed".equals(status)) {
+            Integer status = result.getInt("status");
+            if (status != null && (status == LogStatusEnum.COMPLETED.getValue() || status == LogStatusEnum.FAILED.getValue())) {
                 return result;
             }
         }

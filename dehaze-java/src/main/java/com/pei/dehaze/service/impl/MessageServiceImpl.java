@@ -280,6 +280,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteByIds(String ids) {
         Long userId = SecurityUtils.getUserId();
         List<Long> idList = Arrays.stream(ids.split(","))

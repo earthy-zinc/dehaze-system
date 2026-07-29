@@ -201,7 +201,8 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
         if (userCoupons.isEmpty()) {
             return Collections.emptyList();
         }
-        Map<Long, SysCoupon> couponMap = this.listByIds(userCoupons.stream().map(SysUserCoupon::getCouponId).distinct().toList())
+        Map<Long, SysCoupon> couponMap = baseMapper.selectByIdsIncludeDeleted(
+                        userCoupons.stream().map(SysUserCoupon::getCouponId).distinct().toList())
                 .stream()
                 .collect(Collectors.toMap(SysCoupon::getId, c -> c));
         return userCoupons.stream().map(uc -> toUserCouponVO(uc, couponMap.get(uc.getCouponId()))).toList();
