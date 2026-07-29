@@ -55,21 +55,28 @@ func (s *NotificationSettingService) Update(ctx context.Context, userID int64, f
 		setting.DndEnd = *form.DndEnd
 	}
 	if form.Preferences != nil {
-		prefs := vo.NotificationPreferences{
-			TypeChannels:   make(map[string]vo.TypeChannel),
-			ModuleSwitches: make(map[string]bool),
+		var existing map[string]interface{}
+		if setting.Preferences != "" {
+			_ = json.Unmarshal([]byte(setting.Preferences), &existing)
 		}
-		if form.Preferences.TypeChannels != nil {
-			for k, v := range form.Preferences.TypeChannels {
-				prefs.TypeChannels[k] = vo.TypeChannel{Push: v.Push}
+		if existing == nil {
+			existing = make(map[string]interface{})
+		}
+		formPrefsBytes, _ := json.Marshal(form.Preferences)
+		var formPrefsMap map[string]interface{}
+		_ = json.Unmarshal(formPrefsBytes, &formPrefsMap)
+		for k, v := range formPrefsMap {
+			if newMap, ok := v.(map[string]interface{}); ok {
+				if oldMap, ok := existing[k].(map[string]interface{}); ok {
+					for k2, v2 := range newMap {
+						oldMap[k2] = v2
+					}
+					continue
+				}
 			}
+			existing[k] = v
 		}
-		if form.Preferences.ModuleSwitches != nil {
-			for k, v := range form.Preferences.ModuleSwitches {
-				prefs.ModuleSwitches[k] = v
-			}
-		}
-		setting.Preferences = toJSONString(prefs)
+		setting.Preferences = toJSONString(existing)
 	}
 
 	if err := s.settingRepo.Update(ctx, setting); err != nil {
@@ -88,8 +95,16 @@ func (s *NotificationSettingService) getOrCreateDefault(ctx context.Context, use
 	}
 
 	defaultPrefs := vo.NotificationPreferences{
-		TypeChannels:   make(map[string]vo.TypeChannel),
-		ModuleSwitches: make(map[string]bool),
+		TypeChannels: map[string]vo.TypeChannel{
+			"announcement": {Push: true},
+			"business":     {Push: false},
+			"member":       {Push: true},
+		},
+		ModuleSwitches: map[string]bool{
+			"prediction":   true,
+			"feedback":     true,
+			"announcement": true,
+		},
 	}
 	setting = &model.SysNotificationSetting{
 		UserID:      userID,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -27,10 +28,10 @@ const (
 	timeFormat        = "2006-01-02 15:04:05"
 	dateFormat        = "2006-01-02"
 
-	memberProfileCacheTTL   = 10 * time.Minute
-	memberBenefitCacheTTL   = 30 * time.Minute
-	quotaCounterCacheTTL    = 35 * 24 * time.Hour
-	quotaResetJobLockTTL    = 10 * time.Minute
+	memberProfileCacheTTL = 10 * time.Minute
+	memberBenefitCacheTTL = 30 * time.Minute
+	quotaCounterCacheTTL  = 35 * 24 * time.Hour
+	quotaResetJobLockTTL  = 10 * time.Minute
 )
 
 var levelNames = map[string]string{
@@ -48,6 +49,7 @@ type MemberService struct {
 	signInRepo    memberrepo.IMemberSignInRepository
 	cache         types.ICache
 	auditLogSvc   *auditlogservice.AuditLogService
+	messageSender MessageSender
 }
 
 func NewMemberService(
@@ -58,6 +60,7 @@ func NewMemberService(
 	signInRepo memberrepo.IMemberSignInRepository,
 	cache types.ICache,
 	auditLogSvc *auditlogservice.AuditLogService,
+	messageSender MessageSender,
 ) *MemberService {
 	return &MemberService{
 		db:            db,
@@ -67,6 +70,7 @@ func NewMemberService(
 		signInRepo:    signInRepo,
 		cache:         cache,
 		auditLogSvc:   auditLogSvc,
+		messageSender: messageSender,
 	}
 }
 
@@ -178,6 +182,8 @@ func (s *MemberService) invalidateMemberCache(ctx context.Context, userID int64,
 	}
 	_ = s.cache.Delete(ctx, fmt.Sprintf("member:profile:%d", userID))
 	_ = s.cache.Delete(ctx, fmt.Sprintf("member:level:%d", userID))
+	_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", userID, QuotaTypeDehaze))
+	_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", userID, QuotaTypeEvaluate))
 	if levelCode != "" {
 		_ = s.cache.Delete(ctx, fmt.Sprintf("member:benefit:%s", levelCode))
 	}
@@ -271,7 +277,7 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 			ChangeType:  "sign_in",
 			ChangeValue: signInBaseGrowth,
 			Balance:     balanceAfterBase,
-			RelatedID:   formatInt64(signRecord.ID),
+			RelatedID:   strconv.FormatInt(signRecord.ID, 10),
 		}); err != nil {
 			return err
 		}
@@ -282,7 +288,7 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 				ChangeType:  "sign_in_bonus",
 				ChangeValue: bonusGrowth,
 				Balance:     newGrowthValue,
-				RelatedID:   formatInt64(signRecord.ID),
+				RelatedID:   strconv.FormatInt(signRecord.ID, 10),
 			}); err != nil {
 				return err
 			}
@@ -293,11 +299,19 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 		}
 
 		newLevel = determineLevelByGrowth(benefits, newGrowthValue)
-		if newLevel != member.LevelCode {
-			if err := txMemberRepo.Update(ctx, userID, map[string]interface{}{
+		if newLevel != member.LevelCode && member.LevelSource == "growth" {
+			updates := map[string]interface{}{
 				"level_code":   newLevel,
 				"level_source": "growth",
-			}); err != nil {
+			}
+			for _, b := range benefits {
+				if b.LevelCode == newLevel {
+					updates["monthly_dehaze_quota"] = b.MonthlyDehazeQuota
+					updates["monthly_evaluate_quota"] = b.MonthlyEvaluateQuota
+					break
+				}
+			}
+			if err := txMemberRepo.Update(ctx, userID, updates); err != nil {
 				return err
 			}
 		}
@@ -313,7 +327,7 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 	return &vo.SignInResultVO{
 		SignDate:       today.Format(dateFormat),
 		ContinuousDays: continuousDays,
-		GrowthValue:    totalGrowth,
+		GrowthValue:    signInBaseGrowth,
 		BonusGrowth:    bonusGrowth,
 	}, nil
 }
@@ -451,11 +465,24 @@ func (s *MemberService) AdjustLevel(ctx context.Context, userID, operatorID int6
 		t, err := time.ParseInLocation(timeFormat, *form.ExpireTime, time.Local)
 		if err == nil {
 			updates["expire_time"] = t
+		} else {
+			updates["expire_time"] = nil
 		}
+	} else {
+		updates["expire_time"] = nil
 	}
 
 	if member.BecomeMemberTime == nil {
 		updates["become_member_time"] = time.Now()
+	}
+
+	benefit, err := s.findBenefitByLevelCode(ctx, form.LevelCode)
+	if err != nil {
+		return err
+	}
+	if benefit != nil {
+		updates["monthly_dehaze_quota"] = benefit.MonthlyDehazeQuota
+		updates["monthly_evaluate_quota"] = benefit.MonthlyEvaluateQuota
 	}
 
 	if err := s.memberRepo.UpdateLevel(ctx, userID, updates); err != nil {
@@ -517,11 +544,19 @@ func (s *MemberService) AdjustGrowth(ctx context.Context, userID, operatorID int
 		}
 
 		newLevel = determineLevelByGrowth(benefits, newGrowth)
-		if newLevel != member.LevelCode {
-			if err := txMemberRepo.Update(ctx, userID, map[string]interface{}{
+		if newLevel != member.LevelCode && member.LevelSource == "growth" {
+			updates := map[string]interface{}{
 				"level_code":   newLevel,
 				"level_source": "growth",
-			}); err != nil {
+			}
+			for _, b := range benefits {
+				if b.LevelCode == newLevel {
+					updates["monthly_dehaze_quota"] = b.MonthlyDehazeQuota
+					updates["monthly_evaluate_quota"] = b.MonthlyEvaluateQuota
+					break
+				}
+			}
+			if err := txMemberRepo.Update(ctx, userID, updates); err != nil {
 				return err
 			}
 		}
@@ -694,11 +729,19 @@ func (s *MemberService) AwardGrowth(ctx context.Context, userID int64, changeTyp
 		}
 
 		newLevel = determineLevelByGrowth(benefits, newGrowth)
-		if newLevel != member.LevelCode {
-			if err := txMemberRepo.Update(ctx, userID, map[string]interface{}{
+		if newLevel != member.LevelCode && member.LevelSource == "growth" {
+			updates := map[string]interface{}{
 				"level_code":   newLevel,
 				"level_source": "growth",
-			}); err != nil {
+			}
+			for _, b := range benefits {
+				if b.LevelCode == newLevel {
+					updates["monthly_dehaze_quota"] = b.MonthlyDehazeQuota
+					updates["monthly_evaluate_quota"] = b.MonthlyEvaluateQuota
+					break
+				}
+			}
+			if err := txMemberRepo.Update(ctx, userID, updates); err != nil {
 				return err
 			}
 		}
@@ -822,46 +865,198 @@ func (s *MemberService) ResetMonthlyQuota(ctx context.Context) error {
 		benefitMap[benefits[i].LevelCode] = &benefits[i]
 	}
 
-	members, err := s.memberRepo.FindAllActive(ctx)
+	batchSize := 500
+	totalCount := 0
+	successCount := 0
+
+	for {
+		members, err := s.memberRepo.FindAllActive(ctx, &quotaMonth, batchSize)
+		if err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "查询活跃会员失败", err)
+		}
+		if len(members) == 0 {
+			break
+		}
+
+		for _, m := range members {
+			totalCount++
+			dehazeQuota := 0
+			evaluateQuota := 0
+			if b, ok := benefitMap[m.LevelCode]; ok {
+				dehazeQuota = b.MonthlyDehazeQuota
+				evaluateQuota = b.MonthlyEvaluateQuota
+			}
+
+			if m.QuotaResetMonth != nil {
+				archive := &model.SysMemberQuota{
+					UserID:        m.UserID,
+					QuotaMonth:    *m.QuotaResetMonth,
+					LevelCode:     m.LevelCode,
+					DehazeQuota:   m.MonthlyDehazeQuota,
+					DehazeUsed:    m.MonthlyDehazeUsed,
+					EvaluateQuota: m.MonthlyEvaluateQuota,
+					EvaluateUsed:  m.MonthlyEvaluateUsed,
+					ResetTime:     now,
+				}
+				_ = s.memberRepo.CreateQuotaArchive(ctx, archive)
+			}
+
+			if err := s.memberRepo.ResetMonthlyQuota(ctx, m.UserID, dehazeQuota, evaluateQuota, quotaMonth); err != nil {
+				logger.Error("重置会员月度配额失败", zap.Int64("userID", m.UserID), zap.Error(err))
+				continue
+			}
+
+			if s.cache != nil {
+				_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", m.UserID, QuotaTypeDehaze))
+				_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", m.UserID, QuotaTypeEvaluate))
+				s.invalidateMemberCache(ctx, m.UserID, m.LevelCode)
+			}
+			successCount++
+		}
+	}
+
+	logger.Info("月度配额重置完成", zap.Int("total", totalCount), zap.Int("success", successCount))
+	return nil
+}
+
+// ProcessExpiredMembers 处理已过期会员降级
+// 扫描 expire_time < NOW() AND level_source != 'growth' 的会员，
+// 按成长值重算等级、置 level_source=growth、清空 expire_time、刷新权益。
+func (s *MemberService) ProcessExpiredMembers(ctx context.Context) error {
+	now := time.Now()
+	members, err := s.memberRepo.FindExpiredNonGrowth(ctx, now)
 	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "查询活跃会员失败", err)
+		return common.WrapBizError(common.DATABASE_ERROR, "查询过期会员失败", err)
+	}
+	if len(members) == 0 {
+		return nil
+	}
+
+	benefits, err := s.findAllBenefits(ctx)
+	if err != nil {
+		return err
+	}
+	benefitMap := make(map[string]*model.SysMemberBenefit, len(benefits))
+	for i := range benefits {
+		benefitMap[benefits[i].LevelCode] = &benefits[i]
 	}
 
 	successCount := 0
 	for _, m := range members {
-		dehazeQuota := 0
-		evaluateQuota := 0
-		if b, ok := benefitMap[m.LevelCode]; ok {
-			dehazeQuota = b.MonthlyDehazeQuota
-			evaluateQuota = b.MonthlyEvaluateQuota
+		oldLevel := m.LevelCode
+		newLevel := determineLevelByGrowth(benefits, m.GrowthValue)
+		updates := map[string]interface{}{
+			"level_code":   newLevel,
+			"level_source": "growth",
+			"expire_time":  nil,
 		}
-
-		archive := &model.SysMemberQuota{
-			UserID:        m.UserID,
-			QuotaMonth:    quotaMonth,
-			LevelCode:     m.LevelCode,
-			DehazeQuota:   m.MonthlyDehazeQuota,
-			DehazeUsed:    m.MonthlyDehazeUsed,
-			EvaluateQuota: m.MonthlyEvaluateQuota,
-			EvaluateUsed:  m.MonthlyEvaluateUsed,
-			ResetTime:     now,
+		if b, ok := benefitMap[newLevel]; ok {
+			updates["monthly_dehaze_quota"] = b.MonthlyDehazeQuota
+			updates["monthly_evaluate_quota"] = b.MonthlyEvaluateQuota
 		}
-		_ = s.memberRepo.CreateQuotaArchive(ctx, archive)
-
-		if err := s.memberRepo.ResetMonthlyQuota(ctx, m.UserID, dehazeQuota, evaluateQuota, quotaMonth); err != nil {
-			logger.Error("重置会员月度配额失败", zap.Int64("userID", m.UserID), zap.Error(err))
+		if err := s.memberRepo.Update(ctx, m.UserID, updates); err != nil {
+			logger.Error("会员过期降级失败", zap.Int64("userID", m.UserID), zap.Error(err))
 			continue
 		}
-
-		if s.cache != nil {
-			_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", m.UserID, QuotaTypeDehaze))
-			_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", m.UserID, QuotaTypeEvaluate))
-			s.invalidateMemberCache(ctx, m.UserID, m.LevelCode)
-		}
+		s.invalidateMemberCache(ctx, m.UserID, oldLevel)
+		s.invalidateMemberCache(ctx, m.UserID, newLevel)
 		successCount++
 	}
 
-	logger.Info("月度配额重置完成", zap.Int("total", len(members)), zap.Int("success", successCount))
+	logger.Info("会员过期降级处理完成", zap.Int("total", len(members)), zap.Int("success", successCount))
+	return nil
+}
+
+func (s *MemberService) SendExpireReminders(ctx context.Context) error {
+	if s.messageSender == nil {
+		logger.Warn("消息发送服务未注入，跳过会员到期预警")
+		return nil
+	}
+
+	now := time.Now()
+	benefits, err := s.findAllBenefits(ctx)
+	if err != nil {
+		return err
+	}
+	benefitMap := make(map[string]*model.SysMemberBenefit, len(benefits))
+	for i := range benefits {
+		benefitMap[benefits[i].LevelCode] = &benefits[i]
+	}
+
+	dayTemplateMap := map[int]struct {
+		bizPrefix    string
+		templateCode string
+	}{
+		7: {"expire_reminder_7d", "member_expire_reminder_7"},
+		3: {"expire_reminder_3d", "member_expire_reminder_3"},
+		1: {"expire_reminder_1d", "member_expire_reminder_1"},
+	}
+
+	sentCount := 0
+	for days, cfg := range dayTemplateMap {
+		windowStart := time.Date(now.Year(), now.Month(), now.Day()+days, 0, 0, 0, 0, now.Location())
+		windowEnd := windowStart.AddDate(0, 0, 1)
+
+		members, err := s.memberRepo.FindExpiringBetween(ctx, windowStart, windowEnd)
+		if err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "查询到期预警会员失败", err)
+		}
+		if len(members) == 0 {
+			continue
+		}
+
+		for _, m := range members {
+			currentBenefit := benefitMap[m.LevelCode]
+			currentLevelName := m.LevelCode
+			if currentBenefit != nil {
+				currentLevelName = currentBenefit.LevelName
+			}
+
+			variables := map[string]string{
+				"currentLevel": currentLevelName,
+				"days":         fmt.Sprintf("%d", days),
+				"expireDate":   "",
+			}
+			if m.ExpireTime != nil {
+				variables["expireDate"] = m.ExpireTime.Format(dateFormat)
+			}
+
+			if days == 3 {
+				targetLevel := determineLevelByGrowth(benefits, m.GrowthValue)
+				downgradeBenefit := benefitMap[targetLevel]
+				downgradeName := targetLevel
+				if downgradeBenefit != nil {
+					downgradeName = downgradeBenefit.LevelName
+				}
+				variables["downgradeLevel"] = downgradeName
+				if currentBenefit != nil && downgradeBenefit != nil {
+					variables["benefitCompare"] = fmt.Sprintf(
+						"去雾:%d→%d次/月，评估:%d→%d次/月",
+						currentBenefit.MonthlyDehazeQuota, downgradeBenefit.MonthlyDehazeQuota,
+						currentBenefit.MonthlyEvaluateQuota, downgradeBenefit.MonthlyEvaluateQuota,
+					)
+				} else {
+					variables["benefitCompare"] = ""
+				}
+			}
+
+			form := &bo.MessageSendForm{
+				Type:         "member",
+				RecipientIDs: []int64{m.UserID},
+				BizModule:    "member",
+				BizID:        fmt.Sprintf("%s:%d:%s", cfg.bizPrefix, m.UserID, now.Format(dateFormat)),
+				TemplateCode: cfg.templateCode,
+				Variables:    variables,
+			}
+			if _, err := s.messageSender.Send(ctx, form); err != nil {
+				logger.Warn("到期提醒发送失败", zap.Int64("userID", m.UserID), zap.Int("days", days), zap.Error(err))
+				continue
+			}
+			sentCount++
+		}
+	}
+
+	logger.Info("会员到期预警完成", zap.Int("sent", sentCount))
 	return nil
 }
 
@@ -877,33 +1072,6 @@ func formatTime(t *time.Time) string {
 		return ""
 	}
 	return t.Format(timeFormat)
-}
-
-func formatInt64(n int64) string {
-	return time.Now().Format("") + intToStr(n)
-}
-
-func intToStr(n int64) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := false
-	if n < 0 {
-		neg = true
-		n = -n
-	}
-	var buf [20]byte
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	if neg {
-		i--
-		buf[i] = '-'
-	}
-	return string(buf[i:])
 }
 
 func toBenefitVO(b *model.SysMemberBenefit) vo.BenefitVO {

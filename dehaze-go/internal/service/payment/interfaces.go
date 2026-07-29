@@ -53,6 +53,9 @@ type IPaymentChannelService interface {
 	Refund(ctx context.Context, req *RefundRequest) (*RefundResult, error)
 	QueryOrder(ctx context.Context, orderNo string) (*QueryResult, error)
 	CloseOrder(ctx context.Context, orderNo string) error
+	ChannelQueryOrder(ctx context.Context, channel, orderNo string) (*QueryResult, error)
+	ChannelCloseOrder(ctx context.Context, channel, orderNo string) error
+	ChannelEnabled(channel string) bool
 }
 
 type IChannelAdapter interface {

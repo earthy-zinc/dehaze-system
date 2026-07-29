@@ -85,14 +85,14 @@ func (s *MessageTemplateService) Update(ctx context.Context, id int64, userID in
 	}
 
 	updates := make(map[string]interface{})
-	if form.Name != "" {
-		updates["name"] = form.Name
+	if form.Name != nil {
+		updates["name"] = *form.Name
 	}
-	if form.TitleTemplate != "" {
-		updates["title_template"] = form.TitleTemplate
+	if form.TitleTemplate != nil {
+		updates["title_template"] = *form.TitleTemplate
 	}
-	if form.ContentTemplate != "" {
-		updates["content_template"] = form.ContentTemplate
+	if form.ContentTemplate != nil {
+		updates["content_template"] = *form.ContentTemplate
 	}
 	if form.Priority != nil {
 		updates["priority"] = *form.Priority

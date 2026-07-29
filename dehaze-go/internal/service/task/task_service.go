@@ -140,6 +140,7 @@ func (ts *TaskService) CreateTask(ctx context.Context, taskType string, params i
 		Status:         model.TaskStatusPending,
 		Progress:       0,
 		Params:         string(paramsJSON),
+		Result:         "null",
 		ExpiresAt:      &expiresAt,
 		IdempotencyKey: nil,
 	}

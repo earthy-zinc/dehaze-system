@@ -43,11 +43,11 @@ type IOrderRepository interface {
 	FindPage(ctx context.Context, q *query.OrderPageQuery) ([]OrderWithUser, int64, error)
 	FindPendingExpired(ctx context.Context, before time.Time) ([]model.SysOrder, error)
 	FindPaidExpired(ctx context.Context, before time.Time) ([]model.SysOrder, error)
-	CountByStatus(ctx context.Context, status int8) (int64, error)
+	CountByStatus(ctx context.Context, status int8, startTime, endTime string) (int64, error)
 	SumRevenue(ctx context.Context, startTime, endTime string) (int64, error)
 	SumRefund(ctx context.Context, startTime, endTime string) (int64, error)
 	CountTotalOrders(ctx context.Context, startTime, endTime string) (int64, error)
-	CountByPayMethod(ctx context.Context, payMethod string) (int64, error)
+	CountByPayMethod(ctx context.Context, payMethod string, startTime, endTime string) (int64, error)
 	GetPackageDistribution(ctx context.Context, startTime, endTime string) ([]PackageStatRow, error)
 	GetDailyStats(ctx context.Context, startTime, endTime string) ([]DailyStatRow, error)
 }
@@ -64,6 +64,7 @@ type IRefundRecordRepository interface {
 	Create(ctx context.Context, rr *model.SysRefundRecord) error
 	Update(ctx context.Context, id int64, updates map[string]interface{}) error
 	FindPage(ctx context.Context, q *query.RefundPageQuery) ([]RefundWithOrder, int64, error)
+	FindFailedRetryable(ctx context.Context, maxRetryCount int) ([]model.SysRefundRecord, error)
 }
 
 type IAutoRenewRepository interface {

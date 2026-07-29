@@ -13,8 +13,11 @@ type SysPaymentRecord struct {
 	CallbackTime    *time.Time `gorm:"column:callback_time;type:datetime;comment:回调到达时间" json:"callbackTime"`
 	CallbackContent string     `gorm:"column:callback_content;type:text;comment:渠道回调原始报文" json:"callbackContent"`
 	ErrorMessage    string     `gorm:"column:error_message;type:varchar(512);comment:错误信息" json:"errorMessage"`
-	CreateTime      time.Time  `gorm:"column:create_time;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"createTime"`
-	UpdateTime      time.Time  `gorm:"column:update_time;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updateTime"`
+	Deleted         int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"-"`
+	CreateTime      time.Time  `gorm:"column:create_time;type:datetime;default:CURRENT_TIMESTAMP;comment:创建时间" json:"createTime"`
+	UpdateTime      time.Time  `gorm:"column:update_time;type:datetime;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updateTime"`
+	CreateBy        *int64     `gorm:"column:create_by;comment:创建人ID" json:"createBy"`
+	UpdateBy        *int64     `gorm:"column:update_by;comment:修改人ID" json:"updateBy"`
 }
 
 func (SysPaymentRecord) TableName() string {

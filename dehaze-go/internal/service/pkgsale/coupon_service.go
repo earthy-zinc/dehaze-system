@@ -277,10 +277,10 @@ func (s *CouponService) Update(ctx context.Context, id int64, form *bo.CouponFor
 		if len(form.ApplicableScope) > 0 {
 			data, err := json.Marshal(form.ApplicableScope)
 			if err == nil {
-				updates["applicable_scope"] = string(data)
+				updates["applicable_scope"] = sql.NullString{String: string(data), Valid: true}
 			}
 		} else {
-			updates["applicable_scope"] = ""
+			updates["applicable_scope"] = nil
 		}
 	}
 
@@ -305,7 +305,27 @@ func (s *CouponService) DeleteByIDs(ctx context.Context, ids []int64) error {
 		}
 	}
 
-	if err := s.couponRepo.DeleteByIDs(ctx, ids); err != nil {
+	usedCount, err := s.userCouponRepo.CountUsedByCouponIDs(ctx, ids)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询优惠券使用记录失败", err)
+	}
+	if usedCount > 0 {
+		return common.NewBizError(common.DATA_BIND_EXISTS, "优惠券已发放使用，无法删除")
+	}
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txCouponRepo := pkgsalerepo.NewCouponRepository(tx)
+		txUserCouponRepo := pkgsalerepo.NewUserCouponRepository(tx)
+
+		if err := txUserCouponRepo.DeleteByCouponIDs(ctx, ids); err != nil {
+			return err
+		}
+		if err := txCouponRepo.DeleteByIDs(ctx, ids); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除优惠券失败", err)
 	}
 	return nil

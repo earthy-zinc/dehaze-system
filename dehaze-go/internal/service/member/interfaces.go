@@ -15,6 +15,10 @@ const (
 	QuotaTypeEvaluate QuotaType = "evaluate"
 )
 
+type MessageSender interface {
+	Send(ctx context.Context, form *bo.MessageSendForm) (*vo.MessageSendResultVO, error)
+}
+
 type IMemberService interface {
 	GetProfile(ctx context.Context, userID int64) (*vo.MemberProfileVO, error)
 	ListGrowthLogs(ctx context.Context, userID int64, q *query.GrowthLogQuery) (*vo.PageResult[vo.GrowthLogVO], error)
@@ -31,4 +35,6 @@ type IMemberService interface {
 	CheckAndDeductQuota(ctx context.Context, userID int64, quotaType QuotaType) error
 	RefundQuota(ctx context.Context, userID int64, quotaType QuotaType) error
 	ResetMonthlyQuota(ctx context.Context) error
+	ProcessExpiredMembers(ctx context.Context) error
+	SendExpireReminders(ctx context.Context) error
 }

@@ -8,9 +8,37 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 )
 
+type PromotionWithPackage struct {
+	DiscountType  string
+	DiscountValue int64
+	Status        int8
+	StartTime     time.Time
+	EndTime       time.Time
+}
+
+type PackageOrderStatRow struct {
+	PackageID   int64
+	PackageName string
+	Count       int64
+	Revenue     int64
+}
+
+type LevelOrderStatRow struct {
+	PackageLevel string
+	Count        int64
+	Revenue      int64
+}
+
+type PeriodOrderStatRow struct {
+	Period  string
+	Count   int64
+	Revenue int64
+}
+
 type IPackageRepository interface {
 	FindByID(ctx context.Context, id int64) (*model.SysPackage, error)
 	FindByIDs(ctx context.Context, ids []int64) ([]model.SysPackage, error)
+	FindByName(ctx context.Context, name string) (*model.SysPackage, error)
 	FindAllOnSale(ctx context.Context) ([]model.SysPackage, error)
 	FindPage(ctx context.Context, q *query.PackagePageQuery) ([]model.SysPackage, int64, error)
 	Create(ctx context.Context, p *model.SysPackage) error
@@ -19,6 +47,11 @@ type IPackageRepository interface {
 	DeleteByIDs(ctx context.Context, ids []int64) error
 	IncrementSalesCount(ctx context.Context, id int64, delta int64) error
 	CountOrders(ctx context.Context, packageID int64) (int64, error)
+	FindActivePromotionsByPackageID(ctx context.Context, packageID int64) ([]PromotionWithPackage, error)
+	SumPaidAmountByStatus(ctx context.Context, statuses []int8) (int64, error)
+	GetPackageOrderStats(ctx context.Context, statuses []int8) ([]PackageOrderStatRow, error)
+	GetLevelOrderStats(ctx context.Context, statuses []int8) ([]LevelOrderStatRow, error)
+	GetPeriodOrderStats(ctx context.Context, statuses []int8) ([]PeriodOrderStatRow, error)
 }
 
 type ICouponRepository interface {
@@ -43,4 +76,6 @@ type IUserCouponRepository interface {
 	CountByUserIDAndCouponID(ctx context.Context, userID, couponID int64) (int64, error)
 	FindExpired(ctx context.Context, before time.Time) ([]model.SysUserCoupon, error)
 	BatchMarkExpired(ctx context.Context, ids []int64) error
+	DeleteByCouponIDs(ctx context.Context, couponIDs []int64) error
+	CountUsedByCouponIDs(ctx context.Context, couponIDs []int64) (int64, error)
 }

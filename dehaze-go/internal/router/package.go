@@ -25,10 +25,10 @@ func RegisterPackageRoutes(rg *gin.RouterGroup, packageApi *api.PackageApi) {
 	{
 		couponRouter.GET("/my", packageApi.ListMyCoupons)
 		couponRouter.GET("/page", packageApi.GetCouponPage)
-		couponRouter.POST("", middleware.Permission("coupon:add"), packageApi.AddCoupon)
-		couponRouter.POST("/batch", middleware.Permission("coupon:distribute"), packageApi.BatchDistributeCoupon)
-		couponRouter.PUT("/:id", middleware.Permission("coupon:edit"), packageApi.UpdateCoupon)
+		couponRouter.POST("", middleware.Permission("package:coupon:add"), packageApi.AddCoupon)
+		couponRouter.POST("/batch", middleware.Permission("package:coupon:distribute"), packageApi.BatchDistributeCoupon)
+		couponRouter.PUT("/:id", middleware.Permission("package:coupon:edit"), packageApi.UpdateCoupon)
 		couponRouter.POST("/:couponId/receive", packageApi.ReceiveCoupon)
-		couponRouter.DELETE("/:ids", middleware.Permission("coupon:delete"), packageApi.DeleteCouponsByIds)
+		couponRouter.DELETE("/:ids", middleware.Permission("package:coupon:delete"), packageApi.DeleteCouponsByIds)
 	}
 }

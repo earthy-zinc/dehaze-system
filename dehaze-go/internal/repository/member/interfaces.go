@@ -12,7 +12,10 @@ type IMemberRepository interface {
 	FindByUserID(ctx context.Context, userID int64) (*model.SysMember, error)
 	FindWithUserByUserID(ctx context.Context, userID int64) (*MemberWithUser, error)
 	FindPageWithUser(ctx context.Context, q *query.MemberPageQuery) ([]MemberWithUser, int64, error)
-	FindAllActive(ctx context.Context) ([]model.SysMember, error)
+	FindAllActive(ctx context.Context, excludeQuotaResetMonth *int, limit int) ([]model.SysMember, error)
+	FindExpiredNonGrowth(ctx context.Context, now time.Time) ([]model.SysMember, error)
+	FindExpiringBetween(ctx context.Context, start, end time.Time) ([]model.SysMember, error)
+	Create(ctx context.Context, m *model.SysMember) error
 	UpdateLevel(ctx context.Context, userID int64, updates map[string]interface{}) error
 	UpdateGrowth(ctx context.Context, userID int64, growthValue int64) error
 	UpdateStatus(ctx context.Context, userID int64, updates map[string]interface{}) error

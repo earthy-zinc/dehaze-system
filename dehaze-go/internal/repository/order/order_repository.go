@@ -171,12 +171,18 @@ func (r *OrderRepository) FindPaidExpired(ctx context.Context, before time.Time)
 	return list, err
 }
 
-func (r *OrderRepository) CountByStatus(ctx context.Context, status int8) (int64, error) {
+func (r *OrderRepository) CountByStatus(ctx context.Context, status int8, startTime, endTime string) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).
+	db := r.db.WithContext(ctx).
 		Model(&model.SysOrder{}).
-		Where("status = ? AND deleted = 0", status).
-		Count(&count).Error
+		Where("status = ? AND deleted = 0", status)
+	if startTime != "" {
+		db = db.Where("create_time >= ?", startTime)
+	}
+	if endTime != "" {
+		db = db.Where("create_time <= ?", endTime)
+	}
+	err := db.Count(&count).Error
 	return count, err
 }
 
@@ -225,12 +231,18 @@ func (r *OrderRepository) CountTotalOrders(ctx context.Context, startTime, endTi
 	return count, err
 }
 
-func (r *OrderRepository) CountByPayMethod(ctx context.Context, payMethod string) (int64, error) {
+func (r *OrderRepository) CountByPayMethod(ctx context.Context, payMethod string, startTime, endTime string) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).
+	db := r.db.WithContext(ctx).
 		Model(&model.SysOrder{}).
-		Where("pay_method = ? AND status IN ? AND deleted = 0", payMethod, []int8{2, 3}).
-		Count(&count).Error
+		Where("pay_method = ? AND status IN ? AND deleted = 0", payMethod, []int8{2, 3})
+	if startTime != "" {
+		db = db.Where("create_time >= ?", startTime)
+	}
+	if endTime != "" {
+		db = db.Where("create_time <= ?", endTime)
+	}
+	err := db.Count(&count).Error
 	return count, err
 }
 

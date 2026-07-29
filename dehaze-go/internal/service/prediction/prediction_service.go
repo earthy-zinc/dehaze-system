@@ -40,12 +40,12 @@ func NewPredictionService(repo predrepo.IPredLogRepository, algoRepo algorepo.IA
 
 // PredictionResult 预测结果 VO
 type PredictionResult struct {
-	LogID              int64           `json:"logId"`
-	Status             model.LogStatus `json:"status"`
-	ResultURL          string          `json:"resultUrl,omitempty"`
-	ResultThumbnailURL string          `json:"resultThumbnailUrl,omitempty"`
-	Time               int             `json:"time,omitempty"`
-	ErrorMessage       string          `json:"errorMessage,omitempty"`
+	LogID              int64  `json:"logId"`
+	Status             string `json:"status"`
+	ResultURL          string `json:"resultUrl,omitempty"`
+	ResultThumbnailURL string `json:"resultThumbnailUrl,omitempty"`
+	Time               int    `json:"time,omitempty"`
+	ErrorMessage       string `json:"errorMessage,omitempty"`
 }
 
 // Predict 提交去雾预测任务（异步）
@@ -86,7 +86,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 				}
 				return &PredictionResult{
 					LogID:              predLog.ID,
-					Status:             model.LogStatusCompleted,
+					Status:             model.LogStatusCompleted.String(),
 					ResultURL:          cached.ResultURL,
 					ResultThumbnailURL: cached.ResultThumbnailURL,
 					Time:               cached.Time,
@@ -111,7 +111,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 
 	return &PredictionResult{
 		LogID:  logID,
-		Status: model.LogStatusProcessing,
+		Status: model.LogStatusProcessing.String(),
 	}, nil
 }
 
@@ -234,7 +234,7 @@ func (s *PredictionService) GetTaskStatus(ctx context.Context, id int64) (*Predi
 
 	result := &PredictionResult{
 		LogID:  log.ID,
-		Status: log.Status,
+		Status: log.Status.String(),
 	}
 	switch log.Status {
 	case model.LogStatusCompleted:

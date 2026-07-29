@@ -134,4 +134,70 @@ func (r *PackageRepository) CountOrders(ctx context.Context, packageID int64) (i
 	return count, err
 }
 
+func (r *PackageRepository) FindByName(ctx context.Context, name string) (*model.SysPackage, error) {
+	var p model.SysPackage
+	err := r.db.WithContext(ctx).
+		Where("name = ? AND deleted = 0", name).
+		First(&p).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &p, err
+}
+
+func (r *PackageRepository) FindActivePromotionsByPackageID(ctx context.Context, packageID int64) ([]PromotionWithPackage, error) {
+	var rows []PromotionWithPackage
+	err := r.db.WithContext(ctx).
+		Table("sys_promotion_package pp").
+		Select("pp.discount_type, pp.discount_value, p.status, p.start_time, p.end_time").
+		Joins("JOIN sys_promotion p ON pp.promotion_id = p.id").
+		Where("pp.package_id = ? AND p.deleted = 0", packageID).
+		Scan(&rows).Error
+	return rows, err
+}
+
+func (r *PackageRepository) SumPaidAmountByStatus(ctx context.Context, statuses []int8) (int64, error) {
+	var total int64
+	err := r.db.WithContext(ctx).
+		Table("sys_order").
+		Where("status IN ? AND deleted = 0", statuses).
+		Select("COALESCE(SUM(paid_amount), 0)").
+		Scan(&total).Error
+	return total, err
+}
+
+func (r *PackageRepository) GetPackageOrderStats(ctx context.Context, statuses []int8) ([]PackageOrderStatRow, error) {
+	var rows []PackageOrderStatRow
+	err := r.db.WithContext(ctx).
+		Table("sys_order").
+		Select("package_id, package_name, COUNT(*) as count, COALESCE(SUM(paid_amount), 0) as revenue").
+		Where("status IN ? AND deleted = 0", statuses).
+		Group("package_id, package_name").
+		Scan(&rows).Error
+	return rows, err
+}
+
+func (r *PackageRepository) GetLevelOrderStats(ctx context.Context, statuses []int8) ([]LevelOrderStatRow, error) {
+	var rows []LevelOrderStatRow
+	err := r.db.WithContext(ctx).
+		Table("sys_order").
+		Select("package_level, COUNT(*) as count, COALESCE(SUM(paid_amount), 0) as revenue").
+		Where("status IN ? AND deleted = 0", statuses).
+		Group("package_level").
+		Scan(&rows).Error
+	return rows, err
+}
+
+func (r *PackageRepository) GetPeriodOrderStats(ctx context.Context, statuses []int8) ([]PeriodOrderStatRow, error) {
+	var rows []PeriodOrderStatRow
+	err := r.db.WithContext(ctx).
+		Table("sys_order o").
+		Select("p.period, COUNT(*) as count, COALESCE(SUM(o.paid_amount), 0) as revenue").
+		Joins("JOIN sys_package p ON o.package_id = p.id").
+		Where("o.status IN ? AND o.deleted = 0 AND p.deleted = 0", statuses).
+		Group("p.period").
+		Scan(&rows).Error
+	return rows, err
+}
+
 var _ IPackageRepository = (*PackageRepository)(nil)

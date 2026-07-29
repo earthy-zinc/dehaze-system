@@ -33,4 +33,5 @@ type IOrderJobRunner interface {
 	CompleteExpiredOrders(ctx context.Context) error
 	ProcessAutoRenewals(ctx context.Context) error
 	ExpireUserCoupons(ctx context.Context) error
+	RetryFailedRefunds(ctx context.Context) error
 }

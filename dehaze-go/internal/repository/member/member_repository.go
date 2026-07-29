@@ -3,6 +3,7 @@ package member
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
@@ -90,18 +91,43 @@ func (r *MemberRepository) FindPageWithUser(ctx context.Context, q *query.Member
 	}
 
 	var list []MemberWithUser
-	err := db.Order("m.create_time DESC").
+	err := db.Order("m.become_member_time DESC").
 		Offset((pageNum - 1) * pageSize).Limit(pageSize).
 		Scan(&list).Error
 	return list, total, err
 }
 
-func (r *MemberRepository) FindAllActive(ctx context.Context) ([]model.SysMember, error) {
+func (r *MemberRepository) FindAllActive(ctx context.Context, excludeQuotaResetMonth *int, limit int) ([]model.SysMember, error) {
+	var list []model.SysMember
+	db := r.db.WithContext(ctx).Where("deleted = 0")
+	if excludeQuotaResetMonth != nil {
+		db = db.Where("quota_reset_month IS NULL OR quota_reset_month != ?", *excludeQuotaResetMonth)
+	}
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
+	err := db.Find(&list).Error
+	return list, err
+}
+
+func (r *MemberRepository) FindExpiredNonGrowth(ctx context.Context, now time.Time) ([]model.SysMember, error) {
 	var list []model.SysMember
 	err := r.db.WithContext(ctx).
-		Where("deleted = 0 AND status = 1").
+		Where("deleted = 0 AND expire_time IS NOT NULL AND expire_time < ? AND level_source != ?", now, "growth").
 		Find(&list).Error
 	return list, err
+}
+
+func (r *MemberRepository) FindExpiringBetween(ctx context.Context, start, end time.Time) ([]model.SysMember, error) {
+	var list []model.SysMember
+	err := r.db.WithContext(ctx).
+		Where("deleted = 0 AND expire_time IS NOT NULL AND expire_time >= ? AND expire_time < ? AND level_source != ?", start, end, "growth").
+		Find(&list).Error
+	return list, err
+}
+
+func (r *MemberRepository) Create(ctx context.Context, m *model.SysMember) error {
+	return r.db.WithContext(ctx).Create(m).Error
 }
 
 func (r *MemberRepository) UpdateLevel(ctx context.Context, userID int64, updates map[string]interface{}) error {

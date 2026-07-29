@@ -45,7 +45,7 @@ func (api *SysTaskApi) CreateTask(c *gin.Context) {
 		return
 	}
 	idempotencyKey := c.GetHeader("Idempotency-Key")
-	task, err := api.taskService.CreateTask(c.Request.Context(), form.TaskType, form.Params, userID, idempotencyKey)
+	task, err := api.taskService.CreateTask(c.Request.Context(), form.Type, form.Params, userID, idempotencyKey)
 	if err != nil {
 		_ = c.Error(err)
 		return

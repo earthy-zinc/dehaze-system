@@ -523,19 +523,7 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 		idsToDelete = append(idsToDelete, id)
 	}
 
-	// 2. 如果不强制删除，检查是否有数据项
-	if !req.Force {
-		// 统计数据项数量
-		totalCount, err := dos.datasetItemRepo.CountByDatasetIDs(ctx, idsToDelete)
-		if err != nil {
-			return nil, common.WrapBizError(common.DATABASE_ERROR, "检查数据项失败", err)
-		}
-		if totalCount > 0 {
-			return nil, common.NewBizError(common.BUSINESS_ERROR, fmt.Sprintf("数据集下还有 %d 个数据项，请使用 force=true 强制删除", totalCount))
-		}
-	}
-
-	// 3. 查询所有关联的文件
+	// 2. 查询所有关联的文件
 	allDatasetItems, err := dos.datasetItemRepo.FindByDatasetIDs(ctx, idsToDelete)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询数据项失败", err)
@@ -580,14 +568,14 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 		}
 	}
 
-	// 4. 级联删除数据项与关联记录（事务下沉到 Repository）
+	// 3. 级联删除数据项与关联记录（事务下沉到 Repository）
 	if len(itemIDs) > 0 {
 		if err := dos.datasetItemFileRepo.DeleteDatasetItemsCascade(ctx, itemIDs); err != nil {
 			return nil, common.WrapBizError(common.DATABASE_ERROR, "级联删除数据项失败", err)
 		}
 	}
 
-	// 5. 删除数据集（逻辑删除）
+	// 4. 删除数据集（逻辑删除）
 	updateBy := getBatchUpdateUserID(ctx)
 	if err := dos.datasetRepo.SoftDeleteByIDs(ctx, idsToDelete, updateBy); err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "删除数据集失败", err)

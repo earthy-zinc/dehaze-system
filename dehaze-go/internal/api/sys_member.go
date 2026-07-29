@@ -46,7 +46,7 @@ func (api *MemberApi) GetGrowthLogs(c *gin.Context) {
 		StartTime:  c.Query("startTime"),
 		EndTime:    c.Query("endTime"),
 		PageNum:    1,
-		PageSize:   20,
+		PageSize:   10,
 	}
 	if v := c.Query("pageNum"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -115,7 +115,7 @@ func (api *MemberApi) GetPage(c *gin.Context) {
 		ExpireTimeStart: c.Query("expireTimeStart"),
 		ExpireTimeEnd:   c.Query("expireTimeEnd"),
 		PageNum:         1,
-		PageSize:        20,
+		PageSize:        10,
 	}
 	if v := c.Query("pageNum"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {

@@ -18,6 +18,7 @@ type IMessageService interface {
 	MarkAllRead(ctx context.Context, userID int64, msgType string) (*vo.ReadAllResultVO, error)
 	Delete(ctx context.Context, ids []int64, userID int64) error
 	Search(ctx context.Context, userID int64, q *query.MessageSearchQuery) (*vo.PageResult[vo.MessageVO], error)
+	RefreshUnreadCountCache(ctx context.Context) error
 }
 
 // IAnnouncementService 公告服务接口

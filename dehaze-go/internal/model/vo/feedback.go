@@ -6,8 +6,8 @@ type MyRatingVO struct {
 	AlgorithmName string   `json:"algorithmName"`
 	Rating        int      `json:"rating"`
 	Comment       string   `json:"comment,omitempty"`
-	Tags          []string `json:"tags,omitempty"`
-	ImageUrls     []string `json:"imageUrls,omitempty"`
+	Tags          []string `json:"tags"`
+	ImageUrls     []string `json:"imageUrls"`
 	IsAnonymous   int      `json:"isAnonymous"`
 	AdminReply    string   `json:"adminReply,omitempty"`
 	ReplyTime     string   `json:"replyTime,omitempty"`
@@ -39,7 +39,7 @@ type FeedbackPageVO struct {
 	AssigneeID    *int64   `json:"assigneeId,omitempty"`
 	AssigneeName  string   `json:"assigneeName,omitempty"`
 	RelatedModule string   `json:"relatedModule,omitempty"`
-	Tags          []string `json:"tags,omitempty"`
+	Tags          []string `json:"tags"`
 	CreateTime    string   `json:"createTime"`
 	UpdateTime    string   `json:"updateTime,omitempty"`
 }
@@ -47,7 +47,7 @@ type FeedbackPageVO struct {
 type FeedbackDetailVO struct {
 	FeedbackPageVO
 	Contact      string             `json:"contact,omitempty"`
-	Images       []string           `json:"images,omitempty"`
+	Images       []string           `json:"images"`
 	AssignedTime string             `json:"assignedTime,omitempty"`
 	CloseReason  string             `json:"closeReason,omitempty"`
 	Replies      []FeedbackReplyVO  `json:"replies"`
@@ -61,7 +61,7 @@ type FeedbackReplyVO struct {
 	ReplierType int      `json:"replierType"`
 	Content     string   `json:"content"`
 	ReplyType   string   `json:"replyType,omitempty"`
-	Attachments []string `json:"attachments,omitempty"`
+	Attachments []string `json:"attachments"`
 	CreateTime  string   `json:"createTime"`
 }
 

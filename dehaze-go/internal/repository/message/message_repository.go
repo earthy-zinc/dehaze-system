@@ -160,7 +160,7 @@ func (r *MessageRepository) DeleteExpiredBatch(ctx context.Context, before time.
 	var total int64
 	for {
 		result := r.db.WithContext(ctx).
-			Where("expires_at < ? AND deleted = 0", before).
+			Where("expires_at < ?", before).
 			Limit(batchSize).
 			Delete(&model.SysMessage{})
 		if result.Error != nil {

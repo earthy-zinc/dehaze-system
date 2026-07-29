@@ -50,7 +50,7 @@ func (api *OrderApi) ListMy(c *gin.Context) {
 	q := &query.MyOrderQuery{
 		Status:   c.Query("status"),
 		PageNum:  1,
-		PageSize: 20,
+		PageSize: 10,
 	}
 	if v := c.Query("pageNum"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -203,7 +203,7 @@ func (api *OrderApi) GetPage(c *gin.Context) {
 		PaidTimeStart: c.Query("paidTimeStart"),
 		PaidTimeEnd:   c.Query("paidTimeEnd"),
 		PageNum:       1,
-		PageSize:      20,
+		PageSize:      10,
 	}
 	if v := c.Query("pageNum"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -242,7 +242,7 @@ func (api *OrderApi) ListRefunds(c *gin.Context) {
 		ApplyTimeStart: c.Query("applyTimeStart"),
 		ApplyTimeEnd:   c.Query("applyTimeEnd"),
 		PageNum:        1,
-		PageSize:       20,
+		PageSize:       10,
 	}
 	if v := c.Query("pageNum"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {

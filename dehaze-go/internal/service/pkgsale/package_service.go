@@ -2,6 +2,7 @@ package pkgsale
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -30,9 +31,15 @@ var levelNames = map[string]string{
 }
 
 var periodNames = map[string]string{
-	"monthly":   "月度",
-	"quarterly": "季度",
-	"yearly":    "年度",
+	"monthly":   "月卡",
+	"quarterly": "季卡",
+	"yearly":    "年卡",
+}
+
+var validPeriods = map[string]bool{
+	"monthly":   true,
+	"quarterly": true,
+	"yearly":    true,
 }
 
 type PackageService struct {
@@ -138,11 +145,9 @@ func (s *PackageService) CalculatePrice(ctx context.Context, userID, packageID i
 		return nil, common.NewBizError(common.PACKAGE_NOT_FOUND, "套餐不存在")
 	}
 
-	result := &vo.PriceResult{
-		OriginalPrice:  p.OriginalPrice,
-		DiscountAmount: p.OriginalPrice - p.SalePrice,
-		PayableAmount:  p.SalePrice,
-	}
+	salePrice := p.SalePrice
+	discountAmount := s.calculatePromotionDiscount(ctx, p)
+	couponAmount := int64(0)
 
 	if userCouponID != nil && *userCouponID > 0 {
 		uc, err := s.userCouponRepo.FindByUserIDAndStatusForUpdate(ctx, userID, *userCouponID)
@@ -151,6 +156,12 @@ func (s *PackageService) CalculatePrice(ctx context.Context, userID, packageID i
 		}
 		if uc == nil {
 			return nil, common.NewBizError(common.COUPON_NOT_FOUND, "优惠券不存在")
+		}
+		if uc.Status != 1 && uc.Status != 4 {
+			return nil, common.NewBizError(common.COUPON_ALREADY_USED, "优惠券已使用")
+		}
+		if uc.ExpireTime != nil && uc.ExpireTime.Before(time.Now()) {
+			return nil, common.NewBizError(common.COUPON_EXPIRED, "优惠券已过期")
 		}
 
 		c, err := s.couponRepo.FindByID(ctx, uc.CouponID)
@@ -165,15 +176,51 @@ func (s *PackageService) CalculatePrice(ctx context.Context, userID, packageID i
 			return nil, common.NewBizError(common.COUPON_NOT_APPLICABLE, "优惠券不适用于该套餐")
 		}
 
-		couponAmount := calcCouponAmount(c, result.PayableAmount)
-		if couponAmount > result.PayableAmount {
-			couponAmount = result.PayableAmount
+		couponBase := salePrice - discountAmount
+		couponAmount = calcCouponAmount(c, couponBase)
+		if couponAmount > couponBase {
+			couponAmount = couponBase
 		}
-		result.CouponAmount = couponAmount
-		result.PayableAmount = result.PayableAmount - couponAmount
 	}
 
-	return result, nil
+	payable := salePrice - discountAmount - couponAmount
+	if payable < 0 {
+		payable = 0
+	}
+
+	return &vo.PriceResult{
+		OriginalPrice:  p.OriginalPrice,
+		DiscountAmount: discountAmount,
+		CouponAmount:   couponAmount,
+		PayableAmount:  payable,
+	}, nil
+}
+
+func (s *PackageService) calculatePromotionDiscount(ctx context.Context, p *model.SysPackage) int64 {
+	rows, err := s.packageRepo.FindActivePromotionsByPackageID(ctx, p.ID)
+	if err != nil || len(rows) == 0 {
+		return 0
+	}
+	now := time.Now()
+	maxDiscount := int64(0)
+	for _, pp := range rows {
+		if pp.Status != 1 {
+			continue
+		}
+		if now.Before(pp.StartTime) || now.After(pp.EndTime) {
+			continue
+		}
+		var discount int64
+		if pp.DiscountType == "percent" {
+			discount = p.SalePrice * pp.DiscountValue / 100
+		} else if pp.DiscountType == "fixed" {
+			discount = pp.DiscountValue
+		}
+		if discount > maxDiscount {
+			maxDiscount = discount
+		}
+	}
+	return maxDiscount
 }
 
 func (s *PackageService) GetPage(ctx context.Context, q *query.PackagePageQuery) (*vo.PageResult[vo.PackagePageVO], error) {
@@ -223,9 +270,9 @@ func (s *PackageService) GetForm(ctx context.Context, id int64) (*bo.PackageForm
 		Status:        intPtr(int(p.Status)),
 	}
 
-	if p.BenefitOverrides != "" {
+	if p.BenefitOverrides.Valid {
 		var overrides bo.BenefitOverrides
-		if err := json.Unmarshal([]byte(p.BenefitOverrides), &overrides); err == nil {
+		if err := json.Unmarshal([]byte(p.BenefitOverrides.String), &overrides); err == nil {
 			form.BenefitOverrides = &overrides
 		}
 	}
@@ -233,12 +280,36 @@ func (s *PackageService) GetForm(ctx context.Context, id int64) (*bo.PackageForm
 	return form, nil
 }
 
-func (s *PackageService) Create(ctx context.Context, form *bo.PackageForm) error {
+func validatePackageForm(form *bo.PackageForm) error {
 	if form.Name == "" {
 		return common.NewBizError(common.PARAM_ERROR, "套餐名称不能为空")
 	}
-	if form.OriginalPrice < 0 || form.SalePrice < 0 {
-		return common.NewBizError(common.PARAM_ERROR, "价格不能为负数")
+	if form.OriginalPrice < 0 {
+		return common.NewBizError(common.PARAM_ERROR, "原价不能为负数")
+	}
+	if form.SalePrice < 0 {
+		return common.NewBizError(common.PARAM_ERROR, "促销价不能为负数")
+	}
+	if form.SalePrice > form.OriginalPrice {
+		return common.NewBizError(common.PARAM_ERROR, "促销价不能高于原价")
+	}
+	if !validPeriods[form.Period] {
+		return common.NewBizError(common.PARAM_ERROR, "计费周期非法")
+	}
+	return nil
+}
+
+func (s *PackageService) Create(ctx context.Context, form *bo.PackageForm) error {
+	if err := validatePackageForm(form); err != nil {
+		return err
+	}
+
+	existing, err := s.packageRepo.FindByName(ctx, form.Name)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询套餐失败", err)
+	}
+	if existing != nil {
+		return common.NewBizError(common.DATA_EXISTS, "套餐名称已存在")
 	}
 
 	p := &model.SysPackage{
@@ -250,12 +321,14 @@ func (s *PackageService) Create(ctx context.Context, form *bo.PackageForm) error
 		SalePrice:     form.SalePrice,
 		Description:   form.Description,
 		Sort:          0,
+		SalesCount:    0,
 		Status:        0,
 	}
 
 	if form.Sort != nil {
 		p.Sort = *form.Sort
 	}
+
 	if form.Status != nil {
 		p.Status = int8(*form.Status)
 	}
@@ -263,7 +336,7 @@ func (s *PackageService) Create(ctx context.Context, form *bo.PackageForm) error
 	if form.BenefitOverrides != nil {
 		data, err := json.Marshal(form.BenefitOverrides)
 		if err == nil {
-			p.BenefitOverrides = string(data)
+			p.BenefitOverrides = sql.NullString{String: string(data), Valid: true}
 		}
 	}
 
@@ -281,9 +354,18 @@ func (s *PackageService) Update(ctx context.Context, id int64, form *bo.PackageF
 	if p == nil {
 		return common.NewBizError(common.PACKAGE_NOT_FOUND, "套餐不存在")
 	}
+	if err := validatePackageForm(form); err != nil {
+		return err
+	}
 
-	if form.OriginalPrice < 0 || form.SalePrice < 0 {
-		return common.NewBizError(common.PARAM_ERROR, "价格不能为负数")
+	if p.Name != form.Name {
+		dup, err := s.packageRepo.FindByName(ctx, form.Name)
+		if err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "查询套餐失败", err)
+		}
+		if dup != nil && dup.ID != id {
+			return common.NewBizError(common.DATA_EXISTS, "套餐名称已存在")
+		}
 	}
 
 	updates := map[string]interface{}{
@@ -299,17 +381,14 @@ func (s *PackageService) Update(ctx context.Context, id int64, form *bo.PackageF
 	if form.Sort != nil {
 		updates["sort"] = *form.Sort
 	}
-	if form.Status != nil {
-		updates["status"] = int8(*form.Status)
-	}
 
 	if form.BenefitOverrides != nil {
 		data, err := json.Marshal(form.BenefitOverrides)
 		if err == nil {
-			updates["benefit_overrides"] = string(data)
+			updates["benefit_overrides"] = sql.NullString{String: string(data), Valid: true}
 		}
 	} else {
-		updates["benefit_overrides"] = ""
+		updates["benefit_overrides"] = nil
 	}
 
 	if err := s.packageRepo.Update(ctx, id, updates); err != nil {
@@ -326,6 +405,16 @@ func (s *PackageService) UpdateStatus(ctx context.Context, id int64, status int)
 	}
 	if p == nil {
 		return common.NewBizError(common.PACKAGE_NOT_FOUND, "套餐不存在")
+	}
+
+	if status == 0 {
+		activePromos, err := s.packageRepo.FindActivePromotionsByPackageID(ctx, id)
+		if err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "查询套餐促销活动失败", err)
+		}
+		if len(activePromos) > 0 {
+			return common.NewBizError(common.PACKAGE_IN_PROMOTION, "套餐参与进行中促销活动，无法下架")
+		}
 	}
 
 	if err := s.packageRepo.UpdateStatus(ctx, id, int8(status)); err != nil {
@@ -380,50 +469,54 @@ func (s *PackageService) GetSalesStats(ctx context.Context) (*vo.SalesStatsVO, e
 		CouponStats:  vo.CouponStatsVO{},
 	}
 
-	levelAgg := make(map[string]*vo.LevelSalesStatItem)
-	periodAgg := make(map[string]*vo.PeriodSalesStatItem)
-
 	for _, p := range list {
 		stats.TotalSales += p.SalesCount
-		stats.TotalRevenue += p.SalesCount * p.SalePrice
+	}
 
+	paidStatuses := []int8{2, 3}
+	totalRevenue, err := s.packageRepo.SumPaidAmountByStatus(ctx, paidStatuses)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询订单收入失败", err)
+	}
+	stats.TotalRevenue = totalRevenue
+
+	pkgRows, err := s.packageRepo.GetPackageOrderStats(ctx, paidStatuses)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询套餐销售统计失败", err)
+	}
+	for _, row := range pkgRows {
 		stats.PackageStats = append(stats.PackageStats, vo.PackageSalesStatItem{
-			PackageID:   p.ID,
-			PackageName: p.Name,
-			SalesCount:  p.SalesCount,
-			Revenue:     p.SalesCount * p.SalePrice,
+			PackageID:   row.PackageID,
+			PackageName: row.PackageName,
+			SalesCount:  row.Count,
+			Revenue:     row.Revenue,
 		})
-
-		if item, ok := levelAgg[p.LevelCode]; ok {
-			item.SalesCount += p.SalesCount
-			item.Revenue += p.SalesCount * p.SalePrice
-		} else {
-			levelAgg[p.LevelCode] = &vo.LevelSalesStatItem{
-				LevelCode:  p.LevelCode,
-				LevelName:  getLevelName(p.LevelCode),
-				SalesCount: p.SalesCount,
-				Revenue:    p.SalesCount * p.SalePrice,
-			}
-		}
-
-		if item, ok := periodAgg[p.Period]; ok {
-			item.SalesCount += p.SalesCount
-			item.Revenue += p.SalesCount * p.SalePrice
-		} else {
-			periodAgg[p.Period] = &vo.PeriodSalesStatItem{
-				Period:     p.Period,
-				PeriodName: getPeriodName(p.Period),
-				SalesCount: p.SalesCount,
-				Revenue:    p.SalesCount * p.SalePrice,
-			}
-		}
 	}
 
-	for _, item := range levelAgg {
-		stats.LevelStats = append(stats.LevelStats, *item)
+	levelRows, err := s.packageRepo.GetLevelOrderStats(ctx, paidStatuses)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询等级销售统计失败", err)
 	}
-	for _, item := range periodAgg {
-		stats.PeriodStats = append(stats.PeriodStats, *item)
+	for _, row := range levelRows {
+		stats.LevelStats = append(stats.LevelStats, vo.LevelSalesStatItem{
+			LevelCode:  row.PackageLevel,
+			LevelName:  getLevelName(row.PackageLevel),
+			SalesCount: row.Count,
+			Revenue:    row.Revenue,
+		})
+	}
+
+	periodRows, err := s.packageRepo.GetPeriodOrderStats(ctx, paidStatuses)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询周期销售统计失败", err)
+	}
+	for _, row := range periodRows {
+		stats.PeriodStats = append(stats.PeriodStats, vo.PeriodSalesStatItem{
+			Period:     row.Period,
+			PeriodName: getPeriodName(row.Period),
+			SalesCount: row.Count,
+			Revenue:    row.Revenue,
+		})
 	}
 
 	totalIssued, err := s.couponRepo.CountIssued(ctx)
@@ -437,7 +530,7 @@ func (s *PackageService) GetSalesStats(ctx context.Context) (*vo.SalesStatsVO, e
 	stats.CouponStats.TotalIssued = totalIssued
 	stats.CouponStats.TotalUsed = totalUsed
 	if totalIssued > 0 {
-		stats.CouponStats.UsageRate = totalUsed * 100 / totalIssued
+		stats.CouponStats.UsageRate = float64(totalUsed) / float64(totalIssued)
 	}
 
 	return stats, nil
@@ -472,9 +565,9 @@ func (s *PackageService) toPackageDetailVO(p *model.SysPackage, benefitMap map[s
 		vo.Benefits["batchDownload"] = int(benefit.BatchDownload)
 	}
 
-	if p.BenefitOverrides != "" {
+	if p.BenefitOverrides.Valid {
 		var overrides map[string]int
-		if err := json.Unmarshal([]byte(p.BenefitOverrides), &overrides); err == nil {
+		if err := json.Unmarshal([]byte(p.BenefitOverrides.String), &overrides); err == nil {
 			for k, v := range overrides {
 				vo.Benefits[k] = v
 			}
@@ -502,7 +595,7 @@ func calcDailyPrice(salePrice int64, periodDays int) int64 {
 	if periodDays <= 0 {
 		return 0
 	}
-	return salePrice / int64(periodDays)
+	return (2*salePrice + int64(periodDays)) / (2 * int64(periodDays))
 }
 
 func intPtr(v int) *int {

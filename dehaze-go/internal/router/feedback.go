@@ -18,8 +18,8 @@ func RegisterFeedbackRoutes(rg *gin.RouterGroup, feedbackApi *api.FeedbackApi) {
 		// literal 路径优先注册
 		ratingRouter.GET("/my", feedbackApi.ListMyRatings)
 		ratingRouter.GET("/by-prediction/:predictionLogId", feedbackApi.GetRatingByPrediction)
-		ratingRouter.GET("/page", middleware.Permission("feedback:rating:list"), feedbackApi.ListRatings)
-		ratingRouter.GET("/stats", middleware.Permission("feedback:stats"), feedbackApi.GetRatingStats)
+		ratingRouter.GET("/page", feedbackApi.ListRatings)
+		ratingRouter.GET("/stats", feedbackApi.GetRatingStats)
 		// 带参数路径最后注册
 		ratingRouter.PUT("/:id", feedbackApi.UpdateRating)
 		ratingRouter.PUT("/:id/hide", middleware.Permission("feedback:rating:edit"), feedbackApi.HideRating)
@@ -30,8 +30,8 @@ func RegisterFeedbackRoutes(rg *gin.RouterGroup, feedbackApi *api.FeedbackApi) {
 	// literal 路径优先注册
 	feedbackRouter.POST("", feedbackApi.CreateFeedback)
 	feedbackRouter.GET("/my", feedbackApi.ListMyFeedback)
-	feedbackRouter.GET("/page", middleware.Permission("feedback:list"), feedbackApi.ListFeedback)
-	feedbackRouter.GET("/stats", middleware.Permission("feedback:stats"), feedbackApi.GetFeedbackStats)
+	feedbackRouter.GET("/page", feedbackApi.ListFeedback)
+	feedbackRouter.GET("/stats", feedbackApi.GetFeedbackStats)
 	// 带参数路径最后注册
 	feedbackRouter.GET("/:id", feedbackApi.GetFeedbackDetail)
 	feedbackRouter.POST("/:id/supplement", feedbackApi.SupplementFeedback)

@@ -3,15 +3,15 @@ package job
 import (
 	"context"
 
-	xxl "github.com/xxl-job/xxl-job-executor-go"
 	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	xxl "github.com/xxl-job/xxl-job-executor-go"
 )
 
-func InitJobs(executor xxl.Executor, storageSvc StorageService, predLogRepo predrepo.IPredLogRepository, evalLogRepo evalrepo.IEvalLogRepository, orderRunner OrderJobRunner, announcementSvc AnnouncementRunner, messageSvc MessageRunner, memberRunner MemberQuotaRunner) {
+func InitJobs(executor xxl.Executor, storageSvc StorageService, predLogRepo predrepo.IPredLogRepository, evalLogRepo evalrepo.IEvalLogRepository, orderRunner OrderJobRunner, announcementSvc AnnouncementRunner, messageSvc MessageRunner, memberRunner MemberJobRunner) {
 	if executor == nil {
 		logger.Warn("XXL-Job 执行器未初始化，跳过任务注册")
 		return
@@ -32,7 +32,11 @@ func InitJobs(executor xxl.Executor, storageSvc StorageService, predLogRepo pred
 	executor.RegTask("expireUserCoupons", orderJob.HandleExpireUserCoupons)
 	executor.RegTask("sendScheduledAnnouncements", announcementJob.HandleSendScheduledAnnouncements)
 	executor.RegTask("cleanupExpiredMessages", messageJob.HandleCleanupExpiredMessages)
+	executor.RegTask("refreshUnreadCountCache", messageJob.HandleRefreshUnreadCountCache)
 	executor.RegTask("resetMemberMonthlyQuota", memberJob.HandleResetMonthlyQuota)
+	executor.RegTask("processExpiredMembers", memberJob.HandleProcessExpiredMembers)
+	executor.RegTask("retryFailedRefunds", orderJob.HandleRetryFailedRefunds)
+	executor.RegTask("sendExpireReminders", memberJob.HandleSendExpireReminders)
 
 	logger.Info("XXL-Job 定时任务注册完成")
 }

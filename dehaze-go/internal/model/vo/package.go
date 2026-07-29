@@ -81,7 +81,7 @@ type PeriodSalesStatItem struct {
 }
 
 type CouponStatsVO struct {
-	TotalIssued int64 `json:"totalIssued"`
-	TotalUsed   int64 `json:"totalUsed"`
-	UsageRate   int64 `json:"usageRate"`
+	TotalIssued int64   `json:"totalIssued"`
+	TotalUsed   int64   `json:"totalUsed"`
+	UsageRate   float64 `json:"usageRate"`
 }

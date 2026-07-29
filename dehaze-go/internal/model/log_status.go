@@ -7,3 +7,16 @@ const (
 	LogStatusCompleted  LogStatus = 2
 	LogStatusFailed     LogStatus = 3
 )
+
+func (s LogStatus) String() string {
+	switch s {
+	case LogStatusProcessing:
+		return "processing"
+	case LogStatusCompleted:
+		return "completed"
+	case LogStatusFailed:
+		return "failed"
+	default:
+		return "unknown"
+	}
+}

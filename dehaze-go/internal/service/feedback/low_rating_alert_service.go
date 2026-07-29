@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	lowRatingAlertQueue   = "low_rating_alert"
+	lowRatingAlertQueue   = "feedback.low_rating"
 	alertUrgentThreshold  = int64(3)
 	alertSevereThreshold  = 0.2
 	alertWindow           = 24 * time.Hour
@@ -141,7 +141,7 @@ func (s *LowRatingAlertService) sendNormalAlert(ctx context.Context, rating *mod
 		RecipientIDs: adminIDs,
 		BizModule:    "feedback",
 		BizID:        fmt.Sprintf("rating_alert_%d", rating.ID),
-		Priority:     2,
+		Priority:     3,
 	}
 	if _, err := s.messageService.Send(ctx, form); err != nil {
 		s.logger.Error("发送普通低分告警失败",
@@ -173,7 +173,7 @@ func (s *LowRatingAlertService) checkUrgentAlert(ctx context.Context, rating *mo
 		RecipientIDs: adminIDs,
 		BizModule:    "feedback",
 		BizID:        fmt.Sprintf("rating_urgent_%d_%d", rating.AlgorithmID, time.Now().Unix()),
-		Priority:     3,
+		Priority:     1,
 	}
 	if _, err := s.messageService.Send(ctx, form); err != nil {
 		s.logger.Error("发送紧急低分告警失败",
@@ -207,7 +207,7 @@ func (s *LowRatingAlertService) checkSevereAlert(ctx context.Context, rating *mo
 		RecipientIDs: adminIDs,
 		BizModule:    "feedback",
 		BizID:        fmt.Sprintf("rating_severe_%d", time.Now().Unix()),
-		Priority:     3,
+		Priority:     2,
 	}
 	if _, err := s.messageService.Send(ctx, form); err != nil {
 		s.logger.Error("发送严重低分告警失败", zap.Error(err))

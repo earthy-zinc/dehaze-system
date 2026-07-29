@@ -14,6 +14,7 @@ type OrderJobRunner interface {
 	CompleteExpiredOrders(ctx context.Context) error
 	ProcessAutoRenewals(ctx context.Context) error
 	ExpireUserCoupons(ctx context.Context) error
+	RetryFailedRefunds(ctx context.Context) error
 }
 
 // OrderJob 订单模块定时任务
@@ -53,6 +54,14 @@ func (j *OrderJob) HandleAutoRenew(ctx context.Context, param *xxl.RunReq) strin
 func (j *OrderJob) HandleExpireUserCoupons(ctx context.Context, param *xxl.RunReq) string {
 	if err := j.runner.ExpireUserCoupons(ctx); err != nil {
 		logger.Error("过期优惠券标记失败", zap.Error(err))
+		return "failed: " + err.Error()
+	}
+	return "success"
+}
+
+func (j *OrderJob) HandleRetryFailedRefunds(ctx context.Context, param *xxl.RunReq) string {
+	if err := j.runner.RetryFailedRefunds(ctx); err != nil {
+		logger.Error("退款失败重试失败", zap.Error(err))
 		return "failed: " + err.Error()
 	}
 	return "success"

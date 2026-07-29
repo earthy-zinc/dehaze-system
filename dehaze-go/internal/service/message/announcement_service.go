@@ -86,10 +86,10 @@ func (s *AnnouncementService) Update(ctx context.Context, id int64, userID int64
 		return common.WrapBizError(common.DATABASE_ERROR, "查询公告失败", err)
 	}
 	if ann == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "公告不存在")
+		return common.NewBizError(common.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
 	}
 	if ann.Status != 1 && ann.Status != 2 {
-		return common.NewBizError(common.DATA_STATE_NOT_ALLOW, "公告状态不允许编辑")
+		return common.NewBizError(common.ANNOUNCEMENT_STATUS_INVALID, "公告状态不允许编辑")
 	}
 
 	updates := make(map[string]interface{})
@@ -149,7 +149,7 @@ func (s *AnnouncementService) Delete(ctx context.Context, id int64) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询公告失败", err)
 	}
 	if ann == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "公告不存在")
+		return common.NewBizError(common.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
 	}
 	if err := s.annRepo.SoftDelete(ctx, id); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除公告失败", err)
@@ -163,7 +163,7 @@ func (s *AnnouncementService) GetDetail(ctx context.Context, id int64) (*vo.Anno
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询公告失败", err)
 	}
 	if ann == nil {
-		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "公告不存在")
+		return nil, common.NewBizError(common.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
 	}
 	return s.toDetailVO(ann), nil
 }
@@ -186,7 +186,7 @@ func (s *AnnouncementService) Send(ctx context.Context, id int64) (*vo.Announcem
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询公告失败", err)
 	}
 	if ann == nil {
-		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "公告不存在")
+		return nil, common.NewBizError(common.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
 	}
 	if ann.Status != 1 && ann.Status != 2 {
 		return nil, common.NewBizError(common.DATA_STATE_NOT_ALLOW, "公告状态不允许发送")
@@ -197,7 +197,7 @@ func (s *AnnouncementService) Send(ctx context.Context, id int64) (*vo.Announcem
 		return nil, err
 	}
 	if len(recipientIDs) == 0 {
-		return nil, common.NewBizError(common.BUSINESS_ERROR, "发送范围为空")
+		return nil, common.NewBizError(common.ANNOUNCEMENT_TARGET_EMPTY, "发送范围为空")
 	}
 
 	msgForm := &bo.MessageSendForm{
@@ -206,7 +206,7 @@ func (s *AnnouncementService) Send(ctx context.Context, id int64) (*vo.Announcem
 		Content:      ann.Content,
 		RecipientIDs: recipientIDs,
 		BizModule:    "system",
-		BizID:        fmt.Sprintf("announcement_%d", ann.ID),
+		BizID:        fmt.Sprintf("%d", ann.ID),
 		Priority:     int(ann.Importance) + 1,
 	}
 	if _, err := s.msgService.Send(ctx, msgForm); err != nil {
@@ -233,10 +233,10 @@ func (s *AnnouncementService) Cancel(ctx context.Context, id int64) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询公告失败", err)
 	}
 	if ann == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "公告不存在")
+		return common.NewBizError(common.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
 	}
 	if ann.Status != 2 {
-		return common.NewBizError(common.DATA_STATE_NOT_ALLOW, "仅待发送状态的公告可取消")
+		return common.NewBizError(common.ANNOUNCEMENT_STATUS_INVALID, "仅待发送状态的公告可取消")
 	}
 
 	updates := map[string]interface{}{

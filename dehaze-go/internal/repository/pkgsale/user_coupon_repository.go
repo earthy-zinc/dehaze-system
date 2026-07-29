@@ -100,4 +100,26 @@ func (r *UserCouponRepository) BatchMarkExpired(ctx context.Context, ids []int64
 		Update("status", 3).Error
 }
 
+func (r *UserCouponRepository) DeleteByCouponIDs(ctx context.Context, couponIDs []int64) error {
+	if len(couponIDs) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).
+		Model(&model.SysUserCoupon{}).
+		Where("coupon_id IN ? AND status = 1 AND deleted = 0", couponIDs).
+		Update("deleted", 1).Error
+}
+
+func (r *UserCouponRepository) CountUsedByCouponIDs(ctx context.Context, couponIDs []int64) (int64, error) {
+	if len(couponIDs) == 0 {
+		return 0, nil
+	}
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.SysUserCoupon{}).
+		Where("coupon_id IN ? AND status = 2 AND deleted = 0", couponIDs).
+		Count(&count).Error
+	return count, err
+}
+
 var _ IUserCouponRepository = (*UserCouponRepository)(nil)

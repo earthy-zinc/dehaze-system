@@ -89,6 +89,7 @@ var (
 	COUPON_LIMIT_EXCEEDED = &ResultCode{"A0528", "超过每人限领数量"}
 	COUPON_STATUS_INVALID = &ResultCode{"A0529", "优惠券状态无效"}
 	COUPON_LOCK_FAILED    = &ResultCode{"A052A", "优惠券锁定失败"}
+	PACKAGE_IN_PROMOTION  = &ResultCode{"A052B", "套餐参与进行中促销活动，无法下架"}
 
 	// 订单模块业务错误码 A053x
 	ORDER_NOT_FOUND       = &ResultCode{"A0530", "订单不存在"}
@@ -112,6 +113,18 @@ var (
 	FEEDBACK_LIMIT_EXCEEDED  = &ResultCode{"A0545", "今日反馈次数已达上限"}
 	PREDICTION_LOG_NOT_FOUND = &ResultCode{"A0546", "处理记录不存在"}
 
+	// 消息通知模块业务错误码 A055x
+	MESSAGE_NOT_FOUND              = &ResultCode{"A0550", "消息不存在"}
+	MESSAGE_NO_PERMISSION          = &ResultCode{"A0551", "无权操作此消息"}
+	ANNOUNCEMENT_NOT_FOUND         = &ResultCode{"A0552", "公告不存在"}
+	ANNOUNCEMENT_STATUS_INVALID    = &ResultCode{"A0553", "公告状态不允许此操作"}
+	ANNOUNCEMENT_TARGET_EMPTY      = &ResultCode{"A0554", "发送范围为空"}
+	MESSAGE_TEMPLATE_NOT_FOUND     = &ResultCode{"A0555", "消息模板不存在"}
+	TEMPLATE_VAR_MISSING           = &ResultCode{"A0556", "模板变量缺失"}
+	NOTIFICATION_SETTING_NOT_FOUND = &ResultCode{"A0557", "通知设置不存在"}
+	TEMPLATE_DISABLED              = &ResultCode{"A0558", "模板已禁用"}
+	MESSAGE_ALREADY_READ           = &ResultCode{"A0559", "消息已读"}
+
 	// A06xx: 操作相关
 	OPERATION_FAILED    = &ResultCode{"A0600", "操作失败"}
 	OPERATION_COMPLETED = &ResultCode{"A0601", "操作已完成"}
@@ -120,16 +133,14 @@ var (
 	USER_UPLOAD_FILE_ERROR          = &ResultCode{"A0700", "用户上传文件异常"}
 	USER_UPLOAD_FILE_TYPE_NOT_MATCH = &ResultCode{"A0701", "用户上传文件类型不匹配"}
 	USER_UPLOAD_FILE_SIZE_EXCEEDS   = &ResultCode{"A0702", "用户上传文件太大"}
-	USER_UPLOAD_IMAGE_SIZE_EXCEEDS  = &ResultCode{"A0703", "用户上传图片太大"}
-	IMPORT_FILE_EMPTY               = &ResultCode{"A0704", "上传文件为空或无数据行"}
-	IMPORT_FILE_PARSE_ERROR         = &ResultCode{"A0705", "文件解析失败"}
-	IMPORT_TEMPLATE_MISMATCH        = &ResultCode{"A0706", "导入文件表头与模板不一致"}
-	IMPORT_REQUIRED_FIELD_MISSING   = &ResultCode{"A0707", "必填字段为空"}
-	IMPORT_DATA_VALIDATE_ERROR      = &ResultCode{"A0708", "数据校验失败"}
-	IMPORT_ROWS_EXCEED_LIMIT        = &ResultCode{"A0709", "导入数据超出限制"}
-	EXPORT_ROWS_EXCEED_LIMIT        = &ResultCode{"A0710", "导出行数超出限制"}
-	MODULE_IMPORT_NOT_SUPPORTED     = &ResultCode{"A0711", "不支持该模块导入"}
-	MODULE_EXPORT_NOT_SUPPORTED     = &ResultCode{"A0712", "不支持该模块导出"}
+	IMPORT_FILE_EMPTY               = &ResultCode{"A0703", "上传文件为空或无数据行"}
+	IMPORT_FILE_PARSE_ERROR         = &ResultCode{"A0704", "文件解析失败"}
+	IMPORT_TEMPLATE_MISMATCH        = &ResultCode{"A0705", "导入文件表头与模板不一致"}
+	IMPORT_REQUIRED_FIELD_EMPTY     = &ResultCode{"A0706", "必填字段为空"}
+	IMPORT_DATA_VALIDATE_ERROR      = &ResultCode{"A0707", "数据校验失败"}
+	IMPORT_ROWS_EXCEED_LIMIT        = &ResultCode{"A0708", "导入数据超出限制"}
+	EXPORT_ROWS_EXCEED_LIMIT        = &ResultCode{"A0709", "导出行数超出限制"}
+	MODULE_IMPORT_NOT_SUPPORTED     = &ResultCode{"A0710", "不支持该模块导入"}
 
 	// ========== B 类：系统端错误 ==========
 
@@ -234,6 +245,7 @@ var allResultCodes = map[string]*ResultCode{
 	"A0528": COUPON_LIMIT_EXCEEDED,
 	"A0529": COUPON_STATUS_INVALID,
 	"A052A": COUPON_LOCK_FAILED,
+	"A052B": PACKAGE_IN_PROMOTION,
 	// 订单模块 A053x
 	"A0530": ORDER_NOT_FOUND,
 	"A0531": ORDER_STATUS_INVALID,
@@ -254,21 +266,30 @@ var allResultCodes = map[string]*ResultCode{
 	"A0544": FEEDBACK_CLOSED,
 	"A0545": FEEDBACK_LIMIT_EXCEEDED,
 	"A0546": PREDICTION_LOG_NOT_FOUND,
+	// 消息通知模块 A055x
+	"A0550": MESSAGE_NOT_FOUND,
+	"A0551": MESSAGE_NO_PERMISSION,
+	"A0552": ANNOUNCEMENT_NOT_FOUND,
+	"A0553": ANNOUNCEMENT_STATUS_INVALID,
+	"A0554": ANNOUNCEMENT_TARGET_EMPTY,
+	"A0555": MESSAGE_TEMPLATE_NOT_FOUND,
+	"A0556": TEMPLATE_VAR_MISSING,
+	"A0557": NOTIFICATION_SETTING_NOT_FOUND,
+	"A0558": TEMPLATE_DISABLED,
+	"A0559": MESSAGE_ALREADY_READ,
 	"A0600": OPERATION_FAILED,
 	"A0601": OPERATION_COMPLETED,
 	"A0700": USER_UPLOAD_FILE_ERROR,
 	"A0701": USER_UPLOAD_FILE_TYPE_NOT_MATCH,
 	"A0702": USER_UPLOAD_FILE_SIZE_EXCEEDS,
-	"A0703": USER_UPLOAD_IMAGE_SIZE_EXCEEDS,
-	"A0704": IMPORT_FILE_EMPTY,
-	"A0705": IMPORT_FILE_PARSE_ERROR,
-	"A0706": IMPORT_TEMPLATE_MISMATCH,
-	"A0707": IMPORT_REQUIRED_FIELD_MISSING,
-	"A0708": IMPORT_DATA_VALIDATE_ERROR,
-	"A0709": IMPORT_ROWS_EXCEED_LIMIT,
-	"A0710": EXPORT_ROWS_EXCEED_LIMIT,
-	"A0711": MODULE_IMPORT_NOT_SUPPORTED,
-	"A0712": MODULE_EXPORT_NOT_SUPPORTED,
+	"A0703": IMPORT_FILE_EMPTY,
+	"A0704": IMPORT_FILE_PARSE_ERROR,
+	"A0705": IMPORT_TEMPLATE_MISMATCH,
+	"A0706": IMPORT_REQUIRED_FIELD_EMPTY,
+	"A0707": IMPORT_DATA_VALIDATE_ERROR,
+	"A0708": IMPORT_ROWS_EXCEED_LIMIT,
+	"A0709": EXPORT_ROWS_EXCEED_LIMIT,
+	"A0710": MODULE_IMPORT_NOT_SUPPORTED,
 
 	// B 类：系统端错误
 	"B0001": SYSTEM_EXECUTION_ERROR,

@@ -7,11 +7,7 @@ import (
 )
 
 func NewModuleNotSupportedError(operation, module string) error {
-	code := common.MODULE_IMPORT_NOT_SUPPORTED
-	if operation == "export" {
-		code = common.MODULE_EXPORT_NOT_SUPPORTED
-	}
-	return common.NewBizError(code, fmt.Sprintf("模块 %s 不支持%s", module, operation))
+	return common.NewBizError(common.MODULE_IMPORT_NOT_SUPPORTED, fmt.Sprintf("模块 %s 不支持%s", module, operation))
 }
 
 func NewImportError(code *common.ResultCode, message string) error {

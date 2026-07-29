@@ -128,18 +128,20 @@ func (s *RatingService) CreateRating(ctx context.Context, userID int64, form *bo
 		IsAnonymous: int8(form.IsAnonymous),
 	}
 
-	if err := s.ratingRepo.Create(ctx, rating); err != nil {
-		return 0, common.WrapBizError(common.DATABASE_ERROR, "创建评价失败", err)
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txRatingRepo := fbrepo.NewRatingRepository(tx)
+		if err := txRatingRepo.Create(ctx, rating); err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "创建评价失败", err)
+		}
+		if err := s.awardGrowthForRating(ctx, userID, rating.ID); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return 0, err
 	}
 
 	s.invalidateRatingStatsCache(ctx)
-
-	if err := s.awardGrowthForRating(ctx, userID, rating.ID); err != nil {
-		s.logger.Warn("评价成长值发放失败",
-			zap.Int64("ratingId", rating.ID),
-			zap.Int64("userId", userID),
-			zap.Error(err))
-	}
 
 	if rating.Rating <= 2 && s.alertSvc != nil {
 		if err := s.alertSvc.PublishRatingEvent(ctx, rating); err != nil {
@@ -463,14 +465,14 @@ func toJSONString(arr []string) string {
 
 func fromJSONString(s string) []string {
 	if s == "" {
-		return nil
+		return []string{}
 	}
 	var arr []string
 	if err := json.Unmarshal([]byte(s), &arr); err != nil {
-		return nil
+		return []string{}
 	}
-	if len(arr) == 0 {
-		return nil
+	if arr == nil {
+		return []string{}
 	}
 	return arr
 }

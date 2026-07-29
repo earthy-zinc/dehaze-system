@@ -18,17 +18,17 @@ type MemberStatusForm struct {
 
 type BenefitForm struct {
 	LevelName            *string `json:"levelName"`
-	GrowthMin            *int64  `json:"growthMin"`
-	GrowthMax            *int64  `json:"growthMax"`
-	MonthlyDehazeQuota   *int    `json:"monthlyDehazeQuota"`
-	MonthlyEvaluateQuota *int    `json:"monthlyEvaluateQuota"`
-	HistoryRetention     *int    `json:"historyRetention"`
-	BatchLimit           *int    `json:"batchLimit"`
-	Priority             *int    `json:"priority"`
-	AdvancedParams       *int    `json:"advancedParams"`
-	HdExport             *int    `json:"hdExport"`
-	ReportExport         *int    `json:"reportExport"`
-	BatchDownload        *int    `json:"batchDownload"`
-	Sort                 *int    `json:"sort"`
-	Status               *int    `json:"status"`
+	GrowthMin            *int64  `json:"growthMin" binding:"omitempty,min=0"`
+	GrowthMax            *int64  `json:"growthMax" binding:"omitempty,min=0"`
+	MonthlyDehazeQuota   *int    `json:"monthlyDehazeQuota" binding:"omitempty,min=0"`
+	MonthlyEvaluateQuota *int    `json:"monthlyEvaluateQuota" binding:"omitempty,min=0"`
+	HistoryRetention     *int    `json:"historyRetention" binding:"omitempty,min=0"`
+	BatchLimit           *int    `json:"batchLimit" binding:"omitempty,min=0"`
+	Priority             *int    `json:"priority" binding:"omitempty,min=1,max=4"`
+	AdvancedParams       *int    `json:"advancedParams" binding:"omitempty,oneof=0 1"`
+	HdExport             *int    `json:"hdExport" binding:"omitempty,oneof=0 1"`
+	ReportExport         *int    `json:"reportExport" binding:"omitempty,oneof=0 1"`
+	BatchDownload        *int    `json:"batchDownload" binding:"omitempty,oneof=0 1"`
+	Sort                 *int    `json:"sort" binding:"omitempty,min=0"`
+	Status               *int    `json:"status" binding:"omitempty,oneof=0 1"`
 }

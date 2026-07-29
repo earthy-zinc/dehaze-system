@@ -253,6 +253,16 @@ func (s *AlgorithmService) Delete(ctx context.Context, ids []int64) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
 	}
 
+	existingIDs := make(map[int64]bool, len(allAlgorithms))
+	for i := range allAlgorithms {
+		existingIDs[allAlgorithms[i].ID] = true
+	}
+	for _, id := range ids {
+		if !existingIDs[id] {
+			return common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
+		}
+	}
+
 	nodes := make([]utils.TreeDataNode, 0, len(allAlgorithms))
 	for i := range allAlgorithms {
 		nodes = append(nodes, &allAlgorithms[i])

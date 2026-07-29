@@ -76,7 +76,7 @@ type OrderStatsVO struct {
 	TotalOrders           int64                      `json:"totalOrders"`
 	TotalRevenue          int64                      `json:"totalRevenue"`
 	TotalRefund           int64                      `json:"totalRefund"`
-	RefundRate            int64                      `json:"refundRate"`
+	RefundRate            float64                    `json:"refundRate"`
 	StatusDistribution    map[string]int64           `json:"statusDistribution"`
 	PayMethodDistribution map[string]int64           `json:"payMethodDistribution"`
 	PackageDistribution   []OrderPackageStatItem     `json:"packageDistribution"`

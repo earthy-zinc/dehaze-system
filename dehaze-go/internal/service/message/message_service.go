@@ -15,22 +15,24 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/earthyzinc/dehaze-go/pkg/websocket"
 	"go.uber.org/zap"
 )
 
 const (
 	unreadCountCachePrefix = "msg:unread:"
-	unreadCountCacheTTL    = 10 * time.Minute
+	unreadCountCacheTTL    = 1 * time.Hour
 )
 
 type MessageService struct {
-	msgRepo msgrepo.IMessageRepository
-	tplRepo msgrepo.IMessageTemplateRepository
-	cache   types.ICache
+	msgRepo        msgrepo.IMessageRepository
+	tplRepo        msgrepo.IMessageTemplateRepository
+	userLookupRepo msgrepo.IUserLookupRepository
+	cache          types.ICache
 }
 
-func NewMessageService(msgRepo msgrepo.IMessageRepository, tplRepo msgrepo.IMessageTemplateRepository, cache types.ICache) *MessageService {
-	return &MessageService{msgRepo: msgRepo, tplRepo: tplRepo, cache: cache}
+func NewMessageService(msgRepo msgrepo.IMessageRepository, tplRepo msgrepo.IMessageTemplateRepository, userLookupRepo msgrepo.IUserLookupRepository, cache types.ICache) *MessageService {
+	return &MessageService{msgRepo: msgRepo, tplRepo: tplRepo, userLookupRepo: userLookupRepo, cache: cache}
 }
 
 var varPattern = regexp.MustCompile(`\{(\w+)\}`)
@@ -126,7 +128,28 @@ func (s *MessageService) Send(ctx context.Context, form *bo.MessageSendForm) (*v
 
 	s.invalidateUnreadCount(ctx, form.RecipientIDs...)
 
+	for i := range msgs {
+		s.pushNewMessageEvent(msgs[i])
+	}
+
 	return &vo.MessageSendResultVO{MessageIDs: ids}, nil
+}
+
+func (s *MessageService) pushNewMessageEvent(msg model.SysMessage) {
+	manager := websocket.GetManager()
+	if manager == nil {
+		return
+	}
+	manager.PublishToUser(msg.RecipientID, map[string]interface{}{
+		"event": "new_message",
+		"data": map[string]interface{}{
+			"id":         msg.ID,
+			"type":       msg.Type,
+			"title":      msg.Title,
+			"priority":   int(msg.Priority),
+			"createTime": formatTimeVal(msg.CreatedAt),
+		},
+	})
 }
 
 func (s *MessageService) GetPage(ctx context.Context, userID int64, q *query.MessageQuery) (*vo.PageResult[vo.MessageVO], error) {
@@ -158,7 +181,7 @@ func (s *MessageService) GetDetail(ctx context.Context, id, userID int64) (*vo.M
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询消息失败", err)
 	}
 	if msg == nil || msg.Deleted == 1 || msg.RecipientID != userID {
-		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "消息不存在")
+		return nil, common.NewBizError(common.MESSAGE_NOT_FOUND, "消息不存在")
 	}
 
 	if msg.ReadStatus == 0 {
@@ -200,7 +223,11 @@ func (s *MessageService) GetUnreadCount(ctx context.Context, userID int64) (*vo.
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询未读消息数失败", err)
 	}
 	if s.cache != nil {
-		_ = s.cache.Set(ctx, cacheKey, strconv.FormatInt(count, 10), unreadCountCacheTTL)
+		ttl := unreadCountCacheTTL
+		if count == 0 {
+			ttl = 5 * time.Minute
+		}
+		_ = s.cache.Set(ctx, cacheKey, strconv.FormatInt(count, 10), ttl)
 	}
 	return &vo.UnreadCountVO{Count: count}, nil
 }
@@ -252,6 +279,46 @@ func (s *MessageService) CleanupExpired(ctx context.Context) error {
 	if total > 0 {
 		logger.Info("过期消息清理完成", zap.Int64("count", total))
 	}
+	return nil
+}
+
+func (s *MessageService) RefreshUnreadCountCache(ctx context.Context) error {
+	if s.userLookupRepo == nil {
+		logger.Warn("用户查询仓储未注入，跳过未读数缓存刷新")
+		return nil
+	}
+	userIDs, err := s.userLookupRepo.FindAllUserIDs(ctx)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询活跃用户失败", err)
+	}
+	if len(userIDs) == 0 {
+		logger.Info("未读数缓存刷新: 无活跃用户")
+		return nil
+	}
+	if s.cache == nil {
+		logger.Warn("缓存未注入，跳过未读数缓存刷新")
+		return nil
+	}
+
+	refreshed := 0
+	for _, uid := range userIDs {
+		count, err := s.msgRepo.CountUnread(ctx, uid)
+		if err != nil {
+			logger.Warn("查询未读数失败", zap.Int64("userID", uid), zap.Error(err))
+			continue
+		}
+		cacheKey := fmt.Sprintf("%s%d", unreadCountCachePrefix, uid)
+		ttl := time.Hour
+		if count == 0 {
+			ttl = 5 * time.Minute
+		}
+		if err := s.cache.Set(ctx, cacheKey, strconv.FormatInt(count, 10), ttl); err != nil {
+			logger.Warn("写入未读数缓存失败", zap.Int64("userID", uid), zap.Error(err))
+			continue
+		}
+		refreshed++
+	}
+	logger.Info("未读数缓存刷新完成", zap.Int("refreshed", refreshed))
 	return nil
 }
 

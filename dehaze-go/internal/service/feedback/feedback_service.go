@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -74,13 +75,10 @@ func (s *FeedbackService) CreateFeedback(ctx context.Context, userID int64, form
 	if s.cache != nil {
 		today := time.Now().Format(dateFormat)
 		counterKey := fmt.Sprintf("feedback:daily:%d:%s", userID, today)
-		count, err := s.cache.Incr(ctx, counterKey)
-		if err == nil {
-			if count == 1 {
-				_, _ = s.cache.Expire(ctx, counterKey, feedbackDailyCounterTTL)
-			}
-			if count > int64(feedbackDailyLimit) {
-				_, _ = s.cache.Decr(ctx, counterKey)
+		countStr, err := s.cache.Get(ctx, counterKey)
+		if err == nil && countStr != "" {
+			todayCount, parseErr := strconv.ParseInt(countStr, 10, 64)
+			if parseErr == nil && todayCount >= int64(feedbackDailyLimit) {
 				return 0, common.NewBizError(common.FEEDBACK_LIMIT_EXCEEDED, "今日反馈次数已达上限")
 			}
 		}
@@ -104,10 +102,20 @@ func (s *FeedbackService) CreateFeedback(ctx context.Context, userID int64, form
 		RelatedModule: form.RelatedModule,
 		Status:        1,
 		Priority:      1,
+		Tags:          "[]",
 	}
 
 	if err := s.feedbackRepo.Create(ctx, fb); err != nil {
 		return 0, common.WrapBizError(common.DATABASE_ERROR, "创建反馈失败", err)
+	}
+
+	if s.cache != nil {
+		today := time.Now().Format(dateFormat)
+		counterKey := fmt.Sprintf("feedback:daily:%d:%s", userID, today)
+		newCount, err := s.cache.Incr(ctx, counterKey)
+		if err == nil && newCount == 1 {
+			_, _ = s.cache.Expire(ctx, counterKey, feedbackDailyCounterTTL)
+		}
 	}
 
 	s.invalidateFeedbackStatsCache(ctx)
@@ -126,12 +134,15 @@ func (s *FeedbackService) ListMyFeedback(ctx context.Context, userID int64, page
 	return &vo.PageResult[vo.FeedbackPageVO]{List: vos, Total: total}, nil
 }
 
-func (s *FeedbackService) GetFeedbackDetail(ctx context.Context, id int64) (*vo.FeedbackDetailVO, error) {
+func (s *FeedbackService) GetFeedbackDetail(ctx context.Context, id, userID int64, isAdmin bool) (*vo.FeedbackDetailVO, error) {
 	fb, err := s.feedbackRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询反馈失败", err)
 	}
 	if fb == nil {
+		return nil, common.NewBizError(common.FEEDBACK_NOT_FOUND, "反馈不存在")
+	}
+	if !isAdmin && fb.UserID != userID {
 		return nil, common.NewBizError(common.FEEDBACK_NOT_FOUND, "反馈不存在")
 	}
 
@@ -162,9 +173,11 @@ func (s *FeedbackService) GetFeedbackDetail(ctx context.Context, id int64) (*vo.
 	pageVO := toFeedbackPageVO(fb, username, assigneeName)
 	detail := &vo.FeedbackDetailVO{
 		FeedbackPageVO: pageVO,
-		Contact:        fb.Contact,
 		Images:         fromJSONString(fb.Images),
 		Replies:        replyVOs,
+	}
+	if isAdmin {
+		detail.Contact = fb.Contact
 	}
 	if fb.AssignedTime != nil {
 		detail.AssignedTime = fb.AssignedTime.Format(timeFormat)
@@ -244,11 +257,14 @@ func (s *FeedbackService) AssignFeedback(ctx context.Context, id, assigneeID int
 		return common.NewBizError(common.FEEDBACK_CLOSED, "反馈已关闭")
 	}
 	now := time.Now()
-	if err := s.feedbackRepo.Update(ctx, id, map[string]interface{}{
+	updates := map[string]interface{}{
 		"assignee_id":   assigneeID,
 		"assigned_time": now,
-		"status":        int8(2),
-	}); err != nil {
+	}
+	if fb.Status == 1 {
+		updates["status"] = int8(2)
+	}
+	if err := s.feedbackRepo.Update(ctx, id, updates); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "分配反馈失败", err)
 	}
 	s.invalidateFeedbackStatsCache(ctx)

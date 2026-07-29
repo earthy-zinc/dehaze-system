@@ -98,3 +98,11 @@ func (r *RefundRecordRepository) FindPage(ctx context.Context, q *query.RefundPa
 }
 
 var _ IRefundRecordRepository = (*RefundRecordRepository)(nil)
+
+func (r *RefundRecordRepository) FindFailedRetryable(ctx context.Context, maxRetryCount int) ([]model.SysRefundRecord, error) {
+	var list []model.SysRefundRecord
+	err := r.db.WithContext(ctx).
+		Where("deleted = 0 AND status = 3 AND retry_count < ?", maxRetryCount).
+		Find(&list).Error
+	return list, err
+}

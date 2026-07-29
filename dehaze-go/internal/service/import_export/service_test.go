@@ -298,7 +298,7 @@ func TestExport_ModuleNotSupported_ReturnsError(t *testing.T) {
 	assert.Error(t, err)
 	var bizErr *common.BizError
 	if errors.As(err, &bizErr) {
-		assert.Equal(t, common.MODULE_EXPORT_NOT_SUPPORTED, bizErr.Code())
+		assert.Equal(t, common.MODULE_IMPORT_NOT_SUPPORTED, bizErr.Code())
 	}
 }
 

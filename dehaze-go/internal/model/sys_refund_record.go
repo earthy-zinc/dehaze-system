@@ -19,6 +19,7 @@ type SysRefundRecord struct {
 	AuditRemark     string     `gorm:"column:audit_remark;type:varchar(256);comment:审核备注" json:"auditRemark"`
 	RefundTime      *time.Time `gorm:"column:refund_time;type:datetime;comment:退款完成时间" json:"refundTime"`
 	ErrorMessage    string     `gorm:"column:error_message;type:varchar(512);comment:错误信息" json:"errorMessage"`
+	RetryCount      int8       `gorm:"column:retry_count;type:tinyint;not null;default:0;comment:自动重试次数" json:"retryCount"`
 	Deleted         int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
 }
 

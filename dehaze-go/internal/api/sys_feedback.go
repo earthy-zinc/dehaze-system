@@ -240,13 +240,20 @@ func (api *FeedbackApi) ListMyFeedback(c *gin.Context) {
 }
 
 func (api *FeedbackApi) GetFeedbackDetail(c *gin.Context) {
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	isAdmin := security.IsAdmin(c)
+
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "ID格式不正确"))
 		return
 	}
 
-	result, err := api.feedbackService.GetFeedbackDetail(c.Request.Context(), id)
+	result, err := api.feedbackService.GetFeedbackDetail(c.Request.Context(), id, userID, isAdmin)
 	if err != nil {
 		_ = c.Error(err)
 		return

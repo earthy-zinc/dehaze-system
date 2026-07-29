@@ -23,7 +23,7 @@ type IRatingService interface {
 type IFeedbackService interface {
 	CreateFeedback(ctx context.Context, userID int64, form *bo.FeedbackCreateForm) (int64, error)
 	ListMyFeedback(ctx context.Context, userID int64, pageNum, pageSize int) (*vo.PageResult[vo.FeedbackPageVO], error)
-	GetFeedbackDetail(ctx context.Context, id int64) (*vo.FeedbackDetailVO, error)
+	GetFeedbackDetail(ctx context.Context, id, userID int64, isAdmin bool) (*vo.FeedbackDetailVO, error)
 	SupplementFeedback(ctx context.Context, userID, feedbackID int64, form *bo.FeedbackSupplementForm) error
 	ListPagedFeedback(ctx context.Context, q *query.FeedbackPageQuery) (*vo.PageResult[vo.FeedbackPageVO], error)
 	AssignFeedback(ctx context.Context, id, assigneeID int64) error

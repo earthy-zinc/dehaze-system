@@ -13,17 +13,17 @@ type BenefitOverrides struct {
 }
 
 type PackageForm struct {
-	ID               int64            `json:"id"`
-	Name             string           `json:"name"`
-	LevelCode        string           `json:"levelCode"`
-	Period           string           `json:"period"`
-	PeriodDays       int              `json:"periodDays"`
-	OriginalPrice    int64            `json:"originalPrice"`
-	SalePrice        int64            `json:"salePrice"`
-	Description      string           `json:"description"`
+	ID               int64             `json:"id"`
+	Name             string            `json:"name" binding:"required,min=2,max=32"`
+	LevelCode        string            `json:"levelCode" binding:"required"`
+	Period           string            `json:"period" binding:"required,oneof=monthly quarterly yearly"`
+	PeriodDays       int               `json:"periodDays" binding:"required,min=1,max=365"`
+	OriginalPrice    int64             `json:"originalPrice" binding:"required,min=1"`
+	SalePrice        int64             `json:"salePrice" binding:"required,min=1"`
+	Description      string            `json:"description" binding:"omitempty,max=256"`
 	BenefitOverrides *BenefitOverrides `json:"benefitOverrides"`
-	Sort             *int             `json:"sort"`
-	Status           *int             `json:"status"`
+	Sort             *int              `json:"sort" binding:"omitempty,min=0,max=999"`
+	Status           *int              `json:"status" binding:"omitempty,oneof=0 1"`
 }
 
 type PackageStatusForm struct {

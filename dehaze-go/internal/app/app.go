@@ -70,9 +70,9 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/earthyzinc/dehaze-go/pkg/storage"
+	dehazevalidator "github.com/earthyzinc/dehaze-go/pkg/validator"
 	"github.com/earthyzinc/dehaze-go/pkg/websocket"
 	"github.com/earthyzinc/dehaze-go/pkg/xxljob"
-	dehazevalidator "github.com/earthyzinc/dehaze-go/pkg/validator"
 	gingin "github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
@@ -83,9 +83,9 @@ import (
 // 目标：显式 wiring（构造函数注入）+ 清晰启动链路，避免运行时 DI 容器。
 type Application struct {
 	*gin.Server
-	taskExecutor   taskservice.AsyncTaskExecutor
-	consumer       *mq.Consumer
-	publisher      *mq.Publisher
+	taskExecutor    taskservice.AsyncTaskExecutor
+	consumer        *mq.Consumer
+	publisher       *mq.Publisher
 	auditLogService *auditlogservice.AuditLogService
 }
 
@@ -281,13 +281,13 @@ func (a *Application) Init() error {
 	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService)
 
 	// message module services
-	messageService := msgservice.NewMessageService(msgRepo, msgTplRepo, cacheClient)
+	messageService := msgservice.NewMessageService(msgRepo, msgTplRepo, userLookupRepo, cacheClient)
 	announcementService := msgservice.NewAnnouncementService(annRepo, userLookupRepo, messageService)
 	messageTemplateService := msgservice.NewMessageTemplateService(msgTplRepo)
 	notificationSettingService := msgservice.NewNotificationSettingService(notifySettingRepo)
 
 	// member module services（需在 predictionService 之前构造，预测/评估需调用权益校验）
-	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient, a.auditLogService)
+	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient, a.auditLogService, messageService)
 
 	predictionService := predservice.NewPredictionService(predLogRepo, algorithmRepo, algoClient, cacheClient, memberService)
 	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algorithmRepo, algoClient, memberService)
@@ -296,7 +296,7 @@ func (a *Application) Init() error {
 	packageService := pkgsaleservice.NewPackageService(gormDB, packageRepo, couponRepo, userCouponRepo, memberBenefitRepo, cacheClient)
 	couponService := pkgsaleservice.NewCouponService(gormDB, couponRepo, userCouponRepo)
 	paymentSvc := paymentsvc.NewPaymentChannelService(cfg.Payment)
-	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, memberRepo, paymentSvc, cacheClient, a.auditLogService)
+	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, memberRepo, memberBenefitRepo, paymentSvc, cacheClient, a.auditLogService)
 
 	// feedback module services
 	var alertPublisher *mq.Publisher
