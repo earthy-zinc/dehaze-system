@@ -101,11 +101,14 @@ class PredictionService:
         # 1. 从数据库获取算法信息
         algorithm = await self.get_algorithm(algorithm_id)
 
-        # 2. 如果 fileId 存在，查询原始文件（含 md5），供拦截器使用
+        # 2. fileId 存在时查询原始文件并用其真实 URL（对齐 Java resolveImageUrl）
         origin_file: Optional[SysFile] = None
         if file_id is not None:
             async with async_session_factory() as db:
                 origin_file = await file_repository.get_by_id(db, file_id)
+            if origin_file is None:
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"文件不存在: {file_id}")
+            image_url = origin_file.url
 
         # 3. 调用拦截器链（命中即短路，不调用算法）
         context = PredictionContext(

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -70,6 +71,18 @@ def start(svc: str):
     print(f"[{svc}] console log: {log_path}")
 
 
+def _kill_port_occupants(port: int):
+    # 清理占用端口的残留进程（go run/uvicorn --reload 的孤儿子进程，PPID=1，不在 PID 文件记录的进程组）
+    if IS_WIN:
+        return
+    out = subprocess.run(["ss", "-tlnp", f"sport = :{port}"], capture_output=True, text=True).stdout
+    for p in set(re.findall(r"pid=(\d+)", out)):
+        try:
+            os.killpg(os.getpgid(int(p)), 9)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+
 def stop(svc: str):
     cwd = SERVICES[svc][0]
     pid_file = cwd / f".{svc}.pid"
@@ -80,12 +93,15 @@ def stop(svc: str):
         return
 
     if IS_WIN:
-        subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
     else:
+        # start 用 start_new_session=True，子进程（go run 二进制、uvicorn worker）在同一进程组，
+        # 组 ID = 父 PID，需 killpg 才能连带杀掉子进程
         try:
-            os.kill(pid, 9)
-        except ProcessLookupError:
+            os.killpg(pid, 9)
+        except (ProcessLookupError, PermissionError):
             pass
+        _kill_port_occupants(SERVICES[svc][2])
     pid_file.unlink(missing_ok=True)
     print(f"[{svc}] stopped")
 

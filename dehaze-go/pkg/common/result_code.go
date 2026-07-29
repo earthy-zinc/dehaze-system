@@ -61,6 +61,7 @@ var (
 	PARAM_ERROR        = &ResultCode{"A0400", "用户请求参数错误"}
 	RESOURCE_NOT_FOUND = &ResultCode{"A0401", "请求资源不存在"}
 	PARAM_IS_NULL      = &ResultCode{"A0410", "请求必填参数为空"}
+	TASK_NOT_FOUND     = &ResultCode{"B0301", "任务不存在"}
 
 	// A05xx: 业务规则
 	BUSINESS_ERROR       = &ResultCode{"A0500", "业务异常"}

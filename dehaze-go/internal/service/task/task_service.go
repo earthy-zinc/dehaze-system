@@ -198,7 +198,7 @@ func (ts *TaskService) UpdateTaskResult(ctx context.Context, taskIDStr string, r
 		return common.WrapBizError(common.DATABASE_ERROR, "查询任务失败", err)
 	}
 	if task == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "任务不存在")
+		return common.NewBizError(common.TASK_NOT_FOUND, "任务不存在")
 	}
 
 	now := time.Now()
@@ -365,7 +365,7 @@ func (ts *TaskService) getTaskFromCacheOrDB(ctx context.Context, taskIDStr strin
 	}
 	if task == nil {
 		ts.logger.Warn("任务不存在", zap.String("taskID", taskIDStr))
-		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "任务不存在")
+		return nil, common.NewBizError(common.TASK_NOT_FOUND, "任务不存在")
 	}
 
 	ts.cacheTask(ctx, task)
@@ -496,7 +496,7 @@ func (ts *TaskService) UpdateTaskStatus(ctx context.Context, taskIDStr string, s
 		return common.WrapBizError(common.DATABASE_ERROR, "查询任务失败", err)
 	}
 	if task == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "任务不存在")
+		return common.NewBizError(common.TASK_NOT_FOUND, "任务不存在")
 	}
 
 	fields := map[string]interface{}{
@@ -566,7 +566,7 @@ func (ts *TaskService) UpdateTaskProgress(ctx context.Context, taskIDStr string,
 		return common.WrapBizError(common.DATABASE_ERROR, "查询任务失败", err)
 	}
 	if task == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "任务不存在")
+		return common.NewBizError(common.TASK_NOT_FOUND, "任务不存在")
 	}
 
 	if err := ts.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{
@@ -601,7 +601,7 @@ func (ts *TaskService) UpdateRetryCount(ctx context.Context, taskIDStr string, r
 		return common.WrapBizError(common.DATABASE_ERROR, "查询任务失败", err)
 	}
 	if task == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "任务不存在")
+		return common.NewBizError(common.TASK_NOT_FOUND, "任务不存在")
 	}
 
 	if err := ts.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{

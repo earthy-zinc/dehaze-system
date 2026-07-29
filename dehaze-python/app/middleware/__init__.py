@@ -16,20 +16,20 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     注册所有中间件
 
     注意：中间件注册顺序影响执行顺序（后注册的先执行，即更靠近应用层）
-    执行顺序（请求进入时）：CORS → Prometheus → RateLimit → AntiRepeat → IPBlacklist → Trace → DBSession → 业务逻辑
+    执行顺序（请求进入时）：CORS → Prometheus → RateLimit → AntiRepeat → IPBlacklist → Trace → DBSession → ApiKeyAuth → 业务逻辑
 
     Args:
         app: FastAPI 应用实例
         debug: 是否为调试模式（影响 CORS 配置）
         prometheus_enabled: 是否启用 Prometheus 指标采集
     """
+    # API Key 认证中间件（先注册使其在 DBSession 之后执行，才能读到 request.state.db）
+    from app.middleware.api_key_auth import ApiKeyAuthMiddleware
+    app.add_middleware(ApiKeyAuthMiddleware)
+
     # 数据库事务中间件（最内层，响应发送前 commit/rollback）
     from app.middleware.db import DBSessionMiddleware
     app.add_middleware(DBSessionMiddleware)
-
-    # API Key 认证中间件（独立于 Session，在 DBSession 之后因为需要 DB 查询）
-    from app.middleware.api_key_auth import ApiKeyAuthMiddleware
-    app.add_middleware(ApiKeyAuthMiddleware)
 
     # TraceID 中间件（确保日志和业务代码能获取 trace_id）
     app.add_middleware(TraceMiddleware)

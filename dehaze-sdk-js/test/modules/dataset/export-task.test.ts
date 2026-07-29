@@ -1,5 +1,6 @@
 import { DatasetAPI, DatasetItemAPI, TaskAPI } from "../../../index";
 import { createDatasetForm, createDatasetItemForm } from "#/factories/dataset";
+import { expectBizError } from "#/utils/assertion";
 
 describe("导出任务接口测试", () => {
   let testDatasetId: number;
@@ -70,9 +71,8 @@ describe("导出任务接口测试", () => {
     });
 
     test("异常测试：查询不存在的任务", async () => {
-      // 后端 getTaskStatus 找不到任务时返回 null，SDK 解包后为 undefined
-      const result = await TaskAPI.getStatus("non-existent-task-id");
-      expect(result === undefined || result === null).toBe(true);
+      // 规范：查询不存在的任务返回 400（code=B0301 任务不存在）
+      await expectBizError(TaskAPI.getStatus("non-existent-task-id"), "B0301");
     });
   });
 

@@ -126,6 +126,7 @@ public enum ResultCode implements IResultCode {
     SYSTEM_RESOURCE_ACCESS_ERROR("B0320", "系统资源访问异常"),
     SYSTEM_READ_DISK_FILE_ERROR("B0321", "系统读取磁盘文件失败"),
     TASK_CONCURRENT_EXCEED_LIMIT("B0308", "导入导出任务并发超限"),
+    TASK_NOT_FOUND("B0301", "任务不存在"),
 
     CALL_THIRD_PARTY_SERVICE_ERROR("C0001", "调用第三方服务出错"),
     MIDDLEWARE_SERVICE_ERROR("C0100", "中间件服务出错"),

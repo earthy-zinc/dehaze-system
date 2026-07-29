@@ -2,7 +2,7 @@
 算法数据访问层
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy import delete, select, func, desc
@@ -289,6 +289,30 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
             "minTime": int(row.min_time or 0),
             "successRate": 1.0,  # 日志表只记录成功的调用
         }
+
+    async def get_monitor_stats_by_date(
+        self,
+        db: AsyncSession,
+        algorithm_id: int,
+        days: int,
+    ) -> dict:
+        """按日期分组聚合最近 days 天预测日志（date -> row）"""
+        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)
+        stmt = (
+            select(
+                func.date(SysPredLog.create_time).label("date"),
+                func.count(SysPredLog.id).label("call_count"),
+                func.avg(SysPredLog.time).label("avg_time"),
+                func.count(SysPredLog.pred_url).label("success_count"),
+            )
+            .where(
+                SysPredLog.algorithm_id == algorithm_id,
+                SysPredLog.create_time >= start,
+            )
+            .group_by(func.date(SysPredLog.create_time))
+        )
+        result = await db.execute(stmt)
+        return {str(row.date): row for row in result}
 
     async def get_today_call_count(
         self,

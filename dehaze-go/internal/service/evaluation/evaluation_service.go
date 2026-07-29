@@ -37,7 +37,7 @@ type EvaluationResult struct {
 	LogID        int64           `json:"logId"`
 	Status       model.LogStatus `json:"status"`
 	Metrics      map[string]float64 `json:"metrics,omitempty"`
-	Time         int             `json:"time,omitempty"`
+	Time         int             `json:"time"`
 	ErrorMessage string          `json:"errorMessage,omitempty"`
 }
 

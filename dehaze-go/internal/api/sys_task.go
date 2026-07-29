@@ -106,7 +106,7 @@ func (api *SysTaskApi) GetTaskById(c *gin.Context) {
 	}
 
 	if task == nil {
-		_ = c.Error(common.NewBizError(common.RESOURCE_NOT_FOUND, "任务不存在: "+idStr))
+		_ = c.Error(common.NewBizError(common.TASK_NOT_FOUND, "任务不存在: "+idStr))
 		return
 	}
 

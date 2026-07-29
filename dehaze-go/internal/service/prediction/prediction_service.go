@@ -45,7 +45,7 @@ type PredictionResult struct {
 	Status             model.LogStatus `json:"status"`
 	ResultURL          string          `json:"resultUrl,omitempty"`
 	ResultThumbnailURL string          `json:"resultThumbnailUrl,omitempty"`
-	Time               int             `json:"time,omitempty"`
+	Time               int             `json:"time"`
 	ErrorMessage       string          `json:"errorMessage,omitempty"`
 }
 

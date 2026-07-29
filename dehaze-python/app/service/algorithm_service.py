@@ -6,7 +6,7 @@
 
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -478,6 +478,34 @@ class AlgorithmService:
         }
 
     @staticmethod
-    async def get_monitor_stats_report(db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
-        """获取算法监控统计报表（对齐 Java：直接返回 getMonitorData）"""
-        return await AlgorithmService.get_monitor_data(db, algorithm_id)
+    async def get_monitor_stats_report(
+        db: AsyncSession, algorithm_id: int, days: int = 7
+    ) -> list[dict[str, Any]]:
+        """获取算法监控统计报表（对齐 Java：最近 days 天每天一条，含无数据天）"""
+        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+        if not algorithm:
+            raise BusinessException("算法不存在")
+        if days <= 0:
+            days = 7
+        by_date = await algorithm_repository.get_monitor_stats_by_date(
+            db, algorithm_id, days
+        )
+        today = datetime.now().date()
+        result: list[dict[str, Any]] = []
+        for i in range(days - 1, -1, -1):
+            day = today - timedelta(days=i)
+            key = str(day)
+            row = by_date.get(key)
+            count = int(row.call_count) if row else 0
+            avg_time = round(float(row.avg_time or 0), 2) if row else 0.0
+            success_count = int(row.success_count) if row else 0
+            success_rate = round(success_count / count * 100, 2) if count > 0 else 0.0
+            result.append(
+                {
+                    "date": key,
+                    "callCount": count,
+                    "avgTime": avg_time,
+                    "successRate": success_rate,
+                }
+            )
+        return result

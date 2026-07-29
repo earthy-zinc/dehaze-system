@@ -1,6 +1,6 @@
 import { PredictionForm, EvaluationForm } from "../../index";
 
-const DATASET_BASE_URL = "http://127.0.0.1:9000/datasets";
+const DATASET_BASE_URL = `http://${process.env.DEHAZE_HOST || "127.0.0.1"}:9000/datasets`;
 
 export function createPredictionForm(overrides: Partial<PredictionForm> = {}): PredictionForm {
   return {

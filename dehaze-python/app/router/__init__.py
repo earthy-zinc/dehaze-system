@@ -33,6 +33,11 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     from app.router.api_key import router as api_key_router
     app.include_router(api_key_router)
 
+    # 通用导入导出路由（必须先于各模块 CRUD 注册，否则 /{module}/template、/_export、/_import
+    # 会被 CRUD 的 /{module}/{id} 路径参数吞掉，如 /algorithms/template 被当作 algorithm_id 解析）
+    from app.router.import_export import router as import_export_router
+    app.include_router(import_export_router)
+
     # 算法路由
     from app.router.algorithm import router as algorithm_router
     app.include_router(algorithm_router)
@@ -76,10 +81,6 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     # 导出任务路由
     from app.router.task import router as task_router
     app.include_router(task_router)
-
-    # 通用导入导出路由
-    from app.router.import_export import router as import_export_router
-    app.include_router(import_export_router)
 
     # 预测路由（去雾处理核心入口）
     from app.router.prediction import router as prediction_router

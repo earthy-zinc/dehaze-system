@@ -27,7 +27,7 @@ _ALGORITHM_STATUS_LABELS = {
 class AlgorithmExportHandler(ExportHandler):
 
     def get_module(self) -> str:
-        return "algorithm"
+        return "algorithms"
 
     async def estimate_count(self, db: AsyncSession, query_params: dict) -> int:
         keywords = query_params.get("keywords")

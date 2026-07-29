@@ -353,7 +353,7 @@ func (a *Application) Init() error {
 	itemFileApi := api.NewSysItemFileApi(itemFileService, fileService)
 	fileApi := api.NewSysFileApi(fileService)
 	inputHistoryApi := api.NewSysInputHistoryApi(inputHistoryService)
-	predictionApi := api.NewSysPredictionApi(predictionService)
+	predictionApi := api.NewSysPredictionApi(predictionService, fileService)
 	evaluationApi := api.NewSysEvaluationApi(evaluationService)
 	apiKeyApi := api.NewApiKeyApi(apiKeyService)
 

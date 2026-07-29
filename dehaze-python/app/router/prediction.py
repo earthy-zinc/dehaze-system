@@ -63,9 +63,7 @@ async def predict(
     logger.info(f"预测请求: user={user.username}, algorithmId={body.algorithmId}")
 
     image_url = body.imageUrl
-    if body.fileId is not None:
-        image_url = f"/api/v1/files/download/{body.fileId}"
-    if not image_url:
+    if body.fileId is None and not image_url:
         raise BusinessException(ResultCode.PARAM_IS_NULL, "图片来源不能为空，请提供 fileId 或 imageUrl")
 
     params = None

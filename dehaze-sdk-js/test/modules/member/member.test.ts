@@ -358,10 +358,12 @@ describe("会员管理模块接口测试", () => {
 
     test("异常：成长值下限大于上限", async () => {
       const form = createBenefitForm({ growthMin: 5000, growthMax: 1000 });
-      await expectBizError(
-        MemberAPI.updateBenefit("level_1", form),
-        ["BENEFIT_CONFIG_INVALID", "A0514", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MemberAPI.updateBenefit("level_1", form), [
+        "BENEFIT_CONFIG_INVALID",
+        "A0514",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     afterAll(async () => {
@@ -414,8 +416,10 @@ describe("会员管理模块接口测试", () => {
   // ============ 多等级会员验证 ============
 
   describe("多等级会员验证 - 不同等级用户的权益差异", () => {
+    // level_0 样本使用 dept_admin：order.test.ts 并行运行时会将 USER(id=5) 升级后再恢复，
+    // 断言 USER 的 level_0 会读到中间态；dept_admin(id=4) 的会员等级无其他测试修改，保持稳定
     test("level_0 用户权益基础配额", async () => {
-      await login(USERS.USER.username);
+      await login(USERS.DEPT_ADMIN.username);
       const profile = await MemberAPI.getProfile();
       expect(profile.levelCode).toBe("level_0");
       expect(profile.benefits.monthlyDehazeQuota).toBeGreaterThan(0);
@@ -425,7 +429,7 @@ describe("会员管理模块接口测试", () => {
       await login(USERS.SVIP.username);
       const svipProfile = await MemberAPI.getProfile();
 
-      await login(USERS.USER.username);
+      await login(USERS.DEPT_ADMIN.username);
       const userProfile = await MemberAPI.getProfile();
 
       expect(svipProfile.levelCode).toBe("level_3");

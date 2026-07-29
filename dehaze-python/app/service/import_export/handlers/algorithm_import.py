@@ -16,7 +16,7 @@ from app.service.import_export.registry import ImportHandler
 class AlgorithmImportHandler(ImportHandler):
 
     def get_module(self) -> str:
-        return "algorithm"
+        return "algorithms"
 
     def get_field_configs(self) -> list[ImportFieldConfig]:
         return [

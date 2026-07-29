@@ -11,6 +11,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.PageResult;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.config.WebSocketMessageRelay;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
@@ -133,7 +134,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
 
         SysTask sysTask = getTaskEntity(taskId);
         if (sysTask == null) {
-            throw new BusinessException("任务不存在: " + taskId);
+            throw new BusinessException(ResultCode.TASK_NOT_FOUND, "任务不存在: " + taskId);
         }
 
         Long currentUserId = SecurityUtils.getUserId();
@@ -154,7 +155,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
 
         SysTask sysTask = getTaskEntity(taskId);
         if (sysTask == null) {
-            throw new BusinessException("任务不存在: " + taskId);
+            throw new BusinessException(ResultCode.TASK_NOT_FOUND, "任务不存在: " + taskId);
         }
 
         Long currentUserId = SecurityUtils.getUserId();
@@ -189,7 +190,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
 
         SysTask sysTask = getTaskEntity(taskId);
         if (sysTask == null) {
-            throw new BusinessException("任务不存在: " + taskId);
+            throw new BusinessException(ResultCode.TASK_NOT_FOUND, "任务不存在: " + taskId);
         }
 
         Long currentUserId = SecurityUtils.getUserId();
@@ -259,7 +260,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
 
         SysTask sysTask = getTaskEntity(taskId);
         if (sysTask == null) {
-            throw new BusinessException("任务不存在: " + taskId);
+            throw new BusinessException(ResultCode.TASK_NOT_FOUND, "任务不存在: " + taskId);
         }
 
         if (!sysTask.getCreateBy().equals(currentUserId)) {
@@ -365,7 +366,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
     public void updateTaskCompleted(String taskId, String result, LocalDateTime expiresAt) {
         SysTask sysTask = getTaskEntity(taskId);
         if (sysTask == null) {
-            throw new BusinessException("任务不存在: " + taskId);
+            throw new BusinessException(ResultCode.TASK_NOT_FOUND, "任务不存在: " + taskId);
         }
         sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
         sysTask.setProgress(100);
@@ -387,7 +388,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
     public void updateTaskFailed(String taskId, String errorMessage) {
         SysTask sysTask = getTaskEntity(taskId);
         if (sysTask == null) {
-            throw new BusinessException("任务不存在: " + taskId);
+            throw new BusinessException(ResultCode.TASK_NOT_FOUND, "任务不存在: " + taskId);
         }
         sysTask.setStatus(TaskConstants.STATUS_FAILED);
         sysTask.setErrorMessage(errorMessage);

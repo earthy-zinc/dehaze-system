@@ -6,6 +6,14 @@ from functools import lru_cache
 from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+if not os.environ.get("SSL_CERT_FILE"):
+    try:
+        import certifi
+
+        os.environ["SSL_CERT_FILE"] = certifi.where()
+    except ImportError:
+        pass
+
 
 class Settings(BaseSettings):
 

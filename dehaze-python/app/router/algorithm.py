@@ -254,13 +254,13 @@ async def get_monitor_data(
 
 @router.get(
     "/{algorithm_id}/monitor/stats",
-    response_model=Result[AlgorithmMonitorVO],
     summary="算法监控统计报表",
 )
 async def get_monitor_stats(
     algorithm_id: int,
+    days: int = 7,
     db: AsyncSession = Depends(get_db),
 ):
-    """获取算法监控统计报表（对齐 Java：直接返回 getMonitorData）"""
-    data = await AlgorithmService.get_monitor_stats_report(db, algorithm_id)
+    """获取算法监控统计报表（最近 days 天每天一条，含无数据天）"""
+    data = await AlgorithmService.get_monitor_stats_report(db, algorithm_id, days)
     return success(data)

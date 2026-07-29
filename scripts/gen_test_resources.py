@@ -36,6 +36,9 @@ IMAGES = [
     ("test2/hazy/0025_0.8_0.04.jpg", 251, True),
     ("test2/hazy/0025_0.8_0.08.jpg", 252, True),
     ("test2/hazy/0025_0.9_0.12.jpg", 253, True),
+    # model.test.ts 专用：与 item-file 的图片 MD5 不同，避免并行上传时唯一索引冲突（B0405）
+    ("test/model/hazy.jpg", 941, True),
+    ("test/model/clear.jpg", 942, False),
 ]
 
 PNG_IMAGES = [
