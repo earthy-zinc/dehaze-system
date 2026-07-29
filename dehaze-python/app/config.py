@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
-    REDIS_MAX_CONNECTIONS: int = 20  # 连接池最大连接数
+    REDIS_MAX_CONNECTIONS: int = 100  # 连接池最大连接数（并行测试/高并发场景需要较大余量，可通过环境变量 REDIS_MAX_CONNECTIONS 覆盖）
     REDIS_SOCKET_TIMEOUT: float = 5.0  # 操作超时（秒）
     REDIS_SOCKET_CONNECT_TIMEOUT: float = 5.0  # 连接超时（秒）
     REDIS_RETRY_ON_TIMEOUT: bool = True  # 超时是否重试

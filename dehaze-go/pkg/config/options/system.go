@@ -13,4 +13,6 @@ type System struct {
 	// 登录安全配置
 	LoginFailLimit    int `mapstructure:"login-fail-limit" json:"login-fail-limit" yaml:"login-fail-limit"`             // 登录失败次数限制，默认5次
 	LoginFailLockTime int `mapstructure:"login-fail-lock-time" json:"login-fail-lock-time" yaml:"login-fail-lock-time"` // 登录失败锁定时间(秒)，默认300秒(5分钟)
+	// 登录/注册接口 IP 限流次数（每分钟），<=0 时使用安全默认值 10
+	LoginIPLimitCount int `mapstructure:"login-ip-limit-count" json:"login-ip-limit-count" yaml:"login-ip-limit-count"`
 }
