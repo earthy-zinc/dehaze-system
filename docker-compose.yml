@@ -208,6 +208,11 @@ services:
       - ./dehaze-python/logs:/logs/python:ro
       - ./dehaze-go/logs:/logs/go:ro
       - filebeat-data:/usr/share/filebeat/data
+      # 部分云内核（如腾讯云）/proc/stat 的 processes 计数溢出为负数，
+      # go-sysinfo 解析失败导致 filebeat 无法启动，此处挂载清洗后的快照规避。
+      # 宿主机内核正常时可删除本挂载；重新生成：
+      #   sed -E 's/^(processes|procs_running|procs_blocked) -?[0-9]+/\1 0/' /proc/stat > config/filebeat/proc-stat
+      - ./config/filebeat/proc-stat:/proc/stat:ro
     depends_on:
       - logstash
     networks:

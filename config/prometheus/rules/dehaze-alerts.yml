@@ -76,8 +76,9 @@ groups:
           summary: "MySQL 连接数过高"
           description: "MySQL 连接数已持续 3 分钟超过最大连接数的 80%（当前 {{ $value | humanizePercentage }}）"
 
+      # 仅在配置了 maxmemory 时评估（未配置时 redis_memory_max_bytes=0，比值为 +Inf 会误报）
       - alert: RedisHighMemory
-        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8 and redis_memory_max_bytes > 0
         for: 5m
         labels:
           severity: warning
