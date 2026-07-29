@@ -208,7 +208,6 @@
     "content": "亲爱的用户，恭喜您成功升级至 VIP2！\n您已解锁以下新权益：\n- 高清图导出\n- 对比报告导出\n- 批量打包下载",
     "priority": 2,
     "senderType": 1,
-    "senderTypeLabel": "系统",
     "readStatus": 1,
     "readTime": "2026-07-15 14:35:00",
     "jumpUrl": "/member/profile",

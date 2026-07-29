@@ -39,7 +39,7 @@
 | `/api/v1/packages/coupons/batch` | POST | 批量发放优惠券 | package:coupon:distribute |
 | `/api/v1/packages/coupons/{id}` | PUT | 修改优惠券 | package:coupon:edit |
 | `/api/v1/packages/coupons/{ids}` | DELETE | 删除优惠券 | package:coupon:delete |
-| `/api/v1/packages/sales/stats` | GET | 销售统计 | - |
+| `/api/v1/packages/sales/stats` | GET | 销售统计 | package:sales |
 
 > **导入导出接口**：套餐模块的导出（`GET/POST /api/v1/packages/_export`）、导入（`POST /api/v1/packages/_import`）、模板下载（`GET /api/v1/packages/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §8.2 通用CRUD接口模板。
 
@@ -79,6 +79,7 @@
 | package:add | 新增套餐 | 按钮显示 + 接口校验 |
 | package:edit | 编辑套餐 | 按钮显示 + 接口校验 |
 | package:delete | 删除套餐 | 按钮显示 + 接口校验 |
+| package:sales | 销售统计 | 按钮显示 + 接口校验 |
 | package:coupon:add | 优惠券创建 | 按钮显示 + 接口校验 |
 | package:coupon:distribute | 优惠券批量发放 | 按钮显示 + 接口校验 |
 | package:coupon:edit | 优惠券编辑 | 按钮显示 + 接口校验 |

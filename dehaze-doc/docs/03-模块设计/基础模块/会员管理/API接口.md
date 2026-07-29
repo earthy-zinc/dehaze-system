@@ -74,5 +74,4 @@
 | MEMBER_FROZEN | 会员已冻结 | 冻结状态会员尝试使用付费功能 |
 | SIGN_IN_ALREADY | 今日已签到 | 重复签到 |
 | GROWTH_INSUFFICIENT | 成长值不足 | 扣减成长值时余额不足 |
-| LEVEL_ADJUST_FORBIDDEN | 不允许跨级调整 | 等级调整违反逐级升降规则 |
 | BENEFIT_CONFIG_INVALID | 权益配置参数无效 | 权益配置缺少必填项或数值非法 |
