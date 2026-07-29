@@ -1,4 +1,4 @@
-import { OrderAPI, PackageAPI } from "../../../index";
+import { MemberAPI, OrderAPI, PackageAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import {
@@ -7,6 +7,7 @@ import {
   createRefundApplyForm,
   createRefundQuery,
 } from "#/factories/order";
+import { createLevelAdjustForm } from "#/factories/member";
 import { createPackageForm } from "#/factories/package";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 import { USERS } from "#/factories/constants";
@@ -49,9 +50,19 @@ describe("订单管理模块接口测试", () => {
       () => createdPackageIds,
       (id) => PackageAPI.deleteByIds(id)
     );
-    await cleanup.executeAll();
-    // 切回 admin，避免影响后续测试文件
+    // 切回 admin，避免影响后续测试文件（删除套餐、恢复会员等级都需要 admin 权限）
     await login(USERS.ADMIN.username);
+    await cleanup.executeAll();
+    // 余额支付会自动完成订单并触发会员升级，需要恢复 USER 用户等级为 level_0
+    // 避免影响后续 member 测试对 level_0 用户的断言
+    try {
+      await MemberAPI.adjustLevel(
+        USERS.USER.id,
+        createLevelAdjustForm({ levelCode: "level_0" })
+      );
+    } catch {
+      // 忽略恢复失败
+    }
   });
 
   // ============ 用户端接口（使用 user 账号） ============

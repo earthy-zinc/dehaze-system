@@ -2,8 +2,13 @@ import { PageQuery } from "@/types";
 
 // ===== 预测/评估 API 类型（对应 Java PredictionController/EvaluationController） =====
 
-/** 预测/评估任务状态：processing-处理中 / completed-已完成 / failed-失败 */
-export type PredEvalTaskStatus = "processing" | "completed" | "failed";
+/**
+ * 预测/评估任务状态（与后端 LogStatusEnum 对齐，使用整数）
+ * - 1: PROCESSING 处理中
+ * - 2: COMPLETED 已完成
+ * - 3: FAILED 失败
+ */
+export type PredEvalTaskStatus = 1 | 2 | 3;
 
 /** 预测请求 */
 export interface PredictionForm {

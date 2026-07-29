@@ -111,8 +111,8 @@ describe("用户管理接口测试", () => {
       });
 
       // 验证预置用户存在（ADMIN 角色 data_scope=0=ALL，可见所有预置用户）
+      // 注意：SysUserMapper.xml 查询排除了 root 用户，因此不包含在可见列表中
       const visiblePresetUsernames: string[] = [
-        USERS.ROOT.username,
         USERS.ADMIN.username,
         USERS.TEST.username,
         USERS.DEPT_ADMIN.username,

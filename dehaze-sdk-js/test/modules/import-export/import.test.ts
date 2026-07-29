@@ -14,10 +14,10 @@ const buildUserCsvContent = () => {
   const nickname = uniqueName("导入用户");
   const email = uniqueEmail(username);
   const mobile = uniqueMobile();
-  const deptId = 1;
-  const roleIds = `${ROLES.GUEST.id}`;
-  const header = "username,nickname,email,mobile,gender,status,deptId,roleIds";
-  const row = `${username},${nickname},${email},${mobile},1,1,${deptId},${roleIds}`;
+  const roleCodes = ROLES.GUEST.code;
+  // CSV 表头需与后端 ImportFieldConfig.label 对齐（中文）
+  const header = "用户名,昵称,性别,手机号,邮箱,角色编码(多个逗号分隔)";
+  const row = `${username},${nickname},男,${mobile},${email},${roleCodes}`;
   return { content: `${header}\n${row}\n`, username, nickname };
 };
 
@@ -32,7 +32,7 @@ const isImportResult = (
 } =>
   !!v && typeof v === "object" && "totalRows" in (v as object) && "successCount" in (v as object);
 
-const isImportTaskResult = (v: unknown): v is { taskId: string; status: string } =>
+const isImportTaskResult = (v: unknown): v is { taskId: string; status: number } =>
   !!v &&
   typeof v === "object" &&
   typeof (v as { taskId?: unknown }).taskId === "string" &&
@@ -83,10 +83,11 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
 
       expect(result).toBeDefined();
       expect(isImportTaskResult(result)).toBe(true);
-      const taskResult = result as { taskId: string; status: string };
+      const taskResult = result as { taskId: string; status: number };
       expect(typeof taskResult.taskId).toBe("string");
       expect(taskResult.taskId.length).toBeGreaterThan(0);
-      expect(taskResult.status).toBe("PENDING");
+      // 后端 TaskStatusEnum.PENDING 序列化为数字 1
+      expect(taskResult.status).toBe(1);
 
       const userId = await findUserIdByUsername(username);
       if (userId) createdUserIds.push(userId);
@@ -129,8 +130,8 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
   describe("错误反馈 - errors 数组", () => {
     test("导入含错误行的 CSV 应返回 errors 错误明细", async () => {
       const username = uniqueName("imp_err");
-      const header = "username,nickname,email,mobile,gender,status,deptId,roleIds";
-      const validRow = `${username},导入错误测试,${uniqueEmail(username)},${uniqueMobile()},1,1,1,${ROLES.GUEST.id}`;
+      const header = "用户名,昵称,性别,手机号,邮箱,角色编码(多个逗号分隔)";
+      const validRow = `${username},导入错误测试,男,${uniqueMobile()},${uniqueEmail(username)},${ROLES.GUEST.code}`;
       const invalidRow = `,,invalid-email,000,99,99,9999,9999`;
       const content = `${header}\n${validRow}\n${invalidRow}\n`;
       const file = createCsvFile("user_with_errors.csv", content);

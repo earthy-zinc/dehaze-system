@@ -113,7 +113,8 @@ export const PRESET_USER_COUNT = 8;
 
 // admin 用户可见的预置用户数量
 // ADMIN 角色 data_scope=0 (ALL)，不受数据权限过滤，可见所有预置用户
-export const ADMIN_VISIBLE_USER_COUNT = 8;
+// 注意：SysUserMapper.xml 查询时硬编码排除了 root 用户，因此 admin 可见用户数为 7
+export const ADMIN_VISIBLE_USER_COUNT = 7;
 
 // 按会员等级索引用户，便于按等级筛选测试
 export const USERS_BY_LEVEL = {

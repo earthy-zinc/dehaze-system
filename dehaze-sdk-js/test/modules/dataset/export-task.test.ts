@@ -39,7 +39,7 @@ describe("导出任务接口测试", () => {
       });
       expect(result.taskId).toBeTruthy();
       expect(typeof result.taskId).toBe("string");
-      expect(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).toContain(result.status);
+      expect([1, 2, 3, 4]).toContain(result.status);
     });
 
     test("正向测试：使用默认参数创建导出任务", async () => {
@@ -66,9 +66,7 @@ describe("导出任务接口测试", () => {
 
       const status = await TaskAPI.getStatus(createResult.taskId);
       expect(status.taskId).toBe(createResult.taskId);
-      expect(["PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED"]).toContain(
-        status.status
-      );
+      expect([1, 2, 3, 4, 5]).toContain(status.status);
     });
 
     test("异常测试：查询不存在的任务", async () => {
@@ -96,9 +94,7 @@ describe("导出任务接口测试", () => {
       }
 
       const status = await TaskAPI.getStatus(createResult.taskId);
-      expect(["CANCELLED", "COMPLETED", "FAILED", "PROCESSING", "PENDING"]).toContain(
-        status.status
-      );
+      expect([5, 3, 4, 2, 1]).toContain(status.status);
     });
 
     test("异常测试：取消不存在的任务", async () => {

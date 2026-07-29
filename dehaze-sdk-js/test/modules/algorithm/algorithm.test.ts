@@ -228,20 +228,20 @@ describe("算法管理接口测试", () => {
     });
 
     test("正向测试：更新算法状态并验证状态值正确", async () => {
-      // 先创建一个算法
+      // 先创建一个算法（草稿状态）
       const form = createAlgorithmForm({ parentId: 0, status: 1 });
       const testAlgorithmId = (await AlgorithmAPI.add(form)) as number;
       const originalAlgorithm = await AlgorithmAPI.getAlgorithmInfoById(testAlgorithmId);
 
-      // 更新状态为禁用
+      // 更新状态为已停用（5=DISABLED）
       const updateForm: Partial<Algorithm> = {
         ...originalAlgorithm,
-        status: 0,
+        status: 5,
       };
       await AlgorithmAPI.update(testAlgorithmId, updateForm as Algorithm);
 
       const algorithmInfo = await AlgorithmAPI.getAlgorithmInfoById(testAlgorithmId);
-      expect(algorithmInfo.status).toBe(0);
+      expect(algorithmInfo.status).toBe(5);
 
       // 清理
       await AlgorithmAPI.deleteByIds([testAlgorithmId.toString()]);

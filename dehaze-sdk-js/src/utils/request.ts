@@ -42,8 +42,17 @@ service.interceptors.response.use(
           : Array.isArray(contentTypeRaw)
             ? (contentTypeRaw[0] ?? "")
             : "";
-      if (contentType.includes("application/json") && response.data instanceof Blob) {
-        const text = await response.data.text();
+      if (contentType.includes("application/json")) {
+        let text: string;
+        if (response.data instanceof Blob) {
+          text = await response.data.text();
+        } else if (typeof response.data === "string") {
+          text = response.data;
+        } else if (Buffer.isBuffer(response.data)) {
+          text = response.data.toString("utf-8");
+        } else {
+          text = JSON.stringify(response.data);
+        }
         const parsed = JSON.parse(text);
         if (parsed.code !== ResultEnum.SUCCESS) {
           const error = new Error(parsed?.msg || "Business error") as AxiosError;
@@ -57,7 +66,11 @@ service.interceptors.response.use(
           (await interceptors.onResponse?.({ ...response, data: parsed })) || parsed.data;
         return result === null ? undefined : result;
       }
-      const result = (await interceptors.onResponse?.(response)) || response.data;
+      const data =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], { type: contentType });
+      const result = (await interceptors.onResponse?.({ ...response, data })) || data;
       return result;
     }
 

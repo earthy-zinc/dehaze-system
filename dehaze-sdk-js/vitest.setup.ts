@@ -1,6 +1,13 @@
 /**
- * Vitest 全局测试环境配置
- * 在所有测试之前加载，提供 Node.js 环境下缺失的浏览器 API polyfill
+ * Vitest 测试文件级 setup（每个测试文件执行前运行）
+ *
+ * 职责：加载 .env、polyfill localStorage、配置 baseURL、触发首次登录
+ * 不再清理 Redis 缓存（已迁移到 vitest.globalSetup.ts 一次性执行）
+ *
+ * 设计说明：
+ * - 全局 Redis 清理在 globalSetup 中完成，整个测试运行只清理一次
+ * - sessionStore 在内存中跨文件复用，跨文件不再重复登录
+ * - 单个测试文件内的登录切换会命中 sessionStore 缓存，不会触发限流
  */
 import dotenv from "dotenv";
 import fs from "fs";
@@ -8,10 +15,8 @@ import path from "path";
 import { afterAll, beforeAll } from "vitest";
 import { service } from "./src/utils/request";
 import { login } from "./test/utils/auth";
-import { disconnectRedis, getRedis } from "./test/utils/redis";
+import { disconnectRedis } from "./test/utils/redis";
 
-// 根据 TEST_BACKEND 加载对应的 .env.{type} 文件
-// 系统环境变量优先级高于 .env 文件（dotenv 默认 override:false）
 const backend = process.env.TEST_BACKEND || "java";
 const envFile = path.resolve(__dirname, `.env.${backend}`);
 if (fs.existsSync(envFile)) {
@@ -55,17 +60,9 @@ Object.defineProperty(globalThis, "localStorage", {
   configurable: true,
 });
 
-// 配置后端 baseURL（Node.js 环境无浏览器 origin，需显式指定）
 service.defaults.baseURL = process.env.BACKEND_URL || "http://127.0.0.1:8989";
 
 beforeAll(async () => {
-  try {
-    const redis = getRedis();
-    const keys = await redis.keys("captcha*");
-    if (keys.length > 0) {
-      await redis.del(keys);
-    }
-  } catch {}
   await login();
 });
 

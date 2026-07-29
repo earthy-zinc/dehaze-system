@@ -40,8 +40,8 @@ class ModelAPI {
   /**
    * 提交预测并等待结果（封装 POST + 轮询 GET）
    *
-   * - POST 立即返回，若 status=completed（缓存命中）直接返回
-   * - status=processing 时按 intervalMs 轮询 GET，直到 completed/failed 或超时
+   * - POST 立即返回，若 status=2（COMPLETED，缓存命中）直接返回
+   * - status=1（PROCESSING）时按 intervalMs 轮询 GET，直到 COMPLETED/FAILED 或超时
    *
    * 默认：间隔 2s，超时 120s
    */
@@ -50,13 +50,13 @@ class ModelAPI {
     options?: PollOptions
   ): Promise<PredictionResultVO> {
     const result = await this.predict(data);
-    if (result.status !== "processing") {
+    if (result.status !== 1) {
       return result;
     }
     return this.pollPredTask(result.logId!, options);
   }
 
-  /** 轮询预测任务直到终态（completed/failed）或超时 */
+  /** 轮询预测任务直到终态（COMPLETED=2 / FAILED=3）或超时 */
   private static async pollPredTask(
     logId: number,
     options?: PollOptions
@@ -69,7 +69,7 @@ class ModelAPI {
       await sleep(interval);
       const result = await this.getPredTaskStatus(logId);
       options?.onPoll?.(result.status);
-      if (result.status === "completed" || result.status === "failed") {
+      if (result.status === 2 || result.status === 3) {
         return result;
       }
     }
@@ -105,8 +105,8 @@ class ModelAPI {
   /**
    * 提交评估并等待结果（封装 POST + 轮询 GET）
    *
-   * - POST 立即返回，若 status=completed 直接返回
-   * - status=processing 时按 intervalMs 轮询 GET，直到 completed/failed 或超时
+   * - POST 立即返回，若 status=2（COMPLETED）直接返回
+   * - status=1（PROCESSING）时按 intervalMs 轮询 GET，直到 COMPLETED/FAILED 或超时
    *
    * 默认：间隔 2s，超时 120s
    */
@@ -115,13 +115,13 @@ class ModelAPI {
     options?: PollOptions
   ): Promise<EvaluationResultVO> {
     const result = await this.evaluate(data);
-    if (result.status !== "processing") {
+    if (result.status !== 1) {
       return result;
     }
     return this.pollEvalTask(result.logId!, options);
   }
 
-  /** 轮询评估任务直到终态（completed/failed）或超时 */
+  /** 轮询评估任务直到终态（COMPLETED=2 / FAILED=3）或超时 */
   private static async pollEvalTask(
     logId: number,
     options?: PollOptions
@@ -134,7 +134,7 @@ class ModelAPI {
       await sleep(interval);
       const result = await this.getEvalTaskStatus(logId);
       options?.onPoll?.(result.status);
-      if (result.status === "completed" || result.status === "failed") {
+      if (result.status === 2 || result.status === 3) {
         return result;
       }
     }

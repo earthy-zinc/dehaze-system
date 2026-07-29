@@ -23,9 +23,14 @@ export type TaskType =
   | "algorithm_import";
 
 /**
- * 任务状态
+ * 任务状态（与后端 TaskStatusEnum 对齐，使用整数）
+ * - 1: PENDING 待处理
+ * - 2: PROCESSING 处理中
+ * - 3: COMPLETED 已完成
+ * - 4: FAILED 失败
+ * - 5: CANCELLED 已取消
  */
-export type TaskStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+export type TaskStatus = 1 | 2 | 3 | 4 | 5;
 
 /**
  * 任务类别

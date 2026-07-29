@@ -17,7 +17,8 @@ export interface ExportRequest {
  */
 export type ExportResult = {
   taskId: string;
-  status: "PENDING";
+  /** 任务状态（1=PENDING，与后端 TaskStatusEnum 对齐） */
+  status: 1;
   estimatedCount: number;
 };
 
@@ -50,7 +51,8 @@ export interface ImportResult {
  */
 export interface ImportTaskResult {
   taskId: string;
-  status: "PENDING";
+  /** 任务状态（1=PENDING，与后端 TaskStatusEnum 对齐） */
+  status: 1;
 }
 
 /**

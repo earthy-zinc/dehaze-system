@@ -307,7 +307,7 @@ describe("图片文件接口测试", () => {
   describe("DELETE /api/v1/item-files/{id} - 删除图片", () => {
     let testFileId: number;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
       const imagePath = path.join(TEST_CLEAN_DIR, "44_outdoor_GT.jpg");
 
       const formData = new FormData();

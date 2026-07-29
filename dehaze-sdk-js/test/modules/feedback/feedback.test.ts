@@ -1,4 +1,4 @@
-import { FeedbackAPI, ImageInputHistoryAPI } from "../../../index";
+import { FeedbackAPI, ModelAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import {
@@ -8,32 +8,39 @@ import {
   createRatingForm,
   createRatingQuery,
 } from "#/factories/feedback";
+import { createPredictionForm } from "#/factories/model";
 import { TestCleanupRegistry } from "#/utils/cleanup";
+import { getRedis } from "#/utils/redis";
 import { USERS } from "#/factories/constants";
 
 describe("反馈评价模块接口测试", () => {
   const cleanup = new TestCleanupRegistry();
   const createdFeedbackIds: number[] = [];
   const createdRatingIds: number[] = [];
-  const createdHistoryIds: number[] = [];
   // 用户端测试账号（有会员记录的普通用户）
   const userAccount = USERS.USER.username;
 
-  // 创建一条处理记录作为评价关联
+  // 创建一条预测日志作为评价关联（评分接口校验 sys_pred_log 记录）
   async function ensurePredictionLog(): Promise<number> {
-    // 评价需要用户拥有处理记录，使用 user 账号创建
     await login(userAccount);
-    const id = await ImageInputHistoryAPI.create({
-      originalImageUrl: "/images/test_haze.jpg",
-      resultImageUrl: "/images/test_dehazed.jpg",
-      algorithmId: 1,
-      algorithmName: "DCP",
-      processingTime: 1500,
-      status: 1,
-      inputSource: "upload",
+    const form = createPredictionForm({ algorithmId: 13 });
+    const result = await ModelAPI.predictAndWait(form, {
+      intervalMs: 2000,
+      timeoutMs: 120000,
     });
-    createdHistoryIds.push(id);
-    return id;
+    if (!result.logId) {
+      throw new Error("创建预测日志失败");
+    }
+    return result.logId;
+  }
+
+  // 重置反馈每日次数限制（DAILY_FEEDBACK_LIMIT=5，测试创建反馈会超限）
+  async function resetFeedbackDailyLimit(): Promise<void> {
+    const redis = getRedis();
+    const keys = await redis.keys("feedback:daily:*");
+    if (keys.length > 0) {
+      await redis.del(keys);
+    }
   }
 
   afterAll(async () => {
@@ -48,10 +55,7 @@ describe("反馈评价模块接口测试", () => {
       }
     });
     // 评价无独立删除接口，无需主动清理
-    cleanup.registerIds(
-      () => createdHistoryIds,
-      (id) => ImageInputHistoryAPI.deleteById(Number(id))
-    );
+    // 预测日志为只追加日志表，无删除接口，测试产生的记录可保留
     await cleanup.executeAll();
     // 切回 admin，避免影响后续测试文件
     await login(USERS.ADMIN.username);
@@ -372,6 +376,7 @@ describe("反馈评价模块接口测试", () => {
   describe("POST /api/v1/feedback - 提交反馈（user）", () => {
     beforeAll(async () => {
       await login(userAccount);
+      await resetFeedbackDailyLimit();
     });
 
     test("正向测试：提交建议反馈", async () => {
@@ -459,6 +464,7 @@ describe("反馈评价模块接口测试", () => {
 
     beforeAll(async () => {
       await login(userAccount);
+      await resetFeedbackDailyLimit();
       const result = await FeedbackAPI.createFeedback(createFeedbackForm());
       testFeedbackId = result.id;
       createdFeedbackIds.push(testFeedbackId);
@@ -491,6 +497,7 @@ describe("反馈评价模块接口测试", () => {
 
     beforeAll(async () => {
       await login(userAccount);
+      await resetFeedbackDailyLimit();
       const result = await FeedbackAPI.createFeedback(createFeedbackForm());
       testFeedbackId = result.id;
       createdFeedbackIds.push(testFeedbackId);
@@ -573,6 +580,7 @@ describe("反馈评价模块接口测试", () => {
     beforeAll(async () => {
       // user 提交反馈，admin 分配
       await login(userAccount);
+      await resetFeedbackDailyLimit();
       const result = await FeedbackAPI.createFeedback(createFeedbackForm());
       testFeedbackId = result.id;
       createdFeedbackIds.push(testFeedbackId);
@@ -602,6 +610,7 @@ describe("反馈评价模块接口测试", () => {
 
     beforeAll(async () => {
       await login(userAccount);
+      await resetFeedbackDailyLimit();
       const result = await FeedbackAPI.createFeedback(createFeedbackForm());
       testFeedbackId = result.id;
       createdFeedbackIds.push(testFeedbackId);
@@ -635,6 +644,7 @@ describe("反馈评价模块接口测试", () => {
 
     beforeAll(async () => {
       await login(userAccount);
+      await resetFeedbackDailyLimit();
       const result = await FeedbackAPI.createFeedback(createFeedbackForm());
       testFeedbackId = result.id;
       createdFeedbackIds.push(testFeedbackId);
@@ -671,6 +681,7 @@ describe("反馈评价模块接口测试", () => {
 
     beforeAll(async () => {
       await login(userAccount);
+      await resetFeedbackDailyLimit();
       const result = await FeedbackAPI.createFeedback(createFeedbackForm());
       testFeedbackId = result.id;
       createdFeedbackIds.push(testFeedbackId);

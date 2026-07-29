@@ -445,8 +445,18 @@ describe("会员管理模块接口测试", () => {
     });
   });
 
-  // 测试结束后切回 admin，避免影响后续测试文件
+  // 测试结束后恢复 VIP1 原始状态并切回 admin，避免影响后续测试文件
   afterAll(async () => {
-    await login(USERS.ADMIN.username);
+    try {
+      await login(USERS.ADMIN.username);
+      await MemberAPI.adjustLevel(targetUser.id, createLevelAdjustForm({ levelCode: "level_1" }));
+      const detail = await MemberAPI.getDetail(targetUser.id);
+      const delta = 1500 - detail.growthValue;
+      if (delta !== 0) {
+        await MemberAPI.adjustGrowth(targetUser.id, createGrowthAdjustForm({ changeValue: delta }));
+      }
+    } catch {
+      // 忽略恢复错误
+    }
   });
 });

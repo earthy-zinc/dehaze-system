@@ -110,13 +110,13 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
       const result = await TaskAPI.getPage({
         pageNum: 1,
         pageSize: 20,
-        status: "COMPLETED",
+        status: 3,
       });
 
       expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
-        expect(task.status).toBe("COMPLETED");
+        expect(task.status).toBe(3);
       });
     });
 
@@ -124,13 +124,13 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
       const result = await TaskAPI.getPage({
         pageNum: 1,
         pageSize: 20,
-        status: "PENDING",
+        status: 1,
       });
 
       expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
-        expect(task.status).toBe("PENDING");
+        expect(task.status).toBe(1);
       });
     });
   });
@@ -141,13 +141,13 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
         pageNum: 1,
         pageSize: 20,
         taskCategory: "export",
-        status: "COMPLETED",
+        status: 3,
       });
 
       expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
-        expect(task.status).toBe("COMPLETED");
+        expect(task.status).toBe(3);
         if (task.taskType) {
           expect(task.taskType).toMatch(/_export$/);
         }

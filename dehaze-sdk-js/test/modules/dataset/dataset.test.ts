@@ -143,8 +143,12 @@ describe("数据集接口测试", () => {
     });
 
     test("异常测试：不存在的ID", async () => {
-      const result = await DatasetAPI.getDatasetInfoById(99999999);
-      expect(result === null || result === undefined).toBe(true);
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(99999999),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
   });
 
@@ -207,8 +211,12 @@ describe("数据集接口测试", () => {
       await DatasetAPI.deleteById(datasetId);
 
       // 验证已删除
-      const result = await DatasetAPI.getDatasetInfoById(datasetId);
-      expect(result === null || result === undefined).toBe(true);
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(datasetId),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("异常测试：删除不存在的数据集", async () => {
@@ -420,7 +428,7 @@ describe("数据集接口测试", () => {
       });
       expect(result.taskId).toBeTruthy();
       expect(typeof result.taskId).toBe("string");
-      expect(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).toContain(result.status);
+      expect([1, 2, 3, 4]).toContain(result.status);
       expect(result.progress).toBeGreaterThanOrEqual(0);
       expect(result.progress).toBeLessThanOrEqual(100);
     });
@@ -442,7 +450,7 @@ describe("数据集接口测试", () => {
         targetId: 99999999,
       });
       expect(result.taskId).toBeDefined();
-      expect(result.status).toBe("PENDING");
+      expect(result.status).toBe(1);
     });
   });
 
@@ -480,8 +488,12 @@ describe("数据集接口测试", () => {
       await DatasetAPI.deleteById(datasetId);
 
       // Verify: 验证数据已不存在
-      const result = await DatasetAPI.getDatasetInfoById(datasetId);
-      expect(result === null || result === undefined).toBe(true);
+      await expectBizError(
+        DatasetAPI.getDatasetInfoById(datasetId),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
+        undefined,
+        true
+      );
     });
 
     test("边界测试：超长数据集名称应被拒绝", async () => {

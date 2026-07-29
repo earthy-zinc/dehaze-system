@@ -27,10 +27,10 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
 
       expect(result).toBeDefined();
       expect(isTaskResultLike(result)).toBe(true);
-      const taskResult = result as { taskId: string; status: string; estimatedCount?: number };
+      const taskResult = result as { taskId: string; status: number; estimatedCount?: number };
       expect(typeof taskResult.taskId).toBe("string");
       expect(taskResult.taskId.length).toBeGreaterThan(0);
-      expect(taskResult.status).toBe("PENDING");
+      expect(taskResult.status).toBe(1);
     });
 
     test("exportByPost 复杂查询导出用户返回 Blob 或 taskId", async () => {
