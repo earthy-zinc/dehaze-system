@@ -245,7 +245,7 @@ services:
 
   # Prometheus
   prometheus:
-    image: ubuntu/prometheus:2.50-22.04_stable
+    image: prom/prometheus:v2.50.1
     container_name: prometheus
     restart: unless-stopped
     ports:
@@ -301,8 +301,9 @@ services:
     restart: unless-stopped
     ports:
       - "9104:9104"
-    environment:
-      - DATA_SOURCE_NAME=root:${DEHAZE_PASSWORD}@(mysql:3306)/
+    command:
+      - --mysqld.address=mysql:3306
+      - --mysqld.username=root:${DEHAZE_PASSWORD}
     networks:
       - pei-network
 
@@ -351,23 +352,9 @@ volumes:
     external: true
   logstash-config:
     external: true
-  nacos-logs:
-    external: true
   rabbitmq-data:
     external: true
   rabbitmq-logs:
-    external: true
-  rocketmq-namesrv-log:
-    external: true
-  rocketmq-broker-config:
-    external: true
-  rocketmq-broker-logs:
-    external: true
-  rocketmq-broker-store:
-    external: true
-  rocketmq-console-data:
-    external: true
-  kafka-data:
     external: true
   xxl-job-logs:
     external: true
