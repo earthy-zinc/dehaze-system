@@ -19,7 +19,7 @@
 | `/api/v1/files` | POST | 文件上传 | - | F-FM-001 |
 | `/api/v1/files/download/{objectName}` | GET | 文件下载 | - | F-FM-002 |
 | `/api/v1/files/{fileId}` | DELETE | 文件删除 | - | F-FM-003 |
-| `/api/v1/files/check` | GET | MD5 校验（去重检查） | - | F-FM-004 |
+| `/api/v1/files/check` | GET | MD5 校验（秒传预检，返回文件信息或 null） | - | F-FM-004 |
 | `/api/v1/files/page` | GET | 文件分页查询 | - | F-FM-005 |
 | `/api/v1/files/{fileId}` | GET | 文件详情查询 | - | F-FM-006 |
 
@@ -60,8 +60,8 @@
 
 1. 前端计算本地文件 MD5
 2. 调用 `/api/v1/files/check?md5={md5}` 检查文件是否已存在
-3. 若返回 `true`，跳过上传，直接使用已有文件 ID
-4. 若返回 `false`，调用上传接口上传文件
+3. 若返回文件信息（非 null），跳过上传，直接复用返回的文件 ID 和 URL
+4. 若返回 null，调用上传接口上传文件
 
 ### 6.2 下载路径说明
 

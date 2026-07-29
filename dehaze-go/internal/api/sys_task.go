@@ -1,6 +1,7 @@
 package api
 
 import (
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -88,6 +89,16 @@ func (api *SysTaskApi) GetTaskPage(c *gin.Context) {
 // GetTaskById 任务详情
 func (api *SysTaskApi) GetTaskById(c *gin.Context) {
 	idStr := c.Param("id")
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	// 权限校验：仅任务创建者可查询
+	if _, err := api.taskService.CheckTaskOwnership(c.Request.Context(), idStr, userID); err != nil {
+		_ = c.Error(err)
+		return
+	}
 	task, err := api.taskService.GetTaskStatus(c.Request.Context(), idStr)
 	if err != nil {
 		_ = c.Error(err)
@@ -95,12 +106,38 @@ func (api *SysTaskApi) GetTaskById(c *gin.Context) {
 	}
 
 	if task == nil {
-		common.OkWithData(nil, c)
+		_ = c.Error(common.NewBizError(common.RESOURCE_NOT_FOUND, "任务不存在: "+idStr))
 		return
 	}
 
 	taskVO := api.taskService.ConvertToTaskVO(task)
 	common.OkWithData(taskVO, c)
+}
+
+// DownloadExportFile 下载导出文件（302重定向到文件存储URL）
+// @Summary 下载任务结果
+// @Tags 任务接口
+// @Produce json
+// @Param id path string true "任务ID"
+// @Router /api/v1/tasks/{id}/download [get]
+func (api *SysTaskApi) DownloadExportFile(c *gin.Context) {
+	idStr := c.Param("id")
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	// 权限校验：仅任务创建者可下载
+	if _, err := api.taskService.CheckTaskOwnership(c.Request.Context(), idStr, userID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	downloadURL, err := api.taskService.DownloadExportFile(c.Request.Context(), idStr)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.Redirect(http.StatusFound, downloadURL)
 }
 
 // CancelTask 取消任务

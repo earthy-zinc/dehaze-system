@@ -286,8 +286,6 @@ describe("部门管理接口测试", () => {
       await expectBizError(
         DeptAPI.add(form as DeptForm),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -300,8 +298,6 @@ describe("部门管理接口测试", () => {
       await expectBizError(
         DeptAPI.add(form as DeptForm),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -316,8 +312,6 @@ describe("部门管理接口测试", () => {
       await expectBizError(
         DeptAPI.add({ ...form, sort: form.sort! + 1 }),
         ["A0501", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -330,8 +324,6 @@ describe("部门管理接口测试", () => {
       await expectBizError(
         DeptAPI.add(form),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -440,8 +432,6 @@ describe("部门管理接口测试", () => {
       await expectBizError(
         DeptAPI.update(99999999, form),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -458,8 +448,6 @@ describe("部门管理接口测试", () => {
           parentId: DEPTS.CQUPT.id,
         } as DeptForm),
         ["A0501", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -475,8 +463,6 @@ describe("部门管理接口测试", () => {
       await expectBizError(
         DeptAPI.update(testDeptId, { parentId: childDeptId } as DeptForm),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -518,8 +504,6 @@ describe("部门管理接口测试", () => {
       await expectBizError(
         DeptAPI.deleteByIds("99999999"),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -527,8 +511,6 @@ describe("部门管理接口测试", () => {
       await expectBizError(
         DeptAPI.deleteByIds(""),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -557,8 +539,6 @@ describe("部门管理接口测试", () => {
       await expectBizError(
         DeptAPI.add(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 

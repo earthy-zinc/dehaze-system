@@ -294,8 +294,6 @@ describe("菜单管理接口测试", () => {
       await expectBizError(
         MenuAPI.add(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -308,8 +306,6 @@ describe("菜单管理接口测试", () => {
       await expectBizError(
         MenuAPI.add(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -428,8 +424,6 @@ describe("菜单管理接口测试", () => {
       await expectBizError(
         MenuAPI.add(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 

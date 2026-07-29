@@ -72,7 +72,7 @@ public class SysTaskController {
             .build();
     }
 
-    @DeleteMapping("/{taskId}")
+    @PostMapping("/{taskId}/cancel")
     @Operation(
         summary = "取消任务",
         description = "取消正在执行的任务，只能取消自己创建的任务"

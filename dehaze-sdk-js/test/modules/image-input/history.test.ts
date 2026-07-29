@@ -129,8 +129,6 @@ describe("图像输入历史记录 API 测试", () => {
       await expectBizError(
         ImageInputHistoryAPI.getById(99999999),
         ["A0401", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -176,8 +174,6 @@ describe("图像输入历史记录 API 测试", () => {
       await expectBizError(
         ImageInputHistoryAPI.getById(id),
         ["A0401", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -210,8 +206,6 @@ describe("图像输入历史记录 API 测试", () => {
         await expectBizError(
           ImageInputHistoryAPI.getById(id),
           ["A0401", "A0400", "ERR_BAD_REQUEST"],
-          undefined,
-          true
         );
       }
     });

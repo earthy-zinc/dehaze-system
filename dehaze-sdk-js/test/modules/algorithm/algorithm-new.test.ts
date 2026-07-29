@@ -41,8 +41,6 @@ describe("算法管理新增端点测试", () => {
       await expectBizError(
         AlgorithmAPI.updateStatus(testAlgorithmId, 99),
         ["A0502", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -50,8 +48,6 @@ describe("算法管理新增端点测试", () => {
       await expectBizError(
         AlgorithmAPI.updateStatus(99999999, 1),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

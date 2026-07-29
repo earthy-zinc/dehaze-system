@@ -265,7 +265,7 @@ describe("角色管理接口测试", () => {
         status: 1,
       };
 
-      await expectBizError(RoleAPI.add(form as RoleForm), ["A0400", "B0001"], undefined, true);
+      await expectBizError(RoleAPI.add(form as RoleForm), ["A0400", "B0001"]);
     });
 
     test("参数校验：缺少必需字段 name", async () => {
@@ -274,7 +274,7 @@ describe("角色管理接口测试", () => {
         status: 1,
       };
 
-      await expectBizError(RoleAPI.add(form as RoleForm), ["A0400", "B0001"], undefined, true);
+      await expectBizError(RoleAPI.add(form as RoleForm), ["A0400", "B0001"]);
     });
 
     test("参数校验：角色编码已存在", async () => {
@@ -419,8 +419,6 @@ describe("角色管理接口测试", () => {
       await expectBizError(
         RoleAPI.update(99999999, form as RoleForm),
         ["A0400", "B0001"],
-        undefined,
-        true
       );
     });
 
@@ -435,8 +433,6 @@ describe("角色管理接口测试", () => {
       await expectBizError(
         RoleAPI.update(testRoleId, form as RoleForm),
         ["A0503", "B0001", "A0400"],
-        undefined,
-        true
       );
 
       // 验证未被修改
@@ -491,7 +487,7 @@ describe("角色管理接口测试", () => {
     });
 
     test("参数校验：空的ID列表", async () => {
-      await expectBizError(RoleAPI.deleteByIds(""), ["B0001", "ERR_BAD_REQUEST"], undefined, true);
+      await expectBizError(RoleAPI.deleteByIds(""), ["B0001", "ERR_BAD_REQUEST"]);
     });
 
   });

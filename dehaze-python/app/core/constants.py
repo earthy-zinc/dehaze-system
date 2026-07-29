@@ -2,7 +2,7 @@ SYSTEM_USER_ID = 0
 
 TASK_CACHE_PREFIX = "task:running:cache:"
 TASK_PROGRESS_PREFIX = "task:running:progress:"
-TASK_CANCEL_PREFIX = "task:running:cancel:"
+TASK_CANCEL_PREFIX = "task:cancel:"
 IDEMPOTENCY_KEY_PREFIX = "idempotency:task:"
 
 TASK_EXPIRE_HOURS = 24

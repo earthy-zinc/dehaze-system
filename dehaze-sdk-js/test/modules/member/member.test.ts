@@ -93,7 +93,7 @@ describe("会员管理模块接口测试", () => {
     });
 
     test("验证：重复签到返回业务错误", async () => {
-      await expectBizError(MemberAPI.signIn(), ["SIGN_IN_ALREADY", "A0512"], undefined, true);
+      await expectBizError(MemberAPI.signIn(), ["SIGN_IN_ALREADY", "A0512"]);
     });
   });
 
@@ -201,8 +201,6 @@ describe("会员管理模块接口测试", () => {
       await expectBizError(
         MemberAPI.getDetail(99999999),
         ["MEMBER_NOT_FOUND", "A0510", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -251,8 +249,6 @@ describe("会员管理模块接口测试", () => {
       await expectBizError(
         MemberAPI.adjustGrowth(targetUser.id, { changeValue: 10, reason: "" } as any),
         ["A0400", "A0706", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -288,8 +284,6 @@ describe("会员管理模块接口测试", () => {
       await expectBizError(
         MemberAPI.adjustLevel(targetUser.id, { levelCode: "level_2", reason: "" } as any),
         ["A0400", "A0706", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -319,8 +313,6 @@ describe("会员管理模块接口测试", () => {
       await expectBizError(
         MemberAPI.updateStatus(targetUser.id, { status: 0, reason: "" } as any),
         ["A0400", "A0706", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -385,8 +377,6 @@ describe("会员管理模块接口测试", () => {
       await expectBizError(
         MemberAPI.adjustGrowth(99999999, createGrowthAdjustForm()),
         ["MEMBER_NOT_FOUND", "A0510", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -394,8 +384,6 @@ describe("会员管理模块接口测试", () => {
       await expectBizError(
         MemberAPI.adjustLevel(99999999, createLevelAdjustForm()),
         ["MEMBER_NOT_FOUND", "A0510", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -403,8 +391,6 @@ describe("会员管理模块接口测试", () => {
       await expectBizError(
         MemberAPI.updateStatus(99999999, { status: 0, reason: "测试" }),
         ["MEMBER_NOT_FOUND", "A0510", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

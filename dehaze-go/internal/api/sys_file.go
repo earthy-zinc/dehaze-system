@@ -203,6 +203,11 @@ func (api *SysFileApi) GetFileDetail(c *gin.Context) {
 		return
 	}
 
+	// 文件不存在时返回 null（与 Java/Python 行为一致），避免返回零值对象
+	if file.ID == 0 {
+		common.Ok(c)
+		return
+	}
 	common.OkWithData(file, c)
 }
 
@@ -218,7 +223,8 @@ func (api *SysFileApi) GetFileDetail(c *gin.Context) {
 func (api *SysFileApi) DownloadFile(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	objectName := c.Param("objectName")
+	// Gin 的 *objectName 通配符会捕获带前导斜杠的路径，需去除以匹配数据库存储的 objectName
+	objectName := strings.TrimPrefix(c.Param("objectName"), "/")
 	if objectName == "" {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "缺少objectName参数"))
 		return

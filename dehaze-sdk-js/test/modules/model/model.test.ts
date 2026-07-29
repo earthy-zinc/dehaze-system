@@ -36,8 +36,6 @@ describe("预测与评估 API 测试", () => {
       await expectBizError(
         ModelAPI.predict(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -47,8 +45,6 @@ describe("预测与评估 API 测试", () => {
       await expectBizError(
         ModelAPI.predict(form),
         ["A0400", "A0401", "B0001", "ERR_BAD_REQUEST", "C0001"],
-        undefined,
-        true
       );
     });
   });
@@ -58,8 +54,6 @@ describe("预测与评估 API 测试", () => {
       await expectBizError(
         ModelAPI.getPredTaskStatus(99999999),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -138,8 +132,6 @@ describe("预测与评估 API 测试", () => {
       await expectBizError(
         ModelAPI.evaluate(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -149,8 +141,6 @@ describe("预测与评估 API 测试", () => {
       await expectBizError(
         ModelAPI.getEvalTaskStatus(99999999),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

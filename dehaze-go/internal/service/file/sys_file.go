@@ -16,6 +16,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/storage"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
+	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -65,13 +66,15 @@ func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.File
 	}
 
 	// 5. 写入元数据（事务）
+	fileSize := fileHeader.Size
 	sysFile := model.SysFile{
 		BaseModel:  model.BaseModel{CreatedAt: now, UpdatedAt: now},
 		Type:       utils.StringPtr(extension),
 		URL:        utils.StringPtr(fileURL),
 		Name:       fileHeader.Filename,
 		ObjectName: objectName,
-		Size:       fmt.Sprintf("%d", fileHeader.Size),
+		Size:       humanize.Bytes(uint64(fileSize)),
+		SizeBytes:  &fileSize,
 		Path:       uploadPath,
 		MD5:        md5Hash,
 	}
@@ -128,7 +131,8 @@ func (s *FileService) GetFileById(ctx context.Context, fileId int64) (sysFile mo
 	file, err := s.fileRepo.FindByID(ctx, fileId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return model.SysFile{}, common.NewBizError(common.RESOURCE_NOT_FOUND, "文件不存在")
+			// 文件不存在时返回空记录，由调用方判断，与 Java/Python 行为一致
+			return model.SysFile{}, nil
 		}
 		return model.SysFile{}, common.WrapBizError(common.DATABASE_ERROR, "查询文件失败", err)
 	}

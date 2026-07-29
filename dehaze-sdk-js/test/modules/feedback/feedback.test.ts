@@ -110,8 +110,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.createRating(form),
         ["A0546", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -124,8 +122,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.createRating(form),
         ["A0540", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -135,8 +131,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.createRating(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -172,8 +166,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.updateRating(99999999, form),
         ["A0541", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -250,8 +242,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.getRatingByPrediction(predLogId),
         ["A0503", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
       await login(userAccount);
     });
@@ -325,8 +315,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.hideRating(99999999),
         ["A0541", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -361,8 +349,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.replyRating(99999999, "测试回复"),
         ["A0541", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -439,8 +425,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.createFeedback(rest as any),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -450,8 +434,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.createFeedback(rest as any),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -518,8 +500,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.getFeedbackDetail(99999999),
         ["A0543", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -549,8 +529,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.supplementFeedback(99999999, { content: "测试" }),
         ["A0543", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -653,8 +631,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.assignFeedback(99999999, { assigneeId: 2 }),
         ["A0543", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -687,8 +663,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.replyFeedback(99999999, createFeedbackReplyForm()),
         ["A0543", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -724,8 +698,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.updateFeedbackTags(99999999, ["标签"]),
         ["A0543", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -754,8 +726,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.closeFeedback(testFeedbackId, { closeReason: "再次关闭" }),
         ["A0544", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -763,8 +733,6 @@ describe("反馈评价模块接口测试", () => {
       await expectBizError(
         FeedbackAPI.closeFeedback(99999999, { closeReason: "测试" }),
         ["A0543", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

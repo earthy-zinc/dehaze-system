@@ -131,8 +131,6 @@ describe("算法管理接口测试", () => {
       await expectBizError(
         AlgorithmAPI.getAlgorithmInfoById(99999999),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -187,8 +185,6 @@ describe("算法管理接口测试", () => {
       await expectBizError(
         AlgorithmAPI.add(form as Algorithm),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -202,8 +198,6 @@ describe("算法管理接口测试", () => {
       await expectBizError(
         AlgorithmAPI.add(form as Algorithm),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -253,8 +247,6 @@ describe("算法管理接口测试", () => {
       await expectBizError(
         AlgorithmAPI.update(99999999, form),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -272,8 +264,6 @@ describe("算法管理接口测试", () => {
       await expectBizError(
         AlgorithmAPI.getAlgorithmInfoById(algorithmId),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -294,8 +284,6 @@ describe("算法管理接口测试", () => {
         await expectBizError(
           AlgorithmAPI.getAlgorithmInfoById(algorithmId),
           ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-          undefined,
-          true
         );
       }
     });
@@ -304,8 +292,6 @@ describe("算法管理接口测试", () => {
       await expectBizError(
         AlgorithmAPI.deleteByIds(["99999999"]),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -328,20 +314,14 @@ describe("算法管理接口测试", () => {
       await expectBizError(
         AlgorithmAPI.getAlgorithmInfoById(parentAlgorithmId),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
       await expectBizError(
         AlgorithmAPI.getAlgorithmInfoById(childAlgorithmId),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
       await expectBizError(
         AlgorithmAPI.getAlgorithmInfoById(grandChildAlgorithmId),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -360,20 +340,14 @@ describe("算法管理接口测试", () => {
       await expectBizError(
         AlgorithmAPI.getAlgorithmInfoById(parentAlgorithmId),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
       await expectBizError(
         AlgorithmAPI.getAlgorithmInfoById(childAlgorithmId),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
       await expectBizError(
         AlgorithmAPI.getAlgorithmInfoById(grandChildAlgorithmId),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -382,8 +356,6 @@ describe("算法管理接口测试", () => {
       await expectBizError(
         AlgorithmAPI.add(form as any),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

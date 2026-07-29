@@ -167,8 +167,6 @@ describe("字典管理接口测试", () => {
       await expectBizError(
         DictAPI.addDictType(form as DictTypeForm),
         ["B0001", "A0400"],
-        undefined,
-        true
       );
     });
 
@@ -181,8 +179,6 @@ describe("字典管理接口测试", () => {
       await expectBizError(
         DictAPI.addDictType(form as DictTypeForm),
         ["B0001", "A0400"],
-        undefined,
-        true
       );
     });
 
@@ -313,8 +309,6 @@ describe("字典管理接口测试", () => {
       await expectBizError(
         DictAPI.deleteDictTypes("invalid"),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -801,8 +795,6 @@ describe("字典管理接口测试", () => {
       await expectBizError(
         DictAPI.deleteDictByIds("invalid"),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

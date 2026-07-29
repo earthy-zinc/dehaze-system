@@ -137,8 +137,6 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
       await expectBizError(
         ImportExportAPI.export("unknown_module" as any, createExportRequest()),
         ["B0001", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

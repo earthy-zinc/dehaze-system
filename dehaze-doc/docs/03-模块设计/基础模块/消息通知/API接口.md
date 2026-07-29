@@ -145,7 +145,7 @@
 | type | string | 否 | 按消息类型筛选：`inbox`/`announcement`/`business`/`member`/`alert`/`critical_alert` |
 | readStatus | int | 否 | 按已读状态筛选：`0`(未读)/`1`(已读) |
 
-> `summary` 字段为消息正文（content）前 50 字符截断生成，由后端在写入时计算并存储，前端直接展示。
+> `summary` 字段为消息正文（content）前 50 个 Unicode 代码点截断生成，由后端在查询时动态计算，前端直接展示。
 
 **响应数据**
 

@@ -17,6 +17,9 @@ import time
 from datetime import datetime
 from typing import Any
 
+import PIL.Image
+import io
+
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.base import get_current_user_id
@@ -904,7 +907,7 @@ class DatasetItemService:
     ):
         item = await dataset_repository.get_item_by_id(db, item_id)
         if not item:
-            return
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在")
 
         await dataset_repository.delete_item_files_by_item_id(db, item_id)
         await dataset_repository.delete_item_by_id(db, item_id)
@@ -973,6 +976,30 @@ class DatasetItemService:
         # 清晰图和有雾图均为可选（适配不同数据集规范：GT+Hazy 配对型、仅 Hazy 无 GT 型等）
         if clear_file_content is None and not hazy_files_data:
             raise BusinessException(ResultCode.PARAM_ERROR, "至少上传一张图片（清晰图或有雾图）")
+
+        # 校验配对图片分辨率一致性（清晰图存在时才校验，对齐 Java/Go 实现）
+        clear_dims = None
+        if clear_file_content is not None:
+            try:
+                with PIL.Image.open(io.BytesIO(clear_file_content)) as img:
+                    clear_dims = img.size
+            except Exception:
+                raise BusinessException(ResultCode.PARAM_ERROR, "清晰图文件格式错误或无法解析")
+            for hfd in (hazy_files_data or []):
+                try:
+                    with PIL.Image.open(io.BytesIO(hfd["content"])) as img:
+                        hazy_dims = img.size
+                except Exception:
+                    raise BusinessException(
+                        ResultCode.PARAM_ERROR,
+                        f"有雾图 {hfd.get('filename', '')} 格式错误或无法解析",
+                    )
+                if hazy_dims[0] != clear_dims[0] or hazy_dims[1] != clear_dims[1]:
+                    raise BusinessException(
+                        ResultCode.PARAM_ERROR,
+                        f"配对图片分辨率不一致，清晰图：{clear_dims[0]}x{clear_dims[1]}，"
+                        f"有雾图 {hfd.get('filename', '')}：{hazy_dims[0]}x{hazy_dims[1]}",
+                    )
 
         dataset = await dataset_repository.get_by_id(db, dataset_id)
         if not dataset or dataset.deleted:

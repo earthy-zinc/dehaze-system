@@ -114,11 +114,11 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
         if (sysFile == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "不存在当前文件");
         }
-        boolean result = fileService.deleteFile(sysFile.getObjectName());
-        if (!result) {
-            throw new BusinessException("删除文件失败");
-        }
+        // 先删DB元数据（事务内），再删物理文件（best-effort，失败仅记录日志，孤儿文件由定时任务清理）
         baseMapper.hardDeleteById(fileId);
+        if (!fileService.deleteFile(sysFile.getObjectName())) {
+            log.warn("物理文件删除失败（孤儿文件待清理）, objectName: {}", sysFile.getObjectName());
+        }
         return true;
     }
 

@@ -6,28 +6,25 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
+	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/service/import_export"
 	"gorm.io/gorm"
 )
 
-const (
-	algorithmStatusDraft = 0
-)
-
 func algorithmStatusLabel(status int8) string {
 	switch status {
-	case 0:
+	case bo.AlgorithmStatusDraft:
 		return "草稿"
-	case 1:
+	case bo.AlgorithmStatusTesting:
 		return "测试中"
-	case 2:
+	case bo.AlgorithmStatusAuditing:
 		return "待审核"
-	case 3:
+	case bo.AlgorithmStatusPublished:
 		return "已发布"
-	case 4:
+	case bo.AlgorithmStatusDisabled:
 		return "已停用"
-	case 5:
+	case bo.AlgorithmStatusArchived:
 		return "已归档"
 	}
 	return ""
@@ -239,7 +236,7 @@ func (h *AlgorithmImportHandler) ImportBatch(rows []map[string]interface{}, opti
 			ImportPath:  getAsString(row, "importPath"),
 			Description: getAsString(row, "description"),
 			Version:     version,
-			Status:      algorithmStatusDraft,
+			Status:      bo.AlgorithmStatusDraft,
 		}
 		algo.CreatedAt = now
 		algo.UpdatedAt = now

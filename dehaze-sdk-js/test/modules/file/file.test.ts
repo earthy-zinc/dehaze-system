@@ -107,8 +107,6 @@ describe("文件管理接口测试", () => {
       await expectBizError(
         FileAPI.upload(null as any),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -139,8 +137,6 @@ describe("文件管理接口测试", () => {
       await expectBizError(
         FileAPI.deleteById(nonExistId),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

@@ -327,7 +327,7 @@ describe("用户管理接口测试", () => {
         status: 1,
         deptId: existingDeptId,
       };
-      await expectBizError(UserAPI.add(form as UserForm), ["A0400", "B0001"], undefined, true);
+      await expectBizError(UserAPI.add(form as UserForm), ["A0400", "B0001"]);
     });
 
     test("参数校验：缺少必需字段 nickname", async () => {
@@ -336,7 +336,7 @@ describe("用户管理接口测试", () => {
         status: 1,
         deptId: existingDeptId,
       };
-      await expectBizError(UserAPI.add(form as UserForm), ["A0400", "B0001"], undefined, true);
+      await expectBizError(UserAPI.add(form as UserForm), ["A0400", "B0001"]);
     });
 
     test("参数校验：用户名已存在", async () => {
@@ -346,7 +346,7 @@ describe("用户管理接口测试", () => {
         status: 1,
         deptId: existingDeptId,
       };
-      await expectBizError(UserAPI.add(form), ["A0400", "B0001"], undefined, true);
+      await expectBizError(UserAPI.add(form), ["A0400", "B0001"]);
     });
   });
 
@@ -608,8 +608,6 @@ describe("用户管理接口测试", () => {
       await expectBizError(
         UserAPI.update(nonExistentUserId, form),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
     });
 
@@ -623,8 +621,6 @@ describe("用户管理接口测试", () => {
       await expectBizError(
         UserAPI.update(testUserId, form),
         ["A0501", "B0001", "A0400"],
-        undefined,
-        true
       );
 
       // 验证用户名未被修改
@@ -681,8 +677,6 @@ describe("用户管理接口测试", () => {
       await expectBizError(
         UserAPI.updatePassword(testUserId, emptyPassword),
         ["A0410", "A0400", "B0001"],
-        undefined,
-        true
       );
     });
 
@@ -693,8 +687,6 @@ describe("用户管理接口测试", () => {
       await expectBizError(
         UserAPI.updatePassword(nonExistentUserId, newPassword),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
     });
   });
@@ -789,7 +781,7 @@ describe("用户管理接口测试", () => {
 
     test("参数校验：空的ID列表", async () => {
       const emptyIds = "";
-      await expectBizError(UserAPI.deleteByIds(emptyIds), ["B0001", "A0400"], undefined, true);
+      await expectBizError(UserAPI.deleteByIds(emptyIds), ["B0001", "A0400"]);
     });
   });
 

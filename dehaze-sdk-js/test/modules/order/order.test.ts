@@ -94,8 +94,6 @@ describe("订单管理模块接口测试", () => {
       await expectBizError(
         OrderAPI.create(form),
         ["A0520", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -114,8 +112,6 @@ describe("订单管理模块接口测试", () => {
       await expectBizError(
         OrderAPI.create(form),
         ["A0521", "A0520", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -181,8 +177,6 @@ describe("订单管理模块接口测试", () => {
       await expectBizError(
         OrderAPI.getDetail("NON_EXISTENT_ORDER_NO_999999"),
         ["A0530", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -210,8 +204,6 @@ describe("订单管理模块接口测试", () => {
       await expectBizError(
         OrderAPI.cancel("NON_EXISTENT_ORDER_NO_999999", "测试取消"),
         ["A0530", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -219,8 +211,6 @@ describe("订单管理模块接口测试", () => {
       await expectBizError(
         OrderAPI.cancel(testOrderNo, "重复取消"),
         ["A0531", "A0530", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -248,8 +238,6 @@ describe("订单管理模块接口测试", () => {
       await expectBizError(
         OrderAPI.pay("NON_EXISTENT_ORDER_NO_999999", { payMethod: "balance" }),
         ["A0530", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -291,8 +279,6 @@ describe("订单管理模块接口测试", () => {
           enabled: true,
         }),
         ["A0520", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -361,8 +347,6 @@ describe("订单管理模块接口测试", () => {
       await expectBizError(
         OrderAPI.applyRefund("NON_EXISTENT_ORDER_NO_999999", createRefundApplyForm()),
         ["A0530", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -526,8 +510,6 @@ describe("订单管理模块接口测试", () => {
       await expectBizError(
         OrderAPI.approveRefund(99999999, { approved: true, remark: "测试" }),
         ["A0537", "A0530", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -535,8 +517,6 @@ describe("订单管理模块接口测试", () => {
       await expectBizError(
         OrderAPI.rejectRefund(99999999, { approved: false, remark: "测试" }),
         ["A0537", "A0530", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

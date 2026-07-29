@@ -4,6 +4,7 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -129,7 +130,12 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
 
         SysTask sysTask = getTaskEntity(taskId);
         if (sysTask == null) {
-            return null;
+            throw new BusinessException("任务不存在: " + taskId);
+        }
+
+        Long currentUserId = SecurityUtils.getUserId();
+        if (currentUserId == null || !currentUserId.equals(sysTask.getCreateBy())) {
+            throw new BusinessException("无权操作此任务");
         }
 
         log.info("查询任务状态: taskId={}, status={}", taskId, sysTask.getStatus());
@@ -146,6 +152,11 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         SysTask sysTask = getTaskEntity(taskId);
         if (sysTask == null) {
             throw new BusinessException("任务不存在: " + taskId);
+        }
+
+        Long currentUserId = SecurityUtils.getUserId();
+        if (currentUserId == null || !currentUserId.equals(sysTask.getCreateBy())) {
+            throw new BusinessException("无权操作此任务");
         }
 
         if (sysTask.getStatus() == null || sysTask.getStatus() != TaskConstants.STATUS_COMPLETED) {
@@ -178,6 +189,11 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("任务不存在: " + taskId);
         }
 
+        Long currentUserId = SecurityUtils.getUserId();
+        if (currentUserId == null || !currentUserId.equals(sysTask.getCreateBy())) {
+            throw new BusinessException("无权操作此任务");
+        }
+
         if (sysTask.getStatus() != null
                 && (sysTask.getStatus() == TaskConstants.STATUS_COMPLETED
                 || sysTask.getStatus() == TaskConstants.STATUS_FAILED)) {
@@ -188,10 +204,19 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("任务已取消: " + taskId);
         }
 
+        // CAS 更新：仅当状态为 PENDING 或 PROCESSING 时才可取消，避免并发覆盖
+        LambdaUpdateWrapper<SysTask> updateWrapper = new LambdaUpdateWrapper<SysTask>()
+                .eq(SysTask::getId, sysTask.getId())
+                .in(SysTask::getStatus, TaskConstants.STATUS_PENDING, TaskConstants.STATUS_PROCESSING)
+                .set(SysTask::getStatus, TaskConstants.STATUS_CANCELLED)
+                .set(SysTask::getCompletedAt, LocalDateTime.now());
+        boolean updated = this.update(updateWrapper);
+        if (!updated) {
+            throw new BusinessException("任务状态已变更，无法取消");
+        }
+
         sysTask.setStatus(TaskConstants.STATUS_CANCELLED);
         sysTask.setCompletedAt(LocalDateTime.now());
-
-        this.updateById(sysTask);
 
         String cacheKey = TaskConstants.TASK_CACHE_PREFIX + taskId;
         redisTemplate.opsForValue().set(cacheKey, sysTask, TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);

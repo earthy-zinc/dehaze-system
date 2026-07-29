@@ -118,7 +118,7 @@ func TestLogin_UsernameLocked(t *testing.T) {
 	}
 
 	mockCacheGetNotFound(f.cache, "login:fail:ip:"+clientIP)
-	f.cache.EXPECT().Get(mock.Anything, "login:fail:user:zhangsan").Return("5", nil).Once()
+	f.cache.EXPECT().Get(mock.Anything, "login:fail:zhangsan").Return("5", nil).Once()
 
 	result, err := f.authService.Login(ctx, req, clientIP, "")
 
@@ -140,7 +140,7 @@ func TestLogin_UsernameNormalization(t *testing.T) {
 	}
 
 	mockCacheGetNotFound(f.cache, "login:fail:ip:"+clientIP)
-	f.cache.EXPECT().Get(mock.Anything, "login:fail:user:zhangsan").Return("5", nil).Once()
+	f.cache.EXPECT().Get(mock.Anything, "login:fail:zhangsan").Return("5", nil).Once()
 
 	result, err := f.authService.Login(ctx, req, clientIP, "")
 

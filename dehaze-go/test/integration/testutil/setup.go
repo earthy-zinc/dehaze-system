@@ -86,6 +86,6 @@ func CleanLoginFailCounts(usernames ...string) {
 	// httptest 默认 RemoteAddr 为 "192.0.2.1:1234"，对应 IP 为 192.0.2.1
 	_ = cacheClient.Delete(ctx, "login:fail:ip:192.0.2.1")
 	for _, u := range usernames {
-		_ = cacheClient.Delete(ctx, "login:fail:user:"+u)
+		_ = cacheClient.Delete(ctx, "login:fail:"+u)
 	}
 }

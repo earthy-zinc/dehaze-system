@@ -156,8 +156,6 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
       await expectBizError(
         ImportExportAPI.import("user", { mode: "all" }, file),
         ["A0701", "B0001"],
-        undefined,
-        true
       );
     });
 
@@ -167,8 +165,6 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
       await expectBizError(
         ImportExportAPI.import("user", { mode: "all" }, file),
         ["A0702", "B0001"],
-        undefined,
-        true
       );
     });
   });

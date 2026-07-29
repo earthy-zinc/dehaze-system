@@ -1,3 +1,5 @@
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
@@ -128,7 +130,7 @@ async def get_task_status(
     task_data = await TaskServiceAsync.get_task_status(db, redis, task_id, user_id=user.id)
 
     if task_data is None:
-        return success(None)
+        raise BusinessException(ResultCode.TASK_NOT_FOUND, f"任务不存在: {task_id}")
 
     return success(_dict_to_task_data(task_data))
 

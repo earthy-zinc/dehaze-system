@@ -25,12 +25,6 @@ def _validate_file(file: UploadFile) -> None:
     if not file.filename:
         raise BusinessException(ResultCode.PARAM_ERROR, "请选择文件")
 
-    # 检查文件扩展名
-    ext = file.filename.rsplit(
-        ".", 1)[-1].lower() if "." in file.filename else ""
-    if ext not in settings.ALLOWED_EXTENSIONS:
-        raise BusinessException(ResultCode.FILE_TYPE_NOT_SUPPORTED, f"不支持的文件类型: .{ext}")
-
     # 检查文件大小（通过 content-length 头，如果有的话）
     if file.size and file.size > settings.MAX_UPLOAD_SIZE:
         max_mb = settings.MAX_UPLOAD_SIZE // 1024 // 1024

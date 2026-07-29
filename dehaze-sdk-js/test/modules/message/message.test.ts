@@ -42,8 +42,6 @@ describe("消息通知模块接口测试", () => {
       await expectBizError(
         MessageAPI.send({ recipientIds: [1], title: "x", content: "y" } as any),
         ["A0400", "A0410", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -51,8 +49,6 @@ describe("消息通知模块接口测试", () => {
       await expectBizError(
         MessageAPI.send(createMessageSendRequest({ recipientIds: [] })),
         ["A0400", "A0410", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -117,8 +113,6 @@ describe("消息通知模块接口测试", () => {
       await expectBizError(
         MessageAPI.getDetail(999999999),
         ["A0550", "A0401", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -185,8 +179,6 @@ describe("消息通知模块接口测试", () => {
       await expectBizError(
         MessageAPI.getDetail(id),
         ["A0550", "A0401", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -306,8 +298,6 @@ describe("消息通知模块接口测试", () => {
       await expectBizError(
         AnnouncementAPI.update(testAnnouncementId, { title: "should_fail" }),
         ["A0553", "A0502", "A0500", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -315,8 +305,6 @@ describe("消息通知模块接口测试", () => {
       await expectBizError(
         AnnouncementAPI.cancel(testAnnouncementId),
         ["A0553", "A0502", "A0500", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -355,8 +343,6 @@ describe("消息通知模块接口测试", () => {
       await expectBizError(
         AnnouncementAPI.getDetail(testAnnouncementId),
         ["A0552", "A0401", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -364,8 +350,6 @@ describe("消息通知模块接口测试", () => {
       await expectBizError(
         AnnouncementAPI.create(createAnnouncementForm({ title: "a" })),
         ["A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

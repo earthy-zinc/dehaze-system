@@ -37,7 +37,7 @@ from app.service.payment_channel_service import payment_channel_service
 logger = logging.getLogger(__name__)
 
 ORDER_EXPIRE_MINUTES = 30
-PAYMENT_LOCK_TTL = 600
+PAYMENT_LOCK_TTL = 30
 ORDER_LOCK_TTL = 5
 REFUND_TIME_LIMIT_DAYS = 7
 

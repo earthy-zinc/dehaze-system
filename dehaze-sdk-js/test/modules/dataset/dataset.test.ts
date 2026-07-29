@@ -94,7 +94,7 @@ describe("数据集接口测试", () => {
     test("参数校验：缺少必需字段 name", async () => {
       const form = createDatasetForm();
       delete (form as any).name;
-      await expectBizError(DatasetAPI.add(form), ["A0400", "B0001"], undefined, true);
+      await expectBizError(DatasetAPI.add(form), ["A0400", "B0001"]);
     });
   });
 
@@ -140,8 +140,6 @@ describe("数据集接口测试", () => {
       await expectBizError(
         DatasetAPI.getDatasetInfoById(99999999),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });
@@ -190,8 +188,6 @@ describe("数据集接口测试", () => {
       await expectBizError(
         DatasetAPI.update(99999999, form),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
     });
   });
@@ -208,8 +204,6 @@ describe("数据集接口测试", () => {
       await expectBizError(
         DatasetAPI.getDatasetInfoById(datasetId),
         ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -217,8 +211,6 @@ describe("数据集接口测试", () => {
       await expectBizError(
         DatasetAPI.deleteById(99999999),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
     });
   });
@@ -250,7 +242,7 @@ describe("数据集接口测试", () => {
       const form: BatchDeleteForm = {
         ids: [],
       };
-      await expectBizError(DatasetAPI.batchDelete(form), ["A0400", "B0001"], undefined, true);
+      await expectBizError(DatasetAPI.batchDelete(form), ["A0400", "B0001"]);
     });
 
     test("异常测试：包含不存在的ID", async () => {
@@ -289,20 +281,14 @@ describe("数据集接口测试", () => {
       await expectBizError(
         DatasetAPI.getDatasetInfoById(parentDatasetId),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
       await expectBizError(
         DatasetAPI.getDatasetInfoById(childDatasetId),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
       await expectBizError(
         DatasetAPI.getDatasetInfoById(grandChildDatasetId),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
     });
 
@@ -328,20 +314,14 @@ describe("数据集接口测试", () => {
       await expectBizError(
         DatasetAPI.getDatasetInfoById(parentDatasetId),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
       await expectBizError(
         DatasetAPI.getDatasetInfoById(childDatasetId),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
       await expectBizError(
         DatasetAPI.getDatasetInfoById(grandChildDatasetId),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
     });
 
@@ -374,26 +354,18 @@ describe("数据集接口测试", () => {
       await expectBizError(
         DatasetAPI.getDatasetInfoById(parentDatasetId),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
       await expectBizError(
         DatasetAPI.getDatasetInfoById(childDatasetId),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
       await expectBizError(
         DatasetItemAPI.getById(item1.id),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
       await expectBizError(
         DatasetItemAPI.getById(item2.id),
         ["A0401", "B0001", "A0400"],
-        undefined,
-        true
       );
     });
   });
@@ -454,8 +426,6 @@ describe("数据集接口测试", () => {
       await expectBizError(
         DatasetAPI.add(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 

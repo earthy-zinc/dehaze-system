@@ -18,18 +18,32 @@
 | `/api/v1/tasks/{taskId}` | GET | 查询任务状态 | - | F-TM-002 |
 | `/api/v1/tasks/{taskId}/download` | GET | 下载任务结果 | - | F-TM-003 |
 | `/api/v1/tasks/{taskId}/cancel` | POST | 取消任务 | - | F-TM-004 |
+| `/api/v1/tasks/{taskId}/retry` | POST | 重试失败任务 | - | F-TM-004 |
 | `/api/v1/tasks` | GET | 任务列表查询 | - | F-TM-005 |
 
-### 2.1 任务列表查询参数（TaskQuery）
+> **接口规范约定**：取消任务使用 `POST /{taskId}/cancel`（动作型子资源），而非 `DELETE /{taskId}`。DELETE 语义为"删除资源"，取消是状态变更操作，使用 POST + 动作子资源更符合 RESTful 规范。三端（Java/Go/Python）及 SDK 必须统一遵循此约定。
+
+### 2.1 创建任务请求头
+
+| 请求头 | 是否必填 | 说明 |
+|--------|---------|------|
+| `Idempotency-Key` | 否 | 客户端幂等键，相同键返回已有任务，防止重复创建 |
+
+### 2.2 任务列表查询参数（TaskQuery）
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | pageNum | int | 否 | 页码，默认 1 |
 | pageSize | int | 否 | 每页条数，默认 10 |
-| status | string | 否 | 按任务状态筛选：`PENDING`/`PROCESSING`/`COMPLETED`/`FAILED`/`CANCELLED` |
+| status | int | 否 | 按任务状态筛选：`1`(PENDING)/`2`(PROCESSING)/`3`(COMPLETED)/`4`(FAILED)/`5`(CANCELLED) |
 | taskType | string | 否 | 按任务类型筛选，支持逗号分隔多个（如 `user_export,user_import`） |
 | taskCategory | string | 否 | 按任务类别筛选：`import`（导入）/ `export`（导出），便于分类查看导入导出任务 |
-| createTimeStart / createTimeEnd | datetime | 否 | 创建时间范围筛选 |
+
+### 2.3 重试任务规则
+
+- 仅 `FAILED` 状态的任务可重试
+- 重试会重置状态为 `PENDING`，递增 `retryCount`，重新发布到消息队列
+- 需校验任务归属（仅创建者可重试）
 
 ## 3. 权限标识汇总
 

@@ -102,16 +102,6 @@ class Settings(BaseSettings):
 
     # 文件上传限制
     MAX_UPLOAD_SIZE: int = 100 * 1024 * 1024  # 100MB
-    ALLOWED_EXTENSIONS: set[str] = {
-        # 图片
-        "jpg", "jpeg", "png", "gif", "webp", "bmp", "svg",
-        # 文档
-        "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
-        # 压缩包
-        "zip", "rar", "7z", "tar", "gz",
-        # 其他
-        "txt", "json", "xml", "csv",
-    }
 
     @property
     def MINIO_SECRET_KEY(self) -> str:

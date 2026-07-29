@@ -110,8 +110,6 @@ describe("模板下载接口测试 - ImportExportAPI.downloadTemplate", () => {
       await expectBizError(
         ImportExportAPI.downloadTemplate("dataset" as any, "excel"),
         ["A0710", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

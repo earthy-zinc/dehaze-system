@@ -74,20 +74,18 @@ async def upload_dataset_item_with_images(
     datasetId: int = Form(..., description="数据集ID"),
     name: Optional[str] = Form(default=None, description="数据项名称"),
     sceneType: Optional[str] = Form(default=None, description="场景类型"),
-    clearImage: UploadFile = File(..., description="清晰图文件"),
-    hazyImages: list[UploadFile] = File(..., description="有雾图文件列表"),
-    hazeLevels: list[str] = Form(..., description="雾霾程度列表(light/medium/heavy)，每个有雾图对应一个"),
+    clearImage: Optional[UploadFile] = File(default=None, description="清晰图文件（可选，适配无GT数据集）"),
+    hazyImages: list[UploadFile] = File(default=[], description="有雾图文件列表（可选，适配仅有清晰图场景）"),
+    hazeLevels: list[str] = Form(default=[], description="有雾图对应的雾霾程度列表，支持多种规范(light/medium/heavy/beta=0.5等)，可为空"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    # 解析雾霾程度
     levels = [lvl.strip() for lvl in hazeLevels if lvl.strip()]
     if len(levels) != len(hazyImages):
         raise BusinessException(ResultCode.PARAM_ERROR, "有雾图数量与雾霾程度数量不匹配")
 
-    # 读取文件内容
-    clear_content = await clearImage.read()
-    clear_ctype = clearImage.content_type or "application/octet-stream"
+    clear_content = await clearImage.read() if clearImage else None
+    clear_ctype = clearImage.content_type if clearImage else ""
 
     hazy_data = []
     for i, hf in enumerate(hazyImages):
@@ -97,7 +95,7 @@ async def upload_dataset_item_with_images(
             "filename": hf.filename,
             "content": content,
             "contentType": ctype,
-            "hazeLevel": levels[i] if i < len(levels) else "medium",
+            "hazeLevel": levels[i] if i < len(levels) else "",
         })
 
     detail = await DatasetItemService.upload_dataset_item_with_images(
@@ -107,7 +105,7 @@ async def upload_dataset_item_with_images(
         name=name,
         scene_type=sceneType,
         clear_file_content=clear_content,
-        clear_filename=clearImage.filename or "",
+        clear_filename=clearImage.filename or "" if clearImage else "",
         clear_content_type=clear_ctype,
         hazy_files_data=hazy_data,
     )

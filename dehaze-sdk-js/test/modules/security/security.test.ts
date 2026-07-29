@@ -233,8 +233,6 @@ describe("安全性测试", () => {
       await expectBizError(
         DeptAPI.add(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -244,8 +242,6 @@ describe("安全性测试", () => {
       await expectBizError(
         RoleAPI.add(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -255,8 +251,6 @@ describe("安全性测试", () => {
       await expectBizError(
         DictAPI.addDictType(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -266,8 +260,6 @@ describe("安全性测试", () => {
       await expectBizError(
         DatasetAPI.add(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -277,8 +269,6 @@ describe("安全性测试", () => {
       await expectBizError(
         MenuAPI.add(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
 
@@ -288,8 +278,6 @@ describe("安全性测试", () => {
       await expectBizError(
         UserAPI.add(form),
         ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
       );
     });
   });

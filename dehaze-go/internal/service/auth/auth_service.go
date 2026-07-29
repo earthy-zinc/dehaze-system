@@ -371,7 +371,7 @@ func (s *AuthService) incrementLoginFailCount(ctx context.Context, clientIP, use
 	}
 
 	if username != "" {
-		userKey := "login:fail:user:" + username
+		userKey := "login:fail:" + username
 		userCount, _ := s.cacheClient.Incr(ctx, userKey)
 		s.cacheClient.Expire(ctx, userKey, lockTime)
 		if userCount >= int64(failLimit) {
@@ -395,7 +395,7 @@ func (s *AuthService) checkLoginFailCount(ctx context.Context, clientIP, usernam
 	}
 
 	if username != "" {
-		userKey := "login:fail:user:" + username
+		userKey := "login:fail:" + username
 		userCount, err := s.cacheClient.Get(ctx, userKey)
 		if err == nil {
 			count, _ := strconv.Atoi(string(userCount))
@@ -415,7 +415,7 @@ func (s *AuthService) resetLoginFailCount(ctx context.Context, clientIP, usernam
 	}
 
 	if username != "" {
-		userKey := "login:fail:user:" + username
+		userKey := "login:fail:" + username
 		if err := s.cacheClient.Delete(ctx, userKey); err != nil {
 			logger.Warn("重置用户名登录失败次数失败", zap.String("username", username), zap.Error(err))
 		}

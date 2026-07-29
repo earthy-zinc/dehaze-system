@@ -277,6 +277,18 @@ func (ts *TaskService) DownloadExportFile(ctx context.Context, taskIDStr string)
 	return downloadURL, nil
 }
 
+// CheckTaskOwnership 校验任务归属权，仅创建者可操作
+func (ts *TaskService) CheckTaskOwnership(ctx context.Context, taskIDStr string, userID int64) (*model.SysTask, error) {
+	task, err := ts.getTaskFromCacheOrDB(ctx, taskIDStr)
+	if err != nil {
+		return nil, err
+	}
+	if task.CreateBy != userID {
+		return nil, common.NewBizError(common.OPERATION_NOT_ALLOW, "无权操作此任务")
+	}
+	return task, nil
+}
+
 // CancelTask 取消导出任务
 func (ts *TaskService) CancelTask(ctx context.Context, taskIDStr string, userID int64) error {
 	task, err := ts.getTaskFromCacheOrDB(ctx, taskIDStr)
