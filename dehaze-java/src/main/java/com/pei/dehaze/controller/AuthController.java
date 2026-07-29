@@ -38,7 +38,7 @@ public class AuthController {
     private static final long SESSION_MAX_AGE = 604800L;
 
     @Operation(summary = "登录")
-    @RateLimit(key = "rate:limit:login:", timeWindow = 60, maxRequests = 10,
+    @RateLimit(key = "rate:limit:login:", timeWindow = 60, maxRequests = 100,
             type = RateLimit.LimitType.IP, message = "登录尝试过于频繁，请60秒后再试")
     @PostMapping("/login")
     public Result<LoginResult> login(@RequestBody @Valid LoginForm form, HttpServletResponse response) {

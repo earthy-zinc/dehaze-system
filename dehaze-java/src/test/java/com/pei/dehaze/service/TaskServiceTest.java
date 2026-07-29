@@ -59,6 +59,9 @@ class TaskServiceTest {
     @Mock
     private WebSocketMessageRelay wsMessageRelay;
 
+    @Mock
+    private io.micrometer.core.instrument.MeterRegistry meterRegistry;
+
     private TaskServiceImpl taskService;
 
     private ExportTaskCreateForm mockForm;
@@ -73,7 +76,7 @@ class TaskServiceTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         // 使用Spy创建TaskServiceImpl，通过构造器注入依赖
-        taskService = org.mockito.Mockito.spy(new TaskServiceImpl(taskExecutor, redisTemplate, wsMessageRelay));
+        taskService = org.mockito.Mockito.spy(new TaskServiceImpl(taskExecutor, redisTemplate, wsMessageRelay, meterRegistry));
 
         // 注入 baseMapper（ServiceImpl 父类字段）
         try {
