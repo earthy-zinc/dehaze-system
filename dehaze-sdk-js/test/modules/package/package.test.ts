@@ -82,12 +82,7 @@ describe("套餐管理模块接口测试", () => {
     });
 
     test("异常：套餐不存在", async () => {
-      await expectBizError(
-        PackageAPI.getDetail(99999999),
-        ["A0520", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
-      );
+      await expectBizError(PackageAPI.getDetail(99999999), ["A0520", "A0400", "ERR_BAD_REQUEST"]);
     });
   });
 
@@ -119,12 +114,11 @@ describe("套餐管理模块接口测试", () => {
     });
 
     test("异常：套餐不存在", async () => {
-      await expectBizError(
-        PackageAPI.calculatePrice(99999999),
-        ["A0520", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
-      );
+      await expectBizError(PackageAPI.calculatePrice(99999999), [
+        "A0520",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -198,22 +192,12 @@ describe("套餐管理模块接口测试", () => {
     test("异常：缺少必填字段 name", async () => {
       const form = createPackageForm();
       const { name, ...rest } = form;
-      await expectBizError(
-        PackageAPI.add(rest as any),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
-      );
+      await expectBizError(PackageAPI.add(rest as any), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
 
     test("异常：价格为负数", async () => {
       const form = createPackageForm({ salePrice: -1 });
-      await expectBizError(
-        PackageAPI.add(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-        undefined,
-        true
-      );
+      await expectBizError(PackageAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
   });
 
@@ -244,12 +228,7 @@ describe("套餐管理模块接口测试", () => {
     });
 
     test("异常：套餐不存在", async () => {
-      await expectBizError(
-        PackageAPI.getForm(99999999),
-        ["A0520", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
-      );
+      await expectBizError(PackageAPI.getForm(99999999), ["A0520", "A0400", "ERR_BAD_REQUEST"]);
     });
   });
 
@@ -289,12 +268,11 @@ describe("套餐管理模块接口测试", () => {
 
     test("异常：套餐不存在", async () => {
       const form = { ...originalForm };
-      await expectBizError(
-        PackageAPI.update(99999999, form),
-        ["A0520", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
-      );
+      await expectBizError(PackageAPI.update(99999999, form), [
+        "A0520",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -327,12 +305,11 @@ describe("套餐管理模块接口测试", () => {
     });
 
     test("异常：套餐不存在", async () => {
-      await expectBizError(
-        PackageAPI.updateStatus(99999999, 1),
-        ["A0520", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
-      );
+      await expectBizError(PackageAPI.updateStatus(99999999, 1), [
+        "A0520",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -357,12 +334,11 @@ describe("套餐管理模块接口测试", () => {
     });
 
     test("异常：套餐不存在", async () => {
-      await expectBizError(
-        PackageAPI.deleteByIds("99999999"),
-        ["A0520", "A0400", "ERR_BAD_REQUEST"],
-        undefined,
-        true
-      );
+      await expectBizError(PackageAPI.deleteByIds("99999999"), [
+        "A0520",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -428,22 +404,12 @@ describe("套餐管理模块接口测试", () => {
       test("异常：缺少必填字段 name", async () => {
         const form = createCouponForm();
         const { name, ...rest } = form;
-        await expectBizError(
-          CouponAPI.add(rest as any),
-          ["A0400", "B0001", "ERR_BAD_REQUEST"],
-          undefined,
-          true
-        );
+        await expectBizError(CouponAPI.add(rest as any), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
       });
 
       test("异常：库存为负数", async () => {
         const form = createCouponForm({ totalQty: -2 });
-        await expectBizError(
-          CouponAPI.add(form),
-          ["A0400", "B0001", "ERR_BAD_REQUEST"],
-          undefined,
-          true
-        );
+        await expectBizError(CouponAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
       });
     });
 
@@ -481,43 +447,43 @@ describe("套餐管理模块接口测试", () => {
       });
 
       describe("PUT /api/v1/packages/coupons/{id} - 修改优惠券", () => {
-      let testCouponId: number;
-      let originalForm: any;
+        let testCouponId: number;
+        let originalForm: any;
 
-      beforeAll(async () => {
-        await login(USERS.ADMIN.username);
-        const form = createCouponForm();
-        const result = await CouponAPI.add(form);
-        testCouponId = result.id;
-        createdCouponIds.push(testCouponId);
+        beforeAll(async () => {
+          await login(USERS.ADMIN.username);
+          const form = createCouponForm();
+          const result = await CouponAPI.add(form);
+          testCouponId = result.id;
+          createdCouponIds.push(testCouponId);
 
-        const page = await CouponAPI.getPage(createCouponQuery({ name: form.name }));
-        const created = page.list.find((c) => c.id === testCouponId);
-        originalForm = {
-          ...form,
-          id: testCouponId,
-          status: created?.status ?? 1,
-        };
-      });
+          const page = await CouponAPI.getPage(createCouponQuery({ name: form.name }));
+          const created = page.list.find((c) => c.id === testCouponId);
+          originalForm = {
+            ...form,
+            id: testCouponId,
+            status: created?.status ?? 1,
+          };
+        });
 
-      test("正向测试：修改优惠券名称", async () => {
-        const newName = `更新券_${Date.now()}`;
-        const form = { ...originalForm, name: newName };
-        await CouponAPI.update(testCouponId, form);
+        test("正向测试：修改优惠券名称", async () => {
+          const newName = `更新券_${Date.now()}`;
+          const form = { ...originalForm, name: newName };
+          await CouponAPI.update(testCouponId, form);
 
-        const page = await CouponAPI.getPage(createCouponQuery({ name: newName }));
-        const found = page.list.find((c) => c.id === testCouponId);
-        expect(found?.name).toBe(newName);
-      });
+          const page = await CouponAPI.getPage(createCouponQuery({ name: newName }));
+          const found = page.list.find((c) => c.id === testCouponId);
+          expect(found?.name).toBe(newName);
+        });
 
-      test("异常：优惠券不存在", async () => {
-        const form = { ...originalForm, id: 99999999 };
-        await expectBizError(
-          CouponAPI.update(99999999, form),
-          ["A0523", "A0400", "ERR_BAD_REQUEST"],
-          undefined,
-          true
-        );
+        test("异常：优惠券不存在", async () => {
+          const form = { ...originalForm, id: 99999999 };
+          await expectBizError(CouponAPI.update(99999999, form), [
+            "A0523",
+            "A0400",
+            "ERR_BAD_REQUEST",
+          ]);
+        });
       });
     });
 
@@ -539,12 +505,11 @@ describe("套餐管理模块接口测试", () => {
       });
 
       test("异常：优惠券不存在", async () => {
-        await expectBizError(
-          CouponAPI.deleteByIds("99999999"),
-          ["A0523", "A0400", "ERR_BAD_REQUEST"],
-          undefined,
-          true
-        );
+        await expectBizError(CouponAPI.deleteByIds("99999999"), [
+          "A0523",
+          "A0400",
+          "ERR_BAD_REQUEST",
+        ]);
       });
     });
 
@@ -590,9 +555,7 @@ describe("套餐管理模块接口测试", () => {
             targetScope: "users",
             userIds: [USERS.USER.id],
           }),
-          ["A0523", "A0400", "ERR_BAD_REQUEST"],
-          undefined,
-          true
+          ["A0523", "A0400", "ERR_BAD_REQUEST"]
         );
       });
     });
@@ -623,12 +586,7 @@ describe("套餐管理模块接口测试", () => {
       });
 
       test("异常：优惠券不存在", async () => {
-        await expectBizError(
-          CouponAPI.receive(99999999),
-          ["A0523", "A0400", "ERR_BAD_REQUEST"],
-          undefined,
-          true
-        );
+        await expectBizError(CouponAPI.receive(99999999), ["A0523", "A0400", "ERR_BAD_REQUEST"]);
       });
     });
 
