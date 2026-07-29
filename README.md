@@ -317,7 +317,7 @@ python scripts/run.py ps
 python scripts/run.py logs go
 ```
 
-日志统一存放在各服务 `logs/{yyyy-MM-dd}/` 目录下（详见 [部署架构 - 日志规范](dehaze-doc/docs/02-系统架构/06-部署架构.md#73-日志规范)）：
+日志统一存放在各服务 `logs/{yyyy-MM-dd}/` 目录下（详见 [部署架构 - 日志规范](dehaze-doc/docs/02-系统架构/06-部署架构.md#74-日志规范)）：
 
 | 文件 | 说明 |
 |------|------|
@@ -378,6 +378,25 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8991
 # 生产环境部署
 uvicorn app.main:app --host 0.0.0.0 --port 8991 --workers 4
 ```
+
+### 监控与日志（可选）
+
+监控基础设施（Prometheus/Grafana/AlertManager/Exporter 及 ELK 日志栈）均通过根目录 `docker-compose.yml` 编排：
+
+```bash
+# 启动监控与日志组件
+docker compose up -d prometheus grafana alertmanager filebeat logstash \
+  node-exporter mysqld-exporter redis-exporter mongodb-exporter
+
+# GPU 指标采集（需 NVIDIA GPU + nvidia-container-toolkit）
+docker compose --profile gpu up -d dcgm-exporter
+```
+
+- **Grafana**：http://localhost:3001（admin/`<DEHAZE_PASSWORD>`），`Dehaze` 文件夹下自动加载总览/基础设施/业务监控面板
+- **Prometheus**：http://localhost:9091（Targets 状态、告警规则评估）
+- **AlertManager**：http://localhost:9093，邮件通知需先将 `config/alertmanager/alertmanager.yml` 中 SMTP 占位配置替换为真实值
+- **Kibana**：http://localhost:5601，创建 `dehaze-logs-*` 索引模式后检索三端结构化日志
+- 指标命名规范与告警阈值详见 [部署架构 - 监控与告警](dehaze-doc/docs/02-系统架构/06-部署架构.md#7-监控与告警)
 
 ### 算法训练
 
@@ -518,9 +537,13 @@ tlmgr install <package_name>
 | **对象存储** | nginx-dataset | 9000 | 数据集静态文件 |
 | **搜索** | Elasticsearch | 9200 / 9300 | HTTP / 传输 |
 | **搜索** | Kibana | 5601 | ES 可视化 |
-| **搜索** | Logstash | 4560 | 日志管道 |
-| **监控** | Prometheus | 9091 | 指标采集 |
+| **搜索** | Logstash | 4560 / 5044 | 日志管道 / Filebeat 输入 |
+| **监控** | Prometheus | 9091 | 指标采集与告警评估 |
 | **监控** | Grafana | 3001 | 可视化面板 |
+| **监控** | AlertManager | 9093 | 告警通知 |
+| **监控** | node/mysqld/redis/mongodb exporter | 9100 / 9104 / 9121 / 9216 | 基础设施指标 |
+| **监控** | RabbitMQ 指标 | 15692 | 内置 prometheus 插件 |
+| **监控** | dcgm-exporter | 9400 | GPU 指标（gpu profile 按需启动） |
 | **监控** | SkyWalking | 11800 / 12800 / 18080 | gRPC / HTTP / UI |
 | **任务调度** | XXL-Job Admin | 14980 | 定时任务控制台 |
 
