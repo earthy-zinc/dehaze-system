@@ -90,7 +90,8 @@
 | RATING_ALREADY_EXISTS | 该处理记录已评价 | 重复提交评价 |
 | RATING_NOT_FOUND | 评价不存在 | 查询/操作时评价不存在 |
 | RATING_EXPIRED | 已超过评价时限 | 处理完成超过 30 天后提交评价 |
-| FEEDBACK_NOT_FOUND | 反馈不存在 | 查询/操作时反馈不存在 |
+| FEEDBACK_NOT_FOUND | 反馈不存在 | 查询/操作时反馈不存在（含非管理员越权访问他人反馈） |
 | FEEDBACK_CLOSED | 反馈已关闭 | 对已关闭的反馈进行操作 |
 | FEEDBACK_LIMIT_EXCEEDED | 今日反馈次数已达上限 | 每用户每日超过 5 条反馈 |
 | PREDICTION_LOG_NOT_FOUND | 处理记录不存在 | 评价关联的处理记录不存在 |
+| OPERATION_NOT_ALLOW | 操作不允许 | 评价创建时处理记录未完成或不属于当前用户 |

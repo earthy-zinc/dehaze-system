@@ -18,6 +18,7 @@
 |---------|------|---------|---------|
 | `/api/v1/packages` | GET | 在售套餐列表 | - |
 | `/api/v1/packages/{id}` | GET | 套餐详情 | - |
+| `/api/v1/packages/calculate-price` | GET | 价格计算（下单前预览） | - |
 | `/api/v1/packages/coupons/my` | GET | 我的优惠券列表 | - |
 | `/api/v1/packages/coupons/{id}/receive` | POST | 领取优惠券 | - |
 
@@ -35,12 +36,41 @@
 | `/api/v1/packages/{ids}` | DELETE | 删除套餐 | package:delete |
 | `/api/v1/packages/coupons/page` | GET | 优惠券分页列表 | - |
 | `/api/v1/packages/coupons` | POST | 创建优惠券 | package:coupon:add |
-| `/api/v1/packages/coupons/batch` | POST | 批量发放优惠券 | package:coupon:add |
+| `/api/v1/packages/coupons/batch` | POST | 批量发放优惠券 | package:coupon:distribute |
 | `/api/v1/packages/coupons/{id}` | PUT | 修改优惠券 | package:coupon:edit |
 | `/api/v1/packages/coupons/{ids}` | DELETE | 删除优惠券 | package:coupon:delete |
 | `/api/v1/packages/sales/stats` | GET | 销售统计 | - |
 
 > **导入导出接口**：套餐模块的导出（`GET/POST /api/v1/packages/_export`）、导入（`POST /api/v1/packages/_import`）、模板下载（`GET /api/v1/packages/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §8.2 通用CRUD接口模板。
+
+### 2.3 价格计算接口
+
+**路径**：`GET /api/v1/packages/calculate-price`
+
+**功能**：下单前预览价格明细，根据套餐促销活动和优惠券计算应付金额。后端重新计算，不信任前端传入金额。
+
+**请求参数**（Query）：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| packageId | Long | ✅ | 套餐ID |
+| userCouponId | Long | ❌ | 用户优惠券实例ID，不传则不使用优惠券 |
+
+**响应结构**：`Result<PriceResult>`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| originalPrice | Long | 原价（分） |
+| discountAmount | Long | 促销折扣金额（分） |
+| couponAmount | Long | 优惠券抵扣金额（分） |
+| payableAmount | Long | 应付金额（分） |
+| promotion | PromotionVO | 命中的促销活动信息，无活动时为 null |
+
+**业务规则**：
+- 促销折扣取该套餐所有进行中活动的最大折扣值
+- 优惠券计算基数为 `salePrice - discountAmount`
+- `payableAmount = salePrice - discountAmount - couponAmount`，最小为 0
+- 优惠券状态必须为 1（未使用）或 4（已锁定），且未过期
 
 ## 3. 权限标识汇总
 
@@ -49,7 +79,8 @@
 | package:add | 新增套餐 | 按钮显示 + 接口校验 |
 | package:edit | 编辑套餐 | 按钮显示 + 接口校验 |
 | package:delete | 删除套餐 | 按钮显示 + 接口校验 |
-| package:coupon:add | 优惠券创建/发放 | 按钮显示 + 接口校验 |
+| package:coupon:add | 优惠券创建 | 按钮显示 + 接口校验 |
+| package:coupon:distribute | 优惠券批量发放 | 按钮显示 + 接口校验 |
 | package:coupon:edit | 优惠券编辑 | 按钮显示 + 接口校验 |
 | package:coupon:delete | 优惠券删除 | 按钮显示 + 接口校验 |
 
@@ -66,9 +97,10 @@
 
 | 状态值 | 显示 | 说明 |
 |--------|------|------|
-| unused | 未使用 | 优惠券已领取，待使用 |
-| used | 已使用 | 优惠券已在订单中核销 |
-| expired | 已过期 | 优惠券超过有效期 |
+| 1 | 未使用（unused） | 优惠券已领取，待使用 |
+| 2 | 已使用（used） | 优惠券已在订单中核销 |
+| 3 | 已过期（expired） | 优惠券超过有效期 |
+| 4 | 已锁定（locked） | 优惠券已被订单锁定，待支付 |
 
 ### 4.3 计费周期
 

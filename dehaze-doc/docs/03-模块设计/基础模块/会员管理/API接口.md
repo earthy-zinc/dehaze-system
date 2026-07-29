@@ -21,6 +21,8 @@
 | `/api/v1/members/sign-in` | POST | 每日签到 | - |
 | `/api/v1/members/sign-in/calendar` | GET | 签到日历 | - |
 
+> **用户端接口鉴权约定**：上述接口均为用户端接口，`userId` 由服务端从登录态获取（Java `SecurityUtils.getUserId()`、Python `get_current_user_id()`、Go `database.GetUserID(ctx)`），**不接受外部传入**，防止越权查询他人数据。
+
 ### 2.2 后台管理接口
 
 **基础路径**：`/api/v1/members`

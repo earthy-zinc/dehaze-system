@@ -682,15 +682,15 @@
 
 ## 6. 业务错误码
 
-| 错误码 | 错误信息 | 触发场景 |
-|-------|---------|---------|
-| `MSG_NOT_FOUND` | 消息不存在 | 查询/操作不存在的消息 |
-| `MSG_NO_PERMISSION` | 无权操作此消息 | 操作非自己的消息 |
-| `MSG_ALREADY_READ` | 消息已读 | 重复标记已读 |
-| `ANNOUNCEMENT_NOT_FOUND` | 公告不存在 | 查询/操作不存在的公告 |
-| `ANNOUNCEMENT_STATUS_INVALID` | 公告状态不允许此操作 | 编辑已发送公告、取消非待发送公告 |
-| `ANNOUNCEMENT_TARGET_EMPTY` | 发送范围为空 | 指定用户发送但用户列表为空 |
-| `TEMPLATE_NOT_FOUND` | 模板不存在 | 引用不存在的模板编码 |
-| `TEMPLATE_DISABLED` | 模板已禁用 | 使用已禁用的模板发送消息 |
-| `TEMPLATE_VAR_MISSING` | 模板变量缺失 | 使用模板但未提供全部必填变量 |
-| `SETTING_NOT_FOUND` | 通知设置不存在 | 用户未初始化通知设置 |
+| 错误码 | 常量名 | 错误信息 | 触发场景 |
+|-------|--------|---------|---------|
+| `A0550` | MESSAGE_NOT_FOUND | 消息不存在 | 查询/操作不存在的消息 |
+| `A0551` | MESSAGE_NO_PERMISSION | 无权操作此消息 | 操作非自己的消息 |
+| `A0552` | ANNOUNCEMENT_NOT_FOUND | 公告不存在 | 查询/操作不存在的公告 |
+| `A0553` | ANNOUNCEMENT_STATUS_INVALID | 公告状态不允许此操作 | 编辑已发送公告、取消非待发送公告 |
+| `A0554` | ANNOUNCEMENT_TARGET_EMPTY | 发送范围为空 | 指定用户发送但用户列表为空 |
+| `A0555` | MESSAGE_TEMPLATE_NOT_FOUND | 消息模板不存在 | 引用不存在的模板编码 |
+| `A0556` | TEMPLATE_VAR_MISSING | 模板变量缺失 | 使用模板但未提供全部必填变量 |
+| `A0557` | NOTIFICATION_SETTING_NOT_FOUND | 通知设置不存在 | 用户未初始化通知设置 |
+| `A0558` | TEMPLATE_DISABLED | 模板已禁用 | 使用已禁用的模板发送消息 |
+| `A0559` | MESSAGE_ALREADY_READ | 消息已读 | 重复标记已读 |
