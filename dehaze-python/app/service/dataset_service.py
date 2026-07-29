@@ -489,7 +489,7 @@ class DatasetService:
     ) -> dict[str, Any] | None:
         dataset = await dataset_repository.get_by_id(db, dataset_id)
         if not dataset:
-            return None
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
 
         stats_map = await DatasetService.get_all_dataset_stats(db, redis)
         statistics = stats_map.get(int(dataset_id), _create_empty_stats())

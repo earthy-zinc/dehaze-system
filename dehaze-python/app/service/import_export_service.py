@@ -83,7 +83,7 @@ class ImportExportService:
                 ResultCode.EXPORT_ROWS_EXCEED_LIMIT,
                 f"导出行数 {count} 超出限制 {MAX_ROWS}",
             )
-        should_async = async_flag if async_flag is not None else count > SYNC_THRESHOLD
+        should_async = async_flag if async_flag is not None else (count > SYNC_THRESHOLD or handler.use_direct_export())
         if should_async:
             task_params = _build_export_task_params(module, params, format, fields)
             task_data = await TaskServiceAsync.create_task(

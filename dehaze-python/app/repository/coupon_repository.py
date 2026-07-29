@@ -55,7 +55,7 @@ class CouponRepository(BaseRepository[SysCoupon]):
         await db.flush()
         return result.rowcount > 0
 
-    async def increment_issued_qty_with_limit(self, db: AsyncSession, coupon_id: int) -> bool:
+    async def increment_issued_qty_with_limit(self, db: AsyncSession, coupon_id: int, count: int = 1) -> bool:
         stmt = (
             update(SysCoupon)
             .where(
@@ -63,11 +63,11 @@ class CouponRepository(BaseRepository[SysCoupon]):
                 SysCoupon.deleted == 0,
                 SysCoupon.status == 1,
             )
-            .values(issued_qty=SysCoupon.issued_qty + 1)
+            .values(issued_qty=SysCoupon.issued_qty + count)
             .execution_options(synchronize_session=False)
         )
         stmt = stmt.where(
-            (SysCoupon.total_qty == -1) | (SysCoupon.issued_qty < SysCoupon.total_qty)
+            (SysCoupon.total_qty == -1) | (SysCoupon.issued_qty + count <= SysCoupon.total_qty)
         )
         result = await db.execute(stmt)
         await db.flush()

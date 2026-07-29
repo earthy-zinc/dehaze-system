@@ -35,22 +35,17 @@ async def handle_export_task(body: dict[str, Any], headers: dict[str, Any]) -> N
             "db_task_id": int,
             "task_id": str,
             "task_type": str,
-            "target_id": int | None,
-            "target_ids": list[int],
-            "options": dict,
+            "params_json": str,
             "user_id": int | None,
         }
     """
     user_id = body.get("user_id")
     set_current_user_id(user_id)
     try:
-        # 消息字段校验
         db_task_id = body.get("db_task_id")
         task_id = body.get("task_id")
         task_type = body.get("task_type")
-        target_id = body.get("target_id")
-        target_ids = body.get("target_ids")
-        options = body.get("options")
+        params_json = body.get("params_json", "{}")
 
         if not task_id or not task_type or db_task_id is None:
             logger.error(f"导出任务消息格式无效（缺少必要字段）: {body}")
@@ -76,7 +71,6 @@ async def handle_export_task(body: dict[str, Any], headers: dict[str, Any]) -> N
                 )
                 return
 
-            # 更新 retry_count（从消息 header 读取）
             retry_count_str = headers.get("x-retry-count")
             if retry_count_str is not None:
                 try:
@@ -87,16 +81,10 @@ async def handle_export_task(body: dict[str, Any], headers: dict[str, Any]) -> N
                 except (ValueError, TypeError):
                     logger.warning(f"[MQ] retry_count 解析失败: {retry_count_str}")
 
-        # 延迟导入避免循环依赖
         from app.service.task_service import TaskServiceAsync
 
-        await TaskServiceAsync._execute_export_task_background(
-            db_task_id=db_task_id,
-            task_id=task_id,
-            task_type=task_type,
-            target_id=target_id,
-            target_ids=target_ids,
-            options=options,
+        await TaskServiceAsync._execute_task_background(
+            db_task_id, task_id, task_type, params_json
         )
 
         logger.info(f"[MQ] 导出任务处理完成: taskId={task_id}")

@@ -2,7 +2,7 @@
 算法收藏实体
 """
 from sqlalchemy import BigInteger, Index, DateTime, UniqueConstraint
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,7 +23,7 @@ class SysAlgorithmFavorite(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment='用户ID')
     algorithm_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment='算法ID')
     create_time: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), comment='收藏时间'
+        DateTime, nullable=False, default=lambda: datetime.now(), comment='收藏时间'
     )
     deleted: Mapped[int] = mapped_column(
         mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')

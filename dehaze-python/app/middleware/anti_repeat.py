@@ -34,12 +34,15 @@ _EXCLUDE_PREFIXES = {
     "/api/v1/orders",
     "/api/v1/prediction",
     "/api/v1/evaluation",
-    "/api/v1/feedback/ratings",
+    "/api/v1/feedback",
     "/api/v1/members/sign-in",
+    "/api/v1/users",
+    "/api/v1/tasks",
+    "/api/v1/messages",
 }
 
 
-_WRITE_METHODS = {"POST", "PUT", "DELETE"}
+_WRITE_METHODS = {"POST"}
 
 
 async def _send_json_response(send: Send, status_code: int, content: dict):

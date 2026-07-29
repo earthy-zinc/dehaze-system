@@ -91,7 +91,7 @@ class AlgorithmService:
         """根据 ID 获取算法信息"""
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            raise BusinessException("当前算法不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
         return AlgorithmService._to_vo(algorithm)
 
     @staticmethod

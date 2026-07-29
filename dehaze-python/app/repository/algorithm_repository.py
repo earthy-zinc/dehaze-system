@@ -2,7 +2,7 @@
 算法数据访问层
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import delete, select, func, desc
@@ -154,7 +154,7 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         if not algorithm:
             return None
         algorithm.audit_by = audit_by
-        algorithm.audit_time = datetime.now(timezone.utc)
+        algorithm.audit_time = datetime.now()
         algorithm.audit_remark = remark
         if passed:
             algorithm.status = AlgorithmStatus.PUBLISHED
@@ -296,7 +296,7 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         algorithm_id: int,
     ) -> int:
         """获取算法今日调用次数（对齐 Java: create_time >= 今日零点）"""
-        today_start = datetime.now(timezone.utc).replace(
+        today_start = datetime.now().replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         stmt = (

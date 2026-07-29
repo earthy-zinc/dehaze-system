@@ -205,7 +205,7 @@ class FeedbackService:
             raise BusinessException(ResultCode.RATING_ALREADY_EXISTS)
 
         if pred_log.update_time:
-            time_diff = datetime.now(pred_log.update_time.tzinfo) - pred_log.update_time
+            time_diff = datetime.now() - pred_log.update_time
             if time_diff.days > RATING_TIME_LIMIT_DAYS:
                 raise BusinessException(ResultCode.RATING_EXPIRED)
 
@@ -222,9 +222,8 @@ class FeedbackService:
             is_anonymous=form.get("isAnonymous", 0),
         )
 
-        async with db.begin():
-            await rating_repository.create(db, rating)
-            await FeedbackService._award_rating_growth(db, redis, user_id, rating.id)
+        await rating_repository.create(db, rating)
+        await FeedbackService._award_rating_growth(db, redis, user_id, rating.id)
 
         cache = CacheService(redis)
         await cache.delete(RATING_STATS_CACHE_KEY)
@@ -266,8 +265,9 @@ class FeedbackService:
 
         old_level = member.level_code
         await _check_and_adjust_level(db, member)
+        await _invalidate_member_cache(user_id=user_id)
         if member.level_code != old_level:
-            await _invalidate_member_cache(user_id=user_id, level_code=old_level)
+            await _invalidate_member_cache(level_code=old_level)
             await _invalidate_member_cache(level_code=member.level_code)
 
         await redis.incr(count_key)

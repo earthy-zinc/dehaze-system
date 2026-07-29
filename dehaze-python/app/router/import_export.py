@@ -20,6 +20,7 @@ from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.service.import_export_service import ImportExportService
+import app.service.import_export.handlers  # noqa: F401
 from redis.asyncio import Redis
 
 router = APIRouter(prefix="/api/v1", tags=["通用导入导出接口"])

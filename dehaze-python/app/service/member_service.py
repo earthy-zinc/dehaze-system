@@ -296,8 +296,9 @@ class MemberService:
 
         old_level = member.level_code
         await _check_and_adjust_level(db, member)
+        await _invalidate_member_cache(user_id=user_id)
         if member.level_code != old_level:
-            await _invalidate_member_cache(user_id=user_id, level_code=old_level)
+            await _invalidate_member_cache(level_code=old_level)
             await _invalidate_member_cache(level_code=member.level_code)
 
         return {

@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -90,7 +90,7 @@ class ApiKeyService:
                 detail=ResultCode.TOKEN_INVALID.msg,
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        if api_key.expires_at is not None and api_key.expires_at <= datetime.now(timezone.utc):
+        if api_key.expires_at is not None and api_key.expires_at <= datetime.now():
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=ResultCode.TOKEN_INVALID.msg,
@@ -113,7 +113,7 @@ class ApiKeyService:
         data_scope = await role_repository.get_maximum_data_scope(db, roles)
         perms = await MenuService.list_role_perms(db, redis, set(roles))
 
-        api_key.last_used_at = datetime.now(timezone.utc)
+        api_key.last_used_at = datetime.now()
         await db.flush()
 
         return UserContext(

@@ -175,8 +175,7 @@ class CouponService:
                 fail_count += 1
 
         if success_count > 0:
-            coupon.issued_qty += success_count
-            await db.flush()
+            await coupon_repository.increment_issued_qty_with_limit(db, coupon_id, success_count)
 
         return {"successCount": success_count, "failCount": fail_count}
 
@@ -217,7 +216,7 @@ class CouponService:
         if not user_coupons:
             return []
         coupon_ids = list({uc.coupon_id for uc in user_coupons})
-        coupons = await coupon_repository.get_by_ids(db, coupon_ids)
+        coupons = await coupon_repository.get_by_ids(db, coupon_ids, with_deleted=True)
         coupon_map = {c.id: c for c in coupons}
 
         result = []
