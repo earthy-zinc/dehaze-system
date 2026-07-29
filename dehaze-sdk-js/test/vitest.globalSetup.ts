@@ -20,7 +20,8 @@ import path from "path";
 import { getRedis, disconnectRedis } from "#/utils/redis";
 import { resetMemberQuota, disconnectMysql } from "#/utils/mysql";
 
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+// quiet: 抑制 dotenv v17 的 injected env 提示日志，保持测试输出为纯 JSON
+dotenv.config({ path: path.resolve(__dirname, "../../.env"), quiet: true });
 
 const CACHE_PREFIXES = [
   "captcha_code:",

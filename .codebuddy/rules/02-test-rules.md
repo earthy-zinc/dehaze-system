@@ -103,6 +103,15 @@ pnpm test:python
 - 如果超时,检查测试数据和后端响应时间,不要盲目增加 timeout
 - 查看详细错误输出,定位失败原因
 
+**输出格式说明:**
+
+测试输出已配置为紧凑 JSON（`test/compact-reporter.ts`），每次运行仅输出一行：
+
+- 通过：`{"state":"passed","files":N,"passed":N,"failed":0,"skipped":N,"duration":"Xs"}`
+- 失败：追加 `failures` 数组（`file:行号`、完整用例名、错误信息、截断的 `expected/actual`、过滤后的堆栈帧）；收集错误与未捕获错误归入 `errors` 数组
+
+断言失败时直接依据 `failures` 中的 `file:行号` 与 `expected/actual` 定位，无需重跑获取详细输出。如需恢复默认排版输出（如本地人工排查），可临时加 `--reporter=default`。
+
 ### Step 6：修复测试用例问题
 
 如果测试失败,按以下顺序排查:

@@ -16,7 +16,8 @@ import { service } from "@/utils/request";
 import { clearLoginRateLimit, login } from "#/utils/auth";
 import { disconnectRedis } from "#/utils/redis";
 
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+// quiet: 抑制 dotenv v17 的 injected env 提示日志，保持测试输出为纯 JSON
+dotenv.config({ path: path.resolve(__dirname, "../../.env"), quiet: true });
 
 class LocalStorageMock {
   private store: Record<string, string> = {};
