@@ -55,18 +55,18 @@ export const TASK_TYPE_LABEL_MAP: Record<string, string> = {
   algorithm_import: "算法导入",
 };
 
-export const STATUS_LABEL_MAP: Record<string, string> = {
-  PENDING: "待执行",
-  PROCESSING: "执行中",
-  COMPLETED: "已完成",
-  FAILED: "失败",
-  CANCELLED: "已取消",
+export const STATUS_LABEL_MAP: Record<number, string> = {
+  1: "待执行",
+  2: "执行中",
+  3: "已完成",
+  4: "失败",
+  5: "已取消",
 };
 
-export const STATUS_COLOR_MAP: Record<string, string> = {
-  PENDING: "blue",
-  PROCESSING: "blue",
-  COMPLETED: "green",
-  FAILED: "red",
-  CANCELLED: "default",
+export const STATUS_COLOR_MAP: Record<number, string> = {
+  1: "blue",
+  2: "blue",
+  3: "green",
+  4: "red",
+  5: "default",
 };

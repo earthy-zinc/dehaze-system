@@ -50,13 +50,13 @@ interface TaskListDrawerProps {
   onClose: () => void;
 }
 
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: { label: string; value: TaskStatus | "" }[] = [
   { label: "全部", value: "" },
-  { label: "待执行", value: "PENDING" },
-  { label: "执行中", value: "PROCESSING" },
-  { label: "已完成", value: "COMPLETED" },
-  { label: "失败", value: "FAILED" },
-  { label: "已取消", value: "CANCELLED" },
+  { label: "待执行", value: 1 },
+  { label: "执行中", value: 2 },
+  { label: "已完成", value: 3 },
+  { label: "失败", value: 4 },
+  { label: "已取消", value: 5 },
 ];
 
 const formatDateTime = (value?: string): string => {
@@ -83,7 +83,7 @@ const TaskListDrawer: React.FC<TaskListDrawerProps> = ({
 
   const [pageNum, setPageNum] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | "">("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [refreshFlag, setRefreshFlag] = useState(0);
   const [downloadLoadingId, setDownloadLoadingId] = useState<string | null>(
@@ -109,7 +109,7 @@ const TaskListDrawer: React.FC<TaskListDrawerProps> = ({
         fetchTaskList({
           pageNum,
           pageSize,
-          status: (statusFilter || undefined) as TaskStatus | undefined,
+          status: statusFilter || undefined,
           taskCategory: (categoryFilter || undefined) as
             TaskCategory | undefined,
           taskType: buildTaskTypeFilter(),
@@ -245,7 +245,7 @@ const TaskListDrawer: React.FC<TaskListDrawerProps> = ({
   );
 
   const handleDownload = useCallback((record: TaskVO) => {
-    if (record.status !== "COMPLETED") {
+    if (record.status !== 3) {
       message.warning("任务尚未完成，无法下载");
       return;
     }
@@ -299,7 +299,7 @@ const TaskListDrawer: React.FC<TaskListDrawerProps> = ({
         key: "status",
         width: 100,
         align: "center",
-        render: (status: string) => (
+        render: (status: TaskStatus) => (
           <Tag color={STATUS_COLOR_MAP[status] || "default"}>
             {STATUS_LABEL_MAP[status] || status}
           </Tag>
@@ -315,11 +315,11 @@ const TaskListDrawer: React.FC<TaskListDrawerProps> = ({
           const status = record.status;
           let progressStatus: "active" | "success" | "exception" | "normal" =
             "active";
-          if (status === "COMPLETED") {
+          if (status === 3) {
             progressStatus = "success";
-          } else if (status === "FAILED") {
+          } else if (status === 4) {
             progressStatus = "exception";
-          } else if (status === "CANCELLED") {
+          } else if (status === 5) {
             progressStatus = "normal";
           }
           return (
@@ -347,8 +347,7 @@ const TaskListDrawer: React.FC<TaskListDrawerProps> = ({
         fixed: "right",
         render: (_: unknown, record: TaskVO) => (
           <Space size="small">
-            {(record.status === "PENDING" ||
-              record.status === "PROCESSING") && (
+            {(record.status === 1 || record.status === 2) && (
               <Button
                 type="link"
                 size="small"
@@ -360,7 +359,7 @@ const TaskListDrawer: React.FC<TaskListDrawerProps> = ({
                 取消
               </Button>
             )}
-            {record.status === "COMPLETED" && isImportTask(record.taskType) && (
+            {record.status === 3 && isImportTask(record.taskType) && (
               <Button
                 type="link"
                 size="small"
@@ -371,18 +370,17 @@ const TaskListDrawer: React.FC<TaskListDrawerProps> = ({
                 查看结果
               </Button>
             )}
-            {record.status === "COMPLETED" &&
-              !isImportTask(record.taskType) && (
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<DownloadOutlined />}
-                  loading={downloadLoadingId === record.taskId}
-                  onClick={() => handleDownload(record)}
-                >
-                  下载
-                </Button>
-              )}
+            {record.status === 3 && !isImportTask(record.taskType) && (
+              <Button
+                type="link"
+                size="small"
+                icon={<DownloadOutlined />}
+                loading={downloadLoadingId === record.taskId}
+                onClick={() => handleDownload(record)}
+              >
+                下载
+              </Button>
+            )}
           </Space>
         ),
       },

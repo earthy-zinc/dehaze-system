@@ -88,7 +88,7 @@ const getStageIndex = (progress: number): number => {
 interface BatchTask {
   id: number;
   fileName: string;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: 0 | 1 | 2 | 3;
   progress: number;
   resultUrl?: string;
   error?: string;
@@ -250,7 +250,7 @@ const Dehaze: React.FC = () => {
       // 已取消则忽略结果
       if (cancelFlagRef.current) return;
 
-      if (response.status === "failed") {
+      if (response.status === 3) {
         throw new Error(response.errorMessage || "去雾处理失败");
       }
 
@@ -355,7 +355,7 @@ const Dehaze: React.FC = () => {
     const tasks: BatchTask[] = files.map((f, i) => ({
       id: i,
       fileName: f.name,
-      status: "pending",
+      status: 0,
       progress: 0,
     }));
     setBatchTasks(tasks);
@@ -365,7 +365,7 @@ const Dehaze: React.FC = () => {
       if (batchCancelRef.current) break;
 
       setBatchTasks((prev) =>
-        prev.map((t, idx) => (idx === i ? { ...t, status: "processing" } : t))
+        prev.map((t, idx) => (idx === i ? { ...t, status: 1 } : t))
       );
 
       try {
@@ -384,7 +384,7 @@ const Dehaze: React.FC = () => {
         });
         if (batchCancelRef.current) break;
 
-        if (predRes.status === "failed") {
+        if (predRes.status === 3) {
           throw new Error(predRes.errorMessage || "处理失败");
         }
 
@@ -404,7 +404,7 @@ const Dehaze: React.FC = () => {
             idx === i
               ? {
                   ...t,
-                  status: "completed",
+                  status: 2,
                   progress: 100,
                   resultUrl: predRes.resultUrl,
                 }
@@ -414,7 +414,7 @@ const Dehaze: React.FC = () => {
       } catch (error) {
         setBatchTasks((prev) =>
           prev.map((t, idx) =>
-            idx === i ? { ...t, status: "failed", error: "处理失败" } : t
+            idx === i ? { ...t, status: 3, error: "处理失败" } : t
           )
         );
       }
@@ -430,8 +430,8 @@ const Dehaze: React.FC = () => {
     batchCancelRef.current = true;
     setBatchTasks((prev) =>
       prev.map((t) =>
-        t.status === "pending" || t.status === "processing"
-          ? { ...t, status: "failed", error: "已取消" }
+        t.status === 0 || t.status === 1
+          ? { ...t, status: 3, error: "已取消" }
           : t
       )
     );
@@ -489,21 +489,21 @@ const Dehaze: React.FC = () => {
   // 渲染批量任务状态标签
   const renderBatchStatus = (task: BatchTask) => {
     switch (task.status) {
-      case "pending":
+      case 0:
         return <Tag color="default">等待中</Tag>;
-      case "processing":
+      case 1:
         return (
           <div style={{ width: 200 }}>
             <Progress percent={task.progress} size="small" />
           </div>
         );
-      case "completed":
+      case 2:
         return (
           <Tag icon={<CheckCircleOutlined />} color="success">
             完成
           </Tag>
         );
-      case "failed":
+      case 3:
         return (
           <Tag icon={<CloseCircleOutlined />} color="error">
             {task.error}
@@ -581,7 +581,7 @@ const Dehaze: React.FC = () => {
                   size="small"
                   onClick={handleBatchCancel}
                   disabled={batchTasks.every(
-                    (t) => t.status === "completed" || t.status === "failed"
+                    (t) => t.status === 2 || t.status === 3
                   )}
                 >
                   取消批量

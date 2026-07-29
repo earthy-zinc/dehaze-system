@@ -47,12 +47,12 @@ import "./index.scss";
 const POLLING_INTERVAL = 3000;
 
 /** 任务状态映射 */
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  PENDING: { label: "待执行", color: "blue" },
-  PROCESSING: { label: "执行中", color: "blue" },
-  COMPLETED: { label: "已完成", color: "green" },
-  FAILED: { label: "失败", color: "red" },
-  CANCELLED: { label: "已取消", color: "default" },
+const STATUS_MAP: Record<number, { label: string; color: string }> = {
+  1: { label: "待执行", color: "blue" },
+  2: { label: "执行中", color: "blue" },
+  3: { label: "已完成", color: "green" },
+  4: { label: "失败", color: "red" },
+  5: { label: "已取消", color: "default" },
 };
 
 /** 任务类型映射 */
@@ -73,13 +73,13 @@ const TASK_TYPE_MAP: Record<string, string> = {
 };
 
 /** 状态筛选选项 */
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: { label: string; value: TaskStatus | "" }[] = [
   { label: "全部", value: "" },
-  { label: "待执行", value: "PENDING" },
-  { label: "执行中", value: "PROCESSING" },
-  { label: "已完成", value: "COMPLETED" },
-  { label: "失败", value: "FAILED" },
-  { label: "已取消", value: "CANCELLED" },
+  { label: "待执行", value: 1 },
+  { label: "执行中", value: 2 },
+  { label: "已完成", value: 3 },
+  { label: "失败", value: 4 },
+  { label: "已取消", value: 5 },
 ];
 
 /** 类别筛选选项 */
@@ -238,11 +238,11 @@ const TaskManagement: React.FC = () => {
   // ==================== 事件处理 ====================
 
   /** 状态筛选变化 */
-  const handleStatusChange = useCallback((value: string) => {
+  const handleStatusChange = useCallback((value: TaskStatus | "") => {
     setQueryParams((prev) => ({
       ...prev,
       pageNum: 1,
-      status: (value || undefined) as TaskStatus | undefined,
+      status: value || undefined,
     }));
   }, []);
 
@@ -306,7 +306,7 @@ const TaskManagement: React.FC = () => {
 
   /** 下载任务结果 */
   const handleDownload = useCallback((record: TaskVO) => {
-    if (record.status !== "COMPLETED") {
+    if (record.status !== 3) {
       message.warning("任务尚未完成，无法下载");
       return;
     }
@@ -359,7 +359,7 @@ const TaskManagement: React.FC = () => {
         key: "status",
         width: 100,
         align: "center",
-        render: (status: string) => {
+        render: (status: number) => {
           const info = STATUS_MAP[status] || {
             label: "未知",
             color: "default",
@@ -377,11 +377,11 @@ const TaskManagement: React.FC = () => {
           const status = record.status;
           let progressStatus: "active" | "success" | "exception" | "normal" =
             "active";
-          if (status === "COMPLETED") {
+          if (status === 3) {
             progressStatus = "success";
-          } else if (status === "FAILED") {
+          } else if (status === 4) {
             progressStatus = "exception";
-          } else if (status === "CANCELLED") {
+          } else if (status === 5) {
             progressStatus = "normal";
           }
           return (
@@ -425,8 +425,7 @@ const TaskManagement: React.FC = () => {
             >
               详情
             </Button>
-            {(record.status === "PENDING" ||
-              record.status === "PROCESSING") && (
+            {(record.status === 1 || record.status === 2) && (
               <Button
                 type="link"
                 size="small"
@@ -437,7 +436,7 @@ const TaskManagement: React.FC = () => {
                 取消
               </Button>
             )}
-            {record.status === "COMPLETED" && isImportTask(record.taskType) && (
+            {record.status === 3 && isImportTask(record.taskType) && (
               <Button
                 type="link"
                 size="small"
@@ -447,17 +446,16 @@ const TaskManagement: React.FC = () => {
                 查看结果
               </Button>
             )}
-            {record.status === "COMPLETED" &&
-              !isImportTask(record.taskType) && (
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<DownloadOutlined />}
-                  onClick={() => handleDownload(record)}
-                >
-                  下载
-                </Button>
-              )}
+            {record.status === 3 && !isImportTask(record.taskType) && (
+              <Button
+                type="link"
+                size="small"
+                icon={<DownloadOutlined />}
+                onClick={() => handleDownload(record)}
+              >
+                下载
+              </Button>
+            )}
           </Space>
         ),
       },
@@ -530,7 +528,7 @@ const TaskManagement: React.FC = () => {
         onCancel={handleDetailClose}
         width={640}
         footer={
-          currentTask?.status === "COMPLETED" ? (
+          currentTask?.status === 3 ? (
             <Space>
               <Button onClick={handleDetailClose}>关闭</Button>
               <Button
@@ -541,8 +539,7 @@ const TaskManagement: React.FC = () => {
                 {isImportTask(currentTask?.taskType) ? "查看结果" : "下载结果"}
               </Button>
             </Space>
-          ) : currentTask?.status === "PENDING" ||
-            currentTask?.status === "PROCESSING" ? (
+          ) : currentTask?.status === 1 || currentTask?.status === 2 ? (
             <Space>
               <Button onClick={handleDetailClose}>关闭</Button>
               <Button
@@ -586,11 +583,11 @@ const TaskManagement: React.FC = () => {
               <Progress
                 percent={currentTask.progress || 0}
                 status={
-                  currentTask.status === "COMPLETED"
+                  currentTask.status === 3
                     ? "success"
-                    : currentTask.status === "FAILED"
+                    : currentTask.status === 4
                       ? "exception"
-                      : currentTask.status === "CANCELLED"
+                      : currentTask.status === 5
                         ? "normal"
                         : "active"
                 }

@@ -99,7 +99,7 @@ export default function Overlap() {
       imageUrl: image1,
     })
       .then((res) => {
-        if (res.status === "failed") {
+        if (res.status === 3) {
           throw new Error(res.errorMessage || "去雾处理失败");
         }
         setImage2(res.resultUrl || "");

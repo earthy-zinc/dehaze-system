@@ -61,7 +61,7 @@ const Segmentation: React.FC = () => {
         algorithmId: selectedModel,
         imageUrl: originUrl,
       });
-      if (response.status === "failed") {
+      if (response.status === 3) {
         throw new Error(response.errorMessage || "分割处理失败");
       }
       setResultUrl(response.resultUrl || "");

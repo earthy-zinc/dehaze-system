@@ -7,14 +7,10 @@ import {
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 /** 终态状态集合（无需继续轮询） */
-export const TERMINAL_STATUSES: TaskStatus[] = [
-  "COMPLETED",
-  "FAILED",
-  "CANCELLED",
-];
+export const TERMINAL_STATUSES: TaskStatus[] = [3, 4, 5];
 
 /** 需要轮询的状态集合 */
-export const POLLING_STATUSES: TaskStatus[] = ["PENDING", "PROCESSING"];
+export const POLLING_STATUSES: TaskStatus[] = [1, 2];
 
 interface TaskState {
   /** 任务列表 */
@@ -111,14 +107,14 @@ const taskSlice = createSlice({
         if (index !== -1) {
           state.taskList[index] = {
             ...state.taskList[index],
-            status: "CANCELLED",
+            status: 5,
             completedAt: new Date().toISOString(),
           };
         }
         if (state.currentTask?.taskId === taskId) {
           state.currentTask = {
             ...state.currentTask,
-            status: "CANCELLED",
+            status: 5,
             completedAt: new Date().toISOString(),
           };
         }
