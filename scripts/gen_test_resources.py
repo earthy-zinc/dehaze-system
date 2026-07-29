@@ -1,5 +1,10 @@
 """生成 dehaze-sdk-js 集成测试所需的占位图片资源。
 
+包含两类输出：
+1. dehaze-sdk-js/test/resources/  本地上传用占位图片
+2. datasets/  模拟数据集图片，经根目录 datasets 符号链接/挂载由 nginx-dataset
+   容器提供 http://{host}:9000/datasets/... 访问，供预测/评测接口按 URL 下载
+
 图片带渐变 + 高斯噪声纹理（非纯色），确保：
 - 每张字节内容不同，避免后端文件 hash 去重导致 fileName 复用
 - 含足够局部方差，NIQE 等无参考图像质量评估指标可正常计算
@@ -15,12 +20,9 @@ import os
 import numpy as np
 from PIL import Image
 
-RESOURCES_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "dehaze-sdk-js",
-    "test",
-    "resources",
-)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RESOURCES_DIR = os.path.join(ROOT_DIR, "dehaze-sdk-js", "test", "resources")
+DATASETS_DIR = os.path.join(ROOT_DIR, "datasets")
 
 # (相对路径, 随机种子, 是否加雾)
 IMAGES = [
@@ -43,6 +45,13 @@ IMAGES = [
 
 PNG_IMAGES = [
     ("test3/cqupt.png", 100),
+]
+
+# 模拟数据集占位图片：写入 datasets/，由 nginx-dataset 容器挂载提供 URL 访问
+# 对应 test/factories/model.ts 中引用的 NH-HAZE-2023 数据集路径
+DATASET_IMAGES = [
+    ("NH-HAZE-2023/hazy/001.JPG", 1011, True),
+    ("NH-HAZE-2023/clean/001.JPG", 1012, False),
 ]
 
 
@@ -69,6 +78,12 @@ def main() -> None:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         make_image(seed, hazy=False).save(path, "PNG")
         print(f"{rel}: {os.path.getsize(path)} bytes")
+
+    for rel, seed, hazy in DATASET_IMAGES:
+        path = os.path.join(DATASETS_DIR, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        make_image(seed, hazy).save(path, "JPEG", quality=90)
+        print(f"datasets/{rel}: {os.path.getsize(path)} bytes")
 
 
 if __name__ == "__main__":
