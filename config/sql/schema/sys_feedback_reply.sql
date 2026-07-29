@@ -20,7 +20,11 @@ CREATE TABLE `sys_feedback_reply`
     `content`      varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '回复内容',
     `reply_type`   varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '回复类型(info:信息补充;resolved:已解决;unsupported:暂不支持;dev_transfer:转开发)',
     `attachments`  json                                                           NULL DEFAULT NULL COMMENT '附件URL（JSON数组）',
-    `create_time`  datetime                                                       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `deleted`      tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `create_time`  datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`  datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_by`    bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
+    `update_by`    bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_feedback_id_create_time` (`feedback_id`, `create_time`) USING BTREE,
     INDEX `idx_replier_id` (`replier_id`) USING BTREE
