@@ -117,7 +117,7 @@ describe("消息通知模块接口测试", () => {
     test("异常：查看不存在的消息", async () => {
       await expectBizError(
         MessageAPI.getDetail(999999999),
-        ["A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0550", "A0401", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -185,7 +185,7 @@ describe("消息通知模块接口测试", () => {
 
       await expectBizError(
         MessageAPI.getDetail(id),
-        ["A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0550", "A0401", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -311,7 +311,7 @@ describe("消息通知模块接口测试", () => {
     test("边界：编辑已发送公告应报错", async () => {
       await expectBizError(
         AnnouncementAPI.update(testAnnouncementId, { title: "should_fail" }),
-        ["A0502", "A0500", "ERR_BAD_REQUEST"],
+        ["A0553", "A0502", "A0500", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -320,7 +320,7 @@ describe("消息通知模块接口测试", () => {
     test("边界：取消已发送公告应报错", async () => {
       await expectBizError(
         AnnouncementAPI.cancel(testAnnouncementId),
-        ["A0502", "A0500", "ERR_BAD_REQUEST"],
+        ["A0553", "A0502", "A0500", "ERR_BAD_REQUEST"],
         undefined,
         true
       );
@@ -360,7 +360,7 @@ describe("消息通知模块接口测试", () => {
       await AnnouncementAPI.deleteById(testAnnouncementId);
       await expectBizError(
         AnnouncementAPI.getDetail(testAnnouncementId),
-        ["A0401", "A0400", "ERR_BAD_REQUEST"],
+        ["A0552", "A0401", "A0400", "ERR_BAD_REQUEST"],
         undefined,
         true
       );

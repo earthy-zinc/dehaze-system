@@ -262,9 +262,11 @@ describe("字典管理接口测试", () => {
     });
 
     test("参数校验：字典类型编码冲突", async () => {
-      const pageResult = await DictAPI.getDictTypePage(createDictTypeQuery({ pageSize: 1 }));
-      expect(pageResult.list.length).toBeGreaterThan(0);
-      const existingCode = pageResult.list[0]!.code!;
+      // 排除自身，避免用自身code更新导致不触发冲突（多次运行后自身排在分页首位）
+      const pageResult = await DictAPI.getDictTypePage(createDictTypeQuery({ pageSize: 100 }));
+      const other = pageResult.list.find((d) => d.id !== testDictTypeId);
+      expect(other).toBeDefined();
+      const existingCode = other!.code!;
 
       await expectBizError(
         DictAPI.updateDictType(testDictTypeId, { ...originalForm, code: existingCode }),
@@ -380,7 +382,7 @@ describe("字典管理接口测试", () => {
       await expectBizError(DictAPI.getDictTypeForm(dictTypeId!), "A0401", "不存在");
 
       const dictPageResult = await DictAPI.getDictPage(
-        createDictQuery({ typeCode: dictTypeForm.code!, pageSize: 1000 })
+        createDictQuery({ typeCode: dictTypeForm.code!, pageSize: 100 })
       );
       expect(dictPageResult.list.length).toBe(0);
     });

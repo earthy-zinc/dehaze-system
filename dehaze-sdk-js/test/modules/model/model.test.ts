@@ -1,8 +1,18 @@
 import { ModelAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { createPredictionForm, createEvaluationForm } from "#/factories/model";
+import { login, logout } from "#/utils/auth";
+import { USERS } from "#/factories/constants";
 
 describe("预测与评估 API 测试", () => {
+  beforeAll(async () => {
+    await login(USERS.USER.username);
+  });
+
+  afterAll(async () => {
+    await logout();
+  });
+
   describe("POST /api/v1/prediction - 模型预测（异步）", () => {
     test("正向测试：提交预测并通过轮询获取结果", async () => {
       const form = createPredictionForm({ algorithmId: 13 }); // DCP 算法
@@ -65,9 +75,8 @@ describe("预测与评估 API 测试", () => {
       });
 
       expect(result.status).toBe(2);
-      // 轮询可能直接返回completed(2)而未经过processing(1)（任务快速完成）
       if (statuses.length > 0) {
-        expect(statuses).toContain(expect.any(Number));
+        expect(statuses.every((s) => typeof s === "number")).toBe(true);
       }
     });
   });

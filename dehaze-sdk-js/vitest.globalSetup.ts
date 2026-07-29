@@ -19,6 +19,7 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import Redis from "ioredis";
+import { resetMemberQuota, disconnectMysql } from "./test/utils/mysql";
 
 const backend = process.env.TEST_BACKEND || "java";
 const envFile = path.resolve(__dirname, `.env.${backend}`);
@@ -33,6 +34,7 @@ const CACHE_PREFIXES = [
   "msg:unread:",
   "feedback:daily:",
   "anti_repeat:",
+  "member:quota:",
 ];
 
 const RATE_LIMIT_PATTERNS = ["*rate_limit:login:*", "*rate:limit:*/api/v1/auth/login:*"];
@@ -63,5 +65,12 @@ export async function setup() {
   } catch {
   } finally {
     await redis.quit();
+  }
+
+  try {
+    await resetMemberQuota([4, 5, 6, 7, 8]);
+  } catch {
+  } finally {
+    await disconnectMysql();
   }
 }

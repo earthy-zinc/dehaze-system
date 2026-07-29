@@ -4,14 +4,14 @@ import { expectBizError } from "#/utils/assertion";
 describe("算法管理新增端点测试", () => {
   let testAlgorithmId: number;
 
-  // 创建一个测试算法（通过前端的 AlgorithmFormDialog 新增后自动状态=0 草稿）
+  // 创建一个测试算法（通过前端的 AlgorithmFormDialog 新增后自动状态=1 草稿）
   beforeAll(async () => {
     const form: Partial<Algorithm> = {
       parentId: 0,
       name: `SdkTest_${Date.now()}`,
       type: "TEST",
       description: "SDK 测试用算法",
-      status: 0,
+      status: 1,
     };
     const id = (await AlgorithmAPI.add(form)) as unknown as number;
     testAlgorithmId = typeof id === "number" ? id : Number(id);
@@ -26,15 +26,15 @@ describe("算法管理新增端点测试", () => {
   });
 
   describe("PUT /api/v1/algorithms/{id}/status - 状态变更", () => {
-    test("正向测试：将草稿(0)切换为测试中(1)", async () => {
+    test("正向测试：将草稿(1)切换为测试中(2)", async () => {
       // 草稿 → 测试中
-      await AlgorithmAPI.updateStatus(testAlgorithmId, 1);
+      await AlgorithmAPI.updateStatus(testAlgorithmId, 2);
 
       // 验证状态持久化
       const info = await AlgorithmAPI.getAlgorithmInfoById(testAlgorithmId);
-      expect(info.status).toBe(1);
+      expect(info.status).toBe(2);
 
-      // 注：按设计文档 SSOT，测试中(1) 仅可流转到 待审核(2)，不可回退到草稿(0)
+      // 注：按设计文档 SSOT，测试中(2) 仅可流转到 待审核(3)，不可回退到草稿(1)
     });
 
     test("参数校验：无效状态值应提示错误", async () => {

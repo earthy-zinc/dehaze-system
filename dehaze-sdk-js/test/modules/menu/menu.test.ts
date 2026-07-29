@@ -437,15 +437,23 @@ describe("菜单管理接口测试", () => {
       const specialName = "测试<>&\"'菜单";
       const form = createMenuForm({ name: specialName, parentId: 0 });
 
+      const existingList = await MenuAPI.getList(createMenuQuery());
+      for (const m of existingList) {
+        if (m.name === specialName && m.id) {
+          try {
+            await MenuAPI.deleteByIds(String(m.id));
+          } catch {}
+        }
+      }
+
       await MenuAPI.add(form);
 
-      const menuList = await MenuAPI.getList(createMenuQuery({ keywords: specialName }));
-      if (menuList.length > 0) {
-        const found = menuList.find((m) => m.name === specialName);
-        if (found?.id) {
-          createdMenuIds.push(found.id);
-          expect(found.name).not.toMatch(/<[^>]+>/);
-        }
+      const menuList = await MenuAPI.getList(createMenuQuery());
+      const found = menuList.find((m) => m.name === specialName);
+      expect(found).toBeDefined();
+      if (found?.id) {
+        createdMenuIds.push(found.id);
+        expect(found.name).not.toMatch(/<[^>]+>/);
       }
     });
   });
