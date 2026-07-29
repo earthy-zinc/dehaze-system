@@ -117,6 +117,11 @@ security:
       # 开发环境 Vite 代理前缀为 /java-api，Path=/api 无法匹配，需用 /
       path: /
 
+# 系统配置
+system:
+  # 多点登录控制：false 允许多设备同时登录，true 新登录踢旧 Session
+  use-multi-point: false
+
 # 监控配置 (开发环境适度开放，禁止暴露 heapdump/env/configprops 等高危端点)
 management:
   endpoints:

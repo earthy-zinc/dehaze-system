@@ -198,10 +198,12 @@ describe("会员管理模块接口测试", () => {
     });
 
     test("异常：查询不存在的会员", async () => {
-      await expectBizError(
-        MemberAPI.getDetail(99999999),
-        ["MEMBER_NOT_FOUND", "A0510", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MemberAPI.getDetail(99999999), [
+        "MEMBER_NOT_FOUND",
+        "A0510",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -248,7 +250,7 @@ describe("会员管理模块接口测试", () => {
     test("异常：缺少原因应抛出业务错误", async () => {
       await expectBizError(
         MemberAPI.adjustGrowth(targetUser.id, { changeValue: 10, reason: "" } as any),
-        ["A0400", "A0706", "ERR_BAD_REQUEST"],
+        ["A0400", "A0706", "ERR_BAD_REQUEST"]
       );
     });
   });
@@ -283,7 +285,7 @@ describe("会员管理模块接口测试", () => {
     test("异常：缺少原因应抛出业务错误", async () => {
       await expectBizError(
         MemberAPI.adjustLevel(targetUser.id, { levelCode: "level_2", reason: "" } as any),
-        ["A0400", "A0706", "ERR_BAD_REQUEST"],
+        ["A0400", "A0706", "ERR_BAD_REQUEST"]
       );
     });
   });
@@ -312,7 +314,7 @@ describe("会员管理模块接口测试", () => {
     test("异常：冻结缺少原因应抛出业务错误", async () => {
       await expectBizError(
         MemberAPI.updateStatus(targetUser.id, { status: 0, reason: "" } as any),
-        ["A0400", "A0706", "ERR_BAD_REQUEST"],
+        ["A0400", "A0706", "ERR_BAD_REQUEST"]
       );
     });
   });
@@ -382,24 +384,30 @@ describe("会员管理模块接口测试", () => {
     });
 
     test("调整不存在会员的成长值应返回业务错误", async () => {
-      await expectBizError(
-        MemberAPI.adjustGrowth(99999999, createGrowthAdjustForm()),
-        ["MEMBER_NOT_FOUND", "A0510", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MemberAPI.adjustGrowth(99999999, createGrowthAdjustForm()), [
+        "MEMBER_NOT_FOUND",
+        "A0510",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("调整不存在会员的等级应返回业务错误", async () => {
-      await expectBizError(
-        MemberAPI.adjustLevel(99999999, createLevelAdjustForm()),
-        ["MEMBER_NOT_FOUND", "A0510", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MemberAPI.adjustLevel(99999999, createLevelAdjustForm()), [
+        "MEMBER_NOT_FOUND",
+        "A0510",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("冻结不存在的会员应返回业务错误", async () => {
-      await expectBizError(
-        MemberAPI.updateStatus(99999999, { status: 0, reason: "测试" }),
-        ["MEMBER_NOT_FOUND", "A0510", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MemberAPI.updateStatus(99999999, { status: 0, reason: "测试" }), [
+        "MEMBER_NOT_FOUND",
+        "A0510",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 

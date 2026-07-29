@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     SESSION_COOKIE_SECURE: bool = True
     SESSION_COOKIE_PATH: str = "/api"
 
+    # 多点登录控制（与 Go 的 use-multi-point 对齐）
+    USE_MULTI_POINT: bool = False
+
     # 共享密码（从 .env 加载）
     DEHAZE_PASSWORD: str = Field(default="")
 

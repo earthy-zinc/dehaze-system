@@ -164,10 +164,7 @@ describe("字典管理接口测试", () => {
         status: 1,
       };
 
-      await expectBizError(
-        DictAPI.addDictType(form as DictTypeForm),
-        ["B0001", "A0400"],
-      );
+      await expectBizError(DictAPI.addDictType(form as DictTypeForm), ["B0001", "A0400"]);
     });
 
     test("参数校验：缺少必需字段 name", async () => {
@@ -176,10 +173,7 @@ describe("字典管理接口测试", () => {
         status: 1,
       };
 
-      await expectBizError(
-        DictAPI.addDictType(form as DictTypeForm),
-        ["B0001", "A0400"],
-      );
+      await expectBizError(DictAPI.addDictType(form as DictTypeForm), ["B0001", "A0400"]);
     });
 
     test("参数校验：字典类型编码已存在", async () => {
@@ -306,10 +300,11 @@ describe("字典管理接口测试", () => {
 
     test("参数校验：空的ID列表", async () => {
       // 空字符串在 Gin 路由 :ids 下不会命中（返回 404），invalid 表示非数字 ID
-      await expectBizError(
-        DictAPI.deleteDictTypes("invalid"),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(DictAPI.deleteDictTypes("invalid"), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("业务校验：不能删除有字典数据的字典类型", async () => {
@@ -792,10 +787,11 @@ describe("字典管理接口测试", () => {
     test("参数校验：空的ID列表", async () => {
       // 空字符串在 Gin 路由 :ids 下不会命中（返回 404），invalid 表示非数字 ID
       // 两种情况均为参数校验错误
-      await expectBizError(
-        DictAPI.deleteDictByIds("invalid"),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(DictAPI.deleteDictByIds("invalid"), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 });

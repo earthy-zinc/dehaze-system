@@ -291,10 +291,7 @@ describe("菜单管理接口测试", () => {
         type: MenuTypeEnum.CATALOG,
       };
 
-      await expectBizError(
-        MenuAPI.add(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
 
     test("参数校验：缺少必需字段 type 应抛出业务错误", async () => {
@@ -303,10 +300,7 @@ describe("菜单管理接口测试", () => {
         name: "测试菜单",
       };
 
-      await expectBizError(
-        MenuAPI.add(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
   });
 
@@ -421,10 +415,7 @@ describe("菜单管理接口测试", () => {
 
     test("超长菜单名称应被拒绝", async () => {
       const form = createMenuForm({ name: "x".repeat(500), parentId: 0 });
-      await expectBizError(
-        MenuAPI.add(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
 
     test("特殊字符菜单名称不应污染存储", async () => {

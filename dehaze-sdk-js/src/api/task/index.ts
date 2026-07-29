@@ -14,7 +14,7 @@ class TaskAPI {
       url: "/api/v1/tasks",
       method: "post",
       data,
-      headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+      ...(idempotencyKey && { headers: { "Idempotency-Key": idempotencyKey } }),
     });
   }
 

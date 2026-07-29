@@ -13,7 +13,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { afterAll, beforeAll } from "vitest";
 import { service } from "@/utils/request";
-import { login } from "#/utils/auth";
+import { clearLoginRateLimit, login } from "#/utils/auth";
 import { disconnectRedis } from "#/utils/redis";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
@@ -58,6 +58,7 @@ Object.defineProperty(globalThis, "localStorage", {
 service.defaults.baseURL = process.env.BACKEND_URL || "http://127.0.0.1:8989";
 
 beforeAll(async () => {
+  await clearLoginRateLimit();
   await login();
 });
 

@@ -605,10 +605,7 @@ describe("用户管理接口测试", () => {
         roleIds: existingRoleIds,
       });
 
-      await expectBizError(
-        UserAPI.update(nonExistentUserId, form),
-        ["A0401", "B0001", "A0400"],
-      );
+      await expectBizError(UserAPI.update(nonExistentUserId, form), ["A0401", "B0001", "A0400"]);
     });
 
     test("参数校验：用户名冲突", async () => {
@@ -618,10 +615,7 @@ describe("用户管理接口测试", () => {
         nickname: beforeUpdate.nickname || originalUser.nickname,
         roleIds: beforeUpdate.roleIds ?? existingRoleIds,
       });
-      await expectBizError(
-        UserAPI.update(testUserId, form),
-        ["A0501", "B0001", "A0400"],
-      );
+      await expectBizError(UserAPI.update(testUserId, form), ["A0501", "B0001", "A0400"]);
 
       // 验证用户名未被修改
       const formData = await UserAPI.getFormData(testUserId);
@@ -674,20 +668,22 @@ describe("用户管理接口测试", () => {
 
     test("参数校验：空密码应被拒绝", async () => {
       const emptyPassword = "";
-      await expectBizError(
-        UserAPI.updatePassword(testUserId, emptyPassword),
-        ["A0410", "A0400", "B0001"],
-      );
+      await expectBizError(UserAPI.updatePassword(testUserId, emptyPassword), [
+        "A0410",
+        "A0400",
+        "B0001",
+      ]);
     });
 
     test("修改不存在用户的密码", async () => {
       const nonExistentUserId = 99999999;
       const newPassword = "newpassword123";
 
-      await expectBizError(
-        UserAPI.updatePassword(nonExistentUserId, newPassword),
-        ["A0401", "B0001", "A0400"],
-      );
+      await expectBizError(UserAPI.updatePassword(nonExistentUserId, newPassword), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
     });
   });
 
@@ -813,5 +809,4 @@ describe("用户管理接口测试", () => {
       expect(isBlob || isTaskResult).toBe(true);
     });
   });
-
 });

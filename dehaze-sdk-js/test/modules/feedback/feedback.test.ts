@@ -107,10 +107,7 @@ describe("反馈评价模块接口测试", () => {
 
     test("异常：处理记录不存在", async () => {
       const form = createRatingForm(99999999);
-      await expectBizError(
-        FeedbackAPI.createRating(form),
-        ["A0546", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.createRating(form), ["A0546", "A0400", "ERR_BAD_REQUEST"]);
     });
 
     test("异常：重复评价", async () => {
@@ -119,19 +116,13 @@ describe("反馈评价模块接口测试", () => {
       const result = await FeedbackAPI.createRating(form);
       createdRatingIds.push(result.id);
 
-      await expectBizError(
-        FeedbackAPI.createRating(form),
-        ["A0540", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.createRating(form), ["A0540", "A0400", "ERR_BAD_REQUEST"]);
     });
 
     test("异常：评分越界", async () => {
       const predLogId = await ensurePredictionLog();
       const form = createRatingForm(predLogId, { rating: 10 });
-      await expectBizError(
-        FeedbackAPI.createRating(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.createRating(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
   });
 
@@ -163,10 +154,11 @@ describe("反馈评价模块接口测试", () => {
 
     test("异常：评价不存在", async () => {
       const form = createRatingForm(testPredLogId);
-      await expectBizError(
-        FeedbackAPI.updateRating(99999999, form),
-        ["A0541", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.updateRating(99999999, form), [
+        "A0541",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -239,10 +231,11 @@ describe("反馈评价模块接口测试", () => {
       createdRatingIds.push(createResult.id);
 
       await login(USERS.ADMIN.username);
-      await expectBizError(
-        FeedbackAPI.getRatingByPrediction(predLogId),
-        ["A0503", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.getRatingByPrediction(predLogId), [
+        "A0503",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
       await login(userAccount);
     });
   });
@@ -312,10 +305,7 @@ describe("反馈评价模块接口测试", () => {
     });
 
     test("异常：评价不存在", async () => {
-      await expectBizError(
-        FeedbackAPI.hideRating(99999999),
-        ["A0541", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.hideRating(99999999), ["A0541", "A0400", "ERR_BAD_REQUEST"]);
     });
   });
 
@@ -346,10 +336,11 @@ describe("反馈评价模块接口测试", () => {
     });
 
     test("异常：评价不存在", async () => {
-      await expectBizError(
-        FeedbackAPI.replyRating(99999999, "测试回复"),
-        ["A0541", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.replyRating(99999999, "测试回复"), [
+        "A0541",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -422,19 +413,21 @@ describe("反馈评价模块接口测试", () => {
     test("异常：缺少必填字段 title", async () => {
       const form = createFeedbackForm();
       const { title, ...rest } = form;
-      await expectBizError(
-        FeedbackAPI.createFeedback(rest as any),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.createFeedback(rest as any), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("异常：缺少必填字段 content", async () => {
       const form = createFeedbackForm();
       const { content, ...rest } = form;
-      await expectBizError(
-        FeedbackAPI.createFeedback(rest as any),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.createFeedback(rest as any), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -497,10 +490,11 @@ describe("反馈评价模块接口测试", () => {
     });
 
     test("异常：反馈不存在", async () => {
-      await expectBizError(
-        FeedbackAPI.getFeedbackDetail(99999999),
-        ["A0543", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.getFeedbackDetail(99999999), [
+        "A0543",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -526,10 +520,11 @@ describe("反馈评价模块接口测试", () => {
     });
 
     test("异常：反馈不存在", async () => {
-      await expectBizError(
-        FeedbackAPI.supplementFeedback(99999999, { content: "测试" }),
-        ["A0543", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.supplementFeedback(99999999, { content: "测试" }), [
+        "A0543",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -628,10 +623,11 @@ describe("反馈评价模块接口测试", () => {
     });
 
     test("异常：反馈不存在", async () => {
-      await expectBizError(
-        FeedbackAPI.assignFeedback(99999999, { assigneeId: 2 }),
-        ["A0543", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.assignFeedback(99999999, { assigneeId: 2 }), [
+        "A0543",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -660,10 +656,11 @@ describe("反馈评价模块接口测试", () => {
     });
 
     test("异常：反馈不存在", async () => {
-      await expectBizError(
-        FeedbackAPI.replyFeedback(99999999, createFeedbackReplyForm()),
-        ["A0543", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.replyFeedback(99999999, createFeedbackReplyForm()), [
+        "A0543",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -695,10 +692,11 @@ describe("反馈评价模块接口测试", () => {
     });
 
     test("异常：反馈不存在", async () => {
-      await expectBizError(
-        FeedbackAPI.updateFeedbackTags(99999999, ["标签"]),
-        ["A0543", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.updateFeedbackTags(99999999, ["标签"]), [
+        "A0543",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -723,17 +721,19 @@ describe("反馈评价模块接口测试", () => {
     });
 
     test("异常：重复关闭已关闭反馈", async () => {
-      await expectBizError(
-        FeedbackAPI.closeFeedback(testFeedbackId, { closeReason: "再次关闭" }),
-        ["A0544", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.closeFeedback(testFeedbackId, { closeReason: "再次关闭" }), [
+        "A0544",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("异常：反馈不存在", async () => {
-      await expectBizError(
-        FeedbackAPI.closeFeedback(99999999, { closeReason: "测试" }),
-        ["A0543", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FeedbackAPI.closeFeedback(99999999, { closeReason: "测试" }), [
+        "A0543",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 

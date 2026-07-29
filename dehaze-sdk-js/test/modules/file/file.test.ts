@@ -104,10 +104,7 @@ describe("文件管理接口测试", () => {
     });
 
     test("参数校验：未提供文件应抛出业务错误", async () => {
-      await expectBizError(
-        FileAPI.upload(null as any),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FileAPI.upload(null as any), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
   });
 
@@ -134,10 +131,12 @@ describe("文件管理接口测试", () => {
     test("异常测试：删除不存在的文件ID", async () => {
       const nonExistId = 999999999;
       // 删除不存在的文件，后端可能返回成功（幂等）或错误
-      await expectBizError(
-        FileAPI.deleteById(nonExistId),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(FileAPI.deleteById(nonExistId), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 });

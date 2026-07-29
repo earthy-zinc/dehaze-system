@@ -134,10 +134,11 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
 
   describe("异常场景", () => {
     test("导出不存在的模块应抛出错误", async () => {
-      await expectBizError(
-        ImportExportAPI.export("unknown_module" as any, createExportRequest()),
-        ["B0001", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(ImportExportAPI.export("unknown_module" as any, createExportRequest()), [
+        "B0001",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 });

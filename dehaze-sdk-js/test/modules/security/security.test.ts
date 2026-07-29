@@ -230,55 +230,37 @@ describe("安全性测试", () => {
     test("超长部门名称应被拒绝", async () => {
       const form = createDeptForm({ parentId: DEPTS.CQUPT.id, name: longString });
 
-      await expectBizError(
-        DeptAPI.add(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(DeptAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
 
     test("超长角色名称应被拒绝", async () => {
       const form = createRoleForm({ name: longString });
 
-      await expectBizError(
-        RoleAPI.add(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(RoleAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
 
     test("超长字典类型名称应被拒绝", async () => {
       const form = createDictTypeForm({ name: longString });
 
-      await expectBizError(
-        DictAPI.addDictType(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(DictAPI.addDictType(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
 
     test("超长数据集名称应被拒绝", async () => {
       const form = createDatasetForm({ name: longString });
 
-      await expectBizError(
-        DatasetAPI.add(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(DatasetAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
 
     test("超长菜单名称应被拒绝", async () => {
       const form = createMenuForm({ name: longString });
 
-      await expectBizError(
-        MenuAPI.add(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
 
     test("超长用户昵称应被拒绝", async () => {
       const form = createUserForm({ nickname: longString });
 
-      await expectBizError(
-        UserAPI.add(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(UserAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
   });
 

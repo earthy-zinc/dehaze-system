@@ -90,8 +90,8 @@ class AuthService:
 
         session_id = str(uuid.uuid4())
 
-        # 多点登录控制：删除旧 Session，仅保留最新
-        await AuthService._handle_multi_point_session(redis, session_id, user.username)
+        if settings.USE_MULTI_POINT:
+            await AuthService._handle_multi_point_session(redis, session_id, user.username)
 
         authorities = [f"ROLE_{r}" for r in roles] + list(perms)
 

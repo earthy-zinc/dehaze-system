@@ -137,10 +137,12 @@ describe("数据集接口测试", () => {
     });
 
     test("异常测试：不存在的ID", async () => {
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(99999999),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(DatasetAPI.getDatasetInfoById(99999999), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -185,10 +187,7 @@ describe("数据集接口测试", () => {
 
     test("异常测试：更新不存在的数据集", async () => {
       const form = createDatasetUpdateForm();
-      await expectBizError(
-        DatasetAPI.update(99999999, form),
-        ["A0401", "B0001", "A0400"],
-      );
+      await expectBizError(DatasetAPI.update(99999999, form), ["A0401", "B0001", "A0400"]);
     });
   });
 
@@ -201,17 +200,16 @@ describe("数据集接口测试", () => {
       await DatasetAPI.deleteById(datasetId);
 
       // 验证已删除
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(datasetId),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(DatasetAPI.getDatasetInfoById(datasetId), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("异常测试：删除不存在的数据集", async () => {
-      await expectBizError(
-        DatasetAPI.deleteById(99999999),
-        ["A0401", "B0001", "A0400"],
-      );
+      await expectBizError(DatasetAPI.deleteById(99999999), ["A0401", "B0001", "A0400"]);
     });
   });
 
@@ -278,18 +276,21 @@ describe("数据集接口测试", () => {
         expect(result.successIds.length).toBe(3);
       }
 
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(parentDatasetId),
-        ["A0401", "B0001", "A0400"],
-      );
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(childDatasetId),
-        ["A0401", "B0001", "A0400"],
-      );
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(grandChildDatasetId),
-        ["A0401", "B0001", "A0400"],
-      );
+      await expectBizError(DatasetAPI.getDatasetInfoById(parentDatasetId), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
+      await expectBizError(DatasetAPI.getDatasetInfoById(childDatasetId), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
+      await expectBizError(DatasetAPI.getDatasetInfoById(grandChildDatasetId), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
     });
 
     test("级联删除：仅选中父数据集应递归删除所有子孙数据集", async () => {
@@ -311,18 +312,21 @@ describe("数据集接口测试", () => {
         expect(result.successIds.length).toBe(1);
       }
 
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(parentDatasetId),
-        ["A0401", "B0001", "A0400"],
-      );
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(childDatasetId),
-        ["A0401", "B0001", "A0400"],
-      );
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(grandChildDatasetId),
-        ["A0401", "B0001", "A0400"],
-      );
+      await expectBizError(DatasetAPI.getDatasetInfoById(parentDatasetId), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
+      await expectBizError(DatasetAPI.getDatasetInfoById(childDatasetId), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
+      await expectBizError(DatasetAPI.getDatasetInfoById(grandChildDatasetId), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
     });
 
     test("级联删除：删除含数据项的父数据集应同时删除所有子孙数据集及数据项", async () => {
@@ -351,22 +355,18 @@ describe("数据集接口测试", () => {
         expect(result.successIds.length).toBe(1);
       }
 
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(parentDatasetId),
-        ["A0401", "B0001", "A0400"],
-      );
-      await expectBizError(
-        DatasetAPI.getDatasetInfoById(childDatasetId),
-        ["A0401", "B0001", "A0400"],
-      );
-      await expectBizError(
-        DatasetItemAPI.getById(item1.id),
-        ["A0401", "B0001", "A0400"],
-      );
-      await expectBizError(
-        DatasetItemAPI.getById(item2.id),
-        ["A0401", "B0001", "A0400"],
-      );
+      await expectBizError(DatasetAPI.getDatasetInfoById(parentDatasetId), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
+      await expectBizError(DatasetAPI.getDatasetInfoById(childDatasetId), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
+      await expectBizError(DatasetItemAPI.getById(item1.id), ["A0401", "B0001", "A0400"]);
+      await expectBizError(DatasetItemAPI.getById(item2.id), ["A0401", "B0001", "A0400"]);
     });
   });
 
@@ -423,10 +423,7 @@ describe("数据集接口测试", () => {
   describe("边界测试", () => {
     test("超长数据集名称应被拒绝", async () => {
       const form = createDatasetForm({ name: "x".repeat(500) });
-      await expectBizError(
-        DatasetAPI.add(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(DatasetAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
 
     test("边界测试：特殊字符数据集名称不应污染存储", async () => {

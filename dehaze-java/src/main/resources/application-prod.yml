@@ -81,6 +81,11 @@ security:
       # 生产环境无代理前缀，Path=/api 限制 Cookie 仅在 API 路径携带
       path: /api
 
+# 系统配置
+system:
+  # 多点登录控制：生产环境启用踢旧 Session，防止账号共享
+  use-multi-point: true
+
 
 # 监控配置 (生产环境仅暴露必要端点)
 management:

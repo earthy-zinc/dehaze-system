@@ -107,10 +107,11 @@ describe("模板下载接口测试 - ImportExportAPI.downloadTemplate", () => {
 
   describe("异常场景", () => {
     test("下载不支持导入的模块(dataset)模板应抛出错误", async () => {
-      await expectBizError(
-        ImportExportAPI.downloadTemplate("dataset" as any, "excel"),
-        ["A0710", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(ImportExportAPI.downloadTemplate("dataset" as any, "excel"), [
+        "A0710",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 });

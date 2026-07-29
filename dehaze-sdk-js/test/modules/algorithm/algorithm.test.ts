@@ -128,10 +128,12 @@ describe("算法管理接口测试", () => {
     });
 
     test("异常测试：获取不存在算法应抛出业务错误", async () => {
-      await expectBizError(
-        AlgorithmAPI.getAlgorithmInfoById(99999999),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.getAlgorithmInfoById(99999999), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -182,10 +184,11 @@ describe("算法管理接口测试", () => {
         description: "测试",
       };
 
-      await expectBizError(
-        AlgorithmAPI.add(form as Algorithm),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.add(form as Algorithm), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("参数校验：缺少必需字段 type 应抛出业务错误", async () => {
@@ -195,10 +198,11 @@ describe("算法管理接口测试", () => {
         description: "测试",
       };
 
-      await expectBizError(
-        AlgorithmAPI.add(form as Algorithm),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.add(form as Algorithm), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -244,10 +248,12 @@ describe("算法管理接口测试", () => {
     test("异常测试：更新不存在的算法应抛出业务错误", async () => {
       const form = createAlgorithmForm();
 
-      await expectBizError(
-        AlgorithmAPI.update(99999999, form),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.update(99999999, form), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -261,10 +267,12 @@ describe("算法管理接口测试", () => {
       await AlgorithmAPI.deleteByIds([algorithmId.toString()]);
 
       // 验证删除
-      await expectBizError(
-        AlgorithmAPI.getAlgorithmInfoById(algorithmId),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.getAlgorithmInfoById(algorithmId), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("正向测试：批量删除多个算法并验证所有算法都被删除", async () => {
@@ -281,18 +289,22 @@ describe("算法管理接口测试", () => {
 
       // 验证所有算法都被删除
       for (const algorithmId of algorithmIds) {
-        await expectBizError(
-          AlgorithmAPI.getAlgorithmInfoById(algorithmId),
-          ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-        );
+        await expectBizError(AlgorithmAPI.getAlgorithmInfoById(algorithmId), [
+          "A0401",
+          "A0400",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
       }
     });
 
     test("异常测试：删除不存在的算法应抛出业务错误", async () => {
-      await expectBizError(
-        AlgorithmAPI.deleteByIds(["99999999"]),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.deleteByIds(["99999999"]), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("级联删除：同时选中父算法和子算法应递归删除所有子孙算法", async () => {
@@ -311,18 +323,24 @@ describe("算法管理接口测试", () => {
         grandChildAlgorithmId.toString(),
       ]);
 
-      await expectBizError(
-        AlgorithmAPI.getAlgorithmInfoById(parentAlgorithmId),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
-      await expectBizError(
-        AlgorithmAPI.getAlgorithmInfoById(childAlgorithmId),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
-      await expectBizError(
-        AlgorithmAPI.getAlgorithmInfoById(grandChildAlgorithmId),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.getAlgorithmInfoById(parentAlgorithmId), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+      await expectBizError(AlgorithmAPI.getAlgorithmInfoById(childAlgorithmId), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+      await expectBizError(AlgorithmAPI.getAlgorithmInfoById(grandChildAlgorithmId), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("级联删除：仅选中父算法应递归删除所有子孙算法", async () => {
@@ -337,26 +355,29 @@ describe("算法管理接口测试", () => {
 
       await AlgorithmAPI.deleteByIds([parentAlgorithmId.toString()]);
 
-      await expectBizError(
-        AlgorithmAPI.getAlgorithmInfoById(parentAlgorithmId),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
-      await expectBizError(
-        AlgorithmAPI.getAlgorithmInfoById(childAlgorithmId),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
-      await expectBizError(
-        AlgorithmAPI.getAlgorithmInfoById(grandChildAlgorithmId),
-        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.getAlgorithmInfoById(parentAlgorithmId), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+      await expectBizError(AlgorithmAPI.getAlgorithmInfoById(childAlgorithmId), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+      await expectBizError(AlgorithmAPI.getAlgorithmInfoById(grandChildAlgorithmId), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("边界测试：超长算法名称应被拒绝", async () => {
       const form = createAlgorithmForm({ parentId: 0, name: "x".repeat(500) });
-      await expectBizError(
-        AlgorithmAPI.add(form as any),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AlgorithmAPI.add(form as any), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
   });
 });

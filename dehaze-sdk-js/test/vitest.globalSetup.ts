@@ -32,9 +32,8 @@ const CACHE_PREFIXES = [
   "member:quota:",
 ];
 
-// 三端限流 key 统一前缀为 rate:limit:
-// 测试启动前清空全部限流计数，避免上一轮测试残留的计数导致下一轮触发 429
-const RATE_LIMIT_PATTERNS = ["rate:limit:*"];
+// 只删计数子 key，不删 Redisson 配置 key（rate:limit:login:{ip} 本身）
+const RATE_LIMIT_PATTERNS = ["{rate:limit:login:*", "rate:limit:/api/v1/*"];
 
 export async function setup() {
   const redis = getRedis();

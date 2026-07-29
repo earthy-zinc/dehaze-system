@@ -41,15 +41,16 @@ describe("消息通知模块接口测试", () => {
     test("参数校验：缺少type应抛出业务错误", async () => {
       await expectBizError(
         MessageAPI.send({ recipientIds: [1], title: "x", content: "y" } as any),
-        ["A0400", "A0410", "ERR_BAD_REQUEST"],
+        ["A0400", "A0410", "ERR_BAD_REQUEST"]
       );
     });
 
     test("参数校验：空接收人列表应抛出业务错误", async () => {
-      await expectBizError(
-        MessageAPI.send(createMessageSendRequest({ recipientIds: [] })),
-        ["A0400", "A0410", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MessageAPI.send(createMessageSendRequest({ recipientIds: [] })), [
+        "A0400",
+        "A0410",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -110,10 +111,12 @@ describe("消息通知模块接口测试", () => {
     });
 
     test("异常：查看不存在的消息", async () => {
-      await expectBizError(
-        MessageAPI.getDetail(999999999),
-        ["A0550", "A0401", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MessageAPI.getDetail(999999999), [
+        "A0550",
+        "A0401",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -176,10 +179,12 @@ describe("消息通知模块接口测试", () => {
 
       await MessageAPI.deleteByIds(String(id));
 
-      await expectBizError(
-        MessageAPI.getDetail(id),
-        ["A0550", "A0401", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(MessageAPI.getDetail(id), [
+        "A0550",
+        "A0401",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("正向测试：批量删除", async () => {
@@ -295,17 +300,21 @@ describe("消息通知模块接口测试", () => {
     });
 
     test("边界：编辑已发送公告应报错", async () => {
-      await expectBizError(
-        AnnouncementAPI.update(testAnnouncementId, { title: "should_fail" }),
-        ["A0553", "A0502", "A0500", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AnnouncementAPI.update(testAnnouncementId, { title: "should_fail" }), [
+        "A0553",
+        "A0502",
+        "A0500",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("边界：取消已发送公告应报错", async () => {
-      await expectBizError(
-        AnnouncementAPI.cancel(testAnnouncementId),
-        ["A0553", "A0502", "A0500", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AnnouncementAPI.cancel(testAnnouncementId), [
+        "A0553",
+        "A0502",
+        "A0500",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("正向测试：创建定时公告并取消", async () => {
@@ -340,17 +349,19 @@ describe("消息通知模块接口测试", () => {
 
     test("正向测试：删除公告", async () => {
       await AnnouncementAPI.deleteById(testAnnouncementId);
-      await expectBizError(
-        AnnouncementAPI.getDetail(testAnnouncementId),
-        ["A0552", "A0401", "A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AnnouncementAPI.getDetail(testAnnouncementId), [
+        "A0552",
+        "A0401",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("参数校验：公告标题过短应报错", async () => {
-      await expectBizError(
-        AnnouncementAPI.create(createAnnouncementForm({ title: "a" })),
-        ["A0400", "ERR_BAD_REQUEST"],
-      );
+      await expectBizError(AnnouncementAPI.create(createAnnouncementForm({ title: "a" })), [
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 

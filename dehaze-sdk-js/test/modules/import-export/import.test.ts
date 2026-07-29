@@ -153,19 +153,19 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
     test("上传非 Excel/CSV 文件应返回 A0701 错误", async () => {
       const file = createInvalidFile("not_supported.txt");
 
-      await expectBizError(
-        ImportExportAPI.import("user", { mode: "all" }, file),
-        ["A0701", "B0001"],
-      );
+      await expectBizError(ImportExportAPI.import("user", { mode: "all" }, file), [
+        "A0701",
+        "B0001",
+      ]);
     });
 
     test("上传超过 20MB 文件应返回 A0702 错误", async () => {
       const file = createOversizedFile("oversized.xlsx");
 
-      await expectBizError(
-        ImportExportAPI.import("user", { mode: "all" }, file),
-        ["A0702", "B0001"],
-      );
+      await expectBizError(ImportExportAPI.import("user", { mode: "all" }, file), [
+        "A0702",
+        "B0001",
+      ]);
     });
   });
 });

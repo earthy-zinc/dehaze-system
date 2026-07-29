@@ -33,6 +33,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -69,6 +70,9 @@ public class AuthServiceImpl implements AuthService {
     private final SysUserRoleService sysUserRoleService;
     private final LoginLogService loginLogService;
     private final MemberService memberService;
+
+    @Value("${system.use-multi-point:false}")
+    private boolean useMultiPoint;
 
     @Override
     public LoginResult login(LoginForm form) {
@@ -144,7 +148,9 @@ public class AuthServiceImpl implements AuthService {
         String sessionId = IdUtil.fastSimpleUUID();
 
         // 多点登录控制：删除旧 Session，仅保留最新
-        handleMultiPointSession(sessionId, username);
+        if (useMultiPoint) {
+            handleMultiPointSession(sessionId, username);
+        }
 
         JSONObject session = new JSONObject();
         session.set("userId", userDetails.getUserId());

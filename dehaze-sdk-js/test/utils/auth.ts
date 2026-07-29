@@ -52,13 +52,12 @@ function applySession(sessionId: string, username: string) {
   setupAxiosInterceptor();
 }
 
-async function clearLoginRateLimit(): Promise<void> {
+export async function clearLoginRateLimit(): Promise<void> {
   const redis = getRedis();
-  // 三端限流 key 统一前缀为 rate:limit:
-  // Java Redisson: rate:limit:login:{ip} + {rate:limit:login:{ip}}:value + {rate:limit:login:{ip}}:permits
-  // Python: rate:limit:/api/v1/auth/login:{ip}
-  // Go: rate:limit:{prefix}:{ip}（未挂载到登录路由，预防性清理）
-  for (const pattern of ["*rate:limit:login:*", "*rate:limit:*/api/v1/auth/login:*"]) {
+  // 只删计数子 key，不删 Redisson 配置 key（rate:limit:login:{ip} 本身）
+  // Redisson 计数: {rate:limit:login:{ip}}:value / :permits
+  // Python 计数: rate:limit:/api/v1/auth/login:{ip}
+  for (const pattern of ["{rate:limit:login:*", "rate:limit:/api/v1/auth/login:*"]) {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {
       await redis.del(keys);

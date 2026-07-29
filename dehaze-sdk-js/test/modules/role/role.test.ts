@@ -416,10 +416,7 @@ describe("角色管理接口测试", () => {
         name: "测试",
       };
 
-      await expectBizError(
-        RoleAPI.update(99999999, form as RoleForm),
-        ["A0400", "B0001"],
-      );
+      await expectBizError(RoleAPI.update(99999999, form as RoleForm), ["A0400", "B0001"]);
     });
 
     test("参数校验：角色编码冲突", async () => {
@@ -430,10 +427,11 @@ describe("角色管理接口测试", () => {
         dataScope: originalRole.dataScope || 1,
       };
 
-      await expectBizError(
-        RoleAPI.update(testRoleId, form as RoleForm),
-        ["A0503", "B0001", "A0400"],
-      );
+      await expectBizError(RoleAPI.update(testRoleId, form as RoleForm), [
+        "A0503",
+        "B0001",
+        "A0400",
+      ]);
 
       // 验证未被修改
       const formData = await RoleAPI.getFormData(testRoleId);
@@ -489,6 +487,5 @@ describe("角色管理接口测试", () => {
     test("参数校验：空的ID列表", async () => {
       await expectBizError(RoleAPI.deleteByIds(""), ["B0001", "ERR_BAD_REQUEST"]);
     });
-
   });
 });
