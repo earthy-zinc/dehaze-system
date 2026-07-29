@@ -1,6 +1,5 @@
 import { TaskAPI } from "../../../index";
 import { login } from "#/utils/auth";
-import { USERS } from "#/factories/constants";
 import { pageQuery } from "#/factories/common";
 import type { TaskQuery } from "../../../index";
 
@@ -152,12 +151,13 @@ describe("任务管理接口测试 - TaskAPI", () => {
     });
 
     test("异常测试：重试非失败状态的任务应抛出异常", async () => {
+      // 修复后端 module 推导后，通用端点创建的 user_export 任务能正常执行，
+      // 任务处于 PENDING/PROCESSING/COMPLETED 等非 FAILED 状态时，retry 应抛出异常
       const created = await TaskAPI.create({
         type: "user_export",
         options: { format: "excel" },
       });
 
-      // 新创建的任务为 PENDING/PROCESSING 状态，重试应被拒绝
       await expect(TaskAPI.retry(created.taskId)).rejects.toThrow();
     });
   });

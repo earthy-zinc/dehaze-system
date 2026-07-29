@@ -1,12 +1,32 @@
-import { ModelAPI } from "../../../index";
+import { ModelAPI, FileAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { createPredictionForm, createEvaluationForm } from "#/factories/model";
 import { login, logout } from "#/utils/auth";
 import { USERS } from "#/factories/constants";
+import * as fs from "fs";
+import * as path from "path";
 
 describe("预测与评估 API 测试", () => {
+  let uploadedFileId: number;
+  let uploadedFileUrl: string;
+  let clearFileUrl: string;
+
   beforeAll(async () => {
     await login(USERS.USER.username);
+    const hazyPath = path.resolve(__dirname, "../../resources/test/model/hazy.jpg");
+    const hazyFile = fs.readFileSync(hazyPath);
+    const hazyBlob = new Blob([hazyFile]);
+    const hazyFormFile = new File([hazyBlob], "hazy.jpg", { type: "image/jpeg" });
+    const hazyInfo = await FileAPI.upload(hazyFormFile);
+    uploadedFileId = hazyInfo.id;
+    uploadedFileUrl = hazyInfo.url;
+
+    const clearPath = path.resolve(__dirname, "../../resources/test/model/clear.jpg");
+    const clearFile = fs.readFileSync(clearPath);
+    const clearBlob = new Blob([clearFile]);
+    const clearFormFile = new File([clearBlob], "clear.jpg", { type: "image/jpeg" });
+    const clearInfo = await FileAPI.upload(clearFormFile);
+    clearFileUrl = clearInfo.url;
   });
 
   afterAll(async () => {
@@ -15,7 +35,7 @@ describe("预测与评估 API 测试", () => {
 
   describe("POST /api/v1/prediction - 模型预测（异步）", () => {
     test("正向测试：提交预测并通过轮询获取结果", async () => {
-      const form = createPredictionForm({ algorithmId: 13 }); // DCP 算法
+      const form = createPredictionForm({ algorithmId: 13, fileId: uploadedFileId });
       const result = await ModelAPI.predictAndWait(form, {
         intervalMs: 2000,
         timeoutMs: 120000,
@@ -62,7 +82,7 @@ describe("预测与评估 API 测试", () => {
 
   describe("predictAndWait 轮询机制", () => {
     test("onPoll 回调应被调用（至少一次 processing）", async () => {
-      const form = createPredictionForm({ algorithmId: 13 });
+      const form = createPredictionForm({ algorithmId: 13, fileId: uploadedFileId });
       const statuses: number[] = [];
       const result = await ModelAPI.predictAndWait(form, {
         intervalMs: 1000,
@@ -97,7 +117,11 @@ describe("预测与评估 API 测试", () => {
 
   describe("POST /api/v1/evaluation - 效果评估（异步）", () => {
     test("正向测试：提交评估并通过轮询获取指标", async () => {
-      const form = createEvaluationForm({ algorithmId: 1 });
+      const form = createEvaluationForm({
+        algorithmId: 1,
+        predUrl: uploadedFileUrl,
+        gtUrl: clearFileUrl,
+      });
       try {
         const result = await ModelAPI.evaluateAndWait(form, {
           intervalMs: 2000,

@@ -51,7 +51,11 @@ public class GenericExportStrategy implements TaskStrategy {
 
     @Override
     public TaskResult execute(SysTask task, Map<String, Object> params, ProgressCallback callback) {
+        // 通用端点创建任务时 params 可能不含 module，从任务类型推导（如 user_export -> user）
         String module = (String) params.get("module");
+        if (module == null || module.isBlank()) {
+            module = TaskConstants.getModuleByType(task.getTaskType());
+        }
         String format = (String) params.getOrDefault("format", "excel");
         @SuppressWarnings("unchecked")
         List<String> fields = (List<String>) params.get("fields");

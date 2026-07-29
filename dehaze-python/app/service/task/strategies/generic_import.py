@@ -44,7 +44,8 @@ class GenericImportStrategy(TaskStrategy):
         cancel_checker: CancelChecker,
     ) -> Optional[str]:
         params = json.loads(params_json or "{}")
-        module = params.get("module")
+        # 通用端点创建任务时 params 可能不含 module，从任务类型推导（如 user_import -> user）
+        module = params.get("module") or sys_task.task_type.rsplit("_", 1)[0]
         if not module:
             raise BusinessException(ResultCode.TASK_PARAM_ERROR, "缺少模块参数 module")
 

@@ -251,7 +251,11 @@ func (s *ImportExportService) createImportTask(ctx context.Context, p *ImportPar
 }
 
 func (s *ImportExportService) ExecuteAsyncExport(ctx context.Context, task *model.SysTask, params map[string]interface{}, callback ProgressCallback) {
+	// 通用端点创建任务时 params 可能不含 module，从任务类型推导（如 user_export -> user）
 	module, _ := params["module"].(string)
+	if module == "" {
+		module = strings.TrimSuffix(string(task.TaskType), "_export")
+	}
 	format, _ := params["format"].(string)
 	if format == "" {
 		format = "excel"
@@ -351,7 +355,11 @@ func (s *ImportExportService) ExecuteAsyncExport(ctx context.Context, task *mode
 }
 
 func (s *ImportExportService) ExecuteAsyncImport(ctx context.Context, task *model.SysTask, params map[string]interface{}, callback ProgressCallback) {
+	// 通用端点创建任务时 params 可能不含 module，从任务类型推导（如 user_import -> user）
 	module, _ := params["module"].(string)
+	if module == "" {
+		module = strings.TrimSuffix(string(task.TaskType), "_import")
+	}
 	fileObjectName, _ := params["fileObjectName"].(string)
 	fileName, _ := params["fileName"].(string)
 	mode, _ := params["mode"].(string)
