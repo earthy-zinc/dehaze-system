@@ -98,7 +98,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
     cancelSignalRef.current = { canceled: false };
     setPhase('processing');
     setProgress({
-      status: 'idle',
+      status: 0,
       elapsed: 0,
     });
     setResult(null);
@@ -137,7 +137,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
       .catch(err => {
         const isCanceled = err instanceof Error && err.message.includes('取消');
         setProgress(prev => ({
-          status: isCanceled ? 'canceled' : 'failed',
+          status: isCanceled ? 4 : 3,
           elapsed: prev?.elapsed ?? 0,
           error: err instanceof Error ? err.message : '处理失败',
         }));

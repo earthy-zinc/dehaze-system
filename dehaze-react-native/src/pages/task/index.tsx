@@ -225,7 +225,7 @@ const TaskScreen: React.FC = () => {
 
   const renderItem = useCallback(
     ({ item }: { item: Task }) => {
-      const statusInfo = TASK_STATUS_MAP[item.status] || TASK_STATUS_MAP.PENDING;
+      const statusInfo = TASK_STATUS_MAP[item.status] || TASK_STATUS_MAP[TaskStatusEnum.PENDING];
       const typeLabel = TASK_TYPE_MAP[item.taskType || ''] || item.taskType || '任务';
       const isActive = !isTerminal(item);
       const canCancel = isCancellable(item);
@@ -339,7 +339,7 @@ const TaskScreen: React.FC = () => {
 
   const statusFilters: { key: TaskStatus | 'ALL'; label: string }[] = [
     { key: 'ALL', label: '全部' },
-    ...(Object.keys(TASK_STATUS_MAP) as TaskStatus[]).map(key => ({
+    ...(Object.keys(TASK_STATUS_MAP).map(Number) as TaskStatus[]).map(key => ({
       key,
       label: TASK_STATUS_MAP[key].label,
     })),

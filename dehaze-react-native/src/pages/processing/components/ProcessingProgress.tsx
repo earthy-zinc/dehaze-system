@@ -20,11 +20,11 @@ const STATUS_CONFIG: Record<
   TaskStatus,
   { label: string; isError: boolean; isSuccess: boolean; showSpinner: boolean }
 > = {
-  idle: { label: '去雾处理中', isError: false, isSuccess: false, showSpinner: true },
-  processing: { label: '去雾处理中', isError: false, isSuccess: false, showSpinner: true },
-  success: { label: '处理完成', isError: false, isSuccess: true, showSpinner: false },
-  failed: { label: '处理失败', isError: true, isSuccess: false, showSpinner: false },
-  canceled: { label: '已取消', isError: true, isSuccess: false, showSpinner: false },
+  0: { label: '去雾处理中', isError: false, isSuccess: false, showSpinner: true },
+  1: { label: '去雾处理中', isError: false, isSuccess: false, showSpinner: true },
+  2: { label: '处理完成', isError: false, isSuccess: true, showSpinner: false },
+  3: { label: '处理失败', isError: true, isSuccess: false, showSpinner: false },
+  4: { label: '已取消', isError: true, isSuccess: false, showSpinner: false },
 };
 
 const ProcessingProgress: React.FC<ProcessingProgressProps> = ({ progress }) => {

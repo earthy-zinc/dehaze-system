@@ -9,24 +9,23 @@ export type Task = TaskVO;
 
 export type { TaskStatus, TaskCategory };
 
-/** 任务状态枚举值（统一常量，避免散落的裸字符串） */
 export const TaskStatusEnum = {
-  PENDING: 'PENDING',
-  PROCESSING: 'PROCESSING',
-  COMPLETED: 'COMPLETED',
-  FAILED: 'FAILED',
-  CANCELLED: 'CANCELLED',
-} as const satisfies Record<TaskStatus, TaskStatus>;
+  PENDING: 1,
+  PROCESSING: 2,
+  COMPLETED: 3,
+  FAILED: 4,
+  CANCELLED: 5,
+} as const satisfies Record<string, TaskStatus>;
 
 export const TASK_STATUS_MAP: Record<
   TaskStatus,
   { label: string; color: string; bgColor: string }
 > = {
-  PENDING: { label: '待执行', color: theme.colors.status.info, bgColor: `${theme.colors.status.info}15` },
-  PROCESSING: { label: '执行中', color: theme.colors.status.info, bgColor: `${theme.colors.status.info}15` },
-  COMPLETED: { label: '已完成', color: theme.colors.status.success, bgColor: `${theme.colors.status.success}15` },
-  FAILED: { label: '失败', color: theme.colors.status.error, bgColor: `${theme.colors.status.error}15` },
-  CANCELLED: { label: '已取消', color: theme.colors.text.secondary, bgColor: `${theme.colors.text.secondary}15` },
+  1: { label: '待执行', color: theme.colors.status.info, bgColor: `${theme.colors.status.info}15` },
+  2: { label: '执行中', color: theme.colors.status.info, bgColor: `${theme.colors.status.info}15` },
+  3: { label: '已完成', color: theme.colors.status.success, bgColor: `${theme.colors.status.success}15` },
+  4: { label: '失败', color: theme.colors.status.error, bgColor: `${theme.colors.status.error}15` },
+  5: { label: '已取消', color: theme.colors.text.secondary, bgColor: `${theme.colors.text.secondary}15` },
 };
 
 /** 任务类别筛选选项 */

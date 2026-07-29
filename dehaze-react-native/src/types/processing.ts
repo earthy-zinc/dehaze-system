@@ -6,11 +6,11 @@
 
 /** 处理任务状态 */
 export type TaskStatus =
-  | 'idle' // 空闲，未开始
-  | 'processing' // 去雾处理中
-  | 'success' // 处理成功
-  | 'failed' // 处理失败
-  | 'canceled'; // 已取消
+  | 0 // 空闲，未开始
+  | 1 // 去雾处理中
+  | 2 // 处理成功
+  | 3 // 处理失败
+  | 4; // 已取消
 
 /** 单个任务进度信息（API 同步返回，仅记录真实状态与已用时间，不模拟百分比） */
 export interface TaskProgress {

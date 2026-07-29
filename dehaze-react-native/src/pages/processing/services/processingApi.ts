@@ -145,7 +145,7 @@ export async function predictSingle(opts: PredictOptions): Promise<ProcessingRes
     });
   };
 
-  emit('processing');
+  emit(1);
 
   try {
     const result = await ModelAPI.predictAndWait(
@@ -161,21 +161,21 @@ export async function predictSingle(opts: PredictOptions): Promise<ProcessingRes
           if (cancelSignal?.canceled) {
             throw new Error('用户已取消处理');
           }
-          emit('processing');
+          emit(1);
         },
       },
     );
 
     if (cancelSignal?.canceled) throw new Error('用户已取消处理');
 
-    if (result.status === 'failed') {
+    if (result.status === 3) {
       throw new Error(result.errorMessage || '处理失败');
     }
 
-    emit('success');
+    emit(2);
     return toProcessingResult(result);
   } catch (err) {
-    emit('failed', err instanceof Error ? err.message : '预测请求失败');
+    emit(3, err instanceof Error ? err.message : '预测请求失败');
     throw err;
   }
 }
