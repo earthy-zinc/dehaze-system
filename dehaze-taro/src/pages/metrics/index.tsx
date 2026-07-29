@@ -77,7 +77,7 @@ const MetricsPage: React.FC = () => {
         predUrl: prediction.resultUrl,
         gtUrl: cleanUrl,
       });
-      if (res.status === "failed") {
+      if (res.status === 3) {
         throw new Error(res.errorMessage || "评估失败");
       }
       setEvaluation(res);

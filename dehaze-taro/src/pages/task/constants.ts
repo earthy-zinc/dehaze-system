@@ -6,23 +6,19 @@ import type { TaskCategory, TaskStatus } from "dehaze-sdk-js";
 export const POLLING_INTERVAL = 3000;
 
 /** 需要轮询的任务状态 */
-export const POLLING_STATUSES: TaskStatus[] = ["PENDING", "PROCESSING"];
+export const POLLING_STATUSES: TaskStatus[] = [1, 2];
 
 /** 终态状态集合 */
-export const TERMINAL_STATUSES: TaskStatus[] = [
-  "COMPLETED",
-  "FAILED",
-  "CANCELLED",
-];
+export const TERMINAL_STATUSES: TaskStatus[] = [3, 4, 5];
 
 /** 状态筛选选项 */
 export const STATUS_FILTERS: { label: string; value: "" | TaskStatus }[] = [
   { label: "全部", value: "" },
-  { label: "待执行", value: "PENDING" },
-  { label: "执行中", value: "PROCESSING" },
-  { label: "已完成", value: "COMPLETED" },
-  { label: "失败", value: "FAILED" },
-  { label: "已取消", value: "CANCELLED" },
+  { label: "待执行", value: 1 },
+  { label: "执行中", value: 2 },
+  { label: "已完成", value: 3 },
+  { label: "失败", value: 4 },
+  { label: "已取消", value: 5 },
 ];
 
 /** 任务类别筛选选项 */
@@ -37,11 +33,11 @@ export const STATUS_TAG: Record<
   TaskStatus,
   { label: string; color: "default" | "primary" | "success" | "danger" }
 > = {
-  PENDING: { label: "待执行", color: "primary" },
-  PROCESSING: { label: "执行中", color: "primary" },
-  COMPLETED: { label: "已完成", color: "success" },
-  FAILED: { label: "失败", color: "danger" },
-  CANCELLED: { label: "已取消", color: "default" },
+  1: { label: "待执行", color: "primary" },
+  2: { label: "执行中", color: "primary" },
+  3: { label: "已完成", color: "success" },
+  4: { label: "失败", color: "danger" },
+  5: { label: "已取消", color: "default" },
 };
 
 /** 任务类型映射 */

@@ -102,7 +102,7 @@ const TaskDetailPopup: React.FC<TaskDetailPopupProps> = ({
                 取消任务
               </Button>
             )}
-            {task.status === "COMPLETED" && (
+            {task.status === 3 && (
               <Button
                 block
                 color="primary"
@@ -113,7 +113,7 @@ const TaskDetailPopup: React.FC<TaskDetailPopupProps> = ({
               </Button>
             )}
             {TERMINAL_STATUSES.includes(task.status) &&
-              task.status !== "COMPLETED" && (
+              task.status !== 3 && (
                 <Button block onClick={onClose}>
                   关闭
                 </Button>

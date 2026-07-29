@@ -238,7 +238,7 @@ const TaskPage: React.FC = () => {
       const now = new Date().toISOString();
       const updated: TaskVO = {
         ...task,
-        status: "CANCELLED",
+        status: 5,
         completedAt: now,
       };
       setTaskList((prev) =>
@@ -255,7 +255,7 @@ const TaskPage: React.FC = () => {
 
   /** 下载任务结果 */
   const handleDownload = useCallback(async (task: TaskVO) => {
-    if (task.status !== "COMPLETED") {
+    if (task.status !== 3) {
       Taro.showToast({ title: "任务尚未完成", icon: "none" });
       return;
     }

@@ -35,7 +35,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
     color: "#8c8c8c",
   };
   const isActive = POLLING_STATUSES.includes(task.status);
-  const canDownload = task.status === "COMPLETED";
+  const canDownload = task.status === 3;
 
   return (
     <View key={task.taskId} className="task-card" onClick={() => onClick(task)}>
@@ -57,7 +57,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
         </View>
       )}
 
-      {task.status === "FAILED" && task.error && (
+      {task.status === 4 && task.error && (
         <View className="card-error">
           <Text>{task.error}</Text>
         </View>

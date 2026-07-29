@@ -145,7 +145,7 @@ const ProcessingPage: React.FC = () => {
 
       clearAllTimers();
 
-      if (res.status === "failed") {
+      if (res.status === 3) {
         throw new Error(res.errorMessage || "处理失败");
       }
 
