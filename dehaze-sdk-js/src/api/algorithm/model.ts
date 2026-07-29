@@ -60,3 +60,11 @@ export interface AlgorithmMonitorVO {
   successRate: number;
   todayCallCount: number;
 }
+
+/** 算法监控统计报表条目（按日期聚合） */
+export interface AlgorithmMonitorStatsItemVO {
+  date: string;
+  callCount: number;
+  avgTime: number;
+  successRate: number;
+}

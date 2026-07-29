@@ -4,6 +4,7 @@ import {
   Algorithm,
   AlgorithmAuditForm,
   AlgorithmMonitorVO,
+  AlgorithmMonitorStatsItemVO,
   AlgorithmQuery,
   AlgorithmVersionForm,
   AlgorithmVersionVO,
@@ -115,7 +116,7 @@ class AlgorithmAPI {
 
   /** 获取算法统计报表 */
   static getMonitorStats(id: number) {
-    return request<AlgorithmMonitorVO>({
+    return request<AlgorithmMonitorStatsItemVO[]>({
       url: `/api/v1/algorithms/${id}/monitor/stats`,
       method: "get",
     });

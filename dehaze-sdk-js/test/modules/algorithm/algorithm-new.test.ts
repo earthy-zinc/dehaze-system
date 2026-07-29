@@ -105,7 +105,7 @@ describe("算法管理新增端点测试", () => {
       expect(Array.isArray(stats)).toBe(true);
       expect(stats.length).toBeGreaterThan(0);
       // 每条记录应包含 date、callCount、avgTime、successRate 字段
-      const first = stats[0] as Record<string, unknown>;
+      const first = stats[0]!;
       expect(typeof first.date).toBe("string");
       expect(typeof first.callCount).toBe("number");
       expect(typeof first.avgTime).toBe("number");

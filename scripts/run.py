@@ -73,12 +73,10 @@ def start(svc: str):
 
 def _kill_port_occupants(port: int):
     # 清理占用端口的残留进程（go run/uvicorn --reload 的孤儿子进程，PPID=1，不在 PID 文件记录的进程组）
-    if IS_WIN:
-        return
-    out = subprocess.run(["ss", "-tlnp", f"sport = :{port}"], capture_output=True, text=True).stdout
-    for p in set(re.findall(r"pid=(\d+)", out)):
+    pid = _port_pid(port)
+    if pid:
         try:
-            os.killpg(os.getpgid(int(p)), 9)
+            os.killpg(os.getpgid(pid), 9)
         except (ProcessLookupError, PermissionError):
             pass
 
@@ -106,13 +104,33 @@ def stop(svc: str):
     print(f"[{svc}] stopped")
 
 
+def _port_pid(port: int) -> int | None:
+    """返回监听指定端口的进程 PID，无监听则返回 None"""
+    if IS_WIN:
+        return None
+    out = subprocess.run(
+        ["ss", "-tlnp", f"sport = :{port}"],
+        capture_output=True, text=True,
+    ).stdout
+    match = re.search(r"pid=(\d+)", out)
+    return int(match.group(1)) if match else None
+
+
 def status():
     for svc, (cwd, _, port) in SERVICES.items():
+        pid = None
+        # 优先读取 PID 文件
         try:
             pid = int((cwd / f".{svc}.pid").read_text())
-            st = f"running (pid={pid})" if _alive(pid) else "stopped"
         except (FileNotFoundError, ValueError):
-            st = "stopped"
+            pass
+
+        if pid and _alive(pid):
+            st = f"running (pid={pid})"
+        else:
+            # 兜底：通过端口检测实际运行的进程
+            pid = _port_pid(port)
+            st = f"running (pid={pid})" if pid else "stopped"
         print(f"{svc:<10} :{port:<5} {st}")
 
 
