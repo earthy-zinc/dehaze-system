@@ -149,7 +149,7 @@ xxl:
     admin:
       # 多个地址使用,分割
       addresses: http://${DEHAZE_HOST}:14980/xxl-job-admin
-    accessToken: ${DEHAZE_PASSWORD:12345678}
+    accessToken: ${DEHAZE_PASSWORD}
     executor:
       appname: xxl-job-executor-${spring.application.name}
       address:

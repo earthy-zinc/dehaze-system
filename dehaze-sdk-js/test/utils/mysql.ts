@@ -8,7 +8,7 @@ function getPool(): mysql.Pool {
       host: process.env.DEHAZE_HOST || "127.0.0.1",
       port: 3306,
       user: "root",
-      password: process.env.DEHAZE_PASSWORD || "12345678",
+      password: process.env.DEHAZE_PASSWORD || "Dehaze@2026",
       database: "dehaze",
       waitForConnections: true,
       connectionLimit: 5,

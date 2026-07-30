@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -211,7 +212,10 @@ func (s *UserService) Create(ctx context.Context, form *bo.UserFormBO) error {
 	}
 
 	// 加密默认密码
-	defaultPassword := "12345678"
+	defaultPassword := os.Getenv("DEHAZE_PASSWORD")
+	if defaultPassword == "" {
+		defaultPassword = "Dehaze@2026"
+	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "密码加密失败", err)
@@ -355,7 +359,10 @@ func (s *UserService) ResetPassword(ctx context.Context, id int64) error {
 	}
 
 	// 加密默认密码
-	defaultPassword := "12345678"
+	defaultPassword := os.Getenv("DEHAZE_PASSWORD")
+	if defaultPassword == "" {
+		defaultPassword = "Dehaze@2026"
+	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "密码加密失败", err)

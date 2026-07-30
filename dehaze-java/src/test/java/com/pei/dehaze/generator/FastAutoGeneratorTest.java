@@ -22,7 +22,7 @@ public class FastAutoGeneratorTest {
 
         private static final DataSourceConfig.Builder DATA_SOURCE_CONFIG = new DataSourceConfig.Builder(
                         "jdbc:mysql://localhost:3306/dehaze_test?serverTimezone=Asia/Shanghai", "root",
-                        System.getenv().getOrDefault("DEHAZE_PASSWORD", "12345678"));
+                        System.getenv().getOrDefault("DEHAZE_PASSWORD", "Dehaze@2026"));
 
         /**
          * 执行 run

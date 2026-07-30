@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [ -f "$ROOT/.env" ]; then
   DEHAZE_PASSWORD=$(grep -E '^DEHAZE_PASSWORD=' "$ROOT/.env" | cut -d'=' -f2- | tr -d '\r\n')
 fi
-DEHAZE_PASSWORD="${DEHAZE_PASSWORD:-12345678}"
+DEHAZE_PASSWORD="${DEHAZE_PASSWORD:-Dehaze@2026}"
 
 MYSQL_CONTAINER="${MYSQL_CONTAINER:-mysql}"
 REDIS_CONTAINER="${REDIS_CONTAINER:-redis}"

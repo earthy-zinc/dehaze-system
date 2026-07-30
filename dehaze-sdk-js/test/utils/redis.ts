@@ -7,7 +7,7 @@ export function getRedis(): Redis {
     redis = new Redis({
       host: process.env.DEHAZE_HOST || "127.0.0.1",
       port: 6379,
-      password: process.env.DEHAZE_PASSWORD || "12345678",
+      password: process.env.DEHAZE_PASSWORD || "Dehaze@2026",
       db: 0,
       maxRetriesPerRequest: 3,
     });

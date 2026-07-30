@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -264,7 +265,11 @@ func (h *UserImportHandler) ImportBatch(rows []map[string]interface{}, options i
 		mobile, _ := row["mobile"].(string)
 		email, _ := row["email"].(string)
 
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("12345678"), bcrypt.DefaultCost)
+		defaultPassword := os.Getenv("DEHAZE_PASSWORD")
+		if defaultPassword == "" {
+			defaultPassword = "Dehaze@2026"
+		}
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
 		if err != nil {
 			failureCount++
 			errors = append(errors, import_export.ImportError{Row: rowNum, Field: "password", Message: "密码加密失败"})

@@ -70,7 +70,7 @@ async function doLogin(username: string) {
   const captchaCode = await getCaptchaCode(captcha.captchaKey);
   return await AuthAPI.login({
     username,
-    password: process.env.TEST_PASSWORD || "12345678",
+    password: process.env.DEHAZE_PASSWORD || "Dehaze@2026",
     captchaKey: captcha.captchaKey,
     captchaCode,
   });

@@ -104,12 +104,6 @@
           >{{ $t("login.login") }}
         </el-button>
 
-        <!-- 账号密码提示 -->
-        <div class="mt-10 text-sm">
-          <span>{{ $t("login.username") }}: admin</span>
-          <span class="ml-4"> {{ $t("login.password") }}: 12345678</span>
-        </div>
-
         <div class="text-center mt-4">
           <router-link to="/register">没有账号？立即注册</router-link>
         </div>
@@ -150,8 +144,8 @@ const loginFormRef = ref(ElForm);
 const { height } = useWindowSize();
 
 const loginData = ref<LoginData>({
-  username: "admin",
-  password: "12345678",
+  username: "",
+  password: "",
   rememberMe: true,
 });
 

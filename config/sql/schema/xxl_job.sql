@@ -7,7 +7,7 @@
 -- xxl_job 库独立于业务库 dehaze，由 xxl-job-admin 容器独立访问。
 -- 预置 3 个执行器分组（dehaze-java/python/go）和项目中实际存在的定时任务，
 -- 任务初始为停止状态（trigger_status=0），admin 启动后在控制台手动启用。
--- admin 控制台账号 admin/12345678（与项目其他服务密码一致）。
+-- admin 控制台账号 admin/Dehaze@2026（与项目其他服务密码一致）。
 -- ------------------------------------------------------------
 
 DROP DATABASE IF EXISTS `xxl_job`;
@@ -159,9 +159,9 @@ VALUES (1, 'xxl-job-executor-dehaze-java', 'Java后端执行器', 0, NULL, now()
 INSERT INTO `xxl_job_lock` (`lock_name`)
 VALUES ('schedule_lock');
 
--- 控制台用户：admin / 12345678（SHA-256）
+-- 控制台用户：admin / Dehaze@2026（SHA-256）
 INSERT INTO `xxl_job_user`(`id`, `username`, `password`, `role`, `permission`)
-VALUES (1, 'admin', 'ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f', 1, NULL);
+VALUES (1, 'admin', 'db8923fcba75cf2eceb608c1adf0d86b332b53b8e73ed72b8231f93b33601d66', 1, NULL);
 
 -- ------------------------------------------------------------
 -- 定时任务（三端对齐后的完整清单）

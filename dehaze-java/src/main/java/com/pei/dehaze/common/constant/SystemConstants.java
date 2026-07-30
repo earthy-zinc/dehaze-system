@@ -6,31 +6,30 @@ package com.pei.dehaze.common.constant;
  * @author earthyzinc
  * @since 1.0.0
  */
-public interface SystemConstants {
+public class SystemConstants {
 
     /**
      * 根节点ID
      */
-    Long ROOT_NODE_ID = 0L;
-
+    public static final Long ROOT_NODE_ID = 0L;
 
     /**
      * 系统默认密码
      */
-    String DEFAULT_PASSWORD = "12345678";
+    public static final String DEFAULT_PASSWORD = System.getenv().getOrDefault("DEHAZE_PASSWORD", "Dehaze@2026");
 
     /**
      * 超级管理员角色编码
      */
-    String ROOT_ROLE_CODE = "ROOT";
+    public static final String ROOT_ROLE_CODE = "ROOT";
 
     /**
      * 系统用户ID
      */
-    Long SYSTEM_USER_ID = 0L;
+    public static final Long SYSTEM_USER_ID = 0L;
 
     /**
      * 系统用户名
      */
-    String SYSTEM_USERNAME = "system";
+    public static final String SYSTEM_USERNAME = "system";
 }

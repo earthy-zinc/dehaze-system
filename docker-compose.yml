@@ -20,8 +20,10 @@ services:
       - mysql-config:/etc/mysql/conf.d
       - ./config/sql/schema:/docker-entrypoint-initdb.d:ro
       - ./config/sql/data:/docker-init-data:ro
-    command: --character-set-server=utf8mb4
-      --collation-server=utf8mb4_general_ci
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --init-connect=SET NAMES utf8mb4
     privileged: true
     networks:
       - pei-network
@@ -51,7 +53,7 @@ services:
 
   # MongoDB
   mongodb:
-    image: bitnami/mongodb:latest
+    image: mongo:8.3.7
     container_name: mongodb
     restart: always
     ports:
@@ -61,9 +63,11 @@ services:
       - mongo-config:/data/configdb
       - mongo-logs:/var/log/mongodb
     environment:
-      - MONGODB_ROOT_USER=root
-      - MONGODB_ROOT_PASSWORD=${DEHAZE_PASSWORD}
-      - MONGODB_DATABASE=admin
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=${DEHAZE_PASSWORD}
+      - MONGO_INITDB_DATABASE=admin
+      - TZ=Asia/Shanghai
+      - LANG=zh_CN.UTF-8
     networks:
       - pei-network
 
@@ -125,6 +129,7 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=root
       - RABBITMQ_DEFAULT_PASS=${DEHAZE_PASSWORD}
+      - TZ=Asia/Shanghai
     networks:
       - pei-network
 
@@ -172,6 +177,7 @@ services:
     environment:
       #设置系统语言文中文
       I18N_LOCALE: zh-CN
+      TZ: Asia/Shanghai
       # 访问域名
       # SERVER_PUBLICBASEURL: https://kibana.cloud.com
     volumes:
@@ -408,44 +414,23 @@ services:
 
 volumes:
   mysql-data:
-    external: true
   mysql-logs:
-    external: true
   mysql-config:
-    external: true
   redis-data:
-    external: true
   mongo-data:
-    external: true
   mongo-config:
-    external: true
   mongo-logs:
-    external: true
   minio-config:
-    external: true
   minio-data:
-    external: true
-
   es-data:
-    external: true
   es-logs:
-    external: true
   es-plugins:
-    external: true
   kibana-config:
-    external: true
   logstash-config:
-    external: true
   rabbitmq-data:
-    external: true
   rabbitmq-logs:
-    external: true
   xxl-job-logs:
-    external: true
   prometheus-data:
-    external: true
   grafana-data:
-    external: true
-  # 以下新增卷由 Docker 自动管理，无需手动创建
   alertmanager-data:
   filebeat-data:

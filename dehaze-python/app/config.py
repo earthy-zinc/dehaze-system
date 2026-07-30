@@ -217,7 +217,7 @@ class Settings(BaseSettings):
     LOG_FORMAT_JSON: bool = False  # 是否使用 JSON 结构化日志（生产环境推荐 True）
 
     # 用户管理配置
-    DEFAULT_PASSWORD: str = "12345678"  # 新用户默认密码
+    DEFAULT_PASSWORD: str = "Dehaze@2026"  # 新用户默认密码
     PASSWORD_MIN_LENGTH: int = 8  # 密码最小长度
     PASSWORD_REQUIRE_COMPLEXITY: bool = True  # 是否要求密码复杂度（至少包含字母和数字）
 
@@ -332,7 +332,7 @@ class DevelopmentSettings(Settings):
 
     # XXL-Job 配置（与 docker-compose 的 xxl-job-admin 3.3.0 对齐，accessToken 复用 DEHAZE_PASSWORD）
     XXLJOB_ENABLED: bool = True
-    XXLJOB_ACCESS_TOKEN: str = os.getenv("DEHAZE_PASSWORD", "12345678")
+    XXLJOB_ACCESS_TOKEN: str = os.getenv("DEHAZE_PASSWORD", "Dehaze@2026")
 
     # RabbitMQ 配置
     RABBITMQ_ENABLED: bool = True
@@ -351,7 +351,7 @@ class ProductionSettings(Settings):
 
     # XXL-Job 配置（生产环境启用，accessToken 复用 DEHAZE_PASSWORD）
     XXLJOB_ENABLED: bool = True
-    XXLJOB_ACCESS_TOKEN: str = os.getenv("DEHAZE_PASSWORD", "12345678")
+    XXLJOB_ACCESS_TOKEN: str = os.getenv("DEHAZE_PASSWORD", "Dehaze@2026")
 
     # RabbitMQ 配置（生产环境启用）
     RABBITMQ_ENABLED: bool = True

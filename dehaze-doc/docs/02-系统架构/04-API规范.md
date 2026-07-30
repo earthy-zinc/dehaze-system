@@ -388,7 +388,7 @@ Content-Type: application/json
 
 {
   "username": "admin",
-  "password": "12345678",
+  "password": "Dehaze@2026",
   "captchaKey": "abc123",
   "captchaCode": "8v9a",
   "rememberMe": false

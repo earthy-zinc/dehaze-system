@@ -34,7 +34,7 @@ BACKENDS = {
 }
 
 USERNAME = "admin"
-PASSWORD = "12345678"
+PASSWORD = "Dehaze@2026"
 
 BACKEND_NAMES = list(BACKENDS.keys())
 

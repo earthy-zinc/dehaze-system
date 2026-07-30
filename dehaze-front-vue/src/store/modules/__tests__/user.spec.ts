@@ -25,7 +25,7 @@ describe("useUserStore", () => {
     it("应该成功登录", async () => {
       const mockLoginData = {
         username: "admin",
-        password: "12345678",
+        password: "Dehaze@2026",
         rememberMe: true,
       };
       const mockResponse = {
@@ -173,7 +173,7 @@ describe("useUserStore", () => {
     it("应该完整执行登录 -> 获取用户信息的流程", async () => {
       const mockLoginData = {
         username: "admin",
-        password: "12345678",
+        password: "Dehaze@2026",
       };
       const mockLoginResponse = {
         sessionId: "mock-session-id",
