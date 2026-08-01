@@ -1,0 +1,171 @@
+.package-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f8fafc;
+}
+
+.package-banner {
+  padding: 24px 16px 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.banner-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.banner-desc {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.package-scroll {
+  flex: 1;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.package-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.package-card {
+  position: relative;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+}
+
+.package-card.popular {
+  border-color: #3b82f6;
+}
+
+.popular-badge {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #fff;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-radius: 10px;
+}
+
+.popular-text {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.package-header {
+  margin-bottom: 10px;
+}
+
+.package-name-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.package-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.package-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.package-price {
+  margin-bottom: 12px;
+}
+
+.price-row {
+  display: flex;
+  gap: 2px;
+  align-items: baseline;
+}
+
+.price-currency {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ef4444;
+}
+
+.price-amount {
+  font-size: 28px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.price-period {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.original-price {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+.package-benefits {
+  margin-bottom: 14px;
+}
+
+.benefit-item {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.benefit-text {
+  flex: 1;
+  font-size: 13px;
+  color: #374151;
+}
+
+.package-action {
+  margin-top: 4px;
+}
+
+.purchase-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border-radius: 8px;
+}
+
+.purchase-btn:active {
+  opacity: 0.9;
+}
+
+.purchase-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}

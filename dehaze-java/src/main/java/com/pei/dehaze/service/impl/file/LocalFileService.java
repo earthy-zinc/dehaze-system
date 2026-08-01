@@ -26,7 +26,7 @@ import java.nio.file.Path;
  * @since 2024-06-08 19:24:03
  */
 @Component
-@ConditionalOnProperty(value = "file.type", havingValue = "local")
+@ConditionalOnProperty(prefix = "file.local", name = "upload-path")
 @ConfigurationProperties(prefix = "file.local")
 @Data
 @Slf4j
@@ -37,8 +37,18 @@ public class LocalFileService implements FileService {
     private String uploadPath;
 
     @Override
+    public String getStorageType() {
+        return "local";
+    }
+
+    @Override
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    @Override
     public FileBO uploadFile(FileBO fileBO) {
-        Path filePath = Path.of(uploadPath, fileBO.getPath());
+        Path filePath = Path.of(uploadPath, fileBO.getObjectName());
         Path dirPath = filePath.getParent();
         if (!PathUtil.isDirectory(dirPath) && !PathUtil.exists(dirPath, true)) {
             try {
@@ -57,8 +67,7 @@ public class LocalFileService implements FileService {
             throw new BusinessException("无法保存文件", e);
         }
 
-        String url = baseUrl + "/" + fileBO.getObjectName();
-        fileBO.setUrl(url);
+        fileBO.setStorage(getStorageType());
         return fileBO;
     }
 
@@ -80,7 +89,7 @@ public class LocalFileService implements FileService {
 
         try {
             FileUtil.writeFromStream(inputStream, filePath.toAbsolutePath().toString());
-            return baseUrl + "/" + objectName;
+            return objectName;
         } catch (Exception e) {
             throw new BusinessException("无法保存文件: " + e.getMessage(), e);
         }
@@ -104,7 +113,7 @@ public class LocalFileService implements FileService {
 
         try {
             Files.delete(filePath);
-            log.info("删除本地文件成功: {}", objectName);
+            log.debug("删除本地文件成功: {}", objectName);
             return true;
         } catch (IOException e) {
             log.error("删除本地文件失败: {}", objectName, e);

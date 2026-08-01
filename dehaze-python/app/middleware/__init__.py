@@ -15,8 +15,11 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     """
     注册所有中间件
 
-    注意：中间件注册顺序影响执行顺序（后注册的先执行，即更靠近应用层）
-    执行顺序（请求进入时）：CORS → Prometheus → RateLimit → AntiRepeat → IPBlacklist → Trace → DBSession → ApiKeyAuth → 业务逻辑
+    注意：Starlette 的 add_middleware 将新中间件插到链首，故**后注册的越靠外层（越先执行）**。
+    执行顺序（请求进入时）：CORS → Prometheus → RateLimit → AntiRepeat → IPBlacklist → Trace → RequestLog → DBSession → ApiKeyAuth → 业务逻辑
+
+    Trace 必须在 RequestLog 之外执行，先注入请求上下文（trace_id/method/path），
+    否则访问日志拿不到 trace_id（RequestLog 须在 Trace 之内才能读到上下文）。
 
     Args:
         app: FastAPI 应用实例
@@ -31,7 +34,11 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     from app.middleware.db import DBSessionMiddleware
     app.add_middleware(DBSessionMiddleware)
 
-    # TraceID 中间件（确保日志和业务代码能获取 trace_id）
+    # 请求级访问日志中间件（须在 TraceMiddleware 之内执行，才能拿到请求上下文）
+    from app.middleware.request_log import RequestLogMiddleware
+    app.add_middleware(RequestLogMiddleware)
+
+    # TraceID 中间件（在访问日志之外执行，先注入 trace_id/method/path）
     app.add_middleware(TraceMiddleware)
 
     # IP 黑名单中间件

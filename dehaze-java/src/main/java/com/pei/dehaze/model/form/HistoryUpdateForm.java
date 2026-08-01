@@ -12,7 +12,4 @@ import lombok.Data;
 @Schema(description = "历史记录更新表单")
 @Data
 public class HistoryUpdateForm {
-
-    @Schema(description = "是否收藏")
-    private Boolean isFavorite;
 }

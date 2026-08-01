@@ -259,7 +259,7 @@ class PackageService:
         _validate_package_form(form)
         existing = await package_repository.get_by_name(db, form["name"])
         if existing:
-            raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已被历史记录占用")
         pkg = SysPackage(
             name=form["name"],
             level_code=form["levelCode"],
@@ -284,7 +284,7 @@ class PackageService:
         if pkg.name != form["name"]:
             dup = await package_repository.get_by_name(db, form["name"])
             if dup and dup.id != package_id:
-                raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已存在")
+                raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已被历史记录占用")
         pkg.name = form["name"]
         pkg.level_code = form["levelCode"]
         pkg.period = form["period"]

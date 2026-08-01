@@ -357,7 +357,7 @@ class LocalFileServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result).isEqualTo(BASE_URL + "/" + objectName);
+        assertThat(result).isEqualTo(objectName);
 
         Path filePath = tempDir.resolve(objectName);
         assertThat(Files.exists(filePath)).isTrue();

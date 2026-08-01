@@ -16,6 +16,16 @@ const (
 	traceParentKey contextKey = "trace_parent"
 	// traceSw8Key 用于在 context 中缓存 sw8
 	traceSw8Key contextKey = "trace_sw8"
+	// methodKey 用于在 context 中缓存 HTTP method
+	methodKey contextKey = "request_method"
+	// pathKey 用于在 context 中缓存 HTTP path
+	pathKey contextKey = "request_path"
+	// ipKey 用于在 context 中缓存客户端 IP（优先 X-Forwarded-For 首段）
+	ipKey contextKey = "client_ip"
+	// userAgentKey 用于在 context 中缓存客户端 User-Agent
+	userAgentKey contextKey = "user_agent"
+	// userIDKey 用于在 context 中缓存认证后用户 ID
+	userIDKey contextKey = "user_id"
 	// HeaderName HTTP 头字段名
 	HeaderName = "X-Trace-ID"
 	// HeaderNameTraceParent W3C Trace Context 头字段名
@@ -24,6 +34,10 @@ const (
 	HeaderNameSw8 = "sw8"
 	// TraceFieldName 结构化日志字段名
 	TraceFieldName = "trace_id"
+	// MethodFieldName 结构化日志字段名
+	MethodFieldName = "method"
+	// PathFieldName 结构化日志字段名
+	PathFieldName = "path"
 )
 
 // loggerKey 用于在 context 中缓存带 TraceID 的 logger 实例
@@ -139,6 +153,86 @@ func WithTraceParent(ctx context.Context, traceParent string) context.Context {
 // WithSw8 将 sw8 写入 context
 func WithSw8(ctx context.Context, sw8 string) context.Context {
 	return context.WithValue(ctx, traceSw8Key, sw8)
+}
+
+// WithMethod 将 HTTP method 写入 context
+func WithMethod(ctx context.Context, method string) context.Context {
+	return context.WithValue(ctx, methodKey, method)
+}
+
+// MethodFromContext 从 context 中提取 HTTP method
+func MethodFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if m, ok := ctx.Value(methodKey).(string); ok {
+		return m
+	}
+	return ""
+}
+
+// WithPath 将 HTTP path 写入 context
+func WithPath(ctx context.Context, path string) context.Context {
+	return context.WithValue(ctx, pathKey, path)
+}
+
+// PathFromContext 从 context 中提取 HTTP path
+func PathFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if p, ok := ctx.Value(pathKey).(string); ok {
+		return p
+	}
+	return ""
+}
+
+// WithIP 将客户端 IP 写入 context
+func WithIP(ctx context.Context, ip string) context.Context {
+	return context.WithValue(ctx, ipKey, ip)
+}
+
+// IPFromContext 从 context 中提取客户端 IP
+func IPFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if i, ok := ctx.Value(ipKey).(string); ok {
+		return i
+	}
+	return ""
+}
+
+// WithUserAgent 将 User-Agent 写入 context
+func WithUserAgent(ctx context.Context, ua string) context.Context {
+	return context.WithValue(ctx, userAgentKey, ua)
+}
+
+// UserAgentFromContext 从 context 中提取 User-Agent
+func UserAgentFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if u, ok := ctx.Value(userAgentKey).(string); ok {
+		return u
+	}
+	return ""
+}
+
+// WithUserID 将认证后用户 ID 写入 context（认证层调用）
+func WithUserID(ctx context.Context, userID int64) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
+}
+
+// UserIDFromContext 从 context 中提取用户 ID
+func UserIDFromContext(ctx context.Context) int64 {
+	if ctx == nil {
+		return 0
+	}
+	if id, ok := ctx.Value(userIDKey).(int64); ok {
+		return id
+	}
+	return 0
 }
 
 // TraceIDField 返回 zap.Field，如果 TraceID 为空则返回 zap.Skip()

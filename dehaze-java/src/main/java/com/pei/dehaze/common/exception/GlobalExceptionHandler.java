@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,6 +27,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.sql.SQLSyntaxErrorException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,11 +49,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(BindException e) {
-        log.error("BindException:{}", e.getMessage());
         String msg = e.getAllErrors()
             .stream()
             .map(DefaultMessageSourceResolvable::getDefaultMessage)
             .collect(Collectors.joining("；"));
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.warn("参数校验失败: {}", msg);
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(ResultCode.PARAM_ERROR, msg);
     }
 
@@ -60,11 +67,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(ConstraintViolationException e) {
-        log.error("ConstraintViolationException:{}", e.getMessage());
         String msg = e.getConstraintViolations()
             .stream()
             .map(ConstraintViolation::getMessage)
             .collect(Collectors.joining("；"));
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.warn("参数校验失败: {}", msg);
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(ResultCode.PARAM_ERROR, msg);
     }
 
@@ -74,26 +85,38 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(MethodArgumentNotValidException e) {
-        log.error("MethodArgumentNotValidException:{}", e.getMessage());
         String msg = e.getBindingResult()
             .getAllErrors()
             .stream()
             .map(DefaultMessageSourceResolvable::getDefaultMessage)
             .collect(Collectors.joining("；"));
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.warn("参数校验失败: {}", msg);
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(ResultCode.PARAM_ERROR, msg);
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public <T> Result<T> processException(NoHandlerFoundException e) {
-        log.error(e.getMessage(), e);
+        MDC.put("code", ResultCode.RESOURCE_NOT_FOUND.getCode());
+        MDC.put("status", "404");
+        log.error("HTTP 异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(ResultCode.RESOURCE_NOT_FOUND);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(MissingServletRequestParameterException e) {
-        log.error(e.getMessage(), e);
+        MDC.put("code", ResultCode.PARAM_IS_NULL.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(ResultCode.PARAM_IS_NULL);
     }
 
@@ -101,66 +124,106 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(MethodArgumentTypeMismatchException e) {
-        log.error(e.getMessage(), e);
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: 类型错误");
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(ResultCode.PARAM_ERROR, "类型错误");
     }
 
     @ExceptionHandler(ServletException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(ServletException e) {
-        log.error(e.getMessage(), e);
+        MDC.put("code", ResultCode.SYSTEM_EXECUTION_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("HTTP 异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(e.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> handleIllegalArgumentException(IllegalArgumentException e) {
-        log.error("非法参数异常，异常原因：{}", e.getMessage(), e);
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(e.getMessage());
     }
 
     @ExceptionHandler(JsonProcessingException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> handleJsonProcessingException(JsonProcessingException e) {
-        log.error("Json转换异常，异常原因：{}", e.getMessage(), e);
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(e.getMessage());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(HttpMessageNotReadableException e) {
-        log.error(e.getMessage(), e);
         String errorMessage = "请求体不可为空";
         Throwable cause = e.getCause();
         if (cause != null) {
             errorMessage = convertMessage(cause);
         }
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: {}", errorMessage);
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(errorMessage);
     }
 
     @ExceptionHandler(TypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(TypeMismatchException e) {
-        log.error(e.getMessage(), e);
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(e.getMessage());
     }
 
     @ExceptionHandler(BadSqlGrammarException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public <T> Result<T> handleBadSqlGrammarException(BadSqlGrammarException e) {
-        log.error(e.getMessage(), e);
         String errorMsg = e.getMessage();
         if (CharSequenceUtil.isNotBlank(errorMsg) && errorMsg.contains("denied to user")) {
+            MDC.put("code", ResultCode.FORBIDDEN_OPERATION.getCode());
+            MDC.put("status", "500");
+            log.error("数据库异常: {}", e.getMessage(), e);
+            MDC.remove("code");
+            MDC.remove("status");
             return Result.failed(ResultCode.FORBIDDEN_OPERATION);
-        } else {
-            return Result.failed(e.getMessage());
         }
+        MDC.put("code", ResultCode.DATABASE_ERROR.getCode());
+        MDC.put("status", "500");
+        MDC.put("exc_info", stackTraceToString(e));
+        log.error("数据库异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        MDC.remove("exc_info");
+        return Result.failed(e.getMessage());
     }
 
     @ExceptionHandler(SQLSyntaxErrorException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public <T> Result<T> processSQLSyntaxErrorException(SQLSyntaxErrorException e) {
-        log.error(e.getMessage(), e);
+        MDC.put("code", ResultCode.DATABASE_ERROR.getCode());
+        MDC.put("status", "500");
+        MDC.put("exc_info", stackTraceToString(e));
+        log.error("数据库异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        MDC.remove("exc_info");
         return Result.failed(e.getMessage());
     }
 
@@ -168,7 +231,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> handleBizException(BusinessException e) {
-        log.error("biz exception: {}", e.getMessage(), e);
+        String code = e.getResultCode() != null ? e.getResultCode().getCode() : ResultCode.SYSTEM_EXECUTION_ERROR.getCode();
+        MDC.put("code", code);
+        MDC.put("status", "400");
+        log.warn("业务异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
         if (e.getResultCode() != null) {
             return Result.failed(e.getResultCode(), e.getMessage());
         }
@@ -178,23 +246,43 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RateLimitException.class)
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     public Result<Void> handleRateLimitException(RateLimitException ex) {
+        MDC.put("code", ResultCode.RATE_LIMIT.getCode());
+        MDC.put("status", "429");
+        log.warn("业务异常: {}", ex.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(ResultCode.RATE_LIMIT, ex.getMessage());
     }
 
     @ExceptionHandler(DuplicateKeyException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> handleDuplicateKeyException(DuplicateKeyException e) {
-        log.error("DuplicateKeyException: {}", e.getMessage());
+        MDC.put("code", ResultCode.DATA_EXISTS.getCode());
+        MDC.put("status", "400");
+        log.error("数据库异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
         return Result.failed(ResultCode.DATA_EXISTS, "数据已存在，请检查唯一字段");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
-        log.error("DataIntegrityViolationException: {}", e.getMessage());
         if (e instanceof DuplicateKeyException) {
+            MDC.put("code", ResultCode.DATA_EXISTS.getCode());
+            MDC.put("status", "400");
+            log.error("数据库异常: {}", e.getMessage());
+            MDC.remove("code");
+            MDC.remove("status");
             return Result.failed(ResultCode.DATA_EXISTS, "数据已存在，请检查唯一字段");
         }
+        MDC.put("code", ResultCode.DATABASE_ERROR.getCode());
+        MDC.put("status", "500");
+        MDC.put("exc_info", stackTraceToString(e));
+        log.error("数据库异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        MDC.remove("exc_info");
         return Result.failed(ResultCode.SYSTEM_EXECUTION_ERROR, "数据完整性约束违反: " + e.getMessage());
     }
 
@@ -206,8 +294,20 @@ public class GlobalExceptionHandler {
                 || e instanceof AuthenticationException) {
             throw e;
         }
-        log.error("unknown exception: {}", e.getMessage(), e);
+        MDC.put("code", ResultCode.SYSTEM_EXECUTION_ERROR.getCode());
+        MDC.put("status", "500");
+        MDC.put("exc_info", stackTraceToString(e));
+        log.error("未处理异常: {}", e);
+        MDC.remove("code");
+        MDC.remove("status");
+        MDC.remove("exc_info");
         return Result.failed(e.getLocalizedMessage());
+    }
+
+    private static String stackTraceToString(Throwable e) {
+        StringWriter sw = new StringWriter();
+        e.printStackTrace(new PrintWriter(sw));
+        return sw.toString();
     }
 
     /**

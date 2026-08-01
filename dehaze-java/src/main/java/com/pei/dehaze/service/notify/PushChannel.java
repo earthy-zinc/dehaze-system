@@ -42,7 +42,7 @@ public class PushChannel implements MessagePushChannel {
         }
         if (isInDndPeriod(recipientId) && !isCriticalAlert(message)) {
             enqueueDelayedPush(message, recipientId);
-            log.info("消息进入免打扰延迟推送队列: messageId={}, recipientId={}", message.getId(), recipientId);
+            log.debug("消息进入免打扰延迟推送队列: messageId={}, recipientId={}", message.getId(), recipientId);
             return;
         }
         doPush(message, recipientId);

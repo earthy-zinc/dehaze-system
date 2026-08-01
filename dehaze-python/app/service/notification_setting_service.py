@@ -62,30 +62,14 @@ class NotificationSettingService:
     async def get_or_init(db: AsyncSession, user_id: int) -> dict[str, Any]:
         setting = await notification_setting_repository.get_by_user_id(db, user_id)
         if not setting:
-            setting = SysNotificationSetting(
-                user_id=user_id,
-                push_enabled=1,
-                dnd_enabled=0,
-                dnd_start=time(22, 0),
-                dnd_end=time(8, 0),
-                preferences=DEFAULT_PREFERENCES,
-            )
-            await notification_setting_repository.create(db, setting)
+            setting = await notification_setting_repository.upsert_by_user_id(db, user_id)
         return _to_vo(setting)
 
     @staticmethod
     async def update(db: AsyncSession, user_id: int, data: dict[str, Any]) -> None:
         setting = await notification_setting_repository.get_by_user_id(db, user_id)
         if not setting:
-            setting = SysNotificationSetting(
-                user_id=user_id,
-                push_enabled=1,
-                dnd_enabled=0,
-                dnd_start=time(22, 0),
-                dnd_end=time(8, 0),
-                preferences=DEFAULT_PREFERENCES,
-            )
-            await notification_setting_repository.create(db, setting)
+            setting = await notification_setting_repository.upsert_by_user_id(db, user_id)
 
         if "pushEnabled" in data:
             setting.push_enabled = 1 if data["pushEnabled"] else 0

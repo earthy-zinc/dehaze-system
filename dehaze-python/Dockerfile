@@ -29,7 +29,9 @@ ENV UV_SYSTEM_PYTHON=1
 ENV UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 ENV APP_ENV=production
 ENV BASICSR_JIT=True
-# Prometheus 多进程指标聚合（配合 uvicorn --workers 4 使用）
+# 容器内服务端口（覆盖 config.py 默认的 8991）
+ENV SERVER_PORT=80
+# Prometheus 多进程指标聚合（配合多 Worker 使用）
 ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
 
 # 设置工作目录
@@ -55,5 +57,5 @@ VOLUME /app/dataset
 # 暴露端口
 EXPOSE 80
 
-# 启动 FastAPI 应用
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "4"]
+# 启动 FastAPI 应用（参数由 app/config.py + 环境变量驱动）
+CMD ["python", "-m", "app.main"]

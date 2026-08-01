@@ -1,5 +1,4 @@
 import logging
-import traceback
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -44,6 +43,7 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(BusinessException)
     async def business_exception_handler(request: Request, exc: BusinessException):
         request.state.db_should_rollback = True
+        _logger.error("业务异常: %s", exc.message, extra={"code": exc.code.code, "status": 400})
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
@@ -72,6 +72,7 @@ def register_exception_handlers(app: FastAPI):
         else:
             msg = "请求参数格式错误"
 
+        _logger.warning("参数校验失败: %s", msg, extra={"code": ResultCode.PARAM_ERROR.code, "status": 400})
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
@@ -95,6 +96,7 @@ def register_exception_handlers(app: FastAPI):
         }
         result_code = status_code_map.get(exc.status_code, ResultCode.SYSTEM_EXECUTION_ERROR)
 
+        _logger.error("HTTP 异常: %s", result_code.msg, extra={"code": result_code.code, "status": exc.status_code})
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -109,7 +111,11 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(SQLAlchemyError)
     async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
         request.state.db_should_rollback = True
-        _logger.error(f"数据库异常: {exc}", exc_info=True)
+        _logger.error(
+            "数据库异常: %s", exc,
+            extra={"code": ResultCode.DATABASE_ERROR.code, "status": 500},
+            exc_info=True,
+        )
 
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -125,7 +131,11 @@ def register_exception_handlers(app: FastAPI):
     async def generic_exception_handler(request: Request, exc: Exception):
         """通用异常（兜底）"""
         request.state.db_should_rollback = True
-        _logger.error(f"未处理异常: {exc}\n{traceback.format_exc()}")
+        _logger.error(
+            "未处理异常: %s", exc,
+            extra={"code": ResultCode.SYSTEM_EXECUTION_ERROR.code, "status": 500},
+            exc_info=True,
+        )
 
         if settings.DEBUG:
             return JSONResponse(

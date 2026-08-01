@@ -21,7 +21,8 @@ CREATE TABLE `sys_role`
     `create_by`   bigint                                                       NULL     DEFAULT NULL COMMENT '创建人ID',
     `update_by`   bigint                                                       NULL     DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_name` (`name` ASC) USING BTREE
+    UNIQUE INDEX `uk_name` (`name` ASC) USING BTREE,
+    UNIQUE INDEX `uk_code` (`code` ASC) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = '角色表'

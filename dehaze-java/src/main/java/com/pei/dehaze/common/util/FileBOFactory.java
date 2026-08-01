@@ -13,7 +13,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 
 /**
@@ -25,7 +24,6 @@ import java.nio.file.Files;
 @Slf4j
 public class FileBOFactory {
 
-    private final FilePathBuilder filePathBuilder;
     private final ImageProcessingService imageProcessingService;
 
     /**
@@ -60,16 +58,13 @@ public class FileBOFactory {
             String extension = FileUtil.extName(filename);
             String md5 = FileUploadUtils.getMd5(stream);
             String objectName = path + "/" + md5 + "." + extension;
-            String url = filePathBuilder.buildUrl(objectName);
 
             fileBO.setFile(file);
             fileBO.setName(filename);
             fileBO.setObjectName(objectName);
             fileBO.setExtension(extension);
             fileBO.setMd5(md5);
-            fileBO.setPath(objectName);
             fileBO.setSize(file.length());
-            fileBO.setUrl(url);
             return fileBO;
         } catch (IOException e) {
             throw new BusinessException("创建 FileBO 失败: " + e.getMessage(), e);
@@ -131,15 +126,12 @@ public class FileBOFactory {
         }
 
         String objectName = path + "/" + md5 + "." + extension;
-        String url = filePathBuilder.buildUrl(objectName);
 
         fileBO.setFile(tempFile);
         fileBO.setName(filename);
         fileBO.setObjectName(objectName);
         fileBO.setExtension(extension);
         fileBO.setMd5(md5);
-        fileBO.setPath(objectName);
         fileBO.setSize(file.getSize());
-        fileBO.setUrl(url);
     }
 }

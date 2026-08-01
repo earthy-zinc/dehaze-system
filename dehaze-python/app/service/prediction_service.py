@@ -21,7 +21,9 @@ from typing import Optional
 
 import httpx
 import PIL.Image
+from sqlalchemy import select
 
+from app.config import settings
 from app.database import async_session_factory, get_db_session
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
@@ -101,14 +103,17 @@ class PredictionService:
         # 1. 从数据库获取算法信息
         algorithm = await self.get_algorithm(algorithm_id)
 
-        # 2. fileId 存在时查询原始文件并用其真实 URL（对齐 Java resolveImageUrl）
+        # 2. fileId 存在时查询原始文件并用其真实 object_name 拼接访问 URL（对齐 Java resolveImageUrl）
         origin_file: Optional[SysFile] = None
         if file_id is not None:
             async with async_session_factory() as db:
                 origin_file = await file_repository.get_by_id(db, file_id)
             if origin_file is None:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"文件不存在: {file_id}")
-            image_url = origin_file.url
+            # URL 运行时拼接（baseUrl + object_name），不落库
+            from app.service.storage.factory import get_storage_by_name
+            storage_service = get_storage_by_name(origin_file.storage)
+            image_url = storage_service.get_url(origin_file.object_name)
 
         # 3. 调用拦截器链（命中即短路，不调用算法）
         context = PredictionContext(
@@ -122,7 +127,7 @@ class PredictionService:
         intercepted = await self._interceptor_chain.intercept(context)
         if intercepted is not None:
             elapsed = int((time.time() - start) * 1000)
-            logger.info(
+            logger.debug(
                 "预测拦截器命中: algorithmId=%s, resultUrl=%s",
                 algorithm_id, intercepted.result_url,
             )
@@ -138,8 +143,16 @@ class PredictionService:
                 user_id=user_id,
             )
 
-        # 4. 下载输入图片
-        image_bytes = await self.download_image(image_url)
+        # 4. 下载输入图片（系统存储文件用 SDK 下载避免 minio 私有 bucket 匿名 GET 403）
+        if origin_file is not None:
+            bucket = settings.MINIO_BUCKET_NAME
+            loop = asyncio.get_running_loop()
+            raw = await loop.run_in_executor(
+                None, lambda: storage_service.download(bucket, origin_file.object_name)
+            )
+            image_bytes = io.BytesIO(raw)
+        else:
+            image_bytes = await self.download_image(image_url)
         image_md5 = calculate_bytes_md5(image_bytes)
 
         # 5. 查询 Redis 缓存（基于 algorithmId + imageMd5）
@@ -147,7 +160,7 @@ class PredictionService:
         cached = await self._get_cached_prediction(cache_key)
         if cached is not None:
             elapsed = int((time.time() - start) * 1000)
-            logger.info("预测缓存命中: algorithmId=%s, md5=%s", algorithm_id, image_md5)
+            logger.debug("预测缓存命中: algorithmId=%s, md5=%s", algorithm_id, image_md5)
             return await self._write_completed_log(
                 algorithm_id=algorithm_id,
                 origin_md5=image_md5,
@@ -207,7 +220,10 @@ class PredictionService:
         pred_file_id: Optional[int] = None,
         extra: Optional[dict] = None,
     ) -> dict:
-        """写 completed 日志并返回完整结果（拦截器命中 / 缓存命中共用）"""
+        """写 completed 日志并返回完整结果（拦截器命中 / 缓存命中共用）。
+
+        pred_url 参数为运行时拼接的完整 URL（由调用方通过 storage.get_url 生成）。
+        """
         from app.models.base import set_current_user_id
         set_current_user_id(user_id)
         try:
@@ -285,22 +301,40 @@ class PredictionService:
                     image_size=image_size,
                 )
 
-            # 3. 上传结果
-            result_url = await self._upload_result(result_bytes, algorithm.name)
+            # 3. 上传结果（返回 object_name，URL 运行时拼接）
+            result_object_name = await self._upload_result(result_bytes, algorithm.name)
             result_md5 = calculate_bytes_md5(result_bytes)
+            data_len = len(result_bytes.getvalue())
             elapsed_ms = int((time.time() - start_time) * 1000)
 
-            # 4. 更新日志为 completed
+            # 运行时拼接完整 URL（与 wpxnet 拦截器/缓存命中行为一致）
+            from app.service.storage.factory import get_storage_by_name
+            result_url = get_storage_by_name(settings.FILE_STORAGE_TYPE).get_url(result_object_name)
+
+            # 4. 注册 sys_file（MD5 去重 + upsert 复活软删记录）+ 更新日志为 completed
             async with get_db_session() as db:
+                result_file = await file_repository.upsert_by_md5(
+                    db,
+                    md5=result_md5,
+                    type="prediction",
+                    name=f"{algorithm.name}.png",
+                    object_name=result_object_name,
+                    storage=settings.FILE_STORAGE_TYPE,
+                    size=f"{data_len}",
+                    size_bytes=data_len,
+                )
+                result_file_id = result_file.id
+
                 await pred_log_repository.update_result(
                     db=db,
                     log_id=log_id,
                     pred_md5=result_md5,
                     pred_url=result_url,
                     time_ms=elapsed_ms,
+                    pred_file_id=result_file_id,
                 )
 
-            # 5. 写入 Redis 缓存
+            # 5. 写入 Redis 缓存（存完整 URL，与拦截器命中行为一致）
             await self._set_cached_prediction(cache_key, {
                 "resultUrl": result_url,
                 "resultMd5": result_md5,
@@ -401,17 +435,20 @@ class PredictionService:
         HTTP 下载采用指数退避重试（最多 3 次），仅对网络层错误和 5xx 响应重试，
         4xx 客户端错误不重试。
         """
-        # 处理本地文件路径 /api/v1/files/download/... → upload/...
-        if url.startswith("/api/v1/files/download/"):
-            local_path = url[len("/api/v1/files/download/"):]
-            full_path = Path("upload") / local_path
-            if full_path.exists():
-                loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(
-                    None, self._read_file_sync, full_path)
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"本地文件不存在: {full_path}")
+        # 系统存储 URL：用 SDK 带认证下载，避免 minio 私有 bucket 匿名 GET 403
+        from app.service.storage.factory import get_storage_service
+        storage_service = get_storage_service()
+        base_url = storage_service.base_url.rstrip("/")
+        if url.startswith(base_url + "/"):
+            object_name = url[len(base_url) + 1:]
+            bucket = settings.MINIO_BUCKET_NAME
+            loop = asyncio.get_running_loop()
+            raw = await loop.run_in_executor(
+                None, lambda: storage_service.download(bucket, object_name)
+            )
+            return io.BytesIO(raw)
 
-        # 处理绝对本地路径
+        # 处理绝对本地路径（用于离线算法模型本地推理，非生产链路）
         if not url.startswith("http://") and not url.startswith("https://"):
             local_path = Path(url)
             if local_path.exists():
@@ -519,7 +556,7 @@ class PredictionService:
                     f"模型权重加载失败: {e}",
                 ) from e
 
-        logger.info("执行去雾: module=%s, model=%s", module_name, model_path)
+        logger.debug("执行去雾: module=%s, model=%s", module_name, model_path)
 
         # 调用 dehaze 函数
         result = dehaze_fn(image_bytes, model_path)
@@ -538,8 +575,10 @@ class PredictionService:
             )
 
     async def _upload_result(self, result_bytes: io.BytesIO, algorithm_name: str) -> str:
-        """上传结果到 MinIO（与文件管理模块共享存储桶），由文件下载接口统一提供服务"""
-        from app.config import settings
+        """上传预测结果到 MinIO（与文件管理模块共享存储桶）。
+
+        返回 object_name（对象键），URL 由响应层通过 storage.get_url 拼接。
+        """
         from app.service.file_service import get_minio_client
 
         date_str = datetime.now().strftime("%Y%m%d")
@@ -569,13 +608,84 @@ class PredictionService:
             raise BusinessException(
                 ResultCode.FILE_STORAGE_ERROR, f"结果存储失败: {str(e)}")
 
-        logger.info("预测结果已上传到存储: %s", object_name)
-        # 与 Java 端 file.baseUrl 风格一致：FILE_BASE_URL 配置后返回绝对 URL，
-        # 留空时回退为相对路径 /api/v1/files/download/...
-        base_url = settings.FILE_BASE_URL.rstrip("/")
-        if base_url:
-            return f"{base_url}/{object_name}"
-        return f"/api/v1/files/download/{object_name}"
+        logger.debug("预测结果已上传到存储: %s", object_name)
+        return object_name
+
+    async def batch_predict(
+        self,
+        algorithm_id: int,
+        items: list[dict],
+        user_id: int,
+        skip_quota_check: bool = False,
+    ) -> list[dict]:
+        """批量处理：校验上限后逐张提交预测"""
+        if len(items) > 20:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "批量处理最多支持20张图片")
+
+        if not skip_quota_check:
+            from app.service.member_service import MemberService
+            from app.repository.member_repository import member_repository
+            from app.repository.member_benefit_repository import member_benefit_repository
+            async with get_db_session() as db:
+                member = await member_repository.get_by_user_id(db, user_id)
+                if not member:
+                    raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
+                benefit = await member_benefit_repository.get_by_level_code(db, member.level_code)
+                batch_limit = benefit.batch_limit if benefit else 5
+                if len(items) > batch_limit:
+                    raise BusinessException(
+                        ResultCode.OPERATION_NOT_ALLOW,
+                        f"当前会员等级批量处理上限为{batch_limit}张",
+                    )
+
+        results = []
+        for item in items:
+            file_id = item.get("fileId")
+            image_url = item.get("imageUrl")
+            params = item.get("params")
+            recommended_by = item.get("recommendedBy")
+
+            try:
+                result = await self.predict(
+                    algorithm_id=algorithm_id,
+                    image_url=image_url,
+                    params=params,
+                    user_id=user_id,
+                    file_id=file_id,
+                    skip_quota_check=skip_quota_check,
+                )
+                results.append({
+                    "logId": result.get("logId"),
+                    "status": result.get("status", LogStatus.PROCESSING.value),
+                    "resultUrl": result.get("resultUrl"),
+                    "resultThumbnailUrl": result.get("resultThumbnailUrl"),
+                    "time": result.get("time", 0),
+                })
+            except Exception as e:
+                results.append({
+                    "logId": None,
+                    "status": LogStatus.FAILED.value,
+                    "errorMessage": str(e),
+                    "time": 0,
+                })
+
+        return results
+
+    @staticmethod
+    async def get_quota(db, user_id: int) -> dict:
+        """查询用户本月剩余去雾处理次数"""
+        from app.repository.member_repository import member_repository
+        from datetime import datetime
+
+        member = await member_repository.get_by_user_id(db, user_id)
+        if not member:
+            raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
+
+        total = member.monthly_dehaze_quota or 0
+        used = member.monthly_dehaze_used or 0
+        remaining = max(0, total - used)
+
+        return {"total": total, "used": used, "remaining": remaining}
 
 
 # 单例

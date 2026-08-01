@@ -2,7 +2,6 @@ package com.pei.dehaze.service.strategy.impl;
 
 import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.model.entity.SysTask;
-import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.importexport.ExportHandler;
 import com.pei.dehaze.service.importexport.ExportHandlerRegistry;
 import com.pei.dehaze.service.importexport.ImportExportFileGenerator;
@@ -12,6 +11,7 @@ import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.strategy.ProgressCallback;
 import com.pei.dehaze.service.strategy.TaskResult;
 import com.pei.dehaze.service.strategy.TaskStrategy;
+import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -34,7 +34,7 @@ public class GenericExportStrategy implements TaskStrategy {
 
     private final ExportHandlerRegistry exportHandlerRegistry;
     private final ImportExportFileGenerator fileGenerator;
-    private final FileService fileService;
+    private final StorageServiceFactory storageServiceFactory;
 
     @Override
     public List<String> getTaskTypes() {
@@ -101,13 +101,14 @@ public class GenericExportStrategy implements TaskStrategy {
             String fileExt = handler.useDirectExport() ? "zip" : getFileExtension(format);
             String contentType = handler.useDirectExport() ? "application/zip" : getContentType(format);
             String objectName = "exports/" + task.getTaskId() + "." + fileExt;
-            String downloadUrl = fileService.uploadFile(objectName,
+            // uploadFile 返回 objectName（落库 sys_task.result），下载时由 getDownloadUrl 动态拼接 URL
+            String resultObjectName = storageServiceFactory.getDefault().uploadFile(objectName,
                     new ByteArrayInputStream(baos.toByteArray()),
                     (long) baos.size(),
                     contentType);
 
-            log.info("异步导出完成: taskId={}, module={}, downloadUrl={}", task.getTaskId(), module, downloadUrl);
-            return TaskResult.success(downloadUrl);
+            log.debug("异步导出完成: taskId={}, module={}, objectName={}", task.getTaskId(), module, resultObjectName);
+            return TaskResult.success(resultObjectName);
         } catch (Exception e) {
             log.error("异步导出失败: taskId={}, module={}", task.getTaskId(), module, e);
             return TaskResult.failure("导出失败: " + e.getMessage());

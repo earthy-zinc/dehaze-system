@@ -94,7 +94,7 @@ class Consumer(BaseRabbitMQClient):
         await queue.consume(self._make_callback(queue_name, handler))
         self._queues[queue_name] = queue
 
-        logger.info(
+        logger.debug(
             f"Consumer 已订阅死信队列: queue={queue_name}, routing_key={routing_key}"
         )
 
@@ -158,7 +158,7 @@ class Consumer(BaseRabbitMQClient):
         await queue.consume(self._make_callback(queue_name, handler))
         self._queues[queue_name] = queue
 
-        logger.info(
+        logger.debug(
             f"Consumer 已订阅队列: queue={queue_name}, routing_key={routing_key}, "
             f"retry_levels={len(retry_delays)}, dlx={dlx_queue_name}"
         )
@@ -237,7 +237,7 @@ class Consumer(BaseRabbitMQClient):
             await exchange.publish(retry_message, routing_key=retry_routing_key)
             await message.ack()
 
-            logger.info(
+            logger.debug(
                 f"消息已投递到重试队列: queue={retry_queue}, "
                 f"retryCount={retry_count + 1}, "
                 f"delay={retry_delays[retry_count]}ms"

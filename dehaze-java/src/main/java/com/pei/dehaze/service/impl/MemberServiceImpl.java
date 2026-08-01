@@ -363,16 +363,15 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
             }
             for (SysMember member : members) {
                 if (member.getQuotaResetMonth() != null) {
-                    SysMemberQuota quota = new SysMemberQuota();
-                    quota.setUserId(member.getUserId());
-                    quota.setQuotaMonth(member.getQuotaResetMonth());
-                    quota.setLevelCode(member.getLevelCode());
-                    quota.setDehazeQuota(member.getMonthlyDehazeQuota());
-                    quota.setDehazeUsed(member.getMonthlyDehazeUsed());
-                    quota.setEvaluateQuota(member.getMonthlyEvaluateQuota());
-                    quota.setEvaluateUsed(member.getMonthlyEvaluateUsed());
-                    quota.setResetTime(LocalDateTime.now());
-                    quotaMapper.insert(quota);
+                    // upsert：quota_month + user_id 唯一键冲突时复活软删行，保留历史额度记录
+                    quotaMapper.upsertByUserAndMonth(
+                            member.getUserId(),
+                            member.getQuotaResetMonth(),
+                            member.getMonthlyDehazeQuota(),
+                            member.getMonthlyDehazeUsed(),
+                            member.getMonthlyEvaluateQuota(),
+                            member.getMonthlyEvaluateUsed()
+                    );
                 }
                 SysMemberBenefit benefit = benefitMap.get(member.getLevelCode());
                 if (benefit != null) {
@@ -388,7 +387,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
             }
             totalProcessed += members.size();
         }
-        log.info("月度配额重置完成: 共处理{}条记录", totalProcessed);
+        log.debug("月度配额重置完成: 共处理{}条记录", totalProcessed);
     }
 
     @Override
@@ -417,29 +416,16 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                 sendLevelChangeNotification(member.getUserId(), oldLevelCode, targetLevel, benefit);
             }
         }
-        log.info("会员过期降级处理完成: 共处理{}条记录", expired.size());
+        log.debug("会员过期降级处理完成: 共处理{}条记录", expired.size());
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void initMember(Long userId) {
         SysMemberBenefit benefit = memberBenefitService.getByLevelCode("level_0");
-        SysMember member = new SysMember();
-        member.setUserId(userId);
-        member.setLevelCode("level_0");
-        member.setLevelSource("growth");
-        member.setGrowthValue(0L);
-        member.setTotalConsumption(0L);
-        member.setStatus(1);
-        if (benefit != null) {
-            member.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
-            member.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
-        }
-        member.setMonthlyDehazeUsed(0);
-        member.setMonthlyEvaluateUsed(0);
-        YearMonth ym = YearMonth.now();
-        member.setQuotaResetMonth(ym.getYear() * 100 + ym.getMonthValue());
-        this.save(member);
+        // upsert：user_id 相同即同一自然人，无越权风险；复活时降级为 level_0、清空 monthly_*_quota，保留 total_consumption（风控用）
+        Long totalConsumption = 0L;
+        this.baseMapper.upsertByUser(userId, totalConsumption);
     }
 
     @Override
@@ -502,7 +488,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                 }
             }
         }
-        log.info("会员到期预警完成: 共发送{}条提醒", sentCount);
+        log.debug("会员到期预警完成: 共发送{}条提醒", sentCount);
     }
 
     @Override

@@ -25,6 +25,14 @@ class LocalStorageService(StorageService):
     def __init__(self):
         self._base_path = Path(settings.LOCAL_STORAGE_PATH)
 
+    @property
+    def name(self) -> str:
+        return "local"
+
+    @property
+    def base_url(self) -> str:
+        return settings.FILE_STORAGE_BASE_URLS["local"]
+
     def _resolve_path(self, bucket: str, object_name: str) -> Path:
         """解析完整文件路径"""
         full_path = self._base_path / bucket / object_name
@@ -77,13 +85,6 @@ class LocalStorageService(StorageService):
         if file_path.exists():
             return file_path.stat().st_size
         return None
-
-    def get_url(self, bucket: str, object_name: str) -> str:
-        if settings.FILE_BASE_URL:
-            base = settings.FILE_BASE_URL.rstrip("/")
-            return f"{base}/{object_name}"
-        # 本地模式返回相对路径
-        return f"/files/{bucket}/{object_name}"
 
     def ensure_bucket(self, bucket: str) -> None:
         bucket_path = self._base_path / bucket

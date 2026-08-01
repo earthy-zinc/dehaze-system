@@ -31,8 +31,8 @@ public class LoginViewModelTest {
     @Test
     public void testValidPassword() {
         // 测试有效的密码
-        loginViewModel.getPassword().setValue("Dehaze@2026");
-        assertEquals("Dehaze@2026", loginViewModel.getPassword().getValue());
+        loginViewModel.getPassword().setValue("Dehaze2026");
+        assertEquals("Dehaze2026", loginViewModel.getPassword().getValue());
     }
 
     @Test
@@ -46,13 +46,13 @@ public class LoginViewModelTest {
     public void testFormValidationWithValidData() {
         // 测试表单验证 - 有效数据
         loginViewModel.getUsername().setValue("admin");
-        loginViewModel.getPassword().setValue("Dehaze@2026");
+        loginViewModel.getPassword().setValue("Dehaze2026");
         loginViewModel.getCaptchaCode().setValue("abcd");
 
         // 注意：实际的验证逻辑在 login() 方法中执行
         // 这里我们只是测试数据是否正确设置
         assertEquals("admin", loginViewModel.getUsername().getValue());
-        assertEquals("Dehaze@2026", loginViewModel.getPassword().getValue());
+        assertEquals("Dehaze2026", loginViewModel.getPassword().getValue());
         assertEquals("abcd", loginViewModel.getCaptchaCode().getValue());
     }
 

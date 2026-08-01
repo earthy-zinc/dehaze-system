@@ -167,7 +167,7 @@ const MagnifierPage: React.FC = () => {
             onClick={handleTap}
           >
             <Image
-              src={result!.resultUrl}
+              src={result!.resultUrl || ""}
               className="base-image"
               mode="widthFix"
               lazyLoad
@@ -186,7 +186,7 @@ const MagnifierPage: React.FC = () => {
               <View
                 className={`magnifier-lens ${displayMode === "compare" ? "lens-result" : ""}`}
                 style={{
-                  ...lensStyle(result!.resultUrl),
+                  ...lensStyle(result!.resultUrl || ""),
                   ...(displayMode === "compare"
                     ? { left: `${lensPos.x + lensSize / 2}px` }
                     : {}),

@@ -32,7 +32,7 @@ public interface SysFileService extends IService<SysFile> {
      * 仅创建文件记录（不上传到对象存储），用于 nginx 直服的数据集文件
      * MD5 去重：已存在则直接返回
      *
-     * @param fileBO 文件信息（url 已预构建）
+     * @param fileBO 文件信息（objectName + storage 已设置）
      * @return 文件记录
      */
     SysFile saveFileRecord(FileBO fileBO);
@@ -47,4 +47,9 @@ public interface SysFileService extends IService<SysFile> {
     boolean deleteFile(Long fileId);
 
     InputStream download(String objectName);
+
+    /**
+     * 填充运行时拼接的访问 URL（不落库）
+     */
+    void fillUrl(SysFile file);
 }

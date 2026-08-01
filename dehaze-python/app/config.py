@@ -2,232 +2,239 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from pathlib import Path
+from typing import Annotated, Literal
 
-from pydantic import Field, computed_field, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-if not os.environ.get("SSL_CERT_FILE"):
-    try:
-        import certifi
-
-        os.environ["SSL_CERT_FILE"] = certifi.where()
-    except ImportError:
-        pass
-
+# 项目根目录，.env 文件位于此处
+_DEHAZE_SYSTEM_ROOT = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
+    """应用配置（多环境，通过 APP_ENV 切换）"""
 
     model_config = SettingsConfigDict(
-        env_file="../.env",
+        env_file=str(_DEHAZE_SYSTEM_ROOT / ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
     )
 
-    # 应用基础
+    # ===== 应用与环境 =====
     APP_NAME: str = "Dehaze API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
-    # 验证码配置
-    CAPTCHA_KEY_PREFIX: str = "captcha_code:"  # 验证码 Redis key 前缀，与 Java/Go 保持一致
-    CAPTCHA_LENGTH: int = 4
-    CAPTCHA_WIDTH: int = 120
-    CAPTCHA_HEIGHT: int = 40
-    CAPTCHA_FONT_SIZE: int = 24
-    CAPTCHA_NOISE_LINES: int = 5
-    CAPTCHA_EXPIRES: int = 300
+    # uvicorn 服务配置（仅 `python -m app.main` 启动方式生效）
+    SERVER_HOST: str = "0.0.0.0"
+    SERVER_PORT: int = Field(default=8991, gt=0, le=65535)
+    SERVER_WORKERS: int = Field(default=4, gt=0)
 
-    # Session Cookie 配置（与 Java/Go 保持一致）
-    SESSION_COOKIE_SECURE: bool = True
-    SESSION_COOKIE_PATH: str = "/api"
-
-    # 多点登录控制（与 Go 的 use-multi-point 对齐）
-    USE_MULTI_POINT: bool = False
-
-    # 共享密码（从 .env 加载）
+    # ===== 基础设施统一凭证 =====
+    # 统一主机地址，DB/Redis/MongoDB/MinIO/RabbitMQ/XXL-Job 地址均从此派生
+    DEHAZE_HOST: str = Field(default="127.0.0.1")
+    # 统一密码，复用为 DB/Redis/MongoDB/MinIO/RabbitMQ/XXL-Job 凭证
     DEHAZE_PASSWORD: str = Field(default="")
 
-    # 基础设施统一主机地址（从 .env 加载，MySQL/Redis/MongoDB/MinIO/RabbitMQ/Nginx/XXL-Job 等均使用此地址）
-    DEHAZE_HOST: str = Field(default="127.0.0.1")
-
-    # 数据库配置
-    DB_HOST: str = "localhost"
-    DB_PORT: int = 3306
+    # ===== 数据库 =====
+    DB_PORT: int = Field(default=3306, gt=0, le=65535)
     DB_NAME: str = "dehaze"
     DB_USER: str = "root"
+    DATABASE_POOL_SIZE: int = Field(default=10, gt=0)
+    DATABASE_MAX_OVERFLOW: int = Field(default=20, ge=0)
+    DATABASE_POOL_RECYCLE: int = Field(default=3600, gt=0)
+    # SQL 审计日志级别：INFO 记录全部 SQL（开发/测试），WARNING 仅记慢查询与错误（生产）
+    SQL_LOG_LEVEL: Literal["INFO", "WARNING", "ERROR"] = "INFO"
+    # 慢查询阈值（毫秒），超过则额外输出 WARNING 级 SLOW_SQL
+    SQL_SLOW_THRESHOLD_MS: int = Field(default=500, gt=0)
 
-    DATABASE_POOL_SIZE: int = 10
-    DATABASE_MAX_OVERFLOW: int = 20
-    DATABASE_POOL_RECYCLE: int = 3600
-    DATABASE_ECHO: bool = False
+    @property
+    def DB_HOST(self) -> str:
+        return self.DEHAZE_HOST
 
     @property
     def DATABASE_URL(self) -> str:
         return f"mysql+aiomysql://{self.DB_USER}:{self.DEHAZE_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
 
-    # Redis 配置
-    # 推荐 db 隔离方案（与 Java/Go 端一致）：
-    #   db=0  业务缓存（可丢失，当前使用）
-    #   db=1  Session + 分布式锁（需后续迁移，避免缓存 flush 影响会话）
-    #   db=2  限流计数器（限流/防重复提交/登录失败计数）
-    # 当前不强制分库，所有数据仍在 db=0，避免破坏现有 Session
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
-    REDIS_DB: int = 0
-    REDIS_MAX_CONNECTIONS: int = 100  # 连接池最大连接数（并行测试/高并发场景需要较大余量，可通过环境变量 REDIS_MAX_CONNECTIONS 覆盖）
-    REDIS_SOCKET_TIMEOUT: float = 5.0  # 操作超时（秒）
-    REDIS_SOCKET_CONNECT_TIMEOUT: float = 5.0  # 连接超时（秒）
-    REDIS_RETRY_ON_TIMEOUT: bool = True  # 超时是否重试
-    REDIS_HEALTH_CHECK_INTERVAL: int = 30  # 健康检查间隔（秒）
+    # ===== Redis =====
+    REDIS_PORT: int = Field(default=6379, gt=0, le=65535)
+    REDIS_DB: int = Field(default=0, ge=0)
+    REDIS_MAX_CONNECTIONS: int = Field(default=100, gt=0)
+    REDIS_SOCKET_TIMEOUT: float = Field(default=5.0, gt=0)
+    REDIS_SOCKET_CONNECT_TIMEOUT: float = Field(default=5.0, gt=0)
+    REDIS_RETRY_ON_TIMEOUT: bool = True
+    REDIS_HEALTH_CHECK_INTERVAL: int = Field(default=30, gt=0)
 
-    # ===== 多级缓存防护配置 =====
-    # L1 本地缓存（防热 key 击穿 Redis）
-    CACHE_L1_ENABLED: bool = True
-    CACHE_L1_MAXSIZE: int = 1000  # 最大缓存条目数
-    CACHE_L1_TTL: int = 300  # L1 默认 TTL（秒），5 分钟
-    # SingleFlight（防缓存击穿，热点 key 失效瞬间合并并发加载）
-    CACHE_SINGLEFLIGHT_ENABLED: bool = True
-    # 空值缓存（防缓存穿透）
-    CACHE_NULL_ENABLED: bool = True
-    CACHE_NULL_TTL: int = 60  # 空值缓存 TTL（秒）
+    @property
+    def REDIS_HOST(self) -> str:
+        return self.DEHAZE_HOST
 
     @property
     def REDIS_URL(self) -> str:
-        if self.DEHAZE_PASSWORD:
-            return f"redis://:{self.DEHAZE_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
-        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        return f"redis://:{self.DEHAZE_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
-    # MongoDB 配置（审计日志：login_log / audit_log）
+    # ===== MongoDB（审计日志） =====
     MONGO_DB_NAME: str = "dehaze"
 
     @property
     def MONGO_URI(self) -> str:
         return f"mongodb://root:{self.DEHAZE_PASSWORD}@{self.DEHAZE_HOST}:27017/{self.MONGO_DB_NAME}?authSource=admin"
 
-    # MinIO 配置
-    MINIO_ENDPOINT: str = "127.0.0.1:9110"
+    # ===== 文件与模型存储 =====
     MINIO_ACCESS_KEY: str = "admin"
     MINIO_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "dehaze"
+    MAX_UPLOAD_SIZE: int = Field(default=100 * 1024 * 1024, gt=0)
+    # 上传/删除文件使用的默认存储后端（minio/local/nginx-static）
+    FILE_STORAGE_TYPE: Literal["minio", "local", "nginx-static"] = "minio"
+    LOCAL_STORAGE_PATH: str = "/data/files"
+    FILE_ORPHAN_CLEANUP_HOURS: int = Field(default=48, gt=0)
+    FILE_TEMP_CLEANUP_HOURS: int = Field(default=24, gt=0)
+    MODEL_CACHE_DIR: str = "../models"
+    MODEL_FALLBACK_TO_LOCAL: bool = True
+    TEMP_DIR: str = ""
 
-    # 文件上传限制
-    MAX_UPLOAD_SIZE: int = 100 * 1024 * 1024  # 100MB
+    @property
+    def MINIO_ENDPOINT(self) -> str:
+        """MinIO 服务端点（host:port，不含 scheme，供 MinIO SDK 使用）"""
+        return f"{self.DEHAZE_HOST}:9110"
 
     @property
     def MINIO_SECRET_KEY(self) -> str:
         return self.DEHAZE_PASSWORD
 
-    # 文件存储策略: minio / local
-    FILE_STORAGE_TYPE: str = "minio"
-    # 文件访问基础 URL（用于拼接文件访问地址）。
-    # 留空时返回相对路径 /api/v1/files/download/...；配置后返回绝对 URL，与 Java file.baseUrl 风格一致。
-    FILE_BASE_URL: str = ""
-    # 本地存储路径（FILE_STORAGE_TYPE=local 时生效）
-    LOCAL_STORAGE_PATH: str = "/data/files"
-    # 孤儿文件清理阈值（小时）
-    FILE_ORPHAN_CLEANUP_HOURS: int = 48
-    # 临时文件清理阈值（小时）
-    FILE_TEMP_CLEANUP_HOURS: int = 24
+    @property
+    def MODEL_BASE_URL(self) -> str:
+        return f"http://{self.DEHAZE_HOST}:9000/models"
 
-    # 模型权重文件存储配置
-    # Nginx 静态服务（nginx-dataset 容器）下 /models 路径的基础 URL，
-    # Python 服务通过 HTTP 下载到本地缓存后由 torch.load 加载，解除 Python 服务与 trained_model/ 目录的强耦合。
-    # 算法权重访问 URL = {MODEL_BASE_URL}/{algorithm.path}，如 http://{DEHAZE_HOST}:9000/models/AECR-Net/NH_train.pk
-    MODEL_BASE_URL: str = "http://127.0.0.1:9000/models"
-    # 本地缓存目录：首次下载后缓存到此目录，二次加载直接读缓存。
-    # 指向项目根目录 models/，本地开发时无需重复下载占用空间
-    MODEL_CACHE_DIR: str = "../models"
-    # Nginx 不可用时是否降级到本地缓存（仅当本地已存在缓存文件时生效）
-    MODEL_FALLBACK_TO_LOCAL: bool = True
+    # ===== 存储后端 baseUrl（运行时拼接 URL 用，必须是完整 URL，禁止相对路径）=====
+    @property
+    def FILE_STORAGE_BASE_URLS(self) -> dict[str, str]:
+        """各存储后端的 baseUrl 映射，用于运行时拼接完整 URL。
 
-    # 文件存储
-
-    # 临时文件目录
-    TEMP_DIR: str = ""
+        - minio：MinIO 直连地址（bucket 已设为 public read），三端可直接 HTTP 访问
+        - local：本地存储文件只能通过 Java 下载接口访问
+        - nginx-static：nginx 静态服务根地址（不带 /datasets、/models 等资源子路径），
+          object_name 自带资源前缀（datasets/...、models/...）
+        """
+        return {
+            "minio": f"http://{self.MINIO_ENDPOINT}/{self.MINIO_BUCKET_NAME}",
+            "local": f"http://{self.DEHAZE_HOST}:8989/api/v1/files/download",
+            "nginx-static": f"http://{self.DEHAZE_HOST}:9000",
+        }
 
     @property
     def TEMP_DIR_RESOLVED(self) -> str:
-        """解析临时目录，未设置时使用系统临时目录"""
+        """未设置 TEMP_DIR 时使用系统临时目录"""
         import tempfile
         return self.TEMP_DIR if self.TEMP_DIR else tempfile.gettempdir()
 
-    # 设备配置
-    DEVICE_ID: list[int] = [0]
-
-    # XXL-Job 定时任务配置
-    XXLJOB_ENABLED: bool = False
-    XXLJOB_ADMIN_URL: str = "http://localhost:8080/xxl-job-admin/api/"
-    XXLJOB_ACCESS_TOKEN: str = "default_token"
-    XXLJOB_EXECUTOR_APP_NAME: str = "xxl-job-executor-dehaze-python"
-    XXLJOB_EXECUTOR_HOST: str = "0.0.0.0"
-    XXLJOB_EXECUTOR_PORT: int = 9998
-    XXLJOB_EXECUTOR_LOG_PATH: str = "logs/pyxxl.log"  # 执行器自身运行日志
-    XXLJOB_TASK_LOG_DIR: str = "logs/xxljob-tasks"  # 调度任务执行日志目录
-    XXLJOB_PID_FILE: str = "logs/pyxxl.pid"  # 执行器子进程 PID 文件
-
-    # RabbitMQ 配置
+    # ===== RabbitMQ =====
     RABBITMQ_ENABLED: bool = False
-    RABBITMQ_HOST: str = "localhost"
-    RABBITMQ_PORT: int = 5672
+    RABBITMQ_PORT: int = Field(default=5672, gt=0, le=65535)
     RABBITMQ_USER: str = "guest"
     RABBITMQ_EXCHANGE: str = "dehaze.tasks"
     RABBITMQ_EXCHANGE_TYPE: str = "direct"
-    RABBITMQ_ROUTING_KEY_PREFIX: str = "task"
-    RABBITMQ_RECONNECT_MAX_RETRIES: int = 0  # 0 表示无限重试
-    RABBITMQ_RECONNECT_INITIAL_INTERVAL: float = 1.0  # 首次重连间隔（秒）
-    RABBITMQ_RECONNECT_MAX_INTERVAL: float = 30.0  # 退避上限（秒）
-    RABBITMQ_PREFETCH_COUNT: int = 2  # 消费者预取数量
-    RABBITMQ_RETRY_DELAYS: list[int] = [
-        5000, 30000, 300000]  # 分级重试延迟（ms）: 5s/30s/5min
+    RABBITMQ_RECONNECT_MAX_RETRIES: int = Field(default=0, ge=0)  # 0 表示无限重试
+    RABBITMQ_RECONNECT_INITIAL_INTERVAL: float = Field(default=1.0, gt=0)
+    RABBITMQ_RECONNECT_MAX_INTERVAL: float = Field(default=30.0, gt=0)
+    RABBITMQ_PREFETCH_COUNT: int = Field(default=2, gt=0)
+    RABBITMQ_RETRY_DELAYS: list[int] = [5000, 30000, 300000]  # 分级重试延迟（ms）: 5s/30s/5min
+
+    @property
+    def RABBITMQ_HOST(self) -> str:
+        return self.DEHAZE_HOST
 
     @property
     def RABBITMQ_PASSWORD(self) -> str:
-        """RabbitMQ 密码：复用 DEHAZE_PASSWORD 统一凭证，未设置时返回开发默认值 guest"""
+        """未设置 DEHAZE_PASSWORD 时返回开发默认值 guest"""
         return self.DEHAZE_PASSWORD or "guest"
 
     @property
     def RABBITMQ_URL(self) -> str:
         return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/%2F"
 
-    # 任务并发限制
-    TASK_MAX_CONCURRENT_PER_USER: int = 5  # 同用户同类型最大并发数
+    # ===== XXL-Job 定时任务 =====
+    XXLJOB_ENABLED: bool = False
+    XXLJOB_EXECUTOR_APP_NAME: str = "xxl-job-executor-dehaze-python"
+    XXLJOB_EXECUTOR_HOST: str = "0.0.0.0"
+    XXLJOB_EXECUTOR_PORT: int = Field(default=9998, gt=0, le=65535)
+    XXLJOB_TASK_LOG_DIR: str = "logs/xxljob-tasks"
+    XXLJOB_PID_FILE: str = "logs/pyxxl.pid"
+    # 留空则复用 DEHAZE_PASSWORD（由 model_validator 处理）
+    XXLJOB_ACCESS_TOKEN: str = ""
 
-    # Prometheus 监控配置
+    @property
+    def XXLJOB_ADMIN_URL(self) -> str:
+        return f"http://{self.DEHAZE_HOST}:14980/xxl-job-admin/api/"
+
+    # ===== 日志 =====
+    LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    LOG_FORMAT: str = "%(asctime)s - %(levelname)s [%(trace_id)s] --- [%(thread)d] %(name)s : %(message)s"
+    LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
+    LOG_DIR: str = "logs"
+    LOG_RETENTION_DAYS: int = Field(default=30, gt=0)
+    # 单个日志文件大小上限（字节），超限归档为 {级别}.{n}.log 并开新活动文件，0 表示不按大小切割
+    LOG_MAX_BYTES: int = Field(default=100 * 1024 * 1024, ge=0)
+    LOG_ENABLE_CONSOLE: bool = True
+    LOG_ENABLE_FILE: bool = True
+    LOG_FORMAT_JSON: bool = False
+    # 启动时归档当天已存在的活动日志文件（dev 用，prod 关闭以保留连续日志）
+    LOG_ARCHIVE_ON_STARTUP: bool = False
+
+    # ===== Prometheus 监控 =====
     PROMETHEUS_ENABLED: bool = True
-    PROMETHEUS_GPU_COLLECT_INTERVAL: int = 5  # GPU 指标采集间隔（秒）
-    # 多 Worker 模式下的指标聚合目录（PROMETHEUS_MULTIPROC_DIR）
-    # 设置后 /metrics 端点将通过 MultiProcessCollector 聚合所有 Worker 的指标
-    # 留空则使用单进程模式（仅返回当前 Worker 的指标）
+    PROMETHEUS_GPU_COLLECT_INTERVAL: int = Field(default=5, gt=0)
+    # 设置后 /metrics 端点通过 MultiProcessCollector 聚合所有 Worker 指标
     PROMETHEUS_MULTIPROC_DIR: str = ""
 
-    # 优雅关闭配置
-    GRACEFUL_SHUTDOWN_TIMEOUT: int = 30  # 等待任务完成超时（秒）
-    GRACEFUL_SHUTDOWN_CANCEL_ON_TIMEOUT: bool = True  # 超时后是否取消任务
+    # ===== 安全与认证 =====
+    # 验证码
+    CAPTCHA_KEY_PREFIX: str = "captcha_code:"
+    CAPTCHA_LENGTH: int = Field(default=4, ge=4)
+    CAPTCHA_WIDTH: int = Field(default=120, gt=0)
+    CAPTCHA_HEIGHT: int = Field(default=40, gt=0)
+    CAPTCHA_FONT_SIZE: int = Field(default=24, gt=0)
+    CAPTCHA_NOISE_LINES: int = Field(default=5, ge=0)
+    CAPTCHA_EXPIRES: int = Field(default=300, gt=0)
 
-    # 日志配置
-    LOG_LEVEL: str = "INFO"  # 日志级别: DEBUG/INFO/WARNING/ERROR/CRITICAL
-    # 文本格式日志模板（仅控制台非 JSON 模式使用）
-    LOG_FORMAT: str = "%(asctime)s - %(levelname)s [%(trace_id)s] --- [%(thread)d] %(name)s : %(message)s"
-    LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"  # 日期格式
-    LOG_DIR: str = "logs"  # 日志根目录，文件按 logs/{yyyy-MM-dd}/{级别}.log 组织
-    LOG_RETENTION_DAYS: int = 30  # 日志保留天数，超期日期目录自动清理
-    LOG_ENABLE_CONSOLE: bool = True  # 是否启用控制台输出
-    LOG_ENABLE_FILE: bool = True  # 是否启用文件输出
-    LOG_FORMAT_JSON: bool = False  # 是否使用 JSON 结构化日志（生产环境推荐 True）
+    # Session Cookie
+    SESSION_COOKIE_SECURE: bool = True
+    SESSION_COOKIE_PATH: str = "/api"
+    USE_MULTI_POINT: bool = False
 
-    # 用户管理配置
-    DEFAULT_PASSWORD: str = "Dehaze@2026"  # 新用户默认密码
-    PASSWORD_MIN_LENGTH: int = 8  # 密码最小长度
-    PASSWORD_REQUIRE_COMPLEXITY: bool = True  # 是否要求密码复杂度（至少包含字母和数字）
+    # IP 黑名单
+    IP_BLACKLIST_ENABLED: bool = True
+    IP_BLACKLIST_THRESHOLD: int = Field(default=100, gt=0)
+    IP_BLACKLIST_DURATION: int = Field(default=3600, gt=0)
+    IP_BLACKLIST_TRACKING_WINDOW: int = Field(default=60, gt=0)
 
-    # 部门管理配置
-    DEPT_MAX_DEPTH: int = 5  # 部门层级深度限制
+    # 登录失败锁定
+    LOGIN_FAIL_MAX_ATTEMPTS: int = Field(default=5, gt=0)
+    LOGIN_FAIL_LOCK_MINUTES: int = Field(default=30, gt=0)
 
-    # ===== CORS 跨域配置 =====
-    # 开发环境白名单（生产环境通过 ProductionSettings 覆盖或 CORS_ORIGINS 环境变量配置）
-    # 端口规范：5173 React / 5174 Vue / 5175 Taro / 5176 uniapp / 5177 Flutter Web / 5183 React Electron / 5184 Vue Electron / 8081 RN Metro
-    CORS_ORIGINS: list[str] = [
+    # 限流
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_WINDOW_SECONDS: int = Field(default=60, gt=0)
+    RATE_LIMIT_MAX_REQUESTS: int = Field(default=60, gt=0)
+
+    # 优惠券领取限流（每分钟）
+    COUPON_RECEIVE_RATE_LIMIT: int = Field(default=5, gt=0)
+    COUPON_RECEIVE_RATE_WINDOW: int = Field(default=60, gt=0)
+
+    # 防重复提交
+    ANTI_REPEAT_ENABLED: bool = True
+    ANTI_REPEAT_TTL_SECONDS: int = Field(default=5, gt=0)
+
+    # 密码策略
+    PASSWORD_MIN_LENGTH: int = Field(default=8, gt=0)
+    PASSWORD_REQUIRE_COMPLEXITY: bool = True
+
+    # CORS 跨域
+    # 开发环境白名单（端口规范：5173 React / 5174 Vue / 5175 Taro / 5176 uniapp /
+    # 5177 Flutter Web / 5183 React Electron / 5184 Vue Electron / 8081 RN Metro）
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = [
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:5175",
@@ -246,41 +253,42 @@ class Settings(BaseSettings):
         "http://127.0.0.1:8081",
     ]
 
-    # ===== 安全防护配置（平台级） =====
-    # IP 黑名单（自动封禁异常请求的 IP）
-    IP_BLACKLIST_ENABLED: bool = True
-    IP_BLACKLIST_THRESHOLD: int = 100  # 追踪窗口内异常请求次数阈值
-    IP_BLACKLIST_DURATION: int = 3600  # 自动封禁时长（秒），默认 1 小时
-    IP_BLACKLIST_TRACKING_WINDOW: int = 60  # 异常请求追踪窗口（秒）
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def _parse_cors_origins(cls, v):
+        """支持环境变量传入逗号分隔字符串或 JSON 数组"""
+        if isinstance(v, str):
+            return [o.strip() for o in v.split(",") if o.strip()]
+        return v
 
-    # 登录失败锁定（与 Java/Go 端一致：login:fail:{username} 计数器）
-    LOGIN_FAIL_MAX_ATTEMPTS: int = 5  # 最大失败次数
-    LOGIN_FAIL_LOCK_MINUTES: int = 30  # 锁定时长（分钟）
+    # ===== WebSocket 跨 Worker =====
+    WS_REDIS_CHANNEL: str = "dehaze:ws:broadcast"
+    WS_ONLINE_KEY: str = "dehaze:ws:online_users"
+    WS_HEARTBEAT_INTERVAL: int = Field(default=30, gt=0)
+    WS_ONLINE_TTL: int = Field(default=90, gt=0)  # 应 >= 3 倍心跳间隔
 
-    # 限流中间件（基于 IP + 路径的固定窗口限流）
-    RATE_LIMIT_ENABLED: bool = True
-    RATE_LIMIT_WINDOW_SECONDS: int = 60  # 时间窗口（秒）
-    RATE_LIMIT_MAX_REQUESTS: int = 60  # 单窗口最大请求数
+    # ===== TaskTracker 跨 Worker =====
+    TASK_REDIS_KEY_PREFIX: str = "task:running"
+    TASK_HEARTBEAT_INTERVAL: int = Field(default=30, gt=0)
+    TASK_REDIS_TTL: int = Field(default=3600, gt=0)
+    GRACEFUL_SHUTDOWN_TIMEOUT: int = Field(default=30, gt=0)
 
-    # 防重复提交中间件（基于 user_id + method + uri + body_hash）
-    ANTI_REPEAT_ENABLED: bool = True
-    ANTI_REPEAT_TTL_SECONDS: int = 5  # 锁定时长（秒）
-
-    # 缓存失效广播（多实例 L1 缓存一致性）
+    # ===== 缓存 =====
+    CACHE_L1_ENABLED: bool = True
+    CACHE_L1_MAXSIZE: int = Field(default=1000, gt=0)
+    CACHE_L1_TTL: int = Field(default=300, gt=0)
+    CACHE_SINGLEFLIGHT_ENABLED: bool = True
+    CACHE_NULL_ENABLED: bool = True
+    CACHE_NULL_TTL: int = Field(default=60, gt=0)
     CACHE_INVALIDATION_CHANNEL: str = "cache:invalidation"
 
-    # ===== WebSocket 跨 Worker 配置 =====
-    WS_REDIS_CHANNEL: str = "dehaze:ws:broadcast"  # Pub/Sub 频道名
-    WS_ONLINE_KEY: str = "dehaze:ws:online_users"  # 在线用户 Redis sorted set key
-    WS_HEARTBEAT_INTERVAL: int = 30  # 心跳间隔（秒）
-    WS_ONLINE_TTL: int = 90  # 在线状态过期时间（秒），应 >= 3 倍心跳间隔
+    # ===== 业务配置 =====
+    # 部门管理
+    DEPT_MAX_DEPTH: int = Field(default=5, gt=0)
+    # 新用户默认密码，留空则复用 DEHAZE_PASSWORD（由 model_validator 处理）
+    DEFAULT_PASSWORD: str = ""
 
-    # ===== TaskTracker 跨 Worker 配置 =====
-    TASK_REDIS_KEY_PREFIX: str = "task:running"  # Redis 任务状态 key 前缀
-    TASK_HEARTBEAT_INTERVAL: int = 30  # 任务心跳间隔（秒）
-    TASK_REDIS_TTL: int = 3600  # Redis 任务状态 TTL（秒）
-
-    # ===== 支付渠道配置 =====
+    # 支付渠道 — 微信
     PAYMENT_WECHAT_ENABLED: bool = False
     PAYMENT_WECHAT_APP_ID: str = ""
     PAYMENT_WECHAT_MCH_ID: str = ""
@@ -291,6 +299,7 @@ class Settings(BaseSettings):
     PAYMENT_WECHAT_REFUND_NOTIFY_URL: str = ""
     PAYMENT_WECHAT_BASE_URL: str = "https://api.mch.weixin.qq.com"
 
+    # 支付渠道 — 支付宝
     PAYMENT_ALIPAY_ENABLED: bool = False
     PAYMENT_ALIPAY_APP_ID: str = ""
     PAYMENT_ALIPAY_PRIVATE_KEY: str = ""
@@ -298,19 +307,18 @@ class Settings(BaseSettings):
     PAYMENT_ALIPAY_NOTIFY_URL: str = ""
     PAYMENT_ALIPAY_BASE_URL: str = "https://openapi.alipay.com/gateway.do"
 
-    # 自动续费配置
-    AUTO_RENEW_RETRY_MAX: int = 3
-    AUTO_RENEW_RETRY_INTERVAL_HOURS: int = 2
-    AUTO_RENEW_DISCOUNT: float = 0.95
+    # 自动续费
+    AUTO_RENEW_RETRY_MAX: int = Field(default=3, gt=0)
+    AUTO_RENEW_RETRY_INTERVAL_HOURS: int = Field(default=2, gt=0)
+    AUTO_RENEW_DISCOUNT: float = Field(default=0.95, gt=0, le=1)
 
     @model_validator(mode="after")
-    def _apply_dehaze_host(self):
-        self.DB_HOST = self.DEHAZE_HOST
-        self.REDIS_HOST = self.DEHAZE_HOST
-        self.RABBITMQ_HOST = self.DEHAZE_HOST
-        self.MINIO_ENDPOINT = f"{self.DEHAZE_HOST}:9110"
-        self.MODEL_BASE_URL = f"http://{self.DEHAZE_HOST}:9000/models"
-        self.XXLJOB_ADMIN_URL = f"http://{self.DEHAZE_HOST}:14980/xxl-job-admin/api/"
+    def _apply_derived_credentials(self):
+        """加载 .env 后统一复用凭证"""
+        if not self.DEFAULT_PASSWORD:
+            self.DEFAULT_PASSWORD = self.DEHAZE_PASSWORD
+        if not self.XXLJOB_ACCESS_TOKEN:
+            self.XXLJOB_ACCESS_TOKEN = self.DEHAZE_PASSWORD
         return self
 
 
@@ -318,25 +326,17 @@ class DevelopmentSettings(Settings):
     """开发环境配置"""
 
     DEBUG: bool = True
-    DATABASE_ECHO: bool = True
-
-    # Redis 配置
     REDIS_DB: int = 0
-
-    # Session Cookie：开发环境 HTTP + Vite 代理前缀 /py-api，需关闭 Secure 并用 /
+    # HTTP + Vite 代理前缀 /py-api，需关闭 Secure 并用 /
     SESSION_COOKIE_SECURE: bool = False
     SESSION_COOKIE_PATH: str = "/"
-
-    # 文件访问基础 URL（与 Java 端 file.baseUrl 一致，指向本地调试的 Java 后端）
-    FILE_BASE_URL: str = "http://127.0.0.1:8989/api/v1/files/download"
-
-    # XXL-Job 配置（与 docker-compose 的 xxl-job-admin 3.3.0 对齐，accessToken 复用 DEHAZE_PASSWORD）
     XXLJOB_ENABLED: bool = True
-    XXLJOB_ACCESS_TOKEN: str = os.getenv("DEHAZE_PASSWORD", "Dehaze@2026")
-
-    # RabbitMQ 配置
     RABBITMQ_ENABLED: bool = True
     RABBITMQ_USER: str = "root"
+    LOG_ARCHIVE_ON_STARTUP: bool = True
+    # 开发环境调高限流上限，避免集成测试并行执行时触发限流
+    RATE_LIMIT_MAX_REQUESTS: int = 10000
+    COUPON_RECEIVE_RATE_LIMIT: int = 10000
 
 
 class TestingSettings(Settings):
@@ -344,33 +344,33 @@ class TestingSettings(Settings):
 
     DEBUG: bool = True
     DB_NAME: str = "dehaze_test"
+    RATE_LIMIT_MAX_REQUESTS: int = 10000
+    COUPON_RECEIVE_RATE_LIMIT: int = 10000
 
 
 class ProductionSettings(Settings):
     """生产环境配置"""
 
-    # XXL-Job 配置（生产环境启用，accessToken 复用 DEHAZE_PASSWORD）
     XXLJOB_ENABLED: bool = True
-    XXLJOB_ACCESS_TOKEN: str = os.getenv("DEHAZE_PASSWORD", "Dehaze@2026")
-
-    # RabbitMQ 配置（生产环境启用）
     RABBITMQ_ENABLED: bool = True
     RABBITMQ_USER: str = "root"
-
-    # 日志配置（生产环境启用 JSON 格式）
+    SQL_LOG_LEVEL: Literal["INFO", "WARNING", "ERROR"] = "WARNING"
     LOG_FORMAT_JSON: bool = True
-
-    # Prometheus 多 Worker 指标聚合（生产环境强制启用）
     PROMETHEUS_MULTIPROC_DIR: str = "/tmp/prometheus_multiproc"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # 生产环境强制校验关键配置
         if not self.DEHAZE_PASSWORD:
             raise ValueError("生产环境必须设置 DEHAZE_PASSWORD 环境变量")
-        # 生产环境 CORS_ORIGINS 必须从环境变量配置（禁止使用 localhost 白名单）
-        if not os.getenv("CORS_ORIGINS"):
-            raise ValueError("生产环境必须设置 CORS_ORIGINS 环境变量（逗号分隔的域名白名单）")
+        # 禁止使用 localhost 白名单
+        localhost_origins = any(
+            "localhost" in o or "127.0.0.1" in o for o in self.CORS_ORIGINS
+        )
+        if localhost_origins:
+            raise ValueError(
+                "生产环境 CORS_ORIGINS 禁止包含 localhost/127.0.0.1，"
+                "请配置正式域名（逗号分隔）"
+            )
 
 
 _settings_map = {
@@ -382,19 +382,22 @@ _settings_map = {
 
 @lru_cache
 def get_settings() -> Settings:
-    """获取配置实例（缓存）"""
+    """获取配置实例（缓存），用于打破循环导入的延迟入口"""
     env = os.getenv("APP_ENV", "development")
-    settings_class = _settings_map.get(env, DevelopmentSettings)
-    instance = settings_class()
-
-    # 传播 PROMETHEUS_MULTIPROC_DIR 到 OS 环境变量
-    # prometheus_client 在导入时检查此环境变量来决定是否启用多进程模式
-    # 必须在任何 prometheus_client 导入（如 starlette_exporter）之前设置
-    if instance.PROMETHEUS_MULTIPROC_DIR:
-        os.environ["PROMETHEUS_MULTIPROC_DIR"] = instance.PROMETHEUS_MULTIPROC_DIR
-        os.makedirs(instance.PROMETHEUS_MULTIPROC_DIR, exist_ok=True)
-
-    return instance
+    settings_class = _settings_map.get(env)
+    if settings_class is None:
+        raise ValueError(
+            f"未知的 APP_ENV={env!r}，可选值: {', '.join(_settings_map)}"
+        )
+    return settings_class()
 
 
+# 模块级单例：全局直接 from app.config import settings
 settings = get_settings()
+
+# 传播 PROMETHEUS_MULTIPROC_DIR 到 OS 环境变量
+# prometheus_client 在导入时检查此环境变量来决定是否启用多进程模式，
+# 必须在任何 prometheus_client 导入（如 starlette_exporter）之前完成
+if settings.PROMETHEUS_MULTIPROC_DIR:
+    os.environ["PROMETHEUS_MULTIPROC_DIR"] = settings.PROMETHEUS_MULTIPROC_DIR
+    os.makedirs(settings.PROMETHEUS_MULTIPROC_DIR, exist_ok=True)

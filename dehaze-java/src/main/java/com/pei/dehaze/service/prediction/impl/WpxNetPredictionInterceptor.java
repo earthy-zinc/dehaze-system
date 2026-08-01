@@ -8,6 +8,7 @@ import com.pei.dehaze.model.entity.SysWpxFile;
 import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysWpxFileService;
+import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import com.pei.dehaze.service.prediction.InterceptedResult;
 import com.pei.dehaze.service.prediction.PredictionContext;
 import com.pei.dehaze.service.prediction.PredictionInterceptor;
@@ -35,6 +36,7 @@ public class WpxNetPredictionInterceptor implements PredictionInterceptor {
     private final SysAlgorithmService algorithmService;
     private final SysWpxFileService wpxFileService;
     private final SysFileService fileService;
+    private final StorageServiceFactory storageServiceFactory;
 
     @Override
     public Optional<InterceptedResult> intercept(PredictionContext context) {
@@ -64,11 +66,12 @@ public class WpxNetPredictionInterceptor implements PredictionInterceptor {
             return Optional.empty();
         }
 
-        log.info("WPXNet 预查询命中: algorithmId={}, originMd5={}, resultUrl={}",
-                algorithm.getId(), originMd5, newFile.getUrl());
+        String resultUrl = storageServiceFactory.get(newFile.getStorage()).getUrl(newFile.getObjectName());
+        log.debug("WPXNet 预查询命中: algorithmId={}, originMd5={}, resultUrl={}",
+                algorithm.getId(), originMd5, resultUrl);
 
         return Optional.of(InterceptedResult.builder()
-                .resultUrl(newFile.getUrl())
+                .resultUrl(resultUrl)
                 .resultMd5(newFile.getMd5())
                 .resultFileId(newFile.getId())
                 .build());

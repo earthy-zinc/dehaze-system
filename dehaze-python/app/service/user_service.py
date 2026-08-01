@@ -176,9 +176,9 @@ class UserService:
         if not username:
             raise BusinessException("用户名不能为空")
 
-        existing_user = await user_repository.get_by_username(db, username)
+        existing_user = await user_repository.get_by_username_include_deleted(db, username)
         if existing_user:
-            raise BusinessException("用户名已存在")
+            raise BusinessException("该用户名不可用")
 
         # 使用配置的默认密码
         plain_password = settings.DEFAULT_PASSWORD
@@ -234,7 +234,7 @@ class UserService:
                 db, username, exclude_id=user_id
             )
             if exists:
-                raise BusinessException("用户名已存在")
+                raise BusinessException("该用户名不可用")
             user.username = username
 
         if nickname is not None:

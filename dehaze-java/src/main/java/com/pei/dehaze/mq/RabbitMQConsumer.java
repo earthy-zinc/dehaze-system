@@ -134,7 +134,7 @@ public abstract class RabbitMQConsumer {
                         }
                 );
                 channel.basicAck(deliveryTag, false);
-                log.info("消息已投递到重试队列: queue={}.retry.{}, retryCount={}, traceId={}",
+                log.debug("消息已投递到重试队列: queue={}.retry.{}, retryCount={}, traceId={}",
                         queueName, retryCount, retryCount + 1, traceId);
             } else {
                 channel.basicNack(deliveryTag, false, false);

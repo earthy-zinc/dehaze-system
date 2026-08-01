@@ -117,8 +117,9 @@ const FeedbackDetail: React.FC = () => {
       message.success("补充说明已提交");
       setSupplementContent("");
       loadDetail();
-    } catch (error: any) {
-      message.error(error?.message || "提交失败");
+    } catch (error: unknown) {
+      const msgErr = error as { message?: string };
+      message.error(msgErr.message || "提交失败");
     } finally {
       setSupplementLoading(false);
     }

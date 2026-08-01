@@ -897,7 +897,7 @@ func (s *OrderService) CancelExpiredOrders(ctx context.Context) error {
 	if s.cache != nil {
 		token, ok, _ := s.cache.Lock(ctx, "job:order:cancel_expired:lock", orderJobLockTTL)
 		if !ok {
-			logger.Info("取消超时订单任务已被其他实例持有，跳过执行")
+			logger.Debug("取消超时订单任务已被其他实例持有，跳过执行")
 			return nil
 		}
 		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:cancel_expired:lock", token) }()
@@ -930,7 +930,7 @@ func (s *OrderService) CompleteExpiredOrders(ctx context.Context) error {
 	if s.cache != nil {
 		token, ok, _ := s.cache.Lock(ctx, "job:order:complete_expired:lock", orderJobLockTTL)
 		if !ok {
-			logger.Info("归档到期订单任务已被其他实例持有，跳过执行")
+			logger.Debug("归档到期订单任务已被其他实例持有，跳过执行")
 			return nil
 		}
 		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:complete_expired:lock", token) }()
@@ -953,7 +953,7 @@ func (s *OrderService) ProcessAutoRenewals(ctx context.Context) error {
 	if s.cache != nil {
 		token, ok, _ := s.cache.Lock(ctx, "job:order:auto_renew:lock", orderJobLockTTL)
 		if !ok {
-			logger.Info("自动续费任务已被其他实例持有，跳过执行")
+			logger.Debug("自动续费任务已被其他实例持有，跳过执行")
 			return nil
 		}
 		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:auto_renew:lock", token) }()
@@ -1163,7 +1163,7 @@ func (s *OrderService) ExpireUserCoupons(ctx context.Context) error {
 	if s.cache != nil {
 		token, ok, _ := s.cache.Lock(ctx, "job:order:expire_coupons:lock", orderJobLockTTL)
 		if !ok {
-			logger.Info("过期优惠券标记任务已被其他实例持有，跳过执行")
+			logger.Debug("过期优惠券标记任务已被其他实例持有，跳过执行")
 			return nil
 		}
 		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:expire_coupons:lock", token) }()
@@ -1187,7 +1187,7 @@ func (s *OrderService) RetryFailedRefunds(ctx context.Context) error {
 	if s.cache != nil {
 		token, ok, _ := s.cache.Lock(ctx, "job:order:refund_retry:lock", orderJobLockTTL)
 		if !ok {
-			logger.Info("退款失败重试任务已被其他实例持有，跳过执行")
+			logger.Debug("退款失败重试任务已被其他实例持有，跳过执行")
 			return nil
 		}
 		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:refund_retry:lock", token) }()
@@ -1278,7 +1278,7 @@ func (s *OrderService) RetryFailedRefunds(ctx context.Context) error {
 		}
 	}
 
-	logger.Info("退款失败重试完成",
+	logger.Debug("退款失败重试完成",
 		zap.Int("total", len(list)),
 		zap.Int("success", successCount),
 		zap.Int("finalFail", finalFailCount))

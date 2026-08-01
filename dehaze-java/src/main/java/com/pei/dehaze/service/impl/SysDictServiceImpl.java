@@ -27,7 +27,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 数据字典项业务实现类
+ * 数据字典项业务实现类。
+ * <p>查重逻辑绕过@TableLogic，查全表（含软删行），命中即报"已被历史记录占用"。</p>
  *
  * @author earthyzinc
  * @since 2022/10/12
@@ -44,6 +45,23 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
     private final DictConverter dictConverter;
     private final SysDictTypeMapper dictTypeMapper;
     private final RedisTemplate<String, Object> redisTemplate;
+
+    /**
+     * 校验同 type_code 下 value 唯一性（含软删行参与查重，命中即报占用）。
+     */
+    private void validateValueUnique(String typeCode, String value, Long excludeId) {
+        long count = getBaseMapper().countByTypeCodeAndValueAll(typeCode, value);
+        if (count == 0) {
+            return;
+        }
+        if (excludeId != null) {
+            count = getBaseMapper().countByTypeCodeAndValueAllExcluding(typeCode, value, excludeId);
+        }
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS,
+                    "字典类型【" + typeCode + "】下值【" + value + "】已被历史记录占用");
+        }
+    }
 
     /**
      * 字典数据项分页列表
@@ -127,13 +145,8 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在");
         }
 
-        // 唯一性检查（同类型下 value 唯一）
-        long count = this.count(new LambdaQueryWrapper<SysDict>()
-                .eq(SysDict::getTypeCode, typeCode)
-                .eq(SysDict::getValue, dictForm.getValue()));
-        if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS);
-        }
+        // 唯一性检查（含软删行参与查重）
+        validateValueUnique(typeCode, dictForm.getValue(), null);
 
         // 实体对象转换 form->entity
         SysDict entity = dictConverter.form2Entity(dictForm);
@@ -164,14 +177,8 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         // typeCode 只读，保留原记录的 typeCode
         dictForm.setTypeCode(existDict.getTypeCode());
 
-        // 唯一性检查（同类型下 value 唯一，排除自身）
-        long count = this.count(new LambdaQueryWrapper<SysDict>()
-                .eq(SysDict::getTypeCode, existDict.getTypeCode())
-                .eq(SysDict::getValue, dictForm.getValue())
-                .ne(SysDict::getId, id));
-        if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS);
-        }
+        // 唯一性检查（含软删行参与查重，排除自身）
+        validateValueUnique(existDict.getTypeCode(), dictForm.getValue(), id);
 
         // 实体对象转换 form->entity
         SysDict entity = dictConverter.form2Entity(dictForm);

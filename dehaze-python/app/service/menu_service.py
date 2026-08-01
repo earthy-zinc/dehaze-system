@@ -228,11 +228,12 @@ class MenuService:
 
         if is_new:
             merged = await menu_repository.create_menu(db, menu)
-            # 新增菜单默认分配给超级管理员角色
-            from app.repository.role_repository import ROOT_ROLE_CODE, role_repository
-            root_role = await role_repository.get_by_code(db, ROOT_ROLE_CODE)
-            if root_role:
-                await menu_repository.save_role_menu(db, root_role.id, merged.id)
+            # 新增菜单默认分配给内置角色（ROOT / ADMIN）
+            from app.repository.role_repository import BUILTIN_ROLE_CODES, role_repository
+            for code in BUILTIN_ROLE_CODES:
+                builtin_role = await role_repository.get_by_code(db, code)
+                if builtin_role:
+                    await menu_repository.save_role_menu(db, builtin_role.id, merged.id)
         else:
             merged = await menu_repository.update_menu(db, menu)
 
@@ -428,8 +429,6 @@ class MenuService:
                 default=[],
             )
             if perms:
-                if isinstance(perms, list) and len(perms) == 2 and isinstance(perms[0], str) and isinstance(perms[1], list):
-                    perms = perms[1]
                 all_perms.update(perms)
 
         return all_perms

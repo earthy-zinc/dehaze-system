@@ -83,6 +83,7 @@ func (z *ZapCore) fileSyncer(formats ...string) zapcore.WriteSyncer {
 		cfg.Zap.RetentionDay,
 		CutterWithLayout(time.DateOnly),
 		CutterWithFormats(formats...),
+		CutterWithMaxSize(cfg.Zap.MaxSize*1024*1024),
 	)
 
 	syncer := zapcore.AddSync(cutter)

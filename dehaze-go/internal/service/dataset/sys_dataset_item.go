@@ -34,6 +34,7 @@ type DatasetItemService struct {
 	datasetRepo  datasetrepo.IDatasetRepository
 	itemFileRepo filerepo.IItemFileRepository
 	fileRepo     filerepo.IFileRepository
+	fileService  *fileservice.FileService
 
 	itemFileService *fileservice.ItemFileService
 }
@@ -45,6 +46,7 @@ func NewDatasetItemService(
 	datasetRepo datasetrepo.IDatasetRepository,
 	itemFileRepo filerepo.IItemFileRepository,
 	fileRepo filerepo.IFileRepository,
+	fileService *fileservice.FileService,
 	itemFileService *fileservice.ItemFileService,
 ) *DatasetItemService {
 	return &DatasetItemService{
@@ -53,6 +55,7 @@ func NewDatasetItemService(
 		datasetRepo:     datasetRepo,
 		itemFileRepo:    itemFileRepo,
 		fileRepo:        fileRepo,
+		fileService:     fileService,
 		itemFileService: itemFileService,
 	}
 }
@@ -177,7 +180,7 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(ctx context.
 		fileIDSet[itemFile.FileID] = struct{}{}
 	}
 
-	// 批量查询文件信息（URL 等）
+	// 批量查询文件信息（URL 运行时拼接）
 	fileURLMap := make(map[int64]string)
 	fileInfoMap := make(map[int64]*model.SysFile)
 	if len(fileIDSet) > 0 {
@@ -190,7 +193,7 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(ctx context.
 			logger.Warn("批量查询文件信息失败", zap.Error(err))
 		} else {
 			for i := range files {
-				fileURLMap[int64(files[i].ID)] = utils.StringVal(files[i].URL)
+				fileURLMap[int64(files[i].ID)] = datasetItemService.fileService.GetURL(ctx, &files[i])
 				fileInfoMap[int64(files[i].ID)] = &files[i]
 			}
 		}

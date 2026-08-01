@@ -22,7 +22,7 @@ public class OrderCompleteJob {
     public void completeExpiredOrders() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始执行订单到期归档...");
+            log.debug("开始执行订单到期归档...");
             orderService.completeExpiredOrders();
         } catch (Exception e) {
             log.error("订单到期归档处理失败", e);

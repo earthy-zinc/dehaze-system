@@ -1,3 +1,4 @@
+import "@ant-design/v5-patch-for-react-19";
 import App from "@/App";
 import store, { persistor } from "@/store/index";
 import React from "react";

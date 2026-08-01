@@ -2,13 +2,11 @@ package com.pei.dehaze.service.impl.file;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.Assert;
-import cn.hutool.core.text.CharSequenceUtil;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.bo.FileBO;
 import com.pei.dehaze.service.FileService;
 import io.minio.*;
 import io.minio.errors.*;
-import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +27,7 @@ import java.security.NoSuchAlgorithmException;
  * @since 2023/6/2
  */
 @Component
-@ConditionalOnProperty(value = "file.type", havingValue = "minio")
+@ConditionalOnProperty(prefix = "file.minio", name = "endpoint")
 @ConfigurationProperties(prefix = "file.minio")
 @RequiredArgsConstructor
 @Data
@@ -57,6 +55,25 @@ public class MinioFileService implements FileService {
 
     @Value("${file.baseUrl}")
     private String baseUrl;
+
+    @Override
+    public String getStorageType() {
+        return "minio";
+    }
+
+    @Override
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    /**
+     * 返回 MinIO 直连 URL（endpoint/bucket/objectName），
+     * 而非 Java 下载代理路径，使三端可直接从 MinIO 读取文件，无需 Java 中转。
+     */
+    @Override
+    public String getUrl(String objectName) {
+        return endpoint + "/" + bucketName + "/" + objectName;
+    }
 
     /**
      * 标记桶是否已初始化（用于延迟创建）
@@ -123,8 +140,7 @@ public class MinioFileService implements FileService {
                     .stream(stream, stream.available(), -1)
                     .build();
             minioClient.putObject(putObjectArgs);
-            String url = getUrl(objectName);
-            fileBO.setUrl(url);
+            fileBO.setStorage(getStorageType());
             return fileBO;
         } catch (Exception e) {
             throw new BusinessException("无法保存文件", e);
@@ -145,27 +161,10 @@ public class MinioFileService implements FileService {
                     .stream(inputStream, fileSize, -1)
                     .build();
             minioClient.putObject(putObjectArgs);
-            return getUrl(objectName);
+            return objectName;
         } catch (Exception e) {
             throw new BusinessException("无法保存文件: " + e.getMessage(), e);
         }
-    }
-
-    private String getUrl(String objectName) throws ErrorResponseException, InsufficientDataException, InternalException, InvalidKeyException, InvalidResponseException, IOException, NoSuchAlgorithmException, XmlParserException, ServerException {
-        // 返回文件路径
-        String fileUrl;
-        if (CharSequenceUtil.isBlank(baseUrl)) { // 未配置自定义域名
-            GetPresignedObjectUrlArgs getPresignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
-                    .bucket(bucketName).object(objectName)
-                    .method(Method.GET)
-                    .build();
-
-            fileUrl = minioClient.getPresignedObjectUrl(getPresignedObjectUrlArgs);
-            fileUrl = fileUrl.substring(0, fileUrl.indexOf("?"));
-        } else { // 配置自定义文件路径域名
-            fileUrl = baseUrl + "/" + objectName;
-        }
-        return fileUrl;
     }
 
     /**

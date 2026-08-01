@@ -21,10 +21,22 @@ class UserRepository(BaseRepository[SysUser]):
         db: AsyncSession,
         username: str,
     ) -> SysUser | None:
-        """根据用户名查询"""
+        """根据用户名查询（仅活跃用户，默认行为）"""
         stmt = select(SysUser).where(
             SysUser.username == username,
             SysUser.deleted == 0,
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_username_include_deleted(
+        self,
+        db: AsyncSession,
+        username: str,
+    ) -> SysUser | None:
+        """根据用户名查询（查全表，含软删行，用于注册/改名查重）"""
+        stmt = select(SysUser).where(
+            SysUser.username == username,
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
@@ -61,12 +73,11 @@ class UserRepository(BaseRepository[SysUser]):
         db: AsyncSession,
         usernames: list[str],
     ) -> set[str]:
-        """批量查询已存在的用户名（避免导入时 N+1）"""
+        """批量查询已存在的用户名（避免导入时 N+1，含软删行）"""
         if not usernames:
             return set()
         stmt = select(SysUser.username).where(
             SysUser.username.in_(usernames),
-            SysUser.deleted == 0,
         )
         result = await db.execute(stmt)
         return {row[0] for row in result.fetchall() if row[0]}
@@ -78,10 +89,9 @@ class UserRepository(BaseRepository[SysUser]):
         *,
         exclude_id: int | None = None,
     ) -> bool:
-        """检查用户名是否已存在"""
+        """检查用户名是否已存在（查全表，含软删行）"""
         stmt = select(SysUser).where(
             SysUser.username == username,
-            SysUser.deleted == 0,
         )
         if exclude_id:
             stmt = stmt.where(SysUser.id != exclude_id)

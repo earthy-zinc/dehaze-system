@@ -1,110 +1,97 @@
 """
 算法选择 API 路由
 
-POST /api/v1/algorithm-select/recommend   → 智能推荐
-POST /api/v1/algorithm-select/favorite     → 收藏/取消
-GET  /api/v1/algorithm-select/favorites    → 收藏列表
-POST /api/v1/algorithm-select/compare      → 算法对比
+基础路径: /api/v1/algorithms/select
 """
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.result import Result, success, error
-from app.core.code import ResultCode
+from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.algorithm_select import (
     AlgorithmCompareVO,
-    AlgorithmRecommendVO,
+    AlgorithmDetailVO,
+    AlgorithmSearchVO,
+    AlgorithmTreeNodeVO,
     CompareRequest,
-    FavoriteForm,
-    FavoriteVO,
-    RecommendRequest,
+    TestRequest,
+    TestResultVO,
 )
 from app.service.algorithm_select_service import AlgorithmSelectService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/v1/algorithm-select",
+    prefix="/api/v1/algorithms/select",
     tags=["算法选择"],
     dependencies=[Depends(get_current_user)],
 )
 
 
-@router.post(
-    "/recommend",
-    response_model=Result[list[AlgorithmRecommendVO]],
-    summary="智能推荐算法",
+@router.get(
+    "/tree",
+    response_model=Result[list[AlgorithmTreeNodeVO]],
+    summary="算法选择树",
 )
-async def recommend_algorithms(
-    body: RecommendRequest,
+async def get_algorithm_tree(
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    基于图像特征分析返回 Top N 算法推荐
-
-    特征权重:
-    - 雾霾浓度 30%
-    - 场景类型 20%
-    - 光照 15%
-    - 复杂度 10%
-    - 颜色 10%
-    - 分辨率 5%
-    - 用户偏好 10%
-    """
-    recommendations = await AlgorithmSelectService.recommend(
-        db=db,
-        image_url=body.imageUrl,
-        top_n=body.topN,
-    )
-    return success(recommendations)
-
-
-@router.post(
-    "/favorite",
-    response_model=Result[dict],
-    summary="收藏/取消收藏算法",
-)
-async def toggle_favorite(
-    body: FavoriteForm,
-    user: UserContext = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    切换收藏状态
-
-    - 未收藏 → 添加收藏
-    - 已收藏 → 取消收藏
-    """
-    # 检查是否已收藏
-    from app.service.algorithm_select_service import AlgorithmSelectService
-    existing = await AlgorithmSelectService._get_favorite(db, user.id, body.algorithmId)
-    if existing:
-        # 已收藏，取消
-        await AlgorithmSelectService.remove_favorite(db, user.id, body.algorithmId)
-        return success({"favorited": False}, msg="已取消收藏")
-    else:
-        # 未收藏，添加
-        fav_id = await AlgorithmSelectService.add_favorite(db, user.id, body.algorithmId)
-        return success({"favorited": True, "favoriteId": fav_id}, msg="收藏成功")
+    """获取算法选择树（仅返回已发布状态的算法）"""
+    tree = await AlgorithmSelectService.get_algorithm_tree(db)
+    return success(tree)
 
 
 @router.get(
-    "/favorites",
-    response_model=Result[list[FavoriteVO]],
-    summary="收藏列表",
+    "/search",
+    response_model=Result[list[AlgorithmSearchVO]],
+    summary="搜索算法",
 )
-async def list_favorites(
+async def search_algorithms(
+    keyword: Optional[str] = Query(default=None, description="搜索关键词"),
+    db: AsyncSession = Depends(get_db),
+):
+    """搜索算法（关键词/拼音/标签）"""
+    results = await AlgorithmSelectService.search_algorithms(db, keyword=keyword)
+    return success(results)
+
+
+@router.get(
+    "/{algorithm_id}",
+    response_model=Result[AlgorithmDetailVO],
+    summary="算法详情",
+)
+async def get_algorithm_detail(
+    algorithm_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """获取算法详情（含样例效果图、评分、使用次数）"""
+    detail = await AlgorithmSelectService.get_algorithm_detail(db, algorithm_id)
+    return success(detail)
+
+
+@router.post(
+    "/{algorithm_id}/test",
+    response_model=Result[TestResultVO],
+    summary="测试算法效果",
+)
+async def test_algorithm(
+    algorithm_id: int,
+    body: TestRequest,
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """查询当前用户的算法收藏列表"""
-    favorites = await AlgorithmSelectService.list_favorites(db, user.id)
-    return success(favorites)
+    """上传自定义图片测试算法效果"""
+    result = await AlgorithmSelectService.test_algorithm(
+        db=db,
+        algorithm_id=algorithm_id,
+        image_url=body.imageUrl,
+        user_id=user.id,
+    )
+    return success(result)
 
 
 @router.post(
@@ -116,15 +103,9 @@ async def compare_algorithms(
     body: CompareRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    多算法对比（最多 4 个）
-
-    返回多个算法的元数据对比。
-    实际去雾效果对比需前端分别调用 /prediction 接口获取结果。
-    """
+    """算法对比（最多3个算法）"""
     result = await AlgorithmSelectService.compare(
         db=db,
         algorithm_ids=body.algorithmIds,
-        image_url=body.imageUrl,
     )
     return success(result)

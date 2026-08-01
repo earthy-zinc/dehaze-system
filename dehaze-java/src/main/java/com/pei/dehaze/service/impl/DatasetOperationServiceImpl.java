@@ -21,6 +21,7 @@ import com.pei.dehaze.model.vo.BatchUploadResultVO;
 import com.pei.dehaze.model.vo.BatchUploadSuccessItemVO;
 import com.pei.dehaze.model.vo.DatasetItemVO;
 import com.pei.dehaze.service.DatasetOperationService;
+import com.pei.dehaze.service.FavoriteService;
 import com.pei.dehaze.service.ImageProcessingService;
 import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysDatasetService;
@@ -65,6 +66,8 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     private final FileBOFactory fileBOFactory;
 
     private final ImageProcessingService imageProcessingService;
+
+    private final FavoriteService favoriteService;
 
     @Override
     public DatasetItemVO createDatasetItemWithImages(DatasetItemUploadForm form) {
@@ -464,7 +467,13 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 try {
                     sysItemFileService.deleteFile(itemFile.getId());
                 } catch (Exception e) {
-                    log.error("删除文件失败: fileId={}", itemFile.getId(), e);
+                    log.error("删除文件失败，将清理关联记录: itemFileId={}", itemFile.getId(), e);
+                    // 防御性处理：即使文件删除失败，也要清理 SysItemFile 记录，避免孤儿数据
+                    try {
+                        sysItemFileService.deleteFileRecord(itemFile.getId());
+                    } catch (Exception ex) {
+                        log.error("清理关联记录失败: itemFileId={}", itemFile.getId(), ex);
+                    }
                 }
             }
         }
@@ -477,6 +486,8 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         // 批量删除数据集
         sysDatasetService.removeByIds(allDatasetIdsToDelete);
         sysDatasetService.evictAllDatasetsCache();
+        // 级联标记相关收藏为已失效
+        favoriteService.markInvalid("dataset", new ArrayList<>(allDatasetIdsToDelete));
 
         // 构建结果：存在的标记成功，不存在的标记失败
         for (Long datasetId : datasetIds) {

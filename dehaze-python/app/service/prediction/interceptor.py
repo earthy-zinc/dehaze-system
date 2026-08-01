@@ -54,7 +54,7 @@ class PredictionInterceptorChain:
             try:
                 result = await interceptor.intercept(context)
                 if result is not None:
-                    logger.info(
+                    logger.debug(
                         "预测拦截器命中: %s -> resultUrl=%s",
                         interceptor.__class__.__name__, result.result_url,
                     )

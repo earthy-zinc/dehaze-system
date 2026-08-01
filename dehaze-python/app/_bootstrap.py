@@ -20,6 +20,15 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
+def _ensure_ssl_cert_file():
+    if not os.environ.get("SSL_CERT_FILE"):
+        try:
+            import certifi
+
+            os.environ["SSL_CERT_FILE"] = certifi.where()
+        except ImportError:
+            pass
+
 def _load_msvc_env():
     """自动搜索并加载 MSVC 编译器环境（cl.exe / INCLUDE / LIB）
 
@@ -138,6 +147,8 @@ def _ensure_ninja():
 
 def setup_environment():
     """启动前自动配置 CUDA 扩展编译环境"""
+    _ensure_ssl_cert_file()
+    
     if sys.platform != "win32":
         _setup_torch_extensions_dir()
         return

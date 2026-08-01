@@ -135,24 +135,10 @@ describe("图像输入历史记录 API 测试", () => {
   });
 
   describe("PUT /api/v1/image-input/history/{id} - 更新记录", () => {
-    test("正向测试：添加收藏标记", async () => {
+    test("正向测试：空表单更新应成功", async () => {
       expect(createdIds.length).toBeGreaterThan(0);
 
-      const updateForm: HistoryUpdateForm = { isFavorite: true };
-      await ImageInputHistoryAPI.update(createdIds[0]!, updateForm);
-
-      const detail = await ImageInputHistoryAPI.getById(createdIds[0]!);
-      expect(detail.isFavorite).toBe(true);
-    });
-
-    test("正向测试：取消收藏标记", async () => {
-      expect(createdIds.length).toBeGreaterThan(0);
-
-      const updateForm: HistoryUpdateForm = { isFavorite: false };
-      await ImageInputHistoryAPI.update(createdIds[0]!, updateForm);
-
-      const detail = await ImageInputHistoryAPI.getById(createdIds[0]!);
-      expect(detail.isFavorite).toBe(false);
+      await ImageInputHistoryAPI.update(createdIds[0]!, {});
     });
   });
 

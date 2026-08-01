@@ -12,6 +12,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
+	"github.com/earthyzinc/dehaze-go/pkg/trace"
 	"go.uber.org/zap"
 )
 
@@ -67,6 +68,9 @@ func SessionAuth() gin.HandlerFunc {
 		claims.Subject = session.Username
 		claims.ID = sessionID
 		c.Set("claims", claims)
+
+		// 认证通过后，将 user_id 写入请求上下文（供 logger 自动注入到每条日志）
+		c.Request = c.Request.WithContext(trace.WithUserID(c.Request.Context(), session.UserID))
 
 		ttl, err := cacheClient.TTL(c.Request.Context(), SessionPrefix+sessionID)
 		if err == nil && ttl > 0 && ttl < SessionRenewThreshold {
@@ -134,9 +138,10 @@ func ClearSessionCookie(c *gin.Context) {
 
 func unauthorized(c *gin.Context) {
 	c.JSON(http.StatusUnauthorized, common.Response{
-		Code: common.TOKEN_INVALID.Code,
-		Data: map[string]any{},
-		Msg:  common.TOKEN_INVALID.Msg,
+		Code:    common.TOKEN_INVALID.Code,
+		Data:    map[string]any{},
+		Msg:     common.TOKEN_INVALID.Msg,
+		TraceId: trace.FromContext(c.Request.Context()),
 	})
 	c.Abort()
 }

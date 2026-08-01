@@ -74,16 +74,16 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 		if cachedStr, err := s.cache.Get(ctx, cacheKey); err == nil && cachedStr != "" {
 			var cached algo.PredictionResponse
 			if json.Unmarshal([]byte(cachedStr), &cached) == nil {
-				predLog := &model.SysPredLog{
-					BaseModel:   model.BaseModel{CreateBy: userID},
-					AlgorithmID: algorithmID,
-					OriginMD5:   imageMD5,
-					OriginURL:   imageURL,
-					PredMD5:     utils.MD5Hex(cached.ResultURL),
-					PredURL:     cached.ResultURL,
-					Time:        cached.Time,
-					Status:      model.LogStatusCompleted,
-				}
+			predLog := &model.SysPredLog{
+				BaseModel:   model.BaseModel{CreateBy: userID},
+				AlgorithmID: algorithmID,
+				OriginMD5:   imageMD5,
+				OriginURL:   imageURL,
+				PredMD5:     utils.MD5Hex(cached.ResultURL),
+				PredURL:     cached.ResultURL,
+				Time:        cached.Time,
+				Status:      model.LogStatusCompleted,
+			}
 				if err := s.repo.Create(ctx, predLog); err != nil {
 					logger.Error("写入缓存命中预测日志失败", zap.Error(err))
 				}
@@ -277,4 +277,75 @@ func (s *PredictionService) GetLogPage(ctx context.Context, algorithmID int64, p
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询预测日志列表失败", err)
 	}
 	return &common.PageResult{List: list, Total: total, Page: pageNum, PageSize: pageSize}, nil
+}
+
+// BatchPredictionInput 批量预测单项
+type BatchPredictionInput struct {
+	FileID   *int64 `json:"fileId"`
+	ImageURL string `json:"imageUrl"`
+	Params   string `json:"params"`
+}
+
+// BatchPredict 批量处理
+func (s *PredictionService) BatchPredict(ctx context.Context, algorithmID int64, items []BatchPredictionInput, userID int64) ([]PredictionResult, error) {
+	// 校验批量上限
+	levelCode, err := s.memberSvc.GetLevelCode(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	batchLimit, err := s.memberSvc.GetBatchLimit(ctx, levelCode)
+	if err != nil {
+		return nil, err
+	}
+	if batchLimit <= 0 {
+		batchLimit = 5
+	}
+	if len(items) > batchLimit {
+		return nil, common.NewBizError(common.BUSINESS_ERROR, "批量处理数量超过上限")
+	}
+	if len(items) > 20 {
+		return nil, common.NewBizError(common.BUSINESS_ERROR, "批量处理最多20张")
+	}
+
+	results := make([]PredictionResult, 0, len(items))
+	for _, item := range items {
+		imageURL := item.ImageURL
+		result, err := s.Predict(ctx, algorithmID, imageURL, item.Params, userID)
+		if err != nil {
+			results = append(results, PredictionResult{
+				Status:       model.LogStatusFailed,
+				ErrorMessage: err.Error(),
+			})
+			continue
+		}
+		results = append(results, *result)
+	}
+	return results, nil
+}
+
+// QuotaVO 配额视图
+type QuotaVO struct {
+	Remaining int `json:"remaining"`
+	Total     int `json:"total"`
+	Used      int `json:"used"`
+}
+
+// GetQuota 查询剩余处理次数
+func (s *PredictionService) GetQuota(ctx context.Context, userID int64) (*QuotaVO, error) {
+	profile, err := s.memberSvc.GetProfile(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	totalQuota := profile.MonthlyDehazeQuota
+	used := profile.MonthlyDehazeUsed
+	remaining := totalQuota - used
+	if remaining < 0 {
+		remaining = 0
+	}
+	return &QuotaVO{
+		Remaining: remaining,
+		Total:     totalQuota,
+		Used:      used,
+	}, nil
 }

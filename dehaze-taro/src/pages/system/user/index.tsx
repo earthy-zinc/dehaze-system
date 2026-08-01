@@ -58,7 +58,7 @@ const UserListPage: React.FC = () => {
   // 上拉加载更多
   const handleLoadMore = async () => {
     if (users.length < total) {
-      await fetchUsers({ pageNum: queryParams.pageNum + 1 });
+      await fetchUsers({ pageNum: (queryParams.pageNum ?? 1) + 1 });
     }
   };
 

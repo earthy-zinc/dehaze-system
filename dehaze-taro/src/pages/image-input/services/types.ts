@@ -3,6 +3,10 @@
  */
 
 // 输入方式类型
+// 文件大小限制（字节）
+// 小程序平台最大10MB，H5平台最大20MB
+import Taro from "@tarojs/taro";
+
 export type InputMethod = "upload" | "camera" | "sample" | "history";
 
 // 样例图片分类（按场景，对齐设计文档需求规格 §2.3.2）
@@ -80,9 +84,8 @@ export const ErrorCodes = {
 
 // 错误信息映射
 export const ErrorMessages: Record<string, string> = {
-  [ErrorCodes.FILE_TOO_LARGE]: "图片大小超过20MB，请选择较小的图片",
-  [ErrorCodes.UNSUPPORTED_FORMAT]:
-    "不支持该图片格式，请选择JPG/PNG/WEBP/HEIC格式",
+  [ErrorCodes.FILE_TOO_LARGE]: "图片大小超过限制（最大10MB），请选择较小的图片",
+  [ErrorCodes.UNSUPPORTED_FORMAT]: "不支持该图片格式，仅支持JPG和PNG格式",
   [ErrorCodes.RESOLUTION_LOW]: "图片分辨率过低，建议至少 640×480",
   [ErrorCodes.NETWORK_ERROR]: "网络连接失败，请检查网络后重试",
   [ErrorCodes.UPLOAD_FAILED]: "上传失败，请重试",
@@ -92,22 +95,15 @@ export const ErrorMessages: Record<string, string> = {
   [ErrorCodes.USER_CANCEL]: "用户取消操作",
 };
 
-// 文件大小限制（字节）
+const isH5 = Taro.getSystemInfoSync().platform === "h5";
 export const FileSizeLimit = {
-  MAX_SIZE: 20 * 1024 * 1024, // 20MB
+  MAX_SIZE: isH5 ? 20 * 1024 * 1024 : 10 * 1024 * 1024,
   COMPRESS_THRESHOLD: 5 * 1024 * 1024, // 5MB 以上自动压缩
   COMPRESS_QUALITY: 85, // 压缩质量 85%
 } as const;
 
-// 支持的图片格式
-export const SupportedFormats = [
-  "jpg",
-  "jpeg",
-  "png",
-  "webp",
-  "heic",
-  "heif",
-] as const;
+// 支持的图片格式（仅JPG和PNG）
+export const SupportedFormats = ["jpg", "jpeg", "png"] as const;
 
 // 最低分辨率要求
 export const MinResolution = {

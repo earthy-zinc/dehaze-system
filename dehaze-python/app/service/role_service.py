@@ -23,8 +23,8 @@ class RoleService:
     # 缓存常量
     ROLE_PERMS_PREFIX = "role:perms:"
 
-    # 超级管理员角色编码
-    ROOT_ROLE_CODE = "ROOT"
+    # 内置不可删除的角色编码（与 Java/Go 一致）
+    BUILTIN_ROLE_CODES = {"ROOT", "ADMIN"}
 
     @staticmethod
     async def get_role_list(
@@ -117,13 +117,13 @@ class RoleService:
         if not name or not code:
             raise BusinessException(ResultCode.PARAM_ERROR, "角色名称和编码不能为空")
 
-        # 检查角色名称是否已存在
+        # 检查角色名称是否已存在（含软删记录）
         if await role_repository.check_name_exists(db, name):
-            raise BusinessException(ResultCode.DATA_EXISTS, "角色名称已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "角色名称已被历史记录占用")
 
-        # 检查角色编码是否已存在
+        # 检查角色编码是否已存在（含软删记录）
         if await role_repository.check_code_exists(db, code):
-            raise BusinessException(ResultCode.DATA_EXISTS, "角色编码已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "角色编码已被历史记录占用")
 
         role = SysRole(
             name=name,
@@ -170,13 +170,13 @@ class RoleService:
         if code and code != role.code:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "角色编码不可修改")
 
-        # 检查角色名称是否已存在（排除自己）
+        # 检查角色名称是否已存在（排除自己，含软删记录）
         if await role_repository.check_name_exists(db, name, exclude_id=role_id):
-            raise BusinessException(ResultCode.DATA_EXISTS, "角色名称已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "角色名称已被历史记录占用")
 
-        # 检查角色编码是否已存在（排除自己）
+        # 检查角色编码是否已存在（排除自己，含软删记录）
         if code and await role_repository.check_code_exists(db, code, exclude_id=role_id):
-            raise BusinessException(ResultCode.DATA_EXISTS, "角色编码已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "角色编码已被历史记录占用")
 
         # 超级管理员角色保护：不可修改状态和数据权限
         update_data = {
@@ -185,8 +185,8 @@ class RoleService:
             "sort": data.get("sort", role.sort),
         }
 
-        # 非超级管理员角色可以修改状态和数据权限
-        if role.code != RoleService.ROOT_ROLE_CODE:
+        # 内置角色不可修改状态和数据权限（与 Java/Go 一致）
+        if role.code not in RoleService.BUILTIN_ROLE_CODES:
             update_data["status"] = data.get("status", role.status)
             update_data["data_scope"] = data.get("dataScope", role.data_scope)
 
@@ -226,9 +226,9 @@ class RoleService:
             if not role:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"角色ID {role_id} 不存在")
 
-            # 超级管理员角色保护：code='ROOT' 的角色不能删除
-            if role.code == RoleService.ROOT_ROLE_CODE:
-                raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "超级管理员角色不可删除")
+            # 内置角色保护：与 Java/Go 一致，ROOT 和 ADMIN 均不可删除
+            if role.code in RoleService.BUILTIN_ROLE_CODES:
+                raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, f"内置角色 '{role.code}' 不可删除")
 
             if role.code is None:
                 raise BusinessException(ResultCode.BUSINESS_ERROR, "角色编码不能为空")
@@ -239,9 +239,9 @@ class RoleService:
             role = roles_map[role_id]
             count = user_counts.get(role_id, 0)
             if count > 0:
-                raise BusinessException(ResultCode.BUSINESS_ERROR, f"角色【{role.name}】已分配给用户，请先解除关联后删除")
+                raise BusinessException(ResultCode.BUSINESS_ERROR, "该角色仍有用户关联，请先解绑")
 
-        # 批量删除角色-菜单关联 + 批量软删除角色（2 条 SQL，替代 2N 条）
+        # 批量清理角色-菜单关联 + 批量软删除角色（2 条 SQL，替代 2N 条）
         await role_repository.delete_role_menus_by_role_ids(db, role_ids)
         await role_repository.delete_by_ids(db, role_ids)
 
@@ -284,9 +284,9 @@ class RoleService:
         if not role:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在")
 
-        # 超级管理员角色保护：code='ROOT' 的角色不能修改状态
-        if role.code == RoleService.ROOT_ROLE_CODE:
-            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "超级管理员角色不可禁用")
+        # 内置角色不可修改状态（与 Java/Go 一致）
+        if role.code in RoleService.BUILTIN_ROLE_CODES:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, f"内置角色 '{role.code}' 不可修改状态")
 
         await role_repository.update_by_id(db, role_id, {"status": status})
 

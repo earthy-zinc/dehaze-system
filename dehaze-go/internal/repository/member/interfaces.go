@@ -16,10 +16,9 @@ type IMemberRepository interface {
 	FindExpiredNonGrowth(ctx context.Context, now time.Time) ([]model.SysMember, error)
 	FindExpiringBetween(ctx context.Context, start, end time.Time) ([]model.SysMember, error)
 	FindUserIDsByLevelCode(ctx context.Context, levelCode string) ([]int64, error)
-	Create(ctx context.Context, m *model.SysMember) error
+	Upsert(ctx context.Context, m *model.SysMember) error
 	UpdateLevel(ctx context.Context, userID int64, updates map[string]interface{}) error
 	UpdateGrowth(ctx context.Context, userID int64, growthValue int64) error
-	UpdateStatus(ctx context.Context, userID int64, updates map[string]interface{}) error
 	Update(ctx context.Context, userID int64, updates map[string]interface{}) error
 	IncrementQuotaUsed(ctx context.Context, userID int64, quotaType string, delta int) error
 	ResetMonthlyQuota(ctx context.Context, userID int64, dehazeQuota, evaluateQuota, quotaMonth int) error
@@ -31,6 +30,7 @@ type IMemberBenefitRepository interface {
 	FindAll(ctx context.Context) ([]model.SysMemberBenefit, error)
 	FindByLevelCode(ctx context.Context, levelCode string) (*model.SysMemberBenefit, error)
 	Update(ctx context.Context, levelCode string, updates map[string]interface{}) error
+	ExistsByLevelCode(ctx context.Context, levelCode string, excludeID ...int64) (bool, error)
 }
 
 type IMemberGrowthLogRepository interface {

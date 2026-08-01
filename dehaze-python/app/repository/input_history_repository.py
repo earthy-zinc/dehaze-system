@@ -23,7 +23,6 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
         user_id: int,
         status: Optional[int] = None,
         input_source: Optional[str] = None,
-        favorite_only: bool = False,
         keywords: Optional[str] = None,
         page: int = 1,
         size: int = 10,
@@ -34,8 +33,6 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
             stmt = stmt.where(SysInputHistory.status == status)
         if input_source:
             stmt = stmt.where(SysInputHistory.input_source == input_source)
-        if favorite_only:
-            stmt = stmt.where(SysInputHistory.is_favorite == True)
         if keywords:
             stmt = stmt.where(
                 or_(

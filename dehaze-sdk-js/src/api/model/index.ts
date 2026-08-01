@@ -1,6 +1,10 @@
 import { PageResult } from "@/types";
 import request from "@/utils/request";
 import {
+  BatchPredictionForm,
+  BatchPredictionResultVO,
+  CompareReportForm,
+  CompareReportResultVO,
   EvalLogQuery,
   EvalLogVO,
   EvaluationForm,
@@ -9,7 +13,11 @@ import {
   PredLogQuery,
   PredLogVO,
   PredictionForm,
+  PredictionQuota,
   PredictionResultVO,
+  PresetForm,
+  PresetQuery,
+  PresetVO,
 } from "./model";
 
 const DEFAULT_INTERVAL_MS = 2000;
@@ -147,6 +155,81 @@ class ModelAPI {
       url: "/api/v1/evaluation/logs",
       method: "get",
       params: query,
+    });
+  }
+
+  // ===== 批量预测 / 配额（去雾处理） =====
+
+  /** 批量预测（一次提交多张图片，最多 20 张） */
+  static batchPredict(data: BatchPredictionForm) {
+    return request<BatchPredictionResultVO>({
+      url: "/api/v1/prediction/batch",
+      method: "post",
+      data,
+    });
+  }
+
+  /** 查询 VIP 配额（剩余处理次数） */
+  static getQuota() {
+    return request<PredictionQuota>({
+      url: "/api/v1/prediction/quota",
+      method: "get",
+    });
+  }
+
+  // ===== 参数预设（去雾处理） =====
+
+  /** 参数预设列表（系统预设 + 用户自定义） */
+  static getPresets(query?: PresetQuery) {
+    return request<PageResult<PresetVO[]>>({
+      url: "/api/v1/presets",
+      method: "get",
+      params: query,
+    });
+  }
+
+  /** 创建自定义预设 */
+  static createPreset(data: PresetForm) {
+    return request<PresetVO>({
+      url: "/api/v1/presets",
+      method: "post",
+      data,
+    });
+  }
+
+  /** 更新自定义预设 */
+  static updatePreset(id: number, data: PresetForm) {
+    return request<PresetVO>({
+      url: `/api/v1/presets/${id}`,
+      method: "put",
+      data,
+    });
+  }
+
+  /** 删除自定义预设 */
+  static deletePreset(id: number) {
+    return request({
+      url: `/api/v1/presets/${id}`,
+      method: "delete",
+    });
+  }
+
+  // ===== 对比报告（效果对比） =====
+
+  /** 生成对比报告（异步任务，通过任务管理追踪进度） */
+  static generateReport(data: CompareReportForm) {
+    return request<CompareReportResultVO>({
+      url: "/api/v1/compare/report",
+      method: "post",
+      data,
+    });
+  }
+
+  /** 查询对比报告任务状态（报告生成完成后返回下载URL） */
+  static getReportStatus(taskId: number) {
+    return request<CompareReportResultVO>({
+      url: `/api/v1/compare/report/${taskId}`,
+      method: "get",
     });
   }
 }

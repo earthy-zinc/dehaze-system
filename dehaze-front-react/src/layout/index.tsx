@@ -8,7 +8,6 @@ import { RootState } from "@/store";
 import "./index.scss";
 import { Layout, Spin } from "antd";
 import { Content, Header } from "antd/es/layout/layout";
-import Sider from "antd/es/layout/sider";
 import React, { lazy, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { Navigate, RouteObject, useRoutes } from "react-router-dom";
@@ -93,7 +92,7 @@ const BasicLayout: React.FC = () => {
   return (
     <Layout className="main-container">
       {settingsStore.layout !== LayoutEnum.TOP && (
-        <Sider
+        <Layout.Sider
           collapsible
           collapsed={collapsed}
           width={SIDEBAR_WIDTH}
@@ -102,7 +101,7 @@ const BasicLayout: React.FC = () => {
           trigger={null}
         >
           <SideMenu />
-        </Sider>
+        </Layout.Sider>
       )}
       <Layout className="layout-left">
         <Header className="header">

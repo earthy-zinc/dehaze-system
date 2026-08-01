@@ -168,9 +168,11 @@ const AnnouncementFormDialog = forwardRef<
 
       handleCancel();
       onSuccess?.();
-    } catch (error: any) {
-      if (error?.errorFields) return;
-      message.error(error?.message || "操作失败");
+    } catch (error: unknown) {
+      const formErr = error as { errorFields?: Array<{ name: unknown }> };
+      if (formErr.errorFields) return;
+      const msgErr = error as { message?: string };
+      message.error(msgErr.message || "操作失败");
     } finally {
       setConfirmLoading(false);
     }
@@ -186,6 +188,7 @@ const AnnouncementFormDialog = forwardRef<
       confirmLoading={confirmLoading}
       okText="保存"
       cancelText="取消"
+      forceRender
       destroyOnHidden
       onOk={handleSubmit}
       onCancel={handleCancel}

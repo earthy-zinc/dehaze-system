@@ -183,7 +183,7 @@
           取消任务
         </el-button>
         <el-button
-          v-if="taskStore.currentTask?.status === 'COMPLETED'"
+          v-if="taskStore.currentTask?.status === 3"
           type="success"
           :loading="downloadLoadingId === taskStore.currentTask?.taskId"
           @click="handleDownload(taskStore.currentTask)"

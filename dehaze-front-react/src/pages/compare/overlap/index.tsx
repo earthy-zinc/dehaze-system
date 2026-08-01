@@ -2,6 +2,8 @@ import {
   AlgorithmAPI,
   FileAPI,
   ModelAPI,
+  type CompareReportForm,
+  type CompareReportResultVO,
   type FileInfo,
   type OptionType,
 } from "dehaze-sdk-js";
@@ -13,8 +15,18 @@ import OverlapImageShow from "@/components/OverlapImageShow";
 import SingleImageShow from "@/components/SingleImageShow";
 import { useWindowSize } from "@/hooks/useWindowSize";
 import { calculateFileMd5 } from "@/utils/md5";
-import { Card, Cascader, message } from "antd";
+import {
+  Button,
+  Card,
+  Cascader,
+  message,
+  Modal,
+  Select,
+  Switch,
+  Tag,
+} from "antd";
 import React, { useEffect, useMemo, useState } from "react";
+import { DownloadOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import styles from "./index.module.scss";
 
 type ActivePage =
@@ -41,6 +53,16 @@ export default function Overlap() {
     label: "模型名称",
   });
   const [activePage, setActivePage] = useState<ActivePage>("overlap");
+  const [algorithmInfo, setAlgorithmInfo] = useState<any>(null);
+  const [algorithmLoading, setAlgorithmLoading] = useState(false);
+  const [lastLogId, setLastLogId] = useState<number | null>(null);
+
+  // 导出报告相关状态
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportFormat, setReportFormat] = useState<"pdf" | "image">("pdf");
+  const [includeMetrics, setIncludeMetrics] = useState(true);
+  const [includeFilters, setIncludeFilters] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const { width } = useWindowSize();
 
@@ -99,6 +121,7 @@ export default function Overlap() {
       imageUrl: image1,
     })
       .then((res) => {
+        setLastLogId(res.logId || null);
         if (res.status === 3) {
           throw new Error(res.errorMessage || "去雾处理失败");
         }
@@ -114,6 +137,74 @@ export default function Overlap() {
   const handleExampleImageClick = (url: string) => {
     setImage1(url);
     setActivePage("singleImage");
+  };
+
+  // 获取算法信息
+  useEffect(() => {
+    if (!selectedModel?.value) return;
+    setAlgorithmLoading(true);
+    AlgorithmAPI.getAlgorithmInfoById(Number(selectedModel.value))
+      .then(setAlgorithmInfo)
+      .catch(() => message.error("获取算法信息失败"))
+      .finally(() => setAlgorithmLoading(false));
+  }, [selectedModel?.value]);
+
+  // 打开导出报告弹窗
+  const handleOpenReportModal = () => {
+    setReportModalOpen(true);
+  };
+
+  // 关闭导出报告弹窗
+  const handleCloseReportModal = () => {
+    setReportModalOpen(false);
+    setExporting(false);
+  };
+
+  // 生成并下载对比报告
+  const handleGenerateReport = async () => {
+    if (!disableMore) return;
+    if (!lastLogId) {
+      message.warning("请先进行去雾处理以生成对比报告");
+      return;
+    }
+    setExporting(true);
+    try {
+      message.info("正在生成报告...");
+      const reportForm: CompareReportForm = {
+        logId: lastLogId,
+        format: reportFormat,
+        includeMetrics,
+        includeFilters,
+      };
+
+      const reportTask = await ModelAPI.generateReport(reportForm);
+      message.info(`报告生成任务已启动，任务ID: ${reportTask.taskId}`);
+
+      // 轮询报告状态
+      let reportStatus: CompareReportResultVO = reportTask;
+      const pollInterval = setInterval(async () => {
+        reportStatus = await ModelAPI.getReportStatus(reportTask.taskId);
+        if (reportStatus.status === 2) {
+          // 完成
+          clearInterval(pollInterval);
+          if (reportStatus.downloadUrl) {
+            window.open(reportStatus.downloadUrl, "_blank");
+            message.success("报告生成成功");
+          } else {
+            message.error("报告生成成功但下载链接为空");
+          }
+          handleCloseReportModal();
+        } else if (reportStatus.status === 3) {
+          // 失败
+          clearInterval(pollInterval);
+          message.error(reportStatus.errorMessage || "报告生成失败");
+          handleCloseReportModal();
+        }
+      }, 2000);
+    } catch (err: any) {
+      message.error("报告生成失败: " + (err?.message || "未知错误"));
+      setExporting(false);
+    }
   };
 
   const handleMouseover = (p: Point) => {
@@ -151,7 +242,74 @@ export default function Overlap() {
       case "camera":
         return <div>相机</div>;
       case "overlap":
-        return <OverlapImageShow />;
+        return (
+          <div
+            style={{ display: "flex", flexDirection: "column", height: "100%" }}
+          >
+            {/* 算法信息区域 */}
+            <Card style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <InfoCircleOutlined
+                  style={{ fontSize: 20, color: "#1890ff" }}
+                />
+                <div style={{ flex: 1 }}>
+                  {algorithmLoading ? (
+                    <span style={{ color: "#999" }}>加载中...</span>
+                  ) : algorithmInfo ? (
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 16 }}>
+                        {algorithmInfo.name}
+                        {algorithmInfo.version && (
+                          <Tag style={{ marginLeft: 8 }}>
+                            v{algorithmInfo.version}
+                          </Tag>
+                        )}
+                      </div>
+                      <div
+                        style={{ fontSize: 13, color: "#666", marginTop: 4 }}
+                      >
+                        {algorithmInfo.description || "暂无描述"}
+                      </div>
+                      <div
+                        style={{ fontSize: 13, color: "#999", marginTop: 4 }}
+                      >
+                        {algorithmInfo.params && (
+                          <span>参数: {algorithmInfo.params}</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <span style={{ color: "#999" }}>暂无算法信息</span>
+                  )}
+                </div>
+              </div>
+            </Card>
+
+            {/* 导出报告按钮 */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginBottom: 8,
+              }}
+            >
+              <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+                onClick={handleOpenReportModal}
+                disabled={disableMore || !lastLogId}
+                loading={exporting}
+              >
+                导出对比报告
+              </Button>
+            </div>
+
+            {/* 重叠对比图片 */}
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <OverlapImageShow />
+            </div>
+          </div>
+        );
       case "effect":
         return <div>特效</div>;
       case "loading":
@@ -185,6 +343,54 @@ export default function Overlap() {
       </AlgorithmToolBar>
       {/* 右侧展示栏 */}
       <Card className={styles["flex-center"]}>{showActivePage()}</Card>
+
+      {/* 导出对比报告弹窗 */}
+      <Modal
+        title="导出对比报告"
+        open={reportModalOpen}
+        onCancel={handleCloseReportModal}
+        footer={null}
+        width={500}
+      >
+        <div style={{ padding: "8px 0" }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontWeight: 500, marginBottom: 8 }}>报告格式</div>
+            <Select
+              value={reportFormat}
+              onChange={(v) => setReportFormat(v)}
+              options={[
+                { label: "PDF 文档", value: "pdf" },
+                { label: "图片 (PNG)", value: "image" },
+              ]}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontWeight: 500, marginBottom: 8 }}>报告选项</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Switch checked={includeMetrics} onChange={setIncludeMetrics} />
+                <span>包含性能指标</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Switch checked={includeFilters} onChange={setIncludeFilters} />
+                <span>包含滤镜参数</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button onClick={handleCloseReportModal}>取消</Button>
+            <Button
+              type="primary"
+              onClick={handleGenerateReport}
+              loading={exporting}
+              disabled={!lastLogId}
+            >
+              生成报告
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

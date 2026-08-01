@@ -52,7 +52,7 @@ func (api *SysTaskApi) CreateTask(c *gin.Context) {
 		return
 	}
 
-	taskVO := api.taskService.ConvertToTaskVO(task)
+	taskVO := api.taskService.ConvertToTaskVO(c.Request.Context(), task)
 	common.OkWithDetailed(taskVO, "任务创建成功", c)
 }
 
@@ -110,7 +110,7 @@ func (api *SysTaskApi) GetTaskById(c *gin.Context) {
 		return
 	}
 
-	taskVO := api.taskService.ConvertToTaskVO(task)
+	taskVO := api.taskService.ConvertToTaskVO(c.Request.Context(), task)
 	common.OkWithData(taskVO, c)
 }
 
@@ -174,7 +174,7 @@ func (api *SysTaskApi) RetryTask(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	taskVO := api.taskService.ConvertToTaskVO(task)
+	taskVO := api.taskService.ConvertToTaskVO(c.Request.Context(), task)
 	common.OkWithDetailed(taskVO, "任务已重新提交", c)
 }
 

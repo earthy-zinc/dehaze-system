@@ -47,17 +47,21 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         pred_md5: str,
         pred_url: str,
         time_ms: int,
+        pred_file_id: Optional[int] = None,
     ) -> None:
         """更新预测日志为 completed 并写入结果"""
+        values = {
+            "status": LogStatus.COMPLETED.value,
+            "pred_md5": pred_md5,
+            "pred_url": pred_url,
+            "time": time_ms // 1000,
+        }
+        if pred_file_id is not None:
+            values["pred_file_id"] = pred_file_id
         stmt = (
             update(SysPredLog)
             .where(SysPredLog.id == log_id)
-            .values(
-                status=LogStatus.COMPLETED.value,
-                pred_md5=pred_md5,
-                pred_url=pred_url,
-                time=time_ms // 1000,
-            )
+            .values(**values)
         )
         await db.execute(stmt)
         await db.commit()

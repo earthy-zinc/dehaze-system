@@ -13,19 +13,49 @@ describe("预测与评估 API 测试", () => {
 
   beforeAll(async () => {
     await login(USERS.USER.username);
-    const hazyPath = path.resolve(__dirname, "../../resources/test/model/hazy.jpg");
-    const hazyFile = fs.readFileSync(hazyPath);
-    const hazyBlob = new Blob([hazyFile]);
-    const hazyFormFile = new File([hazyBlob], "hazy.jpg", { type: "image/jpeg" });
-    const hazyInfo = await FileAPI.upload(hazyFormFile);
+
+    const uploadFile = async (relativePath: string): Promise<{ id: number; url: string }> => {
+      const filePath = path.resolve(__dirname, relativePath);
+      const fileData = fs.readFileSync(filePath);
+      const blob = new Blob([fileData]);
+      const fileName = path.basename(relativePath);
+      const formFile = new File([blob], fileName, { type: "image/jpeg" });
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          return await FileAPI.upload(formFile);
+        } catch (e: any) {
+          const code = e?.response?.data?.code;
+          if (code === "A0002" && attempt < 2) {
+            // TTL 5 秒，等待 3 秒覆盖一半 TTL，最多 3 次重试（总等待 9 秒）
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+            continue;
+          }
+          if (code === "A0501") {
+            // 文件已存在（MD5 去重导致唯一键冲突），按文件名搜索获取真实 id/url
+            console.warn(`文件 ${fileName} 已存在，搜索已有记录...`);
+            const page = await FileAPI.getPage({ pageNum: 1, pageSize: 5, keywords: fileName });
+            const found = page.list.find((f) => f.name === fileName && f.url);
+            if (found) {
+              return { id: found.id, url: found.url };
+            }
+            // 查到的文件 url 为空（可能已删除），等待后重试上传
+            if (attempt < 2) {
+              await new Promise((resolve) => setTimeout(resolve, 3000));
+              continue;
+            }
+            throw new Error(`文件 ${fileName} 已存在但无法在列表中查到有效记录，请检查数据库`);
+          }
+          throw e;
+        }
+      }
+      return { id: 0, url: "" };
+    };
+
+    const hazyInfo = await uploadFile("../../resources/test/model/hazy.jpg");
     uploadedFileId = hazyInfo.id;
     uploadedFileUrl = hazyInfo.url;
 
-    const clearPath = path.resolve(__dirname, "../../resources/test/model/clear.jpg");
-    const clearFile = fs.readFileSync(clearPath);
-    const clearBlob = new Blob([clearFile]);
-    const clearFormFile = new File([clearBlob], "clear.jpg", { type: "image/jpeg" });
-    const clearInfo = await FileAPI.upload(clearFormFile);
+    const clearInfo = await uploadFile("../../resources/test/model/clear.jpg");
     clearFileUrl = clearInfo.url;
   });
 

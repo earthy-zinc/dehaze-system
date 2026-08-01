@@ -7,7 +7,7 @@ POST   /api/v1/image-input/history/sync     → 同步本地与云端
 DELETE /api/v1/image-input/history/batch    → 批量删除
 DELETE /api/v1/image-input/history/clear    → 清空历史
 GET    /api/v1/image-input/history/{id}     → 历史记录详情
-PUT    /api/v1/image-input/history/{id}     → 更新（如收藏）
+PUT    /api/v1/image-input/history/{id}     → 更新（如补充处理结果）
 DELETE /api/v1/image-input/history/{id}     → 删除单条
 
 注意：静态路径（/batch, /clear, /sync）必须注册在动态路径 /{id} 之前，
@@ -27,7 +27,6 @@ from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.common import PageResult
 from app.models.schema.input_history import (
     InputHistoryForm,
-    InputHistoryUpdateForm,
     InputHistoryVO,
 )
 from app.service.input_history_service import InputHistoryService
@@ -47,7 +46,6 @@ router = APIRouter(
 async def list_history(
     status: Optional[int] = Query(default=None, description="状态筛选（1=成功，2=失败，3=处理中）"),
     inputSource: Optional[str] = Query(default=None, description="图片来源筛选: upload/camera/sample"),
-    isFavorite: Optional[bool] = Query(default=None, description="仅收藏"),
     keywords: Optional[str] = Query(default=None, description="关键词"),
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
@@ -64,7 +62,6 @@ async def list_history(
         user_id=user.id,
         status=status,
         input_source=inputSource,
-        favorite_only=isFavorite == True,
         keywords=keywords,
         page=pageNum,
         size=pageSize,
@@ -138,19 +135,19 @@ async def get_history(
 @router.put("/{history_id}", response_model=Result[None], summary="更新历史记录")
 async def update_history(
     history_id: int,
-    body: InputHistoryUpdateForm,
+    body: InputHistoryForm,
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    更新历史记录（如添加收藏、补充处理结果）
+    更新历史记录（如补充处理结果）
 
     仅本人可操作自己的历史记录
     """
     await InputHistoryService.update_history(
         db=db,
         history_id=history_id,
-        is_favorite=body.isFavorite,
+        data=body.model_dump(by_alias=False, exclude_none=True),
         user_id=user.id,
     )
     return success(msg="更新成功")

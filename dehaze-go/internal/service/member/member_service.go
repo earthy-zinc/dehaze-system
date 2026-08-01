@@ -588,7 +588,7 @@ func (s *MemberService) UpdateStatus(ctx context.Context, userID int64, form *bo
 
 	if form.Status == 0 {
 		now := time.Now()
-		if err := s.memberRepo.UpdateStatus(ctx, userID, map[string]interface{}{
+		if err := s.memberRepo.Update(ctx, userID, map[string]interface{}{
 			"status":        0,
 			"frozen_reason": form.Reason,
 			"frozen_time":   now,
@@ -602,7 +602,7 @@ func (s *MemberService) UpdateStatus(ctx context.Context, userID int64, form *bo
 		return nil
 	}
 
-	if err := s.memberRepo.UpdateStatus(ctx, userID, map[string]interface{}{
+	if err := s.memberRepo.Update(ctx, userID, map[string]interface{}{
 		"status": 1,
 	}); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "状态更新失败", err)
@@ -872,7 +872,7 @@ func (s *MemberService) ResetMonthlyQuota(ctx context.Context) error {
 		lockKey := "job:member:quota:reset:lock"
 		token, ok, _ := s.cache.Lock(ctx, lockKey, quotaResetJobLockTTL)
 		if !ok {
-			logger.Info("月度配额重置任务已被其他实例持有，跳过执行")
+			logger.Debug("月度配额重置任务已被其他实例持有，跳过执行")
 			return nil
 		}
 		defer func() { _, _ = s.cache.Unlock(ctx, lockKey, token) }()
@@ -940,7 +940,7 @@ func (s *MemberService) ResetMonthlyQuota(ctx context.Context) error {
 		}
 	}
 
-	logger.Info("月度配额重置完成", zap.Int("total", totalCount), zap.Int("success", successCount))
+	logger.Debug("月度配额重置完成", zap.Int("total", totalCount), zap.Int("success", successCount))
 	return nil
 }
 
@@ -988,7 +988,7 @@ func (s *MemberService) ProcessExpiredMembers(ctx context.Context) error {
 		successCount++
 	}
 
-	logger.Info("会员过期降级处理完成", zap.Int("total", len(members)), zap.Int("success", successCount))
+	logger.Debug("会员过期降级处理完成", zap.Int("total", len(members)), zap.Int("success", successCount))
 	return nil
 }
 
@@ -1081,7 +1081,7 @@ func (s *MemberService) SendExpireReminders(ctx context.Context) error {
 		}
 	}
 
-	logger.Info("会员到期预警完成", zap.Int("sent", sentCount))
+	logger.Debug("会员到期预警完成", zap.Int("sent", sentCount))
 	return nil
 }
 
@@ -1168,6 +1168,30 @@ func determineLevelByGrowth(benefits []model.SysMemberBenefit, growthValue int64
 		}
 	}
 	return result
+}
+
+// GetLevelCode 获取用户会员等级代码
+func (s *MemberService) GetLevelCode(ctx context.Context, userID int64) (string, error) {
+	member, err := s.memberRepo.FindByUserID(ctx, userID)
+	if err != nil {
+		return "", common.WrapBizError(common.DATABASE_ERROR, "查询会员信息失败", err)
+	}
+	if member == nil {
+		return "level_0", nil
+	}
+	return member.LevelCode, nil
+}
+
+// GetBatchLimit 根据等级代码获取批量处理上限
+func (s *MemberService) GetBatchLimit(ctx context.Context, levelCode string) (int, error) {
+	benefit, err := s.findBenefitByLevelCode(ctx, levelCode)
+	if err != nil {
+		return 0, err
+	}
+	if benefit == nil {
+		return 0, nil
+	}
+	return benefit.BatchLimit, nil
 }
 
 var _ IMemberService = (*MemberService)(nil)

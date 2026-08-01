@@ -119,7 +119,9 @@ const AlgorithmInfoCard: React.FC<AlgorithmInfoCardProps> = ({
           </View>
           <View className="info-row">
             <Text className="info-label">处理耗时</Text>
-            <Text className="info-value">{formatDuration(result.time)}</Text>
+            <Text className="info-value">
+              {formatDuration(result.time ?? 0)}
+            </Text>
           </View>
           {result.fromCache !== undefined && (
             <View className="info-row">

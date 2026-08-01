@@ -189,7 +189,7 @@ func (ps *PubSub) Subscribe(msgType string, handler func(CacheInvalidationMsg)) 
 	defer ps.mu.Unlock()
 
 	ps.subscribers[msgType] = append(ps.subscribers[msgType], handler)
-	logger.Info("订阅缓存失效消息", zap.String("type", msgType))
+	logger.Debug("订阅缓存失效消息", zap.String("type", msgType))
 }
 
 // Stop 停止订阅

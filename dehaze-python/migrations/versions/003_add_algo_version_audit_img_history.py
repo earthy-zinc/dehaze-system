@@ -83,7 +83,7 @@ def upgrade():
         sa.Column('processing_time', sa.Integer, nullable=True, comment='处理耗时（毫秒）'),
         sa.Column('status', mysql.TINYINT, nullable=True, server_default='3', comment='处理状态（1=成功，2=失败，3=处理中）'),
         sa.Column('input_source', sa.String(20), nullable=True, comment='图片来源（upload/camera/sample）'),
-        sa.Column('is_favorite', mysql.TINYINT(1), nullable=True, server_default='0', comment='是否收藏'),
+        sa.Column('is_favorite', mysql.TINYINT(1), nullable=True, server_default='0', comment='是否收藏 [已废弃: 收藏功能已迁移至收藏管理模块 /api/v1/favorites]'),
         sa.Column('sync_status', mysql.TINYINT, nullable=True, server_default='0', comment='同步状态（0=未同步，1=已同步）'),
         sa.Column('create_time', sa.DateTime, nullable=False, server_default=sa.func.now(), comment='创建时间'),
         sa.Column('update_time', sa.DateTime, nullable=False, server_default=sa.func.now(), onupdate=sa.func.now(), comment='更新时间'),
@@ -92,7 +92,7 @@ def upgrade():
         comment='图像输入历史记录表',
     )
     op.create_index('idx_user_time', 'sys_input_history', ['user_id', sa.text('create_time DESC')])
-    op.create_index('idx_user_favorite', 'sys_input_history', ['user_id', 'is_favorite', sa.text('create_time DESC')])
+    op.create_index('idx_user_favorite', 'sys_input_history', ['user_id', 'is_favorite', sa.text('create_time DESC')])  # [已废弃: is_favorite 列已不再使用，此索引保留不删以兼容已存在的数据库]
 
     # 4. 新表 sys_algorithm_favorite: 算法收藏表 (Python 独有功能)
     op.create_table(

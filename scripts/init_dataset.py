@@ -2,7 +2,7 @@
 """数据集初始化脚本
 
 为磁盘上已存在的数据集文件批量创建 DB 记录（sys_dataset_item / sys_file / sys_item_file），
-源文件由 nginx-dataset 直服，不上传 MinIO。
+源文件由 nginx 静态服务直服，登记为 nginx-static 存储后端，不上传 MinIO。
 
 依赖：pymysql、Pillow（dehaze-python/.venv 已安装）。
 运行：E:\\DehazeSystem\\dehaze-python\\.venv\\Scripts\\python.exe scripts/init_dataset.py --help
@@ -13,6 +13,10 @@ haze_level 自动解析规则：
   - {id}_{idx}_{beta}.png              → beta={beta}   （如 1000_1_0.74905.png → beta=0.74905）
   - 其他                                → NULL
 OTS / Haze4K 的 A+β 双参数格式需 --haze-format 显式指定。
+
+存储约定：sys_file 写 object_name + storage='nginx-static'，URL 永不落库。
+nginx-static 后端 baseUrl 为服务根地址（如 http://host:9000），object_name 必须含资源前缀
+（数据集为 datasets/），运行时 url = baseUrl + "/" + object_name 拼出 http://host:9000/datasets/...。
 """
 import argparse
 import hashlib
@@ -149,7 +153,7 @@ def delete_dataset_items(cur, conn, dataset_id: int):
     conn.commit()
 
 
-def insert_file_record(cur, conn, *, name, object_name, size_bytes, ext, url, md5, path) -> int:
+def insert_file_record(cur, conn, *, name, object_name, size_bytes, ext, md5) -> int:
     """插入 sys_file（MD5 去重），返回 file_id。"""
     cur.execute("SELECT id FROM sys_file WHERE md5 = %s AND deleted = 0", (md5,))
     row = cur.fetchone()
@@ -157,9 +161,9 @@ def insert_file_record(cur, conn, *, name, object_name, size_bytes, ext, url, md
         return row[0]
 
     cur.execute(
-        "INSERT INTO sys_file (name, object_name, size, size_bytes, type, url, md5, path) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-        (name, object_name, human_size(size_bytes), size_bytes, ext, url, md5, path),
+        "INSERT INTO sys_file (name, object_name, storage, size, size_bytes, type, md5) "
+        "VALUES (%s, %s, 'nginx-static', %s, %s, %s, %s)",
+        (name, object_name, human_size(size_bytes), size_bytes, ext, md5),
     )
     return cur.lastrowid
 
@@ -173,7 +177,7 @@ def insert_item_file(cur, *, item_id, file_id, img_type, width, height, haze_lev
 
 
 def init_single_dataset(cur, conn, *, dataset_id, dataset_name, dataset_path_field,
-                        dataset_root: Path, dataset_base_url: str, haze_format: str,
+                        dataset_root: Path, haze_format: str,
                         regenerate: bool) -> tuple[int, int]:
     """初始化单个数据集，返回 (数据项数, 文件数)。"""
     if count_items(cur, dataset_id) > 0:
@@ -222,12 +226,10 @@ def init_single_dataset(cur, conn, *, dataset_id, dataset_name, dataset_path_fie
                 file_id = insert_file_record(
                     cur, conn,
                     name=fp.name,
-                    object_name=rel,
+                    object_name=f"datasets/{rel}",
                     size_bytes=fp.stat().st_size,
                     ext=fp.suffix.lstrip(".").lower(),
-                    url=f"{dataset_base_url}/{rel}",
                     md5=md5,
-                    path=rel,
                 )
                 insert_item_file(
                     cur,
@@ -253,7 +255,8 @@ def main():
     parser.add_argument("--db-password", required=True)
     parser.add_argument("--db-name", default="dehaze")
     parser.add_argument("--dataset-path", required=True, help="数据集根目录（对应 file.datasetPath）")
-    parser.add_argument("--dataset-base-url", required=True, help="nginx-dataset 静态服务 URL（如 http://127.0.0.1:9000/datasets）")
+    parser.add_argument("--nginx-base-url", required=True,
+                        help="nginx 静态服务根地址（如 http://127.0.0.1:9000），不带 /datasets 等资源子路径")
     parser.add_argument("--dataset-id", type=int, help="仅初始化指定数据集 ID（不指定则初始化所有叶子数据集）")
     parser.add_argument("--haze-format", choices=["auto", "ots", "haze4k"], default="auto",
                         help="haze_level 解析格式：auto(默认) / ots(A=,beta=) / haze4k(beta=,A=)")
@@ -279,7 +282,7 @@ def main():
                 print("未找到可初始化的数据集")
                 return
 
-            print(f"发现 {len(datasets)} 个数据集，开始初始化（dataset_path={dataset_root}, base_url={args.dataset_base_url}）")
+            print(f"发现 {len(datasets)} 个数据集，开始初始化（dataset_path={dataset_root}, nginx_base_url={args.nginx_base_url}）")
             total_items = 0
             total_files = 0
             for ds_id, ds_name, ds_path in datasets:
@@ -290,7 +293,6 @@ def main():
                     dataset_name=ds_name,
                     dataset_path_field=ds_path,
                     dataset_root=dataset_root,
-                    dataset_base_url=args.dataset_base_url.rstrip("/"),
                     haze_format=args.haze_format,
                     regenerate=args.regenerate,
                 )

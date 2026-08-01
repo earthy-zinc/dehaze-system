@@ -39,6 +39,7 @@ type IPackageRepository interface {
 	FindByID(ctx context.Context, id int64) (*model.SysPackage, error)
 	FindByIDs(ctx context.Context, ids []int64) ([]model.SysPackage, error)
 	FindByName(ctx context.Context, name string) (*model.SysPackage, error)
+	ExistsByName(ctx context.Context, name string, excludeID ...int64) (bool, error)
 	FindAllOnSale(ctx context.Context) ([]model.SysPackage, error)
 	FindPage(ctx context.Context, q *query.PackagePageQuery) ([]model.SysPackage, int64, error)
 	Create(ctx context.Context, p *model.SysPackage) error

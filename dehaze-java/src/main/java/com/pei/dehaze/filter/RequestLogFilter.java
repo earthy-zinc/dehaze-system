@@ -2,57 +2,50 @@ package com.pei.dehaze.filter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.filter.CommonsRequestLoggingFilter;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 /**
- * 请求日志打印过滤器
+ * 请求级访问日志过滤器
  * <p>
- * 记录请求 URI、查询参数、客户端信息、请求体（截断）和响应耗时，
- * 便于生产环境问题排查。
+ * 每请求一条 INFO ACCESS 日志，status/duration_ms/query 为独立字段，
+ * traceId/method/path 由 logback MDC 自动注入。
  *
  * @author earthyzinc
  * @since 2023/03/03
  */
 @Configuration
 @Slf4j
-public class RequestLogFilter extends CommonsRequestLoggingFilter {
+public class RequestLogFilter extends OncePerRequestFilter {
 
     private static final String ATTR_START_TIME = "reqStartTime";
 
-    public RequestLogFilter() {
-        setIncludeClientInfo(true);
-        setIncludeQueryString(true);
-        setIncludePayload(true);
-        setMaxPayloadLength(1024);
-        setIncludeHeaders(false);
-    }
-
     @Override
-    protected boolean shouldLog(HttpServletRequest request) {
-        // 以 info 级别输出请求日志
-        return this.logger.isInfoEnabled();
-    }
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        long startTime = System.currentTimeMillis();
+        request.setAttribute(ATTR_START_TIME, startTime);
 
-    @Override
-    protected void beforeRequest(HttpServletRequest request, String message) {
-        request.setAttribute(ATTR_START_TIME, System.currentTimeMillis());
-        String requestURI = request.getRequestURI();
-        String queryString = request.getQueryString();
-        String clientInfo = request.getRemoteAddr();
-        log.info("请求开始: {} {}{} client={}",
-                request.getMethod(),
-                requestURI,
-                queryString != null ? "?" + queryString : "",
-                clientInfo);
-        super.beforeRequest(request, message);
-    }
-
-    @Override
-    protected void afterRequest(HttpServletRequest request, String message) {
-        Long startTime = (Long) request.getAttribute(ATTR_START_TIME);
-        long costMs = startTime != null ? System.currentTimeMillis() - startTime : -1;
-        log.info("请求结束: {} {} 耗时={}ms", request.getMethod(), request.getRequestURI(), costMs);
-        super.afterRequest(request, message);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            long costMs = System.currentTimeMillis() - startTime;
+            String query = request.getQueryString();
+            MDC.put("status", String.valueOf(response.getStatus()));
+            MDC.put("duration_ms", String.valueOf(costMs));
+            if (query != null && !query.isEmpty()) {
+                MDC.put("query", query);
+            }
+            log.info("ACCESS");
+            MDC.remove("status");
+            MDC.remove("duration_ms");
+            MDC.remove("query");
+        }
     }
 }

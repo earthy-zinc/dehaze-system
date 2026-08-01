@@ -15,12 +15,7 @@ import {
   message,
   type TableColumnsType,
 } from "antd";
-import React, {
-  forwardRef,
-  useCallback,
-  useImperativeHandle,
-  useState,
-} from "react";
+import React, { useCallback, useImperativeHandle, useState } from "react";
 
 const LEVEL_COLOR_MAP: Record<MemberLevelCode, string> = {
   level_0: "default",
@@ -33,10 +28,10 @@ export interface BenefitConfigDrawerRef {
   open: () => void;
 }
 
-const BenefitConfigDrawer = forwardRef<
+const BenefitConfigDrawerImpl = React.forwardRef<
   BenefitConfigDrawerRef,
   Record<string, never>
->((_props, ref) => {
+>((_, ref) => {
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [benefitList, setBenefitList] = useState<BenefitVO[]>([]);
@@ -294,6 +289,6 @@ const BenefitConfigDrawer = forwardRef<
   );
 });
 
-BenefitConfigDrawer.displayName = "BenefitConfigDrawer";
+BenefitConfigDrawerImpl.displayName = "BenefitConfigDrawer";
 
-export default BenefitConfigDrawer;
+export default BenefitConfigDrawerImpl as any;

@@ -9,6 +9,7 @@ import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.query.UserPageQuery;
 import com.pei.dehaze.plugin.mybatis.annotation.DataPermission;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * 用户持久层
@@ -44,4 +45,14 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
      * @return
      */
     UserAuthInfo getUserAuthInfo(String username);
+
+    /**
+     * 按用户名在全表范围（含已软删行）查重。
+     * MyBatis-Plus @TableLogic 会自动追加 deleted=0，此处必须用原生 SQL 绕过。
+     *
+     * @param username 用户名
+     * @return 命中行数
+     */
+    @Select("SELECT COUNT(*) FROM sys_user WHERE username = #{username}")
+    long countByUsernameAllDeleted(String username);
 }

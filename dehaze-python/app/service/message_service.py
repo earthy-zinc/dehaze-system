@@ -302,7 +302,7 @@ class MessageService:
         user_ids = [row[0] for row in result.fetchall()]
 
         if not user_ids:
-            logger.info("未读数缓存刷新: 无活跃用户")
+            logger.debug("未读数缓存刷新: 无活跃用户")
             return 0
 
         redis = None
@@ -323,5 +323,5 @@ class MessageService:
             except Exception as e:
                 logger.warning("写入未读数缓存失败: user_id=%s err=%s", user_id, e)
 
-        logger.info("未读数缓存刷新完成: 共刷新 %s 个用户", refreshed)
+        logger.debug("未读数缓存刷新完成: 共刷新 %s 个用户", refreshed)
         return refreshed

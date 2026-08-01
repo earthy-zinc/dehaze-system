@@ -65,7 +65,7 @@ class EvaluationService:
         4. 提交 asyncio.create_task 后台执行
         5. 立即返回 {logId, status: "processing"}
         """
-        logger.info("评估请求: algorithmId=%s", algorithm_id)
+        logger.debug("评估请求: algorithmId=%s", algorithm_id)
 
         from app.database import get_db_session
         from app.service.member_service import MemberService

@@ -254,7 +254,7 @@ func (datasetService *DatasetService) getAllDatasetStats(ctx context.Context) (m
 	}
 
 	costMs := time.Since(startTime).Milliseconds()
-	logger.Info("所有数据集统计信息计算完成", zap.Int64("costMs", costMs), zap.Int("leafCount", len(leafIDs)))
+	logger.Debug("所有数据集统计信息计算完成", zap.Int64("costMs", costMs), zap.Int("leafCount", len(leafIDs)))
 
 	if datasetService.cache != nil {
 		if dataJSON, marshalErr := json.Marshal(statsMap); marshalErr == nil {

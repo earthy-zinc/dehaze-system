@@ -23,8 +23,8 @@
                 <el-icon><WarnTriangleFilled /></el-icon>
                 {{ message.priority === 4 ? "紧急" : "高优" }}
               </span>
-              <span v-if="message.senderTypeLabel" class="sender-text">
-                来自：{{ message.senderTypeLabel }}
+              <span v-if="senderTypeLabel" class="sender-text">
+                来自：{{ senderTypeLabel }}
               </span>
               <span class="time-text">{{ message.createTime }}</span>
             </div>
@@ -106,6 +106,15 @@ const typeIconMap: Record<string, any> = {
   critical_alert: WarnTriangleFilled,
   inbox: Promotion,
 };
+
+const senderTypeLabel = computed(() => {
+  const map: Record<number, string> = {
+    0: "系统",
+    1: "管理员",
+    2: "用户",
+  };
+  return map[message.value?.senderType ?? 0] || "未知";
+});
 
 function loadDetail() {
   const id = Number(route.query.id);

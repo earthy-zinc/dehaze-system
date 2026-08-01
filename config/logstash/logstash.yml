@@ -1,0 +1,5 @@
+# Logstash 配置
+# 禁用 monitoring：项目用 filebeat 采集日志，不需要 logstash 自身往 ES 写 monitoring 数据
+# 同时避免 licensechecker 因未带凭证访问 ES 报 401
+http.host: "0.0.0.0"
+xpack.monitoring.enabled: false

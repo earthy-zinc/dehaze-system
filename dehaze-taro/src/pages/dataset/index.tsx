@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { View, ScrollView } from "@tarojs/components";
+import { View, ScrollView, Text as TaroText } from "@tarojs/components";
+import Taro from "@tarojs/taro";
 import { Arrow, Add } from "@taroify/icons";
+
 import { confirmDialog } from "@/utils/dialog";
 
 // 组件导入
@@ -62,12 +64,28 @@ const DatasetContent: React.FC = () => {
     dataset: null,
     defaultParentId: 0,
   });
+  const [routeError, setRouteError] = useState<string | null>(null);
 
-  // 初始化加载数据集列表和下拉选项
+  // 从路由参数读取 datasetId，支持直接链接到特定数据集
   useEffect(() => {
+    const params = Taro.getCurrentInstance()?.router?.params;
+    const datasetIdStr = params?.datasetId || params?.id;
+    if (datasetIdStr) {
+      const id = Number(datasetIdStr);
+      if (!Number.isNaN(id)) {
+        setCurrentDatasetId(id);
+        setView("detail");
+        fetchDatasetDetail(id);
+        fetchImages(id, 1, "annotated", "", false);
+      } else {
+        setRouteError("无效的数据集ID");
+      }
+    }
+    // 初始化：加载列表和选项
     fetchDatasets(1, "", false);
     fetchDatasetOptions();
-  }, [fetchDatasets, fetchDatasetOptions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 搜索处理
   const handleSearch = (keyword: string) => {
@@ -247,8 +265,18 @@ const DatasetContent: React.FC = () => {
         />
       </View>
 
+      {/* 路由错误提示 */}
+      {routeError && (
+        <View className="error-view">
+          <TaroText className="error-text">{routeError}</TaroText>
+          <View className="back-btn" onClick={() => Taro.navigateBack()}>
+            <TaroText>返回</TaroText>
+          </View>
+        </View>
+      )}
+
       {/* 列表视图 */}
-      {state.currentView === "list" && (
+      {state.currentView === "list" && !routeError && (
         <View className="list-view">
           {/* 顶部操作栏 */}
           <View className="action-bar">

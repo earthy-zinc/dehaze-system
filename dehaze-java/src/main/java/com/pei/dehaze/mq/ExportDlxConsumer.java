@@ -1,7 +1,8 @@
 package com.pei.dehaze.mq;
 
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.constant.TaskConstants;
-import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.config.WebSocketMessageRelay;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
@@ -46,24 +47,22 @@ public class ExportDlxConsumer extends RabbitMQConsumer {
     }
 
     private void handleDlx(String body, String traceId) throws Exception {
-        Long taskId;
-        try {
-            taskId = Long.parseLong(body.trim());
-        } catch (NumberFormatException e) {
-            throw new BusinessException("[DLQ] 死信消息体无法解析为 taskId: body=" + body, e);
-        }
+        JSONObject msg = JSONUtil.parseObj(body);
+        Long dbTaskId = msg.getLong("db_task_id");
+        String taskId = msg.getStr("task_id");
 
-        log.warn("[DLQ] 收到死信消息: taskId={}, traceId={}", taskId, traceId);
+        log.warn("[DLQ] 收到死信消息: dbTaskId={}, taskId={}, traceId={}", dbTaskId, taskId, traceId);
 
-        SysTask sysTask = sysTaskMapper.selectById(taskId);
+        SysTask sysTask = sysTaskMapper.selectById(dbTaskId);
         if (sysTask == null) {
-            log.warn("[DLQ] 任务不存在，无法标记失败: taskId={}", taskId);
+            log.warn("[DLQ] 任务不存在，无法标记失败: dbTaskId={}, taskId={}", dbTaskId, taskId);
             return;
         }
 
         // 仅在非终态时更新
         if (TaskConstants.TERMINAL_STATUSES.contains(sysTask.getStatus())) {
-            log.info("[DLQ] 任务已为终态，跳过: taskId={}, status={}", taskId, sysTask.getStatus());
+            log.debug("[DLQ] 任务已为终态，跳过: dbTaskId={}, taskId={}, status={}",
+                    dbTaskId, taskId, sysTask.getStatus());
             return;
         }
 
@@ -80,7 +79,7 @@ public class ExportDlxConsumer extends RabbitMQConsumer {
         // WebSocket 推送失败通知
         pushFailedMessage(sysTask);
 
-        log.warn("[DLQ] 死信消息处理完成，任务已标记失败: taskId={}", taskId);
+        log.warn("[DLQ] 死信消息处理完成，任务已标记失败: dbTaskId={}, taskId={}", dbTaskId, taskId);
     }
 
     private void pushFailedMessage(SysTask sysTask) {

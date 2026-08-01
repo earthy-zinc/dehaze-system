@@ -47,9 +47,9 @@ class MessageTemplateRepository(BaseRepository[SysMessageTemplate]):
         return result.scalar_one_or_none()
 
     async def get_by_code(self, db: AsyncSession, code: str) -> Optional[SysMessageTemplate]:
+        """根据编码查询消息模板（含软删记录，用于查重）"""
         stmt = select(SysMessageTemplate).where(
             SysMessageTemplate.code == code,
-            SysMessageTemplate.deleted == 0,
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()

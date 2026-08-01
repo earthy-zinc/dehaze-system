@@ -46,9 +46,10 @@ class ApiKeyService:
 
     @staticmethod
     async def list_api_keys(db: AsyncSession, user_id: int) -> list[dict]:
+        # 列表只展示未吊销的 key（revoked_at IS NULL），与 Java/Go 一致
         stmt = (
             select(SysApiKey)
-            .where(SysApiKey.user_id == user_id, SysApiKey.status == 1)
+            .where(SysApiKey.user_id == user_id, SysApiKey.revoked_at.is_(None))
             .order_by(SysApiKey.id.desc())
         )
         result = await db.execute(stmt)
@@ -68,20 +69,25 @@ class ApiKeyService:
 
     @staticmethod
     async def delete_api_key(db: AsyncSession, user_id: int, key_id: int) -> bool:
+        """吊销 API 密钥：设置 revoked_at，永久保留 hash 以拒绝已泄露的旧密钥。"""
         stmt = select(SysApiKey).where(
             SysApiKey.id == key_id, SysApiKey.user_id == user_id)
         result = await db.execute(stmt)
         entity = result.scalar_one_or_none()
         if not entity:
             return False
-        await db.delete(entity)
+        entity.revoked_at = datetime.now()
         await db.flush()
         return True
 
     @staticmethod
     async def authenticate_by_key(db: AsyncSession, raw_key: str) -> UserContext:
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-        stmt = select(SysApiKey).where(SysApiKey.key_hash == key_hash)
+        # 仅匹配未吊销的 key（revoked_at IS NULL）
+        stmt = select(SysApiKey).where(
+            SysApiKey.key_hash == key_hash,
+            SysApiKey.revoked_at.is_(None),
+        )
         result = await db.execute(stmt)
         api_key = result.scalar_one_or_none()
         if not api_key or api_key.status != 1:

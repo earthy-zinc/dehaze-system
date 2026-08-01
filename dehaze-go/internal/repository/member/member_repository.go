@@ -8,6 +8,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type MemberRepository struct {
@@ -135,8 +136,11 @@ func (r *MemberRepository) FindUserIDsByLevelCode(ctx context.Context, levelCode
 	return userIDs, err
 }
 
-func (r *MemberRepository) Create(ctx context.Context, m *model.SysMember) error {
-	return r.db.WithContext(ctx).Create(m).Error
+func (r *MemberRepository) Upsert(ctx context.Context, m *model.SysMember) error {
+	return r.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"deleted", "update_time"}),
+	}).Create(m).Error
 }
 
 func (r *MemberRepository) UpdateLevel(ctx context.Context, userID int64, updates map[string]interface{}) error {
@@ -151,13 +155,6 @@ func (r *MemberRepository) UpdateGrowth(ctx context.Context, userID int64, growt
 		Model(&model.SysMember{}).
 		Where("user_id = ? AND deleted = 0", userID).
 		Update("growth_value", growthValue).Error
-}
-
-func (r *MemberRepository) UpdateStatus(ctx context.Context, userID int64, updates map[string]interface{}) error {
-	return r.db.WithContext(ctx).
-		Model(&model.SysMember{}).
-		Where("user_id = ? AND deleted = 0", userID).
-		Updates(updates).Error
 }
 
 func (r *MemberRepository) Update(ctx context.Context, userID int64, updates map[string]interface{}) error {
@@ -192,7 +189,10 @@ func (r *MemberRepository) ResetMonthlyQuota(ctx context.Context, userID int64, 
 }
 
 func (r *MemberRepository) CreateQuotaArchive(ctx context.Context, quota *model.SysMemberQuota) error {
-	return r.db.WithContext(ctx).Create(quota).Error
+	return r.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}, {Name: "quota_month"}},
+		DoUpdates: clause.AssignmentColumns([]string{"deleted", "update_time"}),
+	}).Create(quota).Error
 }
 
 func (r *MemberRepository) Transaction(ctx context.Context, fn func(repo IMemberRepository) error) error {

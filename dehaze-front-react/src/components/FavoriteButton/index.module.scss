@@ -1,0 +1,11 @@
+.favorite-button {
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: scale(1.08);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}

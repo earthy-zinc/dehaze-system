@@ -16,10 +16,8 @@ public class FileBO {
     private String extension;
     // 文件MD5值
     private String md5;
-    // 文件路径
-    private String path;
+    // 存储后端标识（minio / local / nginx-static）
+    private String storage;
     // 文件大小
     private Long size;
-
-    private String url;
 }

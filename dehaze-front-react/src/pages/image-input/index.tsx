@@ -30,8 +30,8 @@ const { Title } = Typography;
 
 // 历史记录存储 key
 const HISTORY_KEY = "dehaze:image-history";
-// 最大文件大小 100MB
-const MAX_FILE_SIZE = 100 * 1024 * 1024;
+// 最大文件大小 20MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 // 历史记录最大保存数量
 const MAX_HISTORY_COUNT = 20;
 
@@ -163,6 +163,7 @@ const UploadPanel: React.FC<UploadPanelProps> = ({ onImageSelected }) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [dragOver, setDragOver] = useState(false);
 
   // 上传文件，通过 onUploadProgress 回调显示进度
   const handleUpload = (file: File) => {
@@ -183,23 +184,26 @@ const UploadPanel: React.FC<UploadPanelProps> = ({ onImageSelected }) => {
       })
       .finally(() => {
         setUploading(false);
+        setDragOver(false);
       });
   };
 
-  // 上传前校验：格式与大小
+  // 上传前校验：仅允许 JPG/PNG 格式，最大 20MB
   const handleBeforeUpload = (file: File) => {
-    // 格式校验
-    const validTypes = ["image/jpeg", "image/png", "image/webp"];
+    // 格式校验：仅允许 jpg/png
+    const validTypes = ["image/jpeg", "image/png"];
     if (!validTypes.includes(file.type)) {
-      message.error("不支持该图片格式，请选择 JPG/PNG/WEBP 格式");
+      message.error("仅支持 JPG/PNG 格式，请选择正确的图片格式");
       return Upload.LIST_IGNORE;
     }
-    // 大小校验
+    // 大小校验：最大 20MB
     if (file.size > MAX_FILE_SIZE) {
-      message.error("图片大小超过 100MB，请选择较小的图片");
+      message.error(
+        `图片大小不能超过 20MB（当前 ${Math.round(file.size / 1024)}KB）`
+      );
       return Upload.LIST_IGNORE;
     }
-    // 生成本地预览
+    // 生成本地预览缩略图
     const reader = new FileReader();
     reader.onload = (e) => setPreviewUrl(e.target?.result as string);
     reader.readAsDataURL(file);
@@ -208,30 +212,48 @@ const UploadPanel: React.FC<UploadPanelProps> = ({ onImageSelected }) => {
     return false;
   };
 
+  // 拖拽进入时高亮边框
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!uploading) setDragOver(true);
+  };
+
+  // 拖拽离开时恢复
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
   return (
     <div style={{ padding: "24px 0" }}>
-      <Dragger
-        accept=".jpg,.jpeg,.png,.webp"
-        beforeUpload={handleBeforeUpload}
-        showUploadList={false}
-        multiple={false}
-        disabled={uploading}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        style={{
+          border: `2px dashed ${dragOver ? "#1890ff" : "#d9d9d9"}`,
+          borderRadius: 4,
+          padding: "40px 0",
+          textAlign: "center",
+          background: dragOver ? "#e6f7ff" : undefined,
+          transition: "all 0.3s",
+        }}
       >
         <p className="ant-upload-drag-icon">
           <InboxOutlined />
         </p>
         <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
         <p className="ant-upload-hint">
-          支持 JPG、PNG、WEBP 格式，单文件不超过 100MB
+          仅支持 JPG、PNG 格式，单文件不超过 20MB
         </p>
-      </Dragger>
+      </div>
 
-      {previewUrl && (
+      {/* 上传后预览缩略图 */}
+      {previewUrl && !uploading && (
         <div style={{ marginTop: 16, textAlign: "center" }}>
           <AntImage
             src={previewUrl}
             alt="预览"
-            style={{ maxHeight: 240, objectFit: "contain" }}
+            style={{ maxHeight: 240, objectFit: "contain", borderRadius: 8 }}
+            preview
           />
         </div>
       )}
@@ -251,8 +273,21 @@ interface CameraPanelProps {
 }
 
 const CameraPanel: React.FC<CameraPanelProps> = ({ onImageSelected }) => {
-  // 拍照保存后上传
+  // 拍照保存后上传（校验格式与大小）
   const handleSave = (file: File) => {
+    // 格式校验：仅允许 jpg/png
+    const validTypes = ["image/jpeg", "image/png"];
+    if (!validTypes.includes(file.type)) {
+      message.error("仅支持 JPG/PNG 格式");
+      return;
+    }
+    // 大小校验：最大 20MB
+    if (file.size > MAX_FILE_SIZE) {
+      message.error(
+        `图片大小不能超过 20MB（当前 ${Math.round(file.size / 1024)}KB）`
+      );
+      return;
+    }
     const hide = message.loading("正在上传...", 0);
     FileAPI.upload(file)
       .then((res) => {

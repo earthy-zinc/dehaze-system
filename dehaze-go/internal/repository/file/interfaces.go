@@ -18,8 +18,11 @@ type IFileRepository interface {
 	// FindByIDs 根据 ID 列表查询文件
 	FindByIDs(ctx context.Context, ids []int64) ([]model.SysFile, error)
 
-	// FindByMD5 根据 MD5 查询文件
+	// FindByMD5 根据 MD5 查询文件（仅未删除）
 	FindByMD5(ctx context.Context, md5 string) (*model.SysFile, error)
+
+	// Upsert 按 md5 唯一键 upsert（冲突时复活软删记录并更新业务字段）
+	Upsert(ctx context.Context, f *model.SysFile) error
 
 	// FindByObjectName 根据对象名称查询文件
 	FindByObjectName(ctx context.Context, objectName string) (*model.SysFile, error)
@@ -29,6 +32,9 @@ type IFileRepository interface {
 
 	// Create 创建文件记录
 	Create(ctx context.Context, file *model.SysFile) (*model.SysFile, error)
+
+	// Update 更新文件记录（用于恢复软删除记录）
+	Update(ctx context.Context, file *model.SysFile) error
 
 	// Delete 删除文件记录
 	Delete(ctx context.Context, ids []int64) error

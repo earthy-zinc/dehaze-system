@@ -18,5 +18,5 @@ public interface SysUserRoleMapper extends BaseMapper<SysUserRole> {
      *
      * @param roleId 角色ID
      */
-    int countUsersForRole(Long roleId);
+    long countUsersForRole(Long roleId);
 }

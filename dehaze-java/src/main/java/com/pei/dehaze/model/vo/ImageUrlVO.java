@@ -1,6 +1,7 @@
 package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -34,9 +35,6 @@ public class ImageUrlVO {
 
     @Schema(description = "图片访问URL（经过处理的URL）", example = "http://example.com/images/sample.jpg")
     private String url;
-
-    @Schema(description = "原始图片URL（未经处理的原始URL）", example = "http://example.com/original/sample.jpg")
-    private String originUrl;
 
     @Schema(description = "缩略图URL，用于列表展示", example = "http://example.com/thumbnails/sample_thumb.jpg")
     private String thumbnailUrl;
@@ -86,4 +84,14 @@ public class ImageUrlVO {
 
     @Schema(description = "配对图片总数（包括清晰图和所有有雾图）", example = "3")
     private Integer pairedCount;
+
+    // 以下字段不序列化，仅用于 mapper 映射 objectName + storage，由 service 层拼接 url
+    @JsonIgnore
+    private String objectName;
+    @JsonIgnore
+    private String storage;
+    @JsonIgnore
+    private String thumbnailObjectName;
+    @JsonIgnore
+    private String thumbnailStorage;
 }

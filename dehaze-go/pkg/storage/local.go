@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/earthyzinc/dehaze-go/pkg/config/options"
 )
@@ -13,6 +14,7 @@ import (
 // LocalStorageService 本地文件系统存储实现
 type LocalStorageService struct {
 	rootPath string
+	baseURL  string
 }
 
 // NewLocalStorage 创建本地存储服务实例
@@ -27,7 +29,7 @@ func NewLocalStorage(cfg options.FileLocal) (*LocalStorageService, error) {
 	if err := os.MkdirAll(absPath, 0755); err != nil {
 		return nil, fmt.Errorf("创建本地存储目录失败: %w", err)
 	}
-	return &LocalStorageService{rootPath: absPath}, nil
+	return &LocalStorageService{rootPath: absPath, baseURL: cfg.BaseURL}, nil
 }
 
 func (s *LocalStorageService) fullPath(objectName string) string {
@@ -88,6 +90,10 @@ func (s *LocalStorageService) Exists(ctx context.Context, objectName string) (bo
 	return false, err
 }
 
+// GetURL 运行时拼接本地文件访问地址：baseURL + "/" + objectName
 func (s *LocalStorageService) GetURL(ctx context.Context, objectName string) (string, error) {
-	return "", fmt.Errorf("本地存储不支持获取 URL，请通过 API 下载")
+	if s.baseURL == "" {
+		return "", fmt.Errorf("本地存储 baseUrl 未配置")
+	}
+	return strings.TrimRight(s.baseURL, "/") + "/" + objectName, nil
 }

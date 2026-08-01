@@ -54,9 +54,4 @@
 | `A0501` | 字典值已存在 | 同一类型下字典值重复 |
 | `A0504` | 存在关联数据，无法删除 | 删除字典类型时（`force=false`）存在字典数据 |
 
-## 5. 接口详情查询
 
-> 接口的详细请求参数、响应结构、Schema 定义可通过以下方式获取：
->
-> 1. **API 文档 MCP**：调用 `read_project_oas_wht4eg` 获取 OpenAPI Spec
-> 2. **Swagger UI**：访问 `/swagger-ui/index.html`（开发环境）

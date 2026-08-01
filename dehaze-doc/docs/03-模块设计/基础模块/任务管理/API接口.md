@@ -29,22 +29,6 @@
 |--------|---------|------|
 | `Idempotency-Key` | 否 | 客户端幂等键，相同键返回已有任务，防止重复创建 |
 
-### 2.2 任务列表查询参数（TaskQuery）
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| pageNum | int | 否 | 页码，默认 1 |
-| pageSize | int | 否 | 每页条数，默认 10 |
-| status | int | 否 | 按任务状态筛选：`1`(PENDING)/`2`(PROCESSING)/`3`(COMPLETED)/`4`(FAILED)/`5`(CANCELLED) |
-| taskType | string | 否 | 按任务类型筛选，支持逗号分隔多个（如 `user_export,user_import`） |
-| taskCategory | string | 否 | 按任务类别筛选：`import`（导入）/ `export`（导出），便于分类查看导入导出任务 |
-
-### 2.3 重试任务规则
-
-- 仅 `FAILED` 状态的任务可重试
-- 重试会重置状态为 `PENDING`，递增 `retryCount`，重新发布到消息队列
-- 需校验任务归属（仅创建者可重试）
-
 ## 3. 权限标识汇总
 
 > 任务管理模块基于数据隔离控制权限，用户只能操作自己创建的任务。
@@ -67,9 +51,4 @@
 | `B0307` | 并发任务数超限 | 用户同类型未完成任务数超过限制 |
 | `B0308` | 导出任务并发超限 | 单用户导入导出任务并发数超限 |
 
-## 5. 接口详情查询
 
-> 接口的详细请求参数、响应结构、Schema 定义可通过以下方式获取：
-> 
-> 1. **API 文档 MCP**：调用 `read_project_oas_a3sidn` 获取 OpenAPI Spec
-> 2. **Swagger UI**：访问 `/swagger-ui/index.html`（开发环境）

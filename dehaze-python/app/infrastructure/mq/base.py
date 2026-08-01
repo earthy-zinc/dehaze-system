@@ -114,14 +114,14 @@ class BaseRabbitMQClient:
 
             interval = min(initial * math.pow(2, attempt), max_interval)
             attempt += 1
-            logger.info(
+            logger.debug(
                 f"{self._name} 重连等待: attempt={attempt}, interval={interval:.1f}s"
             )
             await asyncio.sleep(interval)
 
             try:
                 await self.connect()
-                logger.info(f"{self._name} 重连成功: attempt={attempt}")
+                logger.debug(f"{self._name} 重连成功: attempt={attempt}")
                 return
             except Exception as e:
                 logger.warning(

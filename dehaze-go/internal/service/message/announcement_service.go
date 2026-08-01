@@ -267,7 +267,7 @@ func (s *AnnouncementService) SendScheduled(ctx context.Context) error {
 	}
 
 	if sentTotal > 0 || failed > 0 {
-		logger.Info("定时公告发送完成", zap.Int("success", sentTotal), zap.Int("failed", failed))
+		logger.Debug("定时公告发送完成", zap.Int("success", sentTotal), zap.Int("failed", failed))
 	}
 	return nil
 }

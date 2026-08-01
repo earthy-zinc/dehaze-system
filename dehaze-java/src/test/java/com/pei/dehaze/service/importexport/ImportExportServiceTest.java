@@ -73,6 +73,9 @@ class ImportExportServiceTest {
     private FileService fileService;
 
     @Mock
+    private com.pei.dehaze.service.impl.file.StorageServiceFactory storageServiceFactory;
+
+    @Mock
     private HttpServletResponse response;
 
     @Mock
@@ -89,7 +92,9 @@ class ImportExportServiceTest {
     @BeforeEach
     void setUp() throws IOException {
         importExportService = new ImportExportService(
-                exportHandlerRegistry, importHandlerRegistry, fileGenerator, taskService, fileService);
+                exportHandlerRegistry, importHandlerRegistry, fileGenerator, taskService, storageServiceFactory);
+
+        when(storageServiceFactory.getDefault()).thenReturn(fileService);
 
         when(exportHandlerRegistry.getHandler("user")).thenReturn(exportHandler);
         when(importHandlerRegistry.getHandler("user")).thenReturn(importHandler);

@@ -30,12 +30,13 @@ type IMessageTemplateRepository interface {
 	FindByCode(ctx context.Context, code string) (*model.SysMessageTemplate, error)
 	FindPage(ctx context.Context, q *query.MessageTemplateQuery) ([]model.SysMessageTemplate, int64, error)
 	Update(ctx context.Context, id int64, updates map[string]interface{}) error
+	ExistsByCode(ctx context.Context, code string, excludeID ...int64) (bool, error)
 }
 
 // INotificationSettingRepository 通知设置仓储接口
 type INotificationSettingRepository interface {
 	FindByUserID(ctx context.Context, userID int64) (*model.SysNotificationSetting, error)
-	Create(ctx context.Context, setting *model.SysNotificationSetting) error
+	Upsert(ctx context.Context, setting *model.SysNotificationSetting) error
 	Update(ctx context.Context, setting *model.SysNotificationSetting) error
 }
 

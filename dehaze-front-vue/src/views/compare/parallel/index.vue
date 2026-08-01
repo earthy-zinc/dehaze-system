@@ -2,6 +2,8 @@
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { hexToRGBA } from "@/utils";
 import { CSSProperties } from "vue";
+import { ModelAPI, CompareReportForm } from "dehaze-sdk-js";
+import { Download } from "@element-plus/icons-vue";
 
 const imageShowStore = useImageShowStore();
 
@@ -235,12 +237,74 @@ function updateMagnifier(x: number, y: number) {
 const { width, height } = useWindowSize();
 watch([width, height], () => adjustSizes());
 
+// Export report
+const reportDialogVisible = ref(false);
+const reportGenerating = ref(false);
+const reportForm = ref<CompareReportForm>({
+  logId: 0,
+  format: "pdf",
+  includeMetrics: true,
+  includeFilters: false,
+});
+
+function openReportDialog() {
+  reportForm.value.logId = 0;
+  reportDialogVisible.value = true;
+}
+
+async function handleExportReport() {
+  if (reportForm.value.logId === 0) {
+    ElMessage.warning("当前没有可导出的对比记录");
+    return;
+  }
+  reportGenerating.value = true;
+  try {
+    const res = await ModelAPI.generateReport(reportForm.value);
+    if (!res.taskId) {
+      throw new Error("未返回任务ID");
+    }
+    while (true) {
+      const status = await ModelAPI.getReportStatus(res.taskId);
+      if (status.status === 2) {
+        if (status.downloadUrl) {
+          const link = document.createElement("a");
+          link.href = status.downloadUrl;
+          link.download = `dehaze-report.${reportForm.value.format}`;
+          link.click();
+        } else {
+          ElMessage.success("报告生成完成，请前往任务中心下载");
+        }
+        break;
+      }
+      if (status.status === 3) {
+        throw new Error(status.errorMessage || "报告生成失败");
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    reportDialogVisible.value = false;
+  } catch (e: any) {
+    ElMessage.error("导出报告失败：" + (e.message || "未知错误"));
+  } finally {
+    reportGenerating.value = false;
+  }
+}
+
 onMounted(() => {
   adjustSizes();
 });
 </script>
 
 <template>
+  <div class="parallel-header">
+    <el-button
+      type="primary"
+      @click="openReportDialog"
+      :loading="reportGenerating"
+    >
+      <el-icon><Download /></el-icon>
+      导出对比报告
+    </el-button>
+  </div>
   <div
     ref="containerRef"
     :style="{ ...containerStyle }"
@@ -289,10 +353,45 @@ onMounted(() => {
         class="magnifier"
       ></canvas>
     </div>
+
+    <el-dialog v-model="reportDialogVisible" title="导出对比报告" width="420px">
+      <el-form label-position="top">
+        <el-form-item label="报告格式">
+          <el-radio-group v-model="reportForm.format">
+            <el-radio label="pdf">PDF</el-radio>
+            <el-radio label="image">图片 (PNG)</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="包含内容">
+          <el-checkbox v-model="reportForm.includeMetrics"
+            >包含评价指标</el-checkbox
+          >
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reportDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          @click="handleExportReport"
+          :loading="reportGenerating"
+        >
+          导出
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <style lang="scss" scoped>
+.parallel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
 .parallel-container {
   position: relative;
   display: flex;

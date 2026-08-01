@@ -7,7 +7,6 @@ import (
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
-	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -41,7 +40,7 @@ func (api *SysPredictionApi) Predict(c *gin.Context) {
 		return
 	}
 
-	// fileId 优先：用文件真实 URL（对齐 Java/Python 的 resolveImageUrl）
+	// fileId 优先：用文件运行时拼接的 URL（对齐 Java/Python 的 resolveImageUrl）
 	imageURL := req.ImageURL
 	if req.FileID != nil {
 		file, err := api.fileService.GetFileById(ctx, *req.FileID)
@@ -49,7 +48,7 @@ func (api *SysPredictionApi) Predict(c *gin.Context) {
 			_ = c.Error(err)
 			return
 		}
-		imageURL = utils.StringVal(file.URL)
+		imageURL = api.fileService.GetURL(ctx, &file)
 	}
 	if imageURL == "" {
 		_ = c.Error(common.NewBizError(common.PARAM_IS_NULL, "图片来源不能为空，请提供 fileId 或 imageUrl"))
@@ -102,4 +101,53 @@ func (api *SysPredictionApi) ListPredictionLogs(c *gin.Context) {
 		return
 	}
 	common.OkWithDetailed(result, "查询成功", c)
+}
+
+// BatchPredict 批量去雾预测
+func (api *SysPredictionApi) BatchPredict(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	var req struct {
+		AlgorithmID int64                     `json:"algorithmId" binding:"required"`
+		Items       []predservice.BatchPredictionInput `json:"items" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	results, err := api.service.BatchPredict(ctx, req.AlgorithmID, req.Items, userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithData(struct {
+		Total   int                            `json:"total"`
+		Results []predservice.PredictionResult `json:"results"`
+	}{
+		Total:   len(results),
+		Results: results,
+	}, c)
+}
+
+// GetQuota 查询剩余处理次数
+func (api *SysPredictionApi) GetQuota(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	result, err := api.service.GetQuota(ctx, userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithData(result, c)
 }

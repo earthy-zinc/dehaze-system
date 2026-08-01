@@ -1,8 +1,16 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { View, Text } from "@tarojs/components";
-import { Tag, Button, Popup } from "@taroify/core";
+import { Tag, Button, Popup, Loading } from "@taroify/core";
 import type { Algorithm } from "dehaze-sdk-js";
+import { AlgorithmAPI } from "dehaze-sdk-js";
 import { STATUS_INFO } from "../../utils";
+
+interface MonitorData {
+  callCount: number;
+  avgTime: number;
+  successRate: number;
+  todayCallCount: number;
+}
 
 interface AlgorithmDetailPopupProps {
   open: boolean;
@@ -29,6 +37,31 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
   onDelete,
   onOpenAudit,
 }) => {
+  const [monitorData, setMonitorData] = useState<MonitorData | null>(null);
+  const [monitorLoading, setMonitorLoading] = useState(false);
+
+  // 加载监控数据
+  const fetchMonitorData = useCallback(async (id: number) => {
+    if (!id) return;
+    setMonitorLoading(true);
+    try {
+      const data = await AlgorithmAPI.getMonitorData(id);
+      setMonitorData(data);
+    } catch {
+      // 忽略错误，不显示监控数据即可
+    } finally {
+      setMonitorLoading(false);
+    }
+  }, []);
+
+  // 当弹窗打开且有算法ID时，拉取监控数据
+  React.useEffect(() => {
+    if (open && algorithm?.id) {
+      setMonitorData(null);
+      fetchMonitorData(algorithm.id);
+    }
+  }, [open, algorithm?.id, fetchMonitorData]);
+
   /** 渲染详情项 */
   const renderDetailItem = (label: string, value: React.ReactNode) => (
     <View className="detail-item">
@@ -36,6 +69,12 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
       <View className="detail-value">{value || "-"}</View>
     </View>
   );
+
+  /** 格式化耗时 */
+  const formatDuration = (ms: number) => {
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  };
 
   return (
     <Popup
@@ -78,6 +117,32 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
             {renderDetailItem("导入路径", algorithm.importPath)}
             {renderDetailItem("参数", algorithm.params)}
             {renderDetailItem("计算量(FLOPs)", algorithm.flops)}
+          </View>
+
+          {/* 监控数据 */}
+          <View className="detail-section">
+            <Text className="section-title">运行监控</Text>
+            {monitorLoading ? (
+              <View className="monitor-loading">
+                <Loading />
+                <Text>加载中...</Text>
+              </View>
+            ) : monitorData ? (
+              <>
+                {renderDetailItem("今日调用", monitorData.todayCallCount)}
+                {renderDetailItem("总调用", monitorData.callCount)}
+                {renderDetailItem(
+                  "平均耗时",
+                  formatDuration(monitorData.avgTime)
+                )}
+                {renderDetailItem(
+                  "成功率",
+                  `${(monitorData.successRate * 100).toFixed(1)}%`
+                )}
+              </>
+            ) : (
+              <Text className="no-data-text">暂无监控数据</Text>
+            )}
           </View>
 
           {(algorithm.status === 2 || algorithm.auditBy != null) && (

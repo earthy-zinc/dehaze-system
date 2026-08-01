@@ -61,11 +61,10 @@ def _format_dt(dt: Optional[datetime]) -> Optional[str]:
 
 
 def _get_allowed_image_url_prefixes() -> list[str]:
+    """基于各存储后端 baseUrl 收集允许的图片 URL 前缀（完整 URL）"""
     prefixes = []
-    if settings.FILE_BASE_URL:
-        prefixes.append(settings.FILE_BASE_URL.rstrip("/") + "/")
-    protocol = "https" if settings.MINIO_SECURE else "http"
-    prefixes.append(f"{protocol}://{settings.MINIO_ENDPOINT}/{settings.MINIO_BUCKET_NAME}/")
+    for base_url in settings.FILE_STORAGE_BASE_URLS.values():
+        prefixes.append(base_url.rstrip("/") + "/")
     return prefixes
 
 

@@ -60,12 +60,15 @@ class WpxNetPredictionInterceptor(PredictionInterceptor):
                 )
                 return None
 
-            logger.info(
-                "WPXNet 预查询命中: algorithmId=%s, originMd5=%s, resultUrl=%s",
-                algorithm.id, origin_md5, new_file.url,
+            logger.debug(
+                "WPXNet 预查询命中: algorithmId=%s, originMd5=%s, resultFileId=%s",
+                algorithm.id, origin_md5, new_file.id,
             )
+            # 返回 result_url：通过 storage.get_url 运行时拼接（不落库）
+            from app.service.storage.factory import get_storage_by_name
+            storage_service = get_storage_by_name(new_file.storage)
             return InterceptedResult(
-                result_url=new_file.url,
+                result_url=storage_service.get_url(new_file.object_name),
                 result_md5=new_file.md5,
                 result_file_id=new_file.id,
             )

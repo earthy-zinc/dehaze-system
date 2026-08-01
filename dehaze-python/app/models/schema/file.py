@@ -1,5 +1,7 @@
 """
 文件模块 Schema 模型
+
+注意：url 字段为运行时动态生成（storage.baseUrl + object_name），不落库。
 """
 from datetime import datetime
 from typing import List, Optional
@@ -34,9 +36,9 @@ class FileUploadResultVO(BaseModel):
     name: str = Field(description="文件名称")
     type: Optional[str] = Field(default=None, description="文件类型")
     size: str = Field(description="文件大小(格式化)")
-    url: Optional[str] = Field(default=None, description="文件URL")
-    path: Optional[str] = Field(default=None, description="文件路径")
     objectName: str = Field(description="对象存储名称")
+    storage: str = Field(description="存储后端标识")
+    url: Optional[str] = Field(default=None, description="文件URL（运行时动态生成）")
     md5: str = Field(description="文件MD5值")
     createTime: Optional[datetime] = Field(default=None, description="创建时间")
 
@@ -47,9 +49,9 @@ class FileVO(BaseModel):
     name: str = Field(description="文件名称")
     type: Optional[str] = Field(default=None, description="文件类型")
     size: Optional[str] = Field(default=None, description="文件大小(格式化)")
-    url: Optional[str] = Field(default=None, description="文件URL")
-    path: Optional[str] = Field(default=None, description="文件路径")
     objectName: Optional[str] = Field(default=None, description="对象存储名称")
+    storage: Optional[str] = Field(default=None, description="存储后端标识")
+    url: Optional[str] = Field(default=None, description="文件URL（运行时动态生成）")
     md5: Optional[str] = Field(default=None, description="文件MD5值")
     createTime: Optional[datetime] = Field(default=None, description="创建时间")
     updateTime: Optional[datetime] = Field(default=None, description="更新时间")

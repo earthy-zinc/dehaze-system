@@ -93,7 +93,7 @@ public class WechatPayService implements PaymentChannelService {
     @Override
     public boolean refund(String orderNo, String refundNo, long totalAmountFen, long refundAmountFen, String reason) {
         if (!isEnabled()) {
-            log.info("微信退款(mock): orderNo={}, refundNo={}, amount={}", orderNo, refundNo, refundAmountFen);
+            log.debug("微信退款(mock): orderNo={}, refundNo={}, amount={}", orderNo, refundNo, refundAmountFen);
             return true;
         }
         try {
@@ -128,7 +128,7 @@ public class WechatPayService implements PaymentChannelService {
     @Override
     public boolean closeOrder(String orderNo) {
         if (!isEnabled()) {
-            log.info("微信关单(mock): orderNo={}", orderNo);
+            log.debug("微信关单(mock): orderNo={}", orderNo);
             return true;
         }
         try {

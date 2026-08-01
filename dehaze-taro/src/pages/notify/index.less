@@ -1,0 +1,158 @@
+.notify-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f8fafc;
+}
+
+.notify-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.header-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.title-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  cursor: pointer;
+  background: #f3f4f6;
+  border-radius: 8px;
+}
+
+.action-text {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.notify-list {
+  flex: 1;
+  padding: 8px 12px;
+  overflow: hidden;
+}
+
+.notify-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin-bottom: 6px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.notify-item.unread {
+  background: #eff6ff;
+}
+
+.notify-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #f3f4f6;
+  border-radius: 8px;
+}
+
+.notify-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notify-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.notify-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  white-space: nowrap;
+}
+
+.unread-title {
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.notify-time {
+  flex-shrink: 0;
+  margin-left: 8px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.notify-body {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+  -webkit-box-orient: vertical;
+}
+
+.notify-type-tag {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  background: #f3f4f6;
+  border-radius: 8px;
+}
+
+.type-tag-text {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.loading-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.empty-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}

@@ -56,6 +56,9 @@ class GenericImportExportStrategyTest {
     private ImportExportFileGenerator fileGenerator;
     @Mock
     private FileService fileService;
+
+    @Mock
+    private com.pei.dehaze.service.impl.file.StorageServiceFactory storageServiceFactory;
     @Mock
     private ExportHandler exportHandler;
     @Mock
@@ -66,8 +69,10 @@ class GenericImportExportStrategyTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        exportStrategy = new GenericExportStrategy(exportHandlerRegistry, fileGenerator, fileService);
-        importStrategy = new GenericImportStrategy(importHandlerRegistry, fileGenerator, fileService);
+        exportStrategy = new GenericExportStrategy(exportHandlerRegistry, fileGenerator, storageServiceFactory);
+        importStrategy = new GenericImportStrategy(importHandlerRegistry, fileGenerator, storageServiceFactory);
+
+        when(storageServiceFactory.getDefault()).thenReturn(fileService);
 
         when(exportHandlerRegistry.getHandler("user")).thenReturn(exportHandler);
         when(importHandlerRegistry.getHandler("user")).thenReturn(importHandler);

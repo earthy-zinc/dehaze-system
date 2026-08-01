@@ -26,4 +26,7 @@ public class PredictionForm {
 
     @Schema(description = "预测参数（JSON）")
     private String params;
+
+    @Schema(description = "推荐来源标识（可选，来自推荐管理模块，用于追踪推荐采纳率）")
+    private Long recommendedBy;
 }

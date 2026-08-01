@@ -33,7 +33,7 @@ public class AnnouncementScheduleJob {
             for (SysAnnouncement announcement : pending) {
                 try {
                     announcementService.send(announcement.getId());
-                    log.info("定时公告发送成功: id={}", announcement.getId());
+                    log.debug("定时公告发送成功: id={}", announcement.getId());
                 } catch (Exception e) {
                     log.error("定时公告发送失败: id={}", announcement.getId(), e);
                 }

@@ -25,6 +25,7 @@ import com.pei.dehaze.service.SysRoleService;
 import com.pei.dehaze.service.SysUserRoleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +45,14 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private final SysRoleMenuService roleMenuService;
     private final SysUserRoleService userRoleService;
     private final RoleConverter roleConverter;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * 内置角色编码集合（禁止删除）
+     */
+    private static final Set<String> BUILTIN_ROLE_CODES = Set.of(
+            SystemConstants.ROOT_ROLE_CODE, "ADMIN"
+    );
 
     /**
      * 角色分页列表
@@ -53,12 +62,10 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      */
     @Override
     public Page<RolePageVO> getRolePage(RolePageQuery queryParams) {
-        // 查询参数
         int pageNum = queryParams.getPageNum();
         int pageSize = queryParams.getPageSize();
         String keywords = queryParams.getKeywords();
 
-        // 查询数据
         Page<SysRole> rolePage = this.page(new Page<>(pageNum, pageSize),
                 excludeRootRoleForNonRoot(new LambdaQueryWrapper<SysRole>()
                         .and(StrUtil.isNotBlank(keywords),
@@ -69,7 +76,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                         ))
         );
 
-        // 实体转换
         return roleConverter.entity2Page(rolePage);
     }
 
@@ -80,18 +86,16 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      */
     @Override
     public List<Option<Long>> listRoleOptions() {
-        // 查询数据
         List<SysRole> roleList = this.list(excludeRootRoleForNonRoot(new LambdaQueryWrapper<SysRole>()
                 .select(SysRole::getId, SysRole::getName)
                 .orderByAsc(SysRole::getSort)
         ));
 
-        // 实体转换
         return roleConverter.entities2Options(roleList);
     }
 
     /**
-     * 保存角色
+     * 保存角色（新增或修改）
      *
      * @param roleForm 角色表单数据
      * @return {@link Boolean}
@@ -99,43 +103,40 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Override
     @CacheEvict(value = "user:auth", allEntries = true)
     public boolean saveRole(RoleForm roleForm) {
-
         Long roleId = roleForm.getId();
 
-        // 编辑角色时，判断角色是否存在
+        // 编辑模式：校验角色存在性 + code不可改
         SysRole oldRole = null;
         if (roleId != null) {
             oldRole = this.getById(roleId);
             if (oldRole == null) {
                 throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
             }
-            // 角色编码创建后不可修改（与 Go/Python 一致）
             if (!StrUtil.equals(oldRole.getCode(), roleForm.getCode())) {
                 throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "角色编码不可修改");
             }
         }
 
+        // code非空校验（schema已NOT NULL，此处双重保障）
         String roleCode = roleForm.getCode();
-        long count = this.count(new LambdaQueryWrapper<SysRole>()
-                .ne(roleId != null, SysRole::getId, roleId)
-                .and(wrapper ->
-                        wrapper.eq(SysRole::getCode, roleCode).or().eq(SysRole::getName, roleForm.getName())
-                ));
-        if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS, "角色名称或角色编码已存在");
+        if (StrUtil.isBlank(roleCode)) {
+            throw new BusinessException(ResultCode.PARAM_IS_NULL, "角色编码不能为空");
         }
 
-        // 实体转换
-        SysRole role = roleConverter.form2Entity(roleForm);
+        // 查重：绕过@TableLogic，查全表（含软删行）
+        // 命中名称或编码 → 报"已被历史记录占用"
+        long count = getBaseMapper().countByNameOrCodeAll(roleForm.getName(), roleCode, roleId);
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS,
+                    "角色名称或角色编码已被历史记录占用，无法重复创建");
+        }
 
+        SysRole role = roleConverter.form2Entity(roleForm);
         boolean result = this.saveOrUpdate(role);
         if (result) {
-            // 判断角色编码或状态是否修改，修改了则刷新权限缓存
             if (oldRole != null
-                    && (
-                    !StrUtil.equals(oldRole.getCode(), roleCode) ||
-                            !ObjectUtil.equals(oldRole.getStatus(), roleForm.getStatus())
-            )) {
+                    && (!StrUtil.equals(oldRole.getCode(), roleCode)
+                    || !ObjectUtil.equals(oldRole.getStatus(), roleForm.getStatus()))) {
                 roleMenuService.refreshRolePermsCache(oldRole.getCode(), roleCode);
             }
         }
@@ -173,7 +174,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         role.setStatus(status);
         boolean result = this.updateById(role);
         if (result) {
-            // 刷新角色的权限缓存
             roleMenuService.refreshRolePermsCache(role.getCode());
         }
         return result;
@@ -181,35 +181,56 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
     /**
      * 批量删除角色
+     * <p>前置校验：</p>
+     * <ul>
+     *   <li>内置角色（ROOT/ADMIN）禁止删除</li>
+     *   <li>仍有关联用户的角色不允许删除，需先解绑</li>
+     * </ul>
+     * 删除后同步物理清理 sys_role_menu / sys_user_role 关联记录。
      *
      * @param ids 角色ID，多个使用英文逗号(,)分割
      * @return {@link Boolean}
      */
     @Override
     @AuditLog(module = "role", action = "delete", targetType = "role", targetIdSpel = "#ids")
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteRoles(String ids) {
         if (StrUtil.isBlank(ids)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "删除的角色ID不能为空");
         }
         List<Long> roleIds = IdUtils.parseIdList(ids);
 
-        // 批量查询角色，避免循环内逐条 getById
+        // 批量查询角色
         List<SysRole> roles = this.listByIds(roleIds);
         if (roles.size() != roleIds.size()) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
         }
 
-        // 批量校验角色是否被用户关联
+        // 1) 内置角色禁止删除
         for (SysRole role : roles) {
-            if (userRoleService.hasAssignedUsers(role.getId())) {
-                throw new BusinessException(ResultCode.BUSINESS_ERROR, "角色【" + role.getName() + "】已分配用户，请先解除关联后删除");
+            if (BUILTIN_ROLE_CODES.contains(role.getCode())) {
+                throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW,
+                        "内置角色【" + role.getName() + "】禁止删除");
             }
         }
 
-        // 批量删除角色
+        // 2) 仍有关联用户的角色不允许删除
+        for (SysRole role : roles) {
+            if (userRoleService.hasAssignedUsers(role.getId())) {
+                throw new BusinessException(ResultCode.BUSINESS_ERROR,
+                        "角色【" + role.getName() + "】仍有用户关联，请先解绑");
+            }
+        }
+
+        // 3) 先物理清理关联记录（避免权限缓存残留）
+        roleMenuService.remove(new LambdaQueryWrapper<SysRoleMenu>()
+                .in(SysRoleMenu::getRoleId, roleIds));
+        userRoleService.remove(new LambdaQueryWrapper<com.pei.dehaze.model.entity.SysUserRole>()
+                .in(com.pei.dehaze.model.entity.SysUserRole::getRoleId, roleIds));
+
+        // 4) 软删角色本身
         boolean deleteResult = this.removeByIds(roleIds);
         if (deleteResult) {
-            // 刷新所有删除角色的权限缓存
             for (SysRole role : roles) {
                 roleMenuService.refreshRolePermsCache(role.getCode());
             }
@@ -237,19 +258,16 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @CacheEvict(cacheNames = "menu", key = "'routes'")
     @AuditLog(module = "role", action = "update", targetType = "role", targetIdSpel = "#roleId", afterSpel = "#menuIds")
     public boolean assignMenusToRole(Long roleId, List<Long> menuIds) {
         SysRole role = this.getById(roleId);
         if (role == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
         }
-        // 删除角色菜单
         roleMenuService.remove(
                 new LambdaQueryWrapper<SysRoleMenu>()
                         .eq(SysRoleMenu::getRoleId, roleId)
         );
-        // 新增角色菜单
         if (CollectionUtil.isNotEmpty(menuIds)) {
             List<SysRoleMenu> roleMenus = menuIds
                     .stream()
@@ -258,7 +276,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             roleMenuService.saveBatch(roleMenus);
         }
 
-        // 刷新角色的权限缓存
+        stringRedisTemplate.delete("menu:routes");
         roleMenuService.refreshRolePermsCache(role.getCode());
 
         return true;
@@ -277,9 +295,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
     /**
      * 为非超级管理员过滤掉超级管理员角色（超级管理员可见全部）
-     *
-     * @param wrapper 角色查询条件
-     * @return 追加过滤条件后的查询条件
      */
     private LambdaQueryWrapper<SysRole> excludeRootRoleForNonRoot(LambdaQueryWrapper<SysRole> wrapper) {
         return wrapper.ne(!SecurityUtils.isRoot(), SysRole::getCode, SystemConstants.ROOT_ROLE_CODE);

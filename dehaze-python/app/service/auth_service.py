@@ -174,10 +174,10 @@ class AuthService:
         from sqlalchemy import select, exists
         from app.models.entity.sys_user import SysRole, SysUserRole, SysUser
         dup_result = await db.execute(
-            select(exists().where(SysUser.username == username, SysUser.deleted == 0))
+            select(exists().where(SysUser.username == username))
         )
         if dup_result.scalar():
-            raise BusinessException(ResultCode.DATA_EXISTS, "用户名已被注册")
+            raise BusinessException(ResultCode.DATA_EXISTS, "该用户名不可用")
 
         hashed = await hash_password_async(password)
         user = SysUser(username=username, nickname=nickname.strip(), password=hashed,
@@ -193,25 +193,9 @@ class AuthService:
             db.add(SysUserRole(user_id=user.id, role_id=guest_role.id))
             await db.flush()
 
-        from app.models.entity.sys_member import SysMember
-        from app.repository.member_benefit_repository import member_benefit_repository
-        from datetime import datetime
-        benefit = await member_benefit_repository.get_by_level_code(db, "level_0")
-        member = SysMember(
-            user_id=user.id,
-            level_code="level_0",
-            level_source="growth",
-            growth_value=0,
-            total_consumption=0,
-            status=1,
-            monthly_dehaze_quota=benefit.monthly_dehaze_quota if benefit else 0,
-            monthly_evaluate_quota=benefit.monthly_evaluate_quota if benefit else 0,
-            monthly_dehaze_used=0,
-            monthly_evaluate_used=0,
-            quota_reset_month=int(datetime.now().strftime("%Y%m")),
-        )
-        db.add(member)
-        await db.flush()
+        from app.repository.member_repository import member_repository
+        # upsert 会员记录：冲突时复活（降级为 level_0、清空月度配额；保留 total_consumption）
+        await member_repository.get_or_init_member(db, user.id)
 
         data_scope = guest_role.data_scope if guest_role else 0
 

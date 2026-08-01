@@ -6,14 +6,16 @@ class TaskAPI {
   /**
    * 创建任务
    *
-   * @param data 任务创建表单
+   * @param data 任务创建表单（type 必填，targetId/targetIds/options 会被打包为 paramsJson 发送）
    * @param idempotencyKey 客户端幂等键（可选），相同键返回已有任务
    */
   static create(data: TaskCreateForm, idempotencyKey?: string) {
+    const { type, ...rest } = data;
+    const hasExtra = Object.keys(rest).length > 0;
     return request<TaskVO>({
       url: "/api/v1/tasks",
       method: "post",
-      data,
+      data: { type, paramsJson: hasExtra ? JSON.stringify(rest) : undefined },
       ...(idempotencyKey && { headers: { "Idempotency-Key": idempotencyKey } }),
     });
   }

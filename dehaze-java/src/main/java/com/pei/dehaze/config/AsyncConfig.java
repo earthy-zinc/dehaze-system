@@ -86,7 +86,7 @@ public class AsyncConfig implements AsyncConfigurer {
     /**
      * 异步上下文传播装饰器
      *
-     * <p>传播 SecurityContext（权限） + MDC traceId（日志链路）到异步线程。
+     * <p>传播 SecurityContext（权限） + MDC trace_id/method/path/ip/user_agent（日志链路）+ user_id（认证层）到异步线程。
      */
     @Bean
     public TaskDecorator asyncContextTaskDecorator() {
@@ -94,6 +94,11 @@ public class AsyncConfig implements AsyncConfigurer {
             SecurityContext securityContext = SecurityContextHolder.getContext();
             Authentication authentication = securityContext.getAuthentication();
             String traceId = MDC.get(TraceIdFilter.MDC_TRACE_ID);
+            String method = MDC.get(TraceIdFilter.MDC_METHOD);
+            String path = MDC.get(TraceIdFilter.MDC_PATH);
+            String ip = MDC.get(TraceIdFilter.MDC_IP);
+            String userAgent = MDC.get(TraceIdFilter.MDC_USER_AGENT);
+            String userId = MDC.get("user_id");
             return () -> {
                 try {
                     if (authentication != null) {
@@ -104,10 +109,30 @@ public class AsyncConfig implements AsyncConfigurer {
                     if (traceId != null) {
                         MDC.put(TraceIdFilter.MDC_TRACE_ID, traceId);
                     }
+                    if (method != null) {
+                        MDC.put(TraceIdFilter.MDC_METHOD, method);
+                    }
+                    if (path != null) {
+                        MDC.put(TraceIdFilter.MDC_PATH, path);
+                    }
+                    if (ip != null) {
+                        MDC.put(TraceIdFilter.MDC_IP, ip);
+                    }
+                    if (userAgent != null) {
+                        MDC.put(TraceIdFilter.MDC_USER_AGENT, userAgent);
+                    }
+                    if (userId != null) {
+                        MDC.put("user_id", userId);
+                    }
                     runnable.run();
                 } finally {
                     SecurityContextHolder.clearContext();
                     MDC.remove(TraceIdFilter.MDC_TRACE_ID);
+                    MDC.remove(TraceIdFilter.MDC_METHOD);
+                    MDC.remove(TraceIdFilter.MDC_PATH);
+                    MDC.remove(TraceIdFilter.MDC_IP);
+                    MDC.remove(TraceIdFilter.MDC_USER_AGENT);
+                    MDC.remove("user_id");
                 }
             };
         };

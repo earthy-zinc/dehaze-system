@@ -5,6 +5,7 @@ import AuthAPI from "./src/api/auth";
 import DatasetAPI, { DatasetItemAPI, ItemFileAPI } from "./src/api/dataset";
 import DeptAPI from "./src/api/dept";
 import DictAPI from "./src/api/dict";
+import FavoriteAPI from "./src/api/favorite";
 import FeedbackAPI from "./src/api/feedback";
 import FileAPI from "./src/api/file";
 import ImageInputHistoryAPI from "./src/api/image-input";
@@ -19,6 +20,7 @@ import MessageAPI, {
 import ModelAPI from "./src/api/model";
 import OrderAPI from "./src/api/order";
 import PackageAPI, { CouponAPI } from "./src/api/package";
+import RecommendationAPI from "./src/api/recommendation";
 import RoleAPI from "./src/api/role";
 import TaskAPI from "./src/api/task";
 import UserAPI from "./src/api/user";
@@ -30,6 +32,7 @@ export * from "./src/api/auth/model";
 export * from "./src/api/dataset/model";
 export * from "./src/api/dept/model";
 export * from "./src/api/dict/model";
+export * from "./src/api/favorite/model";
 export * from "./src/api/feedback/model";
 export * from "./src/api/file/model";
 export * from "./src/api/image-input/model";
@@ -40,6 +43,7 @@ export * from "./src/api/message/model";
 export * from "./src/api/model/model";
 export * from "./src/api/order/model";
 export * from "./src/api/package/model";
+export * from "./src/api/recommendation/model";
 export * from "./src/api/role/model";
 export * from "./src/api/task/model";
 export * from "./src/api/user/model";
@@ -67,6 +71,7 @@ export {
   ItemFileAPI,
   DeptAPI,
   DictAPI,
+  FavoriteAPI,
   FeedbackAPI,
   FileAPI,
   ImageInputHistoryAPI,
@@ -79,6 +84,7 @@ export {
   NotificationSettingAPI,
   OrderAPI,
   PackageAPI,
+  RecommendationAPI,
   RoleAPI,
   TaskAPI,
   UserAPI,

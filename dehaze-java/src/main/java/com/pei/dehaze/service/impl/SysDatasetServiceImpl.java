@@ -103,7 +103,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         rollupToParents(allDatasets, leafIds, statsMap);
 
         long costMs = System.currentTimeMillis() - startTime;
-        log.info("所有数据集统计信息计算完成，耗时 {} ms，叶子节点 {} 个", costMs, leafIds.size());
+        log.debug("所有数据集统计信息计算完成，耗时 {} ms，叶子节点 {} 个", costMs, leafIds.size());
         return statsMap;
     }
 

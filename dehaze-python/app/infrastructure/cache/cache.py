@@ -19,7 +19,7 @@ from typing import Any, Awaitable, Callable, Optional, TypeVar
 
 from redis.asyncio import Redis
 
-from app.config import get_settings
+from app.config import settings
 from app.infrastructure.cache.local_cache import (NULL_VALUE_MARKER,
                                                   SingleFlight, TTLCache,
                                                   is_null_value)
@@ -49,7 +49,6 @@ def _get_shared_l1() -> Optional[TTLCache]:
     """获取进程级共享 L1 缓存单例"""
     global _shared_l1
     if _shared_l1 is None:
-        settings = get_settings()
         if settings.CACHE_L1_ENABLED:
             _shared_l1 = TTLCache(
                 maxsize=settings.CACHE_L1_MAXSIZE,
@@ -62,7 +61,6 @@ def _get_shared_singleflight() -> Optional[SingleFlight]:
     """获取进程级共享 SingleFlight 单例"""
     global _shared_singleflight
     if _shared_singleflight is None:
-        settings = get_settings()
         if settings.CACHE_SINGLEFLIGHT_ENABLED:
             _shared_singleflight = SingleFlight()
     return _shared_singleflight
@@ -77,7 +75,6 @@ class CacheService:
 
     def __init__(self, redis: Redis):
         self.redis = redis
-        settings = get_settings()
         # L1 本地缓存（进程级单例）
         self._l1_enabled = settings.CACHE_L1_ENABLED
         self._l1 = _get_shared_l1() if self._l1_enabled else None
@@ -392,7 +389,7 @@ async def _publish_invalidation(msg_type: str, key: str) -> None:
     async def _publish():
         from app.dependencies.redis import get_redis_client
         redis = await get_redis_client()
-        await redis.publish(get_settings().CACHE_INVALIDATION_CHANNEL, payload)
+        await redis.publish(settings.CACHE_INVALIDATION_CHANNEL, payload)
 
     await redis_operation_with_fallback(
         operation=_publish,
@@ -412,13 +409,12 @@ async def start_cache_invalidation_listener() -> None:
     if _pubsub_task is not None:
         return
 
-    settings = get_settings()
     if not settings.CACHE_L1_ENABLED:
         logger.debug("L1 缓存未启用，跳过缓存失效广播订阅")
         return
 
     _pubsub_task = asyncio.create_task(_subscription_loop())
-    logger.info(
+    logger.debug(
         "缓存失效广播订阅已启动: channel=%s, instanceId=%s",
         settings.CACHE_INVALIDATION_CHANNEL, _INSTANCE_ID,
     )
@@ -426,7 +422,6 @@ async def start_cache_invalidation_listener() -> None:
 
 async def _subscription_loop() -> None:
     """订阅缓存失效频道的循环任务，断开时自动重连。"""
-    settings = get_settings()
     channel = settings.CACHE_INVALIDATION_CHANNEL
 
     while True:
@@ -435,7 +430,7 @@ async def _subscription_loop() -> None:
             redis = await get_redis_client()
             pubsub = redis.pubsub()
             await pubsub.subscribe(channel)
-            logger.info("已订阅缓存失效频道: %s", channel)
+            logger.debug("已订阅缓存失效频道: %s", channel)
 
             async for message in pubsub.listen():
                 if message["type"] != "message":
@@ -445,7 +440,7 @@ async def _subscription_loop() -> None:
             await pubsub.unsubscribe(channel)
             await pubsub.aclose()
         except asyncio.CancelledError:
-            logger.info("缓存失效广播订阅任务已取消")
+            logger.debug("缓存失效广播订阅任务已取消")
             break
         except Exception as e:
             logger.error("缓存失效 Pub/Sub 异常: %s, 3秒后重连", e, exc_info=True)
@@ -505,4 +500,4 @@ async def stop_cache_invalidation_listener() -> None:
     except asyncio.CancelledError:
         pass
     _pubsub_task = None
-    logger.info("缓存失效广播订阅已停止")
+    logger.debug("缓存失效广播订阅已停止")

@@ -44,10 +44,10 @@ export interface MemberDetailDrawerRef {
   open: (userId: number) => void;
 }
 
-const MemberDetailDrawer = forwardRef<
+const MemberDetailDrawerImpl = forwardRef<
   MemberDetailDrawerRef,
   Record<string, never>
->((_props, ref) => {
+>((_, ref) => {
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(0);
@@ -251,6 +251,6 @@ const MemberDetailDrawer = forwardRef<
   );
 });
 
-MemberDetailDrawer.displayName = "MemberDetailDrawer";
+MemberDetailDrawerImpl.displayName = "MemberDetailDrawer";
 
-export default MemberDetailDrawer;
+export default MemberDetailDrawerImpl as any;

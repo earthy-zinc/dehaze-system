@@ -19,6 +19,8 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.net.HttpURLConnection;
+import java.net.URI;
 import java.util.UUID;
 
 /**
@@ -106,7 +108,7 @@ public class PythonAlgorithmClient {
         for (int attempt = 0; attempt <= props.getMaxRetry(); attempt++) {
             try {
                 if (attempt > 0) {
-                    log.info("重试第 {} 次: {} (退避 {}ms)", attempt, url, backoff);
+                    log.debug("重试第 {} 次: {} (退避 {}ms)", attempt, url, backoff);
                     Thread.sleep(backoff);
                     backoff *= 2; // 指数退避
                 }
@@ -115,7 +117,17 @@ public class PythonAlgorithmClient {
                 return circuitBreaker.executeSupplier(() -> doPost(url, jsonBody, idempotencyKey));
 
             } catch (CallNotPermittedException e) {
-                // 熔断器开启，快速失败，不再重试
+                // 熔断器开启：先探活 Python 服务，若健康则强制恢复并重试本次调用
+                if (isPythonServiceHealthy()) {
+                    log.warn("Python 服务健康但熔断器处于 OPEN 状态，强制恢复并重试");
+                    circuitBreaker.transitionToClosedState();
+                    // 恢复后跳过退避，立即重试本次调用（不计入 maxRetry）
+                    try {
+                        return circuitBreaker.executeSupplier(() -> doPost(url, jsonBody, idempotencyKey));
+                    } catch (CallNotPermittedException ex) {
+                        throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 算法服务熔断中，请稍后重试");
+                    }
+                }
                 throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 算法服务熔断中，请稍后重试");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -149,12 +161,22 @@ public class PythonAlgorithmClient {
         for (int attempt = 0; attempt <= props.getMaxRetry(); attempt++) {
             try {
                 if (attempt > 0) {
-                    log.info("重试第 {} 次: {} (退避 {}ms)", attempt, url, backoff);
+                    log.debug("重试第 {} 次: {} (退避 {}ms)", attempt, url, backoff);
                     Thread.sleep(backoff);
                     backoff *= 2;
                 }
                 return circuitBreaker.executeSupplier(() -> doGet(url));
             } catch (CallNotPermittedException e) {
+                // 熔断器开启：先探活 Python 服务，若健康则强制恢复并重试本次调用
+                if (isPythonServiceHealthy()) {
+                    log.warn("Python 服务健康但熔断器处于 OPEN 状态，强制恢复并重试");
+                    circuitBreaker.transitionToClosedState();
+                    try {
+                        return circuitBreaker.executeSupplier(() -> doGet(url));
+                    } catch (CallNotPermittedException ex) {
+                        throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 算法服务熔断中，请稍后重试");
+                    }
+                }
                 throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 算法服务熔断中，请稍后重试");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -182,7 +204,7 @@ public class PythonAlgorithmClient {
         if (idempotencyKey != null) {
             headers.set("X-Idempotency-Key", idempotencyKey);
         }
-        String traceId = MDC.get("traceId");
+        String traceId = MDC.get("trace_id");
         if (traceId != null && !traceId.isBlank()) {
             headers.set("X-Trace-Id", traceId);
         }
@@ -201,13 +223,18 @@ public class PythonAlgorithmClient {
     }
 
     private JSONObject parsePythonResponse(ResponseEntity<String> response) {
+        // HTTP 5xx 是服务端故障，抛 RuntimeException 让熔断器计数
+        if (response.getStatusCode().is5xxServerError()) {
+            throw new RuntimeException("Python 服务返回 5xx: " + response.getStatusCode() + " body=" + response.getBody());
+        }
+        // HTTP 4xx 是调用方问题，抛 BusinessException 不触发熔断
         if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 服务返回非 2xx: " + response.getStatusCode() + " body=" + response.getBody());
+            throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 服务返回 4xx: " + response.getStatusCode() + " body=" + response.getBody());
         }
 
         String body = response.getBody();
         if (body == null || body.isBlank()) {
-            throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 服务返回空响应");
+            throw new RuntimeException("Python 服务返回空响应");
         }
 
         JSONObject json = JSONUtil.parseObj(body);
@@ -235,5 +262,24 @@ public class PythonAlgorithmClient {
         HttpEntity<Void> entity = new HttpEntity<>(headers);
         ResponseEntity<String> response = algorithmRestTemplate.exchange(url, HttpMethod.GET, entity, String.class);
         return parsePythonResponse(response);
+    }
+
+    /**
+     * 探测 Python 算法服务是否可达（轻量级 TCP/HTTP 健康检查）
+     */
+    private boolean isPythonServiceHealthy() {
+        try {
+            URI healthUri = URI.create(props.getBaseUrl() + "/health");
+            HttpURLConnection conn = (HttpURLConnection) healthUri.toURL().openConnection();
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(3000);
+            conn.setRequestMethod("GET");
+            int code = conn.getResponseCode();
+            conn.disconnect();
+            return code == 200;
+        } catch (Exception e) {
+            log.warn("Python 服务健康检查失败: {}", e.getMessage());
+            return false;
+        }
     }
 }

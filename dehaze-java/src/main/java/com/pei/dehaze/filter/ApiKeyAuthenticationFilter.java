@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
@@ -62,7 +63,25 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        chain.doFilter(request, response);
+
+        // 认证通过后，将 user_id 写入 MDC（供日志自动注入到每条日志）
+        Object principal = authentication.getPrincipal();
+        String userIdStr = null;
+        if (principal instanceof com.pei.dehaze.security.model.SysUserDetails) {
+            Long userId = ((com.pei.dehaze.security.model.SysUserDetails) principal).getUserId();
+            if (userId != null) {
+                userIdStr = userId.toString();
+            }
+        }
+        if (userIdStr != null) {
+            MDC.put("user_id", userIdStr);
+        }
+
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            MDC.remove("user_id");
+        }
     }
 
     @Override

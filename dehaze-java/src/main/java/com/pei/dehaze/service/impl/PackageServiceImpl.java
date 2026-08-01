@@ -131,15 +131,28 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         return form;
     }
 
+    /**
+     * 校验安装包名称唯一性（含软删行参与查重，命中即报占用）。
+     */
+    private void validateNameUnique(String name, Long excludeId) {
+        long count = getBaseMapper().countByNameAll(name);
+        if (count == 0) {
+            return;
+        }
+        if (excludeId != null) {
+            count = getBaseMapper().countByNameAllExcluding(name, excludeId);
+        }
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS,
+                    "套餐名称已被历史记录占用，无法重复创建");
+        }
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void save(PackageForm form) {
         validatePackageForm(form);
-        Long existingCount = this.count(new LambdaQueryWrapper<SysPackage>()
-                .eq(SysPackage::getName, form.getName()));
-        if (existingCount > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS, "套餐名称已存在");
-        }
+        validateNameUnique(form.getName(), null);
         SysPackage pkg = new SysPackage();
         pkg.setName(form.getName());
         pkg.setLevelCode(form.getLevelCode());
@@ -164,12 +177,7 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         }
         validatePackageForm(form);
         if (!pkg.getName().equals(form.getName())) {
-            Long dupCount = this.count(new LambdaQueryWrapper<SysPackage>()
-                    .eq(SysPackage::getName, form.getName())
-                    .ne(SysPackage::getId, id));
-            if (dupCount > 0) {
-                throw new BusinessException(ResultCode.DATA_EXISTS, "套餐名称已存在");
-            }
+            validateNameUnique(form.getName(), id);
         }
         pkg.setName(form.getName());
         pkg.setLevelCode(form.getLevelCode());

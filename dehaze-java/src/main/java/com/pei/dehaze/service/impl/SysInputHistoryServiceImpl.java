@@ -46,8 +46,6 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
                 .eq(SysInputHistory::getUserId, userId)
                 .eq(query.getStatus() != null, SysInputHistory::getStatus, query.getStatus())
                 .eq(query.getInputSource() != null, SysInputHistory::getInputSource, query.getInputSource())
-                .eq(query.getIsFavorite() != null && query.getIsFavorite(), SysInputHistory::getIsFavorite, true)
-                .orderByDesc(SysInputHistory::getIsFavorite)
                 .orderByDesc(SysInputHistory::getCreateTime);
 
         Page<SysInputHistory> result = this.page(page, wrapper);
@@ -88,7 +86,6 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
         SysInputHistory history = new SysInputHistory();
         BeanUtil.copyProperties(form, history);
         history.setUserId(userId);
-        history.setIsFavorite(false);
         history.setSyncStatus(0);
         if (form.getStatus() == null) {
             history.setStatus(3); // 默认处理中
@@ -105,9 +102,7 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
         }
         checkOwnership(history);
 
-        if (form.getIsFavorite() != null) {
-            history.setIsFavorite(form.getIsFavorite());
-        }
+        // 历史记录更新接口保留，具体更新字段由前端决定（如更新标注信息等）
         return this.updateById(history);
     }
 
@@ -141,7 +136,7 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
                 .eq(SysInputHistory::getUserId, userId);
         long count = this.count(wrapper);
         this.remove(wrapper);
-        log.info("用户 {} 清空了 {} 条历史记录", userId, count);
+        log.debug("用户 {} 清空了 {} 条历史记录", userId, count);
         return (int) count;
     }
 
@@ -155,7 +150,7 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
                 .set(SysInputHistory::getSyncStatus, 1)
                 .set(SysInputHistory::getUpdateBy, userId);
         boolean result = this.update(wrapper);
-        log.info("用户 {} 同步历史记录完成", userId);
+        log.debug("用户 {} 同步历史记录完成", userId);
         return result ? 1 : 0;
     }
 
@@ -169,16 +164,15 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
     }
 
     private void autoCleanup(Long userId) {
-        // 删除最旧的非收藏记录
+        // 删除最旧的记录
         LambdaQueryWrapper<SysInputHistory> wrapper = new LambdaQueryWrapper<SysInputHistory>()
                 .eq(SysInputHistory::getUserId, userId)
-                .eq(SysInputHistory::getIsFavorite, false)
                 .orderByAsc(SysInputHistory::getCreateTime)
                 .last("LIMIT 1");
         SysInputHistory oldest = this.getOne(wrapper);
         if (oldest != null) {
             this.removeById(oldest.getId());
-            log.info("配额已满，自动清理最旧记录: id={}", oldest.getId());
+            log.debug("配额已满，自动清理最旧记录: id={}", oldest.getId());
         }
     }
 

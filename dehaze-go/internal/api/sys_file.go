@@ -1,12 +1,13 @@
 package api
 
 import (
+	"context"
 	"fmt"
-	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/earthyzinc/dehaze-go/internal/model"
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
@@ -14,6 +15,26 @@ import (
 )
 
 const defaultMaxFileSize = int64(100 * 1024 * 1024) // 100MB
+
+// fileResponse 文件响应（嵌入 SysFile，附加运行时拼接的 url）
+type fileResponse struct {
+	model.SysFile
+	URL string `json:"url"`
+}
+
+// attachFileURL 为单个 SysFile 附加运行时拼接的 URL
+func (api *SysFileApi) attachFileURL(ctx context.Context, file model.SysFile) fileResponse {
+	return fileResponse{SysFile: file, URL: api.fileService.GetURL(ctx, &file)}
+}
+
+// attachFileURLs 为 SysFile 列表附加运行时拼接的 URL
+func (api *SysFileApi) attachFileURLs(ctx context.Context, files []model.SysFile) []fileResponse {
+	result := make([]fileResponse, 0, len(files))
+	for i := range files {
+		result = append(result, api.attachFileURL(ctx, files[i]))
+	}
+	return result
+}
 
 type SysFileApi struct {
 	fileService *fileservice.FileService
@@ -74,17 +95,15 @@ func (api *SysFileApi) UploadFile(c *gin.Context) {
 		return
 	}
 
-	// 5. 构建 baseURL
-	baseURL := fmt.Sprintf("http://%s/api/v1/files/download", c.Request.Host)
-
-	// 6. 调用 Service 上传
-	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash, baseURL)
+	// 5. 调用 Service 上传（URL 不落库，运行时拼接）
+	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	common.OkWithData(sysFile, c)
+	// 响应中动态拼接 URL
+	common.OkWithData(api.attachFileURL(ctx, sysFile), c)
 }
 
 // DeleteFile 文件删除
@@ -140,7 +159,7 @@ func (api *SysFileApi) CheckFile(c *gin.Context) {
 		common.Ok(c)
 		return
 	}
-	common.OkWithData(result, c)
+	common.OkWithData(api.attachFileURL(c.Request.Context(), *result), c)
 }
 
 // GetFilePage 分页查询文件列表
@@ -177,6 +196,11 @@ func (api *SysFileApi) GetFilePage(c *gin.Context) {
 		return
 	}
 
+	// 列表项附加运行时拼接的 URL
+	if list, ok := result.List.([]model.SysFile); ok {
+		result.List = api.attachFileURLs(ctx, list)
+	}
+
 	common.OkWithDetailed(result, common.SUCCESS.Msg, c)
 }
 
@@ -208,7 +232,7 @@ func (api *SysFileApi) GetFileDetail(c *gin.Context) {
 		common.Ok(c)
 		return
 	}
-	common.OkWithData(file, c)
+	common.OkWithData(api.attachFileURL(c.Request.Context(), file), c)
 }
 
 // DownloadFile 文件下载
@@ -231,11 +255,13 @@ func (api *SysFileApi) DownloadFile(c *gin.Context) {
 	}
 
 	file, err := api.fileService.GetFileByObjectName(ctx, objectName)
-	if err == nil && file != nil && file.URL != nil && *file.URL != "" {
-		if cfg := config.GetConfig(); cfg != nil && !strings.HasPrefix(*file.URL, cfg.File.BaseURL) {
-			c.Redirect(http.StatusFound, *file.URL)
-			return
-		}
+	if err != nil {
+		_ = c.Error(common.WrapBizError(common.DATABASE_ERROR, "查询文件失败", err))
+		return
+	}
+	if file == nil {
+		_ = c.Error(common.NewBizError(common.RESOURCE_NOT_FOUND, "文件不存在"))
+		return
 	}
 
 	reader, sysFile, err := api.fileService.DownloadFile(ctx, objectName)

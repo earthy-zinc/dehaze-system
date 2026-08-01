@@ -52,7 +52,7 @@ public class WebsocketController {
 
         String senderId = principal.getName(); // 发送人 userId
 
-        log.info("发送人 userId:{}; 接收人 userId:{}", senderId, userId);
+        log.debug("发送人 userId:{}; 接收人 userId:{}", senderId, userId);
         // 发送消息给指定用户，拼接后路径 /user/{receiver}/queue/greeting
         messagingTemplate.convertAndSendToUser(userId, "/queue/greeting", new ChatMessage(senderId, message));
     }

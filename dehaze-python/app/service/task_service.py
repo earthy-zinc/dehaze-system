@@ -65,7 +65,7 @@ class TaskServiceAsync:
         if idempotency_key:
             existing_task = await task_repository.get_by_idempotency_key(db, idempotency_key)
             if existing_task is not None:
-                logger.info(
+                logger.debug(
                     "幂等键命中，返回已有任务: taskId=%s, idempotencyKey=%s",
                     existing_task.task_id, idempotency_key,
                 )
@@ -96,7 +96,7 @@ class TaskServiceAsync:
             if idempotency_key:
                 existing_task = await task_repository.get_by_idempotency_key(db, idempotency_key)
                 if existing_task is not None:
-                    logger.info("并发幂等键命中，返回已有任务: taskId=%s", existing_task.task_id)
+                    logger.debug("并发幂等键命中，返回已有任务: taskId=%s", existing_task.task_id)
                     return TaskServiceAsync._task_to_dict(existing_task)
             raise
 
@@ -120,7 +120,7 @@ class TaskServiceAsync:
             user_id=user_id,
         )
 
-        logger.info("创建任务成功: taskId=%s, type=%s, userId=%s", task_id, task_type, user_id)
+        logger.debug("创建任务成功: taskId=%s, type=%s, userId=%s", task_id, task_type, user_id)
         return task_dict
 
     @staticmethod
@@ -180,12 +180,13 @@ class TaskServiceAsync:
         }
 
     @staticmethod
-    async def download_export_file(
+    async def get_export_object_name(
         db: AsyncSession,
         redis: Redis,
         task_id: str,
         user_id: int,
     ) -> Optional[str]:
+        """读取导出文件的对象键（object_name），用于响应层运行时拼接下载 URL。"""
         if not task_id:
             raise BusinessException(ResultCode.TASK_PARAM_ERROR, "任务ID不能为空")
 
@@ -204,6 +205,10 @@ class TaskServiceAsync:
 
         if not sys_task.result:
             logger.warning("任务结果为空: taskId=%s", task_id)
+            return None
+
+        if not isinstance(sys_task.result, str):
+            logger.warning("任务结果非对象键: taskId=%s", task_id)
             return None
 
         return sys_task.result
@@ -245,7 +250,7 @@ class TaskServiceAsync:
         cancel_key = TASK_CANCEL_PREFIX + task_id
         await redis.setex(cancel_key, CANCEL_FLAG_TTL_SECONDS, 'true')
 
-        logger.info("取消任务成功: taskId=%s", task_id)
+        logger.debug("取消任务成功: taskId=%s", task_id)
 
     @staticmethod
     async def retry_task(
@@ -287,7 +292,7 @@ class TaskServiceAsync:
             user_id=user_id,
         )
 
-        logger.info("重试任务: taskId=%s, userId=%s, retryCount=%s", task_id, user_id, sys_task.retry_count)
+        logger.debug("重试任务: taskId=%s, userId=%s, retryCount=%s", task_id, user_id, sys_task.retry_count)
         return TaskServiceAsync._task_to_dict(sys_task)
 
     @staticmethod
@@ -295,7 +300,7 @@ class TaskServiceAsync:
         db: AsyncSession,
         redis: Redis,
         task_id: str,
-        result: str,
+        result: Any,
         expires_at: Optional[datetime] = None,
     ) -> None:
         sys_task = await task_repository.get_by_task_id(db, task_id)
@@ -357,11 +362,9 @@ class TaskServiceAsync:
                         "db_task_id": db_task_id,
                         "task_id": task_id,
                         "task_type": task_type,
-                        "params_json": params_json or '{}',
-                        "user_id": user_id,
                     },
                 )
-                logger.info("任务已发布到 RabbitMQ: taskId=%s", task_id)
+                logger.debug("任务已发布到 RabbitMQ: taskId=%s", task_id)
                 return
             except Exception as e:
                 logger.warning("RabbitMQ 发布失败，降级为本地执行: %s", e)
@@ -500,7 +503,7 @@ class TaskServiceAsync:
 
             try:
                 async with get_db_session() as db:
-                    logger.info("开始执行任务: taskId=%s, type=%s", task_id, task_type)
+                    logger.debug("开始执行任务: taskId=%s, type=%s", task_id, task_type)
 
                     sys_task = await task_repository.get_by_id(db, db_task_id)
                     if sys_task is None:
@@ -532,7 +535,7 @@ class TaskServiceAsync:
                             async def cancel_checker() -> bool:
                                 return await TaskServiceAsync._is_task_cancelled(redis, task_id)
 
-                            download_url = await strategy.execute(
+                            task_result = await strategy.execute(
                                 db=db,
                                 sys_task=sys_task,
                                 params_json=params_json,
@@ -540,12 +543,12 @@ class TaskServiceAsync:
                                 cancel_checker=cancel_checker,
                             )
 
-                            if download_url:
+                            if task_result:
                                 await TaskServiceAsync.update_task_completed(
-                                    db, redis, task_id, download_url,
+                                    db, redis, task_id, task_result,
                                     datetime.now() + timedelta(days=RESULT_FILE_EXPIRE_DAYS),
                                 )
-                                logger.info("任务完成: taskId=%s, downloadUrl=%s", task_id, download_url)
+                                logger.info("任务完成: taskId=%s, result=%s", task_id, task_result)
                             else:
                                 if metrics_enabled and isinstance(metrics_ctx, TaskMetricsContext):
                                     metrics_ctx.set_status("failed")

@@ -6,46 +6,57 @@ from prometheus_client import Gauge
 
 logger = logging.getLogger(__name__)
 
+# GPU 指标仅由主 Worker 采集（lifecycle.py 主 Worker 守卫），多进程模式下用 'all' 模式
+# 聚合时取所有进程值（实际仅主 Worker 写入），避免默认 'all' 之外的模式丢失数据
+_GPU_MP_MODE = "all"
+
 GPU_MEMORY_USED = Gauge(
     "dehaze_gpu_memory_used_bytes",
     "GPU memory used in bytes",
     ["device_id", "device_name"],
+    multiprocess_mode=_GPU_MP_MODE,
 )
 
 GPU_MEMORY_TOTAL = Gauge(
     "dehaze_gpu_memory_total_bytes",
     "GPU total memory in bytes",
     ["device_id", "device_name"],
+    multiprocess_mode=_GPU_MP_MODE,
 )
 
 GPU_MEMORY_FREE = Gauge(
     "dehaze_gpu_memory_free_bytes",
     "GPU memory free in bytes",
     ["device_id", "device_name"],
+    multiprocess_mode=_GPU_MP_MODE,
 )
 
 GPU_UTILIZATION = Gauge(
     "dehaze_gpu_utilization_percent",
     "GPU utilization percentage (0-100)",
     ["device_id", "device_name"],
+    multiprocess_mode=_GPU_MP_MODE,
 )
 
 GPU_MEMORY_UTILIZATION = Gauge(
     "dehaze_gpu_memory_utilization_percent",
     "GPU memory utilization percentage (0-100)",
     ["device_id", "device_name"],
+    multiprocess_mode=_GPU_MP_MODE,
 )
 
 GPU_TEMPERATURE = Gauge(
     "dehaze_gpu_temperature_celsius",
     "GPU temperature in celsius",
     ["device_id", "device_name"],
+    multiprocess_mode=_GPU_MP_MODE,
 )
 
 GPU_POWER_USAGE = Gauge(
     "dehaze_gpu_power_usage_watts",
     "GPU power usage in watts",
     ["device_id", "device_name"],
+    multiprocess_mode=_GPU_MP_MODE,
 )
 
 

@@ -41,7 +41,7 @@ public class FileUploadUtils {
         return FileUtil.readableFileSize(FileUtil.size(new File(filePath)));
     }
 
-    public static FileBO createFileBO(File file, String baseUrl, String path) {
+    public static FileBO createFileBO(File file, String path) {
         try (FileInputStream stream = new FileInputStream(file)) {
             FileBO fileBO = new FileBO();
 
@@ -49,16 +49,13 @@ public class FileUploadUtils {
             String extension = FileUtil.extName(filename);
             String md5 = FileUploadUtils.getMd5(stream);
             String objectName = path + "/" + md5 + "." + extension;
-            String url = baseUrl + "/" + objectName;
 
             fileBO.setFile(file);
             fileBO.setName(filename);
             fileBO.setObjectName(objectName);
             fileBO.setExtension(extension);
             fileBO.setMd5(md5);
-            fileBO.setPath(objectName);
             fileBO.setSize(file.length());
-            fileBO.setUrl(url);
             return fileBO;
         } catch (IOException e) {
             throw new BusinessException("无法创建FileBO", e);

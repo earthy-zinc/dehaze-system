@@ -27,6 +27,7 @@ _RETRY_BACKOFF = 0.1  # 秒
 REDIS_CIRCUIT_STATE = Gauge(
     "dehaze_redis_circuit_breaker_state",
     "Redis circuit breaker state (0=CLOSED, 1=OPEN, 2=HALF_OPEN)",
+    multiprocess_mode="all",  # 各 Worker 独立熔断器，聚合时保留所有进程状态
 )
 
 REDIS_FALLBACK_TOTAL = Counter(

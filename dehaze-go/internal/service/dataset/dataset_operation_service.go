@@ -35,7 +35,9 @@ type DatasetOperationService struct {
 	datasetItemFileRepo  datasetrepo.IDatasetItemFileRepository
 	itemFileRepo         filerepo.IItemFileRepository
 	fileRepo             filerepo.IFileRepository
+	fileService          *fileservice.FileService
 	taskExecutor         taskservice.AsyncTaskExecutor
+	taskService          *taskservice.TaskService
 	pairedImageValidator *PairedImageValidator
 	treeUtils            *utils.TreeDataUtils
 	auditLogSvc          *auditlogservice.AuditLogService
@@ -49,7 +51,9 @@ func NewDatasetOperationService(
 	datasetItemFileRepo datasetrepo.IDatasetItemFileRepository,
 	itemFileRepo filerepo.IItemFileRepository,
 	fileRepo filerepo.IFileRepository,
+	fileService *fileservice.FileService,
 	taskExecutor taskservice.AsyncTaskExecutor,
+	taskService *taskservice.TaskService,
 	auditLogSvc *auditlogservice.AuditLogService,
 ) *DatasetOperationService {
 	return &DatasetOperationService{
@@ -59,7 +63,9 @@ func NewDatasetOperationService(
 		datasetItemFileRepo:  datasetItemFileRepo,
 		itemFileRepo:         itemFileRepo,
 		fileRepo:             fileRepo,
+		fileService:          fileService,
 		taskExecutor:         taskExecutor,
+		taskService:          taskService,
 		pairedImageValidator: NewPairedImageValidator(),
 		treeUtils:            utils.NewTreeDataUtils(),
 		auditLogSvc:          auditLogSvc,
@@ -87,15 +93,15 @@ type CreateDatasetItemWithImagesRequest struct {
 
 // ImageUploadInfo 图片上传信息
 type ImageUploadInfo struct {
-	Type      string `json:"type"`
-	Name      string `json:"name"`
-	Path      string `json:"path"`
-	URL       string `json:"url"`
-	Size      int64  `json:"size"`
-	MD5       string `json:"md5"`
-	Width     int    `json:"width"`
-	Height    int    `json:"height"`
-	HazeLevel string `json:"hazeLevel,omitempty"`
+	Type       string `json:"type"`
+	Name       string `json:"name"`
+	ObjectName string `json:"objectName"`
+	Storage    string `json:"storage"`
+	Size       int64  `json:"size"`
+	MD5        string `json:"md5"`
+	Width      int    `json:"width"`
+	Height     int    `json:"height"`
+	HazeLevel  string `json:"hazeLevel,omitempty"`
 }
 
 // CreateItemOptions 创建项选项
@@ -130,16 +136,16 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 	}
 
 	// 2. 清晰图和有雾图均为可选（适配不同数据集规范：GT+Hazy 配对型、仅 Hazy 无 GT 型等）
-	if req.ClearImage.Path == "" && len(req.HazyImages) == 0 {
+	if req.ClearImage.ObjectName == "" && len(req.HazyImages) == 0 {
 		return nil, common.NewBizError(common.PARAM_ERROR, "至少上传一张图片（清晰图或有雾图）")
 	}
 
 	// 3. 图片分辨率校验（仅在上传了清晰图时校验）
-	if req.Options.ValidateResolution && req.ClearImage.Path != "" {
-		clearPath := req.ClearImage.Path
+	if req.Options.ValidateResolution && req.ClearImage.ObjectName != "" {
+		clearPath := req.ClearImage.ObjectName
 		hazyPaths := make([]string, 0, len(req.HazyImages))
 		for _, img := range req.HazyImages {
-			hazyPaths = append(hazyPaths, img.Path)
+			hazyPaths = append(hazyPaths, img.ObjectName)
 		}
 		if err := dos.pairedImageValidator.ValidateResolution(clearPath, hazyPaths); err != nil {
 			return nil, common.WrapBizError(common.PARAM_ERROR, "图片分辨率校验失败", err)
@@ -154,20 +160,20 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 
 	itemFiles := make([]datasetrepo.ItemFileCreate, 0, 1+len(req.HazyImages))
 	// 清晰图（可选）
-	if req.ClearImage.Path != "" {
+	if req.ClearImage.ObjectName != "" {
 		clearFileType := dos.getExtension(req.ClearImage.Name)
 		if clearFileType == "" {
-			clearFileType = dos.getExtension(req.ClearImage.Path)
+			clearFileType = dos.getExtension(req.ClearImage.ObjectName)
 		}
 		itemFiles = append(itemFiles, datasetrepo.ItemFileCreate{
-			Type:      "clear",
-			Name:      req.ClearImage.Name,
-			Path:      req.ClearImage.Path,
-			URL:       req.ClearImage.URL,
-			Size:      req.ClearImage.Size,
-			MD5:       req.ClearImage.MD5,
-			FileType:  clearFileType,
-			SceneType: req.SceneType,
+			Type:       "clear",
+			Name:       req.ClearImage.Name,
+			ObjectName: req.ClearImage.ObjectName,
+			Storage:    req.ClearImage.Storage,
+			Size:       req.ClearImage.Size,
+			MD5:        req.ClearImage.MD5,
+			FileType:   clearFileType,
+			SceneType:  req.SceneType,
 		})
 	}
 
@@ -175,18 +181,18 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 	for _, hazyImg := range req.HazyImages {
 		fileType := dos.getExtension(hazyImg.Name)
 		if fileType == "" {
-			fileType = dos.getExtension(hazyImg.Path)
+			fileType = dos.getExtension(hazyImg.ObjectName)
 		}
 		itemFiles = append(itemFiles, datasetrepo.ItemFileCreate{
-			Type:      "hazy",
-			Name:      hazyImg.Name,
-			Path:      hazyImg.Path,
-			URL:       hazyImg.URL,
-			Size:      hazyImg.Size,
-			MD5:       hazyImg.MD5,
-			HazeLevel: hazyImg.HazeLevel, // 可为空，不再默认填充 "medium"
-			FileType:  fileType,
-			SceneType: req.SceneType,
+			Type:       "hazy",
+			Name:       hazyImg.Name,
+			ObjectName: hazyImg.ObjectName,
+			Storage:    hazyImg.Storage,
+			Size:       hazyImg.Size,
+			MD5:        hazyImg.MD5,
+			HazeLevel:  hazyImg.HazeLevel,
+			FileType:   fileType,
+			SceneType:  req.SceneType,
 		})
 	}
 
@@ -212,7 +218,7 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 	dos.invalidateDatasetStatsCache(ctx, req.DatasetID)
 	dos.invalidateDatasetItemsCache(ctx, req.DatasetID)
 
-	logger.Info("创建数据项成功",
+	logger.Debug("创建数据项成功",
 		zap.Int64("datasetID", req.DatasetID),
 		zap.Int64("itemID", itemID),
 		zap.Int("clearFiles", 1),
@@ -236,11 +242,11 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 		logger.Warn("查询文件失败", zap.Error(err))
 	}
 
-	// 构建文件信息映射
+	// 构建文件信息映射（URL 运行时拼接）
 	fileURLMap := make(map[int64]string)
 	fileInfoMap := make(map[int64]*model.SysFile)
 	for i := range files {
-		fileURLMap[int64(files[i].ID)] = utils.StringVal(files[i].URL)
+		fileURLMap[int64(files[i].ID)] = dos.fileService.GetURL(ctx, &files[i])
 		fileInfoMap[int64(files[i].ID)] = &files[i]
 	}
 
@@ -376,7 +382,7 @@ func (dos *DatasetOperationService) BatchCreateDatasetItemsWithImages(ctx contex
 		result.GroupItems[prefix] = append(result.GroupItems[prefix], itemVO.ID)
 	}
 
-	logger.Info("批量创建数据项完成",
+	logger.Debug("批量创建数据项完成",
 		zap.Int64("datasetID", req.DatasetID),
 		zap.Int("total", result.Total),
 		zap.Int("success", result.Success),
@@ -455,8 +461,8 @@ func (dos *DatasetOperationService) DeleteDatasetItemCascade(ctx context.Context
 			return common.WrapBizError(common.DATABASE_ERROR, "查询文件失败", err)
 		}
 		for _, file := range files {
-			if file.Path != "" {
-				filePaths = append(filePaths, file.Path)
+			if file.ObjectName != "" {
+				filePaths = append(filePaths, file.ObjectName)
 			}
 		}
 	}
@@ -476,7 +482,7 @@ func (dos *DatasetOperationService) DeleteDatasetItemCascade(ctx context.Context
 	dos.invalidateDatasetItemsCache(ctx, datasetID)
 	dos.invalidateDatasetItemCache(ctx, itemID)
 
-	logger.Info("级联删除数据项成功",
+	logger.Debug("级联删除数据项成功",
 		zap.Int64("itemID", itemID),
 		zap.Int64("datasetID", datasetID),
 		zap.Int("files", len(filePaths)))
@@ -554,7 +560,7 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 		}
 	}
 
-	// 收集物理文件路径
+	// 收集物理文件对象键
 	filePathsMap := make(map[int64]string)
 	if len(fileIDs) > 0 {
 		files, err := dos.fileRepo.FindByIDs(ctx, fileIDs)
@@ -562,8 +568,8 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 			logger.Warn("查询文件失败", zap.Error(err))
 		}
 		for _, file := range files {
-			if file.Path != "" {
-				filePathsMap[int64(file.ID)] = file.Path
+			if file.ObjectName != "" {
+				filePathsMap[int64(file.ID)] = file.ObjectName
 			}
 		}
 	}
@@ -597,7 +603,7 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 		dos.invalidateDatasetItemsCache(ctx, datasetID)
 	}
 
-	logger.Info("批量删除数据集成功",
+	logger.Debug("批量删除数据集成功",
 		zap.Int("requested", len(req.IDs)),
 		zap.Int("deleted", len(idsToDelete)),
 		zap.Int("items", len(itemIDs)),
@@ -620,53 +626,45 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 
 // submitThumbnailGenerationTask 提交缩略图生成任务
 func (dos *DatasetOperationService) submitThumbnailGenerationTask(ctx context.Context, datasetID, itemID int64, fileIDs []int64) {
-	taskIDStr := fmt.Sprintf("thumb_%d_%d", datasetID, itemID)
-
-	if dos.taskExecutor == nil {
-		logger.Error("任务执行器未初始化")
+	if dos.taskExecutor == nil || dos.taskService == nil {
+		logger.Error("任务执行器或任务服务未初始化")
 		return
 	}
 
+	userID := database.GetUserID(ctx)
 	payload := taskservice.ThumbnailBatchPayload{
 		DatasetID: datasetID,
 		ItemID:    itemID,
 		FileIDs:   fileIDs,
 	}
-	msg := taskservice.TaskMessage{
-		TaskID:    taskIDStr,
-		TaskType:  "thumbnail",
-		Total:     len(fileIDs),
-		Payload:   payload,
-		CreatedAt: time.Now(),
+	task, err := dos.taskService.CreateTask(ctx, "thumbnail", payload, userID, "")
+	if err != nil {
+		logger.Error("创建缩略图任务失败", zap.Int64("datasetID", datasetID), zap.Int64("itemID", itemID), zap.Error(err))
+		return
 	}
-	if err := dos.taskExecutor.PublishTask(ctx, msg); err != nil {
-		logger.Error("提交缩略图任务失败", zap.String("taskID", taskIDStr), zap.Error(err))
-	}
+	// CreateTask 已内部调用 PublishTask，无需重复发布
+	logger.Debug("缩略图任务已提交", zap.Int64("dbTaskID", task.ID), zap.String("taskID", task.TaskID))
 }
 
 // submitFileDeletionTask 提交文件删除任务
 func (dos *DatasetOperationService) submitFileDeletionTask(ctx context.Context, datasetID int64, filePaths []string) {
-	taskIDStr := fmt.Sprintf("delete_%d_%d", datasetID, time.Now().UnixNano())
-
-	if dos.taskExecutor == nil {
-		logger.Error("任务执行器未初始化")
+	if dos.taskExecutor == nil || dos.taskService == nil {
+		logger.Error("任务执行器或任务服务未初始化")
 		return
 	}
 
+	userID := database.GetUserID(ctx)
 	payload := taskservice.FileDeletionPayload{
 		DatasetID: datasetID,
 		FilePaths: filePaths,
 	}
-	msg := taskservice.TaskMessage{
-		TaskID:    taskIDStr,
-		TaskType:  "dataset",
-		Total:     len(filePaths),
-		Payload:   payload,
-		CreatedAt: time.Now(),
+	task, err := dos.taskService.CreateTask(ctx, "file_deletion", payload, userID, "")
+	if err != nil {
+		logger.Error("创建文件删除任务失败", zap.Int64("datasetID", datasetID), zap.Error(err))
+		return
 	}
-	if err := dos.taskExecutor.PublishTask(ctx, msg); err != nil {
-		logger.Error("提交文件删除任务失败", zap.String("taskID", taskIDStr), zap.Error(err))
-	}
+	// CreateTask 已内部调用 PublishTask，无需重复发布
+	logger.Debug("文件删除任务已提交", zap.Int64("dbTaskID", task.ID), zap.String("taskID", task.TaskID))
 }
 
 // generateThumbnail 生成缩略图
@@ -677,7 +675,7 @@ func (dos *DatasetOperationService) generateThumbnail(fileID int64) error {
 	// 3. 保存缩略图文件
 	// 4. 更新 SysItemFile 的 thumbnail_file_id
 
-	logger.Info("生成缩略图", zap.Int64("fileID", fileID))
+	logger.Debug("生成缩略图", zap.Int64("fileID", fileID))
 	return nil
 }
 

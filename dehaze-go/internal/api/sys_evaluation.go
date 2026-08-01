@@ -63,6 +63,33 @@ func (api *SysEvaluationApi) GetEvaluationLog(c *gin.Context) {
 	common.OkWithData(result, c)
 }
 
+// GetMetrics 获取评估指标历史（当前用户，仅已完成状态）
+func (api *SysEvaluationApi) GetMetrics(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	var algorithmID int64
+	if algorithmIDStr := c.Query("algorithmId"); algorithmIDStr != "" {
+		algorithmID, err = strconv.ParseInt(algorithmIDStr, 10, 64)
+		if err != nil {
+			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "algorithmId格式不正确"))
+			return
+		}
+	}
+	pageNum, pageSize := getPageParams(c)
+
+	result, err := api.service.GetUserMetricsPage(ctx, userID, algorithmID, pageNum, pageSize)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithDetailed(result, "查询成功", c)
+}
+
 // ListEvaluationLogs 评估日志列表
 func (api *SysEvaluationApi) ListEvaluationLogs(c *gin.Context) {
 	ctx := c.Request.Context()

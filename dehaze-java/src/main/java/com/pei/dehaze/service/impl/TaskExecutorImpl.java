@@ -73,14 +73,26 @@ public class TaskExecutorImpl implements TaskExecutor {
             return;
         }
 
-        String traceId = MDC.get("traceId");
-        publisher.publish("task.export", taskId.toString(), traceId);
-        log.info("任务已发布到 MQ: taskId={}, traceId={}", taskId, traceId);
+        SysTask sysTask = sysTaskMapper.selectById(taskId);
+        if (sysTask == null) {
+            log.error("任务不存在，无法发布到 MQ: taskId={}", taskId);
+            return;
+        }
+
+        String traceId = MDC.get("trace_id");
+        Map<String, Object> messageBody = new HashMap<>();
+        messageBody.put("db_task_id", taskId);
+        messageBody.put("task_id", sysTask.getTaskId());
+        messageBody.put("task_type", sysTask.getTaskType());
+        String payload = JSONUtil.toJsonStr(messageBody);
+        publisher.publish("task.export", payload, traceId);
+        log.debug("任务已发布到 MQ: dbTaskId={}, taskId={}, type={}, traceId={}",
+                taskId, sysTask.getTaskId(), sysTask.getTaskType(), traceId);
     }
 
     @Override
     public void executeExportTask(Long taskId, ExportTaskCreateForm form) {
-        log.info("开始执行任务: taskId={}, thread={}", taskId, Thread.currentThread().getName());
+        log.debug("开始执行任务: taskId={}, thread={}", taskId, Thread.currentThread().getName());
 
         SysTask sysTask = sysTaskMapper.selectById(taskId);
         if (sysTask == null) {
@@ -157,7 +169,7 @@ public class TaskExecutorImpl implements TaskExecutor {
             case TaskConstants.STATUS_PROCESSING -> task.setStartedAt(now);
             case TaskConstants.STATUS_COMPLETED -> {
                 task.setProgress(100);
-                task.setResult(result);
+                task.setResult(toJsonSafe(result));
                 task.setCompletedAt(now);
                 task.setExpiresAt(now.plusDays(7)); // 结果保留7天
             }
@@ -176,6 +188,24 @@ public class TaskExecutorImpl implements TaskExecutor {
 
         // WebSocket 推送任务状态变更（通过 Redis Pub/Sub 跨实例投递）
         pushTaskStatusMessage(task, status, result, errorMessage);
+    }
+
+    /**
+     * 将结果字符串安全转为合法 JSON 值存入 sys_task.result (JSON 列)
+     * <ul>
+     *   <li>null/空 → {@code "null"}（MySQL JSON 列接受 JSON null）</li>
+     *   <li>已是合法 JSON → 原样返回</li>
+     *   <li>普通字符串 → JSON 字符串编码（如 {@code "exports/file.zip"} → {@code "\"exports/file.zip\""}）</li>
+     * </ul>
+     */
+    private String toJsonSafe(String result) {
+        if (result == null || result.isBlank()) {
+            return "null";
+        }
+        if (JSONUtil.isTypeJSON(result)) {
+            return result;
+        }
+        return JSONUtil.toJsonStr(result);
     }
 
     /**

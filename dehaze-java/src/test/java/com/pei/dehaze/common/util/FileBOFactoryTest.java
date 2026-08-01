@@ -26,9 +26,6 @@ import static org.mockito.Mockito.*;
 class FileBOFactoryTest {
 
     @Mock
-    private FilePathBuilder filePathBuilder;
-
-    @Mock
     private ImageProcessingService imageProcessingService;
 
     private FileBOFactory fileBOFactory;
@@ -38,7 +35,7 @@ class FileBOFactoryTest {
 
     @BeforeEach
     void setUp() {
-        fileBOFactory = new FileBOFactory(filePathBuilder, imageProcessingService);
+        fileBOFactory = new FileBOFactory(imageProcessingService);
     }
 
     @Test
@@ -51,15 +48,13 @@ class FileBOFactoryTest {
                 "test content".getBytes()
         );
 
-        when(filePathBuilder.buildUrl(anyString())).thenReturn("http://example.com/test.jpg");
-
         FileBO result = fileBOFactory.createFileBO(file, "upload/20250120");
 
         assertNotNull(result);
         assertEquals("test.jpg", result.getName());
         assertEquals("jpg", result.getExtension());
         assertNotNull(result.getMd5());
-        assertNotNull(result.getUrl());
+        assertNotNull(result.getObjectName());
         assertTrue(result.getObjectName().startsWith("upload/20250120/"));
     }
 
@@ -70,8 +65,6 @@ class FileBOFactoryTest {
         try (FileWriter writer = new FileWriter(testFile)) {
             writer.write("test content");
         }
-
-        when(filePathBuilder.buildUrl(anyString())).thenReturn("http://example.com/test.png");
 
         FileBO result = fileBOFactory.createFileBO(testFile, "upload/20250120");
 
@@ -92,7 +85,6 @@ class FileBOFactoryTest {
                 "test content".getBytes()
         );
 
-        when(filePathBuilder.buildUrl(anyString())).thenReturn("http://example.com/test.jpg");
         when(imageProcessingService.getImageDimensions(any(File.class)))
                 .thenReturn(new int[]{800, 600});
 
@@ -120,7 +112,6 @@ class FileBOFactoryTest {
                 "test content".getBytes()
         );
 
-        when(filePathBuilder.buildUrl(anyString())).thenReturn("http://example.com/test.jpg");
         when(imageProcessingService.getImageDimensions(any(File.class)))
                 .thenReturn(new int[]{0, 0});
 

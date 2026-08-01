@@ -21,7 +21,6 @@ class InputHistoryService:
         user_id: int,
         status: Optional[int] = None,
         input_source: Optional[str] = None,
-        favorite_only: bool = False,
         keywords: Optional[str] = None,
         page: int = 1,
         size: int = 10,
@@ -32,7 +31,6 @@ class InputHistoryService:
             user_id=user_id,
             status=status,
             input_source=input_source,
-            favorite_only=favorite_only,
             keywords=keywords,
             page=page,
             size=size,
@@ -66,7 +64,6 @@ class InputHistoryService:
             processing_time=data.get("processingTime"),
             status=data.get("status", 3),
             input_source=data.get("inputSource", "upload"),
-            is_favorite=False,
             sync_status=0,
         )
         return history.id
@@ -75,18 +72,32 @@ class InputHistoryService:
     async def update_history(
         db: AsyncSession,
         history_id: int,
-        is_favorite: Optional[bool],
+        data: dict[str, Any],
         user_id: int,
     ) -> None:
-        """更新历史记录（仅支持收藏切换，对齐 Java updateHistory）"""
+        """更新历史记录（如补充处理结果）"""
         history = await input_history_repository.get_by_id(db, history_id)
         if not history:
             raise BusinessException("历史记录不存在")
         if history.user_id != user_id:
             raise BusinessException("无权操作该历史记录")
-        if is_favorite is not None:
-            history.is_favorite = is_favorite
-            await db.flush()
+
+        updatable_fields = {
+            "originalImageUrl": "original_image_url",
+            "originalThumbnailUrl": "original_thumbnail_url",
+            "resultImageUrl": "result_image_url",
+            "resultThumbnailUrl": "result_thumbnail_url",
+            "algorithmId": "algorithm_id",
+            "algorithmName": "algorithm_name",
+            "algorithmParams": "algorithm_params",
+            "processingTime": "processing_time",
+            "status": "status",
+            "inputSource": "input_source",
+        }
+        for camel_key, db_field in updatable_fields.items():
+            if camel_key in data:
+                setattr(history, db_field, data[camel_key])
+        await db.flush()
 
     @staticmethod
     async def delete_history(db: AsyncSession, history_id: int, user_id: int) -> None:
@@ -127,7 +138,6 @@ class InputHistoryService:
             "processingTime": history.processing_time,
             "status": history.status,
             "inputSource": history.input_source,
-            "isFavorite": history.is_favorite,
             "syncStatus": history.sync_status,
             "createTime": format_time(history.create_time),
             "updateTime": format_time(history.update_time),

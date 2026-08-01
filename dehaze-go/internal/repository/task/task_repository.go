@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -113,8 +114,13 @@ func (r *taskRepository) FindPage(ctx context.Context, q *query.TaskPageQuery) (
 			CompletedAt:   t.CompletedAt,
 			Error:          t.ErrorMessage,
 		}
-		if t.Status == model.TaskStatusCompleted && t.Result != "" {
-			item.DownloadURL = t.Result
+		if t.Status == model.TaskStatusCompleted && t.Result != "" && t.Result != "null" {
+			// result 为 JSON 字符串时（导出任务："exports/xxx.zip"），反序列化提取 object_name
+			// result 为 JSON 对象时（导入任务），跳过 DownloadURL
+			var objectName string
+			if err := json.Unmarshal([]byte(t.Result), &objectName); err == nil && objectName != "" {
+				item.DownloadURL = objectName
+			}
 		}
 		list = append(list, item)
 	}

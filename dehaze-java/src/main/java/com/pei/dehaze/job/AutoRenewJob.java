@@ -22,7 +22,7 @@ public class AutoRenewJob {
     public void executeRenewal() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始执行自动续费...");
+            log.debug("开始执行自动续费...");
             orderService.executeRenewal();
         } catch (Exception e) {
             log.error("自动续费处理失败", e);

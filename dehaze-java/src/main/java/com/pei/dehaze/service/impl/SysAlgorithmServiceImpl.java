@@ -25,6 +25,7 @@ import com.pei.dehaze.model.query.AlgorithmQuery;
 import com.pei.dehaze.model.vo.AlgorithmMonitorVO;
 import com.pei.dehaze.model.vo.AlgorithmVO;
 import com.pei.dehaze.security.util.SecurityUtils;
+import com.pei.dehaze.service.FavoriteService;
 import com.pei.dehaze.service.SysAlgorithmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +49,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     private final SysPredLogMapper sysPredLogMapper;
     private final SysEvalLogMapper sysEvalLogMapper;
     private final ModelProperties modelProperties;
+    private final FavoriteService favoriteService;
 
     @Override
     public List<SysAlgorithm> getAllAlgorithms() {
@@ -216,7 +218,11 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
                         "算法[" + algo.getName() + "]当前状态不允许删除，请先停用或归档");
             }
         }
-        return this.removeByIds(allIds);
+        boolean removed = this.removeByIds(allIds);
+        if (removed) {
+            favoriteService.markInvalid("algorithm", new ArrayList<>(allIds));
+        }
+        return removed;
     }
 
     /**

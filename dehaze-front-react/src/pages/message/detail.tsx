@@ -92,10 +92,8 @@ const MessageDetail: React.FC = () => {
                       {messageData.priority === 4 ? "紧急" : "高优"}
                     </span>
                   )}
-                  {messageData.senderTypeLabel && (
-                    <span className="sender-text">
-                      来自：{messageData.senderTypeLabel}
-                    </span>
+                  {messageData.senderType && (
+                    <span className="sender-text">来自：消息发送方</span>
                   )}
                   <span className="time-text">{messageData.createTime}</span>
                 </div>

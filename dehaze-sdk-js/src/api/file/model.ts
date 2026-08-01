@@ -18,12 +18,12 @@ export interface FileInfo {
   size?: string;
   /** 文件大小（原始字节数） */
   sizeBytes?: number;
-  /** 文件访问 URL */
+  /** 文件访问 URL（运行时动态生成，完整地址） */
   url: string;
-  /** 文件存储路径 */
-  path: string;
-  /** 文件存储对象名 */
+  /** 文件存储对象名（与环境无关） */
   objectName?: string;
+  /** 存储后端标识（minio / local / nginx-static） */
+  storage?: string;
   /** 文件 MD5 值 */
   md5?: string;
   /** 创建时间 */

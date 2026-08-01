@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"mime/multipart"
 	"strconv"
 	"strings"
@@ -12,7 +11,6 @@ import (
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
-	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -184,8 +182,6 @@ func (api *SysDatasetItemApi) CreateDatasetItemWithImages(c *gin.Context) {
 		},
 	}
 
-	baseURL := fmt.Sprintf("http://%s/api/v1/files/download", c.Request.Host)
-
 	form, err := c.MultipartForm()
 	if err != nil {
 		_ = c.Error(common.WrapBizError(common.PARAM_ERROR, "解析上传表单失败", err))
@@ -194,7 +190,7 @@ func (api *SysDatasetItemApi) CreateDatasetItemWithImages(c *gin.Context) {
 
 	// 上传清晰图（可选）
 	if clearHeaders := form.File["clearImage"]; len(clearHeaders) > 0 {
-		clearInfo, err := api.uploadFormFile(ctx, clearHeaders[0], baseURL)
+		clearInfo, err := api.uploadFormFile(ctx, clearHeaders[0])
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -206,7 +202,7 @@ func (api *SysDatasetItemApi) CreateDatasetItemWithImages(c *gin.Context) {
 	hazeLevels := c.PostFormArray("hazeLevels")
 	hazyHeaders := form.File["hazyImages"]
 	for i, hazyHeader := range hazyHeaders {
-		hazyInfo, err := api.uploadFormFile(ctx, hazyHeader, baseURL)
+		hazyInfo, err := api.uploadFormFile(ctx, hazyHeader)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -228,7 +224,7 @@ func (api *SysDatasetItemApi) CreateDatasetItemWithImages(c *gin.Context) {
 }
 
 // uploadFormFile 上传单个表单文件，返回 ImageUploadInfo
-func (api *SysDatasetItemApi) uploadFormFile(ctx context.Context, fileHeader *multipart.FileHeader, baseURL string) (datasetservice.ImageUploadInfo, error) {
+func (api *SysDatasetItemApi) uploadFormFile(ctx context.Context, fileHeader *multipart.FileHeader) (datasetservice.ImageUploadInfo, error) {
 	file, err := fileHeader.Open()
 	if err != nil {
 		return datasetservice.ImageUploadInfo{}, common.NewBizError(common.PARAM_ERROR, "无法读取文件")
@@ -240,17 +236,17 @@ func (api *SysDatasetItemApi) uploadFormFile(ctx context.Context, fileHeader *mu
 		return datasetservice.ImageUploadInfo{}, common.WrapBizError(common.SYSTEM_RESOURCE_ACCESS_ERR, "计算文件MD5失败", err)
 	}
 
-	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash, baseURL)
+	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash)
 	if err != nil {
 		return datasetservice.ImageUploadInfo{}, err
 	}
 
 	return datasetservice.ImageUploadInfo{
-		Name: fileHeader.Filename,
-		Path: sysFile.Path,
-		URL:  utils.StringVal(sysFile.URL),
-		Size: fileHeader.Size,
-		MD5:  md5Hash,
+		Name:       fileHeader.Filename,
+		ObjectName: sysFile.ObjectName,
+		Storage:    sysFile.Storage,
+		Size:       fileHeader.Size,
+		MD5:        md5Hash,
 	}, nil
 }
 
@@ -288,8 +284,6 @@ func (api *SysDatasetItemApi) BatchCreateDatasetItemsWithImages(c *gin.Context) 
 		return
 	}
 
-	baseURL := fmt.Sprintf("http://%s/api/v1/files/download", c.Request.Host)
-
 	// 按文件名前缀（第一个 _ 之前的部分）分组
 	groups := make(map[string][]*multipart.FileHeader)
 	groupOrder := make([]string, 0)
@@ -315,7 +309,7 @@ func (api *SysDatasetItemApi) BatchCreateDatasetItemsWithImages(c *gin.Context) 
 		uploadedCount := 0
 
 		for _, fh := range files {
-			info, err := api.uploadFormFile(ctx, fh, baseURL)
+			info, err := api.uploadFormFile(ctx, fh)
 			if err != nil {
 				failedItems = append(failedItems, batchUploadFailedItem{
 					FileName: fh.Filename,

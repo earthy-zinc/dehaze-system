@@ -2,6 +2,7 @@ package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -28,10 +29,10 @@ import com.pei.dehaze.service.SysRoleMenuService;
 import com.pei.dehaze.service.SysRoleService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -54,6 +55,14 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     private final SysRoleMenuService roleMenuService;
 
     private final SysRoleService roleService;
+
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private static final String MENU_ROUTES_KEY = "menu:routes";
+
+    private static final String MENU_OPTIONS_KEY = "menu:options";
+
+    private static final Duration MENU_CACHE_TTL = Duration.ofHours(1);
 
 
     /**
@@ -83,7 +92,6 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * 新增/修改菜单
      */
     @Override
-    @CacheEvict(cacheNames = "menu", allEntries = true)
     public boolean saveMenu(MenuForm menuForm) {
 
         // 修改时检查菜单是否存在
@@ -122,6 +130,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
                     roleMenuService.save(new SysRoleMenu(rootRole.getId(), entity.getId()));
                 }
             }
+            evictMenuCache();
             roleMenuService.refreshRolePermsCache();
         }
         return result;
@@ -131,14 +140,19 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * 菜单下拉数据
      */
     @Override
-    @Cacheable(cacheNames = "menu", key = "'options'")
     public List<Option<Long>> listMenuOptions() {
+        String cached = stringRedisTemplate.opsForValue().get(MENU_OPTIONS_KEY);
+        if (cached != null) {
+            return (List<Option<Long>>) (List<?>) JSONUtil.parseArray(cached).toList(Option.class);
+        }
         List<SysMenu> menuList = this.list(new LambdaQueryWrapper<SysMenu>()
                 .orderByAsc(SysMenu::getSort));
         // 构建 parentId -> children Map，避免 O(n²) 递归
         Map<Long, List<SysMenu>> parentToChildrenMap = menuList.stream()
                 .collect(Collectors.groupingBy(SysMenu::getParentId));
-        return buildMenuOptions(SystemConstants.ROOT_NODE_ID, parentToChildrenMap);
+        List<Option<Long>> options = buildMenuOptions(SystemConstants.ROOT_NODE_ID, parentToChildrenMap);
+        stringRedisTemplate.opsForValue().set(MENU_OPTIONS_KEY, JSONUtil.toJsonStr(options), MENU_CACHE_TTL);
+        return options;
     }
 
     /**
@@ -168,10 +182,15 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * 获取路由列表
      */
     @Override
-    @Cacheable(cacheNames = "menu", key = "'routes'")
     public List<RouteVO> listRoutes() {
+        String cached = stringRedisTemplate.opsForValue().get(MENU_ROUTES_KEY);
+        if (cached != null) {
+            return JSONUtil.parseArray(cached).toList(RouteVO.class);
+        }
         List<RouteBO> menuList = this.baseMapper.listRoutes();
-        return buildRoutes(SystemConstants.ROOT_NODE_ID, menuList);
+        List<RouteVO> routes = buildRoutes(SystemConstants.ROOT_NODE_ID, menuList);
+        stringRedisTemplate.opsForValue().set(MENU_ROUTES_KEY, JSONUtil.toJsonStr(routes), MENU_CACHE_TTL);
+        return routes;
     }
 
     /**
@@ -276,14 +295,17 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 是否修改成功
      */
     @Override
-    @CacheEvict(cacheNames = "menu", allEntries = true)
     public boolean updateMenuVisible(Long menuId, Integer visible) {
         Long currentUserId = SecurityUtils.getUserId();
-        return this.update(new LambdaUpdateWrapper<SysMenu>()
+        boolean result = this.update(new LambdaUpdateWrapper<SysMenu>()
                 .eq(SysMenu::getId, menuId)
                 .set(SysMenu::getVisible, visible)
                 .set(SysMenu::getUpdateBy, currentUserId)
         );
+        if (result) {
+            evictMenuCache();
+        }
+        return result;
     }
 
     /**
@@ -319,7 +341,6 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 是否删除成功
      */
     @Override
-    @CacheEvict(cacheNames = "menu", allEntries = true)
     public boolean deleteMenu(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -354,10 +375,18 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
 
         // 刷新角色权限缓存
         if (result) {
+            evictMenuCache();
             roleMenuService.refreshRolePermsCache();
         }
         return result;
     }
 
+    /**
+     * 清除菜单路由和选项缓存
+     */
+    private void evictMenuCache() {
+        stringRedisTemplate.delete(MENU_ROUTES_KEY);
+        stringRedisTemplate.delete(MENU_OPTIONS_KEY);
+    }
 
 }

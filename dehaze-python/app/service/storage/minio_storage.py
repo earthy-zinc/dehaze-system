@@ -30,6 +30,14 @@ class MinioStorageService(StorageService):
         )
 
     @property
+    def name(self) -> str:
+        return "minio"
+
+    @property
+    def base_url(self) -> str:
+        return settings.FILE_STORAGE_BASE_URLS["minio"]
+
+    @property
     def client(self) -> Minio:
         return self._client
 
@@ -85,15 +93,6 @@ class MinioStorageService(StorageService):
             return stat.size
         except Exception:
             return None
-
-    def get_url(self, bucket: str, object_name: str) -> str:
-        # 优先使用 FILE_BASE_URL
-        if settings.FILE_BASE_URL:
-            base = settings.FILE_BASE_URL.rstrip("/")
-            return f"{base}/{object_name}"
-
-        protocol = "https" if settings.MINIO_SECURE else "http"
-        return f"{protocol}://{settings.MINIO_ENDPOINT}/{bucket}/{object_name}"
 
     def ensure_bucket(self, bucket: str) -> None:
         if not self._client.bucket_exists(bucket):

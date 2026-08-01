@@ -98,7 +98,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 新增用户
+     * 新增用户 — 注册查重必须查全表（含软删行），命中报"该用户名不可用"。
+     * MyBatis-Plus @TableLogic 会自动追加 deleted=0，此处必须用原生 SQL 绕过。
      *
      * @param userForm 用户表单对象
      * @return
@@ -108,9 +109,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         String username = userForm.getUsername();
 
-        long count = this.count(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, username));
+        long count = this.baseMapper.countByUsernameAllDeleted(username);
         if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS, "用户名已存在");
+            throw new BusinessException(ResultCode.DATA_EXISTS, "该用户名不可用");
         }
 
         // 实体转换 form->entity
@@ -131,7 +132,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 更新用户
+     * 更新用户 — 改名查重必须查全表（含软删行），命中报"该用户名不可用"。
      *
      * @param userId   用户ID
      * @param userForm 用户表单对象
@@ -144,12 +145,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         String username = userForm.getUsername();
 
-        long count = this.count(new LambdaQueryWrapper<SysUser>()
-                .eq(SysUser::getUsername, username)
-                .ne(SysUser::getId, userId)
-        );
-        if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS, "用户名已存在");
+        long count = this.baseMapper.countByUsernameAllDeleted(username);
+        if (count > 0 && !isCurrentUser(username, userId)) {
+            throw new BusinessException(ResultCode.DATA_EXISTS, "该用户名不可用");
         }
 
         // form -> entity
@@ -273,6 +271,17 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             userInfoVO.setPerms(perms);
         }
         return userInfoVO;
+    }
+
+    /**
+     * 判断指定 username 是否属于当前用户（允许本人保留原用户名）
+     */
+    private boolean isCurrentUser(String username, Long userId) {
+        SysUser currentUser = this.getOne(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getId, userId)
+                .select(SysUser::getUsername)
+        );
+        return currentUser != null && username.equals(currentUser.getUsername());
     }
 
 

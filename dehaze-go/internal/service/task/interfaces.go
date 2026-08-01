@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
@@ -27,16 +26,11 @@ type ITaskService interface {
 	Cancel(ctx context.Context, id int64) error
 }
 
-// TaskMessage 异步任务消息
+// TaskMessage 异步任务消息（三端统一契约：最小自描述 JSON）
 type TaskMessage struct {
-	TaskID    string         `json:"taskId"`
-	TaskType  string         `json:"taskType"`
-	Total     int            `json:"total,omitempty"`
-	Payload   any            `json:"payload,omitempty"`
-	TraceID   string         `json:"traceId,omitempty"`
-	CreatedAt time.Time      `json:"createdAt"`
-	CreatedBy int64          `json:"createdBy,omitempty"`
-	Extra     map[string]any `json:"extra,omitempty"`
+	DbTaskID int64  `json:"db_task_id"`
+	TaskID   string `json:"task_id"`
+	TaskType string `json:"task_type"`
 }
 
 // AsyncTaskExecutor 异步任务执行接口（RabbitMQ 实现）

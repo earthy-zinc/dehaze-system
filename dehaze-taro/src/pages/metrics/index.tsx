@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, ScrollView } from "@tarojs/components";
+
 import CompareNavbar from "@/components/compare/CompareNavbar";
-import { ModelAPI } from "dehaze-sdk-js";
-import type { EvaluationResultVO } from "dehaze-sdk-js";
+import { ModelAPI, AlgorithmAPI } from "dehaze-sdk-js";
+import type { EvaluationResultVO, AlgorithmMonitorVO } from "dehaze-sdk-js";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
 import { loadCompareContext } from "@/components/compare/types";
@@ -51,9 +52,25 @@ const MetricsPage: React.FC = () => {
   const [evaluation, setEvaluation] = useState<EvaluationResultVO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [monitorData, setMonitorData] = useState<AlgorithmMonitorVO | null>(
+    null
+  );
+  const [monitorLoading, setMonitorLoading] = useState(false);
 
   const { algorithm, result: prediction, originImage } = ctx;
   const cleanUrl = originImage?.cleanUrl;
+
+  // 加载算法监控数据
+  useEffect(() => {
+    if (!algorithm?.id) return;
+    setMonitorLoading(true);
+    AlgorithmAPI.getMonitorData(algorithm.id)
+      .then(setMonitorData)
+      .catch(() => {
+        // 忽略错误
+      })
+      .finally(() => setMonitorLoading(false));
+  }, [algorithm?.id]);
 
   // 执行评估（GT 必须是 clean 图，不能用 hazy 原图）
   const fetchEvaluation = useCallback(async () => {
@@ -140,6 +157,58 @@ const MetricsPage: React.FC = () => {
           result={prediction}
           evaluationTime={evaluation?.time}
         />
+
+        {/* 算法运行监控 */}
+        {algorithm && (
+          <View className="info-card">
+            <View className="card-title">
+              <Text>运行监控</Text>
+            </View>
+            {monitorLoading ? (
+              <View className="loading-state">
+                <View className="loading-spinner" />
+                <Text>加载中...</Text>
+              </View>
+            ) : monitorData ? (
+              <View className="metrics-list">
+                <View className="metric-item">
+                  <View className="metric-info">
+                    <Text className="metric-label">今日调用</Text>
+                  </View>
+                  <Text className="metric-value">
+                    {monitorData.todayCallCount}
+                  </Text>
+                </View>
+                <View className="metric-item">
+                  <View className="metric-info">
+                    <Text className="metric-label">总调用</Text>
+                  </View>
+                  <Text className="metric-value">{monitorData.callCount}</Text>
+                </View>
+                <View className="metric-item">
+                  <View className="metric-info">
+                    <Text className="metric-label">平均耗时</Text>
+                  </View>
+                  <Text className="metric-value">
+                    {(monitorData.avgTime / 1000).toFixed(1)}s
+                  </Text>
+                </View>
+                <View className="metric-item">
+                  <View className="metric-info">
+                    <Text className="metric-label">成功率</Text>
+                  </View>
+                  <Text className="metric-value">
+                    {(monitorData.successRate * 100).toFixed(1)}%
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View className="empty-metrics">
+                <Text>暂无监控数据</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* 评估指标 */}
         <View className="info-card">

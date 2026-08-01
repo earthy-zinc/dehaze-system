@@ -31,16 +31,24 @@ public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationS
     @Override
     public NotificationSettingsVO get() {
         Long userId = SecurityUtils.getUserId();
-        SysNotificationSetting setting = getOrCreateDefault(userId);
-        return toVO(setting);
+        // upsert 确保记录存在（复活软删行或新建）
+        baseMapper.upsertByUser(userId, null, null, null);
+        SysNotificationSetting setting = this.getOne(new LambdaQueryWrapper<SysNotificationSetting>()
+                .eq(SysNotificationSetting::getUserId, userId));
+        return toVO(setting != null ? setting : buildDefault(userId));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void update(NotificationSettingForm form) {
         Long userId = SecurityUtils.getUserId();
-        SysNotificationSetting setting = getOrCreateDefault(userId);
-
+        SysNotificationSetting setting = this.getOne(new LambdaQueryWrapper<SysNotificationSetting>()
+                .eq(SysNotificationSetting::getUserId, userId));
+        if (setting == null) {
+            baseMapper.upsertByUser(userId, null, null, null);
+            setting = this.getOne(new LambdaQueryWrapper<SysNotificationSetting>()
+                    .eq(SysNotificationSetting::getUserId, userId));
+        }
         if (form.getPushEnabled() != null) {
             setting.setPushEnabled(form.getPushEnabled() ? 1 : 0);
         }
@@ -74,19 +82,14 @@ public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationS
         this.updateById(setting);
     }
 
-    private SysNotificationSetting getOrCreateDefault(Long userId) {
-        SysNotificationSetting setting = this.getOne(new LambdaQueryWrapper<SysNotificationSetting>()
-                .eq(SysNotificationSetting::getUserId, userId));
-        if (setting == null) {
-            setting = new SysNotificationSetting();
-            setting.setUserId(userId);
-            setting.setPushEnabled(1);
-            setting.setDndEnabled(0);
-            setting.setDndStart(LocalTime.of(22, 0));
-            setting.setDndEnd(LocalTime.of(8, 0));
-            setting.setPreferences(DEFAULT_PREFERENCES);
-            this.save(setting);
-        }
+    private SysNotificationSetting buildDefault(Long userId) {
+        SysNotificationSetting setting = new SysNotificationSetting();
+        setting.setUserId(userId);
+        setting.setPushEnabled(1);
+        setting.setDndEnabled(0);
+        setting.setDndStart(LocalTime.of(22, 0));
+        setting.setDndEnd(LocalTime.of(8, 0));
+        setting.setPreferences(DEFAULT_PREFERENCES);
         return setting;
     }
 

@@ -145,6 +145,18 @@ func (r *PackageRepository) FindByName(ctx context.Context, name string) (*model
 	return &p, err
 }
 
+// ExistsByName 检查包名是否存在（查全表含软删行）
+func (r *PackageRepository) ExistsByName(ctx context.Context, name string, excludeID ...int64) (bool, error) {
+	var count int64
+	query := r.db.Unscoped().WithContext(ctx).Model(&model.SysPackage{}).
+		Where("name = ?", name)
+	if len(excludeID) > 0 {
+		query = query.Where("id != ?", excludeID[0])
+	}
+	err := query.Count(&count).Error
+	return count > 0, err
+}
+
 func (r *PackageRepository) FindActivePromotionsByPackageID(ctx context.Context, packageID int64) ([]PromotionWithPackage, error) {
 	var rows []PromotionWithPackage
 	err := r.db.WithContext(ctx).

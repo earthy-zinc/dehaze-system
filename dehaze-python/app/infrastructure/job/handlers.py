@@ -99,7 +99,7 @@ async def cleanup_expired_tasks() -> str:
             f"总计删除={total}, "
             f"Redis缓存清理={redis_deleted}"
         )
-        logger.info(msg)
+        logger.debug(msg)
         return msg
     finally:
         set_current_user_id(None)
@@ -171,7 +171,7 @@ async def cleanup_stuck_tasks() -> str:
             f"pending超时={recovered_pending}(>24h), "
             f"总计回收={total}"
         )
-        logger.info(msg)
+        logger.debug(msg)
         return msg
     finally:
         set_current_user_id(None)
@@ -228,7 +228,7 @@ async def model_health_check() -> str:
             logger.warning(msg)
         else:
             msg = "健康检查通过: GPU/DB/Redis 均正常"
-            logger.info(msg)
+            logger.debug(msg)
 
         return msg
     finally:
@@ -269,7 +269,7 @@ async def _cleanup_task_redis_keys(task_ids: list[str]) -> int:
             deleted = await redis.delete(*keys_to_delete)
 
         if deleted > 0:
-            logger.info(f"已精准清理 {deleted} 个 Redis 任务缓存 Key（涉及 {len(task_ids)} 个任务）")
+            logger.debug(f"已精准清理 {deleted} 个 Redis 任务缓存 Key（涉及 {len(task_ids)} 个任务）")
 
         return deleted
 
@@ -326,7 +326,7 @@ async def cleanup_orphan_files() -> str:
 
         if not orphan_objects:
             msg = "孤儿文件清理完成: 未发现孤儿文件"
-            logger.info(msg)
+            logger.debug(msg)
             return msg
 
         # 删除孤儿文件
@@ -358,7 +358,7 @@ async def cleanup_orphan_files() -> str:
             f"已删除={deleted}, "
             f"失败={failed}"
         )
-        logger.info(msg)
+        logger.debug(msg)
         return msg
     finally:
         set_current_user_id(None)
@@ -388,7 +388,7 @@ async def cleanup_temp_files() -> str:
 
         if not os.path.exists(temp_dir):
             msg = f"临时文件清理: 目录不存在 {temp_dir}"
-            logger.info(msg)
+            logger.debug(msg)
             return msg
 
         deleted = 0
@@ -421,7 +421,7 @@ async def cleanup_temp_files() -> str:
             f"已删除={deleted}, "
             f"失败={failed}"
         )
-        logger.info(msg)
+        logger.debug(msg)
         return msg
     finally:
         set_current_user_id(None)
@@ -488,7 +488,7 @@ async def cleanup_expired_messages() -> str:
             total = await message_repository.delete_expired(db, now, batch_size=500)
 
         msg = f"过期消息清理完成: 已删除={total}"
-        logger.info(msg)
+        logger.debug(msg)
         return msg
     finally:
         set_current_user_id(None)
@@ -528,7 +528,7 @@ async def send_scheduled_announcements() -> str:
 
         if sent_total > 0 or failed > 0:
             msg = f"定时公告发送: 成功={sent_total}, 失败={failed}"
-            logger.info(msg)
+            logger.debug(msg)
         else:
             msg = "定时公告发送: 无待发送公告"
             logger.debug(msg)
@@ -560,7 +560,7 @@ async def expire_orders() -> str:
 
         if count > 0:
             msg = f"订单超时取消: 已取消={count}"
-            logger.info(msg)
+            logger.debug(msg)
         else:
             msg = "订单超时取消: 无"
             logger.debug(msg)
@@ -589,7 +589,7 @@ async def complete_expired_orders() -> str:
 
         if count > 0:
             msg = f"订单到期归档: 已归档={count}"
-            logger.info(msg)
+            logger.debug(msg)
         else:
             msg = "订单到期归档: 无"
             logger.debug(msg)
@@ -618,7 +618,7 @@ async def expire_user_coupons() -> str:
 
         if count > 0:
             msg = f"用户优惠券过期处理: 已过期={count}"
-            logger.info(msg)
+            logger.debug(msg)
         else:
             msg = "用户优惠券过期处理: 无"
             logger.debug(msg)
@@ -650,7 +650,7 @@ async def auto_renew_task() -> str:
 
         if success_count > 0:
             msg = f"自动续费扣款完成: 成功={success_count}"
-            logger.info(msg)
+            logger.debug(msg)
         else:
             msg = "自动续费扣款: 无待处理配置"
             logger.debug(msg)
@@ -680,7 +680,7 @@ async def reset_monthly_quota() -> str:
 
         if count > 0:
             msg = f"会员月度配额重置完成: 已重置={count}"
-            logger.info(msg)
+            logger.debug(msg)
         else:
             msg = "会员月度配额重置: 无待处理记录"
             logger.debug(msg)
@@ -709,7 +709,7 @@ async def process_expired_members() -> str:
 
         if count > 0:
             msg = f"会员过期降级处理完成: 已处理={count}"
-            logger.info(msg)
+            logger.debug(msg)
         else:
             msg = "会员过期降级处理: 无待处理记录"
             logger.debug(msg)
@@ -738,7 +738,7 @@ async def retry_failed_refunds() -> str:
 
         if count > 0:
             msg = f"退款失败重试完成: 已处理={count}"
-            logger.info(msg)
+            logger.debug(msg)
         else:
             msg = "退款失败重试: 无待处理记录"
             logger.debug(msg)
@@ -769,7 +769,7 @@ async def send_expire_reminders() -> str:
 
         if count > 0:
             msg = f"会员到期预警完成: 已发送={count}"
-            logger.info(msg)
+            logger.debug(msg)
         else:
             msg = "会员到期预警: 无待处理记录"
             logger.debug(msg)
@@ -797,7 +797,7 @@ async def refresh_unread_count_cache() -> str:
 
         if count > 0:
             msg = f"未读数缓存刷新完成: 已刷新={count}"
-            logger.info(msg)
+            logger.debug(msg)
         else:
             msg = "未读数缓存刷新: 无活跃用户"
             logger.debug(msg)

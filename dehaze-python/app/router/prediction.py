@@ -2,6 +2,8 @@
 预测 API 路由 —— 去雾处理核心入口（异步任务模式）
 
 POST /api/v1/prediction          → 提交预测任务，立即返回 {logId, status: "processing"}
+POST /api/v1/prediction/batch    → 批量处理
+GET  /api/v1/prediction/quota    → 查询剩余处理次数
 GET  /api/v1/prediction/logs     → 预测日志列表
 GET  /api/v1/prediction/{taskId} → 查询预测任务状态，根据 status 返回不同字段
 """
@@ -36,6 +38,14 @@ class PredictionRequest(BaseModel):
     fileId: Optional[int] = Field(default=None, description="原始图片文件ID")
     imageUrl: Optional[str] = Field(default=None, description="原始图片URL（与fileId二选一）")
     params: Optional[str] = Field(default=None, description="预测参数(JSON)")
+    recommendedBy: Optional[str] = Field(default=None, description="推荐来源（来自推荐管理模块时填写）")
+
+
+class BatchPredictionRequest(BaseModel):
+    """批量预测请求"""
+    algorithmId: int = Field(description="算法ID")
+    items: list[dict] = Field(description="批量图片列表，每项含 fileId/imageUrl/params 等")
+    recommendedBy: Optional[str] = Field(default=None, description="推荐来源")
 
 
 class PredictionResponse(BaseModel):
@@ -46,6 +56,12 @@ class PredictionResponse(BaseModel):
     resultThumbnailUrl: Optional[str] = Field(default=None, description="缩略图URL（completed 时返回）")
     time: int = Field(default=0, description="处理时间(毫秒)")
     errorMessage: Optional[str] = Field(default=None, description="失败错误信息（failed 时返回）")
+
+
+class BatchPredictionResult(BaseModel):
+    """批量预测响应包装"""
+    total: int = Field(description="本次提交的图片总数")
+    results: list[PredictionResponse] = Field(description="每张图的预测结果列表")
 
 
 @router.post("", response_model=Result[PredictionResponse])
@@ -60,7 +76,7 @@ async def predict(
     - 缓存命中：status=completed 且包含完整结果
     - 缓存未命中：status=processing，需通过 GET /{taskId} 轮询
     """
-    logger.info(f"预测请求: user={user.username}, algorithmId={body.algorithmId}")
+    logger.debug(f"预测请求: user={user.username}, algorithmId={body.algorithmId}")
 
     image_url = body.imageUrl
     if body.fileId is None and not image_url:
@@ -124,9 +140,28 @@ async def list_prediction_logs(
     return success(PageResult(list=logs, total=total))
 
 
+
+
+class QuotaResponse(BaseModel):
+    """配额查询响应"""
+    total: int = Field(description="总配额")
+    used: int = Field(description="本月已使用")
+    remaining: int = Field(description="本月剩余")
+
+
+@router.get("/quota", response_model=Result[QuotaResponse], summary="查询剩余处理次数")
+async def get_quota(
+    user: UserContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询用户本月剩余去雾处理次数"""
+    result = await prediction_service.get_quota(db, user.id)
+    return success(QuotaResponse(**result))
+
+
 @router.get("/{task_id}", response_model=Result[PredictionResponse], summary="查询预测任务状态")
 async def get_prediction_task(
-    task_id: int,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -137,7 +172,11 @@ async def get_prediction_task(
     - completed: 返回完整结果（resultUrl、time）
     - failed: 返回 errorMessage + time
     """
-    log = await pred_log_repository.get_by_id(db, task_id)
+    try:
+        tid = int(task_id)
+    except (ValueError, TypeError):
+        raise BusinessException(ResultCode.PARAM_ERROR, f"无效的任务ID: {task_id}")
+    log = await pred_log_repository.get_by_id(db, tid)
     if not log:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "预测任务不存在")
 
@@ -149,3 +188,19 @@ async def get_prediction_task(
         resp.errorMessage = log.error_message
         resp.time = log.time or 0
     return success(resp)
+
+
+@router.post("/batch", response_model=Result[BatchPredictionResult], summary="批量处理")
+async def batch_predict(
+    body: BatchPredictionRequest,
+    user: UserContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量提交去雾预测任务，最多20张（VIP差异）"""
+    results = await prediction_service.batch_predict(
+        algorithm_id=body.algorithmId,
+        items=body.items,
+        user_id=user.id,
+        skip_quota_check=user.is_m2m,
+    )
+    return success(BatchPredictionResult(total=len(results), results=results))

@@ -10,6 +10,7 @@
 -- retry_count 记录 MQ 重试次数，worker_id 标识执行 Worker，支持任务追踪和负载分析。
 -- status 字段（tinyint）使用 5 状态机：1:待处理/2:处理中/3:已完成/4:失败/5:已取消。
 -- params 与 result 字段使用原生 json 类型存储结构化数据。
+-- result 存储导出文件的对象键（object_name），下载 URL 由响应层运行时拼接，不落库。
 -- 任务记录为只追加，不使用逻辑删除。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_task`;
@@ -23,7 +24,7 @@ CREATE TABLE `sys_task`
     `total_files`     int                                                            NULL DEFAULT 0 COMMENT '总文件数',
     `processed_files` int                                                            NULL DEFAULT 0 COMMENT '已处理文件数',
     `params`          json                                                           NULL COMMENT '任务参数（JSON）',
-    `result`          json                                                           NULL COMMENT '任务结果（下载链接等）',
+    `result`          json                                                           NULL COMMENT '任务结果（导出文件对象键 object_name，下载 URL 运行时拼接）',
     `error_message`   TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci        NULL COMMENT '错误信息',
     `started_at`      datetime                                                       NULL DEFAULT NULL COMMENT '开始时间',
     `completed_at`    datetime                                                       NULL DEFAULT NULL COMMENT '完成时间',

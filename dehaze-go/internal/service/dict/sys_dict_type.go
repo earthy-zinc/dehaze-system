@@ -84,13 +84,13 @@ func (s *DictTypeService) GetFormData(ctx context.Context, id int64) (*bo.DictTy
 
 // Create 创建字典类型
 func (s *DictTypeService) Create(ctx context.Context, form *bo.DictTypeFormBO) error {
-	// 校验编码是否存在
+	// 校验编码是否存在（查全表含软删行）
 	exists, err := s.dictTypeRepo.ExistsByCode(ctx, form.Code)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "检查字典类型编码是否存在失败", err)
 	}
 	if exists {
-		return common.NewBizError(common.DATA_EXISTS, "字典类型编码已存在")
+		return common.NewBizError(common.DATA_EXISTS, "字典类型编码已被历史记录占用")
 	}
 
 	dictType := &model.SysDictType{
@@ -117,14 +117,14 @@ func (s *DictTypeService) Update(ctx context.Context, id int64, form *bo.DictTyp
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "字典类型不存在")
 	}
 
-	// 校验编码是否存在（排除当前记录）
+	// 校验编码是否存在（排除当前记录，查全表含软删行）
 	if oldDictType.Code != form.Code {
 		exists, err := s.dictTypeRepo.ExistsByCode(ctx, form.Code, id)
 		if err != nil {
 			return common.WrapBizError(common.DATABASE_ERROR, "检查字典类型编码是否存在失败", err)
 		}
 		if exists {
-			return common.NewBizError(common.DATA_EXISTS, "字典类型编码已存在")
+			return common.NewBizError(common.DATA_EXISTS, "字典类型编码已被历史记录占用")
 		}
 	}
 

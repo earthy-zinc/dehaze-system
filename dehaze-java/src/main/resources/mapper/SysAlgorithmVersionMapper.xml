@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pei.dehaze.mapper.SysAlgorithmVersionMapper">
+
+    <!-- ==================== 原生SQL：绕过@TableLogic软删过滤 ==================== -->
+
+    <!-- 按算法ID+版本号查询算法版本数（含已软删行） -->
+    <select id="countByAlgorithmIdAndVersionAll" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_algorithm_version
+        WHERE algorithm_id = #{algorithmId} AND version = #{version}
+    </select>
+
+    <!-- 按算法ID+版本号查询算法版本数（排除指定ID，含已软删行） -->
+    <select id="countByAlgorithmIdAndVersionAllExcluding" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_algorithm_version
+        WHERE algorithm_id = #{algorithmId} AND version = #{version} AND id != #{excludeId}
+    </select>
+
+</mapper>

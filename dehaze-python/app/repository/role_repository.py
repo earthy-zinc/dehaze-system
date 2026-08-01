@@ -10,8 +10,8 @@ from app.models.entity.sys_menu import SysRoleMenu
 from app.models.entity.sys_user import SysRole
 from app.repository.base import BaseRepository
 
-# 超级管理员角色编码
-ROOT_ROLE_CODE = "ROOT"
+# 内置不可删除的角色编码（与 Java/Go 一致）
+BUILTIN_ROLE_CODES = {"ROOT", "ADMIN"}
 
 
 class RoleRepository(BaseRepository[SysRole]):
@@ -110,14 +110,14 @@ class RoleRepository(BaseRepository[SysRole]):
         *,
         is_root: bool = False,
     ) -> list[dict]:
-        """获取角色下拉选项列表（仅启用状态，非 root 用户排除 ROOT 角色）"""
+        """获取角色下拉选项列表（仅启用状态，非 root 用户排除内置角色）"""
         stmt = (
             select(SysRole.id, SysRole.name)
             .where(SysRole.deleted == 0, SysRole.status == 1)
             .order_by(SysRole.sort)
         )
         if not is_root:
-            stmt = stmt.where(SysRole.code != ROOT_ROLE_CODE)
+            stmt = stmt.where(SysRole.code.notin_(BUILTIN_ROLE_CODES))
         result = await db.execute(stmt)
         return [{"value": row[0], "label": row[1]} for row in result.fetchall()]
 
@@ -188,9 +188,8 @@ class RoleRepository(BaseRepository[SysRole]):
         *,
         exclude_id: int | None = None,
     ) -> bool:
-        """检查角色名称是否已存在"""
+        """检查角色名称是否已存在（含软删记录，命中→报"已被历史记录占用"）"""
         stmt = select(func.count()).select_from(SysRole).where(
-            SysRole.deleted == 0,
             SysRole.name == name,
         )
         if exclude_id:
@@ -205,9 +204,8 @@ class RoleRepository(BaseRepository[SysRole]):
         *,
         exclude_id: int | None = None,
     ) -> bool:
-        """检查角色编码是否已存在"""
+        """检查角色编码是否已存在（含软删记录，命中→报"已被历史记录占用"）"""
         stmt = select(func.count()).select_from(SysRole).where(
-            SysRole.deleted == 0,
             SysRole.code == code,
         )
         if exclude_id:
@@ -225,10 +223,23 @@ class RoleRepository(BaseRepository[SysRole]):
         return [row[0] for row in result.fetchall() if row[0]]
 
     async def get_by_code(self, db: AsyncSession, code: str) -> SysRole | None:
-        """根据角色编码查询角色"""
-        stmt = select(SysRole).where(SysRole.deleted == 0, SysRole.code == code)
+        """根据角色编码查询角色（含软删记录）"""
+        stmt = select(SysRole).where(SysRole.code == code)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def delete_user_role_by_role_ids(
+        self,
+        db: AsyncSession,
+        role_ids: list[int],
+    ) -> int:
+        """批量物理删除角色的用户关联记录（软删角色时同步清理）"""
+        from app.models.entity.sys_user import SysUserRole
+        if not role_ids:
+            return 0
+        stmt = delete(SysUserRole).where(SysUserRole.role_id.in_(role_ids))
+        result = await db.execute(stmt)
+        return result.rowcount
 
 
 # 单例

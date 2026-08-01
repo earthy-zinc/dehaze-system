@@ -3,9 +3,11 @@ package order
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AutoRenewRepository struct {
@@ -39,27 +41,19 @@ func (r *AutoRenewRepository) Update(ctx context.Context, id int64, updates map[
 }
 
 func (r *AutoRenewRepository) Upsert(ctx context.Context, ar *model.SysAutoRenew) error {
-	existing, err := r.FindByUserIDAndPackageID(ctx, ar.UserID, ar.PackageID)
-	if err != nil {
-		return err
-	}
-	if existing != nil {
-		updates := map[string]interface{}{
-			"pay_method": ar.PayMethod,
-			"status":     ar.Status,
-		}
-		if ar.NextRenewTime != nil {
-			updates["next_renew_time"] = *ar.NextRenewTime
-		}
-		if ar.Status == 0 {
-			updates["close_reason"] = ar.CloseReason
-		} else {
-			updates["close_reason"] = ""
-			updates["fail_count"] = 0
-		}
-		return r.Update(ctx, existing.ID, updates)
-	}
-	return r.Create(ctx, ar)
+	now := time.Now()
+	return r.db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "user_id"}, {Name: "package_id"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"status":         ar.Status,
+			"pay_method":     ar.PayMethod,
+			"next_renew_time": ar.NextRenewTime,
+			"fail_count":     0,
+			"close_reason":   ar.CloseReason,
+			"deleted":        0,
+			"update_time":    now,
+		}),
+	}).Create(ar).Error
 }
 
 func (r *AutoRenewRepository) FindDueRenewals(ctx context.Context, before interface{}) ([]model.SysAutoRenew, error) {

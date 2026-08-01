@@ -60,10 +60,10 @@ func (r *RoleRepository) FindByCode(ctx context.Context, code string) (*model.Sy
 	return &role, err
 }
 
-// ExistsByCode 检查角色编码是否存在
+// ExistsByCode 检查角色编码是否存在（查全表含软删行）
 func (r *RoleRepository) ExistsByCode(ctx context.Context, code string, excludeID ...int64) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&model.SysRole{}).
+	query := r.db.Unscoped().WithContext(ctx).Model(&model.SysRole{}).
 		Where("code = ?", code)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
@@ -72,10 +72,10 @@ func (r *RoleRepository) ExistsByCode(ctx context.Context, code string, excludeI
 	return count > 0, err
 }
 
-// ExistsByName 检查角色名称是否存在
+// ExistsByName 检查角色名称是否存在（查全表含软删行）
 func (r *RoleRepository) ExistsByName(ctx context.Context, name string, excludeID ...int64) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&model.SysRole{}).
+	query := r.db.Unscoped().WithContext(ctx).Model(&model.SysRole{}).
 		Where("name = ?", name)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
@@ -257,12 +257,14 @@ func (r *RoleRepository) DeleteMenusByRoleIDs(ctx context.Context, roleIDs []int
 }
 
 // DeleteWithMenus 删除角色及其菜单关联（事务）
+// 前置校验：内置角色禁删、有用户关联的角色拒绝删除。
+// 通过校验后只清理 sys_role_menu（角色级权限数据），sys_user_role 已由 #2 拦截无需清理。
 func (r *RoleRepository) DeleteWithMenus(ctx context.Context, roleIDs []int64) error {
 	if len(roleIDs) == 0 {
 		return nil
 	}
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 删除角色菜单关联
+		// 清理角色菜单关联（角色级权限，可安全物理删除）
 		if err := tx.Where("role_id IN ?", roleIDs).Delete(&model.SysRoleMenu{}).Error; err != nil {
 			return err
 		}

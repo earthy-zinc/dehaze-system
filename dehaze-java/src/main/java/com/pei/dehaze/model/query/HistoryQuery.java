@@ -25,6 +25,4 @@ public class HistoryQuery {
     @Schema(description = "来源筛选（upload/camera/sample）")
     private String inputSource;
 
-    @Schema(description = "仅查收藏")
-    private Boolean isFavorite;
 }

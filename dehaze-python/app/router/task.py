@@ -4,22 +4,32 @@ from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
-from app.models.enum.task_enum import TaskStatus
+from app.models.enum.task_enum import EXPORT_TASK_TYPES, TaskStatus
 from app.models.schema.task import \
     ExportTaskCreateForm as ExportTaskCreateRequest
 from app.models.schema.task import TaskPageVO
 from app.models.schema.task import TaskVO as TaskData
+from app.service.file_service import FileService
 from app.service.task_service import TaskServiceAsync
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["任务管理"])
 
 
-def _dict_to_task_data(task_data: dict) -> TaskData:
+def _dict_to_task_data(task_data: dict, request: Request) -> TaskData:
     """将任务字典转换为 TaskData VO"""
+    download_url = None
+    if (
+        task_data.get("status") == TaskStatus.COMPLETED.value
+        and task_data.get("task_type") in EXPORT_TASK_TYPES
+        and task_data.get("result")
+    ):
+        download_url = (
+            f"{str(request.base_url).rstrip('/')}"
+            f"/api/v1/tasks/{task_data['task_id']}/download"
+        )
     return TaskData(
         id=task_data["id"],
         taskId=task_data["task_id"],
@@ -28,9 +38,7 @@ def _dict_to_task_data(task_data: dict) -> TaskData:
         progress=task_data["progress"],
         totalFiles=task_data.get("total_files", 0),
         processedFiles=task_data.get("processed_files", 0),
-        result=task_data.get("result"),
-        downloadUrl=task_data.get("result") if task_data.get(
-            "status") == TaskStatus.COMPLETED.value else None,
+        downloadUrl=download_url,
         error=task_data.get("error_message"),
         createdAt=task_data.get("created_at"),
         startedAt=task_data.get("started_at"),
@@ -44,6 +52,7 @@ def _dict_to_task_data(task_data: dict) -> TaskData:
 
 @router.get("", response_model=Result[TaskPageVO], summary="查询任务列表")
 async def list_tasks(
+    request: Request,
     status_filter: int | None = Query(
         default=None, alias="status", description="状态筛选(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)"),
     task_type: str | None = Query(
@@ -75,7 +84,7 @@ async def list_tasks(
     )
     return success(
         TaskPageVO(
-            list=[_dict_to_task_data(t) for t in result_data["list"]],
+            list=[_dict_to_task_data(t, request) for t in result_data["list"]],
             total=result_data["total"],
         )
     )
@@ -83,7 +92,8 @@ async def list_tasks(
 
 @router.post("", response_model=Result[TaskData], summary="创建任务")
 async def create_export_task(
-    request: ExportTaskCreateRequest,
+    form: ExportTaskCreateRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
@@ -102,13 +112,13 @@ async def create_export_task(
     task_data = await TaskServiceAsync.create_task(
         db=db,
         redis=redis,
-        task_type=request.type.value,
-        params_json=request.params_json,
+        task_type=form.type.value,
+        params_json=form.params_json,
         user_id=user.id,
         idempotency_key=idempotency_key,
     )
 
-    return success(_dict_to_task_data(task_data))
+    return success(_dict_to_task_data(task_data, request))
 
 
 @router.get(
@@ -118,6 +128,7 @@ async def create_export_task(
 )
 async def get_task_status(
     task_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
@@ -132,7 +143,7 @@ async def get_task_status(
     if task_data is None:
         raise BusinessException(ResultCode.TASK_NOT_FOUND, f"任务不存在: {task_id}")
 
-    return success(_dict_to_task_data(task_data))
+    return success(_dict_to_task_data(task_data, request))
 
 
 @router.get(
@@ -146,23 +157,21 @@ async def download_export_file(
     user: UserContext = Depends(get_current_user),
 ):
     """
-    下载已完成的导出任务文件（302重定向到文件存储）
+    下载已完成的导出任务文件（从存储后端流式返回）
 
     - **task_id**: 任务ID（UUID格式）
-
-    返回 302 重定向到实际的下载链接
     """
-    download_url = await TaskServiceAsync.download_export_file(
+    object_name = await TaskServiceAsync.get_export_object_name(
         db, redis, task_id, user_id=user.id
     )
 
-    if download_url is None:
+    if object_name is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="任务未完成、已过期或下载链接不存在",
         )
 
-    return RedirectResponse(url=download_url, status_code=302)
+    return FileService.stream_file_response(object_name, storage="minio")
 
 
 @router.post(
@@ -192,6 +201,7 @@ async def cancel_task(
 )
 async def retry_task(
     task_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
@@ -206,4 +216,4 @@ async def retry_task(
     task_data = await TaskServiceAsync.retry_task(
         db, redis, task_id, user_id=user.id
     )
-    return success(_dict_to_task_data(task_data))
+    return success(_dict_to_task_data(task_data, request))

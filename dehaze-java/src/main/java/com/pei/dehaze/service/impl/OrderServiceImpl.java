@@ -228,7 +228,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             return false;
         }
         if (!locked) {
-            log.info("支付回调重复，已跳过: orderNo={}", orderNo);
+            log.debug("支付回调重复，已跳过: orderNo={}", orderNo);
             return true;
         }
         try {
@@ -613,32 +613,8 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         if (pkg == null) {
             throw new BusinessException(ResultCode.PACKAGE_NOT_FOUND);
         }
-        SysAutoRenew autoRenew = autoRenewMapper.selectOne(new LambdaQueryWrapper<SysAutoRenew>()
-                .eq(SysAutoRenew::getUserId, userId)
-                .eq(SysAutoRenew::getPackageId, form.getPackageId()));
-        if (autoRenew == null) {
-            autoRenew = new SysAutoRenew();
-            autoRenew.setUserId(userId);
-            autoRenew.setPackageId(form.getPackageId());
-            autoRenew.setPayMethod(form.getPayMethod());
-            autoRenew.setFailCount(0);
-        } else {
-            autoRenew.setPayMethod(form.getPayMethod());
-        }
-        if (form.getEnabled()) {
-            autoRenew.setStatus(1);
-            autoRenew.setCloseReason(null);
-            autoRenew.setNextRenewTime(LocalDateTime.now().plusDays(pkg.getPeriodDays()));
-        } else {
-            autoRenew.setStatus(0);
-            autoRenew.setCloseReason("用户手动关闭");
-            autoRenew.setNextRenewTime(null);
-        }
-        if (autoRenew.getId() == null) {
-            autoRenewMapper.insert(autoRenew);
-        } else {
-            autoRenewMapper.updateById(autoRenew);
-        }
+        int status = form.getEnabled() ? 1 : 0;
+        autoRenewMapper.upsertByUserAndPackage(userId, form.getPackageId(), form.getPayMethod(), status, 0);
     }
 
     @Override
@@ -692,7 +668,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             }
             invalidateOrderDetailCache(order.getOrderNo());
         }
-        log.info("订单超时取消: 共处理{}条", pendingOrders.size());
+        log.debug("订单超时取消: 共处理{}条", pendingOrders.size());
     }
 
     @Override
@@ -717,7 +693,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
                 autoRenewMapper.updateById(renewal);
             }
         }
-        log.info("自动续费执行完成: 共处理{}条", renewals.size());
+        log.debug("自动续费执行完成: 共处理{}条", renewals.size());
     }
 
     @Override
@@ -730,7 +706,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             order.setStatus(3);
             this.updateById(order);
         }
-        log.info("订单到期归档: 共处理{}条", expiredOrders.size());
+        log.debug("订单到期归档: 共处理{}条", expiredOrders.size());
     }
 
     @Override
@@ -743,7 +719,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             coupon.setStatus(3);
             userCouponMapper.updateById(coupon);
         }
-        log.info("用户优惠券过期处理: 共处理{}条", expiredCoupons.size());
+        log.debug("用户优惠券过期处理: 共处理{}条", expiredCoupons.size());
     }
 
     @Override
@@ -754,7 +730,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
                 .eq(SysRefundRecord::getStatus, 3)
                 .lt(SysRefundRecord::getRetryCount, maxRetryCount));
         if (failedRefunds.isEmpty()) {
-            log.info("退款失败重试: 无待处理记录");
+            log.debug("退款失败重试: 无待处理记录");
             return;
         }
         int successCount = 0;
@@ -804,7 +780,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             }
             refundRecordMapper.updateById(refund);
         }
-        log.info("退款失败重试完成: 总数={}, 成功={}, 最终失败={}", failedRefunds.size(), successCount, finalFailCount);
+        log.debug("退款失败重试完成: 总数={}, 成功={}, 最终失败={}", failedRefunds.size(), successCount, finalFailCount);
     }
 
     private void executeSingleRenewal(SysAutoRenew renewal) {

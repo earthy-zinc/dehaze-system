@@ -7,9 +7,10 @@
         <id property="id" column="id" jdbcType="BIGINT"/>
         <result property="itemId" column="item_id" jdbcType="BIGINT"/>
         <result property="type" column="type" jdbcType="VARCHAR"/>
-        <result property="url" column="url" jdbcType="VARCHAR"/>
-        <result property="originUrl" column="origin_url" jdbcType="VARCHAR"/>
-        <result property="thumbnailUrl" column="url" jdbcType="VARCHAR"/>
+        <result property="objectName" column="object_name" jdbcType="VARCHAR"/>
+        <result property="storage" column="storage" jdbcType="VARCHAR"/>
+        <result property="thumbnailObjectName" column="thumbnail_object_name" jdbcType="VARCHAR"/>
+        <result property="thumbnailStorage" column="thumbnail_storage" jdbcType="VARCHAR"/>
         <result property="description" column="description" jdbcType="VARCHAR"/>
         <result property="width" column="width" jdbcType="INTEGER"/>
         <result property="height" column="height" jdbcType="INTEGER"/>
@@ -19,10 +20,12 @@
 
     <select id="listImageUrl" resultMap="ImageUrlMap">
         SELECT sif.id          AS id,
-               sif.item_id AS item_id,
+               sif.item_id     AS item_id,
                sif.type        AS type,
-               sf_t.url        AS url,
-               sf.url          AS origin_url,
+               sf.object_name  AS object_name,
+               sf.storage      AS storage,
+               sf_t.object_name AS thumbnail_object_name,
+               sf_t.storage    AS thumbnail_storage,
                sif.description AS description,
                sif.width       AS width,
                sif.height      AS height,
@@ -41,8 +44,10 @@
         SELECT sif.id          AS id,
                sif.item_id     AS item_id,
                sif.type        AS type,
-               sf_t.url        AS url,
-               sf.url          AS origin_url,
+               sf.object_name  AS object_name,
+               sf.storage      AS storage,
+               sf_t.object_name AS thumbnail_object_name,
+               sf_t.storage    AS thumbnail_storage,
                sif.description AS description,
                sif.width       AS width,
                sif.height      AS height,

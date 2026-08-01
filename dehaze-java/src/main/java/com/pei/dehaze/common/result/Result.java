@@ -35,7 +35,7 @@ public class Result<T> implements Serializable {
         result.setCode(ResultCode.SUCCESS.getCode());
         result.setMsg(ResultCode.SUCCESS.getMsg());
         result.setData(data);
-        result.setTraceId(MDC.get("traceId"));
+        result.setTraceId(MDC.get("trace_id"));
         return result;
     }
 
@@ -68,7 +68,7 @@ public class Result<T> implements Serializable {
         result.setCode(code);
         result.setData(data);
         result.setMsg(msg);
-        result.setTraceId(MDC.get("traceId"));
+        result.setTraceId(MDC.get("trace_id"));
         return result;
     }
 }

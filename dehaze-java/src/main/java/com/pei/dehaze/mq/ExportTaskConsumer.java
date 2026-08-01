@@ -1,5 +1,7 @@
 package com.pei.dehaze.mq;
 
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
@@ -35,7 +37,7 @@ public class ExportTaskConsumer extends RabbitMQConsumer {
     /**
      * 消费导出任务队列
      * <p>
-     * 消息体为 taskId（数据库主键），Consumer 从 DB 重建 form 后执行。
+     * 消息体为统一 JSON 契约：{"db_task_id":123, "task_id":"uuid", "task_type":"dataset_export"}
      */
     @RabbitListener(queues = QUEUE_EXPORT)
     public void onExportMessage(Message message, Channel channel) {
@@ -43,22 +45,25 @@ public class ExportTaskConsumer extends RabbitMQConsumer {
     }
 
     private void handleExport(String body, String traceId) throws Exception {
-        Long taskId = Long.parseLong(body.trim());
+        JSONObject msg = JSONUtil.parseObj(body);
+        Long dbTaskId = msg.getLong("db_task_id");
 
         // 幂等检查：任务非终态才执行
-        SysTask sysTask = sysTaskMapper.selectById(taskId);
+        SysTask sysTask = sysTaskMapper.selectById(dbTaskId);
         if (sysTask == null) {
-            log.warn("任务不存在，跳过: taskId={}", taskId);
+            log.warn("任务不存在，跳过: dbTaskId={}", dbTaskId);
             return;
         }
         if (TaskConstants.TERMINAL_STATUSES.contains(sysTask.getStatus())) {
-            log.info("任务已为终态，跳过重复消费: taskId={}, status={}", taskId, sysTask.getStatus());
+            log.debug("任务已为终态，跳过重复消费: dbTaskId={}, taskId={}, status={}",
+                    dbTaskId, sysTask.getTaskId(), sysTask.getStatus());
             return;
         }
 
-        log.info("收到导出任务: taskId={}, traceId={}", taskId, traceId);
+        log.debug("收到导出任务: dbTaskId={}, taskId={}, type={}, traceId={}",
+                dbTaskId, sysTask.getTaskId(), sysTask.getTaskType(), traceId);
         // form 传 null，由 executeExportTask 从 sysTask.getParams() 重建
-        taskExecutor.executeExportTask(taskId, null);
-        log.debug("导出任务处理完成: taskId={}, traceId={}", taskId, traceId);
+        taskExecutor.executeExportTask(dbTaskId, null);
+        log.debug("导出任务处理完成: dbTaskId={}, traceId={}", dbTaskId, traceId);
     }
 }

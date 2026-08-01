@@ -3,7 +3,6 @@ package com.pei.dehaze.common.util;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 
@@ -20,7 +19,6 @@ class FilePathBuilderTest {
     @BeforeEach
     void setUp() {
         filePathBuilder = new FilePathBuilder();
-        ReflectionTestUtils.setField(filePathBuilder, "baseUrl", "http://localhost:8989/api/v1/files/download");
     }
 
     @Test
@@ -76,21 +74,5 @@ class FilePathBuilderTest {
         String exportPath = filePathBuilder.buildExportPath("task-001");
 
         assertEquals("exports/task-001.zip", exportPath);
-    }
-
-    @Test
-    @DisplayName("构建文件访问URL")
-    void buildUrl_shouldConcatenateBaseUrlAndObjectName() {
-        String url = filePathBuilder.buildUrl("upload/20250119/abc123.jpg");
-
-        assertEquals("http://localhost:8989/api/v1/files/download/upload/20250119/abc123.jpg", url);
-    }
-
-    @Test
-    @DisplayName("获取基础URL")
-    void getBaseUrl_shouldReturnConfiguredValue() {
-        String baseUrl = filePathBuilder.getBaseUrl();
-
-        assertEquals("http://localhost:8989/api/v1/files/download", baseUrl);
     }
 }

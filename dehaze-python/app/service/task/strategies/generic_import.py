@@ -17,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
-from app.core.constants import RESULT_FILE_EXPIRE_DAYS
 from app.core.exceptions import BusinessException, TaskCancelledException
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import IMPORT_TASK_TYPES
@@ -83,7 +82,7 @@ class GenericImportStrategy(TaskStrategy):
             report_url = await _upload_error_report(result, sys_task.task_id, module)
             result.error_report_object_name = report_url
 
-        return result.model_dump_json()
+        return result.model_dump()
 
 
 async def _download_from_minio(object_name: str) -> bytes:
@@ -120,15 +119,12 @@ async def _upload_error_report(result, task_id: str, module: str) -> Optional[st
     bucket = settings.MINIO_BUCKET_NAME
 
     def _sync() -> str:
-        from datetime import timedelta
         client.put_object(
             bucket, object_name,
             data=io.BytesIO(data), length=len(data),
             content_type="text/csv",
         )
-        return client.presigned_get_object(
-            bucket, object_name, expires=timedelta(days=RESULT_FILE_EXPIRE_DAYS),
-        )
+        return object_name
 
     try:
         loop = asyncio.get_running_loop()

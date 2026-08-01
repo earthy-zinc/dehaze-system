@@ -106,7 +106,10 @@ const DatasetImageSelect: React.FC<DatasetImageSelectProps> = ({
       observer.current = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setQueryParams((prev) => ({ ...prev, pageNum: prev.pageNum + 1 }));
+            setQueryParams((prev) => ({
+              ...prev,
+              pageNum: (prev.pageNum ?? 0) + 1,
+            }));
             handleQuery();
           }
         });

@@ -1,5 +1,6 @@
 package com.pei.dehaze.config;
 
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.config.property.AlgorithmProperties;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
@@ -32,6 +33,9 @@ public class ResilienceConfig {
      *   <li>{@code circuitBreakerMinCalls} → minimumNumberOfCalls</li>
      *   <li>{@code circuitBreakerHalfOpenDelay} → waitDurationInOpenState</li>
      * </ul>
+     *
+     * <p>仅对网络层异常（连接超时/拒绝/读取超时）计数，忽略 Python 业务层错误
+     * （如图片下载 404、参数校验失败等），避免下游数据问题误触发熔断。
      */
     @Bean
     public CircuitBreaker pythonAlgorithmCircuitBreaker() {
@@ -41,6 +45,7 @@ public class ResilienceConfig {
                 .waitDurationInOpenState(Duration.ofMillis(algorithmProperties.getCircuitBreakerHalfOpenDelay()))
                 .slidingWindowSize(algorithmProperties.getCircuitBreakerMinCalls())
                 .permittedNumberOfCallsInHalfOpenState(5)
+                .ignoreExceptions(BusinessException.class)
                 .build();
         return CircuitBreaker.of("pythonAlgorithm", config);
     }

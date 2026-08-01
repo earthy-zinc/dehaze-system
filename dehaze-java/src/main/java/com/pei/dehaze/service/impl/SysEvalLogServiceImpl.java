@@ -1,7 +1,6 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -19,6 +18,7 @@ import com.pei.dehaze.model.vo.EvaluationResultVO;
 import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysEvalLogService;
 import com.pei.dehaze.service.SysFileService;
+import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +36,7 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
 
     private final SysAlgorithmService algorithmService;
     private final SysFileService sysFileService;
+    private final StorageServiceFactory storageServiceFactory;
     private final EvalLogAsyncTask asyncTask;
 
     @Override
@@ -100,10 +101,10 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
     private String resolveFileUrl(Long fileId, String type) {
         if (fileId != null) {
             SysFile sysFile = sysFileService.getById(fileId);
-            if (sysFile != null && CharSequenceUtil.isNotBlank(sysFile.getUrl())) {
-                return sysFile.getUrl();
+            if (sysFile != null && sysFile.getObjectName() != null && sysFile.getStorage() != null) {
+                return storageServiceFactory.get(sysFile.getStorage()).getUrl(sysFile.getObjectName());
             }
-            log.warn("文件不存在或 URL 为空: fileId={}", fileId);
+            log.warn("文件不存在或 objectName/storage 为空: fileId={}", fileId);
         }
         throw new BusinessException(ResultCode.PARAM_ERROR, "缺少" + ("pred".equals(type) ? "预测" : "参考") + "图片");
     }

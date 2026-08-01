@@ -3,7 +3,6 @@ from typing import Optional
 
 from app.models.base import BaseModel
 from sqlalchemy import BigInteger, DateTime, SmallInteger, String
-from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -26,5 +25,5 @@ class SysApiKey(BaseModel):
         DateTime, nullable=True, comment='过期时间')
     last_used_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True, comment='最后使用时间')
-    deleted: Mapped[int] = mapped_column(
-        mysql_types.TINYINT, nullable=False, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, comment='吊销时间')

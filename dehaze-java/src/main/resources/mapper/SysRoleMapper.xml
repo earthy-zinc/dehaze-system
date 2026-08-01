@@ -1,27 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper
-        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.pei.dehaze.mapper.SysRoleMapper">
+
+    <resultMap id="BaseResultMap" type="com.pei.dehaze.model.entity.SysRole">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="code" column="code"/>
+        <result property="sort" column="sort"/>
+        <result property="status" column="status"/>
+        <result property="dataScope" column="data_scope"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="createBy" column="create_by"/>
+        <result property="updateBy" column="update_by"/>
+    </resultMap>
+
+    <!-- ==================== 原生SQL：绕过@TableLogic软删过滤 ==================== -->
+
+    <!-- 按编码查询角色数（含已软删行） -->
+    <select id="countByCodeAll" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_role WHERE code = #{code}
+    </select>
+
+    <!-- 按名称或编码查询角色数（含已软删行），排除指定 ID（编辑时排除自身） -->
+    <select id="countByNameOrCodeAll" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_role
+        WHERE (name = #{name} OR code = #{code})
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+
+    <!-- ==================== 已有方法 ==================== -->
 
     <!-- 获取最大范围的数据权限 -->
     <select id="getMaximumDataScope" resultType="java.lang.Integer">
-        SELECT
-            min(data_scope)
-        FROM
-            sys_role
-        <where>
-            <choose>
-                <when test="roles!=null and roles.size>0">
-                    AND code IN
-                    <foreach collection="roles" item="role" separator="," open="(" close=")">
-                        #{role}
-                    </foreach>
-                </when>
-                <otherwise>
-                    id = -1
-                </otherwise>
-            </choose>
-        </where>
+        SELECT MAX(data_scope) FROM sys_role
+        WHERE code IN
+        <foreach collection="roles" item="r" open="(" separator="," close=")">
+            #{r}
+        </foreach>
     </select>
+
 </mapper>

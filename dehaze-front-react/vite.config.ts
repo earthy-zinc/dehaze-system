@@ -52,7 +52,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       env.VITE_MOCK_DEV_SERVER === "true" ? mockDevServerPlugin() : null,
       UnoCSS({
         hmrTopLevelAwait: false,
-      }),
+      }) as any,
       svgr({
         svgrOptions: {
           icon: true, // 将 SVG 转换为 React 组件时自动调整为图标尺寸

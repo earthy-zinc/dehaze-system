@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pei.dehaze.mapper.SysPackageMapper">
+
+    <!-- ==================== 原生SQL：绕过@TableLogic软删过滤 ==================== -->
+
+    <!-- 按名称查询安装包数（含已软删行） -->
+    <select id="countByNameAll" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_package WHERE name = #{name}
+    </select>
+
+    <!-- 按名称查询安装包数（排除指定ID，含已软删行） -->
+    <select id="countByNameAllExcluding" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_package WHERE name = #{name} AND id != #{excludeId}
+    </select>
+
+</mapper>

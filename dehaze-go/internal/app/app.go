@@ -10,12 +10,14 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/api"
 	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
 	afrepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm_favorite"
+	algoSelectService "github.com/earthyzinc/dehaze-go/internal/service/algorithm_select"
 	apikeyrepo "github.com/earthyzinc/dehaze-go/internal/repository/api_key"
 	auditlogrepo "github.com/earthyzinc/dehaze-go/internal/repository/audit_log"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	deptrepo "github.com/earthyzinc/dehaze-go/internal/repository/dept"
 	dictrepo "github.com/earthyzinc/dehaze-go/internal/repository/dict"
 	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
+	favrepo "github.com/earthyzinc/dehaze-go/internal/repository/favorite"
 	fbrepo "github.com/earthyzinc/dehaze-go/internal/repository/feedback"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
 	ihrepo "github.com/earthyzinc/dehaze-go/internal/repository/input_history"
@@ -26,10 +28,14 @@ import (
 	orderrepo "github.com/earthyzinc/dehaze-go/internal/repository/order"
 	pkgsalerepo "github.com/earthyzinc/dehaze-go/internal/repository/pkgsale"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
+	presetrepo "github.com/earthyzinc/dehaze-go/internal/repository/preset"
+	recrepo "github.com/earthyzinc/dehaze-go/internal/repository/recommendation"
 	rolerepo "github.com/earthyzinc/dehaze-go/internal/repository/role"
 	taskrepo "github.com/earthyzinc/dehaze-go/internal/repository/task"
 	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
 	"github.com/earthyzinc/dehaze-go/internal/router"
+	recservice "github.com/earthyzinc/dehaze-go/internal/service/recommendation"
+	compareservice "github.com/earthyzinc/dehaze-go/internal/service/compare"
 	algoservice "github.com/earthyzinc/dehaze-go/internal/service/algorithm"
 	apikeyservice "github.com/earthyzinc/dehaze-go/internal/service/api_key"
 	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
@@ -38,6 +44,7 @@ import (
 	deptservice "github.com/earthyzinc/dehaze-go/internal/service/dept"
 	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
 	evalservice "github.com/earthyzinc/dehaze-go/internal/service/evaluation"
+	favoriteservice "github.com/earthyzinc/dehaze-go/internal/service/favorite"
 	fbservice "github.com/earthyzinc/dehaze-go/internal/service/feedback"
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	importexportservice "github.com/earthyzinc/dehaze-go/internal/service/import_export"
@@ -51,6 +58,7 @@ import (
 	paymentsvc "github.com/earthyzinc/dehaze-go/internal/service/payment"
 	pkgsaleservice "github.com/earthyzinc/dehaze-go/internal/service/pkgsale"
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
+	presetservice "github.com/earthyzinc/dehaze-go/internal/service/preset"
 	roleservice "github.com/earthyzinc/dehaze-go/internal/service/role"
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
@@ -167,6 +175,7 @@ func (a *Application) Init() error {
 	taskRepo := taskrepo.NewTaskRepository(gormDB)
 	inputHistoryRepo := ihrepo.NewInputHistoryRepository(gormDB)
 	predLogRepo := predrepo.NewPredLogRepository(gormDB)
+	presetRepo := presetrepo.NewPresetRepository(gormDB)
 	apiKeyRepo := apikeyrepo.NewApiKeyRepository(gormDB)
 
 	// message module repositories
@@ -191,10 +200,17 @@ func (a *Application) Init() error {
 	refundRepo := orderrepo.NewRefundRecordRepository(gormDB)
 	autoRenewRepo := orderrepo.NewAutoRenewRepository(gormDB)
 
+	// favorite module repositories
+	favoriteRepo := favrepo.NewFavoriteRepository(gormDB)
+
 	// feedback module repositories
 	ratingRepo := fbrepo.NewRatingRepository(gormDB)
 	feedbackRepo := fbrepo.NewFeedbackRepository(gormDB)
 	feedbackReplyRepo := fbrepo.NewFeedbackReplyRepository(gormDB)
+
+	// recommendation module repositories
+	recommendationRepo := recrepo.NewRecommendationRepository(gormDB)
+	recommendationRuleRepo := recrepo.NewRuleRepository(gormDB)
 
 	// services
 
@@ -208,27 +224,32 @@ func (a *Application) Init() error {
 		a.auditLogService = auditlogservice.NewAuditLogService(auditLogRepo)
 	}
 	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo, a.auditLogService)
-	authService := authservice.NewAuthService(cacheClient, userService, loginLogService, gormDB)
+	authService := authservice.NewAuthService(cacheClient, userService, loginLogService, memberRepo, gormDB)
 	algorithmService := algoservice.NewAlgorithmService(algorithmRepo, predLogRepo)
 	menuService := menuservice.NewMenuService(cacheClient, menuRepo, roleRepo)
 	roleService := roleservice.NewRoleService(cacheClient, roleRepo, menuRepo, a.auditLogService)
 	deptService := deptservice.NewDeptService(cacheClient, deptRepo)
 	dictTypeService := dictservice.NewDictTypeService(gormDB, dictTypeRepo, dictRepo, cacheClient)
 	dictService := dictservice.NewDictService(dictRepo, dictTypeRepo, cacheClient)
-	// 存储服务（根据配置选择 MinIO 或本地存储）
+	// 存储服务注册表（根据配置构建所有存储后端实例）
 	cfg := config.GetConfig()
-	storageService, err := storage.NewStorage(cfg.File.Type, cfg.File.MinIO, cfg.File.Local)
+	storageRegistry, err := storage.NewRegistry(cfg.File)
 	if err != nil {
 		return fmt.Errorf("初始化存储服务失败: %w", err)
 	}
-	fileService := fileservice.NewFileService(fileRepo, storageService)
+	// 默认存储后端实例（供仅需单一后端的组件使用：导入导出、数据集导出、定时任务）
+	defaultStorage, err := storageRegistry.Default()
+	if err != nil {
+		return fmt.Errorf("获取默认存储后端失败: %w", err)
+	}
+	fileService := fileservice.NewFileService(fileRepo, storageRegistry)
 	a.taskExecutor = taskservice.NewAsyncTaskExecutor(cfg.RabbitMQ, zap.L())
 	if err := a.taskExecutor.Initialize(); err != nil {
 		return err
 	}
 	taskExecutor := a.taskExecutor
-	taskService := taskservice.NewTaskService(taskRepo, datasetRepo, cacheClient, zap.L(), taskExecutor)
-	itemFileService := fileservice.NewItemFileService(cacheClient, itemFileRepo, datasetItemRepo, fileService, taskExecutor)
+	taskService := taskservice.NewTaskService(taskRepo, datasetRepo, cacheClient, zap.L(), taskExecutor, storageRegistry)
+	itemFileService := fileservice.NewItemFileService(cacheClient, itemFileRepo, datasetItemRepo, fileService, taskExecutor, taskService)
 
 	importExportFileGenerator := importexportservice.NewFileGenerator()
 	importExportTemplateMgr := importexportservice.NewTemplateManager(importExportFileGenerator)
@@ -238,7 +259,7 @@ func (a *Application) Init() error {
 		handlers.NewDeptExportHandler(gormDB),
 		handlers.NewMenuExportHandler(gormDB),
 		handlers.NewDictExportHandler(gormDB),
-		handlers.NewDatasetExportHandler(gormDB, storageService),
+		handlers.NewDatasetExportHandler(gormDB, defaultStorage),
 		handlers.NewAlgorithmExportHandler(gormDB),
 	}
 	importHandlers := []importexportservice.ImportHandler{
@@ -256,13 +277,13 @@ func (a *Application) Init() error {
 		importRegistry,
 		importExportFileGenerator,
 		importExportTemplateMgr,
-		storageService,
+		defaultStorage,
 		taskService,
 		importexportservice.NoOpVirusScanner{},
 		zap.L(),
 	)
 	datasetService := datasetservice.NewDatasetService(cacheClient, datasetRepo, datasetItemRepo, datasetStatsRepo, itemFileRepo, fileRepo)
-	datasetItemService := datasetservice.NewDatasetItemService(cacheClient, datasetItemRepo, datasetRepo, itemFileRepo, fileRepo, itemFileService)
+	datasetItemService := datasetservice.NewDatasetItemService(cacheClient, datasetItemRepo, datasetRepo, itemFileRepo, fileRepo, fileService, itemFileService)
 	datasetOperationService := datasetservice.NewDatasetOperationService(
 		cacheClient,
 		datasetRepo,
@@ -270,7 +291,9 @@ func (a *Application) Init() error {
 		datasetItemFileRepo,
 		itemFileRepo,
 		fileRepo,
+		fileService,
 		taskExecutor,
+		taskService,
 		a.auditLogService,
 	)
 	taskApi := api.NewSysTaskApi(taskService)
@@ -298,6 +321,12 @@ func (a *Application) Init() error {
 	paymentSvc := paymentsvc.NewPaymentChannelService(cfg.Payment)
 	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, memberRepo, memberBenefitRepo, paymentSvc, cacheClient, a.auditLogService)
 
+	// favorite module services
+	favoriteService := favoriteservice.NewFavoriteService(gormDB, favoriteRepo, memberRepo)
+
+	// algorithm select module services
+	algorithmSelectService := algoSelectService.NewAlgorithmSelectService(gormDB, algorithmRepo, predLogRepo, predictionService)
+
 	// feedback module services
 	var alertPublisher *mq.Publisher
 	if cfg.RabbitMQ.Enabled {
@@ -310,6 +339,10 @@ func (a *Application) Init() error {
 	lowRatingAlertService := fbservice.NewLowRatingAlertService(gormDB, ratingRepo, messageService, alertPublisher, zap.L())
 	ratingService := fbservice.NewRatingService(gormDB, ratingRepo, predLogRepo, memberService, cacheClient, lowRatingAlertService, zap.L())
 	feedbackService := fbservice.NewFeedbackService(gormDB, feedbackRepo, feedbackReplyRepo, cacheClient)
+	recommendationService := recservice.NewRecommendationService(gormDB, recommendationRepo, recommendationRuleRepo)
+	presetService := presetservice.NewPresetService(gormDB, presetRepo, memberService)
+	presetservice.SeedSystemPresets(gormDB)
+	compareService := compareservice.NewCompareService(evalLogRepo, predLogRepo, algorithmRepo)
 
 	// 启动 MQ Consumer 消费死信队列与低分告警队列
 	// 注意：Go 后端不消费 export 主队列（由 Java/Python 执行任务），
@@ -325,14 +358,14 @@ func (a *Application) Init() error {
 		if err := a.consumer.Consume("feedback.low_rating", lowRatingAlertService.HandleMessage); err != nil {
 			logger.Error("注册低分告警队列 Consumer 失败", zap.Error(err))
 		}
-			logger.Info("MQ Consumer 已启动，消费 export 死信队列与 feedback.low_rating 队列")
+			logger.Debug("MQ Consumer 已启动，消费 export 死信队列与 feedback.low_rating 队列")
 		}
 	}
 
 	// 启动 XXL-Job 执行器并注册定时任务
 	xxlExecutor := xxljob.Init(cfg)
 	if xxlExecutor != nil {
-		job.InitJobs(xxlExecutor, storageService, predLogRepo, evalLogRepo, orderService, announcementService, messageService, memberService)
+		job.InitJobs(xxlExecutor, defaultStorage, predLogRepo, evalLogRepo, orderService, announcementService, messageService, memberService)
 		go func() {
 			if err := xxlExecutor.Run(); err != nil {
 				logger.Error("XXL-Job 执行器运行失败", zap.Error(err))
@@ -371,8 +404,23 @@ func (a *Application) Init() error {
 	orderApi := api.NewOrderApi(orderService)
 	paymentApi := api.NewPaymentApi(paymentSvc, orderService)
 
+	// favorite module apis
+	favoriteApi := api.NewFavoriteApi(favoriteService)
+
+	// algorithm select module apis
+	algorithmSelectApi := api.NewAlgorithmSelectApi(algorithmSelectService)
+
 	// feedback module apis
 	feedbackApi := api.NewFeedbackApi(ratingService, feedbackService)
+
+	// recommendation module apis
+	recommendationApi := api.NewRecommendationApi(recommendationService)
+
+	// preset module apis
+	presetApi := api.NewSysPresetApi(presetService)
+
+	// compare module apis
+	compareApi := api.NewCompareApi(compareService)
 
 	// routes
 	engine := a.Server.GetEngine()
@@ -390,6 +438,8 @@ func (a *Application) Init() error {
 	// 公开路由（无需认证）
 	router.RegisterNoAuthRoutes(v1, authApi)
 	router.RegisterPaymentRoutes(v1, paymentApi)
+	// 文件下载 - 公开访问（对齐 Java SecurityConfig permitAll，供算法服务等内部调用无需鉴权）
+	v1.GET("/files/download/*objectName", fileApi.DownloadFile)
 
 	// 需要Session认证保护的路由
 	protectedV1 := v1.Group("")
@@ -421,6 +471,11 @@ func (a *Application) Init() error {
 	router.RegisterPackageRoutes(protectedV1, packageApi)
 	router.RegisterOrderRoutes(protectedV1, orderApi)
 	router.RegisterFeedbackRoutes(protectedV1, feedbackApi)
+	router.RegisterRecommendationRoutes(protectedV1, recommendationApi)
+	router.RegisterFavoriteRoutes(protectedV1, favoriteApi)
+	router.RegisterPresetRoutes(protectedV1, presetApi)
+	router.RegisterCompareRoutes(protectedV1, compareApi)
+	router.RegisterAlgorithmSelectRoutes(protectedV1, algorithmSelectApi)
 
 	middleware.ApiKeyAuth = func(ctx context.Context, rawKey string) (*security.CustomClaims, error) {
 		authInfo, err := apiKeyService.AuthenticateByKey(ctx, rawKey)

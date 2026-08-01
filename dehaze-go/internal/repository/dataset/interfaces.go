@@ -24,7 +24,7 @@ type DatasetStatsResult struct {
 
 type DistributionResult struct {
 	DatasetID int64  `gorm:"column:dataset_id"`
-	Key       string `gorm:"column:key"`
+	Key       string `gorm:"column:dist_key"`
 	Cnt       int64  `gorm:"column:cnt"`
 }
 
@@ -74,13 +74,13 @@ type IDatasetItemFileRepository interface {
 }
 
 type ItemFileCreate struct {
-	Type      string
-	Name      string
-	Path      string
-	URL       string
-	Size      int64
-	MD5       string
-	HazeLevel string
-	FileType  string
-	SceneType string
+	Type       string
+	Name       string
+	ObjectName string
+	Storage    string
+	Size       int64
+	MD5        string
+	HazeLevel  string
+	FileType   string
+	SceneType  string
 }

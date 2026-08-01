@@ -2,6 +2,7 @@ import appReducer from "@/store/modules/appSlice";
 import imageShowReducer from "@/store/modules/imageShowSlice";
 import settingsReducer from "@/store/modules/settingsSlice";
 import userReducer from "@/store/modules/userSlice";
+import favoriteReducer from "@/store/modules/favoriteSlice";
 import { configureStore } from "@reduxjs/toolkit";
 import { persistStore } from "redux-persist";
 import permissionReducer from "./modules/permissionSlice";
@@ -17,6 +18,7 @@ const store = configureStore({
     imageShow: imageShowReducer,
     dataset: datasetReducer,
     task: taskReducer,
+    favorite: favoriteReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

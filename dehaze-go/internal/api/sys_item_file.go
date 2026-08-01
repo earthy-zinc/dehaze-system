@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
@@ -94,8 +93,7 @@ func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 	}
 
 	// 上传文件
-	baseURL := fmt.Sprintf("http://%s/api/v1/files/download", c.Request.Host)
-	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash, baseURL)
+	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash)
 	if err != nil {
 		_ = c.Error(err)
 		return

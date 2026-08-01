@@ -54,9 +54,6 @@ public class SysInputHistory extends BaseEntity {
     /** 图片来源（upload/camera/sample） */
     private String inputSource;
 
-    /** 是否收藏 */
-    private Boolean isFavorite;
-
     /** 同步状态（0=未同步，1=已同步） */
     private Integer syncStatus;
 }

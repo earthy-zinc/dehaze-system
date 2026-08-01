@@ -20,14 +20,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.net.URI;
+import java.io.InputStream;
 
 @Tag(name = "07.文件接口")
 @RestController
@@ -51,8 +50,10 @@ public class FileController {
         SysFile fileInfo = sysFileService.saveFile(fileBO);
         if (modelId != null) {
             SysFile wpxFile = sysFileService.getWpxFile(fileInfo, modelId);
+            sysFileService.fillUrl(wpxFile);
             return Result.success(wpxFile);
         }
+        sysFileService.fillUrl(fileInfo);
         return Result.success(fileInfo);
     }
 
@@ -71,6 +72,7 @@ public class FileController {
             @Parameter(description = "文件md5") @RequestParam String md5
     ) {
         SysFile fileInfo = sysFileService.check(md5);
+        sysFileService.fillUrl(fileInfo);
         return Result.success(fileInfo);
     }
 
@@ -89,6 +91,7 @@ public class FileController {
                     .like(SysFile::getType, keywords);
         }
         Page<SysFile> result = sysFileService.page(page, queryWrapper);
+        result.getRecords().forEach(sysFileService::fillUrl);
         return PageResult.success(result);
     }
 
@@ -98,6 +101,7 @@ public class FileController {
             @Parameter(description = "文件ID") @PathVariable Long fileId
     ) {
         SysFile file = sysFileService.getById(fileId);
+        sysFileService.fillUrl(file);
         return Result.success(file);
     }
 
@@ -109,12 +113,12 @@ public class FileController {
 
         SysFile file = sysFileService.getOne(
                 new LambdaQueryWrapper<SysFile>().eq(SysFile::getObjectName, objectName));
-        if (file != null && file.getUrl() != null && !file.getUrl().startsWith(filePathBuilder.getBaseUrl())) {
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create(file.getUrl()))
-                    .build();
+        if (file == null) {
+            return ResponseEntity.notFound().build();
         }
 
+        // 统一流式转发：按 storage 选后端，调用 downLoadFile 取流。是否直连存储由 baseUrl 配置决定，不在代码分支
+        InputStream stream = sysFileService.download(objectName);
         String filename = FileUtil.getName(objectName);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
@@ -122,9 +126,8 @@ public class FileController {
         MediaType mediaType = MediaTypeFactory.getMediaType(filename)
                 .orElse(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentType(mediaType);
-        InputStreamResource resource = new InputStreamResource(sysFileService.download(objectName));
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(resource);
+                .body(new InputStreamResource(stream));
     }
 }

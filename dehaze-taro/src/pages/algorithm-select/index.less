@@ -226,6 +226,21 @@
     }
   }
 
+  .match-score-bar {
+    height: 4px;
+    margin-top: 6px;
+    overflow: hidden;
+    background: #e5e7eb;
+    border-radius: 2px;
+
+    .match-score-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+  }
+
   .fav-btn {
     flex-shrink: 0;
     padding: 8px;
@@ -551,4 +566,19 @@
       flex: 1;
     }
   }
+}
+
+/* Tabs容器 */
+.tabs-container {
+  background: #fff;
+}
+
+/* 智能推荐Tab内容 */
+.recommend-tab-content {
+  height: calc(100vh - 44px);
+}
+
+/* 算法列表Tab内容 */
+.algorithm-tab-content {
+  height: calc(100vh - 44px);
 }

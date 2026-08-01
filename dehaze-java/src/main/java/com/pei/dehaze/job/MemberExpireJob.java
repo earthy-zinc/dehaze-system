@@ -22,7 +22,7 @@ public class MemberExpireJob {
     public void processExpiredMembers() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始执行会员过期降级检查...");
+            log.debug("开始执行会员过期降级检查...");
             memberService.processExpiredMembers();
         } catch (Exception e) {
             log.error("会员过期降级处理失败", e);

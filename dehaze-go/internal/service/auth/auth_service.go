@@ -11,6 +11,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/dto"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
+	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	loginlogservice "github.com/earthyzinc/dehaze-go/internal/service/login_log"
 	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
@@ -32,14 +33,16 @@ type AuthService struct {
 	cacheClient     types.ICache
 	userService     userservice.IUserService
 	loginLogService *loginlogservice.LoginLogService
+	memberRepo      memberrepo.IMemberRepository
 	db              *gorm.DB
 }
 
-func NewAuthService(cacheClient types.ICache, userService userservice.IUserService, loginLogService *loginlogservice.LoginLogService, db *gorm.DB) IAuthService {
+func NewAuthService(cacheClient types.ICache, userService userservice.IUserService, loginLogService *loginlogservice.LoginLogService, memberRepo memberrepo.IMemberRepository, db *gorm.DB) IAuthService {
 	return &AuthService{
 		cacheClient:     cacheClient,
 		userService:     userService,
 		loginLogService: loginLogService,
+		memberRepo:      memberRepo,
 		db:              db,
 	}
 }
@@ -55,7 +58,9 @@ func (s *AuthService) recordLogin(ctx context.Context, userID *int64, username, 
 				logger.Error("登录日志写入panic", zap.Any("panic", r))
 			}
 		}()
-		_ = s.loginLogService.RecordLogin(ctx, userID, username, ip, status, message, browser, osName, "")
+		writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		_ = s.loginLogService.RecordLogin(writeCtx, userID, username, ip, status, message, browser, osName, "")
 	}()
 }
 
@@ -237,7 +242,9 @@ func (s *AuthService) Register(ctx context.Context, req *bo.RegisterRequest, cli
 		MonthlyEvaluateUsed:  0,
 		QuotaResetMonth:      &quotaMonth,
 	}
-	s.db.WithContext(ctx).Create(member)
+	if err := s.memberRepo.Upsert(ctx, member); err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建会员记录失败", err)
+	}
 
 	s.resetLoginFailCount(ctx, clientIP, username)
 
@@ -285,7 +292,7 @@ func (s *AuthService) Logout(c *gin.Context) error {
 	if claims, err := security.GetClaims(c); err == nil && claims != nil {
 		username := claims.Subject
 		if username != "" {
-			if err := s.cacheClient.Delete(c.Request.Context(), username); err != nil {
+			if err := s.cacheClient.Delete(c.Request.Context(), common.SessionUserPrefix+username); err != nil {
 				logger.Warn("清理用户登录状态缓存失败", zap.String("username", username), zap.Error(err))
 			}
 		}
@@ -346,16 +353,16 @@ func (s *AuthService) GetAuthInfo(ctx context.Context, userID int64) (*vo.UserIn
 }
 
 func (s *AuthService) handleMultiPointSession(ctx context.Context, newSessionID, username string) error {
-	oldSessionID, err := s.cacheClient.Get(ctx, username)
+	oldSessionID, err := s.cacheClient.Get(ctx, common.SessionUserPrefix+username)
 	if err == nil && oldSessionID != "" {
 		if err := s.cacheClient.Delete(ctx, common.SessionPrefix+oldSessionID); err != nil {
 			logger.Warn("多端登录：删除旧Session失败", zap.String("username", username), zap.Error(err))
 		} else {
-			logger.Info("多端登录：已删除旧Session", zap.String("username", username))
+			logger.Debug("多端登录：已删除旧Session", zap.String("username", username))
 		}
 	}
 
-	if err := s.cacheClient.Set(ctx, username, newSessionID, middleware.SessionTTL); err != nil {
+	if err := s.cacheClient.Set(ctx, common.SessionUserPrefix+username, newSessionID, middleware.SessionTTL); err != nil {
 		logger.Error("存储用户登录状态失败", zap.Error(err))
 		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "设置登录状态失败", err)
 	}

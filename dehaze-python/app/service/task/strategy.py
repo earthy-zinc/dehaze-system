@@ -33,7 +33,7 @@ class TaskStrategy(abc.ABC):
         params_json: Optional[str],
         progress_callback: ProgressCallback,
         cancel_checker: CancelChecker,
-    ) -> Optional[str]:
+    ) -> Optional[Any]:
         """
         执行任务
 
@@ -45,7 +45,7 @@ class TaskStrategy(abc.ABC):
             cancel_checker: 取消检测回调
 
         Returns:
-            下载 URL（上传 MinIO 后的预签名 URL），导入类任务可返回结果 JSON 字符串，失败返回 None
+            导出任务返回对象键 object_name（str），导入任务返回结果 dict，失败返回 None
 
         Raises:
             TaskCancelledException: 任务被取消

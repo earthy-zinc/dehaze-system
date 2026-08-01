@@ -19,7 +19,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "lint": "pnpm lint:eslint && pnpm lint:stylelint && pnpm lint:prettier",
-    "lint:eslint": "eslint --fix ./src/**/*.{ts,tsx,js,jsx} ./mock/**/*.{ts,tsx,js,jsx}",
+    "lint:eslint": "eslint --fix ./src ./mock",
     "lint:prettier": "prettier --write \"**/*.{js,cjs,json,jsx,ts,tsx,css,less,scss,vue,html,md}\"",
     "lint:stylelint": "stylelint \"**/*.{css,less,scss}\" --fix",
     "lint:lint-staged": "lint-staged",
@@ -71,6 +71,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "@reduxjs/toolkit": "^2.11.2",
     "@types/nprogress": "^0.2.3",
     "@types/qrcode": "^1.5.6",

@@ -3,8 +3,6 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../core/network/api_config.dart';
-
 /// 跨平台图片组件
 ///
 /// 统一处理三种图片来源，避免在 Web 端使用 dart:io 的 [Image.file]：
@@ -15,8 +13,7 @@ import '../core/network/api_config.dart';
 /// 这是为了解决 Flutter Web 不支持 dart:io File 的问题：
 /// 本地图片在选择时即读取为字节流，渲染时统一走 Image.memory。
 ///
-/// 后端部分接口（如预测结果）返回相对路径 URL（以 "/" 开头），
-/// 会自动补全为 [ApiConfig.baseUrl] 下的绝对地址。
+/// [url] 必须是后端返回的完整 URL（带 scheme+host），组件不再做任何前缀补全。
 class DehazeImage extends StatelessWidget {
   const DehazeImage({
     super.key,
@@ -43,18 +40,8 @@ class DehazeImage extends StatelessWidget {
   final IconData placeholderIcon;
   final IconData errorIcon;
 
-  /// 解析后的 URL：相对路径（以 "/" 开头）补全为后端绝对地址
-  String? get _resolvedUrl {
-    final u = url;
-    if (u == null) return null;
-    if (u.startsWith('/')) {
-      return ApiConfig.baseUrl + u;
-    }
-    return u;
-  }
-
   bool get _isNetworkUrl {
-    final u = _resolvedUrl;
+    final u = url;
     return u != null && (u.startsWith('http://') || u.startsWith('https://'));
   }
 
@@ -75,7 +62,7 @@ class DehazeImage extends StatelessWidget {
     } else if (_isNetworkUrl) {
       // 网络图片
       image = Image.network(
-        _resolvedUrl!,
+        url!,
         fit: fit,
         width: width,
         height: height,

@@ -359,12 +359,12 @@ func (s *PackageService) Update(ctx context.Context, id int64, form *bo.PackageF
 	}
 
 	if p.Name != form.Name {
-		dup, err := s.packageRepo.FindByName(ctx, form.Name)
+		exists, err := s.packageRepo.ExistsByName(ctx, form.Name, id)
 		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "查询套餐失败", err)
+			return common.WrapBizError(common.DATABASE_ERROR, "检查套餐名称是否存在失败", err)
 		}
-		if dup != nil && dup.ID != id {
-			return common.NewBizError(common.DATA_EXISTS, "套餐名称已存在")
+		if exists {
+			return common.NewBizError(common.DATA_EXISTS, "套餐名称已被历史记录占用")
 		}
 	}
 

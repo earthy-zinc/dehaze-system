@@ -1,8 +1,10 @@
 import logging
+import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import Request
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
 from sqlalchemy.orm import DeclarativeBase
@@ -10,6 +12,41 @@ from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# 记录每个连接开始执行 SQL 的时间戳，用于计算耗时
+_sql_exec_timers: dict[int, float] = {}
+
+
+def _after_cursor_execute(conn, cursor, statement, parameters, context, executemany) -> None:
+    """SQL 执行后输出结构化审计日志。
+
+    正常执行输出 INFO 级（message=SQL），超过阈值则额外输出 WARNING 级
+    （message=SLOW_SQL）。请求上下文字段由 JsonFormatter 自动注入。
+    """
+    conn_id = id(conn)
+    start = _sql_exec_timers.pop(conn_id, None)
+    duration_ms = round((time.perf_counter() - start) * 1000, 2) if start else 0.0
+    sql_logger = logging.getLogger("sql")
+    fields = {
+        "sql": statement,
+        "duration_ms": duration_ms,
+        "rows": cursor.rowcount,
+    }
+    if duration_ms >= settings.SQL_SLOW_THRESHOLD_MS:
+        sql_logger.warning(
+            "SLOW_SQL", extra={**fields, "threshold_ms": settings.SQL_SLOW_THRESHOLD_MS}
+        )
+    else:
+        sql_logger.info("SQL", extra=fields)
+
+
+def _register_sql_logging() -> None:
+    """注册 SQLAlchemy 事件监听器，以结构化 JSON 输出 SQL 审计日志。"""
+    event.listen(engine.sync_engine, "before_cursor_execute",
+                 lambda conn, cursor, statement, parameters, context, executemany:
+                 _sql_exec_timers.__setitem__(id(conn), time.perf_counter()))
+    event.listen(engine.sync_engine, "after_cursor_execute", _after_cursor_execute)
+
 
 # 异步引擎
 # pool_pre_ping: 连接借出前先 ping 一次，避免 MySQL 重启或空闲断开后报错
@@ -21,8 +58,8 @@ engine = create_async_engine(
     pool_recycle=settings.DATABASE_POOL_RECYCLE,
     pool_pre_ping=True,
     pool_timeout=10,
-    echo=settings.DATABASE_ECHO,
 )
+_register_sql_logging()
 
 # 异步 Session 工厂
 async_session_factory = async_sessionmaker(

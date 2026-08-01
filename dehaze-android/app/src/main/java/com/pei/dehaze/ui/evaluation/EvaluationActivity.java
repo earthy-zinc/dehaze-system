@@ -15,7 +15,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityEvaluationBinding;
-import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
@@ -164,7 +163,7 @@ public class EvaluationActivity extends AppCompatActivity {
     private void showHazyImage(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
         binding.ivHazy.setVisibility(View.VISIBLE);
-        Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl()))
+        Glide.with(this).load(fileInfo.getUrl())
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(binding.ivHazy);
@@ -173,7 +172,7 @@ public class EvaluationActivity extends AppCompatActivity {
     private void showClearImage(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
         binding.ivClear.setVisibility(View.VISIBLE);
-        Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl()))
+        Glide.with(this).load(fileInfo.getUrl())
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(binding.ivClear);
@@ -192,7 +191,7 @@ public class EvaluationActivity extends AppCompatActivity {
         statePlaceholder.hide();
         binding.btnEvaluate.setEnabled(true);
         if (result.getResultUrl() != null) {
-            Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(result.getResultUrl()))
+            Glide.with(this).load(result.getResultUrl())
                     .placeholder(R.drawable.ic_image)
                     .error(R.drawable.ic_broken_image)
                     .into(binding.ivResult);

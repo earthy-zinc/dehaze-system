@@ -22,7 +22,7 @@ public class CouponExpireJob {
     public void expireUserCoupons() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始执行用户优惠券过期处理...");
+            log.debug("开始执行用户优惠券过期处理...");
             orderService.expireUserCoupons();
         } catch (Exception e) {
             log.error("用户优惠券过期处理失败", e);

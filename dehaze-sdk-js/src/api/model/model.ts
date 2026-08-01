@@ -16,6 +16,8 @@ export interface PredictionForm {
   fileId?: number;
   imageUrl?: string;
   params?: string;
+  /** 推荐算法ID（来自推荐管理模块，用于追踪推荐采纳率） */
+  recommendedBy?: number;
 }
 
 /**
@@ -106,4 +108,82 @@ export interface PollOptions {
   timeoutMs?: number;
   /** 每次轮询回调 */
   onPoll?: (status: PredEvalTaskStatus) => void;
+}
+
+// ===== 批量预测（去雾处理） =====
+
+/** 批量预测请求 */
+export interface BatchPredictionForm {
+  algorithmId: number;
+  items: { fileId?: number; imageUrl?: string; params?: string }[];
+  /** 推荐算法ID（来自推荐管理模块） */
+  recommendedBy?: number;
+}
+
+/** 批量预测结果 */
+export interface BatchPredictionResultVO {
+  total: number;
+  results: PredictionResultVO[];
+}
+
+// ===== 参数预设（去雾处理） =====
+
+/** 参数预设表单 */
+export interface PresetForm {
+  id?: number;
+  name: string;
+  algorithmId: number;
+  params: string;
+  /** 是否系统预设 */
+  isSystem?: boolean;
+}
+
+/** 参数预设视图对象 */
+export interface PresetVO extends PresetForm {
+  id: number;
+  userId?: number;
+  createTime: string;
+}
+
+/** 参数预设查询 */
+export interface PresetQuery extends PageQuery {
+  algorithmId?: number;
+  isSystem?: boolean;
+}
+
+// ===== VIP 配额（去雾处理） =====
+
+/** VIP 配额 */
+export interface PredictionQuota {
+  /** 剩余次数 */
+  remaining: number;
+  /** 总次数 */
+  total: number;
+  /** 已使用次数 */
+  used: number;
+  /** 重置日期 */
+  resetDate: string;
+}
+
+// ===== 对比报告（效果对比） =====
+
+/** 对比报告生成请求 */
+export interface CompareReportForm {
+  /** 处理日志ID */
+  logId: number;
+  /** 报告格式 */
+  format: "pdf" | "image";
+  /** 是否包含指标 */
+  includeMetrics?: boolean;
+  /** 是否包含滤镜参数 */
+  includeFilters?: boolean;
+}
+
+/** 对比报告结果（异步任务） */
+export interface CompareReportResultVO {
+  /** 异步任务ID */
+  taskId: number;
+  status: PredEvalTaskStatus;
+  downloadUrl?: string;
+  errorMessage?: string;
 }

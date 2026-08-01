@@ -3,7 +3,6 @@ package com.pei.dehaze.service;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
 import com.pei.dehaze.mapper.SysItemFileMapper;
-import com.pei.dehaze.model.bo.ItemFileBO;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
@@ -15,7 +14,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -72,13 +70,12 @@ class SysItemFileServiceIT {
         sysDatasetItemMapper.insert(testItem);
         testItemId = testItem.getId();
 
-        // 创建测试文件 - 直接插入数据库
+        // 创建测试文件 - 直接插入数据库（object_name + storage，不落库 url）
         SysFile testFile = new SysFile();
         testFile.setName("test_image.jpg");
         testFile.setType("jpg");
-        testFile.setUrl("https://cdn.example.com/test_image.jpg");
         testFile.setObjectName("test_object_name");
-        testFile.setPath("/test/path/test_image.jpg");
+        testFile.setStorage("minio");
         testFile.setSize("1024000");
         testFile.setMd5("test_md5_hash");
         sysFileService.save(testFile);
@@ -88,9 +85,8 @@ class SysItemFileServiceIT {
         SysFile testThumbnail = new SysFile();
         testThumbnail.setName("test_image_thumbnail.jpg");
         testThumbnail.setType("jpg");
-        testThumbnail.setUrl("https://cdn.example.com/test_image_thumbnail.jpg");
         testThumbnail.setObjectName("test_thumbnail_object_name");
-        testThumbnail.setPath("/test/path/test_image_thumbnail.jpg");
+        testThumbnail.setStorage("minio");
         testThumbnail.setSize("512000");
         testThumbnail.setMd5("test_thumbnail_md5_hash");
         sysFileService.save(testThumbnail);
@@ -119,7 +115,7 @@ class SysItemFileServiceIT {
      * 验证内容：
      * 1. 返回的VO对象不为null
      * 2. 基本信息正确
-     * 3. 文件信息正确
+     * 3. 文件信息正确（url 由 storage + objectName 动态拼接）
      */
     @Test
     @DisplayName("根据ID获取图片详细信息 - 成功")
@@ -138,7 +134,9 @@ class SysItemFileServiceIT {
         assertEquals(1920, result.getWidth());
         assertEquals(1080, result.getHeight());
         assertEquals("test_image.jpg", result.getFileName());
-        assertEquals("https://cdn.example.com/test_image.jpg", result.getUrl());
+        // url 由 storageService.getUrl(objectName) 动态拼接，包含 objectName
+        assertNotNull(result.getUrl());
+        assertTrue(result.getUrl().contains("test_object_name"));
     }
 
     /**
@@ -174,13 +172,12 @@ class SysItemFileServiceIT {
     @Test
     @DisplayName("保存图片文件 - 成功")
     void testSaveItemFile_Success() {
-        // Arrange - 创建测试文件记录
+        // Arrange - 创建测试文件记录（object_name + storage）
         SysFile newTestFile = new SysFile();
         newTestFile.setName("new_hazy.jpg");
         newTestFile.setType("jpg");
-        newTestFile.setUrl("https://cdn.example.com/new_hazy.jpg");
         newTestFile.setObjectName("new_hazy_object");
-        newTestFile.setPath("/test/uploads/new_hazy.jpg");
+        newTestFile.setStorage("minio");
         newTestFile.setSize("2048000");
         newTestFile.setMd5("new_md5_hash");
         sysFileService.save(newTestFile);
@@ -189,9 +186,8 @@ class SysItemFileServiceIT {
         SysFile newThumbnail = new SysFile();
         newThumbnail.setName("new_hazy_thumbnail.jpg");
         newThumbnail.setType("jpg");
-        newThumbnail.setUrl("https://cdn.example.com/new_hazy_thumbnail.jpg");
         newThumbnail.setObjectName("new_hazy_thumbnail_object");
-        newThumbnail.setPath("/test/uploads/new_hazy_thumbnail.jpg");
+        newThumbnail.setStorage("minio");
         newThumbnail.setSize("1024000");
         newThumbnail.setMd5("new_thumbnail_md5_hash");
         sysFileService.save(newThumbnail);
@@ -371,13 +367,12 @@ class SysItemFileServiceIT {
     @Test
     @DisplayName("批量删除图片 - 全部成功")
     void testBatchDelete_AllSuccess() {
-        // Arrange - 创建额外的测试文件和缩略图
+        // Arrange - 创建额外的测试文件和缩略图（object_name + storage）
         SysFile testFile2 = new SysFile();
         testFile2.setName("test_image_2.jpg");
         testFile2.setType("jpg");
-        testFile2.setUrl("https://cdn.example.com/test_image_2.jpg");
         testFile2.setObjectName("test_object_name_2");
-        testFile2.setPath("/test/path/test_image_2.jpg");
+        testFile2.setStorage("minio");
         testFile2.setSize("2048000");
         testFile2.setMd5("test_md5_hash_2");
         sysFileService.save(testFile2);
@@ -386,9 +381,8 @@ class SysItemFileServiceIT {
         SysFile testThumbnail2 = new SysFile();
         testThumbnail2.setName("test_image_2_thumbnail.jpg");
         testThumbnail2.setType("jpg");
-        testThumbnail2.setUrl("https://cdn.example.com/test_image_2_thumbnail.jpg");
         testThumbnail2.setObjectName("test_thumbnail_object_name_2");
-        testThumbnail2.setPath("/test/path/test_image_2_thumbnail.jpg");
+        testThumbnail2.setStorage("minio");
         testThumbnail2.setSize("1024000");
         testThumbnail2.setMd5("test_thumbnail_md5_hash_2");
         sysFileService.save(testThumbnail2);
@@ -437,13 +431,12 @@ class SysItemFileServiceIT {
     @Test
     @DisplayName("批量删除图片 - 部分失败")
     void testBatchDelete_PartialFailure() {
-        // Arrange - 创建额外的测试文件和缩略图
+        // Arrange - 创建额外的测试文件和缩略图（object_name + storage）
         SysFile testFile2 = new SysFile();
         testFile2.setName("test_image_3.jpg");
         testFile2.setType("jpg");
-        testFile2.setUrl("https://cdn.example.com/test_image_3.jpg");
         testFile2.setObjectName("test_object_name_3");
-        testFile2.setPath("/test/path/test_image_3.jpg");
+        testFile2.setStorage("minio");
         testFile2.setSize("2048000");
         testFile2.setMd5("test_md5_hash_3");
         sysFileService.save(testFile2);
@@ -452,9 +445,8 @@ class SysItemFileServiceIT {
         SysFile testThumbnail2 = new SysFile();
         testThumbnail2.setName("test_image_3_thumbnail.jpg");
         testThumbnail2.setType("jpg");
-        testThumbnail2.setUrl("https://cdn.example.com/test_image_3_thumbnail.jpg");
         testThumbnail2.setObjectName("test_thumbnail_object_name_3");
-        testThumbnail2.setPath("/test/path/test_image_3_thumbnail.jpg");
+        testThumbnail2.setStorage("minio");
         testThumbnail2.setSize("1024000");
         testThumbnail2.setMd5("test_thumbnail_md5_hash_3");
         sysFileService.save(testThumbnail2);

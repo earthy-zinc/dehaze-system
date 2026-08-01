@@ -13,6 +13,7 @@ type IEvalLogRepository interface {
 	Create(ctx context.Context, log *model.SysEvalLog) error
 	FindByID(ctx context.Context, id int64) (*model.SysEvalLog, error)
 	FindPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
+	FindPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
 	UpdateResult(ctx context.Context, id int64, status model.LogStatus, result string, time int) error
 	UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error
 	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
@@ -77,6 +78,24 @@ func (r *evalLogRepository) UpdateStatus(ctx context.Context, id int64, status m
 	return r.db.WithContext(ctx).Model(&model.SysEvalLog{}).
 		Where("id = ?", id).
 		Updates(updates).Error
+}
+
+func (r *evalLogRepository) FindPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error) {
+	var list []model.SysEvalLog
+	var total int64
+	query := r.db.WithContext(ctx).Model(&model.SysEvalLog{}).
+		Where("create_by = ? AND status = ?", userID, model.LogStatusCompleted)
+	if algorithmID > 0 {
+		query = query.Where("algorithm_id = ?", algorithmID)
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	offset := (pageNum - 1) * pageSize
+	if err := query.Order("create_time DESC").Offset(offset).Limit(pageSize).Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 func (r *evalLogRepository) MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error) {

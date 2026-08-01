@@ -11,7 +11,7 @@ type SysApiKey struct {
 	Status     int8       `gorm:"column:status;type:tinyint;default:1" json:"status"`
 	ExpiresAt  *time.Time `gorm:"column:expires_at;type:datetime" json:"expiresAt"`
 	LastUsedAt *time.Time `gorm:"column:last_used_at;type:datetime" json:"lastUsedAt"`
-	Deleted    int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
+	RevokedAt  *time.Time `gorm:"column:revoked_at;type:datetime;comment:吊销时间(NULL:未吊销)" json:"revokedAt"`
 }
 
 func (SysApiKey) TableName() string {

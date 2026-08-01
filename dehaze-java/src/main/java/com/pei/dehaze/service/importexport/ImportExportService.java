@@ -9,7 +9,6 @@ import com.pei.dehaze.model.form.ExportTaskCreateForm;
 import com.pei.dehaze.model.vo.ExportTaskVO;
 import com.pei.dehaze.model.vo.ImportResultVO;
 import com.pei.dehaze.model.vo.ImportTaskVO;
-import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.TaskService;
 import com.pei.dehaze.service.importexport.model.ExportContext;
 import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
@@ -50,7 +49,7 @@ public class ImportExportService {
     private final ImportHandlerRegistry importHandlerRegistry;
     private final ImportExportFileGenerator fileGenerator;
     private final TaskService taskService;
-    private final FileService fileService;
+    private final com.pei.dehaze.service.impl.file.StorageServiceFactory storageServiceFactory;
 
     public Object export(String module, Map<String, Object> params, String format,
                          Boolean async, List<String> fields, HttpServletResponse response) {
@@ -158,8 +157,8 @@ public class ImportExportService {
                                           Map<String, Object> extraParams) {
         String objectName = "temp/imports/" + IdUtil.simpleUUID() + "/" + file.getOriginalFilename();
         try (InputStream is = file.getInputStream()) {
-            String url = fileService.uploadFile(objectName, is, file.getSize(), file.getContentType());
-            log.info("导入文件已上传: objectName={}, url={}", objectName, url);
+            String url = storageServiceFactory.getDefault().uploadFile(objectName, is, file.getSize(), file.getContentType());
+            log.debug("导入文件已上传: objectName={}, url={}", objectName, url);
         } catch (IOException e) {
             throw new BusinessException(ResultCode.USER_UPLOAD_FILE_ERROR, "文件上传失败: " + e.getMessage());
         }
@@ -263,7 +262,7 @@ public class ImportExportService {
             fileGenerator.writeTemplateExcel(baos, errorFields, errorRows);
 
             try (ByteArrayInputStream bis = new ByteArrayInputStream(baos.toByteArray())) {
-                return fileService.uploadFile(objectName, bis, (long) baos.size(), getContentType("excel"));
+                return storageServiceFactory.getDefault().uploadFile(objectName, bis, (long) baos.size(), getContentType("excel"));
             }
         } catch (IOException e) {
             log.warn("生成错误报告失败", e);

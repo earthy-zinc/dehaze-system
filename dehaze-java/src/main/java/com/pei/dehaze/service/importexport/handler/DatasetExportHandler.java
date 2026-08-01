@@ -7,7 +7,6 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
-import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysItemFileService;
@@ -52,7 +51,7 @@ public class DatasetExportHandler implements ExportHandler {
     private final SysDatasetItemService datasetItemService;
     private final SysItemFileService itemFileService;
     private final SysFileService fileService;
-    private final FileService minioFileService;
+    private final com.pei.dehaze.service.impl.file.StorageServiceFactory storageServiceFactory;
 
     @Override
     public String getModule() {
@@ -133,7 +132,7 @@ public class DatasetExportHandler implements ExportHandler {
             }
         }
 
-        log.info("数据集导出完成: taskId={}, itemCount={}, fileCount={}",
+        log.debug("数据集导出完成: taskId={}, itemCount={}, fileCount={}",
                 ctx.getTaskId(), items.size(), processedFiles);
     }
 
@@ -215,7 +214,7 @@ public class DatasetExportHandler implements ExportHandler {
         ZipEntry zipEntry = new ZipEntry(entryPath);
         zos.putNextEntry(zipEntry);
 
-        try (InputStream inputStream = minioFileService.downLoadFile(sysFile.getObjectName())) {
+        try (InputStream inputStream = storageServiceFactory.get(sysFile.getStorage()).downLoadFile(sysFile.getObjectName())) {
             byte[] buffer = new byte[ZIP_BUFFER_SIZE];
             int len;
             while ((len = inputStream.read(buffer)) > 0) {

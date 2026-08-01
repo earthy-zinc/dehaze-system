@@ -21,15 +21,17 @@
     </appender>
 
     <!-- 2. info 文件：INFO 及以上（JSON 结构化，供 ELK/Loki 采集） -->
+    <!-- SizeAndTimeBasedRollingPolicy：按日期切目录 + 按大小分片，活动文件 info.log，超 maxFileSize 归档为 info.%i.log -->
     <appender name="FILE_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_HOME}/%d{yyyy-MM-dd}/info.log</fileNamePattern>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/%d{yyyy-MM-dd}/info.%i.log</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
             <maxHistory>30</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <fieldNames>
-                <timestamp>@timestamp</timestamp>
+                <timestamp>timestamp</timestamp>
                 <version>[ignore]</version>
                 <levelValue>[ignore]</levelValue>
                 <message>message</message>
@@ -38,7 +40,12 @@
                 <level>level</level>
             </fieldNames>
             <customFields>{"service":"${APP_NAME}"}</customFields>
-            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>trace_id</includeMdcKeyName>
+            <includeMdcKeyName>method</includeMdcKeyName>
+            <includeMdcKeyName>path</includeMdcKeyName>
+            <includeMdcKeyName>ip</includeMdcKeyName>
+            <includeMdcKeyName>user_agent</includeMdcKeyName>
+            <includeMdcKeyName>user_id</includeMdcKeyName>
             <charset>UTF-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -47,15 +54,17 @@
     </appender>
 
     <!-- 3. error 文件：仅 ERROR（便于快速排障/告警，是 info 的子集） -->
+    <!-- SizeAndTimeBasedRollingPolicy：按日期切目录 + 按大小分片，活动文件 error.log，超 maxFileSize 归档为 error.%i.log -->
     <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_HOME}/%d{yyyy-MM-dd}/error.log</fileNamePattern>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/%d{yyyy-MM-dd}/error.%i.log</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
             <maxHistory>30</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <fieldNames>
-                <timestamp>@timestamp</timestamp>
+                <timestamp>timestamp</timestamp>
                 <version>[ignore]</version>
                 <levelValue>[ignore]</levelValue>
                 <message>message</message>
@@ -64,7 +73,12 @@
                 <level>level</level>
             </fieldNames>
             <customFields>{"service":"${APP_NAME}"}</customFields>
-            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>trace_id</includeMdcKeyName>
+            <includeMdcKeyName>method</includeMdcKeyName>
+            <includeMdcKeyName>path</includeMdcKeyName>
+            <includeMdcKeyName>ip</includeMdcKeyName>
+            <includeMdcKeyName>user_agent</includeMdcKeyName>
+            <includeMdcKeyName>user_id</includeMdcKeyName>
             <charset>UTF-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">

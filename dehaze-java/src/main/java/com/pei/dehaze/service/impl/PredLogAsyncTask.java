@@ -59,7 +59,7 @@ public class PredLogAsyncTask {
             predLogMapper.updateById(update);
 
             meterRegistry.counter("dehaze_prediction_total", "status", "success").increment();
-            log.info("预测完成: algorithmId={}, predLogId={}, time={}ms",
+            log.debug("预测完成: algorithmId={}, predLogId={}, time={}ms",
                     algorithmId, logId, elapsed);
         } catch (Exception e) {
             int elapsed = (int) (System.currentTimeMillis() - startTime);

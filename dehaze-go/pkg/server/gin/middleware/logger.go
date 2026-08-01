@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -92,36 +91,26 @@ func (l Logger) SetLoggerMiddleware() gin.HandlerFunc {
 func DefaultLogger() gin.HandlerFunc {
 	return Logger{
 		Print: func(c *gin.Context, layout LogLayout) {
-			// 从 Metadata 中提取状态码
 			var status int
-			var method string
 			if layout.Metadata != nil {
 				if s, ok := layout.Metadata["status"]; ok {
 					status, _ = s.(int)
 				}
-				if m, ok := layout.Metadata["method"]; ok {
-					method = fmt.Sprintf("%v", m)
-				}
 			}
+			durationMs := float64(layout.Cost.Microseconds()) / 1000.0
 
 			log := logger.WithContext(c.Request.Context())
-			msg := fmt.Sprintf("%s %s %d %s", method, layout.Path, status, layout.Cost)
 			fields := []zap.Field{
-				zap.String("method", method),
-				zap.String("path", layout.Path),
 				zap.Int("status", status),
-				zap.Duration("cost", layout.Cost),
-				zap.String("ip", layout.IP),
-				zap.String("user_agent", layout.UserAgent),
+				zap.Float64("duration_ms", durationMs),
+			}
+			if layout.Query != "" {
+				fields = append(fields, zap.String("query", layout.Query))
 			}
 
-			if status >= 500 {
-				log.Error(msg, fields...)
-			} else if status >= 400 {
-				log.Warn(msg, fields...)
-			} else {
-				log.Info(msg, fields...)
-			}
+			// 每请求一条 INFO ACCESS 日志，method/path/ip/user_agent/trace_id 由 logger.WithContext 自动注入，
+			// user_id 由认证层写入 context 后自动注入（未认证时为空）
+			log.Info("ACCESS", fields...)
 		},
 		Source: "GVA",
 	}.SetLoggerMiddleware()

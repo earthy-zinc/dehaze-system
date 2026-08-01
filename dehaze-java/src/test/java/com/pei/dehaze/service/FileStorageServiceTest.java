@@ -152,7 +152,7 @@ class FileStorageServiceTest {
 
             // Assert
             assertThat(result).isNotNull();
-            assertThat(result.getUrl()).isNotNull();
+            assertThat(result.getStorage()).isEqualTo("minio");
         }
     }
 

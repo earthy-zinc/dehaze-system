@@ -3,6 +3,7 @@ package common
 import (
 	"net/http"
 
+	"github.com/earthyzinc/dehaze-go/pkg/trace"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,20 +25,22 @@ type ErrorItem struct {
 }
 
 // result 核心响应函数
-func result(resultCode *ResultCode, data interface{}, c *gin.Context) {
+func result(resultCode *ResultCode, data any, c *gin.Context) {
 	c.JSON(http.StatusOK, Response{
-		Code: resultCode.Code,
-		Data: data,
-		Msg:  resultCode.Msg,
+		Code:    resultCode.Code,
+		Data:    data,
+		Msg:     resultCode.Msg,
+		TraceId: trace.FromContext(c.Request.Context()),
 	})
 }
 
 // resultWithMsg 使用指定消息覆盖默认消息
 func resultWithMsg(resultCode *ResultCode, data interface{}, message string, c *gin.Context) {
 	c.JSON(http.StatusOK, Response{
-		Code: resultCode.Code,
-		Data: data,
-		Msg:  message,
+		Code:    resultCode.Code,
+		Data:    data,
+		Msg:     message,
+		TraceId: trace.FromContext(c.Request.Context()),
 	})
 }
 
@@ -57,13 +60,13 @@ func OkWithMessage(message string, c *gin.Context) {
 
 // OkWithData 操作成功，返回数据
 // 仿照 Java: return Result.ok(data);
-func OkWithData(data interface{}, c *gin.Context) {
+func OkWithData(data any, c *gin.Context) {
 	result(SUCCESS, data, c)
 }
 
 // OkWithDetailed 操作成功，返回数据和消息
 // 仿照 Java: return Result.ok(data).message("消息");
-func OkWithDetailed(data interface{}, message string, c *gin.Context) {
+func OkWithDetailed(data any, message string, c *gin.Context) {
 	resultWithMsg(SUCCESS, data, message, c)
 }
 
@@ -100,6 +103,6 @@ func FailWithDataAndCode(resultCode *ResultCode, data interface{}, c *gin.Contex
 }
 
 // FailWithDetailed 操作失败，返回数据和消息
-func FailWithDetailed(data interface{}, message string, c *gin.Context) {
+func FailWithDetailed(data any, message string, c *gin.Context) {
 	resultWithMsg(SYSTEM_EXECUTION_ERROR, data, message, c)
 }

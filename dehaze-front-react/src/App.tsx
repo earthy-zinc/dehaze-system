@@ -2,7 +2,7 @@ import router from "@/router";
 import defaultSettings from "@/settings";
 import { RootState } from "@/store";
 import TitleBar from "@/components/TitleBar";
-import { ConfigProvider, message, theme, Watermark } from "antd";
+import { App as AntdApp, ConfigProvider, message, theme, Watermark } from "antd";
 import { SizeType } from "antd/es/config-provider/SizeContext";
 import enUS from "antd/locale/en_US";
 import zhCN from "antd/locale/zh_CN";
@@ -131,16 +131,18 @@ function App() {
           },
         }}
       >
-        <Watermark
-          style={{ width: "100%", height: "100%", overflow: "auto" }}
-          content={
-            settingsStore.watermarkEnabled
-              ? defaultSettings.watermarkContent
-              : undefined
-          }
-        >
-          <RouterProvider router={router} />
-        </Watermark>
+        <AntdApp>
+          <Watermark
+            style={{ width: "100%", height: "100%", overflow: "auto" }}
+            content={
+              settingsStore.watermarkEnabled
+                ? defaultSettings.watermarkContent
+                : undefined
+            }
+          >
+            <RouterProvider router={router} />
+          </Watermark>
+        </AntdApp>
       </ConfigProvider>
     </>
   );

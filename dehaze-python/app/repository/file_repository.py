@@ -4,7 +4,8 @@
 
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_file import SysFile
@@ -21,10 +22,52 @@ class FileRepository(BaseRepository[SysFile]):
         db: AsyncSession,
         md5: str,
     ) -> SysFile | None:
-        """根据 MD5 查询文件（去重用）"""
-        stmt = select(SysFile).where(SysFile.md5 == md5)
+        """根据 MD5 查询文件（去重用，仅查未删除记录）"""
+        stmt = select(SysFile).where(SysFile.md5 == md5, SysFile.deleted == 0)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def upsert_by_md5(
+        self,
+        db: AsyncSession,
+        *,
+        md5: str,
+        type: str,
+        name: str,
+        object_name: str,
+        storage: str,
+        size: str,
+        size_bytes: int,
+    ) -> SysFile:
+        """upsert 文件记录：冲突时复活（重置 deleted=0），返回记录"""
+        stmt = mysql_insert(SysFile).values(
+            md5=md5,
+            type=type,
+            name=name,
+            object_name=object_name,
+            storage=storage,
+            size=size,
+            size_bytes=size_bytes,
+        )
+        stmt = stmt.on_duplicate_key_update(
+            type=type,
+            name=name,
+            object_name=object_name,
+            storage=storage,
+            size=size,
+            size_bytes=size_bytes,
+            deleted=0,
+            update_time=func.now(),
+        )
+        await db.execute(stmt)
+        # 用当前读（FOR UPDATE）确保看到 ODKU 的结果，避免 RR 隔离级别下
+        # 并发场景快照读看不到刚 upsert 的行（autoflush=False 时尤为关键）
+        result = await db.execute(
+            select(SysFile)
+            .where(SysFile.md5 == md5, SysFile.deleted == 0)
+            .with_for_update()
+        )
+        return result.scalar_one()
 
     async def get_by_object_name(
         self,

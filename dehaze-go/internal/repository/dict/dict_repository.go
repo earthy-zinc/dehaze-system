@@ -183,10 +183,10 @@ func (r *DictRepository) CountByTypeCodes(ctx context.Context, typeCodes []strin
 	return count, err
 }
 
-// ExistsByTypeCodeAndValue 检查同一类型下字典值是否存在
+// ExistsByTypeCodeAndValue 检查同一类型下字典值是否存在（查全表含软删行）
 func (r *DictRepository) ExistsByTypeCodeAndValue(ctx context.Context, typeCode, value string, excludeID ...int64) (bool, error) {
 	var count int64
-	db := r.db.WithContext(ctx).Model(&model.SysDict{}).
+	db := r.db.Unscoped().WithContext(ctx).Model(&model.SysDict{}).
 		Where("type_code = ? AND value = ?", typeCode, value)
 
 	if len(excludeID) > 0 && excludeID[0] > 0 {

@@ -1,12 +1,15 @@
 <script lang="ts" setup>
-import { Algorithm, AlgorithmAPI } from "dehaze-sdk-js";
+import { Algorithm, AlgorithmAPI, RecommendationAPI } from "dehaze-sdk-js";
+import type { RecommendedAlgorithm } from "dehaze-sdk-js";
 import {
   CircleCheckFilled,
   Folder,
   Grid,
+  Loading,
   MagicStick,
   Refresh,
   Search,
+  Upload,
 } from "@element-plus/icons-vue";
 
 defineOptions({
@@ -126,6 +129,54 @@ const recommendAlgorithms = computed(() => {
   return recommended.slice(0, 3);
 });
 
+// ===== 图像推荐引擎 =====
+const recommendTab = ref<"quick" | "image">("quick");
+const imageUrlInput = ref("");
+const analyzing = ref(false);
+const imageRecommendations = ref<RecommendedAlgorithm[]>([]);
+const analysisResult = ref<{
+  hazeLevel: string;
+  sceneType: string;
+  lighting: string;
+  complexity: number;
+} | null>(null);
+
+async function handleImageRecommend() {
+  const url = imageUrlInput.value.trim();
+  if (!url) {
+    ElMessage.warning("请输入图片URL");
+    return;
+  }
+  analyzing.value = true;
+  imageRecommendations.value = [];
+  analysisResult.value = null;
+  try {
+    const analysis = await RecommendationAPI.analyze({ imageUrl: url });
+    analysisResult.value = {
+      hazeLevel: analysis.hazeLevel,
+      sceneType: analysis.sceneType,
+      lighting: analysis.lighting,
+      complexity: analysis.complexity,
+    };
+    const recs = await RecommendationAPI.getAlgorithmRecommendations({
+      imageMd5: analysis.imageMd5,
+    });
+    imageRecommendations.value = recs;
+  } catch (e: any) {
+    ElMessage.error("推荐分析失败：" + (e.message || "未知错误"));
+  } finally {
+    analyzing.value = false;
+  }
+}
+
+function selectRecommended(algo: RecommendedAlgorithm) {
+  const matched = allAlgorithms.value.find((a) => a.id === algo.algorithmId);
+  if (matched) {
+    selectedAlgorithm.value = matched;
+    ElMessage.success(`已选择推荐算法：${algo.algorithmName}`);
+  }
+}
+
 // 加载算法列表
 function loadAlgorithms() {
   loading.value = true;
@@ -210,10 +261,19 @@ onMounted(() => {
         <div class="card-title">
           <el-icon><MagicStick /></el-icon>
           <span>智能推荐</span>
-          <el-tag size="small" type="success">Top 3</el-tag>
+          <el-radio-group v-model="recommendTab" size="small">
+            <el-radio-button label="quick">快速推荐</el-radio-button>
+            <el-radio-button label="image">图像分析推荐</el-radio-button>
+          </el-radio-group>
         </div>
       </template>
-      <div v-loading="loading" class="recommend-list">
+
+      <!-- 快速推荐（静态） -->
+      <div
+        v-if="recommendTab === 'quick'"
+        v-loading="loading"
+        class="recommend-list"
+      >
         <div
           v-for="algo in recommendAlgorithms"
           :key="algo.id"
@@ -234,6 +294,73 @@ onMounted(() => {
           description="暂无推荐算法"
           :image-size="60"
         />
+      </div>
+
+      <!-- 图像分析推荐（真实推荐引擎） -->
+      <div v-else class="image-recommend-section">
+        <div class="image-url-input">
+          <el-input
+            v-model="imageUrlInput"
+            placeholder="输入图片URL以获取智能推荐"
+            clearable
+            @keyup.enter="handleImageRecommend"
+          >
+            <template #append>
+              <el-button :loading="analyzing" @click="handleImageRecommend">
+                <el-icon><Search /></el-icon>分析
+              </el-button>
+            </template>
+          </el-input>
+        </div>
+        <div v-if="analysisResult" class="analysis-result">
+          <el-tag size="small">雾霾: {{ analysisResult.hazeLevel }}</el-tag>
+          <el-tag size="small" type="success"
+            >场景: {{ analysisResult.sceneType }}</el-tag
+          >
+          <el-tag size="small" type="warning"
+            >光照: {{ analysisResult.lighting }}</el-tag
+          >
+          <span class="complexity-label">
+            复杂度: {{ (analysisResult.complexity * 100).toFixed(0) }}%
+          </span>
+        </div>
+        <div v-if="imageRecommendations.length > 0" class="image-rec-list">
+          <div
+            v-for="rec in imageRecommendations"
+            :key="rec.algorithmId"
+            class="image-rec-item"
+            :class="{
+              active: selectedAlgorithm?.id === rec.algorithmId,
+            }"
+            @click="selectRecommended(rec)"
+          >
+            <div class="rec-header">
+              <span class="rec-name">{{ rec.algorithmName }}</span>
+              <el-progress
+                :percentage="rec.matchScore"
+                :stroke-width="6"
+                :show-text="false"
+                style="width: 100px"
+              />
+              <span class="rec-score">{{ rec.matchScore }}%</span>
+            </div>
+            <div class="rec-reason">{{ rec.reason }}</div>
+            <div v-if="rec.effectDescription" class="rec-effect">
+              {{ rec.effectDescription }}
+            </div>
+          </div>
+        </div>
+        <el-empty
+          v-if="
+            !analyzing && imageRecommendations.length === 0 && !analysisResult
+          "
+          description="输入图片URL获取个性化算法推荐"
+          :image-size="80"
+        />
+        <div v-if="analyzing" class="analyzing-hint">
+          <el-icon class="is-loading"><Loading /></el-icon>
+          正在分析图像特征并匹配算法...
+        </div>
       </div>
     </el-card>
 
@@ -578,6 +705,92 @@ onMounted(() => {
     .selected-empty {
       color: var(--el-text-color-secondary);
     }
+  }
+}
+
+.image-recommend-section {
+  .image-url-input {
+    margin-bottom: 12px;
+  }
+
+  .analysis-result {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    background: var(--el-fill-color-light);
+    border-radius: 6px;
+
+    .complexity-label {
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+    }
+  }
+
+  .image-rec-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .image-rec-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 8px;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: var(--el-color-primary);
+      box-shadow: 0 2px 12px rgb(0 0 0 / 10%);
+    }
+
+    &.active {
+      background: var(--el-color-primary-light-9);
+      border-color: var(--el-color-primary);
+    }
+
+    .rec-header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 6px;
+
+      .rec-name {
+        min-width: 160px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+
+      .rec-score {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--el-color-primary);
+      }
+    }
+
+    .rec-reason {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+    }
+
+    .rec-effect {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--el-color-success);
+    }
+  }
+
+  .analyzing-hint {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    font-size: 14px;
+    color: var(--el-text-color-secondary);
   }
 }
 </style>

@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -15,6 +14,7 @@ import (
 	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
 	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -212,10 +212,7 @@ func (s *UserService) Create(ctx context.Context, form *bo.UserFormBO) error {
 	}
 
 	// 加密默认密码
-	defaultPassword := os.Getenv("DEHAZE_PASSWORD")
-	if defaultPassword == "" {
-		defaultPassword = "Dehaze@2026"
-	}
+	defaultPassword := config.GetConfig().System.DefaultPassword
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "密码加密失败", err)
@@ -260,7 +257,7 @@ func (s *UserService) Update(ctx context.Context, id int64, form *bo.UserFormBO)
 			return common.WrapBizError(common.DATABASE_ERROR, "检查用户名是否存在失败", err)
 		}
 		if exists {
-			return common.NewBizError(common.DATA_EXISTS, "用户名已存在")
+			return common.NewBizError(common.DATA_EXISTS, "该用户名不可用")
 		}
 	}
 
@@ -271,7 +268,7 @@ func (s *UserService) Update(ctx context.Context, id int64, form *bo.UserFormBO)
 			return common.WrapBizError(common.DATABASE_ERROR, "检查手机号是否存在失败", err)
 		}
 		if exists {
-			return common.NewBizError(common.DATA_EXISTS, "手机号已存在")
+			return common.NewBizError(common.DATA_EXISTS, "该手机号不可用")
 		}
 	}
 
@@ -282,7 +279,7 @@ func (s *UserService) Update(ctx context.Context, id int64, form *bo.UserFormBO)
 			return common.WrapBizError(common.DATABASE_ERROR, "检查邮箱是否存在失败", err)
 		}
 		if exists {
-			return common.NewBizError(common.DATA_EXISTS, "邮箱已存在")
+			return common.NewBizError(common.DATA_EXISTS, "该邮箱不可用")
 		}
 	}
 
@@ -359,10 +356,7 @@ func (s *UserService) ResetPassword(ctx context.Context, id int64) error {
 	}
 
 	// 加密默认密码
-	defaultPassword := os.Getenv("DEHAZE_PASSWORD")
-	if defaultPassword == "" {
-		defaultPassword = "Dehaze@2026"
-	}
+	defaultPassword := config.GetConfig().System.DefaultPassword
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "密码加密失败", err)

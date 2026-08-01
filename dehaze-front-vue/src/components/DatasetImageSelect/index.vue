@@ -248,8 +248,8 @@ onUnmounted(() => loadingObserver.value?.disconnect());
     <el-divider
       v-show="
         totalPages > 1 &&
-        renderCount >= queryParams.pageNum - 1 &&
-        queryParams.pageNum < totalPages
+        renderCount >= (queryParams.pageNum ?? 1) - 1 &&
+        (queryParams.pageNum ?? 1) < totalPages
       "
       ref="loadingBarRef"
       >正在加载，请稍后

@@ -32,3 +32,23 @@ init_routes(app, prometheus_enabled=settings.PROMETHEUS_ENABLED)
 
 # 注册 WebSocket 路由
 app.include_router(ws_router)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    import uvicorn
+
+    parser = argparse.ArgumentParser(description="Dehaze Python 算法服务")
+    parser.add_argument("--host", default=settings.SERVER_HOST, help="绑定主机")
+    parser.add_argument("--port", type=int, default=settings.SERVER_PORT, help="绑定端口")
+    parser.add_argument("--workers", type=int, default=settings.SERVER_WORKERS, help="Worker 进程数（仅生产环境生效）")
+    args = parser.parse_args()
+
+    uvicorn.run(
+        "app.main:app",
+        host=args.host,
+        port=args.port,
+        reload=settings.DEBUG,
+        workers=1 if settings.DEBUG else args.workers,
+    )

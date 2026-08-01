@@ -3,6 +3,8 @@
  */
 
 import Taro from "@tarojs/taro";
+import { FileAPI } from "dehaze-sdk-js";
+import type { FileInfo } from "dehaze-sdk-js";
 import {
   ImageData,
   ImageInfo,
@@ -17,7 +19,7 @@ import {
 
 // 获取文件扩展名
 const getFileExtension = (path: string): string => {
-  return path.split(".").pop()?.toLowerCase() || "jpg";
+  return path.split(".").pop()?.toLowerCase() || "";
 };
 
 // 判断错误是否为 ImageInputError
@@ -26,6 +28,41 @@ const isImageInputError = (err: any): err is ImageInputError => {
     err instanceof ImageInputError ||
     (err && typeof err.code === "string" && err.code in ErrorCodes)
   );
+};
+
+/**
+ * 验证图片格式和大小（前置校验，在上传前调用）
+ */
+export const validateImageFile = async (
+  tempFile: TempFile
+): Promise<{ valid: boolean; error?: string }> => {
+  // 格式校验
+  const ext = getFileExtension(tempFile.path) as "jpg" | "jpeg" | "png";
+  if (!ext || !SupportedFormats.includes(ext)) {
+    return {
+      valid: false,
+      error: ErrorMessages[ErrorCodes.UNSUPPORTED_FORMAT],
+    };
+  }
+
+  // 大小校验
+  if (tempFile.size > FileSizeLimit.MAX_SIZE) {
+    const maxSizeMB = FileSizeLimit.MAX_SIZE / 1024 / 1024;
+    return {
+      valid: false,
+      error: `图片大小超过${maxSizeMB}MB，请选择较小的图片`,
+    };
+  }
+
+  return { valid: true };
+};
+
+/**
+ * 使用 SDK 的 FileAPI 上传图片
+ */
+export const uploadWithSDK = async (filePath: string): Promise<FileInfo> => {
+  // Cast filePath to File-like object for SDK compatibility
+  return await FileAPI.upload(filePath as unknown as File);
 };
 
 export const ImageInputService = {

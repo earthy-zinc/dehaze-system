@@ -197,5 +197,17 @@ func (r *AlgorithmRepository) FindVersionsByAlgorithmID(ctx context.Context, alg
 	return versions, nil
 }
 
+// ExistsByVersion 检查算法版本是否存在（查全表含软删行）
+func (r *AlgorithmRepository) ExistsByVersion(ctx context.Context, algorithmID int64, version string, excludeID ...int64) (bool, error) {
+	var count int64
+	query := r.db.Unscoped().WithContext(ctx).Model(&model.SysAlgorithmVersion{}).
+		Where("algorithm_id = ? AND version = ?", algorithmID, version)
+	if len(excludeID) > 0 {
+		query = query.Where("id != ?", excludeID[0])
+	}
+	err := query.Count(&count).Error
+	return count > 0, err
+}
+
 // Ensure AlgorithmRepository implements IAlgorithmRepository
 var _ IAlgorithmRepository = (*AlgorithmRepository)(nil)

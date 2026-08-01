@@ -38,8 +38,6 @@
 
 ### 2.2 算法导入/导出接口
 
-> 算法导入导出由**通用导入导出框架**统一调度，导出/导入范围为算法**元数据**（Excel/CSV），**不含模型权重文件**。模型权重文件托管在 nginx-dataset 静态服务，其上传/下载通过算法详情接口单独处理。模块名 `algorithm` 映射为复数路径 `/api/v1/algorithms`，与算法 CRUD 路径统一。通用框架详见 [任务管理/后端实现.md](../../基础模块/任务管理/后端实现.md)。
-
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/algorithms/_export` | GET | 导出算法元数据（简单查询，同步返回文件流或异步返回任务） | `sys:algorithm:export` | F-M05-007 |
@@ -51,15 +49,6 @@
 
 **导入限制**：文件格式 `.xlsx`/`.xls`/`.csv`，文件大小 ≤ 20MB
 
-**导入校验规则**：
-
-| 校验项 | 规则 | 错误码 |
-|--------|------|--------|
-| 文件格式 | 必须为 Excel/CSV | A0701 |
-| 必填字段 | name、type 不能为空 | A0706 |
-| 名称唯一 | 算法名称不能与已有算法重复 | A0707 |
-| 字段格式 | type 必须为合法算法类型 | A0707 |
-
 ### 2.3 性能监控接口
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
@@ -69,7 +58,7 @@
 
 ### 2.4 模型预测接口
 
-> **异步任务模式**：POST 立即返回 `{ logId, status: "processing" }`，前端通过 GET 轮询 `status` 字段直至 `completed` 或 `failed`。详见 [API 规范 §8.3](../../../02-系统架构/04-API规范.md#83-预测评估异步任务接口)。
+> **异步任务模式**：POST 立即返回 logId + status，前端通过 GET 轮询直至终态。
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
@@ -92,23 +81,13 @@
 
 ### 2.5 效果评估接口
 
-> **异步任务模式**：与模型预测同理，POST 立即返回 `{ logId, status: "processing" }`，前端通过 GET 轮询直至终态。
+> **异步任务模式**：与模型预测同理，POST 立即返回 logId + status，前端通过 GET 轮询直至终态。
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/evaluation` | POST | 提交评估任务，立即返回 logId + status=processing | - | F-M05-010 |
 | `/api/v1/evaluation/{taskId}` | GET | 轮询评估任务状态（processing/completed/failed） | - | F-M05-010 |
 | `/api/v1/evaluation/logs` | GET | 获取评估日志列表 | - | F-M05-010 |
-
-**POST 响应**（`EvaluationResultVO`）：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `logId` | Long | 评估日志 ID |
-| `status` | int | 任务状态：`1=处理中(processing)` / `2=已完成(completed)` / `3=失败(failed)` |
-| `metrics` | Map<String,Double> | 评估指标（GET 轮询 completed 时返回，如 `{"PSNR": 28.56, "SSIM": 0.92}`） |
-| `time` | int | 处理耗时（毫秒，GET 轮询 completed/failed 时返回） |
-| `errorMessage` | String | 失败错误信息（GET 轮询 failed 时返回） |
 
 ## 3. 权限标识汇总
 
@@ -125,7 +104,7 @@
 | `sys:algorithm:export` | 导出算法 | 按钮显示 + 接口校验 |
 | `sys:algorithm:monitor` | 性能监控 | 前端按钮显示控制（接口层当前未强制校验） |
 
-> **说明**：监控接口 `/{id}/monitor`、`/{id}/monitor/stats` 及版本历史查询 `/{id}/versions` 当前未加 `@PreAuthorize` 注解，登录用户即可访问。`sys:algorithm:monitor` 权限标识主要用于前端按钮显示控制。
+> **说明**：监控接口 `/{id}/monitor`、`/{id}/monitor/stats` 及版本历史查询 `/{id}/versions` 当前未强制校验，登录用户即可访问。`sys:algorithm:monitor` 权限标识主要用于前端按钮显示控制。
 
 ## 4. 业务错误码
 
@@ -143,36 +122,6 @@
 | `B0001` | 系统执行出错 | 通用业务异常（如驳回原因未填写、状态流转非法） |
 | `A0230` | token无效或已过期 | 未认证访问 |
 
-> **审核驳回**：驳回时未填写备注，后端抛出 `BusinessException("驳回时必须填写审核备注")`，错误码为 `B0001`。
 
-## 5. 关键接口参数说明
 
-### 5.1 审核算法（`PUT /api/v1/algorithms/{id}/audit`）
 
-请求体 `AlgorithmAuditForm`：
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `approved` | Boolean | ✅ | `true`=审核通过，`false`=审核驳回 |
-| `remark` | String | 驳回时必填 | 审核备注/驳回原因 |
-
-### 5.2 修改算法状态（`PUT /api/v1/algorithms/{id}/status`）
-
-请求体：`{"status": <Integer>}`，状态值参见 [需求规格 §2.1.3](./需求规格.md#213-算法状态)。
-
-### 5.3 版本回滚（`POST /api/v1/algorithms/{id}/rollback`）
-
-查询参数：`versionId=<Long>`（目标版本 ID）。
-
-## 6. 接口详情查询
-
-> 接口的详细请求参数、响应结构、Schema 定义可通过以下方式获取:
->
-> 1. **API 文档 MCP**: 调用 `read_project_oas_wht4eg` 获取 OpenAPI Spec
-> 2. **Swagger UI**: 访问 `/swagger-ui/index.html`(开发环境)
-
----
-
-**文档版本**: v1.2.0
-**最后更新**: 2026-07-30
-**维护者**: 技术文档团队

@@ -37,10 +37,10 @@ func (r *UserRepository) FindByID(ctx context.Context, id int64) (*model.SysUser
 	return &user, err
 }
 
-// ExistsByUsername 检查用户名是否存在
+// ExistsByUsername 检查用户名是否存在（含软删行）
 func (r *UserRepository) ExistsByUsername(ctx context.Context, username string, excludeID ...int64) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&model.SysUser{}).
+	query := r.db.WithContext(ctx).Unscoped().Model(&model.SysUser{}).
 		Where("username = ?", username)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
@@ -49,13 +49,13 @@ func (r *UserRepository) ExistsByUsername(ctx context.Context, username string, 
 	return count > 0, err
 }
 
-// ExistsByMobile 检查手机号是否存在
+// ExistsByMobile 检查手机号是否存在（含软删行）
 func (r *UserRepository) ExistsByMobile(ctx context.Context, mobile string, excludeID ...int64) (bool, error) {
 	if mobile == "" {
 		return false, nil
 	}
 	var count int64
-	query := r.db.WithContext(ctx).Model(&model.SysUser{}).
+	query := r.db.WithContext(ctx).Unscoped().Model(&model.SysUser{}).
 		Where("mobile = ?", mobile)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
@@ -64,13 +64,13 @@ func (r *UserRepository) ExistsByMobile(ctx context.Context, mobile string, excl
 	return count > 0, err
 }
 
-// ExistsByEmail 检查邮箱是否存在
+// ExistsByEmail 检查邮箱是否存在（含软删行）
 func (r *UserRepository) ExistsByEmail(ctx context.Context, email string, excludeID ...int64) (bool, error) {
 	if email == "" {
 		return false, nil
 	}
 	var count int64
-	query := r.db.WithContext(ctx).Model(&model.SysUser{}).
+	query := r.db.WithContext(ctx).Unscoped().Model(&model.SysUser{}).
 		Where("email = ?", email)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])

@@ -105,12 +105,21 @@ pnpm test:python
 
 **输出格式说明:**
 
-测试输出已配置为紧凑 JSON（`test/compact-reporter.ts`），每次运行仅输出一行：
+测试输出已配置为紧凑 JSON（`test/config/compact-reporter.ts`），终端每次运行仅输出一行：
 
 - 通过：`{"state":"passed","files":N,"passed":N,"failed":0,"skipped":N,"duration":"Xs"}`
-- 失败：追加 `failures` 数组（`file:行号`、完整用例名、错误信息、截断的 `expected/actual`、过滤后的堆栈帧）；收集错误与未捕获错误归入 `errors` 数组
+- 失败：追加 `failures` 数组（`file:行号`、完整用例名、`errors` 数组（语义顺序：断言错误、请求错误信息、堆栈帧））；收集错误与未捕获错误归入 `errors` 数组
 
-断言失败时直接依据 `failures` 中的 `file:行号` 与 `expected/actual` 定位，无需重跑获取详细输出。如需恢复默认排版输出（如本地人工排查），可临时加 `--reporter=default`。
+同时写入两份文件到 `test/logs/<backend>/`（同步轮转保留最近 10 份）：
+
+- `brief.json`：与终端输出一致的简要报告，供大模型查阅。
+- `detail.json`：NDJSON 格式详细日志（每行一个 JSON 对象），记录**全部用例（含通过）**，每例含完整请求/响应（含时间戳）/单用例耗时/完整错误堆栈，用于性能分析与疑难排查。
+
+**NDJSON 查询技巧**：每行一个 JSON 对象，第 1 行为 `type:"summary"` 汇总，后续每行为 `type:"test"` 用例记录。可用 `jq`、`grep`、Python `json.loads` 按行解析，支持按 `traceId`/`timestamp`/`url`/`state` 精确过滤，特别适合排查并行测试的时序问题。
+
+断言失败时直接依据 `failures` 中的 `file:行号` 与 `errors` 数组（断言错误/请求错误/堆栈）定位；疑难杂症查 `detail.json` 还原完整请求/响应/堆栈，无需重跑。如需恢复默认排版输出（如本地人工排查），可临时加 `--reporter=default`。
+
+**并行测试数据隔离原则**：测试文件最好可以并行运行。每个测试文件创建自己的专用数据。afterAll 清理时只删除本套件创建的资源（用 `datasetCreated` 等标记守卫），避免误删并行套件的数据。
 
 ### Step 6：修复测试用例问题
 

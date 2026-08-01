@@ -78,7 +78,7 @@ func NewClient(cfg options.Algorithm) *Client {
 			protection.WithMaxRequests(orElse(cfg.CircuitBreaker.MaxRequests, 0, 3)),
 		}
 		breaker = protection.NewBreaker(opts...)
-		logger.Info("算法客户端熔断器已启用",
+		logger.Debug("算法客户端熔断器已启用",
 			zap.Int("failureThreshold", orElse(cfg.CircuitBreaker.FailureThreshold, 0, 5)),
 			zap.Int("timeoutSeconds", orElse(cfg.CircuitBreaker.Timeout, 0, 30)))
 	}
@@ -229,7 +229,7 @@ func (c *Client) doSingleGet(
 		return fmt.Errorf("解析响应数据失败: %w", err)
 	}
 
-	logger.Info("算法服务调用成功",
+	logger.Debug("算法服务调用成功",
 		zap.String("url", url),
 		zap.Duration("elapsed", time.Since(start)))
 	return nil
@@ -259,7 +259,7 @@ func (c *Client) doPostWithRetry(
 				return ctx.Err()
 			case <-time.After(backoff):
 			}
-			logger.Info("算法服务重试",
+			logger.Debug("算法服务重试",
 				zap.String("url", url),
 				zap.Int("attempt", attempt),
 				zap.Duration("backoff", backoff))
@@ -352,7 +352,7 @@ func (c *Client) doSinglePost(
 		return fmt.Errorf("解析响应数据失败: %w", err)
 	}
 
-	logger.Info("算法服务调用成功",
+	logger.Debug("算法服务调用成功",
 		zap.String("path", path),
 		zap.Duration("elapsed", time.Since(start)))
 	return nil

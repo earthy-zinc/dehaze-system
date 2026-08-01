@@ -18,7 +18,7 @@ import (
 type IApiKeyService interface {
 	CreateApiKey(ctx context.Context, userID int64, req *dto.ApiKeyCreateRequest) (*dto.ApiKeyResult, error)
 	ListApiKeys(ctx context.Context, userID int64) ([]dto.ApiKeyResult, error)
-	DeleteApiKey(ctx context.Context, userID int64, id int64) error
+	Revoke(ctx context.Context, id int64, userID int64) error
 	AuthenticateByKey(ctx context.Context, rawKey string) (*model.UserAuthInfo, error)
 }
 
@@ -88,9 +88,9 @@ func (s *ApiKeyService) ListApiKeys(ctx context.Context, userID int64) ([]dto.Ap
 	return results, nil
 }
 
-func (s *ApiKeyService) DeleteApiKey(ctx context.Context, userID int64, id int64) error {
-	if err := s.apiKeyRepo.DeleteByID(ctx, id, userID); err != nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "API Key不存在或无权删除")
+func (s *ApiKeyService) Revoke(ctx context.Context, id int64, userID int64) error {
+	if err := s.apiKeyRepo.RevokeByID(ctx, id, userID); err != nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "API Key不存在或无权操作")
 	}
 	return nil
 }
@@ -105,8 +105,8 @@ func (s *ApiKeyService) AuthenticateByKey(ctx context.Context, rawKey string) (*
 	if apiKey == nil {
 		return nil, common.NewBizError(common.TOKEN_INVALID, "API Key无效")
 	}
-	if apiKey.Status != 1 {
-		return nil, common.NewBizError(common.TOKEN_INVALID, "API Key已禁用")
+	if apiKey.RevokedAt != nil {
+		return nil, common.NewBizError(common.TOKEN_INVALID, "API Key已被吊销")
 	}
 	if apiKey.ExpiresAt != nil && apiKey.ExpiresAt.Before(time.Now()) {
 		return nil, common.NewBizError(common.TOKEN_INVALID, "API Key已过期")

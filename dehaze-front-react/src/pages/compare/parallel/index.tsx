@@ -10,11 +10,22 @@ import {
 } from "@/store/modules/imageShowSlice";
 import {
   CloseOutlined,
+  DownloadOutlined,
   InboxOutlined,
   PlusOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Form, Radio, Slider, Switch, Upload } from "antd";
+import {
+  Button,
+  Card,
+  Form,
+  Modal,
+  Radio,
+  Slider,
+  Switch,
+  Upload,
+  message,
+} from "antd";
 import React, { useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styles from "./index.module.scss";
@@ -83,6 +94,12 @@ const Parallel: React.FC = () => {
     });
   };
 
+  // 导出报告相关状态
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportFormat, setReportFormat] = useState<"pdf" | "image">("pdf");
+  const [includeMetrics, setIncludeMetrics] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
   /** 清空所有图片并重置滤镜 */
   const handleReset = () => {
     images.forEach((item) => URL.revokeObjectURL(item.url));
@@ -134,6 +151,23 @@ const Parallel: React.FC = () => {
       backgroundSize: `${bgWidth}px ${bgHeight}px`,
       backgroundPosition: `-${bgX}px -${bgY}px`,
     };
+  };
+
+  // 打开导出报告弹窗
+  const handleOpenReportModal = () => {
+    setReportModalOpen(true);
+  };
+
+  // 关闭导出报告弹窗
+  const handleCloseReportModal = () => {
+    setReportModalOpen(false);
+    setExporting(false);
+  };
+
+  // 生成并下载对比报告（parallel 视图无预测日志，需先切换到 overlap 视图完成预测）
+  const handleGenerateReport = async () => {
+    message.warning("请先在重叠对比视图中完成去雾处理，再返回导出报告");
+    handleCloseReportModal();
   };
 
   // 滤镜CSS字符串
@@ -239,14 +273,25 @@ const Parallel: React.FC = () => {
           </Form>
 
           {images.length > 0 && (
-            <Button
-              block
-              icon={<ReloadOutlined />}
-              onClick={handleReset}
-              style={{ marginTop: 8 }}
-            >
-              清空并重置
-            </Button>
+            <>
+              <Button
+                block
+                icon={<ReloadOutlined />}
+                onClick={handleReset}
+                style={{ marginTop: 8 }}
+              >
+                清空并重置
+              </Button>
+              <Button
+                block
+                type="dashed"
+                icon={<DownloadOutlined />}
+                onClick={handleOpenReportModal}
+                style={{ marginTop: 8 }}
+              >
+                导出对比报告
+              </Button>
+            </>
           )}
         </Card>
       </div>
@@ -330,6 +375,48 @@ const Parallel: React.FC = () => {
           </div>
         )}
       </Card>
+
+      {/* 导出对比报告弹窗 */}
+      <Modal
+        title="导出对比报告"
+        open={reportModalOpen}
+        onCancel={handleCloseReportModal}
+        footer={null}
+        width={500}
+      >
+        <div style={{ padding: "8px 0" }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontWeight: 500, marginBottom: 8 }}>报告格式</div>
+            <Radio.Group
+              value={reportFormat}
+              onChange={(e) => setReportFormat(e.target.value)}
+              style={{ display: "block" }}
+            >
+              <Radio value="pdf">PDF 文档</Radio>
+              <Radio value="image">图片 (PNG)</Radio>
+            </Radio.Group>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontWeight: 500, marginBottom: 8 }}>报告选项</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Switch checked={includeMetrics} onChange={setIncludeMetrics} />
+                <span>包含性能指标</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button onClick={handleCloseReportModal}>取消</Button>
+            <Button
+              type="primary"
+              onClick={handleGenerateReport}
+              loading={exporting}
+            >
+              生成报告
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

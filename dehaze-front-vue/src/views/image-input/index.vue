@@ -16,11 +16,11 @@ const imageShowStore = useImageShowStore();
 
 // 历史记录存储 key
 const HISTORY_KEY = "dehaze:image-history";
-// 支持的文件格式
-const ACCEPT_FORMATS = ".jpg,.jpeg,.png,.webp";
-const ALLOWED_EXTS = [".jpg", ".jpeg", ".png", ".webp"];
-// 最大文件大小：100MB
-const MAX_FILE_SIZE = 100 * 1024 * 1024;
+// 支持的文件格式（仅 JPG / PNG）
+const ACCEPT_FORMATS = ".jpg,.jpeg,.png";
+const ALLOWED_EXTS = [".jpg", ".jpeg", ".png"];
+// 最大文件大小：20MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 // 当前激活的 Tab
 const activeTab = ref<"upload" | "camera" | "sample" | "history">("upload");
@@ -29,6 +29,7 @@ const activeTab = ref<"upload" | "camera" | "sample" | "history">("upload");
 const uploading = ref(false);
 const uploadProgress = ref(0);
 const previewUrl = ref("");
+const dragOver = ref(false);
 
 // ========== 样例面板状态 ==========
 const sampleUrls = computed(() => examples.map((item) => item.haze));
@@ -157,11 +158,12 @@ function handleImageSelected(
 function handleBeforeUpload(file: UploadRawFile): boolean {
   const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
   if (!ALLOWED_EXTS.includes(ext)) {
-    ElMessage.error("不支持该图片格式，请选择 JPG/PNG/WEBP 格式");
+    ElMessage.error(`仅支持 JPG / PNG 格式，当前为 ${ext.toUpperCase()} 格式`);
     return false;
   }
   if (file.size > MAX_FILE_SIZE) {
-    ElMessage.error("图片大小超过 100MB，请选择较小的图片");
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    ElMessage.error(`图片大小不能超过 20MB，当前大小为 ${sizeMB}MB`);
     return false;
   }
   return true;
@@ -265,12 +267,18 @@ onActivated(() => {
         <div class="panel upload-panel">
           <el-upload
             drag
+            class="upload-area"
+            :class="{ 'is-dragover': dragOver }"
             :accept="ACCEPT_FORMATS"
             :show-file-list="false"
             :auto-upload="true"
             :before-upload="handleBeforeUpload"
             :http-request="handleUploadRequest"
             :disabled="uploading"
+            @dragenter="dragOver = true"
+            @dragleave="dragOver = false"
+            @dragover="dragOver = true"
+            @drop="dragOver = false"
           >
             <el-icon class="el-icon--upload">
               <UploadFilled />
@@ -280,7 +288,7 @@ onActivated(() => {
             </div>
             <template #tip>
               <div class="el-upload__tip">
-                支持 JPG / PNG / WEBP 格式，文件大小不超过 100MB
+                仅支持 JPG / PNG 格式，单文件不超过 20MB
               </div>
             </template>
           </el-upload>
@@ -422,10 +430,20 @@ onActivated(() => {
   align-items: center;
   justify-content: flex-start;
 
-  :deep(.el-upload-dragger) {
-    width: 500px;
-    max-width: 100%;
-    padding: 40px 20px;
+  .upload-area {
+    :deep(.el-upload-dragger) {
+      width: 500px;
+      max-width: 100%;
+      padding: 40px 20px;
+      border-color: var(--el-border-color);
+      transition: all 0.3s ease;
+    }
+
+    :deep(.el-upload-dragger.is-dragover) {
+      background-color: rgb(var(--el-color-primary-rgb), 0.06);
+      border-color: var(--el-color-primary);
+      box-shadow: 0 0 20px rgb(var(--el-color-primary-rgb), 0.2);
+    }
   }
 
   .upload-progress {

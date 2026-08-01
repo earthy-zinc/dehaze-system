@@ -115,7 +115,7 @@ func (r *DatasetItemFileRepository) createOrReuseFile(ctx context.Context, tx *g
 	if fileType == "" {
 		fileType = getFileExtension(file.Name)
 		if fileType == "" {
-			fileType = getFileExtension(file.Path)
+			fileType = getFileExtension(file.ObjectName)
 		}
 	}
 
@@ -124,19 +124,18 @@ func (r *DatasetItemFileRepository) createOrReuseFile(ctx context.Context, tx *g
 		fileTypePtr = utils.StringPtr(fileType)
 	}
 
-	var urlPtr *string
-	if file.URL != "" {
-		urlPtr = utils.StringPtr(file.URL)
+	storage := file.Storage
+	if storage == "" {
+		storage = "minio"
 	}
 
 	now := time.Now()
 	newFile := model.SysFile{
 		BaseModel: model.BaseModel{CreatedAt: now, UpdatedAt: now},
 		Type:       fileTypePtr,
-		URL:        urlPtr,
 		Name:       file.Name,
-		ObjectName: file.Name,
-		Path:       file.Path,
+		ObjectName: file.ObjectName,
+		Storage:    storage,
 		Size:       fmt.Sprintf("%d", file.Size),
 		MD5:        file.MD5,
 	}

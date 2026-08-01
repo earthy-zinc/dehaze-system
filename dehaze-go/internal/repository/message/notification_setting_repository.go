@@ -6,6 +6,7 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type NotificationSettingRepository struct {
@@ -28,8 +29,11 @@ func (r *NotificationSettingRepository) FindByUserID(ctx context.Context, userID
 	return &s, nil
 }
 
-func (r *NotificationSettingRepository) Create(ctx context.Context, setting *model.SysNotificationSetting) error {
-	return r.db.WithContext(ctx).Create(setting).Error
+func (r *NotificationSettingRepository) Upsert(ctx context.Context, setting *model.SysNotificationSetting) error {
+	return r.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"deleted", "update_time"}),
+	}).Create(setting).Error
 }
 
 func (r *NotificationSettingRepository) Update(ctx context.Context, setting *model.SysNotificationSetting) error {

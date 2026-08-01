@@ -2,7 +2,7 @@ package role
 
 import (
 	"context"
-	"strings"
+	"encoding/json"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -22,6 +22,8 @@ import (
 const (
 	// ROOT_ROLE_CODE 超级管理员角色编码
 	ROOT_ROLE_CODE = "ROOT"
+	// ADMIN_ROLE_CODE 管理员角色编码
+	ADMIN_ROLE_CODE = "ADMIN"
 	// ROLE_PERMS_PREFIX Redis中角色权限缓存key前缀
 	ROLE_PERMS_PREFIX = "role:perms:"
 	// ROLE_PERMS_TTL 角色权限缓存过期时间（30分钟）
@@ -108,22 +110,26 @@ func (s *RoleService) GetOptions(ctx context.Context, isRoot bool) ([]vo.Option,
 
 // Create 创建角色
 func (s *RoleService) Create(ctx context.Context, form *bo.RoleFormBO) error {
-	// 检查编码是否重复
+	if form.Code == "" {
+		return common.NewBizError(common.PARAM_ERROR, "角色编码不能为空")
+	}
+
+	// 检查编码是否重复（查全表含软删行）
 	exists, err := s.roleRepo.ExistsByCode(ctx, form.Code)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "检查角色编码是否存在失败", err)
 	}
 	if exists {
-		return common.NewBizError(common.DATA_EXISTS, "角色编码已存在")
+		return common.NewBizError(common.DATA_EXISTS, "角色编码已被历史记录占用")
 	}
 
-	// 检查名称是否重复
+	// 检查名称是否重复（查全表含软删行）
 	exists, err = s.roleRepo.ExistsByName(ctx, form.Name)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "检查角色名称是否存在失败", err)
 	}
 	if exists {
-		return common.NewBizError(common.DATA_EXISTS, "角色名称已存在")
+		return common.NewBizError(common.DATA_EXISTS, "角色名称已被历史记录占用")
 	}
 
 	// 创建角色实体
@@ -166,13 +172,13 @@ func (s *RoleService) Update(ctx context.Context, id int64, form *bo.RoleFormBO)
 		return common.NewBizError(common.OPERATION_NOT_ALLOW, "超级管理员角色不可修改")
 	}
 
-	// 检查名称是否重复（排除自身）
+	// 检查名称是否重复（排除自身，查全表含软删行）
 	exists, err := s.roleRepo.ExistsByName(ctx, form.Name, id)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "检查角色名称是否存在失败", err)
 	}
 	if exists {
-		return common.NewBizError(common.DATA_EXISTS, "角色名称已存在")
+		return common.NewBizError(common.DATA_EXISTS, "角色名称已被历史记录占用")
 	}
 
 	// 更新角色
@@ -268,10 +274,10 @@ func (s *RoleService) Delete(ctx context.Context, ids []int64) error {
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "部分角色不存在")
 	}
 
-	// ROOT 角色保护
+	// 内置角色保护（ROOT / ADMIN 禁止删除）
 	for _, role := range roles {
-		if role.Code == ROOT_ROLE_CODE {
-			return common.NewBizError(common.OPERATION_NOT_ALLOW, "超级管理员角色不可删除")
+		if role.Code == ROOT_ROLE_CODE || role.Code == ADMIN_ROLE_CODE {
+			return common.NewBizError(common.OPERATION_NOT_ALLOW, "内置角色不可删除")
 		}
 	}
 
@@ -282,7 +288,7 @@ func (s *RoleService) Delete(ctx context.Context, ids []int64) error {
 	}
 	for _, role := range roles {
 		if userMap[role.ID] {
-			return common.NewBizError(common.BUSINESS_ERROR, "角色【"+role.Name+"】已分配用户，请先解除关联后删除")
+			return common.NewBizError(common.BUSINESS_ERROR, "该角色仍有用户关联，请先解绑")
 		}
 	}
 
@@ -387,6 +393,7 @@ func (s *RoleService) refreshRolePermsCache(ctx context.Context, roleCode string
 }
 
 // loadRolePermsToCache 加载角色权限到缓存（独立 Key + 独立 TTL）
+// 写入 JSON 字符串数组格式（如 ["perm1","perm2"] 或 []），与 Java/Python 端保持一致
 func (s *RoleService) loadRolePermsToCache(ctx context.Context, roleCode string) {
 	if s.cache == nil || roleCode == "" || s.menuRepo == nil {
 		return
@@ -398,9 +405,14 @@ func (s *RoleService) loadRolePermsToCache(ctx context.Context, roleCode string)
 		return
 	}
 
-	if len(perms) == 0 {
-		return
+	if perms == nil {
+		perms = []string{}
 	}
 
-	_ = s.cache.Set(ctx, rolePermsKey(roleCode), strings.Join(perms, ","), ROLE_PERMS_TTL)
+	data, err := json.Marshal(perms)
+	if err != nil {
+		logger.Error("序列化角色权限失败: " + err.Error())
+		return
+	}
+	_ = s.cache.Set(ctx, rolePermsKey(roleCode), string(data), ROLE_PERMS_TTL)
 }

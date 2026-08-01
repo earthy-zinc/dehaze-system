@@ -127,3 +127,19 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     # 反馈评价模块路由
     from app.router.feedback import router as feedback_router
     app.include_router(feedback_router)
+
+    # 推荐管理模块路由
+    from app.router.recommendation import router as recommendation_router
+    app.include_router(recommendation_router)
+
+    # 收藏管理模块路由
+    from app.router.favorite import router as favorite_router
+    app.include_router(favorite_router)
+
+    # 效果对比模块路由
+    from app.router.compare import router as compare_router
+    app.include_router(compare_router)
+
+    # 参数预设路由（去雾处理-参数预设）
+    from app.router.preset import router as preset_router
+    app.include_router(preset_router)

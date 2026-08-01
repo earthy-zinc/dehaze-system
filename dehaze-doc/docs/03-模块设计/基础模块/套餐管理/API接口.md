@@ -43,33 +43,7 @@
 
 > **导入导出接口**：套餐模块的导出（`GET/POST /api/v1/packages/_export`）、导入（`POST /api/v1/packages/_import`）、模板下载（`GET /api/v1/packages/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §8.2 通用CRUD接口模板。
 
-### 2.3 价格计算接口
 
-**路径**：`GET /api/v1/packages/calculate-price`
-
-**功能**：下单前预览价格明细，根据套餐促销活动和优惠券计算应付金额。后端重新计算，不信任前端传入金额。
-
-**请求参数**（Query）：
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| packageId | Long | ✅ | 套餐ID |
-| userCouponId | Long | ❌ | 用户优惠券实例ID，不传则不使用优惠券 |
-
-**响应结构**：`Result<PriceResult>`
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| originalPrice | Long | 原价（分） |
-| discountAmount | Long | 促销折扣金额（分） |
-| couponAmount | Long | 优惠券抵扣金额（分） |
-| payableAmount | Long | 应付金额（分） |
-
-**业务规则**：
-- 促销折扣取该套餐所有进行中活动的最大折扣值
-- 优惠券计算基数为 `salePrice - discountAmount`
-- `payableAmount = salePrice - discountAmount - couponAmount`，最小为 0
-- 优惠券状态必须为 1（未使用）或 4（已锁定），且未过期
 
 ## 3. 权限标识汇总
 

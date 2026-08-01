@@ -29,7 +29,7 @@ class ImageInputHistoryAPI {
     });
   }
 
-  /** 更新历史记录（如添加收藏） */
+  /** 更新历史记录 */
   static update(id: number, data: HistoryUpdateForm) {
     return request({
       url: `/api/v1/image-input/history/${id}`,

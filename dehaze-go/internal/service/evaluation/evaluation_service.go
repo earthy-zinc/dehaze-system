@@ -224,6 +224,42 @@ func (s *EvaluationService) GetLogByID(ctx context.Context, id int64) (*model.Sy
 	return log, nil
 }
 
+// GetUserMetricsPage 获取当前用户的评估指标历史（仅已完成状态）
+func (s *EvaluationService) GetUserMetricsPage(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) (*common.PageResult, error) {
+	list, total, err := s.repo.FindPageByUser(ctx, userID, algorithmID, pageNum, pageSize)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询评估指标历史失败", err)
+	}
+
+	type EvalMetricsVO struct {
+		ID          int64              `json:"id"`
+		AlgorithmID int64              `json:"algorithmId"`
+		PredURL     string             `json:"predUrl"`
+		GtURL       string             `json:"gtUrl"`
+		Time        int                `json:"time"`
+		Status      model.LogStatus    `json:"status"`
+		Metrics     map[string]float64 `json:"metrics"`
+		CreateTime  string             `json:"createTime"`
+	}
+	vos := make([]EvalMetricsVO, 0, len(list))
+	for _, log := range list {
+		vo := EvalMetricsVO{
+			ID:          log.ID,
+			AlgorithmID: log.AlgorithmID,
+			PredURL:     log.PredURL,
+			GtURL:       log.GtURL,
+			Time:        log.Time,
+			Status:      log.Status,
+			CreateTime:  log.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+		if log.Result != nil {
+			_ = json.Unmarshal([]byte(*log.Result), &vo.Metrics)
+		}
+		vos = append(vos, vo)
+	}
+	return &common.PageResult{List: vos, Total: total, Page: pageNum, PageSize: pageSize}, nil
+}
+
 // GetLogPage 分页查询评估日志
 func (s *EvaluationService) GetLogPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) (*common.PageResult, error) {
 	list, total, err := s.repo.FindPage(ctx, algorithmID, pageNum, pageSize)

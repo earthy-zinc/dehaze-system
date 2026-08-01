@@ -22,7 +22,6 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityPresentationBinding;
-import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.file.FileInfo;
@@ -171,7 +170,7 @@ public class PresentationActivity extends AppCompatActivity {
     private void showOriginalImage(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
         binding.ivOriginal.setVisibility(View.VISIBLE);
-        String resolved = DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl());
+        String resolved = fileInfo.getUrl();
         Glide.with(this).load(resolved)
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
@@ -207,7 +206,7 @@ public class PresentationActivity extends AppCompatActivity {
     private void onPredictionResult(PredResult result) {
         if (result == null) return;
         statePlaceholder.hide();
-        pagerAdapter.setResultUrl(DehazeSDK.getInstance().resolveUrl(result.getResultUrl()));
+        pagerAdapter.setResultUrl(result.getResultUrl());
         Long algorithmId = getCurrentAlgorithmId();
         if (algorithmId != null) {
             presentationViewModel.getAlgorithmDetail(algorithmId);
@@ -328,7 +327,7 @@ public class PresentationActivity extends AppCompatActivity {
 
         private void loadImage(String url) {
             if (url != null && !url.isEmpty()) {
-                Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(url))
+                Glide.with(this).load(url)
                         .placeholder(R.drawable.ic_image)
                         .error(R.drawable.ic_broken_image)
                         .into(imageView);

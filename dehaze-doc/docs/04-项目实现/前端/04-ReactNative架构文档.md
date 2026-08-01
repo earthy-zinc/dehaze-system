@@ -4,16 +4,62 @@
 
 > 构建运行、测试命令、部署说明见项目根目录 [README](/README.md)。
 
-## 1. 功能特性
+## 1. 架构图
 
-- 🔐 **Session 认证**：登录/Token 管理/权限校验
-- 🏠 **首页展示**：Hero 区、算法介绍、功能特性、工作流、技术规格、CTA
-- 🖼️ **图像输入**：本地上传、相机拍照、样张画廊、快速开始、历史记录
-- 🎯 **算法选择**：算法卡片、算法树、对比栏、对比弹窗
-- ⚙️ **去雾处理**：参数面板、处理进度、结果预览
-- 📊 **效果对比**：并排对比、重叠对比、放大镜、滤镜、指标评估
-- 📁 **数据集管理**：列表、详情、图片网格、类型筛选、图片查看器
-- 📋 **任务历史**：历史任务列表与详情
+```mermaid
+flowchart TB
+    subgraph Platform["平台层"]
+        iOS["iOS"]
+        Android["Android"]
+    end
+
+    subgraph UI["视图层"]
+        Pages["pages/ 业务页面"]
+        Layout["layout/ MainLayout/AppHeader/BottomTabBar/DrawerMenu/SideNav"]
+        Components["components/ 通用组件 (Badge/Button/Card/EmptyState/Icon/ImageLoader/Modal/Section)"]
+        FavoriteComp["components/ FavoriteButton"]
+        RecommendComp["components/ RecommendationWidget"]
+    end
+
+    subgraph State["状态管理"]
+        AuthCtx["AuthContext"]
+        AlgorithmCtx["AlgorithmContext"]
+        ImageCtx["ImageContext"]
+        FavoriteCtx["FavoriteContext"]
+    end
+
+    subgraph Navigation["路由层"]
+        Routes["routes/ 自研路由系统"]
+        Navigator["导航器 (类型安全)"]
+    end
+
+    subgraph API["API 层"]
+        SDK["config/sdk.ts"]
+        ApiModules["api/ 模块"]
+    end
+
+    subgraph Theme["主题层"]
+        Colors["colors"]
+        Spacing["spacing"]
+        Typography["typography"]
+    end
+
+    subgraph Backend["后端"]
+        REST["RESTful API"]
+    end
+
+    iOS --> UI
+    Android --> UI
+    Pages --> State
+    Pages --> Components
+    Layout --> Components
+    State --> SDK
+    SDK --> ApiModules
+    ApiModules --> REST
+    Routes --> Navigator
+    Navigator --> Pages
+    UI --> Theme
+```
 
 ## 2. 项目结构
 
@@ -48,18 +94,34 @@ dehaze-react-native/
 └── package.json
 ```
 
-## 3. 架构设计
+## 3. 核心功能
 
-- **框架**：React Native + TypeScript
-- **状态管理**：Context API（AuthContext/AlgorithmContext/ImageContext）
-- **网络层**：`config/sdk.ts` + `api/` 目录封装，统一 Token 注入
-- **路由**：自研路由配置（`routes/config.tsx`），支持导航器与类型安全
-- **主题**：统一的 colors/spacing/typography 设计令牌
-- **布局**：移动端 BottomTabBar + 桌面端 SideNav/DrawerMenu 响应式适配
+- Session 认证：登录/Token 管理/权限校验
+- 首页展示：Hero 区、算法介绍、功能特性、工作流、技术规格、CTA
+- 图像输入：本地上传、相机拍照、样张画廊、快速开始、历史记录
+- 算法选择：算法卡片、算法树、对比栏、对比弹窗、智能推荐
+- 去雾处理：参数面板、处理进度、结果预览、处理历史
+- 效果对比：并排对比、重叠对比、放大镜、滤镜、指标评估
+- 收藏管理：跨模块统一收藏、收藏聚合页、左滑删除
+- 推荐管理：推荐算法展示、推荐理由、一键使用
+- 数据集管理：列表、详情、图片网格、类型筛选、图片查看器
+- 任务历史：历史任务列表与详情
 
-## 4. 系统亮点
+## 4. 关键技术决策
 
-- 完整的移动端去雾业务链路（输入→选算法→处理→对比→历史）
-- 自研路由系统支持类型安全导航
-- 组件化程度高，通用组件覆盖 Badge/Button/Card/Modal/Icon 等基础能力
-- 通过 `useResponsive` hook 实现移动端/平板/桌面端响应式适配
+| 决策 | 选择 | 理由 |
+|------|------|------|
+| 框架 | React Native + TypeScript | iOS/Android 双平台原生体验 |
+| 状态管理 | Context API（AuthContext/AlgorithmContext/ImageContext/FavoriteContext） | 轻量级，无额外依赖 |
+| 路由 | 自研路由系统 | 类型安全导航，支持导航器配置 |
+| 网络层 | config/sdk.ts + api/ 封装 | 统一 Token 注入 |
+| 主题 | 统一设计令牌（colors/spacing/typography） | 全局一致视觉风格 |
+| 响应式适配 | useResponsive hook | 移动端/平板/桌面端自适应布局 |
+| 布局 | BottomTabBar（移动端） + SideNav/DrawerMenu（桌面端） | 按设备类型切换导航模式 |
+| 收藏状态同步 | FavoriteContext + AsyncStorage 持久化 | RN 端通过 Context 共享收藏状态，AsyncStorage 持久化离线可用；收藏按钮使用 TouchableOpacity + 触觉反馈（HapticFeedback）|
+| 推荐图片上传 | react-native-image-picker + 压缩 | RN 端通过原生模块访问相册/相机，上传前通过 react-native-image-resizer 压缩至 5MB 内，适配弱网环境 |
+
+## 5. 模块间交互
+
+- 通过 RESTful API 调用 Java/Go/Python 后端
+- 完整的移动端去雾业务链路：输入 -> 选算法 -> 处理 -> 对比 -> 历史

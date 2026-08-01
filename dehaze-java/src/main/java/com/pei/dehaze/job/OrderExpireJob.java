@@ -22,7 +22,7 @@ public class OrderExpireJob {
     public void expireOrders() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始执行订单超时取消检查...");
+            log.debug("开始执行订单超时取消检查...");
             orderService.expireOrders();
         } catch (Exception e) {
             log.error("订单超时取消处理失败", e);

@@ -2,6 +2,7 @@ package com.pei.dehaze.security.service;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
@@ -9,7 +10,7 @@ import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysRoleMenuService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.PatternMatchUtils;
 
@@ -31,7 +32,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PermissionService {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     private final SysRoleMenuService sysRoleMenuService;
 
@@ -114,13 +115,18 @@ public class PermissionService {
         List<String> missingRoleCodes = new ArrayList<>();
 
         // 1. 批量查询逐角色独立 Key
-        List<Object> rolePermsList = redisTemplate.opsForValue().multiGet(keys);
+        List<String> rolePermsList = stringRedisTemplate.opsForValue().multiGet(keys);
+        if (CollUtil.isEmpty(rolePermsList)) {
+            rolePermsList = Collections.emptyList();
+        }
 
         for (int i = 0; i < roleCodeList.size(); i++) {
-            Object rolePermsObj = rolePermsList.get(i);
-            if (rolePermsObj instanceof Set) {
-                @SuppressWarnings("unchecked")
-                Set<String> rolePerms = (Set<String>) rolePermsObj;
+            String rolePermsJson = rolePermsList.get(i);
+            if (rolePermsJson != null) {
+                Set<String> rolePerms = JSONUtil.parseArray(rolePermsJson)
+                        .stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toSet());
                 perms.addAll(rolePerms);
             } else {
                 // 该角色权限缺失，需要回源
@@ -188,14 +194,15 @@ public class PermissionService {
             try {
                 // refreshRolePermsCache 会先 delete 再 set，并设置独立 TTL
                 sysRoleMenuService.refreshRolePermsCache(roleCode);
-                // 从 Redis 读取回填的权限
-                Object rolePermsObj = redisTemplate.opsForValue()
+                // 从 Redis 读取回填的权限（纯 JSON 字符串数组）
+                String rolePermsJson = stringRedisTemplate.opsForValue()
                         .get(SecurityConstants.ROLE_PERMS_PREFIX + roleCode);
                 Set<String> rolePerms = new HashSet<>();
-                if (rolePermsObj instanceof Set) {
-                    @SuppressWarnings("unchecked")
-                    Set<String> casted = (Set<String>) rolePermsObj;
-                    rolePerms.addAll(casted);
+                if (rolePermsJson != null) {
+                    rolePerms = JSONUtil.parseArray(rolePermsJson)
+                            .stream()
+                            .map(Object::toString)
+                            .collect(Collectors.toSet());
                 }
                 newFuture.complete(rolePerms);
                 return rolePerms;

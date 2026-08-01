@@ -56,3 +56,34 @@ export function formatDateTime(
   )} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   return withSeconds ? `${base}:${pad(d.getSeconds())}` : base;
 }
+
+/**
+ * 数字格式化（千分位分隔）
+ */
+export function formatNumber(num: number): string {
+  return num.toLocaleString("zh-CN");
+}
+
+/**
+ * 数值转百分比
+ * @param value 0~1 之间的小数
+ * @param decimals 小数位数，默认 1
+ */
+export function formatPercent(value: number, decimals = 1): string {
+  return (value * 100).toFixed(decimals) + "%";
+}
+
+/**
+ * 截断文本并追加后缀
+ * @param text 原文本
+ * @param maxLength 最大长度
+ * @param suffix 截断后追加的后缀，默认 "..."
+ */
+export function truncateText(
+  text: string,
+  maxLength: number,
+  suffix = "..."
+): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + suffix;
+}

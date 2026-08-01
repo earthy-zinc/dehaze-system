@@ -1,7 +1,6 @@
 package com.pei.dehaze.common.util;
 
 import cn.hutool.core.date.DateUtil;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -21,9 +20,6 @@ public class FilePathBuilder {
     private static final String THUMBNAIL_PATH_FORMAT = "thumbnail/%s/%s.%s";
     private static final String EXPORT_PATH_FORMAT = "exports/%s.zip";
     private static final String DATE_FORMAT = "yyyyMMdd";
-
-    @Value("${file.baseUrl}")
-    private String baseUrl;
 
     /**
      * 构建当日上传路径
@@ -104,24 +100,5 @@ public class FilePathBuilder {
      */
     public String buildExportPath(String taskId) {
         return String.format(EXPORT_PATH_FORMAT, taskId);
-    }
-
-    /**
-     * 构建文件访问 URL
-     *
-     * @param objectName 对象名
-     * @return 完整 URL
-     */
-    public String buildUrl(String objectName) {
-        return baseUrl + "/" + objectName;
-    }
-
-    /**
-     * 获取基础 URL
-     *
-     * @return baseUrl
-     */
-    public String getBaseUrl() {
-        return baseUrl;
     }
 }

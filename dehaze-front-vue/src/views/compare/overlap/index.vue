@@ -3,13 +3,18 @@ import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { Arrayable } from "@vueuse/core";
-import { Algorithm, AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
+import {
+  Algorithm,
+  AlgorithmAPI,
+  ModelAPI,
+  CompareReportForm,
+} from "dehaze-sdk-js";
 
 interface MetricItem {
   label: string;
   value: number | string;
 }
-import { Setting } from "@element-plus/icons-vue";
+import { Setting, Picture, Download } from "@element-plus/icons-vue";
 
 const imageShowStore = useImageShowStore();
 
@@ -35,7 +40,63 @@ const state = reactive({
 });
 
 const algorithmInfo = ref<Algorithm | null>(null);
+const algorithmLoading = ref(false);
+const algorithmError = ref(false);
 const metrics = ref<MetricItem[]>();
+
+// Export report
+const reportDialogVisible = ref(false);
+const reportGenerating = ref(false);
+const lastLogId = ref(0);
+const reportForm = ref<CompareReportForm>({
+  logId: 0,
+  format: "pdf",
+  includeMetrics: true,
+  includeFilters: false,
+});
+
+function openReportDialog() {
+  reportForm.value.logId = lastLogId.value;
+  reportDialogVisible.value = true;
+}
+
+async function handleExportReport() {
+  if (reportForm.value.logId === 0) {
+    ElMessage.warning("当前没有可导出的对比记录");
+    return;
+  }
+  reportGenerating.value = true;
+  try {
+    const res = await ModelAPI.generateReport(reportForm.value);
+    if (!res.taskId) {
+      throw new Error("未返回任务ID");
+    }
+    // Poll for completion (status: 1=PROCESSING, 2=COMPLETED, 3=FAILED)
+    while (true) {
+      const status = await ModelAPI.getReportStatus(res.taskId);
+      if (status.status === 2) {
+        if (status.downloadUrl) {
+          const link = document.createElement("a");
+          link.href = status.downloadUrl;
+          link.download = `dehaze-report.${reportForm.value.format}`;
+          link.click();
+        } else {
+          ElMessage.success("报告生成完成，请前往任务中心下载");
+        }
+        break;
+      }
+      if (status.status === 3) {
+        throw new Error(status.errorMessage || "报告生成失败");
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    reportDialogVisible.value = false;
+  } catch (e: any) {
+    ElMessage.error("导出报告失败：" + (e.message || "未知错误"));
+  } finally {
+    reportGenerating.value = false;
+  }
+}
 
 const { imageInfo } = toRefs(imageShowStore);
 
@@ -107,12 +168,18 @@ onMounted(() => {
     ElMessage.error("不存在图像");
     return;
   }
+  algorithmLoading.value = true;
+  algorithmError.value = false;
   AlgorithmAPI.getAlgorithmInfoById(modelId.value)
     .then((res) => {
       algorithmInfo.value = res;
     })
     .catch((e: any) => {
+      algorithmError.value = true;
       ElMessage.error("获取算法信息失败：" + (e.message || "未知错误"));
+    })
+    .finally(() => {
+      algorithmLoading.value = false;
     });
 
   ModelAPI.evaluateAndWait({
@@ -121,9 +188,10 @@ onMounted(() => {
     gtUrl: gt.value.url,
   })
     .then((res) => {
-      if (res.status === "failed") {
+      if (res.status === 3) {
         throw new Error(res.errorMessage || "评估失败");
       }
+      lastLogId.value = (res as any).logId || 0;
       metrics.value = Object.entries(res.metrics || {}).map(
         ([label, value]) => ({
           label,
@@ -141,7 +209,14 @@ onMounted(() => {
   <div class="app-container">
     <el-card>
       <div class="evaluation-header">
-        <div></div>
+        <el-button
+          type="primary"
+          @click="openReportDialog"
+          :loading="reportGenerating"
+        >
+          <el-icon><Download /></el-icon>
+          导出对比报告
+        </el-button>
         <div class="title">图像效果评估</div>
         <el-popover :width="400" placement="bottom-start" trigger="click">
           <template #reference>
@@ -264,8 +339,28 @@ onMounted(() => {
             <el-descriptions-item :span="2" label="算法描述">
               {{ algorithmInfo?.description }}
             </el-descriptions-item>
-            <el-descriptions-item label="网络架构">
-              <div style="height: 105px"></div>
+            <el-descriptions-item :span="2" label="网络架构">
+              <div v-if="algorithmLoading" class="arch-loading">
+                <el-skeleton :rows="3" animated />
+              </div>
+              <div v-else-if="algorithmError" class="arch-empty">
+                <el-icon :size="32" color="#999"><Picture /></el-icon>
+                <div>网络架构图不可用</div>
+              </div>
+              <el-image
+                v-else
+                :src="algorithmInfo?.img || ''"
+                fit="contain"
+                class="network-arch"
+                preview-teleported
+              >
+                <template #error>
+                  <div class="arch-empty">
+                    <el-icon :size="32" color="#999"><Picture /></el-icon>
+                    <div>网络架构图加载失败</div>
+                  </div>
+                </template>
+              </el-image>
             </el-descriptions-item>
           </el-descriptions>
         </div>
@@ -283,6 +378,32 @@ onMounted(() => {
         </div>
       </div>
     </el-card>
+
+    <el-dialog v-model="reportDialogVisible" title="导出对比报告" width="420px">
+      <el-form label-position="top">
+        <el-form-item label="报告格式">
+          <el-radio-group v-model="reportForm.format">
+            <el-radio label="pdf">PDF</el-radio>
+            <el-radio label="image">图片 (PNG)</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="包含内容">
+          <el-checkbox v-model="reportForm.includeMetrics"
+            >包含评价指标</el-checkbox
+          >
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reportDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          @click="handleExportReport"
+          :loading="reportGenerating"
+        >
+          导出
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -330,5 +451,28 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
+
+.arch-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 105px;
+}
+
+.arch-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 105px;
+  font-size: 14px;
+  color: #999;
+}
+
+.network-arch {
+  max-height: 200px;
+  border-radius: 4px;
 }
 </style>

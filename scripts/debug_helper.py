@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import json
+import os
 import subprocess
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 USAGE = """
 DehazeSystem 调试辅助脚本
@@ -20,6 +22,22 @@ DehazeSystem 调试辅助脚本
     python debug_helper.py curl go /api/v1/users/page
 """
 
+
+def _load_env():
+    """加载项目根 .env 到 os.environ（不覆盖已 export 的环境变量）。"""
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if not env_path.is_file():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+_load_env()
+
 # 后端配置
 BACKENDS = {
     "java": {
@@ -34,7 +52,7 @@ BACKENDS = {
 }
 
 USERNAME = "admin"
-PASSWORD = "Dehaze@2026"
+PASSWORD = os.getenv("DEHAZE_PASSWORD", "Dehaze2026")
 
 BACKEND_NAMES = list(BACKENDS.keys())
 

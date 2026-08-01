@@ -3,13 +3,13 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/repository/dept"
 	"github.com/earthyzinc/dehaze-go/internal/service/import_export"
+	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -265,10 +265,7 @@ func (h *UserImportHandler) ImportBatch(rows []map[string]interface{}, options i
 		mobile, _ := row["mobile"].(string)
 		email, _ := row["email"].(string)
 
-		defaultPassword := os.Getenv("DEHAZE_PASSWORD")
-		if defaultPassword == "" {
-			defaultPassword = "Dehaze@2026"
-		}
+		defaultPassword := config.GetConfig().System.DefaultPassword
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
 		if err != nil {
 			failureCount++

@@ -72,7 +72,7 @@ func (a *ApiKeyApi) DeleteApiKey(c *gin.Context) {
 		return
 	}
 
-	if err := a.apiKeyService.DeleteApiKey(c.Request.Context(), userID, id); err != nil {
+	if err := a.apiKeyService.Revoke(c.Request.Context(), id, userID); err != nil {
 		_ = c.Error(err)
 		return
 	}

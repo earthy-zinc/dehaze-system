@@ -44,7 +44,7 @@ public class TaskCleanupJob {
     public void cleanupExpiredTasks() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始清理过期导出任务...");
+            log.debug("开始清理过期导出任务...");
 
             physicalDeleteTasks(
                     new LambdaQueryWrapper<SysTask>()
@@ -64,7 +64,7 @@ public class TaskCleanupJob {
                     "30天前已终止任务"
             );
 
-            log.info("清理过期导出任务完成");
+            log.debug("清理过期导出任务完成");
         } finally {
             SystemSecurityContext.clearContext();
         }
@@ -80,7 +80,7 @@ public class TaskCleanupJob {
     public void cleanupStuckTasks() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始清理僵死任务...");
+            log.debug("开始清理僵死任务...");
 
             markStuckTasksAsFailed(
                     new LambdaQueryWrapper<SysTask>()
@@ -96,7 +96,7 @@ public class TaskCleanupJob {
                     "任务超时（24h未启动），已被系统自动回收"
             );
 
-            log.info("清理僵死任务完成");
+            log.debug("清理僵死任务完成");
         } finally {
             SystemSecurityContext.clearContext();
         }
@@ -121,7 +121,7 @@ public class TaskCleanupJob {
                 redisTemplate.delete(TaskConstants.TASK_CACHE_PREFIX + task.getTaskId());
             }
         }
-        log.info("清理{}: 共清理{}条记录", logLabel, tasks.size());
+        log.debug("清理{}: 共清理{}条记录", logLabel, tasks.size());
     }
 
     /**

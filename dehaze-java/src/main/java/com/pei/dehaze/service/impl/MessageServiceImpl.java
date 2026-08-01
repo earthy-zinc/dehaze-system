@@ -364,7 +364,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
         List<SysUser> users = userMapper.selectList(new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getStatus, 1));
         if (users.isEmpty()) {
-            log.info("未读数缓存刷新: 无活跃用户");
+            log.debug("未读数缓存刷新: 无活跃用户");
             return;
         }
         int refreshed = 0;
@@ -377,6 +377,6 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
                     count == 0 ? Duration.ofMinutes(5) : Duration.ofHours(1));
             refreshed++;
         }
-        log.info("未读数缓存刷新完成: 共刷新{}个用户", refreshed);
+        log.debug("未读数缓存刷新完成: 共刷新{}个用户", refreshed);
     }
 }

@@ -46,7 +46,7 @@ func (r *DatasetStatsRepository) CountSceneDistributionBatch(ctx context.Context
 	err := r.db.WithContext(ctx).Table("sys_item_file sif").
 		Select(`
 			sdi.dataset_id AS dataset_id,
-			COALESCE(NULLIF(sif.scene_type, ''), '未分类') AS key,
+			COALESCE(NULLIF(sif.scene_type, ''), '未分类') AS dist_key,
 			COUNT(*) AS cnt
 		`).
 		Joins("JOIN sys_dataset_item sdi ON sif.item_id = sdi.id").
@@ -66,7 +66,7 @@ func (r *DatasetStatsRepository) CountHazeDistributionBatch(ctx context.Context,
 	err := r.db.WithContext(ctx).Table("sys_item_file sif").
 		Select(`
 			sdi.dataset_id AS dataset_id,
-			COALESCE(NULLIF(sif.haze_level, ''), '未标注') AS key,
+			COALESCE(NULLIF(sif.haze_level, ''), '未标注') AS dist_key,
 			COUNT(*) AS cnt
 		`).
 		Joins("JOIN sys_dataset_item sdi ON sif.item_id = sdi.id").
@@ -86,7 +86,7 @@ func (r *DatasetStatsRepository) CountFormatDistributionBatch(ctx context.Contex
 	err := r.db.WithContext(ctx).Table("sys_item_file sif").
 		Select(`
 			sdi.dataset_id AS dataset_id,
-			COALESCE(sf.type, '未知') AS key,
+			COALESCE(sf.type, '未知') AS dist_key,
 			COUNT(*) AS cnt
 		`).
 		Joins("JOIN sys_dataset_item sdi ON sif.item_id = sdi.id").

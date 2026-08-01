@@ -59,7 +59,7 @@ class RoleImportHandler(ImportHandler):
                 if not code:
                     raise ValueError("角色编码为空")
                 if await role_repository.check_code_exists(db, code):
-                    raise ValueError(f"角色编码已存在: {code}")
+                    raise ValueError(f"角色编码已被历史记录占用: {code}")
 
                 role = SysRole(
                     name=name,

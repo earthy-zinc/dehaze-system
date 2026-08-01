@@ -115,7 +115,7 @@
   // 语言特定
   // ============================================================
   "[python]": {
-    "editor.defaultFormatter": "ms-python.python",
+    "editor.defaultFormatter": "ms-python.autopep8",
     "editor.tabSize": 4
   },
   "[go]": {

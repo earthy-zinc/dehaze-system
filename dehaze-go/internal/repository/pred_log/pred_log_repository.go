@@ -19,6 +19,7 @@ type IPredLogRepository interface {
 	UpdateResult(ctx context.Context, id int64, status model.LogStatus, predURL, predMD5 string, time int) error
 	UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error
 	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
+	CountByUserAndMonth(ctx context.Context, userID int64, year, month int) (int64, error)
 }
 
 // MonitorStats 算法监控统计原始数据
@@ -174,4 +175,16 @@ func (r *predLogRepository) GetDailyStats(ctx context.Context, algorithmID int64
 		return nil, err
 	}
 	return stats, nil
+}
+
+// CountByUserAndMonth 统计指定用户当月预测次数
+func (r *predLogRepository) CountByUserAndMonth(ctx context.Context, userID int64, year, month int) (int64, error) {
+	startTime := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	endTime := startTime.AddDate(0, 1, 0)
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.SysPredLog{}).
+		Where("create_by = ? AND create_time >= ? AND create_time < ?", userID, startTime, endTime).
+		Count(&count).Error
+	return count, err
 }

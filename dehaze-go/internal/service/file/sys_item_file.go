@@ -16,6 +16,7 @@ import (
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"go.uber.org/zap"
@@ -35,6 +36,7 @@ type ItemFileService struct {
 	fileService    *FileService
 
 	taskExecutor taskservice.AsyncTaskExecutor
+	taskService  *taskservice.TaskService
 }
 
 // NewItemFileService 创建项文件服务实例
@@ -44,6 +46,7 @@ func NewItemFileService(
 	datasetItemRepo datasetrepo.IDatasetItemRepository,
 	fileService *FileService,
 	taskExecutor taskservice.AsyncTaskExecutor,
+	taskService *taskservice.TaskService,
 ) *ItemFileService {
 	return &ItemFileService{
 		cache:           cache,
@@ -51,6 +54,7 @@ func NewItemFileService(
 		datasetItemRepo: datasetItemRepo,
 		fileService:     fileService,
 		taskExecutor:    taskExecutor,
+		taskService:     taskService,
 	}
 }
 
@@ -89,7 +93,7 @@ func (itemFileService *ItemFileService) SaveItemFile(ctx context.Context, itemId
 	}
 
 	// 构建返回对象
-	imageUrlVO = BuildImageUrlVO(&sysFile, &sysItemFile, "")
+	imageUrlVO = BuildImageUrlVO(&sysFile, &sysItemFile, itemFileService.fileService.GetURL(ctx, &sysFile))
 	imageUrlVO.ID = sysItemFile.ID
 	imageUrlVO.ItemID = itemId
 	imageUrlVO.DatasetID = datasetID
@@ -161,15 +165,16 @@ func (itemFileService *ItemFileService) GetImageUrlVOs(ctx context.Context, item
 			continue
 		}
 
-		imageUrlVO := BuildImageUrlVO(&sysFile, &itemFile, "")
+		url := itemFileService.fileService.GetURL(ctx, &sysFile)
+		imageUrlVO := BuildImageUrlVO(&sysFile, &itemFile, url)
 		imageUrlVO.ID = itemFile.ID
 		imageUrlVO.ItemID = itemFile.ItemID
 		imageUrlVO.DatasetID = datasetID
 
-		// 设置缩略图URL
+		// 设置缩略图URL（运行时拼接）
 		if itemFile.ThumbnailFileID != nil {
 			if thumbFile, ok := fileMap[*itemFile.ThumbnailFileID]; ok {
-				imageUrlVO.ThumbnailURL = utils.StringVal(thumbFile.URL)
+				imageUrlVO.ThumbnailURL = itemFileService.fileService.GetURL(ctx, &thumbFile)
 			}
 		}
 
@@ -300,15 +305,15 @@ func (itemFileService *ItemFileService) GetItemFileById(ctx context.Context, ite
 	}
 
 	// 构建 ImageUrlVO
-	imageUrlVO = BuildImageUrlVO(&sysFile, itemFile, "")
+	imageUrlVO = BuildImageUrlVO(&sysFile, itemFile, itemFileService.fileService.GetURL(ctx, &sysFile))
 	imageUrlVO.ID = itemFile.ID
 	imageUrlVO.ItemID = itemFile.ItemID
 	imageUrlVO.DatasetID = datasetID
 
-	// 设置缩略图URL
+	// 设置缩略图URL（运行时拼接）
 	if itemFile.ThumbnailFileID != nil {
 		if thumbFile, err := itemFileService.fileService.GetFileById(ctx, *itemFile.ThumbnailFileID); err == nil {
-			imageUrlVO.ThumbnailURL = utils.StringVal(thumbFile.URL)
+			imageUrlVO.ThumbnailURL = itemFileService.fileService.GetURL(ctx, &thumbFile)
 		}
 	}
 
@@ -376,28 +381,24 @@ func (itemFileService *ItemFileService) UpdateThumbnail(ctx context.Context, ite
 
 // submitThumbnailTask 提交缩略图生成任务
 func (itemFileService *ItemFileService) submitThumbnailTask(ctx context.Context, itemID, fileID, itemFileID int64) {
-	taskIDStr := fmt.Sprintf("thumb_%d_%d", fileID, itemFileID)
-
-	if itemFileService.taskExecutor == nil {
-		logger.Error("任务执行器未初始化")
+	if itemFileService.taskExecutor == nil || itemFileService.taskService == nil {
+		logger.Error("任务执行器或任务服务未初始化")
 		return
 	}
 
+	userID := database.GetUserID(ctx)
 	payload := taskservice.ThumbnailTaskPayload{
 		ItemID:     itemID,
 		FileID:     fileID,
 		ItemFileID: itemFileID,
 	}
-	msg := taskservice.TaskMessage{
-		TaskID:    taskIDStr,
-		TaskType:  "thumbnail",
-		Total:     1,
-		Payload:   payload,
-		CreatedAt: time.Now(),
+	task, err := itemFileService.taskService.CreateTask(ctx, "thumbnail", payload, userID, "")
+	if err != nil {
+		logger.Error("创建缩略图任务失败", zap.Int64("fileID", fileID), zap.Error(err))
+		return
 	}
-	if err := itemFileService.taskExecutor.PublishTask(ctx, msg); err != nil {
-		logger.Error("提交缩略图任务失败", zap.String("taskID", taskIDStr), zap.Error(err))
-	}
+	// CreateTask 已内部调用 PublishTask，无需重复发布
+	logger.Debug("缩略图任务已提交", zap.Int64("dbTaskID", task.ID), zap.String("taskID", task.TaskID))
 }
 
 
@@ -451,12 +452,9 @@ func (itemFileService *ItemFileService) invalidateDatasetStatsCache(ctx context.
 // ========== 辅助函数 ==========
 
 // BuildImageUrlVO 从 SysFile 和 SysItemFile 构建 ImageUrlVO 的公共字段
-// url 参数用于覆盖 URL（当 URL 不是直接从 SysFile.URL 获取时，如来自预查询的 map）；为空时使用 file.URL
+// url 参数由调用方通过 FileService.GetURL 运行时拼接传入
 // 注意：ID/ItemID/DatasetID/ThumbnailURL 由调用方按需设置
 func BuildImageUrlVO(file *model.SysFile, itemFile *model.SysItemFile, url string) vo.ImageUrlVO {
-	if url == "" && file != nil {
-		url = utils.StringVal(file.URL)
-	}
 	result := vo.ImageUrlVO{
 		Type:        itemFile.Type,
 		URL:         url,

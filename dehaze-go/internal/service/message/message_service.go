@@ -283,7 +283,7 @@ func (s *MessageService) CleanupExpired(ctx context.Context) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "清理过期消息失败", err)
 	}
 	if total > 0 {
-		logger.Info("过期消息清理完成", zap.Int64("count", total))
+		logger.Debug("过期消息清理完成", zap.Int64("count", total))
 	}
 	return nil
 }
@@ -298,7 +298,7 @@ func (s *MessageService) RefreshUnreadCountCache(ctx context.Context) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询活跃用户失败", err)
 	}
 	if len(userIDs) == 0 {
-		logger.Info("未读数缓存刷新: 无活跃用户")
+		logger.Debug("未读数缓存刷新: 无活跃用户")
 		return nil
 	}
 	if s.cache == nil {
@@ -324,7 +324,7 @@ func (s *MessageService) RefreshUnreadCountCache(ctx context.Context) error {
 		}
 		refreshed++
 	}
-	logger.Info("未读数缓存刷新完成", zap.Int("refreshed", refreshed))
+	logger.Debug("未读数缓存刷新完成", zap.Int("refreshed", refreshed))
 	return nil
 }
 

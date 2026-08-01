@@ -22,7 +22,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "lint": "pnpm lint:eslint && pnpm lint:stylelint && pnpm lint:prettier",
-    "lint:eslint": "eslint --fix ./src/**/*.{ts,js,vue}",
+    "lint:eslint": "eslint --fix ./src/**/*.{ts,vue}",
     "lint:prettier": "prettier --write \"**/*.{js,cjs,ts,json,tsx,css,less,scss,vue,html,md}\"",
     "lint:stylelint": "stylelint  \"**/*.{css,scss,vue}\" --fix",
     "lint:lint-staged": "lint-staged",

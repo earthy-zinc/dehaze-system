@@ -80,6 +80,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 初始化数据库
     await init_db()
 
+    # 初始化系统预设种子数据
+    from app.service.preset_service import preset_service
+    await preset_service.seed_system_presets()
+
     # 初始化 Redis 连接并进行健康检查
     redis = await get_redis_client()
     app.state.redis = redis

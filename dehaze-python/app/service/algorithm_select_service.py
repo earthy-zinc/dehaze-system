@@ -1,16 +1,16 @@
 """
-算法选择服务 —— 智能推荐 / 收藏 / 对比
+算法选择服务 —— 算法树 / 详情 / 测试 / 搜索 / 对比
 """
+import asyncio
 import logging
 from typing import Any, Optional
 
-from sqlalchemy import select, delete, desc
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import BusinessException
 from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.models.entity.sys_algorithm import SysAlgorithm
-from app.models.entity.sys_algorithm_favorite import SysAlgorithmFavorite
 from app.repository.algorithm_repository import AlgorithmStatus
 from app.utils.datetime_utils import format_time
 
@@ -21,160 +21,233 @@ class AlgorithmSelectService:
     """算法选择服务"""
 
     @staticmethod
-    async def recommend(
-        db: AsyncSession,
-        image_url: str,
-        top_n: int = 3,
-    ) -> list[dict[str, Any]]:
-        """
-        智能推荐算法
-
-        基于已发布算法的启发式评分返回 Top N 推荐。
-        特征权重（文档要求）:
-        - 雾霾浓度 30%
-        - 场景类型 20%
-        - 光照 15%
-        - 复杂度 10%
-        - 颜色 10%
-        - 分辨率 5%
-        - 用户偏好 10%
-        """
-        stmt = select(SysAlgorithm).where(SysAlgorithm.status == AlgorithmStatus.PUBLISHED)
+    async def get_algorithm_tree(db: AsyncSession) -> list[dict[str, Any]]:
+        """获取算法选择树（仅已发布状态）"""
+        stmt = (
+            select(SysAlgorithm)
+            .where(
+                SysAlgorithm.status == AlgorithmStatus.PUBLISHED,
+                SysAlgorithm.deleted == 0,
+            )
+            .order_by(SysAlgorithm.parent_id, SysAlgorithm.id)
+        )
         result = await db.execute(stmt)
         algorithms = list(result.scalars().all())
 
         if not algorithms:
             return []
 
-        scored = []
+        # 收集父节点ID（即分类节点）
+        parent_ids = {a.parent_id for a in algorithms if a.parent_id and a.parent_id > 0}
+
+        # 构建节点映射
+        node_map: dict[int, dict] = {}
         for algo in algorithms:
-            score = 70.0  # 基础分
-            reason_parts = []
-
-            # 深度学习类算法优先（适合处理重雾）
-            algo_type = (algo.type or "").lower()
-            if "深度学习" in algo_type or "deep" in algo_type or "learning" in algo_type:
-                score += 15
-                reason_parts.append("深度学习算法，去雾效果好")
-            elif "传统" in algo_type or "tradition" in algo_type or "dcp" in (algo.import_path or "").lower():
-                score += 8
-                reason_parts.append("传统算法，速度快")
-
-            # 算法名称中包含关键词加分
-            name_lower = (algo.name or "").lower()
-            if "former" in name_lower or "transformer" in name_lower:
-                score += 5
-                reason_parts.append("Transformer 架构，性能优秀")
-            if "ridcp" in name_lower:
-                score += 5
-                reason_parts.append("支持真实场景去雾")
-
-            scored.append({
-                "algorithmId": algo.id,
-                "algorithmName": algo.name,
-                "score": min(score, 100),
-                "reason": "；".join(reason_parts) if reason_parts else "综合推荐",
+            node_map[algo.id] = {
+                "id": algo.id,
+                "name": algo.name,
+                "parentId": algo.parent_id or 0,
                 "type": algo.type,
+                "isLeaf": algo.parent_id is not None and algo.parent_id > 0,
+                "children": [],
+            }
+
+        # 构建树
+        tree: list[dict] = []
+        for algo in algorithms:
+            node = node_map[algo.id]
+            parent_id = algo.parent_id or 0
+
+            if parent_id == 0 or parent_id not in node_map:
+                # 顶层节点（分类节点或直接挂在根下的算法）
+                if algo.id not in parent_ids:
+                    # 是叶子算法节点（不在任何节点作为父节点）
+                    node["isLeaf"] = True
+                else:
+                    node["isLeaf"] = False
+                tree.append(node)
+            else:
+                # 挂到父节点下
+                parent_node = node_map[parent_id]
+                parent_node["isLeaf"] = False
+                parent_node["children"].append(node)
+
+        # 清理空 children
+        def clean_children(nodes):
+            for n in nodes:
+                if n["children"]:
+                    clean_children(n["children"])
+                else:
+                    n.pop("children", None)
+                # 移除临时字段
+                n.pop("parentId", None)
+            return nodes
+
+        return clean_children(tree)
+
+    @staticmethod
+    async def get_algorithm_detail(db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
+        """获取算法详情（含评分、使用次数）"""
+        stmt = (
+            select(SysAlgorithm)
+            .where(
+                SysAlgorithm.id == algorithm_id,
+                SysAlgorithm.deleted == 0,
+            )
+        )
+        result = await db.execute(stmt)
+        algo = result.scalar_one_or_none()
+
+        if not algo:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
+
+        if algo.status != AlgorithmStatus.PUBLISHED:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法未发布")
+
+        # 计算平均评分
+        avg_rating = await AlgorithmSelectService._get_avg_rating(db, algorithm_id)
+
+        # 计算使用次数
+        usage_count = await AlgorithmSelectService._get_usage_count(db, algorithm_id)
+
+        return {
+            "id": algo.id,
+            "name": algo.name,
+            "type": algo.type,
+            "description": algo.description,
+            "img": algo.img,
+            "params": algo.params,
+            "flops": algo.flops,
+            "size": algo.size,
+            "avgRating": round(avg_rating, 1),
+            "usageCount": usage_count,
+        }
+
+    @staticmethod
+    async def test_algorithm(
+        db: AsyncSession,
+        algorithm_id: int,
+        image_url: str,
+        user_id: Optional[int] = None,
+    ) -> dict[str, Any]:
+        """上传图片测试算法效果（同步等待结果，超时返回 B0100）"""
+        # 校验算法存在且已发布
+        stmt = (
+            select(SysAlgorithm)
+            .where(
+                SysAlgorithm.id == algorithm_id,
+                SysAlgorithm.deleted == 0,
+            )
+        )
+        result = await db.execute(stmt)
+        algo = result.scalar_one_or_none()
+
+        if not algo:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
+
+        if algo.status != AlgorithmStatus.PUBLISHED:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法未发布")
+
+        # 校验图片格式（仅允许常见图片格式）
+        image_url_lower = image_url.lower()
+        allowed_extensions = (".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".tif")
+        if not any(image_url_lower.endswith(ext) or f".{ext}?" in image_url_lower or f".{ext}&" in image_url_lower for ext in allowed_extensions):
+            # 尝试从URL路径提取扩展名
+            has_valid_ext = False
+            for ext in allowed_extensions:
+                if ext in image_url_lower:
+                    has_valid_ext = True
+                    break
+            if not has_valid_ext:
+                raise BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "文件格式不支持")
+
+        # 调用预测服务
+        from app.service.prediction_service import prediction_service
+
+        try:
+            pred_result = await asyncio.wait_for(
+                prediction_service.predict(
+                    algorithm_id=algorithm_id,
+                    image_url=image_url,
+                    user_id=user_id,
+                    skip_quota_check=True,  # 测试不计入配额
+                ),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            raise BusinessException(ResultCode.SYSTEM_EXECUTION_TIMEOUT, "算法测试超时，请稍后重试")
+
+        return {
+            "resultUrl": pred_result.get("resultUrl", ""),
+            "processTime": pred_result.get("time", 0),
+        }
+
+    @staticmethod
+    async def search_algorithms(
+        db: AsyncSession,
+        keyword: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """搜索算法（关键词/拼音/标签，仅已发布）"""
+        stmt = (
+            select(SysAlgorithm)
+            .where(
+                SysAlgorithm.status == AlgorithmStatus.PUBLISHED,
+                SysAlgorithm.deleted == 0,
+            )
+        )
+
+        if keyword:
+            kw = f"%{keyword}%"
+            stmt = stmt.where(
+                SysAlgorithm.name.ilike(kw) | SysAlgorithm.description.ilike(kw)
+            )
+
+        stmt = stmt.order_by(SysAlgorithm.id)
+        result = await db.execute(stmt)
+        algorithms = list(result.scalars().all())
+
+        search_results = []
+        for algo in algorithms:
+            avg_rating = await AlgorithmSelectService._get_avg_rating(db, algo.id)
+            search_results.append({
+                "id": algo.id,
+                "name": algo.name,
+                "type": algo.type,
+                "description": algo.description,
+                "avgRating": round(avg_rating, 1),
             })
 
-        scored.sort(key=lambda x: x["score"], reverse=True)
-        return scored[:top_n]
-
-    # ── 收藏 ──────────────────────────────────────
-
-    @staticmethod
-    async def add_favorite(db: AsyncSession, user_id: int, algorithm_id: int) -> int:
-        """添加收藏（幂等：已收藏则返回已有记录ID）"""
-        # 校验算法存在
-        stmt = select(SysAlgorithm).where(SysAlgorithm.id == algorithm_id)
-        result = await db.execute(stmt)
-        if not result.scalar_one_or_none():
-            raise BusinessException("算法不存在", ResultCode.RESOURCE_NOT_FOUND.code)
-
-        # 检查是否已收藏
-        existing = await AlgorithmSelectService._get_favorite(db, user_id, algorithm_id)
-        if existing:
-            return existing.id
-
-        favorite = SysAlgorithmFavorite(user_id=user_id, algorithm_id=algorithm_id)
-        db.add(favorite)
-        await db.flush()
-        await db.refresh(favorite)
-        return favorite.id
-
-    @staticmethod
-    async def remove_favorite(db: AsyncSession, user_id: int, algorithm_id: int) -> bool:
-        """取消收藏"""
-        stmt = (
-            delete(SysAlgorithmFavorite)
-            .where(SysAlgorithmFavorite.user_id == user_id)
-            .where(SysAlgorithmFavorite.algorithm_id == algorithm_id)
-        )
-        result = await db.execute(stmt)
-        return result.rowcount > 0
-
-    @staticmethod
-    async def _get_favorite(
-        db: AsyncSession,
-        user_id: int,
-        algorithm_id: int,
-    ) -> Optional[SysAlgorithmFavorite]:
-        """查询是否已收藏"""
-        stmt = (
-            select(SysAlgorithmFavorite)
-            .where(SysAlgorithmFavorite.user_id == user_id)
-            .where(SysAlgorithmFavorite.algorithm_id == algorithm_id)
-        )
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    @staticmethod
-    async def list_favorites(db: AsyncSession, user_id: int) -> list[dict[str, Any]]:
-        """收藏列表"""
-        stmt = (
-            select(SysAlgorithmFavorite, SysAlgorithm.name)
-            .join(SysAlgorithm, SysAlgorithmFavorite.algorithm_id == SysAlgorithm.id, isouter=True)
-            .where(SysAlgorithmFavorite.user_id == user_id)
-            .order_by(desc(SysAlgorithmFavorite.id))
-        )
-        result = await db.execute(stmt)
-        rows = result.all()
-        return [
-            {
-                "id": fav.id,
-                "userId": fav.user_id,
-                "algorithmId": fav.algorithm_id,
-                "algorithmName": algo_name,
-                "createTime": format_time(fav.create_time),
-            }
-            for fav, algo_name in rows
-        ]
-
-    # ── 对比 ──────────────────────────────────────
+        return search_results
 
     @staticmethod
     async def compare(
         db: AsyncSession,
         algorithm_ids: list[int],
-        image_url: Optional[str] = None,
     ) -> list[dict[str, Any]]:
-        """
-        算法对比
+        """算法对比（最多3个）"""
+        if len(algorithm_ids) > 3:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "算法对比数量不能超过3个")
 
-        返回多个算法的基本信息和（可选）处理结果。
-        实际去雾处理由前端调用 /prediction 接口完成，此处仅返回算法元数据。
-        """
-        stmt = select(SysAlgorithm).where(SysAlgorithm.id.in_(algorithm_ids))
+        if len(algorithm_ids) < 1:
+            return []
+
+        stmt = select(SysAlgorithm).where(
+            SysAlgorithm.id.in_(algorithm_ids),
+            SysAlgorithm.deleted == 0,
+        )
         result = await db.execute(stmt)
         algorithms = list(result.scalars().all())
 
-        # 按请求顺序返回
         algo_map = {a.id: a for a in algorithms}
         result_list = []
         for aid in algorithm_ids:
             algo = algo_map.get(aid)
             if not algo:
                 continue
+
+            avg_rating = await AlgorithmSelectService._get_avg_rating(db, algo.id)
+            usage_count = await AlgorithmSelectService._get_usage_count(db, algo.id)
+
             result_list.append({
                 "algorithmId": algo.id,
                 "algorithmName": algo.name,
@@ -182,8 +255,35 @@ class AlgorithmSelectService:
                 "params": algo.params,
                 "flops": algo.flops,
                 "description": algo.description,
-                "status": algo.status,
-                "resultUrl": None,  # 实际结果需前端调用 /prediction
-                "processTime": None,
+                "avgRating": round(avg_rating, 1),
+                "usageCount": usage_count,
             })
+
         return result_list
+
+    @staticmethod
+    async def _get_avg_rating(db: AsyncSession, algorithm_id: int) -> float:
+        """获取算法平均评分"""
+        from app.models.entity.sys_rating import SysRating
+        stmt = (
+            select(func.avg(SysRating.rating))
+            .where(
+                SysRating.algorithm_id == algorithm_id,
+                SysRating.deleted == 0,
+            )
+        )
+        result = await db.execute(stmt)
+        avg = result.scalar()
+        return float(avg) if avg else 0.0
+
+    @staticmethod
+    async def _get_usage_count(db: AsyncSession, algorithm_id: int) -> int:
+        """获取算法使用次数（预测日志记录数）"""
+        from app.models.entity.sys_log import SysPredLog
+        stmt = (
+            select(func.count(SysPredLog.id))
+            .where(SysPredLog.algorithm_id == algorithm_id)
+        )
+        result = await db.execute(stmt)
+        count = result.scalar()
+        return count or 0

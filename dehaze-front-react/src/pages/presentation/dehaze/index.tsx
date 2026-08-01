@@ -4,6 +4,7 @@ import {
   ModelAPI,
   type FileInfo,
   type OptionType,
+  type PredictionQuota,
 } from "dehaze-sdk-js";
 
 import AlgorithmToolBar from "@/components/AlgorithmToolBar";
@@ -28,6 +29,7 @@ import {
   CloseCircleOutlined,
   FileImageOutlined,
   LoadingOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -125,6 +127,11 @@ const Dehaze: React.FC = () => {
   // 保存结果状态
   const [saving, setSaving] = useState(false);
 
+  // 配额状态
+  const [quota, setQuota] = useState<PredictionQuota | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [predictionFailed, setPredictionFailed] = useState(false);
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -213,26 +220,17 @@ const Dehaze: React.FC = () => {
     }));
   };
 
-  /** 启动模拟进度定时器，递增进度直到90%等待API完成 */
-  const startProgressSimulation = () => {
-    progressTimerRef.current = setInterval(() => {
-      setProgress((prev) => {
-        if (cancelFlagRef.current) return prev;
-        // 预处理和算法初始化阶段快速通过
-        if (prev < 20) return Math.min(prev + 2, 20);
-        // 去雾处理阶段缓慢递增，在90%处等待API完成
-        if (prev < 90) return Math.min(prev + Math.random() * 3, 90);
-        return prev;
-      });
-    }, 200);
-  };
-
   const handleGenerateImage = async () => {
     if (!selectedModel) return message.error("请选择模型");
     if (!urls[0]) return message.error("请先上传图片");
 
-    // 重置进度状态
+    // 检查配额
+    const hasQuota = await checkQuotaAndPredict();
+    if (!hasQuota) return;
+
+    // 重置状态
     cancelFlagRef.current = false;
+    setPredictionFailed(false);
     setProcessing(true);
     setProgress(0);
     dispatch(setLoading(true));
@@ -279,6 +277,7 @@ const Dehaze: React.FC = () => {
     } catch (error) {
       if (!cancelFlagRef.current) {
         message.error(error instanceof Error ? error.message : "生成失败");
+        setPredictionFailed(true);
         setShow((prev) => ({ ...prev, singleImage: true, overlap: false }));
       }
     } finally {
@@ -484,6 +483,79 @@ const Dehaze: React.FC = () => {
     });
   };
 
+  // 获取配额信息
+  const fetchQuota = async () => {
+    try {
+      const q = await ModelAPI.getQuota();
+      setQuota(q);
+    } catch {
+      // 静默失败，不影响主流程
+    }
+  };
+
+  // 处理前检查配额
+  const checkQuotaAndPredict = async () => {
+    if (!quota || quota.remaining > 0) {
+      return true;
+    }
+    // 配额不足，弹出提示
+    Modal.confirm({
+      title: "预测次数不足",
+      content: `当前剩余预测次数为 0（已使用 ${quota.used}/${quota.total}），请及时充值。`,
+      okText: "去充值",
+      cancelText: "取消",
+      onOk: () => {
+        // TODO: 跳转到充值页面
+      },
+    });
+    return false;
+  };
+
+  /** 启动模拟进度定时器，递增进度直到90%等待API完成 */
+  const startProgressSimulation = () => {
+    progressTimerRef.current = setInterval(() => {
+      setProgress((prev) => {
+        if (cancelFlagRef.current) return prev;
+        // 预处理和算法初始化阶段快速通过
+        if (prev < 20) return Math.min(prev + 2, 20);
+        // 去雾处理阶段缓慢递增，在90%处等待API完成
+        if (prev < 90) return Math.min(prev + Math.random() * 3, 90);
+        return prev;
+      });
+    }, 200);
+  };
+
+  /** 重试失败的预测 */
+  const handleRetry = async () => {
+    if (!selectedModel || !urls[0]) return;
+    setRetrying(true);
+    try {
+      // 重新触发 predictAndWait
+      const response = await ModelAPI.predictAndWait({
+        algorithmId: selectedModel,
+        imageUrl: urls[0].url,
+      });
+
+      if (response.status === 3) {
+        throw new Error(response.errorMessage || "去雾处理失败");
+      }
+
+      dispatch(
+        setImageUrl({
+          url: response.resultUrl || "",
+          type: ImageTypeEnum.PRED,
+        })
+      );
+      setPredictionFailed(false);
+      setShow((prev) => ({ ...prev, overlap: true, singleImage: false }));
+      message.success("重试成功");
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "重试失败");
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   const currentStage = getStageIndex(progress);
 
   // 渲染批量任务状态标签
@@ -641,7 +713,21 @@ const Dehaze: React.FC = () => {
           />
         )}
         {!processing && !batchMode && show.singleImage && (
-          <SingleImageShow src={urls[0]?.url || ""} />
+          <div>
+            <SingleImageShow src={urls[0]?.url || ""} />
+            {predictionFailed && (
+              <div style={{ marginTop: 16, textAlign: "center" }}>
+                <Button
+                  type="primary"
+                  icon={<ReloadOutlined />}
+                  onClick={handleRetry}
+                  loading={retrying}
+                >
+                  重试预测
+                </Button>
+              </div>
+            )}
+          </div>
         )}
         {!processing && !batchMode && show.overlap && <OverlapImageShow />}
         {saving && (

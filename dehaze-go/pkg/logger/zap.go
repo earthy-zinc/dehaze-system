@@ -48,6 +48,16 @@ func Init() error {
 		}
 
 		levels := cfg.Zap.Levels()
+
+		// dev 环境启动时归档当天旧日志，使本次启动日志写入全新活动文件
+		if cfg.Zap.ArchiveOnStartup {
+			names := make([]string, 0, len(levels))
+			for _, l := range levels {
+				names = append(names, l.String())
+			}
+			archiveStartupLogs(cfg.Zap.Directory, names)
+		}
+
 		cores := make([]zapcore.Core, 0, len(levels))
 		for i := 0; i < len(levels); i++ {
 			// 首个档（info）挂载控制台输出，其余档（error）仅写文件，避免控制台重复
@@ -59,13 +69,15 @@ func Init() error {
 		if cfg.Zap.ShowLine {
 			logger = logger.WithOptions(zap.AddCaller())
 		}
+		// 注入 service 字段（与 Python/Java 端对齐）
+		logger = logger.With(zap.String("service", "Dehaze API"))
 		zap.ReplaceGlobals(logger)
 		_globalLogger = logger
 	})
 	return initErr
 }
 
-// WithContext 返回携带 TraceID 的 logger
+// WithContext 返回携带 TraceID/Method/Path/IP/UserAgent/UserID 的 logger
 // 优先从 context 取缓存实例（由 Trace 中间件写入），避免重复分配
 func WithContext(ctx context.Context) *zap.Logger {
 	if ctx == nil {
@@ -80,7 +92,23 @@ func WithContext(ctx context.Context) *zap.Logger {
 	if traceID == "" {
 		return _globalLogger
 	}
-	return _globalLogger.With(zap.String(trace.TraceFieldName, traceID))
+	fields := []zap.Field{zap.String(trace.TraceFieldName, traceID)}
+	if m := trace.MethodFromContext(ctx); m != "" {
+		fields = append(fields, zap.String(trace.MethodFieldName, m))
+	}
+	if p := trace.PathFromContext(ctx); p != "" {
+		fields = append(fields, zap.String(trace.PathFieldName, p))
+	}
+	if ip := trace.IPFromContext(ctx); ip != "" {
+		fields = append(fields, zap.String("ip", ip))
+	}
+	if ua := trace.UserAgentFromContext(ctx); ua != "" {
+		fields = append(fields, zap.String("user_agent", ua))
+	}
+	if uid := trace.UserIDFromContext(ctx); uid > 0 {
+		fields = append(fields, zap.Int64("user_id", uid))
+	}
+	return _globalLogger.With(fields...)
 }
 
 // Debug 调试日志（开发环境使用，生产环境可关闭）

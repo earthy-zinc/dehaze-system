@@ -22,7 +22,7 @@ public class MemberExpireReminderJob {
     public void sendExpireReminders() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始执行会员到期预警...");
+            log.debug("开始执行会员到期预警...");
             memberService.sendExpireReminders();
         } catch (Exception e) {
             log.error("会员到期预警处理失败", e);

@@ -1,8 +1,8 @@
 package middleware
 
 import (
+	"fmt"
 	"net"
-	"net/http/httputil"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -29,30 +29,24 @@ func Recovery(stack bool) gin.HandlerFunc {
 					}
 				}
 
-				httpRequest, _ := httputil.DumpRequest(c.Request, false)
 				log := logger.WithContext(c.Request.Context())
 				if brokenPipe {
-					log.Error(c.Request.URL.Path,
-						zap.Any("error", err),
-						zap.String("request", string(httpRequest)),
+					log.Error("未处理异常: broken pipe",
+						zap.String("code", common.SYSTEM_EXECUTION_ERROR.Code),
+						zap.Int("status", 500),
+						zap.String("exc_info", fmt.Sprintf("%v", err)),
 					)
-					// If the connection is dead, we can't write a status to it.
 					c.Abort()
 					return
 				}
 
-				if stack {
-					log.Error("[Recovery from panic]",
-						zap.Any("error", err),
-						zap.String("request", string(httpRequest)),
-						zap.String("stack", string(debug.Stack())),
-					)
-				} else {
-					log.Error("[Recovery from panic]",
-						zap.Any("error", err),
-						zap.String("request", string(httpRequest)),
-					)
+				fields := []zap.Field{
+					zap.String("code", common.SYSTEM_EXECUTION_ERROR.Code),
+					zap.Int("status", 500),
+					zap.String("exc_info", string(debug.Stack())),
 				}
+				log.Error("未处理异常: panic recovered", fields...)
+
 				if !c.Writer.Written() {
 					_ = c.Error(common.NewBizError(common.SYSTEM_EXECUTION_ERROR, "系统执行出错"))
 				}

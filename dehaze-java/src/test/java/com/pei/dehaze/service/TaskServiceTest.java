@@ -62,6 +62,12 @@ class TaskServiceTest {
     @Mock
     private io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
+    @Mock
+    private com.pei.dehaze.service.impl.file.StorageServiceFactory storageServiceFactory;
+
+    @Mock
+    private FileService fileService;
+
     private TaskServiceImpl taskService;
 
     private ExportTaskCreateForm mockForm;
@@ -75,8 +81,12 @@ class TaskServiceTest {
         // Mock redisTemplate behavior
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
+        // StorageServiceFactory.getDefault() 返回 mock FileService，getUrl 拼接完整 URL
+        when(storageServiceFactory.getDefault()).thenReturn(fileService);
+        when(fileService.getUrl(anyString())).thenAnswer(inv -> "http://test.com/files/" + inv.getArgument(0));
+
         // 使用Spy创建TaskServiceImpl，通过构造器注入依赖
-        taskService = org.mockito.Mockito.spy(new TaskServiceImpl(taskExecutor, redisTemplate, wsMessageRelay, meterRegistry));
+        taskService = org.mockito.Mockito.spy(new TaskServiceImpl(taskExecutor, storageServiceFactory, redisTemplate, wsMessageRelay, meterRegistry));
 
         // 注入 baseMapper（ServiceImpl 父类字段）
         try {
@@ -264,7 +274,8 @@ class TaskServiceTest {
         sysTask.setTaskId(taskId);
         sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
         sysTask.setProgress(100);
-        sysTask.setResult("http://test.com/export.zip");
+        // JSON 编码后的 objectName（合法 JSON 字符串）
+        sysTask.setResult("\"exports/test.zip\"");
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
@@ -275,7 +286,7 @@ class TaskServiceTest {
         assertNotNull(result);
         assertEquals(taskId, result.getTaskId());
         assertEquals(TaskConstants.STATUS_COMPLETED, result.getStatus());
-        assertEquals("http://test.com/export.zip", result.getDownloadUrl());
+        assertEquals("http://test.com/files/exports/test.zip", result.getDownloadUrl());
     }
 
     /**
@@ -325,7 +336,7 @@ class TaskServiceTest {
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);
         sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
-        sysTask.setResult("http://test.com/export.zip");
+        sysTask.setResult("\"exports/test.zip\"");
         sysTask.setExpiresAt(LocalDateTime.now().plusHours(1));
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
@@ -335,7 +346,7 @@ class TaskServiceTest {
 
         // Assert
         assertNotNull(result);
-        assertEquals("http://test.com/export.zip", result);
+        assertEquals("http://test.com/files/exports/test.zip", result);
     }
 
     /**
@@ -378,7 +389,7 @@ class TaskServiceTest {
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);
         sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
-        sysTask.setResult("http://test.com/export.zip");
+        sysTask.setResult("\"exports/test.zip\"");
         sysTask.setExpiresAt(LocalDateTime.now().minusHours(1));
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);

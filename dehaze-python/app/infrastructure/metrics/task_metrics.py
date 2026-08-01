@@ -6,10 +6,12 @@ from prometheus_client import Counter, Gauge, Histogram
 
 logger = logging.getLogger(__name__)
 
+# 多 Worker 下各 Worker 独立维护队列深度和进行中任务数，聚合时用 livesum 求和
 TASK_QUEUE_DEPTH = Gauge(
     "dehaze_task_queue_depth",
     "Current number of tasks waiting in queue",
     ["task_type"],
+    multiprocess_mode="livesum",
 )
 
 TASK_TOTAL = Counter(
@@ -29,6 +31,7 @@ TASK_IN_PROGRESS = Gauge(
     "dehaze_task_in_progress",
     "Number of tasks currently being processed",
     ["task_type"],
+    multiprocess_mode="livesum",
 )
 
 

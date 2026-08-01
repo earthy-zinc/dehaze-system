@@ -49,12 +49,10 @@ public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVers
             throw new BusinessException("算法不存在");
         }
 
-        // 检查版本号是否已存在
-        long count = this.count(new LambdaQueryWrapper<SysAlgorithmVersion>()
-                .eq(SysAlgorithmVersion::getAlgorithmId, algorithmId)
-                .eq(SysAlgorithmVersion::getVersion, form.getVersion()));
+        // 检查版本号是否已存在（含软删行参与查重）
+        long count = getBaseMapper().countByAlgorithmIdAndVersionAll(algorithmId, form.getVersion());
         if (count > 0) {
-            throw new BusinessException("版本号 " + form.getVersion() + " 已存在");
+            throw new BusinessException("版本号 " + form.getVersion() + " 已被历史记录占用");
         }
 
         // 将当前活跃版本置为非活跃

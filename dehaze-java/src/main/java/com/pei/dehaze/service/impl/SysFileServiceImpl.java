@@ -10,10 +10,12 @@ import com.pei.dehaze.model.bo.FileBO;
 import com.pei.dehaze.model.entity.SysAlgorithm;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysWpxFile;
+import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysWpxFileService;
+import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +37,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
      */
     private static final String WPXNET_ALGORITHM_NAME = "WPXNet";
 
-    private final FileService fileService;
+    private final StorageServiceFactory storageServiceFactory;
     private final SysWpxFileService sysWpxFileService;
     private final SysAlgorithmService sysAlgorithmService;
     private final MeterRegistry meterRegistry;
@@ -47,52 +49,40 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
 
     @Override
     public SysFile saveFile(FileBO fileBO) {
-        SysFile sysFile = baseMapper.selectByMd5IncludeDeleted(fileBO.getMd5());
-        if (sysFile != null) {
-            if (sysFile.getDeleted() != null && sysFile.getDeleted() == 1) {
-                baseMapper.hardDeleteById(sysFile.getId());
-            } else {
-                return sysFile;
-            }
-        }
-
-        fileBO = fileService.uploadFile(fileBO);
-        sysFile = SysFile.builder()
-                .name(fileBO.getName())
-                .objectName(fileBO.getObjectName())
-                .size(FileUtil.readableFileSize(fileBO.getSize()))
-                .type(fileBO.getExtension())
-                .url(fileBO.getUrl())
-                .md5(fileBO.getMd5())
-                .path(fileBO.getPath())
-                .build();
-        this.save(sysFile);
+        fileBO = storageServiceFactory.getDefault().uploadFile(fileBO);
+        Long userId = SecurityUtils.getUserId();
+        baseMapper.upsertByMd5(
+                fileBO.getMd5(),
+                fileBO.getExtension(),
+                fileBO.getName(),
+                fileBO.getObjectName(),
+                fileBO.getStorage(),
+                FileUtil.readableFileSize(fileBO.getSize()),
+                fileBO.getSize(),
+                userId
+        );
         meterRegistry.counter("dehaze_file_upload_total").increment();
-        return sysFile;
+        return this.getOne(new LambdaQueryWrapper<SysFile>()
+                .eq(SysFile::getMd5, fileBO.getMd5())
+                .last("LIMIT 1"));
     }
 
     @Override
     public SysFile saveFileRecord(FileBO fileBO) {
-        SysFile sysFile = baseMapper.selectByMd5IncludeDeleted(fileBO.getMd5());
-        if (sysFile != null) {
-            if (sysFile.getDeleted() != null && sysFile.getDeleted() == 1) {
-                baseMapper.hardDeleteById(sysFile.getId());
-            } else {
-                return sysFile;
-            }
-        }
-
-        sysFile = SysFile.builder()
-                .name(fileBO.getName())
-                .objectName(fileBO.getObjectName())
-                .size(FileUtil.readableFileSize(fileBO.getSize()))
-                .type(fileBO.getExtension())
-                .url(fileBO.getUrl())
-                .md5(fileBO.getMd5())
-                .path(fileBO.getPath())
-                .build();
-        this.save(sysFile);
-        return sysFile;
+        Long userId = SecurityUtils.getUserId();
+        baseMapper.upsertByMd5(
+                fileBO.getMd5(),
+                fileBO.getExtension(),
+                fileBO.getName(),
+                fileBO.getObjectName(),
+                fileBO.getStorage(),
+                FileUtil.readableFileSize(fileBO.getSize()),
+                fileBO.getSize(),
+                userId
+        );
+        return this.getOne(new LambdaQueryWrapper<SysFile>()
+                .eq(SysFile::getMd5, fileBO.getMd5())
+                .last("LIMIT 1"));
     }
 
     @Override
@@ -115,11 +105,12 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
     public boolean deleteFile(Long fileId) {
         SysFile sysFile = this.getById(fileId);
         if (sysFile == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "不存在当前文件");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文件不存在");
         }
         // 先删DB元数据（事务内），再删物理文件（best-effort，失败仅记录日志，孤儿文件由定时任务清理）
-        baseMapper.hardDeleteById(fileId);
-        if (!fileService.deleteFile(sysFile.getObjectName())) {
+        baseMapper.deleteById(fileId);
+        FileService storage = storageServiceFactory.get(sysFile.getStorage());
+        if (!storage.deleteFile(sysFile.getObjectName())) {
             log.warn("物理文件删除失败（孤儿文件待清理）, objectName: {}", sysFile.getObjectName());
         }
         return true;
@@ -127,6 +118,17 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
 
     @Override
     public InputStream download(String objectName) {
-        return fileService.downLoadFile(objectName);
+        SysFile sysFile = this.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getObjectName, objectName));
+        if (sysFile == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文件不存在: " + objectName);
+        }
+        return storageServiceFactory.get(sysFile.getStorage()).downLoadFile(objectName);
+    }
+
+    @Override
+    public void fillUrl(SysFile file) {
+        if (file != null && file.getStorage() != null && file.getObjectName() != null) {
+            file.setUrl(storageServiceFactory.get(file.getStorage()).getUrl(file.getObjectName()));
+        }
     }
 }

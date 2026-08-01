@@ -3,6 +3,7 @@ package com.pei.dehaze.service.impl;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.mapper.SysApiKeyMapper;
 import com.pei.dehaze.model.dto.ApiKeyResult;
@@ -59,8 +60,10 @@ public class ApiKeyServiceImpl extends ServiceImpl<SysApiKeyMapper, SysApiKey> i
     @Override
     public List<ApiKeyResult> listApiKeys() {
         Long userId = SecurityUtils.getUserId();
+        // 列表查询排除已吊销的密钥（revoked_at IS NOT NULL）
         List<SysApiKey> keys = this.list(new LambdaQueryWrapper<SysApiKey>()
                 .eq(SysApiKey::getUserId, userId)
+                .isNull(SysApiKey::getRevokedAt)
                 .orderByDesc(SysApiKey::getCreateTime));
         return keys.stream().map(k -> ApiKeyResult.builder()
                 .id(k.getId())
@@ -74,20 +77,25 @@ public class ApiKeyServiceImpl extends ServiceImpl<SysApiKeyMapper, SysApiKey> i
     }
 
     @Override
-    public boolean deleteApiKey(Long id) {
+    public boolean revokeApiKey(Long id) {
         Long userId = SecurityUtils.getUserId();
         SysApiKey apiKey = this.getById(id);
         if (apiKey == null || !apiKey.getUserId().equals(userId)) {
             return false;
         }
-        return this.removeById(id);
+        // 吊销：设 revoked_at = now()，不再物理删除、不再写 deleted
+        return this.update(new LambdaUpdateWrapper<SysApiKey>()
+                .eq(SysApiKey::getId, id)
+                .set(SysApiKey::getRevokedAt, LocalDateTime.now()));
     }
 
     @Override
     public Authentication authenticateByKey(String rawKey) {
         String keyHash = SecureUtil.sha256(rawKey);
+        // 有效 key 判定：revoked_at IS NULL（而非 deleted=0）
         SysApiKey apiKey = this.getOne(new LambdaQueryWrapper<SysApiKey>()
-                .eq(SysApiKey::getKeyHash, keyHash));
+                .eq(SysApiKey::getKeyHash, keyHash)
+                .isNull(SysApiKey::getRevokedAt));
         if (apiKey == null) {
             return null;
         }

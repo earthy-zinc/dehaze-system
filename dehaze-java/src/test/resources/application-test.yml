@@ -5,9 +5,9 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DEHAZE_HOST:127.0.0.1}:3306/dehaze_test?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true
+    url: jdbc:mysql://${DEHAZE_HOST}:3306/dehaze_test?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true
     username: root
-    password: Dehaze@2026
+    password: ${DEHAZE_PASSWORD}
     druid:
       # 初始连接数（建议保持与最小空闲一致）
       initial-size: 5
@@ -40,9 +40,9 @@ spring:
   data:
     redis:
       database: 0
-      host: ${DEHAZE_HOST:127.0.0.1}
+      host: ${DEHAZE_HOST}
       port: 6379
-      password: Dehaze@2026
+      password: ${DEHAZE_PASSWORD}
       timeout: 10s
       lettuce:
         pool:
@@ -55,7 +55,7 @@ spring:
           # 连接池中的最小空闲连接 默认0
           min-idle: 0
     mongodb:
-      uri: mongodb://root:Dehaze%402026@${DEHAZE_HOST:127.0.0.1}:27017/dehaze?authSource=admin
+      uri: mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:27017/dehaze?authSource=admin
   cache:
     type: none
   servlet:
@@ -84,6 +84,10 @@ security:
 system:
   use-multi-point: false
 
+coupon:
+  receive-rate-limit: 10000
+  receive-rate-window: 60
+
 
 mybatis-plus:
   global-config:
@@ -98,10 +102,9 @@ mybatis-plus:
       logic-not-delete-value: 0
   configuration:
     # 驼峰下划线转换
-    map-underscore-to-camel-case: true
+    map-underscore-to-camel-case: true    
     # 这个配置会将执行的sql打印出来，在开发或测试的时候可以用
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 springdoc:
   api-docs:
     enabled: false

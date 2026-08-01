@@ -45,7 +45,9 @@ func (s *AuditLogService) RecordAuditAsync(ctx context.Context, operatorID int64
 				logger.Warn("审计日志异步记录 panic", zap.Any("recover", r))
 			}
 		}()
-		if err := s.RecordAudit(ctx, operatorID, targetType, targetID, action, module, beforeValue, afterValue, ip, userAgent); err != nil {
+		writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		if err := s.RecordAudit(writeCtx, operatorID, targetType, targetID, action, module, beforeValue, afterValue, ip, userAgent); err != nil {
 			logger.Warn("审计日志异步记录失败", zap.Error(err))
 		}
 	}()

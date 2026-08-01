@@ -40,4 +40,7 @@ type IAlgorithmRepository interface {
 
 	// FindVersionsByAlgorithmID 查询算法版本历史（按创建时间降序）
 	FindVersionsByAlgorithmID(ctx context.Context, algorithmID int64) ([]model.SysAlgorithmVersion, error)
+
+	// ExistsByVersion 检查算法版本是否存在（查全表含软删行）
+	ExistsByVersion(ctx context.Context, algorithmID int64, version string, excludeID ...int64) (bool, error)
 }

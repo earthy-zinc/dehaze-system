@@ -3,6 +3,8 @@ package com.pei.dehaze.service;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.vo.ImageUrlVO;
+import com.pei.dehaze.service.impl.SysItemFileServiceImpl;
+import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,9 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 /**
  * 图片文件服务单元测试
@@ -34,8 +39,14 @@ class SysItemFileServiceTest {
     @Mock
     private SysFileService sysFileService;
 
+    @Mock
+    private StorageServiceFactory storageServiceFactory;
+
+    @Mock
+    private FileService fileService;
+
     @InjectMocks
-    private com.pei.dehaze.service.impl.SysItemFileServiceImpl sysItemFileServiceImpl;
+    private SysItemFileServiceImpl sysItemFileServiceImpl;
 
     private SysItemFile mockItemFile;
     private SysFile mockFile;
@@ -43,12 +54,13 @@ class SysItemFileServiceTest {
 
     @BeforeEach
     void setUp() {
-        // 初始化Mock数据
+        // 初始化Mock数据（object_name + storage，不落库 url）
         mockFile = SysFile.builder()
                 .id(1L)
                 .name("clear_001.jpg")
                 .type("jpg")
-                .url("https://cdn.example.com/images/clear_001.jpg")
+                .objectName("images/clear_001.jpg")
+                .storage("minio")
                 .size("2560000")
                 .build();
 
@@ -56,7 +68,8 @@ class SysItemFileServiceTest {
                 .id(2L)
                 .name("clear_001_thumb.jpg")
                 .type("jpg")
-                .url("https://cdn.example.com/thumbs/clear_001_thumb.jpg")
+                .objectName("thumbs/clear_001_thumb.jpg")
+                .storage("minio")
                 .size("50000")
                 .build();
 
@@ -73,6 +86,12 @@ class SysItemFileServiceTest {
         mockItemFile.setHeight(1080);
         mockItemFile.setUsageCount(5L);
         mockItemFile.setCreateTime(LocalDateTime.now());
+
+        // StorageServiceFactory 按 storage 返回 mock FileService，getUrl 动态拼接
+        // 使用 lenient 避免不调用这些 stub 的测试方法触发 UnnecessaryStubbing
+        lenient().when(storageServiceFactory.get(anyString())).thenReturn(fileService);
+        lenient().when(fileService.getUrl("images/clear_001.jpg")).thenReturn("http://cdn.example.com/images/clear_001.jpg");
+        lenient().when(fileService.getUrl("thumbs/clear_001_thumb.jpg")).thenReturn("http://cdn.example.com/thumbs/clear_001_thumb.jpg");
     }
 
     /**
@@ -80,7 +99,7 @@ class SysItemFileServiceTest {
      * 测试场景：将实体对象转换为VO对象
      * 验证内容：
      * 1. 所有字段正确转换
-     * 2. 文件信息正确填充
+     * 2. 文件信息正确填充（url 由 storageService.getUrl(objectName) 动态拼接）
      */
     @Test
     @DisplayName("将SysItemFile转换为ImageUrlVO")
@@ -104,8 +123,8 @@ class SysItemFileServiceTest {
         assertEquals(5L, result.getUsageCount());
         assertEquals("clear_001.jpg", result.getFileName());
         assertEquals("jpg", result.getFormat());
-        assertEquals("https://cdn.example.com/images/clear_001.jpg", result.getUrl());
-        assertEquals("https://cdn.example.com/thumbs/clear_001_thumb.jpg", result.getThumbnailUrl());
+        assertEquals("http://cdn.example.com/images/clear_001.jpg", result.getUrl());
+        assertEquals("http://cdn.example.com/thumbs/clear_001_thumb.jpg", result.getThumbnailUrl());
     }
 
     /**

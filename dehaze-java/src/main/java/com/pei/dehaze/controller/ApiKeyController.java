@@ -26,15 +26,15 @@ public class ApiKeyController {
         return Result.success(apiKeyService.createApiKey(form));
     }
 
-    @Operation(summary = "获取API密钥列表")
+    @Operation(summary = "获取API密钥列表(仅未吊销)")
     @GetMapping("")
     public Result<List<ApiKeyResult>> listApiKeys() {
         return Result.success(apiKeyService.listApiKeys());
     }
 
-    @Operation(summary = "删除API密钥")
+    @Operation(summary = "吊销API密钥(内部设 revoked_at=now(), 不再物理删除)")
     @DeleteMapping("/{id}")
     public Result<Void> deleteApiKey(@PathVariable Long id) {
-        return Result.judge(apiKeyService.deleteApiKey(id));
+        return Result.judge(apiKeyService.revokeApiKey(id));
     }
 }

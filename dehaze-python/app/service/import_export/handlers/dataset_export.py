@@ -61,9 +61,7 @@ class DatasetExportHandler(ExportHandler):
         progress_cb,
         cancel_cb,
     ) -> None:
-        params = ctx.query_params
-        if not params:
-            raise BusinessException(ResultCode.PARAM_ERROR, "数据集导出参数不能为空")
+        params = ctx.query_params or {}
 
         options = _ExportOptions.from_params(params)
         items = await _resolve_items(db, params)
@@ -114,7 +112,7 @@ class DatasetExportHandler(ExportHandler):
                         processed_files += 1
                         await progress_cb(processed_files, total_files)
 
-        logger.info(
+        logger.debug(
             "数据集导出完成: taskId=%s, itemCount=%s, fileCount=%s",
             ctx.task_id, len(items), processed_files,
         )

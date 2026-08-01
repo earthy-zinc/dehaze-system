@@ -22,7 +22,7 @@ public class RefundRetryJob {
     public void retryFailedRefunds() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始执行退款失败重试...");
+            log.debug("开始执行退款失败重试...");
             orderService.retryFailedRefunds();
         } catch (Exception e) {
             log.error("退款失败重试处理失败", e);

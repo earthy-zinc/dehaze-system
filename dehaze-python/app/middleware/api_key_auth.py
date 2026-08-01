@@ -41,7 +41,11 @@ class ApiKeyAuthMiddleware(BaseHTTPMiddleware):
                 content={"code": ResultCode.TOKEN_INVALID.code, "msg": "认证服务不可用", "data": None},
             )
 
-        stmt = select(SysApiKey).where(SysApiKey.key_hash == key_hash)
+        # 仅匹配未吊销的 key（revoked_at IS NULL），吊销的 key 视同不存在
+        stmt = select(SysApiKey).where(
+            SysApiKey.key_hash == key_hash,
+            SysApiKey.revoked_at.is_(None),
+        )
         result = await db.execute(stmt)
         api_key = result.scalar_one_or_none()
 

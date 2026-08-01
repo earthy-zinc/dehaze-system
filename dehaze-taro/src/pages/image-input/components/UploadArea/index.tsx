@@ -46,10 +46,8 @@ const UploadArea: React.FC<UploadAreaProps> = ({
                 <Plus size="16" />
                 <Text>点击上传图片</Text>
               </View>
-              <Text className="upload-hint">
-                支持 JPG、PNG、WEBP、HEIC 格式
-              </Text>
-              <Text className="upload-hint">单张图片最大 20MB</Text>
+              <Text className="upload-hint">仅支持 JPG、PNG 格式</Text>
+              <Text className="upload-hint">小程序最大 10MB，H5 最大 20MB</Text>
             </View>
           </>
         )}

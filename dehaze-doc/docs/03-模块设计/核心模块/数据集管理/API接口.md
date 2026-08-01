@@ -72,20 +72,6 @@
 | 数据项下载 | `item_download` | 下载指定数据项的图片 | - |
 | 批量下载 | `batch_download` | 批量下载多个图片 | - |
 
-**创建任务请求示例**：
-
-```json
-{
-  "type": "dataset_export",
-  "targetId": 123,
-  "options": {
-    "structure": "by_item",
-    "includeTypes": ["clear", "hazy"],
-    "includeThumbnail": false
-  }
-}
-```
-
 ## 3. 权限标识汇总
 
 | 权限标识 | 说明 | 控制范围 |
@@ -109,9 +95,4 @@
 
 > 数据集导出/下载任务相关错误码由任务管理模块统一管理，详见 [任务管理/API接口.md](../../基础模块/任务管理/API接口.md)
 
-## 5. 接口详情查询
-
-> 接口的详细请求参数、响应结构、Schema 定义可通过以下方式获取：
->
-> 1. **API 文档 MCP**：调用 `read_project_oas_yfcdew` 获取 OpenAPI Spec
-> 2. **Swagger UI**：访问 `/swagger-ui/index.html`（开发环境）
+## 5. 业务错误码

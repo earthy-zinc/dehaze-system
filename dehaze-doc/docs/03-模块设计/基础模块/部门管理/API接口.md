@@ -49,9 +49,4 @@
 
 > **说明**：系统通用错误码定义参见 `02-系统架构/04-API规范.md`
 
-## 5. 接口详情查询
 
-> 接口的详细请求参数、响应结构、Schema 定义可通过以下方式获取:
->
-> 1. **API 文档 MCP**：调用 `read_project_oas_wht4eg` 获取 OpenAPI Spec
-> 2. **Swagger UI**:访问 `/swagger-ui/index.html`(开发环境)

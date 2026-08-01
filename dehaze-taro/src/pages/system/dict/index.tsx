@@ -103,7 +103,7 @@ const DictPage: React.FC = () => {
 
   useReachBottom(async () => {
     if (dictTypes.length < dictTypeTotal) {
-      await fetchDictTypes({ pageNum: dictTypeQueryParams.pageNum + 1 });
+      await fetchDictTypes({ pageNum: (dictTypeQueryParams.pageNum ?? 1) + 1 });
     }
   });
 

@@ -23,13 +23,6 @@ class InputHistoryForm(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-class InputHistoryUpdateForm(BaseModel):
-    """历史记录更新表单（对齐 Java HistoryUpdateForm，仅支持收藏切换）"""
-    isFavorite: Optional[bool] = Field(default=None, alias="isFavorite", description="是否收藏")
-
-    model_config = {"populate_by_name": True}
-
-
 class InputHistoryVO(BaseModel):
     """历史记录VO (对齐 Java InputHistoryVO 字段)"""
     id: int = Field(description="记录ID")
@@ -44,7 +37,6 @@ class InputHistoryVO(BaseModel):
     processingTime: Optional[int] = Field(default=None, validation_alias="processing_time", serialization_alias="processingTime", description="处理耗时（毫秒）")
     status: Optional[int] = Field(default=None, description="处理状态（1=成功，2=失败，3=处理中）")
     inputSource: Optional[str] = Field(default=None, validation_alias="input_source", serialization_alias="inputSource", description="图片来源")
-    isFavorite: Optional[bool] = Field(default=False, validation_alias="is_favorite", serialization_alias="isFavorite", description="是否收藏")
     syncStatus: Optional[int] = Field(default=0, validation_alias="sync_status", serialization_alias="syncStatus", description="同步状态")
     createTime: Optional[str] = Field(default=None, validation_alias="create_time", serialization_alias="createTime", description="创建时间")
     updateTime: Optional[str] = Field(default=None, validation_alias="update_time", serialization_alias="updateTime", description="更新时间")

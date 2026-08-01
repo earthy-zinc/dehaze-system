@@ -102,7 +102,7 @@ class DistributedConnectionManager:
             # 更新 Redis 在线状态
             await self._update_online_status(user_id)
 
-            logger.info(f"WebSocket 连接成功: user_id={user_id}, username={username}")
+            logger.debug(f"WebSocket 连接成功: user_id={user_id}, username={username}")
             return True
         except Exception as e:
             logger.error(f"WebSocket 连接失败: {e}")
@@ -120,7 +120,7 @@ class DistributedConnectionManager:
             # 主动从 Redis 清除（延迟，防止重连瞬间被清）
             asyncio.create_task(self._delayed_cleanup_online(user_id))
 
-        logger.info(f"WebSocket 断开连接: user_id={user_id}")
+        logger.debug(f"WebSocket 断开连接: user_id={user_id}")
 
     async def _disconnect_local(self, websocket: WebSocket, user_id: int):
         """清理本地连接"""
@@ -270,7 +270,7 @@ class DistributedConnectionManager:
             try:
                 pubsub = self._redis.pubsub()
                 await pubsub.subscribe(settings.WS_REDIS_CHANNEL)
-                logger.info(f"已订阅 WebSocket 频道: {settings.WS_REDIS_CHANNEL}")
+                logger.debug(f"已订阅 WebSocket 频道: {settings.WS_REDIS_CHANNEL}")
 
                 async for message in pubsub.listen():
                     if not self._started:
@@ -432,7 +432,7 @@ class WebSocketService:
                 await WebSocketService._handle_message(websocket, user_id, username, data)
 
         except WebSocketDisconnect:
-            logger.info(f"用户断开连接: user_id={user_id}")
+            logger.debug(f"用户断开连接: user_id={user_id}")
         except Exception as e:
             logger.error(f"WebSocket 异常: user_id={user_id}, error={e}")
         finally:

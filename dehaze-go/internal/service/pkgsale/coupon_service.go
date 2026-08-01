@@ -14,6 +14,7 @@ import (
 	pkgsalerepo "github.com/earthyzinc/dehaze-go/internal/repository/pkgsale"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"gorm.io/gorm"
 )
 
@@ -116,15 +117,24 @@ func (s *CouponService) Receive(ctx context.Context, userID, couponID int64) (*v
 	}
 
 	if s.cache != nil {
+		cfg := config.GetConfig()
+		rateLimit := cfg.System.CouponReceiveRateLimit
+		rateWindow := cfg.System.CouponReceiveRateWindow
+		if rateLimit <= 0 {
+			rateLimit = 5
+		}
+		if rateWindow <= 0 {
+			rateWindow = 60
+		}
 		rateKey := fmt.Sprintf("coupon:receive:rate:%d", userID)
 		rateCount, err := s.cache.Incr(ctx, rateKey)
 		if err != nil {
 			return nil, common.WrapBizError(common.DATABASE_ERROR, "频率限制检查失败", err)
 		}
 		if rateCount == 1 {
-			_, _ = s.cache.Expire(ctx, rateKey, 60*time.Second)
+			_, _ = s.cache.Expire(ctx, rateKey, time.Duration(rateWindow)*time.Second)
 		}
-		if rateCount > 5 {
+		if rateCount > int64(rateLimit) {
 			return nil, common.NewBizError(common.RATE_LIMIT, "操作过于频繁，请稍后再试")
 		}
 	}

@@ -26,7 +26,6 @@ class TaskVO(BaseModel):
     progress: int = Field(description="执行进度(0-100)")
     totalFiles: int = Field(default=0, description="总文件数")
     processedFiles: Optional[int] = Field(default=0, description="已处理文件数")
-    result: Optional[str] = Field(default=None, description="任务结果")
     downloadUrl: Optional[str] = Field(default=None, description="下载链接")
     error: Optional[str] = Field(default=None, description="错误信息")
     createdAt: Optional[datetime] = Field(default=None, description="创建时间")

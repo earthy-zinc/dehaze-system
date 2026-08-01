@@ -29,7 +29,7 @@ public class MessageCleanupJob {
     public void cleanupExpiredMessages() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始清理过期消息...");
+            log.debug("开始清理过期消息...");
             int totalDeleted = 0;
             while (true) {
                 List<Long> ids = messageMapper.selectList(new LambdaQueryWrapper<SysMessage>()
@@ -46,7 +46,7 @@ public class MessageCleanupJob {
                 totalDeleted += ids.size();
             }
             if (totalDeleted > 0) {
-                log.info("清理过期消息完成: 共清理{}条", totalDeleted);
+                log.debug("清理过期消息完成: 共清理{}条", totalDeleted);
             }
         } finally {
             SystemSecurityContext.clearContext();

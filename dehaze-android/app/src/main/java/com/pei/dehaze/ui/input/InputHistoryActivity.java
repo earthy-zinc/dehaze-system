@@ -19,7 +19,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityInputHistoryBinding;
-import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryForm;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryUpdateForm;
@@ -355,7 +354,7 @@ public class InputHistoryActivity extends AppCompatActivity {
             url = item.getOriginalImageUrl();
         }
         Glide.with(this)
-                .load(DehazeSDK.getInstance().resolveUrl(url))
+                .load(url)
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivPreview);

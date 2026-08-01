@@ -10,7 +10,7 @@ import (
 
 // IInputHistoryRepository 图像输入历史记录仓储接口
 type IInputHistoryRepository interface {
-	FindPage(ctx context.Context, userID int64, pageNum, pageSize int, inputSource, keyword string, favoriteOnly bool, status int) ([]model.SysInputHistory, int64, error)
+	FindPage(ctx context.Context, userID int64, pageNum, pageSize int, inputSource, keyword string, status int) ([]model.SysInputHistory, int64, error)
 	FindByID(ctx context.Context, id int64) (*model.SysInputHistory, error)
 	Create(ctx context.Context, history *model.SysInputHistory) error
 	Update(ctx context.Context, history *model.SysInputHistory) error
@@ -26,7 +26,7 @@ func NewInputHistoryRepository(db *gorm.DB) IInputHistoryRepository {
 	return &inputHistoryRepository{db: db}
 }
 
-func (r *inputHistoryRepository) FindPage(ctx context.Context, userID int64, pageNum, pageSize int, inputSource, keyword string, favoriteOnly bool, status int) ([]model.SysInputHistory, int64, error) {
+func (r *inputHistoryRepository) FindPage(ctx context.Context, userID int64, pageNum, pageSize int, inputSource, keyword string, status int) ([]model.SysInputHistory, int64, error) {
 	var list []model.SysInputHistory
 	var total int64
 
@@ -37,9 +37,6 @@ func (r *inputHistoryRepository) FindPage(ctx context.Context, userID int64, pag
 	if keyword != "" {
 		like := "%" + keyword + "%"
 		query = query.Where("original_image_url LIKE ? OR algorithm_name LIKE ?", like, like)
-	}
-	if favoriteOnly {
-		query = query.Where("is_favorite = ?", 1)
 	}
 	if status > 0 {
 		query = query.Where("status = ?", status)

@@ -1,0 +1,56 @@
+.recommendation-widget {
+  max-width: 600px;
+}
+
+.rec-upload-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.feature-analysis {
+  margin-bottom: 24px;
+}
+
+.feature-item {
+  margin-bottom: 8px;
+
+  .ant-tag {
+    margin-left: 8px;
+  }
+}
+
+.algorithm-recommendations {
+  margin-top: 16px;
+}
+
+.rec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rec-item {
+  padding: 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 2px 12px rgb(0 0 0 / 8%);
+  }
+}
+
+.rec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rec-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}

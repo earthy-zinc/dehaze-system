@@ -3,6 +3,7 @@
 
 POST /api/v1/evaluation          → 提交评估任务，立即返回 {logId, status: "processing"}
 GET  /api/v1/evaluation/logs     → 评估日志列表
+GET  /api/v1/evaluation/metrics  → 当前用户评估指标历史
 GET  /api/v1/evaluation/{taskId} → 查询评估任务状态，根据 status 返回不同字段
 """
 
@@ -13,6 +14,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success
@@ -20,6 +22,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.auth import get_current_user, UserContext
 from app.database import get_db
+from app.models.entity.sys_log import SysEvalLog
 from app.models.enum.log_status import LogStatus
 from app.models.schema.common import PageResult
 from app.repository.pred_eval_log_repository import eval_log_repository
@@ -107,6 +110,51 @@ async def list_evaluation_logs(
         page=pageNum,
         size=pageSize,
     )
+    log_list = []
+    for log in logs:
+        log_dict = {
+            "id": log.id,
+            "algorithm_id": log.algorithm_id,
+            "pred_md5": log.pred_md5,
+            "pred_url": log.pred_url,
+            "gt_md5": log.gt_md5,
+            "gt_url": log.gt_url,
+            "status": log.status,
+            "error_message": log.error_message,
+            "time": log.time,
+            "result": log.result if isinstance(log.result, dict) else (
+                json.loads(log.result) if isinstance(log.result, str) and log.result else None
+            ),
+            "create_time": log.create_time,
+        }
+        log_list.append(log_dict)
+    return success(PageResult(list=log_list, total=total))
+
+
+@router.get("/metrics", response_model=Result[PageResult[EvaluationLogVO]], summary="评估指标历史")
+async def get_evaluation_metrics(
+    algorithmId: Optional[int] = Query(default=None, description="算法ID筛选"),
+    pageNum: int = Query(default=1, ge=1, description="页码"),
+    pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    """获取当前用户的历史评估记录（仅返回已完成的评估）"""
+    stmt = select(SysEvalLog).where(
+        SysEvalLog.create_by == user.id,
+        SysEvalLog.status == LogStatus.COMPLETED.value,
+    )
+    if algorithmId is not None:
+        stmt = stmt.where(SysEvalLog.algorithm_id == algorithmId)
+    stmt = stmt.order_by(desc(SysEvalLog.id))
+
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total = (await db.execute(count_stmt)).scalar() or 0
+
+    paged_stmt = stmt.offset((pageNum - 1) * pageSize).limit(pageSize)
+    result = await db.execute(paged_stmt)
+    logs = list(result.scalars().all())
+
     log_list = []
     for log in logs:
         log_dict = {

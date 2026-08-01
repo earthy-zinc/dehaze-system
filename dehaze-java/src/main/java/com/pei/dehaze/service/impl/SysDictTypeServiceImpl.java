@@ -38,6 +38,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     private final SysDictService dictItemService;
     private final DictTypeConverter dictTypeConverter;
+    private final SysDictTypeMapper dictTypeMapper;
 
     /**
      * 字典分页列表
@@ -151,17 +152,23 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     }
 
     /**
-     * 校验字典类型编码唯一性
+     * 校验字典类型编码唯一性（含软删行参与查重，命中即报占用）。
      *
      * @param code      字典类型编码
      * @param excludeId 排除的字典类型ID（更新时传自身ID，新增时传 null）
      */
     private void validateCodeUnique(String code, Long excludeId) {
-        long count = this.count(new LambdaQueryWrapper<SysDictType>()
-                .eq(SysDictType::getCode, code)
-                .ne(excludeId != null, SysDictType::getId, excludeId));
+        long count = dictTypeMapper.countByCodeAll(code);
+        if (count == 0) {
+            return;
+        }
+        // 有匹配记录，排除自身ID后再判断
+        if (excludeId != null) {
+            count = dictTypeMapper.countByCodeAllExcluding(code, excludeId);
+        }
         if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在");
+            throw new BusinessException(ResultCode.DATA_EXISTS,
+                    "字典类型编码已被历史记录占用，无法重复创建");
         }
     }
 

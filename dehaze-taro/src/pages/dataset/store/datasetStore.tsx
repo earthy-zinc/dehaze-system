@@ -13,7 +13,7 @@ import type {
   ImageUrlVO,
   DatasetAddForm,
   DatasetUpdateForm,
-  DatasetOption,
+  OptionType,
 } from "dehaze-sdk-js";
 import { getErrorMessage } from "@/utils/error";
 import { isImageAnnotated, AnnotationFilter } from "../services/imageUtils";
@@ -38,7 +38,7 @@ interface DatasetState {
   childrenLoading: Record<number, boolean>;
 
   // 数据集下拉选项（用于新增/编辑表单的父级选择）
-  datasetOptions: DatasetOption[];
+  datasetOptions: OptionType[];
 
   // 当前数据集详情
   currentDataset: Dataset | null;
@@ -88,7 +88,7 @@ type DatasetAction =
       type: "SET_CHILDREN_LOADING";
       payload: { parentId: number; loading: boolean };
     }
-  | { type: "SET_DATASET_OPTIONS"; payload: DatasetOption[] }
+  | { type: "SET_DATASET_OPTIONS"; payload: OptionType[] }
   | { type: "SET_DATASET_DETAIL_LOADING"; payload: boolean }
   | { type: "SET_DATASET_DETAIL_ERROR"; payload: string | null }
   | { type: "SET_CURRENT_DATASET"; payload: Dataset | null }
@@ -345,11 +345,11 @@ export function useDataset() {
         dispatch({ type: "SET_DATASETS_LOADING", payload: true });
         dispatch({ type: "SET_DATASETS_ERROR", payload: null });
 
-        const pageSize = 10;
+        const size = 10;
         const response = await DatasetAPI.getList({
           keyword: search || undefined,
           pageNum: page,
-          pageSize,
+          pageSize: size,
         });
 
         const list = (response.list as unknown as Dataset[]) || [];
@@ -517,18 +517,18 @@ export function useDataset() {
         dispatch({ type: "SET_IMAGES_LOADING", payload: true });
         dispatch({ type: "SET_IMAGES_ERROR", payload: null });
 
-        const pageSize = 20;
+        const size = 20;
         const response = await DatasetItemAPI.getList({
           datasetId,
           keyword: search || undefined,
           pageNum: page,
-          pageSize,
+          pageSize: size,
         });
 
         const items = (response.list as unknown as DatasetItemVO[]) || [];
         const flattened = flattenItems(items, annotationFilter);
         const total = response.total || 0;
-        const hasMore = items.length === pageSize;
+        const hasMore = items.length === size;
 
         if (append) {
           dispatch({

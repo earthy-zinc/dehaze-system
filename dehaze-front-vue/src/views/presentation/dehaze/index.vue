@@ -9,7 +9,7 @@ import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { useAlgorithmStore } from "@/store";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import examples from "@/views/presentation/dehaze/exampleImages";
-import { FileAPI, ModelAPI } from "dehaze-sdk-js";
+import { FileAPI, ModelAPI, PredictionQuota } from "dehaze-sdk-js";
 import { UploadFile, UploadUserFile } from "element-plus";
 
 const algorithmStore = useAlgorithmStore();
@@ -128,6 +128,11 @@ function handleCancelProcess() {
   ElMessage.info("已取消处理");
 }
 
+// 当前重试倒计时
+const retryCountdown = ref(0);
+const showRetryPanel = ref(false);
+let retryTimer: number | undefined;
+
 // 选择模型后生成对比图（原图 | 去雾图），含5阶段进度显示
 async function handleGenerateImage() {
   if (!selectedModel.value) {
@@ -137,6 +142,28 @@ async function handleGenerateImage() {
   if (!imgUrls.value[0]) {
     ElMessage.error("请先上传图片");
     return;
+  }
+  // 检查配额
+  try {
+    const quota = await ModelAPI.getQuota();
+    if (quota.remaining === 0) {
+      const confirmed = await ElMessageBox.confirm(
+        `当前剩余预测次数为 0（已使用 ${quota.used}/${quota.total}），请及时充值。`,
+        "配额不足",
+        {
+          confirmButtonText: "去充值",
+          cancelButtonText: "取消",
+          type: "warning",
+        }
+      );
+      if (confirmed) {
+        // 跳转充值页（如有）或提示联系管理员
+        ElMessage.info("请联系管理员充值");
+      }
+      return;
+    }
+  } catch (e: any) {
+    ElMessage.warning("无法获取配额信息：" + (e.message || "未知错误"));
   }
   // 显示确认对话框
   const modelOption = algorithmStore.algorithmOptions.find(
@@ -168,6 +195,8 @@ async function handleGenerateImage() {
     }
     return;
   }
+  showRetryPanel.value = false;
+  retryCountdown.value = 0;
   const modelId = selectedModel.value;
   cancelFlag = false;
   processing.value = true;
@@ -204,7 +233,10 @@ async function handleGenerateImage() {
     })
     .catch((err) => {
       if (cancelFlag) return;
-      ElMessage.error(err.message || "去雾处理失败");
+      showRetryPanel.value = true;
+      retryCountdown.value = 3;
+      startRetryCountdown();
+      ElMessage.error(err.message || "去雾处理失败，请在下方重试");
       activePage.value = "singleImage";
     })
     .finally(() => {
@@ -213,6 +245,39 @@ async function handleGenerateImage() {
       imageShowStore.setLoading(false);
     });
 }
+
+// 重试处理
+function startRetryCountdown() {
+  stopRetryCountdown();
+  retryTimer = window.setInterval(() => {
+    retryCountdown.value--;
+    if (retryCountdown.value <= 0) {
+      stopRetryCountdown();
+    }
+  }, 1000);
+}
+
+function stopRetryCountdown() {
+  if (retryTimer !== undefined) {
+    clearInterval(retryTimer);
+    retryTimer = undefined;
+  }
+}
+
+function handleRetry() {
+  showRetryPanel.value = false;
+  retryCountdown.value = 0;
+  stopRetryCountdown();
+  handleGenerateImage();
+}
+
+onUnmounted(() => {
+  stopProgressSimulation();
+  stopRetryCountdown();
+  if (batchTimer !== undefined) {
+    clearInterval(batchTimer);
+  }
+});
 
 // ============ 结果保存 ============
 const saving = ref(false);
@@ -438,11 +503,15 @@ function handleDatasetImageSelect(haze: string, clear: string) {
 }
 
 async function handleCleanUrl(url: string, modelId: number) {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  const cleanFile = new File([blob], "clean.jpg", { type: "image/jpeg" });
-  const cleanRes = await FileAPI.upload(cleanFile, modelId);
-  return cleanRes.url;
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const cleanFile = new File([blob], "clean.jpg", { type: "image/jpeg" });
+    const cleanRes = await FileAPI.upload(cleanFile, modelId);
+    return cleanRes.url;
+  } catch (e: any) {
+    throw new Error("清晰图处理失败：" + (e.message || "未知错误"));
+  }
 }
 
 const router = useRouter();
@@ -602,6 +671,31 @@ onUnmounted(() => {
           保存结果
         </el-button>
         <el-button type="primary" @click="handleEval"> 评估结果 </el-button>
+      </div>
+
+      <!-- 失败重试面板 -->
+      <div
+        v-if="showRetryPanel && activePage === 'singleImage'"
+        class="retry-panel"
+      >
+        <el-alert
+          title="处理失败，请检查网络连接或联系管理员"
+          type="error"
+          :closable="false"
+          show-icon
+        />
+        <div class="retry-actions">
+          <el-button
+            :disabled="retryCountdown > 0"
+            type="primary"
+            @click="handleRetry"
+          >
+            {{
+              retryCountdown > 0 ? `自动重试(${retryCountdown})` : "手动重试"
+            }}
+          </el-button>
+          <el-button @click="showRetryPanel = false">取消</el-button>
+        </div>
       </div>
       <!-- 批量处理任务列表 -->
       <div v-if="activePage === 'batch'" class="batch-wrap">
@@ -836,6 +930,22 @@ onUnmounted(() => {
     gap: 12px;
     justify-content: center;
     margin: 16px 0;
+  }
+
+  .retry-panel {
+    width: calc(64vw - 6vw);
+    padding: 16px;
+    margin: 16px auto;
+    background: #fff5f5;
+    border: 1px solid #fde2e2;
+    border-radius: 8px;
+
+    .retry-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 12px;
+    }
   }
 
   .batch-wrap {

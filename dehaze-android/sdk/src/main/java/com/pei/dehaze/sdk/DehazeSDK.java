@@ -220,19 +220,6 @@ public class DehazeSDK {
         return instance;
     }
 
-    public String resolveUrl(String url) {
-        if (url == null || url.isEmpty()) {
-            return url;
-        }
-        if (url.startsWith("http://") || url.startsWith("https://")) {
-            return url;
-        }
-        if (url.startsWith("/")) {
-            return retrofit.baseUrl().toString().replaceAll("/+$", "") + url;
-        }
-        return url;
-    }
-
     public static void initialize(Builder builder) {
         synchronized (DehazeSDK.class) {
             instance = new DehazeSDK(builder);

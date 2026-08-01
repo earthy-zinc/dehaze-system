@@ -8,6 +8,8 @@ zap:
   stacktrace-key: stacktrace
   log-in-console: true
   retention-day: 30
+  max-size: 100 # 单文件大小上限（MB），超限归档为 {级别}.{n}.log 并开新活动文件
+  archive-on-startup: true # 启动时归档当天已存在的活动日志文件（dev 用，生产关闭）
 
 # system configuration
 system:
@@ -19,8 +21,13 @@ system:
   ip-limit-time: 3600
   # 登录/注册接口 IP 限流次数（每分钟），开发环境调大避免集成测试触发限流
   login-ip-limit-count: 1000
+  # 优惠券领取限流（每分钟）
+  coupon-receive-rate-limit: 10000
+  coupon-receive-rate-window: 60
   #  路由全局前缀
   router-prefix: ""
+  # 新用户初始密码（由 .env 的 DEHAZE_PASSWORD 展开）
+  default-password: "${DEHAZE_PASSWORD}"
 
 # CORS 跨域配置
 # 端口规范：5173 React / 5174 Vue / 5175 Taro / 5176 uniapp / 5177 Flutter Web / 5183 React Electron / 5184 Vue Electron / 8081 RN Metro
@@ -236,16 +243,20 @@ mongo:
   database: "dehaze"
 
 file:
-  type: minio # 存储类型：minio/local
-  baseUrl: "http://127.0.0.1:8990/api/v1/files/download" # 文件访问基础URL
+  type: minio # 默认存储后端：minio/local/nginx-static
   maxSize: 104857600 # 单文件最大大小（字节），默认100MB
-  minio:
-    endpoint: "${DEHAZE_HOST}:9110"
-    accessKey: "admin"
-    secretKey: "${DEHAZE_PASSWORD}"
-    bucketName: "dehaze"
-  local:
-    uploadPath: "./data/upload"
+  storage:
+    minio:
+      endpoint: "${DEHAZE_HOST}:9110"
+      accessKey: "admin"
+      secretKey: "${DEHAZE_PASSWORD}"
+      bucketName: "dehaze"
+      baseUrl: "http://127.0.0.1:8990/api/v1/files/download" # MinIO 文件访问基础 URL（完整地址，运行时拼接用，不落库）
+    local:
+      uploadPath: "./data/upload"
+      baseUrl: "http://127.0.0.1:8990/api/v1/files/download" # 本地下载接口基础 URL（完整地址）
+    nginx-static:
+      baseUrl: "http://127.0.0.1:9000" # nginx 静态服务根地址（不带 /datasets 等资源子路径）
 
 kafka:
   enabled: false

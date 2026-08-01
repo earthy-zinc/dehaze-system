@@ -197,14 +197,14 @@ func (s *DictService) Update(ctx context.Context, id int64, form *bo.DictFormBO)
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "字典数据项不存在")
 	}
 
-	// 校验字典值唯一性（同类型下，排除当前记录）— typeCode 只读，使用原记录的 typeCode
+	// 校验字典值唯一性（同类型下，排除当前记录，查全表含软删行）— typeCode 只读，使用原记录的 typeCode
 	if dict.Value != form.Value {
 		exists, err := s.dictRepo.ExistsByTypeCodeAndValue(ctx, dict.TypeCode, form.Value, id)
 		if err != nil {
 			return common.WrapBizError(common.DATABASE_ERROR, "检查字典值唯一性失败", err)
 		}
 		if exists {
-			return common.NewBizError(common.DATA_EXISTS, "该类型下字典值已存在")
+			return common.NewBizError(common.DATA_EXISTS, "该类型下字典值已被历史记录占用")
 		}
 	}
 

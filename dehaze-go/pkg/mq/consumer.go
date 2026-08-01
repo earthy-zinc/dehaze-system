@@ -181,7 +181,10 @@ func (c *Consumer) reconnectLoop() {
 		interval := c.backoffInterval(attempt, cfg.initialInterval, cfg.maxInterval)
 		attempt++
 
-		c.logger.Info("RabbitMQ Consumer 重连等待中",
+		// 重连等待是退避过程中的常态信息，按 INFO 全量落盘会在 RabbitMQ 不可达时
+		// 产生海量噪音（实测单日 260w+ 行），降为 DEBUG；状态变化仍由下方
+		// "重连失败"(Warn)/"重连成功"(Info) 体现。
+		c.logger.Debug("RabbitMQ Consumer 重连等待中",
 			zap.Int("attempt", attempt),
 			zap.Duration("interval", interval))
 

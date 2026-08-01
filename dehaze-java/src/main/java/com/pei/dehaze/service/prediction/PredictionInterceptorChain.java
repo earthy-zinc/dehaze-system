@@ -25,7 +25,7 @@ public class PredictionInterceptorChain {
             try {
                 Optional<InterceptedResult> result = interceptor.intercept(context);
                 if (result.isPresent()) {
-                    log.info("预测拦截器命中: {} -> resultUrl={}",
+                    log.debug("预测拦截器命中: {} -> resultUrl={}",
                             interceptor.getClass().getSimpleName(),
                             result.get().getResultUrl());
                     return result;

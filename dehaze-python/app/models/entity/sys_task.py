@@ -3,10 +3,10 @@
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from app.models.base import BaseModel
-from sqlalchemy import (BigInteger, DateTime, Index, Integer, String,
+from sqlalchemy import (BigInteger, DateTime, Index, Integer, JSON, String,
                         Text)
 from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
@@ -35,7 +35,7 @@ class SysTask(BaseModel):
     processed_files: Mapped[int] = mapped_column(
         Integer, default=0, comment='已处理文件数')
     params: Mapped[Optional[str]] = mapped_column(Text, comment='任务参数（JSON）')
-    result: Mapped[Optional[str]] = mapped_column(Text, comment='任务结果（JSON）')
+    result: Mapped[Optional[Any]] = mapped_column(JSON, comment='任务结果（JSON）：导出任务存储对象键（object_name），下载 URL 由响应层运行时拼接，不落库')
     error_message: Mapped[Optional[str]] = mapped_column(Text, comment='错误信息')
     started_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, comment='开始时间')

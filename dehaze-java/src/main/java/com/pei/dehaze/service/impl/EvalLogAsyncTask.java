@@ -58,7 +58,7 @@ public class EvalLogAsyncTask {
             evalLogMapper.updateById(update);
 
             meterRegistry.counter("dehaze_evaluation_total", "status", "success").increment();
-            log.info("评估完成: algorithmId={}, evalLogId={}, time={}ms",
+            log.debug("评估完成: algorithmId={}, evalLogId={}, time={}ms",
                     algorithmId, logId, elapsed);
         } catch (Exception e) {
             int elapsed = (int) (System.currentTimeMillis() - startTime);

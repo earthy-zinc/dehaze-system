@@ -16,7 +16,7 @@ public class SystemConstants {
     /**
      * 系统默认密码
      */
-    public static final String DEFAULT_PASSWORD = System.getenv().getOrDefault("DEHAZE_PASSWORD", "Dehaze@2026");
+    public static final String DEFAULT_PASSWORD = "Dehaze2026";
 
     /**
      * 超级管理员角色编码

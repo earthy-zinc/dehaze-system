@@ -9,9 +9,7 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/config/options"
-	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/mq"
-	"github.com/earthyzinc/dehaze-go/pkg/trace"
 	"go.uber.org/zap"
 )
 
@@ -49,25 +47,17 @@ func (e *RabbitMQTaskExecutor) IsConnected() bool {
 	return e.publisher.IsConnected()
 }
 
-// PublishTask 发布通用任务消息
+// PublishTask 发布通用任务消息（三端统一契约：db_task_id + task_id + task_type）
 // 使用分布式锁防止同一 taskID 被重复发布
 func (e *RabbitMQTaskExecutor) PublishTask(ctx context.Context, msg TaskMessage) error {
 	if msg.TaskID == "" {
-		return errors.New("taskId is empty")
+		return errors.New("task_id is empty")
 	}
 	if msg.TaskType == "" {
-		return errors.New("taskType is empty")
+		return errors.New("task_type is empty")
 	}
-	if msg.CreatedAt.IsZero() {
-		msg.CreatedAt = time.Now()
-	}
-	if msg.TraceID == "" {
-		msg.TraceID = trace.GetTraceID(ctx)
-	}
-	if msg.CreatedBy == 0 {
-		if userID := database.GetUserID(ctx); userID > 0 {
-			msg.CreatedBy = userID
-		}
+	if msg.DbTaskID == 0 {
+		return errors.New("db_task_id is empty")
 	}
 
 	// 分布式锁：防止同一 taskID 被并发重复发布

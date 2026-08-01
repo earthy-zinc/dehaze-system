@@ -4,7 +4,53 @@
 
 > 构建运行、测试命令、部署说明见项目根目录 [README](/README.md)。
 
-## 1. 目录结构
+## 1. 架构图
+
+```mermaid
+flowchart TB
+    subgraph View["视图层"]
+        Pages["页面组件 (views/)"]
+        Layout["布局组件"]
+        CoreComp["核心业务组件 (dehaze/compare/algorithm)"]
+        BaseComp["基础模块组件 (FavoriteButton/RecommendationWidget/MyFavoritesPage)"]
+        CommonComp["通用组件 (Waterfall/Magnifier/DraggableLine/ImportExportToolbar)"]
+    end
+
+    subgraph State["状态管理层"]
+        Pinia["Pinia Store"]
+        Modules["store/modules (user/permission/settings/favorite)"]
+        Persist["localStorage 持久化"]
+    end
+
+    subgraph API["API 层"]
+        Request["axios 封装 (拦截器)"]
+        ApiModules["api/ 模块"]
+    end
+
+    subgraph Router["路由层"]
+        StaticRoutes["静态路由"]
+        DynamicRoutes["动态路由 (按角色加载)"]
+        Guards["导航守卫"]
+    end
+
+    subgraph Backend["后端"]
+        REST["RESTful API"]
+        WS["WebSocket (去雾进度)"]
+    end
+
+    Pages --> Pinia
+    Layout --> Pinia
+    CoreComp --> Pinia
+    BaseComp --> Pinia
+    CommonComp --> Pinia
+    Pinia --> ApiModules
+    ApiModules --> Request
+    Request --> REST
+    Router --> Pages
+    WS --> Pinia
+```
+
+## 2. 目录结构
 
 - 分层清晰：
   - `views` - 存放页面组件
@@ -23,38 +69,82 @@
   - `Magnifier` - 封装画布缩放功能
   - `DraggableLine` - 实现对比图层拖拽
   - `ImportExportToolbar` - 通用导入导出工具栏（含导入弹窗、导出弹窗、任务列表抽屉）
+  - `FavoriteButton` - 跨模块可复用收藏按钮（v2.0 新增）
+  - `RecommendationPanel` - 图像分析推荐面板（v2.0 新增）
+- 组合式 API：
+  - `usePagination` - 通用分页逻辑
+  - `useTableSelection` - 表格多选逻辑
+  - `useDebounce` / `useDebouncedRef` - 防抖函数与响应式防抖
+  - `useAsyncTask` - 异步任务 loading/error/data 三态管理
+  - `useConfirm` / `useDeleteConfirm` - 二次确认弹窗
 
-## 2. 系统功能
+## 3. 核心模块
 
-| 模块     | 功能描述                                                |
-|--------|-----------------------------------------------------|
-| 用户系统   | 支持角色/权限管理、多级部门树、Session 认证与自动续期                    |
-| 数据集管理  | 瀑布流展示 + 懒加载、图片 MD5 校验、图片数量统计                        |
-| 算法处理   | 支持多种去雾算法、实时对比（CSS clip-path）、指标可视化（ECharts）        |
-| 可视化对比  | 重叠对比（拖拽分隔线）、放大镜细节查看（Canvas）、亮度对比度调节                |
-| 通用导入导出 | 通过 `ImportExportToolbar` 组件为用户/角色/部门/菜单/字典/数据集/算法列表提供统一的 Excel/CSV 导入导出能力，复用任务列表查看进度 |
-| 系统配置   | 主题色切换、暗黑模式、布局模式（侧边/顶部/混合）、水印开关                      |
+| 模块 | 功能描述 | 技术要点 |
+|--------|-----------------------------------------------------|---------|
+| 用户系统 | 支持角色/权限管理、多级部门树、Session 认证与自动续期 | Pinia + localStorage Token 持久化 |
+| 数据集管理 | 瀑布流展示 + 懒加载、图片 MD5 校验、图片数量统计 | 缩略图 + 瀑布流 + 懒加载 |
+| 去雾处理 | 单张/批量去雾、参数调节（通用+算法专属）、参数预设管理、处理历史 | WebSocket 实时进度推送 + 异步任务状态轮询 |
+| 算法选择 | 树形算法结构、关键词/拼音搜索、多算法对比（最多3个）、自定义图片测试 | 拼音预计算字段 + 雷达图/柱状图可视化对比 |
+| 效果对比 | 6种对比模式（并排/重叠/放大镜/滤镜/指标/算法信息）、对比报告导出 | CSS clip-path 重叠对比 + ECharts 指标可视化 |
+| 收藏管理 | 跨模块统一收藏（算法/处理结果/数据集/图片/预设）、"我的收藏"聚合页 | FavoriteButton 可复用组件 + FavoriteAPI (SDK) |
+| 推荐管理 | 图像特征分析推荐（7维特征）、管理员规则配置、推荐效果报表 | RecommendationPanel 组件 + RecommendationAPI (SDK) |
+| 通用导入导出 | 为各列表页面提供统一的 Excel/CSV 导入导出能力，复用任务列表查看进度 | ImportExportToolbar 组件 |
+| 系统配置 | 主题色切换、暗黑模式、布局模式（侧边/顶部/混合）、水印开关 | CSS 变量 + 组件化管理 |
 
-## 3. 系统亮点
+## 4. 组件分层
 
-1. **用户登录与注册：** 利用 Pinia 和浏览器 localStorage 持久化保存用户 Token、角色权限以及其他个性化设置。
-2. **axios 二次封装：** 通过请求、响应拦截器拦截未登录、越权等非法请求，同时设计了高效的 API 接口代码结构和模块划分，提高了开发效率和可维护性。
-3. **菜单展示：** 通过结合使用 VueRouter 和 Pinia，在登录后动态获取用户菜单，对不同用户展示不同的操作菜单，实现静态路由和动态路由的分离。
-4. **响应式布局：** 利用 CSS 变量、弹性盒子、相对单位，通过组件化管理 Vue 不同布局页面，使项目同时支持电脑端和移动端的显示，用同一套代码实现多种页面布局模式的切换，满足不同用户需求。
-5. **图片上传：** 前端针对图片大小、后缀、MD5 进行校验，减轻后端服务器压力，实现极速上传；针对多图片通过并发请求，上传过程中利用进度条可视化上传流程，提高用户体验。
-6. **高效数据集图片浏览：** 采用缩略图、瀑布流布局以及懒加载技术展示大规模数据集图片。将初始位置设置在屏幕之外，防止懒加载失效，在优化传输速度的同时确保用户体验。
-7. **图像重叠对比：** 利用 CSS clip-path 实现原图和算法效果图重叠对比，并通过可拖拽线条直观调整两图像之间比例，增强对比效果。
-8. **图像细节展示增强：** 基于 Canvas 实现图片放大镜功能，并通过滑块实时调整亮度对比度，进一步突出图像细节。
-9. **实时去雾进度推送：** 通过 WebSocket 长连接获取去雾进度，并实时更新到页面上，提高用户体验。
-10. **组件分层管理：** 将前端组件分为基础组件、业务组件、布局组件，更易理解项目结构，提高可维护性。
-11. **组件的封装和复用：** 将复杂组件如瀑布流、懒加载、放大镜进行封装，将逻辑抽离为 Hooks，提升代码重用性和可维护性。
-12. **良好代码规范：** 使用 ESLint + Prettier + Stylelint 统一代码风格，集成 husky + lint-staged + commitizen 规范化 git 提交。
+```mermaid
+flowchart TB
+    subgraph PageLayer["页面组件层"]
+        DehazePage["去雾处理页"]
+        ComparePage["效果对比页"]
+        AlgoSelectPage["算法选择页"]
+        FavoritesPage["我的收藏页"]
+    end
 
-## 4. 后续优化方向
+    subgraph CoreBiz["核心业务组件层"]
+        DehazeComp["去雾组件 (进度/参数/历史)"]
+        CompareComp["对比组件 (重叠/放大镜/滤镜/指标)"]
+        AlgoComp["算法组件 (树形/搜索/对比)"]
+    end
 
-1. 图片零延迟拖拽上传
-2. Electron 桌面端与系统文件系统集成
-3. 增加微前端架构支持（qiankun）
-4. 采用 Monorepo 模块化架构
-5. 提高最终性能指标：Lighthouse 评分 > 92，TTI < 2.5s，长列表渲染 FPS ≥ 55
-6. 整体代码质量：单元测试覆盖率 ≥ 80%，SonarQube 漏洞率 ≤ 0.1%，API 类型安全覆盖率 100%
+    subgraph BaseBiz["基础模块组件层"]
+        FavoriteBtn["FavoriteButton 收藏按钮"]
+        RecommendPanel["RecommendationPanel 推荐组件"]
+    end
+
+    subgraph Common["通用组件层"]
+        Waterfall["Waterfall 瀑布流"]
+        Magnifier["Magnifier 放大镜"]
+        DraggableLine["DraggableLine 拖拽分隔线"]
+        ImportExport["ImportExportToolbar 导入导出"]
+    end
+
+    PageLayer --> CoreBiz
+    PageLayer --> BaseBiz
+    PageLayer --> Common
+    CoreBiz --> BaseBiz
+    CoreBiz --> Common
+```
+
+## 5. 关键技术决策
+
+| 决策 | 选择 | 理由 |
+|------|------|------|
+| 状态管理 | Pinia | Vue3 官方推荐，模块化 Store，支持 DevTools |
+| 认证方案 | Session + Token 持久化 | localStorage 持久化 Token，请求拦截器自动注入 |
+| 路由方案 | 静态路由 + 动态路由 | 登录后动态获取用户菜单，按角色展示不同菜单 |
+| 响应式布局 | CSS 变量 + 弹性盒子 | 同一套代码适配桌面端和移动端，支持多种布局模式切换 |
+| 图片上传 | 前端 MD5 校验 + 并发上传 | 前端预校验减轻后端压力，并发请求提升速度 |
+| 图像对比 | CSS clip-path + Canvas | 重叠对比 + 放大镜细节查看 |
+| 组件分层 | 基础组件 / 业务组件 / 布局组件 | 清晰分层，提高可维护性 |
+| 跨模块收藏状态同步 | Pinia 全局 favorite Store | 收藏状态在算法列表、处理历史、对比页面等多处复用，全局 Store 保证状态一致性，避免组件间 prop 透传 |
+| 6种对比模式切换 | 动态组件 + `<component :is>` | 对比模式通过组件名动态切换，避免 v-if 嵌套，模式间独立维护状态 |
+| 推荐组件可嵌入设计 | RecommendationWidget 独立组件 | 可嵌入算法选择页、去雾处理页、效果对比页，通过 props 接收场景参数控制推荐策略 |
+
+## 6. 模块间交互
+
+- 通过 RESTful API 调用 Java/Go/Python 后端
+- 通过 WebSocket 长连接获取去雾进度实时推送
+- 与 React 前端共享同一套后端 API

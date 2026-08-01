@@ -12,6 +12,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.MDC;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -75,13 +76,23 @@ public class SessionFilter extends OncePerRequestFilter {
                 new UsernamePasswordAuthenticationToken(userDetails, "", authorities);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        Long ttl = redisTemplate.getExpire(SecurityConstants.SESSION_PREFIX + sessionId, TimeUnit.SECONDS);
-        if (ttl != null && ttl > 0 && ttl < SecurityConstants.RENEW_THRESHOLD) {
-            redisTemplate.expire(SecurityConstants.SESSION_PREFIX + sessionId,
-                    SecurityConstants.SESSION_TTL, TimeUnit.SECONDS);
+        // 认证通过后，将 user_id 写入 MDC（供日志自动注入到每条日志）
+        Long userId = userDetails.getUserId();
+        if (userId != null) {
+            MDC.put("user_id", userId.toString());
         }
 
-        chain.doFilter(request, response);
+        try {
+            Long ttl = redisTemplate.getExpire(SecurityConstants.SESSION_PREFIX + sessionId, TimeUnit.SECONDS);
+            if (ttl != null && ttl > 0 && ttl < SecurityConstants.RENEW_THRESHOLD) {
+                redisTemplate.expire(SecurityConstants.SESSION_PREFIX + sessionId,
+                        SecurityConstants.SESSION_TTL, TimeUnit.SECONDS);
+            }
+
+            chain.doFilter(request, response);
+        } finally {
+            MDC.remove("user_id");
+        }
     }
 
     private String extractSessionId(HttpServletRequest request) {

@@ -17,6 +17,8 @@ CREATE TABLE `sys_notification_setting`
     `id`           bigint                                                        NOT NULL AUTO_INCREMENT COMMENT '主键',
     `user_id`      bigint                                                        NOT NULL COMMENT '用户ID',
     `push_enabled` tinyint                                                       NOT NULL DEFAULT 1 COMMENT 'APP推送总开关(1:开;0:关)',
+    `email_enabled` tinyint                                                      NOT NULL DEFAULT 1 COMMENT '邮件通知开关(1:开;0:关)',
+    `sms_enabled`   tinyint                                                      NOT NULL DEFAULT 0 COMMENT '短信通知开关(1:开;0:关)',
     `dnd_enabled`  tinyint                                                       NOT NULL DEFAULT 0 COMMENT '免打扰开关(1:开;0:关)',
     `dnd_start`    time                                                          NULL DEFAULT '22:00:00' COMMENT '免打扰开始时间',
     `dnd_end`      time                                                          NULL DEFAULT '08:00:00' COMMENT '免打扰结束时间',

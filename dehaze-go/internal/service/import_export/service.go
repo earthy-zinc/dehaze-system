@@ -206,11 +206,16 @@ func (s *ImportExportService) executeSyncImportWithRows(ctx context.Context, han
 	var errorReportURL *string
 	if result.FailureCount > 0 && len(result.Errors) > 0 {
 		objectName := fmt.Sprintf("imports/%s_errors.xlsx", uuid.New().String())
-		urlVal, genErr := s.generateErrorReport(ctx, objectName, result.Errors)
+		objName, genErr := s.generateErrorReport(ctx, objectName, result.Errors)
 		if genErr != nil {
 			s.logger.Warn("生成错误报告失败", zap.Error(genErr))
 		} else {
-			errorReportURL = &urlVal
+			// 拼接完整 URL 返回前端；GetURL 失败属于配置错误，明确暴露而非静默降级
+			url, err := s.storage.GetURL(ctx, objName)
+			if err != nil {
+				return ImportResultVO{}, common.WrapBizError(common.OBJECT_STORAGE_ERROR, "拼接错误报告 URL 失败", err)
+			}
+			errorReportURL = &url
 		}
 	}
 
@@ -340,18 +345,14 @@ func (s *ImportExportService) ExecuteAsyncExport(ctx context.Context, task *mode
 		return
 	}
 
-	downloadURL, err := s.storage.GetURL(ctx, objectName)
-	if err != nil {
-		downloadURL = objectName
-	}
-
+	// task.result 存 object_name，下载 URL 运行时拼接（不落库）
 	expiresAt := time.Now().Add(ResultFileExpireDays * 24 * time.Hour)
-	_ = s.taskSvc.UpdateTaskResult(ctx, task.TaskID, downloadURL, expiresAt)
+	_ = s.taskSvc.UpdateTaskResult(ctx, task.TaskID, objectName, expiresAt)
 
-	s.logger.Info("异步导出完成",
+	s.logger.Debug("异步导出完成",
 		zap.String("taskId", task.TaskID),
 		zap.String("module", module),
-		zap.String("downloadUrl", downloadURL))
+		zap.String("objectName", objectName))
 }
 
 func (s *ImportExportService) ExecuteAsyncImport(ctx context.Context, task *model.SysTask, params map[string]interface{}, callback ProgressCallback) {
@@ -403,11 +404,18 @@ func (s *ImportExportService) ExecuteAsyncImport(ctx context.Context, task *mode
 		}
 	}
 
-	resultJSON := s.buildImportResultJSON(result, errorReportObjectName)
+	// errorReportObjectName 拼接为完整 URL 后写入结果
+	var errorReportURL string
+	if errorReportObjectName != "" {
+		if url, err := s.storage.GetURL(ctx, errorReportObjectName); err == nil {
+			errorReportURL = url
+		}
+	}
+	resultJSON := s.buildImportResultJSON(result, errorReportURL)
 	expiresAt := time.Now().Add(ResultFileExpireDays * 24 * time.Hour)
 	_ = s.taskSvc.UpdateTaskResult(ctx, task.TaskID, resultJSON, expiresAt)
 
-	s.logger.Info("异步导入完成",
+	s.logger.Debug("异步导入完成",
 		zap.String("taskId", task.TaskID),
 		zap.String("module", module),
 		zap.Int("success", result.SuccessCount),
@@ -437,11 +445,8 @@ func (s *ImportExportService) generateErrorReport(ctx context.Context, objectNam
 	if err := s.storage.Upload(ctx, objectName, bytes.NewReader(buf.Bytes()), int64(buf.Len()), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); err != nil {
 		return "", err
 	}
-	url, err := s.storage.GetURL(ctx, objectName)
-	if err != nil {
-		return objectName, nil
-	}
-	return url, nil
+	// 返回 object_name，URL 运行时拼接
+	return objectName, nil
 }
 
 func (s *ImportExportService) validateUploadFile(fileHeader *multipart.FileHeader) error {

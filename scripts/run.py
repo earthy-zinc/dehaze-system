@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -14,14 +15,14 @@ VENV_PY = str(ROOT / "dehaze-python" / ".venv" /
 
 SERVICES: dict[str, tuple[Path, list[str], int]] = {
     "go":     (ROOT / "dehaze-go",     ["go", "run", "./cmd/main.go"], 8990),
-    "python": (ROOT / "dehaze-python", [VENV_PY, "-m", "uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8991"], 8991),
+    "python": (ROOT / "dehaze-python", [VENV_PY, "-m", "app.main"], 8991),
     "java":   (ROOT / "dehaze-java",   ["mvn.cmd" if IS_WIN else "mvn", "spring-boot:run", "-DskipTests"], 8989),
 }
 
 USAGE = """DehazeSystem 后端服务管理
 
 用法:
-    run.py run|stop|restart <svc[,svc]|all>
+    run.py run|start|stop|restart <svc[,svc]|all>
     run.py ps
     run.py logs <svc> [lines]
 
@@ -35,6 +36,13 @@ USAGE = """DehazeSystem 后端服务管理
 
 
 def _alive(pid: int) -> bool:
+    if IS_WIN:
+        # Windows 下 os.kill(pid, 0) 会发送 CTRL_C_EVENT 而非存活检查，改用 tasklist
+        out = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+            capture_output=True, text=True,
+        ).stdout
+        return str(pid) in out
     try:
         os.kill(pid, 0)
         return True
@@ -71,49 +79,77 @@ def start(svc: str):
     print(f"[{svc}] console log: {log_path}")
 
 
-def _kill_port_occupants(port: int):
-    # 清理占用端口的残留进程（go run/uvicorn --reload 的孤儿子进程，PPID=1，不在 PID 文件记录的进程组）
-    pid = _port_pid(port)
-    if pid:
-        try:
-            os.killpg(os.getpgid(pid), 9)
-        except (ProcessLookupError, PermissionError):
-            pass
-
-
 def stop(svc: str):
     cwd = SERVICES[svc][0]
     pid_file = cwd / f".{svc}.pid"
-    try:
-        pid = int(pid_file.read_text())
-    except (FileNotFoundError, ValueError):
-        print(f"[{svc}] not running")
-        return
+    port = SERVICES[svc][2]
 
-    if IS_WIN:
-        subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
-    else:
-        # start 用 start_new_session=True，子进程（go run 二进制、uvicorn worker）在同一进程组，
-        # 组 ID = 父 PID，需 killpg 才能连带杀掉子进程
+    # 收集目标 PID：PID 文件 + 端口占用（ss 可能返回多个，如 uvicorn --reload 的 reloader+worker）
+    file_pid = None
+    try:
+        file_pid = int(pid_file.read_text())
+    except (FileNotFoundError, ValueError):
+        pass
+
+    target_pids = {file_pid, *_port_pids(port)} - {None}
+
+    killed = False
+    # 第一轮：按进程组清理（start_new_session=True 启动的进程 PGID=PID）
+    for pid in target_pids:
+        if not _alive(pid):
+            continue
         try:
-            os.killpg(pid, 9)
+            if IS_WIN:
+                subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
+            else:
+                os.killpg(os.getpgid(pid), 9)
+            killed = True
         except (ProcessLookupError, PermissionError):
             pass
-        _kill_port_occupants(SERVICES[svc][2])
+
+    # 第二轮：复查端口兜底——go run 编译产物、uvicorn --reload 的 worker 可能被 init
+    # 接管（PPID=1）脱离原进程组，killpg 杀不到，需按端口逐个 kill 清理
+    for _ in range(3):
+        leftover = _port_pids(port)
+        if not leftover:
+            break
+        for pid in leftover:
+            try:
+                if IS_WIN:
+                    subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+                else:
+                    os.kill(pid, 9)
+                killed = True
+            except (ProcessLookupError, PermissionError):
+                pass
+        time.sleep(0.3)
+
     pid_file.unlink(missing_ok=True)
-    print(f"[{svc}] stopped")
+    print(f"[{svc}] stopped" if killed else f"[{svc}] not running")
 
 
-def _port_pid(port: int) -> int | None:
-    """返回监听指定端口的进程 PID，无监听则返回 None"""
+def _port_pids(port: int) -> list[int]:
+    """返回所有监听指定端口的进程 PID，无监听则返回空列表"""
     if IS_WIN:
-        return None
+        # Windows 无 ss，用 netstat -ano，最后一列为 PID，匹配 LISTENING 且本地地址以 :port 结尾
+        out = subprocess.run(
+            ["netstat", "-ano", "-p", "TCP"],
+            capture_output=True, text=True,
+        ).stdout
+        pids = []
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) >= 5 and parts[-2] == "LISTENING" and parts[1].endswith(f":{port}"):
+                try:
+                    pids.append(int(parts[-1]))
+                except ValueError:
+                    pass
+        return pids
     out = subprocess.run(
         ["ss", "-tlnp", f"sport = :{port}"],
         capture_output=True, text=True,
     ).stdout
-    match = re.search(r"pid=(\d+)", out)
-    return int(match.group(1)) if match else None
+    return [int(m) for m in re.findall(r"pid=(\d+)", out)]
 
 
 def status():
@@ -129,8 +165,8 @@ def status():
             st = f"running (pid={pid})"
         else:
             # 兜底：通过端口检测实际运行的进程
-            pid = _port_pid(port)
-            st = f"running (pid={pid})" if pid else "stopped"
+            pids = _port_pids(port)
+            st = f"running (pid={pids[0]})" if pids else "stopped"
         print(f"{svc:<10} :{port:<5} {st}")
 
 
@@ -162,13 +198,13 @@ def main():
 
     cmd, *rest = args
 
-    if cmd in ("run", "stop", "restart"):
+    if cmd in ("run", "start", "stop", "restart"):
         if not rest:
             print(f"用法: {cmd} <svc[,svc]|all>")
             sys.exit(1)
         svcs = list(SERVICES) if rest[0] == "all" else [s for s in rest[0].split(",") if s in SERVICES]
         for s in svcs:
-            if cmd == "run":
+            if cmd in ("run", "start"):
                 start(s)
             elif cmd == "stop":
                 stop(s)

@@ -22,7 +22,7 @@ public class MemberMonthlyQuotaResetJob {
     public void resetMonthlyQuota() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始执行会员月度配额重置...");
+            log.debug("开始执行会员月度配额重置...");
             memberService.resetMonthlyQuota();
         } catch (Exception e) {
             log.error("会员月度配额重置失败", e);

@@ -31,7 +31,6 @@ func (api *SysInputHistoryApi) ListHistory(c *gin.Context) {
 	pageNum, pageSize := getPageParams(c)
 	inputSource := c.Query("inputSource")
 	keyword := c.Query("keywords")
-	favoriteOnly := c.Query("favoriteOnly") == "true"
 
 	// status 处理状态筛选（1=成功，2=失败，3=处理中），0 表示不筛选
 	status := 0
@@ -41,7 +40,7 @@ func (api *SysInputHistoryApi) ListHistory(c *gin.Context) {
 		}
 	}
 
-	result, err := api.service.GetPage(ctx, userID, pageNum, pageSize, inputSource, keyword, favoriteOnly, status)
+	result, err := api.service.GetPage(ctx, userID, pageNum, pageSize, inputSource, keyword, status)
 	if err != nil {
 		_ = c.Error(err)
 		return

@@ -112,12 +112,11 @@ const TaskDetailPopup: React.FC<TaskDetailPopupProps> = ({
                 下载结果
               </Button>
             )}
-            {TERMINAL_STATUSES.includes(task.status) &&
-              task.status !== 3 && (
-                <Button block onClick={onClose}>
-                  关闭
-                </Button>
-              )}
+            {TERMINAL_STATUSES.includes(task.status) && task.status !== 3 && (
+              <Button block onClick={onClose}>
+                关闭
+              </Button>
+            )}
           </View>
         </View>
       )}

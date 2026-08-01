@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/trace"
 	"github.com/gin-contrib/timeout"
 	"github.com/gin-gonic/gin"
 )
@@ -24,7 +25,8 @@ func TimeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 func timeoutResponse(c *gin.Context) {
 	c.Header("Connection", "close")
 	c.JSON(http.StatusOK, common.Response{
-		Code: common.SYSTEM_EXECUTION_TIMEOUT.Code,
-		Msg:  common.SYSTEM_EXECUTION_TIMEOUT.Msg,
+		Code:    common.SYSTEM_EXECUTION_TIMEOUT.Code,
+		Msg:     common.SYSTEM_EXECUTION_TIMEOUT.Msg,
+		TraceId: trace.FromContext(c.Request.Context()),
 	})
 }

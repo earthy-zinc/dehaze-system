@@ -20,6 +20,9 @@ system:
   ip-limit-time: 3600
   # 登录/注册接口 IP 限流次数（每分钟），测试环境调大避免集成测试触发限流
   login-ip-limit-count: 1000
+  # 优惠券领取限流（测试环境调高避免集成测试触发）
+  coupon-receive-rate-limit: 10000
+  coupon-receive-rate-window: 60
   #  路由全局前缀
   router-prefix: ""
 

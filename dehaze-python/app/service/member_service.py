@@ -798,7 +798,7 @@ class MemberService:
                     logger.warning(f"等级变更通知发送失败: userId={member.user_id}, old={old_level}, new={target_level}", exc_info=e)
 
         await db.flush()
-        logger.info(f"会员过期降级处理完成: 共处理 {count} 条记录")
+        logger.debug(f"会员过期降级处理完成: 共处理 {count} 条记录")
         return count
 
     @staticmethod
@@ -864,5 +864,5 @@ class MemberService:
                 except Exception as e:
                     logger.warning(f"到期提醒发送失败: userId={member.user_id}, days={days}", exc_info=e)
 
-        logger.info(f"会员到期预警完成: 共发送 {sent_count} 条提醒")
+        logger.debug(f"会员到期预警完成: 共发送 {sent_count} 条提醒")
         return sent_count

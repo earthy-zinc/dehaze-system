@@ -24,6 +24,7 @@ import com.pei.dehaze.model.vo.SimpleImageUrlVO;
 import com.pei.dehaze.service.ImageProcessingService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysItemFileService;
+import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -51,6 +52,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     private final SysFileService sysFileService;
     private final ImageProcessingService imageProcessingService;
     private final FilePathBuilder filePathBuilder;
+    private final StorageServiceFactory storageServiceFactory;
     private final ApplicationEventPublisher eventPublisher;
     // 使用 Mapper 直接查询，避免循环依赖
     private final SysDatasetItemMapper sysDatasetItemMapper;
@@ -119,7 +121,23 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
 
     @Override
     public List<ImageUrlVO> getImageUrlVOs(Long itemId) {
-        return this.baseMapper.listImageUrl(itemId);
+        List<ImageUrlVO> list = this.baseMapper.listImageUrl(itemId);
+        for (ImageUrlVO vo : list) {
+            fillUrls(vo);
+        }
+        return list;
+    }
+
+    /**
+     * 根据 objectName + storage 动态拼接 url 与 thumbnailUrl
+     */
+    private void fillUrls(ImageUrlVO vo) {
+        if (vo.getObjectName() != null && vo.getStorage() != null) {
+            vo.setUrl(storageServiceFactory.get(vo.getStorage()).getUrl(vo.getObjectName()));
+        }
+        if (vo.getThumbnailObjectName() != null && vo.getThumbnailStorage() != null) {
+            vo.setThumbnailUrl(storageServiceFactory.get(vo.getThumbnailStorage()).getUrl(vo.getThumbnailObjectName()));
+        }
     }
 
     @Override
@@ -136,14 +154,19 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         Long thumbnailFileId = sysItemFile.getThumbnailFileId();
 
         // MinIO 删除在事务外执行，避免网络 I/O 占用 DB 连接
-        boolean res1 = sysFileService.deleteFile(fileId);
-        if (!res1) {
-            throw new BusinessException("删除原图失败");
+        // SysFile 删除采用幂等设计：记录不存在时返回 true，不阻塞 SysItemFile 记录清理
+        try {
+            sysFileService.deleteFile(fileId);
+        } catch (Exception e) {
+            log.warn("删除原图文件失败（将继续清理关联记录）: fileId={}", fileId, e);
         }
 
-        boolean res2 = sysFileService.deleteFile(thumbnailFileId);
-        if (!res2) {
-            throw new BusinessException("删除缩略图失败");
+        if (thumbnailFileId != null) {
+            try {
+                sysFileService.deleteFile(thumbnailFileId);
+            } catch (Exception e) {
+                log.warn("删除缩略图文件失败（将继续清理关联记录）: thumbnailFileId={}", thumbnailFileId, e);
+            }
         }
 
         // 短事务删除 DB 记录（通过代理调用，确保 @Transactional 生效）
@@ -210,7 +233,6 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             thumbnailItemBO.setObjectName(objectName);
             thumbnailItemBO.setExtension(extension);
             thumbnailItemBO.setMd5(md5);
-            thumbnailItemBO.setPath(objectName);
             thumbnailItemBO.setSize(size);
             thumbnailItemBO.setDescription(itemBO.getDescription());
             thumbnailItemBO.setType(itemBO.getType());
@@ -304,7 +326,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
                 // 从批量查询的 Map 中获取文件信息
                 SysFile pairedSysFile = fileMap.get(pairedFile.getFileId());
                 if (pairedSysFile != null) {
-                    simpleVO.setUrl(pairedSysFile.getUrl());
+                    simpleVO.setUrl(storageServiceFactory.get(pairedSysFile.getStorage()).getUrl(pairedSysFile.getObjectName()));
                     simpleVO.setFileName(pairedSysFile.getName());
                     simpleVO.setFormattedSize(pairedSysFile.getSize());
                     simpleVO.setFormat(extractFormat(pairedSysFile.getName(), pairedSysFile.getType()));
@@ -314,7 +336,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
                 if (pairedFile.getThumbnailFileId() != null) {
                     SysFile pairedThumbnail = fileMap.get(pairedFile.getThumbnailFileId());
                     if (pairedThumbnail != null) {
-                        simpleVO.setThumbnailUrl(pairedThumbnail.getUrl());
+                        simpleVO.setThumbnailUrl(storageServiceFactory.get(pairedThumbnail.getStorage()).getUrl(pairedThumbnail.getObjectName()));
                     }
                 }
 
@@ -415,7 +437,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         vo.setCreateTime(itemFile.getCreateTime());
 
         if (sysFile != null) {
-            vo.setUrl(sysFile.getUrl());
+            vo.setUrl(storageServiceFactory.get(sysFile.getStorage()).getUrl(sysFile.getObjectName()));
             vo.setFileName(sysFile.getName());
             vo.setFormattedSize(sysFile.getSize());
             vo.setFormat(extractFormat(sysFile.getName(), sysFile.getType()));
@@ -423,7 +445,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         }
 
         if (thumbnailFile != null) {
-            vo.setThumbnailUrl(thumbnailFile.getUrl());
+            vo.setThumbnailUrl(storageServiceFactory.get(thumbnailFile.getStorage()).getUrl(thumbnailFile.getObjectName()));
         }
     }
 

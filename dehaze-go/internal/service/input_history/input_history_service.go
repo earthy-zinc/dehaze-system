@@ -18,8 +18,8 @@ func NewInputHistoryService(repo ihrepo.IInputHistoryRepository) *InputHistorySe
 }
 
 // GetPage 分页查询历史记录
-func (s *InputHistoryService) GetPage(ctx context.Context, userID int64, pageNum, pageSize int, inputSource, keyword string, favoriteOnly bool, status int) (*common.PageResult, error) {
-	list, total, err := s.repo.FindPage(ctx, userID, pageNum, pageSize, inputSource, keyword, favoriteOnly, status)
+func (s *InputHistoryService) GetPage(ctx context.Context, userID int64, pageNum, pageSize int, inputSource, keyword string, status int) (*common.PageResult, error) {
+	list, total, err := s.repo.FindPage(ctx, userID, pageNum, pageSize, inputSource, keyword, status)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询历史记录失败", err)
 	}
@@ -51,7 +51,7 @@ func (s *InputHistoryService) Create(ctx context.Context, history *model.SysInpu
 	return s.repo.Create(ctx, history)
 }
 
-// Update 更新历史记录（如收藏标记）
+// Update 更新历史记录
 func (s *InputHistoryService) Update(ctx context.Context, id, userID int64, updates map[string]interface{}) error {
 	history, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -62,9 +62,6 @@ func (s *InputHistoryService) Update(ctx context.Context, id, userID int64, upda
 	}
 	if history.UserID != userID {
 		return common.NewBizError(common.OPERATION_NOT_ALLOW, "无权操作他人的历史记录")
-	}
-	if v, ok := updates["isFavorite"]; ok {
-		history.IsFavorite = ptrBool(v)
 	}
 	return s.repo.Update(ctx, history)
 }
@@ -109,20 +106,3 @@ func (s *InputHistoryService) ClearAll(ctx context.Context, userID int64) (int64
 	return s.repo.DeleteByUserID(ctx, userID)
 }
 
-func ptrBool(val interface{}) *bool {
-	if val == nil {
-		return nil
-	}
-	switch v := val.(type) {
-	case bool:
-		return &v
-	case float64:
-		b := v != 0
-		return &b
-	case int:
-		b := v != 0
-		return &b
-	default:
-		return nil
-	}
-}

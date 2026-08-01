@@ -82,8 +82,6 @@ describe("文件管理接口测试", () => {
       expect(result.id).toBeGreaterThan(0);
       expect(typeof result.name).toBe("string");
       expect(result.name.length).toBeGreaterThan(0);
-      expect(typeof result.path).toBe("string");
-      expect(result.path.length).toBeGreaterThan(0);
       expect(typeof result.url).toBe("string");
       expect(result.url).toMatch(/^https?:\/\//);
       uploadedFileIds.push(result.id);

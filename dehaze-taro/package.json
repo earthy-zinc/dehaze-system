@@ -28,7 +28,7 @@
     "dev:jd": "npm run build:jd -- --watch",
     "dev:harmory": "npm run build:harmory -- --watch",
     "lint": "pnpm run lint:eslint && pnpm run lint:stylelint && pnpm run lint:prettier",
-    "lint:eslint": "eslint --fix ./src/**/*.{ts,tsx,js,jsx}",
+    "lint:eslint": "eslint --fix ./src",
     "lint:prettier": "prettier --write \"**/*.{js,cjs,json,jsx,ts,tsx,css,less,html,md}\"",
     "lint:stylelint": "stylelint \"**/*.{css,less}\" --fix",
     "type-check": "tsc --noEmit"

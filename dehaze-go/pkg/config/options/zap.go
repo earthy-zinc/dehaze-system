@@ -16,6 +16,10 @@ type Zap struct {
 	ShowLine      bool   `mapstructure:"show-line" json:"show-line" yaml:"show-line"`
 	LogInConsole  bool   `mapstructure:"log-in-console" json:"log-in-console" yaml:"log-in-console"`
 	RetentionDay  int    `mapstructure:"retention-day" json:"retention-day" yaml:"retention-day" validate:"gte=-1"`
+	// MaxSize 单个日志文件大小上限（MB），超限归档为 {级别}.{n}.log 并开新活动文件，0 表示不按大小切割
+	MaxSize int64 `mapstructure:"max-size" json:"max-size" yaml:"max-size" validate:"gte=0"`
+	// ArchiveOnStartup 启动时归档当天已存在的活动日志文件（dev 用，prod 关闭以保留连续日志）
+	ArchiveOnStartup bool `mapstructure:"archive-on-startup" json:"archive-on-startup" yaml:"archive-on-startup"`
 }
 
 // Levels 返回文件输出的级别分档：info（>=info，含 WARN/ERROR）与 error（>=error）两档。

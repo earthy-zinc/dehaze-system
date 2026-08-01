@@ -1,7 +1,6 @@
 import {
   PackageAPI,
   type PackageForm,
-  type BenefitOverrides,
 } from "dehaze-sdk-js";
 import {
   Divider,
@@ -48,18 +47,17 @@ const DEFAULT_FORM: PackageForm = {
   description: "",
   sort: 1,
   status: 1,
-};
-
-const DEFAULT_BENEFIT: BenefitOverrides = {
-  monthlyDehazeQuota: 0,
-  monthlyEvaluateQuota: 0,
-  historyRetention: 0,
-  batchLimit: 0,
-  priority: 0,
-  advancedParams: 0,
-  hdExport: 0,
-  reportExport: 0,
-  batchDownload: 0,
+  benefitOverrides: {
+    monthlyDehazeQuota: 0,
+    monthlyEvaluateQuota: 0,
+    historyRetention: 0,
+    batchLimit: 0,
+    priority: 0,
+    advancedParams: 0,
+    hdExport: 0,
+    reportExport: 0,
+    batchDownload: 0,
+  },
 };
 
 export interface PackageFormDialogRef {
@@ -78,17 +76,14 @@ const PackageFormDialog = forwardRef<
   const [dialogType, setDialogType] = useState<"add" | "edit">("add");
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [form] = Form.useForm<PackageForm>();
-  const [benefitForm] = Form.useForm<BenefitOverrides>();
 
   const open = useCallback(
     async (type: "add" | "edit", id?: number) => {
       setDialogType(type);
       setVisible(true);
       form.resetFields();
-      benefitForm.resetFields();
       if (type === "add") {
         form.setFieldsValue({ ...DEFAULT_FORM });
-        benefitForm.setFieldsValue({ ...DEFAULT_BENEFIT });
       } else if (type === "edit" && id) {
         try {
           const data = await PackageAPI.getForm(id);
@@ -103,17 +98,25 @@ const PackageFormDialog = forwardRef<
             description: data.description,
             sort: data.sort ?? 1,
             status: data.status ?? 1,
-          });
-          benefitForm.setFieldsValue({
-            ...DEFAULT_BENEFIT,
-            ...(data.benefitOverrides || {}),
+            benefitOverrides: {
+              monthlyDehazeQuota: 0,
+              monthlyEvaluateQuota: 0,
+              historyRetention: 0,
+              batchLimit: 0,
+              priority: 0,
+              advancedParams: 0,
+              hdExport: 0,
+              reportExport: 0,
+              batchDownload: 0,
+              ...(data.benefitOverrides || {}),
+            },
           });
         } catch {
           message.error("获取套餐信息失败");
         }
       }
     },
-    [form, benefitForm]
+    [form]
   );
 
   useImperativeHandle(ref, () => ({ open }), [open]);
@@ -121,8 +124,7 @@ const PackageFormDialog = forwardRef<
   const handleCancel = useCallback(() => {
     setVisible(false);
     form.resetFields();
-    benefitForm.resetFields();
-  }, [form, benefitForm]);
+  }, [form]);
 
   const handlePeriodChange = useCallback(
     (value: string) => {
@@ -134,29 +136,26 @@ const PackageFormDialog = forwardRef<
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
-      const benefitValues = await benefitForm.validateFields();
       setConfirmLoading(true);
-      const submitData: PackageForm = {
-        ...values,
-        benefitOverrides: { ...benefitValues },
-      };
       if (dialogType === "edit") {
         const id = form.getFieldValue("id");
-        await PackageAPI.update(id, submitData);
+        await PackageAPI.update(id, values);
         message.success("修改套餐成功");
       } else {
-        await PackageAPI.add(submitData);
+        await PackageAPI.add(values);
         message.success("新增套餐成功");
       }
       handleCancel();
       onSuccess?.();
-    } catch (error: any) {
-      if (error?.errorFields) return;
-      message.error(error?.message || "操作失败");
+    } catch (error: unknown) {
+      if (error && typeof error === "object" && "errorFields" in error) return;
+      message.error(
+        error instanceof Error ? error.message : "操作失败"
+      );
     } finally {
       setConfirmLoading(false);
     }
-  }, [form, benefitForm, dialogType, handleCancel, onSuccess]);
+  }, [form, dialogType, handleCancel, onSuccess]);
 
   return (
     <Modal
@@ -272,40 +271,60 @@ const PackageFormDialog = forwardRef<
           权益覆盖配置
         </Divider>
 
-        <Form
-          form={benefitForm}
-          layout="horizontal"
-          labelCol={{ span: 8 }}
-          wrapperCol={{ span: 16 }}
+        <Form.Item
+          name={["benefitOverrides", "monthlyDehazeQuota"]}
+          label="去雾配额"
         >
-          <Form.Item name="monthlyDehazeQuota" label="去雾配额">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="monthlyEvaluateQuota" label="评估配额">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="historyRetention" label="历史保留(天)">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="batchLimit" label="批量上限">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="priority" label="优先级">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="advancedParams" label="高级参数">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="hdExport" label="高清导出">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="reportExport" label="报告导出">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="batchDownload" label="批量下载">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-        </Form>
+          <InputNumber min={0} style={{ width: "100%" }} />
+        </Form.Item>
+        <Form.Item
+          name={["benefitOverrides", "monthlyEvaluateQuota"]}
+          label="评估配额"
+        >
+          <InputNumber min={0} style={{ width: "100%" }} />
+        </Form.Item>
+        <Form.Item
+          name={["benefitOverrides", "historyRetention"]}
+          label="历史保留(天)"
+        >
+          <InputNumber min={0} style={{ width: "100%" }} />
+        </Form.Item>
+        <Form.Item
+          name={["benefitOverrides", "batchLimit"]}
+          label="批量上限"
+        >
+          <InputNumber min={0} style={{ width: "100%" }} />
+        </Form.Item>
+        <Form.Item
+          name={["benefitOverrides", "priority"]}
+          label="优先级"
+        >
+          <InputNumber min={0} style={{ width: "100%" }} />
+        </Form.Item>
+        <Form.Item
+          name={["benefitOverrides", "advancedParams"]}
+          label="高级参数"
+        >
+          <InputNumber min={0} style={{ width: "100%" }} />
+        </Form.Item>
+        <Form.Item
+          name={["benefitOverrides", "hdExport"]}
+          label="高清导出"
+        >
+          <InputNumber min={0} style={{ width: "100%" }} />
+        </Form.Item>
+        <Form.Item
+          name={["benefitOverrides", "reportExport"]}
+          label="报告导出"
+        >
+          <InputNumber min={0} style={{ width: "100%" }} />
+        </Form.Item>
+        <Form.Item
+          name={["benefitOverrides", "batchDownload"]}
+          label="批量下载"
+        >
+          <InputNumber min={0} style={{ width: "100%" }} />
+        </Form.Item>
       </Form>
     </Modal>
   );

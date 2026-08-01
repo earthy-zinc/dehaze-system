@@ -109,6 +109,7 @@ class ResultCode(Enum):
 
     # 系统级错误码 B0xxx
     SYSTEM_EXECUTION_ERROR = ("B0001", "系统执行出错")
+    SYSTEM_EXECUTION_TIMEOUT = ("B0100", "系统执行超时")
 
     # 算法模块错误码 B02xx
     ALGORITHM_NOT_FOUND = ("B0200", "算法不存在")

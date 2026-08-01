@@ -45,10 +45,10 @@ func (r *DictTypeRepository) FindByCode(ctx context.Context, code string) (*mode
 	return &dictType, err
 }
 
-// ExistsByCode 检查字典类型编码是否存在
+// ExistsByCode 检查字典类型编码是否存在（查全表含软删行）
 func (r *DictTypeRepository) ExistsByCode(ctx context.Context, code string, excludeID ...int64) (bool, error) {
 	var count int64
-	db := r.db.WithContext(ctx).Model(&model.SysDictType{}).
+	db := r.db.Unscoped().WithContext(ctx).Model(&model.SysDictType{}).
 		Where("code = ?", code)
 
 	if len(excludeID) > 0 && excludeID[0] > 0 {

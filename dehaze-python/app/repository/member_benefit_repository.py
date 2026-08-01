@@ -11,9 +11,9 @@ class MemberBenefitRepository(BaseRepository[SysMemberBenefit]):
     model = SysMemberBenefit
 
     async def get_by_level_code(self, db: AsyncSession, level_code: str) -> Optional[SysMemberBenefit]:
+        """根据等级编码查询会员权益（含软删记录，用于查重）"""
         stmt = select(SysMemberBenefit).where(
             SysMemberBenefit.level_code == level_code,
-            SysMemberBenefit.deleted == 0,
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()

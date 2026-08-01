@@ -20,6 +20,7 @@ import com.pei.dehaze.model.query.TaskQuery;
 import com.pei.dehaze.model.vo.TaskVO;
 import com.pei.dehaze.service.TaskService;
 import com.pei.dehaze.service.TaskExecutor;
+import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import com.pei.dehaze.security.util.SecurityUtils;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,8 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
 
     private final TaskExecutor taskExecutor;
 
+    private final StorageServiceFactory storageServiceFactory;
+
     private final RedisTemplate<String, Object> redisTemplate;
 
     private final WebSocketMessageRelay wsMessageRelay;
@@ -70,7 +73,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             SysTask existingTask = this.getOne(new LambdaQueryWrapper<SysTask>()
                     .eq(SysTask::getIdempotencyKey, idempotencyKey));
             if (existingTask != null) {
-                log.info("幂等键命中，返回已有任务: taskId={}, idempotencyKey={}",
+                log.debug("幂等键命中，返回已有任务: taskId={}, idempotencyKey={}",
                         existingTask.getTaskId(), idempotencyKey);
                 return convertToTaskVO(existingTask);
             }
@@ -121,7 +124,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             taskExecutor.publishExportTask(taskIdForAsync);
         }
 
-        log.info("创建任务成功: taskId={}, type={}, userId={}", taskId, form.getType(), currentUserId);
+        log.debug("创建任务成功: taskId={}, type={}, userId={}", taskId, form.getType(), currentUserId);
 
         return taskVO;
     }
@@ -142,7 +145,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("无权操作此任务");
         }
 
-        log.info("查询任务状态: taskId={}, status={}", taskId, sysTask.getStatus());
+        log.debug("查询任务状态: taskId={}, status={}", taskId, sysTask.getStatus());
 
         return convertToTaskVO(sysTask);
     }
@@ -175,8 +178,15 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("任务结果为空: " + taskId);
         }
 
-        String downloadUrl = sysTask.getResult();
-        log.info("生成下载链接: taskId={}, url={}", taskId, downloadUrl);
+        // result 存的是 JSON 编码值：导出为 JSON 字符串 "exports/xxx.zip"，导入为 JSON 对象 {...}
+        // 仅当不是 JSON 对象/数组（即导出场景）时，才作为 objectName 拼接下载 URL
+        String result = sysTask.getResult();
+        if (JSONUtil.isTypeJSON(result)) {
+            throw new BusinessException("任务结果不包含下载文件（导入任务）: " + taskId);
+        }
+        String objectName = extractObjectName(result);
+        String downloadUrl = storageServiceFactory.getDefault().getUrl(objectName);
+        log.debug("生成下载链接: taskId={}, url={}", taskId, downloadUrl);
 
         return downloadUrl;
     }
@@ -243,7 +253,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             log.warn("WebSocket 推送取消通知失败（不影响任务执行）: taskId={}", taskId, e);
         }
 
-        log.info("取消任务成功: taskId={}", taskId);
+        log.debug("取消任务成功: taskId={}", taskId);
     }
 
     @Override
@@ -304,7 +314,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             taskExecutor.publishExportTask(taskIdForAsync);
         }
 
-        log.info("重试任务: taskId={}, userId={}, retryCount={}", taskId, currentUserId, sysTask.getRetryCount());
+        log.debug("重试任务: taskId={}, userId={}, retryCount={}", taskId, currentUserId, sysTask.getRetryCount());
         return convertToTaskVO(sysTask);
     }
 
@@ -356,7 +366,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         IPage<SysTask> taskPage = this.page(page, wrapper);
         IPage<TaskVO> voPage = taskPage.convert(this::convertToTaskVO);
 
-        log.info("查询用户任务列表: userId={}, total={}", currentUserId, taskPage.getTotal());
+        log.debug("查询用户任务列表: userId={}, total={}", currentUserId, taskPage.getTotal());
 
         return PageResult.success(voPage);
     }
@@ -370,7 +380,8 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         }
         sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
         sysTask.setProgress(100);
-        sysTask.setResult(result);
+        // result 可能是裸 objectName（导出）或 JSON 对象字符串（导入），统一存为合法 JSON
+        sysTask.setResult(JSONUtil.isTypeJSON(result) ? result : JSONUtil.toJsonStr(result));
         sysTask.setCompletedAt(LocalDateTime.now());
         sysTask.setExpiresAt(expiresAt);
         this.updateById(sysTask);
@@ -477,7 +488,12 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         if (sysTask.getStatus() != null
                 && sysTask.getStatus() == TaskConstants.STATUS_COMPLETED
                 && StrUtil.isNotBlank(sysTask.getResult())) {
-            taskVO.setDownloadUrl(sysTask.getResult());
+            // result 存的是 JSON 编码值：导出为 JSON 字符串 "exports/xxx.zip"，导入为 JSON 对象 {...}
+            // 仅当不是 JSON 对象/数组（即导出场景）时，才作为 objectName 拼接下载 URL
+            String result = sysTask.getResult();
+            if (!JSONUtil.isTypeJSON(result)) {
+                taskVO.setDownloadUrl(storageServiceFactory.getDefault().getUrl(extractObjectName(result)));
+            }
         }
 
         taskVO.setExpiresAt(sysTask.getExpiresAt());
@@ -494,5 +510,25 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         taskVO.setWorkerId(sysTask.getWorkerId());
 
         return taskVO;
+    }
+
+    /**
+     * 从 JSON 字符串值中提取裸 objectName
+     * <p>例如: "\"exports/xxx.zip\"" → "exports/xxx.zip"
+     * <p>写入时已通过 {@link JSONUtil#toJsonStr} 编码为 JSON 字符串（带双引号），
+     * 此处先尝试用 JSONUtil.toBean 反向解码，失败时 fallback 手动去引号
+     */
+    private String extractObjectName(String jsonResult) {
+        try {
+            return JSONUtil.toBean(jsonResult, String.class);
+        } catch (Exception e) {
+            // Hutool toBean 对纯 JSON 字符串值可能不支持，fallback 手动去掉首尾 JSON 引号
+            if (jsonResult.length() >= 2
+                    && jsonResult.startsWith("\"")
+                    && jsonResult.endsWith("\"")) {
+                return jsonResult.substring(1, jsonResult.length() - 1);
+            }
+            return jsonResult;
+        }
     }
 }

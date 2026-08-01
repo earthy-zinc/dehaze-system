@@ -64,9 +64,14 @@ mybatis-plus:
   configuration:
     # 驼峰下划线转换
     map-underscore-to-camel-case: true
-    # 这个配置会将执行的sql打印出来，在开发或测试的时候可以用
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
+
+# SQL 审计日志（结构化 JSON 输出至 info.log）
+# 生产环境仅记录慢查询与 SQL 错误，避免全量 SQL 冲刷日志
+dehaze:
+  sql-log:
+    level: WARN
+    slow-threshold-ms: 500
 
 # 安全配置
 security:
@@ -103,7 +108,7 @@ management:
 
 # 文件上传配置
 file:
-  # OSS 类型 (目前支持aliyun、minio)
+  # 上传类型 (minio OSS / local 本地存储 / nginx-static 外部 nginx 静态托管)
   type: minio
   # 上传文件基于url
   baseUrl: http://10.16.12.65:8989/api/v1/files/download
@@ -122,6 +127,10 @@ file:
     secret-key: ${DEHAZE_PASSWORD}
     # 存储桶名称
     bucket-name: dehaze
+  # nginx-static 后端（文件由外部 nginx 静态托管，Java 仅登记与拼 URL，不参与上传/下载 IO）
+  nginx-static:
+    # nginx 对外访问 baseUrl（必须带 scheme + host）
+    baseUrl: http://${DEHAZE_HOST}:8081
 
 # springdoc配置 (生产环境禁用 API 文档)
 springdoc:
@@ -187,10 +196,6 @@ captcha:
     size: 20
   # 验证码有效期(秒)
   expire-seconds: 120
-
-# 读取根目录的 .env
-springdotenv:
-  directory: ../
 
 # 支付渠道配置（默认关闭，启用时调用真实 SDK）
 payment:

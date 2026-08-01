@@ -115,7 +115,7 @@ func (s *NotificationSettingService) getOrCreateDefault(ctx context.Context, use
 		Preferences: toJSONString(defaultPrefs),
 	}
 
-	if err := s.settingRepo.Create(ctx, setting); err != nil {
+	if err := s.settingRepo.Upsert(ctx, setting); err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建默认通知设置失败", err)
 	}
 	return setting, nil

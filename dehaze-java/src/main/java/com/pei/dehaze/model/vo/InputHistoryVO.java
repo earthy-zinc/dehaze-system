@@ -49,9 +49,6 @@ public class InputHistoryVO {
     @Schema(description = "图片来源")
     private String inputSource;
 
-    @Schema(description = "是否收藏")
-    private Boolean isFavorite;
-
     @Schema(description = "同步状态")
     private Integer syncStatus;
 

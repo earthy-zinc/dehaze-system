@@ -15,6 +15,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/metrics"
+	"github.com/earthyzinc/dehaze-go/pkg/storage"
 	"github.com/earthyzinc/dehaze-go/pkg/websocket"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -42,6 +43,7 @@ type TaskService struct {
 	cache        types.ICache
 	logger       *zap.Logger
 	taskExecutor AsyncTaskExecutor
+	storageRegistry *storage.Registry
 }
 
 // NewTaskService 创建任务服务
@@ -51,6 +53,7 @@ func NewTaskService(
 	c types.ICache,
 	logger *zap.Logger,
 	taskExecutor AsyncTaskExecutor,
+	storageRegistry *storage.Registry,
 ) *TaskService {
 	return &TaskService{
 		taskRepo:     taskRepo,
@@ -58,6 +61,7 @@ func NewTaskService(
 		cache:        c,
 		logger:       logger,
 		taskExecutor: taskExecutor,
+		storageRegistry: storageRegistry,
 	}
 }
 
@@ -76,20 +80,31 @@ func (ts *TaskService) GetPage(ctx context.Context, q *query.TaskPageQuery) (*vo
 	voList := make([]vo.TaskVO, 0, len(readResult.List))
 	for i := range readResult.List {
 		item := &readResult.List[i]
-		voList = append(voList, vo.TaskVO{
+		voItem := vo.TaskVO{
 			TaskID:         item.TaskID,
 			TaskType:       string(item.TaskType),
 			Status:         item.Status,
 			Progress:       item.Progress,
 			TotalFiles:     item.TotalFiles,
 			ProcessedFiles: item.ProcessedFiles,
-			DownloadURL:    item.DownloadURL,
 			ExpiresAt:      item.ExpiresAt,
 			CreatedAt:      item.CreatedAt,
 			StartedAt:      item.StartedAt,
 			CompletedAt:    item.CompletedAt,
 			Error:          item.Error,
-		})
+		}
+		// DownloadURL 运行时拼接：read.Task.DownloadURL 存的是 JSON 字符串（如 "exports/xxx.zip"），需反序列化提取 object_name
+		if item.DownloadURL != "" {
+			var objectName string
+			if err := json.Unmarshal([]byte(item.DownloadURL), &objectName); err == nil && objectName != "" {
+				if storageSvc, err := ts.storageRegistry.Default(); err == nil {
+					if url, err := storageSvc.GetURL(ctx, objectName); err == nil {
+						voItem.DownloadURL = url
+					}
+				}
+			}
+		}
+		voList = append(voList, voItem)
 	}
 
 	return &vo.PageResult[vo.TaskVO]{
@@ -112,7 +127,7 @@ func (ts *TaskService) CreateTask(ctx context.Context, taskType string, params i
 			return nil, common.WrapBizError(common.DATABASE_ERROR, "查询幂等任务失败", err)
 		}
 		if existing != nil {
-			ts.logger.Info("幂等键命中，返回已有任务",
+			ts.logger.Debug("幂等键命中，返回已有任务",
 				zap.String("idempotencyKey", idempotencyKey),
 				zap.String("taskID", existing.TaskID))
 			return existing, nil
@@ -169,11 +184,9 @@ func (ts *TaskService) CreateTask(ctx context.Context, taskType string, params i
 			zap.Int64("taskID", task.ID),
 			zap.String("taskIDStr", taskIDStr))
 	} else if err := ts.taskExecutor.PublishTask(ctx, TaskMessage{
-		TaskID:    task.TaskID,
-		TaskType:  taskType,
-		Payload:   params,
-		CreatedAt: now,
-		CreatedBy: userID,
+		DbTaskID: task.ID,
+		TaskID:   task.TaskID,
+		TaskType: taskType,
 	}); err != nil {
 		ts.logger.Warn("发布任务失败，任务保持 PENDING 状态",
 			zap.Int64("taskID", task.ID),
@@ -182,7 +195,7 @@ func (ts *TaskService) CreateTask(ctx context.Context, taskType string, params i
 			zap.Error(err))
 	}
 
-	ts.logger.Info("创建任务成功",
+	ts.logger.Debug("创建任务成功",
 		zap.Int64("taskID", task.ID),
 		zap.String("taskIDStr", taskIDStr),
 		zap.String("taskType", taskType),
@@ -192,6 +205,8 @@ func (ts *TaskService) CreateTask(ctx context.Context, taskType string, params i
 }
 
 // UpdateTaskResult 更新任务结果（用于异步任务完成时写入结果和过期时间）
+// result 参数：导出任务为裸 objectName（如 exports/xxx.zip），导入任务为 JSON 对象字符串
+// 写入前统一编码为合法 JSON：裸字符串用 json.Marshal 加引号，已是合法 JSON 则原样存储
 func (ts *TaskService) UpdateTaskResult(ctx context.Context, taskIDStr string, result string, expiresAt time.Time) error {
 	task, err := ts.taskRepo.FindByTaskID(ctx, taskIDStr)
 	if err != nil {
@@ -199,6 +214,13 @@ func (ts *TaskService) UpdateTaskResult(ctx context.Context, taskIDStr string, r
 	}
 	if task == nil {
 		return common.NewBizError(common.TASK_NOT_FOUND, "任务不存在")
+	}
+
+	// 确保 result 是合法 JSON：导出裸字符串需 json.Marshal 加引号，导入 JSON 对象原样存储
+	if !json.Valid([]byte(result)) {
+		if b, err := json.Marshal(result); err == nil {
+			result = string(b)
+		}
 	}
 
 	now := time.Now()
@@ -254,6 +276,7 @@ func (ts *TaskService) GetTaskStatus(ctx context.Context, taskIDStr string) (*mo
 }
 
 // DownloadExportFile 下载导出文件
+// task.Result 存的是 JSON 字符串（如 "exports/xxx.zip"），需反序列化提取 object_name
 func (ts *TaskService) DownloadExportFile(ctx context.Context, taskIDStr string) (string, error) {
 	task, err := ts.getTaskFromCacheOrDB(ctx, taskIDStr)
 	if err != nil {
@@ -270,13 +293,33 @@ func (ts *TaskService) DownloadExportFile(ctx context.Context, taskIDStr string)
 		return "", common.NewBizError(common.DATA_STATE_NOT_ALLOW, "任务已过期")
 	}
 
-	if task.Result == "" {
+	if task.Result == "" || task.Result == "null" {
 		ts.logger.Warn("任务结果为空", zap.String("taskID", taskIDStr))
 		return "", common.NewBizError(common.RESOURCE_NOT_FOUND, "任务结果为空")
 	}
 
-	downloadURL := task.Result
-	ts.logger.Info("生成下载链接", zap.String("taskID", taskIDStr), zap.String("url", downloadURL))
+	// result 是 JSON 编码的字符串（如 "exports/xxx.zip"），反序列化提取 object_name
+	// 导入任务 result 为 JSON 对象，反序列化失败时返回错误
+	var objectName string
+	if err := json.Unmarshal([]byte(task.Result), &objectName); err != nil {
+		ts.logger.Warn("任务结果非导出文件", zap.String("taskID", taskIDStr), zap.Error(err))
+		return "", common.NewBizError(common.RESOURCE_NOT_FOUND, "该任务不是导出任务，无下载文件")
+	}
+	if objectName == "" {
+		ts.logger.Warn("任务结果 object_name 为空", zap.String("taskID", taskIDStr))
+		return "", common.NewBizError(common.RESOURCE_NOT_FOUND, "任务结果为空")
+	}
+
+	// 导出文件存默认存储后端，运行时拼接完整 URL
+	storageSvc, err := ts.storageRegistry.Default()
+	if err != nil {
+		return "", common.WrapBizError(common.OBJECT_STORAGE_ERROR, "存储后端不可用", err)
+	}
+	downloadURL, err := storageSvc.GetURL(ctx, objectName)
+	if err != nil {
+		return "", common.WrapBizError(common.OBJECT_STORAGE_ERROR, "拼接下载地址失败", err)
+	}
+	ts.logger.Debug("生成下载链接", zap.String("taskID", taskIDStr), zap.String("url", downloadURL))
 	return downloadURL, nil
 }
 
@@ -343,7 +386,7 @@ func (ts *TaskService) CancelTask(ctx context.Context, taskIDStr string, userID 
 		"error_message": nil,
 	})
 
-	ts.logger.Info("取消导出任务成功", zap.String("taskID", taskIDStr))
+	ts.logger.Debug("取消导出任务成功", zap.String("taskID", taskIDStr))
 	return nil
 }
 
@@ -388,7 +431,8 @@ func (ts *TaskService) cacheTask(ctx context.Context, task *model.SysTask) {
 }
 
 // ConvertToTaskVO 转换为任务VO
-func (ts *TaskService) ConvertToTaskVO(task *model.SysTask) *vo.TaskVO {
+// DownloadURL 运行时拼接：导出任务 result 存的是 JSON 字符串（如 "exports/xxx.zip"），需反序列化提取 object_name
+func (ts *TaskService) ConvertToTaskVO(ctx context.Context, task *model.SysTask) *vo.TaskVO {
 	result := &vo.TaskVO{
 		TaskID:         task.TaskID,
 		Status:         int8(task.Status),
@@ -405,8 +449,17 @@ func (ts *TaskService) ConvertToTaskVO(task *model.SysTask) *vo.TaskVO {
 		WorkerID:       task.WorkerID,
 	}
 
-	if task.Status == model.TaskStatusCompleted && task.Result != "" {
-		result.DownloadURL = task.Result
+	if task.Status == model.TaskStatusCompleted && task.Result != "" && task.Result != "null" {
+		// result 为 JSON 字符串时（导出任务：\"exports/xxx.zip\"），反序列化提取 object_name 后拼接 URL
+		// result 为 JSON 对象时（导入任务：{\"totalRows\":...}），不是字符串，跳过 DownloadURL
+		var objectName string
+		if err := json.Unmarshal([]byte(task.Result), &objectName); err == nil && objectName != "" {
+			if storageSvc, err := ts.storageRegistry.Default(); err == nil {
+				if url, err := storageSvc.GetURL(ctx, objectName); err == nil {
+					result.DownloadURL = url
+				}
+			}
+		}
 	}
 
 	return result
@@ -457,19 +510,12 @@ func (ts *TaskService) RetryTask(ctx context.Context, taskIDStr string, userID i
 	task.RetryCount = newRetryCount
 	ts.cacheTask(ctx, task)
 
-	// 重新发布到 MQ（使用通用 PublishTask，payload 为原始 params JSON）
-	var payload interface{}
-	if err := json.Unmarshal([]byte(task.Params), &payload); err != nil {
-		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "解析任务参数失败", err)
-	}
-
+	// 重新发布到 MQ（三端统一契约：db_task_id + task_id + task_type）
 	if ts.taskExecutor != nil {
 		if err := ts.taskExecutor.PublishTask(ctx, TaskMessage{
-			TaskID:    task.TaskID,
-			TaskType:  string(task.TaskType),
-			Payload:   payload,
-			CreatedAt: now,
-			CreatedBy: userID,
+			DbTaskID: task.ID,
+			TaskID:   task.TaskID,
+			TaskType: string(task.TaskType),
 		}); err != nil {
 			ts.logger.Warn("重试发布任务失败，任务保持 PENDING 状态",
 				zap.String("taskID", taskIDStr), zap.Error(err))
@@ -484,7 +530,7 @@ func (ts *TaskService) RetryTask(ctx context.Context, taskIDStr string, userID i
 		"error_message": nil,
 	})
 
-	ts.logger.Info("重试任务成功", zap.String("taskID", taskIDStr))
+	ts.logger.Debug("重试任务成功", zap.String("taskID", taskIDStr))
 	return task, nil
 }
 

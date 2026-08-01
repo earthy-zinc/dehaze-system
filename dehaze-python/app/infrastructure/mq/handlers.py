@@ -30,28 +30,25 @@ async def handle_export_task(body: dict[str, Any], headers: dict[str, Any]) -> N
     从 RabbitMQ 接收导出任务消息，执行导出逻辑。
     包含幂等检查：仅处理非终态的任务。
 
-    消息格式:
+    消息格式（最小自描述）:
         {
             "db_task_id": int,
             "task_id": str,
             "task_type": str,
-            "params_json": str,
-            "user_id": int | None,
         }
+
+    user_id 和 params_json 从 DB sys_task 记录中读取，不从消息体获取。
     """
-    user_id = body.get("user_id")
-    set_current_user_id(user_id)
     try:
         db_task_id = body.get("db_task_id")
         task_id = body.get("task_id")
         task_type = body.get("task_type")
-        params_json = body.get("params_json", "{}")
 
         if not task_id or not task_type or db_task_id is None:
             logger.error(f"导出任务消息格式无效（缺少必要字段）: {body}")
             return
 
-        logger.info(f"[MQ] 开始处理导出任务: taskId={task_id}, type={task_type}")
+        logger.debug(f"[MQ] 开始处理导出任务: taskId={task_id}, type={task_type}")
 
         # 幂等检查：查 DB 确认任务非终态才执行
         async with get_db_session() as db:
@@ -66,10 +63,16 @@ async def handle_export_task(body: dict[str, Any], headers: dict[str, Any]) -> N
                 TaskStatus.CANCELLED.value,
             }
             if sys_task.status in terminal_states:
-                logger.info(
+                logger.debug(
                     f"[MQ] 任务已为终态，跳过重复消费: taskId={task_id}, status={sys_task.status}"
                 )
                 return
+
+            # 从 DB 读取 user_id 和 params_json（不信任消息体）
+            user_id = sys_task.create_by
+            params_json = sys_task.params or "{}"
+
+            set_current_user_id(user_id)
 
             retry_count_str = headers.get("x-retry-count")
             if retry_count_str is not None:
@@ -87,7 +90,7 @@ async def handle_export_task(body: dict[str, Any], headers: dict[str, Any]) -> N
             db_task_id, task_id, task_type, params_json
         )
 
-        logger.info(f"[MQ] 导出任务处理完成: taskId={task_id}")
+        logger.debug(f"[MQ] 导出任务处理完成: taskId={task_id}")
     finally:
         set_current_user_id(None)
 
@@ -97,11 +100,19 @@ async def handle_dlq_message(body: dict[str, Any], headers: dict[str, Any]) -> N
     死信队列消费者 handler
 
     处理重试耗尽或过期的消息，将对应任务标记为 FAILED 并记录错误信息。
+
+    消息格式（最小自描述）:
+        {
+            "db_task_id": int,
+            "task_id": str,
+            "task_type": str,
+        }
     """
     set_current_user_id(SYSTEM_USER_ID)
     try:
         task_id = body.get("task_id")
         db_task_id = body.get("db_task_id")
+        task_type = body.get("task_type", "unknown")
         retry_count_str = headers.get("x-retry-count")
         retry_count: int | str = "未知"
         if retry_count_str is not None:
@@ -133,7 +144,7 @@ async def handle_dlq_message(body: dict[str, Any], headers: dict[str, Any]) -> N
                 TaskStatus.CANCELLED.value,
             }
             if sys_task.status in terminal_states:
-                logger.info(
+                logger.debug(
                     f"[DLQ] 任务已为终态，跳过: taskId={task_id}, status={sys_task.status}"
                 )
                 return
@@ -198,7 +209,7 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
             logger.error(f"[MQ] 低分告警消息格式无效: {body}")
             return
 
-        logger.info(f"[MQ] 处理低分告警: ratingId={rating_id}, rating={rating_value}")
+        logger.debug(f"[MQ] 处理低分告警: ratingId={rating_id}, rating={rating_value}")
 
         async with get_db_session() as db:
             from sqlalchemy import select
@@ -264,7 +275,7 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
 
             await db.commit()
 
-        logger.info(f"[MQ] 低分告警处理完成: ratingId={rating_id}")
+        logger.debug(f"[MQ] 低分告警处理完成: ratingId={rating_id}")
     finally:
         set_current_user_id(None)
 

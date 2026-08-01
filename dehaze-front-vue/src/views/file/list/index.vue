@@ -22,19 +22,12 @@ const loading = ref(false);
 const tableData = ref<FileInfo[]>([]);
 const total = ref(0);
 const queryFormRef = ref();
-const tableRef = ref<InstanceType<typeof ElTable>>();
+const tableRef = ref<any>(null);
 
 const queryParams = reactive<FileQuery>({
   keywords: "",
   pageNum: 1,
   pageSize: 10,
-});
-
-const dateTimeRange = ref<[string, string] | null>(null);
-
-const dialog = reactive({
-  visible: false,
-  uploadUrl: "",
 });
 
 const uploadDialog = reactive({
@@ -51,7 +44,6 @@ function handleQuery() {
 function resetQuery() {
   queryFormRef.value?.resetFields();
   queryParams.keywords = "";
-  dateTimeRange.value = null;
   handleQuery();
 }
 
@@ -198,7 +190,7 @@ onMounted(() => {
       <el-table
         ref="tableRef"
         v-loading="loading"
-        :data="tableData"
+        :data="tableData as FileInfo[]"
         border
         row-key="id"
       >
@@ -212,7 +204,7 @@ onMounted(() => {
           <template #default="{ row }">
             <div class="file-name-cell">
               <el-icon class="file-icon"><Document /></el-icon>
-              <span class="file-name-text">{{ row.name }}</span>
+              <span class="file-name-text">{{ (row as FileInfo).name }}</span>
             </div>
           </template>
         </el-table-column>
@@ -223,15 +215,17 @@ onMounted(() => {
           align="center"
         >
           <template #default="{ row }">
-            <el-tag v-if="row.type" type="info" size="small">{{
-              row.type
+            <el-tag v-if="(row as FileInfo).type" type="info" size="small">{{
+              (row as FileInfo).type
             }}</el-tag>
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
         <el-table-column label="文件大小" prop="size" width="120" align="right">
           <template #default="{ row }">
-            <span v-if="row.size" class="file-size">{{ row.size }}</span>
+            <span v-if="(row as FileInfo).size" class="file-size">{{
+              (row as FileInfo).size
+            }}</span>
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
@@ -247,7 +241,7 @@ onMounted(() => {
               type="primary"
               link
               size="small"
-              @click="handleDownload(row)"
+              @click="handleDownload(row as FileInfo)"
             >
               <el-icon><Download /></el-icon>
               下载
@@ -256,7 +250,7 @@ onMounted(() => {
               type="danger"
               link
               size="small"
-              @click="handleDelete(row)"
+              @click="handleDelete(row as FileInfo)"
             >
               <el-icon><Delete /></el-icon>
               删除

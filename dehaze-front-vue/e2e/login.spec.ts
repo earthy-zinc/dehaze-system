@@ -48,7 +48,7 @@ test.describe("用户登录流程", () => {
   test("应该成功登录并跳转到首页", async ({ page }) => {
     // 填写有效的用户名和密码（根据页面提示）
     await page.locator('input[type="text"]').first().fill("admin");
-    await page.locator('input[type="password"]').fill("Dehaze@2026");
+    await page.locator('input[type="password"]').fill("Dehaze2026");
     // 填写验证码
     await page.locator('input[type="text"]').nth(2).fill("12345678");
 
@@ -105,7 +105,7 @@ test.describe("用户登录流程", () => {
   test("应该支持通过键盘 Enter 键登录", async ({ page }) => {
     // 填写用户名和密码
     await page.locator('input[type="text"]').first().fill("admin");
-    await page.locator('input[type="password"]').fill("Dehaze@2026");
+    await page.locator('input[type="password"]').fill("Dehaze2026");
     // 填写验证码
     await page.locator('input[type="text"]').nth(2).fill("12345678");
 
@@ -124,7 +124,7 @@ test.describe("用户登录流程", () => {
   test("应该支持登出功能", async ({ page }) => {
     // 先登录
     await page.locator('input[type="text"]').first().fill("admin");
-    await page.locator('input[type="password"]').fill("Dehaze@2026");
+    await page.locator('input[type="password"]').fill("Dehaze2026");
     // 填写验证码
     await page.locator('input[type="text"]').nth(2).fill("12345678");
     await page.locator('.login-form button[type="button"]').first().click();

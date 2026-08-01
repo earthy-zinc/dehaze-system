@@ -11,9 +11,9 @@ import (
 	gormLogger "gorm.io/gorm/logger"
 )
 
-// log 返回携带 trace_id 的 logger（从 ctx 自动提取）
+// log 返回携带 trace_id 与 logger=sql 标识的 logger（从 ctx 自动提取请求上下文）
 func (l *GormLogger) log(ctx context.Context) *zap.Logger {
-	return logger.WithContext(ctx)
+	return logger.WithContext(ctx).Named("sql")
 }
 
 // GormLogger Gorm日志适配器
@@ -63,35 +63,36 @@ func (l *GormLogger) Error(ctx context.Context, msg string, data ...interface{})
 	}
 }
 
-// Trace 输出SQL日志
+// Trace 输出SQL审计日志
 func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
 	if l.LogLevel <= gormLogger.Silent {
 		return
 	}
 
 	elapsed := time.Since(begin)
+	durationMs := float64(elapsed.Nanoseconds()) / 1e6
 	sql, rows := fc()
 
 	switch {
 	case err != nil && l.LogLevel >= gormLogger.Error && (!errors.Is(err, gormLogger.ErrRecordNotFound) || !l.SkipErrRecordNotFound):
-		l.log(ctx).Error("SQL执行失败",
+		l.log(ctx).Error("SQL_ERROR",
 			zap.Error(err),
 			zap.String("sql", sql),
 			zap.Int64("rows", rows),
-			zap.Duration("elapsed", elapsed),
+			zap.Float64("duration_ms", durationMs),
 		)
 
 	case elapsed > l.SlowThreshold && l.SlowThreshold != 0 && l.LogLevel >= gormLogger.Warn:
-		l.log(ctx).Warn("慢查询",
-			zap.Duration("elapsed", elapsed),
-			zap.Duration("threshold", l.SlowThreshold),
+		l.log(ctx).Warn("SLOW_SQL",
+			zap.Float64("duration_ms", durationMs),
+			zap.Float64("threshold_ms", float64(l.SlowThreshold.Nanoseconds())/1e6),
 			zap.String("sql", sql),
 			zap.Int64("rows", rows),
 		)
 
 	case l.LogLevel >= gormLogger.Info:
-		l.log(ctx).Debug("SQL执行",
-			zap.Duration("elapsed", elapsed),
+		l.log(ctx).Info("SQL",
+			zap.Float64("duration_ms", durationMs),
 			zap.String("sql", sql),
 			zap.Int64("rows", rows),
 		)

@@ -59,7 +59,7 @@ const RoleListPage: React.FC = () => {
   // 上拉加载更多
   useReachBottom(async () => {
     if (roles.length < total) {
-      await fetchRoles({ pageNum: queryParams.pageNum + 1 });
+      await fetchRoles({ pageNum: (queryParams.pageNum ?? 1) + 1 });
     }
   });
 

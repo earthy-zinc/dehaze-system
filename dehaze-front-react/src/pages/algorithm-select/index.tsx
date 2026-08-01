@@ -1,19 +1,28 @@
-import { AlgorithmAPI, type Algorithm } from "dehaze-sdk-js";
+import { AlgorithmAPI, RecommendationAPI, type Algorithm } from "dehaze-sdk-js";
 import { useDebounceFn } from "ahooks";
 import {
   CheckCircleFilled,
+  FireOutlined,
   ReloadOutlined,
   SearchOutlined,
   ThunderboltFilled,
+  PictureOutlined,
 } from "@ant-design/icons";
 import {
   Button,
   Card,
   Col,
+  Divider,
   Empty,
+  Form,
   Input,
+  Progress,
+  Rate,
   Row,
   Space,
+  Spin,
+  Statistic,
+  Tabs,
   Tag,
   Tree,
   Typography,
@@ -33,6 +42,13 @@ const TYPE_CATEGORIES: { key: string; label: string }[] = [
 
 /** 推荐优先级：深度学习 > 混合 > 传统 */
 const RECOMMEND_ORDER = ["deep_learning", "hybrid", "traditional"];
+
+/** 类型标签颜色映射 */
+const TYPE_COLOR_MAP: Record<string, string> = {
+  traditional: "blue",
+  deep_learning: "volcano",
+  hybrid: "cyan",
+};
 
 /** 递归提取叶子算法（无 children 的节点） */
 function flattenAlgorithms(list: Algorithm[]): Algorithm[] {
@@ -57,6 +73,83 @@ export default function AlgorithmSelect(): React.JSX.Element {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [keywords, setKeywords] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  // ==================== 智能推荐 - 图像分析 ====================
+
+  /** 图像分析结果 */
+  interface ImageAnalysisResult {
+    hazeLevel: string;
+    sceneType: string;
+    lighting: string;
+    complexity: string;
+  }
+
+  const [analysisResult, setAnalysisResult] =
+    useState<ImageAnalysisResult | null>(null);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [imageMd5, setImageMd5] = useState<string>("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [recommendations, setRecommendations] = useState<
+    Array<{
+      algorithm: Algorithm;
+      matchScore: number;
+      reason: string;
+      effectDescription: string;
+    }>
+  >([]);
+  const [analyzingRecs, setAnalyzingRecs] = useState(false);
+
+  /** 分析图像特征 */
+  const handleAnalyzeImage = useCallback(async (imageUrl: string) => {
+    if (!imageUrl.trim()) {
+      message.warning("请输入图片地址");
+      return;
+    }
+    setAnalyzing(true);
+    try {
+      const analysis = await RecommendationAPI.analyze({
+        imageUrl: imageUrl.trim(),
+      });
+      setAnalysisResult({
+        hazeLevel: String(analysis.hazeLevel) || "未知",
+        sceneType: String(analysis.sceneType) || "未知",
+        lighting: String(analysis.lighting) || "未知",
+        complexity: String(analysis.complexity) || "未知",
+      });
+      setImageMd5(analysis.imageMd5 || "");
+      // 获取推荐算法
+      if (analysis.imageMd5) {
+        setAnalyzingRecs(true);
+        const recs = await RecommendationAPI.getAlgorithmRecommendations({
+          imageMd5: analysis.imageMd5,
+        });
+        const mapped = (recs || []).slice(0, 3).map((r) => ({
+          algorithm: {
+            id: r.algorithmId,
+            name: r.algorithmName,
+            type: "deep_learning" as const,
+            description: r.effectDescription || "",
+            status: 1,
+          } as Algorithm,
+          matchScore: r.matchScore || 0,
+          reason: r.reason || "",
+          effectDescription: r.effectDescription || "",
+        }));
+        setRecommendations(mapped);
+      }
+    } catch (error: any) {
+      message.error(error?.message || "图像分析失败");
+    } finally {
+      setAnalyzing(false);
+      setAnalyzingRecs(false);
+    }
+  }, []);
+
+  /** 选择推荐算法 */
+  const handleSelectRecommendation = useCallback((algo: Algorithm) => {
+    setSelectedId(algo.id);
+    message.success(`已选择 ${algo.name}`);
+  }, []);
 
   // ==================== 数据加载 ====================
 
@@ -182,54 +275,239 @@ export default function AlgorithmSelect(): React.JSX.Element {
           <ThunderboltFilled style={{ color: "#faad14", marginRight: 8 }} />
           智能推荐
         </Title>
-        <Row gutter={12}>
-          {recommendList.length === 0 ? (
-            <Col span={24}>
-              <Empty description="暂无推荐算法" />
-            </Col>
-          ) : (
-            recommendList.map((algo) => (
-              <Col key={algo.id} span={8}>
-                <Card
-                  size="small"
-                  hoverable
-                  style={{
-                    borderColor: selectedId === algo.id ? "#3B82F6" : undefined,
-                    background: selectedId === algo.id ? "#eff6ff" : undefined,
-                  }}
-                  onClick={() => setSelectedId(algo.id)}
-                >
-                  <Space
-                    direction="vertical"
-                    size={4}
-                    style={{ width: "100%" }}
-                  >
-                    <Space>
-                      {selectedId === algo.id && (
-                        <CheckCircleFilled style={{ color: "#3B82F6" }} />
+        <Tabs
+          defaultActiveKey="quick"
+          items={[
+            {
+              key: "quick",
+              label: (
+                <Space>
+                  <ThunderboltFilled style={{ color: "#faad14" }} />
+                  快速推荐
+                </Space>
+              ),
+              children:
+                recommendList.length === 0 ? (
+                  <Empty description="暂无推荐算法" style={{ padding: 24 }} />
+                ) : (
+                  <Row gutter={[12, 12]}>
+                    {recommendList.map((algo) => (
+                      <Col key={algo.id} span={8}>
+                        <Card
+                          size="small"
+                          hoverable
+                          style={{
+                            borderColor:
+                              selectedId === algo.id ? "#3B82F6" : undefined,
+                            background:
+                              selectedId === algo.id ? "#eff6ff" : undefined,
+                          }}
+                          onClick={() => setSelectedId(algo.id)}
+                        >
+                          <Space
+                            direction="vertical"
+                            size={4}
+                            style={{ width: "100%" }}
+                          >
+                            <Space>
+                              {selectedId === algo.id && (
+                                <CheckCircleFilled
+                                  style={{ color: "#3B82F6" }}
+                                />
+                              )}
+                              <Text strong>{algo.name}</Text>
+                              <Tag color="orange">推荐</Tag>
+                            </Space>
+                            <Space size={4}>
+                              <Tag>{algo.type}</Tag>
+                              <Tag
+                                color={algo.status === 1 ? "green" : "default"}
+                              >
+                                {algo.status === 1 ? "启用" : "禁用"}
+                              </Tag>
+                            </Space>
+                            <Paragraph
+                              type="secondary"
+                              ellipsis={{ rows: 2 }}
+                              style={{ marginBottom: 0 }}
+                            >
+                              {algo.description || "暂无描述"}
+                            </Paragraph>
+                          </Space>
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+                ),
+            },
+            {
+              key: "image",
+              label: (
+                <Space>
+                  <PictureOutlined />
+                  图像分析推荐
+                </Space>
+              ),
+              children: (
+                <Card size="small">
+                  {/* 图像分析输入区 */}
+                  <Form layout="inline" style={{ marginBottom: 16 }}>
+                    <Form.Item label="图片地址">
+                      <Input
+                        placeholder="请输入图片 URL"
+                        prefix={<FireOutlined />}
+                        value={imageUrlInput}
+                        disabled={!!analysisResult}
+                        onChange={(e) => setImageUrlInput(e.target.value)}
+                        onPressEnter={() => handleAnalyzeImage(imageUrlInput)}
+                        style={{ width: 320 }}
+                      />
+                    </Form.Item>
+                    <Form.Item>
+                      <Button
+                        type="primary"
+                        icon={<SearchOutlined />}
+                        onClick={() => handleAnalyzeImage(imageUrlInput)}
+                        loading={analyzing}
+                      >
+                        分析
+                      </Button>
+                    </Form.Item>
+                  </Form>
+
+                  {/* 分析结果 */}
+                  {analyzing && (
+                    <Spin
+                      tip="正在分析图像特征..."
+                      style={{ display: "block", marginBottom: 16 }}
+                    />
+                  )}
+
+                  {analysisResult && !analyzing && (
+                    <>
+                      <Card size="small" style={{ marginBottom: 16 }}>
+                        <Title
+                          level={5}
+                          style={{ marginTop: 0, marginBottom: 8 }}
+                        >
+                          图像特征分析
+                        </Title>
+                        <Row gutter={[16, 8]}>
+                          <Col span={6}>
+                            <Statistic
+                              title="雾霾程度"
+                              value={analysisResult.hazeLevel}
+                              suffix=""
+                            />
+                          </Col>
+                          <Col span={6}>
+                            <Statistic
+                              title="场景类型"
+                              value={analysisResult.sceneType}
+                              suffix=""
+                            />
+                          </Col>
+                          <Col span={6}>
+                            <Statistic
+                              title="光照条件"
+                              value={analysisResult.lighting}
+                              suffix=""
+                            />
+                          </Col>
+                          <Col span={6}>
+                            <Statistic
+                              title="复杂度"
+                              value={analysisResult.complexity}
+                              suffix=""
+                            />
+                          </Col>
+                        </Row>
+                      </Card>
+
+                      {/* 推荐算法列表 */}
+                      <Title level={5} style={{ marginBottom: 8 }}>
+                        推荐算法
+                      </Title>
+                      {analyzingRecs ? (
+                        <Spin
+                          tip="正在获取推荐..."
+                          style={{ display: "block", padding: 16 }}
+                        />
+                      ) : recommendations.length === 0 ? (
+                        <Empty
+                          description="暂无推荐结果"
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        />
+                      ) : (
+                        <Row gutter={[12, 12]}>
+                          {recommendations.map((rec, idx) => (
+                            <Col key={idx} span={24}>
+                              <Card
+                                size="small"
+                                style={{
+                                  borderLeft: `3px solid ${rec.matchScore >= 80 ? "#52c41a" : rec.matchScore >= 60 ? "#faad14" : "#f5222d"}`,
+                                }}
+                              >
+                                <Row gutter={12} align="middle">
+                                  <Col span={16}>
+                                    <Space direction="vertical" size={4}>
+                                      <Space>
+                                        <Text strong>{rec.algorithm.name}</Text>
+                                        <Tag
+                                          color={
+                                            TYPE_COLOR_MAP[
+                                              rec.algorithm.type
+                                            ] || "blue"
+                                          }
+                                        >
+                                          {rec.algorithm.type}
+                                        </Tag>
+                                      </Space>
+                                      <Progress
+                                        percent={rec.matchScore}
+                                        strokeColor={{
+                                          "60%": "#52c41a",
+                                          "40%": "#faad14",
+                                          "0%": "#f5222d",
+                                        }}
+                                        format={() => `${rec.matchScore}% 匹配`}
+                                      />
+                                      <Paragraph
+                                        type="secondary"
+                                        style={{ marginBottom: 0 }}
+                                      >
+                                        {rec.effectDescription ||
+                                          rec.reason ||
+                                          "暂无描述"}
+                                      </Paragraph>
+                                    </Space>
+                                  </Col>
+                                  <Col span={8} style={{ textAlign: "right" }}>
+                                    <Button
+                                      type="primary"
+                                      size="small"
+                                      onClick={() =>
+                                        handleSelectRecommendation(
+                                          rec.algorithm
+                                        )
+                                      }
+                                    >
+                                      选择
+                                    </Button>
+                                  </Col>
+                                </Row>
+                              </Card>
+                            </Col>
+                          ))}
+                        </Row>
                       )}
-                      <Text strong>{algo.name}</Text>
-                      <Tag color="orange">推荐</Tag>
-                    </Space>
-                    <Space size={4}>
-                      <Tag>{algo.type}</Tag>
-                      <Tag color={algo.status === 1 ? "green" : "default"}>
-                        {algo.status === 1 ? "启用" : "禁用"}
-                      </Tag>
-                    </Space>
-                    <Paragraph
-                      type="secondary"
-                      ellipsis={{ rows: 2 }}
-                      style={{ marginBottom: 0 }}
-                    >
-                      {algo.description || "暂无描述"}
-                    </Paragraph>
-                  </Space>
+                    </>
+                  )}
                 </Card>
-              </Col>
-            ))
-          )}
-        </Row>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       {/* 主体：左侧分类树 + 右侧算法卡片 */}

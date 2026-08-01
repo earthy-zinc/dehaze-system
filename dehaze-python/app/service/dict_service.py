@@ -205,7 +205,7 @@ class DictTypeService:
         # 检查编码唯一性
         existing = await dict_type_repository.get_by_code(db, code)
         if existing:
-            raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已被历史记录占用")
 
         result = await dict_type_repository.create_type(db, data)
         return result
@@ -231,7 +231,7 @@ class DictTypeService:
         if new_code and new_code != old_type.code:
             existing = await dict_type_repository.get_by_code(db, new_code)
             if existing:
-                raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在")
+                raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已被历史记录占用")
 
         # 更新字典类型
         result = await dict_type_repository.update_by_id(db, type_id, data)

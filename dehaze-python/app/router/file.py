@@ -10,8 +10,9 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.schema.file import FilePageVO, FileUploadResultVO, FileVO
 from app.service.file_service import FileService
+from app.service.storage.factory import get_storage_by_name
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,14 @@ def _validate_file(file: UploadFile) -> None:
     if file.size and file.size > settings.MAX_UPLOAD_SIZE:
         max_mb = settings.MAX_UPLOAD_SIZE // 1024 // 1024
         raise BusinessException(ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)")
+
+
+def _build_file_url(file_info) -> Optional[str]:
+    """根据文件 storage 标识和 object_name 运行时拼接完整 URL"""
+    if not file_info or not file_info.object_name:
+        return None
+    storage_service = get_storage_by_name(file_info.storage)
+    return storage_service.get_url(file_info.object_name)
 
 
 @router.post(
@@ -66,9 +75,9 @@ async def upload_file(
             name=file_info.name,
             type=file_info.type,
             size=file_info.size,
-            url=file_info.url,
-            path=file_info.path,
             objectName=file_info.object_name,
+            storage=file_info.storage,
+            url=_build_file_url(file_info),
             md5=file_info.md5,
             createTime=file_info.create_time,
         ),
@@ -95,9 +104,9 @@ async def check_file(
             name=file_info.name,
             type=file_info.type,
             size=file_info.size,
-            url=file_info.url,
-            path=file_info.path,
             objectName=file_info.object_name,
+            storage=file_info.storage,
+            url=_build_file_url(file_info),
             md5=file_info.md5,
             createTime=file_info.create_time,
         )
@@ -124,9 +133,9 @@ async def get_file_page(
             name=f.name,
             type=f.type,
             size=f.size,
-            url=f.url,
-            path=f.path,
             objectName=f.object_name,
+            storage=f.storage,
+            url=_build_file_url(f),
             md5=f.md5,
             createTime=f.create_time,
         )
@@ -139,7 +148,7 @@ async def get_file_page(
 @router.get(
     "/download/{object_name:path}",
     summary="文件下载",
-    description="根据对象名称从存储服务下载文件",
+    description="根据对象名称从对应存储后端下载文件",
 )
 async def download_file(
     object_name: str,
@@ -155,9 +164,7 @@ async def download_file(
         raise HTTPException(
             status_code=404, detail=ResultCode.FILE_NOT_FOUND.msg)
 
-    if file_info.url and not file_info.url.startswith(settings.FILE_BASE_URL):
-        return RedirectResponse(file_info.url)
-
+    # 按 storage 选后端流式读取（统一无分支，不再前缀判断 / 302 跳转）
     # 构造 Content-Disposition（RFC 5987 编码中文文件名）
     filename = file_info.name
     ascii_filename = filename.encode(
@@ -168,12 +175,10 @@ async def download_file(
         f"filename*=UTF-8''{encoded_filename}"
     )
 
-    # 构造响应头
     headers = {"Content-Disposition": content_disposition}
 
-    # 返回流式响应
     return StreamingResponse(
-        FileService.download_file_stream(object_name),
+        FileService.download_file_stream(object_name, storage=file_info.storage),
         media_type="application/octet-stream",
         headers=headers,
     )
@@ -214,9 +219,9 @@ async def get_file_info(
             name=file_info.name,
             type=file_info.type,
             size=file_info.size,
-            url=file_info.url,
-            path=file_info.path,
             objectName=file_info.object_name,
+            storage=file_info.storage,
+            url=_build_file_url(file_info),
             md5=file_info.md5,
             createTime=file_info.create_time,
             updateTime=file_info.update_time,

@@ -4,6 +4,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
@@ -202,7 +203,7 @@ class CouponService:
             redis = await get_redis_client()
             count = await redis.incr(rate_key)
             if count == 1:
-                await redis.expire(rate_key, 60)
+                await redis.expire(rate_key, settings.COUPON_RECEIVE_RATE_WINDOW)
             return count
 
         count = await redis_operation_with_fallback(
@@ -210,7 +211,7 @@ class CouponService:
             default=0,
             operation_name="coupon_receive_rate_limit",
         )
-        if count and count > 5:
+        if count and count > settings.COUPON_RECEIVE_RATE_LIMIT:
             raise BusinessException(ResultCode.RATE_LIMIT)
 
         success = await coupon_repository.increment_issued_qty_with_limit(db, coupon_id)

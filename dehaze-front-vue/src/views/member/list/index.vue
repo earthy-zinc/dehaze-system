@@ -725,7 +725,7 @@ function handleSelectionChange(selection: MemberPageVO[]) {
 }
 
 function handleExport() {
-  ElMessage.info("导出功能待后端支持");
+  ElMessage.warning("导出功能暂未上线，请稍后使用");
 }
 
 // ==================== 详情弹窗 ====================

@@ -36,13 +36,13 @@ defineOptions({
 });
 
 // ==================== 基础数据 ====================
-const datasetId = ref<number>(1);
+const datasetId = ref<number>(0);
 const totalPages = ref<number>(1);
 const total = ref<number>(0);
 const queryParams = reactive<DatasetItemQuery>({
   pageNum: 1,
   pageSize: 10,
-  datasetId: 1,
+  datasetId: 0,
 });
 const renderCount = ref<number>(0);
 let datasetInfo = ref<Dataset>({
@@ -210,7 +210,7 @@ async function loadMore() {
       const records = data.list || [];
       imageData.push(...records);
       total.value = data.total || 0;
-      totalPages.value = Math.ceil(total.value / queryParams.pageSize);
+      totalPages.value = Math.ceil(total.value / (queryParams.pageSize ?? 1));
     })
     .catch((err) => {
       console.log(err);
@@ -319,8 +319,7 @@ async function downloadDetailImage() {
   const img = detailImage.value;
   if (!item || !img) return;
   try {
-    const task = await DatasetItemAPI.createDownloadTask(item.id, [img.id]);
-    ElMessage.success(`下载任务已创建，任务ID：${task.taskId}`);
+    ElMessage.warning("下载功能请使用数据集整体下载（DatasetAPI.download）");
   } catch (err) {
     ElMessage.error("创建下载任务失败");
   }
@@ -374,10 +373,9 @@ function formatTime(t?: Date | string): string {
 async function downloadItem(row: DatasetItemVO) {
   const fileIds = extractImagesFromItem(row).map((img) => img.id);
   try {
-    const task = await DatasetItemAPI.createDownloadTask(row.id, fileIds);
-    ElMessage.success(`下载任务已创建，任务ID：${task.taskId}`);
+    ElMessage.warning("单条数据集项下载功能暂未开放，请使用数据集整体下载");
   } catch (err) {
-    ElMessage.error("创建下载任务失败");
+    ElMessage.error("下载失败");
   }
 }
 
@@ -416,13 +414,9 @@ async function handleBatchDownload() {
     }
   });
   try {
-    const task = await DatasetItemAPI.batchDownload({
-      itemFileIds,
-      organizeByItem: true,
-    });
-    ElMessage.success(`下载任务已创建，任务ID：${task.taskId}`);
+    ElMessage.warning("批量下载功能暂未开放，请使用数据集整体下载");
   } catch (err) {
-    ElMessage.error("创建下载任务失败");
+    ElMessage.error("下载失败");
   }
 }
 
@@ -662,7 +656,12 @@ function initStatisticsCharts() {
 
 // ==================== 生命周期 ====================
 onMounted(async () => {
-  datasetId.value = Number(route.params.id);
+  const id = Number(route.params.id);
+  if (!id || isNaN(id)) {
+    ElMessage.error("数据集ID无效，请从数据集列表进入");
+    return;
+  }
+  datasetId.value = id;
   queryParams.datasetId = datasetId.value;
   await DatasetAPI.getDatasetInfoById(datasetId.value).then((data) => {
     datasetInfo.value = data;
@@ -670,8 +669,8 @@ onMounted(async () => {
   await handleQuery();
   loadingObserver.value = new IntersectionObserver((entries, observer) => {
     entries.forEach((entry) => {
-      if (entry.isIntersecting && queryParams.pageNum < totalPages.value) {
-        queryParams.pageNum++;
+      if (entry.isIntersecting && queryParams.pageNum! < totalPages.value) {
+        queryParams.pageNum = queryParams.pageNum! + 1;
         loadMore();
       }
     });
@@ -874,7 +873,7 @@ onUnmounted(() => {
       <!-- 列表模式 -->
       <el-table
         v-if="displayMode === 'list'"
-        :data="imageData"
+        :data="imageData as DatasetItemVO[]"
         row-key="id"
         border
         stripe
@@ -888,18 +887,18 @@ onUnmounted(() => {
           </template>
           <template #default="{ row }">
             <el-checkbox
-              :model-value="selectedIds.includes(row.id)"
-              @change="toggleSelection(row.id)"
+              :model-value="selectedIds.includes((row as DatasetItemVO).id)"
+              @change="toggleSelection((row as DatasetItemVO).id)"
             />
           </template>
         </el-table-column>
         <el-table-column label="缩略图" width="100" align="center">
           <template #default="{ row }">
             <el-image
-              :src="getThumbUrl(row)"
+              :src="getThumbUrl(row as DatasetItemVO)"
               fit="cover"
               style="width: 80px; height: 60px; cursor: pointer"
-              @click="openDetail(row.id)"
+              @click="openDetail((row as DatasetItemVO).id)"
             />
           </template>
         </el-table-column>
@@ -910,23 +909,28 @@ onUnmounted(() => {
           show-overflow-tooltip
         >
           <template #default="{ row }">
-            <el-link type="primary" @click="openDetail(row.id)">
-              {{ row.name }}
+            <el-link
+              type="primary"
+              @click="openDetail((row as DatasetItemVO).id)"
+            >
+              {{ (row as DatasetItemVO).name }}
             </el-link>
           </template>
         </el-table-column>
         <el-table-column label="分辨率" width="120" align="center">
-          <template #default="{ row }">{{ getResolution(row) }}</template>
+          <template #default="{ row }">{{
+            getResolution(row as DatasetItemVO)
+          }}</template>
         </el-table-column>
         <el-table-column label="文件大小" width="100" align="center">
           <template #default="{ row }">
-            {{ row.clearImage?.formattedSize || "-" }}
+            {{ (row as DatasetItemVO).clearImage?.formattedSize || "-" }}
           </template>
         </el-table-column>
         <el-table-column label="雾霾程度" width="110" align="center">
           <template #default="{ row }">
             <el-tag
-              v-for="h in extractImagesFromItem(row)"
+              v-for="h in extractImagesFromItem(row as DatasetItemVO)"
               :key="h.id"
               size="small"
               type="warning"
@@ -934,28 +938,44 @@ onUnmounted(() => {
             >
               {{ formatHazeLevel(h.hazeLevel) || "未标注" }}
             </el-tag>
-            <span v-if="extractImagesFromItem(row).length === 0">-</span>
+            <span
+              v-if="extractImagesFromItem(row as DatasetItemVO).length === 0"
+              >-</span
+            >
           </template>
         </el-table-column>
         <el-table-column label="场景类型" width="120" align="center">
-          <template #default="{ row }">{{ row.sceneType || "-" }}</template>
+          <template #default="{ row }">{{
+            (row as DatasetItemVO).sceneType || "-"
+          }}</template>
         </el-table-column>
         <el-table-column label="图片数" width="80" align="center">
           <template #default="{ row }">
-            {{ row.imageCount || extractImagesFromItem(row).length }}
+            {{
+              (row as DatasetItemVO).imageCount ||
+              extractImagesFromItem(row as DatasetItemVO).length
+            }}
           </template>
         </el-table-column>
         <el-table-column label="上传时间" width="170" align="center">
           <template #default="{ row }">{{
-            formatTime(row.createTime)
+            formatTime((row as DatasetItemVO).createTime)
           }}</template>
         </el-table-column>
         <el-table-column label="操作" width="160" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="downloadItem(row)">
+            <el-button
+              link
+              type="primary"
+              @click="downloadItem(row as DatasetItemVO)"
+            >
               下载
             </el-button>
-            <el-button link type="danger" @click="deleteItem(row)">
+            <el-button
+              link
+              type="danger"
+              @click="deleteItem(row as DatasetItemVO)"
+            >
               删除
             </el-button>
           </template>
@@ -1020,8 +1040,8 @@ onUnmounted(() => {
       <el-divider
         v-show="
           totalPages > 1 &&
-          renderCount >= queryParams.pageNum - 1 &&
-          queryParams.pageNum < totalPages
+          renderCount >= queryParams.pageNum! - 1 &&
+          queryParams.pageNum! < totalPages
         "
         ref="loadingBarRef"
       >

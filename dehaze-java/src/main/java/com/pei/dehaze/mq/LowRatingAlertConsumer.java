@@ -35,7 +35,7 @@ public class LowRatingAlertConsumer extends RabbitMQConsumer {
             return;
         }
         if (rating.getRating() == null || rating.getRating() > 2) {
-            log.info("低分告警：评分高于2，跳过。ratingId={}, rating={}", ratingId, rating.getRating());
+            log.debug("低分告警：评分高于2，跳过。ratingId={}, rating={}", ratingId, rating.getRating());
             return;
         }
         lowRatingAlertService.checkAndAlert(rating);

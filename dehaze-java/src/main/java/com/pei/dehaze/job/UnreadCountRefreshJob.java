@@ -22,7 +22,7 @@ public class UnreadCountRefreshJob {
     public void refreshUnreadCountCache() {
         SystemSecurityContext.setSystemContext();
         try {
-            log.info("开始刷新未读数缓存...");
+            log.debug("开始刷新未读数缓存...");
             messageService.refreshUnreadCountCache();
         } catch (Exception e) {
             log.error("未读数缓存刷新失败", e);

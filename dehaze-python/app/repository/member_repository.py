@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_member import SysMember
@@ -27,6 +28,46 @@ class MemberRepository(BaseRepository[SysMember]):
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_or_init_member(
+        self,
+        db: AsyncSession,
+        user_id: int,
+    ) -> SysMember:
+        """upsert 会员记录：冲突时复活（重置 deleted=0、降级为 level_0、清空月度配额；保留 total_consumption），返回 member"""
+        stmt = mysql_insert(SysMember).values(
+            user_id=user_id,
+            level_code="level_0",
+            level_source="growth",
+            growth_value=0,
+            total_consumption=0,
+            status=1,
+            monthly_dehaze_quota=0,
+            monthly_evaluate_quota=0,
+            monthly_dehaze_used=0,
+            monthly_evaluate_used=0,
+        )
+        # total_consumption 不在 on_duplicate_key_update 中 → 冲突时保留原值
+        stmt = stmt.on_duplicate_key_update(
+            deleted=0,
+            level_code="level_0",
+            level_source="growth",
+            growth_value=0,
+            status=1,
+            monthly_dehaze_quota=0,
+            monthly_evaluate_quota=0,
+            monthly_dehaze_used=0,
+            monthly_evaluate_used=0,
+            update_time=func.now(),
+        )
+        await db.execute(stmt)
+        result = await db.execute(
+            select(SysMember).where(
+                SysMember.user_id == user_id,
+                SysMember.deleted == 0,
+            )
+        )
+        return result.scalar_one()
 
     async def get_with_user(self, db: AsyncSession, user_id: int) -> Optional[dict]:
         stmt = (

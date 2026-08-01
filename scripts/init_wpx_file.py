@@ -9,12 +9,16 @@
 
 字段说明：
   - origin_*：原始数据集图（应由 init_dataset.py 先入库 sys_file）
-  - new_*：WPX 预处理图（本脚本创建 sys_file 记录，nginx 直服，不上传 MinIO）
+  - new_*：WPX 预处理图（本脚本创建 sys_file 记录，nginx 直服，登记为 nginx-static 后端，不上传 MinIO）
 
 前置条件：先执行 init_dataset.py，确保原始数据集图已写入 sys_file。
 
 依赖：pymysql（dehaze-python/.venv 已安装）。
 运行：E:\\DehazeSystem\\dehaze-python\\.venv\\Scripts\\python.exe scripts/init_wpx_file.py --help
+
+存储约定：sys_file 写 object_name + storage='nginx-static'，URL 永不落库。
+WPX 图在 datasets/WPX/... 下，object_name 含 datasets/ 资源前缀。
+sys_wpx_file.origin_path/new_path 为路径快照、非访问 URL，仅用于记录原始/预处理图的相对位置。
 """
 import argparse
 import hashlib
@@ -151,11 +155,11 @@ def find_file_id_by_md5(cur, md5: str) -> Optional[int]:
     return row[0] if row else None
 
 
-def insert_file_record(cur, *, name, object_name, size_bytes, ext, url, md5, path) -> int:
+def insert_file_record(cur, *, name, object_name, size_bytes, ext, md5) -> int:
     cur.execute(
-        "INSERT INTO sys_file (name, object_name, size, size_bytes, type, url, md5, path) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-        (name, object_name, human_size(size_bytes), size_bytes, ext, url, md5, path),
+        "INSERT INTO sys_file (name, object_name, storage, size, size_bytes, type, md5) "
+        "VALUES (%s, %s, 'nginx-static', %s, %s, %s, %s)",
+        (name, object_name, human_size(size_bytes), size_bytes, ext, md5),
     )
     return cur.lastrowid
 
@@ -189,8 +193,8 @@ def main():
     parser.add_argument("--db-password", required=True)
     parser.add_argument("--db-name", default="dehaze")
     parser.add_argument("--dataset-path", required=True, help="数据集根目录（对应 file.datasetPath）")
-    parser.add_argument("--dataset-base-url", required=True,
-                        help="nginx-dataset 静态服务 URL（如 http://127.0.0.1:9000/datasets），WPX 图由此直服")
+    parser.add_argument("--nginx-base-url", required=True,
+                        help="nginx 静态服务根地址（如 http://127.0.0.1:9000），不带 /datasets 等资源子路径；WPX 图由此直服")
     parser.add_argument("--regenerate", action="store_true", help="强制重建（先删后建）")
     args = parser.parse_args()
 
@@ -199,14 +203,14 @@ def main():
         print(f"数据集根目录不存在: {dataset_root}")
         sys.exit(1)
 
-    base_url = args.dataset_base_url.rstrip("/")
+    base_url = args.nginx_base_url.rstrip("/")
 
     pairs = scan_wpx_pairs(dataset_root)
     if not pairs:
         print("未发现 WPX 配对文件")
         return
 
-    print(f"发现 {len(pairs)} 对 WPX-原始图配对，开始处理...")
+    print(f"发现 {len(pairs)} 对 WPX-原始图配对，开始处理（nginx_base_url={base_url}）...")
 
     conn = pymysql.connect(host=args.db_host, port=args.db_port, user=args.db_user,
                            password=args.db_password, database=args.db_name, autocommit=False)
@@ -236,19 +240,16 @@ def main():
 
                 new_md5 = md5_file(wpx_file)
                 new_rel = wpx_file.relative_to(dataset_root).as_posix()
-                new_url = f"{base_url}/{new_rel}"
 
                 new_file_id = find_file_id_by_md5(cur, new_md5)
                 if new_file_id is None:
                     new_file_id = insert_file_record(
                         cur,
                         name=wpx_file.name,
-                        object_name=new_rel,
+                        object_name=f"datasets/{new_rel}",
                         size_bytes=wpx_file.stat().st_size,
                         ext=wpx_file.suffix.lstrip(".").lower(),
-                        url=new_url,
                         md5=new_md5,
-                        path=new_rel,
                     )
 
                 try:

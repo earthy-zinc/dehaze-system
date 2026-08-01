@@ -103,7 +103,7 @@ public class LoginViewModelIntegrationTest {
     public void testLoginSuccess() {
         // 设置表单数据
         loginViewModel.getUsername().setValue("admin");
-        loginViewModel.getPassword().setValue("Dehaze@2026");
+        loginViewModel.getPassword().setValue("Dehaze2026");
         loginViewModel.getCaptchaCode().setValue("abcd");
 
         // 模拟 AuthAPI.login 成功响应
@@ -116,7 +116,7 @@ public class LoginViewModelIntegrationTest {
                         LoginRequest request = invocation.getArgument(0);
                         ApiCallback<LoginResponse> callback = invocation.getArgument(1);
                         assertEquals("admin", request.getUsername());
-                        assertEquals("Dehaze@2026", request.getPassword());
+                        assertEquals("Dehaze2026", request.getPassword());
                         assertEquals("abcd", request.getCaptchaCode());
                         callback.onSuccess(mockResponse);
                         return null;
@@ -140,7 +140,7 @@ public class LoginViewModelIntegrationTest {
     public void testLoginError() {
         // 设置表单数据
         loginViewModel.getUsername().setValue("admin");
-        loginViewModel.getPassword().setValue("Dehaze@2026");
+        loginViewModel.getPassword().setValue("Dehaze2026");
         loginViewModel.getCaptchaCode().setValue("abcd");
 
         // 模拟 AuthAPI.login 错误响应
@@ -170,7 +170,7 @@ public class LoginViewModelIntegrationTest {
     public void testLoginNetworkFailure() {
         // 设置表单数据
         loginViewModel.getUsername().setValue("admin");
-        loginViewModel.getPassword().setValue("Dehaze@2026");
+        loginViewModel.getPassword().setValue("Dehaze2026");
         loginViewModel.getCaptchaCode().setValue("abcd");
 
         // 模拟网络错误

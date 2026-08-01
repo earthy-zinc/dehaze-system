@@ -17,7 +17,7 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - mysql-logs:/var/log/mysql
-      - mysql-config:/etc/mysql/conf.d
+      - ./config/mysql:/etc/mysql/conf.d:ro
       - ./config/sql/schema:/docker-entrypoint-initdb.d:ro
       - ./config/sql/data:/docker-init-data:ro
     command:
@@ -89,7 +89,6 @@ services:
       - MINIO_PROMETHEUS_AUTH_TYPE=public
     volumes:
       - minio-data:/data
-      - minio-config:/root/.minio
     command: server /data --console-address :9090 --address :9000
     privileged: true
     networks:
@@ -147,7 +146,9 @@ services:
       - ELASTIC_PASSWORD=${DEHAZE_PASSWORD}
       - bootstrap.memory_lock=false
       - discovery.type=single-node
-      - xpack.security.enabled=false
+      # 启用 xpack 安全：elastic 超级用户密码 = ELASTIC_PASSWORD
+      # 保持 http（关闭 ssl），避免 kibana/logstash/skywalking 还要配 https + 证书
+      - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=false
       - xpack.security.transport.ssl.enabled=false
       - cluster.routing.allocation.disk.watermark.low=5gb
@@ -178,6 +179,11 @@ services:
       #设置系统语言文中文
       I18N_LOCALE: zh-CN
       TZ: Asia/Shanghai
+      # ES 启用 security 后，kibana 必须用 kibana_system 系统账号（elastic 超级用户被禁用）
+      # 首次部署需执行：bash scripts/init-security.sh 设置系统用户密码
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${DEHAZE_PASSWORD}
       # 访问域名
       # SERVER_PUBLICBASEURL: https://kibana.cloud.com
     volumes:
@@ -193,9 +199,16 @@ services:
       - "4560:4560"
       # Beats 输入端口（Filebeat 日志采集）
       - "5044:5044"
+    environment:
+      # 供 pipeline 引用（dehaze.conf 中 ${ELASTIC_USER} / ${ELASTIC_PASSWORD}）
+      # 用 logstash_system 系统账号（elastic 超级用户不推荐）
+      # 首次部署需执行：bash scripts/init-security.sh 设置系统用户密码
+      ELASTIC_USER: logstash_system
+      ELASTIC_PASSWORD: ${DEHAZE_PASSWORD}
+      TZ: Asia/Shanghai
     volumes:
       - ./config/logstash/pipeline:/usr/share/logstash/pipeline:ro
-      - logstash-config:/usr/share/logstash/config
+      - ./config/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
     depends_on:
       - elasticsearch
     networks:
@@ -292,10 +305,14 @@ services:
     ports:
       - "9091:9091"
     volumes:
-      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.tpl:ro
       - ./config/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
-    command: --config.file=/etc/prometheus/prometheus.yml --web.listen-address=:9091
+    # 启动时将 prometheus.tpl 中的 __ALERTMANAGER_PASSWORD__ 占位符替换为 ${DEHAZE_PASSWORD}
+    # 生成 /etc/prometheus/prometheus.yml，再启动 prometheus（prometheus.yml 不支持环境变量）
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "sed 's/__ALERTMANAGER_PASSWORD__/${DEHAZE_PASSWORD}/g' /etc/prometheus/prometheus.tpl > /etc/prometheus/prometheus.yml && exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --web.listen-address=:9091"
     networks:
       - pei-network
 
@@ -309,8 +326,11 @@ services:
     volumes:
       # 部署前需将文件中的 SMTP 占位配置替换为真实值
       - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      # Basic Auth 凭证（bcrypt，账号 admin / 密码 ${DEHAZE_PASSWORD}）
+      # 首次部署需执行：bash scripts/init-security.sh 生成 web.yml
+      - ./config/alertmanager/web.yml:/etc/alertmanager/web_auth.yml:ro
       - alertmanager-data:/alertmanager
-    command: --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager
+    command: --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager --web.config.file=/etc/alertmanager/web_auth.yml
     networks:
       - pei-network
 
@@ -320,7 +340,7 @@ services:
     container_name: grafana
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "13001:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=${DEHAZE_PASSWORD}
@@ -415,18 +435,15 @@ services:
 volumes:
   mysql-data:
   mysql-logs:
-  mysql-config:
   redis-data:
   mongo-data:
   mongo-config:
   mongo-logs:
-  minio-config:
   minio-data:
   es-data:
   es-logs:
   es-plugins:
   kibana-config:
-  logstash-config:
   rabbitmq-data:
   rabbitmq-logs:
   xxl-job-logs:

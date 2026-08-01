@@ -290,12 +290,15 @@ const MessageCenter: React.FC = () => {
             上一页
           </Button>
           <span className="page-info">
-            第 {pageNum} 页 / 共 {Math.max(1, Math.ceil(total / pageSize))} 页
-            （{total} 条）
+            第 {pageNum} 页 / 共{" "}
+            {Math.max(1, Math.ceil(total / Math.max(1, pageSize)))} 页 （{total}{" "}
+            条）
           </span>
           <Button
             type="link"
-            disabled={pageNum >= Math.ceil(total / pageSize)}
+            disabled={
+              pageNum >= Math.max(1, Math.ceil(total / Math.max(1, pageSize)))
+            }
             onClick={() => handlePageChange(pageNum + 1, pageSize)}
           >
             下一页

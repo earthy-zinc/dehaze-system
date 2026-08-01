@@ -88,16 +88,6 @@ service.interceptors.response.use(
   },
   (error: AxiosError) => {
     const interceptors = configManager.getInterceptors();
-    if (error.response?.data) {
-      const { code, msg, traceId } = error.response.data as ResponseData<any>;
-      const parts = [
-        `HTTP ${error.response.status}`,
-        code ? `code=${code}` : "",
-        msg ? `msg=${msg}` : "",
-        traceId ? `traceId=${traceId}` : "",
-      ].filter(Boolean);
-      error.message = parts.join(" ");
-    }
     const result = interceptors.onResponseError?.(error);
     return result !== undefined ? result : Promise.reject(error);
   }

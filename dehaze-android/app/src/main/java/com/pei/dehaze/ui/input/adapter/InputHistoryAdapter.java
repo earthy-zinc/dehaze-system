@@ -16,7 +16,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
 import com.pei.dehaze.utils.StringUtils;
-import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryVO;
 import com.pei.dehaze.sdk.model.input_history.ProcessStatus;
 
@@ -250,7 +249,7 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
                 return;
             }
             Glide.with(itemView.getContext())
-                    .load(DehazeSDK.getInstance().resolveUrl(url))
+                    .load(url)
                     .placeholder(R.drawable.ic_image)
                     .error(R.drawable.ic_broken_image)
                     .into(imageView);

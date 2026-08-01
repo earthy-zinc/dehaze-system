@@ -14,6 +14,7 @@ import { AuthAPI, configAxios } from "../../index";
 import type { InternalAxiosRequestConfig } from "axios";
 import FormData from "form-data";
 import { getRedis } from "./redis";
+import { DEHAZE_PASSWORD } from "#/config/constant";
 
 let currentSessionId: string = "";
 let activeUser: string = "";
@@ -70,7 +71,7 @@ async function doLogin(username: string) {
   const captchaCode = await getCaptchaCode(captcha.captchaKey);
   return await AuthAPI.login({
     username,
-    password: process.env.DEHAZE_PASSWORD || "Dehaze@2026",
+    password: DEHAZE_PASSWORD,
     captchaKey: captcha.captchaKey,
     captchaCode,
   });

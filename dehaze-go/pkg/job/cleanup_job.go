@@ -97,7 +97,7 @@ func (j *CleanupJob) cleanupStuckPredEvalLogs(ctx context.Context) {
 // executeCleanup 执行清理操作
 // 各步骤独立执行，某一步失败不阻断后续步骤
 func (j *CleanupJob) executeCleanup(ctx context.Context) {
-	logger.Info("开始执行清理任务")
+	logger.Debug("开始执行清理任务")
 
 	// 1. 清理失败的缩略图生成记录
 	if err := j.cleanupFailedThumbnails(ctx); err != nil {
@@ -114,7 +114,7 @@ func (j *CleanupJob) executeCleanup(ctx context.Context) {
 		logger.Error("清理过期任务失败", zap.Error(err))
 	}
 
-	logger.Info("清理任务执行完成")
+	logger.Debug("清理任务执行完成")
 }
 
 // RunCleanupNow 立即执行一次清理（用于手动触发）
@@ -156,14 +156,14 @@ func (j *CleanupJob) cleanupFailedThumbnails(ctx context.Context) error {
 		if timestamp < threshold {
 			j.cacheClient.HDel(ctx, THUMBNAIL_FAILED_KEY, fileIDStr)
 			cleanedCount++
-			logger.Info("清理过期的缩略图失败记录",
+			logger.Debug("清理过期的缩略图失败记录",
 				zap.Int64("fileID", fileID),
 				zap.Int64("ageDays", (time.Now().Unix()-timestamp)/86400))
 		}
 	}
 
 	if cleanedCount > 0 {
-		logger.Info("清理缩略图失败记录完成", zap.Int("count", cleanedCount))
+		logger.Debug("清理缩略图失败记录完成", zap.Int("count", cleanedCount))
 	}
 
 	return nil
@@ -205,12 +205,12 @@ func (j *CleanupJob) cleanupFailedDeletions(ctx context.Context) error {
 			// 文件已不存在，删除成功，从失败列表移除
 			j.cacheClient.SRem(ctx, DELETION_FAILED_KEY, filePath)
 			cleanedCount++
-			logger.Info("从删除失败列表移除（文件已不存在）", zap.String("path", filePath))
+			logger.Debug("从删除失败列表移除（文件已不存在）", zap.String("path", filePath))
 		}
 	}
 
 	if cleanedCount > 0 {
-		logger.Info("清理删除失败记录完成", zap.Int("count", cleanedCount))
+		logger.Debug("清理删除失败记录完成", zap.Int("count", cleanedCount))
 	}
 
 	return nil
@@ -255,7 +255,7 @@ func (j *CleanupJob) cleanupExpiredTasks(ctx context.Context) error {
 			j.cacheClient.Delete(ctx, cacheKeys...)
 		}
 
-		logger.Info("清理7天前已完成/取消任务", zap.Int("count", len(block1Tasks)))
+		logger.Debug("清理7天前已完成/取消任务", zap.Int("count", len(block1Tasks)))
 	}
 
 	// Block 2: 30天前所有非 PENDING/PROCESSING 任务
@@ -286,7 +286,7 @@ func (j *CleanupJob) cleanupExpiredTasks(ctx context.Context) error {
 			j.cacheClient.Delete(ctx, cacheKeys...)
 		}
 
-		logger.Info("清理30天前已终止任务", zap.Int("count", len(block2Tasks)))
+		logger.Debug("清理30天前已终止任务", zap.Int("count", len(block2Tasks)))
 	}
 
 	return nil

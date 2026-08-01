@@ -52,6 +52,11 @@ spring:
       test-on-return: false
       # 启用统计监控和防火墙（防御SQL注入）
       filters: stat,wall
+      filter:
+        stat:
+          # 慢 SQL 记录：超过 1s 的 SQL 输出到日志（WARN 级别）
+          log-slow-sql: true
+          slow-sql-millis: 1000
   data:
     redis:
       database: 0
@@ -100,9 +105,17 @@ mybatis-plus:
     # 驼峰下划线转换
     map-underscore-to-camel-case: true
     # 这个配置会将执行的sql打印出来，在开发或测试的时候可以用
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     # 配置枚举处理器，使MyBatis-Plus能够正确处理枚举类型
     default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
+
+# SQL 审计日志（结构化 JSON 输出至 info.log）
+dehaze:
+  sql-log:
+    # INFO：记录全部 SQL；WARN：仅记录慢查询与 SQL 错误
+    level: INFO
+    # 慢查询阈值（毫秒）
+    slow-threshold-ms: 500
 
 # 安全配置
 security:
@@ -122,6 +135,11 @@ system:
   # 多点登录控制：false 允许多设备同时登录，true 新登录踢旧 Session
   use-multi-point: false
 
+# 优惠券配置
+coupon:
+  receive-rate-limit: 10000
+  receive-rate-window: 60
+
 # 监控配置 (开发环境适度开放，禁止暴露 heapdump/env/configprops 等高危端点)
 management:
   endpoints:
@@ -136,9 +154,9 @@ management:
       show-details: WHEN_AUTHORIZED
 
 file:
-  # 上传类型 (目前支持minio OSS、local 本地存储)
+  # 上传类型 (minio OSS / local 本地存储 / nginx-static 外部 nginx 静态托管)
   type: minio
-  # 上传文件基于url（用户主动上传的文件走 MinIO + Java 下载接口）
+  # 文件访问 baseUrl（用户主动上传的文件走 MinIO + Java 下载接口）
   baseUrl: http://127.0.0.1:8989/api/v1/files/download
   # 数据集根目录（nginx-dataset 容器挂载的宿主机路径）
   datasetPath: D:/DeepLearning/dataset
@@ -155,6 +173,10 @@ file:
     secret-key: ${DEHAZE_PASSWORD}
     # 存储桶名称
     bucket-name: dehaze
+  # nginx-static 后端（文件由外部 nginx 静态托管，Java 仅登记与拼 URL，不参与上传/下载 IO）
+  nginx-static:
+    # nginx 对外访问 baseUrl（必须带 scheme + host）
+    baseUrl: http://${DEHAZE_HOST}:8081
 
 # springdoc配置： https://springdoc.org/properties.html
 springdoc:
@@ -329,9 +351,7 @@ kafka:
     # 是否启用日志管道
     enabled: false
 
-# 读取根目录的 .env
-springdotenv:
-  directory: ../
+
 
 # 支付渠道配置（默认关闭，启用时调用真实 SDK）
 payment:

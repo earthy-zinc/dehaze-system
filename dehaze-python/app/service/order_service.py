@@ -800,46 +800,36 @@ class OrderService:
 
         pay_method = form["payMethod"]
         enabled = form["enabled"]
+        status = 1 if enabled else 0
 
-        config = await auto_renew_repository.get_by_user_and_package(db, user_id, package_id)
-        if config:
-            config.pay_method = pay_method
-            if enabled:
-                config.status = 1
-                config.fail_count = 0
-                config.close_reason = None
-                last_order_stmt = select(SysOrder).where(
-                    SysOrder.user_id == user_id,
-                    SysOrder.package_id == package_id,
-                    SysOrder.status.in_([2, 3]),
-                    SysOrder.deleted == 0,
-                ).order_by(SysOrder.id.desc()).limit(1)
-                last_order = (await db.execute(last_order_stmt)).scalar_one_or_none()
-                if last_order and last_order.package_expire_time:
-                    config.next_renew_time = last_order.package_expire_time
-            else:
-                config.status = 0
-                config.close_reason = "用户关闭"
-            await db.flush()
-        else:
-            config = SysAutoRenew(
-                user_id=user_id,
-                package_id=package_id,
-                pay_method=pay_method,
-                status=1 if enabled else 0,
-                close_reason=None if enabled else "用户关闭",
+        # 计算 next_renew_time（新增和更新分支共用）
+        next_renew_time = None
+        if enabled:
+            last_order_stmt = select(SysOrder).where(
+                SysOrder.user_id == user_id,
+                SysOrder.package_id == package_id,
+                SysOrder.status.in_([2, 3]),
+                SysOrder.deleted == 0,
+            ).order_by(SysOrder.id.desc()).limit(1)
+            last_order = (await db.execute(last_order_stmt)).scalar_one_or_none()
+            if last_order and last_order.package_expire_time:
+                next_renew_time = last_order.package_expire_time
+
+        # upsert：冲突时复活并更新业务字段
+        await auto_renew_repository.upsert_by_user_and_package(
+            db, user_id, package_id, pay_method, status,
+            next_renew_time=next_renew_time, fail_count=0,
+        )
+        # 关闭时设置 close_reason（upsert 不覆盖此字段）
+        if not enabled:
+            from sqlalchemy import update as update_stmt
+            await db.execute(
+                update_stmt(SysAutoRenew).where(
+                    SysAutoRenew.user_id == user_id,
+                    SysAutoRenew.package_id == package_id,
+                    SysAutoRenew.deleted == 0,
+                ).values(close_reason="用户关闭")
             )
-            if enabled:
-                last_order_stmt = select(SysOrder).where(
-                    SysOrder.user_id == user_id,
-                    SysOrder.package_id == package_id,
-                    SysOrder.status.in_([2, 3]),
-                    SysOrder.deleted == 0,
-                ).order_by(SysOrder.id.desc()).limit(1)
-                last_order = (await db.execute(last_order_stmt)).scalar_one_or_none()
-                if last_order and last_order.package_expire_time:
-                    config.next_renew_time = last_order.package_expire_time
-            await auto_renew_repository.create(db, config)
 
     @staticmethod
     async def get_auto_renew_config(db: AsyncSession, package_id: int, user_id: int) -> dict:
@@ -1050,6 +1040,6 @@ class OrderService:
 
             await db.flush()
 
-        logger.info("退款失败重试完成: 总数=%s 成功=%s 最终失败=%s",
+        logger.debug("退款失败重试完成: 总数=%s 成功=%s 最终失败=%s",
                     len(failed_refunds), success_count, final_fail_count)
         return len(failed_refunds)

@@ -145,7 +145,7 @@ async function handleEvaluation() {
       predUrl: pred.value!.url,
       gtUrl: gt.value!.url,
     });
-    if (result.status === "failed") {
+    if (result.status === 3) {
       throw new Error(result.errorMessage || "评估失败");
     }
     metrics.value = Object.entries(result.metrics || {}).map(

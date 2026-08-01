@@ -1,7 +1,8 @@
 """
 文件服务
 
-提供文件上传、下载、删除等功能
+提供文件上传、下载、删除等功能。
+URL 不落库，永远运行时拼接（StorageService.get_url）。
 """
 
 import asyncio
@@ -12,9 +13,11 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from io import BytesIO
 from typing import AsyncIterator, Optional
+from urllib.parse import quote
+
+from fastapi.responses import StreamingResponse
 
 from minio import Minio
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -88,28 +91,6 @@ def sanitize_filename(filename: str) -> str:
     return filename
 
 
-def generate_file_url(object_name: str) -> str:
-    """
-    生成文件访问 URL
-
-    优先使用 FILE_BASE_URL，其次使用 BASE_URL 域名，最后使用 MinIO 地址
-
-    Args:
-        object_name: 对象名称
-
-    Returns:
-        文件访问 URL
-    """
-    # 优先使用 FILE_BASE_URL 配置
-    if settings.FILE_BASE_URL:
-        base = settings.FILE_BASE_URL.rstrip("/")
-        return f"{base}/{object_name}"
-
-    # 兜底使用 MinIO 直连地址
-    protocol = "https" if settings.MINIO_SECURE else "http"
-    return f"{protocol}://{settings.MINIO_ENDPOINT}/{settings.MINIO_BUCKET_NAME}/{object_name}"
-
-
 class FileService:
     """文件服务类（异步版本）"""
 
@@ -179,44 +160,39 @@ class FileService:
             raise BusinessException(
                 ResultCode.FILE_STORAGE_ERROR, f"文件存储失败: {str(e)}")
 
-        # 生成文件访问 URL
-        file_url = generate_file_url(object_name)
-
-        # 构造 SysFile 实体对象
+        # 构造 SysFile 实体对象（URL 不落库，运行时拼接）
         new_file = SysFile(
             type=file_extension,
-            url=file_url,
             name=filename,
             object_name=object_name,
+            storage=settings.FILE_STORAGE_TYPE,
             size=convert_size(file_size),
             size_bytes=file_size,
-            path=object_name,
             md5=file_md5,
         )
 
-        # 创建数据库记录，处理并发 MD5 冲突
-        # 使用 SAVEPOINT 避免回滚整个外层事务（upload_file 常被 dataset_service 在事务内调用）
-        try:
-            async with db.begin_nested():
-                new_file = await file_repository.create(db, new_file)
-        except IntegrityError:
-            # 并发上传相同 MD5 文件导致唯一索引冲突，savepoint 自动回滚，外层事务不受影响
-            existing_file = await file_repository.get_by_md5(db, file_md5)
-            if existing_file:
-                return existing_file
-            # 如果重查仍未找到（理论上不应发生），抛出异常
-            raise BusinessException(ResultCode.FILE_STORAGE_ERROR, "文件记录创建失败")
+        # 主动 upsert：冲突时复活 deleted=0，返回已有或新记录
+        created_file = await file_repository.upsert_by_md5(
+            db,
+            md5=new_file.md5,
+            type=new_file.type,
+            name=new_file.name,
+            object_name=new_file.object_name,
+            storage=new_file.storage,
+            size=new_file.size,
+            size_bytes=new_file.size_bytes,
+        )
 
         # 发布文件创建事件
         file_event_bus.publish(FileCreatedEvent(
-            file_id=new_file.id,
-            filename=new_file.name,
-            object_name=new_file.object_name,
-            md5=new_file.md5,
+            file_id=created_file.id,
+            filename=created_file.name,
+            object_name=created_file.object_name,
+            md5=created_file.md5,
             size_bytes=file_size,
         ))
 
-        return new_file
+        return created_file
 
     @staticmethod
     async def delete_file_with_storage(db: AsyncSession, file_id: int) -> None:
@@ -244,7 +220,7 @@ class FileService:
         md5 = file_info.md5
 
         # 删除数据库记录（事务由 get_db() 在请求边界统一提交）
-        await file_repository.delete_by_ids(db, [file_id])
+        await file_repository.soft_delete_by_ids(db, [file_id])
 
         # 从存储中删除文件（在线程池中异步执行，不阻塞事件循环）
         minio_client = get_minio_client()
@@ -350,12 +326,13 @@ class FileService:
         return await file_repository.get_page(db, page, size, keywords)
 
     @staticmethod
-    async def download_file_stream(object_name: str) -> AsyncIterator[bytes]:
+    async def download_file_stream(object_name: str, storage: str = "minio") -> AsyncIterator[bytes]:
         """
-        从 MinIO 流式下载文件（避免大文件 OOM）
+        从指定存储后端流式下载文件（避免大文件 OOM）
 
         Args:
-            object_name: MinIO 对象名称
+            object_name: 对象名称
+            storage: 存储后端标识（minio/local/nginx-static）
 
         Yields:
             文件内容分块
@@ -363,31 +340,26 @@ class FileService:
         Raises:
             BusinessException: 文件不存在或下载失败
         """
-        minio_client = get_minio_client()
+        from app.service.storage.factory import get_storage_by_name
+
+        storage_service = get_storage_by_name(storage)
         bucket_name = settings.MINIO_BUCKET_NAME
 
-        # 使用生产者-消费者队列实现真正的流式下载（避免大文件 OOM）
+        # nginx-static 后端是 HTTP GET 取流，可直接通过 requests 流式迭代；
+        # minio/local 也是同步读取，统一通过生产者-消费者队列桥接到异步生成器
         _SENTINEL = object()
         queue: asyncio.Queue = asyncio.Queue(maxsize=8)
         loop = asyncio.get_running_loop()
 
         def _producer():
-            """在工作线程中分块读取 MinIO 对象并推入队列（带背压）"""
-            response = None
+            """在工作线程中分块读取对象并推入队列（带背压）"""
             try:
-                response = minio_client.get_object(bucket_name, object_name)
-                while True:
-                    chunk = response.read(_DOWNLOAD_CHUNK_SIZE)
-                    if not chunk:
-                        break
+                for chunk in storage_service.download_stream(bucket_name, object_name):
                     fut = asyncio.run_coroutine_threadsafe(queue.put(chunk), loop)
                     fut.result()  # 等待队列有空间（背压）
             except Exception as exc:
                 asyncio.run_coroutine_threadsafe(queue.put(exc), loop).result()
             finally:
-                if response:
-                    response.close()
-                    response.release_conn()
                 asyncio.run_coroutine_threadsafe(queue.put(_SENTINEL), loop).result()
 
         # 启动生产者线程（非阻塞，在后台运行）
@@ -409,6 +381,30 @@ class FileService:
             logger.error("文件下载失败 [%s]: %s", object_name, e, exc_info=True)
             raise BusinessException(
                 ResultCode.FILE_NOT_FOUND, "文件下载失败")
+
+    @staticmethod
+    def stream_file_response(object_name: str, storage: str = "minio") -> StreamingResponse:
+        """
+        从指定存储后端流式返回文件内容（带下载用 Content-Disposition 头）
+
+        Args:
+            object_name: 对象名称
+            storage: 存储后端标识（minio/local/nginx-static）
+
+        Returns:
+            可直接作为 FastAPI 路由返回值的 StreamingResponse
+        """
+        filename = object_name.rsplit("/", 1)[-1] or "download"
+        ascii_filename = filename.encode("ascii", "ignore").decode("ascii") or "download"
+        encoded_filename = quote(filename)
+        content_disposition = (
+            f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{encoded_filename}'
+        )
+        return StreamingResponse(
+            FileService.download_file_stream(object_name, storage=storage),
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": content_disposition},
+        )
 
     @staticmethod
     async def get_file_stat(object_name: str) -> Optional[int]:

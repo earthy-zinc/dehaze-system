@@ -1,0 +1,308 @@
+# ============================================================
+# 生产环境配置文件（Go 后端）
+#
+# 加载方式：部署时设置环境变量 GIN_MODE=release，
+# config.Init() 会按 gin.Mode() == ReleaseMode 自动读取本文件。
+# 同时本文件 system.env: prod 会触发 Gin 生产行为
+# （关闭 Swagger、禁用 debug 堆栈等）。
+# ============================================================
+
+zap:
+  level: info
+  format: console
+  prefix: "[dehaze-go]"
+  directory: logs
+  show-line: true
+  encode-level: LowercaseColorLevelEncoder
+  stacktrace-key: stacktrace
+  # 生产环境日志落盘到文件，不重复输出到控制台
+  log-in-console: false
+  retention-day: 30
+  max-size: 100 # 单文件大小上限（MB），超限归档为 {级别}.{n}.log 并开新活动文件
+  # 生产环境启动时不归档（避免覆盖运维已归档的日志）
+  archive-on-startup: false
+
+# system configuration
+system:
+  env: prod # 生产环境标识，触发 Gin 生产行为
+  port: 8990
+  use-multi-point: false
+  # IP限制次数 一个小时100000次（生产按需调整，避免误伤正常流量）
+  ip-limit-count: 100000
+  #  IP限制一个小时
+  ip-limit-time: 3600
+  # 登录/注册接口 IP 限流次数（每分钟），生产建议收紧至安全默认值
+  login-ip-limit-count: 10
+  # 优惠券领取限流（每分钟），生产使用安全默认值
+  coupon-receive-rate-limit: 5
+  coupon-receive-rate-window: 60
+  #  路由全局前缀
+  router-prefix: ""
+  # 新用户初始密码（由 .env 的 DEHAZE_PASSWORD 展开）
+  default-password: "${DEHAZE_PASSWORD}"
+
+# CORS 跨域配置
+# 注意：生产部署前请移除以下 localhost 开发条目，
+# 仅保留真实前端域名白名单，避免任意本地来源跨域访问。
+cors:
+  # 模式：strict-whitelist（严格白名单校验，推荐）
+  mode: strict-whitelist
+  whitelist:
+    - allow-origin: "http://localhost:5173"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:5174"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:5175"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:5176"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:5177"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:5183"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:5184"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:8081"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5173"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5174"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5175"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5176"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5177"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5183"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5184"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:8081"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+
+captcha:
+  length: 4
+  width: 120
+  height: 40
+  retry-count: 0 # 0代表无限制次数，大于0代表最多获取几次验证码
+  timeout: 3600 # retry-count大于0时才生效，表示解除验证码限制时间
+
+jwt:
+  key: ${JWT_SECRET_KEY}
+  ttl: 7200
+  refresh-token-ttl: 604800 # RefreshToken 过期时间（秒），7天
+
+session:
+  cookie:
+    # 生产环境使用 HTTPS，Secure 必须为 true 否则 Cookie 不会被浏览器发送
+    secure: true
+    path: /
+
+db:
+  driver: mysql
+  type: mysql
+  mysql:
+    host: ${DEHAZE_HOST}
+    port: 3306
+    database: dehaze
+    username: root
+    password: ${DEHAZE_PASSWORD}
+    config: "charset=utf8mb4&parseTime=True&loc=Local"
+    charset: utf8mb4
+    parse-time: true
+    loc: Local
+  postgres:
+    host: ${DEHAZE_HOST}
+    port: 5432
+    database: dehaze
+    username: postgres
+    password: ""
+  sqlite:
+    path: ./data/dehaze.db
+  max-idle-conns: 10
+  max-open-conns: 100
+  singular: true
+  # 生产环境 SQL 审计策略：仅记录慢查询(WARN)与错误(ERROR)，不落盘全量 SQL
+  log-mode: warn
+  log-zap: true
+
+cache:
+  # 缓存类型（仅供参考）：实际后端选择由 redis.enabled / local.enabled 决定，
+  # multiLevel.enabled 控制是否启用多级缓存。此字段不影响运行时行为。
+  type: multi
+  redis:
+    enabled: true
+    addr: ${DEHAZE_HOST}:6379
+    password: ${DEHAZE_PASSWORD}
+    # Redis db 隔离规范（推荐配置，不强制分库以避免破坏现有 Session）：
+    #   db=0 业务缓存（当前使用）
+    #   db=1 Session + 分布式锁（需后续迁移）
+    #   db=2 限流计数器
+    db: 0
+    useCluster: false
+    timeout: 5
+    poolSize: 20
+  local:
+    defaultExpire: 7200
+    maxSize: 1000
+    enabled: true
+  fallback:
+    enabled: true
+    type: local
+    maxRetries: 3
+    retryDelay: 100
+  # 多级缓存配置（L1 本地 + L2 Redis）
+  multiLevel:
+    enabled: true
+    l1ExpireSeconds: 300        # L1 本地缓存默认 5 分钟
+    l2ExpireSeconds: 3600       # L2 Redis 缓存默认 1 小时
+    asyncWriteBack: true
+    l1MaxSize: 1000
+    randomExpireRange: 60       # 过期时间随机抖动 60 秒，防雪崩
+  # 缓存防护配置
+  protection:
+    bloomFilter:
+      enabled: false            # 灰度策略：暂不启用，观察 L1+SingleFlight 效果后再启用
+      expectedItems: 10000
+      falsePositiveRate: 0.01
+    singleFlight:
+      enabled: true             # 启用 SingleFlight 防缓存击穿
+    circuitBreaker:
+      enabled: false            # 灰度策略：暂不启用
+      maxRequests: 3
+      interval: 60
+      timeout: 30
+      failureThreshold: 5
+    nullCache:
+      enabled: true             # 启用空值缓存防穿透
+      expireSeconds: 60
+  pubsub:
+    enabled: true
+    channel: "cache:invalidation"
+    senderId: "pod-1"
+    maxConcurrency: 32  # 可选，默认16
+
+algorithm:
+  serviceUrl: "http://127.0.0.1:8991" # Python 算法服务地址
+  timeout: 120 # 请求超时（秒）
+  connectTimeout: 5 # 连接超时（秒）
+  apiKey: "dhak_m2m_internal_python_service_key_2024" # 服务间调用 API Key（M2M 认证）
+  # 重试配置（指数退避）
+  maxRetry: 3 # 最大重试次数（0 表示不重试）
+  retryBackoffMs: 1000 # 重试初始退避（毫秒），指数增长
+  # 熔断器配置
+  circuitBreaker:
+    enabled: true
+    failureThreshold: 5 # 失败次数阈值，达到后熔断
+    timeout: 30 # 熔断超时（秒），超时后进入半开状态
+    maxRequests: 3 # 半开状态下允许的最大请求数
+
+rabbitmq:
+  enabled: true
+  url: "amqp://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:5672/%2F"
+  exchange: "dehaze.tasks"
+  exchangeType: "direct"
+  routingKeyPrefix: "task"
+
+mongo:
+  uri: "mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:27017/dehaze?authSource=admin"
+  database: "dehaze"
+
+file:
+  type: minio # 默认存储后端：minio/local/nginx-static
+  maxSize: 104857600 # 单文件最大大小（字节），默认100MB
+  storage:
+    minio:
+      endpoint: "${DEHAZE_HOST}:9110"
+      accessKey: "admin"
+      secretKey: "${DEHAZE_PASSWORD}"
+      bucketName: "dehaze"
+      baseUrl: "http://127.0.0.1:8990/api/v1/files/download" # MinIO 文件访问基础 URL（完整地址，运行时拼接用，不落库）
+    local:
+      uploadPath: "./data/upload"
+      baseUrl: "http://127.0.0.1:8990/api/v1/files/download" # 本地下载接口基础 URL（完整地址）
+    nginx-static:
+      baseUrl: "http://127.0.0.1:9000" # nginx 静态服务根地址（不带 /datasets 等资源子路径）
+
+kafka:
+  enabled: false
+  brokers:
+    - "localhost:9092"
+  topic: "dehaze.logs"
+  clientId: "dehaze-go"
+
+# XXL-Job 定时任务配置
+xxljob:
+  enabled: true
+  server-addr: "http://${DEHAZE_HOST}:14980/xxl-job-admin"
+  access-token: "${DEHAZE_PASSWORD}"
+  executor-port: "9997"
+  registry-key: "xxl-job-executor-dehaze-go"
+
+# 支付渠道配置（默认关闭，未启用时降级为 mock）
+payment:
+  wechat:
+    enabled: false
+    appId: ""
+    mchId: ""
+    mchKey: ""
+    notifyUrl: "http://127.0.0.1:8990/api/v1/orders/payment/wechat/callback"
+    apiKey: ""
+    apiClientKey: ""
+    baseUrl: "https://api.mch.weixin.qq.com"
+  alipay:
+    enabled: false
+    appId: ""
+    privateKey: ""
+    publicKey: ""
+    notifyUrl: "http://127.0.0.1:8990/api/v1/orders/payment/alipay/callback"
+    gateway: "https://openapi.alipay.com/gateway.do"

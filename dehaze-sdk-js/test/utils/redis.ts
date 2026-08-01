@@ -1,13 +1,14 @@
 import Redis from "ioredis";
+import { DEHAZE_HOST, DEHAZE_PASSWORD } from "#/config/constant";
 
 let redis: Redis | null = null;
 
 export function getRedis(): Redis {
   if (!redis) {
     redis = new Redis({
-      host: process.env.DEHAZE_HOST || "127.0.0.1",
+      host: DEHAZE_HOST,
       port: 6379,
-      password: process.env.DEHAZE_PASSWORD || "Dehaze@2026",
+      password: DEHAZE_PASSWORD,
       db: 0,
       maxRetriesPerRequest: 3,
     });

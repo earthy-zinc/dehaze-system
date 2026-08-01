@@ -4,7 +4,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from app.infrastructure.logging import _trace_id_var
+from app.infrastructure.logging import set_request_context
 
 
 class TraceMiddleware(BaseHTTPMiddleware):
@@ -15,7 +15,14 @@ class TraceMiddleware(BaseHTTPMiddleware):
         trace_id = request.headers.get(
             "X-Trace-Id") or request.headers.get("X-Request-Id") or uuid.uuid4().hex
 
-        _trace_id_var.set(trace_id)
+        # 注入请求上下文（traceId/method/path/ip/userAgent），供 JsonFormatter 自动写入每条日志
+        forwarded = request.headers.get("x-forwarded-for", "")
+        ip = forwarded.split(",")[0].strip() if forwarded else (
+            request.client.host if request.client else "")
+        set_request_context(
+            trace_id=trace_id, method=request.method, path=request.url.path,
+            ip=ip, user_agent=request.headers.get("user-agent", ""),
+        )
 
         response = await call_next(request)
 

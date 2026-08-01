@@ -3,3 +3,7 @@ spring:
     name: dehaze-java
   profiles:
     active: test
+
+# 读取根目录的 .env
+springdotenv:
+  directory: ../

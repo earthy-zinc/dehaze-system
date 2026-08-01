@@ -12,14 +12,12 @@ import io
 import json
 import logging
 import uuid
-from datetime import timedelta
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
-from app.core.constants import RESULT_FILE_EXPIRE_DAYS
 from app.core.exceptions import BusinessException, TaskCancelledException
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import EXPORT_TASK_TYPES
@@ -87,14 +85,15 @@ class GenericExportStrategy(TaskStrategy):
             object_name = f"exports/{sys_task.task_id}/{module}_export.zip"
             content_type = "application/zip"
 
-        return await _upload_to_minio(output.getvalue(), object_name, content_type)
+        await _upload_to_minio(output.getvalue(), object_name, content_type)
+        return object_name
 
 
-async def _upload_to_minio(data: bytes, object_name: str, content_type: str) -> str:
+async def _upload_to_minio(data: bytes, object_name: str, content_type: str) -> None:
     client = get_minio_client()
     bucket = settings.MINIO_BUCKET_NAME
 
-    def _sync() -> str:
+    def _sync() -> None:
         client.put_object(
             bucket,
             object_name,
@@ -102,13 +101,10 @@ async def _upload_to_minio(data: bytes, object_name: str, content_type: str) -> 
             length=len(data),
             content_type=content_type,
         )
-        return client.presigned_get_object(
-            bucket, object_name, expires=timedelta(days=RESULT_FILE_EXPIRE_DAYS),
-        )
 
     try:
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(_minio_executor, _sync)
+        await loop.run_in_executor(_minio_executor, _sync)
     except Exception as e:
-        logger.warning("MinIO 上传失败，降级为本地路径: %s", e)
-        return f"/downloads/{object_name}"
+        logger.warning("MinIO 上传失败: %s", e)
+        raise

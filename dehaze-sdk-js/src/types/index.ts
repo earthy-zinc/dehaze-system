@@ -9,6 +9,16 @@ export interface ResponseData<T = any> {
 }
 
 /**
+ * 请求数据，用于失败排查时还原「发了什么请求」
+ */
+export interface RequestData {
+  method: string;
+  url: string;
+  params?: unknown;
+  body?: unknown;
+}
+
+/**
  * 分页查询参数
  */
 export interface PageQuery {

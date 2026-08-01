@@ -12,9 +12,9 @@ class PackageRepository(BaseRepository[SysPackage]):
     model = SysPackage
 
     async def get_by_name(self, db: AsyncSession, name: str) -> Optional[SysPackage]:
+        """根据名称查询套餐（含软删记录，用于查重）"""
         stmt = select(SysPackage).where(
             SysPackage.name == name,
-            SysPackage.deleted == 0,
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()

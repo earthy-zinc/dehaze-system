@@ -65,7 +65,8 @@ public class SysRoleController {
     @Operation(summary = "修改角色")
     @PutMapping(value = "/{id}")
     @PreAuthorize("@ss.hasPerm('sys:role:edit')")
-    public Result<Void> updateRole(@Valid @RequestBody RoleForm roleForm) {
+    public Result<Void> updateRole(@PathVariable Long id, @Valid @RequestBody RoleForm roleForm) {
+        roleForm.setId(id);
         boolean result = roleService.saveRole(roleForm);
         return Result.judge(result);
     }

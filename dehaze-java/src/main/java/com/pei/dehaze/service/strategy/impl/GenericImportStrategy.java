@@ -3,7 +3,6 @@ package com.pei.dehaze.service.strategy.impl;
 import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.model.entity.SysTask;
-import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.importexport.ImportExportFileGenerator;
 import com.pei.dehaze.service.importexport.ImportHandler;
 import com.pei.dehaze.service.importexport.ImportHandlerRegistry;
@@ -36,7 +35,7 @@ public class GenericImportStrategy implements TaskStrategy {
 
     private final ImportHandlerRegistry importHandlerRegistry;
     private final ImportExportFileGenerator fileGenerator;
-    private final FileService fileService;
+    private final com.pei.dehaze.service.impl.file.StorageServiceFactory storageServiceFactory;
 
     @Override
     public List<String> getTaskTypes() {
@@ -64,7 +63,7 @@ public class GenericImportStrategy implements TaskStrategy {
 
         ImportHandler handler = importHandlerRegistry.getHandler(module);
 
-        try (InputStream is = fileService.downLoadFile(fileObjectName)) {
+        try (InputStream is = storageServiceFactory.getDefault().downLoadFile(fileObjectName)) {
             List<Map<String, Object>> rows = new ArrayList<>();
             fileGenerator.parse(is, fileObjectName, handler.getDynamicFieldConfigs(),
                     (rowNum, row) -> rows.add(row));
@@ -81,7 +80,7 @@ public class GenericImportStrategy implements TaskStrategy {
                     ? buildResultJson(result, errorReportUrl)
                     : JSONUtil.toJsonStr(result);
 
-            log.info("异步导入完成: taskId={}, module={}, success={}, failure={}",
+            log.debug("异步导入完成: taskId={}, module={}, success={}, failure={}",
                     task.getTaskId(), module, result.getSuccessCount(), result.getFailureCount());
             return TaskResult.success(finalResult);
         } catch (Exception e) {
@@ -111,7 +110,7 @@ public class GenericImportStrategy implements TaskStrategy {
             fileGenerator.writeTemplateExcel(baos, errorFields, errorRows);
 
             try (ByteArrayInputStream bis = new ByteArrayInputStream(baos.toByteArray())) {
-                return fileService.uploadFile(objectName, bis, (long) baos.size(), getContentType("excel"));
+                return storageServiceFactory.getDefault().uploadFile(objectName, bis, (long) baos.size(), getContentType("excel"));
             }
         } catch (Exception e) {
             log.warn("生成错误报告失败: taskId={}", taskId, e);

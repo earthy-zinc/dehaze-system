@@ -121,13 +121,21 @@ def _create_empty_stats() -> dict[str, Any]:
 
 def _build_file_vo(item_file, file_obj) -> dict[str, Any]:
     """构建图片文件 VO（统一字段命名，对齐 SDK ImageUrlVO）。
+    url/thumbnailUrl 运行时拼接（baseUrl + object_name），不落库。
     用于 ItemFileService 和 DatasetItemService 的所有文件响应。"""
+    from app.service.storage.factory import get_storage_by_name
+
     # 从文件名提取格式（扩展名），统一返回小写
     file_format = None
     if file_obj and file_obj.name and "." in file_obj.name:
         file_format = file_obj.name.rsplit(".", 1)[-1].lower()
     elif file_obj and file_obj.type:
         file_format = file_obj.type.lower()
+
+    file_url = None
+    if file_obj and file_obj.object_name:
+        storage_service = get_storage_by_name(file_obj.storage)
+        file_url = storage_service.get_url(file_obj.object_name)
 
     return {
         "id": item_file.id,
@@ -137,8 +145,8 @@ def _build_file_vo(item_file, file_obj) -> dict[str, Any]:
         "sceneType": item_file.scene_type,
         "hazeLevel": item_file.haze_level,
         "description": item_file.description,
-        "url": file_obj.url if file_obj else None,
-        "thumbnailUrl": file_obj.url if file_obj else None,
+        "url": file_url,
+        "thumbnailUrl": file_url,
         "fileName": file_obj.name if file_obj else None,
         "name": file_obj.name if file_obj else None,
         "sizeBytes": file_obj.size_bytes if file_obj else None,
@@ -340,7 +348,7 @@ class DatasetService:
                 queue.append(parent_id)
 
         cost_ms = int((time.time() - start_time) * 1000)
-        logger.info(f"所有数据集统计信息计算完成，耗时 {cost_ms} ms，叶子节点 {len(leaf_ids)} 个")
+        logger.debug(f"所有数据集统计信息计算完成，耗时 {cost_ms} ms，叶子节点 {len(leaf_ids)} 个")
 
         try:
             str_key_map = {str(k): v for k, v in stats_map.items()}
@@ -763,11 +771,12 @@ class DatasetService:
                 file_vo = _build_file_vo(item_file, file_obj)
                 files.append(file_vo)
                 if file_obj is not None:
+                    # image_urls 简化对齐 _build_file_vo 的 url 字段
                     image_urls.append({
                         "id": file_obj.id,
                         "type": item_file.type,
-                        "url": file_obj.url,
-                        "thumbnailUrl": file_obj.url,
+                        "url": file_vo["url"],
+                        "thumbnailUrl": file_vo["url"],
                     })
                 if item_file.type == "clear" and clear_image is None:
                     clear_image = file_vo
@@ -856,8 +865,8 @@ class DatasetItemService:
                 image_urls.append({
                     "id": file_obj.id,
                     "type": item_file.type,
-                    "url": file_obj.url,
-                    "thumbnailUrl": file_obj.url,
+                    "url": file_vo["url"],
+                    "thumbnailUrl": file_vo["url"],
                 })
             # 按类型拆分：clearImage / hazyImages（对齐 SDK DatasetItemVO）
             if item_file.type == "clear" and clear_image is None:

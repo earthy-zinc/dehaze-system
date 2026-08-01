@@ -1,7 +1,9 @@
 """
 存储服务工厂
 
-根据配置 FILE_STORAGE_TYPE 创建对应的存储服务实例。
+提供两种取实例方式：
+1. get_storage_service()：按全局默认配置 FILE_STORAGE_TYPE 取后端（上传/删除文件用）
+2. get_storage_by_name(storage)：按 sys_file.storage 标识取后端（下载/读文件用）
 """
 
 import logging
@@ -12,42 +14,43 @@ from app.service.storage.base import StorageService
 
 logger = logging.getLogger(__name__)
 
-# 存储服务单例缓存
-_storage_instance: Optional[StorageService] = None
+# 存储服务单例缓存（按 storage 标识）
+_storage_instances: dict[str, StorageService] = {}
+
+
+def _create(storage: str) -> StorageService:
+    """按 storage 标识创建存储服务实例"""
+    storage = storage.lower()
+    if storage == "minio":
+        from app.service.storage.minio_storage import MinioStorageService
+        return MinioStorageService()
+    if storage == "local":
+        from app.service.storage.local_storage import LocalStorageService
+        return LocalStorageService()
+    if storage == "nginx-static":
+        from app.service.storage.nginx_storage import NginxStorageService
+        return NginxStorageService()
+    raise ValueError(f"不支持的存储类型: {storage}，可选: minio, local, nginx-static")
 
 
 def get_storage_service() -> StorageService:
+    """获取默认存储服务实例（单例，按 FILE_STORAGE_TYPE 配置）"""
+    return get_storage_by_name(settings.FILE_STORAGE_TYPE)
+
+
+def get_storage_by_name(storage: str) -> StorageService:
+    """按 storage 标识获取存储服务实例（单例缓存）
+
+    用于根据 sys_file.storage 字段选择对应后端进行下载/读取。
     """
-    获取存储服务实例（单例）
-
-    根据 FILE_STORAGE_TYPE 配置返回对应实现：
-    - "minio": MinIO 对象存储
-    - "local": 本地文件系统
-
-    Returns:
-        StorageService 实例
-    """
-    global _storage_instance
-    if _storage_instance is not None:
-        return _storage_instance
-
-    storage_type = settings.FILE_STORAGE_TYPE.lower()
-
-    if storage_type == "minio":
-        from app.service.storage.minio_storage import MinioStorageService
-        _storage_instance = MinioStorageService()
-        logger.info("存储服务初始化: MinIO")
-    elif storage_type == "local":
-        from app.service.storage.local_storage import LocalStorageService
-        _storage_instance = LocalStorageService()
-        logger.info(f"存储服务初始化: 本地存储 ({settings.LOCAL_STORAGE_PATH})")
-    else:
-        raise ValueError(f"不支持的存储类型: {storage_type}，可选: minio, local")
-
-    return _storage_instance
+    if storage in _storage_instances:
+        return _storage_instances[storage]
+    instance = _create(storage)
+    _storage_instances[storage] = instance
+    logger.info("存储服务初始化: %s", storage)
+    return instance
 
 
 def reset_storage_service() -> None:
-    """重置存储服务实例（主要用于测试）"""
-    global _storage_instance
-    _storage_instance = None
+    """重置存储服务实例缓存（主要用于测试）"""
+    _storage_instances.clear()

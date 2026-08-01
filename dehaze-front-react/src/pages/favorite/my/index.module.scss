@@ -1,0 +1,64 @@
+.my-favorites-page {
+  max-width: 1400px;
+  padding: 24px;
+  margin: 0 auto;
+}
+
+.filter-card {
+  margin-bottom: 24px;
+}
+
+.favorite-tabs {
+  margin-bottom: 24px;
+}
+
+.favorite-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.favorite-card {
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+    transform: translateY(-4px);
+  }
+
+  &.invalid {
+    opacity: 0.6;
+  }
+
+  .ant-card-cover {
+    height: 160px;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .ant-card-meta-description {
+    margin-top: 8px;
+  }
+}
+
+.meta-info {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}

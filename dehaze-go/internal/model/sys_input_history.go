@@ -15,7 +15,6 @@ type SysInputHistory struct {
 	ProcessingTime       *int    `gorm:"column:processing_time;type:int;comment:处理耗时（毫秒）" json:"processingTime"`
 	Status               *int8   `gorm:"column:status;type:tinyint;default:3;comment:处理状态（1=成功，2=失败，3=处理中）" json:"status"`
 	InputSource          *string `gorm:"column:input_source;type:varchar(20);comment:图片来源（upload/camera/sample）" json:"inputSource"`
-	IsFavorite           *bool   `gorm:"column:is_favorite;type:tinyint(1);default:0;comment:是否收藏" json:"isFavorite"`
 	SyncStatus           *int8   `gorm:"column:sync_status;type:tinyint;default:0;comment:同步状态（0=未同步，1=已同步）" json:"syncStatus"`
 }
 

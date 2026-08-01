@@ -178,9 +178,29 @@ const ProcessingPage: React.FC = () => {
     clearAllTimers,
   ]);
 
-  // 执行去雾处理（带确认对话框）
-  const handleStartProcess = useCallback(() => {
+  // 执行去雾处理（带确认对话框 + 配额检查）
+  const handleStartProcess = useCallback(async () => {
     if (!currentImage || !selectedAlgorithm) return;
+
+    try {
+      const quota = await ModelAPI.getQuota();
+      if (quota.remaining === 0) {
+        Taro.showModal({
+          title: "预测次数不足",
+          content: `当前剩余预测次数为 0（已使用 ${quota.used}/${quota.total}），请及时充值。`,
+          confirmText: "去充值",
+          cancelText: "取消",
+          success: (res) => {
+            if (res.confirm) {
+              Taro.navigateTo({ url: "/pages/user-center/index" });
+            }
+          },
+        });
+        return;
+      }
+    } catch {
+      // 配额查询失败也允许继续处理
+    }
 
     const estimatedSec = estimateTime(selectedAlgorithm);
     // 显示确认对话框（设计文档 2.1.3）

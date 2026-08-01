@@ -293,6 +293,68 @@ DehazeSDK.Builder()
 
 如果需要更改服务器地址，请修改此处配置。
 
+### 基础设施部署（Docker）
+
+MySQL、Redis、MongoDB、MinIO、RabbitMQ、Elasticsearch 及监控组件（Prometheus/Grafana/ELK 等）统一通过根目录 `docker-compose.yml` 编排。
+
+#### 1. 配置环境变量
+
+```bash
+cp .env.example .env
+```
+
+#### 2. 启动基础设施
+
+```bash
+# 启动核心依赖（数据库/缓存/存储/MQ）
+docker compose up -d mysql redis mongodb minio rabbitmq
+
+# 启动 ELK 日志栈 + SkyWalking 链路追踪
+docker compose up -d elasticsearch kibana logstash filebeat sky-oap sky-ui
+```
+
+#### 3. 安全初始化（重要）
+
+Elasticsearch 启用 `xpack.security` 后，`kibana_system` / `logstash_system` / `beats_system` 等系统用户需手动设置密码；Alertmanager Basic Auth 凭证需预生成。统一执行：
+
+```bash
+# 前置：elasticsearch 容器已启动
+bash scripts/init-security.sh
+```
+
+脚本完成：
+- 用 `elastic` 超级用户设置 `kibana_system` / `logstash_system` / `beats_system` 密码（= `${DEHAZE_PASSWORD}`）
+- 生成 `config/alertmanager/web.yml`（bcrypt，账号 `admin` / 密码 `${DEHAZE_PASSWORD}`）
+
+手动设置
+
+```bash
+# 1. 设置 ES 系统用户密码（用 elastic 超级用户）
+curl -u elastic:${DEHAZE_PASSWORD} -X POST http://localhost:9200/_security/user/kibana_system/_password \
+  -H 'Content-Type: application/json' -d '{"password":"'"${DEHAZE_PASSWORD}"'"}'
+curl -u elastic:${DEHAZE_PASSWORD} -X POST http://localhost:9200/_security/user/logstash_system/_password \
+  -H 'Content-Type: application/json' -d '{"password":"'"${DEHAZE_PASSWORD}"'"}'
+curl -u elastic:${DEHAZE_PASSWORD} -X POST http://localhost:9200/_security/user/beats_system/_password \
+  -H 'Content-Type: application/json' -d '{"password":"'"${DEHAZE_PASSWORD}"'"}'
+
+# 2. 生成 Alertmanager Basic Auth 凭证（bcrypt，账号 admin）
+docker run --rm httpd:alpine htpasswd -nbB admin "${DEHAZE_PASSWORD}" \
+  | sed 's/^admin://' \
+  | xargs -I{} printf 'basic_auth_users:\n  admin: "%s"\n' {} > config/alertmanager/web.yml
+```
+
+#### 4. 启动监控组件
+
+```bash
+docker compose up -d prometheus grafana alertmanager \
+  node-exporter mysqld-exporter redis-exporter mongodb-exporter
+
+# GPU 指标采集（需 NVIDIA GPU + nvidia-container-toolkit）
+docker compose --profile gpu up -d dcgm-exporter
+```
+
+> 修改 `DEHAZE_PASSWORD` 后需重新执行 `bash scripts/init-security.sh` 并重启相关服务，详见脚本输出提示。
+
 ### 后端启动
 
 三端后端统一通过 `scripts/run.py` 管理生命周期（启动/停止/重启/查看状态/查看日志），无需手动在各子项目目录下执行启动命令：
@@ -373,29 +435,23 @@ source .venv/bin/activate  # Linux/Mac
 uv sync
 
 # 启动服务(开发环境，热重载)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8991
+python -m app.main
 
 # 生产环境部署
-uvicorn app.main:app --host 0.0.0.0 --port 8991 --workers 4
+APP_ENV=production python -m app.main
 ```
 
 ### 监控与日志（可选）
 
-监控基础设施（Prometheus/Grafana/AlertManager/Exporter 及 ELK 日志栈）均通过根目录 `docker-compose.yml` 编排：
+监控组件的启动方式见上方 [基础设施部署](#基础设施部署docker)。
 
-```bash
-# 启动监控与日志组件
-docker compose up -d prometheus grafana alertmanager filebeat logstash \
-  node-exporter mysqld-exporter redis-exporter mongodb-exporter
+访问地址：
 
-# GPU 指标采集（需 NVIDIA GPU + nvidia-container-toolkit）
-docker compose --profile gpu up -d dcgm-exporter
-```
-
-- **Grafana**：http://localhost:3001（admin/`<DEHAZE_PASSWORD>`），`Dehaze` 文件夹下自动加载总览/基础设施/业务监控面板
+- **Grafana**：http://localhost:13001（admin/`<DEHAZE_PASSWORD>`），`Dehaze` 文件夹下自动加载总览/基础设施/业务监控面板
 - **Prometheus**：http://localhost:9091（Targets 状态、告警规则评估）
-- **AlertManager**：http://localhost:9093，邮件通知需先将 `config/alertmanager/alertmanager.yml` 中 SMTP 占位配置替换为真实值
+- **AlertManager**：http://localhost:9093（需 Basic Auth `admin`/`<DEHAZE_PASSWORD>`），邮件通知需先将 `config/alertmanager/alertmanager.yml` 中 SMTP 占位配置替换为真实值
 - **Kibana**：http://localhost:5601，创建 `dehaze-logs-*` 索引模式后检索三端结构化日志
+- **SkyWalking UI**：http://localhost:18080，三端调用链路追踪
 - 指标命名规范与告警阈值详见 [部署架构 - 监控与告警](dehaze-doc/docs/02-系统架构/06-部署架构.md#7-监控与告警)
 
 ### 算法训练

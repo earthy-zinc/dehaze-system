@@ -85,7 +85,7 @@ public class RestClientConfig {
      */
     private ClientHttpRequestInterceptor traceIdInterceptor() {
         return (request, body, execution) -> {
-            String traceId = MDC.get("traceId");
+            String traceId = MDC.get("trace_id");
             if (traceId != null && !traceId.isBlank()) {
                 request.getHeaders().set("X-Trace-Id", traceId);
             }

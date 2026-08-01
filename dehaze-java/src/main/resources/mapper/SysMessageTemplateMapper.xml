@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pei.dehaze.mapper.SysMessageTemplateMapper">
+
+    <!-- ==================== 原生SQL：绕过@TableLogic软删过滤 ==================== -->
+
+    <!-- 按编码查询消息模板数（含已软删行） -->
+    <select id="countByCodeAll" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_message_template WHERE code = #{code}
+    </select>
+
+    <!-- 按编码查询消息模板数（排除指定ID，含已软删行） -->
+    <select id="countByCodeAllExcluding" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_message_template WHERE code = #{code} AND id != #{excludeId}
+    </select>
+
+</mapper>

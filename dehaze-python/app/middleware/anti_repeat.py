@@ -31,6 +31,10 @@ _EXCLUDE_PATHS = {
 }
 
 _EXCLUDE_PREFIXES = {
+    "/api/v1/auth",
+    "/api/v1/datasets",
+    "/api/v1/dataset-items",
+    "/api/v1/files",
     "/api/v1/orders",
     "/api/v1/prediction",
     "/api/v1/evaluation",
@@ -39,6 +43,9 @@ _EXCLUDE_PREFIXES = {
     "/api/v1/users",
     "/api/v1/tasks",
     "/api/v1/messages",
+    "/api/v1/recommendations",
+    "/api/v1/favorites",
+    "/api/v1/presets",
 }
 
 

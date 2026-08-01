@@ -58,7 +58,7 @@ public class DelayedPushJob {
                 SysMessage message = messageService.getById(Long.parseLong(messageId));
                 if (message != null) {
                     pushDispatcher.dispatch(message, userId);
-                    log.info("处理免打扰延迟推送: messageId={}, recipientId={}", message.getId(), userId);
+                    log.debug("处理免打扰延迟推送: messageId={}, recipientId={}", message.getId(), userId);
                 }
             } catch (Exception e) {
                 log.error("延迟推送处理失败: messageId={}", messageId, e);

@@ -13,4 +13,16 @@
             <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
             <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
     </resultMap>
+
+    <!-- ==================== 原生SQL：绕过@TableLogic软删过滤 ==================== -->
+
+    <!-- 按编码查询字典类型数（含已软删行） -->
+    <select id="countByCodeAll" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_dict_type WHERE code = #{code}
+    </select>
+
+    <!-- 按编码查询字典类型数（排除指定ID，含已软删行） -->
+    <select id="countByCodeAllExcluding" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_dict_type WHERE code = #{code} AND id != #{excludeId}
+    </select>
 </mapper>

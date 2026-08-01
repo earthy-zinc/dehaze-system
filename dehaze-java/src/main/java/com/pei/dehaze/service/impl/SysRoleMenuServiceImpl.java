@@ -1,6 +1,7 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.mapper.SysRoleMenuMapper;
@@ -9,7 +10,7 @@ import com.pei.dehaze.model.entity.SysRoleMenu;
 import com.pei.dehaze.service.SysRoleMenuService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -27,7 +28,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRoleMenu> implements SysRoleMenuService {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     /**
      * 权限缓存 TTL（30 分钟）
@@ -56,9 +57,9 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
     @Override
     public void refreshRolePermsCache() {
         // 清理所有角色权限缓存 Key
-        Set<String> keys = redisTemplate.keys(SecurityConstants.ROLE_PERMS_PREFIX + "*");
+        Set<String> keys = stringRedisTemplate.keys(SecurityConstants.ROLE_PERMS_PREFIX + "*");
         if (CollUtil.isNotEmpty(keys)) {
-            redisTemplate.delete(keys);
+            stringRedisTemplate.delete(keys);
         }
 
         List<RolePermsBO> list = this.baseMapper.getRolePermsList(null);
@@ -66,7 +67,7 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
             list.forEach(item -> {
                 String roleCode = item.getRoleCode();
                 Set<String> perms = item.getPerms();
-                redisTemplate.opsForValue().set(rolePermsKey(roleCode), perms, ROLE_PERMS_TTL);
+                stringRedisTemplate.opsForValue().set(rolePermsKey(roleCode), JSONUtil.toJsonStr(perms), ROLE_PERMS_TTL);
             });
         }
     }
@@ -76,7 +77,7 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
      */
     @Override
     public void refreshRolePermsCache(String roleCode) {
-        redisTemplate.delete(rolePermsKey(roleCode));
+        stringRedisTemplate.delete(rolePermsKey(roleCode));
 
         List<RolePermsBO> list = this.baseMapper.getRolePermsList(roleCode);
         if (CollUtil.isNotEmpty(list)) {
@@ -85,7 +86,7 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
                 return;
             }
             Set<String> perms = rolePerms.getPerms();
-            redisTemplate.opsForValue().set(rolePermsKey(roleCode), perms, ROLE_PERMS_TTL);
+            stringRedisTemplate.opsForValue().set(rolePermsKey(roleCode), JSONUtil.toJsonStr(perms), ROLE_PERMS_TTL);
         }
     }
 
@@ -95,7 +96,7 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
      */
     @Override
     public void refreshRolePermsCache(String oldRoleCode, String newRoleCode) {
-        redisTemplate.delete(rolePermsKey(oldRoleCode));
+        stringRedisTemplate.delete(rolePermsKey(oldRoleCode));
         refreshRolePermsCache(newRoleCode);
     }
 

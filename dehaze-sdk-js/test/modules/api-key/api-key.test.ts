@@ -91,10 +91,12 @@ describe("API密钥管理", () => {
 
       await ApiKeyAPI.delete(keyToDelete.id);
 
+      // 内部语义：设 revoked_at=now()，列表查询（revoked_at IS NULL）不再返回
       const list = await ApiKeyAPI.list();
       const found = list.find((k) => k.id === keyToDelete.id);
       expect(found).toBeUndefined();
 
+      // 吊销后 revoked_at 非空，鉴权要求 revoked_at IS NULL，故鉴权应失败
       await expect(
         service.get("/api/v1/auth/me", {
           headers: { Authorization: `Bearer ${keyToDelete.apiKey}` },

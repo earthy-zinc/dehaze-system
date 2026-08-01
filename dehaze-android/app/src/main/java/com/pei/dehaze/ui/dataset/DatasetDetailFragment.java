@@ -30,7 +30,6 @@ import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentDatasetDetailBinding;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.UriUtils;
-import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
 import com.pei.dehaze.sdk.model.dataset.DatasetStatistics;
 import com.pei.dehaze.sdk.model.dataset.ImageItem;
@@ -443,7 +442,7 @@ public class DatasetDetailFragment extends Fragment {
         View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_image_preview, null);
         ImageView ivPreview = view.findViewById(R.id.iv_preview);
         Glide.with(requireContext())
-                .load(DehazeSDK.getInstance().resolveUrl(imageUrl))
+                .load(imageUrl)
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivPreview);

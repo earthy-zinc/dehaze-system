@@ -15,15 +15,12 @@ export interface HistoryForm {
 }
 
 /** 历史记录更新表单 */
-export interface HistoryUpdateForm {
-  isFavorite?: boolean;
-}
+export interface HistoryUpdateForm {}
 
 /** 历史记录查询参数 */
 export interface HistoryQuery extends PageQuery {
   status?: number;
   inputSource?: string;
-  isFavorite?: boolean;
 }
 
 /** 历史记录视图对象 */
@@ -39,7 +36,6 @@ export interface InputHistoryVO {
   processingTime?: number;
   status?: number;
   inputSource?: string;
-  isFavorite?: boolean;
   syncStatus?: number;
   createTime?: string;
 }

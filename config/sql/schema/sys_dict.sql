@@ -22,7 +22,8 @@ CREATE TABLE `sys_dict`
     `update_time` datetime                                                      NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`   bigint                                                        NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`   bigint                                                        NULL DEFAULT NULL COMMENT '修改人ID',
-    PRIMARY KEY (`id`) USING BTREE
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_type_value` (`type_code` ASC, `value` ASC) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = '字典数据表'

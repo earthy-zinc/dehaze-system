@@ -155,7 +155,7 @@ class TaskServiceIT {
         task.setProgress(100);
         task.setTotalFiles(100);
         task.setProcessedFiles(100);
-        task.setResult("http://example.com/download/file.zip");
+        task.setResult("\"exports/file.zip\"");
         task.setCreateTime(LocalDateTime.now());
         task.setStartedAt(LocalDateTime.now().minusMinutes(5));
         task.setCompletedAt(LocalDateTime.now());
