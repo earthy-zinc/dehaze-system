@@ -307,7 +307,7 @@ cp .env.example .env
 
 ```bash
 # 启动核心依赖（数据库/缓存/存储/MQ）
-docker compose up -d mysql redis mongodb minio rabbitmq
+docker compose up -d mysql redis mongodb minio rabbitmq xxl-job-admin nginx-dataset
 
 # 启动 ELK 日志栈 + SkyWalking 链路追踪
 docker compose up -d elasticsearch kibana logstash filebeat sky-oap sky-ui
