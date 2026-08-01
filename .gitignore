@@ -470,6 +470,3 @@ dehaze-sdk-js/.session-cache.json
 .agent
 
 docker-compose-dev.yml
-
-# Alertmanager Basic Auth 凭证（含 bcrypt hash，由 scripts/gen-alertmanager-auth.sh 生成）
-config/alertmanager/web.yml
