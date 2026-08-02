@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - Dehaze</title>
+    <style id="theme-vars">
+/* Dehaze System - Brand Tokens */
+:root {
+  /* Brand primary scale */
+  --dehaze-primary-50: #eff6ff;
+  --dehaze-primary-100: #dbeafe;
+  --dehaze-primary-200: #bfdbfe;
+  --dehaze-primary-300: #93c5fd;
+  --dehaze-primary-400: #60a5fa;
+  --dehaze-primary-500: #3b82f6;
+  --dehaze-primary-600: #2563eb;
+  --dehaze-primary-700: #1d4ed8;
+  --dehaze-primary-800: #1e40af;
+  --dehaze-primary-900: #1e3a8a;
+
+  /* Neutral scale */
+  --dehaze-neutral-0: #ffffff;
+  --dehaze-neutral-50: #f9fafb;
+  --dehaze-neutral-100: #f3f4f6;
+  --dehaze-neutral-200: #e5e7eb;
+  --dehaze-neutral-300: #d1d5db;
+  --dehaze-neutral-400: #9ca3af;
+  --dehaze-neutral-500: #6b7280;
+  --dehaze-neutral-600: #4b5563;
+  --dehaze-neutral-700: #374151;
+  --dehaze-neutral-800: #1f2937;
+  --dehaze-neutral-900: #111827;
+
+  /* Semantic tokens (light mode default) */
+  --dehaze-background: #ffffff;
+  --dehaze-foreground: #1f2937;
+  --dehaze-card: #ffffff;
+  --dehaze-card-foreground: #1f2937;
+  --dehaze-popover: #ffffff;
+  --dehaze-popover-foreground: #1f2937;
+  --dehaze-primary: #3b82f6;
+  --dehaze-primary-foreground: #ffffff;
+  --dehaze-muted: #f3f4f6;
+  --dehaze-muted-foreground: #6b7280;
+  --dehaze-border: #e5e7eb;
+  --dehaze-input: #e5e7eb;
+  --dehaze-ring: #3b82f6;
+
+  /* State colors */
+  --dehaze-state-success: #4caf50;
+  --dehaze-state-warning: #ff9800;
+  --dehaze-state-error: #f44336;
+  --dehaze-state-info: #2196f3;
+
+  /* Radius scale */
+  --dehaze-radius-sm: 4px;
+  --dehaze-radius-md: 8px;
+  --dehaze-radius-lg: 12px;
+  --dehaze-radius-xl: 16px;
+  --dehaze-radius-full: 9999px;
+
+  /* Typography */
+  --dehaze-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --dehaze-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* Shadows */
+  --dehaze-shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --dehaze-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --dehaze-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --dehaze-shadow-4: 0 12px 24px rgba(0, 0, 0, 0.14);
+  --dehaze-shadow-5: 0 16px 32px rgba(0, 0, 0, 0.16);
+
+  /* Spacing */
+  --dehaze-space-xs: 4px;
+  --dehaze-space-sm: 8px;
+  --dehaze-space-md: 16px;
+  --dehaze-space-lg: 24px;
+  --dehaze-space-xl: 32px;
+  --dehaze-space-2xl: 48px;
+}
+
+/* Dark mode tokens */
+html.dark {
+  --dehaze-background: #0f172a;
+  --dehaze-foreground: #f9fafb;
+  --dehaze-card: #1e293b;
+  --dehaze-card-foreground: #f9fafb;
+  --dehaze-popover: #1e293b;
+  --dehaze-popover-foreground: #f9fafb;
+  --dehaze-primary: #60a5fa;
+  --dehaze-primary-foreground: #0f172a;
+  --dehaze-muted: #1e293b;
+  --dehaze-muted-foreground: #94a3b8;
+  --dehaze-border: #334155;
+  --dehaze-input: #334155;
+  --dehaze-ring: #60a5fa;
+}
+
+/* Base typography */
+body {
+  font-family: var(--dehaze-font-sans);
+  color: var(--dehaze-foreground);
+  background-color: var(--dehaze-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Heading scale */
+.dehaze-heading-hero {
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dehaze-heading-h1 {
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.dehaze-heading-h2 {
+  font-size: clamp(22px, 2.4vw, 32px);
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.dehaze-heading-h3 {
+  font-size: clamp(18px, 1.8vw, 24px);
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.dehaze-body {
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.dehaze-body-sm {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.dehaze-caption {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+/* Buttons */
+.dehaze-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.dehaze-btn:active {
+  transform: scale(0.97);
+}
+
+.dehaze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dehaze-btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #ffffff;
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-primary:hover {
+  box-shadow: var(--dehaze-shadow-3);
+  transform: translateY(-1px);
+}
+
+.dehaze-btn-secondary {
+  background-color: var(--dehaze-neutral-100);
+  color: var(--dehaze-neutral-700);
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-secondary:hover {
+  background-color: var(--dehaze-neutral-200);
+}
+
+.dehaze-btn-ghost {
+  background-color: transparent;
+  color: var(--dehaze-primary);
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-ghost:hover {
+  background-color: var(--dehaze-primary-50);
+}
+
+/* Cards */
+.dehaze-card {
+  background-color: var(--dehaze-card);
+  border-radius: var(--dehaze-radius-xl);
+  box-shadow: var(--dehaze-shadow-1);
+  border: 1px solid var(--dehaze-border);
+}
+
+.dehaze-card-hover:hover {
+  box-shadow: var(--dehaze-shadow-3);
+  transform: translateY(-4px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Forms */
+.dehaze-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 15px;
+  border: 1px solid var(--dehaze-input);
+  border-radius: var(--dehaze-radius-md);
+  background-color: var(--dehaze-background);
+  color: var(--dehaze-foreground);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dehaze-input:focus {
+  outline: none;
+  border-color: var(--dehaze-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.dehaze-input::placeholder {
+  color: var(--dehaze-muted-foreground);
+}
+
+/* Utility gradients */
+.dehaze-gradient-primary {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+}
+
+.dehaze-gradient-metric {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.dehaze-text-gradient {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Status badges */
+.dehaze-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--dehaze-radius-full);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dehaze-badge-success {
+  background-color: rgba(76, 175, 80, 0.12);
+  color: #2e7d32;
+}
+
+.dehaze-badge-warning {
+  background-color: rgba(255, 152, 0, 0.12);
+  color: #ef6c00;
+}
+
+.dehaze-badge-error {
+  background-color: rgba(244, 67, 54, 0.12);
+  color: #c62828;
+}
+
+.dehaze-badge-info {
+  background-color: rgba(33, 150, 243, 0.12);
+  color: #1565c0;
+}
+
+/* Layout helpers */
+.dehaze-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--dehaze-space-lg);
+  padding-right: var(--dehaze-space-lg);
+}
+
+.dehaze-surface {
+  background-color: var(--dehaze-card);
+  border: 1px solid var(--dehaze-border);
+  border-radius: var(--dehaze-radius-xl);
+}
+
+/* Animation helpers */
+@keyframes dehaze-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dehaze-animate-fade-in {
+  animation: dehaze-fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--dehaze-neutral-300);
+  border-radius: var(--dehaze-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--dehaze-neutral-400);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--dehaze-background);
+    --color-foreground: var(--dehaze-foreground);
+    --color-card: var(--dehaze-card);
+    --color-card-foreground: var(--dehaze-card-foreground);
+    --color-popover: var(--dehaze-popover);
+    --color-popover-foreground: var(--dehaze-popover-foreground);
+    --color-primary: var(--dehaze-primary);
+    --color-primary-foreground: var(--dehaze-primary-foreground);
+    --color-muted: var(--dehaze-muted);
+    --color-muted-foreground: var(--dehaze-muted-foreground);
+    --color-border: var(--dehaze-border);
+    --color-input: var(--dehaze-input);
+    --color-ring: var(--dehaze-ring);
+    --radius-sm: var(--dehaze-radius-sm);
+    --radius-md: var(--dehaze-radius-md);
+    --radius-lg: var(--dehaze-radius-lg);
+    --radius-xl: var(--dehaze-radius-xl);
+  }
+  @layer base {
+    body { background: var(--dehaze-background); color: var(--dehaze-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--dehaze-background); }
+      .text-background { color: var(--dehaze-background); }
+      .border-background { border-color: var(--dehaze-background); }
+      .ring-background { --tw-ring-color: var(--dehaze-background); }
+      .bg-foreground { background-color: var(--dehaze-foreground); }
+      .text-foreground { color: var(--dehaze-foreground); }
+      .border-foreground { border-color: var(--dehaze-foreground); }
+      .ring-foreground { --tw-ring-color: var(--dehaze-foreground); }
+      .bg-card { background-color: var(--dehaze-card); }
+      .text-card { color: var(--dehaze-card); }
+      .border-card { border-color: var(--dehaze-card); }
+      .ring-card { --tw-ring-color: var(--dehaze-card); }
+      .bg-card-foreground { background-color: var(--dehaze-card-foreground); }
+      .text-card-foreground { color: var(--dehaze-card-foreground); }
+      .border-card-foreground { border-color: var(--dehaze-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--dehaze-card-foreground); }
+      .bg-popover { background-color: var(--dehaze-popover); }
+      .text-popover { color: var(--dehaze-popover); }
+      .border-popover { border-color: var(--dehaze-popover); }
+      .ring-popover { --tw-ring-color: var(--dehaze-popover); }
+      .bg-popover-foreground { background-color: var(--dehaze-popover-foreground); }
+      .text-popover-foreground { color: var(--dehaze-popover-foreground); }
+      .border-popover-foreground { border-color: var(--dehaze-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--dehaze-popover-foreground); }
+      .bg-primary { background-color: var(--dehaze-primary); }
+      .text-primary { color: var(--dehaze-primary); }
+      .border-primary { border-color: var(--dehaze-primary); }
+      .ring-primary { --tw-ring-color: var(--dehaze-primary); }
+      .bg-primary-foreground { background-color: var(--dehaze-primary-foreground); }
+      .text-primary-foreground { color: var(--dehaze-primary-foreground); }
+      .border-primary-foreground { border-color: var(--dehaze-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--dehaze-primary-foreground); }
+      .bg-muted { background-color: var(--dehaze-muted); }
+      .text-muted { color: var(--dehaze-muted); }
+      .border-muted { border-color: var(--dehaze-muted); }
+      .ring-muted { --tw-ring-color: var(--dehaze-muted); }
+      .bg-muted-foreground { background-color: var(--dehaze-muted-foreground); }
+      .text-muted-foreground { color: var(--dehaze-muted-foreground); }
+      .border-muted-foreground { border-color: var(--dehaze-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--dehaze-muted-foreground); }
+      .bg-border { background-color: var(--dehaze-border); }
+      .text-border { color: var(--dehaze-border); }
+      .border-border { border-color: var(--dehaze-border); }
+      .ring-border { --tw-ring-color: var(--dehaze-border); }
+      .bg-input { background-color: var(--dehaze-input); }
+      .text-input { color: var(--dehaze-input); }
+      .border-input { border-color: var(--dehaze-input); }
+      .ring-input { --tw-ring-color: var(--dehaze-input); }
+      .bg-ring { background-color: var(--dehaze-ring); }
+      .text-ring { color: var(--dehaze-ring); }
+      .border-ring { border-color: var(--dehaze-ring); }
+      .ring-ring { --tw-ring-color: var(--dehaze-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased overflow-x-hidden">
+    <style id="critical-layout">
+      #critical-layout { display: none; }
+      .auth-atmosphere {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        background: linear-gradient(165deg, #1e3a8a 0%, #2563eb 48%, #4f46e5 100%);
+      }
+      html.dark .auth-atmosphere {
+        background: linear-gradient(165deg, #0b1120 0%, #1e3a8a 50%, #312e81 100%);
+      }
+      .auth-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(72px);
+        opacity: 0.55;
+        pointer-events: none;
+      }
+      .auth-orb-1 {
+        width: 280px; height: 280px;
+        top: -60px; right: -80px;
+        background: rgba(147, 197, 253, 0.7);
+      }
+      .auth-orb-2 {
+        width: 240px; height: 240px;
+        top: 120px; left: -90px;
+        background: rgba(129, 140, 248, 0.6);
+      }
+      .auth-orb-3 {
+        width: 200px; height: 200px;
+        top: 280px; right: 40px;
+        background: rgba(96, 165, 250, 0.45);
+      }
+      .auth-glass-btn {
+        width: 40px; height: 40px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: var(--dehaze-radius-full);
+        background: rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: #ffffff;
+        cursor: pointer;
+        transition: background-color 0.15s ease, transform 0.15s ease;
+      }
+      .auth-glass-btn:active { transform: scale(0.94); background: rgba(255, 255, 255, 0.28); }
+      .auth-logo {
+        width: 64px; height: 64px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: var(--dehaze-radius-xl);
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        box-shadow: 0 8px 24px rgba(30, 58, 138, 0.3);
+      }
+      .auth-sheet {
+        position: relative;
+        z-index: 1;
+        background: var(--dehaze-background);
+        border-radius: var(--dehaze-radius-xl) var(--dehaze-radius-xl) 0 0;
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+      }
+      html.dark .auth-sheet {
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+      }
+      .reg-input {
+        width: 100%; height: 48px;
+        padding: 0 14px;
+        font-size: 15px;
+        border: 1px solid var(--dehaze-input);
+        border-radius: var(--dehaze-radius-md);
+        background-color: var(--dehaze-background);
+        color: var(--dehaze-foreground);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .reg-input:focus {
+        outline: none;
+        border-color: var(--dehaze-primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+      }
+      .reg-input::placeholder { color: var(--dehaze-muted-foreground); }
+      .reg-input-icon {
+        position: absolute; left: 14px; top: 50%;
+        transform: translateY(-50%);
+        color: var(--dehaze-muted-foreground);
+        pointer-events: none;
+      }
+      .reg-input-with-left { padding-left: 44px; }
+      .reg-eye-btn {
+        position: absolute; right: 6px; top: 50%;
+        transform: translateY(-50%);
+        width: 44px; height: 44px;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: var(--dehaze-muted-foreground);
+        background: transparent; border: none; cursor: pointer;
+        border-radius: var(--dehaze-radius-md);
+      }
+      .reg-eye-btn:active { color: var(--dehaze-primary); }
+      .reg-input-with-right { padding-right: 56px; }
+      .reg-btn-gradient {
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: #ffffff; border: none;
+        border-radius: var(--dehaze-radius-md);
+        font-weight: 500;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .reg-btn-gradient:active { transform: scale(0.97); }
+      .reg-btn-gradient:hover { box-shadow: var(--dehaze-shadow-3); }
+      .reg-link { color: var(--dehaze-primary); text-decoration: none; }
+      .reg-link:hover { text-decoration: underline; }
+      .reg-checkbox { width: 18px; height: 18px; accent-color: var(--dehaze-primary); }
+      .reg-code-btn {
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: #ffffff; border: none;
+        border-radius: var(--dehaze-radius-md);
+        font-weight: 500;
+        transition: transform 0.15s ease;
+      }
+      .reg-code-btn:active { transform: scale(0.97); }
+    </style>
+
+    <!-- 品牌氛围背景：渐变 + 柔光雾气 -->
+    <div class="auth-atmosphere" aria-hidden="true">
+      <div class="auth-orb auth-orb-1"></div>
+      <div class="auth-orb auth-orb-2"></div>
+      <div class="auth-orb auth-orb-3"></div>
+    </div>
+
+    <main class="relative z-10 w-full max-w-md mx-auto min-h-screen flex flex-col">
+      <!-- 顶部关闭（毛玻璃） -->
+      <div class="px-6 pt-10">
+        <button type="button" aria-label="关闭" class="auth-glass-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- 品牌区（浮于渐变之上） -->
+      <div class="text-center mt-6 mb-6 px-6 dehaze-animate-fade-in">
+        <div class="auth-logo mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        </div>
+        <h1 class="dehaze-heading-h2 text-white mb-1">创建账号</h1>
+        <p class="dehaze-body-sm" style="color: rgba(255,255,255,0.82);">开启你的清晰视界</p>
+      </div>
+
+      <!-- 清晰区：白色圆角表单面板 -->
+      <section class="auth-sheet flex-1 px-6 pt-7 pb-8 dehaze-animate-fade-in" style="animation-delay: 0.05s;">
+        <form class="space-y-4" onsubmit="event.preventDefault();">
+          <!-- 手机号 -->
+          <div class="relative">
+            <svg class="reg-input-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+            <input type="tel" inputmode="tel" autocomplete="tel" placeholder="请输入手机号" class="reg-input reg-input-with-left">
+          </div>
+
+          <!-- 验证码 -->
+          <div class="relative flex gap-3">
+            <svg class="reg-input-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+            <input type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="请输入验证码" class="reg-input reg-input-with-left flex-1">
+            <button type="button" class="reg-code-btn whitespace-nowrap px-4 text-sm" style="height: 48px;">获取验证码</button>
+          </div>
+
+          <!-- 密码 -->
+          <div class="relative">
+            <svg class="reg-input-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" autocomplete="new-password" placeholder="请输入密码" class="reg-input reg-input-with-right" id="reg-password-field">
+            <button type="button" id="reg-eye-toggle" class="reg-eye-btn" aria-label="显示密码">
+              <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-closed hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+            </button>
+          </div>
+
+          <!-- 确认密码 -->
+          <div class="relative">
+            <svg class="reg-input-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" autocomplete="new-password" placeholder="请确认密码" class="reg-input reg-input-with-right" id="reg-confirm-field">
+            <button type="button" id="reg-confirm-eye" class="reg-eye-btn" aria-label="显示密码">
+              <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-closed hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+            </button>
+          </div>
+
+          <!-- 协议 -->
+          <label class="flex items-start gap-3 pt-2 cursor-pointer">
+            <input type="checkbox" class="reg-checkbox mt-0.5 shrink-0">
+            <span class="dehaze-body-sm text-muted-foreground leading-5">
+              我已阅读并同意<a href="#" class="reg-link">《用户协议》</a>和<a href="#" class="reg-link">《隐私政策》</a>
+            </span>
+          </label>
+
+          <!-- 注册按钮 -->
+          <button type="submit" class="reg-btn-gradient w-full" style="height: 48px;">注册</button>
+        </form>
+
+        <!-- 底部提示 -->
+        <p class="text-center dehaze-body-sm text-muted-foreground mt-6">
+          已有账号？<a href="#" data-dom-id="link-login" class="reg-link font-medium">立即登录</a>
+        </p>
+      </section>
+    </main>
+    <script>
+      (function() {
+        function bindEye(btnId, fieldId) {
+          const btn = document.getElementById(btnId);
+          const field = document.getElementById(fieldId);
+          if (!btn || !field) return;
+          btn.addEventListener('click', function() {
+            const isPassword = field.type === 'password';
+            field.type = isPassword ? 'text' : 'password';
+            btn.setAttribute('aria-label', isPassword ? '隐藏密码' : '显示密码');
+            btn.querySelector('.eye-open').classList.toggle('hidden', !isPassword);
+            btn.querySelector('.eye-closed').classList.toggle('hidden', isPassword);
+          });
+        }
+        bindEye('reg-eye-toggle', 'reg-password-field');
+        bindEye('reg-confirm-eye', 'reg-confirm-field');
+      })();
+    </script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

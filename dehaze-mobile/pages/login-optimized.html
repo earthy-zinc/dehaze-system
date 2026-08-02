@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - Dehaze</title>
+    <style id="theme-vars">
+/* Dehaze System - Brand Tokens */
+:root {
+  /* Brand primary scale */
+  --dehaze-primary-50: #eff6ff;
+  --dehaze-primary-100: #dbeafe;
+  --dehaze-primary-200: #bfdbfe;
+  --dehaze-primary-300: #93c5fd;
+  --dehaze-primary-400: #60a5fa;
+  --dehaze-primary-500: #3b82f6;
+  --dehaze-primary-600: #2563eb;
+  --dehaze-primary-700: #1d4ed8;
+  --dehaze-primary-800: #1e40af;
+  --dehaze-primary-900: #1e3a8a;
+
+  /* Neutral scale */
+  --dehaze-neutral-0: #ffffff;
+  --dehaze-neutral-50: #f9fafb;
+  --dehaze-neutral-100: #f3f4f6;
+  --dehaze-neutral-200: #e5e7eb;
+  --dehaze-neutral-300: #d1d5db;
+  --dehaze-neutral-400: #9ca3af;
+  --dehaze-neutral-500: #6b7280;
+  --dehaze-neutral-600: #4b5563;
+  --dehaze-neutral-700: #374151;
+  --dehaze-neutral-800: #1f2937;
+  --dehaze-neutral-900: #111827;
+
+  /* Semantic tokens (light mode default) */
+  --dehaze-background: #ffffff;
+  --dehaze-foreground: #1f2937;
+  --dehaze-card: #ffffff;
+  --dehaze-card-foreground: #1f2937;
+  --dehaze-popover: #ffffff;
+  --dehaze-popover-foreground: #1f2937;
+  --dehaze-primary: #3b82f6;
+  --dehaze-primary-foreground: #ffffff;
+  --dehaze-muted: #f3f4f6;
+  --dehaze-muted-foreground: #6b7280;
+  --dehaze-border: #e5e7eb;
+  --dehaze-input: #e5e7eb;
+  --dehaze-ring: #3b82f6;
+
+  /* State colors */
+  --dehaze-state-success: #4caf50;
+  --dehaze-state-warning: #ff9800;
+  --dehaze-state-error: #f44336;
+  --dehaze-state-info: #2196f3;
+
+  /* Radius scale */
+  --dehaze-radius-sm: 4px;
+  --dehaze-radius-md: 8px;
+  --dehaze-radius-lg: 12px;
+  --dehaze-radius-xl: 16px;
+  --dehaze-radius-full: 9999px;
+
+  /* Typography */
+  --dehaze-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --dehaze-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* Shadows */
+  --dehaze-shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --dehaze-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --dehaze-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --dehaze-shadow-4: 0 12px 24px rgba(0, 0, 0, 0.14);
+  --dehaze-shadow-5: 0 16px 32px rgba(0, 0, 0, 0.16);
+
+  /* Spacing */
+  --dehaze-space-xs: 4px;
+  --dehaze-space-sm: 8px;
+  --dehaze-space-md: 16px;
+  --dehaze-space-lg: 24px;
+  --dehaze-space-xl: 32px;
+  --dehaze-space-2xl: 48px;
+}
+
+/* Dark mode tokens */
+html.dark {
+  --dehaze-background: #0f172a;
+  --dehaze-foreground: #f9fafb;
+  --dehaze-card: #1e293b;
+  --dehaze-card-foreground: #f9fafb;
+  --dehaze-popover: #1e293b;
+  --dehaze-popover-foreground: #f9fafb;
+  --dehaze-primary: #60a5fa;
+  --dehaze-primary-foreground: #0f172a;
+  --dehaze-muted: #1e293b;
+  --dehaze-muted-foreground: #94a3b8;
+  --dehaze-border: #334155;
+  --dehaze-input: #334155;
+  --dehaze-ring: #60a5fa;
+}
+
+/* Base typography */
+body {
+  font-family: var(--dehaze-font-sans);
+  color: var(--dehaze-foreground);
+  background-color: var(--dehaze-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Heading scale */
+.dehaze-heading-hero {
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dehaze-heading-h1 {
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.dehaze-heading-h2 {
+  font-size: clamp(22px, 2.4vw, 32px);
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.dehaze-heading-h3 {
+  font-size: clamp(18px, 1.8vw, 24px);
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.dehaze-body {
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.dehaze-body-sm {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.dehaze-caption {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+/* Buttons */
+.dehaze-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.dehaze-btn:active {
+  transform: scale(0.97);
+}
+
+.dehaze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dehaze-btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #ffffff;
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-primary:hover {
+  box-shadow: var(--dehaze-shadow-3);
+  transform: translateY(-1px);
+}
+
+.dehaze-btn-secondary {
+  background-color: var(--dehaze-neutral-100);
+  color: var(--dehaze-neutral-700);
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-secondary:hover {
+  background-color: var(--dehaze-neutral-200);
+}
+
+.dehaze-btn-ghost {
+  background-color: transparent;
+  color: var(--dehaze-primary);
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-ghost:hover {
+  background-color: var(--dehaze-primary-50);
+}
+
+/* Cards */
+.dehaze-card {
+  background-color: var(--dehaze-card);
+  border-radius: var(--dehaze-radius-xl);
+  box-shadow: var(--dehaze-shadow-1);
+  border: 1px solid var(--dehaze-border);
+}
+
+.dehaze-card-hover:hover {
+  box-shadow: var(--dehaze-shadow-3);
+  transform: translateY(-4px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Forms */
+.dehaze-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 15px;
+  border: 1px solid var(--dehaze-input);
+  border-radius: var(--dehaze-radius-md);
+  background-color: var(--dehaze-background);
+  color: var(--dehaze-foreground);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dehaze-input:focus {
+  outline: none;
+  border-color: var(--dehaze-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.dehaze-input::placeholder {
+  color: var(--dehaze-muted-foreground);
+}
+
+/* Utility gradients */
+.dehaze-gradient-primary {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+}
+
+.dehaze-gradient-metric {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.dehaze-text-gradient {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Status badges */
+.dehaze-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--dehaze-radius-full);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dehaze-badge-success {
+  background-color: rgba(76, 175, 80, 0.12);
+  color: #2e7d32;
+}
+
+.dehaze-badge-warning {
+  background-color: rgba(255, 152, 0, 0.12);
+  color: #ef6c00;
+}
+
+.dehaze-badge-error {
+  background-color: rgba(244, 67, 54, 0.12);
+  color: #c62828;
+}
+
+.dehaze-badge-info {
+  background-color: rgba(33, 150, 243, 0.12);
+  color: #1565c0;
+}
+
+/* Layout helpers */
+.dehaze-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--dehaze-space-lg);
+  padding-right: var(--dehaze-space-lg);
+}
+
+.dehaze-surface {
+  background-color: var(--dehaze-card);
+  border: 1px solid var(--dehaze-border);
+  border-radius: var(--dehaze-radius-xl);
+}
+
+/* Animation helpers */
+@keyframes dehaze-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dehaze-animate-fade-in {
+  animation: dehaze-fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--dehaze-neutral-300);
+  border-radius: var(--dehaze-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--dehaze-neutral-400);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--dehaze-background);
+    --color-foreground: var(--dehaze-foreground);
+    --color-card: var(--dehaze-card);
+    --color-card-foreground: var(--dehaze-card-foreground);
+    --color-popover: var(--dehaze-popover);
+    --color-popover-foreground: var(--dehaze-popover-foreground);
+    --color-primary: var(--dehaze-primary);
+    --color-primary-foreground: var(--dehaze-primary-foreground);
+    --color-muted: var(--dehaze-muted);
+    --color-muted-foreground: var(--dehaze-muted-foreground);
+    --color-border: var(--dehaze-border);
+    --color-input: var(--dehaze-input);
+    --color-ring: var(--dehaze-ring);
+    --radius-sm: var(--dehaze-radius-sm);
+    --radius-md: var(--dehaze-radius-md);
+    --radius-lg: var(--dehaze-radius-lg);
+    --radius-xl: var(--dehaze-radius-xl);
+  }
+  @layer base {
+    body { background: var(--dehaze-background); color: var(--dehaze-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--dehaze-background); }
+      .text-background { color: var(--dehaze-background); }
+      .border-background { border-color: var(--dehaze-background); }
+      .ring-background { --tw-ring-color: var(--dehaze-background); }
+      .bg-foreground { background-color: var(--dehaze-foreground); }
+      .text-foreground { color: var(--dehaze-foreground); }
+      .border-foreground { border-color: var(--dehaze-foreground); }
+      .ring-foreground { --tw-ring-color: var(--dehaze-foreground); }
+      .bg-card { background-color: var(--dehaze-card); }
+      .text-card { color: var(--dehaze-card); }
+      .border-card { border-color: var(--dehaze-card); }
+      .ring-card { --tw-ring-color: var(--dehaze-card); }
+      .bg-card-foreground { background-color: var(--dehaze-card-foreground); }
+      .text-card-foreground { color: var(--dehaze-card-foreground); }
+      .border-card-foreground { border-color: var(--dehaze-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--dehaze-card-foreground); }
+      .bg-popover { background-color: var(--dehaze-popover); }
+      .text-popover { color: var(--dehaze-popover); }
+      .border-popover { border-color: var(--dehaze-popover); }
+      .ring-popover { --tw-ring-color: var(--dehaze-popover); }
+      .bg-popover-foreground { background-color: var(--dehaze-popover-foreground); }
+      .text-popover-foreground { color: var(--dehaze-popover-foreground); }
+      .border-popover-foreground { border-color: var(--dehaze-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--dehaze-popover-foreground); }
+      .bg-primary { background-color: var(--dehaze-primary); }
+      .text-primary { color: var(--dehaze-primary); }
+      .border-primary { border-color: var(--dehaze-primary); }
+      .ring-primary { --tw-ring-color: var(--dehaze-primary); }
+      .bg-primary-foreground { background-color: var(--dehaze-primary-foreground); }
+      .text-primary-foreground { color: var(--dehaze-primary-foreground); }
+      .border-primary-foreground { border-color: var(--dehaze-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--dehaze-primary-foreground); }
+      .bg-muted { background-color: var(--dehaze-muted); }
+      .text-muted { color: var(--dehaze-muted); }
+      .border-muted { border-color: var(--dehaze-muted); }
+      .ring-muted { --tw-ring-color: var(--dehaze-muted); }
+      .bg-muted-foreground { background-color: var(--dehaze-muted-foreground); }
+      .text-muted-foreground { color: var(--dehaze-muted-foreground); }
+      .border-muted-foreground { border-color: var(--dehaze-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--dehaze-muted-foreground); }
+      .bg-border { background-color: var(--dehaze-border); }
+      .text-border { color: var(--dehaze-border); }
+      .border-border { border-color: var(--dehaze-border); }
+      .ring-border { --tw-ring-color: var(--dehaze-border); }
+      .bg-input { background-color: var(--dehaze-input); }
+      .text-input { color: var(--dehaze-input); }
+      .border-input { border-color: var(--dehaze-input); }
+      .ring-input { --tw-ring-color: var(--dehaze-input); }
+      .bg-ring { background-color: var(--dehaze-ring); }
+      .text-ring { color: var(--dehaze-ring); }
+      .border-ring { border-color: var(--dehaze-ring); }
+      .ring-ring { --tw-ring-color: var(--dehaze-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased overflow-x-hidden">
+    <style id="critical-layout">
+      #critical-layout { display: none; }
+      .auth-atmosphere {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        background: linear-gradient(165deg, #1e3a8a 0%, #2563eb 48%, #4f46e5 100%);
+      }
+      html.dark .auth-atmosphere {
+        background: linear-gradient(165deg, #0b1120 0%, #1e3a8a 50%, #312e81 100%);
+      }
+      .auth-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(72px);
+        opacity: 0.55;
+        pointer-events: none;
+      }
+      .auth-orb-1 {
+        width: 280px; height: 280px;
+        top: -60px; right: -80px;
+        background: rgba(147, 197, 253, 0.7);
+      }
+      .auth-orb-2 {
+        width: 240px; height: 240px;
+        top: 120px; left: -90px;
+        background: rgba(129, 140, 248, 0.6);
+      }
+      .auth-orb-3 {
+        width: 200px; height: 200px;
+        top: 280px; right: 40px;
+        background: rgba(96, 165, 250, 0.45);
+      }
+      .auth-glass-btn {
+        width: 40px; height: 40px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: var(--dehaze-radius-full);
+        background: rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: #ffffff;
+        cursor: pointer;
+        transition: background-color 0.15s ease, transform 0.15s ease;
+      }
+      .auth-glass-btn:active { transform: scale(0.94); background: rgba(255, 255, 255, 0.28); }
+      .auth-logo {
+        width: 64px; height: 64px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: var(--dehaze-radius-xl);
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        box-shadow: 0 8px 24px rgba(30, 58, 138, 0.3);
+      }
+      .auth-sheet {
+        position: relative;
+        z-index: 1;
+        background: var(--dehaze-background);
+        border-radius: var(--dehaze-radius-xl) var(--dehaze-radius-xl) 0 0;
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+      }
+      html.dark .auth-sheet {
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+      }
+      .login-input {
+        width: 100%; height: 48px;
+        padding: 0 14px;
+        font-size: 15px;
+        border: 1px solid var(--dehaze-input);
+        border-radius: var(--dehaze-radius-md);
+        background-color: var(--dehaze-background);
+        color: var(--dehaze-foreground);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .login-input:focus {
+        outline: none;
+        border-color: var(--dehaze-primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+      }
+      .login-input::placeholder { color: var(--dehaze-muted-foreground); }
+      .login-input-icon {
+        position: absolute; left: 14px; top: 50%;
+        transform: translateY(-50%);
+        color: var(--dehaze-muted-foreground);
+        pointer-events: none;
+      }
+      .login-input-with-left { padding-left: 44px; }
+      .login-input-with-right { padding-right: 56px; }
+      .login-toggle-btn {
+        min-height: 44px; padding: 10px 16px;
+        font-size: 15px; font-weight: 500;
+        color: var(--dehaze-muted-foreground);
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        transition: color 0.15s ease, border-color 0.15s ease;
+      }
+      .login-toggle-btn.active {
+        color: var(--dehaze-primary);
+        border-bottom-color: var(--dehaze-primary);
+      }
+      .login-eye-btn {
+        position: absolute; right: 6px; top: 50%;
+        transform: translateY(-50%);
+        width: 44px; height: 44px;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: var(--dehaze-muted-foreground);
+        background: transparent; border: none; cursor: pointer;
+        border-radius: var(--dehaze-radius-md);
+      }
+      .login-eye-btn:active { color: var(--dehaze-primary); }
+      .login-social-btn {
+        width: 44px; height: 44px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: var(--dehaze-radius-full);
+        background-color: var(--dehaze-neutral-100);
+        color: var(--dehaze-neutral-600);
+        border: 1px solid var(--dehaze-border);
+        cursor: pointer;
+        transition: background-color 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+      }
+      .login-social-btn:hover { background-color: var(--dehaze-neutral-200); border-color: var(--dehaze-neutral-300); }
+      .login-social-btn:active { transform: scale(0.95); }
+    </style>
+
+    <!-- 品牌氛围背景：渐变 + 柔光雾气 -->
+    <div class="auth-atmosphere" aria-hidden="true">
+      <div class="auth-orb auth-orb-1"></div>
+      <div class="auth-orb auth-orb-2"></div>
+      <div class="auth-orb auth-orb-3"></div>
+    </div>
+
+    <main class="relative z-10 w-full max-w-md mx-auto min-h-screen flex flex-col">
+      <!-- 顶部关闭（毛玻璃） -->
+      <div class="px-6 pt-10">
+        <button type="button" aria-label="关闭" class="auth-glass-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- 品牌区（浮于渐变之上） -->
+      <div class="text-center mt-6 mb-6 px-6 dehaze-animate-fade-in">
+        <div class="auth-logo mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        </div>
+        <h1 class="dehaze-heading-h2 text-white mb-1">欢迎回来</h1>
+        <p class="dehaze-body-sm" style="color: rgba(255,255,255,0.82);">让每一帧画面回归清晰</p>
+      </div>
+
+      <!-- 清晰区：白色圆角表单面板 -->
+      <section class="auth-sheet flex-1 px-6 pt-7 pb-8 dehaze-animate-fade-in" style="animation-delay: 0.05s;">
+        <!-- 登录方式切换 -->
+        <div class="flex border-b border-border mb-5">
+          <button type="button" class="login-toggle-btn active" data-tab="password">密码登录</button>
+          <button type="button" class="login-toggle-btn" data-tab="captcha">验证码登录</button>
+        </div>
+
+        <form class="space-y-4" onsubmit="event.preventDefault();">
+          <div class="relative">
+            <svg class="login-input-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" inputmode="email" autocomplete="username" class="login-input login-input-with-left" placeholder="手机号/邮箱">
+          </div>
+
+          <div id="password-group" class="space-y-4">
+            <div class="relative">
+              <input type="password" autocomplete="current-password" class="login-input login-input-with-right" placeholder="密码" id="password-field">
+              <button type="button" id="eye-toggle" class="login-eye-btn" aria-label="显示密码">
+                <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-closed hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="captcha-group" class="space-y-4 hidden">
+            <div class="flex gap-3">
+              <input type="text" inputmode="numeric" autocomplete="one-time-code" class="login-input" placeholder="验证码">
+              <button type="button" class="dehaze-btn dehaze-btn-secondary whitespace-nowrap px-4 text-sm" style="height: 48px;">获取验证码</button>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-1">
+            <a href="#" class="dehaze-body-sm text-primary hover:underline min-h-[44px] inline-flex items-center">忘记密码？</a>
+          </div>
+
+          <button type="submit" class="dehaze-btn dehaze-btn-primary w-full" style="height: 48px;">登录</button>
+        </form>
+
+        <!-- 第三方登录 -->
+        <div class="mt-8" style="animation-delay: 0.1s;">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="flex-1 h-px bg-border"></div>
+            <span class="dehaze-caption text-muted-foreground">其他登录方式</span>
+            <div class="flex-1 h-px bg-border"></div>
+          </div>
+          <div class="flex justify-center gap-5">
+            <button type="button" aria-label="微信登录" class="login-social-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8.5 13.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/><path d="M15.5 13.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/><path d="M12 2C6.48 2 2 5.9 2 10.8c0 2.6 1.4 4.9 3.6 6.5L5 21l3.5-2.1c1 .3 2.1.4 3.2.4.6 0 1.1 0 1.7-.1-.2-.7-.3-1.4-.3-2.1 0-4.1 3.8-7.4 8.5-7.4.7 0 1.4.1 2 .2C23.1 5.4 18 2 12 2Z"/></svg>
+            </button>
+            <button type="button" aria-label="QQ登录" class="login-social-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7.5 2 4 5.5 4 9c0 2.5 1.2 4.7 3 6.1V18c0 2.2 2.2 4 5 4s5-1.8 5-4v-2.9c1.8-1.4 3-3.6 3-6.1 0-3.5-3.5-7-8-7Zm-2 13c-.8 0-1.5-.7-1.5-1.5S9.2 12 10 12s1.5.7 1.5 1.5S10.8 15 10 15Zm4 0c-.8 0-1.5-.7-1.5-1.5S13.2 12 14 12s1.5.7 1.5 1.5S14.8 15 14 15Z"/></svg>
+            </button>
+            <button type="button" aria-label="GitHub登录" class="login-social-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02A9.42 9.42 0 0 1 12 6.8c.85.01 1.71.11 2.52.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12c0-5.52-4.48-10-10-10Z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 底部提示 -->
+        <div class="mt-8 text-center">
+          <p class="dehaze-body-sm text-muted-foreground">
+            还没有账号？
+            <a href="#" class="text-primary font-medium hover:underline" data-dom-id="link-register">立即注册</a>
+          </p>
+        </div>
+      </section>
+    </main>
+    <script>
+      (function() {
+        const tabs = document.querySelectorAll('[data-tab]');
+        const passwordGroup = document.getElementById('password-group');
+        const captchaGroup = document.getElementById('captcha-group');
+        tabs.forEach(tab => {
+          tab.addEventListener('click', function() {
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            if (this.dataset.tab === 'password') {
+              passwordGroup.classList.remove('hidden');
+              captchaGroup.classList.add('hidden');
+            } else {
+              passwordGroup.classList.add('hidden');
+              captchaGroup.classList.remove('hidden');
+            }
+          });
+        });
+        const eyeBtn = document.getElementById('eye-toggle');
+        const passwordField = document.getElementById('password-field');
+        if (eyeBtn && passwordField) {
+          eyeBtn.addEventListener('click', function() {
+            const isPassword = passwordField.type === 'password';
+            passwordField.type = isPassword ? 'text' : 'password';
+            eyeBtn.setAttribute('aria-label', isPassword ? '隐藏密码' : '显示密码');
+            eyeBtn.querySelector('.eye-open').classList.toggle('hidden', !isPassword);
+            eyeBtn.querySelector('.eye-closed').classList.toggle('hidden', isPassword);
+          });
+        }
+      })();
+    </script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

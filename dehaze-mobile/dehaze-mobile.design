@@ -7,7 +7,7 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": -359,
+        "x": 333,
         "y": 0,
         "group": 0,
         "layoutSnapshot": {
@@ -68,8 +68,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": -204,
-        "y": 0,
+        "x": 333,
+        "y": 904,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -117,8 +117,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": -48,
-        "y": 0,
+        "x": 333,
+        "y": 412,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -170,8 +170,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 108,
-        "y": 0,
+        "x": 333,
+        "y": 1452,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -219,8 +219,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 240,
-        "y": 0,
+        "x": 333,
+        "y": 1846,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -276,8 +276,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": -359,
-        "y": 324,
+        "x": 0,
+        "y": 1301,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -309,8 +309,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": -552,
-        "y": 0,
+        "x": 0,
+        "y": 477,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -342,8 +342,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": -732,
-        "y": 0,
+        "x": 0,
+        "y": 889,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -369,14 +369,80 @@
       }
     },
     {
+      "id": "page-login-optimized",
+      "title": "登录 - 氛围优化",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785664000000,
+      "canvasData": {
+        "x": 533,
+        "y": 2640,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 904,
+          "viewportWidth": 456,
+          "sourceHash": "fnv1a-1d432249",
+          "measuredAt": 1785673185001
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 456,
+          "height": 1022
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/login-optimized.html",
+        "interactions": [
+          {
+            "domId": "link-register",
+            "targetPageId": "page-register-optimized"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-register-optimized",
+      "title": "注册 - 氛围优化",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785664000000,
+      "canvasData": {
+        "x": 200,
+        "y": 2640,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 908,
+          "viewportWidth": 456,
+          "sourceHash": "fnv1a-abc234a1",
+          "measuredAt": 1785673185001
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 456,
+          "height": 1022
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/register-optimized.html",
+        "interactions": [
+          {
+            "domId": "link-login",
+            "targetPageId": "page-login-optimized"
+          }
+        ]
+      }
+    },
+    {
       "id": "page-tools-dark",
       "title": "工具 - 午夜深色",
       "type": "page",
       "version": 1,
       "createdAt": 1785652748317,
       "canvasData": {
-        "x": -360,
-        "y": 660,
+        "x": 0,
+        "y": 2156,
         "group": 1,
         "deviceType": "freeSize",
         "windowSize": {
@@ -424,8 +490,8 @@
       "version": 1,
       "createdAt": 1785652748317,
       "canvasData": {
-        "x": -240,
-        "y": 660,
+        "x": 0,
+        "y": 1675,
         "group": 1,
         "deviceType": "freeSize",
         "windowSize": {
@@ -473,8 +539,8 @@
       "version": 1,
       "createdAt": 1785652748317,
       "canvasData": {
-        "x": -120,
-        "y": 660,
+        "x": 0,
+        "y": 0,
         "group": 1,
         "deviceType": "freeSize",
         "windowSize": {
@@ -522,8 +588,8 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 253,
-        "y": 408,
+        "x": 1146,
+        "y": 3052,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -581,8 +647,8 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 709,
-        "y": 408,
+        "x": 1766,
+        "y": 3052,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -620,8 +686,8 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 1164,
-        "y": 0,
+        "x": 0,
+        "y": 3052,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -684,8 +750,8 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 756,
-        "y": 0,
+        "x": 1146,
+        "y": 3688,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -748,8 +814,8 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 372,
-        "y": 0,
+        "x": 573,
+        "y": 3633,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -817,8 +883,8 @@
       "version": 1,
       "createdAt": 1785668400000,
       "canvasData": {
-        "x": 253,
-        "y": 984,
+        "x": 573,
+        "y": 3052,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -886,11 +952,11 @@
     }
   ],
   "config": {
-    "autoLayout": false,
+    "autoLayout": true,
     "deviceType": "mobile",
     "projectName": "Dehaze 移动端交互设计稿",
     "designLibrary": null,
-    "visualEditorEnabled": false,
+    "visualEditorEnabled": true,
     "showEdge": false
   }
 }

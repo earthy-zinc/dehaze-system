@@ -16,7 +16,7 @@
   },
   "operatingMode": "free-explore",
   "renderBlockingErrorCount": 0,
-  "softWarningCount": 15,
+  "softWarningCount": 17,
   "renderBlockingErrors": [],
   "errorSignatures": [],
   "softWarnings": [
@@ -25,6 +25,7 @@
     "[html-head-style] dehaze-state-diagram.html: found 1 custom <style> block(s) in <head>. The <head> is owned by apply-html-head-contract.mjs; move custom styles before </body> or re-run apply-html-head-contract.mjs <css-path> <html-file> --replace-head to relocate them.",
     "[html-head-style] history-with-processing.html: found 1 custom <style> block(s) in <head>. The <head> is owned by apply-html-head-contract.mjs; move custom styles before </body> or re-run apply-html-head-contract.mjs <css-path> <html-file> --replace-head to relocate them.",
     "[html-head-style] index-v2.html: found 1 custom <style> block(s) in <head>. The <head> is owned by apply-html-head-contract.mjs; move custom styles before </body> or re-run apply-html-head-contract.mjs <css-path> <html-file> --replace-head to relocate them.",
+    "[html-head-style] index-v3.html: found 1 custom <style> block(s) in <head>. The <head> is owned by apply-html-head-contract.mjs; move custom styles before </body> or re-run apply-html-head-contract.mjs <css-path> <html-file> --replace-head to relocate them.",
     "[repair-ledger] validationRepairLedger[0].repairActions[] is missing",
     "[repair-ledger] validationRepairLedger[1].repairActions[0].preEditFileHashes[] is missing (legacy optional evidence)",
     "[repair-ledger] validationRepairLedger[1].repairActions[0].postEditFileHashes[] is missing (legacy optional evidence)",
@@ -32,6 +33,7 @@
     "[html-quality] dehaze-flow-params.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] dehaze-flow-result.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] index-v2.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
+    "[html-quality] index-v3.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] index.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] login.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] register.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference."
@@ -82,6 +84,19 @@
       "repairScope": "targeted-token-replace",
       "strategy": "targeted_token_replace_once",
       "affectedFiles": [
+        "index-v3.html"
+      ],
+      "repairReportPath": null,
+      "repairAlreadyAttempted": false,
+      "allowSourceRead": "no-full-html-read",
+      "maxValidationRuns": 2
+    },
+    {
+      "errorClass": "hardcoded-color-in-body",
+      "owner": "sub-agent",
+      "repairScope": "targeted-token-replace",
+      "strategy": "targeted_token_replace_once",
+      "affectedFiles": [
         "index.html"
       ],
       "repairReportPath": null,
@@ -118,7 +133,7 @@
   ],
   "repairActionTable": [],
   "errorCount": 0,
-  "warningCount": 15,
+  "warningCount": 17,
   "errors": [],
   "warnings": [
     "[html-head-style] compare-flow-filter.html: found 1 custom <style> block(s) in <head>. The <head> is owned by apply-html-head-contract.mjs; move custom styles before </body> or re-run apply-html-head-contract.mjs <css-path> <html-file> --replace-head to relocate them.",
@@ -126,6 +141,7 @@
     "[html-head-style] dehaze-state-diagram.html: found 1 custom <style> block(s) in <head>. The <head> is owned by apply-html-head-contract.mjs; move custom styles before </body> or re-run apply-html-head-contract.mjs <css-path> <html-file> --replace-head to relocate them.",
     "[html-head-style] history-with-processing.html: found 1 custom <style> block(s) in <head>. The <head> is owned by apply-html-head-contract.mjs; move custom styles before </body> or re-run apply-html-head-contract.mjs <css-path> <html-file> --replace-head to relocate them.",
     "[html-head-style] index-v2.html: found 1 custom <style> block(s) in <head>. The <head> is owned by apply-html-head-contract.mjs; move custom styles before </body> or re-run apply-html-head-contract.mjs <css-path> <html-file> --replace-head to relocate them.",
+    "[html-head-style] index-v3.html: found 1 custom <style> block(s) in <head>. The <head> is owned by apply-html-head-contract.mjs; move custom styles before </body> or re-run apply-html-head-contract.mjs <css-path> <html-file> --replace-head to relocate them.",
     "[repair-ledger] validationRepairLedger[0].repairActions[] is missing",
     "[repair-ledger] validationRepairLedger[1].repairActions[0].preEditFileHashes[] is missing (legacy optional evidence)",
     "[repair-ledger] validationRepairLedger[1].repairActions[0].postEditFileHashes[] is missing (legacy optional evidence)",
@@ -133,6 +149,7 @@
     "[html-quality] dehaze-flow-params.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] dehaze-flow-result.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] index-v2.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
+    "[html-quality] index-v3.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] index.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] login.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] register.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference."
@@ -152,7 +169,7 @@
   "terminalState": null,
   "nextCheck": {
     "type": "finish-readiness",
-    "command": "node \"c:\\Users\\earthyzinc\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs\" \"e:\\DehazeSystem\\dehaze-desktop-web\" --check=all",
+    "command": "node \"C:\\Users\\earthyzinc\\.trae\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs\" \"e:\\DehazeSystem\\dehaze-desktop-web\" --check=all",
     "fullValidationAllowed": false,
     "reason": "workspace validation passed; run complete finish readiness before final delivery"
   },
@@ -173,12 +190,12 @@
       "read_status": "loaded"
     },
     "renderBlockingErrorCount": 0,
-    "softWarningCount": 15,
+    "softWarningCount": 17,
     "renderBlockingErrors": [],
     "repairActionTable": [],
     "nextCheck": {
       "type": "finish-readiness",
-      "command": "node \"c:\\Users\\earthyzinc\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs\" \"e:\\DehazeSystem\\dehaze-desktop-web\" --check=all",
+      "command": "node \"C:\\Users\\earthyzinc\\.trae\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs\" \"e:\\DehazeSystem\\dehaze-desktop-web\" --check=all",
       "fullValidationAllowed": false,
       "reason": "workspace validation passed; run complete finish readiness before final delivery"
     },
@@ -190,15 +207,15 @@
     ]
   },
   "projectFileHashes": {
-    "dehaze-desktop-web.design": "d930d54246087b9b83cabc3c61c68cb1143aca9bfdff0b284cdcd0c8f447ebbc",
+    "dehaze-desktop-web.design": "b1fc94292c37bd97292e90bd03e2f88e57e8b5cb3addc44a56defff1f7263a91",
     "colors_and_type.css": "08b181d7e23e125a40aab74c2e7e6a0b807afb7aacfa31b1dc86f765192bed2d",
     "runtime-orchestration-summary.json": "a7f304fbeda95afe097b943c502915890408aceca2b0922b8d5ce5ad93905e45",
     "pages/algorithm-v2.html": "d60da08e317220f486c4cb348afc831ab45d873e17a6c8b9f0bbf7ba7496338f",
     "pages/algorithm.html": "a61509f8bfdf92de2de6e71a517f7ccc0e57c6394dfc24076c1c4fb88b6b76f3",
-    "pages/app-dehaze-windows.html": "bf8dd63b91678d11344d4629bcf38ab53eb050c26f13492d835e967f0e48de14",
+    "pages/app-dehaze-windows.html": "74b3bad41d19566eb992bc82ced60acdae165eb3c3c590b826e04784069ff39e",
     "pages/app-library.html": "f8b0850e598dfa5c1d99a851979b085ffe44e4b28e824b988dbd1439ed5afed8",
     "pages/app-messages.html": "09d5e9ca3f12aa6ab22e96516a5e03beabb4989495e8806df35076cb9feb1477",
-    "pages/compare-flow-algorithm.html": "6d814e46454a464ed540e9ed0cfccf8f09841622eb0e21aa2badfd3877cf3e69",
+    "pages/compare-flow-algorithm.html": "3f1fadf565839f8f4c7c32204b15fd6a08b531843ceb11639a5cb222fad96a45",
     "pages/compare-flow-filter.html": "9693babc4a5e62ebedd0bafb6bae1b712ac5789a09efb9549737e87083ee8e23",
     "pages/compare-flow-magnifier.html": "f30ab6fc84d50758001309ebabf8ac0462932027cbf2cb8b129d7df6e0735bee",
     "pages/compare-flow-metrics.html": "51a94b94761b9d3d829489426f36deff017f9492bc35f6538c7fe51393d3d61f",
@@ -207,19 +224,20 @@
     "pages/compare.html": "6151440c43d00b63ac0085a65016944c4e43b416bd2f63bcf44b0ed8babe91fb",
     "pages/dashboard.html": "65d65244fcfce61aaa21c03693fa9002b82fc827eeaee3ae1668052f3d90ffe3",
     "pages/dataset-v2.html": "251306bf9b5b734819ce7c3f782c7ab7a5600c9585e5a884ece19a625b6c0dde",
-    "pages/dataset.html": "ed5cb07e7323de7319748742d618e5ab401fa8727c0b85bb98b404f1c154cf36",
+    "pages/dataset.html": "eb8922c31fd35da6f7926f9586012b6838bf42435f8f7623d4571bdbceff8a67",
     "pages/dehaze-flow-algorithm.html": "c59941ee2cfd9334e222df404247f4a73b9ca08f545ce3c27a9ebfa79c26d58a",
-    "pages/dehaze-flow-params.html": "24b70cc0cff08f26bc1f717afe10cf9da5f7d7785f5d470d41f701e105f48c1e",
-    "pages/dehaze-flow-processing-batch.html": "8a932e57170057bed47dae6f24058e9c3993040567ad168d50df90e887bc2cb8",
+    "pages/dehaze-flow-params.html": "6f0545ee8303f97b7e55c87432679c81f24ee3368609c41d6c26bc8e75962861",
+    "pages/dehaze-flow-processing-batch.html": "b79eddf71bfaba11b5557268cf054552c3436ea0ae07141125842baa9e627f3d",
     "pages/dehaze-flow-processing.html": "323258310260dc9d524a1b62b6a811ffdc99a35d5647181bd7a7c912f59af0e7",
     "pages/dehaze-flow-result.html": "c7bc13a50c1803ec3aee2463aaadf09dfe1b2ffc7a8f761b0a4a7549e8cb612d",
-    "pages/dehaze-flow-upload-batch.html": "4a75d3d2704d46f1539ae9669592090bb4acc4306237d7eb81a6e1b092a8ee90",
-    "pages/dehaze-flow-upload.html": "3b836e9b49284c88f44c6c3d3041d00863641425e7b53f697a1c1204d943f8b8",
-    "pages/dehaze-state-diagram.html": "e9e131a9dd9653c1715f3a054eec61687a909b1dd1df49a4c62aacd0c5b09856",
+    "pages/dehaze-flow-upload-batch.html": "f6ee05c02197f0ecb4e78d27bfafce64bb0b2e6751441a60acaa8d621ec2799a",
+    "pages/dehaze-flow-upload.html": "9404907a0f11a8af40b8f5a59d072aff728b3682dd41a6f2833de9d3376bbdd0",
+    "pages/dehaze-state-diagram.html": "562b0e960e289e2b1c3a0b562af2e9d34959785505ad56051413c74e08a73faa",
     "pages/dehaze.html": "6f9d4b1a6e4e8666b7fc71cb5de91ea6bc23a236b9affd467b964fdbe37d83c6",
-    "pages/history-with-processing.html": "2933327c344234854745abb5d7d416a4f61198d962179085e72a08f154d08672",
+    "pages/history-with-processing.html": "ca562a729734dc4c37178700a230a65fd2994b59d3d90c83f5e8ace2093fe0ab",
     "pages/history.html": "3bde13373856102176bbc0c511981c6d44d76727f24a30978aa955ba54f820f9",
     "pages/index-v2.html": "b74bbc8670e080fd98bceedbea8bfb87014f554ab69d49aeae87f9f457b7de90",
+    "pages/index-v3.html": "9cb8fb541a76756d8b75f0aa45e2a30ce559c84f225400a963717dfc7a18224e",
     "pages/index.html": "9c0a254ca3858481e57c6070029228f1ee24ac658e70b1ef16011c91dd5df97f",
     "pages/login.html": "3a7eb1b69c81f1969cd71b216ca763e6c46f5f5cede11bb1c4084bfe282a1db2",
     "pages/profile.html": "2240fd46fe28327798a745762f7d037d19bcbe2228c944f9003a5262990be10d",
@@ -239,5 +257,5 @@
   "designDir": "e:\\DehazeSystem\\dehaze-desktop-web",
   "expectedPages": null,
   "requireInteractions": null,
-  "checkedAt": "2026-08-02T11:24:49.024Z"
+  "checkedAt": "2026-08-02T12:43:17.546Z"
 }
