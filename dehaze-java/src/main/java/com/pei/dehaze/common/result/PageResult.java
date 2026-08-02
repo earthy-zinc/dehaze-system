@@ -2,6 +2,7 @@ package com.pei.dehaze.common.result;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import lombok.Data;
+import org.slf4j.MDC;
 
 import java.io.Serializable;
 import java.util.List;
@@ -21,6 +22,8 @@ public class PageResult<T> implements Serializable {
 
     private String msg;
 
+    private String traceId;
+
     public static <T> PageResult<T> success(IPage<T> page) {
         PageResult<T> result = new PageResult<>();
         result.setCode(ResultCode.SUCCESS.getCode());
@@ -31,6 +34,7 @@ public class PageResult<T> implements Serializable {
 
         result.setData(data);
         result.setMsg(ResultCode.SUCCESS.getMsg());
+        result.setTraceId(MDC.get("trace_id"));
         return result;
     }
 

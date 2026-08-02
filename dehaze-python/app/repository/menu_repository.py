@@ -20,7 +20,7 @@ class MenuRepository(BaseRepository[SysMenu]):
         keyword: str | None = None,
     ) -> list[SysMenu]:
         """获取菜单列表（按排序字段排序）"""
-        stmt = select(SysMenu).order_by(SysMenu.sort)
+        stmt = select(SysMenu).where(SysMenu.deleted == 0).order_by(SysMenu.sort)
         if keyword:
             escaped = escape_like(keyword)
             stmt = stmt.where(SysMenu.name.like(f"%{escaped}%", escape="\\"))
@@ -33,6 +33,7 @@ class MenuRepository(BaseRepository[SysMenu]):
             select(SysMenu)
             .where(
                 and_(
+                    SysMenu.deleted == 0,
                     SysMenu.type.in_([1, 2]),  # 目录或菜单类型
                     SysMenu.visible == 1,
                 )
@@ -145,6 +146,7 @@ class MenuRepository(BaseRepository[SysMenu]):
             .where(
                 SysRole.code.in_(role_codes),
                 SysRole.deleted == 0,
+                SysMenu.deleted == 0,
                 SysMenu.perm.isnot(None),
                 SysMenu.perm != "",
             )

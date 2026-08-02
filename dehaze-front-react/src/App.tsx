@@ -2,7 +2,13 @@ import router from "@/router";
 import defaultSettings from "@/settings";
 import { RootState } from "@/store";
 import TitleBar from "@/components/TitleBar";
-import { App as AntdApp, ConfigProvider, message, theme, Watermark } from "antd";
+import {
+  App as AntdApp,
+  ConfigProvider,
+  message,
+  theme,
+  Watermark,
+} from "antd";
 import { SizeType } from "antd/es/config-provider/SizeContext";
 import enUS from "antd/locale/en_US";
 import zhCN from "antd/locale/zh_CN";

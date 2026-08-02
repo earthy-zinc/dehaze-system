@@ -3,8 +3,6 @@
  */
 
 import Taro from "@tarojs/taro";
-import { FileAPI } from "dehaze-sdk-js";
-import type { FileInfo } from "dehaze-sdk-js";
 import {
   ImageData,
   ImageInfo,
@@ -55,14 +53,6 @@ export const validateImageFile = async (
   }
 
   return { valid: true };
-};
-
-/**
- * 使用 SDK 的 FileAPI 上传图片
- */
-export const uploadWithSDK = async (filePath: string): Promise<FileInfo> => {
-  // Cast filePath to File-like object for SDK compatibility
-  return await FileAPI.upload(filePath as unknown as File);
 };
 
 export const ImageInputService = {

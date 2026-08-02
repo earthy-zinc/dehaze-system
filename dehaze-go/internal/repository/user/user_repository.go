@@ -270,7 +270,7 @@ func (r *UserRepository) FindUserAuthInfo(ctx context.Context, username string) 
 			 FROM sys_menu m
 			 JOIN sys_role_menu srm ON m.id = srm.menu_id
 			 JOIN sys_user_role sur2 ON srm.role_id = sur2.role_id
-			 WHERE sur2.user_id = u.id AND m.perm IS NOT NULL AND m.perm != '') as perms`).
+			 WHERE sur2.user_id = u.id AND m.deleted = 0 AND m.perm IS NOT NULL AND m.perm != '') as perms`).
 		Joins("LEFT JOIN sys_user_role sur ON u.id = sur.user_id").
 		Joins("LEFT JOIN sys_role r ON sur.role_id = r.id AND r.status = 1 AND r.deleted = 0").
 		Where("u.username = ? AND u.deleted = 0", username).
@@ -341,7 +341,7 @@ func (r *UserRepository) FindUserAuthInfoByID(ctx context.Context, userID int64)
 			 FROM sys_menu m
 			 JOIN sys_role_menu srm ON m.id = srm.menu_id
 			 JOIN sys_user_role sur2 ON srm.role_id = sur2.role_id
-			 WHERE sur2.user_id = u.id AND m.perm IS NOT NULL AND m.perm != '') as perms`).
+			 WHERE sur2.user_id = u.id AND m.deleted = 0 AND m.perm IS NOT NULL AND m.perm != '') as perms`).
 		Joins("LEFT JOIN sys_user_role sur ON u.id = sur.user_id").
 		Joins("LEFT JOIN sys_role r ON sur.role_id = r.id AND r.status = 1 AND r.deleted = 0").
 		Where("u.id = ? AND u.deleted = 0", userID).

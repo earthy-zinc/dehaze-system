@@ -22,7 +22,15 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
     sourceRoot: "src",
     outputRoot: `dist/${process.env.TARO_ENV}`,
     plugins: ["@tarojs/plugin-http", "@tarojs/plugin-platform-harmony-cpp"],
-    defineConstants: {},
+    // 显式注入 process.env.* 变量，确保 webpack DefinePlugin 在编译期完成静态替换
+    // Taro 内置仅注入 TARO_ENV；TARO_APP_* 需 .env 文件定义才会注入，本项目无 .env，
+    // 若不显式声明，代码中保留 process.env.* 原文，浏览器运行时报 ReferenceError: process is not defined
+    defineConstants: {
+      "process.env.TARO_ENV": JSON.stringify(process.env.TARO_ENV),
+      "process.env.TARO_APP_JAVA_BASE_URL": JSON.stringify(
+        process.env.TARO_APP_JAVA_BASE_URL ?? ""
+      ),
+    },
     copy: {
       patterns: [],
       options: {},

@@ -12,6 +12,11 @@
 .navbar-right {
   display: flex;
   align-items: center;
+
+  .ant-badge-count {
+    margin-top: 6px;
+    margin-right: 3px;
+  }
 }
 
 .menu-status-icon {

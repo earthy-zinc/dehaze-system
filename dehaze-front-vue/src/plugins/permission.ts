@@ -5,6 +5,7 @@ import { RouteRecordRaw } from "vue-router";
 
 export function setupPermission() {
   const whiteList = ["/login", "/register"];
+  let isDynamicRoutesAdded = false;
 
   router.beforeEach(async (to, from, next) => {
     NProgress.start();
@@ -29,11 +30,32 @@ export function setupPermission() {
     }
 
     if (hasRoles) {
-      if (to.matched.length === 0) {
-        from.name ? next({ name: from.name }) : next("/404");
-      } else {
-        next();
+      if (!isDynamicRoutesAdded) {
+        const permissionStore = usePermissionStore();
+        try {
+          const accessRoutes = await permissionStore.generateRoutes(
+            userStore.user.roles
+          );
+          accessRoutes.forEach((route: RouteRecordRaw) => {
+            router.addRoute(route);
+          });
+          // 动态路由加载后追加兜底，确保不存在的路径跳转 404 而非静默取消
+          router.addRoute({
+            path: "/:pathMatch(.*)*",
+            component: () => import("@/views/error-page/404.vue"),
+            meta: { hidden: true },
+          });
+          isDynamicRoutesAdded = true;
+        } catch (e) {
+          userStore.resetToken();
+          next(`/login?redirect=${to.path}`);
+          NProgress.done();
+          return;
+        }
+        next({ ...to, replace: true });
+        return;
       }
+      next();
     } else {
       const permissionStore = usePermissionStore();
       try {
@@ -42,9 +64,15 @@ export function setupPermission() {
         accessRoutes.forEach((route: RouteRecordRaw) => {
           router.addRoute(route);
         });
+        router.addRoute({
+          path: "/:pathMatch(.*)*",
+          component: () => import("@/views/error-page/404.vue"),
+          meta: { hidden: true },
+        });
+        isDynamicRoutesAdded = true;
         next({ ...to, replace: true });
       } catch (e) {
-        await userStore.resetToken();
+        userStore.resetToken();
         next(`/login?redirect=${to.path}`);
         NProgress.done();
       }

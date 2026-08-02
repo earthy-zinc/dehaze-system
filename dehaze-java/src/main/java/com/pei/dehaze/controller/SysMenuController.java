@@ -36,7 +36,7 @@ public class SysMenuController {
 
     @Operation(summary = "菜单列表")
     @GetMapping
-    public Result<List<MenuVO>> listMenus( @ParameterObject MenuQuery queryParams) {
+    public Result<List<MenuVO>> listMenus(@ParameterObject MenuQuery queryParams) {
         List<MenuVO> menuList = menuService.listMenus(queryParams);
         return Result.success(menuList);
     }

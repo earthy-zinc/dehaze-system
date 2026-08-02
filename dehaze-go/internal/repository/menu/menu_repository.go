@@ -302,7 +302,7 @@ func (r *MenuRepository) FindPermsByRoleCode(ctx context.Context, roleCode strin
 		Select("DISTINCT sys_menu.perm").
 		Joins("INNER JOIN sys_role_menu ON sys_menu.id = sys_role_menu.menu_id").
 		Joins("INNER JOIN sys_role ON sys_role.id = sys_role_menu.role_id").
-		Where("sys_role.code = ? AND sys_menu.perm IS NOT NULL AND sys_menu.perm != ''", roleCode).
+		Where("sys_role.deleted = 0 AND sys_menu.deleted = 0 AND sys_role.code = ? AND sys_menu.perm IS NOT NULL AND sys_menu.perm != ''", roleCode).
 		Pluck("perm", &perms).Error
 	return perms, err
 }

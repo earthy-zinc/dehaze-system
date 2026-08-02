@@ -2,7 +2,7 @@ import Taro from "@tarojs/taro";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { configAxios, ResponseData, ResultEnum } from "dehaze-sdk-js";
 import { storage } from "@/utils/storage";
-import { apiConfig } from "@/config/api";
+import { BASE_URL } from "@/config/constants";
 
 function codeStartsWith(code: string | undefined, prefix: string): boolean {
   return !!code && code.startsWith(prefix);
@@ -102,7 +102,7 @@ export default function configRequest(): void {
       }
       return {
         ...config,
-        baseURL: config.baseURL || apiConfig.java,
+        baseURL: config.baseURL || BASE_URL,
       };
     },
     onResponseError,

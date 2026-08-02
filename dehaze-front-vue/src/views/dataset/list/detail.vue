@@ -201,6 +201,8 @@ async function handleQuery() {
   selectedIds.value = [];
   renderCount.value = 0;
   await loadMore();
+  // 数据加载完成后标记渲染结束，避免骨架屏一直显示
+  renderCount.value = 1;
 }
 
 async function loadMore() {
@@ -508,6 +510,89 @@ const batchUploadDialogVisible = ref<boolean>(false);
 const batchFileList = ref<UploadUserFile[]>([]);
 const batchSceneType = ref<string>("");
 const batchUploading = ref<boolean>(false);
+
+const namingRules = [
+  {
+    category: "图片类型",
+    pattern: "{idx}_clear / {idx}_gt / {idx}_clean",
+    example: "01_clear.jpg",
+    result: "清晰图",
+    tagType: "success",
+    remark: "GT=Ground Truth，均指清晰图像",
+  },
+  {
+    category: "图片类型",
+    pattern: "{idx}_hazy / {idx}_haze",
+    example: "01_hazy.jpg",
+    result: "有雾图",
+    tagType: "warning",
+    remark: "hazy / haze 均指有雾图像",
+  },
+  {
+    category: "图片类型",
+    pattern: "{idx}_trans / {idx}_Transmission",
+    example: "01_trans.png",
+    result: "透射图",
+    tagType: "primary",
+    remark: "Transmission 为透射率图",
+  },
+  {
+    category: "图片类型",
+    pattern: "{idx}_depth",
+    example: "01_depth.png",
+    result: "深度图",
+    tagType: "info",
+    remark: "",
+  },
+  {
+    category: "图片类型",
+    pattern: "{idx}_segment",
+    example: "01_segment.png",
+    result: "分割图",
+    tagType: "",
+    remark: "",
+  },
+  {
+    category: "雾霾程度",
+    pattern: "{idx}_hazy_light / _medium / _heavy",
+    example: "01_hazy_light.jpg",
+    result: "人工分级",
+    tagType: "warning",
+    remark: "light=轻度 / medium=中度 / heavy=重度",
+  },
+  {
+    category: "雾霾程度",
+    pattern: "{idx}_{idx2}_{beta}",
+    example: "1000_1_0.74905.png",
+    result: "大气散射系数=0.74905的有雾图像",
+    tagType: "info",
+    remark: "RESIDE/ITS 格式",
+  },
+  {
+    category: "雾霾程度",
+    pattern: "{idx}_{A}_{beta}",
+    example: "0025_0.8_0.2.jpg",
+    result: "大气光值=0.8,大气散射系数=0.2的有雾图像",
+    tagType: "info",
+    remark: "RESIDE/OTS 格式",
+  },
+  {
+    category: "雾霾程度",
+    pattern: "{idx}_{beta}_{A}",
+    example: "1012_0.85_1.28.png",
+    result: "大气散射系数=0.85,大气光值=1.28的有雾图像",
+    tagType: "info",
+    remark: "Haze4K 格式",
+  },
+  {
+    category: "雾霾程度",
+    pattern: "无参数后缀",
+    example: "01_hazy.png",
+    result: "空",
+    tagType: "",
+    remark: "无雾霾程度标注",
+  },
+];
 
 function resetBatchUpload() {
   batchFileList.value = [];
@@ -1145,32 +1230,77 @@ onUnmounted(() => {
       @closed="resetBatchUpload"
     >
       <el-alert type="info" :closable="false" show-icon class="mb-3">
-        <template #title>文件名自动识别配对规则</template>
-        <div class="pairing-rules">
-          xxx_clear.jpg / xxx_gt.jpg 识别为清晰图；xxx_hazy.jpg
-          识别为有雾图；xxx_trans.jpg 识别为透射图；xxx_depth.jpg
-          识别为深度图；xxx_segment.jpg 识别为分割图。雾霾程度
-          支持多种规范：xxx_hazy_light.jpg / xxx_hazy_medium.jpg /
-          xxx_hazy_heavy.jpg （人工分级），或
-          xxx_1_0.74905.jpg（学术参数格式，统一取最后一个数值作为 beta）。
-          同一前缀（前导数字）的图片自动归为一个配对组。
-        </div>
+        <template #title>
+          一次选择多张图片上传，系统按文件名自动识别类型并配对
+        </template>
       </el-alert>
+
+      <el-collapse class="mb-1">
+        <el-collapse-item title="文件命名规则（点击展开）" name="rules">
+          <el-table
+            :data="namingRules"
+            size="small"
+            border
+            class="naming-table"
+          >
+            <el-table-column prop="category" label="规则类别" min-width="80" />
+            <el-table-column label="命名规范" width="200">
+              <template #default="{ row }">
+                <span class="rule-suffix">{{ row.pattern }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="example" label="示例文件名" min-width="180">
+              <template #default="{ row }">
+                <code>{{ row.example }}</code>
+              </template>
+            </el-table-column>
+            <el-table-column label="识别为" min-width="300">
+              <template #default="{ row }">
+                <el-tag :type="row.tagType || undefined" size="small">{{
+                  row.result
+                }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="remark" label="备注" min-width="250" />
+          </el-table>
+          <div class="naming-footer">
+            <p>
+              <code>{idx}</code> 为前导数字编号，用于分组配对；<code
+                >{beta}</code
+              >
+              为雾霾浓度参数（大气散射系数）；<code>{A}</code> 为大气光值。
+            </p>
+            <p>
+              配对规则：相同
+              <code>{idx}</code>
+              的图片自动归为一组；无前导数字时按完整文件名分组。
+            </p>
+          </div>
+        </el-collapse-item>
+      </el-collapse>
+
       <el-upload
         v-model:file-list="batchFileList"
         :auto-upload="false"
         multiple
-        accept="image/jpeg,image/png,image/gif"
+        accept=".jpg,.jpeg,.png,.gif"
         drag
+        class="batch-upload"
       >
-        <el-icon><UploadFilled /></el-icon>
-        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+        <el-icon class="upload-icon"><UploadFilled /></el-icon>
+        <div class="el-upload__text">
+          将图片拖到此处，或<em>点击选择图片</em>
+        </div>
+        <div class="el-upload__tip">
+          支持 JPG、PNG、GIF 格式，可一次选择多张
+        </div>
       </el-upload>
-      <el-form label-width="120px" class="mt-3">
+
+      <el-form label-width="80px" class="mt-3">
         <el-form-item label="场景类型">
           <el-input
             v-model="batchSceneType"
-            placeholder="可选，应用于所有配对"
+            placeholder="可选，应用于所有图片"
             maxlength="50"
           />
         </el-form-item>
@@ -1321,6 +1451,10 @@ onUnmounted(() => {
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
+
+    .el-form-item {
+      margin-bottom: 0;
+    }
   }
 }
 
@@ -1366,9 +1500,46 @@ onUnmounted(() => {
   height: 300px;
 }
 
-.pairing-rules {
-  font-size: 13px;
-  line-height: 1.6;
+.batch-upload {
+  margin-top: 16px;
+
+  :deep(.el-upload-dragger) {
+    min-height: 180px;
+  }
+}
+
+.upload-icon {
+  font-size: 48px;
+  color: #c0c4cc;
+  margin-bottom: 8px;
+}
+
+.naming-table {
+  .rule-suffix {
+    font-family: monospace;
+    font-size: 12px;
+  }
+
+  code {
+    font-size: 12px;
+    background: #f5f7fa;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+}
+
+.naming-footer {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.8;
+
+  code {
+    background: #f5f7fa;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 12px;
+  }
 }
 
 /* 详情弹窗 */
@@ -1424,6 +1595,18 @@ onUnmounted(() => {
     font-size: 14px;
     color: #606266;
     text-align: center;
+  }
+}
+</style>
+
+<style lang="scss">
+.toolbar {
+  .toolbar-left {
+    .el-switch__inner-wrapper {
+      span {
+        margin: 0 6px;
+      }
+    }
   }
 }
 </style>

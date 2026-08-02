@@ -4,10 +4,10 @@ import Taro from "@tarojs/taro";
 import CompareNavbar from "@/components/compare/CompareNavbar";
 import { ModelAPI } from "dehaze-sdk-js";
 import type { Algorithm, PredictionResultVO } from "dehaze-sdk-js";
-import { uploadImage } from "@/utils/upload";
 import { formatFileSize, formatDuration } from "@/utils/format";
 import { getErrorMessage } from "@/utils/error";
 import { saveImageToAlbum } from "@/utils/saveImage";
+import { uploadImage } from "@/config/upload";
 import "./index.less";
 
 interface ImageData {

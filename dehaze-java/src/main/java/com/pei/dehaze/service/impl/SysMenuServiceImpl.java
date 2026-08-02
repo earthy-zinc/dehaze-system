@@ -188,7 +188,9 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
             return JSONUtil.parseArray(cached).toList(RouteVO.class);
         }
         List<RouteBO> menuList = this.baseMapper.listRoutes();
-        List<RouteVO> routes = buildRoutes(SystemConstants.ROOT_NODE_ID, menuList);
+        Map<Long, List<RouteBO>> parentToChildrenMap = menuList.stream()
+                .collect(Collectors.groupingBy(RouteBO::getParentId));
+        List<RouteVO> routes = buildRoutes(SystemConstants.ROOT_NODE_ID, parentToChildrenMap);
         stringRedisTemplate.opsForValue().set(MENU_ROUTES_KEY, JSONUtil.toJsonStr(routes), MENU_CACHE_TTL);
         return routes;
     }
@@ -196,24 +198,20 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     /**
      * 递归生成菜单路由层级列表
      *
-     * @param parentId 父级ID
-     * @param menuList 菜单列表
-     * @return 路由层级列表
+     * @param parentId           父级ID
+     * @param parentToChildrenMap 父级ID → 子路由列表 Map（O(1)查找）
      */
-    private List<RouteVO> buildRoutes(Long parentId, List<RouteBO> menuList) {
+    private List<RouteVO> buildRoutes(Long parentId, Map<Long, List<RouteBO>> parentToChildrenMap) {
         List<RouteVO> routeList = new ArrayList<>();
-
-        for (RouteBO menu : menuList) {
-            if (menu.getParentId().equals(parentId)) {
-                RouteVO routeVO = toRouteVo(menu);
-                List<RouteVO> children = buildRoutes(menu.getId(), menuList);
-                if (!children.isEmpty()) {
-                    routeVO.setChildren(children);
-                }
-                routeList.add(routeVO);
+        List<RouteBO> children = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
+        for (RouteBO menu : children) {
+            RouteVO routeVO = toRouteVo(menu);
+            List<RouteVO> subRoutes = buildRoutes(menu.getId(), parentToChildrenMap);
+            if (!subRoutes.isEmpty()) {
+                routeVO.setChildren(subRoutes);
             }
+            routeList.add(routeVO);
         }
-
         return routeList;
     }
 

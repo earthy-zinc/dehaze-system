@@ -13,10 +13,12 @@ import {
 import { Plus } from "@taroify/icons";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { usePermission } from "@/hooks/usePermission";
-import { apiConfig } from "@/config/api";
 import type { UserPageVO } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
+import { defaultPassword } from "@/config/constants";
+
 import UserCard from "./components/UserCard";
+
 import "./index.less";
 
 const UserListPage: React.FC = () => {
@@ -103,7 +105,7 @@ const UserListPage: React.FC = () => {
     const confirmed = await new Promise<boolean>((resolve) => {
       Taro.showModal({
         title: "重置密码",
-        content: `确定要重置用户"${user.nickname}"的密码为默认密码"${apiConfig.defaultPassword}"吗？`,
+        content: `确定要重置用户"${user.nickname}"的密码为默认密码"${defaultPassword}"吗？`,
         success: (res) => {
           if (res.confirm) {
             resolve(true);
@@ -116,7 +118,7 @@ const UserListPage: React.FC = () => {
 
     if (confirmed && user.id) {
       try {
-        await resetPassword(user.id, apiConfig.defaultPassword);
+        await resetPassword(user.id, defaultPassword);
       } catch (error) {
         // 错误已在 hook 中处理
       }

@@ -1,16 +1,14 @@
 /**
  * 文件上传工具
  *
- * H5 端通过 Taro.chooseMedia 选择/拍摄的图片是 blob: URL，
- * 需将 blob 转为带正确文件名与 MIME 的 File，再以 FormData 上传。
- * 小程序端临时路径自带扩展名，沿用 Taro.uploadFile。
- *
- * 上传接口不走 SDK axios 拦截器，需手动注入 X-Session-Id header 与 baseURL。
+ * H5 端：blob URL → File，走 SDK 的 FileAPI.upload（复用 axios 拦截器，统一 baseURL/Token/错误处理）
+ * 小程序端：Taro.uploadFile（小程序无 FormData/File 全局对象，SDK 不支持，需手动注入 X-Session-Id 与 baseURL）
  */
 import Taro from "@tarojs/taro";
+import { FileAPI } from "dehaze-sdk-js";
 import type { FileInfo } from "dehaze-sdk-js";
 import { storage } from "@/utils/storage";
-import { apiConfig } from "@/config/api";
+import { UPLOAD_URL } from "./constants";
 
 interface UploadResponse {
   code: string;
@@ -18,12 +16,9 @@ interface UploadResponse {
   data: FileInfo;
 }
 
-function getUploadUrl(): string {
-  return `${apiConfig.java}/api/v1/files`;
-}
 
 /**
- * H5 端上传：blob URL → File → FormData → XHR
+ * H5 端上传：blob URL → File → SDK FileAPI.upload
  */
 async function uploadInH5(
   filePath: string,
@@ -32,42 +27,14 @@ async function uploadInH5(
 ): Promise<FileInfo> {
   const blob = await fetch(filePath).then((res) => res.blob());
   const file = new File([blob], fileName, { type: blob.type || "image/jpeg" });
-  const formData = new FormData();
-  formData.append("file", file);
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", getUploadUrl());
-    const sessionId = storage.getSessionId();
-    if (sessionId) {
-      xhr.setRequestHeader("X-Session-Id", sessionId);
-    }
-    xhr.onload = () => {
-      if (xhr.status !== 200) {
-        reject(new Error(`上传失败: HTTP ${xhr.status}`));
-        return;
-      }
-      try {
-        const response = JSON.parse(xhr.responseText) as UploadResponse;
-        if (response.code === "00000") {
-          resolve(response.data);
-        } else {
-          reject(new Error(response.msg || "上传失败"));
+  const onUploadProgress = onProgress
+    ? (e: { loaded: number; total?: number }) => {
+        if (e.total) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
         }
-      } catch {
-        reject(new Error("上传响应解析失败"));
       }
-    };
-    xhr.onerror = () => reject(new Error("上传失败，请检查网络"));
-    if (onProgress) {
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          onProgress(Math.round((event.loaded / event.total) * 100));
-        }
-      };
-    }
-    xhr.send(formData);
-  });
+    : undefined;
+  return FileAPI.upload(file, undefined, onUploadProgress);
 }
 
 function uploadInMini(
@@ -83,7 +50,7 @@ function uploadInMini(
     }
 
     const uploadTask = Taro.uploadFile({
-      url: getUploadUrl(),
+      url: UPLOAD_URL,
       filePath,
       name: "file",
       formData: { name: fileName },
@@ -126,7 +93,6 @@ export function uploadImage(
   fileName: string,
   onProgress?: (progress: number) => void
 ): Promise<FileInfo> {
-  // @ts-ignore TARO_ENV is a compile-time constant injected by Taro compiler
   if (process.env.TARO_ENV === "h5") {
     return uploadInH5(filePath, fileName, onProgress);
   }
