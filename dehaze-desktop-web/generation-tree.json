@@ -1,0 +1,157 @@
+{
+  "nodeId": "root",
+  "kind": "project-shell",
+  "pageIds": [
+    "page-index",
+    "page-dashboard",
+    "page-dehaze",
+    "page-dataset",
+    "page-algorithm",
+    "page-profile",
+    "page-compare",
+    "page-login",
+    "page-register",
+    "page-app-library",
+    "page-app-messages",
+    "page-app-dehaze-windows"
+  ],
+  "output": "partials/project-shell.html",
+  "sharedRegions": ["top-header", "sidebar-nav", "main-content-frame"],
+  "privateRegions": [],
+  "mutableSlots": ["pageTitle", "activeNavItem", "contentBody"],
+  "status": "generated",
+  "children": [
+    {
+      "nodeId": "gen-index",
+      "kind": "page-leaf",
+      "pageIds": ["page-index"],
+      "output": "pages/index.html",
+      "sharedRegions": [],
+      "privateRegions": ["full-page"],
+      "mutableSlots": [],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-dashboard",
+      "kind": "page-leaf",
+      "pageIds": ["page-dashboard"],
+      "output": "pages/dashboard.html",
+      "sharedRegions": ["top-header", "sidebar-nav"],
+      "privateRegions": ["contentBody"],
+      "mutableSlots": ["activeNavItem"],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-dehaze",
+      "kind": "page-leaf",
+      "pageIds": ["page-dehaze"],
+      "output": "pages/dehaze.html",
+      "sharedRegions": ["top-header", "sidebar-nav"],
+      "privateRegions": ["contentBody"],
+      "mutableSlots": ["activeNavItem"],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-dataset",
+      "kind": "page-leaf",
+      "pageIds": ["page-dataset"],
+      "output": "pages/dataset.html",
+      "sharedRegions": ["top-header", "sidebar-nav"],
+      "privateRegions": ["contentBody"],
+      "mutableSlots": ["activeNavItem"],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-algorithm",
+      "kind": "page-leaf",
+      "pageIds": ["page-algorithm"],
+      "output": "pages/algorithm.html",
+      "sharedRegions": ["top-header", "sidebar-nav"],
+      "privateRegions": ["contentBody"],
+      "mutableSlots": ["activeNavItem"],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-profile",
+      "kind": "page-leaf",
+      "pageIds": ["page-profile"],
+      "output": "pages/profile.html",
+      "sharedRegions": ["top-header", "sidebar-nav"],
+      "privateRegions": ["contentBody"],
+      "mutableSlots": ["activeNavItem"],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-compare",
+      "kind": "page-leaf",
+      "pageIds": ["page-compare"],
+      "output": "pages/compare.html",
+      "sharedRegions": ["top-header", "sidebar-nav"],
+      "privateRegions": ["contentBody"],
+      "mutableSlots": ["activeNavItem"],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-login",
+      "kind": "page-leaf",
+      "pageIds": ["page-login"],
+      "output": "pages/login.html",
+      "sharedRegions": [],
+      "privateRegions": ["full-page"],
+      "mutableSlots": [],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-register",
+      "kind": "page-leaf",
+      "pageIds": ["page-register"],
+      "output": "pages/register.html",
+      "sharedRegions": [],
+      "privateRegions": ["full-page"],
+      "mutableSlots": [],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-app-library",
+      "kind": "page-leaf",
+      "pageIds": ["page-app-library"],
+      "output": "pages/app-library.html",
+      "sharedRegions": ["sidebar-nav"],
+      "privateRegions": ["contentBody"],
+      "mutableSlots": ["activeNavItem"],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-app-messages",
+      "kind": "page-leaf",
+      "pageIds": ["page-app-messages"],
+      "output": "pages/app-messages.html",
+      "sharedRegions": ["sidebar-nav"],
+      "privateRegions": ["contentBody"],
+      "mutableSlots": ["activeNavItem"],
+      "status": "generated",
+      "children": []
+    },
+    {
+      "nodeId": "gen-app-dehaze-windows",
+      "kind": "page-leaf",
+      "pageIds": ["page-app-dehaze-windows"],
+      "output": "pages/app-dehaze-windows.html",
+      "sharedRegions": ["sidebar-nav"],
+      "privateRegions": ["contentBody"],
+      "mutableSlots": ["activeNavItem"],
+      "status": "generated",
+      "children": []
+    }
+  ]
+}

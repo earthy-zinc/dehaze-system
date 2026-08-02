@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工具 - 极光清新 - Dehaze</title>
+    <style id="theme-vars">
+/* Dehaze System - Brand Tokens */
+:root {
+  /* Brand primary scale */
+  --dehaze-primary-50: #ecfdf5;
+  --dehaze-primary-100: #d1fae5;
+  --dehaze-primary-200: #a7f3d0;
+  --dehaze-primary-300: #6ee7b7;
+  --dehaze-primary-400: #34d399;
+  --dehaze-primary-500: #10b981;
+  --dehaze-primary-600: #059669;
+  --dehaze-primary-700: #047857;
+  --dehaze-primary-800: #065f46;
+  --dehaze-primary-900: #064e3b;
+
+  /* Neutral scale */
+  --dehaze-neutral-0: #ffffff;
+  --dehaze-neutral-50: #f9fafb;
+  --dehaze-neutral-100: #f3f4f6;
+  --dehaze-neutral-200: #e5e7eb;
+  --dehaze-neutral-300: #d1d5db;
+  --dehaze-neutral-400: #9ca3af;
+  --dehaze-neutral-500: #6b7280;
+  --dehaze-neutral-600: #4b5563;
+  --dehaze-neutral-700: #374151;
+  --dehaze-neutral-800: #1f2937;
+  --dehaze-neutral-900: #111827;
+
+  /* Semantic tokens (light mode default) */
+  --dehaze-background: #f0fdf4;
+  --dehaze-foreground: #1f2937;
+  --dehaze-card: #ffffff;
+  --dehaze-card-foreground: #1f2937;
+  --dehaze-popover: #ffffff;
+  --dehaze-popover-foreground: #1f2937;
+  --dehaze-primary: #10b981;
+  --dehaze-primary-foreground: #ffffff;
+  --dehaze-muted: #f3f4f6;
+  --dehaze-muted-foreground: #6b7280;
+  --dehaze-border: #e5e7eb;
+  --dehaze-input: #e5e7eb;
+  --dehaze-ring: #10b981;
+
+  /* State colors */
+  --dehaze-state-success: #4caf50;
+  --dehaze-state-warning: #ff9800;
+  --dehaze-state-error: #f44336;
+  --dehaze-state-info: #2196f3;
+
+  /* Radius scale */
+  --dehaze-radius-sm: 4px;
+  --dehaze-radius-md: 8px;
+  --dehaze-radius-lg: 12px;
+  --dehaze-radius-xl: 16px;
+  --dehaze-radius-full: 9999px;
+
+  /* Typography */
+  --dehaze-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --dehaze-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* Shadows */
+  --dehaze-shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --dehaze-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --dehaze-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --dehaze-shadow-4: 0 12px 24px rgba(0, 0, 0, 0.14);
+  --dehaze-shadow-5: 0 16px 32px rgba(0, 0, 0, 0.16);
+
+  /* Spacing */
+  --dehaze-space-xs: 4px;
+  --dehaze-space-sm: 8px;
+  --dehaze-space-md: 16px;
+  --dehaze-space-lg: 24px;
+  --dehaze-space-xl: 32px;
+  --dehaze-space-2xl: 48px;
+}
+
+/* Dark mode tokens */
+html.dark {
+  --dehaze-background: #0f172a;
+  --dehaze-foreground: #f9fafb;
+  --dehaze-card: #1e293b;
+  --dehaze-card-foreground: #f9fafb;
+  --dehaze-popover: #1e293b;
+  --dehaze-popover-foreground: #f9fafb;
+  --dehaze-primary: #10b981;
+  --dehaze-primary-foreground: #0f172a;
+  --dehaze-muted: #1e293b;
+  --dehaze-muted-foreground: #94a3b8;
+  --dehaze-border: #334155;
+  --dehaze-input: #334155;
+  --dehaze-ring: #10b981;
+}
+
+/* Base typography */
+body {
+  font-family: var(--dehaze-font-sans);
+  color: var(--dehaze-foreground);
+  background-color: var(--dehaze-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Heading scale */
+.dehaze-heading-hero {
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dehaze-heading-h1 {
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.dehaze-heading-h2 {
+  font-size: clamp(22px, 2.4vw, 32px);
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.dehaze-heading-h3 {
+  font-size: clamp(18px, 1.8vw, 24px);
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.dehaze-body {
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.dehaze-body-sm {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.dehaze-caption {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+/* Buttons */
+.dehaze-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.dehaze-btn:active {
+  transform: scale(0.97);
+}
+
+.dehaze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dehaze-btn-primary {
+  background: linear-gradient(135deg, #10b981, #14b8a6);
+  color: #ffffff;
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-primary:hover {
+  box-shadow: var(--dehaze-shadow-3);
+  transform: translateY(-1px);
+}
+
+.dehaze-btn-secondary {
+  background-color: var(--dehaze-neutral-100);
+  color: var(--dehaze-neutral-700);
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-secondary:hover {
+  background-color: var(--dehaze-neutral-200);
+}
+
+.dehaze-btn-ghost {
+  background-color: transparent;
+  color: var(--dehaze-primary);
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-ghost:hover {
+  background-color: var(--dehaze-primary-50);
+}
+
+/* Cards */
+.dehaze-card {
+  background-color: var(--dehaze-card);
+  border-radius: var(--dehaze-radius-xl);
+  box-shadow: var(--dehaze-shadow-1);
+  border: 1px solid var(--dehaze-border);
+}
+
+.dehaze-card-hover:hover {
+  box-shadow: var(--dehaze-shadow-3);
+  transform: translateY(-4px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Forms */
+.dehaze-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 15px;
+  border: 1px solid var(--dehaze-input);
+  border-radius: var(--dehaze-radius-md);
+  background-color: var(--dehaze-background);
+  color: var(--dehaze-foreground);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dehaze-input:focus {
+  outline: none;
+  border-color: var(--dehaze-primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.dehaze-input::placeholder {
+  color: var(--dehaze-muted-foreground);
+}
+
+/* Utility gradients */
+.dehaze-gradient-primary {
+  background: linear-gradient(135deg, #10b981, #14b8a6);
+}
+
+.dehaze-gradient-metric {
+  background: linear-gradient(135deg, #14b8a6, #0d9488);
+}
+
+.dehaze-text-gradient {
+  background: linear-gradient(135deg, #10b981, #14b8a6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Status badges */
+.dehaze-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--dehaze-radius-full);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dehaze-badge-success {
+  background-color: rgba(76, 175, 80, 0.12);
+  color: #2e7d32;
+}
+
+.dehaze-badge-warning {
+  background-color: rgba(255, 152, 0, 0.12);
+  color: #ef6c00;
+}
+
+.dehaze-badge-error {
+  background-color: rgba(244, 67, 54, 0.12);
+  color: #c62828;
+}
+
+.dehaze-badge-info {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+/* Layout helpers */
+.dehaze-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--dehaze-space-lg);
+  padding-right: var(--dehaze-space-lg);
+}
+
+.dehaze-surface {
+  background-color: var(--dehaze-card);
+  border: 1px solid var(--dehaze-border);
+  border-radius: var(--dehaze-radius-xl);
+}
+
+/* Animation helpers */
+@keyframes dehaze-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dehaze-animate-fade-in {
+  animation: dehaze-fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--dehaze-neutral-300);
+  border-radius: var(--dehaze-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--dehaze-neutral-400);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--dehaze-background);
+    --color-foreground: var(--dehaze-foreground);
+    --color-card: var(--dehaze-card);
+    --color-card-foreground: var(--dehaze-card-foreground);
+    --color-popover: var(--dehaze-popover);
+    --color-popover-foreground: var(--dehaze-popover-foreground);
+    --color-primary: var(--dehaze-primary);
+    --color-primary-foreground: var(--dehaze-primary-foreground);
+    --color-muted: var(--dehaze-muted);
+    --color-muted-foreground: var(--dehaze-muted-foreground);
+    --color-border: var(--dehaze-border);
+    --color-input: var(--dehaze-input);
+    --color-ring: var(--dehaze-ring);
+    --radius-sm: var(--dehaze-radius-sm);
+    --radius-md: var(--dehaze-radius-md);
+    --radius-lg: var(--dehaze-radius-lg);
+    --radius-xl: var(--dehaze-radius-xl);
+  }
+  @layer base {
+    body { background: var(--dehaze-background); color: var(--dehaze-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--dehaze-background); }
+      .text-background { color: var(--dehaze-background); }
+      .border-background { border-color: var(--dehaze-background); }
+      .ring-background { --tw-ring-color: var(--dehaze-background); }
+      .bg-foreground { background-color: var(--dehaze-foreground); }
+      .text-foreground { color: var(--dehaze-foreground); }
+      .border-foreground { border-color: var(--dehaze-foreground); }
+      .ring-foreground { --tw-ring-color: var(--dehaze-foreground); }
+      .bg-card { background-color: var(--dehaze-card); }
+      .text-card { color: var(--dehaze-card); }
+      .border-card { border-color: var(--dehaze-card); }
+      .ring-card { --tw-ring-color: var(--dehaze-card); }
+      .bg-card-foreground { background-color: var(--dehaze-card-foreground); }
+      .text-card-foreground { color: var(--dehaze-card-foreground); }
+      .border-card-foreground { border-color: var(--dehaze-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--dehaze-card-foreground); }
+      .bg-popover { background-color: var(--dehaze-popover); }
+      .text-popover { color: var(--dehaze-popover); }
+      .border-popover { border-color: var(--dehaze-popover); }
+      .ring-popover { --tw-ring-color: var(--dehaze-popover); }
+      .bg-popover-foreground { background-color: var(--dehaze-popover-foreground); }
+      .text-popover-foreground { color: var(--dehaze-popover-foreground); }
+      .border-popover-foreground { border-color: var(--dehaze-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--dehaze-popover-foreground); }
+      .bg-primary { background-color: var(--dehaze-primary); }
+      .text-primary { color: var(--dehaze-primary); }
+      .border-primary { border-color: var(--dehaze-primary); }
+      .ring-primary { --tw-ring-color: var(--dehaze-primary); }
+      .bg-primary-foreground { background-color: var(--dehaze-primary-foreground); }
+      .text-primary-foreground { color: var(--dehaze-primary-foreground); }
+      .border-primary-foreground { border-color: var(--dehaze-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--dehaze-primary-foreground); }
+      .bg-muted { background-color: var(--dehaze-muted); }
+      .text-muted { color: var(--dehaze-muted); }
+      .border-muted { border-color: var(--dehaze-muted); }
+      .ring-muted { --tw-ring-color: var(--dehaze-muted); }
+      .bg-muted-foreground { background-color: var(--dehaze-muted-foreground); }
+      .text-muted-foreground { color: var(--dehaze-muted-foreground); }
+      .border-muted-foreground { border-color: var(--dehaze-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--dehaze-muted-foreground); }
+      .bg-border { background-color: var(--dehaze-border); }
+      .text-border { color: var(--dehaze-border); }
+      .border-border { border-color: var(--dehaze-border); }
+      .ring-border { --tw-ring-color: var(--dehaze-border); }
+      .bg-input { background-color: var(--dehaze-input); }
+      .text-input { color: var(--dehaze-input); }
+      .border-input { border-color: var(--dehaze-input); }
+      .ring-input { --tw-ring-color: var(--dehaze-input); }
+      .bg-ring { background-color: var(--dehaze-ring); }
+      .text-ring { color: var(--dehaze-ring); }
+      .border-ring { border-color: var(--dehaze-ring); }
+      .ring-ring { --tw-ring-color: var(--dehaze-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased overflow-x-hidden">
+    <style id="critical-layout">
+        .tools-shell {
+            width: 100%;
+            max-width: 448px;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-bottom: 96px;
+            box-sizing: border-box;
+        }
+        .tools-horizontal-scroll {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 4px;
+        }
+        .tools-horizontal-scroll::-webkit-scrollbar { display: none; }
+        .tools-horizontal-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .touch-target {
+            min-height: 44px;
+            min-width: 44px;
+        }
+    </style>
+
+    <main class="tools-shell">
+        <!-- 顶部标题栏 -->
+        <header class="sticky top-0 z-40 -mx-4 px-4 py-3 bg-[var(--dehaze-background)]/95 backdrop-blur-sm border-b border-[var(--dehaze-border)]">
+            <div class="flex items-center justify-between h-11">
+                <div class="flex items-center gap-3">
+                    <button type="button" aria-label="返回" class="touch-target flex items-center justify-center rounded-full text-[var(--dehaze-neutral-700)] hover:bg-[var(--dehaze-neutral-100)] transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h1 class="text-lg font-semibold text-[var(--dehaze-foreground)]">工具箱</h1>
+                </div>
+                <button type="button" aria-label="搜索" class="touch-target flex items-center justify-center rounded-full text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-neutral-100)] transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- 常用工具横滑区 -->
+        <section class="mt-4" aria-label="常用工具">
+            <h2 class="text-sm font-medium text-[var(--dehaze-neutral-700)] mb-3">常用工具</h2>
+            <div class="tools-horizontal-scroll">
+                <a href="#" class="flex-shrink-0 flex flex-col items-center gap-2 w-20 touch-target group">
+                    <div class="w-12 h-12 rounded-2xl bg-[var(--dehaze-primary-50)] text-[var(--dehaze-primary)] flex items-center justify-center group-active:scale-95 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                    </div>
+                    <span class="text-xs text-[var(--dehaze-neutral-700)] text-center leading-tight">数据集管理</span>
+                </a>
+                <a href="#" class="flex-shrink-0 flex flex-col items-center gap-2 w-20 touch-target group">
+                    <div class="w-12 h-12 rounded-2xl bg-[var(--dehaze-primary-50)] text-[var(--dehaze-primary)] flex items-center justify-center group-active:scale-95 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <span class="text-xs text-[var(--dehaze-neutral-700)] text-center leading-tight">算法管理</span>
+                </a>
+                <a href="#" class="flex-shrink-0 flex flex-col items-center gap-2 w-20 touch-target group">
+                    <div class="w-12 h-12 rounded-2xl bg-[var(--dehaze-primary-50)] text-[var(--dehaze-primary)] flex items-center justify-center group-active:scale-95 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <span class="text-xs text-[var(--dehaze-neutral-700)] text-center leading-tight">处理历史</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- 分组网格入口 -->
+        <section class="mt-6 space-y-5" aria-label="功能入口">
+            <!-- 数据与算法 -->
+            <div class="dehaze-card p-4">
+                <h2 class="text-sm font-medium text-[var(--dehaze-neutral-500)] mb-3">数据与算法</h2>
+                <div class="grid grid-cols-3 gap-3">
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">数据集管理</span>
+                    </a>
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">算法管理</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 系统管理 -->
+            <div class="dehaze-card p-4">
+                <h2 class="text-sm font-medium text-[var(--dehaze-neutral-500)] mb-3">系统管理</h2>
+                <div class="grid grid-cols-3 gap-3">
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">菜单管理</span>
+                    </a>
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">用户管理</span>
+                    </a>
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">角色管理</span>
+                    </a>
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">部门管理</span>
+                    </a>
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">字典管理</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 运营与商业 -->
+            <div class="dehaze-card p-4">
+                <h2 class="text-sm font-medium text-[var(--dehaze-neutral-500)] mb-3">运营与商业</h2>
+                <div class="grid grid-cols-3 gap-3">
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">订单管理</span>
+                    </a>
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">套餐管理</span>
+                    </a>
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">会员管理</span>
+                    </a>
+                    <a href="#" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[var(--dehaze-neutral-50)] active:bg-[var(--dehaze-neutral-100)] transition-colors touch-target">
+                        <svg class="w-7 h-7 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                        <span class="text-xs font-medium text-[var(--dehaze-foreground)]">反馈评价</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 最近使用 -->
+        <section class="mt-6" aria-label="最近使用">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-medium text-[var(--dehaze-neutral-700)]">最近使用</h2>
+                <button type="button" class="text-xs text-[var(--dehaze-primary)] touch-target px-2">查看全部</button>
+            </div>
+            <div class="space-y-3">
+                <a href="#" class="dehaze-card p-3 flex items-center gap-3 active:scale-[0.99] transition-transform touch-target">
+                    <div class="w-10 h-10 rounded-xl bg-[var(--dehaze-primary-50)] text-[var(--dehaze-primary)] flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-medium text-[var(--dehaze-foreground)] truncate">数据集管理</div>
+                        <div class="text-xs text-[var(--dehaze-neutral-500)] mt-0.5">2 小时前使用</div>
+                    </div>
+                    <svg class="w-4 h-4 text-[var(--dehaze-neutral-400)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </a>
+                <a href="#" class="dehaze-card p-3 flex items-center gap-3 active:scale-[0.99] transition-transform touch-target">
+                    <div class="w-10 h-10 rounded-xl bg-[var(--dehaze-primary-50)] text-[var(--dehaze-primary)] flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-medium text-[var(--dehaze-foreground)] truncate">处理历史</div>
+                        <div class="text-xs text-[var(--dehaze-neutral-500)] mt-0.5">昨天 14:32</div>
+                    </div>
+                    <svg class="w-4 h-4 text-[var(--dehaze-neutral-400)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </a>
+                <a href="#" class="dehaze-card p-3 flex items-center gap-3 active:scale-[0.99] transition-transform touch-target">
+                    <div class="w-10 h-10 rounded-xl bg-[var(--dehaze-primary-50)] text-[var(--dehaze-primary)] flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-medium text-[var(--dehaze-foreground)] truncate">订单管理</div>
+                        <div class="text-xs text-[var(--dehaze-neutral-500)] mt-0.5">3 天前</div>
+                    </div>
+                    <svg class="w-4 h-4 text-[var(--dehaze-neutral-400)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <nav data-mobile-nav="global" class="fixed bottom-0 left-0 right-0 h-[56px] bg-[var(--dehaze-card)] border-t border-[var(--dehaze-border)] z-50"><div class="w-full max-w-md mx-auto grid grid-cols-5 h-full"><button data-nav-key="home" data-dom-id="nav-home" class="min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 h-full text-[var(--dehaze-neutral-500)]"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg><span class="text-[11px] leading-none whitespace-nowrap max-w-full truncate">首页</span></button><button data-nav-key="tools" data-dom-id="nav-tools" data-active="true" class="min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 h-full text-[var(--dehaze-primary)] font-medium"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg><span class="text-[11px] leading-none whitespace-nowrap max-w-full truncate">工具</span></button><button data-nav-key="dehaze" data-dom-id="nav-dehaze" class="min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 h-full text-[var(--dehaze-neutral-500)]"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg><span class="text-[11px] leading-none whitespace-nowrap max-w-full truncate">去雾</span></button><button data-nav-key="messages" data-dom-id="nav-messages" class="min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 h-full text-[var(--dehaze-neutral-500)]"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg><span class="text-[11px] leading-none whitespace-nowrap max-w-full truncate">消息</span></button><button data-nav-key="profile" data-dom-id="nav-profile" class="min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 h-full text-[var(--dehaze-neutral-500)]"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg><span class="text-[11px] leading-none whitespace-nowrap max-w-full truncate">我的</span></button></div></nav>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

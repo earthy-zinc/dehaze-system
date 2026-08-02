@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>首页 - Dehaze</title>
+    <style id="theme-vars">
+/* Dehaze System - Brand Tokens (Desktop Web) */
+:root {
+  /* Brand primary scale */
+  --dehaze-primary-50: #eff6ff;
+  --dehaze-primary-100: #dbeafe;
+  --dehaze-primary-200: #bfdbfe;
+  --dehaze-primary-300: #93c5fd;
+  --dehaze-primary-400: #60a5fa;
+  --dehaze-primary-500: #3b82f6;
+  --dehaze-primary-600: #2563eb;
+  --dehaze-primary-700: #1d4ed8;
+  --dehaze-primary-800: #1e40af;
+  --dehaze-primary-900: #1e3a8a;
+
+  /* Neutral scale */
+  --dehaze-neutral-0: #ffffff;
+  --dehaze-neutral-50: #f9fafb;
+  --dehaze-neutral-100: #f3f4f6;
+  --dehaze-neutral-200: #e5e7eb;
+  --dehaze-neutral-300: #d1d5db;
+  --dehaze-neutral-400: #9ca3af;
+  --dehaze-neutral-500: #6b7280;
+  --dehaze-neutral-600: #4b5563;
+  --dehaze-neutral-700: #374151;
+  --dehaze-neutral-800: #1f2937;
+  --dehaze-neutral-900: #111827;
+
+  /* Semantic tokens (light mode default) */
+  --dehaze-background: #ffffff;
+  --dehaze-foreground: #1f2937;
+  --dehaze-card: #ffffff;
+  --dehaze-card-foreground: #1f2937;
+  --dehaze-popover: #ffffff;
+  --dehaze-popover-foreground: #1f2937;
+  --dehaze-primary: #3b82f6;
+  --dehaze-primary-foreground: #ffffff;
+  --dehaze-muted: #f3f4f6;
+  --dehaze-muted-foreground: #6b7280;
+  --dehaze-border: #e5e7eb;
+  --dehaze-input: #e5e7eb;
+  --dehaze-ring: #3b82f6;
+
+  /* State colors */
+  --dehaze-state-success: #4caf50;
+  --dehaze-state-warning: #ff9800;
+  --dehaze-state-error: #f44336;
+  --dehaze-state-info: #2196f3;
+
+  /* Radius scale */
+  --dehaze-radius-sm: 4px;
+  --dehaze-radius-md: 8px;
+  --dehaze-radius-lg: 12px;
+  --dehaze-radius-xl: 16px;
+  --dehaze-radius-full: 9999px;
+
+  /* Typography */
+  --dehaze-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --dehaze-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* Shadows */
+  --dehaze-shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --dehaze-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --dehaze-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --dehaze-shadow-4: 0 12px 24px rgba(0, 0, 0, 0.14);
+  --dehaze-shadow-5: 0 16px 32px rgba(0, 0, 0, 0.16);
+
+  /* Spacing */
+  --dehaze-space-xs: 4px;
+  --dehaze-space-sm: 8px;
+  --dehaze-space-md: 16px;
+  --dehaze-space-lg: 24px;
+  --dehaze-space-xl: 32px;
+  --dehaze-space-2xl: 48px;
+
+  /* Desktop shell dimensions */
+  --dehaze-sidebar-width: 248px;
+  --dehaze-topbar-height: 64px;
+}
+
+/* Dark mode tokens */
+html.dark {
+  --dehaze-background: #0b1120;
+  --dehaze-foreground: #f8fafc;
+  --dehaze-card: #111827;
+  --dehaze-card-foreground: #f8fafc;
+  --dehaze-popover: #111827;
+  --dehaze-popover-foreground: #f8fafc;
+  --dehaze-primary: #60a5fa;
+  --dehaze-primary-foreground: #0b1120;
+  --dehaze-muted: #1e293b;
+  --dehaze-muted-foreground: #94a3b8;
+  --dehaze-border: #334155;
+  --dehaze-input: #334155;
+  --dehaze-ring: #60a5fa;
+}
+
+/* Base typography */
+body {
+  font-family: var(--dehaze-font-sans);
+  color: var(--dehaze-foreground);
+  background-color: var(--dehaze-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Heading scale */
+.dehaze-heading-hero {
+  font-size: clamp(40px, 5vw, 72px);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dehaze-heading-h1 {
+  font-size: clamp(30px, 3vw, 44px);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.dehaze-heading-h2 {
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.dehaze-heading-h3 {
+  font-size: clamp(18px, 1.8vw, 24px);
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.dehaze-body {
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.dehaze-body-sm {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.dehaze-caption {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+/* Buttons */
+.dehaze-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.dehaze-btn:active {
+  transform: scale(0.97);
+}
+
+.dehaze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dehaze-btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #ffffff;
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-primary:hover {
+  box-shadow: var(--dehaze-shadow-3);
+  transform: translateY(-1px);
+}
+
+.dehaze-btn-secondary {
+  background-color: var(--dehaze-neutral-100);
+  color: var(--dehaze-neutral-700);
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-secondary:hover {
+  background-color: var(--dehaze-neutral-200);
+}
+
+.dehaze-btn-ghost {
+  background-color: transparent;
+  color: var(--dehaze-primary);
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-ghost:hover {
+  background-color: var(--dehaze-primary-50);
+}
+
+/* Cards */
+.dehaze-card {
+  background-color: var(--dehaze-card);
+  border-radius: var(--dehaze-radius-xl);
+  box-shadow: var(--dehaze-shadow-1);
+  border: 1px solid var(--dehaze-border);
+}
+
+.dehaze-card-hover:hover {
+  box-shadow: var(--dehaze-shadow-3);
+  transform: translateY(-4px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Forms */
+.dehaze-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 15px;
+  border: 1px solid var(--dehaze-input);
+  border-radius: var(--dehaze-radius-md);
+  background-color: var(--dehaze-background);
+  color: var(--dehaze-foreground);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dehaze-input:focus {
+  outline: none;
+  border-color: var(--dehaze-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.dehaze-input::placeholder {
+  color: var(--dehaze-muted-foreground);
+}
+
+/* Utility gradients */
+.dehaze-gradient-primary {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+}
+
+.dehaze-gradient-metric {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.dehaze-text-gradient {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Status badges */
+.dehaze-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--dehaze-radius-full);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dehaze-badge-success {
+  background-color: rgba(76, 175, 80, 0.12);
+  color: #2e7d32;
+}
+
+.dehaze-badge-warning {
+  background-color: rgba(255, 152, 0, 0.12);
+  color: #ef6c00;
+}
+
+.dehaze-badge-error {
+  background-color: rgba(244, 67, 54, 0.12);
+  color: #c62828;
+}
+
+.dehaze-badge-info {
+  background-color: rgba(33, 150, 243, 0.12);
+  color: #1565c0;
+}
+
+/* Layout helpers */
+.dehaze-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--dehaze-space-lg);
+  padding-right: var(--dehaze-space-lg);
+}
+
+.dehaze-surface {
+  background-color: var(--dehaze-card);
+  border: 1px solid var(--dehaze-border);
+  border-radius: var(--dehaze-radius-xl);
+}
+
+/* Desktop shell helpers */
+.dehaze-shell {
+  min-height: 100vh;
+  display: flex;
+}
+
+.dehaze-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--dehaze-sidebar-width);
+  z-index: 40;
+  border-right: 1px solid var(--dehaze-border);
+  background-color: var(--dehaze-card);
+}
+
+.dehaze-topbar {
+  position: fixed;
+  top: 0;
+  left: var(--dehaze-sidebar-width);
+  right: 0;
+  height: var(--dehaze-topbar-height);
+  z-index: 30;
+  border-bottom: 1px solid var(--dehaze-border);
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+}
+
+html.dark .dehaze-topbar {
+  background-color: rgba(11, 17, 32, 0.85);
+}
+
+.dehaze-content {
+  margin-left: var(--dehaze-sidebar-width);
+  padding-top: var(--dehaze-topbar-height);
+  min-height: 100vh;
+  width: calc(100% - var(--dehaze-sidebar-width));
+}
+
+/* Animation helpers */
+@keyframes dehaze-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dehaze-animate-fade-in {
+  animation: dehaze-fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--dehaze-neutral-300);
+  border-radius: var(--dehaze-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--dehaze-neutral-400);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--dehaze-background);
+    --color-foreground: var(--dehaze-foreground);
+    --color-card: var(--dehaze-card);
+    --color-card-foreground: var(--dehaze-card-foreground);
+    --color-popover: var(--dehaze-popover);
+    --color-popover-foreground: var(--dehaze-popover-foreground);
+    --color-primary: var(--dehaze-primary);
+    --color-primary-foreground: var(--dehaze-primary-foreground);
+    --color-muted: var(--dehaze-muted);
+    --color-muted-foreground: var(--dehaze-muted-foreground);
+    --color-border: var(--dehaze-border);
+    --color-input: var(--dehaze-input);
+    --color-ring: var(--dehaze-ring);
+    --radius-sm: var(--dehaze-radius-sm);
+    --radius-md: var(--dehaze-radius-md);
+    --radius-lg: var(--dehaze-radius-lg);
+    --radius-xl: var(--dehaze-radius-xl);
+  }
+  @layer base {
+    body { background: var(--dehaze-background); color: var(--dehaze-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--dehaze-background); }
+      .text-background { color: var(--dehaze-background); }
+      .border-background { border-color: var(--dehaze-background); }
+      .ring-background { --tw-ring-color: var(--dehaze-background); }
+      .bg-foreground { background-color: var(--dehaze-foreground); }
+      .text-foreground { color: var(--dehaze-foreground); }
+      .border-foreground { border-color: var(--dehaze-foreground); }
+      .ring-foreground { --tw-ring-color: var(--dehaze-foreground); }
+      .bg-card { background-color: var(--dehaze-card); }
+      .text-card { color: var(--dehaze-card); }
+      .border-card { border-color: var(--dehaze-card); }
+      .ring-card { --tw-ring-color: var(--dehaze-card); }
+      .bg-card-foreground { background-color: var(--dehaze-card-foreground); }
+      .text-card-foreground { color: var(--dehaze-card-foreground); }
+      .border-card-foreground { border-color: var(--dehaze-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--dehaze-card-foreground); }
+      .bg-popover { background-color: var(--dehaze-popover); }
+      .text-popover { color: var(--dehaze-popover); }
+      .border-popover { border-color: var(--dehaze-popover); }
+      .ring-popover { --tw-ring-color: var(--dehaze-popover); }
+      .bg-popover-foreground { background-color: var(--dehaze-popover-foreground); }
+      .text-popover-foreground { color: var(--dehaze-popover-foreground); }
+      .border-popover-foreground { border-color: var(--dehaze-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--dehaze-popover-foreground); }
+      .bg-primary { background-color: var(--dehaze-primary); }
+      .text-primary { color: var(--dehaze-primary); }
+      .border-primary { border-color: var(--dehaze-primary); }
+      .ring-primary { --tw-ring-color: var(--dehaze-primary); }
+      .bg-primary-foreground { background-color: var(--dehaze-primary-foreground); }
+      .text-primary-foreground { color: var(--dehaze-primary-foreground); }
+      .border-primary-foreground { border-color: var(--dehaze-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--dehaze-primary-foreground); }
+      .bg-muted { background-color: var(--dehaze-muted); }
+      .text-muted { color: var(--dehaze-muted); }
+      .border-muted { border-color: var(--dehaze-muted); }
+      .ring-muted { --tw-ring-color: var(--dehaze-muted); }
+      .bg-muted-foreground { background-color: var(--dehaze-muted-foreground); }
+      .text-muted-foreground { color: var(--dehaze-muted-foreground); }
+      .border-muted-foreground { border-color: var(--dehaze-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--dehaze-muted-foreground); }
+      .bg-border { background-color: var(--dehaze-border); }
+      .text-border { color: var(--dehaze-border); }
+      .border-border { border-color: var(--dehaze-border); }
+      .ring-border { --tw-ring-color: var(--dehaze-border); }
+      .bg-input { background-color: var(--dehaze-input); }
+      .text-input { color: var(--dehaze-input); }
+      .border-input { border-color: var(--dehaze-input); }
+      .ring-input { --tw-ring-color: var(--dehaze-input); }
+      .bg-ring { background-color: var(--dehaze-ring); }
+      .text-ring { color: var(--dehaze-ring); }
+      .border-ring { border-color: var(--dehaze-ring); }
+      .ring-ring { --tw-ring-color: var(--dehaze-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* V2 artistic hero typography */
+      .dehaze-hero-title {
+        background: linear-gradient(100deg, #3b82f6 0%, #06b6d4 45%, #8b5cf6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        -webkit-text-stroke: 1px rgba(255, 255, 255, 0.35);
+        text-shadow: 0 0 28px rgba(59, 130, 246, 0.35), 0 0 60px rgba(139, 92, 246, 0.22);
+        transform: perspective(900px) rotateX(2deg) skewY(-1deg);
+        transform-style: preserve-3d;
+        letter-spacing: -0.03em;
+      }
+
+      /* V2 feature card with gradient border */
+      .dehaze-feature-card {
+        position: relative;
+        background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.98) 100%);
+        border-radius: var(--dehaze-radius-xl);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        box-shadow: var(--dehaze-shadow-1);
+      }
+      .dehaze-feature-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 1.5px;
+        background: linear-gradient(135deg, rgba(59,130,246,0.55), rgba(99,102,241,0.35), rgba(6,182,212,0.25));
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+      }
+      .dehaze-feature-card:hover {
+        transform: translateY(-6px);
+        box-shadow: var(--dehaze-shadow-3), 0 0 0 1px rgba(59,130,246,0.12);
+      }
+      .dehaze-feature-card:hover .feature-icon-ring {
+        box-shadow: 0 0 0 6px rgba(59,130,246,0.10);
+      }
+
+      /* V2 image icon ring */
+      .feature-icon-ring {
+        flex-shrink: 0;
+        width: 48px;
+        height: 48px;
+        border-radius: var(--dehaze-radius-lg);
+        overflow: hidden;
+        box-shadow: 0 0 0 4px rgba(59,130,246,0.08);
+        transition: box-shadow 0.25s ease;
+      }
+      .feature-icon-ring img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* V2 CTA background overlay */
+      .dehaze-cta-bg {
+        background-image: url('../assets/cta-bg-dehaze.jpg');
+        background-size: cover;
+        background-position: center;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+  <!-- 顶部导航 -->
+  <header class="fixed top-0 left-0 right-0 h-16 z-50 border-b border-[var(--dehaze-border)] bg-white/85 dark:bg-[var(--dehaze-background)]/85 backdrop-blur-md">
+    <div class="dehaze-container h-full flex items-center justify-between">
+      <div class="flex items-center gap-10">
+        <a href="index.html" class="flex items-center gap-2.5">
+          <img src="../assets/logo-dehaze.jpg" alt="Dehaze" class="w-9 h-9 rounded-lg object-cover shadow-sm">
+          <span class="text-xl font-semibold text-[var(--dehaze-foreground)]">Dehaze</span>
+        </a>
+        <nav class="hidden md:flex items-center gap-1">
+          <a data-dom-id="nav-home" href="index.html" class="px-3 py-2 rounded-md text-sm font-medium text-[var(--dehaze-primary)] bg-[var(--dehaze-primary-50)]">首页</a>
+          <a data-dom-id="nav-dashboard" href="dashboard.html" class="px-3 py-2 rounded-md text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">工作台</a>
+          <a data-dom-id="nav-dehaze" href="dehaze.html" class="px-3 py-2 rounded-md text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">去雾</a>
+          <a data-dom-id="nav-dataset" href="dataset.html" class="px-3 py-2 rounded-md text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">数据集</a>
+          <a data-dom-id="nav-algorithm" href="algorithm.html" class="px-3 py-2 rounded-md text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">算法</a>
+          <a data-dom-id="nav-profile" href="profile.html" class="px-3 py-2 rounded-md text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">个人中心</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-3">
+        <button data-dom-id="header-login" class="dehaze-btn dehaze-btn-ghost text-sm py-2 px-4">登录</button>
+        <button data-dom-id="header-register" class="dehaze-btn dehaze-btn-primary text-sm py-2 px-4">注册</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="pt-16">
+    <!-- Hero -->
+    <section class="relative overflow-hidden">
+      <div class="absolute inset-0 pointer-events-none">
+        <img src="../assets/hero-bg-dehaze.jpg" alt="" class="w-full h-full object-cover" aria-hidden="true">
+        <div class="absolute inset-0 bg-gradient-to-b from-white/80 via-white/55 to-white/90 dark:from-[var(--dehaze-background)]/85 dark:via-[var(--dehaze-background)]/65 dark:to-[var(--dehaze-background)]/90"></div>
+      </div>
+      <div class="dehaze-container relative py-24 md:py-32 text-center">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--dehaze-primary-50)]/80 text-[var(--dehaze-primary-700)] text-sm font-medium mb-6 border border-[var(--dehaze-primary-100)] backdrop-blur-sm">
+          <span class="w-2 h-2 rounded-full bg-[var(--dehaze-primary-500)]"></span>
+          AI 驱动的图像去雾平台
+        </div>
+        <h1 class="dehaze-heading-hero dehaze-hero-title mb-6">让每一张图片<br>都清晰可见</h1>
+        <p class="dehaze-body text-[var(--dehaze-neutral-700)] dark:text-[var(--dehaze-muted-foreground)] max-w-2xl mx-auto mb-10 font-medium">基于深度学习的智能去雾算法，自动识别雾霾、水汽与低光照场景，一键还原真实色彩与细节。</p>
+        <div class="flex items-center justify-center gap-4">
+          <button data-dom-id="cta-dehaze" class="dehaze-btn dehaze-btn-primary text-base px-8 py-3.5 shadow-xl">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            立即体验去雾
+          </button>
+          <button data-dom-id="cta-dashboard" class="dehaze-btn dehaze-btn-secondary text-base px-8 py-3.5">
+            进入工作台
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 核心能力 -->
+    <section class="py-20 md:py-24 bg-gradient-to-b from-[var(--dehaze-muted)]/40 via-[var(--dehaze-neutral-50)]/60 to-[var(--dehaze-muted)]/40">
+      <div class="dehaze-container">
+        <div class="text-center mb-14">
+          <h2 class="dehaze-heading-h2 mb-3 dehaze-text-gradient">核心能力</h2>
+          <p class="dehaze-body text-[var(--dehaze-muted-foreground)] max-w-xl mx-auto">从单张图片到批量数据集，全链路去雾能力覆盖</p>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="dehaze-feature-card p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="feature-icon-ring">
+                <img src="../assets/feature-icon-ai.jpg" alt="智能算法推荐">
+              </div>
+              <h3 class="dehaze-heading-h3 text-base">智能算法推荐</h3>
+            </div>
+            <p class="dehaze-body-sm text-[var(--dehaze-muted-foreground)] pl-[60px]">根据场景自动匹配最佳去雾模型，无需专业知识。</p>
+          </div>
+          <div class="dehaze-feature-card p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="feature-icon-ring">
+                <img src="../assets/feature-icon-batch.jpg" alt="高清批量处理">
+              </div>
+              <h3 class="dehaze-heading-h3 text-base">高清批量处理</h3>
+            </div>
+            <p class="dehaze-body-sm text-[var(--dehaze-muted-foreground)] pl-[60px]">支持数据集级批量上传与处理，提升工作效率。</p>
+          </div>
+          <div class="dehaze-feature-card p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="feature-icon-ring">
+                <img src="../assets/feature-icon-compare.jpg" alt="多维度效果对比">
+              </div>
+              <h3 class="dehaze-heading-h3 text-base">多维度效果对比</h3>
+            </div>
+            <p class="dehaze-body-sm text-[var(--dehaze-muted-foreground)] pl-[60px]">并排、重叠、放大镜等多种对比模式与量化指标。</p>
+          </div>
+          <div class="dehaze-feature-card p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="feature-icon-ring">
+                <img src="../assets/feature-icon-lab.jpg" alt="算法实验室">
+              </div>
+              <h3 class="dehaze-heading-h3 text-base">算法实验室</h3>
+            </div>
+            <p class="dehaze-body-sm text-[var(--dehaze-muted-foreground)] pl-[60px]">内置多种 SOTA 去雾算法，支持自定义上传与测评。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 数据统计 -->
+    <section class="py-20 md:py-24">
+      <div class="dehaze-container">
+        <div class="dehaze-surface p-8 md:p-12 bg-gradient-to-br from-[var(--dehaze-card)] to-[var(--dehaze-muted)]/40">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div class="dehaze-heading-h1 dehaze-text-gradient mb-2">30+</div>
+              <div class="dehaze-body-sm text-[var(--dehaze-muted-foreground)] font-medium">去雾算法</div>
+            </div>
+            <div>
+              <div class="dehaze-heading-h1 dehaze-text-gradient mb-2">1000 万+</div>
+              <div class="dehaze-body-sm text-[var(--dehaze-muted-foreground)] font-medium">累计处理张数</div>
+            </div>
+            <div>
+              <div class="dehaze-heading-h1 dehaze-text-gradient mb-2">42 dB</div>
+              <div class="dehaze-body-sm text-[var(--dehaze-muted-foreground)] font-medium">平均 PSNR</div>
+            </div>
+            <div>
+              <div class="dehaze-heading-h1 dehaze-text-gradient mb-2">4.9</div>
+              <div class="dehaze-body-sm text-[var(--dehaze-muted-foreground)] font-medium">用户评分</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-20 md:py-24">
+      <div class="dehaze-container">
+        <div class="dehaze-cta-bg rounded-2xl p-10 md:p-16 text-center text-white relative overflow-hidden shadow-2xl">
+          <div class="absolute inset-0 bg-gradient-to-br from-[var(--dehaze-primary-800)]/85 via-[var(--dehaze-primary-600)]/80 to-[#4f46e5]/85"></div>
+          <div class="relative z-10">
+            <h2 class="dehaze-heading-h2 mb-4 text-white drop-shadow-md">准备好体验清晰视界了吗？</h2>
+            <p class="dehaze-body text-white/95 max-w-xl mx-auto mb-8 font-medium">立即注册，免费体验去雾处理能力，开启高效图像修复之旅。</p>
+            <button data-dom-id="cta-register" class="dehaze-btn bg-white text-[var(--dehaze-primary-700)] hover:bg-[var(--dehaze-neutral-50)] px-8 py-3.5 rounded-lg shadow-lg font-semibold">
+              免费注册
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="border-t border-[var(--dehaze-border)] py-12 bg-[var(--dehaze-card)]">
+      <div class="dehaze-container">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div class="flex items-center gap-2.5">
+            <img src="../assets/logo-dehaze.jpg" alt="Dehaze" class="w-8 h-8 rounded-lg object-cover shadow-sm">
+            <span class="text-lg font-semibold">Dehaze</span>
+          </div>
+          <div class="flex items-center gap-6 text-sm text-[var(--dehaze-muted-foreground)] font-medium">
+            <a href="#" class="hover:text-[var(--dehaze-foreground)]">产品文档</a>
+            <a href="#" class="hover:text-[var(--dehaze-foreground)]">算法说明</a>
+            <a href="#" class="hover:text-[var(--dehaze-foreground)]">隐私政策</a>
+            <a href="#" class="hover:text-[var(--dehaze-foreground)]">联系我们</a>
+          </div>
+          <div class="text-sm text-[var(--dehaze-muted-foreground)]">© 2026 Dehaze. 保留所有权利。</div>
+        </div>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>

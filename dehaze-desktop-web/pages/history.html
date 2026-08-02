@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>处理历史记录 - Dehaze</title>
+    <style id="theme-vars">
+/* Dehaze System - Brand Tokens (Desktop Web) */
+:root {
+  /* Brand primary scale */
+  --dehaze-primary-50: #eff6ff;
+  --dehaze-primary-100: #dbeafe;
+  --dehaze-primary-200: #bfdbfe;
+  --dehaze-primary-300: #93c5fd;
+  --dehaze-primary-400: #60a5fa;
+  --dehaze-primary-500: #3b82f6;
+  --dehaze-primary-600: #2563eb;
+  --dehaze-primary-700: #1d4ed8;
+  --dehaze-primary-800: #1e40af;
+  --dehaze-primary-900: #1e3a8a;
+
+  /* Neutral scale */
+  --dehaze-neutral-0: #ffffff;
+  --dehaze-neutral-50: #f9fafb;
+  --dehaze-neutral-100: #f3f4f6;
+  --dehaze-neutral-200: #e5e7eb;
+  --dehaze-neutral-300: #d1d5db;
+  --dehaze-neutral-400: #9ca3af;
+  --dehaze-neutral-500: #6b7280;
+  --dehaze-neutral-600: #4b5563;
+  --dehaze-neutral-700: #374151;
+  --dehaze-neutral-800: #1f2937;
+  --dehaze-neutral-900: #111827;
+
+  /* Semantic tokens (light mode default) */
+  --dehaze-background: #ffffff;
+  --dehaze-foreground: #1f2937;
+  --dehaze-card: #ffffff;
+  --dehaze-card-foreground: #1f2937;
+  --dehaze-popover: #ffffff;
+  --dehaze-popover-foreground: #1f2937;
+  --dehaze-primary: #3b82f6;
+  --dehaze-primary-foreground: #ffffff;
+  --dehaze-muted: #f3f4f6;
+  --dehaze-muted-foreground: #6b7280;
+  --dehaze-border: #e5e7eb;
+  --dehaze-input: #e5e7eb;
+  --dehaze-ring: #3b82f6;
+
+  /* State colors */
+  --dehaze-state-success: #4caf50;
+  --dehaze-state-warning: #ff9800;
+  --dehaze-state-error: #f44336;
+  --dehaze-state-info: #2196f3;
+
+  /* Radius scale */
+  --dehaze-radius-sm: 4px;
+  --dehaze-radius-md: 8px;
+  --dehaze-radius-lg: 12px;
+  --dehaze-radius-xl: 16px;
+  --dehaze-radius-full: 9999px;
+
+  /* Typography */
+  --dehaze-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --dehaze-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* Shadows */
+  --dehaze-shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --dehaze-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --dehaze-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --dehaze-shadow-4: 0 12px 24px rgba(0, 0, 0, 0.14);
+  --dehaze-shadow-5: 0 16px 32px rgba(0, 0, 0, 0.16);
+
+  /* Spacing */
+  --dehaze-space-xs: 4px;
+  --dehaze-space-sm: 8px;
+  --dehaze-space-md: 16px;
+  --dehaze-space-lg: 24px;
+  --dehaze-space-xl: 32px;
+  --dehaze-space-2xl: 48px;
+
+  /* Desktop shell dimensions */
+  --dehaze-sidebar-width: 248px;
+  --dehaze-topbar-height: 64px;
+}
+
+/* Dark mode tokens */
+html.dark {
+  --dehaze-background: #0b1120;
+  --dehaze-foreground: #f8fafc;
+  --dehaze-card: #111827;
+  --dehaze-card-foreground: #f8fafc;
+  --dehaze-popover: #111827;
+  --dehaze-popover-foreground: #f8fafc;
+  --dehaze-primary: #60a5fa;
+  --dehaze-primary-foreground: #0b1120;
+  --dehaze-muted: #1e293b;
+  --dehaze-muted-foreground: #94a3b8;
+  --dehaze-border: #334155;
+  --dehaze-input: #334155;
+  --dehaze-ring: #60a5fa;
+}
+
+/* Base typography */
+body {
+  font-family: var(--dehaze-font-sans);
+  color: var(--dehaze-foreground);
+  background-color: var(--dehaze-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Heading scale */
+.dehaze-heading-hero {
+  font-size: clamp(40px, 5vw, 72px);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dehaze-heading-h1 {
+  font-size: clamp(30px, 3vw, 44px);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.dehaze-heading-h2 {
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.dehaze-heading-h3 {
+  font-size: clamp(18px, 1.8vw, 24px);
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.dehaze-body {
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.dehaze-body-sm {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.dehaze-caption {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+/* Buttons */
+.dehaze-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.dehaze-btn:active {
+  transform: scale(0.97);
+}
+
+.dehaze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dehaze-btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #ffffff;
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-primary:hover {
+  box-shadow: var(--dehaze-shadow-3);
+  transform: translateY(-1px);
+}
+
+.dehaze-btn-secondary {
+  background-color: var(--dehaze-neutral-100);
+  color: var(--dehaze-neutral-700);
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-secondary:hover {
+  background-color: var(--dehaze-neutral-200);
+}
+
+.dehaze-btn-ghost {
+  background-color: transparent;
+  color: var(--dehaze-primary);
+  border-radius: var(--dehaze-radius-md);
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.dehaze-btn-ghost:hover {
+  background-color: var(--dehaze-primary-50);
+}
+
+/* Cards */
+.dehaze-card {
+  background-color: var(--dehaze-card);
+  border-radius: var(--dehaze-radius-xl);
+  box-shadow: var(--dehaze-shadow-1);
+  border: 1px solid var(--dehaze-border);
+}
+
+.dehaze-card-hover:hover {
+  box-shadow: var(--dehaze-shadow-3);
+  transform: translateY(-4px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Forms */
+.dehaze-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 15px;
+  border: 1px solid var(--dehaze-input);
+  border-radius: var(--dehaze-radius-md);
+  background-color: var(--dehaze-background);
+  color: var(--dehaze-foreground);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dehaze-input:focus {
+  outline: none;
+  border-color: var(--dehaze-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.dehaze-input::placeholder {
+  color: var(--dehaze-muted-foreground);
+}
+
+/* Utility gradients */
+.dehaze-gradient-primary {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+}
+
+.dehaze-gradient-metric {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.dehaze-text-gradient {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Status badges */
+.dehaze-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--dehaze-radius-full);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dehaze-badge-success {
+  background-color: rgba(76, 175, 80, 0.12);
+  color: #2e7d32;
+}
+
+.dehaze-badge-warning {
+  background-color: rgba(255, 152, 0, 0.12);
+  color: #ef6c00;
+}
+
+.dehaze-badge-error {
+  background-color: rgba(244, 67, 54, 0.12);
+  color: #c62828;
+}
+
+.dehaze-badge-info {
+  background-color: rgba(33, 150, 243, 0.12);
+  color: #1565c0;
+}
+
+/* Layout helpers */
+.dehaze-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--dehaze-space-lg);
+  padding-right: var(--dehaze-space-lg);
+}
+
+.dehaze-surface {
+  background-color: var(--dehaze-card);
+  border: 1px solid var(--dehaze-border);
+  border-radius: var(--dehaze-radius-xl);
+}
+
+/* Desktop shell helpers */
+.dehaze-shell {
+  min-height: 100vh;
+  display: flex;
+}
+
+.dehaze-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--dehaze-sidebar-width);
+  z-index: 40;
+  border-right: 1px solid var(--dehaze-border);
+  background-color: var(--dehaze-card);
+}
+
+.dehaze-topbar {
+  position: fixed;
+  top: 0;
+  left: var(--dehaze-sidebar-width);
+  right: 0;
+  height: var(--dehaze-topbar-height);
+  z-index: 30;
+  border-bottom: 1px solid var(--dehaze-border);
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+}
+
+html.dark .dehaze-topbar {
+  background-color: rgba(11, 17, 32, 0.85);
+}
+
+.dehaze-content {
+  margin-left: var(--dehaze-sidebar-width);
+  padding-top: var(--dehaze-topbar-height);
+  min-height: 100vh;
+  width: calc(100% - var(--dehaze-sidebar-width));
+}
+
+/* Animation helpers */
+@keyframes dehaze-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dehaze-animate-fade-in {
+  animation: dehaze-fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--dehaze-neutral-300);
+  border-radius: var(--dehaze-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--dehaze-neutral-400);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--dehaze-background);
+    --color-foreground: var(--dehaze-foreground);
+    --color-card: var(--dehaze-card);
+    --color-card-foreground: var(--dehaze-card-foreground);
+    --color-popover: var(--dehaze-popover);
+    --color-popover-foreground: var(--dehaze-popover-foreground);
+    --color-primary: var(--dehaze-primary);
+    --color-primary-foreground: var(--dehaze-primary-foreground);
+    --color-muted: var(--dehaze-muted);
+    --color-muted-foreground: var(--dehaze-muted-foreground);
+    --color-border: var(--dehaze-border);
+    --color-input: var(--dehaze-input);
+    --color-ring: var(--dehaze-ring);
+    --radius-sm: var(--dehaze-radius-sm);
+    --radius-md: var(--dehaze-radius-md);
+    --radius-lg: var(--dehaze-radius-lg);
+    --radius-xl: var(--dehaze-radius-xl);
+  }
+  @layer base {
+    body { background: var(--dehaze-background); color: var(--dehaze-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--dehaze-background); }
+      .text-background { color: var(--dehaze-background); }
+      .border-background { border-color: var(--dehaze-background); }
+      .ring-background { --tw-ring-color: var(--dehaze-background); }
+      .bg-foreground { background-color: var(--dehaze-foreground); }
+      .text-foreground { color: var(--dehaze-foreground); }
+      .border-foreground { border-color: var(--dehaze-foreground); }
+      .ring-foreground { --tw-ring-color: var(--dehaze-foreground); }
+      .bg-card { background-color: var(--dehaze-card); }
+      .text-card { color: var(--dehaze-card); }
+      .border-card { border-color: var(--dehaze-card); }
+      .ring-card { --tw-ring-color: var(--dehaze-card); }
+      .bg-card-foreground { background-color: var(--dehaze-card-foreground); }
+      .text-card-foreground { color: var(--dehaze-card-foreground); }
+      .border-card-foreground { border-color: var(--dehaze-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--dehaze-card-foreground); }
+      .bg-popover { background-color: var(--dehaze-popover); }
+      .text-popover { color: var(--dehaze-popover); }
+      .border-popover { border-color: var(--dehaze-popover); }
+      .ring-popover { --tw-ring-color: var(--dehaze-popover); }
+      .bg-popover-foreground { background-color: var(--dehaze-popover-foreground); }
+      .text-popover-foreground { color: var(--dehaze-popover-foreground); }
+      .border-popover-foreground { border-color: var(--dehaze-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--dehaze-popover-foreground); }
+      .bg-primary { background-color: var(--dehaze-primary); }
+      .text-primary { color: var(--dehaze-primary); }
+      .border-primary { border-color: var(--dehaze-primary); }
+      .ring-primary { --tw-ring-color: var(--dehaze-primary); }
+      .bg-primary-foreground { background-color: var(--dehaze-primary-foreground); }
+      .text-primary-foreground { color: var(--dehaze-primary-foreground); }
+      .border-primary-foreground { border-color: var(--dehaze-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--dehaze-primary-foreground); }
+      .bg-muted { background-color: var(--dehaze-muted); }
+      .text-muted { color: var(--dehaze-muted); }
+      .border-muted { border-color: var(--dehaze-muted); }
+      .ring-muted { --tw-ring-color: var(--dehaze-muted); }
+      .bg-muted-foreground { background-color: var(--dehaze-muted-foreground); }
+      .text-muted-foreground { color: var(--dehaze-muted-foreground); }
+      .border-muted-foreground { border-color: var(--dehaze-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--dehaze-muted-foreground); }
+      .bg-border { background-color: var(--dehaze-border); }
+      .text-border { color: var(--dehaze-border); }
+      .border-border { border-color: var(--dehaze-border); }
+      .ring-border { --tw-ring-color: var(--dehaze-border); }
+      .bg-input { background-color: var(--dehaze-input); }
+      .text-input { color: var(--dehaze-input); }
+      .border-input { border-color: var(--dehaze-input); }
+      .ring-input { --tw-ring-color: var(--dehaze-input); }
+      .bg-ring { background-color: var(--dehaze-ring); }
+      .text-ring { color: var(--dehaze-ring); }
+      .border-ring { border-color: var(--dehaze-ring); }
+      .ring-ring { --tw-ring-color: var(--dehaze-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body id="page-history" class="h-screen overflow-hidden font-sans antialiased" data-viewport-mode="app-shell" style="width: 1424px; height: 2214px;">
+  <aside class="dehaze-sidebar flex flex-col">
+    <div class="h-16 flex items-center px-6 border-b border-[var(--dehaze-border)]">
+      <a href="index.html" class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg dehaze-gradient-primary flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+        </div>
+        <span class="text-lg font-semibold text-[var(--dehaze-foreground)]">Dehaze</span>
+      </a>
+    </div>
+    <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+      <a data-dom-id="menu-dashboard" href="dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+        工作台
+      </a>
+      <a data-dom-id="menu-dehaze" href="dehaze.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--dehaze-primary)] bg-[var(--dehaze-primary-50)]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+        去雾处理
+      </a>
+      <a data-dom-id="menu-dataset" href="dataset.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+        数据集
+      </a>
+      <a data-dom-id="menu-algorithm" href="algorithm.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+        算法管理
+      </a>
+      <a data-dom-id="menu-compare" href="compare.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+        效果对比
+      </a>
+      <a data-dom-id="menu-profile" href="profile.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+        个人中心
+      </a>
+      <a data-dom-id="menu-settings" href="profile.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--dehaze-neutral-600)] hover:text-[var(--dehaze-foreground)] hover:bg-[var(--dehaze-muted)]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        系统设置
+      </a>
+    </nav>
+    <div class="p-4 border-t border-[var(--dehaze-border)]">
+      <div class="dehaze-surface p-3">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-8 h-8 rounded-full bg-[var(--dehaze-primary)] text-white flex items-center justify-center text-xs font-medium">李</div>
+          <div class="min-w-0">
+            <div class="text-sm font-medium truncate">李明</div>
+            <div class="text-xs text-[var(--dehaze-muted-foreground)]">专业版</div>
+          </div>
+        </div>
+        <div class="text-xs text-[var(--dehaze-muted-foreground)]">本月剩余额度 892/1000 张</div>
+      </div>
+    </div>
+  </aside>
+
+  <header class="dehaze-topbar flex items-center justify-between px-6">
+    <div class="flex items-center gap-2 text-sm text-[var(--dehaze-muted-foreground)]">
+      <span>去雾处理</span>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+      <span class="text-[var(--dehaze-foreground)]">处理历史记录</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <button data-dom-id="topbar-notify" class="relative w-9 h-9 rounded-lg border border-[var(--dehaze-border)] flex items-center justify-center text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+      </button>
+      <button data-dom-id="topbar-avatar" class="w-9 h-9 rounded-full bg-[var(--dehaze-primary)] text-white flex items-center justify-center text-sm font-medium">李</button>
+    </div>
+  </header>
+
+  <main class="dehaze-content p-6 overflow-y-auto h-full" data-scroll-region="primary" style="width: 1174px; height: 2342px;">
+    <div class="max-w-6xl mx-auto space-y-6">
+
+      <section class="dehaze-card p-6">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h1 class="dehaze-heading-h2 text-xl">处理历史记录</h1>
+            <p class="text-sm text-[var(--dehaze-muted-foreground)] mt-1">查看、对比与管理所有去雾处理任务</p>
+          </div>
+          <a href="dehaze.html" data-dom-id="btn-new-task" class="dehaze-btn dehaze-btn-primary text-sm">新建任务</a>
+        </div>
+      </section>
+
+      <section class="dehaze-card p-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="relative flex-1 min-w-[200px]">
+            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--dehaze-muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input data-dom-id="search-history" type="text" placeholder="搜索文件名" class="dehaze-input pl-9">
+          </div>
+          <select data-dom-id="filter-time" class="dehaze-input w-[140px]">
+            <option>最近7天</option>
+            <option>最近30天</option>
+            <option>自定义</option>
+          </select>
+          <select data-dom-id="filter-algo" class="dehaze-input w-[150px]">
+            <option>全部算法</option>
+            <option>AOD-Net</option>
+            <option>FFA-Net</option>
+            <option>GridDehazeNet</option>
+            <option>MSBDN</option>
+          </select>
+          <select data-dom-id="filter-status" class="dehaze-input w-[120px]">
+            <option>全部</option>
+            <option>成功</option>
+            <option>失败</option>
+          </select>
+          <select data-dom-id="sort-order" class="dehaze-input w-[140px]">
+            <option>时间倒序</option>
+            <option>评分倒序</option>
+            <option>耗时正序</option>
+          </select>
+          <div class="flex items-center border border-[var(--dehaze-border)] rounded-lg overflow-hidden">
+            <button data-dom-id="view-list" class="px-3 py-2 bg-[var(--dehaze-primary)] text-white text-sm flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+              列表
+            </button>
+            <button data-dom-id="view-grid" class="px-3 py-2 bg-[var(--dehaze-card)] text-[var(--dehaze-neutral-600)] text-sm flex items-center gap-1.5 hover:bg-[var(--dehaze-muted)]">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+              网格
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="dehaze-card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold">列表视图</h2>
+          <span class="text-xs text-[var(--dehaze-muted-foreground)]">共 24 条记录</span>
+        </div>
+        <div class="space-y-3">
+
+          <div class="flex items-center gap-4 p-3 rounded-xl border border-[var(--dehaze-border)] hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="w-16 h-12 rounded-lg bg-gradient-to-br from-[var(--dehaze-neutral-300)] to-[var(--dehaze-neutral-500)] flex-shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-medium truncate">mountain_hazy_01.jpg</span>
+                <span class="dehaze-badge dehaze-badge-info">AOD-Net</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="text-xs text-[var(--dehaze-muted-foreground)] mt-1">2025-07-28 14:32 · 耗时 8.4s</div>
+            </div>
+            <div class="hidden md:flex items-center gap-4 text-xs">
+              <div class="text-center"><div class="font-medium">PSNR</div><div class="text-[var(--dehaze-muted-foreground)]">28.4</div></div>
+              <div class="text-center"><div class="font-medium">SSIM</div><div class="text-[var(--dehaze-muted-foreground)]">0.91</div></div>
+              <div class="flex text-[var(--dehaze-state-warning)]">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 text-[var(--dehaze-neutral-300)] fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button data-dom-id="item-compare-1" class="dehaze-btn dehaze-btn-secondary text-xs px-3 py-2">查看对比</button>
+              <button data-dom-id="item-reprocess-1" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2">重新处理</button>
+              <button data-dom-id="item-delete-1" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2 text-[var(--dehaze-state-error)]">删除</button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 p-3 rounded-xl border border-[var(--dehaze-border)] hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="w-16 h-12 rounded-lg bg-gradient-to-br from-[var(--dehaze-primary-200)] to-[var(--dehaze-primary-400)] flex-shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-medium truncate">cityscape_dusk_02.png</span>
+                <span class="dehaze-badge dehaze-badge-info">FFA-Net</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="text-xs text-[var(--dehaze-muted-foreground)] mt-1">2025-07-27 09:15 · 耗时 12.1s</div>
+            </div>
+            <div class="hidden md:flex items-center gap-4 text-xs">
+              <div class="text-center"><div class="font-medium">PSNR</div><div class="text-[var(--dehaze-muted-foreground)]">30.2</div></div>
+              <div class="text-center"><div class="font-medium">SSIM</div><div class="text-[var(--dehaze-muted-foreground)]">0.94</div></div>
+              <div class="flex text-[var(--dehaze-state-warning)]">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button data-dom-id="item-compare-2" class="dehaze-btn dehaze-btn-secondary text-xs px-3 py-2">查看对比</button>
+              <button data-dom-id="item-reprocess-2" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2">重新处理</button>
+              <button data-dom-id="item-delete-2" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2 text-[var(--dehaze-state-error)]">删除</button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 p-3 rounded-xl border border-[var(--dehaze-border)] hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="w-16 h-12 rounded-lg bg-gradient-to-br from-[var(--dehaze-neutral-400)] to-[var(--dehaze-neutral-600)] flex-shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-medium truncate">forest_morning_03.jpg</span>
+                <span class="dehaze-badge dehaze-badge-info">GridDehazeNet</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="text-xs text-[var(--dehaze-muted-foreground)] mt-1">2025-07-26 18:40 · 耗时 15.7s</div>
+            </div>
+            <div class="hidden md:flex items-center gap-4 text-xs">
+              <div class="text-center"><div class="font-medium">PSNR</div><div class="text-[var(--dehaze-muted-foreground)]">27.8</div></div>
+              <div class="text-center"><div class="font-medium">SSIM</div><div class="text-[var(--dehaze-muted-foreground)]">0.89</div></div>
+              <div class="flex text-[var(--dehaze-state-warning)]">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 text-[var(--dehaze-neutral-300)] fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 text-[var(--dehaze-neutral-300)] fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button data-dom-id="item-compare-3" class="dehaze-btn dehaze-btn-secondary text-xs px-3 py-2">查看对比</button>
+              <button data-dom-id="item-reprocess-3" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2">重新处理</button>
+              <button data-dom-id="item-delete-3" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2 text-[var(--dehaze-state-error)]">删除</button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 p-3 rounded-xl border border-[var(--dehaze-border)] hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="w-16 h-12 rounded-lg bg-gradient-to-br from-[var(--dehaze-primary-300)] to-[var(--dehaze-primary-500)] flex-shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-medium truncate">building_dense_04.jpg</span>
+                <span class="dehaze-badge dehaze-badge-info">MSBDN</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="text-xs text-[var(--dehaze-muted-foreground)] mt-1">2025-07-25 11:20 · 耗时 22.3s</div>
+            </div>
+            <div class="hidden md:flex items-center gap-4 text-xs">
+              <div class="text-center"><div class="font-medium">PSNR</div><div class="text-[var(--dehaze-muted-foreground)]">31.5</div></div>
+              <div class="text-center"><div class="font-medium">SSIM</div><div class="text-[var(--dehaze-muted-foreground)]">0.95</div></div>
+              <div class="text-xs text-[var(--dehaze-muted-foreground)] italic">未评价</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button data-dom-id="item-compare-4" class="dehaze-btn dehaze-btn-secondary text-xs px-3 py-2">查看对比</button>
+              <button data-dom-id="item-reprocess-4" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2">重新处理</button>
+              <button data-dom-id="item-delete-4" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2 text-[var(--dehaze-state-error)]">删除</button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 p-3 rounded-xl border border-[var(--dehaze-state-error)] bg-[rgba(244,67,54,0.04)]">
+            <div class="w-16 h-12 rounded-lg bg-gradient-to-br from-[var(--dehaze-neutral-200)] to-[var(--dehaze-neutral-400)] flex-shrink-0 flex items-center justify-center">
+              <svg class="w-5 h-5 text-[var(--dehaze-neutral-500)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-medium truncate">road_scene_05.png</span>
+                <span class="dehaze-badge dehaze-badge-info">AOD-Net</span>
+                <span class="dehaze-badge dehaze-badge-error">失败</span>
+              </div>
+              <div class="text-xs text-[var(--dehaze-muted-foreground)] mt-1">2025-07-24 20:05 · 耗时 —</div>
+              <div class="flex items-center gap-1 mt-1 text-xs text-[var(--dehaze-state-error)]">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span title="模型加载超时，请检查网络或稍后重试">模型加载超时（鼠标悬停查看详情）</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button data-dom-id="btn-retry-failed" class="dehaze-btn dehaze-btn-primary text-xs px-4 py-2">重试</button>
+              <button data-dom-id="item-delete-5" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2 text-[var(--dehaze-state-error)]">删除</button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 p-3 rounded-xl border border-[var(--dehaze-border)] hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="w-16 h-12 rounded-lg bg-gradient-to-br from-[var(--dehaze-neutral-300)] to-[var(--dehaze-neutral-500)] flex-shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-medium truncate">coastline_sunset_06.jpg</span>
+                <span class="dehaze-badge dehaze-badge-info">FFA-Net</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="text-xs text-[var(--dehaze-muted-foreground)] mt-1">2025-07-23 16:50 · 耗时 10.2s</div>
+            </div>
+            <div class="hidden md:flex items-center gap-4 text-xs">
+              <div class="text-center"><div class="font-medium">PSNR</div><div class="text-[var(--dehaze-muted-foreground)]">29.1</div></div>
+              <div class="text-center"><div class="font-medium">SSIM</div><div class="text-[var(--dehaze-muted-foreground)]">0.92</div></div>
+              <div class="flex text-[var(--dehaze-state-warning)]">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 text-[var(--dehaze-neutral-300)] fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button data-dom-id="item-compare-5" class="dehaze-btn dehaze-btn-secondary text-xs px-3 py-2">查看对比</button>
+              <button data-dom-id="item-reprocess-5" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2">重新处理</button>
+              <button data-dom-id="item-delete-6" class="dehaze-btn dehaze-btn-ghost text-xs px-3 py-2 text-[var(--dehaze-state-error)]">删除</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="dehaze-card p-6" style="height: 447.656px;">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold">网格视图状态</h2>
+          <span class="text-xs text-[var(--dehaze-muted-foreground)]">标注：切换视图后展示</span>
+        </div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="group relative rounded-xl border border-[var(--dehaze-border)] overflow-hidden hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="aspect-[4/3] bg-gradient-to-br from-[var(--dehaze-neutral-300)] to-[var(--dehaze-neutral-500)]"></div>
+            <div class="p-3">
+              <div class="text-sm font-medium truncate">mountain_hazy_01.jpg</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="dehaze-badge dehaze-badge-info">AOD-Net</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="flex items-center justify-between mt-2 text-xs text-[var(--dehaze-muted-foreground)]">
+                <span>PSNR 28.4</span>
+                <span>SSIM 0.91</span>
+              </div>
+            </div>
+            <div class="absolute inset-x-0 top-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+              <button data-dom-id="grid-compare-1" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              </button>
+              <button data-dom-id="grid-reprocess-1" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+              <button data-dom-id="grid-delete-1" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-state-error)] flex items-center justify-center shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="group relative rounded-xl border border-[var(--dehaze-border)] overflow-hidden hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="aspect-[4/3] bg-gradient-to-br from-[var(--dehaze-primary-200)] to-[var(--dehaze-primary-400)]"></div>
+            <div class="p-3">
+              <div class="text-sm font-medium truncate">cityscape_dusk_02.png</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="dehaze-badge dehaze-badge-info">FFA-Net</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="flex items-center justify-between mt-2 text-xs text-[var(--dehaze-muted-foreground)]">
+                <span>PSNR 30.2</span>
+                <span>SSIM 0.94</span>
+              </div>
+            </div>
+            <div class="absolute inset-x-0 top-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+              <button data-dom-id="grid-compare-2" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              </button>
+              <button data-dom-id="grid-reprocess-2" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+              <button data-dom-id="grid-delete-2" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-state-error)] flex items-center justify-center shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="group relative rounded-xl border border-[var(--dehaze-border)] overflow-hidden hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="aspect-[4/3] bg-gradient-to-br from-[var(--dehaze-neutral-400)] to-[var(--dehaze-neutral-600)]"></div>
+            <div class="p-3">
+              <div class="text-sm font-medium truncate">forest_morning_03.jpg</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="dehaze-badge dehaze-badge-info">GridDehazeNet</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="flex items-center justify-between mt-2 text-xs text-[var(--dehaze-muted-foreground)]">
+                <span>PSNR 27.8</span>
+                <span>SSIM 0.89</span>
+              </div>
+            </div>
+            <div class="absolute inset-x-0 top-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+              <button data-dom-id="grid-compare-3" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              </button>
+              <button data-dom-id="grid-reprocess-3" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+              <button data-dom-id="grid-delete-3" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-state-error)] flex items-center justify-center shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="group relative rounded-xl border border-[var(--dehaze-border)] overflow-hidden hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="aspect-[4/3] bg-gradient-to-br from-[var(--dehaze-primary-300)] to-[var(--dehaze-primary-500)]"></div>
+            <div class="p-3">
+              <div class="text-sm font-medium truncate">building_dense_04.jpg</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="dehaze-badge dehaze-badge-info">MSBDN</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="flex items-center justify-between mt-2 text-xs text-[var(--dehaze-muted-foreground)]">
+                <span>PSNR 31.5</span>
+                <span>SSIM 0.95</span>
+              </div>
+            </div>
+            <div class="absolute inset-x-0 top-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+              <button data-dom-id="grid-compare-4" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              </button>
+              <button data-dom-id="grid-reprocess-4" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+              <button data-dom-id="grid-delete-4" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-state-error)] flex items-center justify-center shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dehaze-card p-10 text-center">
+        <div class="w-16 h-16 rounded-full bg-[var(--dehaze-muted)] text-[var(--dehaze-muted-foreground)] flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <h3 class="text-base font-semibold mb-1">暂无历史记录</h3>
+        <p class="text-sm text-[var(--dehaze-muted-foreground)]">当前筛选条件下没有匹配的处理记录，请尝试调整筛选条件或上传图片开始处理。</p>
+      </section>
+
+      <section class="flex flex-wrap items-center justify-between gap-3">
+        <span class="text-sm text-[var(--dehaze-muted-foreground)]">显示 1-6 / 24</span>
+        <div class="flex items-center gap-2">
+          <button data-dom-id="pagination-prev" class="px-3 py-2 rounded-lg border border-[var(--dehaze-border)] text-sm text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">上一页</button>
+          <button class="w-9 h-9 rounded-lg bg-[var(--dehaze-primary)] text-white text-sm font-medium">1</button>
+          <button class="w-9 h-9 rounded-lg border border-[var(--dehaze-border)] text-sm text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">2</button>
+          <button class="w-9 h-9 rounded-lg border border-[var(--dehaze-border)] text-sm text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">3</button>
+          <button class="w-9 h-9 rounded-lg border border-[var(--dehaze-border)] text-sm text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">4</button>
+          <button data-dom-id="pagination-next" class="px-3 py-2 rounded-lg border border-[var(--dehaze-border)] text-sm text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">下一页</button>
+        </div>
+      </section>
+
+      <section class="dehaze-card p-6">
+        <h2 class="text-base font-semibold mb-3">交互说明</h2>
+        <ul class="space-y-2 text-sm text-[var(--dehaze-muted-foreground)]">
+          <li><span class="text-[var(--dehaze-foreground)] font-medium">A:</span> 顶部筛选栏支持按时间、算法、状态、关键字搜索；切换排序与列表/网格视图。</li>
+          <li><span class="text-[var(--dehaze-foreground)] font-medium">B:</span> 点击“查看对比”打开效果对比页（并排模式），可继续切换重叠/放大镜/指标等模式。</li>
+          <li><span class="text-[var(--dehaze-foreground)] font-medium">C:</span> “重新处理”支持同算法重处理或换算法处理；删除历史需二次确认。</li>
+          <li><span class="text-[var(--dehaze-foreground)] font-medium">D:</span> 历史记录保留条数受会员等级限制；失败任务可重试，处理中任务显示实时进度。</li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>

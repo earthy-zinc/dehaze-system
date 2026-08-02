@@ -1,0 +1,1098 @@
+{
+  "schemaVersion": "1.0",
+  "skillProvenance": {
+    "name": "solo-design",
+    "version": "2026.07.22.00.00.00",
+    "version_source": "skill-release-manifest.json",
+    "release": "prompt-base-cloud-ssot-migration",
+    "read_status": "loaded"
+  },
+  "project": {
+    "operation": "create",
+    "resolvedLane": "complex_html_page",
+    "intentProfile": {
+      "caseFamily": "free_exploration",
+      "sourceType": "prd",
+      "multiDeviceProject": false,
+      "deviceType": "desktop"
+    },
+    "selectedIntentWorkflowRead": true,
+    "contextRequirementsLoaded": [
+      {
+        "path": "intent-workflows/intent-project-complex-build/INTENT_WORKFLOW.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      },
+      {
+        "path": "shared-runtime/runtime-boundaries/lane-runtime-contracts.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      },
+      {
+        "path": "shared-runtime/agent-dispatch-runtime/lane-dispatch-index.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      },
+      {
+        "path": "shared-runtime/agent-dispatch-runtime/shared-page-rendering-kernel.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      },
+      {
+        "path": "delivery-quality/page-rendering-quality-gate.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      },
+      {
+        "path": "delivery-quality/design-artifact-validation.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      },
+      {
+        "path": "delivery-quality/delivery-evidence-contract.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      },
+      {
+        "path": "visual-experience/visual-experience-guidelines.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      },
+      {
+        "path": "visual-experience/visual-checkpoint-protocol.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      }
+    ],
+    "contextReadScope": "complex_html_page lane + delivery quality + visual experience",
+    "validationRunDiscipline": "run-validate-design-workspace-before-delivery",
+    "lowValueCallWatchdog": {
+      "noProgressNextAction": "proceed-to-readiness-or-blocked-summary"
+    },
+    "projectName": "Dehaze 桌面端统一交互设计稿",
+    "deviceType": "desktop",
+    "designRead": "AI 图像去雾系统 / Web 桌面端 / 专业科技风 / 中高密度 / 左侧固定边栏 + 顶部顶栏 + 内容区",
+    "designDials": {
+      "layoutVariance": 3,
+      "motionIntensity": 2,
+      "visualDensity": 4
+    },
+    "cssPreflightEvidence": {
+      "command": "node apply-html-head-contract.mjs colors_and_type.css .preflight/preflight.html --title=Preflight --lang=zh-CN --prefix=dehaze",
+      "exitCode": 0,
+      "outputHasThemeVars": true,
+      "outputHasSemanticFallback": true
+    },
+    "sharedProjectShellContract": {
+      "navigationShell": "hybrid-top-and-sidebar",
+      "shellRegions": [
+        "top-header",
+        "sidebar-nav",
+        "main-content"
+      ],
+      "radiusScale": {
+        "sm": 4,
+        "md": 8,
+        "lg": 12,
+        "xl": 16,
+        "full": 9999
+      },
+      "surfaceDepthModel": "border-led-static-surface-floating-layer-shadow",
+      "typographySystem": {
+        "title": "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+        "body": "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif"
+      },
+      "stateColors": {
+        "success": "#4caf50",
+        "warning": "#ff9800",
+        "error": "#f44336",
+        "info": "#2196f3"
+      },
+      "desktopNavigation": {
+        "applies": true,
+        "type": "left-sidebar",
+        "widthPx": 248,
+        "topBarHeightPx": 64,
+        "items": [
+          {
+            "key": "dashboard",
+            "label": "工作台",
+            "icon": "layout-dashboard"
+          },
+          {
+            "key": "dehaze",
+            "label": "去雾处理",
+            "icon": "sparkles"
+          },
+          {
+            "key": "dataset",
+            "label": "数据集",
+            "icon": "database"
+          },
+          {
+            "key": "algorithm",
+            "label": "算法管理",
+            "icon": "cpu"
+          },
+          {
+            "key": "compare",
+            "label": "效果对比",
+            "icon": "split"
+          },
+          {
+            "key": "profile",
+            "label": "个人中心",
+            "icon": "user"
+          },
+          {
+            "key": "settings",
+            "label": "系统设置",
+            "icon": "settings"
+          }
+        ]
+      }
+    },
+    "generationTree": {
+      "nodeId": "root",
+      "kind": "project-shell",
+      "pageIds": [
+        "page-index",
+        "page-dashboard",
+        "page-dehaze",
+        "page-dataset",
+        "page-algorithm",
+        "page-profile",
+        "page-compare",
+        "page-login",
+        "page-register"
+      ],
+      "output": "partials/project-shell.html",
+      "sharedRegions": [
+        "top-header",
+        "sidebar-nav",
+        "main-content-frame"
+      ],
+      "privateRegions": [],
+      "mutableSlots": [
+        "pageTitle",
+        "activeNavItem",
+        "contentBody"
+      ],
+      "status": "generated",
+      "children": [
+        {
+          "nodeId": "gen-index",
+          "kind": "page-leaf",
+          "pageIds": [
+            "page-index"
+          ],
+          "output": "pages/index.html",
+          "sharedRegions": [],
+          "privateRegions": [
+            "full-page"
+          ],
+          "mutableSlots": [],
+          "status": "generated",
+          "children": []
+        },
+        {
+          "nodeId": "gen-dashboard",
+          "kind": "page-leaf",
+          "pageIds": [
+            "page-dashboard"
+          ],
+          "output": "pages/dashboard.html",
+          "sharedRegions": [
+            "top-header",
+            "sidebar-nav"
+          ],
+          "privateRegions": [
+            "contentBody"
+          ],
+          "mutableSlots": [
+            "activeNavItem"
+          ],
+          "status": "generated",
+          "children": []
+        },
+        {
+          "nodeId": "gen-dehaze",
+          "kind": "page-leaf",
+          "pageIds": [
+            "page-dehaze"
+          ],
+          "output": "pages/dehaze.html",
+          "sharedRegions": [
+            "top-header",
+            "sidebar-nav"
+          ],
+          "privateRegions": [
+            "contentBody"
+          ],
+          "mutableSlots": [
+            "activeNavItem"
+          ],
+          "status": "generated",
+          "children": []
+        },
+        {
+          "nodeId": "gen-dataset",
+          "kind": "page-leaf",
+          "pageIds": [
+            "page-dataset"
+          ],
+          "output": "pages/dataset.html",
+          "sharedRegions": [
+            "top-header",
+            "sidebar-nav"
+          ],
+          "privateRegions": [
+            "contentBody"
+          ],
+          "mutableSlots": [
+            "activeNavItem"
+          ],
+          "status": "generated",
+          "children": []
+        },
+        {
+          "nodeId": "gen-algorithm",
+          "kind": "page-leaf",
+          "pageIds": [
+            "page-algorithm"
+          ],
+          "output": "pages/algorithm.html",
+          "sharedRegions": [
+            "top-header",
+            "sidebar-nav"
+          ],
+          "privateRegions": [
+            "contentBody"
+          ],
+          "mutableSlots": [
+            "activeNavItem"
+          ],
+          "status": "generated",
+          "children": []
+        },
+        {
+          "nodeId": "gen-profile",
+          "kind": "page-leaf",
+          "pageIds": [
+            "page-profile"
+          ],
+          "output": "pages/profile.html",
+          "sharedRegions": [
+            "top-header",
+            "sidebar-nav"
+          ],
+          "privateRegions": [
+            "contentBody"
+          ],
+          "mutableSlots": [
+            "activeNavItem"
+          ],
+          "status": "generated",
+          "children": []
+        },
+        {
+          "nodeId": "gen-compare",
+          "kind": "page-leaf",
+          "pageIds": [
+            "page-compare"
+          ],
+          "output": "pages/compare.html",
+          "sharedRegions": [
+            "top-header",
+            "sidebar-nav"
+          ],
+          "privateRegions": [
+            "contentBody"
+          ],
+          "mutableSlots": [
+            "activeNavItem"
+          ],
+          "status": "generated",
+          "children": []
+        },
+        {
+          "nodeId": "gen-login",
+          "kind": "page-leaf",
+          "pageIds": [
+            "page-login"
+          ],
+          "output": "pages/login.html",
+          "sharedRegions": [],
+          "privateRegions": [
+            "full-page"
+          ],
+          "mutableSlots": [],
+          "status": "generated",
+          "children": []
+        },
+        {
+          "nodeId": "gen-register",
+          "kind": "page-leaf",
+          "pageIds": [
+            "page-register"
+          ],
+          "output": "pages/register.html",
+          "sharedRegions": [],
+          "privateRegions": [
+            "full-page"
+          ],
+          "mutableSlots": [],
+          "status": "generated",
+          "children": []
+        }
+      ]
+    },
+    "dispatchPreflightManifest": [],
+    "expectedDispatches": [
+      {
+        "nodeId": "gen-index",
+        "targetPageId": "page-index",
+        "htmlSrc": "pages/index.html",
+        "targetDevice": "desktop",
+        "viewportMode": "document-scroll"
+      },
+      {
+        "nodeId": "gen-dashboard",
+        "targetPageId": "page-dashboard",
+        "htmlSrc": "pages/dashboard.html",
+        "targetDevice": "desktop",
+        "viewportMode": "app-shell"
+      },
+      {
+        "nodeId": "gen-dehaze",
+        "targetPageId": "page-dehaze",
+        "htmlSrc": "pages/dehaze.html",
+        "targetDevice": "desktop",
+        "viewportMode": "app-shell"
+      },
+      {
+        "nodeId": "gen-dataset",
+        "targetPageId": "page-dataset",
+        "htmlSrc": "pages/dataset.html",
+        "targetDevice": "desktop",
+        "viewportMode": "app-shell"
+      },
+      {
+        "nodeId": "gen-algorithm",
+        "targetPageId": "page-algorithm",
+        "htmlSrc": "pages/algorithm.html",
+        "targetDevice": "desktop",
+        "viewportMode": "app-shell"
+      },
+      {
+        "nodeId": "gen-profile",
+        "targetPageId": "page-profile",
+        "htmlSrc": "pages/profile.html",
+        "targetDevice": "desktop",
+        "viewportMode": "app-shell"
+      },
+      {
+        "nodeId": "gen-compare",
+        "targetPageId": "page-compare",
+        "htmlSrc": "pages/compare.html",
+        "targetDevice": "desktop",
+        "viewportMode": "app-shell"
+      },
+      {
+        "nodeId": "gen-login",
+        "targetPageId": "page-login",
+        "htmlSrc": "pages/login.html",
+        "targetDevice": "desktop",
+        "viewportMode": "document-scroll"
+      },
+      {
+        "nodeId": "gen-register",
+        "targetPageId": "page-register",
+        "htmlSrc": "pages/register.html",
+        "targetDevice": "desktop",
+        "viewportMode": "document-scroll"
+      }
+    ],
+    "validationHistory": [
+      {
+        "reportPath": "validation-report.json",
+        "reportHash": "bceb776eda8c308bad9d8e10fd108ee2320b6f2ecfffb79054276f155a72b3b2",
+        "checkedAt": "2026-08-02T07:16:11.331Z",
+        "success": false,
+        "exitCode": 1,
+        "renderBlockingErrorCount": 5,
+        "repairPlanHints": [
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body"
+        ],
+        "errorSignatures": [
+          {
+            "errorClass": "artifact-readiness",
+            "normalized": "[design-file] Validation failed for .design file batch: ======================================== [FAIL] Validation failed ---------------------------------------- Found 8 issues: 1. [data[11].id] invalid image id \"img-ds-cityscape\", expected image-001 style 2. [data[11].canvasData.group] must not exist on image nodes 3. [data[12].id] invalid image id \"img-ds-street\", expected image-001 style 4. [data[12].canvasData.group] must not exist on image nodes 5. [data[13].id] invalid image id \"img-ds-remote\", expected image-001 style 6. [data[13].canvasData.group] must not exist on image nodes 7. [data[14].id] invalid image id \"img-ds-dense\", expected image-001 style 8. [data[14].canvasData.group] must not exist on image nodes ========================================",
+            "signature": "ba376420c4d1b13a1c4d586ec189c8ba3514735ad5b4f806517204b84506fb88"
+          },
+          {
+            "errorClass": "html-quality",
+            "normalized": "[html-quality] dataset-v2.html: image source must use ../assets/ relative path: assets/dataset-card-cityscape.jpg",
+            "signature": "0b95619b0247f40f6c1c160d40c555a2fc8b7c716bcb1abdf3adb2cc9c3e0b98"
+          },
+          {
+            "errorClass": "html-quality",
+            "normalized": "[html-quality] dataset-v2.html: image source must use ../assets/ relative path: assets/dataset-card-street.jpg",
+            "signature": "ad1126e02ac002ced53f68f83e8f6a94c694a34d949f9ac5ccde801e03bacc08"
+          },
+          {
+            "errorClass": "html-quality",
+            "normalized": "[html-quality] dataset-v2.html: image source must use ../assets/ relative path: assets/dataset-card-remote.jpg",
+            "signature": "7fe0d52c0d7d1639ed07d2430b861d288101a5c368e94c05cdab2865194c42a3"
+          },
+          {
+            "errorClass": "html-quality",
+            "normalized": "[html-quality] dataset-v2.html: image source must use ../assets/ relative path: assets/dataset-card-dense.jpg",
+            "signature": "c5ea2a9b0cb39277261a331c18d38da304a6150db7ffa3b80a56dddcf17c48d3"
+          }
+        ],
+        "terminalState": null
+      },
+      {
+        "reportPath": "validation-report.json",
+        "reportHash": "7c278ec00fa6f140bdff705d229b87135abd72e8c9bb2da2239496d7f7b4e20f",
+        "checkedAt": "2026-08-02T07:17:02.985Z",
+        "success": true,
+        "exitCode": 0,
+        "renderBlockingErrorCount": 0,
+        "repairPlanHints": [
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body"
+        ],
+        "errorSignatures": [],
+        "terminalState": null
+      },
+      {
+        "reportPath": "validation-report.json",
+        "reportHash": "dcd91249ca7848d106393191ad8cb8990244cc624fa5a7862bf2b28eea201616",
+        "checkedAt": "2026-08-02T07:41:46.740Z",
+        "success": false,
+        "exitCode": 1,
+        "renderBlockingErrorCount": 1,
+        "repairPlanHints": [
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body"
+        ],
+        "errorSignatures": [
+          {
+            "errorClass": "artifact-readiness",
+            "normalized": "[design-file] Validation failed for .design file batch: ======================================== [FAIL] Validation failed ---------------------------------------- Found 2 issues: 1. [cross-version(page-index)] superseded page \"page-index\" (title: \"首页\") must have empty interactions (retired pages must not navigate in preview). Fix: set this page node's devMetadata.interactions to []. 2. [cross-version(page-index.interactions[0])] interaction domId \"nav-home\" targets superseded page \"page-index\" — preview must not mix old and new versions. Fix: redirect targetPageId to \"page-index-v2\". ========================================",
+            "signature": "4ae882ee1ce70159c3618b2b7bc89960553e38a921776a0953f29a2529f0fb32"
+          }
+        ],
+        "terminalState": null
+      },
+      {
+        "reportPath": "validation-report.json",
+        "reportHash": "7da1a6ee6bfd02c333a1fc7070effcc353cd5292675f3390b9edfa08f0315b5d",
+        "checkedAt": "2026-08-02T07:49:29.043Z",
+        "success": true,
+        "exitCode": 0,
+        "renderBlockingErrorCount": 0,
+        "repairPlanHints": [
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body"
+        ],
+        "errorSignatures": [],
+        "terminalState": null
+      }
+    ],
+    "validationRepairLedger": [
+      {
+        "failedReportPath": "validation-report.json",
+        "failedReportHash": "bceb776eda8c308bad9d8e10fd108ee2320b6f2ecfffb79054276f155a72b3b2",
+        "repairWorkflowReadPath": "intent-workflows/intent-project-mutation/main-agent-repair-workflow.md",
+        "repairStartedAt": "2026-08-02T07:16:18.525Z",
+        "repairEntryStatus": "revalidated-success",
+        "ownerTriage": [
+          {
+            "owner": "sub-agent",
+            "errorClass": "hardcoded-color-in-body",
+            "affectedFiles": [
+              "index.html"
+            ],
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once"
+          },
+          {
+            "owner": "sub-agent",
+            "errorClass": "hardcoded-color-in-body",
+            "affectedFiles": [
+              "login.html"
+            ],
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once"
+          },
+          {
+            "owner": "sub-agent",
+            "errorClass": "hardcoded-color-in-body",
+            "affectedFiles": [
+              "register.html"
+            ],
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once"
+          }
+        ],
+        "repairPlanHints": [
+          {
+            "errorClass": "hardcoded-color-in-body",
+            "owner": "sub-agent",
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once",
+            "affectedFiles": [
+              "index.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          },
+          {
+            "errorClass": "hardcoded-color-in-body",
+            "owner": "sub-agent",
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once",
+            "affectedFiles": [
+              "login.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          },
+          {
+            "errorClass": "hardcoded-color-in-body",
+            "owner": "sub-agent",
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once",
+            "affectedFiles": [
+              "register.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          }
+        ],
+        "repairActions": [],
+        "revalidationReportPath": "validation-report.json",
+        "revalidationReportHash": "7c278ec00fa6f140bdff705d229b87135abd72e8c9bb2da2239496d7f7b4e20f",
+        "revalidationSuccess": true,
+        "blockedReason": null,
+        "revalidationRecordedAt": "2026-08-02T07:17:08.658Z"
+      },
+      {
+        "failedReportPath": "validation-report.json",
+        "failedReportHash": "dcd91249ca7848d106393191ad8cb8990244cc624fa5a7862bf2b28eea201616",
+        "repairWorkflowReadPath": "intent-workflows/intent-project-mutation/main-agent-repair-workflow.md",
+        "repairStartedAt": "2026-08-02T07:42:49.007Z",
+        "repairEntryStatus": "revalidated-success",
+        "ownerTriage": [
+          {
+            "owner": "sub-agent",
+            "errorClass": "hardcoded-color-in-body",
+            "affectedFiles": [
+              "index-v2.html"
+            ],
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once"
+          },
+          {
+            "owner": "sub-agent",
+            "errorClass": "hardcoded-color-in-body",
+            "affectedFiles": [
+              "index.html"
+            ],
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once"
+          },
+          {
+            "owner": "sub-agent",
+            "errorClass": "hardcoded-color-in-body",
+            "affectedFiles": [
+              "login.html"
+            ],
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once"
+          },
+          {
+            "owner": "sub-agent",
+            "errorClass": "hardcoded-color-in-body",
+            "affectedFiles": [
+              "register.html"
+            ],
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once"
+          }
+        ],
+        "repairPlanHints": [
+          {
+            "errorClass": "hardcoded-color-in-body",
+            "owner": "sub-agent",
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once",
+            "affectedFiles": [
+              "index-v2.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          },
+          {
+            "errorClass": "hardcoded-color-in-body",
+            "owner": "sub-agent",
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once",
+            "affectedFiles": [
+              "index.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          },
+          {
+            "errorClass": "hardcoded-color-in-body",
+            "owner": "sub-agent",
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once",
+            "affectedFiles": [
+              "login.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          },
+          {
+            "errorClass": "hardcoded-color-in-body",
+            "owner": "sub-agent",
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once",
+            "affectedFiles": [
+              "register.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          }
+        ],
+        "repairActions": [
+          {
+            "owner": "main-agent",
+            "errorClass": "artifact-readiness",
+            "affectedFiles": [
+              "dehaze-desktop-web.design"
+            ],
+            "action": "clear_superseded_interactions",
+            "observedFileHashes": [
+              {
+                "path": "dehaze-desktop-web.design",
+                "hash": "76ce8e5a1fd90f4f41803d68ba9f6751ba2ab64588f6af8752eb1e0bcec49600"
+              }
+            ],
+            "preEditFileHashes": [],
+            "postEditFileHashes": [],
+            "repairOwnedFields": [
+              "artifact-readiness"
+            ],
+            "recordedAt": "2026-08-02T07:43:04.928Z",
+            "repairActionTableRequired": true
+          }
+        ],
+        "revalidationReportPath": "validation-report.json",
+        "revalidationReportHash": "7da1a6ee6bfd02c333a1fc7070effcc353cd5292675f3390b9edfa08f0315b5d",
+        "revalidationSuccess": true,
+        "blockedReason": null,
+        "revalidationRecordedAt": "2026-08-02T07:49:37.820Z"
+      }
+    ],
+    "repairEntryEvidence": [
+      {
+        "failedReportPath": "validation-report.json",
+        "failedReportHash": "bceb776eda8c308bad9d8e10fd108ee2320b6f2ecfffb79054276f155a72b3b2",
+        "repairWorkflowReadPath": "intent-workflows/intent-project-mutation/main-agent-repair-workflow.md",
+        "repairStartedAt": "2026-08-02T07:16:18.525Z",
+        "ledgerIndex": 0,
+        "ownerTriageCount": 3,
+        "repairActionCount": 0,
+        "revalidationReportPath": "validation-report.json",
+        "revalidationReportHash": "7c278ec00fa6f140bdff705d229b87135abd72e8c9bb2da2239496d7f7b4e20f",
+        "revalidationSuccess": true
+      },
+      {
+        "failedReportPath": "validation-report.json",
+        "failedReportHash": "dcd91249ca7848d106393191ad8cb8990244cc624fa5a7862bf2b28eea201616",
+        "repairWorkflowReadPath": "intent-workflows/intent-project-mutation/main-agent-repair-workflow.md",
+        "repairStartedAt": "2026-08-02T07:42:49.007Z",
+        "ledgerIndex": 1,
+        "ownerTriageCount": 4,
+        "repairActionCount": 1,
+        "revalidationReportPath": "validation-report.json",
+        "revalidationReportHash": "7da1a6ee6bfd02c333a1fc7070effcc353cd5292675f3390b9edfa08f0315b5d",
+        "revalidationSuccess": true
+      }
+    ]
+  },
+  "designSource": {
+    "operatingMode": "free-explore",
+    "cssFilePath": "colors_and_type.css",
+    "brandPrefix": "dehaze",
+    "styleConstraints": {
+      "radiusMax": 16,
+      "staticShadowAlphaMax": 0.05,
+      "singleBrandHue": true
+    }
+  },
+  "pages": [
+    {
+      "nodeId": "page-index",
+      "title": "首页",
+      "htmlSrc": "pages/index.html",
+      "pageIndex": 1,
+      "targetDevice": "desktop",
+      "viewportMode": "document-scroll",
+      "pageType": "showcase",
+      "visualNorthStar": "科技感产品官网首页，强调去雾能力与信任感",
+      "compositionPattern": "顶部导航 + Hero 大图 + 核心能力 + 数据统计 + CTA + 页脚",
+      "continuityAnchors": [
+        "统一品牌蓝色渐变",
+        "卡片式模块",
+        "顶部导航固定"
+      ],
+      "componentPlan": [
+        "顶部菜单",
+        "Hero 区域",
+        "核心能力卡片",
+        "数据统计",
+        "CTA",
+        "页脚"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-index-v2",
+      "title": "首页（视觉优化版）",
+      "htmlSrc": "pages/index-v2.html",
+      "pageIndex": 2,
+      "targetDevice": "desktop",
+      "viewportMode": "document-scroll",
+      "pageType": "showcase",
+      "visualNorthStar": "基于原首页的视觉升级对比稿，使用生成图片替换图标与背景，艺术字标题与更丰富的色彩层次",
+      "compositionPattern": "顶部导航 + Hero 大图背景 + 艺术字标题 + 核心能力（图标+文字横向排列）+ 数据统计 + 图片背景 CTA + 页脚",
+      "continuityAnchors": [
+        "统一品牌蓝色渐变",
+        "卡片式模块",
+        "顶部导航固定"
+      ],
+      "componentPlan": [
+        "顶部菜单",
+        "Hero 区域",
+        "核心能力卡片",
+        "数据统计",
+        "CTA",
+        "页脚"
+      ],
+      "imagePlan": [
+        "assets/logo-dehaze.jpg",
+        "assets/hero-bg-dehaze.jpg",
+        "assets/feature-icon-ai.jpg",
+        "assets/feature-icon-batch.jpg",
+        "assets/feature-icon-compare.jpg",
+        "assets/feature-icon-lab.jpg",
+        "assets/cta-bg-dehaze.jpg"
+      ],
+      "mobileNavigationActiveKey": null,
+      "derivationType": "comparison-from-source",
+      "sourcePageId": "page-index",
+      "sourceHtmlSrc": "pages/index.html"
+    },
+    {
+      "nodeId": "page-dashboard",
+      "title": "工作台",
+      "htmlSrc": "pages/dashboard.html",
+      "pageIndex": 2,
+      "targetDevice": "desktop",
+      "viewportMode": "app-shell",
+      "pageType": "dashboard",
+      "visualNorthStar": "登录后的数据中枢，快捷入口与最近任务一目了然",
+      "compositionPattern": "左侧固定边栏 + 顶部顶栏 + 内容区卡片与列表",
+      "continuityAnchors": [
+        "左侧导航高亮",
+        "顶栏统一",
+        "品牌蓝色主按钮"
+      ],
+      "componentPlan": [
+        "左侧菜单",
+        "顶部栏",
+        "欢迎语",
+        "快捷入口卡片",
+        "最近任务列表",
+        "统计图表占位"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-dehaze",
+      "title": "去雾处理",
+      "htmlSrc": "pages/dehaze.html",
+      "pageIndex": 3,
+      "targetDevice": "desktop",
+      "viewportMode": "app-shell",
+      "pageType": "task-driven",
+      "visualNorthStar": "专业处理工作台，清晰的算法选择与参数调节",
+      "compositionPattern": "左侧边栏 + 顶部顶栏 + 分步流程内容区",
+      "continuityAnchors": [
+        "左侧导航高亮",
+        "步骤化布局",
+        "品牌蓝色主按钮"
+      ],
+      "componentPlan": [
+        "左侧菜单",
+        "顶部栏",
+        "上传区",
+        "算法树选择",
+        "参数滑块",
+        "处理按钮",
+        "进度/结果预览区"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-dataset",
+      "title": "数据集管理",
+      "htmlSrc": "pages/dataset.html",
+      "pageIndex": 4,
+      "targetDevice": "desktop",
+      "viewportMode": "app-shell",
+      "pageType": "data-management",
+      "visualNorthStar": "结构化数据管理页面，表格/卡片与筛选清晰可寻",
+      "compositionPattern": "左侧边栏 + 顶部顶栏 + 列表/表格内容区",
+      "continuityAnchors": [
+        "左侧导航高亮",
+        "顶栏统一",
+        "标签化状态"
+      ],
+      "componentPlan": [
+        "左侧菜单",
+        "顶部栏",
+        "搜索筛选",
+        "数据集列表表格/卡片",
+        "分页",
+        "类型标签",
+        "操作按钮"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-algorithm",
+      "title": "算法管理",
+      "htmlSrc": "pages/algorithm.html",
+      "pageIndex": 5,
+      "targetDevice": "desktop",
+      "viewportMode": "app-shell",
+      "pageType": "data-management",
+      "visualNorthStar": "算法卡片网格展示，便于搜索与对比",
+      "compositionPattern": "左侧边栏 + 顶部顶栏 + 算法卡片网格",
+      "continuityAnchors": [
+        "左侧导航高亮",
+        "顶栏统一",
+        "指标标签"
+      ],
+      "componentPlan": [
+        "左侧菜单",
+        "顶部栏",
+        "搜索",
+        "算法卡片网格",
+        "PSNR/SSIM 指标",
+        "操作按钮"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-profile",
+      "title": "个人中心",
+      "htmlSrc": "pages/profile.html",
+      "pageIndex": 6,
+      "targetDevice": "desktop",
+      "viewportMode": "app-shell",
+      "pageType": "settings",
+      "visualNorthStar": "用户信息与服务入口聚合页",
+      "compositionPattern": "左侧边栏 + 顶部顶栏 + 信息卡片与入口列表",
+      "continuityAnchors": [
+        "左侧导航高亮",
+        "顶栏统一",
+        "卡片式分区"
+      ],
+      "componentPlan": [
+        "左侧菜单",
+        "顶部栏",
+        "用户信息卡片",
+        "会员等级/套餐/额度/订单/收藏/反馈/设置入口"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-compare",
+      "title": "效果对比",
+      "htmlSrc": "pages/compare.html",
+      "pageIndex": 7,
+      "targetDevice": "desktop",
+      "viewportMode": "app-shell",
+      "pageType": "comparison",
+      "visualNorthStar": "原图与去雾结果的专业对比视图",
+      "compositionPattern": "左侧边栏 + 顶部顶栏 + 并排/重叠/放大镜对比区 + 指标面板",
+      "continuityAnchors": [
+        "左侧导航高亮",
+        "顶栏统一",
+        "对比工具栏"
+      ],
+      "componentPlan": [
+        "左侧菜单",
+        "顶部栏",
+        "原图/结果图并排对比",
+        "对比模式工具栏",
+        "指标面板"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-login",
+      "title": "登录",
+      "htmlSrc": "pages/login.html",
+      "pageIndex": 8,
+      "targetDevice": "desktop",
+      "viewportMode": "document-scroll",
+      "pageType": "auth",
+      "visualNorthStar": "简洁独立的登录入口，聚焦表单",
+      "compositionPattern": "居中卡片 + 表单 + 社交登录占位 + 跳转链接",
+      "continuityAnchors": [
+        "品牌蓝色主按钮",
+        "卡片式表单"
+      ],
+      "componentPlan": [
+        "登录表单",
+        "社交登录占位",
+        "注册跳转链接"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-register",
+      "title": "注册",
+      "htmlSrc": "pages/register.html",
+      "pageIndex": 9,
+      "targetDevice": "desktop",
+      "viewportMode": "document-scroll",
+      "pageType": "auth",
+      "visualNorthStar": "简洁独立的注册入口，聚焦表单",
+      "compositionPattern": "居中卡片 + 表单 + 社交登录占位 + 跳转链接",
+      "continuityAnchors": [
+        "品牌蓝色主按钮",
+        "卡片式表单"
+      ],
+      "componentPlan": [
+        "注册表单",
+        "社交登录占位",
+        "登录跳转链接"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-app-library",
+      "title": "资料库（桌面端应用）",
+      "htmlSrc": "pages/app-library.html",
+      "pageIndex": 10,
+      "targetDevice": "desktop",
+      "viewportMode": "app-shell",
+      "pageType": "data-management",
+      "visualNorthStar": "桌面端原生应用的资料库页面，左侧导航+算法列表",
+      "compositionPattern": "自定义标题栏 + 左侧导航 + 算法卡片列表",
+      "continuityAnchors": [
+        "原生应用标题栏",
+        "左侧导航高亮",
+        "品牌蓝色主按钮"
+      ],
+      "componentPlan": [
+        "Windows标题栏",
+        "左侧菜单",
+        "算法列表卡片",
+        "使用按钮"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-app-messages",
+      "title": "消息（桌面端应用）",
+      "htmlSrc": "pages/app-messages.html",
+      "pageIndex": 11,
+      "targetDevice": "desktop",
+      "viewportMode": "app-shell",
+      "pageType": "list",
+      "visualNorthStar": "桌面端原生应用的消息中心",
+      "compositionPattern": "自定义标题栏 + 左侧导航 + 消息列表",
+      "continuityAnchors": [
+        "原生应用标题栏",
+        "左侧导航高亮"
+      ],
+      "componentPlan": [
+        "Windows标题栏",
+        "左侧菜单",
+        "消息列表",
+        "全部已读按钮"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    },
+    {
+      "nodeId": "page-app-dehaze-windows",
+      "title": "去雾 Windows标题栏（桌面端应用）",
+      "htmlSrc": "pages/app-dehaze-windows.html",
+      "pageIndex": 12,
+      "targetDevice": "desktop",
+      "viewportMode": "app-shell",
+      "pageType": "task-driven",
+      "visualNorthStar": "带 Windows 原生标题栏的去雾处理工作台",
+      "compositionPattern": "Windows标题栏 + 左侧导航 + 分步流程内容区",
+      "continuityAnchors": [
+        "原生应用标题栏",
+        "步骤化布局",
+        "品牌蓝色主按钮"
+      ],
+      "componentPlan": [
+        "Windows标题栏",
+        "左侧菜单",
+        "上传区",
+        "算法选择",
+        "处理按钮",
+        "结果预览区"
+      ],
+      "imagePlan": [],
+      "mobileNavigationActiveKey": null
+    }
+  ]
+}

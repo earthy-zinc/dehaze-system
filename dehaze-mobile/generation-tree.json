@@ -1,0 +1,20 @@
+{
+  "nodeId": "root",
+  "kind": "project-shell",
+  "pageIds": ["page-index", "page-tools", "page-dehaze", "page-messages", "page-profile", "page-compare", "page-login", "page-register"],
+  "output": null,
+  "sharedRegions": ["bottom-tab-navigation"],
+  "privateRegions": [],
+  "mutableSlots": [],
+  "status": "generated",
+  "children": [
+    { "nodeId": "gen-index", "kind": "page-leaf", "pageIds": ["page-index"], "output": "pages/index.html", "sharedRegions": ["bottom-tab-navigation"], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
+    { "nodeId": "gen-tools", "kind": "page-leaf", "pageIds": ["page-tools"], "output": "pages/tools.html", "sharedRegions": ["bottom-tab-navigation"], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
+    { "nodeId": "gen-dehaze", "kind": "page-leaf", "pageIds": ["page-dehaze"], "output": "pages/dehaze.html", "sharedRegions": ["bottom-tab-navigation"], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
+    { "nodeId": "gen-messages", "kind": "page-leaf", "pageIds": ["page-messages"], "output": "pages/messages.html", "sharedRegions": ["bottom-tab-navigation"], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
+    { "nodeId": "gen-profile", "kind": "page-leaf", "pageIds": ["page-profile"], "output": "pages/profile.html", "sharedRegions": ["bottom-tab-navigation"], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
+    { "nodeId": "gen-compare", "kind": "page-leaf", "pageIds": ["page-compare"], "output": "pages/compare.html", "sharedRegions": [], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
+    { "nodeId": "gen-login", "kind": "page-leaf", "pageIds": ["page-login"], "output": "pages/login.html", "sharedRegions": [], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
+    { "nodeId": "gen-register", "kind": "page-leaf", "pageIds": ["page-register"], "output": "pages/register.html", "sharedRegions": [], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] }
+  ]
+}

@@ -1,0 +1,1625 @@
+{
+  "data": [
+    {
+      "id": "page-index",
+      "title": "首页",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 624,
+        "y": -360,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 2083,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-0249f6ee",
+          "measuredAt": 1785652124754
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index.html",
+        "interactions": [
+          {
+            "domId": "nav-home",
+            "targetPageId": "page-index"
+          },
+          {
+            "domId": "nav-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "nav-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "nav-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "nav-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "nav-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "header-login",
+            "targetPageId": "page-login"
+          },
+          {
+            "domId": "header-register",
+            "targetPageId": "page-register"
+          },
+          {
+            "domId": "cta-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "cta-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "cta-register",
+            "targetPageId": "page-register"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-index-v2",
+      "title": "首页（视觉优化版）",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785656000000,
+      "canvasData": {
+        "x": 1084,
+        "y": -360,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 2127,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-68bb5b25",
+          "measuredAt": 1785663204715
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index-v2.html",
+        "interactions": [
+          {
+            "domId": "nav-home",
+            "targetPageId": "page-index-v2"
+          },
+          {
+            "domId": "nav-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "nav-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "nav-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "nav-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "nav-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "header-login",
+            "targetPageId": "page-login"
+          },
+          {
+            "domId": "header-register",
+            "targetPageId": "page-register"
+          },
+          {
+            "domId": "cta-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "cta-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "cta-register",
+            "targetPageId": "page-register"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-dashboard",
+      "title": "工作台",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 1524,
+        "y": -360,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-5321ed00",
+          "measuredAt": 1785652124754
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dashboard.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "cta-dehaze",
+            "targetPageId": "page-dehaze"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-dehaze",
+      "title": "去雾处理",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 1084,
+        "y": 348,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 944,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-61cfbb64",
+          "measuredAt": 1785652124754
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dehaze.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "cta-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "btn-start-process",
+            "targetPageId": "page-compare"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-dataset",
+      "title": "数据集管理",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 624,
+        "y": 661,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-7c03bed2",
+          "measuredAt": 1785652124754
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dataset.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-algorithm",
+      "title": "算法管理",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 624,
+        "y": 1352,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-ba0f3e6d",
+          "measuredAt": 1785652124754
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/algorithm.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-profile",
+      "title": "个人中心",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 624,
+        "y": 2099.5,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-605fe45b",
+          "measuredAt": 1785652124754
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/profile.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "link-logout",
+            "targetPageId": "page-login"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-compare",
+      "title": "效果对比",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 624,
+        "y": 323,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-5143d0c3",
+          "measuredAt": 1785652124754
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/compare.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "back-dehaze",
+            "targetPageId": "page-dehaze"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-login",
+      "title": "登录",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 156,
+        "y": 13,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1088,
+          "viewportWidth": 1399,
+          "sourceHash": "fnv1a-1d58e4c1",
+          "measuredAt": 1785663204715
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1399,
+          "height": 1063
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/login.html",
+        "interactions": [
+          {
+            "domId": "link-register",
+            "targetPageId": "page-register"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-register",
+      "title": "注册",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 164,
+        "y": -360,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1088,
+          "viewportWidth": 1399,
+          "sourceHash": "fnv1a-c9553e1e",
+          "measuredAt": 1785654310366
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1399,
+          "height": 1063
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/register.html",
+        "interactions": [
+          {
+            "domId": "link-login",
+            "targetPageId": "page-login"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-algorithm-v2",
+      "title": "算法管理 (卡片优化)",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 1084,
+        "y": 1407.5,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-82bb9d61",
+          "measuredAt": 1785663204715
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/algorithm-v2.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-dataset-v2",
+      "title": "数据集管理 (卡片优化)",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 1084,
+        "y": 693.5,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-6e825f4c",
+          "measuredAt": 1785663204715
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dataset-v2.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "ds-browse-1",
+            "targetPageId": "page-dataset-v2"
+          }
+        ]
+      }
+    },
+    {
+      "id": "image-001",
+      "title": "数据集背景-城市雾景",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 3036,
+        "y": 108,
+        "overrideWidth": 188,
+        "naturalSize": {
+          "width": 2240,
+          "height": 1680
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/dataset-card-cityscape.jpg"
+      }
+    },
+    {
+      "id": "image-002",
+      "title": "数据集背景-街道雾景",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 3036,
+        "y": -372,
+        "overrideWidth": 196,
+        "naturalSize": {
+          "width": 2240,
+          "height": 1680
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/dataset-card-street.jpg"
+      }
+    },
+    {
+      "id": "image-003",
+      "title": "数据集背景-遥感雾景",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 3036,
+        "y": -216,
+        "overrideWidth": 196,
+        "naturalSize": {
+          "width": 2240,
+          "height": 1680
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/dataset-card-remote.jpg"
+      }
+    },
+    {
+      "id": "image-004",
+      "title": "数据集背景-浓雾场景",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 3036,
+        "y": -48,
+        "overrideWidth": 192,
+        "naturalSize": {
+          "width": 2240,
+          "height": 1680
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/dataset-card-dense.jpg"
+      }
+    },
+    {
+      "id": "image-005",
+      "title": "品牌Logo-Dehaze",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1785656000000,
+      "canvasData": {
+        "x": 2580,
+        "y": 168,
+        "overrideWidth": 120,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/logo-dehaze.jpg"
+      }
+    },
+    {
+      "id": "image-006",
+      "title": "首页Hero背景-去雾城市视界",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1785656000000,
+      "canvasData": {
+        "x": 2580,
+        "y": -372,
+        "naturalSize": {
+          "width": 2560,
+          "height": 1440
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/hero-bg-dehaze.jpg"
+      }
+    },
+    {
+      "id": "image-007",
+      "title": "核心能力图标-智能算法推荐",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1785656000000,
+      "canvasData": {
+        "x": 2724,
+        "y": 168,
+        "overrideWidth": 120,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/feature-icon-ai.jpg"
+      }
+    },
+    {
+      "id": "image-008",
+      "title": "核心能力图标-高清批量处理",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1785656000000,
+      "canvasData": {
+        "x": 2580,
+        "y": 312,
+        "overrideWidth": 120,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/feature-icon-batch.jpg"
+      }
+    },
+    {
+      "id": "image-009",
+      "title": "核心能力图标-多维度效果对比",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1785656000000,
+      "canvasData": {
+        "x": 2724,
+        "y": 312,
+        "overrideWidth": 120,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/feature-icon-compare.jpg"
+      }
+    },
+    {
+      "id": "image-010",
+      "title": "核心能力图标-算法实验室",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1785656000000,
+      "canvasData": {
+        "x": 2580,
+        "y": 456,
+        "overrideWidth": 120,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/feature-icon-lab.jpg"
+      }
+    },
+    {
+      "id": "image-011",
+      "title": "CTA背景-清晰视界",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1785656000000,
+      "canvasData": {
+        "x": 2580,
+        "y": -108,
+        "naturalSize": {
+          "width": 2560,
+          "height": 1440
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/cta-bg-dehaze.jpg"
+      }
+    },
+    {
+      "id": "page-app-library",
+      "title": "资料库（桌面端应用）",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 1524,
+        "y": -14,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-6edd5f2c",
+          "measuredAt": 1785663204715
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/app-library.html",
+        "interactions": [
+          {
+            "domId": "nav-home",
+            "targetPageId": "page-index-v2"
+          },
+          {
+            "domId": "nav-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "nav-library",
+            "targetPageId": "page-app-library"
+          },
+          {
+            "domId": "nav-messages",
+            "targetPageId": "page-app-messages"
+          },
+          {
+            "domId": "nav-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "titlebar-close",
+            "targetPageId": "page-login"
+          },
+          {
+            "domId": "algo-use-1",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "algo-use-2",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "algo-use-3",
+            "targetPageId": "page-dehaze"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-app-messages",
+      "title": "消息（桌面端应用）",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 1524,
+        "y": 324.49999999999994,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-f00ea9a5",
+          "measuredAt": 1785663204715
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/app-messages.html",
+        "interactions": [
+          {
+            "domId": "nav-home",
+            "targetPageId": "page-index-v2"
+          },
+          {
+            "domId": "nav-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "nav-library",
+            "targetPageId": "page-app-library"
+          },
+          {
+            "domId": "nav-messages",
+            "targetPageId": "page-app-messages"
+          },
+          {
+            "domId": "nav-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "titlebar-close",
+            "targetPageId": "page-login"
+          },
+          {
+            "domId": "btn-mark-all-read",
+            "targetPageId": "page-app-messages"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-app-dehaze-windows",
+      "title": "去雾 Windows标题栏（桌面端应用）",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1754112000000,
+      "canvasData": {
+        "x": 1524,
+        "y": 661,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1622,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-43e6373f",
+          "measuredAt": 1785663204715
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1399,
+          "height": 1251
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/app-dehaze-windows.html",
+        "interactions": [
+          {
+            "domId": "nav-home",
+            "targetPageId": "page-index-v2"
+          },
+          {
+            "domId": "nav-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "nav-library",
+            "targetPageId": "page-app-library"
+          },
+          {
+            "domId": "nav-messages",
+            "targetPageId": "page-app-messages"
+          },
+          {
+            "domId": "nav-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "titlebar-close",
+            "targetPageId": "page-login"
+          },
+          {
+            "domId": "btn-start-process",
+            "targetPageId": "page-dehaze"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-dehaze-flow-upload",
+      "title": "去雾流程：上传图片/样例",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 1084,
+        "y": 1012.9999999999999,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1060,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-abfd27a8",
+          "measuredAt": 1785668171624
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dehaze-flow-upload.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-dehaze-flow-algorithm",
+      "title": "去雾流程：算法选择",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 1084,
+        "y": 1765.0000000000002,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1426,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-5cd2b270",
+          "measuredAt": 1785668171624
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dehaze-flow-algorithm.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-dehaze-flow-params",
+      "title": "去雾流程：参数调节",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 1084,
+        "y": 2256,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1466,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-37135e55",
+          "measuredAt": 1785668171624
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1440,
+          "height": 1303
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dehaze-flow-params.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-dehaze-flow-processing",
+      "title": "去雾流程：处理中",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 1524,
+        "y": 1111.9999999999998,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1329,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-7b665e51",
+          "measuredAt": 1785670030186
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1440,
+          "height": 1125
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dehaze-flow-processing.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-dehaze-flow-result",
+      "title": "去雾流程：处理完成",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 1524,
+        "y": 1483.5,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1052,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-d3210b81",
+          "measuredAt": 1785668171624
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dehaze-flow-result.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-compare-flow-side",
+      "title": "效果对比：并排模式",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 624,
+        "y": 1012.9999999999998,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-e51b3419",
+          "measuredAt": 1785668171624
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1440,
+          "height": 943
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/compare-flow-side.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-compare-flow-overlay",
+      "title": "效果对比：重叠模式",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 624,
+        "y": 1700,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1110,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-b8316042",
+          "measuredAt": 1785670030186
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1440,
+          "height": 1107
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/compare-flow-overlay.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-compare-flow-magnifier",
+      "title": "效果对比：放大镜",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 624,
+        "y": 2448,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-eca916ec",
+          "measuredAt": 1785668171624
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/compare-flow-magnifier.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-compare-flow-filter",
+      "title": "效果对比：滤镜调节",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 164,
+        "y": 2049.5,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1072,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-3369deab",
+          "measuredAt": 1785668171624
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/compare-flow-filter.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-compare-flow-metrics",
+      "title": "效果对比：指标评估",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 164,
+        "y": 1129.5,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1098,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-103146d9",
+          "measuredAt": 1785670030186
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/compare-flow-metrics.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-compare-flow-algorithm",
+      "title": "效果对比：算法信息",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 164,
+        "y": 1539,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1488,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-6094d1b0",
+          "measuredAt": 1785668171624
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/compare-flow-algorithm.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-history",
+      "title": "处理历史记录",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785666274917,
+      "canvasData": {
+        "x": 164,
+        "y": 396.49999999999994,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 2342,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-5e929318",
+          "measuredAt": 1785670030186
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1440,
+          "height": 2239
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/history.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-dehaze-flow-upload-batch",
+      "title": "去雾流程：批量上传",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785668700000,
+      "canvasData": {
+        "x": 1980,
+        "y": 156,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1512,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-862ffd3d",
+          "measuredAt": 1785670030186
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1440,
+          "height": 1550
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dehaze-flow-upload-batch.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "btn-next-step-batch",
+            "targetPageId": "page-dehaze-flow-algorithm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-dehaze-flow-processing-batch",
+      "title": "去雾流程：批量/异步处理中",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785668700000,
+      "canvasData": {
+        "x": 1980,
+        "y": 674.5000000000001,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1806,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-678c0315",
+          "measuredAt": 1785670030186
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1440,
+          "height": 1560
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dehaze-flow-processing-batch.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "modal-go-history",
+            "targetPageId": "page-history-with-processing"
+          },
+          {
+            "domId": "cta-compare",
+            "targetPageId": "page-compare-flow-side"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-history-with-processing",
+      "title": "处理历史记录：含异步处理状态",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785668700000,
+      "canvasData": {
+        "x": 1980,
+        "y": -360,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 2342,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-28bd1bf4",
+          "measuredAt": 1785670030186
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1440,
+          "height": 1539
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/history-with-processing.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "item-compare-1",
+            "targetPageId": "page-compare-flow-side"
+          },
+          {
+            "domId": "item-compare-2",
+            "targetPageId": "page-compare-flow-side"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-dehaze-state-diagram",
+      "title": "去雾处理状态机图",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785668700000,
+      "canvasData": {
+        "x": 1980,
+        "y": 1186,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 2496,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-28e8aed0",
+          "measuredAt": 1785670030186
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1440,
+          "height": 2537
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dehaze-state-diagram.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard"
+          },
+          {
+            "domId": "menu-dehaze",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-algorithm",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          }
+        ]
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": false,
+    "deviceType": "desktop",
+    "projectName": "Dehaze 桌面端统一交互设计稿",
+    "designLibrary": null
+  }
+}

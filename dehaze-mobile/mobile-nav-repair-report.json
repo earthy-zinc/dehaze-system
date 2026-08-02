@@ -1,0 +1,48 @@
+{
+  "success": true,
+  "repairedPages": [
+    {
+      "htmlSrc": "pages/index.html",
+      "action": "replace-data-mobile-nav-global",
+      "activeKey": "home"
+    },
+    {
+      "htmlSrc": "pages/tools.html",
+      "action": "replace-data-mobile-nav-global",
+      "activeKey": "tools"
+    },
+    {
+      "htmlSrc": "pages/dehaze.html",
+      "action": "replace-data-mobile-nav-global",
+      "activeKey": "dehaze"
+    },
+    {
+      "htmlSrc": "pages/messages.html",
+      "action": "replace-data-mobile-nav-global",
+      "activeKey": "messages"
+    },
+    {
+      "htmlSrc": "pages/profile.html",
+      "action": "replace-data-mobile-nav-global",
+      "activeKey": "profile"
+    }
+  ],
+  "skippedPages": [
+    {
+      "htmlSrc": "pages/compare.html",
+      "reason": "独立流程页，无底部导航"
+    },
+    {
+      "htmlSrc": "pages/login.html",
+      "reason": "独立认证页，无底部导航"
+    },
+    {
+      "htmlSrc": "pages/register.html",
+      "reason": "独立认证页，无底部导航"
+    }
+  ],
+  "failedPages": [],
+  "repairCount": 5,
+  "previousFailedReportDetected": false,
+  "checkedAt": "2026-08-02T10:06:15.707Z"
+}
