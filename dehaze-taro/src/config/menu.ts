@@ -12,6 +12,9 @@ export interface MenuItem {
   title: string;
   /** 路由路径 */
   route: string;
+  /** 系统模块名，拥有该模块任一权限（sys:{module}:*）时才显示。
+   *  设为 "*" 表示拥有任意 sys:* 权限时显示。不填则对所有登录用户显示 */
+  sysModule?: string;
 }
 
 /** 菜单分组数据模型 */
@@ -110,6 +113,84 @@ export const menuSections: MenuSection[] = [
         title: "个人中心",
         route: "/pages/profile/index",
       },
+      {
+        icon: "clock-o",
+        title: "处理历史",
+        route: "/pages/task/index",
+      },
+      {
+        icon: "star-o",
+        title: "我的收藏",
+        route: "/pages/favorite/index",
+      },
+      {
+        icon: "gift-o",
+        title: "套餐管理",
+        route: "/pages/package/index",
+      },
+      {
+        icon: "bell",
+        title: "消息通知",
+        route: "/pages/notify/index",
+      },
+      {
+        icon: "diamond-o",
+        title: "会员管理",
+        route: "/pages/member/index",
+      },
+      {
+        icon: "chat-o",
+        title: "反馈评价",
+        route: "/pages/feedback/index",
+      },
+    ],
+  },
+  {
+    title: "系统管理",
+    icon: "setting-o",
+    items: [
+      {
+        icon: "chart-trending-o",
+        title: "工作台",
+        route: "/pages/dashboard/index",
+        sysModule: "*",
+      },
+      {
+        icon: "friends-o",
+        title: "用户管理",
+        route: "/pages/system/user/index",
+        sysModule: "user",
+      },
+      {
+        icon: "shield-o",
+        title: "角色管理",
+        route: "/pages/system/role/index",
+        sysModule: "role",
+      },
+      {
+        icon: "notes-o",
+        title: "字典管理",
+        route: "/pages/system/dict/index",
+        sysModule: "dict",
+      },
+      {
+        icon: "apps-o",
+        title: "菜单管理",
+        route: "/pages/system/menu/index",
+        sysModule: "menu",
+      },
+      {
+        icon: "cluster-o",
+        title: "部门管理",
+        route: "/pages/system/dept/index",
+        sysModule: "dept",
+      },
+      {
+        icon: "aim",
+        title: "推荐规则",
+        route: "/pages/recommend/index",
+        sysModule: "recommendation",
+      },
     ],
   },
 ];
@@ -154,4 +235,24 @@ export const getTabBarIndex = (route: string): number => {
  */
 export const isTabBarPage = (route: string): boolean => {
   return tabBarRoutes.includes(route);
+};
+
+/**
+ * 根据用户权限过滤菜单分组
+ * 过滤掉无权限的菜单项，以及过滤后为空的分组
+ */
+export const filterMenuSections = (
+  sections: MenuSection[],
+  perms: string[]
+): MenuSection[] => {
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        if (!item.sysModule) return true;
+        if (item.sysModule === "*") return perms.some((p) => p.startsWith("sys:"));
+        return perms.some((p) => p.startsWith(`sys:${item.sysModule}:`));
+      }),
+    }))
+    .filter((section) => section.items.length > 0);
 };

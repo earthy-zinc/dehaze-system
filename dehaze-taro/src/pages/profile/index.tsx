@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { View, Text, ScrollView, Image } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag } from "@taroify/core";
@@ -14,8 +14,19 @@ import "./index.less";
 /** 权限概览最多展示的权限数量 */
 const MAX_PERMISSION_PREVIEW = 6;
 
-/** 个人中心功能入口 */
-const PROFILE_ENTRIES = [
+/** 个人中心入口项 */
+interface ProfileEntry {
+  icon: string;
+  title: string;
+  desc: string;
+  route: string;
+  /** 系统模块名，拥有该模块任一权限（sys:{module}:*）时才显示。
+   *  设为 "*" 表示拥有任意 sys:* 权限时显示 */
+  sysModule?: string;
+}
+
+/** 普通用户功能入口（登录即可见） */
+const USER_ENTRIES: ProfileEntry[] = [
   {
     icon: "📋",
     title: "处理历史",
@@ -28,12 +39,107 @@ const PROFILE_ENTRIES = [
     desc: "查看输入图片记录",
     route: "/pages/image-input/index",
   },
+  {
+    icon: "⭐",
+    title: "我的收藏",
+    desc: "查看收藏的内容",
+    route: "/pages/favorite/index",
+  },
+  {
+    icon: "📦",
+    title: "套餐管理",
+    desc: "查看可用套餐",
+    route: "/pages/package/index",
+  },
+  {
+    icon: "🔔",
+    title: "消息通知",
+    desc: "查看通知消息",
+    route: "/pages/notify/index",
+  },
+  {
+    icon: "👑",
+    title: "会员管理",
+    desc: "会员信息与权益",
+    route: "/pages/member/index",
+  },
+  {
+    icon: "💬",
+    title: "反馈评价",
+    desc: "提交使用反馈",
+    route: "/pages/feedback/index",
+  },
+];
+
+/** 系统管理入口（需对应模块权限） */
+const ADMIN_ENTRIES: ProfileEntry[] = [
+  {
+    icon: "📊",
+    title: "工作台",
+    desc: "统计概览与管理总览",
+    route: "/pages/dashboard/index",
+    sysModule: "*",
+  },
+  {
+    icon: "👥",
+    title: "用户管理",
+    desc: "管理用户账号",
+    route: "/pages/system/user/index",
+    sysModule: "user",
+  },
+  {
+    icon: "🛡️",
+    title: "角色管理",
+    desc: "管理角色与权限",
+    route: "/pages/system/role/index",
+    sysModule: "role",
+  },
+  {
+    icon: "📚",
+    title: "字典管理",
+    desc: "管理字典类型与数据",
+    route: "/pages/system/dict/index",
+    sysModule: "dict",
+  },
+  {
+    icon: "📑",
+    title: "菜单管理",
+    desc: "管理菜单与路由",
+    route: "/pages/system/menu/index",
+    sysModule: "menu",
+  },
+  {
+    icon: "🏢",
+    title: "部门管理",
+    desc: "管理组织部门",
+    route: "/pages/system/dept/index",
+    sysModule: "dept",
+  },
+  {
+    icon: "🎯",
+    title: "推荐规则",
+    desc: "管理算法推荐规则",
+    route: "/pages/recommend/index",
+    sysModule: "recommendation",
+  },
 ];
 
 // ==================== 页面组件 ====================
 
 const ProfilePage: React.FC = () => {
   const { user, roles, perms, logout } = useAuth();
+
+  /** 按模块权限过滤后的系统管理入口 */
+  const visibleAdminEntries = useMemo(
+    () =>
+      ADMIN_ENTRIES.filter((entry) => {
+        if (!entry.sysModule) return true;
+        if (entry.sysModule === "*")
+          return perms.some((p) => p.startsWith("sys:"));
+        return perms.some((p) => p.startsWith(`sys:${entry.sysModule}:`));
+      }),
+    [perms]
+  );
 
   /** 跳转到指定页面（tabbar 页面用 reLaunch，其余用 navigateTo） */
   const handleNavigate = useCallback((route: string) => {
@@ -82,7 +188,7 @@ const ProfilePage: React.FC = () => {
   // ==================== 渲染 ====================
 
   /** 渲染功能入口项 */
-  const renderEntry = (entry: (typeof PROFILE_ENTRIES)[number]) => (
+  const renderEntry = (entry: ProfileEntry) => (
     <View
       key={entry.route}
       className="entry-item"
@@ -166,10 +272,18 @@ const ProfilePage: React.FC = () => {
           {/* 功能入口 */}
           <View className="section">
             <Text className="section-title">功能入口</Text>
-            <View className="entry-list">
-              {PROFILE_ENTRIES.map(renderEntry)}
-            </View>
+            <View className="entry-list">{USER_ENTRIES.map(renderEntry)}</View>
           </View>
+
+          {/* 系统管理（仅有对应模块权限时显示） */}
+          {visibleAdminEntries.length > 0 && (
+            <View className="section">
+              <Text className="section-title">系统管理</Text>
+              <View className="entry-list">
+                {visibleAdminEntries.map(renderEntry)}
+              </View>
+            </View>
+          )}
 
           {/* 退出登录 */}
           <View className="logout-section">

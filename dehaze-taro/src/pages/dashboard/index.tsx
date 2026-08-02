@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Loading, Tag } from "@taroify/core";
@@ -52,12 +52,36 @@ const WORKFLOW_ENTRIES = [
 ];
 
 /** 管理入口 */
-const MANAGEMENT_ENTRIES = [
-  { icon: "👥", title: "用户管理", route: "/pages/system/user/index" },
-  { icon: "🛡️", title: "角色管理", route: "/pages/system/role/index" },
+interface ManagementEntry {
+  icon: string;
+  title: string;
+  route: string;
+  /** 系统模块名，拥有该模块任一权限（sys:{module}:*）时才显示。不填则对所有登录用户显示 */
+  sysModule?: string;
+}
+
+const MANAGEMENT_ENTRIES: ManagementEntry[] = [
+  {
+    icon: "👥",
+    title: "用户管理",
+    route: "/pages/system/user/index",
+    sysModule: "user",
+  },
+  {
+    icon: "🛡️",
+    title: "角色管理",
+    route: "/pages/system/role/index",
+    sysModule: "role",
+  },
   { icon: "📁", title: "数据集管理", route: "/pages/dataset/index" },
   { icon: "🔧", title: "算法管理", route: "/pages/algorithm/index" },
   { icon: "📋", title: "任务中心", route: "/pages/task/index" },
+  {
+    icon: "🎯",
+    title: "推荐规则",
+    route: "/pages/recommend/index",
+    sysModule: "recommendation",
+  },
 ];
 
 // ==================== 统计数据类型 ====================
@@ -75,6 +99,18 @@ const Dashboard: React.FC = () => {
   const { state } = useGlobalContext();
   const user = state.auth.user;
   const roles = state.auth.roles || [];
+  const perms = state.auth.perms || [];
+
+  /** 按模块权限过滤后的管理入口 */
+  const visibleManagementEntries = useMemo(
+    () =>
+      MANAGEMENT_ENTRIES.filter(
+        (entry) =>
+          !entry.sysModule ||
+          perms.some((p) => p.startsWith(`sys:${entry.sysModule}:`))
+      ),
+    [perms]
+  );
 
   const [stats, setStats] = useState<Stats>({
     userCount: null,
@@ -258,23 +294,25 @@ const Dashboard: React.FC = () => {
             </View>
           </View>
 
-          {/* 管理入口 */}
-          <View className="section">
-            <Text className="section-title">系统管理</Text>
-            <View className="management-list">
-              {MANAGEMENT_ENTRIES.map((entry) => (
-                <View
-                  key={entry.route}
-                  className="management-item"
-                  onClick={() => handleNavigate(entry.route)}
-                >
-                  <Text className="management-icon">{entry.icon}</Text>
-                  <Text className="management-title">{entry.title}</Text>
-                  <Text className="management-arrow">›</Text>
-                </View>
-              ))}
+          {/* 管理入口（仅有对应模块权限的项才显示） */}
+          {visibleManagementEntries.length > 0 && (
+            <View className="section">
+              <Text className="section-title">系统管理</Text>
+              <View className="management-list">
+                {visibleManagementEntries.map((entry) => (
+                  <View
+                    key={entry.route}
+                    className="management-item"
+                    onClick={() => handleNavigate(entry.route)}
+                  >
+                    <Text className="management-icon">{entry.icon}</Text>
+                    <Text className="management-title">{entry.title}</Text>
+                    <Text className="management-arrow">›</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
+          )}
 
           {/* 最近任务 */}
           <View className="section">

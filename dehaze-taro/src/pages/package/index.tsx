@@ -187,7 +187,7 @@ const PackagePage: React.FC = () => {
 
                 {/* 权益列表 */}
                 <View className="package-benefits">
-                  {pkg.benefits.map((benefit: string, idx: number) => (
+                  {(pkg.benefits || []).map((benefit: string, idx: number) => (
                     <View key={idx} className="benefit-item">
                       <Text className="benefit-check">✓</Text>
                       <Text className="benefit-text">{benefit}</Text>

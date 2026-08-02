@@ -6,7 +6,13 @@ import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Popup } from "@taroify/core";
 import { Cross, EyeOutlined } from "@taroify/icons";
-import { homeItem, menuSections, type MenuItem } from "@/config/menu";
+import {
+  homeItem,
+  menuSections,
+  filterMenuSections,
+  type MenuItem,
+} from "@/config/menu";
+import { useAuth } from "@/hooks/useAuth";
 import "./index.less";
 
 interface AppSidebarProps {
@@ -26,6 +32,9 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
   onClose,
   onNavigate,
 }) => {
+  const { perms } = useAuth();
+  const visibleSections = filterMenuSections(menuSections, perms);
+
   /** 判断是否为当前激活路由 */
   const isActive = (route: string) => currentRoute === route;
 
@@ -86,7 +95,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
           <View className="menu-divider" />
 
           {/* 分组菜单 */}
-          {menuSections.map((section) => (
+          {visibleSections.map((section) => (
             <View key={section.title} className="menu-section">
               <View className="section-header">
                 <Text className="section-title">{section.title}</Text>

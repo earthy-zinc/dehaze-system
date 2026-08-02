@@ -31,15 +31,6 @@ export default {
       open: false,
       port: 5175,
       proxy: {
-        // H5 开发环境经 devServer 代理转发，规避浏览器 CORS 限制
-        // 小程序端不受影响（小程序不存在跨域问题，直连绝对地址）
-        "/api/v1/algorithm-select": {
-          target: "http://localhost:8991",
-          changeOrigin: true,
-          onProxyReq: (proxyReq: { removeHeader: (name: string) => void }) => {
-            proxyReq.removeHeader("origin");
-          },
-        },
         "/api": {
           target: "http://localhost:8989",
           changeOrigin: true,
