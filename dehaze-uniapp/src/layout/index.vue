@@ -22,7 +22,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from "vue";
+import { onMounted } from "vue";
 import AppNavbar from "./Navbar.vue";
 import AppSidebar from "./Sidebar.vue";
 import AppTabbar from "./Tabbar.vue";
