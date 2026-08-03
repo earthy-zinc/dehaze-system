@@ -80,10 +80,10 @@
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
-          "contentHeight": 2580,
+          "contentHeight": 3527,
           "viewportWidth": 1440,
-          "sourceHash": "fnv1a-index-v3-platform",
-          "measuredAt": 1785674400000
+          "sourceHash": "fnv1a-633f41db",
+          "measuredAt": 1785680028952
         }
       },
       "devMetadata": {
@@ -346,8 +346,8 @@
           "version": 1,
           "contentHeight": 900,
           "viewportWidth": 1440,
-          "sourceHash": "fnv1a-7c03bed2",
-          "measuredAt": 1785652124754
+          "sourceHash": "fnv1a-2f52b382",
+          "measuredAt": 1785680028952
         }
       },
       "devMetadata": {
@@ -1136,8 +1136,8 @@
           "version": 1,
           "contentHeight": 1130,
           "viewportWidth": 1440,
-          "sourceHash": "fnv1a-341f693c",
-          "measuredAt": 1785673244834
+          "sourceHash": "fnv1a-eb39defd",
+          "measuredAt": 1785680028952
         }
       },
       "devMetadata": {

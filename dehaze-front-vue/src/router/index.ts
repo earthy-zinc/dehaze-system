@@ -31,8 +31,19 @@ export const constantRoutes: RouteRecordRaw[] = [
     path: "/",
     name: "/",
     component: Layout,
-    redirect: "/dashboard",
+    redirect: "/home",
     children: [
+      {
+        path: "home",
+        component: () => import("@/views/home/index.vue"),
+        name: "Home", // 用于 keep-alive，必须与SFC自动推导或者显示声明的组件name一致
+        meta: {
+          title: "首页",
+          icon: "homepage",
+          hidden: true,
+          affix: true,
+        },
+      },
       {
         path: "dashboard",
         component: () => import("@/views/dashboard/index.vue"),
