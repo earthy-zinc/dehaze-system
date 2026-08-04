@@ -390,8 +390,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": -1068,
-        "y": 4992,
+        "x": -516,
+        "y": 4080,
         "overrideWidth": 188,
         "naturalSize": {
           "width": 2240,
@@ -409,8 +409,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": -680,
-        "y": 4992,
+        "x": -128,
+        "y": 4080,
         "overrideWidth": 196,
         "naturalSize": {
           "width": 2240,
@@ -428,8 +428,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": -284,
-        "y": 4992,
+        "x": 268,
+        "y": 4080,
         "overrideWidth": 196,
         "naturalSize": {
           "width": 2240,
@@ -447,8 +447,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 112,
-        "y": 4992,
+        "x": 664,
+        "y": 4080,
         "overrideWidth": 192,
         "naturalSize": {
           "width": 2240,
@@ -466,8 +466,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": 504,
-        "y": 4992,
+        "x": 1056,
+        "y": 4080,
         "overrideWidth": 120,
         "naturalSize": {
           "width": 1920,
@@ -485,8 +485,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": -1068,
-        "y": 4269,
+        "x": -1020,
+        "y": 4068,
         "naturalSize": {
           "width": 2560,
           "height": 1440
@@ -503,8 +503,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": -1056,
-        "y": 5301,
+        "x": -504,
+        "y": 4389,
         "overrideWidth": 120,
         "naturalSize": {
           "width": 1920,
@@ -522,8 +522,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": -736,
-        "y": 5301,
+        "x": -184,
+        "y": 4389,
         "overrideWidth": 120,
         "naturalSize": {
           "width": 1920,
@@ -541,8 +541,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": -416,
-        "y": 5301,
+        "x": 136,
+        "y": 4389,
         "overrideWidth": 120,
         "naturalSize": {
           "width": 1920,
@@ -560,8 +560,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": -96,
-        "y": 5301,
+        "x": 456,
+        "y": 4389,
         "overrideWidth": 120,
         "naturalSize": {
           "width": 1920,
@@ -579,8 +579,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": -1064,
-        "y": 4626,
+        "x": -1016,
+        "y": 4425,
         "naturalSize": {
           "width": 2560,
           "height": 1440
@@ -597,8 +597,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 1332,
-        "y": 660,
+        "x": -120,
+        "y": 276,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -657,8 +657,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 1332,
-        "y": 987,
+        "x": 372,
+        "y": 270.00000000000006,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -709,8 +709,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 864,
-        "y": 660,
+        "x": -588,
+        "y": 276,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
