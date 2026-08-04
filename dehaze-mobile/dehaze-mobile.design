@@ -111,59 +111,6 @@
       }
     },
     {
-      "id": "page-dehaze",
-      "title": "去雾",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1754112000000,
-      "canvasData": {
-        "x": 1176,
-        "y": 2219,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 1297,
-          "viewportWidth": 480,
-          "sourceHash": "fnv1a-00cd57b9",
-          "measuredAt": 1785663009171
-        },
-        "deviceType": "freeSize",
-        "windowSize": {
-          "width": 480,
-          "height": 1296
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/dehaze.html",
-        "interactions": [
-          {
-            "domId": "cta-compare",
-            "targetPageId": "page-compare"
-          },
-          {
-            "domId": "nav-home",
-            "targetPageId": "page-index"
-          },
-          {
-            "domId": "nav-tools",
-            "targetPageId": "page-tools"
-          },
-          {
-            "domId": "nav-dehaze",
-            "targetPageId": "page-dehaze"
-          },
-          {
-            "domId": "nav-messages",
-            "targetPageId": "page-messages"
-          },
-          {
-            "domId": "nav-profile",
-            "targetPageId": "page-profile"
-          }
-        ]
-      }
-    },
-    {
       "id": "page-messages",
       "title": "消息",
       "type": "page",
@@ -265,39 +212,6 @@
           {
             "domId": "nav-profile",
             "targetPageId": "page-profile"
-          }
-        ]
-      }
-    },
-    {
-      "id": "page-compare",
-      "title": "效果对比",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1754112000000,
-      "canvasData": {
-        "x": 1217,
-        "y": 3084,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 892,
-          "viewportWidth": 415,
-          "sourceHash": "fnv1a-528dc3f5",
-          "measuredAt": 1785663009171
-        },
-        "deviceType": "freeSize",
-        "windowSize": {
-          "width": 415,
-          "height": 891
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/compare.html",
-        "interactions": [
-          {
-            "domId": "back-dehaze",
-            "targetPageId": "page-dehaze"
           }
         ]
       }
@@ -564,8 +478,8 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 1338,
-        "y": 2224,
+        "x": 1181,
+        "y": 2143.5,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -726,7 +640,7 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 1385,
+        "x": 1228,
         "y": 3084,
         "group": 0,
         "deviceType": "freeSize",
