@@ -130,7 +130,7 @@ const PackagePage: React.FC = () => {
   }, []);
 
   return (
-    <PageLayout showTabbar currentRoute="/pages/package/index" title="会员套餐">
+    <PageLayout level="L2" title="会员套餐">
       <View className="package-page">
         {/* 顶部横幅 */}
         <View className="package-banner">

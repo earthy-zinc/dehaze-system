@@ -150,11 +150,7 @@ const RecommendRulesPage: React.FC = () => {
   };
 
   return (
-    <PageLayout
-      showTabbar
-      currentRoute="/pages/recommend/index"
-      title="推荐规则"
-    >
+    <PageLayout level="L2" title="推荐规则">
       <View className="recommend-page">
         {/* 顶部操作栏 */}
         <View className="recommend-header">

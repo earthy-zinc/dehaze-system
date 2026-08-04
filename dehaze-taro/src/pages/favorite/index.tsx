@@ -133,11 +133,7 @@ const FavoritePage: React.FC = () => {
   };
 
   return (
-    <PageLayout
-      showTabbar
-      currentRoute="/pages/favorite/index"
-      title="我的收藏"
-    >
+    <PageLayout level="L2" title="我的收藏">
       <View className="favorite-page">
         {/* 搜索栏 */}
         <View className="search-section">

@@ -3,26 +3,26 @@
   overflow: hidden;
   cursor: pointer;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgb(0 0 0 / 8%);
   transition: all 0.3s ease;
   animation: fadeIn 0.3s ease;
 }
 
 .image-card:hover {
-  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
-  transform: translateY(-2px);
+  box-shadow: 0 16rpx 48rpx rgb(0 0 0 / 12%);
+  transform: translateY(-4rpx);
 }
 
 .image-card:active {
-  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+  box-shadow: 0 4rpx 16rpx rgb(0 0 0 / 8%);
   transform: scale(0.98);
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20rpx);
   }
 
   to {
@@ -47,12 +47,12 @@
 
 .type-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 16rpx;
+  right: 16rpx;
   z-index: 1;
-  padding: 4px 8px;
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
+  padding: 8rpx 16rpx;
+  border-radius: 24rpx;
+  backdrop-filter: blur(16rpx);
 }
 
 .type-badge-hazy {
@@ -82,38 +82,38 @@
 
 .haze-badge {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 16rpx;
+  left: 16rpx;
   z-index: 1;
-  padding: 4px 8px;
+  padding: 8rpx 16rpx;
   background: rgb(16 185 129 / 90%);
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
+  border-radius: 24rpx;
+  backdrop-filter: blur(16rpx);
 }
 
 .haze-text {
-  font-size: 11px;
+  font-size: 22rpx;
   font-weight: 500;
   color: white;
 }
 
 .type-text {
-  font-size: 11px;
+  font-size: 22rpx;
   font-weight: 500;
   color: inherit;
 }
 
 .image-info {
-  padding: 12px;
+  padding: 24rpx;
   background: white;
 }
 
 .image-filename {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 8rpx;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 13px;
+  font-size: 26rpx;
   font-weight: 500;
   color: #374151;
   white-space: nowrap;
@@ -121,64 +121,64 @@
 
 .image-meta {
   display: block;
-  margin-bottom: 2px;
-  font-size: 11px;
+  margin-bottom: 4rpx;
+  font-size: 22rpx;
   color: #9ca3af;
 }
 
 .image-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 6px;
+  gap: 8rpx;
+  margin-top: 12rpx;
 }
 
 .tag {
   display: inline-block;
-  padding: 2px 6px;
-  font-size: 10px;
+  padding: 4rpx 12rpx;
+  font-size: 20rpx;
   line-height: 1.2;
   color: #6b7280;
   background: #f3f4f6;
-  border-radius: 4px;
+  border-radius: 8rpx;
 }
 
 /* 响应式适配 */
 @media (width <= 768px) {
   .image-info {
-    padding: 10px;
+    padding: 20rpx;
   }
 
   .image-filename {
-    font-size: 12px;
+    font-size: 24rpx;
   }
 
   .image-meta {
-    font-size: 10px;
+    font-size: 20rpx;
   }
 
   .tag {
-    padding: 1px 4px;
-    font-size: 9px;
+    padding: 2rpx 8rpx;
+    font-size: 18rpx;
   }
 }
 
 @media (width <= 480px) {
   .image-info {
-    padding: 8px;
+    padding: 16rpx;
   }
 
   .image-filename {
-    font-size: 11px;
+    font-size: 22rpx;
   }
 
   .type-badge {
-    top: 6px;
-    right: 6px;
-    padding: 3px 6px;
+    top: 12rpx;
+    right: 12rpx;
+    padding: 6rpx 12rpx;
   }
 
   .type-text {
-    font-size: 10px;
+    font-size: 20rpx;
   }
 }

@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 40rpx;
   background: rgb(0 0 0 / 90%);
   animation: fadeIn 0.3s ease;
 }
@@ -35,14 +35,14 @@
 
 .close-btn {
   position: absolute;
-  top: -40px;
+  top: -80rpx;
   right: 0;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 80rpx;
+  height: 80rpx;
   cursor: pointer;
   background: rgb(255 255 255 / 10%);
   border-radius: 50%;
@@ -63,10 +63,10 @@
   flex: 1;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 40rpx;
   overflow: hidden;
   background: rgb(255 255 255 / 5%);
-  border-radius: 12px;
+  border-radius: 24rpx;
 }
 
 .viewer-image {
@@ -75,12 +75,12 @@
   height: auto;
   max-height: 100%;
   background: transparent;
-  border-radius: 8px;
+  border-radius: 16rpx;
 }
 
 .image-details {
   max-height: 30vh;
-  padding: 20px;
+  padding: 40rpx;
   overflow-y: auto;
   color: white;
   background: linear-gradient(
@@ -89,13 +89,13 @@
     rgb(0 0 0 / 40%),
     transparent
   );
-  border-radius: 12px;
+  border-radius: 24rpx;
 }
 
 .detail-filename {
   display: block;
-  margin-bottom: 12px;
-  font-size: 18px;
+  margin-bottom: 24rpx;
+  font-size: 36rpx;
   font-weight: 600;
   line-height: 1.3;
   color: white;
@@ -104,49 +104,49 @@
 .detail-meta {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
 }
 
 .meta-item {
   display: flex;
-  gap: 8px;
+  gap: 16rpx;
   align-items: center;
 }
 
 .meta-label {
-  min-width: 50px;
-  font-size: 14px;
+  min-width: 100rpx;
+  font-size: 28rpx;
   font-weight: 500;
   color: rgb(255 255 255 / 70%);
 }
 
 .meta-value {
-  font-size: 14px;
+  font-size: 28rpx;
   font-weight: 400;
   color: white;
 }
 
 .detail-description {
-  margin-top: 8px;
-  font-size: 14px;
+  margin-top: 16rpx;
+  font-size: 28rpx;
   line-height: 1.5;
   color: rgb(255 255 255 / 80%);
 }
 
 /* 滚动条样式 */
 .image-details::-webkit-scrollbar {
-  width: 4px;
+  width: 8rpx;
 }
 
 .image-details::-webkit-scrollbar-track {
   background: rgb(255 255 255 / 10%);
-  border-radius: 2px;
+  border-radius: 4rpx;
 }
 
 .image-details::-webkit-scrollbar-thumb {
   background: rgb(255 255 255 / 30%);
-  border-radius: 2px;
+  border-radius: 4rpx;
 }
 
 .image-details::-webkit-scrollbar-thumb:hover {
@@ -156,7 +156,7 @@
 /* 响应式适配 */
 @media (width <= 768px) {
   .image-viewer {
-    padding: 16px;
+    padding: 32rpx;
   }
 
   .viewer-container {
@@ -165,32 +165,32 @@
   }
 
   .close-btn {
-    top: -36px;
-    width: 36px;
-    height: 36px;
+    top: -72rpx;
+    width: 72rpx;
+    height: 72rpx;
   }
 
   .image-details {
-    padding: 16px;
+    padding: 32rpx;
   }
 
   .detail-filename {
-    font-size: 16px;
+    font-size: 32rpx;
   }
 
   .meta-label,
   .meta-value {
-    font-size: 13px;
+    font-size: 26rpx;
   }
 
   .detail-description {
-    font-size: 13px;
+    font-size: 26rpx;
   }
 }
 
 @media (width <= 480px) {
   .image-viewer {
-    padding: 12px;
+    padding: 24rpx;
   }
 
   .viewer-container {
@@ -199,37 +199,37 @@
   }
 
   .close-btn {
-    top: -32px;
-    width: 32px;
-    height: 32px;
+    top: -64rpx;
+    width: 64rpx;
+    height: 64rpx;
   }
 
   .image-container {
-    margin-bottom: 16px;
+    margin-bottom: 32rpx;
   }
 
   .image-details {
-    padding: 12px;
+    padding: 24rpx;
   }
 
   .detail-filename {
-    font-size: 15px;
+    font-size: 30rpx;
   }
 
   .meta-label,
   .meta-value {
-    font-size: 12px;
+    font-size: 24rpx;
   }
 
   .detail-description {
-    font-size: 12px;
+    font-size: 24rpx;
   }
 
   .meta-item {
-    gap: 6px;
+    gap: 12rpx;
   }
 
   .meta-label {
-    min-width: 45px;
+    min-width: 90rpx;
   }
 }

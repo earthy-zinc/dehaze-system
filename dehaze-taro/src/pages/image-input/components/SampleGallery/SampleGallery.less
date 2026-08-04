@@ -1,8 +1,8 @@
 .sample-gallery {
-  padding: 0 16px;
+  padding: 0 32rpx;
 
   .filter-section {
-    margin-bottom: 16px;
+    margin-bottom: 32rpx;
   }
 
   .loading-container,
@@ -11,14 +11,14 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 48px 24px;
+    padding: 96rpx 48rpx;
     background: #f8fafc;
-    border-radius: 12px;
+    border-radius: 24rpx;
 
     .loading-text,
     .empty-text {
-      margin-top: 12px;
-      font-size: 14px;
+      margin-top: 24rpx;
+      font-size: 28rpx;
       color: #9ca3af;
     }
   }
@@ -26,19 +26,19 @@
   .sample-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 24rpx;
   }
 
   .sample-card {
     overflow: hidden;
     cursor: pointer;
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+    border-radius: 24rpx;
+    box-shadow: 0 4rpx 16rpx rgb(0 0 0 / 6%);
     transition: all 0.2s ease;
 
     &:active {
-      box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
+      box-shadow: 0 8rpx 24rpx rgb(0 0 0 / 10%);
       transform: scale(0.98);
     }
   }
@@ -46,7 +46,7 @@
   .sample-image-wrapper {
     position: relative;
     width: 100%;
-    height: 120px;
+    height: 240rpx;
     overflow: hidden;
   }
 
@@ -58,13 +58,13 @@
 
   .haze-badge {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    padding: 4px 8px;
-    font-size: 11px;
+    top: 16rpx;
+    right: 16rpx;
+    padding: 8rpx 16rpx;
+    font-size: 22rpx;
     font-weight: 500;
     color: white;
-    border-radius: 6px;
+    border-radius: 12rpx;
 
     &.light {
       background: rgb(34 197 94 / 90%);
@@ -80,14 +80,14 @@
   }
 
   .sample-info {
-    padding: 10px 12px;
+    padding: 20rpx 24rpx;
   }
 
   .sample-name {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 13px;
+    font-size: 26rpx;
     font-weight: 500;
     color: #374151;
     white-space: nowrap;
@@ -95,20 +95,20 @@
 
   .sample-scene {
     display: block;
-    margin-top: 4px;
-    font-size: 11px;
+    margin-top: 8rpx;
+    font-size: 22rpx;
     color: #9ca3af;
   }
 
   .quick-tip {
-    padding: 12px;
-    margin-top: 16px;
+    padding: 24rpx;
+    margin-top: 32rpx;
     text-align: center;
     background: #eff6ff;
-    border-radius: 8px;
+    border-radius: 16rpx;
 
     .tip-text {
-      font-size: 13px;
+      font-size: 26rpx;
       color: #3b82f6;
     }
   }
@@ -118,19 +118,19 @@
 @media (width <= 375px) {
   .sample-gallery {
     .sample-grid {
-      gap: 8px;
+      gap: 16rpx;
     }
 
     .sample-image-wrapper {
-      height: 100px;
+      height: 200rpx;
     }
 
     .sample-info {
-      padding: 8px 10px;
+      padding: 16rpx 20rpx;
     }
 
     .sample-name {
-      font-size: 12px;
+      font-size: 24rpx;
     }
   }
 }
@@ -140,11 +140,11 @@
   .sample-gallery {
     .sample-grid {
       grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
+      gap: 32rpx;
     }
 
     .sample-image-wrapper {
-      height: 150px;
+      height: 300rpx;
     }
   }
 }

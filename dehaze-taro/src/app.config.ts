@@ -1,6 +1,9 @@
 export default defineAppConfig({
   pages: [
     "pages/home/index",
+    "pages/tools/index",
+    "pages/dehaze/index",
+    "pages/messages/index",
     "pages/dataset/index",
     "pages/login/index",
     "pages/register/index",
@@ -37,5 +40,44 @@ export default defineAppConfig({
     navigationBarTitleText: "图像去雾系统",
     navigationBarTextStyle: "black",
     navigationStyle: "custom",
+  },
+  // 原生 tabBar：5 个 L1 Tab 根页面（与 dehaze-mobile 设计稿底部导航一致）
+  tabBar: {
+    color: "#9CA3AF",
+    selectedColor: "#3B82F6",
+    backgroundColor: "#ffffff",
+    borderStyle: "black",
+    list: [
+      {
+        pagePath: "pages/home/index",
+        text: "首页",
+        iconPath: "assets/tabbar/home.png",
+        selectedIconPath: "assets/tabbar/home-active.png",
+      },
+      {
+        pagePath: "pages/tools/index",
+        text: "工具",
+        iconPath: "assets/tabbar/tools.png",
+        selectedIconPath: "assets/tabbar/tools-active.png",
+      },
+      {
+        pagePath: "pages/dehaze/index",
+        text: "去雾",
+        iconPath: "assets/tabbar/dehaze.png",
+        selectedIconPath: "assets/tabbar/dehaze-active.png",
+      },
+      {
+        pagePath: "pages/messages/index",
+        text: "消息",
+        iconPath: "assets/tabbar/messages.png",
+        selectedIconPath: "assets/tabbar/messages-active.png",
+      },
+      {
+        pagePath: "pages/profile/index",
+        text: "我的",
+        iconPath: "assets/tabbar/profile.png",
+        selectedIconPath: "assets/tabbar/profile-active.png",
+      },
+    ],
   },
 });

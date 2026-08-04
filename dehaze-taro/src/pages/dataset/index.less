@@ -8,36 +8,36 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    padding: 16px 20px;
+    padding: 32rpx 40rpx;
     background: white;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 2rpx solid #f1f5f9;
   }
 
   /* 列表视图 */
   .list-view {
     flex: 1;
     width: 100%;
-    min-height: calc(100vh - 120px);
+    min-height: calc(100vh - 240rpx);
   }
 
   /* 顶部操作栏 */
   .action-bar {
-    padding: 12px 20px;
+    padding: 24rpx 40rpx;
     background: #f8fafc;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 2rpx solid #f1f5f9;
   }
 
   .add-btn {
     display: inline-flex;
-    gap: 6px;
+    gap: 12rpx;
     align-items: center;
     justify-content: center;
-    padding: 8px 18px;
-    font-size: 14px;
+    padding: 16rpx 36rpx;
+    font-size: 28rpx;
     font-weight: 500;
     color: #fff;
     background: #14b8a6;
-    border-radius: 8px;
+    border-radius: 16rpx;
     transition: all 0.2s ease;
 
     &:active {
@@ -56,28 +56,28 @@
     flex: 1;
     flex-direction: column;
     width: 100%;
-    min-height: calc(100vh - 120px);
+    min-height: calc(100vh - 240rpx);
   }
 
   .back-section {
-    padding: 16px 32px;
+    padding: 32rpx 64rpx;
     background: white;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 2rpx solid #f1f5f9;
   }
 
   .back-btn {
     display: flex;
-    gap: 8px;
+    gap: 16rpx;
     align-items: center;
     width: fit-content;
-    padding: 8px 16px;
-    font-size: 14px;
+    padding: 16rpx 32rpx;
+    font-size: 28rpx;
     font-weight: 500;
     color: #64748b;
     cursor: pointer;
     background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    border: 2rpx solid #e2e8f0;
+    border-radius: 16rpx;
     transition: all 0.2s ease;
 
     &:active {
@@ -97,16 +97,16 @@
   }
 
   .filter-section {
-    padding: 20px 32px;
+    padding: 40rpx 64rpx;
     background: white;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 2rpx solid #f1f5f9;
   }
 
   .images-section {
-    min-height: 300px;
+    min-height: 600rpx;
 
     /* #ifdef MP-WEIXIN || MP-ALIPAY */
-    padding: 12px 16px;
+    padding: 24rpx 32rpx;
     background: #f8fafc;
 
     /* #endif */
@@ -114,7 +114,7 @@
 
   /* 加载更多区域 */
   .load-more-section {
-    padding: 20px;
+    padding: 40rpx;
     text-align: center;
     background: #f8fafc;
   }
@@ -123,14 +123,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 12px 32px;
-    font-size: 14px;
+    padding: 24rpx 64rpx;
+    font-size: 28rpx;
     font-weight: 500;
     color: #64748b;
     cursor: pointer;
     background: white;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
+    border: 4rpx solid #e2e8f0;
+    border-radius: 16rpx;
     transition: all 0.2s ease;
 
     &:active {
@@ -140,10 +140,10 @@
   }
 
   .loading-spinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #f1f5f9;
-    border-top: 2px solid #14b8a6;
+    width: 36rpx;
+    height: 36rpx;
+    border: 4rpx solid #f1f5f9;
+    border-top: 4rpx solid #14b8a6;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
@@ -169,43 +169,43 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
-    margin: 20px 32px;
+    padding: 120rpx 40rpx;
+    margin: 40rpx 64rpx;
     text-align: center;
     background: white;
-    border: 2px dashed #e2e8f0;
-    border-radius: 16px;
+    border: 4rpx dashed #e2e8f0;
+    border-radius: 32rpx;
   }
 
   .error-icon {
-    margin-bottom: 16px;
-    font-size: 48px;
+    margin-bottom: 32rpx;
+    font-size: 96rpx;
     opacity: 0.5;
   }
 
   .error-title {
-    margin-bottom: 8px;
-    font-size: 18px;
+    margin-bottom: 16rpx;
+    font-size: 36rpx;
     font-weight: 600;
     color: #374151;
   }
 
   .error-message {
-    margin-bottom: 20px;
-    font-size: 14px;
+    margin-bottom: 40rpx;
+    font-size: 28rpx;
     line-height: 1.5;
     color: #9ca3af;
   }
 
   .retry-btn {
-    padding: 10px 20px;
-    font-size: 14px;
+    padding: 20rpx 40rpx;
+    font-size: 28rpx;
     font-weight: 500;
     color: white;
     cursor: pointer;
     background: #14b8a6;
     border: none;
-    border-radius: 6px;
+    border-radius: 12rpx;
     transition: all 0.2s ease;
 
     &:active {
@@ -219,27 +219,27 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: calc(100vh - 120px);
-    padding: 40px 20px;
+    min-height: calc(100vh - 240rpx);
+    padding: 80rpx 40rpx;
     background: #fef2f2;
 
     .error-text {
-      margin-bottom: 20px;
-      font-size: 16px;
+      margin-bottom: 40rpx;
+      font-size: 32rpx;
       font-weight: 500;
       color: #ef4444;
     }
 
     .back-btn {
       display: inline-flex;
-      gap: 6px;
+      gap: 12rpx;
       align-items: center;
-      padding: 10px 24px;
-      font-size: 14px;
+      padding: 20rpx 48rpx;
+      font-size: 28rpx;
       font-weight: 500;
       color: white;
       background: #ef4444;
-      border-radius: 8px;
+      border-radius: 16rpx;
       transition: all 0.2s ease;
 
       &:active {

@@ -3,8 +3,8 @@
   position: relative;
   width: 100%;
   overflow: hidden;
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgb(0 0 0 / 15%);
+  border-radius: 48rpx;
+  box-shadow: 0 40rpx 120rpx rgb(0 0 0 / 15%);
 
   /* #ifdef H5 */
   animation: scaleIn 0.8s ease-out;
@@ -30,26 +30,26 @@
     display: block;
     width: 100%;
     height: auto;
-    border-radius: 24px;
+    border-radius: 48rpx;
   }
 
   .comparison-label {
     position: absolute;
-    bottom: 24px;
+    bottom: 48rpx;
     left: 50%;
     z-index: 2;
     display: flex;
-    gap: 16px;
+    gap: 32rpx;
     align-items: center;
-    padding: 12px 24px;
-    font-size: 15px;
+    padding: 24rpx 48rpx;
+    font-size: 30rpx;
     font-weight: 600;
     color: white;
 
     /* #ifdef MP-WEIXIN || MP-ALIPAY */
     background: rgb(0 0 0 / 80%);
-    border-radius: 100px;
-    backdrop-filter: blur(10px);
+    border-radius: 200rpx;
+    backdrop-filter: blur(20rpx);
     transform: translateX(-50%);
 
     /* #endif */
@@ -70,10 +70,10 @@
   /* 响应式适配 */
   @media (width <= 768px) {
     .comparison-label {
-      bottom: 16px;
-      gap: 12px;
-      padding: 10px 20px;
-      font-size: 14px;
+      bottom: 32rpx;
+      gap: 24rpx;
+      padding: 20rpx 40rpx;
+      font-size: 28rpx;
     }
   }
 }

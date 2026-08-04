@@ -4,8 +4,8 @@ import Taro from "@tarojs/taro";
 import { Loading, Tag } from "@taroify/core";
 import { AlgorithmAPI, DatasetAPI, TaskAPI, UserAPI } from "dehaze-sdk-js";
 import type { TaskVO } from "dehaze-sdk-js";
-import { useGlobalContext } from "@/stores/global";
-import { isTabBarPage } from "@/config/menu";
+import { useAuth } from "@/hooks/useAuth";
+import { tabBarItems } from "@/config/menu";
 import PageLayout from "@/layout";
 import "./index.less";
 
@@ -96,10 +96,7 @@ interface Stats {
 // ==================== 页面组件 ====================
 
 const Dashboard: React.FC = () => {
-  const { state } = useGlobalContext();
-  const user = state.auth.user;
-  const roles = state.auth.roles || [];
-  const perms = state.auth.perms || [];
+  const { user, roles, perms } = useAuth();
 
   /** 按模块权限过滤后的管理入口 */
   const visibleManagementEntries = useMemo(
@@ -204,8 +201,8 @@ const Dashboard: React.FC = () => {
         return;
       }
     }
-    if (isTabBarPage(route)) {
-      Taro.reLaunch({ url: route });
+    if (tabBarItems.some((item) => item.route === route)) {
+      Taro.switchTab({ url: route });
     } else {
       Taro.navigateTo({
         url: route,
@@ -237,7 +234,7 @@ const Dashboard: React.FC = () => {
   );
 
   return (
-    <PageLayout showTabbar={false} title="工作台">
+    <PageLayout level="L2" title="工作台">
       <View className="dashboard-page">
         <ScrollView scrollY className="dashboard-scroll">
           {/* 用户欢迎区 */}

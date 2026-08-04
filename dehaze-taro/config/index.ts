@@ -10,11 +10,14 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
     projectName: "dehaze-taro",
     date: "2025-9-22",
     designWidth: 750,
+    // 官方默认换算比例：750 设计稿下 1rpx = 屏宽/750。
+    // 此前误配为 2 倍（750:2），导致 H5 端 rpx→rem 换算放大一倍、页面整体 2 倍变大，
+    // 且 html 根字号被钳制在 minRootSize=20px 后 1rpx 直接等于 1px。
     deviceRatio: {
-      640: 2.34,
-      750: 2,
-      375: 4,
-      828: 1.81,
+      640: 2.34 / 2,
+      750: 1,
+      375: 2,
+      828: 1.81 / 2,
     },
     alias: {
       "@": path.resolve(__dirname, "..", "src"),

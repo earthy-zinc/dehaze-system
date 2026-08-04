@@ -4,29 +4,29 @@
 }
 
 .search-bar {
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
   background-color: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 2rpx solid #f0f0f0;
 }
 
 .role-list {
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
 }
 
 .role-card {
-  margin-bottom: 12px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+  margin-bottom: 24rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 16rpx rgb(0 0 0 / 6%);
 
   &__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 16px 0;
+    padding: 32rpx 32rpx 0;
   }
 
   &__body {
-    padding: 12px 16px 16px;
+    padding: 24rpx 32rpx 32rpx;
   }
 
   &__actions {
@@ -36,8 +36,8 @@
 
     .action-btn {
       height: 100%;
-      padding: 0 16px;
-      font-size: 12px;
+      padding: 0 32rpx;
+      font-size: 24rpx;
       color: #fff;
       border: none;
 
@@ -60,14 +60,14 @@
   flex: 1;
 
   .role-name {
-    margin-bottom: 4px;
-    font-size: 16px;
+    margin-bottom: 8rpx;
+    font-size: 32rpx;
     font-weight: 600;
     color: #262626;
   }
 
   .role-code {
-    font-size: 12px;
+    font-size: 24rpx;
     color: #8c8c8c;
   }
 }
@@ -78,36 +78,36 @@
 }
 
 .role-description {
-  margin-bottom: 12px;
-  font-size: 14px;
+  margin-bottom: 24rpx;
+  font-size: 28rpx;
   line-height: 1.5;
   color: #595959;
 }
 
 .role-meta {
   display: flex;
-  margin-bottom: 8px;
+  margin-bottom: 16rpx;
 
   .meta-item {
     display: flex;
     align-items: center;
-    margin-right: 20px;
+    margin-right: 40rpx;
 
     .meta-label {
-      margin-right: 4px;
-      font-size: 12px;
+      margin-right: 8rpx;
+      font-size: 24rpx;
       color: #8c8c8c;
     }
 
     .meta-value {
-      font-size: 12px;
+      font-size: 24rpx;
       color: #262626;
     }
   }
 }
 
 .role-time {
-  font-size: 11px;
+  font-size: 22rpx;
   color: #bfbfbf;
 }
 
@@ -116,51 +116,51 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 120rpx 40rpx;
   text-align: center;
 
   &__button {
-    margin-top: 20px;
+    margin-top: 40rpx;
   }
 }
 
 .loading-more {
   display: flex;
   justify-content: center;
-  padding: 20px;
+  padding: 40rpx;
 }
 
 // 响应式适配
 @media (width <= 768px) {
   .role-list-page {
     .search-bar {
-      padding: 10px 12px;
+      padding: 20rpx 24rpx;
     }
 
     .role-list {
-      padding: 8px 12px;
+      padding: 16rpx 24rpx;
     }
 
     .role-card {
       &__header {
-        padding: 12px 12px 0;
+        padding: 24rpx 24rpx 0;
       }
 
       &__body {
-        padding: 10px 12px 12px;
+        padding: 20rpx 24rpx 24rpx;
       }
 
       &__actions {
         .action-btn {
-          padding: 0 12px;
-          font-size: 11px;
+          padding: 0 24rpx;
+          font-size: 22rpx;
         }
       }
     }
 
     .role-meta {
       .meta-item {
-        margin-right: 16px;
+        margin-right: 32rpx;
       }
     }
   }

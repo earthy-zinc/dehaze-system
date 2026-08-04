@@ -15,20 +15,20 @@
 .navbar {
   display: flex;
   align-items: center;
-  height: 44px;
-  padding: 0 16px;
+  height: 88rpx;
+  padding: 0 32rpx;
   background: #fff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
+  box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 
   .nav-back {
-    padding: 8px;
-    margin-left: -8px;
+    padding: 16rpx;
+    margin-left: -16rpx;
   }
 
   .nav-title {
     flex: 1;
-    margin-right: 28px;
-    font-size: 17px;
+    margin-right: 56rpx;
+    font-size: 34rpx;
     font-weight: 600;
     color: #1f2937;
     text-align: center;
@@ -37,23 +37,23 @@
 
 /* 当前图片预览 */
 .current-image-section {
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
   background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 2rpx solid #f0f0f0;
 
   .section-label {
     display: block;
-    margin-bottom: 8px;
-    font-size: 13px;
+    margin-bottom: 16rpx;
+    font-size: 26rpx;
     color: #6b7280;
   }
 
   .current-image-wrapper {
     width: 100%;
-    height: 120px;
+    height: 240rpx;
     overflow: hidden;
     background: #f3f4f6;
-    border-radius: 8px;
+    border-radius: 16rpx;
   }
 
   .current-image {
@@ -64,22 +64,22 @@
 
 /* 搜索栏 */
 .search-section {
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
   background: #fff;
 
   .search-input-wrapper {
     display: flex;
     align-items: center;
-    height: 36px;
-    padding: 0 12px;
+    height: 72rpx;
+    padding: 0 24rpx;
     background: #f3f4f6;
-    border-radius: 18px;
+    border-radius: 36rpx;
 
     .search-input {
       flex: 1;
       height: 100%;
-      margin-left: 8px;
-      font-size: 14px;
+      margin-left: 16rpx;
+      font-size: 28rpx;
       appearance: none;
       outline: none;
       background: transparent;
@@ -87,8 +87,8 @@
     }
 
     .clear-btn {
-      padding: 4px 8px;
-      font-size: 18px;
+      padding: 8rpx 16rpx;
+      font-size: 36rpx;
       color: #9ca3af;
     }
   }
@@ -110,39 +110,39 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px 8px;
+  padding: 24rpx 32rpx 16rpx;
 
   .section-title {
-    font-size: 15px;
+    font-size: 30rpx;
     font-weight: 600;
     color: #1f2937;
   }
 
   .section-hint {
-    font-size: 12px;
+    font-size: 24rpx;
     color: #9ca3af;
   }
 }
 
 /* 智能推荐区域 */
 .recommend-section {
-  margin-top: 8px;
+  margin-top: 16rpx;
   background: #fff;
 
   .recommend-list {
-    padding: 0 16px 12px;
+    padding: 0 32rpx 24rpx;
   }
 }
 
 .recommend-card {
   display: flex;
-  gap: 10px;
+  gap: 20rpx;
   align-items: center;
-  padding: 12px;
-  margin-bottom: 8px;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
   background: #f9fafb;
-  border: 1px solid #f3f4f6;
-  border-radius: 10px;
+  border: 2rpx solid #f3f4f6;
+  border-radius: 20rpx;
   transition: all 0.2s;
 
   &:active {
@@ -158,9 +158,9 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    font-size: 12px;
+    width: 56rpx;
+    height: 56rpx;
+    font-size: 24rpx;
     font-weight: 700;
     color: #fff;
     background: linear-gradient(135deg, #3b82f6, #6366f1);
@@ -174,14 +174,14 @@
 
   .recommend-header {
     display: flex;
-    gap: 6px;
+    gap: 12rpx;
     align-items: center;
   }
 
   .recommend-name {
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 14px;
+    font-size: 28rpx;
     font-weight: 600;
     color: #1f2937;
     white-space: nowrap;
@@ -189,10 +189,10 @@
 
   .recommend-tag {
     flex-shrink: 0;
-    padding: 1px 6px;
-    font-size: 10px;
+    padding: 2rpx 12rpx;
+    font-size: 20rpx;
     color: #fff;
-    border-radius: 4px;
+    border-radius: 8rpx;
 
     &.type-dl {
       background: #6366f1;
@@ -209,74 +209,74 @@
 
   .recommend-desc {
     display: block;
-    margin-top: 4px;
+    margin-top: 8rpx;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 12px;
+    font-size: 24rpx;
     color: #6b7280;
     white-space: nowrap;
   }
 
   .recommend-reason {
-    margin-top: 4px;
+    margin-top: 8rpx;
 
     text {
-      font-size: 11px;
+      font-size: 22rpx;
       color: #3b82f6;
     }
   }
 
   .match-score-bar {
-    height: 4px;
-    margin-top: 6px;
+    height: 8rpx;
+    margin-top: 12rpx;
     overflow: hidden;
     background: #e5e7eb;
-    border-radius: 2px;
+    border-radius: 4rpx;
 
     .match-score-fill {
       height: 100%;
       background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-      border-radius: 2px;
+      border-radius: 4rpx;
       transition: width 0.3s ease;
     }
   }
 
   .fav-btn {
     flex-shrink: 0;
-    padding: 8px;
+    padding: 16rpx;
   }
 }
 
 /* 收藏区域 */
 .favorite-section {
-  margin-top: 8px;
+  margin-top: 16rpx;
   background: #fff;
 
   .favorite-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    padding: 0 16px 12px;
+    gap: 16rpx;
+    padding: 0 32rpx 24rpx;
   }
 }
 
 .favorite-card {
   display: flex;
-  gap: 6px;
+  gap: 12rpx;
   align-items: center;
-  padding: 6px 10px;
+  padding: 12rpx 20rpx;
   background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 16px;
+  border: 2rpx solid #fde68a;
+  border-radius: 32rpx;
 
   .fav-card-content {
     display: flex;
-    gap: 6px;
+    gap: 12rpx;
     align-items: center;
   }
 
   .fav-name {
-    font-size: 13px;
+    font-size: 26rpx;
     font-weight: 500;
     color: #92400e;
   }
@@ -284,7 +284,7 @@
   .fav-btn {
     display: flex;
     align-items: center;
-    padding: 2px;
+    padding: 4rpx;
   }
 }
 
@@ -292,23 +292,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 0;
-  font-size: 14px;
+  padding: 80rpx 0;
+  font-size: 28rpx;
   color: #9ca3af;
 }
 
 /* 算法树 */
 .algorithm-tree {
-  padding: 8px 0;
+  padding: 16rpx 0;
 }
 
 /* 树节点 */
 .tree-node {
   display: flex;
   align-items: flex-start;
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
   background: #fff;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 2rpx solid #f5f5f5;
   transition: background 0.2s;
 
   &.selectable:active {
@@ -325,10 +325,10 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    margin-right: 8px;
-    font-size: 12px;
+    width: 48rpx;
+    height: 48rpx;
+    margin-right: 16rpx;
+    font-size: 24rpx;
     color: #6b7280;
   }
 
@@ -342,13 +342,13 @@
 
     .node-header {
       display: flex;
-      gap: 8px;
+      gap: 16rpx;
       align-items: center;
 
       .node-name {
         overflow: hidden;
         text-overflow: ellipsis;
-        font-size: 15px;
+        font-size: 30rpx;
         font-weight: 500;
         color: #1f2937;
         white-space: nowrap;
@@ -357,35 +357,35 @@
 
     .node-desc {
       display: block;
-      margin-top: 4px;
+      margin-top: 8rpx;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-size: 12px;
+      font-size: 24rpx;
       color: #9ca3af;
       white-space: nowrap;
     }
 
     .node-type {
-      margin-top: 4px;
+      margin-top: 8rpx;
 
       .type-label {
         display: inline-block;
-        padding: 2px 6px;
-        font-size: 10px;
+        padding: 4rpx 12rpx;
+        font-size: 20rpx;
         color: #6366f1;
         background: #eef2ff;
-        border-radius: 4px;
+        border-radius: 8rpx;
       }
     }
 
     .node-meta {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 4px;
+      gap: 16rpx;
+      margin-top: 8rpx;
 
       .meta-text {
-        font-size: 11px;
+        font-size: 22rpx;
         color: #9ca3af;
       }
     }
@@ -394,17 +394,17 @@
   .node-actions {
     display: flex;
     flex-shrink: 0;
-    gap: 4px;
+    gap: 8rpx;
     align-items: center;
-    margin-left: 8px;
+    margin-left: 16rpx;
   }
 
   .action-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 56rpx;
+    height: 56rpx;
     border-radius: 50%;
     transition: background 0.2s;
 
@@ -418,25 +418,25 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    height: 28px;
-    padding: 0 14px;
-    margin-left: 8px;
-    font-size: 12px;
+    height: 56rpx;
+    padding: 0 28rpx;
+    margin-left: 16rpx;
+    font-size: 24rpx;
     color: #fff;
     background: #3b82f6;
-    border-radius: 14px;
+    border-radius: 28rpx;
   }
 }
 
 /* 状态标签 */
 .status-tag {
   flex-shrink: 0;
-  padding: 2px 6px;
-  font-size: 10px;
-  border-radius: 4px;
+  padding: 4rpx 12rpx;
+  font-size: 20rpx;
+  border-radius: 8rpx;
 
   text {
-    font-size: 10px;
+    font-size: 20rpx;
   }
 
   &.status-draft {
@@ -492,11 +492,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 32rpx 40rpx;
+  border-bottom: 2rpx solid #f1f5f9;
 
   .detail-title {
-    font-size: 17px;
+    font-size: 34rpx;
     font-weight: 600;
     color: #1f2937;
   }
@@ -505,9 +505,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    font-size: 16px;
+    width: 56rpx;
+    height: 56rpx;
+    font-size: 32rpx;
     color: #9ca3af;
     border-radius: 50%;
 
@@ -519,36 +519,36 @@
 
 .detail-body {
   flex: 1;
-  padding: 8px 20px 16px;
+  padding: 16rpx 40rpx 32rpx;
 }
 
 .detail-item {
   display: flex;
   align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #f9fafb;
+  padding: 24rpx 0;
+  border-bottom: 2rpx solid #f9fafb;
 
   .detail-label {
     flex-shrink: 0;
-    width: 80px;
-    font-size: 13px;
+    width: 160rpx;
+    font-size: 26rpx;
     color: #6b7280;
   }
 
   .detail-value {
     flex: 1;
-    font-size: 14px;
+    font-size: 28rpx;
     line-height: 1.4;
     color: #1f2937;
   }
 
   &.detail-desc-item {
     flex-direction: column;
-    gap: 8px;
+    gap: 16rpx;
     align-items: flex-start;
 
     .detail-desc {
-      font-size: 13px;
+      font-size: 26rpx;
       line-height: 1.6;
       color: #4b5563;
     }
@@ -557,9 +557,9 @@
 
 .detail-footer {
   display: flex;
-  gap: 12px;
-  padding: 12px 20px;
-  border-top: 1px solid #f1f5f9;
+  gap: 24rpx;
+  padding: 24rpx 40rpx;
+  border-top: 2rpx solid #f1f5f9;
 
   :global {
     .taroify-button {
@@ -575,10 +575,10 @@
 
 /* 智能推荐Tab内容 */
 .recommend-tab-content {
-  height: calc(100vh - 44px);
+  height: calc(100vh - 88rpx);
 }
 
 /* 算法列表Tab内容 */
 .algorithm-tab-content {
-  height: calc(100vh - 44px);
+  height: calc(100vh - 88rpx);
 }

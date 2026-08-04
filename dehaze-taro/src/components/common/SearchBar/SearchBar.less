@@ -10,30 +10,30 @@
   align-items: center;
   overflow: hidden;
   background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
+  border: 4rpx solid #e5e7eb;
+  border-radius: 24rpx;
   transition: all 0.3s ease;
 }
 
 .search-input-wrapper:focus-within {
   border-color: #14b8a6;
-  box-shadow: 0 0 0 3px rgb(20 184 166 / 10%);
+  box-shadow: 0 0 0 6rpx rgb(20 184 166 / 10%);
 }
 
 .search-icon {
   z-index: 1;
   flex-shrink: 0;
-  margin-right: 8px;
-  margin-left: 12px;
+  margin-right: 16rpx;
+  margin-left: 24rpx;
 }
 
 .search-input {
   flex: 1;
-  height: 40px;
-  padding: 0 12px 0 0;
+  height: 80rpx;
+  padding: 0 24rpx 0 0;
 
   /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  font-size: 14px;
+  font-size: 28rpx;
   color: #374151;
   outline: none;
   background: transparent;
@@ -51,10 +51,10 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin: 0 8px;
-  font-size: 14px;
+  width: 48rpx;
+  height: 48rpx;
+  margin: 0 16rpx;
+  font-size: 28rpx;
   font-weight: bold;
   color: white;
   cursor: pointer;
@@ -75,25 +75,25 @@
 /* 响应式适配 */
 @media (width <= 480px) {
   .search-input-wrapper {
-    border-radius: 10px;
+    border-radius: 20rpx;
   }
 
   .search-icon {
-    margin-right: 6px;
-    margin-left: 10px;
-    font-size: 18px;
+    margin-right: 12rpx;
+    margin-left: 20rpx;
+    font-size: 36rpx;
   }
 
   .search-input {
-    height: 40px;
-    padding: 0 8px 0 0;
-    font-size: 14px;
+    height: 80rpx;
+    padding: 0 16rpx 0 0;
+    font-size: 28rpx;
   }
 
   .clear-btn {
-    width: 20px;
-    height: 20px;
-    margin: 0 6px;
-    font-size: 12px;
+    width: 40rpx;
+    height: 40rpx;
+    margin: 0 12rpx;
+    font-size: 24rpx;
   }
 }

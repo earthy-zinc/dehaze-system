@@ -1,16 +1,16 @@
 .history-list {
-  padding: 0 16px;
+  padding: 0 32rpx;
 
   .loading-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 48px 24px;
+    padding: 96rpx 48rpx;
 
     .loading-text {
-      margin-top: 12px;
-      font-size: 14px;
+      margin-top: 24rpx;
+      font-size: 28rpx;
       color: #9ca3af;
     }
   }
@@ -19,24 +19,24 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: 32rpx;
 
     .header-title {
-      font-size: 14px;
+      font-size: 28rpx;
       color: #6b7280;
     }
 
     .clear-btn {
       display: flex;
-      gap: 4px;
+      gap: 8rpx;
       align-items: center;
-      padding: 6px 12px;
+      padding: 12rpx 24rpx;
       cursor: pointer;
       background: #fef2f2;
-      border-radius: 6px;
+      border-radius: 12rpx;
 
       text {
-        font-size: 13px;
+        font-size: 26rpx;
         color: #ef4444;
       }
 
@@ -47,13 +47,13 @@
   }
 
   .history-group {
-    margin-bottom: 20px;
+    margin-bottom: 40rpx;
 
     .group-title {
       display: block;
-      padding-left: 4px;
-      margin-bottom: 10px;
-      font-size: 13px;
+      padding-left: 8rpx;
+      margin-bottom: 20rpx;
+      font-size: 26rpx;
       font-weight: 500;
       color: #9ca3af;
     }
@@ -61,18 +61,18 @@
     .group-list {
       overflow: hidden;
       background: white;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
+      border-radius: 24rpx;
+      box-shadow: 0 4rpx 16rpx rgb(0 0 0 / 4%);
     }
   }
 
   .history-item {
     display: flex;
     align-items: center;
-    padding: 12px;
+    padding: 24rpx;
     cursor: pointer;
     background: white;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 2rpx solid #f3f4f6;
 
     &:last-child {
       border-bottom: none;
@@ -86,10 +86,10 @@
   .item-thumbnail {
     position: relative;
     flex-shrink: 0;
-    width: 64px;
-    height: 64px;
+    width: 128rpx;
+    height: 128rpx;
     overflow: hidden;
-    border-radius: 8px;
+    border-radius: 16rpx;
 
     .thumbnail-image {
       width: 100%;
@@ -99,14 +99,14 @@
 
     .result-badge {
       position: absolute;
-      bottom: 4px;
-      left: 4px;
-      padding: 2px 6px;
+      bottom: 8rpx;
+      left: 8rpx;
+      padding: 4rpx 12rpx;
       background: rgb(34 197 94 / 90%);
-      border-radius: 4px;
+      border-radius: 8rpx;
 
       text {
-        font-size: 10px;
+        font-size: 20rpx;
         color: white;
       }
 
@@ -119,13 +119,13 @@
   .item-info {
     flex: 1;
     min-width: 0;
-    margin-left: 12px;
+    margin-left: 24rpx;
 
     .item-name {
       display: block;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-size: 14px;
+      font-size: 28rpx;
       font-weight: 500;
       color: #374151;
       white-space: nowrap;
@@ -133,33 +133,33 @@
 
     .item-time {
       display: block;
-      margin-top: 4px;
-      font-size: 12px;
+      margin-top: 8rpx;
+      font-size: 24rpx;
       color: #9ca3af;
     }
 
     .item-algorithm {
       display: inline-block;
-      padding: 2px 8px;
-      margin-top: 6px;
-      font-size: 11px;
+      padding: 4rpx 16rpx;
+      margin-top: 12rpx;
+      font-size: 22rpx;
       color: #3b82f6;
       background: #eff6ff;
-      border-radius: 4px;
+      border-radius: 8rpx;
     }
   }
 
   .item-arrow {
-    margin-left: 8px;
+    margin-left: 16rpx;
     opacity: 0.5;
   }
 
   .history-footer {
-    padding: 16px;
+    padding: 32rpx;
     text-align: center;
 
     .footer-text {
-      font-size: 12px;
+      font-size: 24rpx;
       color: #9ca3af;
     }
   }

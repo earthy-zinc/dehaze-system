@@ -12,6 +12,7 @@
   }
 
   .navbar-content {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -26,6 +27,31 @@
     &:active {
       opacity: 0.8;
     }
+  }
+
+  /* L2：返回按钮 */
+  .navbar-back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56rpx;
+    height: 56rpx;
+    margin-left: -16rpx;
+    border-radius: 16rpx;
+
+    &:active {
+      background: #f3f4f6;
+    }
+  }
+
+  /* L2：居中页面标题 */
+  .navbar-title {
+    position: absolute;
+    left: 50%;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1f2937;
+    transform: translateX(-50%);
   }
 
   .logo-wrapper {

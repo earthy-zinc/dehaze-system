@@ -1,20 +1,20 @@
 .input-method-tabs {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 0 16px;
-  margin-bottom: 20px;
+  gap: 24rpx;
+  padding: 0 32rpx;
+  margin-bottom: 40rpx;
 
   .method-tab {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 16px 12px;
+    padding: 32rpx 24rpx;
     cursor: pointer;
     background: #f8fafc;
-    border: 2px solid transparent;
-    border-radius: 12px;
+    border: 4rpx solid transparent;
+    border-radius: 24rpx;
     transition: all 0.2s ease;
 
     &:active {
@@ -30,23 +30,23 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 48px;
-      height: 48px;
-      margin-bottom: 8px;
+      width: 96rpx;
+      height: 96rpx;
+      margin-bottom: 16rpx;
       background: white;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+      border-radius: 24rpx;
+      box-shadow: 0 4rpx 16rpx rgb(0 0 0 / 6%);
     }
 
     .tab-label {
-      margin-bottom: 2px;
-      font-size: 14px;
+      margin-bottom: 4rpx;
+      font-size: 28rpx;
       font-weight: 600;
       color: #374151;
     }
 
     .tab-sub-label {
-      font-size: 11px;
+      font-size: 22rpx;
       color: #9ca3af;
     }
 
@@ -61,24 +61,24 @@
 /* 小屏适配 */
 @media (width <= 375px) {
   .input-method-tabs {
-    gap: 8px;
-    padding: 0 12px;
+    gap: 16rpx;
+    padding: 0 24rpx;
 
     .method-tab {
-      padding: 12px 8px;
+      padding: 24rpx 16rpx;
 
       .tab-icon {
-        width: 40px;
-        height: 40px;
-        margin-bottom: 6px;
+        width: 80rpx;
+        height: 80rpx;
+        margin-bottom: 12rpx;
       }
 
       .tab-label {
-        font-size: 13px;
+        font-size: 26rpx;
       }
 
       .tab-sub-label {
-        font-size: 10px;
+        font-size: 20rpx;
       }
     }
   }

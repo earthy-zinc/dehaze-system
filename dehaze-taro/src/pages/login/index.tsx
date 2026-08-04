@@ -2,12 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Button, Form, Image, Input, Text, View } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { AuthAPI, CaptchaResult } from "dehaze-sdk-js";
-import { useGlobalContext } from "@/stores/global";
+import { useAuthStore } from "@/stores/global";
 import { getErrorMessage } from "@/utils/error";
 import "./index.less";
 
 const Login: React.FC = () => {
-  const { login } = useGlobalContext();
+  const login = useAuthStore((s) => s.login);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -81,9 +81,9 @@ const Login: React.FC = () => {
       // 登录成功
       Taro.showToast({ title: "登录成功", icon: "success" });
 
-      // 延迟跳转，让用户看到成功提示。登录后进入首页
+      // 延迟跳转，让用户看到成功提示。登录后进入首页（Tab 根页面，使用 switchTab）
       setTimeout(() => {
-        Taro.reLaunch({ url: "/pages/home/index" });
+        Taro.switchTab({ url: "/pages/home/index" });
       }, 1000);
     } catch (error: unknown) {
       // 打印完整错误对象，便于诊断

@@ -119,7 +119,7 @@ const handleRegister = async () => {
       captchaCode: form.captchaCode,
     });
 
-    uni.reLaunch({ url: HOME_PATH });
+    uni.switchTab({ url: HOME_PATH });
   } catch (error) {
     const errorMsg = getErrorMessage(error, "注册失败，请重试");
 
@@ -150,7 +150,7 @@ const goLogin = () => {
 onMounted(async () => {
   // 已登录直接进入首页
   if (authStore.isLoggedIn) {
-    uni.reLaunch({ url: HOME_PATH });
+    uni.switchTab({ url: HOME_PATH });
     return;
   }
   // 自动获取验证码

@@ -14,7 +14,7 @@ import "./index.less";
 
 const HomePage: React.FC = () => {
   return (
-    <PageLayout showTabbar currentRoute="/pages/home/index">
+    <PageLayout level="L1" title="首页">
       <View className="home-page">
         <HeroSection />
         <ShowcaseSection />

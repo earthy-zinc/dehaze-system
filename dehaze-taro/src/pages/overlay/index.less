@@ -9,20 +9,20 @@
 .navbar {
   display: flex;
   align-items: center;
-  height: 44px;
-  padding: 0 16px;
+  height: 88rpx;
+  padding: 0 32rpx;
   background: #fff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
+  box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 
   .nav-back {
-    padding: 8px;
-    margin-left: -8px;
+    padding: 16rpx;
+    margin-left: -16rpx;
   }
 
   .nav-title {
     flex: 1;
-    margin-right: 28px;
-    font-size: 17px;
+    margin-right: 56rpx;
+    font-size: 34rpx;
     font-weight: 600;
     color: #1f2937;
     text-align: center;
@@ -32,8 +32,8 @@
 /* 模式切换标签 */
 .mode-tabs {
   display: flex;
-  gap: 8px;
-  padding: 0 16px 12px;
+  gap: 16rpx;
+  padding: 0 32rpx 24rpx;
   background: #fff;
 
   .mode-tab {
@@ -41,11 +41,11 @@
     flex: 1;
     align-items: center;
     justify-content: center;
-    height: 32px;
-    font-size: 13px;
+    height: 64rpx;
+    font-size: 26rpx;
     color: #6b7280;
     background: #f3f4f6;
-    border-radius: 16px;
+    border-radius: 32rpx;
 
     &.active {
       font-weight: 500;
@@ -62,18 +62,18 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 32rpx;
 }
 
 /* 图片容器 */
 .image-container {
   position: relative;
   width: 100%;
-  max-width: 400px;
+  max-width: 800rpx;
   overflow: hidden;
   touch-action: none;
   background: #000;
-  border-radius: 12px;
+  border-radius: 24rpx;
 
   .base-image {
     display: block;
@@ -100,9 +100,9 @@
     top: 0;
     bottom: 0;
     z-index: 10;
-    width: 2px;
+    width: 4rpx;
     background: #fff;
-    box-shadow: 0 0 8px rgb(0 0 0 / 30%);
+    box-shadow: 0 0 16rpx rgb(0 0 0 / 30%);
 
     .slider-line {
       width: 100%;
@@ -114,19 +114,19 @@
       top: 50%;
       left: 50%;
       display: flex;
-      gap: 2px;
+      gap: 4rpx;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
+      width: 72rpx;
+      height: 72rpx;
       background: #fff;
       border-radius: 50%;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+      box-shadow: 0 4rpx 16rpx rgb(0 0 0 / 20%);
       transform: translate(-50%, -50%);
 
       .slider-arrow-left,
       .slider-arrow-right {
-        font-size: 10px;
+        font-size: 20rpx;
         color: #6b7280;
       }
     }
@@ -135,17 +135,17 @@
   /* 标签 */
   .image-labels {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    left: 8px;
+    top: 16rpx;
+    right: 16rpx;
+    left: 16rpx;
     display: flex;
     justify-content: space-between;
     pointer-events: none;
 
     .label-tag {
-      padding: 3px 8px;
-      font-size: 11px;
-      border-radius: 4px;
+      padding: 6rpx 16rpx;
+      font-size: 22rpx;
+      border-radius: 8rpx;
       transition: opacity 0.2s;
 
       &.label-original {
@@ -163,13 +163,13 @@
 
 /* 导出报告按钮 */
 .export-report-section {
-  padding: 12px 16px;
-  margin-top: 8px;
+  padding: 24rpx 32rpx;
+  margin-top: 16rpx;
 }
 
 /* 提示文字 */
 .overlay-hint {
-  margin-top: 16px;
-  font-size: 13px;
+  margin-top: 32rpx;
+  font-size: 26rpx;
   color: #9ca3af;
 }

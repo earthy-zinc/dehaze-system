@@ -4,7 +4,7 @@ import Taro from "@tarojs/taro";
 import { Tag } from "@taroify/core";
 import { confirmDialog } from "@/utils/dialog";
 import { useAuth } from "@/hooks/useAuth";
-import { isTabBarPage } from "@/config/menu";
+import { tabBarItems } from "@/config/menu";
 import PageLayout from "@/layout";
 import { getErrorMessage } from "@/utils/error";
 import "./index.less";
@@ -141,10 +141,10 @@ const ProfilePage: React.FC = () => {
     [perms]
   );
 
-  /** 跳转到指定页面（tabbar 页面用 reLaunch，其余用 navigateTo） */
+  /** 跳转到指定页面（tabbar 页面用 switchTab，其余用 navigateTo） */
   const handleNavigate = useCallback((route: string) => {
-    if (isTabBarPage(route)) {
-      Taro.reLaunch({ url: route });
+    if (tabBarItems.some((item) => item.route === route)) {
+      Taro.switchTab({ url: route });
     } else {
       Taro.navigateTo({
         url: route,
@@ -204,7 +204,7 @@ const ProfilePage: React.FC = () => {
   );
 
   return (
-    <PageLayout showTabbar currentRoute="/pages/profile/index" title="个人中心">
+    <PageLayout level="L1" title="我的">
       <View className="profile-page">
         <ScrollView scrollY className="profile-scroll">
           {/* 用户信息头部 */}

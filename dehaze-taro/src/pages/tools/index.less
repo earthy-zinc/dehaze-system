@@ -1,0 +1,103 @@
+.tools-page {
+  min-height: 100vh;
+  padding: 24rpx;
+  background: #f9fafb;
+}
+
+.search-bar {
+  display: flex;
+  gap: 12rpx;
+  align-items: center;
+  height: 72rpx;
+  padding: 0 24rpx;
+  margin-bottom: 32rpx;
+  background: #f3f4f6;
+  border-radius: 999rpx;
+
+  .search-placeholder {
+    font-size: 26rpx;
+    color: #9ca3af;
+  }
+}
+
+.quick-scroll {
+  margin-bottom: 32rpx;
+  white-space: nowrap;
+
+  .quick-row {
+    display: inline-flex;
+    gap: 24rpx;
+    padding: 0 8rpx;
+  }
+
+  .quick-item {
+    display: flex;
+    flex-direction: column;
+    gap: 10rpx;
+    align-items: center;
+    width: 120rpx;
+  }
+
+  .quick-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 88rpx;
+    height: 88rpx;
+    background: #eff6ff;
+    border-radius: 24rpx;
+  }
+
+  .quick-label {
+    font-size: 22rpx;
+    color: #374151;
+  }
+}
+
+.grid-section {
+  .section-label {
+    display: block;
+    margin-bottom: 16rpx;
+    font-size: 24rpx;
+    color: #6b7280;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20rpx;
+  }
+
+  .grid-item {
+    display: flex;
+    flex-direction: column;
+    gap: 12rpx;
+    align-items: center;
+    padding: 24rpx 0;
+    background: #fff;
+    border-radius: 20rpx;
+    box-shadow: 0 2rpx 12rpx rgb(0 0 0 / 4%);
+  }
+
+  .grid-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72rpx;
+    height: 72rpx;
+    background: #eff6ff;
+    border-radius: 20rpx;
+  }
+
+  .grid-label {
+    font-size: 22rpx;
+    color: #374151;
+  }
+}
+
+.dev-tip {
+  margin-top: 48rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
+  text-align: center;
+}

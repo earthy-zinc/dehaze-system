@@ -3,20 +3,20 @@
   box-sizing: border-box;
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 32rpx;
   width: 100%;
 
   .grid-item {
     flex-shrink: 0;
-    width: calc(50% - 8px);
+    width: calc(50% - 16rpx);
     overflow: hidden;
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+    border-radius: 24rpx;
+    box-shadow: 0 4rpx 16rpx rgb(0 0 0 / 8%);
     transition: all 0.3s ease;
 
     &:active {
-      box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+      box-shadow: 0 4rpx 16rpx rgb(0 0 0 / 8%);
       transform: scale(0.98);
     }
   }
@@ -42,9 +42,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 200px;
+    min-height: 400rpx;
     background: #f9fafb;
-    border: 2px dashed #e5e7eb;
-    border-radius: 12px;
+    border: 4rpx dashed #e5e7eb;
+    border-radius: 24rpx;
   }
 }

@@ -51,7 +51,7 @@ function handleClose() {
   if (pages.length > 1) {
     uni.navigateBack();
   } else {
-    uni.reLaunch({ url: HOME_PATH });
+    uni.switchTab({ url: HOME_PATH });
   }
 }
 </script>

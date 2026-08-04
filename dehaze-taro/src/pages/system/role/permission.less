@@ -1,6 +1,6 @@
 .role-permission-page {
   min-height: 100vh;
-  padding-bottom: 80px;
+  padding-bottom: 160rpx;
   background-color: #f5f5f5;
 }
 
@@ -16,27 +16,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
   background-color: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 2rpx solid #f0f0f0;
 
   .selected-count {
-    font-size: 14px;
+    font-size: 28rpx;
     color: #666;
   }
 }
 
 .permission-tree {
-  padding: 8px 0;
+  padding: 16rpx 0;
 }
 
 .permission-item {
-  margin-bottom: 1px;
+  margin-bottom: 2rpx;
   background-color: #fff;
 }
 
 .permission-cell {
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
   border-bottom: none;
 
   .taroify-checkbox {
@@ -52,12 +52,12 @@
 }
 
 .permission-label {
-  font-size: 14px;
+  font-size: 28rpx;
   color: #262626;
 }
 
 .permission-children-count {
-  font-size: 12px;
+  font-size: 24rpx;
   color: #999;
 }
 
@@ -65,8 +65,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
-  font-size: 14px;
+  padding: 120rpx 40rpx;
+  font-size: 28rpx;
   color: #999;
   background-color: #fff;
 }
@@ -76,14 +76,14 @@
   right: 0;
   bottom: 0;
   left: 0;
-  padding: 16px;
+  padding: 32rpx;
   background-color: #fff;
-  border-top: 1px solid #f0f0f0;
-  box-shadow: 0 -2px 8px rgb(0 0 0 / 10%);
+  border-top: 2rpx solid #f0f0f0;
+  box-shadow: 0 -4rpx 16rpx rgb(0 0 0 / 10%);
 
   .taroify-button {
-    height: 44px;
-    font-size: 16px;
+    height: 88rpx;
+    font-size: 32rpx;
   }
 }
 
@@ -93,14 +93,14 @@
     background-color: #fafafa;
 
     .permission-cell {
-      padding-left: 16px;
+      padding-left: 32rpx;
     }
 
     .permission-item {
       background-color: #fff;
 
       .permission-cell {
-        padding-left: 16px;
+        padding-left: 32rpx;
       }
     }
   }
@@ -115,7 +115,7 @@
   background-color: #fafafa;
 
   .permission-cell {
-    padding-left: 24px;
+    padding-left: 48rpx;
   }
 }
 
@@ -123,7 +123,7 @@
   background-color: #fff;
 
   .permission-cell {
-    padding-left: 32px;
+    padding-left: 64rpx;
   }
 }
 
@@ -131,18 +131,18 @@
   background-color: #fafafa;
 
   .permission-cell {
-    padding-left: 40px;
+    padding-left: 80rpx;
   }
 }
 
 // 复选框样式优化
 .taroify-checkbox {
   .taroify-checkbox__icon {
-    font-size: 18px;
+    font-size: 36rpx;
   }
 
   .taroify-checkbox__label {
-    margin-left: 8px;
+    margin-left: 16rpx;
   }
 }
 
@@ -150,15 +150,15 @@
 @media (width <= 768px) {
   .role-permission-page {
     .permission-actions {
-      padding: 10px 12px;
+      padding: 20rpx 24rpx;
     }
 
     .permission-cell {
-      padding: 10px 12px;
+      padding: 20rpx 24rpx;
     }
 
     .permission-footer {
-      padding: 12px;
+      padding: 24rpx;
     }
   }
 }
@@ -168,7 +168,7 @@
   .permission-actions {
     .taroify-button {
       // 小程序中按钮样式调整
-      border-radius: 4px;
+      border-radius: 8rpx;
 
       &::after {
         border: none;

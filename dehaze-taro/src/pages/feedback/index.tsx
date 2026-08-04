@@ -130,11 +130,7 @@ const FeedbackPage: React.FC = () => {
   );
 
   return (
-    <PageLayout
-      showTabbar
-      currentRoute="/pages/feedback/index"
-      title="意见反馈"
-    >
+    <PageLayout level="L2" title="意见反馈">
       <View className="feedback-page">
         {/* 顶部操作栏 */}
         <View className="feedback-header">

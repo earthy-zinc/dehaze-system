@@ -16,7 +16,6 @@ interface UploadResponse {
   data: FileInfo;
 }
 
-
 /**
  * H5 端上传：blob URL → File → SDK FileAPI.upload
  */

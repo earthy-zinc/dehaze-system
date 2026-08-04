@@ -1,14 +1,14 @@
 .compare-toolbar {
   background-color: #fff;
-  border-top: 1px solid #f0f0f0;
+  border-top: 2rpx solid #f0f0f0;
 
   .mode-tabs {
     display: flex;
-    gap: 6px;
-    padding: 8px 12px;
+    gap: 12rpx;
+    padding: 16rpx 24rpx;
     overflow-x: auto;
     white-space: nowrap;
-    border-bottom: 1px solid #f5f5f5;
+    border-bottom: 2rpx solid #f5f5f5;
 
     &::-webkit-scrollbar {
       display: none;
@@ -16,11 +16,11 @@
 
     .mode-tab {
       flex-shrink: 0;
-      padding: 6px 14px;
-      font-size: 13px;
+      padding: 12rpx 28rpx;
+      font-size: 26rpx;
       color: #595959;
       background-color: #f5f5f5;
-      border-radius: 16px;
+      border-radius: 32rpx;
       transition: all 0.2s ease;
 
       &.active {
@@ -33,26 +33,26 @@
   .action-buttons {
     display: flex;
     justify-content: space-around;
-    padding: 8px 4px;
-    padding-bottom: calc(8px + constant(safe-area-inset-bottom));
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    padding: 16rpx 8rpx;
+    padding-bottom: calc(16rpx + constant(safe-area-inset-bottom));
+    padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 
     .action-btn {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-width: 48px;
-      padding: 4px 6px;
+      min-width: 96rpx;
+      padding: 8rpx 12rpx;
 
       .action-icon {
-        margin-bottom: 4px;
-        font-size: 20px;
+        margin-bottom: 8rpx;
+        font-size: 40rpx;
         line-height: 1;
       }
 
       .action-text {
-        font-size: 11px;
+        font-size: 22rpx;
         color: #595959;
       }
 

@@ -110,7 +110,7 @@ const handleSubmit = async () => {
     });
 
     // 登录成功立即进入首页，首页自然呈现登录态
-    uni.reLaunch({ url: HOME_PATH });
+    uni.switchTab({ url: HOME_PATH });
   } catch (error) {
     const errorMsg = getErrorMessage(error, "登录失败，请重试");
 
@@ -144,7 +144,7 @@ const goRegister = () => {
 onMounted(async () => {
   // 已登录直接进入首页（含登录失效被重定向后重新登录的场景）
   if (authStore.isLoggedIn) {
-    uni.reLaunch({ url: HOME_PATH });
+    uni.switchTab({ url: HOME_PATH });
     return;
   }
   // 自动获取验证码

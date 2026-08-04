@@ -106,7 +106,7 @@ const MemberPage: React.FC = () => {
   const nextLevelGrowth = Math.max(0, maxGrowthValue - growthValue);
 
   return (
-    <PageLayout showTabbar currentRoute="/pages/member/index" title="会员中心">
+    <PageLayout level="L2" title="会员中心">
       <View className="member-page">
         <ScrollView
           scrollY

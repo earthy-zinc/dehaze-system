@@ -4,6 +4,7 @@ import Taro from "@tarojs/taro";
 import { Bell } from "@taroify/icons";
 import PageLayout from "@/layout";
 import EmptyState from "@/components/common/EmptyState";
+import { tabBarItems } from "@/config/menu";
 import { MessageAPI } from "dehaze-sdk-js";
 import type { MessageVO } from "dehaze-sdk-js";
 import { formatDateTime } from "@/utils/format";
@@ -52,7 +53,13 @@ const NotifyPage: React.FC = () => {
         markAsRead(item.id);
       }
       if (item.jumpUrl) {
-        Taro.navigateTo({ url: item.jumpUrl });
+        // 目标为 Tab 根页面时用 switchTab（禁止压栈进入 Tab 页），其余用 navigateTo
+        const target = item.jumpUrl.split("?")[0];
+        if (tabBarItems.some((t) => t.route === target)) {
+          Taro.switchTab({ url: target });
+        } else {
+          Taro.navigateTo({ url: item.jumpUrl });
+        }
       }
     },
     [markAsRead]
@@ -96,7 +103,7 @@ const NotifyPage: React.FC = () => {
   const hasUnread = messages.some((m) => m.readStatus === 0);
 
   return (
-    <PageLayout showTabbar currentRoute="/pages/notify/index" title="消息通知">
+    <PageLayout level="L2" title="消息通知">
       <View className="notify-page">
         <View className="notify-header">
           <View className="header-title">
