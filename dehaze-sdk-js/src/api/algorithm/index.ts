@@ -1,11 +1,17 @@
 import { OptionType } from "@/types";
 import request from "@/utils/request";
+import { PredictionResultVO } from "@/api/model/model";
 import {
   Algorithm,
   AlgorithmAuditForm,
+  AlgorithmCompareForm,
+  AlgorithmCompareVO,
+  AlgorithmDetailVO,
   AlgorithmMonitorVO,
   AlgorithmMonitorStatsItemVO,
   AlgorithmQuery,
+  AlgorithmSelectNodeVO,
+  AlgorithmTestForm,
   AlgorithmVersionForm,
   AlgorithmVersionVO,
 } from "./model";
@@ -119,6 +125,49 @@ class AlgorithmAPI {
     return request<AlgorithmMonitorStatsItemVO[]>({
       url: `/api/v1/algorithms/${id}/monitor/stats`,
       method: "get",
+    });
+  }
+
+  /** 算法对比（最多 3 个，对应 /api/v1/algorithms/select/compare） */
+  static compare(data: AlgorithmCompareForm) {
+    return request<AlgorithmCompareVO[]>({
+      url: "/api/v1/algorithms/select/compare",
+      method: "post",
+      data,
+    });
+  }
+
+  /** 获取算法选择树（仅已发布算法，对应 /api/v1/algorithms/select/tree） */
+  static tree() {
+    return request<AlgorithmSelectNodeVO[]>({
+      url: "/api/v1/algorithms/select/tree",
+      method: "get",
+    });
+  }
+
+  /** 获取算法详情（含样例效果图、评分、使用次数，对应 /api/v1/algorithms/select/{id}） */
+  static getSelectDetail(id: number) {
+    return request<AlgorithmDetailVO>({
+      url: "/api/v1/algorithms/select/" + id,
+      method: "get",
+    });
+  }
+
+  /** 上传自定义图片测试算法效果（对应 /api/v1/algorithms/select/{id}/test） */
+  static test(id: number, data: AlgorithmTestForm) {
+    return request<PredictionResultVO>({
+      url: `/api/v1/algorithms/select/${id}/test`,
+      method: "post",
+      data,
+    });
+  }
+
+  /** 搜索算法（关键词/拼音/标签，对应 /api/v1/algorithms/select/search） */
+  static search(keyword: string) {
+    return request<AlgorithmSelectNodeVO[]>({
+      url: "/api/v1/algorithms/select/search",
+      method: "get",
+      params: { keyword },
     });
   }
 

@@ -95,6 +95,27 @@ export interface EvalLogVO {
   createTime?: string;
 }
 
+/** 评估指标历史（对应后端 EvalMetricsVO） */
+export interface EvalMetricsVO {
+  /** 日志 ID */
+  id: number;
+  algorithmId: number;
+  algorithmName?: string;
+  /** 预测文件 URL */
+  predUrl?: string;
+  /** 参考图片 URL */
+  gtUrl?: string;
+  /** 评估指标结果（PSNR/SSIM 等） */
+  metrics?: Record<string, number>;
+  /** 处理时间（毫秒） */
+  time?: number;
+  /** 任务状态 */
+  status?: PredEvalTaskStatus;
+  /** 失败错误信息 */
+  errorMessage?: string;
+  createTime?: string;
+}
+
 /** 评估日志查询 */
 export interface EvalLogQuery extends PageQuery {
   algorithmId?: number;

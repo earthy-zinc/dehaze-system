@@ -210,4 +210,20 @@ describe("预测与评估 API 测试", () => {
       expect(page.total).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe("GET /api/v1/evaluation/metrics - 评估指标历史", () => {
+    test("正向测试：分页查询当前用户已完成评估的指标历史", async () => {
+      const page = await ModelAPI.getEvalMetrics({ pageNum: 1, pageSize: 5 });
+
+      expect(page).toBeDefined();
+      expect(Array.isArray(page.list)).toBe(true);
+      expect(typeof page.total).toBe("number");
+      page.list.forEach((item) => {
+        expect(item.id).toBeGreaterThan(0);
+        if (item.metrics) {
+          expect(typeof item.metrics).toBe("object");
+        }
+      });
+    });
+  });
 });

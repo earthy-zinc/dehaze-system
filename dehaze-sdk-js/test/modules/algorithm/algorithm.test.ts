@@ -380,4 +380,121 @@ describe("算法管理接口测试", () => {
       await expectBizError(AlgorithmAPI.add(form as any), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
   });
+
+  describe("POST /api/v1/algorithms/select/compare - 算法对比", () => {
+    test("正向测试：对比 2 个叶子算法返回对比结果", async () => {
+      // 选择树仅含已发布算法，compare 要求算法均已发布
+      const tree = await AlgorithmAPI.tree();
+      const leaves = tree.filter((n) => n.leaf);
+
+      if (leaves.length < 2) {
+        console.warn("已发布叶子算法不足 2 个，跳过对比正向测试");
+        return;
+      }
+
+      const result = await AlgorithmAPI.compare({
+        algorithmIds: [leaves[0]!.id, leaves[1]!.id],
+      });
+
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThanOrEqual(2);
+      result.forEach((item) => {
+        expect(item.algorithmId).toBeGreaterThan(0);
+        expect(item.algorithmName).toBeTruthy();
+      });
+    });
+
+    test("参数校验：少于 2 个算法应抛出业务错误", async () => {
+      await expectBizError(AlgorithmAPI.compare({ algorithmIds: [1] }), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+  });
+
+  describe("GET /api/v1/algorithms/select/tree - 算法选择树（仅已发布）", () => {
+    test("正向测试：返回树形结构且叶子节点标记 leaf", async () => {
+      const tree = await AlgorithmAPI.tree();
+
+      expect(tree).toBeDefined();
+      expect(Array.isArray(tree)).toBe(true);
+
+      const verifyNode = (nodes: typeof tree) => {
+        nodes.forEach((node) => {
+          expect(node.id).toBeGreaterThan(0);
+          expect(node.name).toBeTruthy();
+          expect(typeof node.leaf).toBe("boolean");
+          if (node.children && node.children.length > 0) {
+            verifyNode(node.children);
+          }
+        });
+      };
+      verifyNode(tree);
+    });
+  });
+
+  describe("GET /api/v1/algorithms/select/{id} - 算法详情", () => {
+    test("正向测试：从选择树取叶子节点获取详情", async () => {
+      const tree = await AlgorithmAPI.tree();
+      const firstLeaf = tree.find((n) => n.leaf);
+
+      if (!firstLeaf) {
+        console.warn("无已发布算法，跳过详情正向测试");
+        return;
+      }
+
+      const detail = await AlgorithmAPI.getSelectDetail(firstLeaf.id);
+      expect(detail.id).toBe(firstLeaf.id);
+      expect(detail.name).toBeTruthy();
+      expect(detail.type).toBeTruthy();
+      expect(Array.isArray(detail.sampleImages)).toBe(true);
+    });
+
+    test("异常测试：不存在的算法ID应抛出业务错误", async () => {
+      await expectBizError(AlgorithmAPI.getSelectDetail(99999999), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+  });
+
+  describe("POST /api/v1/algorithms/select/{id}/test - 自定义图片测试", () => {
+    test("异常测试：不存在的算法ID应抛出业务错误", async () => {
+      await expectBizError(AlgorithmAPI.test(99999999, { imageUrl: "https://example.com/x.png" }), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+  });
+
+  describe("GET /api/v1/algorithms/select/search - 搜索算法", () => {
+    test("正向测试：按关键词搜索返回匹配的叶子算法", async () => {
+      const tree = await AlgorithmAPI.tree();
+      const firstLeaf = tree.find((n) => n.leaf);
+
+      if (!firstLeaf) {
+        console.warn("无已发布算法，跳过搜索正向测试");
+        return;
+      }
+
+      const keyword = firstLeaf.name.substring(0, 2);
+      const result = await AlgorithmAPI.search(keyword);
+
+      expect(Array.isArray(result)).toBe(true);
+      result.forEach((node) => {
+        expect(node.name.toLowerCase()).toContain(keyword.toLowerCase());
+      });
+    });
+
+    test("边界测试：空关键词应返回空数组", async () => {
+      const result = await AlgorithmAPI.search("  ");
+      expect(result).toEqual([]);
+    });
+  });
 });

@@ -68,3 +68,77 @@ export interface AlgorithmMonitorStatsItemVO {
   avgTime: number;
   successRate: number;
 }
+
+/** 算法对比表单（对应后端 AlgorithmCompareForm） */
+export interface AlgorithmCompareForm {
+  /** 算法ID列表（2-3 个） */
+  algorithmIds: number[];
+  /** 文件ID（与 imageUrl 二选一） */
+  fileId?: number;
+  /** 图片 URL（与 fileId 二选一） */
+  imageUrl?: string;
+}
+
+/** 算法对比结果项（对应后端 AlgorithmCompareVO） */
+export interface AlgorithmCompareVO {
+  algorithmId: number;
+  algorithmName: string;
+  /** 处理结果 URL（服务端已执行对比预测时返回） */
+  resultUrl?: string;
+  /** 处理耗时（毫秒） */
+  time?: number;
+  /** 评估指标（PSNR/SSIM 等，JSON 字符串） */
+  metrics?: string;
+}
+
+/** 算法选择树节点（对应后端 AlgorithmSelectNodeVO） */
+export interface AlgorithmSelectNodeVO {
+  id: number;
+  /** 父节点 ID（根节点为 0） */
+  parentId: number;
+  name: string;
+  /** 算法类型 */
+  type: string;
+  /** 是否为叶子节点（算法节点） */
+  leaf: boolean;
+  children?: AlgorithmSelectNodeVO[];
+}
+
+/** 算法详情（对应后端 AlgorithmDetailVO） */
+export interface AlgorithmDetailVO {
+  id: number;
+  name: string;
+  type: string;
+  /** 算法图片 */
+  img?: string;
+  description: string;
+  path?: string;
+  /** 模型文件大小 */
+  size?: string;
+  /** 参数量 */
+  params?: string;
+  /** FLOPs */
+  flops?: string;
+  /** 算法版本 */
+  version?: string;
+  /** 算法状态 */
+  status?: number;
+  /** 平均评分 */
+  avgRating?: number;
+  /** 评价总数 */
+  ratingCount?: number;
+  /** 使用次数 */
+  usageCount?: number;
+  /** 样例效果图 URL 列表 */
+  sampleImages?: string[];
+}
+
+/** 自定义图片测试表单（对应后端 AlgorithmTestForm） */
+export interface AlgorithmTestForm {
+  /** 文件 ID（与 imageUrl 二选一） */
+  fileId?: number;
+  /** 图片 URL（与 fileId 二选一） */
+  imageUrl?: string;
+  /** 预测参数（JSON） */
+  params?: string;
+}

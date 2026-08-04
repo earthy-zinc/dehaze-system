@@ -7,6 +7,7 @@ import {
   CompareReportResultVO,
   EvalLogQuery,
   EvalLogVO,
+  EvalMetricsVO,
   EvaluationForm,
   EvaluationResultVO,
   PollOptions,
@@ -153,6 +154,15 @@ class ModelAPI {
   static getEvalLogs(query?: EvalLogQuery) {
     return request<PageResult<EvalLogVO[]>>({
       url: "/api/v1/evaluation/logs",
+      method: "get",
+      params: query,
+    });
+  }
+
+  /** 获取评估指标历史（当前用户，仅已完成任务） */
+  static getEvalMetrics(query?: EvalLogQuery) {
+    return request<PageResult<EvalMetricsVO[]>>({
+      url: "/api/v1/evaluation/metrics",
       method: "get",
       params: query,
     });
