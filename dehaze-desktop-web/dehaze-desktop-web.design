@@ -1,82 +1,14 @@
 {
   "data": [
     {
-      "id": "page-index",
-      "title": "首页",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1754112000000,
-      "canvasData": {
-        "x": -552,
-        "y": 1608,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 2083,
-          "viewportWidth": 1440,
-          "sourceHash": "fnv1a-0249f6ee",
-          "measuredAt": 1785652124754
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/index.html",
-        "interactions": [
-          {
-            "domId": "nav-home",
-            "targetPageId": "page-index"
-          },
-          {
-            "domId": "nav-dashboard",
-            "targetPageId": "page-dashboard"
-          },
-          {
-            "domId": "nav-dehaze",
-            "targetPageId": "page-dehaze"
-          },
-          {
-            "domId": "nav-dataset",
-            "targetPageId": "page-dataset"
-          },
-          {
-            "domId": "nav-algorithm",
-            "targetPageId": "page-algorithm"
-          },
-          {
-            "domId": "nav-profile",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "header-login",
-            "targetPageId": "page-login"
-          },
-          {
-            "domId": "header-register",
-            "targetPageId": "page-register"
-          },
-          {
-            "domId": "cta-dehaze",
-            "targetPageId": "page-dehaze"
-          },
-          {
-            "domId": "cta-dashboard",
-            "targetPageId": "page-dashboard"
-          },
-          {
-            "domId": "cta-register",
-            "targetPageId": "page-register"
-          }
-        ]
-      }
-    },
-    {
       "id": "page-index-v3",
       "title": "首页（section 强化版）",
       "type": "page",
       "version": 1,
       "createdAt": 1785664800000,
       "canvasData": {
-        "x": -108,
-        "y": 1614,
+        "x": -588,
+        "y": 652,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -141,142 +73,14 @@
       }
     },
     {
-      "id": "page-index-v2",
-      "title": "首页（视觉优化版）",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1785656000000,
-      "canvasData": {
-        "x": 620,
-        "y": 0,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 2127,
-          "viewportWidth": 1440,
-          "sourceHash": "fnv1a-68bb5b25",
-          "measuredAt": 1785663204715
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/index-v2.html",
-        "interactions": [
-          {
-            "domId": "nav-home",
-            "targetPageId": "page-index-v2"
-          },
-          {
-            "domId": "nav-dashboard",
-            "targetPageId": "page-dashboard"
-          },
-          {
-            "domId": "nav-dehaze",
-            "targetPageId": "page-dehaze"
-          },
-          {
-            "domId": "nav-dataset",
-            "targetPageId": "page-dataset"
-          },
-          {
-            "domId": "nav-algorithm",
-            "targetPageId": "page-algorithm"
-          },
-          {
-            "domId": "nav-profile",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "header-login",
-            "targetPageId": "page-login"
-          },
-          {
-            "domId": "header-register",
-            "targetPageId": "page-register"
-          },
-          {
-            "domId": "cta-dehaze",
-            "targetPageId": "page-dehaze"
-          },
-          {
-            "domId": "cta-dashboard",
-            "targetPageId": "page-dashboard"
-          },
-          {
-            "domId": "cta-register",
-            "targetPageId": "page-register"
-          }
-        ]
-      }
-    },
-    {
-      "id": "page-dashboard",
-      "title": "工作台",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1754112000000,
-      "canvasData": {
-        "x": 1240,
-        "y": 0,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 900,
-          "viewportWidth": 1440,
-          "sourceHash": "fnv1a-5321ed00",
-          "measuredAt": 1785652124754
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/dashboard.html",
-        "interactions": [
-          {
-            "domId": "menu-dashboard",
-            "targetPageId": "page-dashboard"
-          },
-          {
-            "domId": "menu-dehaze",
-            "targetPageId": "page-dehaze"
-          },
-          {
-            "domId": "menu-dataset",
-            "targetPageId": "page-dataset"
-          },
-          {
-            "domId": "menu-algorithm",
-            "targetPageId": "page-algorithm"
-          },
-          {
-            "domId": "menu-compare",
-            "targetPageId": "page-compare"
-          },
-          {
-            "domId": "menu-profile",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "menu-settings",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "topbar-avatar",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "cta-dehaze",
-            "targetPageId": "page-dehaze"
-          }
-        ]
-      }
-    },
-    {
       "id": "page-dashboard-v2",
       "title": "工作台（规范版）",
       "type": "page",
       "version": 1,
       "createdAt": 1785774733000,
       "canvasData": {
-        "x": 1740,
-        "y": 0,
+        "x": -96,
+        "y": 657,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -338,190 +142,14 @@
       }
     },
     {
-      "id": "page-dehaze",
-      "title": "去雾处理",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1754112000000,
-      "canvasData": {
-        "x": 1240,
-        "y": 377,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 944,
-          "viewportWidth": 1440,
-          "sourceHash": "fnv1a-61cfbb64",
-          "measuredAt": 1785652124754
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/dehaze.html",
-        "interactions": [
-          {
-            "domId": "menu-dashboard",
-            "targetPageId": "page-dashboard"
-          },
-          {
-            "domId": "menu-dehaze",
-            "targetPageId": "page-dehaze"
-          },
-          {
-            "domId": "menu-dataset",
-            "targetPageId": "page-dataset"
-          },
-          {
-            "domId": "menu-algorithm",
-            "targetPageId": "page-algorithm"
-          },
-          {
-            "domId": "menu-compare",
-            "targetPageId": "page-compare"
-          },
-          {
-            "domId": "menu-profile",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "menu-settings",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "topbar-avatar",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "cta-compare",
-            "targetPageId": "page-compare"
-          },
-          {
-            "domId": "btn-start-process",
-            "targetPageId": "page-compare"
-          }
-        ]
-      }
-    },
-    {
-      "id": "page-dataset",
-      "title": "数据集管理",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1754112000000,
-      "canvasData": {
-        "x": 1240,
-        "y": 720,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 900,
-          "viewportWidth": 1440,
-          "sourceHash": "fnv1a-2f52b382",
-          "measuredAt": 1785680028952
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/dataset.html",
-        "interactions": [
-          {
-            "domId": "menu-dashboard",
-            "targetPageId": "page-dashboard"
-          },
-          {
-            "domId": "menu-dehaze",
-            "targetPageId": "page-dehaze"
-          },
-          {
-            "domId": "menu-dataset",
-            "targetPageId": "page-dataset"
-          },
-          {
-            "domId": "menu-algorithm",
-            "targetPageId": "page-algorithm"
-          },
-          {
-            "domId": "menu-compare",
-            "targetPageId": "page-compare"
-          },
-          {
-            "domId": "menu-profile",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "menu-settings",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "topbar-avatar",
-            "targetPageId": "page-profile"
-          }
-        ]
-      }
-    },
-    {
-      "id": "page-algorithm",
-      "title": "算法管理",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1754112000000,
-      "canvasData": {
-        "x": 1240,
-        "y": 1143,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 900,
-          "viewportWidth": 1440,
-          "sourceHash": "fnv1a-ba0f3e6d",
-          "measuredAt": 1785652124754
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/algorithm.html",
-        "interactions": [
-          {
-            "domId": "menu-dashboard",
-            "targetPageId": "page-dashboard"
-          },
-          {
-            "domId": "menu-dehaze",
-            "targetPageId": "page-dehaze"
-          },
-          {
-            "domId": "menu-dataset",
-            "targetPageId": "page-dataset"
-          },
-          {
-            "domId": "menu-algorithm",
-            "targetPageId": "page-algorithm"
-          },
-          {
-            "domId": "menu-compare",
-            "targetPageId": "page-compare"
-          },
-          {
-            "domId": "menu-profile",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "menu-settings",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "topbar-avatar",
-            "targetPageId": "page-profile"
-          }
-        ]
-      }
-    },
-    {
       "id": "page-profile",
       "title": "个人中心",
       "type": "page",
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 1240,
-        "y": 1897,
+        "x": 388,
+        "y": 657,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -574,74 +202,14 @@
       }
     },
     {
-      "id": "page-compare",
-      "title": "效果对比",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1754112000000,
-      "canvasData": {
-        "x": 1240,
-        "y": 1520,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 900,
-          "viewportWidth": 1440,
-          "sourceHash": "fnv1a-5143d0c3",
-          "measuredAt": 1785652124754
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/compare.html",
-        "interactions": [
-          {
-            "domId": "menu-dashboard",
-            "targetPageId": "page-dashboard"
-          },
-          {
-            "domId": "menu-dehaze",
-            "targetPageId": "page-dehaze"
-          },
-          {
-            "domId": "menu-dataset",
-            "targetPageId": "page-dataset"
-          },
-          {
-            "domId": "menu-algorithm",
-            "targetPageId": "page-algorithm"
-          },
-          {
-            "domId": "menu-compare",
-            "targetPageId": "page-compare"
-          },
-          {
-            "domId": "menu-profile",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "menu-settings",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "topbar-avatar",
-            "targetPageId": "page-profile"
-          },
-          {
-            "domId": "back-dehaze",
-            "targetPageId": "page-dehaze"
-          }
-        ]
-      }
-    },
-    {
       "id": "page-login",
       "title": "登录",
       "type": "page",
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 620,
-        "y": 734,
+        "x": -1068,
+        "y": 652,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -673,8 +241,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 620,
-        "y": 1614,
+        "x": -1068,
+        "y": 1032,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -706,8 +274,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 620,
-        "y": 4739,
+        "x": -96,
+        "y": 1115,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -762,8 +330,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 0,
-        "y": 2713,
+        "x": -96,
+        "y": 1461,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -822,8 +390,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 0,
-        "y": 5883,
+        "x": -1068,
+        "y": 4992,
         "overrideWidth": 188,
         "naturalSize": {
           "width": 2240,
@@ -841,8 +409,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 388,
-        "y": 5883,
+        "x": -680,
+        "y": 4992,
         "overrideWidth": 196,
         "naturalSize": {
           "width": 2240,
@@ -860,8 +428,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 784,
-        "y": 5883,
+        "x": -284,
+        "y": 4992,
         "overrideWidth": 196,
         "naturalSize": {
           "width": 2240,
@@ -879,8 +447,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 1180,
-        "y": 5883,
+        "x": 112,
+        "y": 4992,
         "overrideWidth": 192,
         "naturalSize": {
           "width": 2240,
@@ -898,8 +466,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": 1572,
-        "y": 5883,
+        "x": 504,
+        "y": 4992,
         "overrideWidth": 120,
         "naturalSize": {
           "width": 1920,
@@ -917,8 +485,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": 1892,
-        "y": 5883,
+        "x": -1068,
+        "y": 4269,
         "naturalSize": {
           "width": 2560,
           "height": 1440
@@ -935,8 +503,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": 2512,
-        "y": 5883,
+        "x": -1056,
+        "y": 5301,
         "overrideWidth": 120,
         "naturalSize": {
           "width": 1920,
@@ -954,8 +522,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": 2832,
-        "y": 5883,
+        "x": -736,
+        "y": 5301,
         "overrideWidth": 120,
         "naturalSize": {
           "width": 1920,
@@ -973,8 +541,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": 3152,
-        "y": 5883,
+        "x": -416,
+        "y": 5301,
         "overrideWidth": 120,
         "naturalSize": {
           "width": 1920,
@@ -992,8 +560,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": 3472,
-        "y": 5883,
+        "x": -96,
+        "y": 5301,
         "overrideWidth": 120,
         "naturalSize": {
           "width": 1920,
@@ -1011,8 +579,8 @@
       "version": 1,
       "createdAt": 1785656000000,
       "canvasData": {
-        "x": 3792,
-        "y": 5883,
+        "x": -1064,
+        "y": 4626,
         "naturalSize": {
           "width": 2560,
           "height": 1440
@@ -1029,8 +597,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 620,
-        "y": 2038,
+        "x": 1332,
+        "y": 660,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1089,8 +657,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 620,
-        "y": 2415,
+        "x": 1332,
+        "y": 987,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1141,8 +709,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 0,
-        "y": 0,
+        "x": 864,
+        "y": 660,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1154,7 +722,7 @@
         "deviceType": "freeSize",
         "windowSize": {
           "width": 1399,
-          "height": 1251
+          "height": 881
         }
       },
       "devMetadata": {
@@ -1198,8 +766,8 @@
       "version": 1,
       "createdAt": 1785666274917,
       "canvasData": {
-        "x": 0,
-        "y": 5112.5,
+        "x": -1068,
+        "y": 2040,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1221,8 +789,8 @@
       "version": 1,
       "createdAt": 1785666274917,
       "canvasData": {
-        "x": 620,
-        "y": 4209,
+        "x": 12,
+        "y": 2040,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1245,7 +813,7 @@
       "createdAt": 1785666274917,
       "canvasData": {
         "x": 620,
-        "y": 5116,
+        "y": 2040,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1273,7 +841,7 @@
       "createdAt": 1785666274917,
       "canvasData": {
         "x": 1240,
-        "y": 5116,
+        "y": 2040,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1301,7 +869,7 @@
       "createdAt": 1785666274917,
       "canvasData": {
         "x": 1860,
-        "y": 5116,
+        "y": 2040,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1323,8 +891,8 @@
       "version": 1,
       "createdAt": 1785666274917,
       "canvasData": {
-        "x": 1240,
-        "y": 2274,
+        "x": -1068,
+        "y": 2604,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1351,8 +919,8 @@
       "version": 1,
       "createdAt": 1785666274917,
       "canvasData": {
-        "x": 2480,
-        "y": 5116,
+        "x": -540,
+        "y": 2616,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1379,8 +947,8 @@
       "version": 1,
       "createdAt": 1785666274917,
       "canvasData": {
-        "x": 3100,
-        "y": 5116,
+        "x": 18,
+        "y": 2604,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1402,8 +970,8 @@
       "version": 1,
       "createdAt": 1785666274917,
       "canvasData": {
-        "x": 3720,
-        "y": 5116,
+        "x": 620,
+        "y": 2616,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1425,8 +993,8 @@
       "version": 1,
       "createdAt": 1785666274917,
       "canvasData": {
-        "x": 4340,
-        "y": 5116,
+        "x": 1240,
+        "y": 2616,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1448,8 +1016,8 @@
       "version": 1,
       "createdAt": 1785666274917,
       "canvasData": {
-        "x": 4960,
-        "y": 5116,
+        "x": 1860,
+        "y": 2616,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1471,8 +1039,8 @@
       "version": 1,
       "createdAt": 1785666274917,
       "canvasData": {
-        "x": 5580,
-        "y": 5116,
+        "x": -540,
+        "y": 3132,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1499,8 +1067,8 @@
       "version": 1,
       "createdAt": 1785668700000,
       "canvasData": {
-        "x": 0,
-        "y": 1048,
+        "x": -540,
+        "y": 2040,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1564,8 +1132,8 @@
       "version": 1,
       "createdAt": 1785668700000,
       "canvasData": {
-        "x": 0,
-        "y": 479,
+        "x": 1240,
+        "y": 1512,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1633,8 +1201,8 @@
       "version": 1,
       "createdAt": 1785668700000,
       "canvasData": {
-        "x": 620,
-        "y": 3646,
+        "x": -1030,
+        "y": 3130,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -1702,8 +1270,8 @@
       "version": 1,
       "createdAt": 1785668700000,
       "canvasData": {
-        "x": 620,
-        "y": 2792,
+        "x": -18,
+        "y": 3130,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,

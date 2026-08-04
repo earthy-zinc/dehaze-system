@@ -7,8 +7,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 333,
-        "y": 0,
+        "x": -136,
+        "y": 2647,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -63,13 +63,13 @@
     },
     {
       "id": "page-tools",
-      "title": "工具",
+      "title": "工具 - 初版",
       "type": "page",
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 336.5,
-        "y": 900,
+        "x": -120,
+        "y": 3084,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -117,8 +117,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 333,
-        "y": 412,
+        "x": 1176,
+        "y": 2219,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -170,8 +170,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 333,
-        "y": 1452,
+        "x": 157,
+        "y": 2653,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -219,8 +219,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 333,
-        "y": 1846,
+        "x": 26,
+        "y": 2647,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -276,8 +276,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 0,
-        "y": 1301,
+        "x": 1217,
+        "y": 3084,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -304,13 +304,13 @@
     },
     {
       "id": "page-login",
-      "title": "登录",
+      "title": "登录 - 初版",
       "type": "page",
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 0,
-        "y": 477,
+        "x": 47,
+        "y": 1920,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -337,13 +337,13 @@
     },
     {
       "id": "page-register",
-      "title": "注册",
+      "title": "注册 - 初版",
       "type": "page",
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 0,
-        "y": 889,
+        "x": -121,
+        "y": 1920,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -375,8 +375,8 @@
       "version": 1,
       "createdAt": 1785664000000,
       "canvasData": {
-        "x": 533,
-        "y": 2640,
+        "x": 47,
+        "y": 2277,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -408,8 +408,8 @@
       "version": 1,
       "createdAt": 1785664000000,
       "canvasData": {
-        "x": 200,
-        "y": 2640,
+        "x": -126,
+        "y": 2277,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -441,8 +441,8 @@
       "version": 1,
       "createdAt": 1785652748317,
       "canvasData": {
-        "x": 0,
-        "y": 2156,
+        "x": 180,
+        "y": 3086,
         "group": 1,
         "deviceType": "freeSize",
         "windowSize": {
@@ -490,8 +490,8 @@
       "version": 1,
       "createdAt": 1785652748317,
       "canvasData": {
-        "x": 0,
-        "y": 1675,
+        "x": 37,
+        "y": 3088,
         "group": 1,
         "deviceType": "freeSize",
         "windowSize": {
@@ -588,8 +588,8 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 1146,
-        "y": 3052,
+        "x": 1338,
+        "y": 2224,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -647,8 +647,8 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 1766,
-        "y": 3052,
+        "x": 761,
+        "y": 3084,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -686,8 +686,8 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 0,
-        "y": 3052,
+        "x": 325,
+        "y": 3084,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -750,8 +750,8 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 1146,
-        "y": 3688,
+        "x": 1385,
+        "y": 3084,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
@@ -814,13 +814,13 @@
       "version": 1,
       "createdAt": 1785664330000,
       "canvasData": {
-        "x": 573,
-        "y": 3633,
+        "x": 313,
+        "y": 2652,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
-          "width": 1279,
-          "height": 1169
+          "width": 1320,
+          "height": 1087
         },
         "layoutSnapshot": {
           "version": 1,
@@ -883,13 +883,13 @@
       "version": 1,
       "createdAt": 1785668400000,
       "canvasData": {
-        "x": 573,
-        "y": 3052,
+        "x": 765,
+        "y": 2224,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
-          "width": 1279,
-          "height": 1600
+          "width": 1320,
+          "height": 2753
         },
         "layoutSnapshot": {
           "version": 1,
