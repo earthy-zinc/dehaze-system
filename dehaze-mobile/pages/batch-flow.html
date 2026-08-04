@@ -262,6 +262,10 @@ body {
 .phone-statusbar { height: 36px; background: var(--dehaze-neutral-100); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 12px; color: var(--dehaze-neutral-600); }
 .phone-content { padding: 16px; min-height: 400px; }
 .annotation-box { background: var(--dehaze-primary-50); border: 1px solid var(--dehaze-primary-200); border-radius: var(--dehaze-radius-lg); padding: 16px; max-width: 340px; margin: 0 auto; display: flex; align-items: flex-start; }
+.touch-target { min-height: 44px; min-width: 44px; }
+.segment-active { background-color: var(--dehaze-primary); color: var(--dehaze-primary-foreground); }
+.segment-inactive { background-color: transparent; color: var(--dehaze-neutral-500); }
+.segment-inactive:hover { background-color: var(--dehaze-neutral-100); color: var(--dehaze-neutral-700); }
 .annotation-number { width: 24px; height: 24px; border-radius: 50%; background: var(--dehaze-primary); color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
 .annotation-text { font-size: 13px; line-height: 1.6; color: var(--dehaze-neutral-700); }
 .flow-arrow { text-align: center; font-size: 32px; color: var(--dehaze-neutral-300); margin: 16px 0; align-self: center; }
@@ -583,7 +587,7 @@ body {
     <!-- Step 6: 消息通知 -->
     <div class="mockup-card">
       <div class="mockup-label">Step 6: 消息通知</div>
-      <div class="phone-frame">
+      <div class="phone-frame" style="display: flex; flex-direction: column;">
         <div class="phone-statusbar">
           <span>9:41</span>
           <div class="flex items-center gap-1.5">
@@ -592,11 +596,18 @@ body {
             <svg class="w-5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"></path></svg>
           </div>
         </div>
-        <div class="phone-content">
-          <div class="flex items-center gap-3 mb-4">
-            <button class="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--dehaze-neutral-100)]"><svg class="w-4 h-4 text-[var(--dehaze-neutral-700)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg></button>
-            <h2 class="text-base font-semibold text-[var(--dehaze-foreground)]">消息</h2>
+        <div class="phone-content" style="flex: 1;">
+          <div class="flex items-center justify-between py-2 mb-2 bg-[var(--dehaze-background)]">
+            <h2 class="text-lg font-semibold text-[var(--dehaze-foreground)]">消息</h2>
+            <button type="button" class="touch-target inline-flex items-center justify-center px-2 text-sm text-[var(--dehaze-primary)] font-medium">全部已读</button>
           </div>
+          <section class="mb-4" aria-label="消息分类">
+            <div class="flex p-1 rounded-lg bg-[var(--dehaze-muted)]" role="tablist" aria-label="消息类型">
+              <button type="button" role="tab" aria-selected="false" class="touch-target flex-1 rounded-md text-sm font-medium segment-inactive transition-colors">公告</button>
+              <button type="button" role="tab" aria-selected="false" class="touch-target flex-1 rounded-md text-sm font-medium segment-inactive transition-colors">系统通知</button>
+              <button type="button" role="tab" aria-selected="true" class="touch-target flex-1 rounded-md text-sm font-medium segment-active transition-colors">我的消息</button>
+            </div>
+          </section>
           <div class="space-y-2.5">
             <div data-dom-id="link-result" class="p-3 rounded-[var(--dehaze-radius-md)] border border-[var(--dehaze-primary-200)] bg-[var(--dehaze-primary-50)] flex items-start gap-3 relative">
               <span class="absolute top-3 left-1.5 w-2 h-2 rounded-full" style="background: var(--dehaze-state-info)"></span>
@@ -622,7 +633,7 @@ body {
             </div>
           </div>
         </div>
-
+        <div class="shrink-0 h-[56px] bg-white border-t border-[var(--dehaze-border)]"><div class="w-full h-full grid grid-cols-5"><button class="min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 h-full text-[var(--dehaze-neutral-500)]"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg><span class="text-[11px] leading-none whitespace-nowrap max-w-full truncate">首页</span></button><button class="min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 h-full text-[var(--dehaze-neutral-500)]"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg><span class="text-[11px] leading-none whitespace-nowrap max-w-full truncate">工具</span></button><button class="min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 h-full text-[var(--dehaze-neutral-500)]"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg><span class="text-[11px] leading-none whitespace-nowrap max-w-full truncate">去雾</span></button><button class="min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 h-full text-[var(--dehaze-primary)] font-medium"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg><span class="text-[11px] leading-none whitespace-nowrap max-w-full truncate">消息</span></button><button class="min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 h-full text-[var(--dehaze-neutral-500)]"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg><span class="text-[11px] leading-none whitespace-nowrap max-w-full truncate">我的</span></button></div></div>
       </div>
     </div>
     <div class="flow-arrow">→</div>

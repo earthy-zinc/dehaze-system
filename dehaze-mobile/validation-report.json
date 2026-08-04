@@ -174,15 +174,15 @@
     ]
   },
   "projectFileHashes": {
-    "dehaze-mobile.design": "cac9f9ba9904ab0707f60c3944ff879b7fe0a6e7cc105de4f444a37d567934cc",
+    "dehaze-mobile.design": "1f9eb2d0ce4097e370347b9dcb337f9bcbd03cb83489475bd15b1fd721b548d9",
     "colors_and_type.css": "18deb9a647004dbe4842cf54179528394fb229769ad8099b0819587db641d27f",
     "runtime-orchestration-summary.json": "7c2632e36351cb8cc64fa6650ad050afae728251f2ba9fe486ddf1fe3f3bf5e0",
-    "pages/batch-flow.html": "e50c50d5655d10fbafc122308cf2f12383bb0d6e4398d5292ea69a635b5287a7",
+    "pages/batch-flow.html": "9184040e7f58d4c28f259050e4fec7731929b8300790174e7a7c8bc14184045d",
     "pages/compare-full.html": "5e03ee66b2f8264fd2a7a3f516b49447c3f181be8a8ad16a67bd5e08ea16783e",
     "pages/compare.html": "4e3c5264734c7ac22ecb0d1145354f0d495910f1aa6451ff0b03d100c0392d28",
     "pages/dehaze-flow.html": "bdf68ca12e2ce94938df6d770dda93f3f9e9a532a0f45e8e900df1f2ae0398fb",
     "pages/dehaze.html": "495d789f9340de9b13002f871d27f7194afadbd73edad7125ee2518eb6efa210",
-    "pages/favorites.html": "a98b6eb7652e236764dbaa00a009395144cf805badf937dca9df6b8b90d3c5d6",
+    "pages/favorites.html": "e56584ec8b3c64a3e416301ac38f738bef89d27efc4d1a0689bead19a1b16074",
     "pages/history.html": "46dd767761b0e4a6d9d50340302256034c19b172fd8af475c01b163ff0750612",
     "pages/index.html": "6a8e8fa69427991eba50b35a2ff12fa98f093c65761dbf5e8e4f5d167004ed8f",
     "pages/login-optimized.html": "f40704b891c064472136bd6a473004ce6291feab2d80a5276959fc3878db68de",
@@ -191,14 +191,14 @@
     "pages/profile.html": "d8ec25a2ea5fdf7b112dfec106d7c606cd8b150d150ba6215e24f65e8c69ecd8",
     "pages/register-optimized.html": "41b437c06c9aceb632945d0404bb5731fe5fd2e3f0ff656873e63b751d9299fd",
     "pages/register.html": "41b437c06c9aceb632945d0404bb5731fe5fd2e3f0ff656873e63b751d9299fd",
-    "pages/tools-aurora.html": "4606144ea5035ab08328babaea6d1f25b9ba7ba734f7da84571a45dbca171084",
-    "pages/tools-dark.html": "d88164c11c3971ba920e46931efa77955b5decfe6daa769f9a115bd372a5c4b7",
+    "pages/tools-aurora.html": "8c56ed433d753ba93fb97855c865c3c84bf454c46dd4e4a97dbccc74b3f19d90",
+    "pages/tools-dark.html": "85274a547a3cca187191bd2bf625d2466719b21a1ffd864185ea93b8ef413730",
     "pages/tools-sunset.html": "87e1167504ad9277d3fe4e4f291a70f12bd98d0980746943c5160fc751887af1",
     "pages/tools-v2.html": "5a72a97c9285d46807ebbe74aa3c5e68c2e8907b83ea4127349707dfe9f3a125",
-    "pages/tools.html": "b2fec13a6040d2263f4a041a5732dfa1682ed0d47c1197fba40fd144bb34c1a4"
+    "pages/tools.html": "8e6ea06dda157d088ae28286b78dee5b24147d96960f8f5c6e365fd145bb5a90"
   },
   "designDir": "e:\\DehazeSystem\\dehaze-mobile",
   "expectedPages": null,
   "requireInteractions": null,
-  "checkedAt": "2026-08-04T05:44:50.868Z"
+  "checkedAt": "2026-08-04T10:30:03.927Z"
 }

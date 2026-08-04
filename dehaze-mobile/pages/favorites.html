@@ -660,30 +660,6 @@ body {
             color: var(--dehaze-muted-foreground);
         }
 
-        /* Type tag pills */
-        .fav-tag {
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 8px;
-            border-radius: var(--dehaze-radius-full);
-            font-size: 11px;
-            font-weight: 600;
-            line-height: 1.4;
-            width: fit-content;
-        }
-        .fav-tag-algo {
-            background-color: rgba(59, 130, 246, 0.1);
-            color: var(--dehaze-primary);
-        }
-        .fav-tag-result {
-            background-color: rgba(76, 175, 80, 0.1);
-            color: var(--dehaze-state-success);
-        }
-        .fav-tag-dataset {
-            background-color: var(--dehaze-purple-100, #f3e8ff);
-            color: var(--dehaze-purple-700, #7e22ce);
-        }
-
         /* Star button */
         .fav-star {
             position: absolute;
@@ -701,19 +677,25 @@ body {
             padding: 0;
         }
 
-        /* Favorite card (list mode) */
+        /* Favorite card */
         .fav-card {
             position: relative;
             border: 1px solid var(--dehaze-border);
             border-radius: var(--dehaze-radius-lg);
             padding: 10px 38px 10px 10px;
             display: flex;
+            flex-direction: column;
             gap: 10px;
             background-color: var(--dehaze-card);
         }
+        .fav-info-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
         .fav-thumb {
-            width: 64px;
-            height: 64px;
+            width: 56px;
+            height: 56px;
             border-radius: var(--dehaze-radius-md);
             flex-shrink: 0;
             display: flex;
@@ -722,14 +704,9 @@ body {
             color: var(--dehaze-neutral-0);
         }
         .fav-thumb svg { opacity: 0.75; }
-        .fav-info {
+        .fav-info-main {
             flex: 1;
             min-width: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .fav-meta {
             display: flex;
             flex-direction: column;
             gap: 2px;
@@ -743,15 +720,42 @@ body {
             font-size: 12px;
             color: var(--dehaze-muted-foreground);
         }
+
+        /* Action bar */
+        .fav-action-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--dehaze-border);
+        }
+        .fav-more-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: var(--dehaze-neutral-500);
+            cursor: pointer;
+            padding: 0;
+            border-radius: var(--dehaze-radius-md);
+        }
+        .fav-more-btn:hover {
+            background-color: var(--dehaze-neutral-100);
+        }
         .fav-actions {
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
+            justify-content: flex-end;
         }
         .fav-btn {
             font-size: 12px;
             font-weight: 500;
-            padding: 5px 9px;
+            padding: 5px 10px;
             border-radius: var(--dehaze-radius-md);
             border: 1px solid transparent;
             line-height: 1.2;
@@ -771,6 +775,42 @@ body {
             background-color: transparent;
             color: var(--dehaze-foreground);
             border-color: var(--dehaze-border);
+        }
+
+        /* More menu tooltip */
+        .fav-more-menu {
+            position: absolute;
+            left: 10px;
+            bottom: 44px;
+            min-width: 120px;
+            background-color: var(--dehaze-card);
+            border: 1px solid var(--dehaze-border);
+            border-radius: var(--dehaze-radius-md);
+            box-shadow: var(--dehaze-shadow-2);
+            padding: 4px;
+            display: none;
+            flex-direction: column;
+            z-index: 20;
+        }
+        .fav-more-menu.open {
+            display: flex;
+        }
+        .fav-more-menu button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            color: var(--dehaze-foreground);
+            background: none;
+            border: none;
+            border-radius: var(--dehaze-radius-sm);
+            cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+        }
+        .fav-more-menu button:hover {
+            background-color: var(--dehaze-neutral-100);
         }
 
         /* Edit mode card */
@@ -963,39 +1003,56 @@ body {
                                 <button type="button" class="fav-star" aria-label="已收藏">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>
                                 </button>
-                                <div class="fav-thumb" style="background: linear-gradient(135deg, var(--dehaze-primary-300), var(--dehaze-primary-600));">
-                                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"></path></svg>
-                                </div>
-                                <div class="fav-info">
-                                    <div class="fav-meta">
-                                        <span class="fav-tag fav-tag-algo">算法</span>
+                                <div class="fav-info-row">
+                                    <div class="fav-thumb" style="background: linear-gradient(135deg, var(--dehaze-primary-300), var(--dehaze-primary-600));">
+                                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"></path></svg>
+                                    </div>
+                                    <div class="fav-info-main">
                                         <span class="fav-title">DCP 暗通道先验</span>
                                         <span class="fav-date">经典快速去雾算法</span>
                                         <span class="fav-date">评分 4.8</span>
                                     </div>
+                                </div>
+                                <div class="fav-action-row">
+                                    <button type="button" class="fav-more-btn" aria-label="更多操作">
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                                    </button>
                                     <div class="fav-actions">
                                         <button type="button" class="fav-btn fav-btn-blue">使用算法</button>
                                     </div>
                                 </div>
+                                <div class="fav-more-menu">
+                                    <button type="button">取消收藏</button>
+                                    <button type="button">分享</button>
+                                    <button type="button">重命名</button>
+                                </div>
                             </div>
 
                             <div class="fav-card">
                                 <button type="button" class="fav-star" aria-label="已收藏">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>
                                 </button>
-                                <div class="fav-thumb" style="background: linear-gradient(135deg, #9ca3af, #4b5563);">
-                                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                </div>
-                                <div class="fav-info">
-                                    <div class="fav-meta">
-                                        <span class="fav-tag fav-tag-result">处理结果</span>
+                                <div class="fav-info-row">
+                                    <div class="fav-thumb" style="background: linear-gradient(135deg, #9ca3af, #4b5563);">
+                                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                    <div class="fav-info-main">
                                         <span class="fav-title">foggy_road.jpg</span>
                                         <span class="fav-date">DCP 去雾 · 2026-08-02</span>
                                     </div>
+                                </div>
+                                <div class="fav-action-row">
+                                    <button type="button" class="fav-more-btn" aria-label="更多操作">
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                                    </button>
                                     <div class="fav-actions">
                                         <button type="button" class="fav-btn fav-btn-blue" data-dom-id="cta-compare-fav">查看对比</button>
-                                        <button type="button" class="fav-btn fav-btn-outline">继续去雾</button>
                                     </div>
+                                </div>
+                                <div class="fav-more-menu">
+                                    <button type="button">取消收藏</button>
+                                    <button type="button">分享</button>
+                                    <button type="button">下载</button>
                                 </div>
                             </div>
 
@@ -1003,38 +1060,56 @@ body {
                                 <button type="button" class="fav-star" aria-label="已收藏">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>
                                 </button>
-                                <div class="fav-thumb" style="background: linear-gradient(135deg, #c084fc, #7e22ce);">
-                                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-                                </div>
-                                <div class="fav-info">
-                                    <div class="fav-meta">
-                                        <span class="fav-tag fav-tag-dataset">数据集</span>
+                                <div class="fav-info-row">
+                                    <div class="fav-thumb" style="background: linear-gradient(135deg, #c084fc, #7e22ce);">
+                                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                    </div>
+                                    <div class="fav-info-main">
                                         <span class="fav-title">RESIDE 标准数据集</span>
                                         <span class="fav-date">包含 13,000+ 张室内外有雾图像</span>
                                     </div>
+                                </div>
+                                <div class="fav-action-row">
+                                    <button type="button" class="fav-more-btn" aria-label="更多操作">
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                                    </button>
                                     <div class="fav-actions">
                                         <button type="button" class="fav-btn fav-btn-blue">查看详情</button>
                                     </div>
                                 </div>
+                                <div class="fav-more-menu">
+                                    <button type="button">取消收藏</button>
+                                    <button type="button">分享</button>
+                                    <button type="button">复制链接</button>
+                                </div>
                             </div>
 
                             <div class="fav-card">
                                 <button type="button" class="fav-star" aria-label="已收藏">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>
                                 </button>
-                                <div class="fav-thumb" style="background: linear-gradient(135deg, var(--dehaze-primary-200), var(--dehaze-primary-500));">
-                                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"></path></svg>
-                                </div>
-                                <div class="fav-info">
-                                    <div class="fav-meta">
-                                        <span class="fav-tag fav-tag-algo">算法</span>
+                                <div class="fav-info-row">
+                                    <div class="fav-thumb" style="background: linear-gradient(135deg, var(--dehaze-primary-200), var(--dehaze-primary-500));">
+                                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"></path></svg>
+                                    </div>
+                                    <div class="fav-info-main">
                                         <span class="fav-title">AOD-Net</span>
                                         <span class="fav-date">端到端轻量网络</span>
                                         <span class="fav-date">评分 4.6</span>
                                     </div>
+                                </div>
+                                <div class="fav-action-row">
+                                    <button type="button" class="fav-more-btn" aria-label="更多操作">
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                                    </button>
                                     <div class="fav-actions">
                                         <button type="button" class="fav-btn fav-btn-blue">使用算法</button>
                                     </div>
+                                </div>
+                                <div class="fav-more-menu">
+                                    <button type="button">取消收藏</button>
+                                    <button type="button">分享</button>
+                                    <button type="button">重命名</button>
                                 </div>
                             </div>
                         </div>
@@ -1086,19 +1161,27 @@ body {
                                 <button type="button" class="fav-star" aria-label="已收藏">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>
                                 </button>
-                                <div class="fav-thumb" style="background: linear-gradient(135deg, #9ca3af, #4b5563);">
-                                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                </div>
-                                <div class="fav-info">
-                                    <div class="fav-meta">
-                                        <span class="fav-tag fav-tag-result">处理结果</span>
+                                <div class="fav-info-row">
+                                    <div class="fav-thumb" style="background: linear-gradient(135deg, #9ca3af, #4b5563);">
+                                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                    <div class="fav-info-main">
                                         <span class="fav-title">foggy_road.jpg</span>
                                         <span class="fav-date">DCP 去雾 · 2026-08-02</span>
                                     </div>
+                                </div>
+                                <div class="fav-action-row">
+                                    <button type="button" class="fav-more-btn" aria-label="更多操作">
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                                    </button>
                                     <div class="fav-actions">
                                         <button type="button" class="fav-btn fav-btn-blue">查看对比</button>
-                                        <button type="button" class="fav-btn fav-btn-outline">继续去雾</button>
                                     </div>
+                                </div>
+                                <div class="fav-more-menu">
+                                    <button type="button">取消收藏</button>
+                                    <button type="button">分享</button>
+                                    <button type="button">下载</button>
                                 </div>
                             </div>
 
@@ -1106,19 +1189,27 @@ body {
                                 <button type="button" class="fav-star" aria-label="未收藏">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>
                                 </button>
-                                <div class="fav-thumb" style="background: linear-gradient(135deg, #6b7280, #374151);">
-                                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                </div>
-                                <div class="fav-info">
-                                    <div class="fav-meta">
-                                        <span class="fav-tag fav-tag-result">处理结果</span>
+                                <div class="fav-info-row">
+                                    <div class="fav-thumb" style="background: linear-gradient(135deg, #6b7280, #374151);">
+                                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                    <div class="fav-info-main">
                                         <span class="fav-title">cityscape_haze.png</span>
                                         <span class="fav-date">AOD-Net 去雾 · 2026-08-01</span>
                                     </div>
+                                </div>
+                                <div class="fav-action-row">
+                                    <button type="button" class="fav-more-btn" aria-label="更多操作">
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                                    </button>
                                     <div class="fav-actions">
                                         <button type="button" class="fav-btn fav-btn-blue">查看对比</button>
-                                        <button type="button" class="fav-btn fav-btn-outline">继续去雾</button>
                                     </div>
+                                </div>
+                                <div class="fav-more-menu">
+                                    <button type="button">取消收藏</button>
+                                    <button type="button">分享</button>
+                                    <button type="button">下载</button>
                                 </div>
                             </div>
                         </div>
@@ -1198,12 +1289,9 @@ body {
                                 <div class="fav-thumb" style="background: linear-gradient(135deg, var(--dehaze-primary-300), var(--dehaze-primary-600));">
                                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"></path></svg>
                                 </div>
-                                <div class="fav-info">
-                                    <div class="fav-meta">
-                                        <span class="fav-tag fav-tag-algo">算法</span>
-                                        <span class="fav-title">DCP 暗通道先验</span>
-                                        <span class="fav-date">评分 4.8</span>
-                                    </div>
+                                <div class="fav-info-main">
+                                    <span class="fav-title">DCP 暗通道先验</span>
+                                    <span class="fav-date">评分 4.8</span>
                                 </div>
                             </div>
 
@@ -1215,12 +1303,9 @@ body {
                                 <div class="fav-thumb" style="background: linear-gradient(135deg, #9ca3af, #4b5563);">
                                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                 </div>
-                                <div class="fav-info">
-                                    <div class="fav-meta">
-                                        <span class="fav-tag fav-tag-result">处理结果</span>
-                                        <span class="fav-title">foggy_road.jpg</span>
-                                        <span class="fav-date">DCP 去雾 · 2026-08-02</span>
-                                    </div>
+                                <div class="fav-info-main">
+                                    <span class="fav-title">foggy_road.jpg</span>
+                                    <span class="fav-date">DCP 去雾 · 2026-08-02</span>
                                 </div>
                             </div>
                         </div>
@@ -1232,7 +1317,7 @@ body {
                 </div>
             </div>
 
-            <div class="annotation-box"><span class="annotation-number">1</span>收藏列表支持算法、处理结果、数据集三类，按收藏时间倒序展示。顶部提供搜索与类型筛选标签；每张卡片右上角星标表示收藏状态。处理结果卡片仅保留"查看对比"和"继续去雾"，不再单独展示"取消收藏"按钮。</div>
+            <div class="annotation-box"><span class="annotation-number">1</span>收藏卡片采用"上方信息栏+下方操作栏"结构：信息栏左侧缩略图、右侧标题与描述；操作栏左侧"更多"按钮点击展开菜单（取消收藏/分享/下载等），右侧放置常用操作（算法卡片为"使用算法"，结果卡片为"查看对比"）。由于顶部已有类型筛选，卡片内不再显示算法/处理结果等类型标签；处理结果卡片也不再提供"继续去雾"。</div>
             <div class="annotation-box"><span class="annotation-number">2</span>类型筛选示例：选中"处理结果"后仅展示该类型收藏，星标仍为收藏状态入口；未收藏条目显示空心星标。</div>
             <div class="annotation-box"><span class="annotation-number">3</span>空状态更新提示文案，引导用户去收藏算法、数据集或处理结果。</div>
             <div class="annotation-box"><span class="annotation-number">4</span>编辑模式标题变为"选择收藏"，每张卡片左侧显示圆形复选框，底部工具栏提供"全选"与"删除"；选中项后删除按钮可用。点击"完成"或"取消"退出编辑模式。</div>

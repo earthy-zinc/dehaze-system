@@ -81,7 +81,7 @@
         "deviceType": "freeSize",
         "windowSize": {
           "width": 456,
-          "height": 1282
+          "height": 1118
         }
       },
       "devMetadata": {
@@ -423,7 +423,7 @@
         "deviceType": "freeSize",
         "windowSize": {
           "width": 374,
-          "height": 1269
+          "height": 1104
         },
         "layoutSnapshot": {
           "version": 1,
@@ -472,7 +472,7 @@
         "deviceType": "freeSize",
         "windowSize": {
           "width": 374,
-          "height": 1258
+          "height": 1094
         },
         "layoutSnapshot": {
           "version": 1,
@@ -859,13 +859,13 @@
       "version": 1,
       "createdAt": 1785668400000,
       "canvasData": {
-        "x": 765,
-        "y": 2224,
+        "x": 761,
+        "y": 2143.5,
         "group": 0,
         "deviceType": "freeSize",
         "windowSize": {
           "width": 1320,
-          "height": 2753
+          "height": 2959
         },
         "layoutSnapshot": {
           "version": 1,
