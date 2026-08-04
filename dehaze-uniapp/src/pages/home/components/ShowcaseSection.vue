@@ -21,11 +21,14 @@
 
 <script lang="ts" setup>
 import SectionHeader from "@/components/common/SectionHeader.vue";
-import { DATASET_BASE_URL } from "@/api/config";
+
+/** 数据集静态文件服务地址（来自 .env 的 VITE_DATASET_HOST） */
+const DATASET_BASE_URL =
+  import.meta.env.VITE_DATASET_HOST || "http://127.0.0.1:9000";
 
 // 使用真实数据集图片（NH-HAZE-2023 样例）
-const hazyUrl = `${DATASET_BASE_URL}/NH-HAZE-2023/hazy/001.JPG`;
-const cleanUrl = `${DATASET_BASE_URL}/NH-HAZE-2023/clean/001.JPG`;
+const hazyUrl = `${DATASET_BASE_URL}/datasets/NH-HAZE-2023/hazy/001.JPG`;
+const cleanUrl = `${DATASET_BASE_URL}/datasets/NH-HAZE-2023/clean/001.JPG`;
 </script>
 
 <style lang="scss" scoped>

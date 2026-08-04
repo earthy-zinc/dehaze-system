@@ -1,17 +1,83 @@
 /**
  * 数据集管理模块 - 展示层数据
  *
- * SDK 类型直接从 dehaze-sdk-js 导入；视图模型 DatasetImageItem 从 @/api/dataset 导入。
- * 本文件仅保留：
+ * SDK 类型直接从 dehaze-sdk-js 导入。本文件仅保留：
+ * - 展示层视图模型与转换函数（DatasetImageItem / flattenDatasetItems）
  * - 展示模式等前端专用类型
  * - 格式化工具函数
  * - 标签映射常量
  */
 
-// ==================== 类型 re-export ====================
+import type { DatasetItemVO, ImageUrlVO } from "dehaze-sdk-js";
 
-export type { Dataset, DatasetStatistics } from "dehaze-sdk-js";
-export type { DatasetImageItem } from "@/api/dataset";
+// ==================== 展示层视图模型 ====================
+
+/** 数据集图片展示项：将 DatasetItemVO 展平为单图记录，供 ImageGrid / ImageCard 使用 */
+export interface DatasetImageItem {
+  /** 图片文件 ID */
+  id: number;
+  /** 所属数据项 ID */
+  itemId: number;
+  /** 文件名 */
+  filename: string;
+  /** 图片访问 URL */
+  imageUrl: string;
+  /** 缩略图 URL */
+  thumbnailUrl?: string;
+  /** 图片类型：clear/hazy/trans/depth/segment */
+  type: string;
+  /** 雾霾程度 */
+  hazeLevel?: string;
+  /** 图片宽度 */
+  width: number;
+  /** 图片高度 */
+  height: number;
+  /** 文件大小（字节） */
+  fileSize: number;
+  /** 描述 */
+  description?: string;
+  /** 创建时间 */
+  createTime?: string;
+}
+
+/**
+ * 将 DatasetItemVO 列表展平为单图列表
+ * 每个 DatasetItemVO 含一张清晰图（可选）与多张有雾图（可选），展平后每张图独立成项
+ */
+export function flattenDatasetItems(
+  items: DatasetItemVO[]
+): DatasetImageItem[] {
+  const result: DatasetImageItem[] = [];
+  for (const item of items) {
+    if (item.clearImage) {
+      result.push(toDatasetImageItem(item.clearImage, item.id));
+    }
+    if (item.hazyImages) {
+      for (const hazy of item.hazyImages) {
+        result.push(toDatasetImageItem(hazy, item.id));
+      }
+    }
+  }
+  return result;
+}
+
+/** 将 ImageUrlVO 转换为 DatasetImageItem */
+function toDatasetImageItem(img: ImageUrlVO, itemId: number): DatasetImageItem {
+  return {
+    id: img.id,
+    itemId,
+    filename: img.fileName || "",
+    imageUrl: img.url,
+    thumbnailUrl: img.thumbnailUrl,
+    type: img.type,
+    hazeLevel: img.hazeLevel,
+    width: img.width || 0,
+    height: img.height || 0,
+    fileSize: img.sizeBytes || 0,
+    description: img.description,
+    createTime: typeof img.createTime === "string" ? img.createTime : undefined,
+  };
+}
 
 // ==================== 展示层专用类型 ====================
 

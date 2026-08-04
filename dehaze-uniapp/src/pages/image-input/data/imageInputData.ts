@@ -2,7 +2,9 @@
  * 图像输入模块 - 数据类型定义和样例数据
  */
 
-import { DATASET_BASE_URL } from "@/api/config";
+/** 数据集静态文件服务地址（来自 .env 的 VITE_DATASET_HOST） */
+const DATASET_BASE_URL =
+  import.meta.env.VITE_DATASET_HOST || "http://127.0.0.1:9000";
 
 /** 输入方式 */
 export type InputMethod = "upload" | "camera" | "sample" | "history";
@@ -95,8 +97,8 @@ export const CATEGORY_TABS: CategoryTab[] = [
 ];
 
 /** NH-HAZE-2023 数据集基础路径 */
-const NH_HAZE_HAZY = `${DATASET_BASE_URL}/NH-HAZE-2023/hazy`;
-const NH_HAZE_CLEAN = `${DATASET_BASE_URL}/NH-HAZE-2023/clean`;
+const NH_HAZE_HAZY = `${DATASET_BASE_URL}/datasets/NH-HAZE-2023/hazy`;
+const NH_HAZE_CLEAN = `${DATASET_BASE_URL}/datasets/NH-HAZE-2023/clean`;
 
 /** 构建样例图片数据 */
 function makeSample(

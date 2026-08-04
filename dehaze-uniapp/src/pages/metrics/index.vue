@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="page">
+  <PageLayout level="L3" class="page">
     <view class="main-content">
       <PageHeaderCard
         icon="integral"
@@ -252,7 +252,8 @@ async function handleEvaluate() {
       predUrl: store.result?.resultUrl,
       gtUrl: gtUrl.value,
     });
-    if (result.status === "failed") {
+    // 后端 LogStatusEnum 序列化为整数：3 = FAILED
+    if (result.status === 3) {
       throw new Error(result.errorMessage || "评估失败");
     }
     evalResult.value = result;

@@ -1,32 +1,19 @@
 import { configAxios, service, SESSION_KEY } from "dehaze-sdk-js";
 import type { AxiosError, InternalAxiosRequestConfig } from "dehaze-sdk-js";
 import { createUniRequestAdapter } from "./uni-adapter";
-import { USER_INFO_KEY } from "./config";
-
-const API_HOST = "http://127.0.0.1:8989";
-const REQUEST_TIMEOUT = 30000;
-
-function getBaseURL(): string {
-  // #ifdef H5
-  return "";
-  // #endif
-  // #ifndef H5
-  return API_HOST;
-  // #endif
-}
-
-export function clearAuth() {
-  uni.removeStorageSync(SESSION_KEY);
-  uni.removeStorageSync(USER_INFO_KEY);
-}
+import { API_HOST, SESSION_INVALID_EVENT, USER_INFO_KEY } from "./constants";
+import { LOGIN_PATH } from "@/routers/guard";
 
 let isRedirecting = false;
 function redirectToLogin() {
   if (isRedirecting) return;
   isRedirecting = true;
-  clearAuth();
+  // 清理本地认证态（storage + 内存态由 auth store 监听事件同步清空）
+  uni.removeStorageSync(SESSION_KEY);
+  uni.removeStorageSync(USER_INFO_KEY);
+  uni.$emit(SESSION_INVALID_EVENT);
   uni.reLaunch({
-    url: "/pages/login/index",
+    url: LOGIN_PATH,
     complete: () => {
       isRedirecting = false;
     },
@@ -57,8 +44,8 @@ configAxios({
     }
     return {
       ...config,
-      baseURL: getBaseURL(),
-      timeout: config.timeout || REQUEST_TIMEOUT,
+      baseURL: API_HOST,
+      timeout: config.timeout || 30000,
     };
   },
   onResponseError: handleResponseError,

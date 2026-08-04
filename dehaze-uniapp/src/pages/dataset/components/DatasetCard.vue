@@ -29,10 +29,10 @@
 
 <script lang="ts" setup>
 import { ref, computed, onMounted } from "vue";
-import type { Dataset } from "../data/datasetData";
-import { formatRelativeTime } from "@/utils/format";
 import { DatasetItemAPI } from "dehaze-sdk-js";
-import { flattenDatasetItems } from "@/api/dataset";
+import type { Dataset } from "dehaze-sdk-js";
+import { formatRelativeTime } from "@/utils/format";
+import { flattenDatasetItems } from "../data/datasetData";
 
 interface Props {
   dataset: Dataset;

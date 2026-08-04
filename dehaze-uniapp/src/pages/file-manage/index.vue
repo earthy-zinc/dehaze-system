@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="page">
+  <PageLayout level="L2" title="文件管理" class="page">
     <view class="main-content">
       <PageHeaderCard
         icon="folder"

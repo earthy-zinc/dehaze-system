@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="page">
+  <PageLayout level="L2" title="算法信息" class="page">
     <view class="main-content">
       <PageHeaderCard
         icon="info-circle"

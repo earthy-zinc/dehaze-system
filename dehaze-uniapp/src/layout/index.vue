@@ -1,37 +1,36 @@
 <template>
   <view class="page-layout">
-    <!-- 顶部导航栏 -->
-    <AppNavbar @toggle-menu="toggleSidebar" />
-
-    <!-- 侧边菜单 -->
-    <AppSidebar
-      :visible="sidebarVisible"
-      :current-route="currentRoute"
-      @close="closeSidebar"
-      @navigate="handleNavigate"
+    <!-- 顶部导航栏：L1 品牌+标题+搜索 / L2 返回+标题；L3 沉浸页由页面内工具栏替代 -->
+    <AppNavbar
+      v-if="level === 'L1' || level === 'L2'"
+      :level="level"
+      :title="title"
     />
 
     <!-- 主内容区 -->
-    <view class="page-content" :class="{ 'with-tabbar': showTabbar }">
+    <view class="page-content" :class="{ 'with-tabbar': level === 'L1' }">
       <slot />
     </view>
 
-    <!-- 底部导航栏 -->
-    <AppTabbar v-if="showTabbar" :current-route="currentRoute" />
+    <!-- 底部导航栏：仅 L1 Tab 根页面显示 -->
+    <AppTabbar v-if="level === 'L1'" :current-route="currentRoute" />
   </view>
 </template>
 
 <script lang="ts" setup>
-import { onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import AppNavbar from "./Navbar.vue";
-import AppSidebar from "./Sidebar.vue";
 import AppTabbar from "./Tabbar.vue";
-import { useLayout, useCurrentRoute } from "@/composables/useLayout";
 
 interface Props {
-  /** 是否显示底部导航栏 */
-  showTabbar?: boolean;
-  /** 页面标题（用于搜索等场景） */
+  /**
+   * 页面层级（决定导航形态）：
+   * - L1：Tab 根页面（底部 TabBar + 顶部标题栏）
+   * - L2：二级功能页（顶部导航栏：返回 + 标题，TabBar 隐藏）
+   * - L3：深度沉浸页（无全局导航，页面内工具栏）
+   */
+  level?: "L1" | "L2" | "L3";
+  /** 页面标题（L1 为 Tab 标题，L2 为页面功能名） */
   title?: string;
 }
 
@@ -40,24 +39,22 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  showTabbar: true,
+  level: "L1",
   title: "",
 });
 
-const emit = defineEmits<Emits>();
+defineEmits<Emits>();
 
-// 布局状态
-const { sidebarVisible, toggleSidebar, closeSidebar } = useLayout();
-const { currentRoute, updateCurrentRoute } = useCurrentRoute();
+/** 当前页面路由（用于 TabBar 高亮） */
+const currentRoute = ref("/pages/home/index");
 
 onMounted(() => {
-  updateCurrentRoute();
+  const pages = getCurrentPages();
+  if (pages.length > 0) {
+    currentRoute.value =
+      "/" + (pages[pages.length - 1]?.route || "pages/home/index");
+  }
 });
-
-// 导航处理
-const handleNavigate = (route: string) => {
-  emit("navigate", route);
-};
 </script>
 
 <style lang="scss" scoped>

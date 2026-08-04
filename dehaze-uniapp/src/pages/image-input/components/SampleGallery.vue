@@ -83,7 +83,6 @@ const handleSampleClick = async (sample: SampleImage) => {
       url: downloadResult.tempFilePath,
       width: imageInfo.width,
       height: imageInfo.height,
-      size: downloadResult.dataLength || 0,
       name: sample.name + ".jpg",
       sampleInfo: sample,
     };
@@ -106,18 +105,13 @@ const handleSampleClick = async (sample: SampleImage) => {
 };
 
 /** 下载图片 */
-const downloadImage = (
-  url: string
-): Promise<{ tempFilePath: string; dataLength?: number }> => {
+const downloadImage = (url: string): Promise<{ tempFilePath: string }> => {
   return new Promise((resolve, reject) => {
     uni.downloadFile({
       url,
       success: (res) => {
         if (res.statusCode === 200) {
-          resolve({
-            tempFilePath: res.tempFilePath,
-            dataLength: res.dataLength,
-          });
+          resolve({ tempFilePath: res.tempFilePath });
         } else {
           reject(new Error("下载失败"));
         }

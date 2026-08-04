@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="page">
+  <PageLayout level="L2" title="处理历史" class="page">
     <view class="main-content">
       <PageHeaderCard
         icon="clock"
@@ -143,6 +143,8 @@ function handleCompare(record: PredLogVO) {
   processingStore.reset();
   processingStore.setImage(buildImageData(record.originUrl));
   processingStore.complete({
+    // 有结果图即已完成（后端 LogStatusEnum 序列化为整数：2 = COMPLETED）
+    status: 2,
     resultUrl: record.predUrl,
     time: record.time || 0,
   });

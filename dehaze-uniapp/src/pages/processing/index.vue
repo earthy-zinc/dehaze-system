@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="processing-page">
+  <PageLayout level="L2" title="去雾处理" class="processing-page">
     <view class="main-content">
       <!-- 页面标题 -->
       <PageHeaderCard
@@ -243,7 +243,8 @@ async function handleProcess() {
       params: buildPredictParams(),
     });
 
-    if (result.status === "failed") {
+    // 后端 LogStatusEnum 序列化为整数：3 = FAILED
+    if (result.status === 3) {
       throw new Error(result.errorMessage || "处理失败");
     }
 

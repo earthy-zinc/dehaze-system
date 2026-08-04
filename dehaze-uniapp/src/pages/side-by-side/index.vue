@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="page">
+  <PageLayout level="L3" class="page">
     <view class="main-content">
       <PageHeaderCard
         icon="grid"

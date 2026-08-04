@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="dataset-page">
+  <PageLayout level="L2" title="数据集" class="dataset-page">
     <view class="main-content">
       <!-- 页面标题卡片 -->
       <PageHeaderCard
@@ -145,14 +145,14 @@ import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import DatasetCard from "./components/DatasetCard.vue";
 import DatasetInfo from "./components/DatasetInfo.vue";
 import ImageGrid from "./components/ImageGrid.vue";
-import type {
-  Dataset,
-  DatasetImageItem,
-  DisplayMode,
+import type { DatasetImageItem, DisplayMode } from "./data/datasetData";
+import {
+  formatHazeLevel,
+  IMAGE_TYPE_LABELS,
+  flattenDatasetItems,
 } from "./data/datasetData";
-import { formatHazeLevel, IMAGE_TYPE_LABELS } from "./data/datasetData";
 import { DatasetAPI, DatasetItemAPI } from "dehaze-sdk-js";
-import { flattenDatasetItems } from "@/api/dataset";
+import type { Dataset } from "dehaze-sdk-js";
 import { formatFileSize } from "@/utils/format";
 
 // ==================== 状态定义 ====================

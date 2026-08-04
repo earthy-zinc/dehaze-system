@@ -21,7 +21,7 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import type { Dataset } from "../data/datasetData";
+import type { Dataset } from "dehaze-sdk-js";
 
 interface Props {
   dataset: Dataset;

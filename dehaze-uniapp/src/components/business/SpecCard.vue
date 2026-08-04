@@ -23,7 +23,7 @@ defineProps<Props>();
 <style lang="scss" scoped>
 .spec-card {
   text-align: center;
-  padding: 40rpx 24rpx;
+  padding: 24rpx;
   background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
   border-radius: 20rpx;
   border: 2rpx solid #e5e7eb;

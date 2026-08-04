@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="page">
+  <PageLayout level="L1" title="我的" class="page">
     <view class="main-content">
       <!-- 用户头像区 -->
       <view class="profile-card">
@@ -70,7 +70,7 @@
 import { computed } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { useAuthStore } from "@/store/auth";
-import { navigateToLogin, navigateToHome } from "@/routers/guard";
+import { LOGIN_PATH } from "@/routers/guard";
 
 const auth = useAuthStore();
 
@@ -101,9 +101,9 @@ async function handleLogout() {
         try {
           await auth.logout();
           uni.showToast({ title: "已退出", icon: "success" });
-          setTimeout(() => navigateToLogin(), 800);
+          setTimeout(() => uni.reLaunch({ url: LOGIN_PATH }), 800);
         } catch {
-          navigateToLogin();
+          uni.reLaunch({ url: LOGIN_PATH });
         }
       }
     },

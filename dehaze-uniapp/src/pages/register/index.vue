@@ -1,150 +1,234 @@
 <template>
-  <view class="login-container">
-    <view class="login-card">
-      <view class="title">用户注册</view>
-      <u-form :model="form" ref="formRef">
-        <u-form-item prop="username" borderBottom>
-          <u-input
-            v-model="form.username"
-            placeholder="用户名（3-32位字母数字下划线）"
-          />
-        </u-form-item>
-        <u-form-item prop="nickname" borderBottom>
-          <u-input v-model="form.nickname" placeholder="昵称" />
-        </u-form-item>
-        <u-form-item prop="password" borderBottom>
-          <u-input
-            v-model="form.password"
-            type="password"
-            placeholder="密码（6-20位含字母和数字）"
-          />
-        </u-form-item>
-        <u-form-item prop="confirmPassword" borderBottom>
-          <u-input
-            v-model="form.confirmPassword"
-            type="password"
-            placeholder="确认密码"
-          />
-        </u-form-item>
-        <u-form-item prop="captchaCode" borderBottom>
-          <u-input v-model="form.captchaCode" placeholder="验证码" />
-          <template #right>
-            <image
-              :src="captchaBase64"
-              style="width: 100px; height: 40px"
-              @click="getCaptcha"
-            />
-          </template>
-        </u-form-item>
-      </u-form>
-      <u-button type="primary" :loading="loading" @click="handleRegister" block
-        >注 册</u-button
-      >
-      <view class="link" @click="goLogin">已有账号？立即登录</view>
+  <AuthShell title="创建账号" subtitle="加入图像去雾，开启清晰之旅">
+    <AuthInput
+      v-model="form.username"
+      icon="account"
+      placeholder="用户名（3-32位字母数字下划线）"
+    />
+
+    <AuthInput v-model="form.nickname" icon="account-fill" placeholder="昵称" />
+
+    <AuthInput
+      v-model="form.password"
+      icon="lock"
+      password
+      placeholder="密码（6-20位含字母和数字）"
+    />
+
+    <AuthInput
+      v-model="form.confirmPassword"
+      icon="lock"
+      password
+      placeholder="确认密码"
+    />
+
+    <AuthCaptcha
+      v-model="form.captchaCode"
+      :error="captchaError"
+      ref="captchaRef"
+    />
+
+    <button
+      :disabled="loading"
+      class="submit-button"
+      :class="{ loading }"
+      @click="handleRegister"
+    >
+      <view v-if="loading" class="loading-spinner"></view>
+      <text>{{ loading ? "注册中..." : "注 册" }}</text>
+    </button>
+
+    <!-- 登录入口 -->
+    <view class="login-row">
+      <text class="login-text">已有账号？</text>
+      <text class="login-link" @click="goLogin">立即登录</text>
     </view>
-  </view>
+  </AuthShell>
 </template>
 
-<script setup>
-import { ref } from "vue";
-import { AuthAPI } from "dehaze-sdk-js";
+<script lang="ts" setup>
+import { reactive, ref, onMounted } from "vue";
+import AuthShell from "@/components/auth/AuthShell.vue";
+import AuthInput from "@/components/auth/AuthInput.vue";
+import AuthCaptcha from "@/components/auth/AuthCaptcha.vue";
+import { useAuthStore } from "@/store/auth";
+import { HOME_PATH, LOGIN_PATH } from "@/routers/guard";
+import { getErrorMessage } from "@/utils/error";
 
-const form = ref({
+const loading = ref(false);
+const captchaError = ref("");
+const authStore = useAuthStore();
+const captchaRef = ref<InstanceType<typeof AuthCaptcha>>();
+
+const form = reactive({
   username: "",
   nickname: "",
   password: "",
   confirmPassword: "",
   captchaCode: "",
-  captchaKey: "",
 });
-const captchaBase64 = ref("");
-const loading = ref(false);
 
-function getCaptcha() {
-  AuthAPI.getCaptcha().then((d) => {
-    form.value.captchaKey = d.captchaKey;
-    captchaBase64.value = d.captchaBase64;
-  });
-}
+/** 表单校验 */
+const validateForm = (): boolean => {
+  captchaError.value = "";
 
-function handleRegister() {
-  if (!form.value.username) {
+  if (!form.username.trim()) {
     uni.showToast({ title: "请输入用户名", icon: "none" });
-    return;
+    return false;
   }
-  if (!form.value.nickname) {
+  if (!/^[a-zA-Z0-9_]{3,32}$/.test(form.username.trim())) {
+    uni.showToast({ title: "用户名需为3-32位字母数字下划线", icon: "none" });
+    return false;
+  }
+  if (!form.nickname.trim()) {
     uni.showToast({ title: "请输入昵称", icon: "none" });
-    return;
+    return false;
   }
-  if (!form.value.password) {
+  if (!form.password) {
     uni.showToast({ title: "请输入密码", icon: "none" });
-    return;
+    return false;
   }
-  if (form.value.password !== form.value.confirmPassword) {
+  if (!/^(?=.*[a-zA-Z])(?=.*\d).{6,20}$/.test(form.password)) {
+    uni.showToast({ title: "密码需为6-20位且包含字母和数字", icon: "none" });
+    return false;
+  }
+  if (form.password !== form.confirmPassword) {
     uni.showToast({ title: "两次密码不一致", icon: "none" });
-    return;
+    return false;
   }
-  if (!form.value.captchaCode) {
-    uni.showToast({ title: "请输入验证码", icon: "none" });
-    return;
+  if (!form.captchaCode.trim()) {
+    captchaError.value = "请输入验证码";
+    return false;
   }
+
+  return true;
+};
+
+/** 提交注册：成功后自动登录进入首页 */
+const handleRegister = async () => {
+  if (!validateForm()) return;
 
   loading.value = true;
-  AuthAPI.register({
-    username: form.value.username,
-    password: form.value.password,
-    nickname: form.value.nickname,
-    captchaKey: form.value.captchaKey,
-    captchaCode: form.value.captchaCode,
-  })
-    .then(() => {
-      uni.showToast({ title: "注册成功", icon: "success" });
-      setTimeout(() => uni.reLaunch({ url: "/pages/login/index" }), 1000);
-    })
-    .catch(() => {
-      getCaptcha();
-      form.value.captchaCode = "";
-    })
-    .finally(() => {
-      loading.value = false;
+
+  try {
+    await authStore.register({
+      username: form.username.trim(),
+      password: form.password,
+      nickname: form.nickname.trim(),
+      captchaKey: captchaRef.value?.captchaKey() || "",
+      captchaCode: form.captchaCode,
     });
-}
 
-function goLogin() {
-  uni.reLaunch({ url: "/pages/login/index" });
-}
+    uni.reLaunch({ url: HOME_PATH });
+  } catch (error) {
+    const errorMsg = getErrorMessage(error, "注册失败，请重试");
 
-onMounted(() => {
-  getCaptcha();
+    // 验证码错误时刷新验证码
+    if (errorMsg.includes("验证码")) {
+      captchaError.value = errorMsg;
+      captchaRef.value?.refresh();
+      form.captchaCode = "";
+    } else {
+      uni.showToast({
+        title: errorMsg,
+        icon: "none",
+        duration: 2500,
+      });
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+/** 返回登录 */
+const goLogin = () => {
+  uni.navigateBack({
+    fail: () => uni.reLaunch({ url: LOGIN_PATH }),
+  });
+};
+
+onMounted(async () => {
+  // 已登录直接进入首页
+  if (authStore.isLoggedIn) {
+    uni.reLaunch({ url: HOME_PATH });
+    return;
+  }
+  // 自动获取验证码
+  await captchaRef.value?.refresh();
 });
 </script>
 
 <style lang="scss" scoped>
-.login-container {
+.submit-button {
+  width: 100%;
+  height: 96rpx;
+  margin-top: 8rpx;
+  border: none;
+  border-radius: $radius-md;
+  background: $gradient-primary;
+  background-size: 200% auto;
+  color: $color-white;
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 8rpx;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  background: #f5f7fa;
-  padding: 32px;
+  gap: 12rpx;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8rpx 20rpx rgba(59, 130, 246, 0.28);
+
+  &:active {
+    transform: scale(0.98);
+    box-shadow: 0 4rpx 12rpx rgba(59, 130, 246, 0.24);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  &.loading {
+    background: linear-gradient(
+      135deg,
+      $color-primary-light 0%,
+      $color-secondary-light 100%
+    );
+  }
 }
-.login-card {
-  width: 100%;
-  max-width: 360px;
-  background: #fff;
-  border-radius: 12px;
-  padding: 32px 24px;
+
+.loading-spinner {
+  width: 28rpx;
+  height: 28rpx;
+  border: 3rpx solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
-.title {
-  font-size: 24px;
-  font-weight: bold;
-  text-align: center;
-  margin-bottom: 24px;
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
-.link {
-  text-align: center;
-  margin-top: 16px;
-  color: #389e3c;
+
+.login-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  margin-top: 40rpx;
+
+  .login-text {
+    font-size: 26rpx;
+    color: $color-text-secondary;
+  }
+
+  .login-link {
+    font-size: 26rpx;
+    font-weight: 500;
+    color: $color-primary;
+  }
 }
 </style>

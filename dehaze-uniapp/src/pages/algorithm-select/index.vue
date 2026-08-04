@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="algorithm-select-page">
+  <PageLayout level="L2" title="选择算法" class="algorithm-select-page">
     <view class="main-content">
       <!-- 页面标题 -->
       <PageHeaderCard
@@ -76,13 +76,10 @@
             <view class="recommend-header">
               <view class="recommend-name-wrap">
                 <text class="recommend-name">{{ item.algorithmName }}</text>
-                <text v-if="item.type" class="recommend-type">{{
-                  item.type
-                }}</text>
               </view>
               <view class="recommend-actions">
                 <text class="recommend-score"
-                  >推荐分 {{ item.score.toFixed(2) }}</text
+                  >推荐分 {{ item.matchScore }}</text
                 >
                 <u-icon
                   v-if="selectedId === item.algorithmId"
@@ -242,14 +239,8 @@ import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore } from "@/store/processing";
-import { AlgorithmAPI } from "dehaze-sdk-js";
-import type { Algorithm } from "dehaze-sdk-js";
-import {
-  getAlgorithmFavorites,
-  toggleAlgorithmFavorite,
-  recommendAlgorithms,
-} from "@/api/algorithm";
-import type { AlgorithmRecommendVO } from "@/api/algorithm";
+import { AlgorithmAPI, FavoriteAPI, RecommendationAPI } from "dehaze-sdk-js";
+import type { Algorithm, RecommendedAlgorithm } from "dehaze-sdk-js";
 import { getErrorMessage } from "@/utils/error";
 
 // ==================== 状态 ====================
@@ -261,14 +252,16 @@ const algorithmList = ref<Algorithm[]>([]);
 const selectedId = ref<number | null>(null);
 const selectedAlgorithm = ref<Algorithm | null>(null);
 const searchKeyword = ref("");
-/** 已收藏算法ID集合 */
+/** 已收藏算法ID集合（targetId） */
 const favoriteIds = ref<Set<number>>(new Set());
+/** 收藏记录映射：算法ID → 收藏记录ID（取消收藏时使用） */
+const favoriteMap = ref<Map<number, number>>(new Map());
 /** 是否仅展示收藏算法 */
 const onlyFavorites = ref(false);
 /** 收藏切换中的算法ID，防止重复点击 */
 const togglingIds = ref<Set<number>>(new Set());
 /** 智能推荐结果 */
-const recommendList = ref<AlgorithmRecommendVO[]>([]);
+const recommendList = ref<RecommendedAlgorithm[]>([]);
 /** 推荐加载中 */
 const recommendLoading = ref(false);
 
@@ -292,7 +285,7 @@ const filteredList = computed<Algorithm[]>(() => {
 
 // ==================== 方法 ====================
 
-/** 加载算法列表 */
+/** 加载算法列表与收藏状态 */
 async function loadAlgorithms() {
   if (loading.value) return;
 
@@ -300,12 +293,23 @@ async function loadAlgorithms() {
   error.value = "";
 
   try {
-    const [list, favorites] = await Promise.all([
+    const [list, favoritePage] = await Promise.all([
       AlgorithmAPI.getList(),
-      getAlgorithmFavorites().catch(() => []),
+      FavoriteAPI.getPage({
+        targetType: "algorithm",
+        pageNum: 1,
+        pageSize: 100,
+      }).catch(() => null),
     ]);
     algorithmList.value = list;
-    favoriteIds.value = new Set(favorites.map((f) => f.algorithmId));
+    favoriteIds.value = new Set();
+    favoriteMap.value = new Map();
+    if (favoritePage?.list) {
+      for (const fav of favoritePage.list) {
+        favoriteIds.value.add(fav.targetId);
+        favoriteMap.value.set(fav.targetId, fav.id);
+      }
+    }
   } catch (e) {
     const msg = getErrorMessage(e, "加载失败");
     error.value = msg;
@@ -329,16 +333,30 @@ async function handleToggleFavorite(algorithm: Algorithm) {
   if (togglingIds.value.has(algorithm.id)) return;
   togglingIds.value.add(algorithm.id);
   try {
-    const result = await toggleAlgorithmFavorite(algorithm.id);
-    const next = new Set(favoriteIds.value);
-    if (result.favorited) {
-      next.add(algorithm.id);
+    const nextIds = new Set(favoriteIds.value);
+    const nextMap = new Map(favoriteMap.value);
+    const existed = nextIds.has(algorithm.id);
+
+    if (existed) {
+      const favoriteId = nextMap.get(algorithm.id);
+      if (favoriteId) {
+        await FavoriteAPI.deleteByIds([favoriteId]);
+      }
+      nextIds.delete(algorithm.id);
+      nextMap.delete(algorithm.id);
     } else {
-      next.delete(algorithm.id);
+      const favoriteId = await FavoriteAPI.add({
+        targetType: "algorithm",
+        targetId: algorithm.id,
+      });
+      nextIds.add(algorithm.id);
+      nextMap.set(algorithm.id, favoriteId);
     }
-    favoriteIds.value = next;
+
+    favoriteIds.value = nextIds;
+    favoriteMap.value = nextMap;
     uni.showToast({
-      title: result.favorited ? "已收藏" : "已取消收藏",
+      title: existed ? "已取消收藏" : "已收藏",
       icon: "none",
     });
   } catch (e) {
@@ -349,12 +367,21 @@ async function handleToggleFavorite(algorithm: Algorithm) {
   }
 }
 
-/** 加载智能推荐 */
+/** 加载智能推荐：先分析图片特征，再获取推荐算法 */
 async function loadRecommendations() {
   if (!processingStore.originUrl) return;
   recommendLoading.value = true;
   try {
-    const list = await recommendAlgorithms(processingStore.originUrl, 3);
+    const analysis = await RecommendationAPI.analyze({
+      imageUrl: processingStore.originUrl,
+    });
+    if (!analysis.imageMd5) {
+      recommendList.value = [];
+      return;
+    }
+    const list = await RecommendationAPI.getAlgorithmRecommendations({
+      imageMd5: analysis.imageMd5,
+    });
     recommendList.value = list || [];
   } catch {
     recommendList.value = [];
@@ -364,7 +391,7 @@ async function loadRecommendations() {
 }
 
 /** 选择推荐算法 */
-function handleSelectRecommend(item: AlgorithmRecommendVO) {
+function handleSelectRecommend(item: RecommendedAlgorithm) {
   const algorithm = algorithmList.value.find((a) => a.id === item.algorithmId);
   if (algorithm) {
     handleSelect(algorithm);
@@ -554,14 +581,6 @@ onMounted(() => {
   font-size: 30rpx;
   font-weight: 700;
   color: #1f2937;
-}
-.recommend-type {
-  font-size: 22rpx;
-  color: #8b5cf6;
-  background: #ede9fe;
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  flex-shrink: 0;
 }
 .recommend-actions {
   display: flex;

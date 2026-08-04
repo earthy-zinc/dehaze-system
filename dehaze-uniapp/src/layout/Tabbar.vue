@@ -26,12 +26,8 @@
 
 <script lang="ts" setup>
 import { ref, watch, onMounted } from "vue";
-import {
-  tabBarItems,
-  isTabBarPage,
-  getTabBarIndex,
-  type MenuItem,
-} from "@/config/menu";
+import { tabBarItems } from "@/config/menu";
+import type { MenuItem } from "@/config/menu";
 
 interface Props {
   /** 当前选中索引 */
@@ -61,13 +57,14 @@ watch(
   }
 );
 
-// 监听 currentRoute 变化，自动更新索引
+// 监听 currentRoute 变化，自动更新索引（非 TabBar 页面无高亮）
 watch(
   () => props.currentRoute,
   (route) => {
     if (route) {
-      const index = getTabBarIndex(route);
-      currentIndex.value = index;
+      currentIndex.value = tabBarItems.findIndex(
+        (item) => item.route === route
+      );
     }
   },
   { immediate: true }
@@ -80,7 +77,7 @@ const switchTab = (item: MenuItem, index: number) => {
   currentIndex.value = index;
 
   // tabBar 页面使用 reLaunch（清空页面栈，模拟 Tab 切换语义），其他页面使用 navigateTo
-  if (isTabBarPage(item.route)) {
+  if (tabBarItems.some((tab) => tab.route === item.route)) {
     uni.reLaunch({ url: item.route });
   } else {
     uni.navigateTo({
@@ -98,7 +95,7 @@ onMounted(() => {
   if (pages.length > 0) {
     const currentPage = pages[pages.length - 1];
     const route = "/" + currentPage?.route;
-    const index = getTabBarIndex(route);
+    const index = tabBarItems.findIndex((item) => item.route === route);
     if (index !== -1) {
       currentIndex.value = index;
     }

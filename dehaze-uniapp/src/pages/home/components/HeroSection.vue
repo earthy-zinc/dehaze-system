@@ -21,7 +21,7 @@
       <view class="hero-cta">
         <view class="cta-primary" @click="handlePrimaryClick">
           <text class="cta-primary-text">立即开始</text>
-          <u-icon name="arrow-right" size="16" color="#ffffff" />
+          <u-icon name="arrow-right" size="16" color="#3b82f6" />
         </view>
         <view class="cta-secondary" @click="handleSecondaryClick">
           <text class="cta-secondary-text">浏览数据集</text>
@@ -90,7 +90,7 @@ $brand-gradient: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
 
 .hero-section {
   position: relative;
-  padding: 120rpx 40rpx 100rpx;
+  padding: 120rpx 0 100rpx;
   text-align: center;
   width: 100%;
   background: $brand-gradient;

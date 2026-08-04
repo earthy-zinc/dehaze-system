@@ -1,7 +1,8 @@
 /**
  * 菜单配置
- * 统一管理所有菜单项数据，便于维护和修改
- * 与 Flutter 版本 menu_config.dart 保持一致
+ *
+ * 依据《05-菜单与页面层级规划》：移动端 5 个 Tab 根页面（L1），
+ * 与设计稿 dehaze-mobile 底部导航一致。
  */
 
 /** 菜单项数据模型 */
@@ -14,137 +15,9 @@ export interface MenuItem {
   title: string;
   /** 路由路径 */
   route: string;
-  /** 角标文字（如 "NEW"、数字等） */
-  badge?: string | number;
-  /** 是否为新功能 */
-  isNew?: boolean;
 }
 
-/** 菜单分组数据模型 */
-export interface MenuSection {
-  /** 分组标题 */
-  title: string;
-  /** 分组图标（可选） */
-  icon?: string;
-  /** 分组下的菜单项 */
-  items: MenuItem[];
-}
-
-/** 首页菜单项 */
-export const homeItem: MenuItem = {
-  icon: "home",
-  activeIcon: "home-fill",
-  title: "首页",
-  route: "/pages/home/index",
-};
-
-/** 分组菜单配置 */
-export const menuSections: MenuSection[] = [
-  {
-    title: "处理流程",
-    icon: "play-circle",
-    items: [
-      {
-        icon: "camera",
-        activeIcon: "camera-fill",
-        title: "图像输入",
-        route: "/pages/image-input/index",
-      },
-      {
-        icon: "gift",
-        activeIcon: "gift-fill",
-        title: "算法选择",
-        route: "/pages/algorithm-select/index",
-      },
-      {
-        icon: "setting",
-        activeIcon: "setting-fill",
-        title: "去雾处理",
-        route: "/pages/processing/index",
-      },
-    ],
-  },
-  {
-    title: "效果对比",
-    icon: "grid",
-    items: [
-      {
-        icon: "grid",
-        activeIcon: "grid-fill",
-        title: "并排对比",
-        route: "/pages/side-by-side/index",
-      },
-      {
-        icon: "photo",
-        activeIcon: "photo-fill",
-        title: "重叠对比",
-        route: "/pages/overlay/index",
-      },
-      {
-        icon: "search",
-        activeIcon: "search",
-        title: "放大镜",
-        route: "/pages/magnifier/index",
-      },
-      {
-        icon: "setting",
-        activeIcon: "setting-fill",
-        title: "滤镜调节",
-        route: "/pages/filter/index",
-      },
-      {
-        icon: "integral",
-        activeIcon: "integral-fill",
-        title: "指标评估",
-        route: "/pages/metrics/index",
-      },
-      {
-        icon: "info-circle",
-        activeIcon: "info-circle-fill",
-        title: "算法信息",
-        route: "/pages/algorithm/index",
-      },
-    ],
-  },
-  {
-    title: "数据管理",
-    icon: "folder",
-    items: [
-      {
-        icon: "server-fill",
-        activeIcon: "server-fill",
-        title: "数据集管理",
-        route: "/pages/dataset/index",
-      },
-      {
-        icon: "folder",
-        activeIcon: "folder",
-        title: "文件管理",
-        route: "/pages/file-manage/index",
-      },
-    ],
-  },
-  {
-    title: "我的",
-    icon: "account",
-    items: [
-      {
-        icon: "account",
-        activeIcon: "account-fill",
-        title: "用户中心",
-        route: "/pages/user-center/index",
-      },
-      {
-        icon: "clock",
-        activeIcon: "clock-fill",
-        title: "处理历史",
-        route: "/pages/task-history/index",
-      },
-    ],
-  },
-];
-
-/** 底部 TabBar 配置（与 pages.json tabBar.list 保持一致） */
+/** 底部 TabBar 配置（5 个顶层目的地，L1 Tab 根页面） */
 export const tabBarItems: MenuItem[] = [
   {
     icon: "home",
@@ -153,33 +26,27 @@ export const tabBarItems: MenuItem[] = [
     route: "/pages/home/index",
   },
   {
-    icon: "camera",
-    activeIcon: "camera-fill",
-    title: "输入",
-    route: "/pages/image-input/index",
+    icon: "grid",
+    activeIcon: "grid-fill",
+    title: "工具",
+    route: "/pages/tools/index",
   },
   {
-    icon: "server-fill",
-    activeIcon: "server-fill",
-    title: "数据集",
-    route: "/pages/dataset/index",
+    icon: "gift",
+    activeIcon: "gift-fill",
+    title: "去雾",
+    route: "/pages/dehaze/index",
+  },
+  {
+    icon: "bell",
+    activeIcon: "bell-fill",
+    title: "消息",
+    route: "/pages/messages/index",
+  },
+  {
+    icon: "account",
+    activeIcon: "account-fill",
+    title: "我的",
+    route: "/pages/user-center/index",
   },
 ];
-
-/** TabBar 页面路由列表 */
-export const tabBarRoutes: string[] = tabBarItems.map((item) => item.route);
-
-/**
- * 获取 TabBar 项的索引
- */
-export const getTabBarIndex = (route: string): number => {
-  const index = tabBarItems.findIndex((item) => item.route === route);
-  return index !== -1 ? index : 0;
-};
-
-/**
- * 判断是否为 TabBar 页面
- */
-export const isTabBarPage = (route: string): boolean => {
-  return tabBarRoutes.includes(route);
-};

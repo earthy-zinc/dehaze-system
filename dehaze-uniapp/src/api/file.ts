@@ -1,7 +1,7 @@
 import { ResultEnum, SESSION_KEY } from "dehaze-sdk-js";
 import type { FileInfo } from "dehaze-sdk-js";
 import { uploadFileByUni } from "./uni-adapter";
-import { BASE_URL } from "./config";
+import { BASE_URL } from "./constants";
 
 export interface UploadImageParams {
   url: string;

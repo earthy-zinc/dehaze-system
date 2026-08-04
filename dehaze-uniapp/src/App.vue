@@ -4,16 +4,14 @@ import { useAuthStore } from "@/store/auth";
 import { setupRouteGuard, checkInitialAuth } from "@/routers/guard";
 
 onLaunch(() => {
-  // 安装路由守卫
+  // 1. 安装路由守卫：拦截未登录跳转（不拦截首次启动自动加载的首页）
   setupRouteGuard();
 
-  // 初始化认证状态
+  // 2. 初始化认证状态：从 storage 恢复登录态，并注册会话失效监听
   const authStore = useAuthStore();
   authStore.init();
 
-  // 检查初始登录态：若未登录且当前页需要登录，则跳转登录页
-  // uni-app 的 addInterceptor 不会拦截应用首次启动时自动加载的首页，因此需要显式检查
-  // 放在 init() 之后，确保 token 已从 storage 恢复
+  // 3. 显式检查初始登录态：补充守卫不覆盖的首页首启场景
   checkInitialAuth();
 });
 

@@ -51,8 +51,13 @@ const handleChooseImage = () => {
     sizeType: ["original", "compressed"],
     sourceType: ["album"],
     success: async (res) => {
+      // chooseImage 各端实际返回数组，类型声明为单值/数组联合，统一归一化
       const tempFilePath = res.tempFilePaths[0];
-      const tempFile = res.tempFiles[0] as { size: number; path: string };
+      const tempFiles = Array.isArray(res.tempFiles)
+        ? res.tempFiles
+        : [res.tempFiles];
+      const tempFile = tempFiles[0];
+      if (!tempFilePath || !tempFile) return;
 
       // 检查文件大小
       if (tempFile.size > MAX_FILE_SIZE) {

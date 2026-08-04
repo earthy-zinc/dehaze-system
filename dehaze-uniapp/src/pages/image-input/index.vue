@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="image-input-page">
+  <PageLayout level="L2" title="图像输入" class="image-input-page">
     <view class="main-content">
       <!-- 页面标题卡片 -->
       <PageHeaderCard

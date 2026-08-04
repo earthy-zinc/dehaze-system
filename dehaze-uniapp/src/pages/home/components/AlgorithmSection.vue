@@ -1,51 +1,42 @@
 <template>
   <view class="algorithm-section">
-    <view class="algorithm-content">
-      <view class="algorithm-text">
-        <text class="section-title">多算法智能选择</text>
-        <text class="section-subtitle">
-          支持DCP、AOD-Net、DehazeNet等多种先进算法
-        </text>
-        <view class="algorithm-features">
-          <view
-            v-for="(feature, index) in algorithmFeatures"
-            :key="index"
-            class="feature-item"
-          >
-            <u-icon name="checkmark-circle" size="20" color="#34d399" />
-            <text class="feature-text">{{ feature }}</text>
-          </view>
-        </view>
-        <up-button
-          type="primary"
-          :plain="true"
-          @click="handleLearnMore"
-          :custom-style="learnMoreButtonStyle"
+    <text class="section-title">多算法智能选择</text>
+    <text class="section-subtitle">
+      支持DCP、AOD-Net、DehazeNet等多种先进算法
+    </text>
+    <view class="algorithm-visual">
+      <view class="algorithm-features">
+        <view
+          v-for="(feature, index) in algorithmFeatures"
+          :key="index"
+          class="feature-item"
         >
-          了解更多算法详情
-          <u-icon
-            name="arrow-right"
-            size="16"
-            color="#3b82f6"
-            :margin-left="8"
-          />
-        </up-button>
+          <u-icon name="checkmark-circle" size="20" color="#34d399" />
+          <text class="feature-text">{{ feature }}</text>
+        </view>
       </view>
-      <view class="algorithm-visual">
-        <image
-          :src="algorithmImageUrl"
-          mode="widthFix"
-          class="algorithm-image"
-        />
-      </view>
+      <image :src="algorithmImageUrl" mode="widthFix" class="algorithm-image" />
     </view>
+
+    <up-button
+      type="primary"
+      :plain="true"
+      @click="handleLearnMore"
+      :custom-style="learnMoreButtonStyle"
+    >
+      了解更多算法详情
+      <u-icon name="arrow-right" size="16" color="#3b82f6" :margin-left="8" />
+    </up-button>
   </view>
 </template>
 
 <script lang="ts" setup>
 import { ref } from "vue";
 import { homeData } from "../data/homeData";
-import { DATASET_BASE_URL } from "@/api/config";
+
+/** 数据集静态文件服务地址（来自 .env 的 VITE_DATASET_HOST） */
+const DATASET_BASE_URL =
+  import.meta.env.VITE_DATASET_HOST || "http://127.0.0.1:9000";
 
 interface Emits {
   (e: "learn-more"): void;
@@ -55,7 +46,7 @@ const emit = defineEmits<Emits>();
 const algorithmFeatures = ref(homeData.algorithmFeatures);
 
 // 使用真实数据集图片
-const algorithmImageUrl = `${DATASET_BASE_URL}/NH-HAZE-2023/clean/002.JPG`;
+const algorithmImageUrl = `${DATASET_BASE_URL}/datasets/NH-HAZE-2023/clean/003.JPG`;
 
 const learnMoreButtonStyle = {
   background: "#ffffff",
@@ -76,15 +67,6 @@ const handleLearnMore = () => {
   color: white;
 }
 
-.algorithm-content {
-  max-width: 100%;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 60rpx;
-  align-items: center;
-}
-
 .section-title {
   display: block;
   font-size: 48rpx;
@@ -99,13 +81,19 @@ const handleLearnMore = () => {
   font-size: 28rpx;
   color: rgba(255, 255, 255, 0.8);
   line-height: 1.6;
-  margin-bottom: 32rpx;
+  margin-bottom: 64rpx;
+}
+
+.algorithm-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 64rpx;
 }
 
 .algorithm-features {
   list-style: none;
   padding: 0;
-  margin: 0 0 32rpx 0;
 }
 
 .feature-item {
@@ -122,8 +110,9 @@ const handleLearnMore = () => {
 }
 
 .algorithm-image {
-  width: 100%;
+  width: 40vw;
   height: auto;
+  margin-left: 32rpx;
   border-radius: 20rpx;
   box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.3);
 }

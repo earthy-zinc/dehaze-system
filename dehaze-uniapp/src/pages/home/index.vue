@@ -1,5 +1,5 @@
 <template>
-  <PageLayout class="home-page">
+  <PageLayout level="L1" title="首页" class="home-page">
     <view class="main-content">
       <!-- Hero Section - 英雄区 -->
       <HeroSection
@@ -161,16 +161,11 @@ function handleRecommendSelect() {
   background: $color-white;
 }
 
-.main-content {
-  // 为底部导航栏留出空间
-  padding-bottom: calc(100rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
-}
-
 .tech-specs-section {
+  // 块级元素默认占满父宽，无需 width:100%；若同时写 width:100% + padding，
+  // 在默认 content-box 下总宽会超出视口导致右侧被截断
   padding: 80rpx 40rpx;
   background: $color-white;
-  width: 100%;
 
   .specs-grid {
     display: grid;
