@@ -39,13 +39,12 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import EmptyState from '@/components/EmptyState';
 import Badge from '@/components/Badge';
 
-import { AlgorithmAPI } from 'dehaze-sdk-js';
+import { AlgorithmAPI, FavoriteAPI } from 'dehaze-sdk-js';
 import type {
   Algorithm,
   AlgorithmVersionVO,
   AlgorithmMonitorVO,
 } from 'dehaze-sdk-js';
-import AlgorithmSelectAPI from '@/api/algorithm-select';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Algorithm'>;
 
@@ -54,12 +53,12 @@ const ALGORITHM_STATUS_MAP: Record<
   number,
   { label: string; color: string; bgColor: string }
 > = {
-  0: { label: '草稿', color: '#6B7280', bgColor: '#F3F4F6' },
-  1: { label: '测试中', color: '#B45309', bgColor: '#FEF3C7' },
-  2: { label: '待审核', color: '#1D4ED8', bgColor: '#DBEAFE' },
-  3: { label: '已发布', color: '#047857', bgColor: '#D1FAE5' },
-  4: { label: '已停用', color: '#B91C1C', bgColor: '#FEE2E2' },
-  5: { label: '已归档', color: '#6B7280', bgColor: '#E5E7EB' },
+  1: { label: '草稿', color: '#6B7280', bgColor: '#F3F4F6' },
+  2: { label: '测试中', color: '#B45309', bgColor: '#FEF3C7' },
+  3: { label: '待审核', color: '#1D4ED8', bgColor: '#DBEAFE' },
+  4: { label: '已发布', color: '#047857', bgColor: '#D1FAE5' },
+  5: { label: '已停用', color: '#B91C1C', bgColor: '#FEE2E2' },
+  6: { label: '已归档', color: '#6B7280', bgColor: '#E5E7EB' },
 };
 
 /** 章节定义 */
@@ -133,12 +132,12 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
   /** 同步收藏状态 */
   useEffect(() => {
     if (!algorithmId) return;
-    AlgorithmSelectAPI.listFavorites()
-      .then(list => {
-        setIsFavorite(list.some(r => r.algorithmId === algorithmId));
+    FavoriteAPI.getStatus('algorithm', algorithmId)
+      .then(status => {
+        setIsFavorite(status.favorited);
       })
       .catch(() => {
-        /* Python 后端未启动时静默忽略 */
+        /* 收藏服务不可用时静默忽略 */
       });
   }, [algorithmId]);
 
@@ -187,18 +186,29 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleToggleFavorite = useCallback(() => {
     if (!algorithm) return;
     setFavoriteBusy(true);
-    AlgorithmSelectAPI.toggleFavorite(algorithm.id)
-      .then(res => {
-        setIsFavorite(res.favorited);
-      })
+    const toggle = async () => {
+      if (isFavorite) {
+        // 已收藏：按收藏记录 ID 取消（查询目标算法对应的收藏记录）
+        const page = await FavoriteAPI.getPage({
+          targetType: 'algorithm',
+          pageNum: 1,
+          pageSize: 100,
+        });
+        const fav = (page?.list || []).find(f => f.targetId === algorithm.id);
+        if (fav) {
+          await FavoriteAPI.deleteByIds([fav.id]);
+        }
+      } else {
+        await FavoriteAPI.add({ targetType: 'algorithm', targetId: algorithm.id });
+      }
+    };
+    toggle()
+      .then(() => setIsFavorite(!isFavorite))
       .catch(err => {
-        Alert.alert(
-          '操作失败',
-          err?.message || '收藏服务不可用，请稍后再试',
-        );
+        Alert.alert('操作失败', err?.message || '收藏服务不可用，请稍后再试');
       })
       .finally(() => setFavoriteBusy(false));
-  }, [algorithm]);
+  }, [algorithm, isFavorite]);
 
   /** 分享算法 */
   const handleShare = useCallback(async () => {

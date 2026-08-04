@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import Icon from '@/components/Icon';
 import { theme } from '@/theme';
-import type { Algorithm } from '@/types/algorithm';
+import type { Algorithm } from 'dehaze-sdk-js';
 import AlgorithmCard from './AlgorithmCard';
 
 interface AlgorithmTreeProps {

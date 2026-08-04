@@ -28,7 +28,7 @@ import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
 import { AlgorithmAPI } from 'dehaze-sdk-js';
-import type { Algorithm } from '@/types/algorithm';
+import type { Algorithm } from 'dehaze-sdk-js';
 import type {
   CommonAlgorithmParams,
   ProcessingResult,

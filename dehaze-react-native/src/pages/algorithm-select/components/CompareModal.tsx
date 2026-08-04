@@ -1,8 +1,8 @@
 /**
  * 算法对比弹窗组件
  *
- * 调用 Python 后端 /api/v1/algorithm-select/compare 获取多算法元数据对比，
- * 展示参数量/计算量/处理耗时等指标，并支持选择其一进入处理流程。
+ * 调用 SDK AlgorithmAPI.compare（Java 后端 /api/v1/algorithms/select/compare）
+ * 获取多算法对比，展示处理耗时与量化指标（PSNR/SSIM 等），并支持选择其一进入处理流程。
  */
 
 import React, { useEffect, useState } from 'react';
@@ -17,8 +17,8 @@ import {
 } from 'react-native';
 import Icon from '@/components/Icon';
 import { theme } from '@/theme';
-import type { Algorithm, AlgorithmCompareVO } from '@/types/algorithm';
-import AlgorithmSelectAPI from '@/api/algorithm-select';
+import { AlgorithmAPI } from 'dehaze-sdk-js';
+import type { Algorithm, AlgorithmCompareVO } from 'dehaze-sdk-js';
 
 interface CompareModalProps {
   visible: boolean;
@@ -28,16 +28,6 @@ interface CompareModalProps {
   onClose: () => void;
   onSelect: (algorithm: Algorithm) => void;
 }
-
-/** 状态枚举映射（与算法详情页保持一致） */
-const STATUS_LABEL: Record<number, string> = {
-  0: '草稿',
-  1: '测试中',
-  2: '待审核',
-  3: '已发布',
-  4: '已停用',
-  5: '已归档',
-};
 
 const CompareModal: React.FC<CompareModalProps> = ({
   visible,
@@ -50,6 +40,34 @@ const CompareModal: React.FC<CompareModalProps> = ({
   const [results, setResults] = useState<AlgorithmCompareVO[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  /** 解析后端返回的指标 JSON（如 {"psnr":38.2,"ssim":0.98}），输出可读字符串 */
+  const formatMetrics = (metrics?: string): string | undefined => {
+    if (!metrics) return undefined;
+    try {
+      const m = JSON.parse(metrics) as Record<string, number | string>;
+      return Object.entries(m)
+        .filter(([, v]) => v !== undefined && v !== null)
+        .map(([k, v]) => `${k.toUpperCase()} ${v}`)
+        .join(' · ');
+    } catch {
+      return metrics;
+    }
+  };
+
+  const renderMetricRow = (
+    label: string,
+    getValue: (r: AlgorithmCompareVO) => string | undefined,
+  ) => (
+    <View style={styles.metricRow}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      {results.map(r => (
+        <Text key={r.algorithmId} style={styles.metricValue}>
+          {getValue(r) ?? '-'}
+        </Text>
+      ))}
+    </View>
+  );
+
   useEffect(() => {
     if (!visible || algorithms.length < 2) return;
 
@@ -57,7 +75,7 @@ const CompareModal: React.FC<CompareModalProps> = ({
     setLoading(true);
     setError(null);
 
-    AlgorithmSelectAPI.compare(algorithms.map(a => a.id), imageUrl)
+    AlgorithmAPI.compare({ algorithmIds: algorithms.map(a => a.id), imageUrl })
       .then(data => {
         if (!cancelled) {
           setResults(data || []);
@@ -79,20 +97,6 @@ const CompareModal: React.FC<CompareModalProps> = ({
   /** 根据对比结果 ID 找回完整的 Algorithm（用于「使用」按钮跳转） */
   const findAlgorithm = (id: number): Algorithm | undefined =>
     algorithms.find(a => a.id === id);
-
-  const renderMetricRow = (
-    label: string,
-    getValue: (r: AlgorithmCompareVO) => string | undefined,
-  ) => (
-    <View style={styles.metricRow}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      {results.map(r => (
-        <Text key={r.algorithmId} style={styles.metricValue}>
-          {getValue(r) ?? '-'}
-        </Text>
-      ))}
-    </View>
-  );
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false}>
@@ -127,22 +131,13 @@ const CompareModal: React.FC<CompareModalProps> = ({
               ))}
             </View>
 
-            {/* 类型 */}
-            {renderMetricRow('类型', r => r.type)}
-
-            {/* 参数量 */}
-            {renderMetricRow('参数量', r => r.params)}
-
-            {/* 计算量 */}
-            {renderMetricRow('计算量', r => r.flops)}
-
             {/* 处理耗时 */}
             {renderMetricRow('耗时(ms)', r =>
-              r.processTime != null ? String(r.processTime) : undefined,
+              r.time != null ? String(r.time) : undefined,
             )}
 
-            {/* 状态 */}
-            {renderMetricRow('状态', r => STATUS_LABEL[r.status] ?? String(r.status))}
+            {/* 评估指标 */}
+            {renderMetricRow('评估指标', r => formatMetrics(r.metrics))}
 
             {/* 操作按钮 */}
             <View style={styles.actionRow}>

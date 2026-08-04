@@ -2,10 +2,10 @@
  * 算法选择页面
  *
  * 接收来自图像输入页面的 SelectedImage，提供：
- * - 智能推荐（基于图像特征，由 Python 后端推荐 Top3）
- * - 树形算法浏览（由 Java 后端 AlgorithmAPI.getList 提供树）
- * - 收藏管理（Python 后端 algorithm-select/favorite）
- * - 算法对比（Python 后端 algorithm-select/compare，最多 3 个）
+ * - 智能推荐（RecommendationAPI：分析图像特征 → 获取 Top3 推荐）
+ * - 树形算法浏览（由 SDK AlgorithmAPI.getList 提供）
+ * - 收藏管理（SDK FavoriteAPI，targetType=algorithm）
+ * - 算法对比（Java 后端 /algorithms/select/compare，最多 3 个）
  *
  * 选中算法后导航到 Processing 页面（携带 algorithmId + image）。
  */
@@ -27,9 +27,8 @@ import { MainLayout } from '@/layout';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import type { SelectedImage } from '@/types/image';
-import type { Algorithm, AlgorithmRecommendVO, FavoriteVO } from '@/types/algorithm';
-import { AlgorithmAPI } from 'dehaze-sdk-js';
-import AlgorithmSelectAPI from '@/api/algorithm-select';
+import { AlgorithmAPI, FavoriteAPI, RecommendationAPI } from 'dehaze-sdk-js';
+import type { Algorithm, FavoriteVO, RecommendedAlgorithm } from 'dehaze-sdk-js';
 
 import AlgorithmTree from './components/AlgorithmTree';
 import AlgorithmCard from './components/AlgorithmCard';
@@ -49,10 +48,12 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
   const [tree, setTree] = useState<Algorithm[]>([]);
   const [treeLoading, setTreeLoading] = useState(true);
   const [treeError, setTreeError] = useState<string | null>(null);
-  const [recommendations, setRecommendations] = useState<AlgorithmRecommendVO[]>([]);
+  const [recommendations, setRecommendations] = useState<RecommendedAlgorithm[]>([]);
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteVO[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  /** 收藏记录映射：算法ID → 收藏记录ID（取消收藏时使用） */
+  const [favoriteMap, setFavoriteMap] = useState<Map<number, number>>(new Map());
 
   // UI 状态
   const [activeTab, setActiveTab] = useState<TabKey>(image ? 'recommend' : 'browse');
@@ -129,31 +130,42 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
       .finally(() => setTreeLoading(false));
   }, []);
 
-  // 加载推荐
+  // 加载推荐：先分析图像特征，再获取推荐算法
   useEffect(() => {
     if (!hasRemoteImage || !image?.url) return;
 
     setRecommendLoading(true);
-    AlgorithmSelectAPI.recommend({ imageUrl: image.url })
+    RecommendationAPI.analyze({ imageUrl: image.url })
+      .then(analysis => {
+        if (!analysis.imageMd5) {
+          setRecommendations([]);
+          return;
+        }
+        return RecommendationAPI.getAlgorithmRecommendations({
+          imageMd5: analysis.imageMd5,
+        });
+      })
       .then(data => {
         setRecommendations(data || []);
       })
       .catch(() => {
-        // 推荐服务不可用（Python 后端未启动）时静默失败，不阻塞页面
+        // 推荐服务不可用时静默失败，不阻塞页面
+        setRecommendations([]);
       })
       .finally(() => setRecommendLoading(false));
   }, [hasRemoteImage, image?.url]);
 
   // 加载收藏列表
   const loadFavorites = useCallback(() => {
-    AlgorithmSelectAPI.listFavorites()
+    FavoriteAPI.getPage({ targetType: 'algorithm', pageNum: 1, pageSize: 100 })
       .then(data => {
-        const favList = data || [];
+        const favList = data?.list || [];
         setFavorites(favList);
-        setFavoriteIds(new Set(favList.map(r => r.algorithmId)));
+        setFavoriteIds(new Set(favList.map(f => f.targetId)));
+        setFavoriteMap(new Map(favList.map(f => [f.targetId, f.id])));
       })
       .catch(() => {
-        // 收藏服务不可用（Python 后端未启动）时静默失败，不影响页面使用
+        // 收藏服务不可用时静默失败，不影响页面使用
       });
   }, []);
 
@@ -183,39 +195,57 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
   /** 切换收藏 */
   const handleToggleFavorite = useCallback(
     (algorithm: Algorithm) => {
-      AlgorithmSelectAPI.toggleFavorite(algorithm.id)
-        .then(res => {
-          const isFav = res.favorited;
+      const existed = favoriteIds.has(algorithm.id);
+      const favoriteId = favoriteMap.get(algorithm.id);
+
+      // 未收藏 → add 返回新收藏记录 ID；已收藏 → 按收藏记录 ID 取消
+      const promise = existed
+        ? favoriteId != null
+          ? FavoriteAPI.deleteByIds([favoriteId]).then(() => undefined)
+          : Promise.resolve(undefined)
+        : FavoriteAPI.add({ targetType: 'algorithm', targetId: algorithm.id });
+
+      promise
+        .then(addedId => {
           setFavoriteIds(prev => {
             const next = new Set(prev);
-            if (isFav) {
-              next.add(algorithm.id);
-            } else {
+            if (existed) {
               next.delete(algorithm.id);
+            } else {
+              next.add(algorithm.id);
+            }
+            return next;
+          });
+          setFavoriteMap(prev => {
+            const next = new Map(prev);
+            if (existed) {
+              next.delete(algorithm.id);
+            } else if (addedId != null) {
+              next.set(algorithm.id, addedId);
             }
             return next;
           });
           setFavorites(prev =>
-            isFav
-              ? prev.some(f => f.algorithmId === algorithm.id)
-                ? prev
-                : [
-                    ...prev,
-                    {
-                      id: res.favoriteId ?? 0,
-                      userId: 0,
-                      algorithmId: algorithm.id,
-                      algorithmName: algorithm.name,
-                    },
-                  ]
-              : prev.filter(f => f.algorithmId !== algorithm.id),
+            existed
+              ? prev.filter(f => f.targetId !== algorithm.id)
+              : [
+                  ...prev,
+                  {
+                    id: addedId ?? 0,
+                    userId: 0,
+                    targetType: 'algorithm',
+                    targetId: algorithm.id,
+                    targetName: algorithm.name,
+                    createTime: new Date().toISOString(),
+                  },
+                ],
           );
         })
         .catch(err => {
           Alert.alert('操作失败', err instanceof Error ? err.message : '收藏操作失败');
         });
     },
-    [],
+    [favoriteIds, favoriteMap],
   );
 
   /** 切换对比选择 */
@@ -327,12 +357,12 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
           为您推荐 Top {recommendations.length} 算法
         </Text>
         {recommendations.map(r => {
-          const algorithm = resolveAlgorithm(r.algorithmId, r.algorithmName, r.type);
+          const algorithm = resolveAlgorithm(r.algorithmId, r.algorithmName);
           return (
             <AlgorithmCard
               key={r.algorithmId}
               algorithm={algorithm}
-              matchScore={Math.round(r.score)}
+              matchScore={Math.round(r.matchScore)}
               reason={r.reason}
               isFavorite={favoriteIds.has(r.algorithmId)}
               isSelected={compareIds.has(r.algorithmId)}
@@ -467,13 +497,13 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
       <View>
         <Text style={styles.sectionTitle}>已收藏 {favorites.length} 个算法</Text>
         {favorites.map(fav => {
-          const algo = resolveAlgorithm(fav.algorithmId, fav.algorithmName);
+          const algo = resolveAlgorithm(fav.targetId, fav.targetName);
           return (
             <AlgorithmCard
-              key={fav.algorithmId}
+              key={fav.targetId}
               algorithm={algo}
               isFavorite={true}
-              isSelected={compareIds.has(fav.algorithmId)}
+              isSelected={compareIds.has(fav.targetId)}
               onSelect={handleSelect}
               onToggleFavorite={handleToggleFavorite}
               onViewDetail={handleViewDetail}
