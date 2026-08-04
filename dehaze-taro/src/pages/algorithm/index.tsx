@@ -199,11 +199,12 @@ const AlgorithmManagePage: React.FC = () => {
   /** 渲染算法节点 */
   const renderNode = (item: FlatNode) => {
     const { algorithm: algo, level, hasChildren } = item;
-    const statusInfo = STATUS_INFO[algo.status ?? 0] || STATUS_INFO[0];
-    const isPending = algo.status === 2;
-    const isPublished = algo.status === 3;
-    const isDisabled = algo.status === 4;
-    const isDeletableStatus = algo.status === 0 || algo.status === 4;
+    const statusInfo = STATUS_INFO[algo.status ?? 0] || STATUS_INFO[1];
+    const isPending = algo.status === 3;
+    const isPublished = algo.status === 4;
+    const isDisabled = algo.status === 5;
+    const isDeletableStatus =
+      algo.status === 1 || algo.status === 5 || algo.status === 6;
 
     return (
       <View

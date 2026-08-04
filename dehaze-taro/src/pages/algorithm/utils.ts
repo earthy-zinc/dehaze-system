@@ -10,22 +10,22 @@ export const STATUS_INFO: Record<
     color: "default" | "primary" | "success" | "warning" | "danger";
   }
 > = {
-  0: { label: "草稿", color: "default" },
-  1: { label: "测试中", color: "warning" },
-  2: { label: "待审核", color: "primary" },
-  3: { label: "已发布", color: "success" },
-  4: { label: "已停用", color: "default" },
-  5: { label: "已归档", color: "default" },
+  1: { label: "草稿", color: "default" },
+  2: { label: "测试中", color: "warning" },
+  3: { label: "待审核", color: "primary" },
+  4: { label: "已发布", color: "success" },
+  5: { label: "已停用", color: "default" },
+  6: { label: "已归档", color: "default" },
 };
 
 /** 状态筛选选项 */
 export const STATUS_FILTERS: { label: string; value: number | "" }[] = [
   { label: "全部", value: "" },
-  { label: "草稿", value: 0 },
-  { label: "测试中", value: 1 },
-  { label: "待审核", value: 2 },
-  { label: "已发布", value: 3 },
-  { label: "已停用", value: 4 },
+  { label: "草稿", value: 1 },
+  { label: "测试中", value: 2 },
+  { label: "待审核", value: 3 },
+  { label: "已发布", value: 4 },
+  { label: "已停用", value: 5 },
 ];
 
 // ==================== 工具函数 ====================

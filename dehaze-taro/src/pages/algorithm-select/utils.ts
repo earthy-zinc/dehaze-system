@@ -1,7 +1,7 @@
 import type { Algorithm } from "dehaze-sdk-js";
 
-// 算法状态：3=已发布，可选
-export const PUBLISHED_STATUS = 3;
+// 算法状态：4=已发布
+export const PUBLISHED_STATUS = 4;
 export const FAVORITE_STORAGE_KEY = "favorite_algorithms";
 
 // 算法类型推荐权重（数值越高越优先推荐）
@@ -50,17 +50,17 @@ export function collectLeafAlgorithms(nodes: Algorithm[]): Algorithm[] {
 // 状态信息
 export function getStatusInfo(status?: number) {
   switch (status) {
-    case 0:
-      return { label: "草稿", className: "status-draft" };
     case 1:
-      return { label: "测试中", className: "status-testing" };
+      return { label: "草稿", className: "status-draft" };
     case 2:
-      return { label: "待审核", className: "status-pending" };
+      return { label: "测试中", className: "status-testing" };
     case 3:
-      return { label: "已发布", className: "status-published" };
+      return { label: "待审核", className: "status-pending" };
     case 4:
-      return { label: "已停用", className: "status-disabled" };
+      return { label: "已发布", className: "status-published" };
     case 5:
+      return { label: "已停用", className: "status-disabled" };
+    case 6:
       return { label: "已归档", className: "status-archived" };
     default:
       return { label: "未知", className: "status-unknown" };
