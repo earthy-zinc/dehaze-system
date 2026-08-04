@@ -124,10 +124,12 @@ const activeTab = ref("basic");
 
 const statusLabel = computed(() => {
   const map: Record<number, string> = {
-    1: "待审核",
-    2: "审核中",
-    3: "已发布",
-    4: "已停用",
+    1: "草稿",
+    2: "测试中",
+    3: "待审核",
+    4: "已发布",
+    5: "已停用",
+    6: "已归档",
   };
   return map[algorithm.value?.status ?? 0] || "未知";
 });
@@ -140,8 +142,10 @@ const statusType = computed(
     > = {
       1: "info",
       2: "warning",
-      3: "success",
-      4: "danger",
+      3: "warning",
+      4: "success",
+      5: "danger",
+      6: "info",
     };
     return map[algorithm.value?.status ?? 0] || "info";
   }

@@ -168,12 +168,12 @@ const statusMap: Record<
   number,
   { label: string; type: "primary" | "success" | "warning" | "info" | "danger" }
 > = {
-  0: { label: "草稿", type: "info" },
-  1: { label: "测试中", type: "warning" },
-  2: { label: "待审核", type: "warning" },
-  3: { label: "已发布", type: "success" },
-  4: { label: "已停用", type: "danger" },
-  5: { label: "已归档", type: "info" },
+  1: { label: "草稿", type: "info" },
+  2: { label: "测试中", type: "warning" },
+  3: { label: "待审核", type: "warning" },
+  4: { label: "已发布", type: "success" },
+  5: { label: "已停用", type: "danger" },
+  6: { label: "已归档", type: "info" },
 };
 
 // 算法详情弹窗

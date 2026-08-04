@@ -44,7 +44,7 @@ const formData = reactive<FormData>({
   path: "",
   size: "",
   children: [],
-  status: 0,
+  status: 1,
 });
 
 const formRef = ref(ElForm);
@@ -158,7 +158,7 @@ function closeDialog() {
     size: "",
     total: 0,
     children: [],
-    status: 0,
+    status: 1,
   });
   dialogVisible.value = false;
   select.value = "";
@@ -258,12 +258,12 @@ async function submitForm() {
           size="large"
         />
         <el-select v-else v-model="formData.status" style="width: 100%">
-          <el-option label="草稿" :value="0" />
-          <el-option label="测试中" :value="1" />
-          <el-option label="待审核" :value="2" />
-          <el-option label="已发布" :value="3" />
-          <el-option label="已停用" :value="4" />
-          <el-option label="已归档" :value="5" />
+          <el-option label="草稿" :value="1" />
+          <el-option label="测试中" :value="2" />
+          <el-option label="待审核" :value="3" />
+          <el-option label="已发布" :value="4" />
+          <el-option label="已停用" :value="5" />
+          <el-option label="已归档" :value="6" />
         </el-select>
       </el-form-item>
     </el-form>
