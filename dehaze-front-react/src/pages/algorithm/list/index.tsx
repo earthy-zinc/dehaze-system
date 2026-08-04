@@ -50,12 +50,12 @@ function cleanAlgorithms(algorithms: Algorithm[]): void {
 
 /** 算法生命周期状态映射 */
 const statusMap: Record<number, { label: string; color: string }> = {
-  0: { label: "草稿", color: "default" },
-  1: { label: "测试中", color: "orange" },
-  2: { label: "待审核", color: "gold" },
-  3: { label: "已发布", color: "green" },
-  4: { label: "已停用", color: "red" },
-  5: { label: "已归档", color: "default" },
+  1: { label: "草稿", color: "default" },
+  2: { label: "测试中", color: "orange" },
+  3: { label: "待审核", color: "gold" },
+  4: { label: "已发布", color: "green" },
+  5: { label: "已停用", color: "red" },
+  6: { label: "已归档", color: "default" },
 };
 
 export default function AlgorithmList(): React.JSX.Element {

@@ -30,12 +30,12 @@ const { Title, Text, Paragraph } = Typography;
 
 /** 算法状态映射 */
 const STATUS_MAP: Record<number, { label: string; color: string }> = {
-  0: { label: "待审核", color: "orange" },
-  1: { label: "已启用", color: "green" },
-  2: { label: "已禁用", color: "default" },
-  3: { label: "已驳回", color: "red" },
-  4: { label: "审核中", color: "blue" },
-  5: { label: "已归档", color: "gray" },
+  1: { label: "草稿", color: "default" },
+  2: { label: "测试中", color: "orange" },
+  3: { label: "待审核", color: "gold" },
+  4: { label: "已发布", color: "green" },
+  5: { label: "已停用", color: "red" },
+  6: { label: "已归档", color: "gray" },
 };
 
 /** 类型标签颜色映射 */

@@ -58,10 +58,10 @@ const AlgorithmFormDialog = forwardRef<AlgorithmFormDialogRef, Props>(
 
         if (type === "add") {
           form.resetFields();
-          form.setFieldsValue({ parentId: 0, status: 0 });
+          form.setFieldsValue({ parentId: 0, status: 1 });
         } else if (type === "addSub" && record) {
           form.resetFields();
-          form.setFieldsValue({ parentId: record.id, status: 0 });
+          form.setFieldsValue({ parentId: record.id, status: 1 });
         } else if (type === "edit" && record) {
           form.resetFields();
           form.setFieldsValue({
@@ -73,7 +73,7 @@ const AlgorithmFormDialog = forwardRef<AlgorithmFormDialogRef, Props>(
             importPath: record.importPath,
             flops: record.flops,
             params: record.params,
-            status: record.status ?? 0,
+            status: record.status ?? 1,
           });
         }
       },
@@ -191,12 +191,12 @@ const AlgorithmFormDialog = forwardRef<AlgorithmFormDialogRef, Props>(
             </Form.Item>
             <Form.Item name="status" label="状态">
               <Select style={{ width: "100%" }}>
-                <Select.Option value={0}>草稿</Select.Option>
-                <Select.Option value={1}>测试中</Select.Option>
-                <Select.Option value={2}>待审核</Select.Option>
-                <Select.Option value={3}>已发布</Select.Option>
-                <Select.Option value={4}>已停用</Select.Option>
-                <Select.Option value={5}>已归档</Select.Option>
+                <Select.Option value={1}>草稿</Select.Option>
+                <Select.Option value={2}>测试中</Select.Option>
+                <Select.Option value={3}>待审核</Select.Option>
+                <Select.Option value={4}>已发布</Select.Option>
+                <Select.Option value={5}>已停用</Select.Option>
+                <Select.Option value={6}>已归档</Select.Option>
               </Select>
             </Form.Item>
           </div>
