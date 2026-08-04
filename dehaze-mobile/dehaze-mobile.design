@@ -68,8 +68,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": 333,
-        "y": 904,
+        "x": 336.5,
+        "y": 900,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -81,7 +81,7 @@
         "deviceType": "freeSize",
         "windowSize": {
           "width": 456,
-          "height": 1488
+          "height": 1282
         }
       },
       "devMetadata": {
@@ -583,7 +583,7 @@
     },
     {
       "id": "page-dehaze-flow",
-      "title": "去雾 - 完整流程版",
+      "title": "去雾处理",
       "type": "page",
       "version": 1,
       "createdAt": 1785664330000,
@@ -681,7 +681,7 @@
     },
     {
       "id": "page-tools-v2",
-      "title": "工具箱 - 优化版",
+      "title": "工具",
       "type": "page",
       "version": 1,
       "createdAt": 1785664330000,
@@ -878,7 +878,7 @@
     },
     {
       "id": "page-batch-flow",
-      "title": "批量去雾处理",
+      "title": "批量处理",
       "type": "page",
       "version": 1,
       "createdAt": 1785668400000,
@@ -952,7 +952,7 @@
     }
   ],
   "config": {
-    "autoLayout": true,
+    "autoLayout": false,
     "deviceType": "mobile",
     "projectName": "Dehaze 移动端交互设计稿",
     "designLibrary": null,

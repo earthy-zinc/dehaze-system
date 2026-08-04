@@ -16,7 +16,7 @@
   },
   "operatingMode": "free-explore",
   "renderBlockingErrorCount": 0,
-  "softWarningCount": 17,
+  "softWarningCount": 18,
   "renderBlockingErrors": [],
   "errorSignatures": [],
   "softWarnings": [
@@ -30,6 +30,7 @@
     "[repair-ledger] validationRepairLedger[1].repairActions[0].preEditFileHashes[] is missing (legacy optional evidence)",
     "[repair-ledger] validationRepairLedger[1].repairActions[0].postEditFileHashes[] is missing (legacy optional evidence)",
     "[html-quality] colors_and_type.css: ordinary/static shadow tokens must keep every shadow alpha <= 0.05; deeper shadows are allowed only for floating-layer tokens such as modal/popover/dropdown/drawer/overlay (--dehaze-shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08), --dehaze-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12), --dehaze-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12), --dehaze-shadow-4: 0 12px 24px rgba(0, 0, 0, 0.14), --dehaze-shadow-5: 0 16px 32px rgba(0, 0, 0, 0.16)).",
+    "[html-quality] dashboard-v2.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] dehaze-flow-params.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] dehaze-flow-result.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] index-v2.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
@@ -39,6 +40,19 @@
     "[html-quality] register.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference."
   ],
   "repairPlanHints": [
+    {
+      "errorClass": "hardcoded-color-in-body",
+      "owner": "sub-agent",
+      "repairScope": "targeted-token-replace",
+      "strategy": "targeted_token_replace_once",
+      "affectedFiles": [
+        "dashboard-v2.html"
+      ],
+      "repairReportPath": null,
+      "repairAlreadyAttempted": false,
+      "allowSourceRead": "no-full-html-read",
+      "maxValidationRuns": 2
+    },
     {
       "errorClass": "hardcoded-color-in-body",
       "owner": "sub-agent",
@@ -133,7 +147,7 @@
   ],
   "repairActionTable": [],
   "errorCount": 0,
-  "warningCount": 17,
+  "warningCount": 18,
   "errors": [],
   "warnings": [
     "[html-head-style] compare-flow-filter.html: found 1 custom <style> block(s) in <head>. The <head> is owned by apply-html-head-contract.mjs; move custom styles before </body> or re-run apply-html-head-contract.mjs <css-path> <html-file> --replace-head to relocate them.",
@@ -146,6 +160,7 @@
     "[repair-ledger] validationRepairLedger[1].repairActions[0].preEditFileHashes[] is missing (legacy optional evidence)",
     "[repair-ledger] validationRepairLedger[1].repairActions[0].postEditFileHashes[] is missing (legacy optional evidence)",
     "[html-quality] colors_and_type.css: ordinary/static shadow tokens must keep every shadow alpha <= 0.05; deeper shadows are allowed only for floating-layer tokens such as modal/popover/dropdown/drawer/overlay (--dehaze-shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08), --dehaze-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12), --dehaze-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12), --dehaze-shadow-4: 0 12px 24px rgba(0, 0, 0, 0.14), --dehaze-shadow-5: 0 16px 32px rgba(0, 0, 0, 0.16)).",
+    "[html-quality] dashboard-v2.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] dehaze-flow-params.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] dehaze-flow-result.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
     "[html-quality] index-v2.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
@@ -190,7 +205,7 @@
       "read_status": "loaded"
     },
     "renderBlockingErrorCount": 0,
-    "softWarningCount": 17,
+    "softWarningCount": 18,
     "renderBlockingErrors": [],
     "repairActionTable": [],
     "nextCheck": {
@@ -207,7 +222,7 @@
     ]
   },
   "projectFileHashes": {
-    "dehaze-desktop-web.design": "b1fc94292c37bd97292e90bd03e2f88e57e8b5cb3addc44a56defff1f7263a91",
+    "dehaze-desktop-web.design": "f9e75cdd84d35ea2c37eb1aa6fe46cb8c8dfb0f9f321a046c7751af762ad388a",
     "colors_and_type.css": "08b181d7e23e125a40aab74c2e7e6a0b807afb7aacfa31b1dc86f765192bed2d",
     "runtime-orchestration-summary.json": "a7f304fbeda95afe097b943c502915890408aceca2b0922b8d5ce5ad93905e45",
     "pages/algorithm-v2.html": "d60da08e317220f486c4cb348afc831ab45d873e17a6c8b9f0bbf7ba7496338f",
@@ -222,6 +237,7 @@
     "pages/compare-flow-overlay.html": "509d9d413ae0a533345705dede396de4c04caadc4f76d0473376bca414e89df3",
     "pages/compare-flow-side.html": "74b7941e9ca244b2bc614c979bfea6a7f66a438d3e7472e5ec21128888128a44",
     "pages/compare.html": "6151440c43d00b63ac0085a65016944c4e43b416bd2f63bcf44b0ed8babe91fb",
+    "pages/dashboard-v2.html": "7e901f40439d094dd762b65defb65eb1ba6049edbec89553245987113b59fedb",
     "pages/dashboard.html": "65d65244fcfce61aaa21c03693fa9002b82fc827eeaee3ae1668052f3d90ffe3",
     "pages/dataset-v2.html": "251306bf9b5b734819ce7c3f782c7ab7a5600c9585e5a884ece19a625b6c0dde",
     "pages/dataset.html": "eb8922c31fd35da6f7926f9586012b6838bf42435f8f7623d4571bdbceff8a67",
@@ -231,7 +247,7 @@
     "pages/dehaze-flow-processing.html": "323258310260dc9d524a1b62b6a811ffdc99a35d5647181bd7a7c912f59af0e7",
     "pages/dehaze-flow-result.html": "c7bc13a50c1803ec3aee2463aaadf09dfe1b2ffc7a8f761b0a4a7549e8cb612d",
     "pages/dehaze-flow-upload-batch.html": "f6ee05c02197f0ecb4e78d27bfafce64bb0b2e6751441a60acaa8d621ec2799a",
-    "pages/dehaze-flow-upload.html": "9404907a0f11a8af40b8f5a59d072aff728b3682dd41a6f2833de9d3376bbdd0",
+    "pages/dehaze-flow-upload.html": "e3f35a8a851c76f8940f5c4c04b33ae3c9c36136068680964e5276722901c483",
     "pages/dehaze-state-diagram.html": "562b0e960e289e2b1c3a0b562af2e9d34959785505ad56051413c74e08a73faa",
     "pages/dehaze.html": "6f9d4b1a6e4e8666b7fc71cb5de91ea6bc23a236b9affd467b964fdbe37d83c6",
     "pages/history-with-processing.html": "ca562a729734dc4c37178700a230a65fd2994b59d3d90c83f5e8ace2093fe0ab",
@@ -257,5 +273,5 @@
   "designDir": "e:\\DehazeSystem\\dehaze-desktop-web",
   "expectedPages": null,
   "requireInteractions": null,
-  "checkedAt": "2026-08-02T12:43:17.546Z"
+  "checkedAt": "2026-08-03T16:42:07.330Z"
 }

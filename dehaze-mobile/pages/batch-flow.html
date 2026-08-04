@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>批量去雾处理 - 交互流程设计稿</title>
+    <title>批量处理 - 交互流程设计稿</title>
     <style id="theme-vars">
 /* Dehaze System - Brand Tokens */
 :root {
@@ -270,7 +270,7 @@ body {
 </style>
 <div class="spec-board">
   <div class="spec-header">
-    <h1>批量去雾处理 — 交互流程设计稿</h1>
+    <h1>批量处理 — 交互流程设计稿</h1>
     <p>批量上传、异步后台处理、状态流转与消息通知的完整交互说明</p>
   </div>
   <!-- Row 1: Step 1 - 3 -->
@@ -290,7 +290,7 @@ body {
         <div class="phone-content">
           <div class="flex items-center gap-3 mb-4">
             <button class="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--dehaze-neutral-100)]"><svg class="w-4 h-4 text-[var(--dehaze-neutral-700)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
-            <h2 class="text-base font-semibold text-[var(--dehaze-foreground)]">批量去雾</h2>
+            <h2 class="text-base font-semibold text-[var(--dehaze-foreground)]">批量处理</h2>
           </div>
           <div class="border-2 border-dashed border-[var(--dehaze-border)] rounded-[var(--dehaze-radius-lg)] py-8 flex flex-col items-center gap-2 mb-4">
             <svg class="w-10 h-10 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.9 5 5 0 019.9-1A5.5 5.5 0 0118 16M12 12v8m0-8l-3 3m3-3l3 3"/></svg>
@@ -334,7 +334,7 @@ body {
         <div class="phone-content">
           <div class="flex items-center gap-3 mb-4">
             <button class="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--dehaze-neutral-100)]"><svg class="w-4 h-4 text-[var(--dehaze-neutral-700)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
-            <h2 class="text-base font-semibold text-[var(--dehaze-foreground)]">批量去雾</h2>
+            <h2 class="text-base font-semibold text-[var(--dehaze-foreground)]">批量处理</h2>
           </div>
           <div class="flex items-center gap-3 p-2.5 rounded-[var(--dehaze-radius-md)] bg-[var(--dehaze-neutral-100)] mb-4">
             <div class="flex shrink-0">
@@ -355,7 +355,7 @@ body {
             <div><div class="flex justify-between items-center text-xs mb-2"><span class="text-[var(--dehaze-neutral-600)]">大气光值 (A)</span><span class="text-[var(--dehaze-primary)] font-semibold">0.85</span></div><div class="relative h-1.5 bg-[var(--dehaze-neutral-200)] rounded-full"><div class="absolute h-full bg-[var(--dehaze-primary)] rounded-full" style="width: 85%"></div><div class="absolute top-1/2 w-3.5 h-3.5 bg-[var(--dehaze-neutral-0)] border-2 border-[var(--dehaze-primary)] rounded-full" style="left: 85%; transform: translate(-50%, -50%)"></div></div></div>
           </div>
           <button class="w-full py-2 border border-[var(--dehaze-border)] rounded-[var(--dehaze-radius-md)] text-xs text-[var(--dehaze-neutral-600)] flex items-center justify-center gap-1 mb-4">高级参数 <span>▼</span></button>
-          <button class="w-full py-3.5 rounded-[var(--dehaze-radius-md)] text-[var(--dehaze-neutral-0)] font-medium text-base" style="background: linear-gradient(135deg, var(--dehaze-primary), var(--dehaze-primary-600))">开始批量去雾</button>
+          <button class="w-full py-3.5 rounded-[var(--dehaze-radius-md)] text-[var(--dehaze-neutral-0)] font-medium text-base" style="background: linear-gradient(135deg, var(--dehaze-primary), var(--dehaze-primary-600))">开始批量处理</button>
         </div>
         <div class="h-[44px] border-t border-[var(--dehaze-border)] grid grid-cols-5 bg-[var(--dehaze-card)] text-[var(--dehaze-neutral-300)]">
           <div class="flex flex-col items-center justify-center gap-0.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg><span class="text-[9px]">首页</span></div>
@@ -382,7 +382,7 @@ body {
         <div class="phone-content flex flex-col" style="min-height:400px">
           <div class="flex items-center gap-3 mb-4">
             <button class="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--dehaze-neutral-100)]"><svg class="w-4 h-4 text-[var(--dehaze-neutral-700)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
-            <h2 class="text-base font-semibold text-[var(--dehaze-foreground)]">批量去雾</h2>
+            <h2 class="text-base font-semibold text-[var(--dehaze-foreground)]">批量处理</h2>
           </div>
           <div class="flex-1 opacity-40">
             <div class="p-3 rounded-[var(--dehaze-radius-md)] bg-[var(--dehaze-neutral-100)] mb-3"><p class="text-sm font-medium text-[var(--dehaze-foreground)]">DCP 暗通道先验 · 3张图片</p><p class="text-xs text-[var(--dehaze-neutral-500)]">β=0.6 · A=0.85</p></div>
@@ -398,7 +398,7 @@ body {
               </div>
               <div class="p-3 rounded-[var(--dehaze-radius-md)] border-2 border-[var(--dehaze-primary)] bg-[var(--dehaze-primary-50)] flex items-start gap-3">
                 <div class="w-9 h-9 rounded-[var(--dehaze-radius-md)] bg-[var(--dehaze-primary-100)] flex items-center justify-center shrink-0"><svg class="w-5 h-5 text-[var(--dehaze-primary)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg></div>
-                <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><p class="text-sm font-semibold text-[var(--dehaze-foreground)]">后台处理</p><span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-[var(--dehaze-neutral-0)]" style="background: var(--dehaze-primary)">推荐</span></div><p class="text-xs text-[var(--dehaze-neutral-500)] mt-0.5">后台自动处理，完成后消息通知您，可随时在历史记录查看进度</p></div>
+                <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><p class="text-sm font-semibold text-[var(--dehaze-foreground)]">后台处理</p><span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-[var(--dehaze-neutral-0)]" style="background: var(--dehaze-primary)">推荐</span></div><p class="text-xs text-[var(--dehaze-neutral-500)] mt-0.5">后台自动处理，完成后消息通知您，可随时在处理历史查看进度</p></div>
               </div>
             </div>
             <div class="flex gap-2">
@@ -419,15 +419,15 @@ body {
   </div>
   <!-- Annotations Row 1 -->
   <div class="mockups-row">
-    <div class="annotation-box"><span class="annotation-number">1</span><span class="annotation-text">用户进入批量去雾页面后，点击上传区域可多选图片(系统文件选择器)。每张已选图片右上角有删除按钮可移除。最多支持20张。选择完成后点击"下一步"进入算法选择。也可使用样例图片。</span></div>
-    <div class="annotation-box"><span class="annotation-number">2</span><span class="annotation-text">批量模式下所有图片共用同一算法和参数。算法选择卡片与单张去雾一致，选中后参数面板展开。拖动滑块调整参数。点击"开始批量去雾"后弹出处理方式选择面板(Step 3)。</span></div>
-    <div class="annotation-box"><span class="annotation-number">3</span><span class="annotation-text">关键决策点：弹窗提供两种处理方式。"前台等待"保持页面可见，处理中可取消(同单张去雾流程)。"后台处理(推荐)"允许用户离开当前页面，任务在后台异步执行，完成后通过消息通知和红点提示告知用户。点击"开始处理"后任务创建并跳转到历史记录页面(Step 4)。点击"取消"返回参数调整。</span></div>
+    <div class="annotation-box"><span class="annotation-number">1</span><span class="annotation-text">用户进入批量处理页面后，点击上传区域可多选图片(系统文件选择器)。每张已选图片右上角有删除按钮可移除。最多支持20张。选择完成后点击"下一步"进入算法选择。也可使用样例库。</span></div>
+    <div class="annotation-box"><span class="annotation-number">2</span><span class="annotation-text">批量模式下所有图片共用同一算法和参数。算法选择卡片与单张处理一致，选中后参数面板展开。拖动滑块调整参数。点击"开始批量处理"后弹出处理方式选择面板(Step 3)。</span></div>
+    <div class="annotation-box"><span class="annotation-number">3</span><span class="annotation-text">关键决策点：弹窗提供两种处理方式。"前台等待"保持页面可见，处理中可取消(同单张处理流程)。"后台处理(推荐)"允许用户离开当前页面，任务在后台异步执行，完成后通过消息通知和红点提示告知用户。点击"开始处理"后任务创建并跳转到处理历史页面(Step 4)。点击"取消"返回参数调整。</span></div>
   </div>
   <!-- Row 2: Step 4 - 5 -->
   <div class="mockups-row">
-    <!-- Step 4: 历史记录-处理中 -->
+    <!-- Step 4: 处理历史-处理中 -->
     <div class="mockup-card">
-      <div class="mockup-label">Step 4: 历史记录-处理中</div>
+      <div class="mockup-label">Step 4: 处理历史-处理中</div>
       <div class="phone-frame">
         <div class="phone-statusbar">
           <span>9:41</span>
@@ -456,7 +456,7 @@ body {
                   <div class="absolute -top-1.5 -left-1.5 w-6 h-6 rounded-full bg-[var(--dehaze-card)] border-2 flex items-center justify-center" style="border-color: var(--dehaze-state-warning)"><svg class="w-3 h-3 batch-spinner" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" style="color: var(--dehaze-state-warning)"><path stroke-linecap="round" d="M12 3a9 9 0 109 9"/></svg></div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between mb-1"><p class="text-sm font-semibold text-[var(--dehaze-foreground)] truncate">DCP批量去雾</p><span class="text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ml-2" style="background: rgba(255,152,0,0.12); color: var(--dehaze-state-warning)">处理中</span></div>
+                  <div class="flex items-center justify-between mb-1"><p class="text-sm font-semibold text-[var(--dehaze-foreground)] truncate">DCP批量处理</p><span class="text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ml-2" style="background: rgba(255,152,0,0.12); color: var(--dehaze-state-warning)">处理中</span></div>
                   <p class="text-xs text-[var(--dehaze-neutral-500)] mb-2">3张图片中已完成1张</p>
                   <div class="h-1.5 bg-[var(--dehaze-neutral-200)] rounded-full"><div class="h-full rounded-full" style="width:33%; background: var(--dehaze-state-warning)"></div></div>
                 </div>
@@ -492,9 +492,9 @@ body {
       </div>
     </div>
     <div class="flow-arrow">→</div>
-    <!-- Step 5: 历史记录-已完成（红点提示） -->
+    <!-- Step 5: 处理历史-已完成（红点提示） -->
     <div class="mockup-card">
-      <div class="mockup-label">Step 5: 处理完成-红点提示</div>
+      <div class="mockup-label">Step 5: 处理历史-已完成（红点提示）</div>
       <div class="phone-frame">
         <div class="phone-statusbar">
           <span>9:41</span>
@@ -524,7 +524,7 @@ body {
                   <div class="absolute -top-1.5 -left-1.5 w-6 h-6 rounded-full bg-[var(--dehaze-card)] border-2 flex items-center justify-center" style="border-color: var(--dehaze-state-success)"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" style="color: var(--dehaze-state-success)"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between mb-1"><p class="text-sm font-semibold text-[var(--dehaze-foreground)] truncate">DCP批量去雾</p><span class="text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ml-2" style="background: rgba(76,175,80,0.12); color: var(--dehaze-state-success)">已完成</span></div>
+                  <div class="flex items-center justify-between mb-1"><p class="text-sm font-semibold text-[var(--dehaze-foreground)] truncate">DCP批量处理</p><span class="text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ml-2" style="background: rgba(76,175,80,0.12); color: var(--dehaze-state-success)">已完成</span></div>
                   <p class="text-xs text-[var(--dehaze-neutral-500)] mb-2">3张 · 耗时12.5秒 · 刚刚</p>
                   <button data-dom-id="cta-compare-1" class="text-xs font-medium px-3 py-1 rounded-full" style="background: var(--dehaze-primary-50); color: var(--dehaze-primary)">查看对比</button>
                 </div>
@@ -554,7 +554,7 @@ body {
   <!-- Annotations Row 2 -->
   <div class="mockups-row">
     <div class="annotation-box"><span class="annotation-number">4</span><span class="annotation-text">选择后台处理后自动跳转到处理历史页面。正在处理的任务以橙色"处理中"badge + 旋转loading图标标识，并显示批量进度(3张中已完成1张)。用户可随时离开此页面，处理不受影响。底部Tab正常可用，用户可切换到其他功能。</span></div>
-    <div class="annotation-box"><span class="annotation-number">5</span><span class="annotation-text">处理完成后，历史记录中的条目变为绿色"已完成"badge。条目右上角出现红色圆点表示有未查看的新结果。同时底部Tab的"消息"入口也显示红点(Step 6)。用户点击"查看对比"可直接进入结果对比页面。红点在用户查看后消失。</span></div>
+    <div class="annotation-box"><span class="annotation-number">5</span><span class="annotation-text">处理完成后，处理历史中的条目变为绿色"已完成"badge。条目右上角出现红色圆点表示有未查看的新结果。同时底部Tab的"消息"入口也显示红点(Step 6)。用户点击"查看对比"可直接进入结果对比页面。红点在用户查看后消失。</span></div>
   </div>
   <!-- Row 3: Step 6 - 7 -->
   <div class="mockups-row">
@@ -595,7 +595,7 @@ body {
               <div class="w-10 h-10 rounded-full bg-[var(--dehaze-neutral-100)] flex items-center justify-center shrink-0"><svg class="w-5 h-5 text-[var(--dehaze-neutral-400)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between mb-0.5"><p class="text-sm font-medium text-[var(--dehaze-neutral-500)]">版本更新</p><span class="text-[10px] text-[var(--dehaze-neutral-400)] shrink-0 ml-2">昨天</span></div>
-                <p class="text-xs text-[var(--dehaze-neutral-400)] leading-relaxed">去雾系统已更新至 v2.1.0，新增批量处理功能</p>
+                <p class="text-xs text-[var(--dehaze-neutral-400)] leading-relaxed">Dehaze 已更新至 v2.1.0，新增批量处理功能</p>
               </div>
             </div>
           </div>
@@ -660,8 +660,8 @@ body {
   </div>
   <!-- Annotations Row 3 -->
   <div class="mockups-row">
-    <div class="annotation-box"><span class="annotation-number">6</span><span class="annotation-text">消息系统收到处理完成通知。通知卡片包含算法名称、图片数量和完成时间。点击通知卡片跳转到去雾结果页面(Step 7)。未读通知有蓝色圆点标识。用户也可通过历史记录的"查看对比"按钮进入结果页面。</span></div>
-    <div class="annotation-box"><span class="annotation-number">7</span><span class="annotation-text">结果页面展示批量处理的第一张图片对比效果。顶部指示器可左右滑动切换3张图片。"查看效果对比"进入完整对比页面(重叠/放大镜/指标)。"保存到收藏"将当前结果加入收藏夹。"继续去雾"使用当前参数处理新图片。</span></div>
+    <div class="annotation-box"><span class="annotation-number">6</span><span class="annotation-text">消息系统收到处理完成通知。通知卡片包含算法名称、图片数量和完成时间。点击通知卡片跳转到去雾结果页面(Step 7)。未读通知有蓝色圆点标识。用户也可通过处理历史的"查看对比"按钮进入结果页面。</span></div>
+    <div class="annotation-box"><span class="annotation-number">7</span><span class="annotation-text">结果页面展示批量处理的第一张图片对比效果。顶部指示器可左右滑动切换3张图片。"查看效果对比"进入完整对比页面(重叠/放大镜/指标)。"保存到收藏"将当前结果加入我的收藏。"继续去雾"使用当前参数处理新图片。</span></div>
   </div>
 </div>
 

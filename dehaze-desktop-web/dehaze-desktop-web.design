@@ -269,6 +269,75 @@
       }
     },
     {
+      "id": "page-dashboard-v2",
+      "title": "工作台（规范版）",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785774733000,
+      "canvasData": {
+        "x": 1740,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 1120,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-dashboard-v2-spec",
+          "measuredAt": 1785774733000
+        },
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 1440,
+          "height": 1310
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dashboard-v2.html",
+        "interactions": [
+          {
+            "domId": "menu-dashboard",
+            "targetPageId": "page-dashboard-v2"
+          },
+          {
+            "domId": "menu-dehaze-flow",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-batch",
+            "targetPageId": "page-dehaze"
+          },
+          {
+            "domId": "menu-algorithm-select",
+            "targetPageId": "page-algorithm"
+          },
+          {
+            "domId": "menu-compare",
+            "targetPageId": "page-compare"
+          },
+          {
+            "domId": "menu-dataset",
+            "targetPageId": "page-dataset"
+          },
+          {
+            "domId": "menu-profile",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "menu-settings",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "topbar-avatar",
+            "targetPageId": "page-profile"
+          },
+          {
+            "domId": "cta-dehaze",
+            "targetPageId": "page-dehaze"
+          }
+        ]
+      }
+    },
+    {
       "id": "page-dehaze",
       "title": "去雾处理",
       "type": "page",
@@ -340,7 +409,7 @@
       "createdAt": 1754112000000,
       "canvasData": {
         "x": 1240,
-        "y": 766,
+        "y": 720,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,

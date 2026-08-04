@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>工具箱 - 交互流程设计稿</title>
+    <title>工具 - 交互流程设计稿</title>
     <style id="theme-vars">
 /* Dehaze System - Brand Tokens */
 :root {
@@ -565,7 +565,7 @@ body {
 
     <main class="spec-board">
       <div class="spec-header">
-        <h1>工具箱 — 交互流程设计稿</h1>
+        <h1>工具 — 交互流程设计稿</h1>
         <p>搜索功能、快捷入口、功能网格的交互说明</p>
       </div>
 
@@ -587,7 +587,7 @@ body {
             <div class="phone-content">
               <!-- 顶部标题 -->
               <header class="flex items-center justify-center h-12 px-4">
-                <h1 class="text-base font-semibold text-[var(--dehaze-foreground)]">工具箱</h1>
+                <h1 class="text-base font-semibold text-[var(--dehaze-foreground)]">工具</h1>
               </header>
 
               <!-- 搜索栏 -->
@@ -613,11 +613,11 @@ body {
                     </div>
                     <span class="text-xs text-[var(--dehaze-neutral-700)] text-center leading-tight">我的收藏</span>
                   </a>
-                  <a href="#" class="flex-shrink-0 flex flex-col items-center gap-2 w-20">
+                  <a href="#" data-dom-id="link-image-input" class="flex-shrink-0 flex flex-col items-center gap-2 w-20">
                     <div class="w-12 h-12 rounded-2xl bg-[var(--dehaze-primary-50)] text-[var(--dehaze-primary)] flex items-center justify-center">
-                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </div>
-                    <span class="text-xs text-[var(--dehaze-neutral-700)] text-center leading-tight">算法管理</span>
+                    <span class="text-xs text-[var(--dehaze-neutral-700)] text-center leading-tight">图像输入</span>
                   </a>
                 </div>
               </section>
@@ -832,7 +832,7 @@ body {
 
       <!-- ============ 注释面板 ============ -->
       <div class="mockups-row is-annotations">
-        <div class="annotation-box"><span class="annotation-number">1</span>工具箱主页。搜索栏点击后展开搜索建议(Step 2)。快捷入口横滑区域点击对应功能：'处理历史'查看历史去雾记录；'我的收藏'查看收藏结果；'算法管理'管理算法。功能网格展示所有管理功能。底部Tab切换主功能页面。</div>
+        <div class="annotation-box"><span class="annotation-number">1</span>工具主页。搜索栏点击后展开搜索建议(Step 2)。快捷入口横滑区域点击对应功能：'处理历史'查看历史去雾记录；'我的收藏'查看收藏结果；'图像输入'上传并管理图片素材。功能网格展示所有管理功能。底部Tab切换主功能页面。</div>
         <div class="annotation-box"><span class="annotation-number">2</span>搜索栏聚焦后显示搜索建议和最近搜索记录。建议基于算法名称和功能名称匹配。点击建议项跳转对应页面。点击'取消'收起搜索返回默认视图。输入文字后实时显示匹配结果(Step 3)。</div>
         <div class="annotation-box"><span class="annotation-number">3</span>搜索结果按相关性排序，显示算法和功能。每个结果卡片有标签(算法/功能/文档)和简短描述。点击算法结果跳转到去雾流程并预选该算法。点击功能结果跳转到对应管理页面。无结果时显示空状态。</div>
       </div>
