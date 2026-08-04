@@ -10,7 +10,7 @@ from .dehaze22 import dehaze as DCPDN
 def get_model(model_path: str):
     net = DCPDN(3, 3, 64)
     net.to(Config.DEVICE)
-    net.load_state_dict(torch.load(model_path))
+    net.load_state_dict(torch.load(model_path, weights_only=False))
     net.eval()
     return net
 

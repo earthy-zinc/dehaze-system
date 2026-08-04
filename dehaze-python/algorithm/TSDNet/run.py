@@ -12,7 +12,7 @@ def get_model(model_path: str):
     net.to(Config.DEVICE)
     net = torch.nn.DataParallel(net, device_ids=Config.DEVICE_ID)
     # 将模型参数赋值进net
-    model_info = torch.load(model_path)
+    model_info = torch.load(model_path, weights_only=False)
     net.load_state_dict(model_info['state_dict'])
     net.eval()
     return net

@@ -13,7 +13,7 @@ from algorithm.config import Config
 def get_model(model_path: str):
     net = DehazeNet()
     net.to(Config.DEVICE)
-    net.load_state_dict(torch.load(model_path))
+    net.load_state_dict(torch.load(model_path, weights_only=False))
     net.eval()
     return net
 

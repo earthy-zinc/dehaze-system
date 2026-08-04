@@ -27,7 +27,7 @@ def get_model(model_path: str) -> torch.nn.Module:
         raise ValueError(f"Invalid model name extracted from '{model_path}': {model_name}")
 
     # 加载权重文件并处理可能的多 GPU 权重格式
-    state_dict = torch.load(model_path, map_location=Config.DEVICE)['state_dict']
+    state_dict = torch.load(model_path, weights_only=False, map_location=Config.DEVICE)['state_dict']
     # 去掉多 GPU 模式下的前缀 'module.'
     new_state_dict = OrderedDict((k[7:], v) if k.startswith('module.') else (k, v) for k, v in state_dict.items())
     net.load_state_dict(new_state_dict)

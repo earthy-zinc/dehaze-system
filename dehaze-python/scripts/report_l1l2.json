@@ -1,0 +1,1827 @@
+{
+  "generated_at": "2026-08-05T07:23:05.516630",
+  "levels": [
+    "L1",
+    "L2"
+  ],
+  "results": [
+    {
+      "id": 1,
+      "name": "AECR-NET",
+      "path": "AECR-Net/NH_train.pk",
+      "import_path": "algorithm.AECRNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 2,
+      "name": "AODNet",
+      "path": "AODNet/dehazer.pth",
+      "import_path": "algorithm.AODNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 3,
+      "name": "C2PNet",
+      "path": "C2PNet/ITS.pkl",
+      "import_path": "algorithm.C2PNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 4,
+      "name": "室内去雾（ITS）",
+      "path": "C2PNet/ITS.pkl",
+      "import_path": "algorithm.C2PNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 5,
+      "name": "室外去雾（OTS）",
+      "path": "C2PNet/OTS.pkl",
+      "import_path": "algorithm.C2PNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 6,
+      "name": "CMFNet",
+      "path": "",
+      "import_path": "algorithm.CMFNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 7,
+      "name": "去雾模型",
+      "path": "CMFNet/dehaze_I_OHaze_CMFNet.pth",
+      "import_path": "algorithm.CMFNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 8,
+      "name": "去模糊模型",
+      "path": "CMFNet/deblur_GoPro_CMFNet.pth",
+      "import_path": "algorithm.CMFNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 9,
+      "name": "去雨模型",
+      "path": "CMFNet/deraindrop_DeRainDrop_CMFNet.pth",
+      "import_path": "algorithm.CMFNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 10,
+      "name": "D4",
+      "path": "D4/weights_reconstruct.pth",
+      "import_path": "algorithm.D4.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 12,
+      "name": "DCPDN",
+      "path": "DCPDN/netG_epoch_8.pth",
+      "import_path": "algorithm.DCPDN.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 13,
+      "name": "DCP",
+      "path": "",
+      "import_path": "algorithm.DCP.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过（无权重算法）"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过（无权重算法）"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 14,
+      "name": "DEANet",
+      "path": "",
+      "import_path": "algorithm.DEANet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 15,
+      "name": "HAZE4k模型",
+      "path": "DEA-Net/HAZE4K/PSNR3426_SSIM9885.pth",
+      "import_path": "algorithm.DEANet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 16,
+      "name": "ITS模型",
+      "path": "DEA-Net/ITS/PSNR4131_SSIM9945.pth",
+      "import_path": "algorithm.DEANet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 17,
+      "name": "OTS模型",
+      "path": "DEA-Net/OTS/PSNR3659_SSIM9897.pth",
+      "import_path": "algorithm.DEANet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 18,
+      "name": "Dehamer",
+      "path": "",
+      "import_path": "algorithm.Dehamer.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 19,
+      "name": "dense-haze模型",
+      "path": "Dehamer/dense/PSNR1662_SSIM05602.pt",
+      "import_path": "algorithm.Dehamer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 20,
+      "name": "indoor",
+      "path": "Dehamer/indoor/PSNR3663_ssim09881.pt",
+      "import_path": "algorithm.Dehamer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 21,
+      "name": "NH-HAZE-模型",
+      "path": "Dehamer/NH/PSNR2066_SSIM06844.pt",
+      "import_path": "algorithm.Dehamer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 22,
+      "name": "outdoor",
+      "path": "Dehamer/outdoor/PSNR3518_SSIM09860.pt",
+      "import_path": "algorithm.Dehamer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 23,
+      "name": "DehazeFormer",
+      "path": "",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 24,
+      "name": "indoor",
+      "path": "",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 25,
+      "name": "indoor-b",
+      "path": "DehazeFormer/indoor/dehazeformer-b.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 26,
+      "name": "indoor-d",
+      "path": "DehazeFormer/indoor/dehazeformer-d.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 27,
+      "name": "indoor-l",
+      "path": "DehazeFormer/indoor/dehazeformer-l.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 28,
+      "name": "indoor-m",
+      "path": "DehazeFormer/indoor/dehazeformer-m.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 29,
+      "name": "indoor-s",
+      "path": "DehazeFormer/indoor/dehazeformer-s.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 30,
+      "name": "indoor-t",
+      "path": "DehazeFormer/indoor/dehazeformer-t.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 31,
+      "name": "indoor-w",
+      "path": "DehazeFormer/indoor/dehazeformer-w.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 32,
+      "name": "outdoor",
+      "path": "",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 33,
+      "name": "outdoor-b",
+      "path": "DehazeFormer/outdoor/dehazeformer-b.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 34,
+      "name": "outdoor-m",
+      "path": "DehazeFormer/outdoor/dehazeformer-m.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 35,
+      "name": "outdoor-s",
+      "path": "DehazeFormer/outdoor/dehazeformer-s.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 36,
+      "name": "outdoor-t",
+      "path": "DehazeFormer/outdoor/dehazeformer-t.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 37,
+      "name": "reside6k",
+      "path": "",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 38,
+      "name": "reside6k-b",
+      "path": "DehazeFormer/reside6k/dehazeformer-b.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 39,
+      "name": "reside6k-b",
+      "path": "DehazeFormer/reside6k/dehazeformer-b.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 40,
+      "name": "reside6k-b",
+      "path": "DehazeFormer/reside6k/dehazeformer-b.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 41,
+      "name": "reside6k-b",
+      "path": "DehazeFormer/reside6k/dehazeformer-b.pth",
+      "import_path": "algorithm.DehazeFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 42,
+      "name": "rshaze",
+      "path": "",
+      "import_path": "algorithm.DehazeNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 43,
+      "name": "rshaze-b",
+      "path": "DehazeFormer/rshaze/dehazeformer-b.pth",
+      "import_path": "algorithm.DehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 44,
+      "name": "rshaze-m",
+      "path": "DehazeFormer/rshaze/dehazeformer-m.pth",
+      "import_path": "algorithm.DehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 45,
+      "name": "rshaze-s",
+      "path": "DehazeFormer/rshaze/dehazeformer-s.pth",
+      "import_path": "algorithm.DehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 46,
+      "name": "rshaze-t",
+      "path": "DehazeFormer/rshaze/dehazeformer-t.pth",
+      "import_path": "algorithm.DehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 48,
+      "name": "FFANet",
+      "path": "",
+      "import_path": "algorithm.FFANet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 49,
+      "name": "its",
+      "path": "FFA-Net/its_train_ffa_3_19.pk",
+      "import_path": "algorithm.FFANet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 50,
+      "name": "ots",
+      "path": "FFA-Net/ots_train_ffa_3_19.pk",
+      "import_path": "algorithm.FFANet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 51,
+      "name": "FogRemoval",
+      "path": "FogRemoval/NH-HAZE_params_0100000.pt",
+      "import_path": "algorithm.FogRemoval.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 52,
+      "name": "GCANet",
+      "path": "GCANet/wacv_gcanet_dehaze.pth",
+      "import_path": "algorithm.GCANet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 53,
+      "name": "GridDehazeNet",
+      "path": "",
+      "import_path": "algorithm.GridDehazeNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 54,
+      "name": "indoor",
+      "path": "GridDehazeNet/indoor_haze_best_3_6",
+      "import_path": "algorithm.GridDehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 55,
+      "name": "outdoor",
+      "path": "GridDehazeNet/outdoor_haze_best_3_6",
+      "import_path": "algorithm.GridDehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 56,
+      "name": "ImgRestorationSde",
+      "path": "",
+      "import_path": "algorithm.ImgRestorationSde.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 57,
+      "name": "deblurring",
+      "path": "image-restoration-sde/deblurring/ir-sde-deblurring.pth",
+      "import_path": "algorithm.ImgRestorationSde.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 58,
+      "name": "denoising",
+      "path": "image-restoration-sde/denoising/ir-sde-denoising.pth",
+      "import_path": "algorithm.ImgRestorationSde.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 59,
+      "name": "deraining",
+      "path": "",
+      "import_path": "algorithm.ImgRestorationSde.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 60,
+      "name": "deraining-H100",
+      "path": "image-restoration-sde/deraining/ir-sde-derainH100.pth",
+      "import_path": "algorithm.ImgRestorationSde.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 61,
+      "name": "deraining-L100",
+      "path": "image-restoration-sde/deraining/ir-sde-derainL100.pth",
+      "import_path": "algorithm.ImgRestorationSde.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 62,
+      "name": "ITBDehaze",
+      "path": "ITBdehaze/best.pkl",
+      "import_path": "algorithm.ITBDehaze.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 63,
+      "name": "LightDehazeNet",
+      "path": "LightDehazeNet/trained_LDNet.pth",
+      "import_path": "algorithm.LightDehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 64,
+      "name": "LKDNet",
+      "path": "",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 65,
+      "name": "ITS",
+      "path": "",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 66,
+      "name": "ITS-b",
+      "path": "LKDNet/ITS/LKD-b/LKD-b.pth",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 67,
+      "name": "ITS-l",
+      "path": "LKDNet/ITS/LKD-l/LKD-l.pth",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 68,
+      "name": "ITS-s",
+      "path": "LKDNet/ITS/LKD-s/LKD-s.pth",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 69,
+      "name": "ITS-t",
+      "path": "LKDNet/ITS/LKD-t/LKD-t.pth",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 70,
+      "name": "OTS",
+      "path": "",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 71,
+      "name": "OTS-b",
+      "path": "LKDNet/OTS/LKD-b/LKD-b.pth",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 72,
+      "name": "OTS-l",
+      "path": "LKDNet/OTS/LKD-l/LKD-l.pth",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 73,
+      "name": "OTS-s",
+      "path": "LKDNet/OTS/LKD-s/LKD-s.pth",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 74,
+      "name": "OTS-t",
+      "path": "LKDNet/OTS/LKD-t/LKD-t.pth",
+      "import_path": "algorithm.LKDNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 75,
+      "name": "MADN",
+      "path": "MADN/model.pth",
+      "import_path": "algorithm.MADN.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 76,
+      "name": "MB-TaylorFormer",
+      "path": "",
+      "import_path": "algorithm.MB-TaylorFormer.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 77,
+      "name": "dense-haze",
+      "path": "",
+      "import_path": "algorithm.MB-TaylorFormer.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 78,
+      "name": "dense-haze-b",
+      "path": "MB-TaylorFormer/densehaze-MB-TaylorFormer-B.pth",
+      "import_path": "algorithm.MB-TaylorFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 79,
+      "name": "dense-haze-l",
+      "path": "MB-TaylorFormer/densehaze-MB-TaylorFormer-L.pth",
+      "import_path": "algorithm.MB-TaylorFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 80,
+      "name": "its",
+      "path": "MB-TaylorFormer/ITS-MB-TaylorFormer-L.pth",
+      "import_path": "algorithm.MB-TaylorFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 81,
+      "name": "ohaze",
+      "path": "MB-TaylorFormer/ohaze-MB-TaylorFormer-B.pth",
+      "import_path": "algorithm.MB-TaylorFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 82,
+      "name": "ots",
+      "path": "",
+      "import_path": "algorithm.MB-TaylorFormer.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 83,
+      "name": "ots-b",
+      "path": "MB-TaylorFormer/OTS-MB-TaylorFormer-B.pth",
+      "import_path": "algorithm.MB-TaylorFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 84,
+      "name": "ots-l",
+      "path": "MB-TaylorFormer/OTS-MB-TaylorFormer-L.pth",
+      "import_path": "algorithm.MB-TaylorFormer.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 85,
+      "name": "MixDehazeNet",
+      "path": "",
+      "import_path": "algorithm.MixDehazeNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 86,
+      "name": "haze4k",
+      "path": "",
+      "import_path": "algorithm.MixDehazeNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 87,
+      "name": "haze4k-l",
+      "path": "MixDehazeNet/haze4k/MixDehazeNet-l.pth",
+      "import_path": "algorithm.MixDehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 88,
+      "name": "indoor",
+      "path": "",
+      "import_path": "algorithm.MixDehazeNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 89,
+      "name": "indoor-b",
+      "path": "MixDehazeNet/indoor/MixDehazeNet-b.pth",
+      "import_path": "algorithm.MixDehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 90,
+      "name": "indoor-l",
+      "path": "MixDehazeNet/indoor/MixDehazeNet-l.pth",
+      "import_path": "algorithm.MixDehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 91,
+      "name": "outdoor",
+      "path": "",
+      "import_path": "algorithm.MixDehazeNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 92,
+      "name": "outdoor-b",
+      "path": "MixDehazeNet/outdoor/MixDehazeNet-b.pth",
+      "import_path": "algorithm.MixDehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 93,
+      "name": "outdoor-b",
+      "path": "MixDehazeNet/outdoor/MixDehazeNet-l.pth",
+      "import_path": "algorithm.MixDehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 94,
+      "name": "outdoor-b",
+      "path": "MixDehazeNet/outdoor/MixDehazeNet-s.pth",
+      "import_path": "algorithm.MixDehazeNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 95,
+      "name": "MSFNet",
+      "path": "",
+      "import_path": "algorithm.MSFNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 96,
+      "name": "indoor",
+      "path": "MSFNet/indoor.pth",
+      "import_path": "algorithm.MSFNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 97,
+      "name": "outdoor",
+      "path": "MSFNet/outdoor.pth",
+      "import_path": "algorithm.MSFNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 98,
+      "name": "PSD",
+      "path": "",
+      "import_path": "algorithm.PSD.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 99,
+      "name": "PSD-MSBDN",
+      "path": "PSD/PSB-MSBDN",
+      "import_path": "algorithm.PSD.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 100,
+      "name": "PSD-FFANET",
+      "path": "PSD/PSD-FFANET",
+      "import_path": "algorithm.PSD.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 101,
+      "name": "PSD-GCANET",
+      "path": "PSD/PSD-GCANET",
+      "import_path": "algorithm.PSD.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 102,
+      "name": "RIDCP",
+      "path": "RIDCP/pretrained_RIDCP.pth",
+      "import_path": "algorithm.RIDCP.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 103,
+      "name": "SCANet",
+      "path": "",
+      "import_path": "algorithm.SCANet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 104,
+      "name": "SCANet-40",
+      "path": "SCANet/Gmodel_40.tar",
+      "import_path": "algorithm.SCANet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 105,
+      "name": "SCANet-105",
+      "path": "SCANet/Gmodel_105.tar",
+      "import_path": "algorithm.SCANet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 106,
+      "name": "SCANet-120",
+      "path": "SCANet/Gmodel_120.tar",
+      "import_path": "algorithm.SCANet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 107,
+      "name": "SGIDPFF",
+      "path": "",
+      "import_path": "algorithm.SGIDPFF.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 108,
+      "name": "indoor",
+      "path": "SGID-PFF/SOTS_indoor.pt",
+      "import_path": "algorithm.SGIDPFF.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 109,
+      "name": "SGIDPFF",
+      "path": "SGID-PFF/SOTS_outdoor.pt",
+      "import_path": "algorithm.SGIDPFF.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 110,
+      "name": "TSDNet",
+      "path": "TSDNet/GNet.tar",
+      "import_path": "algorithm.TSDNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 111,
+      "name": "WPXNet",
+      "path": "",
+      "import_path": "algorithm.WPXNet.run",
+      "is_group": true,
+      "checks": {},
+      "error": null
+    },
+    {
+      "id": 112,
+      "name": "DENSE-HAZE",
+      "path": "WPXNet/dense-haze.pth",
+      "import_path": "algorithm.WPXNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 113,
+      "name": "I-HAZE",
+      "path": "WPXNet/i-haze.pth",
+      "import_path": "algorithm.WPXNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 114,
+      "name": "O-HAZE",
+      "path": "WPXNet/o-haze.pth",
+      "import_path": "algorithm.WPXNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 115,
+      "name": "NH-HAZE-20",
+      "path": "WPXNet/nh-haze-20.pth",
+      "import_path": "algorithm.WPXNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 116,
+      "name": "NH-HAZE-21",
+      "path": "WPXNet/nh-haze-21.pth",
+      "import_path": "algorithm.WPXNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    },
+    {
+      "id": 117,
+      "name": "NH-HAZE-23",
+      "path": "WPXNet/nh-haze-23.pth",
+      "import_path": "algorithm.WPXNet.run",
+      "is_group": false,
+      "checks": {
+        "L1": {
+          "passed": true,
+          "detail": "通过"
+        },
+        "L2": {
+          "passed": true,
+          "detail": "通过"
+        }
+      },
+      "error": null
+    }
+  ]
+}

@@ -10,7 +10,7 @@ from .model.backbone import Backbone
 
 def get_model(model_path: str):
     net = Backbone().to(Config.DEVICE)
-    ckpt = torch.load(model_path, map_location='cpu')
+    ckpt = torch.load(model_path, weights_only=False, map_location='cpu')
     net.load_state_dict(ckpt)
     net.eval()
     return net

@@ -271,10 +271,10 @@ class Model(BaseModel):
             print('Loading %s weights...' % 'reconstruct')
 
             if torch.cuda.is_available():
-                weights = torch.load(self.gen_weights_path[:-4] + '_reconstruct' + '.pth')
+                weights = torch.load(self.gen_weights_path[:-4] + '_reconstruct' + '.pth', weights_only=False)
             else:
                 weights = torch.load(self.gen_weights_path[:-4] + '_reconstruct' + '.pth',
-                                     lambda storage, loc: storage)
+                                     lambda storage, loc: storage, weights_only=False)
 
             self.net_h2c.load_state_dict(weights['net_h2c'])
             self.net_c2h.load_state_dict(weights['net_c2h'])
@@ -287,10 +287,10 @@ class Model(BaseModel):
             print('Loading discriminator weights...')
 
             if torch.cuda.is_available():
-                weights = torch.load(self.gen_weights_path[:-4] + '_' + self.name + '_dis.pth')
+                weights = torch.load(self.gen_weights_path[:-4] + '_' + self.name + '_dis.pth', weights_only=False)
             else:
                 weights = torch.load(self.gen_weights_path[:-4] + '_' + self.name + '_dis.pth',
-                                     lambda storage, loc: storage)
+                                     lambda storage, loc: storage, weights_only=False)
 
             self.discriminator_c2h.load_state_dict(weights['discriminator_c2h'])
             self.discriminator_h2c.load_state_dict(weights['discriminator_h2c'])
@@ -298,9 +298,9 @@ class Model(BaseModel):
         if os.path.exists(self.gen_optimizer_path) and self.config.MODE == 1:
             print('Loading %s optimizer...' % self.name)
             if torch.cuda.is_available():
-                data = torch.load(self.gen_optimizer_path)
+                data = torch.load(self.gen_optimizer_path, weights_only=False)
             else:
-                data = torch.load(self.gen_optimizer_path, lambda storage, loc: storage)
+                data = torch.load(self.gen_optimizer_path, lambda storage, loc: storage, weights_only=False)
 
             self.optimizer.load_state_dict(data['optimizer'])
             self.scheduler.load_state_dict(data['scheduler'])

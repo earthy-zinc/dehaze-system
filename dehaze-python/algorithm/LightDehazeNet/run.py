@@ -10,7 +10,7 @@ from .lightdehazeNet import LightDehaze_Net
 def get_model(model_path: str):
     net = LightDehaze_Net()
     net = net.to(Config.DEVICE)
-    net.load_state_dict(torch.load(model_path))
+    net.load_state_dict(torch.load(model_path, weights_only=False))
     net.eval()
     return net
 

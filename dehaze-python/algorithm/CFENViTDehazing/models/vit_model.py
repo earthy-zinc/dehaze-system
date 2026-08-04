@@ -77,6 +77,7 @@ class Model(nn.Module):
         if resume == -1:
             load_from = torch.load(
                 os.path.join(apath, 'model_latest.pt'),
+                weights_only=False,
                 **kwargs
             )
         elif resume == 0:
@@ -92,6 +93,7 @@ class Model(nn.Module):
         else:
             load_from = torch.load(
                 os.path.join(apath, 'model_{}.pt'.format(resume)),
+                weights_only=False,
                 **kwargs
             )
 

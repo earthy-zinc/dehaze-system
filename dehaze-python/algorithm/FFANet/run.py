@@ -13,7 +13,7 @@ def get_model(model_path: str):
     net = FFA(gps=3, blocks=19)
     net.to(Config.DEVICE)
     net = torch.nn.DataParallel(net)
-    ckp = torch.load(model_path)
+    ckp = torch.load(model_path, weights_only=False)
     net.load_state_dict(ckp['model'])
     net.eval()
     return net

@@ -14,7 +14,7 @@ from algorithm.config import Config
 def get_model(model_path: str):
     net = GCANet(in_c=4, out_c=3, only_residual=True)
     net = net.to(Config.DEVICE)
-    net.load_state_dict(torch.load(model_path))
+    net.load_state_dict(torch.load(model_path, weights_only=False))
     net.eval()
     return net
 

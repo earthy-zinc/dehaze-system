@@ -387,7 +387,7 @@ class MidasNet_small(BaseNetwork):
         Args:
             path (str): file path
         """
-        parameters = torch.load(path, map_location=torch.device('cpu'))
+        parameters = torch.load(path, weights_only=False, map_location=torch.device('cpu'))
 
         if "optimizer" in parameters:
             parameters = parameters["model"]

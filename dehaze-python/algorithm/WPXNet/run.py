@@ -10,7 +10,7 @@ from .ridcp_new_arch import FusionRefine
 def get_model(model_path: str):
     net = FusionRefine()
     net.to(Config.DEVICE)
-    net.load_state_dict(torch.load(model_path)['params'], strict=False)
+    net.load_state_dict(torch.load(model_path, weights_only=False)['params'], strict=False)
     net.eval()
     return net
 

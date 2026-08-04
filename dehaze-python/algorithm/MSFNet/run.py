@@ -14,7 +14,7 @@ def get_model(model_path: str):
     net = final_Net()
     net.to(Config.DEVICE)
     # Load pretrained models
-    net.load_state_dict(torch.load(model_path)["state_dict"])
+    net.load_state_dict(torch.load(model_path, weights_only=False)["state_dict"])
     net.eval()
     return net
 

@@ -9,7 +9,7 @@ from algorithm.config import Config
 
 
 def single(save_dir):
-    state_dict = torch.load(save_dir, map_location=torch.device(Config.DEVICE))
+    state_dict = torch.load(save_dir, weights_only=False, map_location=torch.device(Config.DEVICE))
     # print(state_dict)
     new_state_dict = OrderedDict()
 

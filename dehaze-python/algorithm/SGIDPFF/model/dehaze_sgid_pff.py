@@ -26,7 +26,7 @@ class DEHAZE_SGID_PFF(nn.Module):
                                n_feat=n_feat, device=device)
 
         if pretrain_pre_dehaze_pt != '.':
-            self.pre_dehaze.load_state_dict(torch.load(pretrain_pre_dehaze_pt))
+            self.pre_dehaze.load_state_dict(torch.load(pretrain_pre_dehaze_pt, weights_only=False))
             print('Loading pre dehaze model from {}'.format(pretrain_pre_dehaze_pt))
 
     def forward(self, x):

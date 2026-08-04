@@ -15,7 +15,7 @@ def get_model(model_path: str):
     opt.no_flip = True  # no flip
     opt.display_id = -1  # no visdom display
     net = define_G(opt, default_conv)
-    ckp = torch.load(model_path)
+    ckp = torch.load(model_path, weights_only=False)
     net = net.to(Config.DEVICE)
     net.load_state_dict(ckp)
     net.eval()

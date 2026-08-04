@@ -13,7 +13,7 @@ from .swin_unet import UNet_emb
 def get_model(model_path: str):
     net = UNet_emb()
     net = net.to(Config.DEVICE)
-    net.load_state_dict(torch.load(model_path), strict=False)
+    net.load_state_dict(torch.load(model_path, weights_only=False), strict=False)
     net.eval()
     return net
 

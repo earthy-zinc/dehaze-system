@@ -117,7 +117,7 @@ def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
         [torchvision.transforms.ToTensor()]
     )
     haze = transforms(haze)[None, ::]
-    haze = haze.to(Config.DEVICE)
+    haze = haze.to(GlobalConfig.DEVICE)
 
     h, w = haze.shape[2:4]
     noisy_images_input = pad_input(haze)
@@ -126,5 +126,5 @@ def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
 
 
 
-    predicted_results = postprocess(predicted_results)[0]
-    return postprocess_image(predicted_results)
+    predicted_results = postprocess(predicted_results)[0]  # [H, W, C]，值域 [0, 255]
+    return postprocess_image(predicted_results.permute(2, 0, 1).unsqueeze(0) / 255.0)

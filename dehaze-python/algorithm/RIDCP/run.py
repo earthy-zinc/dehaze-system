@@ -12,7 +12,7 @@ def get_model(model_path: str):
                             LQ_stage=True, use_weight=True,
                             weight_alpha=-21.25)
     net.to(Config.DEVICE)
-    net.load_state_dict(torch.load(model_path)['params'], strict=False)
+    net.load_state_dict(torch.load(model_path, weights_only=False)['params'], strict=False)
     net.eval()
     return net
 

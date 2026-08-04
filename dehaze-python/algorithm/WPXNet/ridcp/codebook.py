@@ -24,7 +24,7 @@ class VectorQuantizer(nn.Module):
         self.use_weight = use_weight
         self.weight_alpha = weight_alpha
         if self.use_weight:
-            self.weight = nn.Parameter(torch.load(weight_path))
+            self.weight = nn.Parameter(torch.load(weight_path, weights_only=False))
             self.weight.requires_grad = False
         self.embedding = nn.Embedding(self.n_e, self.e_dim)
 

@@ -10,7 +10,7 @@ from .model.dehaze_sgid_pff import DEHAZE_SGID_PFF
 
 def get_model(model_path: str):
     net = DEHAZE_SGID_PFF(img_channels=3, t_channels=1, n_resblock=3, n_feat=32, device=Config.DEVICE)
-    net.load_state_dict(torch.load(model_path), strict=False)
+    net.load_state_dict(torch.load(model_path, weights_only=False), strict=False)
     net = net.to(Config.DEVICE)
     net.eval()
     return net

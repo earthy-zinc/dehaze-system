@@ -12,7 +12,7 @@ def get_model(model_path: str):
     from .model import MixDehazeNet_t, MixDehazeNet_s, MixDehazeNet_b, MixDehazeNet_l
     net = eval(os.path.basename(model_path).replace('-', '_').replace('.pth', ''))()
     net = net.to(Config.DEVICE)
-    state_dict = torch.load(model_path)['state_dict']
+    state_dict = torch.load(model_path, weights_only=False)['state_dict']
     new_state_dict = OrderedDict()
     for k, v in state_dict.items():
         name = k[7:]

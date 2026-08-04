@@ -65,7 +65,7 @@ class VectorQuantizer(nn.Module):
         if self.use_weight:
             if weight_path is None:
                 weight_path = resolve_model_path(WEIGHT_RELATIVE_PATH)
-            self.weight = nn.Parameter(torch.load(weight_path))
+            self.weight = nn.Parameter(torch.load(weight_path, weights_only=False))
             self.weight.requires_grad = False
         self.embedding = nn.Embedding(self.n_e, self.e_dim)
 

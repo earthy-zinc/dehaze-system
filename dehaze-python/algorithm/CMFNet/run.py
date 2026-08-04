@@ -14,7 +14,7 @@ def get_model(model_path: str):
     net = CMFNet()
     net = net.to(Config.DEVICE)
 
-    checkpoint = torch.load(model_path)
+    checkpoint = torch.load(model_path, weights_only=False)
     try:
         net.load_state_dict(checkpoint["state_dict"])
     except RuntimeError:

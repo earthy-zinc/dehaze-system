@@ -558,8 +558,17 @@ class PredictionService:
 
         logger.debug("执行去雾: module=%s, model=%s", module_name, model_path)
 
-        # 调用 dehaze 函数
-        result = dehaze_fn(image_bytes, model_path)
+        # 调用 dehaze 函数（算法内部自行加载权重；异常统一包装为业务错误，
+        # 截取摘要避免泄露绝对路径/完整堆栈）
+        try:
+            result = dehaze_fn(image_bytes, model_path)
+        except BusinessException:
+            raise
+        except Exception as e:
+            raise BusinessException(
+                ResultCode.SYSTEM_EXECUTION_ERROR,
+                f"算法执行失败: {module_name} - {str(e)[:200]}",
+            ) from e
 
         if isinstance(result, io.BytesIO):
             return result

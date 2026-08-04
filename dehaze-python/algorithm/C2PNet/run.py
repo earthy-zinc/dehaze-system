@@ -9,7 +9,7 @@ from .model import C2PNet
 
 def get_model(model_path: str):
     net = C2PNet(gps=3, blocks=19)
-    ckp = torch.load(model_path)
+    ckp = torch.load(model_path, weights_only=False)
     net = net.to(Config.DEVICE)
     net.load_state_dict(ckp['model'])
     net.eval()

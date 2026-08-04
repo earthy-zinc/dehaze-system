@@ -9,8 +9,8 @@ from .model.networks import ResnetGenerator
 from algorithm.config import Config
 
 
-def get_model(model_path: str, img_size):
-    params = torch.load(model_path)
+def get_model(model_path: str, img_size: int = 64):
+    params = torch.load(model_path, weights_only=False)
     genA2B = ResnetGenerator(input_nc=3, output_nc=3, ngf=64, n_blocks=4, img_size=img_size,
                              light=True).to(Config.DEVICE)
     genA2B.load_state_dict(params['genA2B'])

@@ -362,7 +362,7 @@ class Dehaze(nn.Module):
 
         self.encoder = Res2Net(Bottle2neck, [3, 4, 23, 3], baseWidth=26, scale=4)
         res2net101 = Pre_Res2Net.Res2Net(Bottle2neck, [3, 4, 23, 3], baseWidth=26, scale=4)
-        res2net101.load_state_dict(torch.load(os.path.join(imagenet_model,'res2net101_v1b_26w_4s-0812c246.pth')))
+        res2net101.load_state_dict(torch.load(os.path.join(imagenet_model,'res2net101_v1b_26w_4s-0812c246.pth'), weights_only=False))
         pretrained_dict = res2net101.state_dict()
         model_dict = self.encoder.state_dict()
         key_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
@@ -406,7 +406,7 @@ class DehazeSwinT(nn.Module):
         # 二级权重文件：通过 model_loader 解析到本地缓存（首次访问时从 Nginx 下载）
         swin_transformer_path = resolve_model_path("ITBdehaze/swinv2_base_patch4_window8_256.pth")
 
-        checkpoint = torch.load(swin_transformer_path, map_location='cpu')
+        checkpoint = torch.load(swin_transformer_path, weights_only=False, map_location='cpu')
         imagenet_model.load_state_dict(checkpoint['model'])
         self.encoder = imagenet_model
 

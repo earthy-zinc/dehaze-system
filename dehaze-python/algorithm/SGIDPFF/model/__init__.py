@@ -75,17 +75,17 @@ class Model(nn.Module):
         if pre_train != '.':
             print('Loading model from {}'.format(pre_train))
             self.get_model().load_state_dict(
-                torch.load(pre_train, **kwargs), strict=False
+                torch.load(pre_train, weights_only=False, **kwargs), strict=False
             )
         elif resume:
             print('Loading model from {}'.format(os.path.join(apath, 'model', 'model_latest.pt')))
             self.get_model().load_state_dict(
-                torch.load(os.path.join(apath, 'model', 'model_latest.pt'), **kwargs),
+                torch.load(os.path.join(apath, 'model', 'model_latest.pt'), weights_only=False, **kwargs),
                 strict=False
             )
         elif self.args.test_only:
             self.get_model().load_state_dict(
-                torch.load(os.path.join(apath, 'model', 'model_best.pt'), **kwargs),
+                torch.load(os.path.join(apath, 'model', 'model_best.pt'), weights_only=False, **kwargs),
                 strict=False
             )
         else:

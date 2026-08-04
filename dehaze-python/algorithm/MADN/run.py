@@ -19,12 +19,12 @@ def get_model(model_path: str):
 
     meta = Meta(8)
     meta.to(Config.DEVICE)
-    meta.load_state_dict(torch.load(meta_path, map_location=Config.DEVICE))
+    meta.load_state_dict(torch.load(meta_path, weights_only=False, map_location=Config.DEVICE))
     meta.eval()
 
     net = TransformNet(32)
     net.to(Config.DEVICE)
-    net.load_state_dict(torch.load(model_path))
+    net.load_state_dict(torch.load(model_path, weights_only=False))
     net.eval()
     return net, meta
 

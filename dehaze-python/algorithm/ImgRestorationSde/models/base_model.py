@@ -94,7 +94,7 @@ class BaseModel:
             network, DistributedDataParallel
         ):
             network = network.module
-        load_net = torch.load(load_path)
+        load_net = torch.load(load_path, weights_only=False)
         load_net_clean = OrderedDict()  # remove unnecessary 'module.'
         for k, v in load_net.items():
             if k.startswith("module."):

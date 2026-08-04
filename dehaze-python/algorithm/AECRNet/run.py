@@ -15,7 +15,7 @@ def get_model(model_path: str) -> torch.nn.Module:
     """
     net = Dehaze(3, 3).to(Config.DEVICE)  # 初始化网络
     net = torch.nn.DataParallel(net, device_ids=Config.DEVICE_ID)  # 支持多GPU
-    checkpoint = torch.load(model_path)  # 加载模型权重
+    checkpoint = torch.load(model_path, weights_only=False)  # 加载模型权重
     net.load_state_dict(checkpoint['model'])  # 恢复模型状态
     net.eval()  # 设置为评估模式
     return net
