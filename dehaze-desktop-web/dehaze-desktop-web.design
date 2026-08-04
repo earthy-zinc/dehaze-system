@@ -1033,34 +1033,6 @@
       }
     },
     {
-      "id": "page-history",
-      "title": "处理历史记录",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1785666274917,
-      "canvasData": {
-        "x": -540,
-        "y": 3132,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 2342,
-          "viewportWidth": 1440,
-          "sourceHash": "fnv1a-5e929318",
-          "measuredAt": 1785670030186
-        },
-        "deviceType": "freeSize",
-        "windowSize": {
-          "width": 1440,
-          "height": 2239
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/history.html",
-        "interactions": []
-      }
-    },
-    {
       "id": "page-dehaze-flow-upload-batch",
       "title": "去雾流程：批量上传",
       "type": "page",
@@ -1201,7 +1173,7 @@
       "version": 1,
       "createdAt": 1785668700000,
       "canvasData": {
-        "x": -1030,
+        "x": -1068,
         "y": 3130,
         "group": 0,
         "layoutSnapshot": {
@@ -1214,7 +1186,7 @@
         "deviceType": "freeSize",
         "windowSize": {
           "width": 1440,
-          "height": 1539
+          "height": 2321
         }
       },
       "devMetadata": {
@@ -1270,7 +1242,7 @@
       "version": 1,
       "createdAt": 1785668700000,
       "canvasData": {
-        "x": -18,
+        "x": -548,
         "y": 3130,
         "group": 0,
         "layoutSnapshot": {

@@ -787,11 +787,134 @@ html.dark .dehaze-topbar {
         </div>
       </section>
 
+            <section class="dehaze-card p-6" style="height: 447.656px;">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold">网格视图状态</h2>
+          <span class="text-xs text-[var(--dehaze-muted-foreground)]">标注：切换视图后展示</span>
+        </div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="group relative rounded-xl border border-[var(--dehaze-border)] overflow-hidden hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="aspect-[4/3] bg-gradient-to-br from-[var(--dehaze-neutral-300)] to-[var(--dehaze-neutral-500)]"></div>
+            <div class="p-3">
+              <div class="text-sm font-medium truncate">mountain_hazy_01.jpg</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="dehaze-badge dehaze-badge-info">AOD-Net</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="flex items-center justify-between mt-2 text-xs text-[var(--dehaze-muted-foreground)]">
+                <span>PSNR 28.4</span>
+                <span>SSIM 0.91</span>
+              </div>
+            </div>
+            <div class="absolute inset-x-0 top-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+              <button data-dom-id="grid-compare-1" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              </button>
+              <button data-dom-id="grid-reprocess-1" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+              <button data-dom-id="grid-delete-1" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-state-error)] flex items-center justify-center shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="group relative rounded-xl border border-[var(--dehaze-border)] overflow-hidden hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="aspect-[4/3] bg-gradient-to-br from-[var(--dehaze-primary-200)] to-[var(--dehaze-primary-400)]"></div>
+            <div class="p-3">
+              <div class="text-sm font-medium truncate">cityscape_dusk_02.png</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="dehaze-badge dehaze-badge-info">FFA-Net</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="flex items-center justify-between mt-2 text-xs text-[var(--dehaze-muted-foreground)]">
+                <span>PSNR 30.2</span>
+                <span>SSIM 0.94</span>
+              </div>
+            </div>
+            <div class="absolute inset-x-0 top-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+              <button data-dom-id="grid-compare-2" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              </button>
+              <button data-dom-id="grid-reprocess-2" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+              <button data-dom-id="grid-delete-2" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-state-error)] flex items-center justify-center shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="group relative rounded-xl border border-[var(--dehaze-border)] overflow-hidden hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="aspect-[4/3] bg-gradient-to-br from-[var(--dehaze-neutral-400)] to-[var(--dehaze-neutral-600)]"></div>
+            <div class="p-3">
+              <div class="text-sm font-medium truncate">forest_morning_03.jpg</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="dehaze-badge dehaze-badge-info">GridDehazeNet</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="flex items-center justify-between mt-2 text-xs text-[var(--dehaze-muted-foreground)]">
+                <span>PSNR 27.8</span>
+                <span>SSIM 0.89</span>
+              </div>
+            </div>
+            <div class="absolute inset-x-0 top-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+              <button data-dom-id="grid-compare-3" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              </button>
+              <button data-dom-id="grid-reprocess-3" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+              <button data-dom-id="grid-delete-3" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-state-error)] flex items-center justify-center shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="group relative rounded-xl border border-[var(--dehaze-border)] overflow-hidden hover:border-[var(--dehaze-primary-300)] transition-colors">
+            <div class="aspect-[4/3] bg-gradient-to-br from-[var(--dehaze-primary-300)] to-[var(--dehaze-primary-500)]"></div>
+            <div class="p-3">
+              <div class="text-sm font-medium truncate">building_dense_04.jpg</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="dehaze-badge dehaze-badge-info">MSBDN</span>
+                <span class="dehaze-badge dehaze-badge-success">成功</span>
+              </div>
+              <div class="flex items-center justify-between mt-2 text-xs text-[var(--dehaze-muted-foreground)]">
+                <span>PSNR 31.5</span>
+                <span>SSIM 0.95</span>
+              </div>
+            </div>
+            <div class="absolute inset-x-0 top-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+              <button data-dom-id="grid-compare-4" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              </button>
+              <button data-dom-id="grid-reprocess-4" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-neutral-700)] flex items-center justify-center shadow-sm hover:text-[var(--dehaze-primary)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+              <button data-dom-id="grid-delete-4" class="w-8 h-8 rounded-lg bg-white/90 text-[var(--dehaze-state-error)] flex items-center justify-center shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dehaze-card p-10 text-center">
+        <div class="w-16 h-16 rounded-full bg-[var(--dehaze-muted)] text-[var(--dehaze-muted-foreground)] flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <h3 class="text-base font-semibold mb-1">暂无历史记录</h3>
+        <p class="text-sm text-[var(--dehaze-muted-foreground)]">当前筛选条件下没有匹配的处理记录，请尝试调整筛选条件或上传图片开始处理。</p>
+      </section>
+
       <section class="flex flex-wrap items-center justify-between gap-3">
-        <span class="text-sm text-[var(--dehaze-muted-foreground)]">显示 1-5 / 5</span>
+        <span class="text-sm text-[var(--dehaze-muted-foreground)]">显示 1-6 / 24</span>
         <div class="flex items-center gap-2">
           <button data-dom-id="pagination-prev" class="px-3 py-2 rounded-lg border border-[var(--dehaze-border)] text-sm text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">上一页</button>
-          <button data-dom-id="pagination-page-1" class="w-9 h-9 rounded-lg bg-[var(--dehaze-primary)] text-white text-sm font-medium">1</button>
+          <button class="w-9 h-9 rounded-lg bg-[var(--dehaze-primary)] text-white text-sm font-medium">1</button>
+          <button class="w-9 h-9 rounded-lg border border-[var(--dehaze-border)] text-sm text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">2</button>
+          <button class="w-9 h-9 rounded-lg border border-[var(--dehaze-border)] text-sm text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">3</button>
+          <button class="w-9 h-9 rounded-lg border border-[var(--dehaze-border)] text-sm text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">4</button>
           <button data-dom-id="pagination-next" class="px-3 py-2 rounded-lg border border-[var(--dehaze-border)] text-sm text-[var(--dehaze-neutral-600)] hover:bg-[var(--dehaze-muted)]">下一页</button>
         </div>
       </section>
@@ -799,6 +922,10 @@ html.dark .dehaze-topbar {
       <section data-dom-id="annotation-panel" class="dehaze-card p-6">
         <h2 class="text-base font-semibold mb-3">交互说明</h2>
         <ul class="space-y-2 text-sm text-[var(--dehaze-muted-foreground)]">
+          <li><span class="text-[var(--dehaze-foreground)] font-medium"></span> 顶部筛选栏支持按时间、算法、状态、关键字搜索；切换排序与列表/网格视图。</li>
+          <li><span class="text-[var(--dehaze-foreground)] font-medium"></span> 点击“查看对比”打开效果对比页（并排模式），可继续切换重叠/放大镜/指标等模式。</li>
+          <li><span class="text-[var(--dehaze-foreground)] font-medium"></span> “重新处理”支持同算法重处理或换算法处理；删除历史需二次确认。</li>
+          <li><span class="text-[var(--dehaze-foreground)] font-medium"></span> 历史记录保留条数受会员等级限制；失败任务可重试，处理中任务显示实时进度。</li>
           <li><span class="text-[var(--dehaze-foreground)] font-medium">红点含义：</span>历史菜单项上的红点表示有“新完成未查看”的任务；通知铃铛上的红点表示存在未读通知。</li>
           <li><span class="text-[var(--dehaze-foreground)] font-medium">标记已查看：</span>点击已完成项的红点，或打开“效果对比”页，该任务会被标记为已查看，红点随之消失。</li>
           <li><span class="text-[var(--dehaze-foreground)] font-medium">实时进度：</span>“处理中”项展示实时进度（百分比或完成计数）；点击“取消”后状态切换为“已取消”。</li>

@@ -14,7 +14,7 @@
     { "nodeId": "gen-messages", "kind": "page-leaf", "pageIds": ["page-messages"], "output": "pages/messages.html", "sharedRegions": ["bottom-tab-navigation"], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
     { "nodeId": "gen-profile", "kind": "page-leaf", "pageIds": ["page-profile"], "output": "pages/profile.html", "sharedRegions": ["bottom-tab-navigation"], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
     { "nodeId": "gen-compare", "kind": "page-leaf", "pageIds": ["page-compare"], "output": "pages/compare.html", "sharedRegions": [], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
-    { "nodeId": "gen-login", "kind": "page-leaf", "pageIds": ["page-login"], "output": "pages/login.html", "sharedRegions": [], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
-    { "nodeId": "gen-register", "kind": "page-leaf", "pageIds": ["page-register"], "output": "pages/register.html", "sharedRegions": [], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] }
+    { "nodeId": "gen-login", "kind": "page-leaf", "pageIds": ["page-login"], "output": "pages/login-optimized.html", "sharedRegions": [], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] },
+    { "nodeId": "gen-register", "kind": "page-leaf", "pageIds": ["page-register"], "output": "pages/register-optimized.html", "sharedRegions": [], "privateRegions": ["main-content"], "mutableSlots": [], "status": "planned", "children": [] }
   ]
 }

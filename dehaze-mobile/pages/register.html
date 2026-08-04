@@ -439,70 +439,224 @@ body {
 </head>
 <body class="min-h-screen font-sans antialiased overflow-x-hidden">
     <style id="critical-layout">
-        .register-container { min-height: 100vh; display: flex; flex-direction: column; }
-        .register-main { flex: 1; }
-        .touch-target { min-height: 44px; min-width: 44px; }
-        .input-row { height: 48px; border-radius: 8px; }
-        .dehaze-input-lg { width: 100%; height: 48px; padding: 0 14px; font-size: 15px; border: 1px solid var(--dehaze-input); border-radius: 8px; background-color: var(--dehaze-background); color: var(--dehaze-foreground); transition: border-color 0.15s ease, box-shadow 0.15s ease; }
-        .dehaze-input-lg:focus { outline: none; border-color: var(--dehaze-primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
-        .dehaze-input-lg::placeholder { color: var(--dehaze-muted-foreground); }
-        .dehaze-btn-gradient { background: linear-gradient(135deg, #3b82f6, #6366f1); color: #ffffff; border: none; border-radius: 8px; font-weight: 500; transition: transform 0.15s ease, box-shadow 0.15s ease; }
-        .dehaze-btn-gradient:active { transform: scale(0.97); }
-        .dehaze-link { color: var(--dehaze-primary); text-decoration: none; }
-        .dehaze-checkbox { width: 18px; height: 18px; accent-color: var(--dehaze-primary); }
+      #critical-layout { display: none; }
+      .auth-atmosphere {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        background: linear-gradient(165deg, #1e3a8a 0%, #2563eb 48%, #4f46e5 100%);
+      }
+      html.dark .auth-atmosphere {
+        background: linear-gradient(165deg, #0b1120 0%, #1e3a8a 50%, #312e81 100%);
+      }
+      .auth-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(72px);
+        opacity: 0.55;
+        pointer-events: none;
+      }
+      .auth-orb-1 {
+        width: 280px; height: 280px;
+        top: -60px; right: -80px;
+        background: rgba(147, 197, 253, 0.7);
+      }
+      .auth-orb-2 {
+        width: 240px; height: 240px;
+        top: 120px; left: -90px;
+        background: rgba(129, 140, 248, 0.6);
+      }
+      .auth-orb-3 {
+        width: 200px; height: 200px;
+        top: 280px; right: 40px;
+        background: rgba(96, 165, 250, 0.45);
+      }
+      .auth-glass-btn {
+        width: 40px; height: 40px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: var(--dehaze-radius-full);
+        background: rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: #ffffff;
+        cursor: pointer;
+        transition: background-color 0.15s ease, transform 0.15s ease;
+      }
+      .auth-glass-btn:active { transform: scale(0.94); background: rgba(255, 255, 255, 0.28); }
+      .auth-logo {
+        width: 64px; height: 64px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: var(--dehaze-radius-xl);
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        box-shadow: 0 8px 24px rgba(30, 58, 138, 0.3);
+      }
+      .auth-sheet {
+        position: relative;
+        z-index: 1;
+        background: var(--dehaze-background);
+        border-radius: var(--dehaze-radius-xl) var(--dehaze-radius-xl) 0 0;
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+      }
+      html.dark .auth-sheet {
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+      }
+      .reg-input {
+        width: 100%; height: 48px;
+        padding: 0 14px;
+        font-size: 15px;
+        border: 1px solid var(--dehaze-input);
+        border-radius: var(--dehaze-radius-md);
+        background-color: var(--dehaze-background);
+        color: var(--dehaze-foreground);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .reg-input:focus {
+        outline: none;
+        border-color: var(--dehaze-primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+      }
+      .reg-input::placeholder { color: var(--dehaze-muted-foreground); }
+      .reg-input-icon {
+        position: absolute; left: 14px; top: 50%;
+        transform: translateY(-50%);
+        color: var(--dehaze-muted-foreground);
+        pointer-events: none;
+      }
+      .reg-input-with-left { padding-left: 44px; }
+      .reg-eye-btn {
+        position: absolute; right: 6px; top: 50%;
+        transform: translateY(-50%);
+        width: 44px; height: 44px;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: var(--dehaze-muted-foreground);
+        background: transparent; border: none; cursor: pointer;
+        border-radius: var(--dehaze-radius-md);
+      }
+      .reg-eye-btn:active { color: var(--dehaze-primary); }
+      .reg-input-with-right { padding-right: 56px; }
+      .reg-btn-gradient {
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: #ffffff; border: none;
+        border-radius: var(--dehaze-radius-md);
+        font-weight: 500;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .reg-btn-gradient:active { transform: scale(0.97); }
+      .reg-btn-gradient:hover { box-shadow: var(--dehaze-shadow-3); }
+      .reg-link { color: var(--dehaze-primary); text-decoration: none; }
+      .reg-link:hover { text-decoration: underline; }
+      .reg-checkbox { width: 18px; height: 18px; accent-color: var(--dehaze-primary); }
+      .reg-code-btn {
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: #ffffff; border: none;
+        border-radius: var(--dehaze-radius-md);
+        font-weight: 500;
+        transition: transform 0.15s ease;
+      }
+      .reg-code-btn:active { transform: scale(0.97); }
     </style>
-    <div class="register-container">
-        <main class="register-main w-full max-w-md mx-auto px-6 pb-6" style="width: 448px;">
-            <!-- 顶部关闭 -->
-            <header class="pt-4 pb-2">
-                <button type="button" aria-label="关闭" class="touch-target inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
-                </button>
-            </header>
 
-            <!-- Logo 区 -->
-            <section class="text-center pt-6 pb-8">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl dehaze-btn-gradient mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M12 3v18"></path><path d="M3 12h18"></path><circle cx="12" cy="12" r="9"></circle></svg>
-                </div>
-                <h1 class="dehaze-heading-h2 mb-2">Dehaze</h1>
-                <p class="dehaze-body text-muted-foreground">创建账号，开启清晰视界</p>
-            </section>
-
-            <!-- 注册表单 -->
-            <form class="space-y-4" onsubmit="return false;">
-                <div>
-                    <input type="tel" inputmode="tel" autocomplete="tel" placeholder="请输入手机号" class="dehaze-input-lg touch-target" >
-                </div>
-                <div class="flex gap-3">
-                    <input type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="请输入验证码" class="dehaze-input-lg touch-target flex-1" >
-                    <button type="button" class="touch-target dehaze-btn-gradient px-4 whitespace-nowrap text-sm rounded-lg">获取验证码</button>
-                </div>
-                <div>
-                    <input type="password" autocomplete="new-password" placeholder="请输入密码" class="dehaze-input-lg touch-target" >
-                </div>
-                <div>
-                    <input type="password" autocomplete="new-password" placeholder="请确认密码" class="dehaze-input-lg touch-target" >
-                </div>
-
-                <label class="flex items-start gap-3 pt-2 touch-target cursor-pointer">
-                    <input type="checkbox" class="dehaze-checkbox mt-0.5 shrink-0" >
-                    <span class="dehaze-body-sm text-muted-foreground leading-5">
-                        我已阅读并同意<a href="#" class="dehaze-link">《用户协议》</a>和<a href="#" class="dehaze-link">《隐私政策》</a>
-                    </span>
-                </label>
-
-                <button type="submit" class="w-full touch-target dehaze-btn-gradient py-3 text-base rounded-lg mt-2">
-                    注册
-                </button>
-            </form>
-
-            <!-- 底部提示 -->
-            <p class="text-center dehaze-body-sm text-muted-foreground mt-6">
-                已有账号？<a href="#" data-dom-id="link-login" class="dehaze-link font-medium">立即登录</a>
-            </p>
-        </main>
+    <!-- 品牌氛围背景：渐变 + 柔光雾气 -->
+    <div class="auth-atmosphere" aria-hidden="true">
+      <div class="auth-orb auth-orb-1"></div>
+      <div class="auth-orb auth-orb-2"></div>
+      <div class="auth-orb auth-orb-3"></div>
     </div>
+
+    <main class="relative z-10 w-full max-w-md mx-auto min-h-screen flex flex-col">
+      <!-- 顶部关闭（毛玻璃） -->
+      <div class="px-6 pt-10">
+        <button type="button" aria-label="关闭" class="auth-glass-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- 品牌区（浮于渐变之上） -->
+      <div class="text-center mt-6 mb-6 px-6 dehaze-animate-fade-in">
+        <div class="auth-logo mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        </div>
+        <h1 class="dehaze-heading-h2 text-white mb-1">创建账号</h1>
+        <p class="dehaze-body-sm" style="color: rgba(255,255,255,0.82);">开启你的清晰视界</p>
+      </div>
+
+      <!-- 清晰区：白色圆角表单面板 -->
+      <section class="auth-sheet flex-1 px-6 pt-7 pb-8 dehaze-animate-fade-in" style="animation-delay: 0.05s;">
+        <form class="space-y-4" onsubmit="event.preventDefault();">
+          <!-- 手机号 -->
+          <div class="relative">
+            <svg class="reg-input-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+            <input type="tel" inputmode="tel" autocomplete="tel" placeholder="请输入手机号" class="reg-input reg-input-with-left">
+          </div>
+
+          <!-- 验证码 -->
+          <div class="relative flex gap-3">
+            <svg class="reg-input-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+            <input type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="请输入验证码" class="reg-input reg-input-with-left flex-1">
+            <button type="button" class="reg-code-btn whitespace-nowrap px-4 text-sm" style="height: 48px;">获取验证码</button>
+          </div>
+
+          <!-- 密码 -->
+          <div class="relative">
+            <svg class="reg-input-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" autocomplete="new-password" placeholder="请输入密码" class="reg-input reg-input-with-right" id="reg-password-field">
+            <button type="button" id="reg-eye-toggle" class="reg-eye-btn" aria-label="显示密码">
+              <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-closed hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+            </button>
+          </div>
+
+          <!-- 确认密码 -->
+          <div class="relative">
+            <svg class="reg-input-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" autocomplete="new-password" placeholder="请确认密码" class="reg-input reg-input-with-right" id="reg-confirm-field">
+            <button type="button" id="reg-confirm-eye" class="reg-eye-btn" aria-label="显示密码">
+              <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-closed hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+            </button>
+          </div>
+
+          <!-- 协议 -->
+          <label class="flex items-start gap-3 pt-2 cursor-pointer">
+            <input type="checkbox" class="reg-checkbox mt-0.5 shrink-0">
+            <span class="dehaze-body-sm text-muted-foreground leading-5">
+              我已阅读并同意<a href="#" class="reg-link">《用户协议》</a>和<a href="#" class="reg-link">《隐私政策》</a>
+            </span>
+          </label>
+
+          <!-- 注册按钮 -->
+          <button type="submit" class="reg-btn-gradient w-full" style="height: 48px;">注册</button>
+        </form>
+
+        <!-- 底部提示 -->
+        <p class="text-center dehaze-body-sm text-muted-foreground mt-6">
+          已有账号？<a href="#" data-dom-id="link-login" class="reg-link font-medium">立即登录</a>
+        </p>
+      </section>
+    </main>
+    <script>
+      (function() {
+        function bindEye(btnId, fieldId) {
+          const btn = document.getElementById(btnId);
+          const field = document.getElementById(fieldId);
+          if (!btn || !field) return;
+          btn.addEventListener('click', function() {
+            const isPassword = field.type === 'password';
+            field.type = isPassword ? 'text' : 'password';
+            btn.setAttribute('aria-label', isPassword ? '隐藏密码' : '显示密码');
+            btn.querySelector('.eye-open').classList.toggle('hidden', !isPassword);
+            btn.querySelector('.eye-closed').classList.toggle('hidden', isPassword);
+          });
+        }
+        bindEye('reg-eye-toggle', 'reg-password-field');
+        bindEye('reg-confirm-eye', 'reg-confirm-field');
+      })();
+    </script>
     <script>lucide.createIcons();</script>
 </body>
 </html>

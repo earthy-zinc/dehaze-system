@@ -7,8 +7,8 @@
       "version": 1,
       "createdAt": 1754112000000,
       "canvasData": {
-        "x": -136,
-        "y": 2647,
+        "x": -120,
+        "y": 2640,
         "group": 0,
         "layoutSnapshot": {
           "version": 1,
@@ -19,7 +19,7 @@
         },
         "deviceType": "freeSize",
         "windowSize": {
-          "width": 456,
+          "width": 415,
           "height": 1022
         }
       },
@@ -303,72 +303,6 @@
       }
     },
     {
-      "id": "page-login",
-      "title": "登录 - 初版",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1754112000000,
-      "canvasData": {
-        "x": 47,
-        "y": 1920,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 900,
-          "viewportWidth": 456,
-          "sourceHash": "fnv1a-f86593a6",
-          "measuredAt": 1785663009171
-        },
-        "deviceType": "freeSize",
-        "windowSize": {
-          "width": 456,
-          "height": 1022
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/login.html",
-        "interactions": [
-          {
-            "domId": "link-register",
-            "targetPageId": "page-register"
-          }
-        ]
-      }
-    },
-    {
-      "id": "page-register",
-      "title": "注册 - 初版",
-      "type": "page",
-      "version": 1,
-      "createdAt": 1754112000000,
-      "canvasData": {
-        "x": -121,
-        "y": 1920,
-        "group": 0,
-        "layoutSnapshot": {
-          "version": 1,
-          "contentHeight": 900,
-          "viewportWidth": 456,
-          "sourceHash": "fnv1a-ba9b3489",
-          "measuredAt": 1785663009171
-        },
-        "deviceType": "freeSize",
-        "windowSize": {
-          "width": 456,
-          "height": 1022
-        }
-      },
-      "devMetadata": {
-        "htmlSrc": "pages/register.html",
-        "interactions": [
-          {
-            "domId": "link-login",
-            "targetPageId": "page-login"
-          }
-        ]
-      }
-    },
-    {
       "id": "page-login-optimized",
       "title": "登录 - 氛围优化",
       "type": "page",
@@ -432,6 +366,48 @@
             "targetPageId": "page-login-optimized"
           }
         ]
+      }
+    },
+    {
+      "id": "page-login",
+      "title": "登录",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785664000000,
+      "canvasData": {
+        "x": -126,
+        "y": 2277,
+        "group": 0,
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 456,
+          "height": 1022
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/login.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-register",
+      "title": "注册",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785664000000,
+      "canvasData": {
+        "x": -126,
+        "y": 2277,
+        "group": 0,
+        "deviceType": "freeSize",
+        "windowSize": {
+          "width": 456,
+          "height": 1022
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/register.html",
+        "interactions": []
       }
     },
     {
@@ -594,7 +570,7 @@
         "deviceType": "freeSize",
         "windowSize": {
           "width": 1440,
-          "height": 1790
+          "height": 2078
         },
         "layoutSnapshot": {
           "version": 1,
