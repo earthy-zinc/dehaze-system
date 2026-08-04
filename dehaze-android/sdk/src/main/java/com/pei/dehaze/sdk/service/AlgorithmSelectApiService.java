@@ -1,13 +1,12 @@
 package com.pei.dehaze.sdk.service;
 
 import com.pei.dehaze.sdk.model.Result;
+import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmCompareForm;
 import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmCompareVO;
-import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmRecommendVO;
-import com.pei.dehaze.sdk.model.algorithm_select.CompareRequest;
-import com.pei.dehaze.sdk.model.algorithm_select.FavoriteForm;
-import com.pei.dehaze.sdk.model.algorithm_select.FavoriteToggleResult;
-import com.pei.dehaze.sdk.model.algorithm_select.FavoriteVO;
-import com.pei.dehaze.sdk.model.algorithm_select.RecommendRequest;
+import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmDetailVO;
+import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmSelectNodeVO;
+import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmTestForm;
+import com.pei.dehaze.sdk.model.prediction.PredResult;
 
 import java.util.List;
 
@@ -15,37 +14,46 @@ import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
+import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 /**
  * 算法选择API服务接口
- * 对齐后端路由：/api/v1/algorithm-select（推荐/收藏/对比）
+ * 对齐后端路由：/api/v1/algorithms/select
  */
 public interface AlgorithmSelectApiService {
     /**
-     * 智能推荐算法
-     * POST /api/v1/algorithm-select/recommend
+     * 获取算法选择树（仅已发布算法）
+     * GET /api/v1/algorithms/select/tree
      */
-    @POST("/api/v1/algorithm-select/recommend")
-    Call<Result<List<AlgorithmRecommendVO>>> recommend(@Body RecommendRequest request);
+    @GET("/api/v1/algorithms/select/tree")
+    Call<Result<List<AlgorithmSelectNodeVO>>> getTree();
 
     /**
-     * 收藏/取消收藏算法（切换状态）
-     * POST /api/v1/algorithm-select/favorite
+     * 获取算法详情（含样例效果图、评分、使用次数）
+     * GET /api/v1/algorithms/select/{id}
      */
-    @POST("/api/v1/algorithm-select/favorite")
-    Call<Result<FavoriteToggleResult>> toggleFavorite(@Body FavoriteForm form);
+    @GET("/api/v1/algorithms/select/{id}")
+    Call<Result<AlgorithmDetailVO>> getDetail(@Path("id") Long id);
 
     /**
-     * 收藏列表
-     * GET /api/v1/algorithm-select/favorites
+     * 上传自定义图片测试算法效果
+     * POST /api/v1/algorithms/select/{id}/test
      */
-    @GET("/api/v1/algorithm-select/favorites")
-    Call<Result<List<FavoriteVO>>> listFavorites();
+    @POST("/api/v1/algorithms/select/{id}/test")
+    Call<Result<PredResult>> test(@Path("id") Long id, @Body AlgorithmTestForm form);
 
     /**
-     * 算法对比
-     * POST /api/v1/algorithm-select/compare
+     * 搜索算法（关键词/拼音/标签）
+     * GET /api/v1/algorithms/select/search
      */
-    @POST("/api/v1/algorithm-select/compare")
-    Call<Result<List<AlgorithmCompareVO>>> compare(@Body CompareRequest request);
+    @GET("/api/v1/algorithms/select/search")
+    Call<Result<List<AlgorithmSelectNodeVO>>> search(@Query("keyword") String keyword);
+
+    /**
+     * 算法对比（最多3个）
+     * POST /api/v1/algorithms/select/compare
+     */
+    @POST("/api/v1/algorithms/select/compare")
+    Call<Result<List<AlgorithmCompareVO>>> compare(@Body AlgorithmCompareForm form);
 }

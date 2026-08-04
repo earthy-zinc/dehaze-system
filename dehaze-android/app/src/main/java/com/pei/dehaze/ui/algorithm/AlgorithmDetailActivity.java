@@ -66,7 +66,7 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
 
         binding.btnFavorite.setOnClickListener(v -> {
             if (currentAlgorithm != null) {
-                selectViewModel.toggleFavorite(currentAlgorithm.getId());
+                selectViewModel.addFavorite(currentAlgorithm.getId());
             }
         });
 

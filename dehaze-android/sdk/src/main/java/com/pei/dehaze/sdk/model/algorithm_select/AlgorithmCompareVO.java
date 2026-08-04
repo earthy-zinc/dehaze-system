@@ -1,31 +1,21 @@
 package com.pei.dehaze.sdk.model.algorithm_select;
 
-import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
-
 import lombok.Data;
 
 /**
- * 算法对比结果VO
- * 对齐后端 AlgorithmCompareVO
+ * 算法对比结果项
+ * 对齐后端 AlgorithmCompareVO（/api/v1/algorithms/select/compare）
  */
 @Data
 public class AlgorithmCompareVO {
     /** 算法ID */
-    private long algorithmId;
+    private Long algorithmId;
     /** 算法名称 */
     private String algorithmName;
-    /** 算法类型 */
-    private String type;
-    /** 参数量 */
-    private String params;
-    /** 计算量 */
-    private String flops;
-    /** 算法描述 */
-    private String description;
-    /** 状态 */
-    private AlgorithmStatus status;
-    /** 去雾结果URL */
+    /** 处理结果URL */
     private String resultUrl;
     /** 处理耗时(毫秒) */
-    private Integer processTime;
+    private Integer time;
+    /** 评估指标（PSNR/SSIM等，JSON字符串） */
+    private String metrics;
 }

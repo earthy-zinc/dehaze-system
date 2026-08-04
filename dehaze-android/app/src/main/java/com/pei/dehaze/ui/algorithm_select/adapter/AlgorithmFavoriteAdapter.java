@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 import com.pei.dehaze.R;
-import com.pei.dehaze.sdk.model.algorithm_select.FavoriteVO;
+import com.pei.dehaze.sdk.model.favorite.FavoriteVO;
 
 import java.util.Objects;
 
@@ -32,12 +32,12 @@ public class AlgorithmFavoriteAdapter extends ListAdapter<FavoriteVO, AlgorithmF
     private static final DiffUtil.ItemCallback<FavoriteVO> DIFF_CALLBACK = new DiffUtil.ItemCallback<FavoriteVO>() {
         @Override
         public boolean areItemsTheSame(@NonNull FavoriteVO oldItem, @NonNull FavoriteVO newItem) {
-            return oldItem.getId() == newItem.getId();
+            return Objects.equals(oldItem.getId(), newItem.getId());
         }
 
         @Override
         public boolean areContentsTheSame(@NonNull FavoriteVO oldItem, @NonNull FavoriteVO newItem) {
-            return Objects.equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName()) &&
+            return Objects.equals(oldItem.getTargetName(), newItem.getTargetName()) &&
                     Objects.equals(oldItem.getCreateTime(), newItem.getCreateTime());
         }
     };
@@ -74,7 +74,7 @@ public class AlgorithmFavoriteAdapter extends ListAdapter<FavoriteVO, AlgorithmF
         }
 
         void bind(FavoriteVO vo) {
-            tvName.setText(vo.getAlgorithmName() == null ? "" : vo.getAlgorithmName());
+            tvName.setText(vo.getTargetName() == null ? "" : vo.getTargetName());
             tvTime.setText(vo.getCreateTime() == null ? "" : vo.getCreateTime());
 
             btnUse.setOnClickListener(v -> {

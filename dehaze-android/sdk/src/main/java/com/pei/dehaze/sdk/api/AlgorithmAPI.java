@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 /**
  * 算法管理API接口封装
  * 仅包含算法管理模块的 CRUD/状态/版本等接口；
- * 收藏/对比/推荐请使用 {@link AlgorithmSelectAPI}（/api/v1/algorithm-select）
+ * 算法选择（树/详情/测试/搜索/对比）请使用 {@link AlgorithmSelectAPI}（/api/v1/algorithms/select）
  */
 public class AlgorithmAPI {
 

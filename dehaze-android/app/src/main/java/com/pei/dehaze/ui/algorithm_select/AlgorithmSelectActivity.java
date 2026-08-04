@@ -17,8 +17,8 @@ import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityAlgorithmSelectBinding;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmCompareVO;
-import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmRecommendVO;
-import com.pei.dehaze.sdk.model.algorithm_select.FavoriteVO;
+import com.pei.dehaze.sdk.model.favorite.FavoriteVO;
+import com.pei.dehaze.sdk.model.recommendation.RecommendedAlgorithmVO;
 import com.pei.dehaze.ui.algorithm.viewmodel.AlgorithmViewModel;
 import com.pei.dehaze.ui.algorithm_select.adapter.AlgorithmBrowseAdapter;
 import com.pei.dehaze.ui.algorithm_select.adapter.AlgorithmCompareResultAdapter;
@@ -131,7 +131,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
 
             @Override
             public void onFavorite(Algorithm algorithm) {
-                viewModel.toggleFavorite(algorithm.getId());
+                viewModel.addFavorite(algorithm.getId());
             }
         });
 
@@ -151,14 +151,14 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
 
         recommendAdapter.setOnRecommendActionListener(new AlgorithmRecommendAdapter.OnRecommendActionListener() {
             @Override
-            public void onUse(AlgorithmRecommendVO vo) {
+            public void onUse(RecommendedAlgorithmVO vo) {
                 ToastUtils.showShort(AlgorithmSelectActivity.this,
                         "已选择算法：" + vo.getAlgorithmName());
             }
 
             @Override
-            public void onFavorite(AlgorithmRecommendVO vo) {
-                viewModel.toggleFavorite(vo.getAlgorithmId());
+            public void onFavorite(RecommendedAlgorithmVO vo) {
+                viewModel.addFavorite(vo.getAlgorithmId());
             }
         });
 
@@ -176,8 +176,8 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
             @Override
             public void onUse(FavoriteVO vo) {
                 Intent data = new Intent();
-                data.putExtra(EXTRA_ALGORITHM_ID, vo.getAlgorithmId());
-                data.putExtra(EXTRA_ALGORITHM_NAME, vo.getAlgorithmName());
+                data.putExtra(EXTRA_ALGORITHM_ID, vo.getTargetId());
+                data.putExtra(EXTRA_ALGORITHM_NAME, vo.getTargetName());
                 setResult(Activity.RESULT_OK, data);
                 finish();
             }
@@ -248,12 +248,6 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
             }
         });
 
-        viewModel.getFavoriteToggleResult().observe(this, result -> {
-            if (result != null) {
-                viewModel.clearFavoriteToggleResult();
-            }
-        });
-
         // 搜索 Tab 的观察者
         algorithmViewModel.getAlgorithmList().observe(this, list -> {
             browseAdapter.submitList(list);
@@ -319,9 +313,9 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
     private void showCancelFavoriteConfirmDialog(FavoriteVO vo) {
         new AlertDialog.Builder(this)
                 .setTitle("取消收藏")
-                .setMessage("确认取消收藏「" + (vo.getAlgorithmName() == null ? "" : vo.getAlgorithmName()) + "」吗？")
+                .setMessage("确认取消收藏「" + (vo.getTargetName() == null ? "" : vo.getTargetName()) + "」吗？")
                 .setPositiveButton("确定", (dialog, which) ->
-                        viewModel.toggleFavorite(vo.getAlgorithmId()))
+                        viewModel.removeFavorite(vo.getId()))
                 .setNegativeButton("取消", null)
                 .show();
     }

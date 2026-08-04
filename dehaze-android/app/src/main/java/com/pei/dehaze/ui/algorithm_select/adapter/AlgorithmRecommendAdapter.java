@@ -14,15 +14,15 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.pei.dehaze.R;
-import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmRecommendVO;
+import com.pei.dehaze.sdk.model.recommendation.RecommendedAlgorithmVO;
 
 import java.util.Objects;
 
-public class AlgorithmRecommendAdapter extends ListAdapter<AlgorithmRecommendVO, AlgorithmRecommendAdapter.RecommendViewHolder> {
+public class AlgorithmRecommendAdapter extends ListAdapter<RecommendedAlgorithmVO, AlgorithmRecommendAdapter.RecommendViewHolder> {
 
     public interface OnRecommendActionListener {
-        void onUse(AlgorithmRecommendVO vo);
-        void onFavorite(AlgorithmRecommendVO vo);
+        void onUse(RecommendedAlgorithmVO vo);
+        void onFavorite(RecommendedAlgorithmVO vo);
     }
 
     private OnRecommendActionListener listener;
@@ -31,15 +31,15 @@ public class AlgorithmRecommendAdapter extends ListAdapter<AlgorithmRecommendVO,
         super(DIFF_CALLBACK);
     }
 
-    private static final DiffUtil.ItemCallback<AlgorithmRecommendVO> DIFF_CALLBACK = new DiffUtil.ItemCallback<AlgorithmRecommendVO>() {
+    private static final DiffUtil.ItemCallback<RecommendedAlgorithmVO> DIFF_CALLBACK = new DiffUtil.ItemCallback<RecommendedAlgorithmVO>() {
         @Override
-        public boolean areItemsTheSame(@NonNull AlgorithmRecommendVO oldItem, @NonNull AlgorithmRecommendVO newItem) {
-            return oldItem.getAlgorithmId() == newItem.getAlgorithmId();
+        public boolean areItemsTheSame(@NonNull RecommendedAlgorithmVO oldItem, @NonNull RecommendedAlgorithmVO newItem) {
+            return Objects.equals(oldItem.getAlgorithmId(), newItem.getAlgorithmId());
         }
 
         @Override
-        public boolean areContentsTheSame(@NonNull AlgorithmRecommendVO oldItem, @NonNull AlgorithmRecommendVO newItem) {
-            return oldItem.getScore() == newItem.getScore() &&
+        public boolean areContentsTheSame(@NonNull RecommendedAlgorithmVO oldItem, @NonNull RecommendedAlgorithmVO newItem) {
+            return Objects.equals(oldItem.getMatchScore(), newItem.getMatchScore()) &&
                     Objects.equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName()) &&
                     Objects.equals(oldItem.getReason(), newItem.getReason());
         }
@@ -80,15 +80,14 @@ public class AlgorithmRecommendAdapter extends ListAdapter<AlgorithmRecommendVO,
             btnFavorite = itemView.findViewById(R.id.btn_favorite);
         }
 
-        void bind(AlgorithmRecommendVO vo) {
+        void bind(RecommendedAlgorithmVO vo) {
             tvName.setText(vo.getAlgorithmName() == null ? "" : vo.getAlgorithmName());
-            tvType.setText(vo.getType() == null ? "" : vo.getType());
+            tvType.setText(vo.getRating() != null ? "评分 " + vo.getRating() + "/5" : "");
             tvReason.setText(vo.getReason() == null ? "" : vo.getReason());
 
-            long score = Math.round(vo.getScore());
+            int score = vo.getMatchScore() != null ? vo.getMatchScore() : 0;
             chipScore.setText("匹配度 " + score + "%");
-            int color = scoreColor((int) score);
-            chipScore.setChipBackgroundColor(ColorStateList.valueOf(color));
+            chipScore.setChipBackgroundColor(ColorStateList.valueOf(scoreColor(score)));
 
             btnUse.setOnClickListener(v -> {
                 if (listener != null) listener.onUse(vo);
