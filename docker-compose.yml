@@ -115,7 +115,7 @@ services:
   rabbitmq:
     image: rabbitmq:management
     container_name: rabbitmq
-    restart: unless-stopped
+    restart: always
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
       - rabbitmq-logs:/var/log/rabbitmq
@@ -284,7 +284,7 @@ services:
   xxl-job-admin:
     image: xuxueli/xxl-job-admin:3.3.0
     container_name: xxl-job-admin
-    restart: unless-stopped
+    restart: always
     ports:
       - "14980:8080"
     environment:
