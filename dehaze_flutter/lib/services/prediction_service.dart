@@ -4,25 +4,8 @@ import 'package:dio/dio.dart';
 
 import '../core/constants/api_constants.dart';
 import '../core/network/page_result.dart';
+import '../core/network/task_poller.dart';
 import '../models/prediction_model.dart';
-
-/// 轮询配置
-class PollOptions {
-  const PollOptions({
-    this.intervalMs = 2000,
-    this.timeoutMs = 120000,
-    this.onPoll,
-  });
-
-  /// 轮询间隔（毫秒）
-  final int intervalMs;
-
-  /// 最大等待时间（毫秒）
-  final int timeoutMs;
-
-  /// 每次轮询回调
-  final void Function(TaskStatus status)? onPoll;
-}
 
 /// 预测服务
 ///
@@ -72,27 +55,12 @@ class PredictionService {
     if (result.status != TaskStatus.processing) {
       return result;
     }
-    return _pollPredTask(result.logId, options);
-  }
-
-  Future<PredictionResponse> _pollPredTask(
-    int logId,
-    PollOptions? options,
-  ) async {
-    final interval = options?.intervalMs ?? 2000;
-    final timeout = options?.timeoutMs ?? 120000;
-    final deadline = DateTime.now().add(Duration(milliseconds: timeout));
-
-    while (DateTime.now().isBefore(deadline)) {
-      await Future<void>.delayed(Duration(milliseconds: interval));
-      final result = await getPredTaskStatus(logId);
-      options?.onPoll?.call(result.status);
-      if (result.status == TaskStatus.completed ||
-          result.status == TaskStatus.failed) {
-        return result;
-      }
-    }
-    throw Exception('预测任务 $logId 超时（${timeout}ms）');
+    return pollTask(
+      getPredTaskStatus,
+      result.logId,
+      statusOf: (r) => r.status,
+      options: options,
+    );
   }
 
   /// 获取预测日志列表

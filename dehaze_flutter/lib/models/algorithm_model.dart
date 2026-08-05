@@ -2,49 +2,41 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'algorithm_model.g.dart';
 
-/// 算法状态枚举
 enum AlgorithmStatus {
-  @JsonValue(1)
-  enabled,
   @JsonValue(0)
-  disabled,
+  draft,
+  @JsonValue(1)
+  testing,
   @JsonValue(2)
-  auditing,
+  pendingAudit,
+  @JsonValue(3)
+  published,
+  @JsonValue(4)
+  disabled,
+  @JsonValue(5)
+  archived,
 }
 
 extension AlgorithmStatusExtension on AlgorithmStatus {
   String get displayName {
     switch (this) {
-      case AlgorithmStatus.enabled:
-        return '已启用';
+      case AlgorithmStatus.draft:
+        return '草稿';
+      case AlgorithmStatus.testing:
+        return '测试中';
+      case AlgorithmStatus.pendingAudit:
+        return '待审核';
+      case AlgorithmStatus.published:
+        return '已发布';
       case AlgorithmStatus.disabled:
-        return '已禁用';
-      case AlgorithmStatus.auditing:
-        return '审核中';
+        return '已停用';
+      case AlgorithmStatus.archived:
+        return '已归档';
     }
   }
 }
 
-/// 算法选项（下拉选择用）
-@JsonSerializable()
-class AlgorithmOption {
-  const AlgorithmOption({
-    required this.value,
-    required this.label,
-    this.type,
-  });
-
-  factory AlgorithmOption.fromJson(Map<String, dynamic> json) =>
-      _$AlgorithmOptionFromJson(json);
-
-  final int value;
-  final String label;
-  final String? type;
-
-  Map<String, dynamic> toJson() => _$AlgorithmOptionToJson(this);
-}
-
-/// 算法信息
+/// 算法信息（对应后端 AlgorithmVO）
 @JsonSerializable()
 class AlgorithmModel {
   const AlgorithmModel({
@@ -56,10 +48,6 @@ class AlgorithmModel {
     this.description,
     this.path,
     this.importPath,
-    this.config,
-    this.remark,
-    this.createTime,
-    this.updateTime,
     this.children = const [],
   });
 
@@ -73,7 +61,7 @@ class AlgorithmModel {
   @JsonKey(defaultValue: '未分类')
   final String type;
 
-  @JsonKey(defaultValue: AlgorithmStatus.disabled)
+  @JsonKey(defaultValue: AlgorithmStatus.draft)
   final AlgorithmStatus status;
 
   @JsonKey(name: 'parentId')
@@ -85,18 +73,8 @@ class AlgorithmModel {
   final String? path;
 
   /// 模型导入路径（如 algorithm.AECRNet.run，深度学习模型才有）
+  @JsonKey(name: 'importPath')
   final String? importPath;
-
-  /// 算法配置参数（JSON 字符串）
-  final Map<String, dynamic>? config;
-
-  final String? remark;
-
-  @JsonKey(name: 'createTime')
-  final String? createTime;
-
-  @JsonKey(name: 'updateTime')
-  final String? updateTime;
 
   /// 子算法列表（树形结构）
   final List<AlgorithmModel> children;
@@ -106,51 +84,27 @@ class AlgorithmModel {
   /// 是否为深度学习算法（后端以 importPath 标识可导入的模型）
   bool get isDeepLearning =>
       importPath != null && importPath!.trim().isNotEmpty;
-
-  /// 是否已启用
-  bool get isEnabled => status == AlgorithmStatus.enabled;
 }
 
 /// 算法列表展平工具
 extension AlgorithmListExtension on List<AlgorithmModel> {
-  /// 展平树形结构，返回所有启用的叶子算法
+  /// 展平树形结构，返回所有已发布（status==published）的叶子算法。
   ///
   /// 约定：父节点为分类节点（不含可执行模型），叶子节点为具体算法。
-  /// 仅返回 status==enabled 的叶子节点，供算法选择/算法信息页使用。
-  List<AlgorithmModel> get flatEnabledLeaves {
+  /// 移动端仅允许选择已发布的算法，供算法选择/算法信息页使用。
+  List<AlgorithmModel> get flatPublishedLeaves {
     final result = <AlgorithmModel>[];
-    for (final algo in this) {
-      if (algo.children.isEmpty) {
-        if (algo.isEnabled) result.add(algo);
-      } else {
-        for (final child in algo.children) {
-          if (child.isEnabled) result.add(child);
+    void collect(List<AlgorithmModel> nodes) {
+      for (final node in nodes) {
+        if (node.children.isEmpty) {
+          if (node.status == AlgorithmStatus.published) result.add(node);
+        } else {
+          collect(node.children);
         }
       }
     }
+
+    collect(this);
     return result;
   }
-}
-
-/// 智能推荐结果
-@JsonSerializable()
-class AlgorithmRecommend {
-  const AlgorithmRecommend({
-    required this.algorithmId,
-    required this.algorithmName,
-    required this.score,
-    required this.reason,
-    required this.type,
-  });
-
-  factory AlgorithmRecommend.fromJson(Map<String, dynamic> json) =>
-      _$AlgorithmRecommendFromJson(json);
-
-  final int algorithmId;
-  final String algorithmName;
-  final double score;
-  final String reason;
-  final String type;
-
-  Map<String, dynamic> toJson() => _$AlgorithmRecommendToJson(this);
 }

@@ -35,7 +35,7 @@ PredictionResponse _$PredictionResponseFromJson(Map<String, dynamic> json) =>
         logId: $checkedConvert('logId', (v) => (v as num).toInt()),
         status: $checkedConvert(
           'status',
-          (v) => PredictionResponse._statusFromJson(v as String?),
+          (v) => PredictionResponse._statusFromJson((v as num?)?.toInt()),
         ),
         resultUrl: $checkedConvert('resultUrl', (v) => v as String?),
         resultThumbnailUrl: $checkedConvert(

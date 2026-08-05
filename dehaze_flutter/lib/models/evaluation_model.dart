@@ -75,10 +75,14 @@ class EvaluationResult {
   @JsonKey(name: 'errorMessage')
   final String? errorMessage;
 
-  static TaskStatus _statusFromJson(String? value) =>
-      TaskStatus.fromString(value);
+  static TaskStatus _statusFromJson(int? value) =>
+      TaskStatus.fromValue(value);
 
-  static String _statusToJson(TaskStatus status) => status.name;
+  static int _statusToJson(TaskStatus status) => switch (status) {
+        TaskStatus.completed => 2,
+        TaskStatus.failed => 3,
+        TaskStatus.processing => 1,
+      };
 
   Map<String, dynamic> toJson() => _$EvaluationResultToJson(this);
 

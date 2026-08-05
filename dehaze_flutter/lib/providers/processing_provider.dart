@@ -7,10 +7,7 @@ import '../models/algorithm_model.dart';
 import '../models/dehaze_params.dart';
 import '../models/prediction_model.dart';
 import '../providers/providers.dart';
-import '../services/algorithm_service.dart';
-import '../services/file_service.dart';
 import '../services/prediction_service.dart';
-export '../services/prediction_service.dart' show PollOptions;
 
 /// 处理流程状态
 class ProcessingState {
@@ -208,24 +205,6 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
 }
 
 // ==================== Providers ====================
-
-/// 预测服务 Provider
-final predictionServiceProvider = Provider<PredictionService>((ref) {
-  final dio = ref.watch(dioClientProvider);
-  return PredictionService(dio);
-});
-
-/// 文件服务 Provider
-final fileServiceProvider = Provider<FileService>((ref) {
-  final dio = ref.watch(dioClientProvider);
-  return FileService(dio);
-});
-
-/// 算法服务 Provider
-final algorithmServiceProvider = Provider<AlgorithmService>((ref) {
-  final dio = ref.watch(dioClientProvider);
-  return AlgorithmService(dio);
-});
 
 /// 处理流程 Provider
 final processingProvider =

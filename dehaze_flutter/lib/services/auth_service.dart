@@ -32,7 +32,7 @@ class AuthService {
     required String captchaCode,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
-      ApiConstants.authLogin.replaceAll('login', 'register'),
+      ApiConstants.authRegister,
       data: {
         'username': username,
         'password': password,

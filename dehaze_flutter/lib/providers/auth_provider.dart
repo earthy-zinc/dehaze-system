@@ -155,11 +155,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
-final authServiceProvider = Provider<AuthService>((ref) {
-  final dio = ref.watch(dioClientProvider);
-  return AuthService(dio);
-});
-
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final authService = ref.watch(authServiceProvider);
   final tokenStorage = ref.watch(tokenStorageProvider);

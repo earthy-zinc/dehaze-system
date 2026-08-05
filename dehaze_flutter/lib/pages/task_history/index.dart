@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
 import '../../models/prediction_model.dart';
-import '../../providers/processing_provider.dart';
+import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/ui_utils.dart';

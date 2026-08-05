@@ -6,23 +6,6 @@ part of 'algorithm_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-AlgorithmOption _$AlgorithmOptionFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('AlgorithmOption', json, ($checkedConvert) {
-      final val = AlgorithmOption(
-        value: $checkedConvert('value', (v) => (v as num).toInt()),
-        label: $checkedConvert('label', (v) => v as String),
-        type: $checkedConvert('type', (v) => v as String?),
-      );
-      return val;
-    });
-
-Map<String, dynamic> _$AlgorithmOptionToJson(AlgorithmOption instance) =>
-    <String, dynamic>{
-      'value': instance.value,
-      'label': instance.label,
-      if (instance.type case final value?) 'type': value,
-    };
-
 AlgorithmModel _$AlgorithmModelFromJson(Map<String, dynamic> json) =>
     $checkedCreate('AlgorithmModel', json, ($checkedConvert) {
       final val = AlgorithmModel(
@@ -33,16 +16,12 @@ AlgorithmModel _$AlgorithmModelFromJson(Map<String, dynamic> json) =>
           'status',
           (v) =>
               $enumDecodeNullable(_$AlgorithmStatusEnumMap, v) ??
-              AlgorithmStatus.disabled,
+              AlgorithmStatus.draft,
         ),
         parentId: $checkedConvert('parentId', (v) => (v as num?)?.toInt()),
         description: $checkedConvert('description', (v) => v as String?),
         path: $checkedConvert('path', (v) => v as String?),
-        importPath: $checkedConvert('import_path', (v) => v as String?),
-        config: $checkedConvert('config', (v) => v as Map<String, dynamic>?),
-        remark: $checkedConvert('remark', (v) => v as String?),
-        createTime: $checkedConvert('createTime', (v) => v as String?),
-        updateTime: $checkedConvert('updateTime', (v) => v as String?),
+        importPath: $checkedConvert('importPath', (v) => v as String?),
         children: $checkedConvert(
           'children',
           (v) =>
@@ -55,7 +34,7 @@ AlgorithmModel _$AlgorithmModelFromJson(Map<String, dynamic> json) =>
         ),
       );
       return val;
-    }, fieldKeyMap: const {'importPath': 'import_path'});
+    });
 
 Map<String, dynamic> _$AlgorithmModelToJson(AlgorithmModel instance) =>
     <String, dynamic>{
@@ -66,48 +45,15 @@ Map<String, dynamic> _$AlgorithmModelToJson(AlgorithmModel instance) =>
       if (instance.parentId case final value?) 'parentId': value,
       if (instance.description case final value?) 'description': value,
       if (instance.path case final value?) 'path': value,
-      if (instance.importPath case final value?) 'import_path': value,
-      if (instance.config case final value?) 'config': value,
-      if (instance.remark case final value?) 'remark': value,
-      if (instance.createTime case final value?) 'createTime': value,
-      if (instance.updateTime case final value?) 'updateTime': value,
+      if (instance.importPath case final value?) 'importPath': value,
       'children': instance.children.map((e) => e.toJson()).toList(),
     };
 
 const _$AlgorithmStatusEnumMap = {
-  AlgorithmStatus.enabled: 1,
-  AlgorithmStatus.disabled: 0,
-  AlgorithmStatus.auditing: 2,
+  AlgorithmStatus.draft: 0,
+  AlgorithmStatus.testing: 1,
+  AlgorithmStatus.pendingAudit: 2,
+  AlgorithmStatus.published: 3,
+  AlgorithmStatus.disabled: 4,
+  AlgorithmStatus.archived: 5,
 };
-
-AlgorithmRecommend _$AlgorithmRecommendFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'AlgorithmRecommend',
-      json,
-      ($checkedConvert) {
-        final val = AlgorithmRecommend(
-          algorithmId: $checkedConvert(
-            'algorithm_id',
-            (v) => (v as num).toInt(),
-          ),
-          algorithmName: $checkedConvert('algorithm_name', (v) => v as String),
-          score: $checkedConvert('score', (v) => (v as num).toDouble()),
-          reason: $checkedConvert('reason', (v) => v as String),
-          type: $checkedConvert('type', (v) => v as String),
-        );
-        return val;
-      },
-      fieldKeyMap: const {
-        'algorithmId': 'algorithm_id',
-        'algorithmName': 'algorithm_name',
-      },
-    );
-
-Map<String, dynamic> _$AlgorithmRecommendToJson(AlgorithmRecommend instance) =>
-    <String, dynamic>{
-      'algorithm_id': instance.algorithmId,
-      'algorithm_name': instance.algorithmName,
-      'score': instance.score,
-      'reason': instance.reason,
-      'type': instance.type,
-    };

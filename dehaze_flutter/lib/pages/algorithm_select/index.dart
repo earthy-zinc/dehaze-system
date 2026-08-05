@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../core/network/api_result.dart';
 import '../../models/algorithm_model.dart';
 import '../../models/file_model.dart';
+import '../../models/recommendation_model.dart';
 import '../../providers/processing_provider.dart';
+import '../../providers/providers.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
@@ -29,7 +31,7 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
   String? _errorMessage;
   String _searchQuery = '';
 
-  List<AlgorithmRecommend> _recommendations = [];
+  List<RecommendedAlgorithmVO> _recommendations = [];
   bool _isRecommending = false;
   String? _recommendError;
   FileUploadResponse? _uploadedFile;
@@ -60,8 +62,8 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
       final service = ref.read(algorithmServiceProvider);
       final algorithms = await service.getAlgorithmList();
 
-      // 展平树形结构，只显示启用的叶子算法
-      final flatAlgorithms = algorithms.flatEnabledLeaves;
+      // 展平树形结构，只显示已发布的叶子算法
+      final flatAlgorithms = algorithms.flatPublishedLeaves;
 
       if (mounted) {
         setState(() {
@@ -161,9 +163,17 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
         imageUrl = uploadResult.url;
       }
 
-      final service = ref.read(algorithmServiceProvider);
-      final recommendations =
-          await service.recommendAlgorithms(imageUrl: imageUrl, topN: 3);
+      // 两步推荐：先图像特征分析获取 imageMd5，再取推荐算法（截取 Top 3）
+      final service = ref.read(recommendationServiceProvider);
+      final analysis = await service.analyze(AnalyzeForm(imageUrl: imageUrl));
+      var recommendations = <RecommendedAlgorithmVO>[];
+      final imageMd5 = analysis.imageMd5;
+      if (imageMd5 != null && imageMd5.isNotEmpty) {
+        recommendations = await service.getRecommendations(imageMd5);
+        if (recommendations.length > 3) {
+          recommendations = recommendations.sublist(0, 3);
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -182,7 +192,7 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
   }
 
   /// 通过推荐结果选中对应算法
-  void _selectRecommendation(AlgorithmRecommend recommend) {
+  void _selectRecommendation(RecommendedAlgorithmVO recommend) {
     final algorithm =
         _algorithms.where((a) => a.id == recommend.algorithmId).firstOrNull;
     if (algorithm != null) {
@@ -602,7 +612,7 @@ class _RecommendationCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final AlgorithmRecommend recommend;
+  final RecommendedAlgorithmVO recommend;
   final VoidCallback onTap;
 
   @override
@@ -662,7 +672,7 @@ class _RecommendationCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              '匹配度 ${recommend.score.toStringAsFixed(0)}%',
+                              '匹配度 ${recommend.matchScore ?? 0}%',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
@@ -674,7 +684,7 @@ class _RecommendationCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        recommend.reason,
+                        recommend.reason ?? '',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

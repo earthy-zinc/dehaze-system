@@ -10,6 +10,7 @@ class AuthInterceptor extends Interceptor {
 
   static const List<String> _publicPaths = [
     ApiConstants.authLogin,
+    ApiConstants.authRegister,
     ApiConstants.authCaptcha,
   ];
 

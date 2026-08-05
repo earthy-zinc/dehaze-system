@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/network/api_result.dart';
 import '../../models/algorithm_model.dart';
 import '../../providers/processing_provider.dart';
+import '../../providers/providers.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 import 'widgets/compare_empty_state.dart';
@@ -48,8 +49,8 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
       final service = ref.read(algorithmServiceProvider);
       final algorithms = await service.getAlgorithmList();
 
-      // 展平树形结构，只取启用的叶子算法
-      final flatAlgorithms = algorithms.flatEnabledLeaves;
+      // 展平树形结构，只取已发布的叶子算法
+      final flatAlgorithms = algorithms.flatPublishedLeaves;
 
       if (!mounted) return;
       setState(() {
@@ -118,10 +119,6 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
               _buildDescriptionCard(theme, algorithm.description!),
               const SizedBox(height: 16),
             ],
-            if (algorithm.config != null && algorithm.config!.isNotEmpty) ...[
-              _buildConfigCard(theme, algorithm.config!),
-              const SizedBox(height: 16),
-            ],
             _buildMetaCard(theme, algorithm),
           ],
         ),
@@ -140,8 +137,6 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
               _buildInfoRow(theme, '算法名称', algorithm.name),
               _buildInfoRow(theme, '算法类型', algorithm.type),
               _buildInfoRow(theme, '算法状态', algorithm.status.displayName),
-              if (algorithm.remark != null)
-                _buildInfoRow(theme, '备注', algorithm.remark!),
             ],
           ),
         ),
@@ -161,20 +156,6 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
         ),
       );
 
-  Widget _buildConfigCard(ThemeData theme, Map<String, dynamic> config) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('配置参数', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              ...config.entries.map((entry) => _buildInfoRow(theme, entry.key, entry.value.toString())),
-            ],
-          ),
-        ),
-      );
-
   Widget _buildMetaCard(ThemeData theme, AlgorithmModel algorithm) => Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -183,10 +164,6 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
             children: [
               Text('元信息', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
-              if (algorithm.createTime != null)
-                _buildInfoRow(theme, '创建时间', algorithm.createTime!),
-              if (algorithm.updateTime != null)
-                _buildInfoRow(theme, '更新时间', algorithm.updateTime!),
               if (algorithm.path != null)
                 _buildInfoRow(theme, '模型路径', algorithm.path!),
             ],

@@ -2,9 +2,9 @@ import 'package:dio/dio.dart';
 
 import '../core/constants/api_constants.dart';
 import '../core/network/page_result.dart';
+import '../core/network/task_poller.dart';
 import '../models/evaluation_model.dart';
 import '../models/prediction_model.dart';
-import 'prediction_service.dart';
 
 /// 评估服务
 ///
@@ -54,27 +54,12 @@ class EvaluationService {
     if (result.status != TaskStatus.processing) {
       return result;
     }
-    return _pollEvalTask(result.logId, options);
-  }
-
-  Future<EvaluationResult> _pollEvalTask(
-    int logId,
-    PollOptions? options,
-  ) async {
-    final interval = options?.intervalMs ?? 2000;
-    final timeout = options?.timeoutMs ?? 120000;
-    final deadline = DateTime.now().add(Duration(milliseconds: timeout));
-
-    while (DateTime.now().isBefore(deadline)) {
-      await Future<void>.delayed(Duration(milliseconds: interval));
-      final result = await getEvalTaskStatus(logId);
-      options?.onPoll?.call(result.status);
-      if (result.status == TaskStatus.completed ||
-          result.status == TaskStatus.failed) {
-        return result;
-      }
-    }
-    throw Exception('评估任务 $logId 超时（${timeout}ms）');
+    return pollTask(
+      getEvalTaskStatus,
+      result.logId,
+      statusOf: (r) => r.status,
+      options: options,
+    );
   }
 
   /// 获取评估日志列表

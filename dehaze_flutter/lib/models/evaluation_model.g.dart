@@ -31,7 +31,7 @@ EvaluationResult _$EvaluationResultFromJson(Map<String, dynamic> json) =>
         logId: $checkedConvert('logId', (v) => (v as num).toInt()),
         status: $checkedConvert(
           'status',
-          (v) => EvaluationResult._statusFromJson(v as String?),
+          (v) => EvaluationResult._statusFromJson((v as num?)?.toInt()),
         ),
         metrics: $checkedConvert(
           'metrics',

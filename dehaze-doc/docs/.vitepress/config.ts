@@ -510,6 +510,10 @@ export default withMermaid(
                 text: "算法模型加载架构改造计划",
                 link: "/05-改造计划/算法模型加载架构改造计划",
               },
+              {
+                text: "Flutter端架构与API调用改造计划",
+                link: "/05-改造计划/Flutter端架构与API调用改造计划",
+              },
             ],
           },
         ],

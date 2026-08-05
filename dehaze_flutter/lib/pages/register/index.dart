@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/auth_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/providers.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/ui_utils.dart';

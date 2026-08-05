@@ -5,7 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/auth/auth_error_handler.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/token_storage.dart';
+import '../services/algorithm_service.dart';
+import '../services/auth_service.dart';
 import '../services/evaluation_service.dart';
+import '../services/file_service.dart';
+import '../services/prediction_service.dart';
+import '../services/recommendation_service.dart';
 
 // ==================== 基础设施 Providers ====================
 
@@ -41,7 +46,28 @@ final dioClientProvider = Provider<Dio>((ref) {
   return apiClient.dio;
 });
 
-/// 评估服务 Provider
+// ==================== 服务 Providers ====================
+
+final authServiceProvider = Provider<AuthService>((ref) {
+  return AuthService(ref.watch(dioClientProvider));
+});
+
+final predictionServiceProvider = Provider<PredictionService>((ref) {
+  return PredictionService(ref.watch(dioClientProvider));
+});
+
 final evaluationServiceProvider = Provider<EvaluationService>((ref) {
   return EvaluationService(ref.watch(dioClientProvider));
+});
+
+final fileServiceProvider = Provider<FileService>((ref) {
+  return FileService(ref.watch(dioClientProvider));
+});
+
+final algorithmServiceProvider = Provider<AlgorithmService>((ref) {
+  return AlgorithmService(ref.watch(dioClientProvider));
+});
+
+final recommendationServiceProvider = Provider<RecommendationService>((ref) {
+  return RecommendationService(ref.watch(dioClientProvider));
 });
