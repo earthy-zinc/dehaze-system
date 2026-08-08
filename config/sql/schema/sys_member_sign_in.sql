@@ -17,7 +17,10 @@ CREATE TABLE `sys_member_sign_in`
     `sign_date`       date                                                           NOT NULL COMMENT '签到日期',
     `continuous_days` int                                                            NOT NULL DEFAULT 1 COMMENT '连续签到天数',
     `growth_value`    int                                                            NOT NULL DEFAULT 0 COMMENT '本次获得成长值',
+    `create_by`       bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
+    `update_by`       bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`     datetime                                                       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`     datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_user_sign_date` (`user_id`, `sign_date`) USING BTREE,
     INDEX `idx_sign_date` (`sign_date`) USING BTREE

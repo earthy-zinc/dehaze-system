@@ -26,7 +26,10 @@ CREATE TABLE `sys_ai_agent_thought`
     `status`          tinyint                                                        NOT NULL DEFAULT 1 COMMENT '步骤状态(1:成功;2:失败;3:跳过)',
     `latency_ms`      int                                                            NULL DEFAULT 0 COMMENT '工具调用耗时(毫秒)',
     `error`           TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL COMMENT '失败原因(status=2时填充)',
+    `create_by`       bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
+    `update_by`       bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`     datetime                                                       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`     datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_message_position` (`message_id`, `position`) USING BTREE,
     INDEX `idx_conversation` (`conversation_id`) USING BTREE

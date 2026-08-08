@@ -22,7 +22,10 @@ CREATE TABLE `sys_knowledge_chunk`
     `token_count`     int                                                            NOT NULL DEFAULT 0 COMMENT '分块Token数',
     `metadata`        json                                                           NULL COMMENT '分块元数据(来源文档/页码/段落/表格行等，检索时用于引用展示)',
     `embedding`       json                                                           NULL COMMENT '向量嵌入(JSON数组，备用MySQL降级检索)',
+    `create_by`       bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
+    `update_by`       bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`     datetime                                                       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`     datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_document` (`document_id`, `chunk_index`) USING BTREE,
     INDEX `idx_kb` (`knowledge_base_id`) USING BTREE

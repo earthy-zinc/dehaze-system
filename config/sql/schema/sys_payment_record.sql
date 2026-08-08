@@ -8,7 +8,7 @@
 -- channel 标识支付渠道，amount 为本笔支付金额（组合支付时一个订单多条记录）。
 -- status 标识支付状态（处理中/成功/失败），callback_time 记录回调到达时间。
 -- callback_content 原始保留渠道回调报文，便于对账和排查。
--- 流水记录为只追加，不使用逻辑删除。
+-- 流水记录使用逻辑删除（类别④，唯一键为系统流水号不冲突）。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_payment_record`;
 CREATE TABLE `sys_payment_record`
