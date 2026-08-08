@@ -154,8 +154,6 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
                                 int matchScore = computeMatchScore(alg.getId(), matchedRules);
                                 vo.setMatchScore(matchScore);
                                 vo.setReason(buildReason(matchedScene, alg.getName()));
-                                vo.setRating(3.5);
-                                vo.setEstimatedTime(5000);
                                 vo.setEffectDescription("该算法在" + matchedScene + "场景下表现稳定");
                                 return vo;
                             })
@@ -197,22 +195,7 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
     public IdVO submitFeedback(RecommendationFeedbackForm form) {
         SysRecommendation rec = this.getById(form.getRecommendationId());
         if (rec == null) {
-            // 按 recommendationId 未找到时，尝试将其作为 algorithmId 匹配 topAlgorithms
-            rec = this.getOne(new LambdaQueryWrapper<SysRecommendation>()
-                    .eq(SysRecommendation::getFeedback, 0)
-                    .orderByDesc(SysRecommendation::getId)
-                    .last("LIMIT 1"));
-            if (rec == null || rec.getTopAlgorithms() == null) {
-                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
-            }
-            boolean matched = rec.getTopAlgorithms().stream()
-                    .anyMatch(item -> {
-                        Object aid = item.get("algorithmId");
-                        return aid != null && Long.valueOf(aid.toString()).equals(form.getRecommendationId());
-                    });
-            if (!matched) {
-                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
-            }
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
         }
         rec.setFeedback(form.getUseful() ? 1 : 2);
         this.updateById(rec);
