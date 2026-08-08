@@ -30,8 +30,9 @@ flowchart TB
         VM["ViewModel + LiveData"]
     end
 
-    subgraph Repository["Repository 层"]
-        Repo["数据仓库"]
+    subgraph Repository["数据访问层"]
+        Adapters["RepositoryAdapters（回调适配）"]
+        Repo["专用 Repository（Dashboard/Dataset/File/Task）"]
     end
 
     subgraph DataSource["数据源层"]
@@ -46,12 +47,13 @@ flowchart TB
     end
 
     View --> Binding --> VM
+    VM --> Adapters
     VM --> Repo
-    Repo --> Retrofit
-    Retrofit --> SDK
+    Adapters --> SDK
+    Repo --> SDK
     SDK --> REST
-    Repo --> Glide
-    Repo --> CameraX
+    View --> Glide
+    View --> CameraX
     Navigation --> Activity
     Navigation --> Fragment
 ```
@@ -109,15 +111,15 @@ dehaze-android/
 │   └── res/
 │       ├── navigation/nav_graph.xml              # 导航图（统一声明所有 Fragment 目的地）
 │       ├── menu/bottom_navigation_menu.xml        # 5 Tab 菜单配置
-│       ├── layout/                                # 布局文件（108 个 XML）
+│       ├── layout/                                # 布局文件（activity/fragment/dialog/item 四类）
 │       │   └── activity_main.xml                  # CoordinatorLayout + Toolbar + NavHostFragment + BottomNavigationView
-│       ├── drawable/                              # 矢量图标（52 个 XML，含 Tab 图标 outline/filled 双态）
+│       ├── drawable/                              # 矢量图标（含 Tab 图标 outline/filled 双态）
 │       └── values/                                # 资源令牌（colors / strings / themes 等）
 └── sdk/                                           # 自带 Java SDK（project(':sdk')）
     ├── src/main/java/com/pei/dehaze/sdk/
-    │   ├── api/                                   # API 接口层（16 个 API 类）
-    │   ├── service/                               # Retrofit Service 接口（16 个）
-    │   ├── model/                                 # 数据模型（86 个 Java Bean）
+    │   ├── api/                                   # API 接口层（24 个 API 类）
+    │   ├── service/                               # Retrofit Service 接口（24 个）
+    │   ├── model/                                 # 数据模型（按业务域分包：auth/algorithm/dataset/order/member/message/...）
     │   ├── network/                               # 网络配置（OkHttp 拦截器、Token 注入）
     │   ├── logger/                                # 日志模块（Logger + Transport + TraceManager）
     │   └── utils/                                 # SDK 工具类
@@ -171,24 +173,7 @@ MainActivity（唯一宿主 Activity）
 | L1 顶级目的地（5 Tab） | 显示 | 显示 | 无（AppBarConfiguration 控制） |
 | L2/L3 非顶级目的地 | 显示 | 隐藏 | 有（ActionBar 自动管理） |
 
-```java
-// 核心逻辑（MainActivity.java OnDestinationChangedListener）
-navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
-    boolean isTopLevel = appBarConfiguration.getTopLevelDestinations().contains(destination.getId());
-    boolean isAuth = destination.getId() == R.id.loginFragment
-            || destination.getId() == R.id.registerFragment;
-
-    // L0 认证页隐藏 Toolbar
-    if (isAuth) {
-        binding.toolbar.setVisibility(View.GONE);
-    } else {
-        binding.toolbar.setVisibility(View.VISIBLE);
-    }
-
-    // 非顶级目的地（L2/L3）和认证页隐藏 TabBar
-    binding.bottomNavigation.setVisibility((isAuth || !isTopLevel) ? View.GONE : View.VISIBLE);
-});
-```
+监听器依据 `AppBarConfiguration.getTopLevelDestinations()` 判定是否顶级目的地，并识别 login/register 两个认证目的地：认证页隐藏 Toolbar；非顶级目的地或认证页隐藏 BottomNavigationView。
 
 **AppBarConfiguration**
 
@@ -300,14 +285,12 @@ navController.addOnDestinationChangedListener((controller, destination, argument
 | 算法管理 | `ui/system/AlgorithmManageActivity` | 算法审计上下架 | sys:algorithm:* |
 | 数据集管理 | `ui/system/DatasetManageActivity` | 数据集 CRUD | sys:dataset:* |
 | 任务管理 | `ui/system/TaskManageActivity` | 全用户任务管理 | sys:task:* |
-| 会员管理 | `ui/system/MemberManageActivity` | 会员列表/等级/成长日志（框架占位，SDK API 待封装） | sys:member:* |
-| 套餐管理 | `ui/system/PackageManageActivity` | 套餐 CRUD/上下架（框架占位，SDK API 待封装） | sys:package:* |
-| 订单管理 | `ui/system/OrderManageActivity` | 后台列表/退款审核/统计（框架占位，SDK API 待封装） | sys:order:* |
-| 反馈评价管理 | `ui/system/FeedbackManageActivity` | 回复/处理（框架占位，SDK API 待封装） | sys:feedback:* |
-| 消息管理 | `ui/system/MessageManageActivity` | 公告/模板/群发（框架占位，SDK API 待封装） | sys:notify:* |
-| 推荐管理 | `ui/system/RecommendManageActivity` | 推荐规则编辑（框架占位，SDK API 待封装） | sys:recommendation:* |
-
-> **SDK 待封装说明**：member / package / order / feedback / notify-setting / recommendation 共 6 个管理模块的 SDK API 尚未封装，对应 Activity 为框架占位，代码中以 TODO 标注，待后续接入。
+| 会员管理 | `ui/system/MemberManageActivity` | 会员列表/等级调整/状态切换/禁用 | sys:member:* |
+| 套餐管理 | `ui/system/PackageManageActivity` | 套餐列表/新增/编辑/上下架/删除 | sys:package:* |
+| 订单管理 | `ui/system/OrderManageActivity` | 订单列表/统计/取消/退款申请 | sys:order:* |
+| 反馈评价管理 | `ui/system/FeedbackManageActivity` | 反馈列表/回复/关闭 | sys:feedback:* |
+| 消息管理 | `ui/system/MessageManageActivity` | 公告列表管理 | sys:notify:* |
+| 推荐管理 | `ui/system/RecommendManageActivity` | 推荐规则列表 | sys:recommendation:* |
 
 ## 7. 视角拆分
 
@@ -382,11 +365,45 @@ navController.addOnDestinationChangedListener((controller, destination, argument
 - **批量处理**：批量上传（≤20 张）、批量进度、结果对比/下载
 - **指标管理**：评估指标历史查询、筛选、对比
 - **收藏管理**：跨模块统一收藏（算法/处理结果/数据集）、"我的收藏"聚合页
-- **推荐管理**：算法推荐展示、推荐理由、一键使用（个人）+ 规则编辑（管理，SDK 待封装）
+- **推荐管理**：算法推荐展示、推荐理由、一键使用（个人）+ 推荐规则列表（管理）
 - **数据集**：公开/共享浏览 + 图片网格（个人）+ CRUD（管理）
 - **系统管理**：用户、部门、角色、菜单、字典、算法审计、数据集管理、任务管理、会员管理、套餐管理、订单管理、反馈管理、消息管理、推荐管理
 
-## 12. 关键技术决策
+## 12. 核心模块架构
+
+### 12.1 去雾处理流程（步骤状态机）
+
+去雾 Tab 的 5 步流程（上传 → 算法 → 参数 → 处理 → 对比）由 `DehazeViewModel` 统一承载跨步骤状态，`StepPagerAdapter` 按 viewType 0–4 渲染对应步骤布局（step_upload / step_algorithm / step_params / step_process / step_compare）。
+
+| 状态字段 | 用途 |
+|---------|------|
+| currentStep | 当前步骤索引（0–4） |
+| uploadedFile | 上传图像 FileInfo |
+| selectedAlgorithmId / selectedAlgorithmName | 选定算法 |
+| strength / brightness / contrast | 参数调节值 |
+| predictionResult | 处理结果 PredResult |
+| isProcessing | 处理中态 |
+
+步骤间通过 `setCurrentStep` 推进，上下文由 ViewModel 持有而非 Intent 传递；`reset()` 清空全部状态回到首步。
+
+### 12.2 效果对比模块
+
+`CompareActivity` 通过 ViewPager2 + TabLayout 承载 5 种对比模式，每种模式为独立 Fragment，共享 `CompareViewModel`：
+
+| 对比模式 | Fragment | 说明 |
+|---------|----------|------|
+| 并排 | ParallelFragment | 左右分屏对比 |
+| 叠加 | OverlapFragment | 上下叠加 |
+| 放大镜 | MagnifierFragment + MagnifierView | 自定义 View 实现局部放大 |
+| 滤镜 | FilterFragment | 滤镜切换 |
+| 指标 | MetricsFragment | 指标评估 |
+| — | AlgorithmInfoFragment | 算法信息辅助页 |
+
+### 12.3 管理模块通用基类
+
+各管理模块的 ViewModel 均继承泛型基类 `BaseManageViewModel<T>`，统一封装列表/分页/搜索/操作结果能力，子类仅实现 `loadData()` 及各自操作方法。Activity 侧复用 `activity_manage_list.xml` 通用列表布局，差异通过 Adapter 与表单 Dialog 体现，避免 15 个管理页重复样板代码。
+
+## 13. 关键技术决策
 
 | 决策 | 选择 | 理由 |
 |------|------|------|
@@ -397,6 +414,8 @@ navController.addOnDestinationChangedListener((controller, destination, argument
 | 导航显隐控制 | OnDestinationChangedListener | 页面层级感知，L0 隐藏全部导航，L2/L3 隐藏 TabBar |
 | 顶级目的地 | AppBarConfiguration（5 个） | 自动管理返回箭头显隐，无需手动处理 |
 | 页面实现 | Fragment + 独立 Activity 混合 | Fragment 用于 nav_graph 内导航流页面；独立 Activity 用于需要独立生命周期、过渡动画或全屏沉浸的页面 |
+| 数据访问 | RepositoryAdapters 回调适配 + 4 个专用 Repository | 统一 ApiCallback→RepositoryCallback 适配与错误解析；仅 Dashboard/Dataset/File/Task 设独立 Repository，其余 ViewModel 经 RepositoryAdapters 直调 SDK |
+| 对象装配 | ViewModelProvider（无 DI 框架） | 标准 Jetpack 方式创建 ViewModel，SDK API 为静态方法调用 |
 | 网络层 | Retrofit2 + OkHttp3 | 成熟稳定的 HTTP 客户端 |
 | 图片加载 | Glide | 高性能图片加载、缓存、自动压缩 |
 | 相机 | CameraX | Jetpack 相机库，Android 5.0+ 兼容 |
@@ -405,8 +424,9 @@ navController.addOnDestinationChangedListener((controller, destination, argument
 | 认证方案 | Session 认证（X-Session-Id） | 与后端三端统一 |
 | 视角拆分 | 个人/管理严格分离为独立页面 | 避免条件渲染混乱，职责清晰 |
 | SDK 架构 | 自带 Java SDK（project(':sdk')） | 统一网络层、Token 注入、错误处理，与 App 模块解耦 |
+| 测试 | JUnit4 + Mockito + Robolectric + Jacoco | 单元测试（含 LiveData/ViewModel 测试）+ 覆盖率采集 |
 
-## 13. SDK 说明
+## 14. SDK 说明
 
 Android 端自带 Java SDK 模块（`project(':sdk')`），位于 `sdk/` 目录，与 App 模块分离，统一封装网络层逻辑。
 
@@ -415,6 +435,11 @@ Android 端自带 Java SDK 模块（`project(':sdk')`），位于 `sdk/` 目录�
 | API 类 | 对应业务 |
 |--------|---------|
 | AuthAPI | 登录/注册/验证码 |
+| UserAPI | 用户信息 |
+| MenuAPI | 菜单配置 |
+| RoleAPI | 角色管理 |
+| DeptAPI | 部门管理 |
+| DictAPI | 字典管理 |
 | AlgorithmAPI | 算法浏览/搜索 |
 | AlgorithmSelectAPI | 算法选择与推荐 |
 | DatasetAPI | 数据集浏览与管理 |
@@ -422,29 +447,21 @@ Android 端自带 Java SDK 模块（`project(':sdk')`），位于 `sdk/` 目录�
 | FavoriteAPI | 收藏管理 |
 | FileAPI | 文件管理 |
 | ModelAPI | 去雾处理/评估/指标 |
-| UserAPI | 用户信息 |
-| MenuAPI | 菜单配置 |
-| RoleAPI | 角色管理 |
-| DeptAPI | 部门管理 |
-| DictAPI | 字典管理 |
 | InputHistoryAPI | 图像输入历史 |
 | RecommendationAPI | 算法推荐 |
 | ApiKeyAPI | API Key 管理 |
+| MemberAPI | 会员管理（列表/等级/状态） |
+| PackageAPI | 套餐管理（CRUD/上下架） |
+| OrderAPI | 订单管理（列表/统计/取消/退款） |
+| FeedbackAPI | 反馈评价管理（列表/回复/关闭） |
+| MessageAPI | 消息列表/已读 |
+| MessageTemplateAPI | 消息模板 |
+| AnnouncementAPI | 公告管理 |
+| NotificationSettingAPI | 消息通知设置 |
 
-### 待封装 API（6 个管理模块）
+### 14.1 日志模块
 
-| 业务模块 | 状态 | 说明 |
-|---------|------|------|
-| 会员管理 | 框架占位，TODO | MemberManageActivity 已创建，SDK API 待封装 |
-| 套餐管理 | 框架占位，TODO | PackageManageActivity 已创建，SDK API 待封装 |
-| 订单管理 | 框架占位，TODO | OrderManageActivity 已创建，SDK API 待封装 |
-| 反馈评价管理 | 框架占位，TODO | FeedbackManageActivity 已创建，SDK API 待封装 |
-| 消息管理 | 框架占位，TODO | MessageManageActivity 已创建，SDK API 待封装 |
-| 推荐管理 | 框架占位，TODO | RecommendManageActivity 已创建，SDK API 待封装 |
-
-### 13.1 日志模块
-
-Android 端日志实现位于 SDK `com.pei.dehaze.sdk.logger` 包（`Logger.java` / `ConsoleTransport.java` / `FileTransport.java` / `RemoteTransport.java` / `LogEntry.java` / `LogLevel.java` / `LogTransport.java` / `TraceManager.java`），行为契约（字段 schema、接收链路、采样限流）见 [02-系统架构/07-日志架构设计.md](../../02-系统架构/07-日志架构设计.md) §3.5，与 [sdk架构文档.md](./sdk架构文档.md) 的 JS SDK 行为对齐，共享同一后端接收 API。
+Android 端日志实现位于 SDK `com.pei.dehaze.sdk.logger` 包（`Logger.java` / `ConsoleTransport.java` / `FileTransport.java` / `RemoteTransport.java` / `LogEntry.java` / `LogLevel.java` / `LogTransport.java` / `TraceManager.java`），行为契约（字段 schema、接收链路、采样限流）见 [02-系统架构/07-日志架构设计.md](../../02-系统架构/07-日志架构设计.md) §3.5，与 [08-SDK架构文档.md](./08-SDK架构文档.md) 的 JS SDK 行为对齐，共享同一后端接收 API。
 
 - **Logger 单例 + 多 transport**：`ConsoleTransport`（System.out）+ `FileTransport`（写 `filesDir/logs/{yyyy-MM-dd}/{level}.log`，NDJSON，100MB 切割，7 天保留）+ `RemoteTransport`（OkHttp POST）
 - **崩溃捕获**：`DehazeApplication.onCreate` 注册 `Thread.setDefaultUncaughtExceptionHandler`，error_type=native
@@ -453,7 +470,7 @@ Android 端日志实现位于 SDK `com.pei.dehaze.sdk.logger` 包（`Logger.java
 - **离线缓存/崩溃补报**：生产环境 `RemoteTransport` + `FileTransport`（3 天保留）双写，崩溃后下次启动调用 `flushFromDisk()` 从本地文件补报
 - **不暴露 `user_id` 字段**：前端 SDK 不上报 `user_id`，由三端后端从会话统一解析注入
 
-## 14. 认证架构
+## 15. 认证架构
 
 采用 Session 认证，与后端三端统一：
 
@@ -463,18 +480,20 @@ Android 端日志实现位于 SDK `com.pei.dehaze.sdk.logger` 包（`Logger.java
 - **Session 失效处理**：`ApiCallback` 在收到 401 或 A0230 业务码时触发 `TokenManager.triggerSessionInvalid()`，全局监听器通知 `MainActivity` 弹出"登录已失效"对话框并跳转登录页
 - **未登录态展示**：个人中心页面在 `TokenManager.hasToken() == false` 时显示"未登录"入口卡片，点击跳转登录/注册页
 
-## 15. 权限说明
+## 16. 权限说明
 
 Android 系统权限（AndroidManifest.xml 声明）：
 
 | 权限 | 用途 |
 |------|------|
 | INTERNET | 访问网络接口 |
+| ACCESS_NETWORK_STATE | 网络状态检测 |
+| POST_NOTIFICATIONS | 消息推送通知（Android 13+） |
 | CAMERA | 相机拍照 |
 | READ_EXTERNAL_STORAGE | 读取图像文件 |
 | WRITE_EXTERNAL_STORAGE | 保存处理结果图像 |
 
-## 16. 兼容性
+## 17. 兼容性
 
 - 最低支持 Android 6.0（API Level 23）
 - 目标版本 Android 14（API Level 34）

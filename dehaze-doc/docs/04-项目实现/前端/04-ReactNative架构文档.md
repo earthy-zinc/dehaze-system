@@ -96,9 +96,11 @@ dehaze-react-native/
 │   │   ├── register/              # 注册（L0）
 │   │   ├── image-input/           # 图像输入（L2）
 │   │   ├── algorithm-select/      # 算法选择（L2）
+│   │   ├── algorithm/            # 算法详情页（L2，F-M03-004）
 │   │   ├── processing/            # 去雾处理（L2）
 │   │   ├── algorithm-browse/      # 算法库浏览（L2）
 │   │   ├── dataset-browse/        # 数据集浏览（L2）
+│   │   ├── dataset/              # 数据集管理（L2，含 list/detail 视图，为 dataset-browse 提供共享组件）
 │   │   ├── batch/                 # 批量处理（L2）
 │   │   ├── metrics-manage/        # 指标管理（L2）
 │   │   ├── task/                  # 处理历史（L2）
@@ -133,21 +135,41 @@ dehaze-react-native/
 
 ## 3. 导航架构
 
-本次重构废弃旧"单 Stack + 自绘 BottomTabBar"架构，重构为"BottomTabNavigator + 嵌套 Stack"，采用 @react-navigation v7 原生方案。
+导航采用 @react-navigation v7 的"BottomTabNavigator + 嵌套 Stack"原生方案。
 
 ### 3.1 导航树
 
-```
-Root（NavigationContainer）
-├── AuthStack（L0 认证，createNativeStackNavigator）
-│   ├── Login
-│   └── Register
-└── MainTabs（L1，createBottomTabNavigator，内置 TabBar）
-    ├── HomeStack → Home (L1) + 子页面 (L2/L3)
-    ├── ToolsStack → Tools (L1) + image-input/algorithm-browse/dataset-browse/batch/metrics-manage/algorithm-select (L2)
-    ├── DehazeStack → Dehaze (L1) + algorithm-select/processing (L2) + compare/* (L3)
-    ├── MessagesStack → Messages (L1) + detail (L2)
-    └── ProfileStack → Profile (L1) + personal/* (L2) + system/* (L2) + notify (L2)
+```mermaid
+flowchart TB
+    Root["NavigationContainer"]
+    Root --> AuthStack["AuthStack（L0）"]
+    AuthStack --> Login["Login"]
+    AuthStack --> Register["Register"]
+    Root --> MainTabs["MainTabs（L1 BottomTabNavigator）"]
+    MainTabs --> HomeStack["HomeStack"]
+    MainTabs --> ToolsStack["ToolsStack"]
+    MainTabs --> DehazeStack["DehazeStack"]
+    MainTabs --> MessagesStack["MessagesStack"]
+    MainTabs --> ProfileStack["ProfileStack"]
+    HomeStack --> Home["Home (L1)"]
+    ToolsStack --> Tools["Tools (L1)"]
+    ToolsStack --> ImageInput["图像输入 (L2)"]
+    ToolsStack --> AlgoBrowse["算法库浏览 (L2)"]
+    ToolsStack --> Algo["算法详情 (L2)"]
+    ToolsStack --> DatasetBrowse["数据集浏览 (L2)"]
+    ToolsStack --> Dataset["数据集管理 (L2)"]
+    ToolsStack --> Batch["批量处理 (L2)"]
+    ToolsStack --> MetricsManage["指标管理 (L2)"]
+    DehazeStack --> Dehaze["去雾 (L1)"]
+    DehazeStack --> AlgoSelect["算法选择 (L2)"]
+    DehazeStack --> Processing["去雾处理 (L2)"]
+    DehazeStack --> Compare["沉浸对比 (L3)"]
+    MessagesStack --> Messages["消息 (L1)"]
+    MessagesStack --> MsgDetail["消息详情 (L2)"]
+    ProfileStack --> Profile["我的 (L1)"]
+    ProfileStack --> Personal["个人侧页面 (L2)"]
+    ProfileStack --> System["管理模块 (L2)"]
+    ProfileStack --> Notify["消息设置 (L2)"]
 ```
 
 ### 3.2 关键文件
@@ -193,14 +215,6 @@ Root（NavigationContainer）
 - 深色半透明工具栏，返回按钮 + 标题 + 右侧操作 slot
 - 5 个对比页（SideBySide / Overlay / Magnifier / Filter / Metrics）统一使用
 
-### 4.3 废弃组件
-
-以下组件已在本次改造中废弃删除：
-- `MainLayout.tsx` — 旧主布局（单 Stack 容器）
-- `BottomTabBar.tsx` — 自绘底部 TabBar
-- `DrawerMenu.tsx` / `SideNav.tsx` — 侧边导航
-- `MenuConfig.ts` — 菜单配置
-
 ## 5. 完整页面清单
 
 ### 5.1 L0 认证页（AuthStack，无 TabBar）
@@ -228,7 +242,9 @@ Root（NavigationContainer）
 | pages/algorithm-select/index | ToolsStack / DehazeStack | 算法选择，带入去雾流程 | RecommendationAPI.analyze |
 | pages/processing/index | DehazeStack | 去雾处理，实时进度 | ModelAPI.predictAndWait |
 | pages/algorithm-browse/index | ToolsStack / DehazeStack | 算法库浏览：列表 + 推荐 + 详情 + "使用该算法"带入流程 | — |
+| pages/algorithm/index | ToolsStack / DehazeStack | 算法详情页：Hero + 监控指标 + 版本时间线 + 底部操作栏（立即使用/收藏/分享），由 algorithm-browse / algorithm-select 经 navigate('Algorithm', { algorithmId }) 进入 | AlgorithmAPI.getAlgorithmInfoById / getMonitorData / getVersions |
 | pages/dataset-browse/index | ToolsStack | 数据集浏览：公开/共享浏览 + 图片网格 | — |
+| pages/dataset/index | ToolsStack / ProfileStack | 数据集管理：list/detail 视图切换，为 dataset-browse 提供共享组件（DatasetDetailSection/SearchBar） | — |
 | pages/batch/index | ToolsStack / DehazeStack | 批量处理：≤20 张 + 进度 + 结果 | ModelAPI.batchPredict |
 | pages/metrics-manage/index | ToolsStack | 指标管理：评估指标历史 + 对比 | ModelAPI.getEvalMetrics / getEvalLogs |
 
@@ -269,28 +285,28 @@ Root（NavigationContainer）
 |---------|------|
 | pages/dashboard/index | 工作台 |
 
-**管理子模块**：
+**管理子模块**（权限码见 [§8](#8-权限模型)）：
 
-| 页面路径 | 功能 | 权限码 |
-|---------|------|-------|
-| pages/system/user/index + form | 用户管理 | sys:user:* |
-| pages/system/role/index + form + perm | 角色管理 | sys:role:* |
-| pages/system/menu/index + form | 菜单管理 | sys:menu:* |
-| pages/system/dept/index + form | 部门管理 | sys:dept:* |
-| pages/system/dict/index + type-form + items + item-form | 字典管理 | sys:dict:* |
-| pages/system/algorithm/index + form + audit | 算法管理（审计上下架） | sys:algorithm:* |
-| pages/system/dataset/index + form | 数据集管理（CRUD） | sys:dataset:* |
-| pages/system/task/index | 任务管理（全用户视角） | sys:task:* |
-| pages/system/member/index + detail + growth-log | 会员管理（列表/详情/成长日志） | sys:member:* |
-| pages/system/package/index + form | 套餐管理（CRUD/上下架） | sys:package:* |
-| pages/system/order/index + detail + refund | 订单管理（列表/详情/退款审核） | sys:order:* |
-| pages/system/feedback/index + detail | 反馈评价管理（回复/处理） | sys:feedback:* |
-| pages/system/message/index + announcement + template + send | 消息管理（公告/模板/群发） | sys:notify:* |
-| pages/system/recommend/index + rule-form | 推荐管理（规则编辑） | sys:recommendation:* |
+| 页面路径 | 功能 |
+|---------|------|
+| pages/system/user/index + form | 用户管理 |
+| pages/system/role/index + form + perm | 角色管理 |
+| pages/system/menu/index + form | 菜单管理 |
+| pages/system/dept/index + form | 部门管理 |
+| pages/system/dict/index + type-form + items + item-form | 字典管理 |
+| pages/system/algorithm/index + form + audit | 算法管理（审计上下架） |
+| pages/system/dataset/index + form | 数据集管理（CRUD） |
+| pages/system/task/index | 任务管理（全用户视角） |
+| pages/system/member/index + detail + growth-log | 会员管理（列表/详情/成长日志） |
+| pages/system/package/index + form | 套餐管理（CRUD/上下架） |
+| pages/system/order/index + detail + refund | 订单管理（列表/详情/退款审核） |
+| pages/system/feedback/index + detail | 反馈评价管理（回复/处理） |
+| pages/system/message/index + announcement + template + send | 消息管理（公告/模板/群发） |
+| pages/system/recommend/index + rule-form | 推荐管理（规则编辑） |
 
 ## 6. 视角拆分
 
-以下模块从"个人+管理混用"严格拆分为两套独立页面：
+遵循 [05-菜单与页面层级规划.md §6 视角拆分原则](../../01-产品设计/05-菜单与页面层级规划.md#6-视角拆分原则)，各业务域拆分为两套独立页面。React Native 端页面路径对照：
 
 | 业务域 | 个人视角页面 | 管理视角页面 |
 |--------|-------------|-------------|
@@ -304,9 +320,9 @@ Root（NavigationContainer）
 | 消息 | pages/messages（消息列表）+ pages/notify（消息设置） | pages/system/message（消息管理） |
 | 推荐 | —（无个人视角） | pages/system/recommend（推荐管理） |
 
-## 7. 状态管理（zustand 迁移）
+## 7. 状态管理
 
-本次改造从 Context API（AuthContext / useReducer）迁移至 zustand，并废弃 Redux 依赖。
+状态管理采用 zustand，配合 persist 中间件实现持久化。
 
 ### 7.1 认证状态（src/store/auth.ts）
 
@@ -325,40 +341,15 @@ Root（NavigationContainer）
 - `unreadCount` 状态，供 Messages TabBar 角标订阅
 - 通过 `navigation.setOptions({ tabBarBadge })` 动态更新
 
-### 7.3 架构变化
-
-| 旧方案 | 新方案 |
-|--------|--------|
-| AuthContext（useReducer） | zustand auth store（persist） |
-| AppProviders 包裹 | 无 Provider，App.tsx 直接渲染 RootNavigator |
-| redux / react-redux / redux-thunk | 已卸载 |
-
 ## 8. 权限模型
 
-管理模块采用权限码控制可见性。权限标识格式为 `sys:模块:*`：
+管理模块权限码（sys:user:* 等 14 个）见 [05-菜单与页面层级规划.md §2.4](../../01-产品设计/05-菜单与页面层级规划.md#24-移动端管理模块我的-tab-底部管理入口内l2-级子页面)。无 `sys:module:*` 权限的用户，管理入口组整组不显示。
 
-| 权限码 | 模块 |
-|--------|------|
-| sys:user:* | 用户管理 |
-| sys:role:* | 角色管理 |
-| sys:menu:* | 菜单管理 |
-| sys:dept:* | 部门管理 |
-| sys:dict:* | 字典管理 |
-| sys:algorithm:* | 算法管理 |
-| sys:dataset:* | 数据集管理 |
-| sys:task:* | 任务管理 |
-| sys:member:* | 会员管理 |
-| sys:package:* | 套餐管理 |
-| sys:order:* | 订单管理 |
-| sys:feedback:* | 反馈评价管理 |
-| sys:notify:* | 消息管理 |
-| sys:recommendation:* | 推荐管理 |
-
-无 `sys:module:*` 权限的用户，管理入口组整组不显示。权限判断通过 `useAuthStore(s => s.hasPerm)` 实现。
+前端实现：通过 `useAuthStore(s => s.hasPerm)` 实现按钮级权限控制。
 
 ## 9. 设计稿还原策略
 
-本次改造对齐《移动端界面设计规范》与 dehaze-mobile 设计稿，采用差异化还原策略：
+对齐《移动端界面设计规范》与 dehaze-mobile 设计稿，采用差异化还原策略：
 
 | 页面 | 策略 | 说明 |
 |------|------|------|
@@ -373,30 +364,13 @@ Root（NavigationContainer）
 
 ## 10. 防迷失设计
 
-- **主入口唯一**：首页、工具快捷区仅作引用跳转，不重复实现功能
-- **管理功能不裸露**：管理入口统一归入"我的"页面底部管理入口组，受权限过滤
-- **主链路 ≤2 步**：工具选图/选算法通过"开始去雾/使用该算法"直接带入流程
-- **带入衔接**：工具页与算法浏览页通过明确的操作按钮将用户带入去雾处理流程
-- **返回路径完整**：所有 L2/L3 页面均提供返回按钮，L2 通过 AppHeader（showBack）、L3 通过 ImmersiveHeader 内置返回
-- **跨 Stack 跳转**：ToolsStack 和 DehazeStack 共享 algorithm-select、algorithm-browse、batch 等页面，通过各自 ParamList 类型安全路由
+通用原则（主入口唯一、管理功能不裸露、主链路 ≤2 步、带入衔接、返回路径完整）见 [05-菜单与页面层级规划.md §5](../../01-产品设计/05-菜单与页面层级规划.md#5-关键交互规则)。
 
-## 11. 核心功能
+端实现补充：
+- **返回路径**：L2 通过 AppHeader（showBack）、L3 通过 ImmersiveHeader 内置返回
+- **跨 Stack 跳转**：ToolsStack 和 DehazeStack 共享 algorithm-select、algorithm-browse、algorithm、batch 等页面，通过各自 ParamList 类型安全路由
 
-- Session 认证：登录/注册/权限校验，zustand persist 持久化，Session 失效 Alert 提示
-- 首页展示：品牌 Hero、快捷入口、数据统计、特色能力（融合设计稿保留 8 区块）
-- 图像输入：本地上传、相机拍照、样张画廊、历史记录
-- 算法选择：算法列表、参数配置、算法说明、智能推荐
-- 去雾处理：实时进度、结果预览、参数调节、处理历史
-- 效果对比：并排对比、叠加对比、放大镜、滤镜、指标评估（均使用 ImmersiveHeader 沉浸式导航栏）
-- 批量处理：批量上传（≤20 张）、批量进度、结果对比/下载
-- 指标管理：评估指标历史查询、筛选、对比
-- 收藏管理：跨模块统一收藏（算法/处理结果/数据集）、"我的收藏"聚合页
-- 推荐管理：算法推荐展示、推荐理由、一键使用（个人）+ 规则编辑（管理）
-- 数据集：公开/共享浏览 + 图片网格（个人）+ CRUD（管理）
-- 消息：消息列表 + 分类 + 未读角标 + 消息设置 + 消息管理（公告/模板/群发）
-- 系统管理：工作台 + 用户、部门、角色、菜单、字典、算法审计、数据集管理、任务管理、会员管理、套餐管理、订单管理、反馈管理、消息管理、推荐管理
-
-## 12. 关键技术决策
+## 11. 关键技术决策
 
 | 决策 | 选择 | 理由 |
 |------|------|------|

@@ -14,8 +14,10 @@ flowchart TB
 
     subgraph FilterChain["Servlet Filter 链"]
         direction LR
+        Trace["TraceIdFilter"]
         CORS["跨域 CorsFilter"]
-        Captcha["验证码 CaptchaFilter"]
+        Log["RequestLogFilter"]
+        ApiKey["ApiKeyAuthenticationFilter"]
         Session["SessionFilter 会话校验"]
         SecurityChain["Spring Security FilterChain"]
     end
@@ -84,15 +86,15 @@ flowchart LR
     Event["Event (领域事件)<br/>事件驱动"] -.-> Listener
 ```
 
-| 模型类型 | 包路径 | 职责 | 示例 |
+| 模型类型 | 包路径 | 职责 | 定位 |
 |----------|--------|------|------|
-| Entity | `model/entity/` | 数据库表映射，MyBatis-Plus 注解 | `SysUser` |
-| Form | `model/form/` | 请求入参绑定、校验注解 | `UserForm` |
-| VO | `model/vo/` | API 响应输出 | `UserPageVO` |
-| Query | `model/query/` | 分页查询条件 | `UserPageQuery` |
-| BO | `model/bo/` | 业务层内部传递 | `UserBO` |
-| DTO | `model/dto/` | 服务间数据传输 | `LoginResult` |
-| Event | `model/event/` | 领域事件载荷 | `ItemFileCreatedEvent` |
+| Entity | `model/entity/` | 数据库表映射，MyBatis-Plus 注解 | 主力模型 |
+| Form | `model/form/` | 请求入参绑定、校验注解 | 主力模型 |
+| VO | `model/vo/` | API 响应输出 | 主力模型 |
+| Query | `model/query/` | 分页查询条件 | 主力模型 |
+| BO | `model/bo/` | 业务层跨服务聚合传递 | 按需使用 |
+| DTO | `model/dto/` | 跨层数据传输（如登录结果） | 按需使用 |
+| Event | `model/event/` | 领域事件载荷 | 按需使用 |
 
 对象转换使用 MapStruct 编译期生成转换代码（`converter/` 包），避免运行时反射开销。
 
@@ -175,10 +177,10 @@ flowchart LR
     end
 
     subgraph CoreBusiness["核心业务模块"]
-        DehazeService["去雾处理<br/>DehazeService"]
-        CompareService["效果对比<br/>ComparisonService"]
+        Dehaze["去雾处理<br/>SysInputHistoryService + prediction 拦截器链"]
+        Compare["效果对比<br/>CompareService"]
         AlgoSelect["算法选择<br/>AlgorithmSelectService"]
-        Recommend["推荐管理<br/>RecommendService"]
+        Recommend["推荐管理<br/>RecommendationService"]
         Favorite["收藏管理<br/>FavoriteService"]
     end
 
@@ -195,15 +197,11 @@ flowchart LR
     Factory --> Local
     Factory --> NginxStatic
     AlgoCtrl --> PythonClient
-    DehazeService --> AlgoCtrl
-    CompareService --> AlgoCtrl
+    Dehaze --> AlgoCtrl
+    Compare --> AlgoCtrl
     AlgoSelect --> AlgoCtrl
     AlgoSelect --> Recommend
     AlgoSelect --> Favorite
-    DehazeService --> Favorite
-    CompareService --> Favorite
-    DehazeService --> Recommend
-    CompareService --> Recommend
     GenericCtrl --> ExportRegistry
     GenericCtrl --> ImportRegistry
     ExportRegistry --> Strategy
@@ -266,59 +264,27 @@ Handler 模式 + 通用策略实现，各业务模块只需实现 ExportHandler/
 
 ### 3.5 去雾处理模块
 
-| 组件 | 实现 | 说明 |
-|------|------|------|
-| DehazeService | `service/dehaze/DehazeService` | 预测编排服务，串联算法管理、会员配额、历史记录、收藏初始化 |
-| QuotaService | `service/dehaze/QuotaService` | VIP 月度配额校验，Redis 原子扣减防止并发超扣 |
-| PresetService | `service/dehaze/PresetService` | 参数预设管理（管理员预设 + 用户自定义预设） |
-| DehazeHistoryService | `service/dehaze/DehazeHistoryService` | 处理历史分页查询、筛选、重新处理触发 |
+预测主流程通过 `prediction/` 包的拦截器链（`PredictionInterceptor`）实现可插拔扩展：拦截器命中则短路不调用 Python 算法服务，未命中则继续主流程委托算法管理模块执行推理。预测日志、输入历史、参数预设分别由 `SysPredLogService`、`SysInputHistoryService`、`SysPresetService` 承担。
 
-模块本身不直接执行推理，而是委托算法管理模块的 PredictionService 调用 Python 算法服务。异步任务状态值（处理中/已完成/已失败）与任务管理模块语义对齐，状态存储在 `sys_input_history` 表而非 `sys_task` 表。
+异步任务状态（处理中/已完成/已失败）与任务管理模块语义对齐，但物理存储于 `sys_input_history` 表而非 `sys_task` 表——这是为保留用户维度的输入历史视图而做的存储分叉，状态查询走 `SysInputHistoryService` 而非统一任务接口。
 
-VIP 配额校验通过拦截器在预测请求入口执行：处理前预校验 -> 处理成功后实际扣减 -> 失败不扣减，保证配额与处理结果一致性。
+VIP 配额校验在预测请求入口执行：处理前预校验、成功后实扣减、失败不扣减，Redis 原子操作防止并发超扣。组件实现详见 [去雾处理/后端实现.md](../../03-模块设计/核心模块/去雾处理/后端实现.md)。
 
 ### 3.6 效果对比模块
 
-| 组件 | 实现 | 说明 |
-|------|------|------|
-| ComparisonService | `service/compare/ComparisonService` | 多模式对比数据聚合（并排/重叠/放大镜/指标） |
-| EvaluationService | `service/compare/EvaluationService` | 评估任务编排，委托算法管理模块执行指标计算 |
-| ReportService | `service/compare/ReportService` | 对比报告异步生成，复用任务管理模块框架 |
-
-评估指标（PSNR/SSIM/LPIPS/NIQE/Entropy）计算通过算法管理模块委托 Python 算法服务完成，评估结果永久缓存（相同图片+相同算法命中即返回）。对比报告生成复用任务管理模块的异步任务框架，生成的报告文件存入 MinIO 对象存储并保留 24 小时。
+多模式对比（并排/重叠/放大镜/指标）与评估指标计算（PSNR/SSIM/LPIPS/NIQE/Entropy）由 `CompareService` 统一编排，指标计算委托算法管理模块调用 Python 服务完成。对比报告异步生成复用任务管理模块框架，报告文件存入 MinIO 保留 24 小时。组件实现详见 [效果对比/后端实现.md](../../03-模块设计/核心模块/效果对比/后端实现.md)。
 
 ### 3.7 算法选择模块
 
-| 组件 | 实现 | 说明 |
-|------|------|------|
-| AlgorithmSelectService | `service/algorithm/AlgorithmSelectService` | 组合搜索/推荐/收藏状态，构建前端算法视图 |
-| AlgorithmSearchService | `service/algorithm/AlgorithmSearchService` | 关键词、拼音、标签多维度搜索 |
-| AlgorithmCompareService | `service/algorithm/AlgorithmCompareService` | 最多 3 个算法多维度对比（性能/适用性/用户反馈） |
-
-搜索采用 MySQL LIKE + 全文索引 + 拼音预计算字段组合策略：算法创建时冗余存储名称拼音全拼和首字母缩写，搜索时同时匹配拼音和原始名称字段。实验性算法通过会员管理模块校验 VIP 可见性。
+`AlgorithmSelectService` 组合搜索、推荐、收藏状态构建前端算法视图，委托算法管理模块完成算法检索。实验性算法通过会员管理模块校验 VIP 可见性。组件实现详见 [算法选择/后端实现.md](../../03-模块设计/核心模块/算法选择/后端实现.md)。
 
 ### 3.8 收藏管理模块
 
-| 组件 | 实现 | 说明 |
-|------|------|------|
-| FavoriteService | `service/favorite/FavoriteService` | 收藏核心服务：添加/取消/列表/状态批量查询/计数 |
-| FavoriteSyncService | `service/favorite/FavoriteSyncService` | is_favorite 字段同步维护，保证冗余缓存一致性 |
-
-统一收藏表 `sys_favorite` 替代分散的收藏逻辑（旧 `sys_algorithm_favorite` 表、`sys_input_history.is_favorite` 字段），通过 `target_type` 字段区分收藏对象类型（algorithm/result/dataset）。收藏状态批量查询接口供各业务模块在加载列表时调用，标记每条记录的收藏状态。
-
-VIP 收藏容量校验在收藏操作前执行，普通用户 200 条，VIP 用户 500 条。
+统一收藏表 `sys_favorite` 通过 `target_type` 区分收藏对象类型（algorithm/result/dataset），新模块接入收藏只需声明 targetType，无需重复开发表/接口。`FavoriteService` 提供添加/取消/列表/状态批量查询/计数，收藏状态批量查询接口供各业务模块在加载列表时标记每条记录收藏状态。VIP 收藏容量校验在收藏操作前执行（普通用户 200 条、VIP 用户 500 条）。组件实现详见 [收藏管理/后端实现.md](../../03-模块设计/基础模块/收藏管理/后端实现.md)。
 
 ### 3.9 推荐管理模块
 
-| 组件 | 实现 | 说明 |
-|------|------|------|
-| RecommendService | `service/recommend/RecommendService` | 推荐编排：图像分析 -> 规则匹配 -> 排序 -> 结果构建 |
-| ImageAnalysisService | `service/recommend/ImageAnalysisService` | 调用 Python 算法服务提取 7 维图像特征向量 |
-| RuleMatchEngine | `service/recommend/RuleMatchEngine` | 场景 -> 算法映射规则匹配，输出候选算法集 |
-| RecommendRankService | `service/recommend/RecommendRankService` | 综合得分排序（特征匹配度 40% + 用户评分 25% + 处理成功率 20% + 采纳率 15%） |
-| FeedbackCollectService | `service/recommend/FeedbackCollectService` | 推荐采纳/拒绝/评分反馈收集，更新效果统计 |
-
-当前阶段采用规则匹配引擎而非机器学习模型，规则可解释性强且管理员可通过配置界面调整场景 -> 算法映射关系。架构预留机器学习模型扩展点。冷启动策略为新算法赋予默认评分 3.5 星并随机曝光，7 天内匹配度权重提升 20%。
+`RecommendationService` 编排推荐流程：图像特征提取 → 规则匹配 → 排序 → 结果构建。当前采用规则匹配引擎（可解释性强、管理员可配置场景→算法映射），冷启动策略为新算法赋予默认评分并随机曝光。组件实现详见 [推荐管理/后端实现.md](../../03-模块设计/基础模块/推荐管理/后端实现.md)。
 
 ## 四、缓存体系
 
@@ -348,55 +314,78 @@ flowchart TB
 
 ## 五、消息队列
 
-### 双通道任务分发架构
-
-采用 MQ 消费者 + @Async 线程池双通道架构：
+异步任务通过 RabbitMQ 解耦：业务侧创建任务记录落库后，由 `taskExecutor.publishExportTask()` 发布消息，消费者调用 `taskExecutor.executeExportTask()` 执行。组件加载受 `@ConditionalOnProperty(rabbitmq.enabled)` 控制，与 Go/Python 端共享同一 Exchange/Queue 拓扑。
 
 ```mermaid
 flowchart LR
-    subgraph TaskSystem["异步任务系统"]
-        Controller["TaskController"] --> TaskService
-        TaskService --> TaskExecutor["TaskExecutorImpl<br/>@Async(datasetTaskExecutor)"]
+    subgraph Producer["生产端"]
         TaskService --> Publisher["RabbitMQPublisher"]
-        TaskExecutor --> Factory["TaskStrategyFactory"]
     end
 
-    subgraph MQ["RabbitMQ Broker"]
-        Exchange["dehaze.tasks (direct exchange)"]
-        Q1["task.export 导出任务队列"]
-        DLX["Dead Letter Exchange"]
+    subgraph Broker["RabbitMQ"]
+        Exchange["dehaze.tasks (direct)"]
+        Export["业务队列<br/>TTL 24h"]
+        Retry0["retry.0<br/>TTL 5s"]
+        Retry1["retry.1<br/>TTL 30s"]
+        Retry2["retry.2<br/>TTL 5min"]
+        DLX["*.dlx 死信队列"]
     end
 
-    Publisher --> Exchange --> Q1
-    Q1 -.-> DLX
+    subgraph Consumer["消费端"]
+        ExportConsumer["业务消费者"]
+        DlxConsumer["死信消费者"]
+    end
+
+    Publisher --> Exchange
+    Exchange --> Export
+    Export -.nack.-> Retry0
+    Retry0 -.超时.-> Retry1
+    Retry1 -.超时.-> Retry2
+    Retry2 -.超时.-> DLX
+    Export --> ExportConsumer
+    DLX --> DlxConsumer
 ```
 
-### RabbitMQ 配置
+| 业务队列 | 用途 | 消费者 |
+|---------|------|--------|
+| `task.export` | 导出任务（数据集/用户/角色/部门/菜单/字典/算法） | ExportTaskConsumer |
+| `feedback.low_rating` | 低分评价告警 | LowRatingAlertConsumer |
 
-| 组件 | 名称 | 说明 |
-|------|------|------|
-| Exchange | `dehaze.tasks` (direct) | 与 Go/Python 端一致 |
-| Queue | `task.export` | 导出任务队列（durable, TTL=24h） |
-| DLX Exchange | 死信交换机 | nack/超时消息转入 |
+每条业务队列配套 3 级重试队列（`retry.0` 5s → `retry.1` 30s → `retry.2` 5min），通过 DLX 实现阶梯重试，最终进入 `*.dlx` 死信队列由 DlxConsumer 兜底处理。
+
+可靠性机制：
+
+| 机制 | 实现 |
+|------|------|
+| 消费确认 | 手动 ACK（`MANUAL`），`defaultRequeueRejected=false`：消费失败不入原队列，转入重试阶梯，避免毒消息阻塞 |
+| 发送确认 | Publisher Confirm + Return 回调，发送失败/不可路由时记录日志 |
+| 消费幂等 | 基于任务终态校验（`TERMINAL_STATUSES`），终态任务跳过重复消费 |
+| 并发控制 | 消费者并发 3-10，prefetch 10 |
 
 ## 六、安全过滤器链
 
 ```mermaid
 flowchart LR
-    Req["请求"] --> CORS["跨域处理 CorsFilter (order=-101)"]
-    CORS --> Trace["TraceID 透传 TraceIdFilter"]
-    Trace --> Session["Session 校验 SessionFilter"]
+    Req["请求"] --> Trace["TraceIdFilter<br/>TraceID 生成/透传/回写 MDC"]
+    Trace --> CORS["CorsFilter (order=-101)"]
+    CORS --> Log["RequestLogFilter<br/>请求访问日志"]
+    Log --> ApiKey["ApiKeyAuthenticationFilter<br/>API Key 认证"]
+    ApiKey --> Session["SessionFilter<br/>Session 校验"]
     Session --> Security["Spring Security FilterChain"]
-    Security --> Permission["权限校验 @PreAuthorize"]
+    Security --> Permission["@PreAuthorize 权限校验"]
     Permission --> Handler["业务处理 Controller"]
 ```
 
 | 过滤器 | 功能 | 作用范围 |
 |--------|------|----------|
+| TraceIdFilter | TraceID 生成/透传/回写 MDC（`@Order(HIGHEST_PRECEDENCE)`，最先执行） | 全局 |
 | CorsFilter | 跨域资源共享 | 全局 |
-| TraceIdFilter | TraceID 生成/透传/回写 MDC | 全局 |
+| RequestLogFilter | 每请求一条访问日志（status/duration） | 全局 |
+| ApiKeyAuthenticationFilter | `dhak_*` 形式 API Key 认证，与 Session 认证解耦，优先于 SessionFilter | 受保护路由 |
 | SessionFilter | Session 验证、SecurityContext 注入 | 受保护路由 |
 | SecurityFilterChain | Spring Security 认证/授权链 | 全局 |
+
+异步线程（`@Async`）通过 `AsyncConfig` 的 TaskDecorator 透传 MDC（traceId/method/path/ip/userId）与 SecurityContext，保证异步方法日志链路追踪和权限上下文不中断。
 
 安全工具：XssUtils（XSS 过滤）、PathSecurityUtil（路径穿越检测）、SecurityUtils（获取当前用户上下文）。
 
@@ -406,7 +395,8 @@ flowchart LR
 |------|------|------|
 | ORM | MyBatis-Plus 3.5.5 | 通用 CRUD、分页、数据权限 |
 | 连接池 | Druid 1.2.16 | 监控、防 SQL 注入、连接管理 |
-| 数据库 | MySQL | 生产环境 |
+| 关系数据库 | MySQL | 业务数据（生产环境） |
+| 文档数据库 | MongoDB | 登录日志（LoginLog）、审计日志（AuditLog），启动时由 MongoConfig 自动建索引 |
 | 测试数据库 | H2 / TestContainers(MySQL) | 单元测试 / 集成测试 |
 
 MyBatis-Plus 插件链：
@@ -426,17 +416,25 @@ flowchart LR
 
 ## 八、定时任务
 
-| 调度方式 | 适用场景 | 当前状态 |
-|----------|----------|----------|
-| `@Scheduled` | 轻量级、单实例定时任务 | 已启用 |
-| XXL-Job | 分布式调度、Web 管理 | 仅集成 Executor Bean |
+统一采用 XXL-Job 分布式调度（调度周期由 XXL-Job Admin 统一管理，与 Go/Python 端共享调度配置），`@Scheduled` 未使用。所有 Job 通过 `@XxlJob` 注解声明 handler，执行前注入 SystemSecurityContext 以系统身份运行，避免无用户上下文导致的权限校验失败。
 
-内置定时任务：
-
-| 任务 | 功能 |
-|------|------|
-| `cleanupExpiredTasks` | 每天凌晨 2 点清理过期任务 |
-| `cleanupStuckTasks` | 每小时清理超过 24 小时的异常状态任务 |
+| 业务域 | Handler | 功能 |
+|--------|---------|------|
+| 任务管理 | `cleanupExpiredTasks` | 每天 02:00 物理删除 7 天前已完成/取消任务、30 天前已终止任务 |
+| 任务管理 | `cleanupStuckTasks` | 每小时将 PROCESSING 超 30min、PENDING 超 24h 的僵死任务标记为失败并清除缓存 |
+| 任务管理 | `cleanupStuckPredEvalLogs` | 预测/评估日志过期清理 |
+| 订单 | `expireOrders` | 待支付订单超 30 分钟自动取消 |
+| 订单 | `completeExpiredOrders` | 过期订单自动完成 |
+| 订单 | `retryFailedRefunds` | 退款失败记录重试 |
+| 会员 | `resetMonthlyQuota` | 每月 1 日重置 VIP 月度配额 |
+| 会员 | `sendExpireReminders` | 会员到期前提醒 |
+| 会员 | `processExpiredMembers` | 会员过期状态处理 |
+| 营销 | `expireUserCoupons` | 用户优惠券过期失效 |
+| 营销 | `autoRenew` | 自动续费扣款 |
+| 消息 | `cleanupExpiredMessages` | 过期消息清理 |
+| 消息 | `refreshUnreadCountCache` | 未读数缓存刷新 |
+| 消息 | `processDelayedPush` | 延迟消息推送 |
+| 公告 | `sendScheduledAnnouncements` | 定时公告发送 |
 
 ## 九、配置管理
 
@@ -452,18 +450,16 @@ flowchart LR
 
 ## 十、统一响应与错误处理
 
-响应格式：
+响应字段：
 
-```json
-{
-  "code": "00000",
-  "msg": "一切ok",
-  "data": { ... },
-  "traceId": "xxx",
-  "timestamp": 1234567890,
-  "errors": []
-}
-```
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| code | string | 5 位错误码，`00000` 表示成功 |
+| msg | string | 提示信息 |
+| data | object | 业务数据 |
+| traceId | string | 链路追踪 ID，取自 MDC |
+| timestamp | long | 服务器时间戳 |
+| errors | array | 字段校验错误明细 |
 
 错误码采用 5 位字符串编码，与 Go/Python 端保持一致：
 
@@ -530,9 +526,18 @@ sequenceDiagram
 | 文件存储 | 策略模式适配多后端 | minio/local/nginx-static 统一抽象 |
 | 导入导出 | Handler 模式 + 通用策略 | 各模块只需实现接口，复用框架 |
 | 对象转换 | MapStruct | 编译期生成，避免运行时反射开销 |
-| 定时任务 | @Scheduled + XXL-Job | 轻量场景用 @Scheduled，分布式场景用 XXL-Job |
+| 定时任务 | XXL-Job | 分布式调度、Web 管理控制台，与 Go/Python 端共享调度配置 |
 | 日志 | SLF4J + Logback | 详见 [日志架构设计](../../02-系统架构/07-日志架构设计.md) |
 | 监控 | Micrometer + Prometheus | 指标采集，与 Go 端命名统一 |
-| 收藏统一抽象 | `sys_favorite` 表 + `target_type` 区分 | 替代分散的 `sys_algorithm_favorite` 表和 `is_favorite` 字段，新模块接入收藏只需声明 targetType，无需重复开发表/接口/组件；is_favorite 作为冗余缓存由 FavoriteSyncService 同步维护，复用已有索引 |
-| 推荐引擎选型 | 规则匹配引擎（当前） | 规则可解释性强、可快速上线、管理员可视化配置；架构预留机器学习模型扩展点，后续可在 RuleMatchEngine 位置替换为模型推理 |
+| 收藏统一抽象 | `sys_favorite` 表 + `target_type` 区分 | 新模块接入收藏只需声明 targetType，无需重复开发表/接口/组件 |
+| 推荐引擎选型 | 规则匹配引擎 | 规则可解释性强、可快速上线、管理员可视化配置场景→算法映射 |
 | VIP 配额校验 | 拦截器模式 + Redis 原子扣减 | 处理前预校验、处理成功后实扣减、失败不扣减，保证配额与处理结果一致性；Redis 原子操作（DECR + 阈值判断）防止并发超扣 |
+
+## 十四、可观测性
+
+| 维度 | 实现 |
+|------|------|
+| 指标采集 | Micrometer + Prometheus，业务计数器由各 Service 通过 MeterRegistry 递增：`dehaze_prediction_total`、`dehaze_evaluation_total`、`dehaze_task_total`、`dehaze_file_upload_total`；Python 调用耗时 `dehaze_python_call_duration` |
+| 链路追踪 | TraceIdFilter 生成 TraceID 写入 MDC，异步线程通过 TaskDecorator 透传（详见第六节） |
+| 日志 | Logback 结构化日志（traceId/method/path/status/duration），详见 [日志架构设计](../../02-系统架构/07-日志架构设计.md) |
+| 访问日志 | RequestLogFilter 每请求一条 INFO ACCESS 日志 |

@@ -1,6 +1,6 @@
-# Python 算法服务 (dehaze-python)
+# Python 后端架构 (dehaze-python)
 
-图像去雾系统的 Python 后端，基于 PyTorch 构建深度学习模型，FastAPI 作为异步 Web 服务框架提供 API 接口，通过 Uvicorn 进行生产级部署。是整个图像去雾系统最核心的部分，同时向外提供 API 接口以供 Java/Go 后端调用。
+图像去雾系统的 Python 后端，基于 FastAPI + Uvicorn 构建，承担**双重角色**：一是与 Java/Go 对等的业务后端（提供用户/权限/订单/会员/数据集/算法管理等完整业务 API），二是算法服务（基于 PyTorch 承载深度学习推理与图像质量评估）。两种职责同进程部署，共用同一套分层架构与基础设施。
 
 > 构建/运行/测试说明见项目根目录的 `README.md`。
 
@@ -114,10 +114,10 @@ dehaze-python/
 │   ├── infrastructure/               # 基础设施层（logging/cache/metrics/mq/job）
 │   ├── models/                        # 数据模型（entity/schema/enum）
 │   ├── repository/                    # Repository 层（BaseRepository 泛型基类）
-│   ├── router/                        # 路由层（18 个 APIRouter + WebSocket）
-│   ├── service/                       # 服务层（prediction_service/task_tracker/file_service/storage/task等）
-│   └── utils/                         # 工具层（password/file/datetime/tree/image_processor等）
-├── algorithm/                         # 去雾算法模块（29 种算法）
+│   ├── router/                        # 路由层（30+ 个业务 APIRouter + health/metrics + WebSocket）
+│   ├── service/                       # 服务层（prediction/task_tracker/file/storage/import_export/member/order 等）
+│   └── utils/                         # 工具层（password/file/datetime/tree 等）
+├── algorithm/                         # 去雾算法模块（30 种算法，平铺结构）
 ├── config.py                          # 算法模块配置
 ├── migrations/                        # Alembic 数据库迁移
 ├── tests/                             # 测试
@@ -128,17 +128,25 @@ dehaze-python/
 
 ## 三、核心模块
 
-### 3.1 算法模块
+### 3.1 业务模块概览
 
-`algorithm/` 目录下包含 29 种去雾算法模型（如 RIDCP、WPXNet、Dehamer 等），每个算法有独立的模型定义和依赖配置。通过 `importPath` 配置动态加载不同算法模型。
+Python 端实现与 Java/Go 对等的完整业务层，按领域分组如下（各模块的需求规格、API 契约与实现详见 [03-模块设计](../../03-模块设计/)）：
 
-模型设计核心思路：
+| 领域 | 覆盖模块 |
+|------|---------|
+| 认证授权 | 登录/登出、Session、API Key、验证码 |
+| 系统管理 | 用户、角色、部门、菜单、字典 |
+| 去雾业务 | 图像输入、算法选择、预测处理、效果对比、评估指标、任务、收藏、预设、推荐 |
+| 数据与算法管理 | 数据集、数据项、算法管理、导入导出 |
+| 商业化 | 会员、订单、套餐、优惠券、支付、退款、通知设置 |
+| 消息通知 | 站内消息、消息模板、公告、反馈、WebSocket 推送 |
+| 文件与运维 | 文件管理、健康检查、监控指标、客户端日志 |
 
-1. 引入从清晰无雾图像训练得到离散码本，封装具有原有图像色彩和结构的高质量先验知识，构建双分支神经网络结构
-2. 设计金字塔空洞邻域注意力编码器，聚合不同层级的特征，实现不同尺度的特征重用
-3. 将基于 Transformer 的邻域注意力和基于卷积的通道注意力结合，提取图像全局特征，通过特征融合模块对两个分支提取的特征进行融合
+### 3.2 算法模块
 
-### 3.2 算法管线
+`algorithm/` 目录平铺 30 种去雾算法（如 RIDCP、WPXNet、Dehamer 等），每个算法独立目录，统一以 `run.py` 为入口、由 `model_loader.py` 加载，通过 `importPath` 配置动态选择。各算法的模型结构与论文依据详见[算法/学术论文文档](../算法/学术论文文档.md)。
+
+### 3.3 算法管线
 
 ```mermaid
 flowchart LR
@@ -169,7 +177,7 @@ flowchart LR
 
 WPXNet 预查询命中后直接返回结果，跳过 PyTorch 推理，响应时延从秒级降至毫秒级。
 
-### 3.4 存储抽象层
+### 3.5 存储抽象层
 
 策略模式适配多存储后端：
 
@@ -181,7 +189,7 @@ flowchart LR
 
 `sys_file` 表只存 `object_name` + `storage`，URL 运行时拼接不落库。
 
-### 3.5 通用导入导出
+### 3.6 通用导入导出
 
 Handler 模式 + 通用策略实现：
 
@@ -195,7 +203,7 @@ Handler 模式 + 通用策略实现：
 | 数据集管理 | DatasetExportHandler | -（仅导出） |
 | 算法管理 | AlgorithmExportHandler | AlgorithmImportHandler |
 
-### 3.6 消息队列
+### 3.7 消息队列
 
 采用 MQ 优先 + asyncio.Task fallback 双通道架构：
 
@@ -224,7 +232,7 @@ flowchart TB
 
 与 Java/Go 端共享 `dehaze.tasks` (direct exchange) 交换机。
 
-### 3.7 图像特征分析服务
+### 3.8 图像特征分析服务
 
 为推荐管理模块提供图像特征提取能力，输出 7 维结构化特征向量供推荐引擎规则匹配：
 
@@ -242,7 +250,7 @@ flowchart TB
 
 **放在 Python 端而非 Java/Go 的理由**：图像特征分析依赖 PyTorch 预训练模型（场景分类）和 OpenCV 图像处理（暗通道、边缘检测、直方图），这些库为 Python 生态原生；复用已有推理管线和 GPU 资源，避免在 Java/Go 端重复引入图像处理依赖。
 
-### 3.8 评估指标计算服务
+### 3.9 评估指标计算服务
 
 为效果对比模块提供去雾效果量化评估能力，计算 5 项专业指标：
 
@@ -256,7 +264,7 @@ flowchart TB
 
 评估结果按 `{algorithmId}:{predMd5}:{refMd5}` 永久缓存，相同图片+相同算法的评估请求命中缓存直接返回。Java/Go 后端通过算法管理模块的 EvaluationService 委托调用此服务。
 
-### 3.9 推荐生成完整管线
+### 3.10 推荐生成完整管线
 
 ```mermaid
 flowchart LR
@@ -317,9 +325,10 @@ flowchart LR
 | ORM | SQLAlchemy 2.0 + 异步模式 | 声明式模型、AsyncSession |
 | 数据库驱动 | aiomysql（异步）+ PyMySQL（同步） | 异步为主，同步用于 Alembic 迁移 |
 | 数据库迁移 | Alembic (纯 CLI) | 版本化 Schema 管理 |
+| 文档数据库 | Motor（MongoDB 异步） | 登录审计、业务操作审计（白名单驱动） |
 | 对象存储 | MinIO Python SDK | 文件/图像存储 |
 
-事务管理采用"请求边界 = 事务边界"模型，由 `get_db()` / `get_db_session()` 统一管理 commit/rollback。Router 层持有事务边界，Service 层做业务编排不 commit，Repository 层只做 flush。
+事务管理采用"请求边界 = 事务边界"模型，由 `get_db()` / `get_db_session()` 统一管理 commit/rollback。Router 层持有事务边界，Service 层做业务编排不 commit，Repository 层只做 flush。**约束**：每个 Router handler 对应一个工作单元，跨多 Repository 的原子提交须由同一 handler 内的单一 Session 包裹；Service 不得自行开新 Session 或跨请求持有 Session，以避免事务作用域泄漏。
 
 Repository 层引入泛型 `BaseRepository[T]`，提供标准 CRUD 操作，子类只需声明 `model` 类型即可继承全部能力。
 
@@ -332,7 +341,12 @@ flowchart LR
     subgraph Relational["MySQL (结构化数据)"]
         User["用户/角色/部门/菜单/字典"]
         Business["数据集/算法/任务"]
-        Log["操作日志/登录日志/推理评估日志"]
+        PredEvalLog["预测日志/评估日志"]
+    end
+
+    subgraph Document["MongoDB (审计日志)"]
+        LoginLog["登录审计 (login_log)"]
+        AuditLog["业务操作审计 (audit_log，白名单驱动)"]
     end
 
     subgraph Object["多存储后端"]
@@ -469,7 +483,7 @@ sequenceDiagram
 | 认证 | Redis Session | Spring Security + Session | 自研中间件 + Session | Session 机制互通 |
 | 权限 | RBAC (Depends + @require_permission) | RBAC (@PreAuthorize) | RBAC (中间件) | 权限标识一致 |
 | 错误码 | 5 位字符串 (A0/B0/C0) | 5 位字符串 (A0/B0/C0) | 5 位字符串 (A0/B0/C0) | 完全一致 |
-| 响应格式 | `{code, msg, data}` | `{code, msg, data}` | `{code, msg, data}` | 完全一致 |
+| 响应格式 | `{code, msg, data, traceId}` | `{code, msg, data, traceId}` | `{code, msg, data, traceId}` | 完全一致 |
 | WebSocket | FastAPI 原生 + Redis Pub/Sub | STOMP + SockJS | - | Python 跨 Worker 已实现 |
 | 对象存储 | 多存储后端抽象 (minio/local/nginx-static) | MinIO / 阿里云 OSS | 通过 API | 三端统一 StorageService 抽象 |
 | 限流/防重 | 装饰器 (Redis 计数) | 注解 + Redis | 中间件 | 功能对等 |
@@ -483,9 +497,10 @@ sequenceDiagram
 | Web 框架 | FastAPI >= 0.115 | ASGI 异步 HTTP 路由、中间件、WebSocket |
 | ASGI 服务器 | uvicorn >= 0.32 | 高性能异步服务器 |
 | ORM | SQLAlchemy >= 2.0 | 异步 ORM，声明式模型 |
+| 文档数据库 | Motor (MongoDB) >= 3.6 | 异步 MongoDB 客户端，登录/操作审计日志 |
 | 缓存 | redis-py (asyncio) >= 6.4 | 异步 Redis 客户端 |
 | 对象存储 | MinIO Python SDK >= 7.2 | 文件/图像存储 |
-| AI 推理 | PyTorch + torchvision >= 2.9 | 深度学习推理引擎 |
+| AI 推理 | PyTorch >= 2.9 + torchvision >= 0.24 | 深度学习推理引擎 |
 | 消息队列 | aio-pika (RabbitMQ) >= 9.4 | 异步任务分发（MQ 优先 + asyncio.Task fallback） |
 | 定时任务 | pyxxl (XXL-Job) >= 0.4 | 分布式定时任务调度 |
 | 配置管理 | pydantic-settings >= 2.0 | 环境变量绑定、多环境配置 |
@@ -499,7 +514,7 @@ sequenceDiagram
 | 决策 | 选择 | 理由 |
 |------|------|------|
 | Web 框架 | FastAPI | ASGI 异步框架，原生 async/await，自动 OpenAPI 文档 |
-| AI 推理 | PyTorch | 深度学习主流框架，29 种算法模型支持 |
+| AI 推理 | PyTorch | 深度学习主流框架，30 种算法模型支持 |
 | 预测流程 | 责任链模式（拦截器链） | 可插拔预查询/缓存，不修改主流程 |
 | 任务分发 | MQ 优先 + asyncio.Task fallback | RabbitMQ 持久化保证 + 进程内降级兜底 |
 | 存储 | 策略模式适配多后端 | minio/local/nginx-static 统一抽象 |
@@ -510,3 +525,4 @@ sequenceDiagram
 | 日志 | Python logging + JSON 结构化 | 按日期分目录，按大小分片，保留 30 天 |
 | 监控 | Prometheus（HTTP/GPU/推理/任务四大类指标） | 与 Java/Go 端命名统一 |
 | 图像特征分析放 Python 端 | 复用 PyTorch + OpenCV 生态 | 场景分类依赖预训练模型，暗通道/边缘/直方图依赖 OpenCV，Java/Go 端引入这些依赖成本高且无法复用 GPU；Python 端复用已有推理管线和模型缓存 |
+| 业务与算法同进程部署 | 共用 FastAPI 分层与基础设施 | 算法密集场景下业务请求常触发推理，同进程避免跨服务 HTTP 往返与模型权重重复加载；代价是 GPU 节点同时承载业务职责，业务侧故障会波及推理——通过异步任务（MQ + TaskTracker）将长耗时推理与同步业务请求解耦，并对推理入口做超时/降级兜底 |

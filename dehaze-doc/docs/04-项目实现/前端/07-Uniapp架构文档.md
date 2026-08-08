@@ -1,6 +1,6 @@
 # Uniapp 多端 (dehaze-uniapp)
 
-基于 uni-app (Vue 3 + Vite) 构建的多端图像去雾应用，一份代码可编译到 H5、微信小程序、支付宝小程序、抖音小程序、快手小程序等 15+ 个平台。
+基于 uni-app (Vue 3 + Vite) 构建的多端图像去雾应用，一份代码可编译到 H5、微信小程序、支付宝小程序、百度小程序、抖音小程序及 App（Android/iOS）。
 
 > 构建运行、测试命令、部署说明见项目根目录 [README](/README.md)。
 
@@ -294,15 +294,6 @@ L3 沉浸页统一骨架（`src/layout/ImmersiveLayout.vue`），提供三区域
 | 订单 | pages/personal/orders（我的订单） | pages/system/order（订单管理） |
 | 消息 | pages/messages（消息列表）+ pages/notify（消息设置） | pages/system/message（消息管理） |
 
-### 5.1 user-center → profile 重命名
-
-原第 5 Tab "我的"路径 `pages/user-center/index` 统一改为 `pages/profile/index`，涉及：
-- `pages.json` 中 pages 数组路径 + tabBar `list[4].pagePath`
-- 目录从 `pages/user-center/` 迁移至 `pages/profile/`
-- 全局所有引用该路径的跳转代码同步更新
-
-tabBar 图标 `profile.png` / `profile-active.png` 保持不变。
-
 ## 6. 权限模型
 
 管理模块采用 Pinia auth store 的 `hasPerm` / `hasRole` 方法实现权限判断。权限标识格式为 `sys:模块:*`，各模块对应权限码如下：
@@ -336,13 +327,13 @@ tabBar 图标 `profile.png` / `profile-active.png` 保持不变。
 
 ## 7. 设计稿还原策略
 
-本次改造对齐《移动端界面设计规范》与 dehaze-mobile 设计稿，采用差异化还原策略：
+对齐《移动端界面设计规范》与 dehaze-mobile 设计稿，各页面采用差异化还原策略：
 
 | 页面 | 策略 | 说明 |
 |------|------|------|
 | 首页（home） | 融合策略 | 保留现有 8 区块丰富度，仅做品牌显示优化与跳转修正，不照搬设计稿 |
 | 工具/去雾/消息/我的 | 重构策略 | 按设计稿（tools-v2/dehaze-flow/messages/profile.html）重构布局与交互 |
-| 登录/注册 | 视觉对齐 | 已有 AuthShell 组件视觉已对齐设计稿，无需修改 |
+| 登录/注册 | 视觉对齐 | AuthShell 组件视觉对齐设计稿 |
 
 全局约束：
 - 复用 `variables.scss` 令牌（`$color-*` / `$spacing-*` / `$radius-*` / `$font-*` / `$shadow-*`），不引入设计稿 `--dehaze-*` token
@@ -356,29 +347,22 @@ tabBar 图标 `profile.png` / `profile-active.png` 保持不变。
 - **带入衔接**：工具页与算法浏览页通过明确的操作按钮将用户带入去雾处理流程
 - **返回路径完整**：所有 L2 页面通过 AppNavbar 返回按钮返回，所有 L3 页面通过 ImmersiveLayout 内置返回按钮返回
 
-## 9. 核心功能
+## 9. 核心能力主线
 
-- Session 认证：登录/注册/权限校验，基于 Pinia auth store + `dehaze-sdk-js` AuthAPI
-- 首页展示：品牌 Hero、快捷入口、数据统计、特色能力（融合设计稿保留 8 区块）
-- 图像输入：本地上传、相机拍照、样张画廊、历史记录
-- 算法选择：算法列表、参数配置、算法说明、智能推荐
-- 去雾处理：实时进度、结果预览、参数调节
-- 效果对比：并排对比、叠加对比、放大镜、滤镜、指标评估（均使用 ImmersiveLayout 骨架）
-- 批量处理：批量上传（≤20 张）、批量进度、结果对比/下载
-- 指标管理：评估指标历史查询、筛选、对比
-- 收藏管理：跨模块统一收藏、"我的收藏"聚合页
-- 推荐管理：算法推荐展示、推荐理由、一键使用（个人）+ 规则编辑（管理）
-- 数据集：公开/共享浏览 + 图片网格（个人）+ CRUD（管理）
-- 消息系统：消息列表 + 分类筛选 + 未读角标 + 消息设置 + 公告/模板/群发（管理）
-- 系统管理：用户、部门、角色、菜单、字典、算法审核、数据集管理、任务管理、会员管理、套餐管理、订单管理、反馈管理、消息管理、推荐管理
+- 认证与会话：登录/注册/权限校验，Pinia auth store 维护会话态，请求自动注入会话头，失效统一重登
+- 去雾主链路：图像输入 → 算法选择 → 参数配置 → 实时处理 → 效果对比，工具页与算法库均可一键带入流程
+- 效果对比套件：并排/叠加/放大镜/滤镜/指标评估 5 种模式，统一复用 ImmersiveLayout 骨架
+- 批量与指标：批量处理（≤20 张）+ 评估指标历史查询/筛选/对比
+- 商业化：会员、套餐、订单、额度（个人视角）+ 后台管理（管理视角）
+- 系统管理：14 个子模块（用户/角色/菜单/字典/部门/算法/数据集/任务/会员/套餐/订单/反馈/消息/推荐），按 `sys:模块:*` 权限码过滤
 
 ## 10. 关键技术决策
 
 | 决策 | 选择 | 理由 |
 |------|------|------|
-| 跨端框架 | uni-app (Vue 3) + Vite | 一份代码编译 H5 / 微信 / 支付宝 / 抖音 / 快手等 15+ 平台 |
+| 跨端框架 | uni-app (Vue 3) + Vite | 一份代码编译 H5 / 微信 / 支付宝 / 百度 / 抖音小程序及 App（Android/iOS） |
 | UI 框架 | Vue 3 `<script setup>` SFC + TypeScript | Composition API 类型安全，代码组织清晰 |
-| UI 组件库 | 自建业务组件 + SvgIcon（vite-plugin-svg-icons） | 已移除 uview-plus，仅保留业务自建组件；图标走本地 svg sprite（`src/assets/icons/`），按需引入零冗余 |
+| UI 组件库 | 自建业务组件 + SvgIcon（vite-plugin-svg-icons） | 业务自建组件，不依赖第三方 UI 库；图标走本地 svg sprite（`src/assets/icons/`），按需引入零冗余 |
 | 状态管理 | Pinia | Vue 3 官方推荐，模块化 store，支持 SSR |
 | 样式方案 | SCSS + variables.scss 全局令牌 | 统一的颜色/间距/圆角/字号/阴影变量，保证视觉一致性 |
 | 样式单位 | rpx（750 设计稿基准） | uni-app 原生响应式单位，多端自适应 |
@@ -386,14 +370,15 @@ tabBar 图标 `profile.png` / `profile-active.png` 保持不变。
 | 路由配置 | pages.json 单一来源 | uni-app 标准路由配置，集中管理页面路径/tabBar/easycom |
 | 权限控制 | Pinia auth store（hasPerm/hasRole） | 页面级和操作级权限判断，管理入口组整体过滤 |
 | 视角拆分 | 个人/管理严格分离为独立页面 | 避免条件渲染混乱，职责清晰，代码可维护 |
-| 网络层 | dehaze-sdk-js + uni-adapter | 通过 uni.request 适配器接入 SDK，禁止直接 axios/fetch |
+| 网络层 | dehaze-sdk-js + uni-adapter | 通过 uni.request 适配器接入 SDK；请求拦截器注入 `X-Session-Id`，会话失效错误码（A0230/A0231/A0301）统一触发 reLaunch 重登并防重入 |
 | 路由守卫 | uni.addInterceptor 拦截 + 白名单 | 轻量级未登录拦截，无需引入额外路由库 |
-| 组件导入 | easycom 自动导入 | u-* / up-* 组件和 App* 前缀组件按需自动导入，无需手动注册 |
+| 组件导入 | easycom 自动导入 | `autoscan` 自动扫描 + `^App(.*)` 映射至 `@/components/layout/App$1.vue`，布局组件按需自动导入 |
+| 日志采集 | dehaze-sdk-js Logger | trace_id 透传、采样限流、崩溃补报；契约与各端实现见 [08-SDK架构文档.md](./08-SDK架构文档.md) |
 
 ## 11. 多端适配
 
 - 移动端竖屏优化，适配手机和平板
-- H5、微信小程序、支付宝小程序、百度小程序、抖音小程序、快手小程序等 15+ 平台编译
+- H5、微信小程序、支付宝小程序、百度小程序、抖音小程序、App（Android/iOS）多端编译
 - 通过 `pages.json` 和 `manifest.json` 配置各端差异
 - 5 个 L1 Tab：首页、工具、去雾、消息、我的（通过原生 tabBar 实现）
 - 状态栏高度通过 `uni.getSystemInfoSync().statusBarHeight` 动态适配各端差异
