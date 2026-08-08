@@ -22,14 +22,14 @@ type ImageFeatureAnalysisVO struct {
 
 // RecommendedAlgorithmVO 推荐算法项
 type RecommendedAlgorithmVO struct {
-	RecommendationId  int64   `json:"recommendationId"`
-	AlgorithmID       int64   `json:"algorithmId"`
-	AlgorithmName     string  `json:"algorithmName"`
-	MatchScore        int     `json:"matchScore"`
-	Reason            string  `json:"reason"`
-	Rating            float64 `json:"rating"`
-	EstimatedTime     int     `json:"estimatedTime"`
-	EffectDescription string  `json:"effectDescription"`
+	RecommendationId  int64    `json:"recommendationId"`
+	AlgorithmID       int64    `json:"algorithmId"`
+	AlgorithmName     string   `json:"algorithmName"`
+	MatchScore        int      `json:"matchScore"`
+	Reason            string   `json:"reason"`
+	Rating            *float64 `json:"rating"`
+	EstimatedTime     *int     `json:"estimatedTime"`
+	EffectDescription string   `json:"effectDescription"`
 }
 
 // RecommendationRuleVO 推荐规则

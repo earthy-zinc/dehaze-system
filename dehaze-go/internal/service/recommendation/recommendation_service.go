@@ -200,8 +200,6 @@ func (s *RecommendationService) GetAlgorithmRecommendations(ctx context.Context,
 			AlgorithmName:     alg.Name,
 			MatchScore:        matchScore,
 			Reason:            s.buildReason(sceneType, alg.Name),
-			Rating:            3.5,
-			EstimatedTime:     5000,
 			EffectDescription: fmt.Sprintf("该算法在%s场景下表现稳定", sceneType),
 		})
 	}
