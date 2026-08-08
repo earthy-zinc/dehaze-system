@@ -20,9 +20,13 @@
 | `/api/v1/users/{userId}` | PUT | 修改用户 | `sys:user:edit` | F-UM-003 |
 | `/api/v1/users/{ids}` | DELETE | 删除用户（支持批量） | `sys:user:delete` | F-UM-004 |
 | `/api/v1/users/{userId}/password` | PATCH | 重置用户密码 | `sys:user:password:reset` | F-UM-005 |
-| `/api/v1/users/{userId}/status` | PATCH | 修改用户状态 | - | F-UM-006 |
+| `/api/v1/users/{userId}/status` | PATCH | 修改用户状态 | `sys:user:status` | F-UM-006 |
 
 > **导入导出接口**：用户模块的导出（`GET/POST /api/v1/users/_export`）、导入（`POST /api/v1/users/_import`）、模板下载（`GET /api/v1/users/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §7 通用CRUD接口模板，模块特定逻辑由 `UserExportHandler`/`UserImportHandler` 实现，详见 [后端实现.md](./后端实现.md)。
+
+> **删除策略**：用户删除为逻辑删除（`deleted = 1`），不物理删除；被删除用户不可登录。超级管理员不可删除/禁用/修改自己状态。
+
+> **初始密码**：新增/导入用户使用系统配置 `default_password`（可配置），首次登录强制改密。
 
 ## 3. 权限标识汇总
 
@@ -34,6 +38,7 @@
 | `sys:user:edit` | 编辑用户 |
 | `sys:user:delete` | 删除用户 |
 | `sys:user:password:reset` | 重置密码 |
+| `sys:user:status` | 修改用户状态 |
 
 ## 4. 业务错误码
 
@@ -42,7 +47,8 @@
 | `A0111` | 用户名已存在 | 新增/导入时用户名重复 |
 | `A0200` | 用户不存在 | 编辑/删除不存在的用户 |
 | `A0201` | 用户已禁用 | 禁用用户尝试登录 |
-| `A0230` | 超级管理员不可删除 | 尝试删除超级管理员 |
-| `A0231` | 超级管理员不可禁用 | 尝试禁用超级管理员 |
+| `A0230` | 超级管理员不可删除 | 尝试删除超级管理员（ROOT_USER_PROTECTED） |
+| `A0231` | 超级管理员不可禁用 | 尝试禁用超级管理员（ROOT_USER_PROTECTED） |
+| `A0232` | 超级管理员不可自锁 | 超级管理员尝试修改自己状态（ROOT_USER_PROTECTED） |
 
 

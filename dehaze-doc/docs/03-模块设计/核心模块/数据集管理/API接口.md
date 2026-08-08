@@ -24,6 +24,7 @@
 | `/api/v1/datasets` | GET | 分页查询根级数据集列表（支持 keyword/type/status 筛选，返回树形结构） | - | F-M06-001 |
 | `/api/v1/datasets/children/{parentId}` | GET | 获取子数据集列表（树形懒加载） | - | F-M06-001 |
 | `/api/v1/datasets/options` | GET | 获取数据集下拉选项（仅启用，树形 label-value） | - | F-M06-001 |
+| `/api/v1/datasets/evaluation-options` | GET | 测试集选项查询（按 `taskType` 过滤，仅返回含清晰图 GT 的数据集） | - | 算法评估支撑（[需求规格 §2.11.3](./需求规格.md)） |
 | `/api/v1/datasets/{id}` | GET | 获取数据集详情（含统计信息，缓存优化 &lt;200ms） | - | F-M06-003 |
 | `/api/v1/datasets` | POST | 新增数据集 | `sys:dataset:add` | F-M06-002 |
 | `/api/v1/datasets/{id}` | PUT | 修改数据集 | `sys:dataset:edit` | F-M06-002 |
@@ -31,6 +32,8 @@
 | `/api/v1/datasets/batch` | DELETE | 批量删除数据集 | `sys:dataset:delete` | F-M06-002 |
 
 > **注意**：数据集导出功能通过统一任务接口 `/api/v1/tasks` 提交 `dataset_export` 任务，见 [2.4 任务接口](#24-任务接口)；`task_type` 维度筛选为本次改造目标（见 [需求规格 §1.1](./需求规格.md)）。
+>
+> **evaluation-options 返回字段**：`datasetId`、`datasetName`、`taskType`、`itemCount`，仅返回含清晰图（`type=clear`）GT 的数据集，供算法评估入口选择测试集。
 
 ### 2.2 数据项接口
 

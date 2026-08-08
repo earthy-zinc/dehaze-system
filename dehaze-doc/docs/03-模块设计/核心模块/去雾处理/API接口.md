@@ -20,7 +20,8 @@
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/prediction` | POST | 提交图像处理预测任务（异步） | - | F-M04-001 |
-| `/api/v1/prediction/{taskId}` | GET | 轮询任务状态（1=处理中/2=已完成/3=失败） | - | F-M04-001 |
+| `/api/v1/prediction/{taskId}` | GET | 轮询任务状态（1=处理中/2=已完成/3=失败/4=已取消） | - | F-M04-001 |
+| `/api/v1/prediction/{taskId}/cancel` | POST | 取消预测任务（终止推理+回滚配额，幂等） | - | F-M04-001 |
 | `/api/v1/prediction/logs` | GET | 预测日志列表（分页，可按算法筛选） | - | F-M04-007 |
 | `/api/v1/prediction/batch` | POST | 批量处理（一次提交多张图片，上限按会员等级动态计算） | - | F-M04-002 |
 | `/api/v1/prediction/quota` | GET | 查询用户剩余处理次数 | - | F-M04-006 |
@@ -49,7 +50,7 @@
 | 字段 | 类型 | 返回时机 |
 |------|------|---------|
 | `logId` | Long | POST + GET |
-| `status` | Integer | POST + GET（1=处理中/2=已完成/3=失败） |
+| `status` | Integer | POST + GET（1=处理中/2=已完成/3=失败/4=已取消） |
 | `resultUrl` | String | GET status=2 时 |
 | `resultThumbnailUrl` | String | GET status=2 时 |
 | `time` | Integer | GET status=2/3 时（处理耗时毫秒） |
@@ -124,3 +125,5 @@
 | `A0230` | token无效或已过期 | 未登录访问 |
 
 > 预测任务执行失败不通过错误码返回——任务状态通过 `status=3(失败)` + `errorMessage` 表达；Python 算法轮询超时（300s）时任务标记为失败。
+>
+> **取消接口幂等**：对已完成/已失败/已取消的任务调用取消接口，直接返回当前状态，不重复回滚配额；仅对处理中的任务执行终止推理与配额回滚，状态置为 `4=已取消`。

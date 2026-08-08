@@ -63,24 +63,25 @@ AI 对话 API 采用**双轨并行**设计：
 
 **事件流程示例**：
 
-```
-message.start ─────────────────────────────────────────────────────
-    │
-    ├── content_block.start (index=0, type=thinking) ── 推理模型思考过程
-    │       └── content_block.delta (thinking_delta) × N
-    │       └── content_block.stop (index=0)
-    │
-    ├── content_block.start (index=1, type=tool_use) ── 工具调用
-    │       └── content_block.delta (input_json_delta) × N ── 参数流式增量
-    │       └── content_block.stop (index=1)
-    │
-    │   thought ── 推理步骤完成（含 observation）
-    │
-    ├── content_block.start (index=2, type=text) ── 回复文本
-    │       └── content_block.delta (text_delta) × N
-    │       └── content_block.stop (index=2)
-    │
-message.end ──────────────────────────────────────────────────────
+```mermaid
+sequenceDiagram
+    participant Server
+    participant Client
+    Server->>Client: message.start
+    Note over Server,Client: index=0 type=thinking 推理模型思考过程
+    Server->>Client: content_block.start (index=0, type=thinking)
+    Server->>Client: content_block.delta (thinking_delta) × N
+    Server->>Client: content_block.stop (index=0)
+    Note over Server,Client: index=1 type=tool_use 工具调用
+    Server->>Client: content_block.start (index=1, type=tool_use)
+    Server->>Client: content_block.delta (input_json_delta) × N 参数流式增量
+    Server->>Client: content_block.stop (index=1)
+    Server->>Client: thought 推理步骤完成（含 observation）
+    Note over Server,Client: index=2 type=text 回复文本
+    Server->>Client: content_block.start (index=2, type=text)
+    Server->>Client: content_block.delta (text_delta) × N
+    Server->>Client: content_block.stop (index=2)
+    Server->>Client: message.end
 ```
 
 > **与 OpenAI/Claude 兼容 API 的映射**：内部 API 的 content_block 事件可完整映射到 Claude 的 `content_block_start`/`content_block_delta`/`content_block_stop`，也可映射到 OpenAI 的 `delta.content`/`delta.tool_calls`。兼容 API 的格式转换在 Controller 层完成，不丢失语义。

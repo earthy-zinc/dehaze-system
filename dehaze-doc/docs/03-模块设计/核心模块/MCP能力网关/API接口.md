@@ -65,14 +65,10 @@
     "namespaces": [
       {"name": "image_processing", "description": "图像处理工具：去雾、增强、超分辨率等", "tool_count": 6},
       {"name": "evaluation", "description": "图像质量评估工具：PSNR/SSIM/主观评价", "tool_count": 4},
-      {"name": "algorithm", "description": "算法查询与管理工具", "tool_count": 7},
-      {"name": "dataset", "description": "数据集查询工具", "tool_count": 8},
-      {"name": "file", "description": "文件信息查询工具（不含上传）", "tool_count": 4},
-      {"name": "knowledge", "description": "知识库检索工具", "tool_count": 4},
-      {"name": "member", "description": "用户与会员信息查询工具", "tool_count": 4},
-      {"name": "system", "description": "系统状态查询工具", "tool_count": 3}
+      {"name": "algorithm", "description": "算法管理工具（查询类为 resource）", "tool_count": 2},
+      {"name": "knowledge", "description": "知识库检索工具", "tool_count": 2}
     ],
-    "total_tools": 40
+    "total_tools": 14
   }
 }
 ```
@@ -113,9 +109,11 @@
 }
 ```
 
-> **推荐用法**：AI 对话模块的 before_model 钩子先调用 `tools/list`（无 expand）获取命名空间摘要（~160 tokens），根据用户意图仅展开 1-2 个匹配的命名空间（如用户说"去雾"→ 展开 `image_processing`），减少 93% 上下文占用。
+> **推荐用法**：AI 对话模块的 before_model 钩子先调用 `tools/list`（无 expand）获取命名空间摘要（~80 tokens），根据用户意图仅展开 1-2 个匹配的命名空间（如用户说"去雾"→ 展开 `image_processing`），减少 93% 上下文占用。
 
-### 2.3 tools/search
+### 2.3 tools/search（网关扩展方法）
+
+> **非 MCP 标准方法**，是网关扩展方法。MCP 标准方法仅含 `initialize`/`tools/list`/`tools/call`/`resources/*`/`prompts/*`/`notifications/*`。`tools/search` 是网关为支持按需加载而扩展的方法，AI 对话模块通过 JSON-RPC `method: "tools/search"` 调用。
 
 **功能**：LLM 按自然语言关键字搜索匹配的工具，返回匹配工具的**完整定义**。用于按需加载——LLM 不预先知道所有工具的完整 definition，只在需要时搜索并加载。参考 OpenAI Agents SDK `ToolSearchTool` 和 Anthropic `search_tools` 设计。
 
@@ -147,7 +145,7 @@
   "id": 9,
   "result": {
     "matched": 3,
-    "total_tools": 40,
+    "total_tools": 14,
     "tools": [
       {
         "name": "evaluate_image",
@@ -220,7 +218,7 @@
 }
 ```
 
-> **异步调用**：后端返回 `task_id` 时，网关返回 `{"content":[{"type":"text","text":"task_id: xxx.operating."}],"isError":false}`，AI 对话模块进入 async_wait 中断。
+> **异步调用**：后端返回 `task_id` 时，网关透传 `{"content":[{"type":"text","text":"task_id: xxx.operating."}],"isError":false}`，AI 对话模块持久化 checkpoint（task_id → 会话映射）后进入 async_wait 中断，等待任务管理模块/算法服务回调恢复。
 
 ### 2.5 resources/list
 
@@ -346,7 +344,24 @@
 
 ---
 
-## 3. JSON-RPC 2.0 错误码
+## 3. 管理接口（REST）
+
+> 以下为后台管理（F-M07-008）的 REST 端点，区别于上述 MCP 协议方法（JSON-RPC over `/mcp`）。管理接口需管理员角色，用于工具注册表维护与过滤规则在线配置。实现详见 [后端实现-工具注册.md](./后端实现-工具注册.md) §2.3-§2.4。
+
+| 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
+|------|------|---------|---------|-----------|
+| `/admin/mcp/refresh` | POST | 手动刷新：立即重新读取 OpenAPI 并更新注册表，返回 diff（新增/删除/变更） | 管理员 | F-M07-008 |
+| `/admin/mcp/tools` | GET | 查询当前已注册的 tool/resource/prompt 列表（含 name、description、对应后端 API 路径、命名空间归属） | 管理员 | F-M07-008 |
+| `/admin/mcp/filter-config` | GET | 查询过滤规则配置（路径白名单、标签过滤、显式排除列表等） | 管理员 | F-M07-008 |
+| `/admin/mcp/filter-config` | PUT | 保存过滤规则配置，保存后触发即时刷新（无需重启网关） | 管理员 | F-M07-008 |
+
+**`POST /admin/mcp/refresh` 响应**：返回刷新结果，含 `toolsCount`、`resourcesCount`、`promptsCount`、`diff`（added/removed/changed 列表）。无变更时 `diff` 为空且不推送 `notifications/tools/list_changed`。
+
+**过滤规则配置**：`PUT /admin/mcp/filter-config` 保存后通过 Redis Pub/Sub 广播至多实例，各实例重新加载规则并刷新（多实例一致性策略详见 [后端实现-架构与公共.md](./后端实现-架构与公共.md)）。
+
+---
+
+## 4. JSON-RPC 2.0 错误码
 
 | 错误码 | 含义 | 适用场景 |
 |--------|------|---------|
@@ -355,6 +370,10 @@
 | -32601 | Method not found | 调用的方法不存在 |
 | -32602 | Invalid params | 参数校验失败 |
 | -32603 | Internal error | 网关内部错误 |
-| -32001 | Rate limited | 工具调用频率超限 |
+| -32001 | Authentication failed | Bearer Token 无效/过期/已吊销 |
 | -32002 | Tool not found | 调用的 tool 不存在或用户无权访问 |
-| -32003 | Backend unavailable | 后端 API 不可用 | 超时/网络/5xx |
+| -32003 | Permission denied | VIP 等级不足，无权访问该 tool |
+| -32004 | Rate limited | 网关层工具调用频率超限 |
+| -32005 | Backend unavailable | 后端不可用/超时/5xx |
+
+> 后端业务错误（HTTP 400/401/403/404/429）不使用 JSON-RPC error，而是通过 `content + isError: true` 返回（工具调用已成功派发，后端返回业务错误）。上表错误码仅用于网关/协议级错误。

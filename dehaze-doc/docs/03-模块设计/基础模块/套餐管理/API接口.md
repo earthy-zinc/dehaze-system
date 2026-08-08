@@ -39,6 +39,12 @@
 | `/api/v1/packages/coupons/batch` | POST | 批量发放优惠券 | package:coupon:distribute |
 | `/api/v1/packages/coupons/{id}` | PUT | 修改优惠券 | package:coupon:edit |
 | `/api/v1/packages/coupons/{ids}` | DELETE | 删除优惠券 | package:coupon:delete |
+| `/api/v1/packages/promotions/page` | GET | 促销活动分页列表 | - |
+| `/api/v1/packages/promotions` | POST | 创建促销活动 | package:promotion:add |
+| `/api/v1/packages/promotions/{id}` | PUT | 修改促销活动 | package:promotion:edit |
+| `/api/v1/packages/promotions/{id}/status` | PUT | 促销活动上架/下架 | package:promotion:edit |
+| `/api/v1/packages/promotions/{id}` | DELETE | 删除促销活动 | package:promotion:delete |
+| `/api/v1/packages/promotions/{id}/packages` | PUT | 关联套餐（维护活动-套餐关联） | package:promotion:edit |
 
 ## 3. 权限标识汇总
 
@@ -52,6 +58,9 @@
 | package:coupon:distribute | 优惠券批量发放 | 按钮显示 + 接口校验 |
 | package:coupon:edit | 优惠券编辑 | 按钮显示 + 接口校验 |
 | package:coupon:delete | 优惠券删除 | 按钮显示 + 接口校验 |
+| package:promotion:add | 促销活动创建 | 按钮显示 + 接口校验 |
+| package:promotion:edit | 促销活动编辑/上下架/关联套餐 | 按钮显示 + 接口校验 |
+| package:promotion:delete | 促销活动删除 | 按钮显示 + 接口校验 |
 
 ## 4. 状态枚举
 
@@ -81,12 +90,32 @@
 
 > 有效期天数由套餐的 `period_days` 字段控制（月卡 30 / 季卡 90 / 年卡 365 为常见配置，非固定值）。
 
+### 4.4 促销活动状态
+
+| 状态值 | 说明 |
+|--------|------|
+| 1 | 上架：活动参与价格计算 |
+| 0 | 下架：活动不参与价格计算 |
+
+### 4.5 促销活动类型
+
+| 值 | 说明 | 折扣方式 |
+|----|------|---------|
+| `discount` | 限时折扣 | percent 百分比 / fixed 固定金额 |
+| `new_user` | 新用户专享 | percent / fixed（购买时校验新用户） |
+| `holiday` | 节日促销 | percent / fixed |
+| `full_reduction` | 满减活动 | 满减档位（满 X 减 Y，支持多档位） |
+
+### 4.6 续费叠加最大有效期
+
+续费叠加最大有效期上限 **3 年（1095 天）**，叠加后超过 1095 天的购买请求拒绝。
+
 ## 5. 业务错误码
 
 | 错误码 | 说明 | 触发场景 |
 |--------|------|---------|
 | `A0401` | 请求资源不存在 | 套餐不存在、优惠券不存在 |
-| `A0500` | 业务异常 | 促销价高于原价、计费周期非法、套餐名称已被占用、套餐已下架、套餐存在订单无法删除、套餐参与进行中促销无法下架、优惠券已领完、超过限领数量、优惠券不适用该套餐、优惠券状态无效 |
+| `A0500` | 业务异常 | 促销价高于原价、计费周期非法、套餐名称已被占用、套餐已下架、套餐存在订单无法删除、套餐参与进行中促销无法下架、优惠券已领完、超过限领数量、优惠券不适用该套餐、优惠券状态无效、新用户专享套餐非新用户购买、续费叠加超过最大有效期（1095 天）、体验券每人限领 1 次 |
 | `A0230` | token无效或已过期 | 未登录访问 |
 
 > **说明**：具体错误信息随响应返回（如"促销价不能高于原价""套餐名称已被历史记录占用，无法重复创建"等），错误码统一为 `A0401`/`A0500`。
