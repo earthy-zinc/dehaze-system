@@ -124,6 +124,137 @@
             android:name=".ui.input.InputHistoryActivity"
             android:exported="false"
             android:theme="@style/Theme.Dehaze" />
+
+        <!-- 批量处理 Activity（L2） -->
+        <activity
+            android:name=".ui.batch.BatchActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 指标管理 Activity（L2） -->
+        <activity
+            android:name=".ui.metrics_manage.MetricsManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 消息详情 Activity (L2) -->
+        <activity
+            android:name=".ui.messages.detail.MessagesDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- ========== 管理模块 Activity（sys:* 权限控制） ========== -->
+
+        <!-- 算法管理 Activity -->
+        <activity
+            android:name=".ui.system.AlgorithmManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 数据集管理 Activity -->
+        <activity
+            android:name=".ui.system.DatasetManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 任务管理 Activity（管理侧全用户任务） -->
+        <activity
+            android:name=".ui.system.TaskManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 会员管理 Activity -->
+        <activity
+            android:name=".ui.system.MemberManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 套餐管理 Activity -->
+        <activity
+            android:name=".ui.system.PackageManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 订单管理 Activity -->
+        <activity
+            android:name=".ui.system.OrderManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 反馈评价管理 Activity -->
+        <activity
+            android:name=".ui.system.FeedbackManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 消息管理 Activity -->
+        <activity
+            android:name=".ui.system.MessageManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 推荐管理 Activity -->
+        <activity
+            android:name=".ui.system.RecommendManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- ===== 个人中心 L2 页面 ===== -->
+        <activity
+            android:name=".ui.personal.FilesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <activity
+            android:name=".ui.personal.OrdersActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <activity
+            android:name=".ui.personal.QuotaActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <activity
+            android:name=".ui.personal.MemberActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <activity
+            android:name=".ui.personal.PackageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <activity
+            android:name=".ui.personal.FeedbackActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <activity
+            android:name=".ui.personal.FavoritesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <activity
+            android:name=".ui.personal.SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <activity
+            android:name=".ui.personal.HelpActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <activity
+            android:name=".ui.personal.AboutActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- ===== 消息设置 L2 页面 ===== -->
+        <activity
+            android:name=".ui.notify.NotifyActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
     </application>
 
 </manifest>

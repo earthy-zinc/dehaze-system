@@ -85,7 +85,7 @@ export const ErrorCodes = {
 // 错误信息映射
 export const ErrorMessages: Record<string, string> = {
   [ErrorCodes.FILE_TOO_LARGE]: "图片大小超过限制（最大10MB），请选择较小的图片",
-  [ErrorCodes.UNSUPPORTED_FORMAT]: "不支持该图片格式，仅支持JPG和PNG格式",
+  [ErrorCodes.UNSUPPORTED_FORMAT]: "不支持该图片格式，仅支持JPG、PNG和WEBP格式",
   [ErrorCodes.RESOLUTION_LOW]: "图片分辨率过低，建议至少 640×480",
   [ErrorCodes.NETWORK_ERROR]: "网络连接失败，请检查网络后重试",
   [ErrorCodes.UPLOAD_FAILED]: "上传失败，请重试",
@@ -102,8 +102,8 @@ export const FileSizeLimit = {
   COMPRESS_QUALITY: 85, // 压缩质量 85%
 } as const;
 
-// 支持的图片格式（仅JPG和PNG）
-export const SupportedFormats = ["jpg", "jpeg", "png"] as const;
+// 支持的图片格式（JPG/PNG/WEBP）
+export const SupportedFormats = ["jpg", "jpeg", "png", "webp"] as const;
 
 // 最低分辨率要求
 export const MinResolution = {

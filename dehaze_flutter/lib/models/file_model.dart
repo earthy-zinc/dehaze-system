@@ -2,24 +2,26 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'file_model.g.dart';
 
-/// 文件上传响应
+/// 文件信息
 ///
-/// 对应后端 SysFile：POST /files 返回。
+/// 对齐 JS SDK FileInfo 字段。
 @JsonSerializable()
-class FileUploadResponse {
-  const FileUploadResponse({
+class FileInfo {
+  const FileInfo({
     required this.id,
     required this.url,
     required this.name,
     this.type,
     this.objectName,
     this.size,
-    this.path,
+    this.sizeBytes,
+    this.storage,
     this.md5,
+    this.createTime,
   });
 
-  factory FileUploadResponse.fromJson(Map<String, dynamic> json) =>
-      _$FileUploadResponseFromJson(json);
+  factory FileInfo.fromJson(Map<String, dynamic> json) =>
+      _$FileInfoFromJson(json);
 
   /// 文件 ID
   final int id;
@@ -30,21 +32,52 @@ class FileUploadResponse {
   /// 文件名
   final String name;
 
-  /// 文件类型/MIME 类型
+  /// 文件类型（扩展名）
   final String? type;
 
-  /// 对象存储路径
-  @JsonKey(name: 'objectName')
+  /// 文件存储对象名（与环境无关）
   final String? objectName;
 
   /// 文件大小（格式化显示，如 "2.44MB"）
   final String? size;
 
-  /// 文件路径
-  final String? path;
+  /// 文件大小（原始字节数）
+  final int? sizeBytes;
 
-  /// MD5 值
+  /// 存储后端标识（minio / local / nginx-static）
+  final String? storage;
+
+  /// 文件 MD5 值
   final String? md5;
 
-  Map<String, dynamic> toJson() => _$FileUploadResponseToJson(this);
+  /// 创建时间
+  final String? createTime;
+
+  Map<String, dynamic> toJson() => _$FileInfoToJson(this);
+}
+
+/// 文件查询参数
+///
+/// 对齐 JS SDK FileQuery。
+class FileQuery {
+  const FileQuery({
+    this.pageNum,
+    this.pageSize,
+    this.keywords,
+  });
+
+  /// 页码
+  final int? pageNum;
+
+  /// 每页条数
+  final int? pageSize;
+
+  /// 关键字搜索
+  final String? keywords;
+
+  Map<String, dynamic> toJson() => {
+        if (pageNum != null) 'pageNum': pageNum,
+        if (pageSize != null) 'pageSize': pageSize,
+        if (keywords != null) 'keywords': keywords,
+      };
 }

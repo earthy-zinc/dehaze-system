@@ -9,8 +9,8 @@ import {
   Alert,
   Linking,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { MainLayout } from '@/layout';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { AppHeader } from '@/layout';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import EmptyState from '@/components/EmptyState';
 import Icon from '@/components/Icon';
@@ -35,6 +35,7 @@ const POLL_INTERVAL = 3000;
 const MAX_POLL_DURATION = 10 * 60 * 1000;
 
 const TaskScreen: React.FC = () => {
+  const navigation = useNavigation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<
@@ -346,7 +347,8 @@ const TaskScreen: React.FC = () => {
   ];
 
   return (
-    <MainLayout title="任务中心">
+    <View style={styles.screenContainer}>
+      <AppHeader title="任务中心" showBack onBackPress={() => navigation.goBack()} />
       <View style={styles.container}>
         {/* 任务类别筛选 */}
         <View style={styles.categoryBar}>
@@ -439,11 +441,15 @@ const TaskScreen: React.FC = () => {
           }
         />
       </View>
-    </MainLayout>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background.secondary,
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.secondary,

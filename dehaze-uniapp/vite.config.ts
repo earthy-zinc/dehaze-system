@@ -1,9 +1,13 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import uni from "@dcloudio/vite-plugin-uni";
+import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
 import { defineConfig, loadEnv } from "vite";
+// 构建时注入应用版本号（供前端日志 app_version 字段）
+import { version as APP_VERSION } from "./package.json";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const pathSrc = path.resolve(__dirname, "src");
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -12,7 +16,21 @@ export default defineConfig(({ mode }) => {
   const apiHost = env.VITE_API_HOST || "http://127.0.0.1:8989";
 
   return {
-    plugins: [uni()],
+    plugins: [
+      uni(),
+      createSvgIconsPlugin({
+        // 需要缓存的图标文件夹（svg sprite 自动注册）
+        iconDirs: [path.resolve(pathSrc, "assets/icons")],
+        // symbolId 格式：SvgIcon 组件内拼接 #icon-${name}
+        symbolId: "icon-[name]",
+      }),
+    ],
+    // 注入应用信息：供前端日志 app_version / env 使用（与 dehaze-front-react 的 __APP_INFO__ 一致）
+    define: {
+      __APP_INFO__: JSON.stringify({
+        pkg: { version: APP_VERSION },
+      }),
+    },
     server: {
       open: false,
       port: 5176,

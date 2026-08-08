@@ -1,7 +1,7 @@
 <template>
   <view class="feature-card" @click="handleClick">
     <view class="tool-icon-wrapper">
-      <u-icon :name="tool.icon" size="28" color="#3b82f6" />
+      <SvgIcon :name="tool.icon" size="28" color="#3b82f6" />
     </view>
     <text class="tool-title">{{ tool.title }}</text>
     <text class="tool-desc">{{ tool.description }}</text>
@@ -10,6 +10,7 @@
 
 <script lang="ts" setup>
 import type { ToolItem } from "@/pages/home/data/homeData";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 
 interface Props {
   tool: ToolItem;
@@ -65,7 +66,7 @@ const handleClick = () => {
   transform: scale(1.1);
 }
 
-.feature-card:hover .tool-icon-wrapper :deep(.u-icon) {
+.feature-card:hover .tool-icon-wrapper :deep(.svg-icon) {
   color: #ffffff !important;
 }
 

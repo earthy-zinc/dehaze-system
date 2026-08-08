@@ -2,7 +2,7 @@
   <view class="camera-area">
     <view class="camera-placeholder">
       <view class="camera-icon">
-        <u-icon name="camera" size="56" color="#9ca3af" />
+        <SvgIcon name="camera" size="56" color="#9ca3af" />
       </view>
       <text class="camera-text">点击下方按钮打开相机</text>
       <text class="camera-hint">拍摄需要去雾的图片</text>
@@ -10,7 +10,7 @@
 
     <view class="camera-actions">
       <view class="action-btn" @click="handleOpenCamera">
-        <u-icon name="camera-fill" size="24" color="#ffffff" />
+        <SvgIcon name="camera-fill" size="24" color="#ffffff" />
         <text class="action-text">打开相机</text>
       </view>
     </view>
@@ -22,11 +22,17 @@
         <text class="processing-text">处理中...</text>
       </view>
     </view>
+
+    <!-- 错误提示 -->
+    <view v-if="errorMsg" class="camera-error">
+      <text>{{ errorMsg }}</text>
+    </view>
   </view>
 </template>
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import type { ImageData } from "../data/imageInputData";
 import { getImageInfo } from "../utils/image";
 
@@ -35,26 +41,52 @@ const emit = defineEmits<{
 }>();
 
 const processing = ref(false);
+const errorMsg = ref<string | null>(null);
 
-/** 打开相机 */
 const handleOpenCamera = () => {
+  errorMsg.value = null;
+
+  // 先检查权限
+  uni.getSetting({
+    success: (setting) => {
+      if (setting.authSetting["scope.camera"] === false) {
+        // 之前被拒绝过，引导去设置
+        uni.showModal({
+          title: "需要相机权限",
+          content: "请在设置中开启相机权限，用于拍摄需要去雾的图片",
+          confirmText: "去设置",
+          success: (res) => {
+            if (res.confirm) {
+              uni.openSetting({});
+            }
+          },
+        });
+        return;
+      }
+
+      // 未拒绝或已授权，直接调起相机
+      openCamera();
+    },
+    fail: () => {
+      openCamera();
+    },
+  });
+};
+
+const openCamera = () => {
   uni.chooseImage({
     count: 1,
     sizeType: ["compressed"],
     sourceType: ["camera"],
     success: async (res) => {
-      // chooseImage 各端实际返回数组，类型声明为单值/数组联合，统一归一化
       const tempFilePath = res.tempFilePaths[0];
-      const tempFiles = Array.isArray(res.tempFiles)
-        ? res.tempFiles
-        : [res.tempFiles];
+      const tempFiles = Array.isArray(res.tempFiles) ? res.tempFiles : [res.tempFiles];
       const tempFile = tempFiles[0];
       if (!tempFilePath || !tempFile) return;
 
       processing.value = true;
 
       try {
-        // 获取图片信息
         const imageInfo = await getImageInfo(tempFilePath);
 
         const imageData: ImageData = {
@@ -67,10 +99,8 @@ const handleOpenCamera = () => {
 
         emit("capture", imageData);
       } catch {
-        uni.showToast({
-          title: "图片处理失败，请重试",
-          icon: "none",
-        });
+        errorMsg.value = "图片处理失败，请重试";
+        uni.showToast({ title: "图片处理失败，请重试", icon: "none" });
       } finally {
         processing.value = false;
       }
@@ -88,10 +118,8 @@ const handleOpenCamera = () => {
           },
         });
       } else if (err.errMsg !== "chooseImage:fail cancel") {
-        uni.showToast({
-          title: "打开相机失败",
-          icon: "none",
-        });
+        errorMsg.value = "打开相机失败";
+        uni.showToast({ title: "打开相机失败", icon: "none" });
       }
     },
   });
@@ -134,6 +162,18 @@ const handleOpenCamera = () => {
 .camera-hint {
   font-size: 24rpx;
   color: #9ca3af;
+}
+
+.camera-error {
+  margin-top: 16rpx;
+  padding: 16rpx 24rpx;
+  background: #fef2f2;
+  border-radius: 12rpx;
+
+  text {
+    font-size: 26rpx;
+    color: #ef4444;
+  }
 }
 
 .camera-actions {

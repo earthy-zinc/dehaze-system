@@ -5,7 +5,7 @@
       <scroll-view scroll-x class="tabs-scroll">
         <view class="tabs-wrapper">
           <view
-            v-for="tab in CATEGORY_TABS"
+            v-for="tab in categoryTabs"
             :key="tab.key"
             class="tab-item"
             :class="{ active: activeCategory === tab.key }"
@@ -17,8 +17,14 @@
       </scroll-view>
     </view>
 
+    <!-- 加载状态 -->
+    <view v-if="loading" class="loading-container">
+      <up-loading-icon mode="circle" size="32" color="#9ca3af" />
+      <text class="loading-text">加载中...</text>
+    </view>
+
     <!-- 样例图片网格 -->
-    <view v-if="filteredSamples.length > 0" class="sample-grid">
+    <view v-else-if="filteredSamples.length > 0" class="sample-grid">
       <SampleCard
         v-for="sample in filteredSamples"
         :key="sample.id"
@@ -32,21 +38,19 @@
       <up-empty mode="search" text="暂无样例图片" />
     </view>
 
-    <!-- 加载状态 -->
-    <view v-if="loading" class="loading-overlay">
-      <up-loading-icon mode="circle" size="32" color="#3b82f6" />
+    <!-- 快速体验提示 -->
+    <view class="quick-tip">
+      <text class="tip-text">点击任意图片即可快速体验去雾效果</text>
     </view>
   </view>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import SampleCard from "./SampleCard.vue";
 import type { SampleImage, FogLevel, ImageData } from "../data/imageInputData";
-import {
-  CATEGORY_TABS,
-  getSampleImagesByCategory,
-} from "../data/imageInputData";
+import { CATEGORY_TABS } from "../data/imageInputData";
+import { fetchSampleImages } from "../services/sampleService";
 import { getImageInfo } from "../utils/image";
 
 const emit = defineEmits<{
@@ -55,28 +59,40 @@ const emit = defineEmits<{
 
 const activeCategory = ref<FogLevel>("all");
 const loading = ref(false);
+const allSamples = ref<SampleImage[]>([]);
 
-/** 过滤后的样例图片 */
+const categoryTabs = CATEGORY_TABS;
+
 const filteredSamples = computed(() => {
-  return getSampleImagesByCategory(activeCategory.value);
+  if (activeCategory.value === "all") return allSamples.value;
+  return allSamples.value.filter((s) => s.category === activeCategory.value);
 });
 
-/** 切换分类 */
+const loadSamples = async () => {
+  loading.value = true;
+  try {
+    allSamples.value = await fetchSampleImages(activeCategory.value);
+  } catch {
+    allSamples.value = [];
+  } finally {
+    loading.value = false;
+  }
+};
+
 const handleCategoryChange = (category: FogLevel) => {
   activeCategory.value = category;
 };
 
-/** 选择样例图片 */
+watch(activeCategory, () => {
+  loadSamples();
+});
+
 const handleSampleClick = async (sample: SampleImage) => {
   loading.value = true;
-
   uni.showLoading({ title: "加载中..." });
 
   try {
-    // 下载远程图片到本地
     const downloadResult = await downloadImage(sample.url);
-
-    // 获取图片信息
     const imageInfo = await getImageInfo(downloadResult.tempFilePath);
 
     const imageData: ImageData = {
@@ -88,23 +104,15 @@ const handleSampleClick = async (sample: SampleImage) => {
     };
 
     emit("select", imageData);
-
-    uni.showToast({
-      title: "样例图片加载成功",
-      icon: "success",
-    });
+    uni.showToast({ title: "样例图片加载成功", icon: "success" });
   } catch {
-    uni.showToast({
-      title: "加载失败，请重试",
-      icon: "none",
-    });
+    uni.showToast({ title: "加载失败，请重试", icon: "none" });
   } finally {
     loading.value = false;
     uni.hideLoading();
   }
 };
 
-/** 下载图片 */
 const downloadImage = (url: string): Promise<{ tempFilePath: string }> => {
   return new Promise((resolve, reject) => {
     uni.downloadFile({
@@ -120,6 +128,10 @@ const downloadImage = (url: string): Promise<{ tempFilePath: string }> => {
     });
   });
 };
+
+onMounted(() => {
+  loadSamples();
+});
 </script>
 
 <style lang="scss" scoped>
@@ -171,6 +183,19 @@ const downloadImage = (url: string): Promise<{ tempFilePath: string }> => {
   white-space: nowrap;
 }
 
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 0;
+}
+
+.loading-text {
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: #9ca3af;
+}
+
 .sample-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -181,21 +206,17 @@ const downloadImage = (url: string): Promise<{ tempFilePath: string }> => {
   padding: 80rpx 0;
 }
 
-.loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+.quick-tip {
   display: flex;
-  align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 20rpx;
-  z-index: 10;
+  padding: 24rpx 0;
 }
 
-/* 响应式适配 */
+.tip-text {
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
 @media (min-width: 768px) {
   .sample-grid {
     grid-template-columns: repeat(3, 1fr);

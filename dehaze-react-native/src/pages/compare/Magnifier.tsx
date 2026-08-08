@@ -16,8 +16,8 @@ import {
   LayoutChangeEvent,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/routes/types';
-import { MainLayout } from '@/layout';
+import type { DehazeStackParamList } from '@/routes/types';
+import { ImmersiveHeader } from '@/layout/components';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
@@ -25,7 +25,7 @@ import CompareEmptyState from '@/components/CompareEmptyState';
 import { controlBarStyles, controlButtonStyles } from './styles/compareControls';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Magnifier'>;
+type Props = NativeStackScreenProps<DehazeStackParamList, 'CompareMagnifier'>;
 
 type DisplayMode = 'original' | 'processed' | 'compare';
 
@@ -77,16 +77,18 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
   // 缺少必要参数时显示空状态（例如从底部 Tab 直接进入）
   if (!originalUrl || !processedUrl) {
     return (
-      <MainLayout title="放大镜对比" showBack>
-        <CompareEmptyState onPress={() => navigation.navigate('ImageInput')} />
-      </MainLayout>
+      <View style={styles.screenContainer}>
+        <ImmersiveHeader title="放大镜对比" />
+        <CompareEmptyState onPress={() => navigation.goBack()} />
+      </View>
     );
   }
 
   return (
-    <MainLayout title="放大镜对比" showBack>
+    <View style={styles.screenContainer}>
+      <ImmersiveHeader title="放大镜对比" />
       <CompareModeSwitcher
-        current="Magnifier"
+        current="CompareMagnifier"
         navigation={navigation}
         params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
       />
@@ -163,11 +165,15 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
         <Icon name="search" size={12} color={theme.colors.text.tertiary} />
         <Text style={styles.tipText}>拖动放大镜查看局部细节</Text>
       </View>
-    </MainLayout>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
   imageContainer: {
     flex: 1,
     margin: theme.spacing.md,

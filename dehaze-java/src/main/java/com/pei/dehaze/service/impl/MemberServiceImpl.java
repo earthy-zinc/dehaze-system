@@ -79,7 +79,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     @Override
     public MemberProfileVO getProfile() {
         Long userId = SecurityUtils.getUserId();
-        SysMember member = getMemberOrThrow(userId);
+        SysMember member = getMemberOrCreate(userId);
         SysUser user = userMapper.selectById(userId);
         SysMemberBenefit benefit = memberBenefitService.getByLevelCode(member.getLevelCode());
         List<SysMemberBenefit> allBenefits = memberBenefitService.listAllOrdered();
@@ -294,7 +294,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
             throw new BusinessException(ResultCode.SIGN_IN_ALREADY);
         }
 
-        SysMember member = getMemberOrThrow(userId);
+        SysMember member = getMemberOrCreate(userId);
         long oldGrowth = member.getGrowthValue();
         long newGrowth = oldGrowth + totalGrowth;
         member.setGrowthValue(newGrowth);
@@ -591,11 +591,13 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         }
     }
 
-    private SysMember getMemberOrThrow(Long userId) {
+    private SysMember getMemberOrCreate(Long userId) {
         SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
                 .eq(SysMember::getUserId, userId));
         if (member == null) {
-            throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
+            initMember(userId);
+            member = this.getOne(new LambdaQueryWrapper<SysMember>()
+                    .eq(SysMember::getUserId, userId));
         }
         return member;
     }

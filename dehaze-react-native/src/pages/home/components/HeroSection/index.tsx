@@ -1,20 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
-import Button from '@/components/Button';
-import Icon from '@/components/Icon';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useFadeSlideAnimation } from '@/hooks/useAnimation';
 import { theme } from '@/theme';
+import { gradientColors } from '@/theme/colors';
 
 interface HeroSectionProps {
   onStartPress: () => void;
-  onDatasetPress: () => void;
 }
 
-const HeroSection: React.FC<HeroSectionProps> = ({
-  onStartPress,
-  onDatasetPress,
-}) => {
+const HeroSection: React.FC<HeroSectionProps> = ({ onStartPress }) => {
   const { isMobile, fontScale, containerPadding, height } = useResponsive();
   
   const { animatedStyle } = useFadeSlideAnimation({
@@ -23,9 +20,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   });
 
   // 响应式字体大小
-  const titleFontSize = isMobile ? 36 : 48 * fontScale;
-  const subtitleFontSize = isMobile ? 22 : 28 * fontScale;
-  const descFontSize = isMobile ? 16 : 18 * fontScale;
+  const titleFontSize = isMobile ? 40 : 48 * fontScale;
+  const subtitleFontSize = isMobile ? 18 : 22 * fontScale;
 
   return (
     <View style={[styles.container, { minHeight: height * 0.85 }]}>
@@ -42,7 +38,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
             { fontSize: titleFontSize, lineHeight: titleFontSize * theme.typography.lineHeights.hero },
           ]}
         >
-          图像去雾
+          AI 图像去雾
         </Text>
         <Text
           style={[
@@ -50,36 +46,24 @@ const HeroSection: React.FC<HeroSectionProps> = ({
             { fontSize: subtitleFontSize, lineHeight: subtitleFontSize * theme.typography.lineHeights.title },
           ]}
         >
-          专业级图像处理系统
-        </Text>
-        <Text
-          style={[
-            styles.heroDescription,
-            { fontSize: descFontSize, lineHeight: descFontSize * theme.typography.lineHeights.body },
-          ]}
-        >
-          采用先进的深度学习算法，一键还原清晰视界{'\n'}
-          从图像输入到效果评估的完整闭环体验
+          一键清晰，还原真实视界
         </Text>
 
-        <View style={[
-          styles.ctaContainer,
-          isMobile ? styles.ctaContainerMobile : null,
-        ]}>
-          <Button
-            title="立即开始"
-            onPress={onStartPress}
-            variant="primary"
-            icon={<Icon name="arrow-right" size={16} color={theme.colors.text.inverse} />}
-            style={isMobile ? styles.ctaButtonMobile : styles.ctaButton}
-          />
-          <Button
-            title="浏览数据集"
-            onPress={onDatasetPress}
-            variant="secondary"
-            style={isMobile ? styles.ctaButtonMobile : styles.ctaButton}
-          />
-        </View>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={onStartPress}
+          style={styles.ctaWrapper}
+        >
+          <LinearGradient
+            colors={gradientColors.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.ctaButton}
+          >
+            <Ionicons name="flash" size={20} color="#fff" />
+            <Text style={styles.ctaText}>开始去雾</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </Animated.View>
     </View>
   );
@@ -105,35 +89,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   heroSubtitle: {
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.lg,
+    fontWeight: theme.typography.weights.regular,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xl,
     letterSpacing: theme.typography.letterSpacing.normal,
     textAlign: 'center',
   },
-  heroDescription: {
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.xxl,
-    maxWidth: 600,
-  },
-  ctaContainer: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+  ctaWrapper: {
     width: '100%',
-  },
-  ctaContainerMobile: {
-    flexDirection: 'column',
-    alignItems: 'center',
+    maxWidth: 320,
+    borderRadius: theme.layout.borderRadius.full,
+    ...theme.layout.shadows.lg,
   },
   ctaButton: {
-    minWidth: 160,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: theme.spacing.xl,
+    borderRadius: theme.layout.borderRadius.full,
+    gap: 8,
   },
-  ctaButtonMobile: {
-    width: '100%',
-    maxWidth: 280,
+  ctaText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
 

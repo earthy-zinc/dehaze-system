@@ -24,6 +24,7 @@ interface DatasetListProps {
   onEdit?: (dataset: Dataset) => void;
   onDelete?: (dataset: Dataset) => void;
   className?: string;
+  browseMode?: boolean;
 }
 
 // 递归树节点渲染

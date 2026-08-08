@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { View, Text } from "@tarojs/components";
+import Taro from "@tarojs/taro";
 import { Tag, Button, Popup, Loading } from "@taroify/core";
 import type { Algorithm } from "dehaze-sdk-js";
 import { AlgorithmAPI } from "dehaze-sdk-js";
@@ -23,6 +24,8 @@ interface AlgorithmDetailPopupProps {
   onToggleStatus: (algo: Algorithm) => void;
   onDelete: (algo: Algorithm) => void;
   onOpenAudit: (algo: Algorithm, approved: boolean) => void;
+  /** 浏览版使用：是否显示"使用该算法"按钮 */
+  browseMode?: boolean;
 }
 
 const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
@@ -36,11 +39,11 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
   onToggleStatus,
   onDelete,
   onOpenAudit,
+  browseMode = true,
 }) => {
   const [monitorData, setMonitorData] = useState<MonitorData | null>(null);
   const [monitorLoading, setMonitorLoading] = useState(false);
 
-  // 加载监控数据
   const fetchMonitorData = useCallback(async (id: number) => {
     if (!id) return;
     setMonitorLoading(true);
@@ -48,13 +51,12 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
       const data = await AlgorithmAPI.getMonitorData(id);
       setMonitorData(data);
     } catch {
-      // 忽略错误，不显示监控数据即可
+      // 忽略错误
     } finally {
       setMonitorLoading(false);
     }
   }, []);
 
-  // 当弹窗打开且有算法ID时，拉取监控数据
   React.useEffect(() => {
     if (open && algorithm?.id) {
       setMonitorData(null);
@@ -62,7 +64,6 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
     }
   }, [open, algorithm?.id, fetchMonitorData]);
 
-  /** 渲染详情项 */
   const renderDetailItem = (label: string, value: React.ReactNode) => (
     <View className="detail-item">
       <Text className="detail-label">{label}</Text>
@@ -70,11 +71,19 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
     </View>
   );
 
-  /** 格式化耗时 */
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
   };
+
+  const handleUseAlgorithm = () => {
+    if (!algorithm) return;
+    Taro.setStorageSync("selected_algorithm", JSON.stringify(algorithm));
+    onClose();
+    Taro.navigateTo({ url: "/pages/processing/index" });
+  };
+
+  const hasManageActions = canAudit || canEdit || canDelete;
 
   return (
     <Popup
@@ -119,7 +128,6 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
             {renderDetailItem("计算量(FLOPs)", algorithm.flops)}
           </View>
 
-          {/* 监控数据 */}
           <View className="detail-section">
             <Text className="section-title">运行监控</Text>
             {monitorLoading ? (
@@ -145,20 +153,27 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
             )}
           </View>
 
-          {(algorithm.status === 2 || algorithm.auditBy != null) && (
-            <View className="detail-section">
-              <Text className="section-title">审核信息</Text>
-              {renderDetailItem("审核人", algorithm.auditBy)}
-              {renderDetailItem("审核时间", algorithm.auditTime)}
-              {renderDetailItem("审核备注", algorithm.auditRemark)}
-            </View>
-          )}
+          {hasManageActions &&
+            algorithm.auditBy != null && (
+              <View className="detail-section">
+                <Text className="section-title">审核信息</Text>
+                {renderDetailItem("审核人", algorithm.auditBy)}
+                {renderDetailItem("审核时间", algorithm.auditTime)}
+                {renderDetailItem("审核备注", algorithm.auditRemark)}
+              </View>
+            )}
 
           {renderDetailItem("创建时间", algorithm.createTime)}
 
           {/* 操作按钮 */}
           <View className="detail-footer">
-            {algorithm.status === 2 && canAudit && (
+            {browseMode && (
+              <Button block color="primary" onClick={handleUseAlgorithm}>
+                使用该算法
+              </Button>
+            )}
+
+            {algorithm.status === 3 && canAudit && (
               <>
                 <Button
                   block
@@ -182,7 +197,7 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
                 </Button>
               </>
             )}
-            {algorithm.status === 3 && canEdit && (
+            {algorithm.status === 4 && canEdit && (
               <Button
                 block
                 color="warning"
@@ -192,7 +207,7 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
                 停用算法
               </Button>
             )}
-            {algorithm.status === 4 && (
+            {algorithm.status === 5 && (
               <>
                 {canEdit && (
                   <Button
@@ -219,7 +234,7 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
                 )}
               </>
             )}
-            {algorithm.status === 0 && canDelete && (
+            {(algorithm.status === 1 || algorithm.status === 6) && canDelete && (
               <Button
                 block
                 color="danger"

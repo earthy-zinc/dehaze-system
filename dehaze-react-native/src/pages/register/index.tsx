@@ -5,7 +5,6 @@
  * - 用户名 + 昵称 + 密码 + 确认密码 + 图形验证码
  * - 注册成功后自动登录（后端返回 sessionId），跳转 Home
  */
-import { useAuth } from '@/store';
 import { AuthAPI } from 'dehaze-sdk-js';
 import type { CaptchaResult } from 'dehaze-sdk-js';
 import React, { useEffect, useState } from 'react';
@@ -25,10 +24,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { colors } from '@/theme/colors';
 import { useNavigation } from '@react-navigation/native';
+import { spacing, layout } from '@/theme/spacing';
 
 const RegisterScreen: React.FC = () => {
-  const { login } = useAuth();
   const navigation = useNavigation<any>();
   const [username, setUsername] = useState('');
   const [nickname, setNickname] = useState('');
@@ -313,16 +313,16 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: spacing.lg,
     paddingHorizontal: 20,
   },
   card: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: 'white',
-    borderRadius: 24,
+    backgroundColor: colors.background.primary,
+    borderRadius: layout.borderRadius.xxl,
     padding: 28,
-    shadowColor: '#1e3a8a',
+    shadowColor: colors.primaryDark,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
     shadowRadius: 24,
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   logoContainer: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   logoGradient: {
     width: 68,
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#3B82F6',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -350,31 +350,31 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 34,
     fontWeight: 'bold',
-    color: 'white',
+    color: colors.text.inverse,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text.primary,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: colors.text.tertiary,
     letterSpacing: 0.5,
   },
   form: {
     width: '100%',
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
     marginLeft: 4,
   },
   inputWrap: {
@@ -382,10 +382,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 52,
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border.light,
     borderRadius: 14,
     paddingHorizontal: 14,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background.secondary,
   },
   inputIcon: {
     marginRight: 10,
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1f2937',
+    color: colors.text.primary,
     paddingVertical: 0,
   },
   eyeBtn: {
@@ -414,8 +414,8 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
+    borderColor: colors.border.light,
+    backgroundColor: colors.background.secondary,
     overflow: 'hidden',
   },
   captchaImage: {
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
     height: 40,
   },
   buttonWrap: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     borderRadius: 14,
     overflow: 'hidden',
   },
@@ -435,21 +435,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   buttonText: {
-    color: 'white',
+    color: colors.text.inverse,
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 1,
   },
   buttonIcon: {
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
   registerLink: {
-    marginTop: 16,
+    marginTop: spacing.md,
     alignItems: 'center',
   },
   registerLinkText: {
     fontSize: 14,
-    color: '#3B82F6',
+    color: colors.primary,
     fontWeight: '600',
   },
   footer: {
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.75)',
+    color: colors.background.translucent,
   },
   footerTextSpacing: {
     marginTop: 4,

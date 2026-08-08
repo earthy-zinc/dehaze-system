@@ -7,6 +7,7 @@ import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.evaluation.EvaluationLogVO;
 import com.pei.dehaze.sdk.model.prediction.PredParam;
 import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
+import com.pei.dehaze.sdk.model.prediction.PredictionQuota;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 
 import retrofit2.Call;
@@ -44,4 +45,7 @@ public interface ModelApiService {
             @Query("algorithmId") Long algorithmId,
             @Query("pageNum") int pageNum,
             @Query("pageSize") int pageSize);
+
+    @GET("/api/v1/prediction/quota")
+    Call<Result<PredictionQuota>> getQuota();
 }

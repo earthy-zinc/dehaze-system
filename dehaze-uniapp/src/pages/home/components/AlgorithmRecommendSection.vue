@@ -23,7 +23,7 @@
         @click="handleClick(algo)"
       >
         <view class="algo-icon">
-          <u-icon name="gift" size="24" color="#8b5cf6" />
+          <SvgIcon name="gift" size="24" color="#8b5cf6" />
         </view>
         <text class="algo-name">{{ algo.name }}</text>
         <text class="algo-type">{{ algo.type || "去雾算法" }}</text>
@@ -44,6 +44,7 @@
 
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import SectionHeader from "@/components/common/SectionHeader.vue";
 import { AlgorithmAPI } from "dehaze-sdk-js";
 import type { Algorithm } from "dehaze-sdk-js";

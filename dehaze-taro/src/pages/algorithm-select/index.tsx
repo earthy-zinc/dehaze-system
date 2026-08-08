@@ -1,57 +1,81 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { View, Text, Image, ScrollView, Input } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import TaroCore from "@taroify/core";
-import { Search, Star, StarOutlined } from "@taroify/icons";
-import CompareNavbar from "@/components/compare/CompareNavbar";
-import { AlgorithmAPI, RecommendationAPI } from "dehaze-sdk-js";
-import type { Algorithm } from "dehaze-sdk-js";
+import { ArrowLeft, Search, Star, StarOutlined, Close } from "@taroify/icons";
+import {
+  AlgorithmAPI,
+  RecommendationAPI,
+  FavoriteAPI,
+} from "dehaze-sdk-js";
+import type {
+  AlgorithmDetailVO,
+  RecommendedAlgorithm,
+  AlgorithmCompareVO,
+} from "dehaze-sdk-js";
 import EmptyState from "@/components/common/EmptyState";
 import { getErrorMessage } from "@/utils/error";
 import AlgorithmDetailPopup from "./components/AlgorithmDetailPopup";
-import AlgorithmTreeNode from "./components/AlgorithmTreeNode";
 import {
-  PUBLISHED_STATUS,
-  FAVORITE_STORAGE_KEY,
   getTypeWeight,
   collectLeafAlgorithms,
-  getStatusInfo,
-  filterTree,
+  getSearchHistory,
+  saveSearchHistory,
+  clearSearchHistory,
+  COMPARE_MAX,
 } from "./utils";
+import type { TreeNode } from "./utils";
 import "./index.less";
 
-const Tabs = (TaroCore as any).Tabs;
-const TabPanel = (TaroCore as any).TabPanel;
-
-interface AlgorithmRecommendVO {
-  algorithmId: number;
-  algorithmName: string;
-  score: number;
-  reason?: string;
-  type?: string;
-}
-
 const AlgorithmSelectPage: React.FC = () => {
-  const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
+  // ==================== 核心数据 ====================
+  const [tree, setTree] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchKeyword, setSearchKeyword] = useState("");
   const [expandedKeys, setExpandedKeys] = useState<Set<number>>(new Set());
-  const [currentImageUrl, setCurrentImageUrl] = useState("");
-  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
-  const [detailAlgorithm, setDetailAlgorithm] = useState<Algorithm | null>(
-    null
-  );
-  const [recommendations, setRecommendations] = useState<
-    AlgorithmRecommendVO[]
-  >([]);
-  const [recommendLoading, setRecommendLoading] = useState(false);
 
-  // 加载算法树
-  const fetchAlgorithms = useCallback(async () => {
+  // ==================== 推荐 ====================
+  const [currentImageUrl, setCurrentImageUrl] = useState("");
+  const [recommendations, setRecommendations] = useState<RecommendedAlgorithm[]>([]);
+  const [recommendLoading, setRecommendLoading] = useState(false);
+  const [imageAnalysis, setImageAnalysis] = useState<{
+    hazeLevel: string;
+    sceneType: string;
+  } | null>(null);
+
+  // ==================== 收藏 ====================
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [favoriteMap, setFavoriteMap] = useState<Map<number, number>>(new Map());
+  const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
+
+  // ==================== 搜索 ====================
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchResults, setSearchResults] = useState<TreeNode[] | null>(null);
+  const [, setSearchLoading] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ==================== 筛选（预留） ====================
+
+  // ==================== 详情 ====================
+  const [detailAlgorithm, setDetailAlgorithm] = useState<AlgorithmDetailVO | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // ==================== 对比 ====================
+  const [compareList, setCompareList] = useState<TreeNode[]>([]);
+  const [compareResult, setCompareResult] = useState<AlgorithmCompareVO[] | null>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
+
+  // ==================== 自定义测试 ====================
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+
+  // ==================== 加载算法树 ====================
+  const fetchTree = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await AlgorithmAPI.getList();
-      setAlgorithms(data || []);
+      const data = await AlgorithmAPI.tree();
+      setTree(data || []);
       const firstLevelIds = (data || []).map((item) => item.id);
       setExpandedKeys(new Set(firstLevelIds));
     } catch (error: unknown) {
@@ -64,8 +88,33 @@ const AlgorithmSelectPage: React.FC = () => {
     }
   }, []);
 
-  // 加载当前图片和收藏列表
+  // ==================== 加载收藏状态 ====================
+  const fetchFavorites = useCallback(async () => {
+    try {
+      const page = await FavoriteAPI.getPage({
+        targetType: "algorithm",
+        pageNum: 1,
+        pageSize: 200,
+      });
+      const ids = new Set<number>();
+      const map = new Map<number, number>();
+      if (page?.list) {
+        for (const fav of page.list) {
+          ids.add(fav.targetId);
+          map.set(fav.targetId, fav.id);
+        }
+      }
+      setFavoriteIds(ids);
+      setFavoriteMap(map);
+    } catch {
+      // 收藏加载失败不影响主流程
+    }
+  }, []);
+
   useEffect(() => {
+    fetchTree();
+    fetchFavorites();
+    setSearchHistory(getSearchHistory());
     try {
       const stored = Taro.getStorageSync("current_image");
       if (stored) {
@@ -73,326 +122,559 @@ const AlgorithmSelectPage: React.FC = () => {
         setCurrentImageUrl(imageData.url || "");
       }
     } catch {
-      // 没有图片数据，忽略
+      // 无图片
     }
+  }, [fetchTree, fetchFavorites]);
 
-    try {
-      const favStr = Taro.getStorageSync(FAVORITE_STORAGE_KEY);
-      if (favStr) {
-        const favArr: number[] = JSON.parse(favStr);
-        setFavoriteIds(new Set(favArr));
-      }
-    } catch {
-      // 收藏数据读取失败，忽略
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAlgorithms();
-  }, [fetchAlgorithms]);
-
-  // 所有叶子算法
-  const allLeafAlgorithms = useMemo(
-    () => collectLeafAlgorithms(algorithms),
-    [algorithms]
-  );
-
-  // 智能推荐：使用RecommendationAPI获取推荐算法
-  const hasRemoteImage = !!(
-    currentImageUrl && currentImageUrl.startsWith("http")
-  );
+  // ==================== 智能推荐 ====================
+  const hasRemoteImage = !!(currentImageUrl && currentImageUrl.startsWith("http"));
 
   useEffect(() => {
     if (!hasRemoteImage || recommendations.length > 0) return;
     setRecommendLoading(true);
     RecommendationAPI.analyze({ imageUrl: currentImageUrl })
       .then(async (analysis) => {
-        const imageMd5 = analysis.imageMd5;
-        if (!imageMd5) {
+        setImageAnalysis({
+          hazeLevel: analysis.hazeLevel || "",
+          sceneType: analysis.sceneType || "",
+        });
+        if (!analysis.imageMd5) {
           setRecommendations([]);
           return;
         }
         const recs = await RecommendationAPI.getAlgorithmRecommendations({
-          imageMd5,
+          imageMd5: analysis.imageMd5,
         });
-        setRecommendations(
-          (recs || []).map((r) => ({
-            algorithmId: r.algorithmId,
-            algorithmName: r.algorithmName,
-            score: r.matchScore,
-            reason: r.reason,
-            type: "",
-          }))
-        );
+        setRecommendations(recs || []);
       })
       .catch(() => setRecommendations([]))
       .finally(() => setRecommendLoading(false));
-  }, [hasRemoteImage, currentImageUrl]);
+  }, [hasRemoteImage, currentImageUrl, recommendations.length]);
 
-  // 根据推荐 VO 解析出完整 Algorithm
-  const resolveRecommendAlgorithm = useCallback(
-    (vo: AlgorithmRecommendVO): Algorithm => {
-      const found = allLeafAlgorithms.find((a) => a.id === vo.algorithmId);
-      if (found) return found;
-      return {
-        id: vo.algorithmId,
-        parentId: 0,
-        name: vo.algorithmName || `算法${vo.algorithmId}`,
-        type: vo.type || "",
-        description: "",
-      } as Algorithm;
-    },
-    [allLeafAlgorithms]
-  );
+  // ==================== 搜索（防抖 300ms + 对接 API） ====================
+  const handleSearchInput = useCallback((value: string) => {
+    setSearchKeyword(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
 
-  // 收藏的算法列表
-  const favoriteAlgorithms = useMemo(() => {
-    return allLeafAlgorithms.filter((a) => favoriteIds.has(a.id));
-  }, [allLeafAlgorithms, favoriteIds]);
+    if (!value.trim()) {
+      setSearchResults(null);
+      setShowHistory(false);
+      return;
+    }
 
-  // 切换展开/收起
+    setSearchLoading(true);
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const results = await AlgorithmAPI.search(value.trim());
+        setSearchResults(results || []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+  }, []);
+
+  const handleSearchSubmit = useCallback((keyword: string) => {
+    if (!keyword.trim()) return;
+    const history = saveSearchHistory(keyword.trim());
+    setSearchHistory(history);
+    setShowHistory(false);
+    handleSearchInput(keyword);
+  }, [handleSearchInput]);
+
+  // ==================== 收藏切换 ====================
+  const toggleFavorite = useCallback(async (algorithmId: number) => {
+    if (togglingIds.has(algorithmId)) return;
+    setTogglingIds((prev) => new Set(prev).add(algorithmId));
+
+    try {
+      const existed = favoriteIds.has(algorithmId);
+      if (existed) {
+        const favId = favoriteMap.get(algorithmId);
+        if (favId) await FavoriteAPI.deleteByIds([favId]);
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(algorithmId);
+          return next;
+        });
+        setFavoriteMap((prev) => {
+          const next = new Map(prev);
+          next.delete(algorithmId);
+          return next;
+        });
+        Taro.showToast({ title: "已取消收藏", icon: "none" });
+      } else {
+        const favId = await FavoriteAPI.add({
+          targetType: "algorithm",
+          targetId: algorithmId,
+        });
+        setFavoriteIds((prev) => new Set(prev).add(algorithmId));
+        setFavoriteMap((prev) => new Map(prev).set(algorithmId, favId));
+        Taro.showToast({ title: "已收藏", icon: "none" });
+      }
+    } catch (error: unknown) {
+      Taro.showToast({
+        title: getErrorMessage(error, "操作失败"),
+        icon: "none",
+      });
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(algorithmId);
+        return next;
+      });
+    }
+  }, [favoriteIds, favoriteMap, togglingIds]);
+
+  // ==================== 展开/收起 ====================
   const toggleExpand = useCallback((id: number) => {
     setExpandedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }, []);
 
-  // 切换收藏
-  const toggleFavorite = useCallback((algorithm: Algorithm) => {
-    setFavoriteIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(algorithm.id)) {
-        next.delete(algorithm.id);
-        Taro.showToast({ title: "已取消收藏", icon: "none" });
-      } else {
-        next.add(algorithm.id);
-        Taro.showToast({ title: "已添加到收藏", icon: "success" });
-      }
-      Taro.setStorageSync(FAVORITE_STORAGE_KEY, JSON.stringify([...next]));
-      return next;
-    });
-  }, []);
-
-  const filteredAlgorithms = useMemo(() => {
-    return filterTree(algorithms, searchKeyword);
-  }, [algorithms, searchKeyword]);
-
-  // 选择算法
-  const handleSelectAlgorithm = useCallback((algorithm: Algorithm) => {
-    if (algorithm.status !== PUBLISHED_STATUS) {
-      Taro.showToast({ title: "该算法未发布，暂不可用", icon: "none" });
-      return;
-    }
-    Taro.setStorageSync("selected_algorithm", JSON.stringify(algorithm));
+  // ==================== 选择算法 ====================
+  const handleSelectAlgorithm = useCallback((node: TreeNode) => {
+    Taro.setStorageSync("selected_algorithm", JSON.stringify(node));
     Taro.navigateTo({ url: "/pages/processing/index" });
   }, []);
 
-  // 渲染推荐卡片（带匹配度进度条）
-  const renderRecommendCard = (vo: AlgorithmRecommendVO, index: number) => {
-    const algorithm = resolveRecommendAlgorithm(vo);
-    const isFav = favoriteIds.has(algorithm.id);
-    const matchScore = Math.round(vo.score || 0);
-    const reasonText = vo.reason
-      ? `${vo.reason} · 匹配度 ${matchScore}%`
-      : `匹配度 ${matchScore}%`;
+  // ==================== 查看详情 ====================
+  const handleShowDetail = useCallback(async (node: TreeNode) => {
+    setDetailLoading(true);
+    try {
+      const detail = await AlgorithmAPI.getSelectDetail(node.id);
+      setDetailAlgorithm(detail);
+    } catch (error: unknown) {
+      Taro.showToast({
+        title: getErrorMessage(error, "加载详情失败"),
+        icon: "none",
+      });
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  // ==================== 自定义测试 ====================
+  const handleCustomTest = useCallback(async (algorithmId: number) => {
+    if (!currentImageUrl) {
+      Taro.showToast({ title: "请先选择图片", icon: "none" });
+      return;
+    }
+    setTestLoading(true);
+    try {
+      const result = await AlgorithmAPI.test(algorithmId, {
+        imageUrl: currentImageUrl,
+      });
+      setTestResult(result?.resultUrl || "");
+    } catch (error: unknown) {
+      Taro.showToast({
+        title: getErrorMessage(error, "测试失败"),
+        icon: "none",
+      });
+    } finally {
+      setTestLoading(false);
+    }
+  }, [currentImageUrl]);
+
+  // ==================== 算法对比 ====================
+  const allLeafAlgorithms = useMemo(() => collectLeafAlgorithms(tree), [tree]);
+
+  const toggleCompare = useCallback((node: TreeNode) => {
+    setCompareList((prev) => {
+      const exists = prev.find((c) => c.id === node.id);
+      if (exists) {
+        return prev.filter((c) => c.id !== node.id);
+      }
+      if (prev.length >= COMPARE_MAX) {
+        Taro.showToast({ title: `最多对比 ${COMPARE_MAX} 个算法`, icon: "none" });
+        return prev;
+      }
+      return [...prev, node];
+    });
+  }, []);
+
+  const handleCompare = useCallback(async () => {
+    if (compareList.length < 2) {
+      Taro.showToast({ title: "至少选择 2 个算法", icon: "none" });
+      return;
+    }
+    setCompareLoading(true);
+    try {
+      const result = await AlgorithmAPI.compare({
+        algorithmIds: compareList.map((c) => c.id),
+        imageUrl: currentImageUrl || undefined,
+      });
+      setCompareResult(result || []);
+      setShowCompare(true);
+    } catch (error: unknown) {
+      Taro.showToast({
+        title: getErrorMessage(error, "对比失败"),
+        icon: "none",
+      });
+    } finally {
+      setCompareLoading(false);
+    }
+  }, [compareList, currentImageUrl]);
+
+  // ==================== 筛选逻辑 ====================
+  const filteredTree = useMemo(() => {
+    if (searchResults !== null) return searchResults;
+    // 筛选条件由后端 search API 处理，此处直接透传
+    return tree;
+  }, [tree, searchResults]);
+
+  // ==================== 渲染推荐卡片 ====================
+  const renderRecommendCard = (rec: RecommendedAlgorithm, index: number) => {
+    const node = allLeafAlgorithms.find((a) => a.id === rec.algorithmId);
+    const isFav = favoriteIds.has(rec.algorithmId);
+    const matchScore = Math.round(rec.matchScore || 0);
     return (
       <View
-        key={algorithm.id}
+        key={rec.algorithmId}
         className="recommend-card"
-        onClick={() => handleSelectAlgorithm(algorithm)}
+        onClick={() => {
+          if (node) handleSelectAlgorithm(node);
+        }}
       >
         <View className="recommend-rank">#{index + 1}</View>
         <View className="recommend-info">
           <View className="recommend-header">
-            <Text className="recommend-name">{algorithm.name}</Text>
+            <Text className="recommend-name">{rec.algorithmName}</Text>
             <View
-              className={`recommend-tag type-${getTypeWeight(algorithm.type) >= 9 ? "dl" : getTypeWeight(algorithm.type) >= 7 ? "hybrid" : "traditional"}`}
+              className={`recommend-tag type-${getTypeWeight(node?.type || "") >= 9 ? "dl" : getTypeWeight(node?.type || "") >= 7 ? "hybrid" : "traditional"}`}
             >
-              <Text>{algorithm.type || "算法"}</Text>
+              <Text>{node?.type || "算法"}</Text>
             </View>
           </View>
-          {algorithm.description && (
-            <Text className="recommend-desc">{algorithm.description}</Text>
+          {rec.reason && <Text className="recommend-reason">{rec.reason}</Text>}
+          {rec.effectDescription && (
+            <Text className="recommend-effect">{rec.effectDescription}</Text>
           )}
-          <View className="recommend-reason">
-            <Text>{reasonText}</Text>
-          </View>
           <View className="match-score-bar">
-            <View
-              className="match-score-fill"
-              style={{ width: `${matchScore}%` }}
-            />
+            <View className="match-score-fill" style={{ width: `${matchScore}%` }} />
           </View>
         </View>
         <View
           className="fav-btn"
           onClick={(e) => {
             e.stopPropagation();
-            toggleFavorite(algorithm);
+            toggleFavorite(rec.algorithmId);
           }}
         >
-          {isFav ? (
-            <Star size="18" color="#f59e0b" />
-          ) : (
-            <StarOutlined size="18" color="#9ca3af" />
-          )}
+          {isFav ? <Star size="18" color="#f59e0b" /> : <StarOutlined size="18" color="#9ca3af" />}
         </View>
       </View>
     );
   };
 
-  // 渲染收藏卡片
-  const renderFavoriteCard = (algorithm: Algorithm) => {
-    const statusInfo = getStatusInfo(algorithm.status);
+  // ==================== 渲染树节点 ====================
+  const renderTreeNode = (node: TreeNode, level: number): React.ReactNode => {
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = expandedKeys.has(node.id);
+    const isLeaf = !hasChildren && node.leaf;
+    const isFav = favoriteIds.has(node.id);
+    const inCompare = compareList.some((c) => c.id === node.id);
+
     return (
-      <View key={algorithm.id} className="favorite-card">
+      <View key={node.id}>
         <View
-          className="fav-card-content"
-          onClick={() => handleSelectAlgorithm(algorithm)}
+          className={`tree-node level-${level} ${isLeaf ? "leaf" : "branch"} selectable`}
+          onClick={() => {
+            if (hasChildren) {
+              toggleExpand(node.id);
+            } else {
+              handleSelectAlgorithm(node);
+            }
+          }}
         >
-          <Text className="fav-name">{algorithm.name}</Text>
-          <View className={`status-tag ${statusInfo.className}`}>
-            <Text>{statusInfo.label}</Text>
+          <View className="node-indent" style={{ width: `${level * 32}rpx` }} />
+          {hasChildren ? (
+            <View className="expand-icon">
+              <Text>{isExpanded ? "▼" : "▶"}</Text>
+            </View>
+          ) : (
+            <View className="leaf-icon">
+              <Text>⚡</Text>
+            </View>
+          )}
+          <View className="node-content">
+            <View className="node-header">
+              <Text className="node-name">{node.name}</Text>
+              {node.type && (
+                <Text className="node-type-label">{node.type}</Text>
+              )}
+            </View>
           </View>
-        </View>
-        <View className="fav-btn" onClick={() => toggleFavorite(algorithm)}>
-          <Star size="16" color="#f59e0b" />
-        </View>
-      </View>
-    );
-  };
-
-  // 智能推荐Tab内容
-  const renderRecommendTab = () => (
-    <ScrollView className="recommend-tab-content" scrollY>
-      {/* 当前图片预览 */}
-      {currentImageUrl && (
-        <View className="current-image-section">
-          <Text className="section-label">当前图片</Text>
-          <View className="current-image-wrapper">
-            <Image
-              src={currentImageUrl}
-              className="current-image"
-              mode="aspectFill"
-              lazyLoad
-            />
-          </View>
-        </View>
-      )}
-
-      {/* 推荐列表 */}
-      <View className="recommend-list">
-        {recommendLoading ? (
-          <View className="loading-state">
-            <Text>正在分析图片并生成推荐...</Text>
-          </View>
-        ) : recommendations.length > 0 ? (
-          recommendations.map((vo, idx) => renderRecommendCard(vo, idx))
-        ) : (
-          <View className="loading-state">
-            <Text>暂无推荐算法，请从下方算法树选择</Text>
-          </View>
-        )}
-      </View>
-    </ScrollView>
-  );
-
-  // 算法列表Tab内容
-  const renderAlgorithmTab = () => (
-    <ScrollView className="algorithm-tab-content" scrollY>
-      {/* 搜索栏 */}
-      <View className="search-section">
-        <View className="search-input-wrapper">
-          <Search size="18" color="#9ca3af" />
-          <Input
-            className="search-input"
-            placeholder="搜索算法名称或描述"
-            value={searchKeyword}
-            onInput={(e) => setSearchKeyword(e.detail.value)}
-          />
-          {searchKeyword && (
-            <View className="clear-btn" onClick={() => setSearchKeyword("")}>
-              <Text>×</Text>
+          {isLeaf && (
+            <View className="node-actions">
+              <View
+                className="action-icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite(node.id);
+                }}
+              >
+                {isFav ? <Star size="16" color="#f59e0b" /> : <StarOutlined size="16" color="#9ca3af" />}
+              </View>
+              <View
+                className="action-icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShowDetail(node);
+                }}
+              >
+                <Text style={{ fontSize: "22rpx", color: "#6b7280" }}>详情</Text>
+              </View>
+              <View
+                className={`action-icon ${inCompare ? "in-compare" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCompare(node);
+                }}
+              >
+                <Text style={{ fontSize: "20rpx", color: inCompare ? "#8b5cf6" : "#9ca3af" }}>对比</Text>
+              </View>
             </View>
           )}
         </View>
-      </View>
-
-      {/* 收藏区域 */}
-      {!searchKeyword && favoriteAlgorithms.length > 0 && (
-        <View className="favorite-section">
-          <View className="section-header">
-            <Text className="section-title">我的收藏</Text>
-            <Text className="section-hint">
-              {favoriteAlgorithms.length} 个算法
-            </Text>
-          </View>
-          <View className="favorite-list">
-            {favoriteAlgorithms.map((algo) => renderFavoriteCard(algo))}
-          </View>
-        </View>
-      )}
-
-      {/* 算法树 */}
-      <View className="algorithm-tree-wrapper">
-        {loading ? (
-          <View className="loading-state">
-            <Text>加载中...</Text>
-          </View>
-        ) : filteredAlgorithms.length === 0 ? (
-          <EmptyState
-            type="search"
-            title="未找到算法"
-            description="请尝试其他关键词"
-          />
-        ) : (
-          <View className="algorithm-tree">
-            {filteredAlgorithms.map((node) => (
-              <AlgorithmTreeNode
-                key={node.id}
-                node={node}
-                level={0}
-                expandedKeys={expandedKeys}
-                favoriteIds={favoriteIds}
-                onToggleExpand={toggleExpand}
-                onSelect={handleSelectAlgorithm}
-                onToggleFavorite={toggleFavorite}
-                onShowDetail={setDetailAlgorithm}
-              />
-            ))}
+        {hasChildren && isExpanded && (
+          <View className="tree-children">
+            {node.children!.map((child) => renderTreeNode(child, level + 1))}
           </View>
         )}
       </View>
-    </ScrollView>
-  );
+    );
+  };
 
+  // ==================== 对比面板 ====================
+  const renderComparePanel = () => {
+    if (!showCompare) return null;
+    return (
+      <View className="compare-overlay">
+        <View className="compare-panel">
+          <View className="compare-header">
+            <Text className="compare-title">算法对比</Text>
+            <View className="compare-close" onClick={() => setShowCompare(false)}>
+              <Close size="20" color="#6b7280" />
+            </View>
+          </View>
+          <ScrollView className="compare-body" scrollY>
+            {compareLoading ? (
+              <View className="loading-state"><Text>对比中...</Text></View>
+            ) : compareResult && compareResult.length > 0 ? (
+              <View className="compare-table">
+                <View className="compare-row header-row">
+                  <View className="compare-cell label-cell"><Text>指标</Text></View>
+                  {compareResult.map((c) => (
+                    <View key={c.algorithmId} className="compare-cell">
+                      <Text className="compare-alg-name">{c.algorithmName}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View className="compare-row">
+                  <View className="compare-cell label-cell"><Text>处理耗时</Text></View>
+                  {compareResult.map((c) => (
+                    <View key={c.algorithmId} className="compare-cell">
+                      <Text>{c.time ? `${c.time}ms` : "-"}</Text>
+                    </View>
+                  ))}
+                </View>
+                {compareResult.some((c) => c.resultUrl) && (
+                  <View className="compare-row">
+                    <View className="compare-cell label-cell"><Text>效果预览</Text></View>
+                    {compareResult.map((c) => (
+                      <View key={c.algorithmId} className="compare-cell">
+                        {c.resultUrl ? (
+                          <Image src={c.resultUrl} className="compare-preview-img" mode="aspectFill" />
+                        ) : (
+                          <Text>-</Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ) : (
+              <EmptyState type="empty" title="暂无对比数据" />
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    );
+  };
+
+  // ==================== 主渲染 ====================
   return (
     <View className="algorithm-select-page">
-      {/* 顶部导航 */}
-      <CompareNavbar title="选择算法" />
+      {/* L2 导航栏：返回 + 标题 */}
+      <View className="navbar">
+        <View className="nav-back" onClick={() => Taro.navigateBack()}>
+          <ArrowLeft size="20" color="#333" />
+        </View>
+        <Text className="nav-title">选择算法</Text>
+      </View>
 
-      {/* 使用Tabs组件切换智能推荐和算法列表 */}
-      <Tabs defaultValue="recommend">
-        <TabPanel value="recommend">{renderRecommendTab()}</TabPanel>
-        <TabPanel value="list">{renderAlgorithmTab()}</TabPanel>
-      </Tabs>
+      <ScrollView className="main-scroll" scrollY>
+        {/* 当前图片预览 */}
+        {currentImageUrl && (
+          <View className="current-image-section">
+            <Text className="section-label">当前图片</Text>
+            <View className="current-image-wrapper">
+              <Image src={currentImageUrl} className="current-image" mode="aspectFill" lazyLoad />
+            </View>
+          </View>
+        )}
 
-      {/* 算法详情弹窗 */}
+        {/* 智能推荐 */}
+        {hasRemoteImage && (recommendLoading || recommendations.length > 0 || imageAnalysis) && (
+          <View className="recommend-section">
+            <Text className="section-label">智能推荐</Text>
+            {imageAnalysis && (
+              <View className="analysis-tags">
+                <Text className="analysis-tag">雾霾: {imageAnalysis.hazeLevel}</Text>
+                <Text className="analysis-tag">场景: {imageAnalysis.sceneType}</Text>
+              </View>
+            )}
+            {recommendLoading ? (
+              <View className="loading-state"><Text>分析中...</Text></View>
+            ) : recommendations.length > 0 ? (
+              <View className="recommend-list">
+                {recommendations.map((rec, idx) => renderRecommendCard(rec, idx))}
+              </View>
+            ) : (
+              <View className="loading-state"><Text>暂无推荐</Text></View>
+            )}
+          </View>
+        )}
+
+        {/* 搜索栏 */}
+        <View className="search-section">
+          <View className="search-input-wrapper">
+            <Search size="18" color="#9ca3af" />
+            <Input
+              className="search-input"
+              placeholder="搜索算法名称、类型或描述"
+              value={searchKeyword}
+              onFocus={() => {
+                setShowHistory(true);
+                setSearchHistory(getSearchHistory());
+              }}
+              onBlur={() => setTimeout(() => setShowHistory(false), 200)}
+              onConfirm={(e) => handleSearchSubmit(e.detail.value)}
+              onInput={(e) => handleSearchInput(e.detail.value)}
+            />
+            {searchKeyword && (
+              <View className="clear-btn" onClick={() => {
+                setSearchKeyword("");
+                setSearchResults(null);
+              }}>
+                <Text>×</Text>
+              </View>
+            )}
+          </View>
+
+          {/* 搜索历史 */}
+          {showHistory && !searchKeyword && searchHistory.length > 0 && (
+            <View className="search-history-panel">
+              <View className="history-header">
+                <Text className="history-title">搜索历史</Text>
+                <View className="history-clear" onClick={() => {
+                  clearSearchHistory();
+                  setSearchHistory([]);
+                }}>
+                  <Text>清空</Text>
+                </View>
+              </View>
+              <View className="history-tags">
+                {searchHistory.map((kw) => (
+                  <View
+                    key={kw}
+                    className="history-tag"
+                    onClick={() => {
+                      setSearchKeyword(kw);
+                      handleSearchSubmit(kw);
+                    }}
+                  >
+                    <Text>{kw}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* 对比栏 */}
+        {compareList.length > 0 && (
+          <View className="compare-bar">
+            <View className="compare-bar-tags">
+              {compareList.map((c) => (
+                <View key={c.id} className="compare-bar-tag">
+                  <Text>{c.name}</Text>
+                  <View className="compare-bar-remove" onClick={() => toggleCompare(c)}>
+                    <Close size="12" color="#9ca3af" />
+                  </View>
+                </View>
+              ))}
+            </View>
+            <View
+              className="compare-bar-btn"
+              onClick={handleCompare}
+            >
+              <Text>对比 ({compareList.length}/{COMPARE_MAX})</Text>
+            </View>
+          </View>
+        )}
+
+        {/* 算法树 */}
+        <View className="algorithm-tree-wrapper">
+          {loading ? (
+            <View className="loading-state"><Text>加载中...</Text></View>
+          ) : filteredTree.length === 0 ? (
+            <EmptyState
+              type="search"
+              title="未找到算法"
+              description={searchKeyword ? "请尝试其他关键词" : "暂无可用算法"}
+            />
+          ) : (
+            <View className="algorithm-tree">
+              {filteredTree.map((node) => renderTreeNode(node, 0))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* 详情弹窗 */}
       <AlgorithmDetailPopup
         algorithm={detailAlgorithm}
-        isFavorite={
-          detailAlgorithm ? favoriteIds.has(detailAlgorithm.id) : false
-        }
-        onClose={() => setDetailAlgorithm(null)}
-        onToggleFavorite={toggleFavorite}
-        onSelect={handleSelectAlgorithm}
+        isFavorite={detailAlgorithm ? favoriteIds.has(detailAlgorithm.id) : false}
+        loading={detailLoading}
+        testResult={testResult}
+        testLoading={testLoading}
+        hasImage={!!currentImageUrl}
+        onClose={() => {
+          setDetailAlgorithm(null);
+          setTestResult(null);
+        }}
+        onToggleFavorite={() => {
+          if (detailAlgorithm) toggleFavorite(detailAlgorithm.id);
+        }}
+        onSelect={() => {
+          if (detailAlgorithm) {
+            Taro.setStorageSync("selected_algorithm", JSON.stringify(detailAlgorithm));
+            Taro.navigateTo({ url: "/pages/processing/index" });
+          }
+        }}
+        onCustomTest={() => {
+          if (detailAlgorithm) handleCustomTest(detailAlgorithm.id);
+        }}
       />
+
+      {/* 对比面板 */}
+      {renderComparePanel()}
     </View>
   );
 };

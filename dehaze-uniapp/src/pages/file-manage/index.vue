@@ -24,7 +24,7 @@
           @click="handleClick(file)"
         >
           <view class="file-icon">
-            <u-icon :name="getIcon(file.type)" size="24" color="#10b981" />
+            <SvgIcon :name="getIcon(file.type)" size="24" color="#10b981" />
           </view>
           <view class="file-info">
             <text class="file-name">{{ file.name }}</text>
@@ -34,7 +34,7 @@
             </text>
           </view>
           <view class="file-arrow">
-            <u-icon name="arrow-right" size="16" color="#d1d5db" />
+            <SvgIcon name="arrow-right" size="16" color="#d1d5db" />
           </view>
         </view>
 
@@ -55,6 +55,7 @@
 
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { FileAPI } from "dehaze-sdk-js";

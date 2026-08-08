@@ -15,8 +15,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/routes/types';
-import { MainLayout } from '@/layout';
+import type { DehazeStackParamList } from '@/routes/types';
+import { ImmersiveHeader } from '@/layout/components';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
@@ -24,7 +24,7 @@ import CompareEmptyState from '@/components/CompareEmptyState';
 import { controlBarStyles, controlButtonStyles } from './styles/compareControls';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Overlay'>;
+type Props = NativeStackScreenProps<DehazeStackParamList, 'CompareOverlay'>;
 
 type Direction = 'vertical' | 'horizontal';
 
@@ -65,19 +65,21 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
     setDividerPos(0.5);
   };
 
-  // 缺少必要参数时显示空状态（例如从底部 Tab 直接进入）
+  // 缺少必要参数时显示空状态
   if (!originalUrl || !processedUrl) {
     return (
-      <MainLayout title="重叠对比" showBack>
-        <CompareEmptyState onPress={() => navigation.navigate('ImageInput')} />
-      </MainLayout>
+      <View style={styles.screenContainer}>
+        <ImmersiveHeader title="重叠对比" />
+        <CompareEmptyState onPress={() => navigation.goBack()} />
+      </View>
     );
   }
 
   return (
-    <MainLayout title="重叠对比" showBack>
+    <View style={styles.screenContainer}>
+      <ImmersiveHeader title="重叠对比" />
       <CompareModeSwitcher
-        current="Overlay"
+        current="CompareOverlay"
         navigation={navigation}
         params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
       />
@@ -170,11 +172,15 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
         <Icon name="search" size={12} color={theme.colors.text.tertiary} />
         <Text style={styles.tipText}>拖动分隔线对比左右/上下区域</Text>
       </View>
-    </MainLayout>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
   overlayContainer: {
     flex: 1,
     margin: theme.spacing.md,

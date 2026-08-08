@@ -10,4 +10,11 @@
 - 三个后端（Go/Java/Python）共享相同 JWT 签名密钥，确保 JWT token 可互认
 
 ### 调试辅助脚本
-- **调试脚本**：`scripts/debug_helper.py <command>` - 包含登录逻辑 + API 调试
+- **联调测试工具集**：`dehaze-test/`（替代旧 `scripts/debug_helper.py`）
+  - 复用 `dehaze-python/.venv`（含 redis/pymysql/httpx/pytest）
+  - `utils/`：config / redis / mysql / auth / api / cleanup（对齐 sdk-js/test/utils/）
+  - `tests/`：pytest 集成测试（三端参数化）
+  - `scripts/`：login / unread_count / cleanup / compare_backends / db_query / rebuild_mysql
+  - 三端后端本机映射端口：java:8989 / go:8990 / python:8991
+  - Redis 6379 / MySQL 3306 远程不开放，需 `ssh -L` 转发后直连
+  - 三端成功码统一为 `"00000"`（不是 200）

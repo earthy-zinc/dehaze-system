@@ -1,0 +1,40 @@
+.dataset-manage-page {
+  min-height: 100vh;
+  background: var(--color-bg-page);
+
+  .search-section {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: #fff;
+    border-bottom: 2rpx solid var(--color-border-light);
+  }
+
+  .action-bar {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: #fff;
+    border-bottom: 2rpx solid var(--color-border-light);
+  }
+
+  .add-btn {
+    display: inline-flex;
+    gap: 12rpx;
+    align-items: center;
+    padding: 16rpx 36rpx;
+    font-size: var(--font-sm);
+    font-weight: 500;
+    color: #fff;
+    background: var(--color-primary);
+    border-radius: var(--radius-sm);
+  }
+
+  .loading-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 160rpx 0;
+  }
+
+  .dataset-list-scroll {
+    flex: 1;
+    height: calc(100vh - 200rpx);
+  }
+}

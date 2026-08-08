@@ -45,6 +45,19 @@ filebeat.inputs:
       service: go
     fields_under_root: true
 
+  - type: filestream
+    id: dehaze-client
+    enabled: true
+    paths:
+      - /logs/java/*/client.log    # 挂载 dehaze-java/logs，前端日志由后端接收 API 落盘
+    parsers:
+      - ndjson:
+          keys_under_root: true
+          add_error_key: true
+    fields:
+      service: client              # 区分后端日志，供 logstash 分流
+    fields_under_root: true
+
 output.logstash:
   hosts: ["logstash:5044"]
 

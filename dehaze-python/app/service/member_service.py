@@ -183,6 +183,7 @@ class MemberService:
 
     @staticmethod
     async def get_profile(db: AsyncSession, user_id: int) -> dict:
+        await member_repository.get_or_init_member(db, user_id)
         data = await member_repository.get_with_user(db, user_id)
         if not data:
             raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
@@ -244,9 +245,7 @@ class MemberService:
 
     @staticmethod
     async def sign_in(db: AsyncSession, user_id: int) -> dict:
-        member = await member_repository.get_by_user_id(db, user_id)
-        if not member:
-            raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
+        member = await member_repository.get_or_init_member(db, user_id)
 
         today = date.today()
         existing = await member_sign_in_repository.get_by_user_and_date(db, user_id, today)

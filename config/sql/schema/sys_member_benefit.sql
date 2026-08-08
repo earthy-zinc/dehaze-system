@@ -6,7 +6,8 @@
 -- 会员等级权益配置表，定义四个等级（普通/VIP1/VIP2/SVIP）的默认权益。
 -- level_code 唯一索引保证每个等级一条配置。
 -- growth_min/growth_max 定义成长值区间，用于自动升降级判断。
--- 权益项覆盖次数配额（去雾/评估/历史保留/批量上限）、处理优先级、功能解锁开关。
+-- 权益项覆盖次数配额（去雾/评估/历史保留/批量上限）、AI 对话积分配额（日/月）、多模态视觉读取频次、
+-- 处理优先级、功能解锁开关。
 -- 功能解锁项使用 tinyint(0/1) 而非布尔，与系统其他表风格一致。
 -- 套餐购买时从此表读取等级权益，套餐可自定义覆盖（见 sys_package.benefit_overrides）。
 -- ------------------------------------------------------------
@@ -27,6 +28,9 @@ CREATE TABLE `sys_member_benefit`
     `hd_export`              tinyint                                                        NOT NULL DEFAULT 0 COMMENT '高清图导出(0:关闭;1:开启)',
     `report_export`          tinyint                                                        NOT NULL DEFAULT 0 COMMENT '对比报告导出(0:关闭;1:开启)',
     `batch_download`         tinyint                                                        NOT NULL DEFAULT 0 COMMENT '批量打包下载(0:关闭;1:开启)',
+    `ai_credits_daily`       bigint                                                         NOT NULL DEFAULT 0 COMMENT 'AI对话日限额(积分/天，每日0点重置)',
+    `ai_credits_monthly`     bigint                                                         NOT NULL DEFAULT 0 COMMENT 'AI对话月限额(积分/月，每月1日重置)',
+    `multimodal_limit`       int                                                            NOT NULL DEFAULT 0 COMMENT '单会话多模态视觉读取频次上限',
     `sort`                   int                                                            NOT NULL DEFAULT 0 COMMENT '排序值',
     `status`                 tinyint                                                        NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
     `deleted`                tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',

@@ -1,77 +1,423 @@
 .dehaze-page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  padding: 24rpx;
-  background: #f9fafb;
+  background: var(--color-bg-page);
 }
 
-.steps {
+/* 步骤指示器 */
+.dehaze-steps {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx;
-  margin-bottom: 24rpx;
-  background: #fff;
-  border-radius: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgb(0 0 0 / 4%);
+  padding: 20rpx 24rpx;
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-sm);
+}
 
-  .step {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 8rpx;
-    align-items: center;
+.dehaze-step {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6rpx;
+  align-items: center;
+}
+
+.dehaze-step-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  height: 40rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-bg-hover);
+  border-radius: 50%;
+
+  &.active {
+    color: #fff;
+    background: var(--color-primary);
   }
 
-  .step-dot {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48rpx;
-    height: 48rpx;
-    font-size: 24rpx;
-    font-weight: 600;
-    color: #9ca3af;
-    background: #f3f4f6;
-    border-radius: 50%;
-
-    &.done {
-      color: #fff;
-      background: linear-gradient(135deg, #3b82f6, #6366f1);
-    }
-  }
-
-  .step-label {
-    font-size: 20rpx;
-    color: #6b7280;
-    white-space: nowrap;
+  &.done {
+    color: #fff;
+    background: var(--color-success);
   }
 }
 
-.flow-placeholder {
+.dehaze-step-label {
+  font-size: 18rpx;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+
+  &.active-label {
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+}
+
+/* 流程主体 */
+.dehaze-flow-body {
+  flex: 1;
+  padding: 24rpx;
+  overflow-y: auto;
+}
+
+.dehaze-step-content {
+  min-height: 400rpx;
+}
+
+/* 上传区域 */
+.dehaze-upload-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 320rpx;
+  overflow: hidden;
+  background: var(--color-bg-card);
+  border: 4rpx dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.dehaze-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  align-items: center;
+}
+
+.dehaze-upload-text {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.dehaze-upload-hint {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+}
+
+.dehaze-upload-preview {
+  width: 100%;
+  height: 320rpx;
+}
+
+.dehaze-image-info {
+  display: flex;
+  gap: 24rpx;
+  justify-content: center;
+  padding: 16rpx 0;
+}
+
+.dehaze-info-item {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+}
+
+/* 算法搜索 */
+.dehaze-algo-search {
+  display: flex;
+  gap: 12rpx;
+  align-items: center;
+  padding: 14rpx 20rpx;
+  margin-bottom: 20rpx;
+  background: var(--color-bg-hover);
+  border-radius: var(--radius-full);
+}
+
+.dehaze-algo-search-input {
+  flex: 1;
+  font-size: var(--font-sm);
+  color: var(--color-text-primary);
+  outline: none;
+  background: transparent;
+  border: none;
+}
+
+/* 算法列表 */
+.dehaze-algo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.dehaze-algo-card {
+  padding: 24rpx;
+  background: var(--color-bg-card);
+  border: 2rpx solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+
+  &.selected {
+    background: var(--color-primary-bg);
+    border-color: var(--color-primary);
+  }
+}
+
+.dehaze-algo-name {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.dehaze-algo-type {
+  display: inline-block;
+  padding: 2rpx 12rpx;
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  border-radius: var(--radius-sm);
+}
+
+.dehaze-algo-desc {
+  display: block;
+  margin-top: 8rpx;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+}
+
+/* 参数区域 */
+.dehaze-params-section {
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.dehaze-preset-section {
+  margin-bottom: 24rpx;
+
+  .dehaze-preset-label {
+    display: block;
+    margin-bottom: 10rpx;
+    font-size: 22rpx;
+    color: var(--color-text-muted);
+  }
+
+  .dehaze-preset-scroll {
+    white-space: nowrap;
+  }
+
+  .dehaze-preset-chip {
+    display: inline-block;
+    padding: 8rpx 20rpx;
+    margin-right: 10rpx;
+    font-size: 22rpx;
+    color: var(--color-primary);
+    background: var(--color-primary-bg);
+    border-radius: 20rpx;
+
+    &:active {
+      opacity: 0.7;
+    }
+  }
+}
+
+.dehaze-param-item {
+  margin-bottom: 24rpx;
+}
+
+.dehaze-param-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10rpx;
+}
+
+.dehaze-param-label {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.dehaze-param-value {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.dehaze-param-reset {
+  padding: 12rpx 0;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.dehaze-algo-summary {
+  display: flex;
+  gap: 8rpx;
+  align-items: center;
+  padding: 16rpx 20rpx;
+  margin-bottom: 20rpx;
+  background: var(--color-primary-bg);
+  border-radius: var(--radius-md);
+}
+
+.dehaze-summary-label {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.dehaze-summary-value {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* 处理状态 */
+.dehaze-processing-status,
+.dehaze-success-status,
+.dehaze-error-status {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
   align-items: center;
-  padding: 96rpx 24rpx;
-  background: #fff;
-  border-radius: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgb(0 0 0 / 4%);
+  padding: 48rpx 24rpx;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
 
-  .placeholder-text {
-    font-size: 30rpx;
-    font-weight: 600;
-    color: #374151;
-  }
+.dehaze-spinner {
+  width: 64rpx;
+  height: 64rpx;
+  border: 4rpx solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: dehaze-spin 0.8s linear infinite;
+}
 
-  .placeholder-sub {
-    font-size: 24rpx;
-    color: #9ca3af;
+@keyframes dehaze-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
-.dev-tip {
-  margin-top: 48rpx;
-  font-size: 22rpx;
-  color: #9ca3af;
+.dehaze-status-text {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.dehaze-status-hint {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+}
+
+.dehaze-success-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #fff;
+  background: var(--color-success);
+  border-radius: 50%;
+}
+
+.dehaze-error-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #fff;
+  background: var(--color-danger);
+  border-radius: 50%;
+}
+
+.dehaze-result-preview {
+  width: 100%;
+  margin-top: 16rpx;
+}
+
+.dehaze-result-img {
+  width: 100%;
+  height: 320rpx;
+  border-radius: var(--radius-md);
+}
+
+/* 对比入口 */
+.dehaze-compare-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  align-items: center;
+  padding: 64rpx 24rpx;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.dehaze-compare-icon {
+  font-size: 56rpx;
+  color: var(--color-primary);
+}
+
+.dehaze-compare-title {
+  font-size: var(--font-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.dehaze-compare-desc {
+  font-size: var(--font-sm);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
   text-align: center;
+}
+
+/* 通用操作区 */
+.dehaze-step-action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  justify-content: center;
+  margin-top: 32rpx;
+}
+
+.dehaze-btn {
+  display: flex;
+  gap: 8rpx;
+  align-items: center;
+  padding: 20rpx 40rpx;
+  font-size: var(--font-base);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+
+  &.dehaze-btn-primary {
+    color: #fff;
+    background: linear-gradient(
+      135deg,
+      var(--color-primary),
+      var(--color-primary-dark)
+    );
+  }
+
+  &.dehaze-btn-secondary {
+    color: var(--color-text-primary);
+    background: var(--color-bg-hover);
+  }
+
+  &.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+}
+
+.dehaze-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48rpx;
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
 }

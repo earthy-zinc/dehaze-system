@@ -1,7 +1,9 @@
+import json
 import logging
 import os
 import shutil
 import sys
+import threading
 from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -275,6 +277,51 @@ def setup_logging(use_json_format: Optional[bool] = None):
         root_logger.info(f"保留天数: {retention_days}")
     if enable_console:
         root_logger.info("控制台输出: 启用")
+
+
+class ClientLogFormatter(logging.Formatter):
+    """前端日志 JSON 格式化器。
+
+    直接序列化 `extra` 传入的条目字段（NDJSON 行），不依赖请求上下文自动注入——
+    前端日志的 trace_id/user_id 来自上报条目本身，与当前上报请求的上下文可能不同。
+    """
+
+    def format(self, record):
+        data = dict(getattr(record, "client_fields", None) or {})
+        data.setdefault("timestamp",
+                        datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat())
+        data.setdefault("level", record.levelname)
+        data.setdefault("message", record.getMessage())
+        return json.dumps(data, ensure_ascii=False)
+
+
+_client_logger = None
+_client_logger_lock = threading.Lock()
+
+
+def get_client_logger() -> logging.Logger:
+    """获取前端日志专用 logger（写 logs/{yyyy-MM-dd}/client.log，NDJSON，含切割与保留）。"""
+    global _client_logger
+    if _client_logger is not None:
+        return _client_logger
+    with _client_logger_lock:
+        if _client_logger is not None:
+            return _client_logger
+        from app.config import settings
+        os.makedirs(settings.LOG_DIR, exist_ok=True)
+        handler = DailyDirectoryFileHandler(
+            settings.LOG_DIR, "client.log",
+            retention_days=settings.LOG_RETENTION_DAYS,
+            max_bytes=settings.LOG_MAX_BYTES,
+        )
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(ClientLogFormatter())
+        logger = logging.getLogger("client")
+        logger.setLevel(logging.INFO)
+        logger.propagate = False  # 不向 root 传递，避免前端日志重复写入 info/error 应用日志
+        logger.addHandler(handler)
+        _client_logger = logger
+        return logger
 
 
 logger = logging.getLogger(__name__)

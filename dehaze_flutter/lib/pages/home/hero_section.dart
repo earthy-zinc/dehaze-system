@@ -98,12 +98,11 @@ class HeroSection extends StatelessWidget {
       // 主要按钮 - 立即开始
       ElevatedButton.icon(
         onPressed: () {
-          // 使用go_router导航到图像输入页面
           context.go(AppRouterConfig.imageInput);
         },
-        icon: Icon(Icons.arrow_forward, size: 26),
+        icon: Icon(Icons.auto_fix_high, size: 26),
         label: Text(
-          '立即开始',
+          '开始去雾',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         style: ElevatedButton.styleFrom(

@@ -40,7 +40,7 @@ public class DatasetAPI {
     public static void getList(DatasetQuery query, ApiCallback<PageResult<Dataset>> callback) {
         Call<Result<PageResult<Dataset>>> call = DehazeSDK.getInstance().getDatasetApiService()
                 .getDatasetList(query.getPageNum(), query.getPageSize(),
-                        query.getKeywords(), query.getType(), query.getStatus());
+                        query.getKeyword(), query.getType(), query.getStatus());
         call.enqueue(callback);
     }
 
@@ -116,7 +116,7 @@ public class DatasetAPI {
     public static void getItems(ImageItemQuery query, ApiCallback<PageResult<ImageItem>> callback) {
         Call<Result<PageResult<ImageItem>>> call = DehazeSDK.getInstance().getDatasetApiService()
                 .getDatasetItems(query.getDatasetId(), query.getPageNum(), query.getPageSize(),
-                        query.getKeywords(), query.getSceneType(), query.getHazeLevel());
+                        query.getKeyword(), query.getSceneType(), query.getHazeLevel());
         call.enqueue(callback);
     }
 

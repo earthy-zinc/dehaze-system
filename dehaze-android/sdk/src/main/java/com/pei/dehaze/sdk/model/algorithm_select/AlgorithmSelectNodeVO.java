@@ -19,5 +19,13 @@ public class AlgorithmSelectNodeVO {
     private String type;
     /** 是否为叶子节点（算法节点） */
     private Boolean leaf;
+    /** 算法描述 */
+    private String description;
+    /** 平均PSNR */
+    private Double avgPsnr;
+    /** 平均SSIM */
+    private Double avgSsim;
+    /** 是否被推荐 */
+    private Boolean isRecommended;
     private List<AlgorithmSelectNodeVO> children;
 }

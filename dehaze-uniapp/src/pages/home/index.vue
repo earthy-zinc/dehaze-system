@@ -1,5 +1,11 @@
 <template>
-  <PageLayout level="L1" title="首页" class="home-page">
+  <PageLayout
+    level="L1"
+    title="首页"
+    :is-home="true"
+    :show-search="true"
+    class="home-page"
+  >
     <view class="main-content">
       <!-- Hero Section - 英雄区 -->
       <HeroSection
@@ -101,8 +107,9 @@ onMounted(async () => {
 });
 
 // 事件处理函数
+/** CTA「开始去雾」→ 跳转去雾 Tab */
 const handleStartClick = () => {
-  uni.navigateTo({ url: "/pages/image-input/index" });
+  uni.switchTab({ url: "/pages/dehaze/index" });
 };
 
 const handleDatasetClick = () => {
@@ -125,15 +132,13 @@ const handleStepClick = (target: string) => {
   }
 };
 
+/** 工具网格跳转：指向 L2 功能页（image-input/algorithm/dataset/metrics） */
 const handleToolClick = (tool: ToolItem) => {
-  // 使用 tool.target 字段做路由映射
   const toolRoutes: Record<string, string> = {
-    "side-by-side": "/pages/side-by-side/index",
-    overlay: "/pages/overlay/index",
-    magnifier: "/pages/magnifier/index",
-    filter: "/pages/filter/index",
-    metrics: "/pages/metrics/index",
+    "image-input": "/pages/image-input/index",
+    algorithm: "/pages/algorithm/index",
     dataset: "/pages/dataset/index",
+    metrics: "/pages/metrics/index",
   };
 
   const url = toolRoutes[tool.target];

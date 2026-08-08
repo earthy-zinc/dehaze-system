@@ -1,24 +1,21 @@
+/**
+ * 数据集浏览版（L2）
+ * 公开/共享浏览：数据集列表、详情查看、图片浏览
+ * 无创建/编辑/删除管理操作
+ */
 import React, { useEffect, useState } from "react";
 import { View, ScrollView, Text as TaroText } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import { Arrow, Add } from "@taroify/icons";
+import { Arrow } from "@taroify/icons";
 
-import { confirmDialog } from "@/utils/dialog";
-
-// 组件导入
 import SearchBar from "@/components/common/SearchBar";
 import FilterTabs from "@/components/common/FilterTabs";
 import EmptyState from "@/components/common/EmptyState";
 
-// 本地组件导入
 import DatasetList from "./components/DatasetList";
 import DatasetInfo from "./components/DatasetInfo";
 import ImageGrid from "./components/ImageGrid";
-import DatasetFormDialog, {
-  DatasetFormData,
-} from "./components/DatasetFormDialog";
 
-// Store 和类型
 import { DatasetProvider, useDataset } from "./store/datasetStore";
 import type { Dataset } from "./services/types";
 import {
@@ -28,16 +25,7 @@ import {
 
 import "./index.less";
 
-// 弹窗状态
-interface DialogState {
-  visible: boolean;
-  mode: "create" | "edit";
-  dataset: Dataset | null;
-  defaultParentId: number;
-}
-
-// 主组件内容
-const DatasetContent: React.FC = () => {
+const DatasetBrowseContent: React.FC = () => {
   const {
     state,
     setView,
@@ -50,23 +38,11 @@ const DatasetContent: React.FC = () => {
     setAnnotationFilter,
     resetImages,
     toggleExpand,
-    fetchDatasetOptions,
-    createDataset,
-    updateDataset,
-    deleteDataset,
   } = useDataset();
 
-  // 本地状态
   const [searchInputValue, setSearchInputValue] = useState("");
-  const [dialog, setDialog] = useState<DialogState>({
-    visible: false,
-    mode: "create",
-    dataset: null,
-    defaultParentId: 0,
-  });
   const [routeError, setRouteError] = useState<string | null>(null);
 
-  // 从路由参数读取 datasetId，支持直接链接到特定数据集
   useEffect(() => {
     const params = Taro.getCurrentInstance()?.router?.params;
     const datasetIdStr = params?.datasetId || params?.id;
@@ -81,13 +57,10 @@ const DatasetContent: React.FC = () => {
         setRouteError("无效的数据集ID");
       }
     }
-    // 初始化：加载列表和选项
     fetchDatasets(1, "", false);
-    fetchDatasetOptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 搜索处理
   const handleSearch = (keyword: string) => {
     setSearchKeyword(keyword);
     setSearchInputValue(keyword);
@@ -105,25 +78,18 @@ const DatasetContent: React.FC = () => {
     }
   };
 
-  // 清除搜索
   const handleClearSearch = () => {
     handleSearch("");
   };
 
-  // 数据集点击处理
   const handleDatasetClick = (dataset: Dataset) => {
     setCurrentDatasetId(dataset.id);
     setView("detail");
     resetImages();
-
-    // 加载数据集详情
     fetchDatasetDetail(dataset.id);
-
-    // 加载图片列表（默认显示已标注）
     fetchImages(dataset.id, 1, "annotated", "", false);
   };
 
-  // 返回列表处理
   const handleBackToList = () => {
     setView("list");
     setCurrentDatasetId(null);
@@ -131,7 +97,6 @@ const DatasetContent: React.FC = () => {
     setImageSearchKeyword("");
   };
 
-  // 标注状态筛选处理（已标注/未标注二分）
   const handleAnnotationFilterChange = (filter: string) => {
     const annotationFilter = filter as AnnotationFilter;
     setAnnotationFilter(annotationFilter);
@@ -144,14 +109,12 @@ const DatasetContent: React.FC = () => {
     );
   };
 
-  // 加载更多数据集
   const handleLoadMoreDatasets = () => {
     if (state.datasetsHasMore && !state.datasetsLoading) {
       fetchDatasets(state.datasetsPage + 1, state.searchKeyword, true);
     }
   };
 
-  // 加载更多图片
   const handleLoadMoreImages = () => {
     if (state.imagesHasMore && !state.imagesLoading) {
       fetchImages(
@@ -164,75 +127,6 @@ const DatasetContent: React.FC = () => {
     }
   };
 
-  // 新增根数据集
-  const handleAddRoot = () => {
-    setDialog({
-      visible: true,
-      mode: "create",
-      dataset: null,
-      defaultParentId: 0,
-    });
-  };
-
-  // 新增子数据集
-  const handleAddChild = (parent: Dataset) => {
-    setDialog({
-      visible: true,
-      mode: "create",
-      dataset: null,
-      defaultParentId: parent.id,
-    });
-  };
-
-  // 编辑数据集
-  const handleEdit = (dataset: Dataset) => {
-    setDialog({
-      visible: true,
-      mode: "edit",
-      dataset,
-      defaultParentId: dataset.parentId ?? 0,
-    });
-  };
-
-  // 删除数据集（带确认）
-  const handleDelete = async (dataset: Dataset) => {
-    const confirmed = await confirmDialog({
-      title: "确认删除",
-      content: `确定要删除数据集「${dataset.name}」吗？此操作不可恢复。`,
-      confirmText: "删除",
-      confirmColor: "#ef4444",
-      cancelText: "取消",
-    });
-    if (!confirmed) return;
-    await deleteDataset(dataset.id);
-  };
-
-  // 表单提交处理
-  const handleSubmit = async (data: DatasetFormData): Promise<boolean> => {
-    if (dialog.mode === "create") {
-      return await createDataset({
-        parentId: data.parentId,
-        type: data.type,
-        name: data.name,
-        description: data.description,
-        status: data.status,
-      });
-    }
-    if (!dialog.dataset) return false;
-    return await updateDataset(dialog.dataset.id, {
-      type: data.type,
-      name: data.name,
-      description: data.description,
-      status: data.status,
-    });
-  };
-
-  // 关闭弹窗
-  const handleCloseDialog = () => {
-    setDialog((prev) => ({ ...prev, visible: false }));
-  };
-
-  // 标注状态筛选标签配置（已标注/未标注二分）
   const stats = state.currentDataset?.statistics;
   const annotatedCount = stats?.annotatedCount ?? 0;
   const unannotatedCount = stats?.unannotatedCount ?? 0;
@@ -253,7 +147,6 @@ const DatasetContent: React.FC = () => {
 
   return (
     <View className="dataset-page">
-      {/* 搜索栏 */}
       <View className="search-section">
         <SearchBar
           placeholder={
@@ -265,7 +158,6 @@ const DatasetContent: React.FC = () => {
         />
       </View>
 
-      {/* 路由错误提示 */}
       {routeError && (
         <View className="error-view">
           <TaroText className="error-text">{routeError}</TaroText>
@@ -275,17 +167,8 @@ const DatasetContent: React.FC = () => {
         </View>
       )}
 
-      {/* 列表视图 */}
       {state.currentView === "list" && !routeError && (
         <View className="list-view">
-          {/* 顶部操作栏 */}
-          <View className="action-bar">
-            <View className="add-btn" onClick={handleAddRoot}>
-              <Add size="16" color="#ffffff" />
-              <View className="add-btn-text">新增数据集</View>
-            </View>
-          </View>
-
           <DatasetList
             datasets={state.datasets}
             loading={state.datasetsLoading}
@@ -298,17 +181,16 @@ const DatasetContent: React.FC = () => {
             childrenMap={state.childrenMap}
             childrenLoading={state.childrenLoading}
             onToggleExpand={toggleExpand}
-            onAddChild={handleAddChild}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
+            onAddChild={() => {}}
+            onEdit={() => {}}
+            onDelete={() => {}}
+            browseMode
           />
         </View>
       )}
 
-      {/* 详情视图 */}
       {state.currentView === "detail" && state.currentDataset && (
         <View className="detail-view">
-          {/* 返回按钮 */}
           <View className="back-section">
             <View className="back-btn" onClick={handleBackToList}>
               <Arrow />
@@ -317,10 +199,8 @@ const DatasetContent: React.FC = () => {
           </View>
 
           <ScrollView className="detail-content" scrollY>
-            {/* 数据集信息 */}
             <DatasetInfo dataset={state.currentDataset} />
 
-            {/* 标注状态筛选 */}
             <View className="filter-section">
               <FilterTabs
                 tabs={annotationFilterTabs}
@@ -329,7 +209,6 @@ const DatasetContent: React.FC = () => {
               />
             </View>
 
-            {/* 图片网格 */}
             <View className="images-section">
               {state.images.length === 0 && !state.imagesLoading ? (
                 <EmptyState
@@ -342,7 +221,6 @@ const DatasetContent: React.FC = () => {
               )}
             </View>
 
-            {/* 加载更多触发器 */}
             {state.imagesHasMore && (
               <View className="load-more-section">
                 <View
@@ -360,28 +238,16 @@ const DatasetContent: React.FC = () => {
           </ScrollView>
         </View>
       )}
-
-      {/* 新增/编辑弹窗 */}
-      <DatasetFormDialog
-        visible={dialog.visible}
-        mode={dialog.mode}
-        dataset={dialog.dataset}
-        options={state.datasetOptions}
-        defaultParentId={dialog.defaultParentId}
-        onSubmit={handleSubmit}
-        onClose={handleCloseDialog}
-      />
     </View>
   );
 };
 
-// 包装组件
-const DatasetPage: React.FC = () => {
+const DatasetBrowsePage: React.FC = () => {
   return (
     <DatasetProvider>
-      <DatasetContent />
+      <DatasetBrowseContent />
     </DatasetProvider>
   );
 };
 
-export default DatasetPage;
+export default DatasetBrowsePage;

@@ -6,7 +6,7 @@
  * - 获取验证码图片
  * - 登录成功后由 AuthContext 跳转 Home
  */
-import { useAuth } from '@/store';
+import { useAuthStore } from '@/store';
 import { AuthAPI } from 'dehaze-sdk-js';
 import type { CaptchaResult } from 'dehaze-sdk-js';
 import React, { useEffect, useState } from 'react';
@@ -27,9 +27,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { colors } from '@/theme/colors';
+import { spacing, layout } from '@/theme/spacing';
 
 const LoginScreen: React.FC = () => {
-  const { login } = useAuth();
+  const login = useAuthStore(s => s.login);
   const navigation = useNavigation<any>();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -180,47 +182,50 @@ const LoginScreen: React.FC = () => {
                   </View>
                 </View>
 
-                {/* 验证码 */}
-                {captcha && (
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>验证码</Text>
-                    <View style={styles.captchaRow}>
-                      <View style={[styles.inputWrap, styles.captchaInputWrap]}>
-                        <Ionicons
-                          name="shield-checkmark-outline"
-                          size={18}
-                          color="#9ca3af"
-                          style={styles.inputIcon}
-                        />
-                        <TextInput
-                          style={styles.input}
-                          placeholder="请输入验证码"
-                          placeholderTextColor="#9ca3af"
-                          value={captchaCode}
-                          onChangeText={setCaptchaCode}
-                          autoCapitalize="none"
-                          returnKeyType="done"
-                        />
-                      </View>
-                      <TouchableOpacity
-                        style={styles.captchaContainer}
-                        onPress={loadCaptcha}
-                        disabled={captchaLoading}
-                        activeOpacity={0.8}
-                      >
-                        {captchaLoading ? (
-                          <ActivityIndicator color="#3B82F6" />
-                        ) : (
-                          <Image
-                            style={styles.captchaImage}
-                            source={{ uri: captcha.captchaBase64 }}
-                            resizeMode="contain"
-                          />
-                        )}
-                      </TouchableOpacity>
+                {/* 验证码：始终展示，加载失败时图片位显示重试入口，避免后端不可达时输入框静默消失 */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>验证码</Text>
+                  <View style={styles.captchaRow}>
+                    <View style={[styles.inputWrap, styles.captchaInputWrap]}>
+                      <Ionicons
+                        name="shield-checkmark-outline"
+                        size={18}
+                        color="#9ca3af"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="请输入验证码"
+                        placeholderTextColor="#9ca3af"
+                        value={captchaCode}
+                        onChangeText={setCaptchaCode}
+                        autoCapitalize="none"
+                        returnKeyType="done"
+                      />
                     </View>
+                    <TouchableOpacity
+                      style={styles.captchaContainer}
+                      onPress={loadCaptcha}
+                      disabled={captchaLoading}
+                      activeOpacity={0.8}
+                    >
+                      {captchaLoading ? (
+                        <ActivityIndicator color="#3B82F6" />
+                      ) : captcha ? (
+                        <Image
+                          style={styles.captchaImage}
+                          source={{ uri: captcha.captchaBase64 }}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View style={styles.captchaRetry}>
+                          <Ionicons name="refresh-outline" size={16} color="#9ca3af" />
+                          <Text style={styles.captchaRetryText}>重试</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
                   </View>
-                )}
+                </View>
 
                 {/* 记住我 */}
                 <TouchableOpacity
@@ -301,27 +306,23 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: spacing.lg,
     paddingHorizontal: 20,
   },
   card: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: 'white',
-    borderRadius: 24,
+    backgroundColor: colors.background.primary,
+    borderRadius: layout.borderRadius.xxl,
     padding: 28,
-    shadowColor: '#1e3a8a',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 8,
+    // Fabric 下含 BVLinearGradient 子节点无法高效计算 shadow，移除以消除性能警告
   },
   header: {
     alignItems: 'center',
     marginBottom: 28,
   },
   logoContainer: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   logoGradient: {
     width: 68,
@@ -329,7 +330,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#3B82F6',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -338,18 +339,18 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 34,
     fontWeight: 'bold',
-    color: 'white',
+    color: colors.text.inverse,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text.primary,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: colors.text.tertiary,
     letterSpacing: 0.5,
   },
   form: {
@@ -361,8 +362,8 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
     marginLeft: 4,
   },
   inputWrap: {
@@ -370,10 +371,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 52,
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border.light,
     borderRadius: 14,
     paddingHorizontal: 14,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background.secondary,
   },
   inputIcon: {
     marginRight: 10,
@@ -381,7 +382,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1f2937',
+    color: colors.text.primary,
     paddingVertical: 0,
   },
   eyeBtn: {
@@ -402,24 +403,32 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
+    borderColor: colors.border.light,
+    backgroundColor: colors.background.secondary,
     overflow: 'hidden',
   },
   captchaImage: {
     width: 100,
     height: 40,
   },
+  captchaRetry: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  captchaRetryText: {
+    fontSize: 11,
+    color: '#9ca3af',
+  },
   rememberRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 12,
     marginLeft: 4,
-    gap: 8,
+    gap: spacing.sm,
   },
   rememberText: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.text.secondary,
   },
   buttonWrap: {
     marginTop: 4,
@@ -434,21 +443,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   buttonText: {
-    color: 'white',
+    color: colors.text.inverse,
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 1,
   },
   buttonIcon: {
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
   registerLink: {
-    marginTop: 16,
+    marginTop: spacing.md,
     alignItems: 'center',
   },
   registerLinkText: {
     fontSize: 14,
-    color: '#3B82F6',
+    color: colors.primary,
     fontWeight: '600',
   },
   footer: {
@@ -457,7 +466,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.75)',
+    color: colors.background.translucent,
   },
   footerTextSpacing: {
     marginTop: 4,

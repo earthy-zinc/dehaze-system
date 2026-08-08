@@ -208,7 +208,9 @@ describe("推荐管理接口测试", () => {
               const page = await FileAPI.getPage({ pageNum: 1, pageSize: 5, keywords: fileName });
               const found = page.list.find((f: any) => f.name === fileName);
               if (found) {
-                return { id: found.id, url: found.url, md5: found.md5 };
+                return found.md5
+                  ? { id: found.id, url: found.url, md5: found.md5 }
+                  : { id: found.id, url: found.url };
               }
               throw new Error(`文件 ${fileName} 已存在但无法在列表中查到，请检查数据库`);
             }

@@ -1,97 +1,192 @@
 <template>
   <PageLayout level="L1" title="工具">
     <view class="tools-page">
-      <!-- 搜索栏（规划：全局搜索算法/功能/文档） -->
-      <view class="search-bar">
-        <u-icon name="search" size="18" color="#9ca3af" />
-        <text class="search-placeholder">搜索算法、功能...</text>
-      </view>
-
-      <!-- 快捷入口横滑区（规划：处理历史/我的收藏/批量处理/算法选择） -->
-      <scroll-view scroll-x class="quick-scroll">
-        <view class="quick-row">
-          <view class="quick-item" v-for="item in quickEntries" :key="item">
-            <view class="quick-icon">
-              <u-icon name="clock" size="20" color="#3b82f6" />
-            </view>
-            <text class="quick-label">{{ item }}</text>
-          </view>
-        </view>
-      </scroll-view>
-
-      <!-- 功能网格（规划：数据集/算法库/指标管理/批量处理/图像输入/API文档） -->
-      <view class="grid-section">
-        <text class="section-label">全部功能</text>
-        <view class="grid">
-          <view class="grid-item" v-for="item in gridEntries" :key="item">
-            <view class="grid-icon">
-              <u-icon name="grid" size="22" color="#3b82f6" />
-            </view>
-            <text class="grid-label">{{ item }}</text>
-          </view>
+      <!-- 全局搜索栏 -->
+      <view class="tools-search">
+        <SvgIcon name="search" size="18" color="#9ca3af" />
+        <input
+          class="tools-search-input"
+          placeholder="搜索算法、功能、文档..."
+          :value="searchKeyword"
+          @input="onSearchInput"
+          @confirm="onSearchConfirm"
+        />
+        <view
+          v-if="searchKeyword"
+          class="tools-search-clear"
+          @click="clearSearch"
+        >
+          <SvgIcon name="close-circle-fill" size="18" color="#9ca3af" />
         </view>
       </view>
 
-      <!-- 开发中提示 -->
-      <view class="dev-tip">
-        <u-icon name="info-circle" size="14" color="#9ca3af" />
-        <text>工具聚合中心建设中，功能入口将按规划接入</text>
+      <!-- 快捷入口横滑区 -->
+      <view class="tools-quick-section">
+        <text class="tools-section-label">快捷入口</text>
+        <scroll-view scroll-x class="tools-quick-scroll">
+          <view class="tools-quick-row">
+            <view
+              v-for="entry in quickEntries"
+              :key="entry.label"
+              class="tools-quick-item"
+              @click="handleQuickClick(entry)"
+            >
+              <view class="tools-quick-icon">
+                <SvgIcon :name="entry.icon" size="22" color="#3b82f6" />
+              </view>
+              <text class="tools-quick-label">{{ entry.label }}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 功能网格 -->
+      <view class="tools-grid-section">
+        <text class="tools-section-label">全部功能</text>
+        <view class="tools-grid">
+          <view
+            v-for="entry in gridEntries"
+            :key="entry.label"
+            class="tools-grid-item"
+            @click="handleGridClick(entry)"
+          >
+            <view class="tools-grid-icon">
+              <SvgIcon :name="entry.icon" size="24" color="#3b82f6" />
+            </view>
+            <text class="tools-grid-label">{{ entry.label }}</text>
+          </view>
+        </view>
       </view>
     </view>
   </PageLayout>
 </template>
 
 <script lang="ts" setup>
+import { ref } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import PageLayout from "@/layout/index.vue";
 
-/** 快捷入口（规划：高频功能横滑直达） */
-const quickEntries = ["处理历史", "我的收藏", "批量处理", "算法选择"];
+interface QuickEntry {
+  label: string;
+  icon: string;
+  target: string;
+}
 
-/** 功能网格（规划：工具/浏览类功能，管理类归「我的」） */
-const gridEntries = [
-  "数据集",
-  "算法库",
-  "指标管理",
-  "批量处理",
-  "图像输入",
-  "API文档",
+interface GridEntry {
+  label: string;
+  icon: string;
+  target: string;
+  isTab?: boolean;
+}
+
+const searchKeyword = ref("");
+
+/** 快捷入口（高频功能横滑直达） */
+const quickEntries: QuickEntry[] = [
+  { label: "处理历史", icon: "clock", target: "/pages/task-history/index" },
+  { label: "我的收藏", icon: "star", target: "/pages/task-history/index" },
+  { label: "批量处理", icon: "car", target: "/pages/task-history/index" },
+  { label: "算法选择", icon: "grid", target: "/pages/algorithm-select/index" },
 ];
+
+/** 功能网格（工具/浏览类功能，管理类归「我的」） */
+const gridEntries: GridEntry[] = [
+  { label: "图像输入", icon: "camera", target: "/pages/image-input/index" },
+  { label: "算法库", icon: "gift", target: "/pages/algorithm/index" },
+  { label: "数据集", icon: "server-fill", target: "/pages/dataset/index" },
+  { label: "批量处理", icon: "car", target: "/pages/task-history/index" },
+  { label: "指标管理", icon: "integral", target: "/pages/metrics/index" },
+  { label: "API 文档", icon: "file-text", target: "" },
+];
+
+const onSearchInput = (e: any) => {
+  searchKeyword.value = e.detail.value;
+};
+
+const onSearchConfirm = () => {
+  if (!searchKeyword.value) return;
+  uni.navigateTo({
+    url: `/pages/algorithm-select/index?keyword=${encodeURIComponent(searchKeyword.value)}`,
+  });
+};
+
+const clearSearch = () => {
+  searchKeyword.value = "";
+};
+
+const handleQuickClick = (entry: QuickEntry) => {
+  uni.navigateTo({ url: entry.target });
+};
+
+const handleGridClick = (entry: GridEntry) => {
+  if (entry.label === "API 文档") {
+    uni.showToast({ title: "API 文档功能开发中，敬请期待", icon: "none" });
+    return;
+  }
+  if (entry.isTab) {
+    uni.switchTab({ url: entry.target });
+  } else {
+    uni.navigateTo({ url: entry.target });
+  }
+};
 </script>
 
 <style lang="scss" scoped>
 .tools-page {
   padding: 24rpx;
-  background: #f9fafb;
+  background: $color-bg-primary;
   min-height: 100vh;
 }
 
-.search-bar {
+.tools-search {
   display: flex;
   align-items: center;
   gap: 12rpx;
   height: 80rpx;
   padding: 0 24rpx;
   border-radius: 999rpx;
-  background: #f3f4f6;
+  background: $color-bg-secondary;
   margin-bottom: 24rpx;
 
-  .search-placeholder {
-    font-size: 26rpx;
-    color: #9ca3af;
+  .tools-search-input {
+    flex: 1;
+    height: 100%;
+    font-size: $font-sm;
+    color: $color-text-primary;
+    background: transparent;
+  }
+
+  .tools-search-clear {
+    width: 36rpx;
+    height: 36rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
-.quick-scroll {
-  white-space: nowrap;
-  margin-bottom: 32rpx;
+.tools-section-label {
+  display: block;
+  font-size: $font-xs;
+  color: $color-text-secondary;
+  margin-bottom: 16rpx;
+  padding: 0 8rpx;
+}
 
-  .quick-row {
+.tools-quick-section {
+  margin-bottom: 32rpx;
+}
+
+.tools-quick-scroll {
+  white-space: nowrap;
+
+  .tools-quick-row {
     display: inline-flex;
     gap: 24rpx;
     padding: 0 8rpx;
   }
 
-  .quick-item {
+  .tools-quick-item {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -99,70 +194,53 @@ const gridEntries = [
     width: 120rpx;
   }
 
-  .quick-icon {
+  .tools-quick-icon {
     width: 88rpx;
     height: 88rpx;
     border-radius: 24rpx;
-    background: #eff6ff;
+    background: $color-primary-bg;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .quick-label {
-    font-size: 22rpx;
-    color: #374151;
+  .tools-quick-label {
+    font-size: $font-xs;
+    color: $color-text-primary;
   }
 }
 
-.grid-section {
-  .section-label {
-    display: block;
-    font-size: 24rpx;
-    color: #6b7280;
-    margin-bottom: 16rpx;
-  }
-
-  .grid {
+.tools-grid-section {
+  .tools-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20rpx;
   }
 
-  .grid-item {
+  .tools-grid-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12rpx;
     padding: 24rpx 0;
-    background: #ffffff;
+    background: $color-white;
     border-radius: 20rpx;
-    box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+    box-shadow: $shadow-sm;
   }
 
-  .grid-icon {
+  .tools-grid-icon {
     width: 72rpx;
     height: 72rpx;
     border-radius: 20rpx;
-    background: #eff6ff;
+    background: $color-primary-bg;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .grid-label {
-    font-size: 22rpx;
-    color: #374151;
+  .tools-grid-label {
+    font-size: $font-xs;
+    color: $color-text-primary;
   }
-}
-
-.dev-tip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  margin-top: 48rpx;
-  font-size: 22rpx;
-  color: #9ca3af;
 }
 </style>

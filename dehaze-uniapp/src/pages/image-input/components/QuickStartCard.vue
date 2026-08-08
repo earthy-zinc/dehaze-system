@@ -2,7 +2,7 @@
   <view class="quick-start-card">
     <view class="card-content">
       <view class="card-icon">
-        <u-icon name="play-circle-fill" size="32" color="#ffffff" />
+        <SvgIcon name="play-circle-fill" size="32" color="#ffffff" />
       </view>
       <view class="card-text">
         <text class="card-title">快速体验</text>
@@ -11,31 +11,35 @@
     </view>
     <view class="card-action" @click="handleQuickStart">
       <text class="action-text">立即体验</text>
-      <u-icon name="arrow-right" size="16" color="#3b82f6" />
+      <SvgIcon name="arrow-right" size="16" color="#3b82f6" />
     </view>
   </view>
 </template>
 
 <script lang="ts" setup>
-import { getRandomSampleImage } from "../data/imageInputData";
-import type { ImageData, SampleImage } from "../data/imageInputData";
+import SvgIcon from "@/components/SvgIcon/index.vue";
+import type { ImageData } from "../data/imageInputData";
+import { fetchSampleImages } from "../services/sampleService";
 import { getImageInfo } from "../utils/image";
 
 const emit = defineEmits<{
   (e: "start", data: ImageData): void;
 }>();
 
-/** 快速体验 */
 const handleQuickStart = async () => {
-  const sample = getRandomSampleImage();
-
   uni.showLoading({ title: "加载样例图片..." });
 
   try {
-    // 下载图片
-    const downloadResult = await downloadImage(sample.url);
+    // 从 API 获取样例图片，随机选择一张
+    const samples = await fetchSampleImages("all");
+    if (samples.length === 0) {
+      uni.showToast({ title: "暂无可用样例图片", icon: "none" });
+      return;
+    }
 
-    // 获取图片信息
+    const sample = samples[Math.floor(Math.random() * samples.length)];
+
+    const downloadResult = await downloadImage(sample.url);
     const imageInfo = await getImageInfo(downloadResult.tempFilePath);
 
     const imageData: ImageData = {
@@ -47,22 +51,14 @@ const handleQuickStart = async () => {
     };
 
     emit("start", imageData);
-
-    uni.showToast({
-      title: "已加载样例图片",
-      icon: "success",
-    });
+    uni.showToast({ title: "已加载样例图片", icon: "success" });
   } catch {
-    uni.showToast({
-      title: "加载失败，请重试",
-      icon: "none",
-    });
+    uni.showToast({ title: "加载失败，请重试", icon: "none" });
   } finally {
     uni.hideLoading();
   }
 };
 
-/** 下载图片 */
 const downloadImage = (url: string): Promise<{ tempFilePath: string }> => {
   return new Promise((resolve, reject) => {
     uni.downloadFile({

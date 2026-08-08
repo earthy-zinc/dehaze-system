@@ -3,6 +3,7 @@ import { setupElIcons, setupI18n, setupPermission } from "@/plugins";
 import router from "@/router";
 import { setupStore } from "@/store";
 import setupRequest from "@/utils/request";
+import { Logger, ConsoleTransport, RemoteTransport } from "dehaze-sdk-js";
 import VueViewer from "v-viewer";
 import "viewerjs/dist/viewer.css";
 import { createApp } from "vue";
@@ -19,7 +20,27 @@ import App from "./App.vue";
 import "animate.css";
 
 const app = createApp(App);
+// 前端日志监控：注册全局错误捕获 + 离线上报。SDK 不感知环境，
+// 由应用端按构建产物组装 transports（开发仅 Console，生产追加 Remote）
+Logger.install({
+  app: "vue",
+  appVersion: __APP_INFO__.pkg.version,
+  transports: import.meta.env.PROD
+    ? [new ConsoleTransport(), new RemoteTransport()]
+    : [new ConsoleTransport()],
+});
 setupRequest();
+// Vue 渲染/生命周期异常转发给 Logger 上报（error_type=js）
+app.config.errorHandler = (err, _instance, info) => {
+  Logger.getInstance()?.error(
+    `Vue 应用异常: ${(err as Error)?.message ?? String(err)}`,
+    {
+      error_type: "js",
+      error_source: "vue_error_handler",
+      error_stack: `${(err as Error)?.stack ?? ""}\ninfo: ${info ?? ""}`,
+    }
+  );
+};
 // 全局注册 自定义指令(directive)
 setupDirective(app);
 // 全局注册 状态管理(store)

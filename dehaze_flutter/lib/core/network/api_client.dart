@@ -8,6 +8,7 @@ import 'api_config.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
 import 'interceptors/response_interceptor.dart';
+import 'interceptors/trace_interceptor.dart';
 
 class ApiClient {
   ApiClient._internal(this.dio);
@@ -30,6 +31,7 @@ class ApiClient {
     ));
 
     dio.interceptors.addAll([
+      TraceInterceptor(),
       AuthInterceptor(tokenStorage),
       ResponseInterceptor(),
       ErrorInterceptor(onAuthError: onAuthError),

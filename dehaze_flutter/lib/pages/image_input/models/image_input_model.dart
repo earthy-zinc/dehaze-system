@@ -127,7 +127,6 @@ class SelectedImageModel {
   @JsonKey(name: 'url')
   final String url; // 图片URL或本地路径
 
-  @JsonKey(name: 'local_path')
   final String? localPath; // 本地文件路径
 
   /// 图片字节流（内存态，跨平台渲染本地图片，不参与序列化）
@@ -143,13 +142,11 @@ class SelectedImageModel {
   @JsonKey(name: 'height')
   final int height;
 
-  @JsonKey(name: 'file_size')
   final int fileSize; // 字节
 
   @JsonKey(name: 'source')
   final ImageSource source; // 图片来源
 
-  @JsonKey(name: 'sample_info')
   final SampleImageModel? sampleInfo; // 样例图片信息（可选）
 
   Map<String, dynamic> toJson() => _$SelectedImageModelToJson(this);
@@ -212,10 +209,8 @@ class SampleImageModel {
   @JsonKey(name: 'difficulty')
   final DifficultyLevel difficulty;
 
-  @JsonKey(name: 'scene_type')
   final String? sceneType; // 场景类型
 
-  @JsonKey(name: 'recommended_algorithm')
   final String? recommendedAlgorithm;
 
   /// 清晰图（Ground Truth）URL，用于指标评估

@@ -95,7 +95,7 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
     return ComparisonScaffold(
       icon: Icons.bar_chart_outlined,
       title: '指标评估',
-      currentRoute: AppRouterConfig.metrics,
+      currentRoute: AppRouterConfig.compareMetrics,
       body: _buildBody(theme),
     );
   }

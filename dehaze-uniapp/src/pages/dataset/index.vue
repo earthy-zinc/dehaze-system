@@ -6,8 +6,8 @@
         icon="server-fill"
         icon-color="#14b8a6"
         icon-bg="linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%)"
-        title="数据集管理"
-        subtitle="浏览和管理图像去雾数据集"
+        title="数据集"
+        subtitle="浏览公开和共享数据集"
       />
 
       <!-- 搜索栏 -->
@@ -33,12 +33,46 @@
 
         <!-- 数据集列表 -->
         <view v-else-if="datasets.length > 0" class="dataset-list">
-          <DatasetCard
+          <view
             v-for="dataset in datasets"
             :key="dataset.id"
-            :dataset="dataset"
-            @click="handleDatasetClick"
-          />
+            class="dataset-card"
+            @click="handleDatasetClick(dataset)"
+          >
+            <view class="card-thumbnail">
+              <up-image
+                v-if="thumbnailMap[dataset.id]"
+                :src="thumbnailMap[dataset.id]"
+                mode="aspectFill"
+                width="100%"
+                height="100%"
+                :lazy-load="true"
+              />
+            </view>
+            <view class="card-content">
+              <text class="card-title">{{ dataset.name }}</text>
+              <text class="card-desc">
+                {{ dataset.description || "暂无描述" }}
+              </text>
+              <view class="card-stats">
+                <view class="stat-item">
+                  <SvgIcon name="photo" size="14" color="#14b8a6" />
+                  <text class="stat-text">{{ dataset.total ?? 0 }}</text>
+                </view>
+                <view class="stat-item">
+                  <SvgIcon name="clock" size="14" color="#9ca3af" />
+                  <text class="stat-text">
+                    {{
+                      formatRelativeTime(
+                        dataset.createTime ? String(dataset.createTime) : ""
+                      )
+                    }}
+                  </text>
+                </view>
+              </view>
+
+            </view>
+          </view>
         </view>
 
         <!-- 空状态 -->
@@ -51,35 +85,87 @@
       <view v-else class="detail-view">
         <!-- 返回按钮 -->
         <view class="back-btn" @click="handleBackToList">
-          <u-icon name="arrow-left" size="18" color="#4b5563" />
+          <SvgIcon name="arrow-left" size="18" color="#4b5563" />
           <text class="back-text">返回列表</text>
         </view>
 
         <!-- 数据集信息 -->
-        <DatasetInfo v-if="currentDataset" :dataset="currentDataset" />
+        <view v-if="currentDataset" class="dataset-info">
+          <text class="info-title">{{ currentDataset.name }}</text>
+          <text class="info-desc">
+            {{ currentDataset.description || "暂无描述" }}
+          </text>
+          <view class="stats-grid">
+            <view class="stat-box">
+              <text class="stat-value">
+                {{
+                  currentDataset.total ??
+                  currentDataset.statistics?.itemCount ??
+                  0
+                }}
+              </text>
+              <text class="stat-label">总计</text>
+            </view>
+            <view class="stat-box">
+              <text class="stat-value">
+                {{ currentDataset.statistics?.annotatedCount ?? 0 }}
+              </text>
+              <text class="stat-label">已标注</text>
+            </view>
+            <view class="stat-box">
+              <text class="stat-value">
+                {{ currentDataset.statistics?.unannotatedCount ?? 0 }}
+              </text>
+              <text class="stat-label">未标注</text>
+            </view>
+          </view>
+        </view>
 
-        <!-- 图片网格/瀑布流 -->
-        <ImageGrid
-          :images="images"
-          :loading="imagesLoading"
-          :has-more="hasMore"
-          :initial-mode="displayMode"
-          @image-click="handleImageClick"
-          @load-more="handleLoadMore"
-          @mode-change="handleModeChange"
-        />
+        <!-- 图片网格 -->
+        <view class="image-section">
+          <view v-if="imagesLoading" class="loading-container">
+            <up-loading-icon mode="circle" size="40" color="#14b8a6" />
+            <text class="loading-text">加载图片中...</text>
+          </view>
+
+          <view v-else-if="images.length > 0" class="image-grid">
+            <view
+              v-for="image in images"
+              :key="image.id"
+              class="image-card"
+              @click="handleImageClick(image)"
+            >
+              <up-image
+                :src="image.imageUrl"
+                mode="aspectFill"
+                width="100%"
+                height="240rpx"
+                :lazy-load="true"
+              />
+              <view class="image-overlay">
+                <text class="image-type">
+                  {{ getTypeLabel(image.type) }}
+                </text>
+              </view>
+            </view>
+          </view>
+
+          <view v-else class="empty-container">
+            <up-empty mode="data" text="暂无图片" />
+          </view>
+        </view>
       </view>
 
       <!-- 使用提示 -->
       <view v-if="currentView === 'list'" class="tips-card">
         <view class="tips-header">
-          <u-icon name="info-circle" size="18" color="#14b8a6" />
+          <SvgIcon name="info-circle" size="18" color="#14b8a6" />
           <text class="tips-title">使用提示</text>
         </view>
         <view class="tips-list">
           <text class="tips-item">• 点击数据集卡片查看详细信息</text>
           <text class="tips-item">• 点击图片可查看大图</text>
-          <text class="tips-item">• 支持网格和瀑布流两种展示模式</text>
+          <text class="tips-item">• 使用该数据集可带入去雾流程</text>
         </view>
       </view>
     </view>
@@ -96,7 +182,7 @@
         <view class="viewer-header">
           <text class="viewer-title">{{ selectedImage.filename }}</text>
           <view class="viewer-close" @click="closeImageViewer">
-            <u-icon name="close" size="24" color="#ffffff" />
+            <SvgIcon name="close" size="24" color="#ffffff" />
           </view>
         </view>
         <view class="viewer-image">
@@ -139,13 +225,11 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, reactive } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
-import DatasetCard from "./components/DatasetCard.vue";
-import DatasetInfo from "./components/DatasetInfo.vue";
-import ImageGrid from "./components/ImageGrid.vue";
-import type { DatasetImageItem, DisplayMode } from "./data/datasetData";
+import type { DatasetImageItem } from "./data/datasetData";
 import {
   formatHazeLevel,
   IMAGE_TYPE_LABELS,
@@ -153,64 +237,45 @@ import {
 } from "./data/datasetData";
 import { DatasetAPI, DatasetItemAPI } from "dehaze-sdk-js";
 import type { Dataset } from "dehaze-sdk-js";
-import { formatFileSize } from "@/utils/format";
+import { formatFileSize, formatRelativeTime } from "@/utils/format";
 
 // ==================== 状态定义 ====================
 
-/** 当前视图 */
 const currentView = ref<"list" | "detail">("list");
-
-/** 搜索关键词 */
 const searchKeyword = ref("");
-
-/** 数据集列表 */
 const datasets = ref<Dataset[]>([]);
-
-/** 列表加载状态 */
 const listLoading = ref(false);
-
-/** 当前选中的数据集 */
 const currentDataset = ref<Dataset | null>(null);
-
-/** 图片列表 */
 const images = ref<DatasetImageItem[]>([]);
-
-/** 图片加载状态 */
 const imagesLoading = ref(false);
-
-/** 当前页码 */
-const currentPage = ref(1);
-
-/** 是否有更多数据 */
-const hasMore = ref(true);
-
-/** 展示模式 */
-const displayMode = ref<DisplayMode>("grid");
-
-/** 图片查看器显示状态 */
 const showImageViewer = ref(false);
-
-/** 当前选中的图片 */
 const selectedImage = ref<DatasetImageItem | null>(null);
+const thumbnailMap = reactive<Record<number, string>>({});
 
-/** 每页大小 */
-const PAGE_SIZE = 20;
-
-// ==================== 方法定义 ====================
-
-/** 获取图片类型标签 */
 const getTypeLabel = (type: string) => IMAGE_TYPE_LABELS[type] || type;
+const getHazeLevelLabel = (level?: string) =>
+  formatHazeLevel(level) || "未标注";
 
-/** 获取雾霾程度展示文本 */
-const getHazeLevelLabel = (level?: string) => {
-  const label = formatHazeLevel(level);
-  return label || "未标注";
-};
+// ==================== 数据加载 ====================
 
-/** 加载数据集列表 */
+async function loadThumbnail(datasetId: number) {
+  try {
+    const result = await DatasetItemAPI.getList({
+      datasetId,
+      pageNum: 1,
+      pageSize: 1,
+    });
+    const first = flattenDatasetItems(result.list)[0];
+    if (first?.imageUrl) {
+      thumbnailMap[datasetId] = first.imageUrl;
+    }
+  } catch {
+    // 忽略
+  }
+}
+
 const loadDatasets = async () => {
   if (listLoading.value) return;
-
   listLoading.value = true;
   try {
     const result = await DatasetAPI.getList({
@@ -219,114 +284,73 @@ const loadDatasets = async () => {
       keyword: searchKeyword.value || undefined,
     });
     datasets.value = result.list;
+    // 异步加载缩略图
+    datasets.value.forEach((ds) => loadThumbnail(ds.id));
   } catch {
-    uni.showToast({
-      title: "加载失败，请重试",
-      icon: "none",
-    });
+    uni.showToast({ title: "加载失败，请重试", icon: "none" });
   } finally {
     listLoading.value = false;
   }
 };
 
-/** 加载图片列表 */
-const loadImages = async (append = false) => {
+const loadImages = async () => {
   if (!currentDataset.value || imagesLoading.value) return;
-
   imagesLoading.value = true;
   try {
     const result = await DatasetItemAPI.getList({
       datasetId: currentDataset.value.id,
-      pageNum: currentPage.value,
-      pageSize: PAGE_SIZE,
+      pageNum: 1,
+      pageSize: 50,
       keyword: searchKeyword.value || undefined,
     });
-
-    const imageItems = flattenDatasetItems(result.list);
-    if (append) {
-      images.value = [...images.value, ...imageItems];
-    } else {
-      images.value = imageItems;
-    }
-    hasMore.value = currentPage.value * PAGE_SIZE < result.total;
+    images.value = flattenDatasetItems(result.list);
   } catch {
-    uni.showToast({
-      title: "加载失败，请重试",
-      icon: "none",
-    });
+    uni.showToast({ title: "加载失败，请重试", icon: "none" });
   } finally {
     imagesLoading.value = false;
   }
 };
 
-/** 搜索处理 */
+// ==================== 事件处理 ====================
+
 const handleSearch = () => {
   if (currentView.value === "list") {
     loadDatasets();
   } else {
-    currentPage.value = 1;
     loadImages();
   }
 };
 
-/** 清除搜索 */
 const handleClearSearch = () => {
   searchKeyword.value = "";
   handleSearch();
 };
 
-/** 数据集点击 */
 const handleDatasetClick = async (dataset: Dataset) => {
   uni.showLoading({ title: "加载中..." });
-
   try {
     const detail = await DatasetAPI.getDatasetInfoById(dataset.id);
     currentDataset.value = detail;
     currentView.value = "detail";
-    currentPage.value = 1;
-    images.value = [];
-    hasMore.value = true;
-
     await loadImages();
   } catch {
-    uni.showToast({
-      title: "加载失败，请重试",
-      icon: "none",
-    });
+    uni.showToast({ title: "加载失败，请重试", icon: "none" });
   } finally {
     uni.hideLoading();
   }
 };
 
-/** 返回列表 */
 const handleBackToList = () => {
   currentView.value = "list";
   currentDataset.value = null;
-  currentPage.value = 1;
   images.value = [];
-  hasMore.value = true;
 };
 
-/** 加载更多 */
-const handleLoadMore = () => {
-  if (hasMore.value && !imagesLoading.value) {
-    currentPage.value++;
-    loadImages(true);
-  }
-};
-
-/** 展示模式变更 */
-const handleModeChange = (mode: DisplayMode) => {
-  displayMode.value = mode;
-};
-
-/** 图片点击 */
 const handleImageClick = (image: DatasetImageItem) => {
   selectedImage.value = image;
   showImageViewer.value = true;
 };
 
-/** 关闭图片查看器 */
 const closeImageViewer = () => {
   showImageViewer.value = false;
   selectedImage.value = null;
@@ -335,6 +359,24 @@ const closeImageViewer = () => {
 // ==================== 生命周期 ====================
 
 onMounted(() => {
+  // 支持通过路由参数直接进入数据集详情
+  const pages = getCurrentPages();
+  const currentPage = pages[pages.length - 1] as any;
+  const datasetId = currentPage?.$page?.options?.datasetId;
+  if (datasetId) {
+    const id = Number(datasetId);
+    if (!Number.isNaN(id)) {
+      DatasetAPI.getDatasetInfoById(id).then((detail) => {
+        currentDataset.value = detail;
+        currentView.value = "detail";
+        loadImages();
+      }).catch(() => {
+        uni.showToast({ title: "加载失败", icon: "none" });
+        loadDatasets();
+      });
+      return;
+    }
+  }
   loadDatasets();
 });
 </script>
@@ -368,12 +410,78 @@ onMounted(() => {
   gap: $spacing-md;
 }
 
+.dataset-card {
+  display: flex;
+  background: $color-white;
+  border-radius: $radius-xl;
+  overflow: hidden;
+  box-shadow: $shadow-md;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.card-thumbnail {
+  width: 240rpx;
+  height: 240rpx;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
+}
+
+.card-content {
+  flex: 1;
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.card-title {
+  font-size: $font-lg;
+  font-weight: 700;
+  color: $color-text-primary;
+  margin-bottom: 12rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-desc {
+  font-size: $font-sm;
+  color: $color-text-secondary;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 16rpx;
+}
+
+.card-stats {
+  display: flex;
+  align-items: center;
+  gap: 32rpx;
+  margin-bottom: 16rpx;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.stat-text {
+  font-size: 24rpx;
+  color: $color-text-placeholder;
+}
+
 /* 详情视图 */
 .detail-view {
   min-height: 400rpx;
 }
 
-/* 返回按钮 */
 .back-btn {
   display: inline-flex;
   align-items: center;
@@ -394,7 +502,94 @@ onMounted(() => {
   color: #4b5563;
 }
 
-/* 加载状态 */
+/* 数据集信息 */
+.dataset-info {
+  background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  color: $color-white;
+  margin-bottom: $spacing-md;
+}
+
+.info-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  margin-bottom: 12rpx;
+}
+
+.info-desc {
+  display: block;
+  font-size: $font-sm;
+  opacity: 0.9;
+  margin-bottom: 32rpx;
+  line-height: 1.5;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-sm;
+}
+
+.stat-box {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: $radius-lg;
+  padding: 16rpx 8rpx;
+}
+
+.stat-value {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  margin-bottom: 4rpx;
+}
+
+.stat-label {
+  display: block;
+  font-size: $font-xs;
+  opacity: 0.8;
+}
+
+/* 图片网格 */
+.image-section {
+  min-height: 200rpx;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-sm;
+}
+
+.image-card {
+  position: relative;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  background: $color-bg-secondary;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.image-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12rpx 16rpx;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+}
+
+.image-type {
+  font-size: $font-xs;
+  color: $color-white;
+  font-weight: 500;
+}
+
+/* 加载/空状态 */
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -409,7 +604,6 @@ onMounted(() => {
   color: $color-text-placeholder;
 }
 
-/* 空状态 */
 .empty-container {
   padding: 80rpx 0;
 }
@@ -520,14 +714,16 @@ onMounted(() => {
   color: $color-white;
 }
 
-/* 小屏幕适配 */
 @media (max-width: 375px) {
   .main-content {
     padding: $spacing-sm;
   }
-
   .tips-card {
     padding: $spacing-md;
+  }
+  .card-thumbnail {
+    width: 200rpx;
+    height: 200rpx;
   }
 }
 </style>

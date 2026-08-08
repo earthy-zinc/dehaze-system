@@ -11,7 +11,7 @@
   overflow: hidden;
 }
 
-/* 顶部导航 */
+/* 顶部导航 L2 */
 .navbar {
   display: flex;
   align-items: center;
@@ -19,6 +19,7 @@
   padding: 0 32rpx;
   background: #fff;
   box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
+  flex-shrink: 0;
 
   .nav-back {
     padding: 16rpx;
@@ -62,76 +63,39 @@
   }
 }
 
-/* 搜索栏 */
-.search-section {
+/* 智能推荐 */
+.recommend-section {
   padding: 24rpx 32rpx;
   background: #fff;
+  margin-bottom: 16rpx;
 
-  .search-input-wrapper {
-    display: flex;
-    align-items: center;
-    height: 72rpx;
-    padding: 0 24rpx;
-    background: #f3f4f6;
-    border-radius: 36rpx;
-
-    .search-input {
-      flex: 1;
-      height: 100%;
-      margin-left: 16rpx;
-      font-size: 28rpx;
-      appearance: none;
-      outline: none;
-      background: transparent;
-      border: none;
-    }
-
-    .clear-btn {
-      padding: 8rpx 16rpx;
-      font-size: 36rpx;
-      color: #9ca3af;
-    }
-  }
-}
-
-/* 算法树滚动区域 */
-.algorithm-tree-scroll {
-  flex: 1;
-  overflow: hidden;
-}
-
-/* 算法树容器 */
-.algorithm-tree-wrapper {
-  background: #fff;
-}
-
-/* 区块通用 */
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24rpx 32rpx 16rpx;
-
-  .section-title {
+  .section-label {
+    display: block;
+    margin-bottom: 16rpx;
     font-size: 30rpx;
     font-weight: 600;
     color: #1f2937;
   }
 
-  .section-hint {
-    font-size: 24rpx;
-    color: #9ca3af;
+  .analysis-tags {
+    display: flex;
+    gap: 16rpx;
+    margin-bottom: 16rpx;
+  }
+
+  .analysis-tag {
+    padding: 6rpx 16rpx;
+    font-size: 22rpx;
+    color: #6366f1;
+    background: #eef2ff;
+    border-radius: 8rpx;
   }
 }
 
-/* 智能推荐区域 */
-.recommend-section {
-  margin-top: 16rpx;
-  background: #fff;
-
-  .recommend-list {
-    padding: 0 32rpx 24rpx;
-  }
+.recommend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 
 .recommend-card {
@@ -139,18 +103,12 @@
   gap: 20rpx;
   align-items: center;
   padding: 24rpx;
-  margin-bottom: 16rpx;
   background: #f9fafb;
   border: 2rpx solid #f3f4f6;
   border-radius: 20rpx;
-  transition: all 0.2s;
 
   &:active {
     background: #f3f4f6;
-  }
-
-  &:last-child {
-    margin-bottom: 0;
   }
 
   .recommend-rank {
@@ -207,23 +165,18 @@
     }
   }
 
-  .recommend-desc {
+  .recommend-reason {
     display: block;
     margin-top: 8rpx;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 24rpx;
-    color: #6b7280;
-    white-space: nowrap;
+    font-size: 22rpx;
+    color: #3b82f6;
   }
 
-  .recommend-reason {
-    margin-top: 8rpx;
-
-    text {
-      font-size: 22rpx;
-      color: #3b82f6;
-    }
+  .recommend-effect {
+    display: block;
+    margin-top: 4rpx;
+    font-size: 22rpx;
+    color: #6b7280;
   }
 
   .match-score-bar {
@@ -247,57 +200,121 @@
   }
 }
 
-/* 收藏区域 */
-.favorite-section {
-  margin-top: 16rpx;
+/* 搜索栏 */
+.search-section {
+  padding: 24rpx 32rpx;
   background: #fff;
+  margin-bottom: 16rpx;
 
-  .favorite-list {
+  .search-input-wrapper {
+    display: flex;
+    align-items: center;
+    height: 72rpx;
+    padding: 0 24rpx;
+    background: #f3f4f6;
+    border-radius: 36rpx;
+
+    .search-input {
+      flex: 1;
+      height: 100%;
+      margin-left: 16rpx;
+      font-size: 28rpx;
+    }
+
+    .clear-btn {
+      padding: 8rpx 16rpx;
+      font-size: 36rpx;
+      color: #9ca3af;
+    }
+  }
+}
+
+/* 搜索历史 */
+.search-history-panel {
+  margin-top: 16rpx;
+  padding: 16rpx 0;
+
+  .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12rpx;
+
+    .history-title {
+      font-size: 26rpx;
+      color: #6b7280;
+    }
+
+    .history-clear {
+      font-size: 24rpx;
+      color: #3b82f6;
+    }
+  }
+
+  .history-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 16rpx;
-    padding: 0 32rpx 24rpx;
+    gap: 12rpx;
+  }
+
+  .history-tag {
+    padding: 8rpx 20rpx;
+    font-size: 24rpx;
+    color: #4b5563;
+    background: #f3f4f6;
+    border-radius: 20rpx;
   }
 }
 
-.favorite-card {
+/* 对比栏 */
+.compare-bar {
   display: flex;
-  gap: 12rpx;
   align-items: center;
-  padding: 12rpx 20rpx;
-  background: #fffbeb;
-  border: 2rpx solid #fde68a;
-  border-radius: 32rpx;
+  justify-content: space-between;
+  padding: 16rpx 32rpx;
+  background: #fff;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 
-  .fav-card-content {
+  .compare-bar-tags {
     display: flex;
-    gap: 12rpx;
-    align-items: center;
+    flex-wrap: wrap;
+    gap: 8rpx;
+    flex: 1;
+    min-width: 0;
   }
 
-  .fav-name {
-    font-size: 26rpx;
-    font-weight: 500;
-    color: #92400e;
-  }
-
-  .fav-btn {
+  .compare-bar-tag {
     display: flex;
     align-items: center;
+    gap: 4rpx;
+    padding: 6rpx 16rpx;
+    font-size: 22rpx;
+    color: #8b5cf6;
+    background: #ede9fe;
+    border-radius: 16rpx;
+  }
+
+  .compare-bar-remove {
     padding: 4rpx;
   }
-}
 
-.loading-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 80rpx 0;
-  font-size: 28rpx;
-  color: #9ca3af;
+  .compare-bar-btn {
+    flex-shrink: 0;
+    padding: 12rpx 28rpx;
+    font-size: 24rpx;
+    font-weight: 600;
+    color: #fff;
+    background: #8b5cf6;
+    border-radius: 24rpx;
+  }
 }
 
 /* 算法树 */
+.algorithm-tree-wrapper {
+  background: #fff;
+}
+
 .algorithm-tree {
   padding: 16rpx 0;
 }
@@ -305,11 +322,10 @@
 /* 树节点 */
 .tree-node {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   padding: 24rpx 32rpx;
   background: #fff;
   border-bottom: 2rpx solid #f5f5f5;
-  transition: background 0.2s;
 
   &.selectable:active {
     background: #f9fafb;
@@ -342,7 +358,7 @@
 
     .node-header {
       display: flex;
-      gap: 16rpx;
+      gap: 12rpx;
       align-items: center;
 
       .node-name {
@@ -353,23 +369,9 @@
         color: #1f2937;
         white-space: nowrap;
       }
-    }
 
-    .node-desc {
-      display: block;
-      margin-top: 8rpx;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: 24rpx;
-      color: #9ca3af;
-      white-space: nowrap;
-    }
-
-    .node-type {
-      margin-top: 8rpx;
-
-      .type-label {
-        display: inline-block;
+      .node-type-label {
+        flex-shrink: 0;
         padding: 4rpx 12rpx;
         font-size: 20rpx;
         color: #6366f1;
@@ -377,26 +379,14 @@
         border-radius: 8rpx;
       }
     }
-
-    .node-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16rpx;
-      margin-top: 8rpx;
-
-      .meta-text {
-        font-size: 22rpx;
-        color: #9ca3af;
-      }
-    }
   }
 
   .node-actions {
     display: flex;
     flex-shrink: 0;
-    gap: 8rpx;
+    gap: 4rpx;
     align-items: center;
-    margin-left: 16rpx;
+    margin-left: 12rpx;
   }
 
   .action-icon {
@@ -406,72 +396,14 @@
     width: 56rpx;
     height: 56rpx;
     border-radius: 50%;
-    transition: background 0.2s;
 
     &:active {
       background: #f3f4f6;
     }
-  }
 
-  .select-btn {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    height: 56rpx;
-    padding: 0 28rpx;
-    margin-left: 16rpx;
-    font-size: 24rpx;
-    color: #fff;
-    background: #3b82f6;
-    border-radius: 28rpx;
-  }
-}
-
-/* 状态标签 */
-.status-tag {
-  flex-shrink: 0;
-  padding: 4rpx 12rpx;
-  font-size: 20rpx;
-  border-radius: 8rpx;
-
-  text {
-    font-size: 20rpx;
-  }
-
-  &.status-draft {
-    color: #6b7280;
-    background: #f3f4f6;
-  }
-
-  &.status-testing {
-    color: #d97706;
-    background: #fef3c7;
-  }
-
-  &.status-pending {
-    color: #b45309;
-    background: #fef3c7;
-  }
-
-  &.status-published {
-    color: #059669;
-    background: #d1fae5;
-  }
-
-  &.status-disabled {
-    color: #dc2626;
-    background: #fee2e2;
-  }
-
-  &.status-archived {
-    color: #9ca3af;
-    background: #f3f4f6;
-  }
-
-  &.status-unknown {
-    color: #9ca3af;
-    background: #f3f4f6;
+    &.in-compare {
+      background: #ede9fe;
+    }
   }
 }
 
@@ -480,7 +412,17 @@
   background: #fafbfc;
 }
 
-/* 算法详情弹窗 */
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 0;
+  font-size: 28rpx;
+  color: #9ca3af;
+}
+
+/* ==================== 详情弹窗 ==================== */
 .detail-popup {
   display: flex;
   flex-direction: column;
@@ -494,6 +436,7 @@
   justify-content: space-between;
   padding: 32rpx 40rpx;
   border-bottom: 2rpx solid #f1f5f9;
+  flex-shrink: 0;
 
   .detail-title {
     font-size: 34rpx;
@@ -522,11 +465,31 @@
   padding: 16rpx 40rpx 32rpx;
 }
 
+.detail-section {
+  margin-bottom: 32rpx;
+
+  .detail-section-title {
+    display: block;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 16rpx;
+    padding-bottom: 8rpx;
+    border-bottom: 2rpx solid #f3f4f6;
+  }
+}
+
+.detail-desc {
+  display: block;
+  font-size: 26rpx;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
 .detail-item {
   display: flex;
   align-items: center;
-  padding: 24rpx 0;
-  border-bottom: 2rpx solid #f9fafb;
+  padding: 16rpx 0;
 
   .detail-label {
     flex-shrink: 0;
@@ -538,21 +501,31 @@
   .detail-value {
     flex: 1;
     font-size: 28rpx;
-    line-height: 1.4;
     color: #1f2937;
   }
+}
 
-  &.detail-desc-item {
-    flex-direction: column;
-    gap: 16rpx;
-    align-items: flex-start;
+/* 样例图片横滑 */
+.sample-scroll {
+  white-space: nowrap;
+}
 
-    .detail-desc {
-      font-size: 26rpx;
-      line-height: 1.6;
-      color: #4b5563;
-    }
-  }
+.sample-list {
+  display: inline-flex;
+  gap: 16rpx;
+}
+
+.sample-image {
+  width: 240rpx;
+  height: 180rpx;
+  border-radius: 12rpx;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+
+.test-result-image {
+  width: 100%;
+  border-radius: 12rpx;
 }
 
 .detail-footer {
@@ -560,6 +533,7 @@
   gap: 24rpx;
   padding: 24rpx 40rpx;
   border-top: 2rpx solid #f1f5f9;
+  flex-shrink: 0;
 
   :global {
     .taroify-button {
@@ -568,17 +542,90 @@
   }
 }
 
-/* Tabs容器 */
-.tabs-container {
+/* ==================== 对比面板 ==================== */
+.compare-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+
+.compare-panel {
+  width: 100%;
+  height: 75%;
   background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 智能推荐Tab内容 */
-.recommend-tab-content {
-  height: calc(100vh - 88rpx);
+.compare-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 40rpx;
+  border-bottom: 2rpx solid #f1f5f9;
+  flex-shrink: 0;
+
+  .compare-title {
+    font-size: 34rpx;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .compare-close {
+    padding: 8rpx;
+  }
 }
 
-/* 算法列表Tab内容 */
-.algorithm-tab-content {
-  height: calc(100vh - 88rpx);
+.compare-body {
+  flex: 1;
+  padding: 24rpx 32rpx;
+}
+
+.compare-table {
+  .compare-row {
+    display: flex;
+    border-bottom: 2rpx solid #f3f4f6;
+
+    &.header-row {
+      background: #f9fafb;
+      font-weight: 600;
+    }
+  }
+
+  .compare-cell {
+    flex: 1;
+    padding: 20rpx 12rpx;
+    font-size: 26rpx;
+    color: #4b5563;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &.label-cell {
+      flex-shrink: 0;
+      width: 140rpx;
+      color: #6b7280;
+      font-size: 24rpx;
+    }
+  }
+
+  .compare-alg-name {
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .compare-preview-img {
+    width: 120rpx;
+    height: 90rpx;
+    border-radius: 8rpx;
+    background: #f3f4f6;
+  }
 }

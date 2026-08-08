@@ -4,129 +4,81 @@ import 'package:flutter/material.dart';
 class MenuItemData {
   const MenuItemData({
     required this.icon,
+    required this.selectedIcon,
     required this.title,
     required this.route,
     this.badge,
+    this.children = const [],
   });
 
   final IconData icon;
+  final IconData selectedIcon;
   final String title;
   final String route;
-  final String? badge; // 角标文字（如 "NEW"、数字等）
+  final int? badge;
+  final List<MenuItemData> children;
 }
 
-/// 菜单分组数据模型
-class MenuSection {
-  const MenuSection({
-    required this.title,
-    required this.items,
-    this.icon,
-  });
-
-  final String title;
+/// 桌面端侧边栏分组
+class MenuGroup {
+  const MenuGroup({required this.label, required this.items});
+  final String label;
   final List<MenuItemData> items;
-  final IconData? icon; // 分组图标（可选）
 }
 
-/// 侧边菜单配置
+/// 菜单配置
 ///
-/// 统一管理所有菜单项数据，便于维护和修改
+/// 5 Tab 导航：首页 / 工具 / 去雾 / 消息 / 我的
 /// 与 router/config.dart 路由配置保持一致
 class MenuConfig {
   const MenuConfig._();
 
-  /// 首页菜单项
-  static const MenuItemData homeItem = MenuItemData(
-    icon: Icons.home_outlined,
-    title: '首页',
-    route: '/home',
-  );
+  // ==================== 5 Tab 定义 ====================
 
-  /// 获取所有菜单分组
-  static const List<MenuSection> menuSections = [
-    MenuSection(
-      title: '处理流程',
-      icon: Icons.play_circle_outline,
-      items: [
-        MenuItemData(
-          icon: Icons.image_outlined,
-          title: '图像输入',
-          route: '/image-input',
-        ),
-        MenuItemData(
-          icon: Icons.psychology_outlined,
-          title: '算法选择',
-          route: '/algorithm-select',
-        ),
-        MenuItemData(
-          icon: Icons.settings_outlined,
-          title: '去雾处理',
-          route: '/processing',
-        ),
-      ],
+  static const List<MenuItemData> tabs = [
+    MenuItemData(
+      icon: Icons.home_outlined,
+      selectedIcon: Icons.home,
+      title: '首页',
+      route: '/home',
     ),
-    MenuSection(
-      title: '效果对比',
-      icon: Icons.compare_outlined,
-      items: [
-        MenuItemData(
-          icon: Icons.view_column_outlined,
-          title: '并排对比',
-          route: '/side-by-side',
-        ),
-        MenuItemData(
-          icon: Icons.layers_outlined,
-          title: '重叠对比',
-          route: '/overlay',
-        ),
-        MenuItemData(
-          icon: Icons.search_outlined,
-          title: '放大镜',
-          route: '/magnifier',
-        ),
-        MenuItemData(
-          icon: Icons.tune_outlined,
-          title: '滤镜调节',
-          route: '/filter',
-        ),
-        MenuItemData(
-          icon: Icons.bar_chart_outlined,
-          title: '指标评估',
-          route: '/metrics',
-        ),
-        MenuItemData(
-          icon: Icons.info_outline,
-          title: '算法信息',
-          route: '/algorithm',
-        ),
-      ],
+    MenuItemData(
+      icon: Icons.grid_view_outlined,
+      selectedIcon: Icons.grid_view,
+      title: '工具',
+      route: '/tools',
     ),
-    MenuSection(
-      title: '数据管理',
-      icon: Icons.folder_outlined,
-      items: [
-        MenuItemData(
-          icon: Icons.storage_outlined,
-          title: '数据集管理',
-          route: '/dataset',
-        ),
-      ],
+    MenuItemData(
+      icon: Icons.auto_fix_high_outlined,
+      selectedIcon: Icons.auto_fix_high,
+      title: '去雾',
+      route: '/dehaze',
     ),
-    MenuSection(
-      title: '我的',
+    MenuItemData(
+      icon: Icons.notifications_outlined,
+      selectedIcon: Icons.notifications,
+      title: '消息',
+      route: '/messages',
+    ),
+    MenuItemData(
       icon: Icons.person_outline,
-      items: [
-        MenuItemData(
-          icon: Icons.person_outline,
-          title: '用户中心',
-          route: '/profile',
-        ),
-        MenuItemData(
-          icon: Icons.history,
-          title: '处理历史',
-          route: '/task-history',
-        ),
-      ],
+      selectedIcon: Icons.person,
+      title: '我的',
+      route: '/profile',
     ),
+  ];
+
+  /// 根据路由获取当前 Tab 索引
+  static int getTabIndex(String location) {
+    for (int i = 0; i < tabs.length; i++) {
+      if (location.startsWith(tabs[i].route)) return i;
+    }
+    return 0;
+  }
+
+  // ==================== 桌面端侧边栏分组 ====================
+
+  static const List<MenuGroup> desktopGroups = [
+    MenuGroup(label: '主功能', items: tabs),
   ];
 }

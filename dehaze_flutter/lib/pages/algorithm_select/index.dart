@@ -31,10 +31,10 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
   String? _errorMessage;
   String _searchQuery = '';
 
-  List<RecommendedAlgorithmVO> _recommendations = [];
+  List<RecommendedAlgorithm> _recommendations = [];
   bool _isRecommending = false;
   String? _recommendError;
-  FileUploadResponse? _uploadedFile;
+  FileInfo? _uploadedFile;
 
   List<AlgorithmModel> get _filteredAlgorithms {
     final query = _searchQuery.trim().toLowerCase();
@@ -60,7 +60,7 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
 
     try {
       final service = ref.read(algorithmServiceProvider);
-      final algorithms = await service.getAlgorithmList();
+      final algorithms = await service.getList();
 
       // 展平树形结构，只显示已发布的叶子算法
       final flatAlgorithms = algorithms.flatPublishedLeaves;
@@ -70,6 +70,9 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
           _algorithms = flatAlgorithms;
           _isLoading = false;
         });
+
+        // 从路由 extra 读取预选算法 ID（由 algorithm_browse_page 传入）
+        _preselectAlgorithm();
       }
     } catch (e) {
       if (mounted) {
@@ -78,6 +81,21 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// 从路由 extra 读取预选算法 ID，自动选中对应算法。
+  ///
+  /// algorithm_browse_page 通过 GoRouter extra 传入 algorithm.id，
+  /// 使得「使用该算法」后直接定位到对应算法卡片。
+  void _preselectAlgorithm() {
+    final extra = GoRouterState.of(context).extra;
+    if (extra is! int) return;
+
+    final algorithm =
+        _algorithms.where((a) => a.id == extra).firstOrNull;
+    if (algorithm != null) {
+      ref.read(processingProvider.notifier).setSelectedAlgorithm(algorithm);
     }
   }
 
@@ -128,7 +146,7 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
   }
 
   /// 确保图片已上传，返回上传结果（带缓存，避免重复上传）
-  Future<FileUploadResponse> _ensureUploaded(
+  Future<FileInfo> _ensureUploaded(
       SelectedImageModel selectedImage) async {
     if (_uploadedFile != null) return _uploadedFile!;
     final fileService = ref.read(fileServiceProvider);
@@ -165,11 +183,11 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
 
       // 两步推荐：先图像特征分析获取 imageMd5，再取推荐算法（截取 Top 3）
       final service = ref.read(recommendationServiceProvider);
-      final analysis = await service.analyze(AnalyzeForm(imageUrl: imageUrl));
-      var recommendations = <RecommendedAlgorithmVO>[];
+      final analysis = await service.analyze(AnalyzeRequest(imageUrl: imageUrl));
+      var recommendations = <RecommendedAlgorithm>[];
       final imageMd5 = analysis.imageMd5;
       if (imageMd5 != null && imageMd5.isNotEmpty) {
-        recommendations = await service.getRecommendations(imageMd5);
+        recommendations = await service.getRecommendations(imageMd5: imageMd5);
         if (recommendations.length > 3) {
           recommendations = recommendations.sublist(0, 3);
         }
@@ -192,7 +210,7 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
   }
 
   /// 通过推荐结果选中对应算法
-  void _selectRecommendation(RecommendedAlgorithmVO recommend) {
+  void _selectRecommendation(RecommendedAlgorithm recommend) {
     final algorithm =
         _algorithms.where((a) => a.id == recommend.algorithmId).firstOrNull;
     if (algorithm != null) {
@@ -612,7 +630,7 @@ class _RecommendationCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final RecommendedAlgorithmVO recommend;
+  final RecommendedAlgorithm recommend;
   final VoidCallback onTap;
 
   @override
@@ -672,7 +690,7 @@ class _RecommendationCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              '匹配度 ${recommend.matchScore ?? 0}%',
+                              '匹配度 ${recommend.matchScore}%',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
@@ -684,7 +702,7 @@ class _RecommendationCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        recommend.reason ?? '',
+                        recommend.reason,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

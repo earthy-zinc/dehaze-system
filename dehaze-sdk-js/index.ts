@@ -50,6 +50,16 @@ export * from "./src/api/user/model";
 export * from "./src/types";
 export * from "./src/enums";
 
+// 前端日志监控：Logger 多 transport 架构 + 错误捕获 + 离线上报
+export { Logger, ErrorBoundary, ConsoleTransport, RemoteTransport } from "./src/logger";
+export type {
+  LogEntry,
+  LogLevel,
+  LoggerStorage,
+  LogTransport,
+  InstallConfig,
+} from "./src/logger";
+
 // 配置导出
 export { configAxios } from "./src/config";
 

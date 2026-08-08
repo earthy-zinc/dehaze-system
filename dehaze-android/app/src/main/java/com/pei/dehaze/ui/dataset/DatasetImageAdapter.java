@@ -51,6 +51,8 @@ public class DatasetImageAdapter extends ListAdapter<ImageItem, DatasetImageAdap
 
     private boolean selectionMode = false;
     private final Set<Long> selectedIds = new HashSet<>();
+    /** 是否显示操作按钮（浏览版隐藏编辑/删除/上传） */
+    private boolean showActions = true;
 
     /** 当前展示的图片类型（clear/hazy/trans） */
     private ImageType currentImageType = ImageType.HAZY;
@@ -84,6 +86,11 @@ public class DatasetImageAdapter extends ListAdapter<ImageItem, DatasetImageAdap
 
     public void setCurrentImageType(ImageType type) {
         this.currentImageType = type;
+        notifyItemRangeChanged(0, getItemCount());
+    }
+
+    public void setShowActions(boolean showActions) {
+        this.showActions = showActions;
         notifyItemRangeChanged(0, getItemCount());
     }
 
@@ -243,16 +250,18 @@ public class DatasetImageAdapter extends ListAdapter<ImageItem, DatasetImageAdap
             } else {
                 cbSelect.setVisibility(View.GONE);
                 cbSelect.setOnCheckedChangeListener(null);
-                layoutActions.setVisibility(View.VISIBLE);
-                tvEdit.setOnClickListener(v -> {
-                    if (actionListener != null) actionListener.onEdit(item);
-                });
-                tvDelete.setOnClickListener(v -> {
-                    if (actionListener != null) actionListener.onDelete(item);
-                });
-                tvUploadFile.setOnClickListener(v -> {
-                    if (actionListener != null) actionListener.onUploadFile(item);
-                });
+                layoutActions.setVisibility(showActions ? View.VISIBLE : View.GONE);
+                if (showActions) {
+                    tvEdit.setOnClickListener(v -> {
+                        if (actionListener != null) actionListener.onEdit(item);
+                    });
+                    tvDelete.setOnClickListener(v -> {
+                        if (actionListener != null) actionListener.onDelete(item);
+                    });
+                    tvUploadFile.setOnClickListener(v -> {
+                        if (actionListener != null) actionListener.onUploadFile(item);
+                    });
+                }
             }
         }
 

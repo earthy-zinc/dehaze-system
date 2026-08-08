@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, ScrollView } from "@tarojs/components";
+import { Button } from "@taroify/core";
+import Taro from "@tarojs/taro";
 
-import CompareNavbar from "@/components/compare/CompareNavbar";
+import ImmersiveLayout from "@/layout/immersive";
 import { ModelAPI, AlgorithmAPI } from "dehaze-sdk-js";
 import type { EvaluationResultVO, AlgorithmMonitorVO } from "dehaze-sdk-js";
 import CompareToolbar from "@/components/compare/CompareToolbar";
@@ -47,6 +49,8 @@ const METRIC_LABELS: Record<
   mse: { label: "均方误差", unit: "", better: "lower", desc: "越小越好" },
 };
 
+type TaskStatus = 1 | 2 | 3;
+
 const MetricsPage: React.FC = () => {
   const [ctx] = useState(loadCompareContext);
   const [evaluation, setEvaluation] = useState<EvaluationResultVO | null>(null);
@@ -56,6 +60,8 @@ const MetricsPage: React.FC = () => {
     null
   );
   const [monitorLoading, setMonitorLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportDownloading, setReportDownloading] = useState(false);
 
   const { algorithm, result: prediction, originImage } = ctx;
   const cleanUrl = originImage?.cleanUrl;
@@ -142,14 +148,56 @@ const MetricsPage: React.FC = () => {
     }
   };
 
+  // 生成并下载报告
+  const handleExportReport = async () => {
+    if (!prediction?.resultUrl) {
+      Taro.showToast({ title: "缺少必要参数", icon: "none" });
+      return;
+    }
+    setReportLoading(true);
+    try {
+      const res = await ModelAPI.generateReport({ logId: 0, format: "pdf" });
+      const taskId = res.taskId;
+      if (!taskId) throw new Error("未返回任务ID");
+      while (true) {
+        const statusRes = await ModelAPI.getReportStatus(taskId);
+        const status = statusRes.status as TaskStatus;
+        if (status === 2) {
+          if (statusRes.downloadUrl) {
+            setReportLoading(false);
+            setReportDownloading(true);
+            try {
+              const filePath = await Taro.downloadFile({ url: statusRes.downloadUrl });
+              if (filePath.tempFilePath) {
+                await Taro.openDocument({ filePath: filePath.tempFilePath, showMenu: true });
+              }
+            } catch { Taro.showToast({ title: "打开报告失败", icon: "none" }); }
+            finally { setReportDownloading(false); }
+          } else { throw new Error("报告生成但无下载链接"); }
+          break;
+        }
+        if (status === 3) throw new Error(statusRes.errorMessage || "报告生成失败");
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    } catch (err: unknown) {
+      Taro.showToast({ title: err instanceof Error ? err.message : "报告生成失败", icon: "none" });
+    } finally { setReportLoading(false); }
+  };
+
   const metrics = evaluation?.metrics || {};
   const metricKeys = Object.keys(metrics);
 
   return (
-    <View className="metrics-page">
-      {/* 顶部导航 */}
-      <CompareNavbar title="指标对比" />
-
+    <ImmersiveLayout
+      title="指标对比"
+      toolbar={
+        <CompareToolbar
+          currentMode="metrics"
+          resultUrl={prediction?.resultUrl}
+          resultId={prediction?.logId}
+        />
+      }
+    >
       <ScrollView className="metrics-content" scrollY>
         {/* 算法信息 + 性能数据（使用统一组件，含评估耗时） */}
         <AlgorithmInfoCard
@@ -262,11 +310,20 @@ const MetricsPage: React.FC = () => {
             </View>
           )}
         </View>
-      </ScrollView>
 
-      {/* 底部工具栏 */}
-      <CompareToolbar currentMode="metrics" resultUrl={prediction?.resultUrl} />
-    </View>
+        {/* 导出报告 */}
+        <View className="export-report-section">
+          <Button
+            block
+            color="primary"
+            loading={reportLoading || reportDownloading}
+            onClick={handleExportReport}
+          >
+            {reportDownloading ? "正在打开报告..." : "导出报告"}
+          </Button>
+        </View>
+      </ScrollView>
+    </ImmersiveLayout>
   );
 };
 

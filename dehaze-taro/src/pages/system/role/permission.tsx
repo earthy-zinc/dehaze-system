@@ -143,7 +143,7 @@ const RolePermissionPage: React.FC = () => {
             </Navbar.NavLeft>
           </Navbar>
           <View className="loading-container">
-            <Loading size="24px">加载中...</Loading>
+            <Loading size={48}>加载中...</Loading>
           </View>
         </View>
       </ConfigProvider>

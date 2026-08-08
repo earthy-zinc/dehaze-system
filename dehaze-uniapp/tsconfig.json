@@ -6,7 +6,7 @@
       "@/*": ["./src/*"]
     },
     "lib": ["esnext", "dom"],
-    "types": ["@dcloudio/types", "uview-plus/types"]
+    "types": ["@dcloudio/types"]
   },
   "include": [
     "vite.config.ts",

@@ -53,8 +53,8 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/algorithms/{id}/monitor` | GET | 获取算法监控数据 | - | F-M05-008 |
-| `/api/v1/algorithms/{id}/monitor/stats` | GET | 获取算法统计报表（当前复用监控数据接口） | - | F-M05-008 |
+| `/api/v1/algorithms/{id}/monitor` | GET | 获取算法监控数据（callCount/avgTime/successRate/todayCallCount） | - | F-M05-008 |
+| `/api/v1/algorithms/{id}/monitor/stats` | GET | 获取算法统计报表（按天统计，`days` 参数默认 7 天） | - | F-M05-008 |
 
 ### 2.4 模型预测接口
 
@@ -94,17 +94,14 @@
 | 权限标识 | 说明 | 控制范围 |
 |---------|------|---------|
 | `sys:algorithm:add` | 新增算法 | 按钮显示 + 接口校验 |
-| `sys:algorithm:edit` | 编辑算法/修改状态 | 按钮显示 + 接口校验 |
+| `sys:algorithm:edit` | 编辑算法、状态变更（停用/启用/归档） | 按钮显示 + 接口校验 |
 | `sys:algorithm:audit` | 审核算法（通过/驳回） | 按钮显示 + 接口校验 |
-| `sys:algorithm:stop` | 停用/启用算法 | 按钮显示 + 接口校验（复用 edit 权限） |
 | `sys:algorithm:delete` | 删除算法 | 按钮显示 + 接口校验 |
-| `sys:algorithm:view` | 查看算法 | 默认所有用户 |
-| `sys:algorithm:version` | 版本管理 | 按钮显示 + 接口校验 |
-| `sys:algorithm:import` | 导入算法 | 按钮显示 + 接口校验 |
+| `sys:algorithm:version` | 新增版本、版本回滚 | 按钮显示 + 接口校验 |
+| `sys:algorithm:import` | 导入算法、下载模板 | 按钮显示 + 接口校验 |
 | `sys:algorithm:export` | 导出算法 | 按钮显示 + 接口校验 |
-| `sys:algorithm:monitor` | 性能监控 | 前端按钮显示控制（接口层当前未强制校验） |
 
-> **说明**：监控接口 `/{id}/monitor`、`/{id}/monitor/stats` 及版本历史查询 `/{id}/versions` 当前未强制校验，登录用户即可访问。`sys:algorithm:monitor` 权限标识主要用于前端按钮显示控制。
+> **说明**：查看算法详情、监控数据、版本历史查询为登录用户默认权限，无独立权限标识（实现中未配置 `sys:algorithm:view/monitor/stop`）；停用/启用通过编辑接口（`sys:algorithm:edit`）执行状态变更。
 
 ## 4. 业务错误码
 

@@ -1,7 +1,7 @@
 <template>
   <view class="page-header-card" :class="`variant-${variant}`">
     <view class="header-icon" :style="{ background: iconBg }">
-      <u-icon :name="icon" size="28" :color="iconColor" />
+      <SvgIcon :name="icon" size="28" :color="iconColor" />
     </view>
     <view class="header-text">
       <text class="header-title">{{ title }}</text>
@@ -11,15 +11,17 @@
 </template>
 
 <script lang="ts" setup>
+import SvgIcon from "@/components/SvgIcon/index.vue";
+
 /**
  * 页面顶部标题卡片
  * 抽取自多个页面共用的 .page-header-card 模式，统一图标 / 标题 / 副标题结构
  */
 withDefaults(
   defineProps<{
-    /** u-icon 的图标名 */
+    /** SvgIcon 的图标名 */
     icon: string;
-    /** u-icon 的颜色 */
+    /** SvgIcon 的颜色 */
     iconColor: string;
     /** 图标容器背景，支持单色或 CSS 渐变 */
     iconBg: string;

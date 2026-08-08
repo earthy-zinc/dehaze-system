@@ -143,3 +143,7 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     # 参数预设路由（去雾处理-参数预设）
     from app.router.preset import router as preset_router
     app.include_router(preset_router)
+
+    # 前端日志接收路由
+    from app.router.client_log import router as client_log_router
+    app.include_router(client_log_router)

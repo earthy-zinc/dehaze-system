@@ -56,7 +56,7 @@ class EvaluationService {
     }
     return pollTask(
       getEvalTaskStatus,
-      result.logId,
+      result.logId!,
       statusOf: (r) => r.status,
       options: options,
     );
@@ -79,6 +79,33 @@ class EvaluationService {
     final data = response.data!['data'] as Map<String, dynamic>;
     final list = (data['list'] as List<dynamic>? ?? [])
         .map((e) => EvaluationResult.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final total = data['total'] as int? ?? 0;
+    return PageResult(list: list, total: total);
+  }
+
+  /// 获取评估指标历史（当前用户，仅已完成任务）
+  ///
+  /// GET /evaluation/metrics
+  Future<PageResult<EvalMetricsVO>> getEvalMetrics({
+    int pageNum = 1,
+    int pageSize = 10,
+    int? algorithmId,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'pageNum': pageNum,
+      'pageSize': pageSize,
+    };
+    if (algorithmId != null) {
+      queryParams['algorithmId'] = algorithmId;
+    }
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiConstants.evaluationMetrics,
+      queryParameters: queryParams,
+    );
+    final data = response.data!['data'] as Map<String, dynamic>;
+    final list = (data['list'] as List<dynamic>? ?? [])
+        .map((e) => EvalMetricsVO.fromJson(e as Map<String, dynamic>))
         .toList();
     final total = data['total'] as int? ?? 0;
     return PageResult(list: list, total: total);

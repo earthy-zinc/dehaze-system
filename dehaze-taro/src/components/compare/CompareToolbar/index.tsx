@@ -1,7 +1,8 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, Text } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { saveImageToAlbum } from "@/utils/saveImage";
+import { FavoriteAPI } from "dehaze-sdk-js";
 import { COMPARE_MODES, type CompareMode } from "../types";
 import "./index.less";
 
@@ -10,16 +11,29 @@ interface CompareToolbarProps {
   currentMode: CompareMode;
   /** 结果图 URL（用于保存/分享） */
   resultUrl?: string;
+  /** 结果 ID（用于收藏，对应预测日志 ID） */
+  resultId?: number;
 }
 
 /**
  * 对比模式通用工具栏
- * 包含模式切换标签 + 4 个操作按钮（保存/分享/重新处理/换算法）
+ * 包含模式切换标签 + 5 个操作按钮（保存/分享/重新处理/换算法/收藏）
  */
 const CompareToolbar: React.FC<CompareToolbarProps> = ({
   currentMode,
   resultUrl,
+  resultId,
 }) => {
+  const [favorited, setFavorited] = useState(false);
+
+  // 加载收藏状态
+  useEffect(() => {
+    if (!resultId) return;
+    FavoriteAPI.getStatus("result", resultId)
+      .then((res) => setFavorited(res.favorited))
+      .catch(() => {});
+  }, [resultId]);
+
   // 切换对比模式（统一使用 redirectTo 避免页面栈堆积）
   const handleSwitchMode = useCallback(
     (mode: CompareMode, path: string) => {
@@ -45,7 +59,6 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
       return;
     }
     if (process.env.TARO_ENV === "h5") {
-      // H5 端：优先使用 Web Share API，失败则在新标签页打开
       if (typeof navigator !== "undefined" && navigator.share) {
         navigator.share({ title: "去雾结果", url: resultUrl }).catch(() => {
           window.open(resultUrl, "_blank");
@@ -71,11 +84,33 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
     Taro.redirectTo({ url: "/pages/algorithm-select/index" });
   }, []);
 
+  // 收藏/取消收藏
+  const handleFavorite = useCallback(async () => {
+    if (!resultId) {
+      Taro.showToast({ title: "暂不支持收藏", icon: "none" });
+      return;
+    }
+    try {
+      if (favorited) {
+        await FavoriteAPI.deleteByIds([resultId]);
+        setFavorited(false);
+        Taro.showToast({ title: "已取消收藏", icon: "success" });
+      } else {
+        await FavoriteAPI.add({ targetType: "result", targetId: resultId });
+        setFavorited(true);
+        Taro.showToast({ title: "已收藏", icon: "success" });
+      }
+    } catch {
+      Taro.showToast({ title: "操作失败", icon: "none" });
+    }
+  }, [resultId, favorited]);
+
   const actions = [
     { icon: "💾", text: "保存", onClick: handleSave },
     { icon: "📤", text: "分享", onClick: handleShare },
     { icon: "🔄", text: "重新处理", onClick: handleReprocess },
     { icon: "⚡", text: "换算法", onClick: handleChangeAlgorithm },
+    { icon: favorited ? "❤️" : "🤍", text: favorited ? "已收藏" : "收藏", onClick: handleFavorite },
   ];
 
   return (

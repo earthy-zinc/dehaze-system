@@ -1,147 +1,268 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, ScrollView, Image } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag } from "@taroify/core";
+import { MemberAPI, ModelAPI, FavoriteAPI, TaskAPI } from "dehaze-sdk-js";
+import type { MemberProfileVO } from "dehaze-sdk-js";
 import { confirmDialog } from "@/utils/dialog";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermission } from "@/hooks/usePermission";
 import { tabBarItems } from "@/config/menu";
 import PageLayout from "@/layout";
 import { getErrorMessage } from "@/utils/error";
 import "./index.less";
 
-// ==================== 常量定义 ====================
+// ==================== 类型定义 ====================
 
-/** 权限概览最多展示的权限数量 */
-const MAX_PERMISSION_PREVIEW = 6;
-
-/** 个人中心入口项 */
-interface ProfileEntry {
-  icon: string;
-  title: string;
-  desc: string;
-  route: string;
-  /** 系统模块名，拥有该模块任一权限（sys:{module}:*）时才显示。
-   *  设为 "*" 表示拥有任意 sys:* 权限时显示 */
-  sysModule?: string;
+interface StatItem {
+  label: string;
+  value: string | number;
+  route?: string;
 }
 
-/** 普通用户功能入口（登录即可见） */
-const USER_ENTRIES: ProfileEntry[] = [
-  {
-    icon: "📋",
-    title: "处理历史",
-    desc: "查看去雾任务记录",
-    route: "/pages/task/index",
-  },
-  {
-    icon: "🖼️",
-    title: "图像输入历史",
-    desc: "查看输入图片记录",
-    route: "/pages/image-input/index",
-  },
-  {
-    icon: "⭐",
-    title: "我的收藏",
-    desc: "查看收藏的内容",
-    route: "/pages/favorite/index",
-  },
-  {
-    icon: "📦",
-    title: "套餐管理",
-    desc: "查看可用套餐",
-    route: "/pages/package/index",
-  },
-  {
-    icon: "🔔",
-    title: "消息通知",
-    desc: "查看通知消息",
-    route: "/pages/notify/index",
-  },
-  {
-    icon: "👑",
-    title: "会员管理",
-    desc: "会员信息与权益",
-    route: "/pages/member/index",
-  },
-  {
-    icon: "💬",
-    title: "反馈评价",
-    desc: "提交使用反馈",
-    route: "/pages/feedback/index",
-  },
+interface EntryItem {
+  icon: string;
+  title: string;
+  route: string;
+  permission?: string;
+}
+
+interface EntryGroup {
+  title: string;
+  entries: EntryItem[];
+}
+
+// ==================== 入口分组配置 ====================
+
+const PERSONAL_DATA_ENTRIES: EntryItem[] = [
+  { icon: "📄", title: "我的文件", route: "/pages/personal/files/index" },
+  { icon: "📊", title: "我的数据集", route: "/pages/dataset/index" },
+  { icon: "⏱️", title: "处理历史", route: "/pages/task/index" },
+  { icon: "⭐", title: "我的收藏", route: "/pages/favorite/index" },
 ];
 
-/** 系统管理入口（需对应模块权限） */
-const ADMIN_ENTRIES: ProfileEntry[] = [
+const BUSINESS_ENTRIES: EntryItem[] = [
+  { icon: "👑", title: "我的会员", route: "/pages/personal/member/index" },
+  { icon: "📦", title: "我的套餐", route: "/pages/personal/package/index" },
+  { icon: "🛒", title: "我的订单", route: "/pages/personal/orders/index" },
+  { icon: "💰", title: "我的额度", route: "/pages/personal/quota/index" },
+  { icon: "💬", title: "反馈评价", route: "/pages/personal/feedback/index" },
+];
+
+const OTHER_ENTRIES: EntryItem[] = [
+  { icon: "⚙️", title: "系统设置", route: "/pages/personal/settings/index" },
+  { icon: "❓", title: "帮助中心", route: "/pages/personal/help/index" },
+  { icon: "ℹ️", title: "关于我们", route: "/pages/personal/about/index" },
+  { icon: "🔔", title: "消息设置", route: "/pages/notify/index" },
+];
+
+// 管理入口分组（仅管理员/有权限用户可见，按 dev-admin 规划）
+const ADMIN_GROUPS: EntryGroup[] = [
   {
-    icon: "📊",
     title: "工作台",
-    desc: "统计概览与管理总览",
-    route: "/pages/dashboard/index",
-    sysModule: "*",
+    entries: [
+      {
+        icon: "📊",
+        title: "工作台",
+        route: "/pages/dashboard/index",
+        permission: "sys:user:*",
+      },
+    ],
   },
   {
-    icon: "👥",
-    title: "用户管理",
-    desc: "管理用户账号",
-    route: "/pages/system/user/index",
-    sysModule: "user",
+    title: "用户与权限",
+    entries: [
+      {
+        icon: "👥",
+        title: "用户管理",
+        route: "/pages/system/user/index",
+        permission: "sys:user:*",
+      },
+      {
+        icon: "🛡️",
+        title: "角色管理",
+        route: "/pages/system/role/index",
+        permission: "sys:role:*",
+      },
+      {
+        icon: "📑",
+        title: "菜单管理",
+        route: "/pages/system/menu/index",
+        permission: "sys:menu:*",
+      },
+      {
+        icon: "🏢",
+        title: "部门管理",
+        route: "/pages/system/dept/index",
+        permission: "sys:dept:*",
+      },
+      {
+        icon: "📚",
+        title: "字典管理",
+        route: "/pages/system/dict/index",
+        permission: "sys:dict:*",
+      },
+    ],
   },
   {
-    icon: "🛡️",
-    title: "角色管理",
-    desc: "管理角色与权限",
-    route: "/pages/system/role/index",
-    sysModule: "role",
+    title: "算法与数据",
+    entries: [
+      {
+        icon: "🧠",
+        title: "算法管理",
+        route: "/pages/system/algorithm/index",
+        permission: "sys:algorithm:*",
+      },
+      {
+        icon: "📊",
+        title: "数据集管理",
+        route: "/pages/system/dataset/index",
+        permission: "sys:dataset:*",
+      },
+      {
+        icon: "🎯",
+        title: "推荐管理",
+        route: "/pages/system/recommend/index",
+        permission: "sys:recommendation:*",
+      },
+    ],
   },
   {
-    icon: "📚",
-    title: "字典管理",
-    desc: "管理字典类型与数据",
-    route: "/pages/system/dict/index",
-    sysModule: "dict",
+    title: "业务管理",
+    entries: [
+      {
+        icon: "👑",
+        title: "会员管理",
+        route: "/pages/system/member/index",
+        permission: "sys:member:*",
+      },
+      {
+        icon: "📦",
+        title: "套餐管理",
+        route: "/pages/system/package/index",
+        permission: "sys:package:*",
+      },
+      {
+        icon: "🛒",
+        title: "订单管理",
+        route: "/pages/system/order/index",
+        permission: "sys:order:*",
+      },
+    ],
   },
   {
-    icon: "📑",
-    title: "菜单管理",
-    desc: "管理菜单与路由",
-    route: "/pages/system/menu/index",
-    sysModule: "menu",
-  },
-  {
-    icon: "🏢",
-    title: "部门管理",
-    desc: "管理组织部门",
-    route: "/pages/system/dept/index",
-    sysModule: "dept",
-  },
-  {
-    icon: "🎯",
-    title: "推荐规则",
-    desc: "管理算法推荐规则",
-    route: "/pages/recommend/index",
-    sysModule: "recommendation",
+    title: "运营管理",
+    entries: [
+      {
+        icon: "⏱️",
+        title: "任务管理",
+        route: "/pages/system/task/index",
+        permission: "sys:task:*",
+      },
+      {
+        icon: "💬",
+        title: "反馈评价管理",
+        route: "/pages/system/feedback/index",
+        permission: "sys:feedback:*",
+      },
+      {
+        icon: "🔔",
+        title: "消息管理",
+        route: "/pages/system/message/index",
+        permission: "sys:message:*",
+      },
+    ],
   },
 ];
 
 // ==================== 页面组件 ====================
 
 const ProfilePage: React.FC = () => {
-  const { user, roles, perms, logout } = useAuth();
+  const { user, roles, logout } = useAuth();
+  const { hasPermission } = usePermission();
 
-  /** 按模块权限过滤后的系统管理入口 */
-  const visibleAdminEntries = useMemo(
+  // 会员信息
+  const [member, setMember] = useState<MemberProfileVO | null>(null);
+  // 数据统计
+  const [quotaCount, setQuotaCount] = useState<number | null>(null);
+  const [favoriteCount, setFavoriteCount] = useState<number | null>(null);
+  const [taskTotal, setTaskTotal] = useState<number | null>(null);
+
+  // 加载会员信息
+  const loadMember = useCallback(async () => {
+    try {
+      const profile = await MemberAPI.getProfile();
+      setMember(profile);
+    } catch {
+      // 非会员静默处理
+    }
+  }, []);
+
+  // 加载数据统计
+  const loadStats = useCallback(async () => {
+    try {
+      const quota = await ModelAPI.getQuota();
+      setQuotaCount(quota.remaining ?? quota.total ?? null);
+    } catch {
+      setQuotaCount(null);
+    }
+    try {
+      const fav = await FavoriteAPI.getCount();
+      if (fav && fav.length > 0) {
+        const total = fav.reduce((sum, item) => sum + (item.count || 0), 0);
+        setFavoriteCount(total);
+      }
+    } catch {
+      setFavoriteCount(null);
+    }
+    try {
+      const tasks = await TaskAPI.getPage({ pageNum: 1, pageSize: 1 });
+      setTaskTotal(tasks.total ?? null);
+    } catch {
+      setTaskTotal(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMember();
+    loadStats();
+  }, [loadMember, loadStats]);
+
+  // 数据统计项
+  const stats: StatItem[] = useMemo(() => {
+    const items: StatItem[] = [
+      {
+        label: "剩余额度",
+        value: quotaCount !== null ? `${quotaCount} 次` : "-",
+        route: "/pages/personal/quota/index",
+      },
+      {
+        label: "处理次数",
+        value: taskTotal !== null ? `${taskTotal}` : "-",
+        route: "/pages/task/index",
+      },
+      {
+        label: "我的收藏",
+        value: favoriteCount !== null ? `${favoriteCount}` : "-",
+        route: "/pages/favorite/index",
+      },
+    ];
+    return items;
+  }, [quotaCount, taskTotal, favoriteCount]);
+
+  // 权限过滤后的管理入口分组
+  const visibleAdminGroups = useMemo(
     () =>
-      ADMIN_ENTRIES.filter((entry) => {
-        if (!entry.sysModule) return true;
-        if (entry.sysModule === "*")
-          return perms.some((p) => p.startsWith("sys:"));
-        return perms.some((p) => p.startsWith(`sys:${entry.sysModule}:`));
-      }),
-    [perms]
+      ADMIN_GROUPS.map((group) => ({
+        ...group,
+        entries: group.entries.filter((entry) =>
+          entry.permission ? hasPermission(entry.permission) : true
+        ),
+      })).filter((group) => group.entries.length > 0),
+    [hasPermission]
   );
 
-  /** 跳转到指定页面（tabbar 页面用 switchTab，其余用 navigateTo） */
+  // 跳转
   const handleNavigate = useCallback((route: string) => {
     if (tabBarItems.some((item) => item.route === route)) {
       Taro.switchTab({ url: route });
@@ -155,7 +276,7 @@ const ProfilePage: React.FC = () => {
     }
   }, []);
 
-  /** 退出登录（二次确认） */
+  // 退出登录
   const handleLogout = useCallback(async () => {
     const confirmed = await confirmDialog({
       title: "退出登录",
@@ -166,7 +287,6 @@ const ProfilePage: React.FC = () => {
     try {
       await logout();
       Taro.showToast({ title: "已退出登录", icon: "success" });
-      // 延迟跳转，让用户看到提示。使用 reLaunch 清空页面栈
       setTimeout(() => {
         Taro.reLaunch({ url: "/pages/login/index" });
       }, 800);
@@ -175,31 +295,35 @@ const ProfilePage: React.FC = () => {
     }
   }, [logout]);
 
-  /** 获取头像首字母（用于无头像时的占位） */
-  const getAvatarLetter = (): string => {
-    return user?.nickname?.[0] || user?.username?.[0] || "U";
-  };
+  // 头像首字母
+  const avatarLetter = user?.nickname?.[0] || user?.username?.[0] || "U";
+  const isFullAvatar = (avatar?: string) =>
+    !!avatar && /^https?:\/\//.test(avatar);
 
-  /** 是否为完整的头像URL */
-  const isFullAvatarUrl = (avatar?: string): boolean => {
-    return !!avatar && /^https?:\/\//.test(avatar);
-  };
+  // VIP 状态
+  const isVip =
+    !!member &&
+    member.levelCode !== "level_1" &&
+    member.levelCode !== "level_0";
 
   // ==================== 渲染 ====================
 
-  /** 渲染功能入口项 */
-  const renderEntry = (entry: ProfileEntry) => (
+  const renderEntry = (entry: EntryItem) => (
     <View
       key={entry.route}
       className="entry-item"
       onClick={() => handleNavigate(entry.route)}
     >
       <Text className="entry-icon">{entry.icon}</Text>
-      <View className="entry-text">
-        <Text className="entry-title">{entry.title}</Text>
-        <Text className="entry-desc">{entry.desc}</Text>
-      </View>
+      <Text className="entry-title">{entry.title}</Text>
       <Text className="entry-arrow">›</Text>
+    </View>
+  );
+
+  const renderEntryGroup = (group: EntryGroup) => (
+    <View key={group.title} className="entry-group-section">
+      <Text className="group-title">{group.title}</Text>
+      <View className="entry-card">{group.entries.map(renderEntry)}</View>
     </View>
   );
 
@@ -207,83 +331,106 @@ const ProfilePage: React.FC = () => {
     <PageLayout level="L1" title="我的">
       <View className="profile-page">
         <ScrollView scrollY className="profile-scroll">
-          {/* 用户信息头部 */}
-          <View className="profile-header">
-            <View className="avatar-wrapper">
-              {isFullAvatarUrl(user?.avatar) ? (
-                <Image
-                  className="avatar-img"
-                  src={user!.avatar!}
-                  mode="aspectFill"
-                />
-              ) : (
-                <Text className="avatar-text">{getAvatarLetter()}</Text>
-              )}
-            </View>
-            <View className="user-meta">
-              <Text className="user-nickname">
-                {user?.nickname || "未设置昵称"}
-              </Text>
-              <Text className="user-username">
-                账号：{user?.username || "-"}
-              </Text>
-              <View className="user-roles">
-                {roles.length > 0 ? (
-                  roles.slice(0, 3).map((role) => (
-                    <Tag key={role} size="small" color="primary">
-                      {role.replace("ROLE_", "")}
-                    </Tag>
-                  ))
+          {/* 用户卡 */}
+          <View className="user-card">
+            <View className="user-card-bg" />
+            <View className="user-card-content">
+              <View className="avatar-wrapper">
+                {isFullAvatar(user?.avatar) ? (
+                  <Image
+                    className="avatar-img"
+                    src={user!.avatar!}
+                    mode="aspectFill"
+                  />
                 ) : (
-                  <Text className="no-role-text">暂无角色</Text>
+                  <Text className="avatar-text">{avatarLetter}</Text>
                 )}
               </View>
-            </View>
-          </View>
-
-          {/* 权限概览 */}
-          <View className="section">
-            <View className="section-header">
-              <Text className="section-title">权限概览</Text>
-              <Text className="section-count">共 {perms.length} 项</Text>
-            </View>
-            <View className="permission-card">
-              {perms.length > 0 ? (
-                <>
-                  <View className="permission-tags">
-                    {perms.slice(0, MAX_PERMISSION_PREVIEW).map((perm) => (
-                      <Tag key={perm} size="small">
-                        {perm}
+              <View className="user-info">
+                <Text className="user-nickname">
+                  {user?.nickname || "未设置昵称"}
+                </Text>
+                <View className="user-roles">
+                  {roles.length > 0 ? (
+                    roles.slice(0, 2).map((role) => (
+                      <Tag key={role} size="small" color="primary">
+                        {role.replace("ROLE_", "")}
                       </Tag>
-                    ))}
-                  </View>
-                  {perms.length > MAX_PERMISSION_PREVIEW && (
-                    <Text className="permission-more">
-                      等共 {perms.length} 项权限
-                    </Text>
+                    ))
+                  ) : (
+                    <Text className="no-role">普通用户</Text>
                   )}
-                </>
-              ) : (
-                <Text className="permission-empty">暂无权限</Text>
-              )}
-            </View>
-          </View>
-
-          {/* 功能入口 */}
-          <View className="section">
-            <Text className="section-title">功能入口</Text>
-            <View className="entry-list">{USER_ENTRIES.map(renderEntry)}</View>
-          </View>
-
-          {/* 系统管理（仅有对应模块权限时显示） */}
-          {visibleAdminEntries.length > 0 && (
-            <View className="section">
-              <Text className="section-title">系统管理</Text>
-              <View className="entry-list">
-                {visibleAdminEntries.map(renderEntry)}
+                </View>
               </View>
             </View>
-          )}
+          </View>
+
+          {/* VIP 横幅 */}
+          <View
+            className="vip-banner"
+            onClick={() => handleNavigate("/pages/personal/member/index")}
+          >
+            <View className="vip-banner-left">
+              <Text className="vip-banner-icon">👑</Text>
+              <View className="vip-banner-text">
+                <Text className="vip-banner-title">
+                  {isVip
+                    ? `${member?.levelName || "会员"}专属权益`
+                    : "开通 VIP 畅享更多次数"}
+                </Text>
+                <Text className="vip-banner-desc">
+                  {isVip
+                    ? `成长值 ${member?.growthValue || 0}，点击查看详情`
+                    : "解锁全部高级功能"}
+                </Text>
+              </View>
+            </View>
+            <View className="vip-banner-action">
+              <Text className="vip-banner-btn">
+                {isVip ? "详情" : "去开通"}
+              </Text>
+              <Text className="vip-banner-arrow">›</Text>
+            </View>
+          </View>
+
+          {/* 数据统计 */}
+          <View className="stats-card">
+            {stats.map((stat, idx) => (
+              <View
+                key={stat.label}
+                className={`stat-item ${idx < stats.length - 1 ? "stat-divider" : ""}`}
+                onClick={() => stat.route && handleNavigate(stat.route)}
+              >
+                <Text className="stat-value">{stat.value}</Text>
+                <Text className="stat-label">{stat.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* 个人数据分组 */}
+          <View className="entry-group-section">
+            <Text className="group-title">个人数据</Text>
+            <View className="entry-card">
+              {PERSONAL_DATA_ENTRIES.map(renderEntry)}
+            </View>
+          </View>
+
+          {/* 商业服务分组 */}
+          <View className="entry-group-section">
+            <Text className="group-title">商业服务</Text>
+            <View className="entry-card">
+              {BUSINESS_ENTRIES.map(renderEntry)}
+            </View>
+          </View>
+
+          {/* 其他分组 */}
+          <View className="entry-group-section">
+            <Text className="group-title">其他</Text>
+            <View className="entry-card">{OTHER_ENTRIES.map(renderEntry)}</View>
+          </View>
+
+          {/* 管理入口分组（权限过滤） */}
+          {visibleAdminGroups.map(renderEntryGroup)}
 
           {/* 退出登录 */}
           <View className="logout-section">

@@ -9,12 +9,14 @@
       :custom-style="ctaButtonStyle"
     >
       开始使用
-      <u-icon name="arrow-right" size="18" color="#ffffff" :margin-left="12" />
+      <SvgIcon name="arrow-right" size="18" color="#ffffff" :margin-left="12" />
     </up-button>
   </view>
 </template>
 
 <script lang="ts" setup>
+import SvgIcon from "@/components/SvgIcon/index.vue";
+
 interface Emits {
   (e: "start-click"): void;
 }

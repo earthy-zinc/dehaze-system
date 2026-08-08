@@ -16,6 +16,10 @@ PredictionRequest _$PredictionRequestFromJson(Map<String, dynamic> json) =>
           'params',
           (v) => PredictionRequest._paramsFromJson(v as String?),
         ),
+        recommendedBy: $checkedConvert(
+          'recommendedBy',
+          (v) => (v as num?)?.toInt(),
+        ),
       );
       return val;
     });
@@ -27,15 +31,16 @@ Map<String, dynamic> _$PredictionRequestToJson(PredictionRequest instance) =>
       if (instance.imageUrl case final value?) 'imageUrl': value,
       if (PredictionRequest._paramsToJson(instance.params) case final value?)
         'params': value,
+      if (instance.recommendedBy case final value?) 'recommendedBy': value,
     };
 
 PredictionResponse _$PredictionResponseFromJson(Map<String, dynamic> json) =>
     $checkedCreate('PredictionResponse', json, ($checkedConvert) {
       final val = PredictionResponse(
-        logId: $checkedConvert('logId', (v) => (v as num).toInt()),
+        logId: $checkedConvert('logId', (v) => (v as num?)?.toInt()),
         status: $checkedConvert(
           'status',
-          (v) => PredictionResponse._statusFromJson((v as num?)?.toInt()),
+          (v) => _statusFromJson((v as num?)?.toInt()),
         ),
         resultUrl: $checkedConvert('resultUrl', (v) => v as String?),
         resultThumbnailUrl: $checkedConvert(
@@ -44,19 +49,21 @@ PredictionResponse _$PredictionResponseFromJson(Map<String, dynamic> json) =>
         ),
         time: $checkedConvert('time', (v) => (v as num?)?.toInt()),
         errorMessage: $checkedConvert('errorMessage', (v) => v as String?),
+        fromCache: $checkedConvert('fromCache', (v) => v as bool?),
       );
       return val;
     });
 
 Map<String, dynamic> _$PredictionResponseToJson(PredictionResponse instance) =>
     <String, dynamic>{
-      'logId': instance.logId,
-      'status': PredictionResponse._statusToJson(instance.status),
+      if (instance.logId case final value?) 'logId': value,
+      if (_statusToJson(instance.status) case final value?) 'status': value,
       if (instance.resultUrl case final value?) 'resultUrl': value,
       if (instance.resultThumbnailUrl case final value?)
         'resultThumbnailUrl': value,
       if (instance.time case final value?) 'time': value,
       if (instance.errorMessage case final value?) 'errorMessage': value,
+      if (instance.fromCache case final value?) 'fromCache': value,
     };
 
 PredictionLog _$PredictionLogFromJson(Map<String, dynamic> json) =>
@@ -71,6 +78,11 @@ PredictionLog _$PredictionLogFromJson(Map<String, dynamic> json) =>
         ),
         originUrl: $checkedConvert('originUrl', (v) => v as String?),
         predUrl: $checkedConvert('predUrl', (v) => v as String?),
+        status: $checkedConvert(
+          'status',
+          (v) => _statusFromJson((v as num?)?.toInt()),
+        ),
+        errorMessage: $checkedConvert('errorMessage', (v) => v as String?),
         time: $checkedConvert('time', (v) => (v as num?)?.toInt()),
       );
       return val;
@@ -83,6 +95,8 @@ Map<String, dynamic> _$PredictionLogToJson(PredictionLog instance) =>
       'algorithmName': instance.algorithmName,
       if (instance.originUrl case final value?) 'originUrl': value,
       if (instance.predUrl case final value?) 'predUrl': value,
+      if (_statusToJson(instance.status) case final value?) 'status': value,
+      if (instance.errorMessage case final value?) 'errorMessage': value,
       if (instance.time case final value?) 'time': value,
       'createTime': instance.createTime,
     };

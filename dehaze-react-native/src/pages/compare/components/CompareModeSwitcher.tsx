@@ -7,29 +7,30 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/routes/types';
+import type { DehazeStackParamList, CompareRouteParams } from '@/routes/types';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 
-type CompareMode = 'SideBySide' | 'Overlay' | 'Magnifier' | 'Filter' | 'Metrics';
+type CompareMode = 'CompareSideBySide' | 'CompareOverlay' | 'CompareMagnifier' | 'CompareFilter' | 'CompareMetrics';
 
 interface ModeConfig {
   key: CompareMode;
   label: string;
   icon: string;
+  routeName: keyof DehazeStackParamList;
 }
 
 const MODES: ModeConfig[] = [
-  { key: 'SideBySide', label: '并排', icon: 'columns' },
-  { key: 'Overlay', label: '重叠', icon: 'layer-group' },
-  { key: 'Magnifier', label: '放大镜', icon: 'search-plus' },
-  { key: 'Filter', label: '滤镜', icon: 'sliders-h' },
-  { key: 'Metrics', label: '指标', icon: 'chart-line' },
+  { key: 'CompareSideBySide', label: '并排', icon: 'columns', routeName: 'CompareSideBySide' },
+  { key: 'CompareOverlay', label: '重叠', icon: 'layer-group', routeName: 'CompareOverlay' },
+  { key: 'CompareMagnifier', label: '放大镜', icon: 'search-plus', routeName: 'CompareMagnifier' },
+  { key: 'CompareFilter', label: '滤镜', icon: 'sliders-h', routeName: 'CompareFilter' },
+  { key: 'CompareMetrics', label: '指标', icon: 'chart-line', routeName: 'CompareMetrics' },
 ];
 
 interface CompareModeSwitcherProps {
   current: CompareMode;
-  navigation: NativeStackNavigationProp<RootStackParamList>;
+  navigation: NativeStackNavigationProp<DehazeStackParamList>;
   /** 共享参数（原图/处理后URL/GT参考图/算法ID） */
   params: {
     originalUrl: string;
@@ -46,28 +47,15 @@ const CompareModeSwitcher: React.FC<CompareModeSwitcherProps> = ({
 }) => {
   const handleSwitch = (mode: CompareMode) => {
     if (mode === current) return;
-    const baseParams = {
+    const baseParams: CompareRouteParams = {
       originalUrl: params.originalUrl,
       processedUrl: params.processedUrl,
       cleanUrl: params.cleanUrl,
       algorithmId: params.algorithmId,
     };
-    switch (mode) {
-      case 'SideBySide':
-        navigation.navigate('SideBySide', baseParams);
-        break;
-      case 'Overlay':
-        navigation.navigate('Overlay', baseParams);
-        break;
-      case 'Magnifier':
-        navigation.navigate('Magnifier', baseParams);
-        break;
-      case 'Filter':
-        navigation.navigate('Filter', baseParams);
-        break;
-      case 'Metrics':
-        navigation.navigate('Metrics', baseParams);
-        break;
+    const modeConfig = MODES.find(m => m.key === mode);
+    if (modeConfig) {
+      (navigation as { navigate: (route: string, params?: unknown) => void }).navigate(modeConfig.routeName, baseParams);
     }
   };
 

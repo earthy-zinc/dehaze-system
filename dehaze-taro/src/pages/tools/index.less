@@ -1,36 +1,37 @@
 .tools-page {
   min-height: 100vh;
   padding: 24rpx;
-  background: #f9fafb;
+  background: var(--color-bg-page);
 }
 
-.search-bar {
-  display: flex;
-  gap: 12rpx;
-  align-items: center;
-  height: 72rpx;
-  padding: 0 24rpx;
+/* 搜索栏 */
+.tools-search {
   margin-bottom: 32rpx;
-  background: #f3f4f6;
-  border-radius: 999rpx;
-
-  .search-placeholder {
-    font-size: 26rpx;
-    color: #9ca3af;
-  }
 }
 
-.quick-scroll {
+/* 快捷入口 */
+.tools-quick-section {
   margin-bottom: 32rpx;
+}
+
+.tools-section-label {
+  display: block;
+  margin-bottom: 16rpx;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.tools-quick-scroll {
   white-space: nowrap;
 
-  .quick-row {
+  .tools-quick-row {
     display: inline-flex;
     gap: 24rpx;
-    padding: 0 8rpx;
+    padding: 0 4rpx;
   }
 
-  .quick-item {
+  .tools-quick-item {
     display: flex;
     flex-direction: column;
     gap: 10rpx;
@@ -38,66 +39,56 @@
     width: 120rpx;
   }
 
-  .quick-icon {
+  .tools-quick-icon {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 88rpx;
     height: 88rpx;
-    background: #eff6ff;
-    border-radius: 24rpx;
+    background: var(--color-primary-bg);
+    border-radius: var(--radius-md);
   }
 
-  .quick-label {
-    font-size: 22rpx;
-    color: #374151;
+  .tools-quick-label {
+    font-size: var(--font-xs);
+    color: var(--color-text-primary);
+    text-align: center;
+    white-space: nowrap;
   }
 }
 
-.grid-section {
-  .section-label {
-    display: block;
-    margin-bottom: 16rpx;
-    font-size: 24rpx;
-    color: #6b7280;
-  }
-
-  .grid {
+/* 功能网格 */
+.tools-grid-section {
+  .tools-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20rpx;
   }
 
-  .grid-item {
+  .tools-grid-item {
     display: flex;
     flex-direction: column;
     gap: 12rpx;
     align-items: center;
     padding: 24rpx 0;
-    background: #fff;
-    border-radius: 20rpx;
-    box-shadow: 0 2rpx 12rpx rgb(0 0 0 / 4%);
+    background: var(--color-bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
   }
 
-  .grid-icon {
+  .tools-grid-icon {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 72rpx;
     height: 72rpx;
-    background: #eff6ff;
-    border-radius: 20rpx;
+    background: var(--color-primary-bg);
+    border-radius: var(--radius-md);
   }
 
-  .grid-label {
-    font-size: 22rpx;
-    color: #374151;
+  .tools-grid-label {
+    font-size: var(--font-xs);
+    color: var(--color-text-primary);
+    text-align: center;
   }
-}
-
-.dev-tip {
-  margin-top: 48rpx;
-  font-size: 22rpx;
-  color: #9ca3af;
-  text-align: center;
 }

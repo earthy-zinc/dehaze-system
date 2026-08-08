@@ -4,7 +4,7 @@ import { Button } from "@taroify/core";
 import type { BaseEventOrig } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { ModelAPI } from "dehaze-sdk-js";
-import CompareNavbar from "@/components/compare/CompareNavbar";
+import ImmersiveLayout from "@/layout/immersive";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
 import { loadCompareContext } from "@/components/compare/types";
@@ -147,10 +147,12 @@ const OverlayPage: React.FC = () => {
   }, []);
 
   return (
-    <View className="overlay-page">
-      {/* 顶部导航 */}
-      <CompareNavbar title="重叠对比" />
-
+    <ImmersiveLayout
+      title="重叠对比"
+      toolbar={
+        <CompareToolbar currentMode="overlay" resultUrl={result?.resultUrl} resultId={result?.logId} />
+      }
+    >
       {/* 重叠对比区域 */}
       <ScrollView className="overlay-content" scrollY>
         {!hasResult ? (
@@ -231,10 +233,7 @@ const OverlayPage: React.FC = () => {
           </>
         )}
       </ScrollView>
-
-      {/* 底部工具栏 */}
-      <CompareToolbar currentMode="overlay" resultUrl={result?.resultUrl} />
-    </View>
+    </ImmersiveLayout>
   );
 };
 

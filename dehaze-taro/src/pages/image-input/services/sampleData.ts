@@ -77,6 +77,7 @@ export const fetchSampleImages = async (
     const res = await DatasetItemAPI.getList({
       pageNum: 1,
       pageSize: 50,
+      isPublic: true,
       sortBy: "usageCount",
       sortOrder: "desc",
     });

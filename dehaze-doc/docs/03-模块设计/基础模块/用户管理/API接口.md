@@ -22,7 +22,7 @@
 | `/api/v1/users/{userId}/password` | PATCH | 重置用户密码 | `sys:user:password:reset` | F-UM-005 |
 | `/api/v1/users/{userId}/status` | PATCH | 修改用户状态 | - | F-UM-006 |
 
-> **导入导出接口**：用户模块的导出（`GET/POST /api/v1/users/_export`）、导入（`POST /api/v1/users/_import`）、模板下载（`GET /api/v1/users/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §8.2 通用CRUD接口模板，模块特定逻辑由 `UserExportHandler`/`UserImportHandler` 实现，详见 [后端实现.md](./后端实现.md)。
+> **导入导出接口**：用户模块的导出（`GET/POST /api/v1/users/_export`）、导入（`POST /api/v1/users/_import`）、模板下载（`GET /api/v1/users/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §7 通用CRUD接口模板，模块特定逻辑由 `UserExportHandler`/`UserImportHandler` 实现，详见 [后端实现.md](./后端实现.md)。
 
 ## 3. 权限标识汇总
 

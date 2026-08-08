@@ -59,49 +59,35 @@ export const homeData = {
     },
   ] as WorkflowStep[],
 
-  // 工具数据
+  // 工具数据（首页快捷入口，跳转 L2 功能页）
   tools: [
     {
-      id: "side-by-side",
-      title: "并排对比",
-      description: "多图并排展示，支持2-4张图片同屏对比",
-      icon: "grid",
-      target: "side-by-side",
+      id: "image-input",
+      title: "图像输入",
+      description: "支持上传、拍照、样例图片多种输入方式",
+      icon: "camera",
+      target: "image-input",
     },
     {
-      id: "overlay",
-      title: "重叠对比",
-      description: "拖动分割线实时对比，支持横向和纵向模式",
-      icon: "photo",
-      target: "overlay",
-    },
-    {
-      id: "magnifier",
-      title: "放大镜",
-      description: "局部细节放大查看，精确对比图像质量",
-      icon: "search",
-      target: "magnifier",
-    },
-    {
-      id: "filter",
-      title: "滤镜调节",
-      description: "实时调节亮度、对比度、饱和度等参数",
-      icon: "setting",
-      target: "filter",
-    },
-    {
-      id: "metrics",
-      title: "指标评估",
-      description: "SSIM、PSNR等专业指标定量分析",
-      icon: "integral",
-      target: "metrics",
+      id: "algorithm",
+      title: "算法库",
+      description: "浏览多种去雾算法，智能推荐最优方案",
+      icon: "gift",
+      target: "algorithm",
     },
     {
       id: "dataset",
-      title: "数据集管理",
+      title: "数据集",
       description: "浏览和管理多个专业去雾数据集",
       icon: "server-fill",
       target: "dataset",
+    },
+    {
+      id: "metrics",
+      title: "指标管理",
+      description: "PSNR、SSIM等专业指标定量分析",
+      icon: "integral",
+      target: "metrics",
     },
   ] as ToolItem[],
 

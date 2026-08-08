@@ -1,53 +1,244 @@
 .messages-page {
-  min-height: 100vh;
-  padding: 24rpx;
-  background: #f9fafb;
-}
-
-.tabs {
-  display: flex;
-  gap: 16rpx;
-  margin-bottom: 24rpx;
-
-  .tab {
-    padding: 12rpx 28rpx;
-    font-size: 24rpx;
-    color: #6b7280;
-    background: #f3f4f6;
-    border-radius: 999rpx;
-
-    &.active {
-      color: #fff;
-      background: #3b82f6;
-    }
-  }
-}
-
-.empty-state {
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+  background: var(--color-bg-page);
+}
+
+/* 搜索栏 */
+.messages-search-bar {
+  padding: 16rpx 24rpx;
+  background: var(--color-bg-card);
+  border-bottom: 1rpx solid var(--color-border-light);
+}
+
+.messages-search-input-wrap {
+  display: flex;
   gap: 16rpx;
   align-items: center;
-  padding: 96rpx 24rpx;
-  background: #fff;
-  border-radius: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgb(0 0 0 / 4%);
+}
 
-  .empty-text {
-    font-size: 30rpx;
-    font-weight: 600;
-    color: #374151;
-  }
+.messages-search-input {
+  flex: 1;
+  padding: 14rpx 20rpx;
+  font-size: var(--font-sm);
+  background: var(--color-bg-hover);
+  border-radius: var(--radius-full);
+}
 
-  .empty-sub {
-    font-size: 24rpx;
-    color: #9ca3af;
+.messages-search-cancel {
+  padding: 6rpx 12rpx;
+  font-size: var(--font-sm);
+  color: var(--color-primary);
+}
+
+.messages-search-history {
+  margin-top: 16rpx;
+}
+
+.search-history-title {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+}
+
+.search-history-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.search-history-tag {
+  padding: 8rpx 20rpx;
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-hover);
+  border-radius: var(--radius-full);
+}
+
+/* 顶部操作区 */
+.messages-header {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+  padding: 20rpx 24rpx 12rpx;
+  background: var(--color-bg-card);
+  border-bottom: 1rpx solid var(--color-border-light);
+}
+
+.messages-tabs-scroll {
+  flex: 1;
+  overflow: hidden;
+}
+
+.messages-tabs {
+  white-space: nowrap;
+}
+
+.messages-tabs-row {
+  display: inline-flex;
+  gap: 12rpx;
+}
+
+.messages-tab {
+  padding: 10rpx 24rpx;
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  background: var(--color-bg-hover);
+  border-radius: var(--radius-full);
+
+  &.active {
+    color: #fff;
+    background: var(--color-primary);
   }
 }
 
-.dev-tip {
-  margin-top: 48rpx;
+.messages-header-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8rpx;
+  align-items: center;
+}
+
+.messages-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+
+  .icon-text {
+    font-size: 32rpx;
+  }
+}
+
+.messages-mark-all {
+  padding: 6rpx 16rpx;
+  font-size: var(--font-xs);
+  color: var(--color-primary);
+  border-radius: var(--radius-full);
+}
+
+.messages-action-btn {
+  padding: 6rpx 16rpx;
+  font-size: var(--font-xs);
+  color: var(--color-primary);
+  border-radius: var(--radius-full);
+
+  &.danger {
+    color: var(--color-danger);
+  }
+}
+
+/* 消息列表 */
+.messages-list {
+  flex: 1;
+}
+
+.messages-items {
+  padding: 12rpx 24rpx;
+}
+
+.message-item {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 12rpx;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+
+  &.unread {
+    border-left: 4rpx solid var(--color-primary);
+  }
+
+  &.selected {
+    background: var(--color-primary-bg);
+  }
+}
+
+.message-item-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.message-item-header {
+  display: flex;
+  gap: 10rpx;
+  align-items: center;
+  margin-bottom: 6rpx;
+}
+
+.message-item-type {
+  padding: 2rpx 10rpx;
+  font-size: var(--font-xs);
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  border-radius: var(--radius-sm);
+}
+
+.message-unread-dot {
+  width: 12rpx;
+  height: 12rpx;
+  background: var(--color-danger);
+  border-radius: 50%;
+}
+
+.message-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32rpx;
+  height: 32rpx;
+  margin-left: auto;
   font-size: 22rpx;
-  color: #9ca3af;
-  text-align: center;
+  color: #fff;
+  border: 2rpx solid var(--color-border-light);
+  border-radius: 50%;
+
+  &.checked {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+}
+
+.message-item-title {
+  display: block;
+  margin-bottom: 6rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.message-item-summary {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.message-item-time {
+  flex-shrink: 0;
+  margin-top: 6rpx;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+}
+
+/* 状态提示 */
+.messages-loading,
+.messages-loading-more,
+.messages-no-more {
+  display: flex;
+  justify-content: center;
+  padding: 32rpx;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
 }

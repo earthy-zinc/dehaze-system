@@ -21,7 +21,7 @@
       <view class="hero-cta">
         <view class="cta-primary" @click="handlePrimaryClick">
           <text class="cta-primary-text">立即开始</text>
-          <u-icon name="arrow-right" size="16" color="#3b82f6" />
+          <SvgIcon name="arrow-right" size="16" color="#3b82f6" />
         </view>
         <view class="cta-secondary" @click="handleSecondaryClick">
           <text class="cta-secondary-text">浏览数据集</text>
@@ -51,6 +51,7 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 
 interface Props {
   algorithmCount?: number | string;

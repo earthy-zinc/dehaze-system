@@ -7,27 +7,37 @@
     <view class="navbar-content">
       <!-- L2：返回 -->
       <view v-if="level === 'L2'" class="navbar-back" @click="goBack">
-        <u-icon name="arrow-left" size="22" color="#374151" />
+        <SvgIcon name="arrow-left" size="22" color="#374151" />
       </view>
 
-      <!-- L1：品牌标识（点击回首页）+ Tab 标题 -->
-      <view v-else class="navbar-brand" @click="goHome">
+      <!-- L1 首页：品牌标识 + Tab 标题 -->
+      <view v-else-if="isHome" class="navbar-brand" @click="goHome">
         <view class="logo-wrapper">
-          <u-icon name="photo-fill" color="#fff" size="16" />
+          <SvgIcon name="photo-fill" color="#fff" size="16" />
         </view>
         <text class="app-title">{{ title }}</text>
       </view>
+
+      <!-- L1 非首页：仅 Tab 标题（居左） -->
+      <text v-else class="app-title">{{ title }}</text>
 
       <!-- L2 居中页面标题 -->
       <text v-if="level === 'L2' && title" class="navbar-title">{{
         title
       }}</text>
 
-      <!-- 右侧操作区：L1 显示全局搜索入口 -->
+      <!-- 右侧操作区 -->
       <view class="navbar-actions">
-        <view v-if="level === 'L1'" class="action-btn" @click="handleSearch">
-          <u-icon name="search" size="22" color="#374151" />
+        <!-- L1 首页：搜索按钮 -->
+        <view
+          v-if="level === 'L1' && showSearch"
+          class="action-btn"
+          @click="handleSearch"
+        >
+          <SvgIcon name="search" size="22" color="#374151" />
         </view>
+        <!-- 自定义右侧操作插槽（L2 或 L1 非首页） -->
+        <slot name="actions" />
       </view>
     </view>
   </view>
@@ -36,24 +46,30 @@
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import { HOME_PATH } from "@/routers/guard";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 
 interface Props {
-  /** 导航形态：L1 Tab 根页（品牌+标题+搜索）/ L2 二级功能页（返回+标题） */
-  level: "L1" | "L2";
+  /** 导航形态：L1 Tab 根页 / L2 二级功能页 */
+  level?: "L1" | "L2";
   /** 页面标题：L1 为 Tab 标题，L2 为页面功能名 */
-  title: string;
+  title?: string;
+  /** 是否为首页（L1 时品牌 logo 仅在首页显示） */
+  isHome?: boolean;
+  /** 是否显示搜索按钮（L1 时默认 false，仅首页开启） */
+  showSearch?: boolean;
 }
 
 withDefaults(defineProps<Props>(), {
   level: "L1",
   title: "",
+  isHome: false,
+  showSearch: false,
 });
 
 /** 状态栏高度 */
 const statusBarHeight = ref(0);
 
 onMounted(() => {
-  // 获取状态栏高度
   try {
     const sysInfo = uni.getSystemInfoSync();
     statusBarHeight.value = sysInfo.statusBarHeight || 0;
@@ -77,7 +93,7 @@ const goHome = () => {
   uni.switchTab({ url: HOME_PATH });
 };
 
-/** 搜索按钮点击 - 跳转到算法选择页（该页面已实现算法搜索） */
+/** 搜索按钮点击 - 跳转到算法选择页 */
 const handleSearch = () => {
   uni.navigateTo({ url: "/pages/algorithm-select/index" });
 };

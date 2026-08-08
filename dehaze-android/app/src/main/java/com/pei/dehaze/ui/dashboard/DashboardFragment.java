@@ -94,6 +94,18 @@ public class DashboardFragment extends Fragment {
         dashboardViewModel.getRecentActivities().observe(getViewLifecycleOwner(),
                 this::updateRecentActivities);
 
+        dashboardViewModel.getTaskTrend().observe(getViewLifecycleOwner(), trend -> {
+            if (trend != null) {
+                binding.chartTrend.setData(trend);
+            }
+        });
+
+        dashboardViewModel.getStatusDistribution().observe(getViewLifecycleOwner(), dist -> {
+            if (dist != null) {
+                binding.chartStatus.setData(dist.getDistribution());
+            }
+        });
+
         dashboardViewModel.getLoading().observe(getViewLifecycleOwner(), isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 

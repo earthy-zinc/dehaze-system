@@ -5,7 +5,7 @@
       <view class="preview-header">
         <text class="preview-title">图片预览</text>
         <view class="close-btn" @click="handleRemove">
-          <u-icon name="close" size="18" color="#6b7280" />
+          <SvgIcon name="close" size="18" color="#6b7280" />
         </view>
       </view>
 
@@ -24,14 +24,11 @@
       <!-- 图片信息 -->
       <view class="preview-info">
         <view v-if="image.size != null" class="info-item">
-          <u-icon name="photo" size="16" color="#3b82f6" />
+          <SvgIcon name="photo" size="16" color="#3b82f6" />
           <text class="info-text">{{ formatFileSize(image.size) }}</text>
         </view>
-        <view
-          v-if="image.width != null && image.height != null"
-          class="info-item"
-        >
-          <u-icon name="scan" size="16" color="#10b981" />
+        <view v-if="image.width != null && image.height != null" class="info-item">
+          <SvgIcon name="scan" size="16" color="#10b981" />
           <text class="info-text">{{ image.width }} × {{ image.height }}</text>
         </view>
       </view>
@@ -39,22 +36,20 @@
       <!-- 样例信息（如果有） -->
       <view v-if="image.sampleInfo" class="sample-info">
         <view class="sample-tag">
-          <u-icon name="star" size="14" color="#f59e0b" />
+          <SvgIcon name="star" size="14" color="#f59e0b" />
           <text class="tag-text">样例图片</text>
         </view>
         <text class="sample-name">{{ image.sampleInfo.name }}</text>
         <view v-if="image.sampleInfo.recommendAlgorithm" class="recommend-algo">
           <text class="recommend-label">推荐算法:</text>
-          <text class="recommend-value">{{
-            image.sampleInfo.recommendAlgorithm
-          }}</text>
+          <text class="recommend-value">{{ image.sampleInfo.recommendAlgorithm }}</text>
         </view>
       </view>
 
       <!-- 操作按钮 -->
       <view class="preview-actions">
         <view class="action-btn primary" @click="handleNext">
-          <u-icon name="arrow-right" size="18" color="#ffffff" />
+          <SvgIcon name="arrow-right" size="18" color="#ffffff" />
           <text class="action-text">下一步：选择算法</text>
         </view>
       </view>
@@ -64,6 +59,7 @@
 
 <script lang="ts" setup>
 import type { ImageData } from "../data/imageInputData";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import { formatFileSize } from "@/utils/format";
 
 interface Props {
@@ -77,17 +73,14 @@ const emit = defineEmits<{
   (e: "next"): void;
 }>();
 
-/** 移除预览 */
 const handleRemove = () => {
   emit("remove");
 };
 
-/** 下一步 */
 const handleNext = () => {
   emit("next");
 };
 
-/** 预览大图 */
 const handlePreviewImage = () => {
   uni.previewImage({
     urls: [props.image.url],

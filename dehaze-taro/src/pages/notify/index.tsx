@@ -1,30 +1,44 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { View, Text, ScrollView, Switch, Picker } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import { Bell } from "@taroify/icons";
+import { NotificationSettingAPI } from "dehaze-sdk-js";
+import type { NotificationSettings } from "dehaze-sdk-js";
 import PageLayout from "@/layout";
-import EmptyState from "@/components/common/EmptyState";
-import { tabBarItems } from "@/config/menu";
-import { MessageAPI } from "dehaze-sdk-js";
-import type { MessageVO } from "dehaze-sdk-js";
-import { formatDateTime } from "@/utils/format";
 import "./index.less";
 
-const PRIORITY_COLOR: Record<number, string> = {
-  1: "#ef4444",
-  2: "#f59e0b",
-  3: "#6b7280",
-};
+const MODULE_SWITCHES = [
+  { key: "system", label: "系统通知", desc: "接收系统公告和重要通知", icon: "🔔" },
+  { key: "business", label: "业务通知", desc: "接收业务流程相关通知", icon: "📋" },
+  { key: "member", label: "会员通知", desc: "接收会员权益和到期提醒", icon: "👑" },
+  { key: "activity", label: "活动通知", desc: "接收优惠活动和促销信息", icon: "🎉" },
+];
+
+const TIME_OPTIONS: string[] = [];
+for (let h = 0; h < 24; h++) {
+  for (let m = 0; m < 60; m += 30) {
+    TIME_OPTIONS.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+  }
+}
 
 const NotifyPage: React.FC = () => {
-  const [messages, setMessages] = useState<MessageVO[]>([]);
+  const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [loading, setLoading] = useState(false);
+  const [dndStartPickerIdx, setDndStartPickerIdx] = useState<number[]>([44]); // 22:00
+  const [dndEndPickerIdx, setDndEndPickerIdx] = useState<number[]>([16]);   // 08:00
 
-  const loadMessages = useCallback(async () => {
+  const loadSettings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await MessageAPI.getPage({ pageNum: 1, pageSize: 50 });
-      setMessages(res.list || []);
+      const data = await NotificationSettingAPI.get();
+      setSettings(data);
+      if (data.dndStart) {
+        const idx = TIME_OPTIONS.indexOf(data.dndStart);
+        if (idx >= 0) setDndStartPickerIdx([idx]);
+      }
+      if (data.dndEnd) {
+        const idx = TIME_OPTIONS.indexOf(data.dndEnd);
+        if (idx >= 0) setDndEndPickerIdx([idx]);
+      }
     } catch {
       Taro.showToast({ title: "加载失败", icon: "none" });
     } finally {
@@ -33,154 +47,203 @@ const NotifyPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadMessages();
-  }, [loadMessages]);
+    loadSettings();
+  }, [loadSettings]);
 
-  const markAsRead = useCallback(async (id: number) => {
+  const doSave = useCallback(async (data: Record<string, unknown>) => {
     try {
-      await MessageAPI.markRead(id);
-      setMessages((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, readStatus: 1 } : m))
-      );
+      await NotificationSettingAPI.update(data as any);
+      Taro.showToast({ title: "已保存", icon: "success" });
     } catch {
-      /* silent */
+      Taro.showToast({ title: "保存失败", icon: "none" });
     }
   }, []);
 
-  const handleTapMessage = useCallback(
-    (item: MessageVO) => {
-      if (item.readStatus === 0) {
-        markAsRead(item.id);
-      }
-      if (item.jumpUrl) {
-        // 目标为 Tab 根页面时用 switchTab（禁止压栈进入 Tab 页），其余用 navigateTo
-        const target = item.jumpUrl.split("?")[0];
-        if (tabBarItems.some((t) => t.route === target)) {
-          Taro.switchTab({ url: target });
-        } else {
-          Taro.navigateTo({ url: item.jumpUrl });
-        }
-      }
+  const togglePushEnabled = useCallback(
+    (val: boolean) => {
+      setSettings((prev) => (prev ? { ...prev, pushEnabled: val } : prev));
+      doSave({ pushEnabled: val });
     },
-    [markAsRead]
+    [doSave]
   );
 
-  const handleMarkAllRead = useCallback(async () => {
-    try {
-      await MessageAPI.markAllRead();
-      setMessages((prev) => prev.map((m) => ({ ...m, readStatus: 1 })));
-      Taro.showToast({ title: "已全部标记为已读", icon: "success" });
-    } catch {
-      Taro.showToast({ title: "操作失败", icon: "none" });
-    }
-  }, []);
-
-  const handleDelete = useCallback(async (id: number) => {
-    try {
-      await MessageAPI.deleteByIds(String(id));
-      setMessages((prev) => prev.filter((m) => m.id !== id));
-      Taro.showToast({ title: "已删除", icon: "success" });
-    } catch {
-      Taro.showToast({ title: "删除失败", icon: "none" });
-    }
-  }, []);
-
-  const handleLongPressDelete = useCallback(
-    async (item: MessageVO) => {
-      const confirmed = await Taro.showModal({
-        title: "删除消息",
-        content: `确定要删除「${item.title}」吗？`,
-        confirmText: "删除",
-        confirmColor: "#ef4444",
+  const toggleModuleSwitch = useCallback(
+    (module: string, val: boolean) => {
+      setSettings((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          preferences: {
+            ...prev.preferences,
+            moduleSwitches: { ...prev.preferences.moduleSwitches, [module]: val },
+          },
+        };
       });
-      if (confirmed.confirm) {
-        handleDelete(item.id);
-      }
+      doSave({
+        preferences: {
+          moduleSwitches: { [module]: val },
+        },
+      });
     },
-    [handleDelete]
+    [doSave]
   );
 
-  const hasUnread = messages.some((m) => m.readStatus === 0);
+  const toggleDndEnabled = useCallback(
+    (val: boolean) => {
+      setSettings((prev) => (prev ? { ...prev, dndEnabled: val } : prev));
+      doSave({ dndEnabled: val });
+    },
+    [doSave]
+  );
 
-  return (
-    <PageLayout level="L2" title="消息通知">
-      <View className="notify-page">
-        <View className="notify-header">
-          <View className="header-title">
-            <Text className="title-text">消息中心</Text>
-            {hasUnread && <View className="unread-dot" />}
-          </View>
-          <View className="header-actions">
-            <View className="action-btn" onClick={handleMarkAllRead}>
-              <Text className="action-text">全部已读</Text>
-            </View>
+  const handleDndStartChange = useCallback(
+    (e: { detail: { value: number[] } }) => {
+      const idx = e.detail.value[0];
+      setDndStartPickerIdx([idx]);
+      const time = TIME_OPTIONS[idx];
+      setSettings((prev) => (prev ? { ...prev, dndStart: time } : prev));
+      doSave({ dndStart: time });
+    },
+    [doSave]
+  );
+
+  const handleDndEndChange = useCallback(
+    (e: { detail: { value: number[] } }) => {
+      const idx = e.detail.value[0];
+      setDndEndPickerIdx([idx]);
+      const time = TIME_OPTIONS[idx];
+      setSettings((prev) => (prev ? { ...prev, dndEnd: time } : prev));
+      doSave({ dndEnd: time });
+    },
+    [doSave]
+  );
+
+  const getModuleSwitchVal = (module: string): boolean => {
+    return settings?.preferences?.moduleSwitches?.[module] !== false;
+  };
+
+  if (loading && !settings) {
+    return (
+      <PageLayout level="L2" title="消息设置">
+        <View className="notify-settings-page">
+          <View className="loading-wrapper">
+            <Text>加载中...</Text>
           </View>
         </View>
+      </PageLayout>
+    );
+  }
 
-        <ScrollView
-          scrollY
-          className="notify-list"
-          enhanced
-          showScrollbar={false}
-        >
-          {loading ? (
-            <View className="loading-wrapper">
-              <Text className="loading-text">加载中...</Text>
-            </View>
-          ) : messages.length === 0 ? (
-            <View className="empty-wrapper">
-              <EmptyState
-                type="search"
-                title="暂无消息"
-                description="目前没有新的通知"
-              />
-            </View>
-          ) : (
-            <>
-              {messages.map((item) => (
-                <View
-                  key={item.id}
-                  className={`notify-item ${item.readStatus === 1 ? "read" : "unread"}`}
-                  onClick={() => handleTapMessage(item)}
-                  onLongPress={() => handleLongPressDelete(item)}
-                >
-                  <View className="notify-icon">
-                    <Bell
-                      size="20"
-                      color={item.readStatus === 1 ? "#9ca3af" : "#3b82f6"}
+  return (
+    <PageLayout level="L2" title="消息设置">
+      <View className="notify-settings-page">
+        <ScrollView scrollY className="notify-scroll">
+          {/* 推送通知总开关 */}
+          <View className="settings-group">
+            <Text className="group-title">通知开关</Text>
+            <View className="settings-card">
+              <View className="settings-item">
+                <View className="settings-item-left">
+                  <Text className="settings-icon">📢</Text>
+                  <View className="settings-item-info">
+                    <Text className="settings-title">推送通知</Text>
+                    <Text className="settings-desc">接收所有类型的推送通知</Text>
+                  </View>
+                </View>
+                <Switch
+                  checked={settings?.pushEnabled ?? true}
+                  color="#3b82f6"
+                  onChange={(e) => togglePushEnabled(e.detail.value)}
+                />
+              </View>
+
+              {MODULE_SWITCHES.map((mod, idx) => (
+                <React.Fragment key={mod.key}>
+                  <View className="settings-divider" />
+                  <View className="settings-item">
+                    <View className="settings-item-left">
+                      <Text className="settings-icon">{mod.icon}</Text>
+                      <View className="settings-item-info">
+                        <Text className="settings-title">{mod.label}</Text>
+                        <Text className="settings-desc">{mod.desc}</Text>
+                      </View>
+                    </View>
+                    <Switch
+                      checked={getModuleSwitchVal(mod.key)}
+                      color="#3b82f6"
+                      onChange={(e) => toggleModuleSwitch(mod.key, e.detail.value)}
                     />
                   </View>
-                  <View className="notify-content">
-                    <View className="notify-top">
-                      <Text
-                        className={`notify-title ${item.readStatus === 1 ? "" : "unread-title"}`}
-                      >
-                        {item.title}
-                      </Text>
-                      <Text className="notify-time">
-                        {formatDateTime(item.createTime)}
-                      </Text>
-                    </View>
-                    <Text className="notify-body" numberOfLines={2}>
-                      {item.summary || item.content || ""}
+                </React.Fragment>
+              ))}
+            </View>
+          </View>
+
+          {/* 免打扰设置 */}
+          <View className="settings-group">
+            <Text className="group-title">免打扰</Text>
+            <View className="settings-card">
+              <View className="settings-item">
+                <View className="settings-item-left">
+                  <Text className="settings-icon">🌙</Text>
+                  <View className="settings-item-info">
+                    <Text className="settings-title">免打扰模式</Text>
+                    <Text className="settings-desc">
+                      开启后在设定时段内不接收通知
                     </Text>
                   </View>
-                  {item.typeLabel && (
-                    <View className="notify-type-tag">
-                      <Text
-                        className="type-tag-text"
-                        style={{
-                          color: PRIORITY_COLOR[item.priority] || "#6b7280",
-                        }}
-                      >
-                        {item.typeLabel}
-                      </Text>
-                    </View>
-                  )}
                 </View>
-              ))}
-            </>
-          )}
+                <Switch
+                  checked={settings?.dndEnabled ?? false}
+                  color="#3b82f6"
+                  onChange={(e) => toggleDndEnabled(e.detail.value)}
+                />
+              </View>
+
+              {settings?.dndEnabled && (
+                <>
+                  <View className="settings-divider" />
+                  <View className="settings-item">
+                    <View className="settings-item-left">
+                      <Text className="settings-icon">🕐</Text>
+                      <Text className="settings-title">开始时间</Text>
+                    </View>
+                    <Picker
+                      mode="selector"
+                      range={TIME_OPTIONS}
+                      value={dndStartPickerIdx}
+                      onChange={handleDndStartChange}
+                    >
+                      <Text className="settings-value">
+                        {settings?.dndStart || "22:00"}
+                      </Text>
+                    </Picker>
+                  </View>
+                  <View className="settings-divider" />
+                  <View className="settings-item">
+                    <View className="settings-item-left">
+                      <Text className="settings-icon">🕖</Text>
+                      <Text className="settings-title">结束时间</Text>
+                    </View>
+                    <Picker
+                      mode="selector"
+                      range={TIME_OPTIONS}
+                      value={dndEndPickerIdx}
+                      onChange={handleDndEndChange}
+                    >
+                      <Text className="settings-value">
+                        {settings?.dndEnd || "08:00"}
+                      </Text>
+                    </Picker>
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+
+          <View className="notify-footer">
+            <Text className="footer-text">设置实时生效</Text>
+          </View>
         </ScrollView>
       </View>
     </PageLayout>

@@ -5,7 +5,7 @@
     @click="handleClick"
   >
     <view class="card-icon">
-      <u-icon :name="icon" :size="28" :color="active ? '#3b82f6' : '#6b7280'" />
+      <SvgIcon :name="icon" :size="28" :color="active ? '#3b82f6' : '#6b7280'" />
     </view>
     <view class="card-content">
       <text class="card-title">{{ title }}</text>
@@ -16,6 +16,7 @@
 
 <script lang="ts" setup>
 import type { InputMethod } from "../data/imageInputData";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 
 interface Props {
   icon: string;

@@ -21,7 +21,7 @@
 | `/api/v1/depts/{ids}` | DELETE | 删除部门(支持批量) | `sys:dept:delete` | F-DM-004 |
 | `/api/v1/depts/options` | GET | 获取部门下拉选项(树形结构) | - | F-DM-008 |
 
-> **导入导出接口**：部门模块的导出（`GET/POST /api/v1/depts/_export`，树形导出为扁平结构）、导入（`POST /api/v1/depts/_import`）、模板下载（`GET /api/v1/depts/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §8.2 通用CRUD接口模板，模块特定逻辑由 `DeptExportHandler`/`DeptImportHandler` 实现，详见 [后端实现.md](./后端实现.md)。
+> **导入导出接口**：部门模块的导出（树形导出为扁平结构）、导入、模板下载由通用导入导出框架统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §7 通用CRUD接口模板，模块特定逻辑详见 [后端实现.md](./后端实现.md)。
 
 ## 3. 权限标识汇总
 

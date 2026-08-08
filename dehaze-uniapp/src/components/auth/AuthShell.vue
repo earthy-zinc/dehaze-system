@@ -10,14 +10,14 @@
     <!-- 顶部关闭按钮（毛玻璃） -->
     <view class="auth-close-area">
       <view class="auth-glass-btn" @click="handleClose">
-        <u-icon name="close" size="20" color="#ffffff" />
+        <SvgIcon name="close" size="20" color="#ffffff" />
       </view>
     </view>
 
     <!-- 品牌区（浮于渐变之上） -->
     <view class="brand-area">
       <view class="auth-logo">
-        <u-icon name="photo-fill" size="30" color="#ffffff" />
+        <SvgIcon name="photo-fill" size="30" color="#ffffff" />
       </view>
       <text class="brand-title">{{ title }}</text>
       <text class="brand-subtitle">{{ subtitle }}</text>
@@ -32,6 +32,7 @@
 
 <script lang="ts" setup>
 import { HOME_PATH } from "@/routers/guard";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 
 interface Props {
   /** 品牌区主标题 */

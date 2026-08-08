@@ -11,7 +11,7 @@
           :key="index"
           class="feature-item"
         >
-          <u-icon name="checkmark-circle" size="20" color="#34d399" />
+          <SvgIcon name="checkmark-circle" size="20" color="#34d399" />
           <text class="feature-text">{{ feature }}</text>
         </view>
       </view>
@@ -25,13 +25,14 @@
       :custom-style="learnMoreButtonStyle"
     >
       了解更多算法详情
-      <u-icon name="arrow-right" size="16" color="#3b82f6" :margin-left="8" />
+      <SvgIcon name="arrow-right" size="16" color="#3b82f6" :margin-left="8" />
     </up-button>
   </view>
 </template>
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import { homeData } from "../data/homeData";
 
 /** 数据集静态文件服务地址（来自 .env 的 VITE_DATASET_HOST） */

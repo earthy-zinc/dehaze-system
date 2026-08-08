@@ -16,8 +16,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/routes/types';
-import { MainLayout } from '@/layout';
+import type { DehazeStackParamList } from '@/routes/types';
+import { ImmersiveHeader } from '@/layout/components';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
@@ -25,7 +25,7 @@ import CompareEmptyState from '@/components/CompareEmptyState';
 import { useResponsive } from '@/hooks/useResponsive';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'SideBySide'>;
+type Props = NativeStackScreenProps<DehazeStackParamList, 'CompareSideBySide'>;
 
 type DisplayMode = 'both' | 'original' | 'processed';
 
@@ -66,16 +66,18 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
   // 缺少必要参数时显示空状态（例如从底部 Tab 直接进入）
   if (!originalUrl || !processedUrl) {
     return (
-      <MainLayout title="并排对比" showBack>
-        <CompareEmptyState onPress={() => navigation.navigate('ImageInput')} />
-      </MainLayout>
+      <View style={styles.screenContainer}>
+        <ImmersiveHeader title="并排对比" />
+        <CompareEmptyState onPress={() => navigation.goBack()} />
+      </View>
     );
   }
 
   return (
-    <MainLayout title="并排对比" showBack>
+    <View style={styles.screenContainer}>
+      <ImmersiveHeader title="并排对比" />
       <CompareModeSwitcher
-        current="SideBySide"
+        current="CompareSideBySide"
         navigation={navigation}
         params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
       />
@@ -146,11 +148,15 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
           <Text style={styles.tipText}>点击图片可放大查看</Text>
         </View>
       </ScrollView>
-    </MainLayout>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
   scrollView: {
     flex: 1,
   },

@@ -1,8 +1,9 @@
 import pluginVue from "eslint-plugin-vue";
+import tsEslint from "@typescript-eslint/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
+import vueParser from "vue-eslint-parser";
 import eslintConfigPrettier from "eslint-config-prettier";
 import pluginPrettier from "eslint-plugin-prettier";
-import tsEslint from "@typescript-eslint/eslint-plugin";
-import vueParser from "vue-eslint-parser";
 import globals from "globals";
 
 export default [
@@ -14,52 +15,57 @@ export default [
       ".husky/",
       ".vscode/",
       ".idea/",
-      "*.sh",
-      "*.md",
       "src/assets/",
-      "eslint.config.mjs",
-      ".prettierrc.cjs",
-      ".stylelintrc.cjs",
-      "**/*.js",
+      "*.config.*",
+      "*.d.ts",
+      "shime-uni.d.ts",
+      "shims-uni.d.ts",
+      "env.d.ts",
     ],
   },
+
+  // Vue 3 推荐规则集（自动配置 vue-eslint-parser）
+  ...pluginVue.configs["flat/recommended"],
+
+  // TypeScript + Vue <script> 规则
   {
-    files: ["**/*.ts", "**/*.js", "**/*.vue"],
+    files: ["**/*.ts", "**/*.vue"],
     languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
       parser: vueParser,
       parserOptions: {
-        parser: "@typescript-eslint/parser",
-        project: "./tsconfig.json",
+        parser: tsParser,
+        ecmaVersion: "latest",
+        sourceType: "module",
         extraFileExtensions: [".vue"],
       },
       globals: {
         ...globals.browser,
         ...globals.node,
-        ...globals.es2021,
       },
     },
     plugins: {
-      vue: pluginVue,
       "@typescript-eslint": tsEslint,
       prettier: pluginPrettier,
     },
     rules: {
-      // Vue rules
+      // TS 推荐规则集
+      ...tsEslint.configs.recommended.rules,
+
+      // 项目自定义放宽
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
+      "@typescript-eslint/no-empty-function": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/no-require-imports": "off",
+
+      // Vue 自定义放宽（recommended 已含基础规则）
       "vue/multi-word-component-names": "off",
-      "vue/no-v-model-argument": "off",
       "vue/no-reserved-component-names": "off",
-      "vue/custom-event-name-casing": "off",
-      "vue/attributes-order": "off",
-      "vue/one-component-per-file": "off",
-      "vue/html-closing-bracket-newline": "off",
-      "vue/max-attributes-per-line": "off",
-      "vue/multiline-html-element-content-newline": "off",
-      "vue/singleline-html-element-content-newline": "off",
-      "vue/attribute-hyphenation": "off",
       "vue/require-default-prop": "off",
       "vue/require-explicit-emits": "off",
+      "vue/attributes-order": "off",
+      "vue/max-attributes-per-line": "off",
       "vue/html-self-closing": [
         "error",
         {
@@ -73,30 +79,13 @@ export default [
         },
       ],
 
-      // TypeScript rules
-      "@typescript-eslint/no-empty-function": "off",
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-non-null-assertion": "off",
-      "@typescript-eslint/ban-ts-ignore": "off",
-      "@typescript-eslint/ban-ts-comment": "off",
-      "@typescript-eslint/ban-types": "off",
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/no-var-requires": "off",
-      "@typescript-eslint/no-use-before-define": "off",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
-      "@typescript-eslint/no-unused-vars": "off",
-
-      // Prettier rules
-      "prettier/prettier": [
-        "error",
-        {
-          useTabs: false,
-        },
-      ],
+      // Prettier
+      "prettier/prettier": "error",
     },
     settings: {
       "vue/setupCompilerMacros": true,
     },
   },
+
   eslintConfigPrettier,
 ];

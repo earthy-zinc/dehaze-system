@@ -31,8 +31,8 @@ import {
   Image as SvgImage,
 } from 'react-native-svg';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/routes/types';
-import { MainLayout } from '@/layout';
+import type { DehazeStackParamList } from '@/routes/types';
+import { ImmersiveHeader } from '@/layout/components';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import CompareEmptyState from '@/components/CompareEmptyState';
@@ -40,7 +40,7 @@ import SliderControl from '@/components/SliderControl';
 import { controlBarStyles, controlButtonStyles } from './styles/compareControls';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Filter'>;
+type Props = NativeStackScreenProps<DehazeStackParamList, 'CompareFilter'>;
 
 interface FilterParams {
   brightness: number; // -100 ~ +100
@@ -220,16 +220,18 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
   // 缺少必要参数时显示空状态（例如从底部 Tab 直接进入）
   if (!originalUrl || !processedUrl) {
     return (
-      <MainLayout title="滤镜调节" showBack>
-        <CompareEmptyState onPress={() => navigation.navigate('ImageInput')} />
-      </MainLayout>
+      <View style={styles.screenContainer}>
+        <ImmersiveHeader title="滤镜调节" />
+        <CompareEmptyState onPress={() => navigation.goBack()} />
+      </View>
     );
   }
 
   return (
-    <MainLayout title="滤镜调节" showBack>
+    <View style={styles.screenContainer}>
+      <ImmersiveHeader title="滤镜调节" />
       <CompareModeSwitcher
-        current="Filter"
+        current="CompareFilter"
         navigation={navigation}
         params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
       />
@@ -322,11 +324,15 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
           })}
         </View>
       </ScrollView>
-    </MainLayout>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
   scrollView: {
     flex: 1,
   },

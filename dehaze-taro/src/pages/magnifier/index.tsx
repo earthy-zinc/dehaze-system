@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, Image } from "@tarojs/components";
 import type { BaseEventOrig } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import CompareNavbar from "@/components/compare/CompareNavbar";
+import { Button } from "@taroify/core";
+import { ModelAPI } from "dehaze-sdk-js";
+import ImmersiveLayout from "@/layout/immersive";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import { loadCompareContext } from "@/components/compare/types";
 import EmptyState from "@/components/common/EmptyState";
@@ -25,6 +27,9 @@ type TaroTouchEvent = BaseEventOrig & {
   touches: Array<{ clientX: number; clientY: number }>;
 };
 
+// PredEvalTaskStatus: 1 = PENDING, 2 = COMPLETED, 3 = FAILED
+type TaskStatus = 1 | 2 | 3;
+
 const MagnifierPage: React.FC = () => {
   const [ctx] = useState(loadCompareContext);
   const [zoom, setZoom] = useState<ZoomValue>(2);
@@ -32,6 +37,8 @@ const MagnifierPage: React.FC = () => {
   const [displayMode, setDisplayMode] = useState<DisplayMode>("compare");
   const [lensPos, setLensPos] = useState({ x: 0, y: 0 });
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportDownloading, setReportDownloading] = useState(false);
 
   // 缓存容器边界信息（跨端兼容：小程序不支持 getBoundingClientRect）
   const containerRectRef = useRef<{
@@ -114,6 +121,42 @@ const MagnifierPage: React.FC = () => {
     lastPinchDistance.current = 0;
   }, []);
 
+  // 生成并下载报告
+  const handleExportReport = async () => {
+    if (!result?.resultUrl) {
+      Taro.showToast({ title: "缺少必要参数，无法生成报告", icon: "none" });
+      return;
+    }
+    setReportLoading(true);
+    try {
+      const res = await ModelAPI.generateReport({ logId: 0, format: "pdf" });
+      const taskId = res.taskId;
+      if (!taskId) throw new Error("未返回任务ID");
+      while (true) {
+        const statusRes = await ModelAPI.getReportStatus(taskId);
+        const status = statusRes.status as TaskStatus;
+        if (status === 2) {
+          if (statusRes.downloadUrl) {
+            setReportLoading(false);
+            setReportDownloading(true);
+            try {
+              const filePath = await Taro.downloadFile({ url: statusRes.downloadUrl });
+              if (filePath.tempFilePath) {
+                await Taro.openDocument({ filePath: filePath.tempFilePath, showMenu: true });
+              }
+            } catch { Taro.showToast({ title: "打开报告失败", icon: "none" }); }
+            finally { setReportDownloading(false); }
+          } else { throw new Error("报告生成但无下载链接"); }
+          break;
+        }
+        if (status === 3) throw new Error(statusRes.errorMessage || "报告生成失败");
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    } catch (err: unknown) {
+      Taro.showToast({ title: err instanceof Error ? err.message : "报告生成失败", icon: "none" });
+    } finally { setReportLoading(false); }
+  };
+
   // 点击切换显示模式（原图 → 处理后 → 对比 → 原图）
   const handleTap = useCallback(() => {
     setDisplayMode((prev) => {
@@ -141,15 +184,17 @@ const MagnifierPage: React.FC = () => {
     backgroundSize: `${containerSize.width * zoom}px ${containerSize.height * zoom}px`,
     backgroundPosition: getLensBackgroundPosition(),
     borderRadius: "50%",
-    border: "2px solid #fff",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+    border: "4rpx solid #fff",
+    boxShadow: "0 4rpx 16rpx rgb(0 0 0 / 30%)",
   });
 
   return (
-    <View className="magnifier-page">
-      {/* 顶部导航 */}
-      <CompareNavbar title="放大镜对比" />
-
+    <ImmersiveLayout
+      title="放大镜对比"
+      toolbar={
+        <CompareToolbar currentMode="magnifier" resultUrl={result?.resultUrl} resultId={result?.logId} />
+      }
+    >
       {/* 对比区域 */}
       {!hasResult ? (
         <EmptyState type="compare" />
@@ -256,12 +301,21 @@ const MagnifierPage: React.FC = () => {
               </View>
             </View>
           </View>
+
+          {/* 导出报告 */}
+          <View className="export-report-section">
+            <Button
+              block
+              color="primary"
+              loading={reportLoading || reportDownloading}
+              onClick={handleExportReport}
+            >
+              {reportDownloading ? "正在打开报告..." : "导出报告"}
+            </Button>
+          </View>
         </>
       )}
-
-      {/* 底部工具栏 */}
-      <CompareToolbar currentMode="magnifier" resultUrl={result?.resultUrl} />
-    </View>
+    </ImmersiveLayout>
   );
 };
 

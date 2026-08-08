@@ -1,0 +1,10 @@
+[project]
+name = "dehaze-test"
+version = "0.1.0"
+description = "Dehaze 跨端联调与集成测试工具集"
+requires-python = ">=3.11"
+# 不声明 dependencies，运行时复用 dehaze-python/.venv
+# 该 venv 已含：redis, pymysql, httpx, pytest, python-dotenv, sqlalchemy
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

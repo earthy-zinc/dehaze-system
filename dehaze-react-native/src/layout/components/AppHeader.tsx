@@ -1,6 +1,8 @@
 /**
  * 顶部导航栏组件
- * 支持标题显示、返回按钮、操作按钮和菜单按钮
+ *
+ * L1（Tab 首页）：isHome 显示品牌 Logo + 标题，其他 Tab 只显示标题居左
+ * L2（Stack 子页面）：showBack 返回按钮 + 居中标题 + rightActions 操作 slot
  */
 import React from 'react';
 import {
@@ -19,26 +21,22 @@ import LinearGradient from 'react-native-linear-gradient';
 interface AppHeaderProps {
   title?: string;
   showBack?: boolean;
-  showMenu?: boolean;
+  isHome?: boolean;
   onBackPress?: () => void;
-  onMenuPress?: () => void;
   rightActions?: React.ReactNode;
-  transparent?: boolean;
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({
   title = '图像去雾系统',
   showBack = false,
-  showMenu = true,
+  isHome = false,
   onBackPress,
-  onMenuPress,
   rightActions,
-  transparent = false,
 }) => {
   const insets = useSafeAreaInsets();
 
-  const renderContent = () => (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+  return (
+    <View style={[styles.wrapper, { paddingTop: insets.top }]}>
       <StatusBar
         barStyle="dark-content"
         backgroundColor="transparent"
@@ -59,7 +57,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                 color={colors.text.primary}
               />
             </TouchableOpacity>
-          ) : (
+          ) : isHome ? (
             <View style={styles.logoContainer}>
               <LinearGradient
                 colors={[colors.primary, '#6366f1']}
@@ -71,33 +69,26 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               </LinearGradient>
               <Text style={styles.title}>{title}</Text>
             </View>
+          ) : (
+            <Text style={styles.title}>{title}</Text>
           )}
         </View>
+
+        {/* 居中标题（L2 有返回按钮时） */}
+        {showBack && (
+          <View style={styles.centerSection}>
+            <Text style={styles.centerTitle} numberOfLines={1}>
+              {title}
+            </Text>
+          </View>
+        )}
 
         {/* 右侧区域 */}
         <View style={styles.rightSection}>
           {rightActions}
-          {showMenu && (
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={onMenuPress}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="menu" size={24} color={colors.text.primary} />
-            </TouchableOpacity>
-          )}
+          {showBack && <View style={styles.iconButton} />}
         </View>
       </View>
-    </View>
-  );
-
-  if (transparent) {
-    return renderContent();
-  }
-
-  return (
-    <View style={styles.wrapper}>
-      {renderContent()}
     </View>
   );
 };
@@ -107,9 +98,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.primary,
     ...layout.shadows.sm,
     zIndex: 100,
-  },
-  container: {
-    backgroundColor: 'transparent',
   },
   content: {
     flexDirection: 'row',
@@ -122,6 +110,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+  },
+  centerSection: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    pointerEvents: 'none',
+  },
+  centerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.text.primary,
+    maxWidth: '60%',
   },
   rightSection: {
     flexDirection: 'row',
@@ -142,8 +143,8 @@ const styles = StyleSheet.create({
     ...layout.shadows.sm,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
     color: colors.text.primary,
   },
   iconButton: {

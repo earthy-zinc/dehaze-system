@@ -14,6 +14,7 @@ const Login: React.FC = () => {
     captchaCode: "",
   });
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [captcha, setCaptcha] = useState<CaptchaResult>({
     captchaBase64: "",
     captchaKey: "",
@@ -46,7 +47,7 @@ const Login: React.FC = () => {
 
   const handleSubmit = async () => {
     // 表单验证
-    const trimmedUsername = formData.username?.trim();
+    const trimmedUsername = formData.username?.trim().toLowerCase();
     const trimmedPassword = formData.password?.trim();
     const trimmedCaptcha = formData.captchaCode?.trim();
 
@@ -73,6 +74,7 @@ const Login: React.FC = () => {
         password: trimmedPassword,
         captchaKey: captcha.captchaKey,
         captchaCode: trimmedCaptcha,
+        rememberMe,
       };
 
       // 使用全局 login 方法，会自动保存 token、用户信息、权限到 storage 和全局状态
@@ -108,6 +110,21 @@ const Login: React.FC = () => {
 
   return (
     <View className="login-container">
+      {/* 左上角关闭按钮（L0 认证页：无导航栏，仅关闭/返回） */}
+      <View
+        className="login-close-btn"
+        onClick={() => {
+          const pages = Taro.getCurrentPages();
+          if (pages.length > 1) {
+            Taro.navigateBack();
+          } else {
+            Taro.switchTab({ url: "/pages/home/index" });
+          }
+        }}
+      >
+        <Text>✕</Text>
+      </View>
+
       {/* 顶部 Logo 区 */}
       <View className="login-header">
         <View className="logo-circle">
@@ -156,6 +173,14 @@ const Login: React.FC = () => {
                 onClick={refreshCaptcha}
               />
             </View>
+          </View>
+
+          {/* 记住我复选框 */}
+          <View className="form-group remember-row" onClick={() => setRememberMe(!rememberMe)}>
+            <View className={`remember-checkbox ${rememberMe ? "checked" : ""}`}>
+              {rememberMe && <Text className="remember-check">✓</Text>}
+            </View>
+            <Text className="remember-text">记住我</Text>
           </View>
 
           <Button

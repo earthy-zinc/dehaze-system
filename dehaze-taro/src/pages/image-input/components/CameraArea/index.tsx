@@ -39,7 +39,7 @@ const CameraArea: React.FC<CameraAreaProps> = ({
         >
           {loading ? (
             <>
-              <Loading size="18px" />
+              <Loading size={36} />
               <Text>拍照中...</Text>
             </>
           ) : (

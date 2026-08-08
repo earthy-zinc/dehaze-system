@@ -57,7 +57,7 @@ class PredictionService {
     }
     return pollTask(
       getPredTaskStatus,
-      result.logId,
+      result.logId!,
       statusOf: (r) => r.status,
       options: options,
     );
@@ -83,5 +83,114 @@ class PredictionService {
         .toList();
     final total = data['total'] as int? ?? 0;
     return PageResult(list: list, total: total);
+  }
+
+  // ===== 批量预测 =====
+
+  /// 批量预测（一次提交多张图片，最多 20 张）
+  ///
+  /// POST /prediction/batch
+  Future<BatchPredictionResult> batchPredict(BatchPredictionForm data) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConstants.predictionBatch,
+      data: data.toJson(),
+    );
+    return BatchPredictionResult.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
+  }
+
+  // ===== VIP 配额 =====
+
+  /// 查询 VIP 配额（剩余处理次数）
+  ///
+  /// GET /prediction/quota
+  Future<PredictionQuota> getQuota() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiConstants.predictionQuota,
+    );
+    return PredictionQuota.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
+  }
+
+  // ===== 参数预设 =====
+
+  /// 获取参数预设分页列表（系统预设 + 用户自定义）
+  ///
+  /// GET /presets
+  Future<PageResult<PresetVO>> getPresets(PresetQuery query) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiConstants.presets,
+      queryParameters: query.toQuery(),
+    );
+    final data = response.data!['data'] as Map<String, dynamic>;
+    final list = (data['list'] as List<dynamic>? ?? [])
+        .map((e) => PresetVO.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final total = data['total'] as int? ?? 0;
+    return PageResult(list: list, total: total);
+  }
+
+  /// 创建自定义预设
+  ///
+  /// POST /presets
+  Future<PresetVO> createPreset(PresetForm data) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConstants.presets,
+      data: data.toJson(),
+    );
+    return PresetVO.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
+  }
+
+  /// 更新自定义预设
+  ///
+  /// PUT /presets/{id}
+  Future<PresetVO> updatePreset(int id, PresetForm data) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '${ApiConstants.presets}/$id',
+      data: data.toJson(),
+    );
+    return PresetVO.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
+  }
+
+  /// 删除自定义预设
+  ///
+  /// DELETE /presets/{id}
+  Future<void> deletePreset(int id) async {
+    await _dio.delete<Map<String, dynamic>>(
+      '${ApiConstants.presets}/$id',
+    );
+  }
+
+  // ===== 对比报告 =====
+
+  /// 生成对比报告（异步任务，通过任务管理追踪进度）
+  ///
+  /// POST /compare/report
+  Future<CompareReportResult> generateReport(CompareReportForm data) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConstants.compareReport,
+      data: data.toJson(),
+    );
+    return CompareReportResult.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
+  }
+
+  /// 查询对比报告任务状态（报告生成完成后返回下载URL）
+  ///
+  /// GET /compare/report/{taskId}
+  Future<CompareReportResult> getReportStatus(int taskId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '${ApiConstants.compareReport}/$taskId',
+    );
+    return CompareReportResult.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
   }
 }

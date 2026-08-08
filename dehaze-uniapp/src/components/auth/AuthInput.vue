@@ -1,7 +1,7 @@
 <template>
   <view class="auth-input">
     <view class="input-wrapper" :class="{ focused: focused, error: !!error }">
-      <u-icon
+      <SvgIcon
         v-if="icon"
         :name="icon"
         size="20"
@@ -24,7 +24,7 @@
         class="eye-btn"
         @click="showPassword = !showPassword"
       >
-        <u-icon
+        <SvgIcon
           :name="showPassword ? 'eye-fill' : 'eye-off'"
           size="20"
           color="#9ca3af"
@@ -32,7 +32,7 @@
       </view>
     </view>
     <text v-if="error" class="error-message">
-      <u-icon name="info-circle" size="12" color="#ef4444" />
+      <SvgIcon name="info-circle" size="12" color="#ef4444" />
       <text>{{ error }}</text>
     </text>
   </view>
@@ -40,11 +40,12 @@
 
 <script lang="ts" setup>
 import { ref, computed } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 
 interface Props {
   /** v-model 绑定值 */
   modelValue: string;
-  /** 输入框左侧图标（uview-plus 图标名） */
+  /** 输入框左侧图标（对应 src/assets/icons 下的 svg 文件名） */
   icon?: string;
   /** 占位文案 */
   placeholder?: string;

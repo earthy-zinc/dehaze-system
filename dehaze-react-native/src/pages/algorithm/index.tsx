@@ -32,8 +32,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { IoniconName } from '@/components/Icon';
 
-import type { RootStackParamList } from '@/routes/types';
-import { MainLayout } from '@/layout';
+import type { DehazeStackParamList } from '@/routes/types';
+import { AppHeader } from '@/layout';
 import { theme } from '@/theme';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import EmptyState from '@/components/EmptyState';
@@ -46,7 +46,7 @@ import type {
   AlgorithmMonitorVO,
 } from 'dehaze-sdk-js';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Algorithm'>;
+type Props = NativeStackScreenProps<DehazeStackParamList, 'Algorithm'>;
 
 /** 算法状态枚举映射 (来自后端 AlgorithmStatusEnum) */
 const ALGORITHM_STATUS_MAP: Record<
@@ -224,17 +224,19 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <MainLayout title="算法详情" showBack>
+      <View style={styles.screenContainer}>
+        <AppHeader title="算法详情" showBack onBackPress={() => navigation.goBack()} />
         <View style={styles.stateContainer}>
           <LoadingSpinner size="large" color={theme.colors.primary} text="加载算法详情..." />
         </View>
-      </MainLayout>
+      </View>
     );
   }
 
   if (error || !algorithm) {
     return (
-      <MainLayout title="算法详情" showBack>
+      <View style={styles.screenContainer}>
+        <AppHeader title="算法详情" showBack onBackPress={() => navigation.goBack()} />
         <View style={styles.stateContainer}>
           <EmptyState
             icon="error"
@@ -242,14 +244,15 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
             description="请返回算法列表重试"
           />
         </View>
-      </MainLayout>
+      </View>
     );
   }
 
   const statusInfo = ALGORITHM_STATUS_MAP[algorithm.status ?? 0] || ALGORITHM_STATUS_MAP[0];
 
   return (
-    <MainLayout title="算法详情" showBack showBottomNav={false}>
+    <View style={styles.screenContainer}>
+      <AppHeader title="算法详情" showBack onBackPress={() => navigation.goBack()} />
       <View style={styles.container}>
         {/* 章节锚点导航条 */}
         <View style={styles.sectionNav}>
@@ -607,7 +610,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
-    </MainLayout>
+    </View>
   );
 };
 
@@ -679,6 +682,10 @@ function formatParams(params: string): string {
 }
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background.secondary,
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.secondary,

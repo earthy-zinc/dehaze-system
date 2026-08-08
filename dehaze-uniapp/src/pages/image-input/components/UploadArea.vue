@@ -3,10 +3,10 @@
     <!-- 上传区域 -->
     <view class="upload-zone" @click="handleChooseImage">
       <view class="upload-icon">
-        <u-icon name="plus" size="48" color="#9ca3af" />
+        <SvgIcon name="plus" size="48" color="#9ca3af" />
       </view>
       <text class="upload-text">点击选择图片</text>
-      <text class="upload-hint">支持 JPG、PNG、WEBP、HEIC 格式</text>
+      <text class="upload-hint">支持 JPG、PNG、WEBP 格式</text>
       <text class="upload-hint">单张图片最大 20MB</text>
     </view>
 
@@ -23,17 +23,25 @@
         </view>
       </view>
     </view>
+
+    <!-- 错误提示 -->
+    <view v-if="errorMsg" class="upload-error">
+      <text>{{ errorMsg }}</text>
+    </view>
   </view>
 </template>
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import { uploadImage } from "@/api/file";
 import { useProcessingStore } from "@/store/processing";
 import { MAX_FILE_SIZE, COMPRESS_THRESHOLD } from "../data/imageInputData";
 import { formatFileSize } from "@/utils/format";
 import type { ImageData } from "../data/imageInputData";
 import { getImageInfo } from "../utils/image";
+
+const SUPPORTED_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 
 const emit = defineEmits<{
   (e: "select", data: ImageData): void;
@@ -43,23 +51,35 @@ const processingStore = useProcessingStore();
 
 const uploading = ref(false);
 const uploadProgress = ref(0);
+const errorMsg = ref<string | null>(null);
 
-/** 选择图片 */
+const getExtension = (path: string): string => {
+  return path.split(".").pop()?.toLowerCase() || "";
+};
+
 const handleChooseImage = () => {
   uni.chooseImage({
     count: 1,
     sizeType: ["original", "compressed"],
     sourceType: ["album"],
     success: async (res) => {
-      // chooseImage 各端实际返回数组，类型声明为单值/数组联合，统一归一化
       const tempFilePath = res.tempFilePaths[0];
-      const tempFiles = Array.isArray(res.tempFiles)
-        ? res.tempFiles
-        : [res.tempFiles];
+      const tempFiles = Array.isArray(res.tempFiles) ? res.tempFiles : [res.tempFiles];
       const tempFile = tempFiles[0];
       if (!tempFilePath || !tempFile) return;
 
-      // 检查文件大小
+      // 格式校验
+      const ext = getExtension(tempFilePath);
+      if (!SUPPORTED_EXTENSIONS.includes(ext)) {
+        uni.showToast({
+          title: "不支持该图片格式，仅支持 JPG、PNG、WEBP",
+          icon: "none",
+          duration: 2500,
+        });
+        return;
+      }
+
+      // 大小校验
       if (tempFile.size > MAX_FILE_SIZE) {
         uni.showToast({
           title: `图片大小超过${formatFileSize(MAX_FILE_SIZE)}，请选择较小的图片`,
@@ -71,22 +91,18 @@ const handleChooseImage = () => {
 
       uploading.value = true;
       uploadProgress.value = 0;
+      errorMsg.value = null;
 
       try {
         let finalPath = tempFilePath;
 
         // 大于 5MB 自动压缩
         if (tempFile.size > COMPRESS_THRESHOLD) {
-          uni.showToast({
-            title: "图片较大，正在压缩...",
-            icon: "loading",
-            duration: 2000,
-          });
-
+          uni.showToast({ title: "图片较大，正在压缩...", icon: "loading", duration: 2000 });
           try {
             finalPath = await compressImage(tempFilePath);
           } catch {
-            // 压缩失败时回退使用原图
+            // 压缩失败回退使用原图
           }
         }
 
@@ -108,26 +124,18 @@ const handleChooseImage = () => {
           const fileInfo = await uploadImage(imageData, (progress) => {
             uploadProgress.value = progress;
           });
-
           imageData.fileId = fileInfo.id;
           imageData.remoteUrl = fileInfo.url;
-
           uni.showToast({ title: "上传成功", icon: "success" });
         } catch {
-          uni.showToast({
-            title: "上传失败，将使用本地图片处理",
-            icon: "none",
-            duration: 2000,
-          });
+          uni.showToast({ title: "上传失败，将使用本地图片处理", icon: "none", duration: 2000 });
         }
 
         processingStore.setImage(imageData);
         emit("select", imageData);
       } catch {
-        uni.showToast({
-          title: "图片处理失败，请重试",
-          icon: "none",
-        });
+        errorMsg.value = "图片处理失败，请重试";
+        uni.showToast({ title: "图片处理失败，请重试", icon: "none" });
       } finally {
         uploading.value = false;
         uni.hideToast();
@@ -135,16 +143,12 @@ const handleChooseImage = () => {
     },
     fail: (err) => {
       if (err.errMsg !== "chooseImage:fail cancel") {
-        uni.showToast({
-          title: "选择图片失败",
-          icon: "none",
-        });
+        uni.showToast({ title: "选择图片失败", icon: "none" });
       }
     },
   });
 };
 
-/** 压缩图片 */
 const compressImage = (src: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     uni.compressImage({
@@ -156,7 +160,6 @@ const compressImage = (src: string): Promise<string> => {
   });
 };
 
-/** 提取文件名 */
 const extractFileName = (path: string): string => {
   const parts = path.split("/");
   return parts[parts.length - 1] || "image.jpg";
@@ -207,6 +210,18 @@ const extractFileName = (path: string): string => {
   font-size: 24rpx;
   color: #9ca3af;
   line-height: 1.5;
+}
+
+.upload-error {
+  margin-top: 16rpx;
+  padding: 16rpx 24rpx;
+  background: #fef2f2;
+  border-radius: 12rpx;
+
+  text {
+    font-size: 26rpx;
+    color: #ef4444;
+  }
 }
 
 .upload-progress {

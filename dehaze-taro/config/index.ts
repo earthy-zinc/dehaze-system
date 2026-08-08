@@ -3,6 +3,8 @@ import path from "path";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import devConfig from "./dev";
 import prodConfig from "./prod";
+// 构建时注入应用版本号（供前端日志 app_version 字段）
+import { version as APP_VERSION } from "../package.json";
 
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
 export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
@@ -32,6 +34,10 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
       "process.env.TARO_ENV": JSON.stringify(process.env.TARO_ENV),
       "process.env.TARO_APP_JAVA_BASE_URL": JSON.stringify(
         process.env.TARO_APP_JAVA_BASE_URL ?? ""
+      ),
+      "process.env.TARO_APP_VERSION": JSON.stringify(APP_VERSION),
+      "process.env.NODE_ENV": JSON.stringify(
+        process.env.NODE_ENV ?? "production"
       ),
     },
     copy: {

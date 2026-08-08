@@ -90,7 +90,13 @@ func (s *MemberService) GetProfile(ctx context.Context, userID int64) (*vo.Membe
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询会员信息失败", err)
 	}
 	if mu == nil {
-		return nil, common.NewBizError(common.MEMBER_NOT_FOUND, "会员不存在")
+		if initErr := s.initDefaultMember(ctx, userID); initErr != nil {
+			return nil, initErr
+		}
+		mu, err = s.memberRepo.FindWithUserByUserID(ctx, userID)
+		if err != nil || mu == nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "初始化会员记录失败", err)
+		}
 	}
 
 	benefit, err := s.findBenefitByLevelCode(ctx, mu.LevelCode)
@@ -250,7 +256,13 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询会员信息失败", err)
 	}
 	if member == nil {
-		return nil, common.NewBizError(common.MEMBER_NOT_FOUND, "会员不存在")
+		if initErr := s.initDefaultMember(ctx, userID); initErr != nil {
+			return nil, initErr
+		}
+		member, err = s.memberRepo.FindByUserID(ctx, userID)
+		if err != nil || member == nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "初始化会员记录失败", err)
+		}
 	}
 
 	newGrowthValue := member.GrowthValue + int64(totalGrowth)
@@ -1192,6 +1204,30 @@ func (s *MemberService) GetBatchLimit(ctx context.Context, levelCode string) (in
 		return 0, nil
 	}
 	return benefit.BatchLimit, nil
+}
+
+func (s *MemberService) initDefaultMember(ctx context.Context, userID int64) error {
+	var defaultBenefit model.SysMemberBenefit
+	s.db.WithContext(ctx).Where("level_code = ? AND status = 1", "level_0").First(&defaultBenefit)
+	now := time.Now()
+	quotaMonth := now.Year()*100 + int(now.Month())
+	member := &model.SysMember{
+		UserID:               userID,
+		LevelCode:            "level_0",
+		LevelSource:          "growth",
+		GrowthValue:          0,
+		TotalConsumption:     0,
+		Status:               1,
+		MonthlyDehazeQuota:   defaultBenefit.MonthlyDehazeQuota,
+		MonthlyEvaluateQuota: defaultBenefit.MonthlyEvaluateQuota,
+		MonthlyDehazeUsed:    0,
+		MonthlyEvaluateUsed:  0,
+		QuotaResetMonth:      &quotaMonth,
+	}
+	if err := s.memberRepo.Upsert(ctx, member); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "创建会员记录失败", err)
+	}
+	return nil
 }
 
 var _ IMemberService = (*MemberService)(nil)

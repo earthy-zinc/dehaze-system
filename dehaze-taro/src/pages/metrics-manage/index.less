@@ -1,0 +1,197 @@
+.metrics-manage-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg-page);
+}
+
+.mm-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+// ==================== 工具栏 ====================
+
+.mm-toolbar {
+  padding: var(--spacing-md);
+  background: var(--color-bg-card);
+  border-bottom: 2rpx solid var(--color-border);
+
+  .toolbar-left {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .toolbar-hint {
+    font-size: var(--font-sm);
+    color: var(--color-text-secondary);
+  }
+}
+
+// ==================== 对比表格 ====================
+
+.compare-table-section {
+  margin: var(--spacing-md);
+  overflow: hidden;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.compare-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.compare-table {
+  display: flex;
+  flex-direction: column;
+  min-width: 600rpx;
+
+  .table-row {
+    display: flex;
+    border-bottom: 2rpx solid var(--color-border-light);
+
+    &.header {
+      background: var(--color-bg-hover);
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .table-cell {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-sm);
+    color: var(--color-text-primary);
+    text-align: center;
+
+    &.metric-label-cell {
+      flex: 0 0 160rpx;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      text-align: left;
+    }
+
+    &.algo-cell {
+      .algo-name {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: var(--font-sm);
+        font-weight: 500;
+        color: var(--color-primary);
+        white-space: nowrap;
+      }
+    }
+
+    &.value-cell {
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+// ==================== 记录列表 ====================
+
+.mm-list {
+  padding: var(--spacing-md);
+}
+
+.mm-record-card {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  background: var(--color-bg-card);
+  border: 2rpx solid transparent;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s;
+
+  &.selected {
+    background: var(--color-primary-bg);
+    border-color: var(--color-primary);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-sm);
+
+    .card-algo {
+      max-width: 60%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: var(--font-base);
+      font-weight: 500;
+      color: var(--color-text-primary);
+      white-space: nowrap;
+    }
+
+    .card-meta {
+      display: flex;
+      gap: var(--spacing-xs);
+      align-items: center;
+    }
+  }
+
+  .select-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36rpx;
+    height: 36rpx;
+    font-size: var(--font-xs);
+    color: #fff;
+    background: var(--color-primary);
+    border-radius: var(--radius-full);
+  }
+
+  .card-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+
+    .mini-metric {
+      display: flex;
+      gap: 8rpx;
+      align-items: center;
+
+      .mini-label {
+        font-size: var(--font-xs);
+        color: var(--color-text-muted);
+      }
+
+      .mini-value {
+        font-size: var(--font-xs);
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        color: var(--color-text-primary);
+      }
+    }
+  }
+
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+
+    .card-time,
+    .card-date {
+      font-size: var(--font-xs);
+      color: var(--color-text-muted);
+    }
+  }
+}
+
+// ==================== 通用 ====================
+
+.loading-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 160rpx 0;
+}

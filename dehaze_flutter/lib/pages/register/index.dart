@@ -12,7 +12,6 @@ import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/ui_utils.dart';
 
-/// 注册页面
 class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
 
@@ -103,6 +102,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -116,190 +116,63 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildHeader(theme),
-
-                    const SizedBox(height: 32),
-
-                    TextFormField(
+                    const SizedBox(height: 36),
+                    _buildInputField(
                       controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: '用户名',
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return '请输入用户名';
-                        }
-                        return null;
-                      },
-                      textInputAction: TextInputAction.next,
+                      label: '用户名',
+                      icon: Icons.person_outline,
+                      hint: '请输入用户名',
+                      validator: (v) => (v == null || v.trim().isEmpty) ? '请输入用户名' : null,
                     ),
-
                     const SizedBox(height: 16),
-
-                    TextFormField(
+                    _buildInputField(
                       controller: _nicknameController,
-                      decoration: const InputDecoration(
-                        labelText: '昵称',
-                        prefixIcon: Icon(Icons.badge_outlined),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return '请输入昵称';
-                        }
-                        return null;
-                      },
-                      textInputAction: TextInputAction.next,
+                      label: '昵称',
+                      icon: Icons.badge_outlined,
+                      hint: '请输入昵称',
+                      validator: (v) => (v == null || v.trim().isEmpty) ? '请输入昵称' : null,
                     ),
-
                     const SizedBox(height: 16),
-
-                    TextFormField(
+                    _buildInputField(
                       controller: _passwordController,
-                      decoration: InputDecoration(
-                        labelText: '密码',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                      ),
+                      label: '密码',
+                      icon: Icons.lock_outline,
+                      hint: '请输入密码',
                       obscureText: _obscurePassword,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return '请输入密码';
-                        }
-                        return null;
-                      },
-                      textInputAction: TextInputAction.next,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
+                      validator: (v) => (v == null || v.isEmpty) ? '请输入密码' : null,
                     ),
-
                     const SizedBox(height: 16),
-
-                    TextFormField(
+                    _buildInputField(
                       controller: _confirmPasswordController,
-                      decoration: InputDecoration(
-                        labelText: '确认密码',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscureConfirmPassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscureConfirmPassword =
-                                  !_obscureConfirmPassword;
-                            });
-                          },
-                        ),
-                      ),
+                      label: '确认密码',
+                      icon: Icons.lock_outline,
+                      hint: '请再次输入密码',
                       obscureText: _obscureConfirmPassword,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return '请再次输入密码';
-                        }
-                        if (value != _passwordController.text) {
-                          return '两次密码不一致';
-                        }
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return '请再次输入密码';
+                        if (v != _passwordController.text) return '两次密码不一致';
                         return null;
                       },
-                      textInputAction: TextInputAction.next,
                     ),
-
                     const SizedBox(height: 16),
-
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _captchaController,
-                            decoration: const InputDecoration(
-                              labelText: '验证码',
-                              prefixIcon: Icon(Icons.shield_outlined),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return '请输入验证码';
-                              }
-                              return null;
-                            },
-                            textInputAction: TextInputAction.done,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: _isCaptchaLoading ? null : _loadCaptcha,
-                          child: Container(
-                            width: 160,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: theme.colorScheme.outline,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusM,
-                              ),
-                            ),
-                            child: _isCaptchaLoading || _captcha == null
-                                ? Center(
-                                    child: _isCaptchaLoading
-                                        ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Icon(Icons.refresh),
-                                  )
-                                : ClipRRect(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusM,
-                                    ),
-                                    child: Image.memory(
-                                      _decodeBase64Image(
-                                        _captcha!.captchaBase64,
-                                      ),
-                                      fit: BoxFit.fill,
-                                      gaplessPlayback: true,
-                                      errorBuilder: (_, _, _) => const Center(
-                                        child: Icon(Icons.broken_image),
-                                      ),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: _isCaptchaLoading ? null : _loadCaptcha,
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('刷新验证码'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          minimumSize: const Size(0, 32),
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
+                    _buildCaptchaRow(theme),
+                    const SizedBox(height: 28),
                     FilledButton(
                       onPressed: authState.isLoading ? null : _register,
                       style: FilledButton.styleFrom(
@@ -317,14 +190,28 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('注册', style: TextStyle(fontSize: 16)),
+                          : const Text('注册', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
-
                     const SizedBox(height: 16),
-
-                    TextButton(
-                      onPressed: () => context.go(AppRouterConfig.login),
-                      child: const Text('已有账号？立即登录'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '已有账号？',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => context.go(AppRouterConfig.login),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('立即登录'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -336,40 +223,150 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 
-  Widget _buildHeader(ThemeData theme) => Column(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              gradient: AppTheme.getPrimaryGradient(),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.brandBlue.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required String hint,
+    required String? Function(String?) validator,
+    TextInputAction textInputAction = TextInputAction.next,
+    bool obscureText = false,
+    Widget? suffixIcon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon, size: 20),
+            suffixIcon: suffixIcon,
+          ),
+          validator: validator,
+          textInputAction: textInputAction,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCaptchaRow(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            '验证码',
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _captchaController,
+                decoration: const InputDecoration(
+                  hintText: '请输入验证码',
+                  prefixIcon: Icon(Icons.shield_outlined, size: 20),
                 ),
-              ],
+                validator: (v) => (v == null || v.isEmpty) ? '请输入验证码' : null,
+                textInputAction: TextInputAction.done,
+              ),
             ),
-            child: const Icon(Icons.cloud_outlined, color: Colors.white, size: 40),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '创建新账号',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: _isCaptchaLoading ? null : _loadCaptcha,
+              child: Container(
+                width: 140,
+                height: 56,
+                decoration: BoxDecoration(
+                  border: Border.all(color: theme.colorScheme.outline),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                ),
+                child: _isCaptchaLoading || _captcha == null
+                    ? Center(
+                        child: _isCaptchaLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.refresh, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                                  SizedBox(height: 2),
+                                  Text('点击获取', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                                ],
+                              ),
+                      )
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        child: Image.memory(
+                          _decodeBase64Image(_captcha!.captchaBase64),
+                          fit: BoxFit.fill,
+                          gaplessPlayback: true,
+                          errorBuilder: (_, _, _) => const Center(
+                            child: Icon(Icons.broken_image),
+                          ),
+                        ),
+                      ),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '注册以使用图像去雾系统',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) => Column(
+    children: [
+      Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          gradient: AppTheme.getPrimaryGradient(),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.brandBlue.withValues(alpha: 0.35),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
             ),
-          ),
-        ],
-      );
+          ],
+        ),
+        child: const Icon(Icons.cloud_outlined, color: Colors.white, size: 42),
+      ),
+      const SizedBox(height: 20),
+      Text(
+        '创建新账号',
+        style: theme.textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        '注册以使用图像去雾系统',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    ],
+  );
 
   static Uint8List _decodeBase64Image(String base64Str) {
     final pureBase64 = base64Str.contains(',')

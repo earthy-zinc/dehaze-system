@@ -9,7 +9,9 @@ import {
 } from "@tarojs/components";
 import type { BaseEventOrig } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import CompareNavbar from "@/components/compare/CompareNavbar";
+import { Button } from "@taroify/core";
+import { ModelAPI } from "dehaze-sdk-js";
+import ImmersiveLayout from "@/layout/immersive";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import { loadCompareContext } from "@/components/compare/types";
 import EmptyState from "@/components/common/EmptyState";
@@ -112,6 +114,9 @@ const BUILTIN_PRESETS: { name: string; params: FilterParams }[] = [
 // 自定义预设 storage key
 const CUSTOM_PRESETS_KEY = "custom_filter_presets";
 
+// PredEvalTaskStatus: 1 = PENDING, 2 = COMPLETED, 3 = FAILED
+type TaskStatus = 1 | 2 | 3;
+
 const FilterPage: React.FC = () => {
   const [ctx] = useState(loadCompareContext);
   const [params, setParams] = useState<FilterParams>(DEFAULT_PARAMS);
@@ -119,6 +124,8 @@ const FilterPage: React.FC = () => {
   const [customPresets, setCustomPresets] = useState<
     { name: string; params: FilterParams }[]
   >([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportDownloading, setReportDownloading] = useState(false);
 
   // 小程序端 Canvas 相关状态
   const [canvasDisplaySize, setCanvasDisplaySize] = useState({
@@ -316,6 +323,42 @@ const FilterPage: React.FC = () => {
     [customPresets]
   );
 
+  // 生成并下载报告
+  const handleExportReport = async () => {
+    if (!result?.resultUrl) {
+      Taro.showToast({ title: "缺少必要参数", icon: "none" });
+      return;
+    }
+    setReportLoading(true);
+    try {
+      const res = await ModelAPI.generateReport({ logId: 0, format: "pdf" });
+      const taskId = res.taskId;
+      if (!taskId) throw new Error("未返回任务ID");
+      while (true) {
+        const statusRes = await ModelAPI.getReportStatus(taskId);
+        const status = statusRes.status as TaskStatus;
+        if (status === 2) {
+          if (statusRes.downloadUrl) {
+            setReportLoading(false);
+            setReportDownloading(true);
+            try {
+              const filePath = await Taro.downloadFile({ url: statusRes.downloadUrl });
+              if (filePath.tempFilePath) {
+                await Taro.openDocument({ filePath: filePath.tempFilePath, showMenu: true });
+              }
+            } catch { Taro.showToast({ title: "打开报告失败", icon: "none" }); }
+            finally { setReportDownloading(false); }
+          } else { throw new Error("报告生成但无下载链接"); }
+          break;
+        }
+        if (status === 3) throw new Error(statusRes.errorMessage || "报告生成失败");
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    } catch (err: unknown) {
+      Taro.showToast({ title: err instanceof Error ? err.message : "报告生成失败", icon: "none" });
+    } finally { setReportLoading(false); }
+  };
+
   // 是否有参数变更
   const hasChanges = useMemo(() => {
     return (Object.keys(params) as (keyof FilterParams)[]).some(
@@ -327,10 +370,12 @@ const FilterPage: React.FC = () => {
   const isH5 = process.env.TARO_ENV === "h5";
 
   return (
-    <View className="filter-page">
-      {/* 顶部导航 */}
-      <CompareNavbar title="滤镜调节" />
-
+    <ImmersiveLayout
+      title="滤镜调节"
+      toolbar={
+        <CompareToolbar currentMode="filter" resultUrl={result?.resultUrl} resultId={result?.logId} />
+      }
+    >
       {!hasResult ? (
         <EmptyState type="compare" />
       ) : (
@@ -432,12 +477,21 @@ const FilterPage: React.FC = () => {
               ))}
             </View>
           </ScrollView>
+
+          {/* 导出报告 */}
+          <View className="export-report-section">
+            <Button
+              block
+              color="primary"
+              loading={reportLoading || reportDownloading}
+              onClick={handleExportReport}
+            >
+              {reportDownloading ? "正在打开报告..." : "导出报告"}
+            </Button>
+          </View>
         </>
       )}
-
-      {/* 底部工具栏 */}
-      <CompareToolbar currentMode="filter" resultUrl={result?.resultUrl} />
-    </View>
+    </ImmersiveLayout>
   );
 };
 

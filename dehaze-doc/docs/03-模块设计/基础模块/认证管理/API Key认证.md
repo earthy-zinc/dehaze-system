@@ -49,111 +49,28 @@ API Key 是面向**机器对机器（M2M）调用**与**第三方系统集成**�
 
 ### 3.2 创建 API Key
 
-**请求：**
-
-```http
-POST /api/v1/auth/api-keys HTTP/1.1
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "name": "数据同步脚本",
-  "expiresAt": "2026-12-31 23:59:59"
-}
-```
-
 **请求参数：**
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | name | String | 是 | API Key 名称，用于标识用途 |
-| expiresAt | String | 否 | 过期时间（ISO 日期时间格式）；不传则默认永不过期 |
+| expiresAt | String | 否 | 过期时间；不传则默认永不过期 |
 
-**响应：**
+**响应要点**：创建成功后返回 Key 明文（`apiKey`，前缀 `dhak_`）及其 ID、名称、过期时间。
 
-```json
-{
-  "code": "00000",
-  "msg": "一切ok",
-  "data": {
-    "id": 1,
-    "name": "数据同步脚本",
-    "apiKey": "dhak_a1b2c3d4e5f6...",
-    "expiresAt": "2026-12-31 23:59:59",
-    "createTime": "2026-07-23 22:00:00"
-  }
-}
-```
-
-> **重要**：`apiKey` 明文仅在创建成功时返回**一次**，服务端只存储其 SHA-256 哈希值，无法再次查询。请务必妥善保存，丢失后只能删除并重新创建。
+> **重要**：`apiKey` 明文仅在创建成功时返回**一次**，服务端只存储其哈希值，无法再次查询。请务必妥善保存，丢失后只能删除并重新创建。
 
 ### 3.3 查询 API Key 列表
 
-**请求：**
-
-```http
-GET /api/v1/auth/api-keys HTTP/1.1
-Authorization: Bearer <token>
-```
-
-**响应：**
-
-```json
-{
-  "code": "00000",
-  "msg": "一切ok",
-  "data": [
-    {
-      "id": 1,
-      "name": "数据同步脚本",
-      "keyPrefix": "dhak_a1b2",
-      "expiresAt": "2026-12-31 23:59:59",
-      "createTime": "2026-07-23 22:00:00"
-    }
-  ]
-}
-```
-
-> **说明**：列表接口仅返回 Key 的前缀（`keyPrefix`）用于辨识，**不返回明文 Key**。
+**响应要点**：返回当前用户的 Key 列表，仅包含 Key 前缀（`keyPrefix`，如 `dhak_a1b2`）用于辨识，**不返回明文 Key**。
 
 ### 3.4 删除/吊销 API Key
 
-**请求：**
-
-```http
-DELETE /api/v1/auth/api-keys/1 HTTP/1.1
-Authorization: Bearer <token>
-```
-
-**响应：**
-
-```json
-{
-  "code": "00000",
-  "msg": "一切ok",
-  "data": null
-}
-```
-
-> **说明**：删除后该 Key 立即失效，使用该 Key 的后续请求将被拒绝。删除操作不可恢复。
+**说明**：删除后该 Key 立即失效，使用该 Key 的后续请求将被拒绝。删除操作不可恢复。
 
 ## 4. 使用 API Key 进行认证
 
-创建 API Key 后，在请求头中通过 `Authorization: Bearer` 携带：
-
-```http
-GET /api/v1/datasets/page?pageNum=1&pageSize=10 HTTP/1.1
-Authorization: Bearer dhak_a1b2c3d4e5f6...
-```
-
-服务端识别到 `dhak_` 前缀的凭证时，将走 API Key 校验分支：计算凭证的 SHA-256 哈希值并与库中存储的哈希比对，校验通过后以 Key 所属用户身份继续后续鉴权流程。
-
-**调用示例（cURL）：**
-
-```bash
-curl -X GET "http://localhost:8989/api/v1/datasets/page?pageNum=1&pageSize=10" \
-  -H "Authorization: Bearer dhak_a1b2c3d4e5f6..."
-```
+创建 API Key 后，在请求头中通过 `Authorization: Bearer dhak_xxx` 携带凭证调用各业务接口。服务端识别到 `dhak_` 前缀的凭证时，走 API Key 校验分支：计算凭证的哈希值并与库中存储的哈希比对，校验通过后以 Key 所属用户身份继续后续鉴权流程。
 
 ## 5. 跨后端支持
 
@@ -172,7 +89,7 @@ API Key 认证在 **Java / Go / Python** 三个后端服务中通用，三端共
 | 安全措施 | 说明 |
 |---------|------|
 | **明文仅展示一次** | API Key 明文仅在创建成功时返回一次，之后无法再查询 |
-| **哈希存储** | 服务端仅存储 API Key 的 SHA-256 哈希值，不存储明文 |
+| **哈希存储** | 服务端仅存储 API Key 的哈希值，不存储明文 |
 | **可吊销** | 用户可随时删除/吊销 Key，删除后立即失效 |
 | **可选过期时间** | 支持创建时设置 `expiresAt`，到期后自动失效 |
 | **归属隔离** | 用户只能查询和删除自己创建的 API Key |

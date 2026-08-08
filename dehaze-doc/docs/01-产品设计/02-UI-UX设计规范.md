@@ -633,7 +633,7 @@ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
 
 #### UniApp 规范
 
-- 组件库：uView-plus
+- 组件库：业务组件自建（`src/components/`），图标使用自建 `SvgIcon` 组件（基于 `vite-plugin-svg-icons`，svg 文件位于 `src/assets/icons/`）
 - 触控目标：最小 44px×44px
 - 布局：单列布局为主
 - 导航：底部导航或汉堡菜单

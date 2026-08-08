@@ -1,299 +1,464 @@
 <template>
-  <PageLayout level="L3" class="page">
-    <view class="main-content">
-      <PageHeaderCard
-        icon="setting"
-        icon-color="#10b981"
-        icon-bg="#d1fae5"
-        title="滤镜调节"
-        subtitle="实时调节画面效果"
-        variant="dark"
-      />
+  <ImmersiveLayout title="滤镜调节">
+    <view v-if="hasImages" class="main-content">
+      <!-- 预览图 -->
+      <view class="preview-wrapper">
+        <image
+          :src="currentPreviewUrl"
+          class="preview-image"
+          mode="widthFix"
+          :style="{ filter: filterString }"
+          lazy-load
+        />
+        <view class="preview-toggle" @click="showOrigin = !showOrigin">
+          <text>{{ showOrigin ? "原图" : "滤镜效果" }}</text>
+        </view>
+      </view>
 
-      <view v-if="hasImages" class="content-area">
-        <!-- 预览图 -->
-        <view class="preview-wrapper">
-          <image
-            :src="resultUrl"
-            class="preview-image"
-            mode="widthFix"
-            :style="{ filter: filterString }"
-          />
+      <scroll-view class="filter-scroll" scroll-y>
+        <!-- 预设方案 -->
+        <view class="panel">
+          <view class="panel-header">
+            <text class="panel-title">预设方案</text>
+            <text class="save-btn" @click="handleSavePreset">保存当前</text>
+          </view>
+          <view class="preset-list">
+            <view
+              v-for="p in builtinPresets"
+              :key="p.name"
+              class="preset-item"
+              :class="{ active: activePreset === p.name }"
+              @click="applyPreset(p)"
+            >
+              <text>{{ p.name }}</text>
+            </view>
+            <view
+              v-for="(p, idx) in customPresets"
+              :key="'c' + idx"
+              class="preset-item custom"
+              :class="{ active: activePreset === p.name }"
+              @click="applyPreset(p)"
+              @longpress="handleDeletePreset(idx)"
+            >
+              <text>{{ p.name }}</text>
+            </view>
+          </view>
         </view>
 
         <!-- 滤镜参数 -->
-        <view class="filter-panel">
-          <view v-for="item in filters" :key="item.key" class="filter-item">
-            <view class="filter-label">
-              <text>{{ item.label }}</text>
-              <text class="filter-value">{{ item.value }}{{ item.unit }}</text>
+        <view class="panel">
+          <view class="panel-header">
+            <text class="panel-title">参数调节</text>
+            <text v-if="hasChanges" class="reset-btn" @click="handleReset">重置</text>
+          </view>
+          <view v-for="item in filters" :key="item.key" class="slider-item">
+            <view class="slider-label-row">
+              <text class="slider-label">{{ item.label }}</text>
+              <text class="slider-value">{{ item.value }}</text>
             </view>
             <slider
               :value="item.value"
               :min="item.min"
               :max="item.max"
-              :step="item.step"
+              :step="1"
               :active-color="item.color"
               block-size="20"
-              @change="
-                (e: SliderChangeEvent) => updateFilter(item.key, e.detail.value)
-              "
+              @change="(e: any) => updateFilter(item.key, e.detail.value)"
             />
           </view>
         </view>
+      </scroll-view>
+    </view>
 
-        <!-- 预设 -->
-        <view class="preset-row">
-          <view
-            v-for="p in presets"
-            :key="p.label"
-            class="preset-btn"
-            :class="{ active: activePreset === p.label }"
-            @click="applyPreset(p)"
-          >
-            {{ p.label }}
-          </view>
-        </view>
+    <CompareEmptyState v-else text="暂无处理结果" btn-color="#10b981" />
 
-        <view class="nav-row">
-          <view
-            class="nav-item"
-            @click="switchPage('/pages/side-by-side/index')"
-          >
-            <u-icon name="grid" size="20" color="#10b981" /><text
-              >并排对比</text
-            >
-          </view>
-          <view class="nav-item" @click="switchPage('/pages/overlay/index')">
-            <u-icon name="photo" size="20" color="#10b981" /><text
-              >重叠对比</text
-            >
-          </view>
+    <template #toolbar>
+      <view class="toolbar-grid">
+        <view
+          v-for="m in modes"
+          :key="m.key"
+          class="toolbar-item"
+          :class="{ active: m.key === 'filter' }"
+          @click="switchPage(m.path)"
+        >
+          <SvgIcon :name="m.icon" size="20" color="#10b981" />
+          <text>{{ m.label }}</text>
         </view>
       </view>
-
-      <CompareEmptyState v-else text="暂无处理结果" btn-color="#10b981" />
-    </view>
-  </PageLayout>
+      <view class="toolbar-actions">
+        <view class="action-item" @click="handleSave">
+          <SvgIcon name="download" size="18" color="rgba(255,255,255,0.7)" />
+          <text>保存</text>
+        </view>
+        <view class="action-item" @click="handleReprocess">
+          <SvgIcon name="refresh" size="18" color="rgba(255,255,255,0.7)" />
+          <text>重新处理</text>
+        </view>
+        <view class="action-item" @click="handleChangeAlgorithm">
+          <SvgIcon name="swap" size="18" color="rgba(255,255,255,0.7)" />
+          <text>换算法</text>
+        </view>
+        <view class="action-item" @click="handleFavorite">
+          <SvgIcon :name="favorited ? 'star-fill' : 'star'" size="18" :color="favorited ? '#f59e0b' : 'rgba(255,255,255,0.7)'" />
+          <text :style="{ color: favorited ? '#f59e0b' : '' }">{{ favorited ? '已收藏' : '收藏' }}</text>
+        </view>
+      </view>
+    </template>
+  </ImmersiveLayout>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, reactive, onMounted } from "vue";
-import PageLayout from "@/layout/index.vue";
-import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
+import { ref, reactive, computed, onMounted } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
+import ImmersiveLayout from "@/layout/ImmersiveLayout.vue";
 import CompareEmptyState from "@/components/common/CompareEmptyState.vue";
 import { useProcessingStore } from "@/store/processing";
-import type { SliderChangeEvent } from "@/types/uni-events";
+import { FavoriteAPI } from "dehaze-sdk-js";
 
-type FilterKey = "brightness" | "contrast" | "saturate" | "warmth";
+const CUSTOM_PRESETS_KEY = "uniapp_custom_filter_presets";
 
-interface FilterConfig {
-  key: FilterKey;
+const store = useProcessingStore();
+const showOrigin = ref(false);
+const activePreset = ref("");
+const favorited = ref(false);
+const favoriteLoading = ref(false);
+
+const resultUrl = computed(() => store.result?.resultUrl || "");
+const originUrl = computed(() => store.originUrl);
+const hasImages = computed(() => !!resultUrl.value);
+const currentPreviewUrl = computed(() => (showOrigin.value ? originUrl.value : resultUrl.value));
+const resultId = computed(() => store.result?.id);
+
+interface FilterItem {
+  key: string;
   label: string;
   value: number;
   min: number;
   max: number;
-  step: number;
-  unit: string;
   color: string;
 }
 
-const store = useProcessingStore();
+interface Preset {
+  name: string;
+  params: Record<string, number>;
+}
 
-const resultUrl = computed(() => store.result?.resultUrl || "");
-const hasImages = computed(() => !!resultUrl.value);
-
-const filters = reactive<FilterConfig[]>([
-  {
-    key: "brightness",
-    label: "亮度",
-    value: 100,
-    min: 50,
-    max: 200,
-    step: 1,
-    unit: "%",
-    color: "#fbbf24",
-  },
-  {
-    key: "contrast",
-    label: "对比度",
-    value: 100,
-    min: 50,
-    max: 200,
-    step: 1,
-    unit: "%",
-    color: "#f59e0b",
-  },
-  {
-    key: "saturate",
-    label: "饱和度",
-    value: 100,
-    min: 0,
-    max: 300,
-    step: 1,
-    unit: "%",
-    color: "#34d399",
-  },
-  {
-    key: "warmth",
-    label: "色温",
-    value: 0,
-    min: -30,
-    max: 30,
-    step: 1,
-    unit: "",
-    color: "#f87171",
-  },
+const filters = reactive<FilterItem[]>([
+  { key: "brightness", label: "亮度", value: 0, min: -100, max: 100, color: "#fbbf24" },
+  { key: "contrast", label: "对比度", value: 0, min: -100, max: 100, color: "#f59e0b" },
+  { key: "saturation", label: "饱和度", value: 0, min: -100, max: 100, color: "#34d399" },
+  { key: "temperature", label: "色温", value: 0, min: -100, max: 100, color: "#f87171" },
+  { key: "sharpen", label: "锐化", value: 0, min: 0, max: 100, color: "#60a5fa" },
+  { key: "denoise", label: "降噪", value: 0, min: 0, max: 100, color: "#a78bfa" },
 ]);
 
-const activePreset = ref("原始");
+const defaultParams: Record<string, number> = {
+  brightness: 0, contrast: 0, saturation: 0, temperature: 0, sharpen: 0, denoise: 0,
+};
 
-function getFilter(key: FilterKey): number {
+const builtinPresets: Preset[] = [
+  { name: "自然", params: { brightness: 5, contrast: 10, saturation: 5, temperature: 0, sharpen: 0, denoise: 0 } },
+  { name: "鲜艳", params: { brightness: 0, contrast: 30, saturation: 40, temperature: 0, sharpen: 0, denoise: 0 } },
+  { name: "柔和", params: { brightness: 0, contrast: -20, saturation: 0, temperature: 0, sharpen: -10, denoise: 0 } },
+  { name: "清晰", params: { brightness: 0, contrast: 20, saturation: 0, temperature: 0, sharpen: 40, denoise: 0 } },
+  { name: "复古", params: { brightness: 0, contrast: 0, saturation: -20, temperature: 30, sharpen: 0, denoise: 0 } },
+];
+
+const customPresets = ref<Preset[]>([]);
+
+const filterString = computed(() => {
+  const b = 1 + getVal("brightness") / 100;
+  const c = 1 + getVal("contrast") / 100;
+  const s = 1 + getVal("saturation") / 100;
+  const t = getVal("temperature");
+  const sepia = Math.abs(t) / 100;
+  const hue = t * 0.5;
+  const sb = 1 + getVal("sharpen") / 200;
+  const blur = getVal("denoise") / 200;
+  return `brightness(${b}) contrast(${c * sb}) saturate(${s}) sepia(${sepia}) hue-rotate(${hue}deg) blur(${blur}px)`;
+});
+
+function getVal(key: string): number {
   return filters.find((f) => f.key === key)?.value ?? 0;
 }
 
-const filterString = computed(() => {
-  const warmth = getFilter("warmth");
-  return `brightness(${getFilter("brightness")}%) contrast(${getFilter("contrast")}%) saturate(${getFilter("saturate")}%) sepia(${Math.max(warmth, 0)}%) hue-rotate(${Math.min(warmth, 0)}deg)`;
-});
+const hasChanges = computed(() => filters.some((f) => f.value !== (defaultParams[f.key] ?? 0)));
 
-interface Preset {
-  label: string;
-  values: Record<FilterKey, number>;
-}
-
-const presets: Preset[] = [
-  {
-    label: "原始",
-    values: { brightness: 100, contrast: 100, saturate: 100, warmth: 0 },
-  },
-  {
-    label: "鲜艳",
-    values: { brightness: 110, contrast: 120, saturate: 150, warmth: 0 },
-  },
-  {
-    label: "柔和",
-    values: { brightness: 95, contrast: 90, saturate: 80, warmth: 5 },
-  },
-  {
-    label: "冷调",
-    values: { brightness: 100, contrast: 105, saturate: 90, warmth: -15 },
-  },
-  {
-    label: "暖调",
-    values: { brightness: 105, contrast: 100, saturate: 110, warmth: 15 },
-  },
-  {
-    label: "复古",
-    values: { brightness: 90, contrast: 85, saturate: 60, warmth: 20 },
-  },
+const modes = [
+  { key: "side-by-side", label: "并排", path: "/pages/side-by-side/index", icon: "grid" },
+  { key: "overlay", label: "重叠", path: "/pages/overlay/index", icon: "photo" },
+  { key: "magnifier", label: "放大镜", path: "/pages/magnifier/index", icon: "search" },
+  { key: "filter", label: "滤镜", path: "/pages/filter/index", icon: "setting" },
+  { key: "metrics", label: "指标", path: "/pages/metrics/index", icon: "integral" },
 ];
 
-function updateFilter(key: FilterKey, value: number) {
+function updateFilter(key: string, value: number) {
   const item = filters.find((f) => f.key === key);
   if (item) {
     item.value = value;
-    activePreset.value = "自定义";
+    activePreset.value = "";
   }
 }
 
 function applyPreset(p: Preset) {
-  (Object.keys(p.values) as FilterKey[]).forEach((key) => {
-    const item = filters.find((f) => f.key === key);
-    if (item) item.value = p.values[key];
+  filters.forEach((f) => {
+    if (p.params[f.key] !== undefined) f.value = p.params[f.key];
   });
-  activePreset.value = p.label;
+  activePreset.value = p.name;
+}
+
+function handleReset() {
+  filters.forEach((f) => {
+    f.value = defaultParams[f.key] ?? 0;
+  });
+  activePreset.value = "";
+}
+
+function handleSavePreset() {
+  uni.showModal({
+    title: "保存预设",
+    editable: true,
+    placeholderText: "请输入预设名称",
+    success(res) {
+      const name = (res.content || "").trim();
+      if (res.confirm && name) {
+        const params: Record<string, number> = {};
+        filters.forEach((f) => { params[f.key] = f.value; });
+        customPresets.value.push({ name, params });
+        uni.setStorageSync(CUSTOM_PRESETS_KEY, JSON.stringify(customPresets.value));
+        uni.showToast({ title: "预设已保存", icon: "success" });
+      }
+    },
+  } as any);
+}
+
+function handleDeletePreset(index: number) {
+  uni.showModal({
+    title: "确认删除",
+    content: "确定要删除此自定义预设吗？",
+    success(res) {
+      if (res.confirm) {
+        customPresets.value.splice(index, 1);
+        uni.setStorageSync(CUSTOM_PRESETS_KEY, JSON.stringify(customPresets.value));
+        uni.showToast({ title: "已删除", icon: "success" });
+      }
+    },
+  });
 }
 
 function switchPage(url: string) {
   uni.redirectTo({ url });
 }
 
+function handleSave() {
+  if (!resultUrl.value) {
+    uni.showToast({ title: "无结果图片可保存", icon: "none" });
+    return;
+  }
+  uni.downloadFile({
+    url: resultUrl.value,
+    success(res) {
+      if (res.statusCode === 200) {
+        uni.saveImageToPhotosAlbum({
+          filePath: res.tempFilePath,
+          success: () => uni.showToast({ title: "已保存到相册", icon: "success" }),
+          fail: () => uni.showToast({ title: "保存失败", icon: "none" }),
+        });
+      }
+    },
+  });
+}
+
+function handleReprocess() {
+  uni.redirectTo({ url: "/pages/processing/index" });
+}
+
+function handleChangeAlgorithm() {
+  uni.redirectTo({ url: "/pages/algorithm-select/index" });
+}
+
+async function handleFavorite() {
+  if (!resultId.value) {
+    uni.showToast({ title: "暂不支持收藏", icon: "none" });
+    return;
+  }
+  if (favoriteLoading.value) return;
+  favoriteLoading.value = true;
+  try {
+    if (favorited.value) {
+      await FavoriteAPI.deleteByIds([resultId.value]);
+      favorited.value = false;
+      uni.showToast({ title: "已取消收藏", icon: "success" });
+    } else {
+      await FavoriteAPI.add({ targetType: "result", targetId: resultId.value });
+      favorited.value = true;
+      uni.showToast({ title: "已收藏", icon: "success" });
+    }
+  } catch {
+    uni.showToast({ title: "操作失败", icon: "none" });
+  } finally {
+    favoriteLoading.value = false;
+  }
+}
+
 onMounted(() => {
+  try {
+    const stored = uni.getStorageSync(CUSTOM_PRESETS_KEY);
+    if (stored) customPresets.value = JSON.parse(stored);
+  } catch { /* ignore */ }
   if (!hasImages.value)
     uni.showToast({ title: "请先完成去雾处理", icon: "none" });
+  if (resultId.value) {
+    FavoriteAPI.getStatus("result", resultId.value)
+      .then((res) => { favorited.value = res.favorited; })
+      .catch(() => {});
+  }
 });
 </script>
 
 <style lang="scss" scoped>
-.page {
-  width: 100%;
-  min-height: 100vh;
-  background: #1a1a2e;
-}
 .main-content {
-  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .preview-wrapper {
-  border-radius: 16rpx;
+  position: relative;
+  max-height: 40vh;
   overflow: hidden;
+  background: #000;
 }
+
 .preview-image {
   width: 100%;
   display: block;
 }
 
-.filter-panel {
+.preview-toggle {
+  position: absolute;
+  right: 24rpx;
+  bottom: 24rpx;
+  padding: 12rpx 28rpx;
+  font-size: 24rpx;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 32rpx;
+}
+
+.filter-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.panel {
+  margin: 24rpx 32rpx;
+  padding: 24rpx 32rpx;
   background: rgba(255, 255, 255, 0.06);
-  border-radius: 20rpx;
-  padding: 28rpx;
-  margin-top: 24rpx;
+  border-radius: 16rpx;
 }
-.filter-item {
-  margin-bottom: 24rpx;
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-.filter-label {
+
+.panel-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8rpx;
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.7);
-}
-.filter-value {
-  font-weight: 600;
-  color: #fff;
+  align-items: center;
+  margin-bottom: 24rpx;
 }
 
-.preset-row {
+.panel-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.save-btn,
+.reset-btn {
+  font-size: 26rpx;
+  color: #10b981;
+}
+
+.preset-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 24rpx;
+  gap: 16rpx;
 }
-.preset-btn {
-  padding: 14rpx 24rpx;
-  border-radius: 16rpx;
-  font-size: 24rpx;
+
+.preset-item {
+  padding: 12rpx 32rpx;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.5);
   background: rgba(255, 255, 255, 0.08);
+  border: 2rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 32rpx;
+
   &.active {
-    background: rgba(16, 185, 129, 0.2);
     color: #10b981;
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+  }
+
+  &.custom {
+    color: #a78bfa;
+    border-color: #a78bfa;
   }
 }
 
-.nav-row {
-  display: flex;
-  gap: 20rpx;
-  margin-top: 32rpx;
+.slider-item {
+  margin-bottom: 32rpx;
+
+  &:last-child { margin-bottom: 0; }
 }
-.nav-item {
-  flex: 1;
+
+.slider-label-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.slider-label {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.slider-value {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #10b981;
+}
+
+.toolbar-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4rpx;
+  padding: 16rpx 16rpx 8rpx;
+}
+
+.toolbar-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4rpx;
+  padding: 0 16rpx 16rpx;
+}
+
+.toolbar-item,
+.action-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12rpx;
-  padding: 28rpx;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 20rpx;
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.6);
+  gap: 8rpx;
+  padding: 20rpx 8rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.5);
+
   &:active {
     background: rgba(16, 185, 129, 0.15);
+    border-radius: 12rpx;
+  }
+
+  &.active {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+    border-radius: 12rpx;
   }
 }
 </style>

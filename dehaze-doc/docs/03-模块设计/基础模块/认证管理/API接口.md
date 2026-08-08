@@ -21,7 +21,7 @@
 | `/api/v1/auth/api-keys` | GET | 查询当前用户的 API Key 列表 | - | F-AM-007 |
 | `/api/v1/auth/api-keys/{id}` | DELETE | 删除/吊销 API Key | - | F-AM-008 |
 
-> **已移除**：`POST /api/v1/auth/refresh` 端点已废弃。Session 模式下后端自动处理会话续期，前端无需主动刷新令牌。
+> **说明**：无独立的刷新令牌接口。Session 模式下后端自动处理会话续期，前端无需主动刷新令牌。
 
 
 

@@ -31,5 +31,15 @@ target 'DehazeReactNative' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # fmt 11.0.2 (RN 0.81 third-party dep) 与 Xcode 26 的新 Clang 在 C++20 consteval 上不兼容，
+    # 降级 fmt 自身到 C++17 以禁用 consteval 代码路径。
+    # https://github.com/facebook/react-native/issues/55601
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      end
+    end
   end
 end

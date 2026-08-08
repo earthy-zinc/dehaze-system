@@ -42,7 +42,7 @@
                 :class="{ disabled: !record.predUrl || !record.originUrl }"
                 @click="handleCompare(record)"
               >
-                <u-icon name="grid" size="14" color="#3b82f6" />
+                <SvgIcon name="grid" size="14" color="#3b82f6" />
                 <text>对比</text>
               </view>
               <view
@@ -50,13 +50,13 @@
                 :class="{ disabled: !record.originUrl }"
                 @click="handleReprocess(record)"
               >
-                <u-icon name="reload" size="14" color="#f59e0b" />
+                <SvgIcon name="reload" size="14" color="#f59e0b" />
                 <text>重新处理</text>
               </view>
             </view>
           </view>
           <view class="record-arrow">
-            <u-icon name="arrow-right" size="16" color="#d1d5db" />
+            <SvgIcon name="arrow-right" size="16" color="#d1d5db" />
           </view>
         </view>
 
@@ -86,6 +86,7 @@ import type { PredLogVO } from "dehaze-sdk-js";
 import { useProcessingStore } from "@/store/processing";
 import type { ImageData } from "@/pages/image-input/data/imageInputData";
 import { formatRelativeTime } from "@/utils/format";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import { getErrorMessage } from "@/utils/error";
 
 const processingStore = useProcessingStore();

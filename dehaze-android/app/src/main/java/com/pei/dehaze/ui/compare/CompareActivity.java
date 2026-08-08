@@ -83,7 +83,7 @@ public class CompareActivity extends AppCompatActivity {
 
         binding.viewPager.setAdapter(new ComparePagerAdapter(this));
         new TabLayoutMediator(binding.tabLayout, binding.viewPager,
-                (tab, position) -> tab.setText(position == 0 ? "并排对比" : "重叠对比"))
+                (tab, position) -> tab.setText(COMPARE_TABS[position]))
                 .attach();
 
         statePlaceholder = new StatePlaceholder(binding.statePlaceholder.getRoot());
@@ -214,6 +214,11 @@ public class CompareActivity extends AppCompatActivity {
         compareViewModel.uploadImage(tempFile);
     }
 
+    /** 6 种对比模式（设计稿要求） */
+    private static final String[] COMPARE_TABS = {
+            "并排对比", "重叠对比", "放大镜", "滤镜调节", "指标评估", "算法信息"
+    };
+
     private static class ComparePagerAdapter extends FragmentStateAdapter {
 
         public ComparePagerAdapter(FragmentActivity fa) {
@@ -222,12 +227,20 @@ public class CompareActivity extends AppCompatActivity {
 
         @Override
         public Fragment createFragment(int position) {
-            return position == 0 ? new ParallelFragment() : new OverlapFragment();
+            switch (position) {
+                case 0: return new ParallelFragment();
+                case 1: return new OverlapFragment();
+                case 2: return new MagnifierFragment();
+                case 3: return new FilterFragment();
+                case 4: return new MetricsFragment();
+                case 5: return new AlgorithmInfoFragment();
+                default: return new ParallelFragment();
+            }
         }
 
         @Override
         public int getItemCount() {
-            return 2;
+            return COMPARE_TABS.length;
         }
     }
 }

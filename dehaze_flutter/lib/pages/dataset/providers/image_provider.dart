@@ -1,14 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../models/dataset_model.dart' as g;
+import '../../../providers/providers.dart';
+import '../../../services/dataset_service.dart';
 import '../models/dataset_model.dart';
-import '../providers/dataset_provider.dart';
-import '../services/dataset_service.dart';
 
 /// 图片列表状态管理
+///
+/// 内部使用全局 DatasetItemService 获取数据项，再展开为本地 ImageModel 列表。
 class ImageNotifier extends StateNotifier<AsyncValue<List<ImageModel>>> {
   ImageNotifier(this._service) : super(const AsyncValue.data([]));
 
-  final DatasetService _service;
+  final DatasetItemService _service;
   int _currentPage = 1;
   bool _hasMore = true;
   ImageType? _selectedType;
@@ -33,21 +36,29 @@ class ImageNotifier extends StateNotifier<AsyncValue<List<ImageModel>>> {
     if (!_hasMore || _currentDatasetId == null) return;
 
     try {
-      final response = await _service.getDatasetImages(
+      final result = await _service.getList(g.DatasetItemQuery(
         datasetId: _currentDatasetId!,
         pageNum: _currentPage,
-        imageType: _selectedType,
-        keywords: _searchQuery.isEmpty ? null : _searchQuery,
-      );
+        pageSize: 20,
+        keyword: _searchQuery.isEmpty ? null : _searchQuery,
+      ));
 
-      if (refresh) {
-        state = AsyncValue.data(response.list);
-      } else {
-        final currentList = state.value ?? [];
-        state = AsyncValue.data([...currentList, ...response.list]);
+      final images = <ImageModel>[];
+      for (final item in result.list) {
+        for (final img in _extractImagesFromItem(item, _currentDatasetId!)) {
+          if (_selectedType != null && img.imageType != _selectedType) continue;
+          images.add(img);
+        }
       }
 
-      _hasMore = response.list.isNotEmpty;
+      if (refresh) {
+        state = AsyncValue.data(images);
+      } else {
+        final currentList = state.value ?? [];
+        state = AsyncValue.data([...currentList, ...images]);
+      }
+
+      _hasMore = result.list.isNotEmpty;
       _currentPage++;
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
@@ -87,10 +98,41 @@ class ImageNotifier extends StateNotifier<AsyncValue<List<ImageModel>>> {
   }
 }
 
+/// 从全局 DatasetItemVO 提取图片列表（清晰图 + 有雾图）
+List<ImageModel> _extractImagesFromItem(g.DatasetItemVO item, int datasetId) {
+  final images = <ImageModel>[];
+  final createTime = item.createTime ?? '';
+
+  if (item.clearImage != null) {
+    images.add(_imageUrlToModel(item.clearImage!, datasetId, createTime));
+  }
+  if (item.hazyImages != null) {
+    for (final img in item.hazyImages!) {
+      images.add(_imageUrlToModel(img, datasetId, createTime));
+    }
+  }
+  return images;
+}
+
+/// 将全局 ImageUrlVO 映射为本地 ImageModel
+ImageModel _imageUrlToModel(g.ImageUrlVO img, int datasetId, String createdAt) {
+  return ImageModel(
+    id: img.id,
+    datasetId: datasetId,
+    filename: img.fileName ?? 'image_${img.id}',
+    imageUrl: img.url,
+    imageType: ImageTypeExtension.fromValue(img.type),
+    createdAt: createdAt,
+    width: img.width,
+    height: img.height,
+    fileSize: img.sizeBytes,
+  );
+}
+
 /// 图片列表 Provider
 final imageProvider =
     StateNotifierProvider<ImageNotifier, AsyncValue<List<ImageModel>>>((ref) {
-  final service = ref.watch<DatasetService>(datasetServiceProvider);
+  final service = ref.watch(datasetItemServiceProvider);
   return ImageNotifier(service);
 });
 

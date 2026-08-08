@@ -33,7 +33,7 @@
 | `/api/v1/dict/{ids}` | DELETE | 删除字典（支持批量） | `sys:dict:data:delete` | F-DM-008 |
 | `/api/v1/dict/{typeCode}/options` | GET | 字典下拉选项 | - | F-DM-009 |
 
-> **导入导出接口**：字典模块的导出（`GET/POST /api/v1/dict/_export`，含字典类型与字典数据）、导入（`POST /api/v1/dict/_import`）、模板下载（`GET /api/v1/dict/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §8.2 通用CRUD接口模板，模块特定逻辑由 `DictExportHandler`/`DictImportHandler` 实现，详见 [后端实现.md](./后端实现.md)。
+> **导入导出接口**：字典模块的导出（`GET/POST /api/v1/dict/_export`，含字典类型与字典数据）、导入（`POST /api/v1/dict/_import`）、模板下载（`GET /api/v1/dict/template`）由通用导入导出框架 `GenericImportExportController` 统一实现，接口规范参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §7 通用CRUD接口模板，模块特定逻辑由 `DictExportHandler`/`DictImportHandler` 实现，详见 [后端实现.md](./后端实现.md)。
 
 ## 3. 权限标识汇总
 

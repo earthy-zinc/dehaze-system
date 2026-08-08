@@ -4,6 +4,17 @@ import 'prediction_model.dart';
 
 part 'evaluation_model.g.dart';
 
+TaskStatus _evalStatusFromJson(int? value) => TaskStatus.fromValue(value);
+
+int? _evalStatusToJson(TaskStatus? status) {
+  if (status == null) return null;
+  return switch (status) {
+    TaskStatus.completed => 2,
+    TaskStatus.failed => 3,
+    TaskStatus.processing => 1,
+  };
+}
+
 /// 评估请求
 ///
 /// 对应后端 EvaluationForm：
@@ -22,15 +33,12 @@ class EvaluationRequest {
       _$EvaluationRequestFromJson(json);
 
   /// 算法 ID
-  @JsonKey(name: 'algorithmId')
   final int algorithmId;
 
   /// 预测结果图 URL
-  @JsonKey(name: 'predUrl')
   final String? predUrl;
 
   /// 真值图（Ground Truth）URL
-  @JsonKey(name: 'gtUrl')
   final String? gtUrl;
 
   /// 评估参数（JSON 字符串）
@@ -46,7 +54,7 @@ class EvaluationRequest {
 @JsonSerializable()
 class EvaluationResult {
   const EvaluationResult({
-    required this.logId,
+    this.logId,
     required this.status,
     this.metrics,
     this.time,
@@ -56,12 +64,11 @@ class EvaluationResult {
   factory EvaluationResult.fromJson(Map<String, dynamic> json) =>
       _$EvaluationResultFromJson(json);
 
-  /// 评估日志 ID
-  @JsonKey(name: 'logId')
-  final int logId;
+  /// 评估日志 ID（POST 返回时可能为 null）
+  final int? logId;
 
   /// 任务状态
-  @JsonKey(fromJson: _statusFromJson, toJson: _statusToJson)
+  @JsonKey(fromJson: _evalStatusFromJson, toJson: _evalStatusToJson)
   final TaskStatus status;
 
   /// 指标结果（PSNR/SSIM/MSE/FSIM/LPIPS 等，status=completed 时返回）
@@ -72,17 +79,7 @@ class EvaluationResult {
   final int? time;
 
   /// 失败错误信息（status=failed 时返回）
-  @JsonKey(name: 'errorMessage')
   final String? errorMessage;
-
-  static TaskStatus _statusFromJson(int? value) =>
-      TaskStatus.fromValue(value);
-
-  static int _statusToJson(TaskStatus status) => switch (status) {
-        TaskStatus.completed => 2,
-        TaskStatus.failed => 3,
-        TaskStatus.processing => 1,
-      };
 
   Map<String, dynamic> toJson() => _$EvaluationResultToJson(this);
 
@@ -163,4 +160,119 @@ class MetricItem {
   String get displayValue => value != null
       ? value!.toStringAsFixed(value! < 1 ? 4 : 2)
       : '-';
+}
+
+/// 评估日志（对应后端 EvalLogVO）
+///
+/// 用于评估历史列表展示。
+@JsonSerializable()
+class EvaluationLog {
+  const EvaluationLog({
+    required this.id,
+    required this.algorithmId,
+    this.algorithmName,
+    this.predUrl,
+    this.gtUrl,
+    this.status,
+    this.errorMessage,
+    this.result,
+    this.time,
+    this.createTime,
+  });
+
+  factory EvaluationLog.fromJson(Map<String, dynamic> json) =>
+      _$EvaluationLogFromJson(json);
+
+  final int id;
+
+  final int algorithmId;
+
+  final String? algorithmName;
+
+  /// 预测结果图 URL
+  final String? predUrl;
+
+  /// 真值图 URL
+  final String? gtUrl;
+
+  /// 任务状态
+  @JsonKey(fromJson: _evalStatusFromJson, toJson: _evalStatusToJson)
+  final TaskStatus? status;
+
+  /// 失败错误信息
+  final String? errorMessage;
+
+  /// 评估指标结果（PSNR/SSIM 等 Map 或 JSON 字符串）
+  final dynamic result;
+
+  /// 处理耗时（毫秒）
+  final int? time;
+
+  /// 创建时间
+  final String? createTime;
+
+  Map<String, dynamic> toJson() => _$EvaluationLogToJson(this);
+}
+
+/// 评估指标历史 VO（对应 JS SDK EvalMetricsVO）
+///
+/// 用于评估指标历史列表展示，仅包含已完成任务的指标数据。
+class EvalMetricsVO {
+  final int id;
+  final int algorithmId;
+  final String? algorithmName;
+  final String? predUrl;
+  final String? gtUrl;
+  final Map<String, double>? metrics;
+  final int? time;
+  final TaskStatus? status;
+  final String? errorMessage;
+  final String? createTime;
+
+  const EvalMetricsVO({
+    required this.id,
+    required this.algorithmId,
+    this.algorithmName,
+    this.predUrl,
+    this.gtUrl,
+    this.metrics,
+    this.time,
+    this.status,
+    this.errorMessage,
+    this.createTime,
+  });
+
+  factory EvalMetricsVO.fromJson(Map<String, dynamic> json) {
+    return EvalMetricsVO(
+      id: (json['id'] as num).toInt(),
+      algorithmId: (json['algorithm_id'] ?? json['algorithmId']) != null
+          ? ((json['algorithm_id'] ?? json['algorithmId']) as num).toInt()
+          : 0,
+      algorithmName:
+          (json['algorithm_name'] ?? json['algorithmName']) as String?,
+      predUrl: (json['pred_url'] ?? json['predUrl']) as String?,
+      gtUrl: (json['gt_url'] ?? json['gtUrl']) as String?,
+      metrics: (json['metrics'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, (e as num).toDouble()),
+      ),
+      time: (json['time'] as num?)?.toInt(),
+      status: _evalStatusFromJson((json['status'] as num?)?.toInt()),
+      errorMessage:
+          (json['error_message'] ?? json['errorMessage']) as String?,
+      createTime: (json['create_time'] ?? json['createTime']) as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'algorithm_id': algorithmId,
+        if (algorithmName != null) 'algorithm_name': algorithmName,
+        if (predUrl != null) 'pred_url': predUrl,
+        if (gtUrl != null) 'gt_url': gtUrl,
+        if (metrics != null) 'metrics': metrics,
+        if (time != null) 'time': time,
+        if (status != null) 'status': _evalStatusToJson(status),
+        if (errorMessage != null) 'error_message': errorMessage,
+        if (createTime != null) 'create_time': createTime,
+      };
 }

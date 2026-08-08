@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, Image, Slider } from "@tarojs/components";
+import { View, Text, Image, Slider, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import CompareNavbar from "@/components/compare/CompareNavbar";
 import { ModelAPI } from "dehaze-sdk-js";
-import type { Algorithm, PredictionResultVO } from "dehaze-sdk-js";
+import type { Algorithm, PredictionResultVO, PresetVO } from "dehaze-sdk-js";
 import { formatFileSize, formatDuration } from "@/utils/format";
 import { getErrorMessage } from "@/utils/error";
 import { saveImageToAlbum } from "@/utils/saveImage";
@@ -34,6 +34,10 @@ const DEFAULT_PARAMS: ProcessParams = {
   contrast: 100,
   sharpen: 30,
 };
+
+/** 重试间隔（毫秒）：2s → 5s → 10s */
+const RETRY_DELAYS = [2000, 5000, 10000];
+const MAX_RETRIES = 3;
 
 // 根据算法类型预估处理时间（秒）
 function estimateTime(algorithm: Algorithm | null): number {
@@ -68,10 +72,16 @@ const ProcessingPage: React.FC = () => {
   const [params, setParams] = useState<ProcessParams>(DEFAULT_PARAMS);
   const [showParams, setShowParams] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [presets, setPresets] = useState<PresetVO[]>([]);
+  const [presetsLoaded, setPresetsLoaded] = useState(false);
 
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // 缓存已上传的文件 ID，重试时复用，避免重复上传
   const uploadedFileIdRef = useRef<number | null>(null);
+  // 重试计数
+  const retryCountRef = useRef(0);
+  // 取消标记
+  const cancelledRef = useRef(false);
 
   // 清理定时器
   const clearAllTimers = useCallback(() => {
@@ -84,6 +94,15 @@ const ProcessingPage: React.FC = () => {
   useEffect(() => {
     return clearAllTimers;
   }, [clearAllTimers]);
+
+  // 加载参数预设
+  useEffect(() => {
+    if (presetsLoaded) return;
+    ModelAPI.getPresets({ pageNum: 1, pageSize: 50 })
+      .then((res) => setPresets(res.list || []))
+      .catch(() => { /* 静默 */ })
+      .finally(() => setPresetsLoaded(true));
+  }, [presetsLoaded]);
 
   // 加载当前图片和算法
   useEffect(() => {
@@ -121,55 +140,75 @@ const ProcessingPage: React.FC = () => {
     }, 100);
   }, []);
 
-  // 实际执行处理
+  // 实际执行处理（含递增重试）
   const handleProcess = useCallback(async () => {
     if (!currentImage || !selectedAlgorithm) return;
 
     setStatus("processing");
     setErrorMsg("");
     setResult(null);
+    cancelledRef.current = false;
     startElapsedTimer();
 
-    try {
-      // 本地临时路径（blob:/wxfile://）服务端不可访问，需先上传换取 fileId
-      if (!uploadedFileIdRef.current) {
-        const fileInfo = await uploadImage(currentImage.url, currentImage.name);
-        uploadedFileIdRef.current = fileInfo.id;
+    const attempt = async (attemptNumber: number): Promise<void> => {
+      if (cancelledRef.current) return;
+
+      try {
+        // 本地临时路径（blob:/wxfile://）服务端不可访问，需先上传换取 fileId
+        if (!uploadedFileIdRef.current) {
+          const fileInfo = await uploadImage(currentImage.url, currentImage.name);
+          uploadedFileIdRef.current = fileInfo.id;
+        }
+
+        const res = await ModelAPI.predictAndWait({
+          algorithmId: selectedAlgorithm.id,
+          fileId: uploadedFileIdRef.current,
+          params: JSON.stringify(params),
+        });
+
+        if (cancelledRef.current) return;
+        clearAllTimers();
+
+        if (res.status === 3) {
+          throw new Error(res.errorMessage || "处理失败");
+        }
+
+        setResult(res);
+        setStatus("success");
+        retryCountRef.current = 0;
+
+        Taro.setStorageSync("prediction_result", JSON.stringify(res));
+        Taro.showToast({ title: "处理完成", icon: "success" });
+
+        setTimeout(() => {
+          Taro.navigateTo({ url: "/pages/side-by-side/index" });
+        }, 1500);
+      } catch (error: unknown) {
+        if (cancelledRef.current) return;
+
+        const errMsg = getErrorMessage(error, "处理失败");
+        // 可重试的错误（网络/超时等）允许重试
+        if (attemptNumber < MAX_RETRIES) {
+          const delay = RETRY_DELAYS[attemptNumber];
+          retryCountRef.current = attemptNumber + 1;
+          setErrorMsg(`${errMsg}，${delay / 1000}秒后自动重试（${attemptNumber + 1}/${MAX_RETRIES}）`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          if (!cancelledRef.current) {
+            return attempt(attemptNumber + 1);
+          }
+        }
+
+        clearAllTimers();
+        setStatus("error");
+        setErrorMsg(errMsg);
+        Taro.showToast({
+          title: getErrorMessage(error, "处理失败"),
+          icon: "none",
+        });
       }
+    };
 
-      const res = await ModelAPI.predictAndWait({
-        algorithmId: selectedAlgorithm.id,
-        fileId: uploadedFileIdRef.current,
-        params: JSON.stringify(params),
-      });
-
-      clearAllTimers();
-
-      if (res.status === 3) {
-        throw new Error(res.errorMessage || "处理失败");
-      }
-
-      setResult(res);
-      setStatus("success");
-
-      // 保存结果到 storage 供对比页面使用
-      Taro.setStorageSync("prediction_result", JSON.stringify(res));
-
-      Taro.showToast({ title: "处理完成", icon: "success" });
-
-      // 处理完成后自动跳转对比页面（设计文档：处理完成 → 自动进入对比页面）
-      setTimeout(() => {
-        Taro.navigateTo({ url: "/pages/side-by-side/index" });
-      }, 1500);
-    } catch (error: unknown) {
-      clearAllTimers();
-      setStatus("error");
-      setErrorMsg(getErrorMessage(error, "处理失败，请重试"));
-      Taro.showToast({
-        title: getErrorMessage(error, "处理失败"),
-        icon: "none",
-      });
-    }
+    await attempt(0);
   }, [
     currentImage,
     selectedAlgorithm,
@@ -203,7 +242,6 @@ const ProcessingPage: React.FC = () => {
     }
 
     const estimatedSec = estimateTime(selectedAlgorithm);
-    // 显示确认对话框（设计文档 2.1.3）
     Taro.showModal({
       title: "确认开始去雾处理",
       content: `图片：${currentImage.name}\n尺寸：${currentImage.width}×${currentImage.height}\n算法：${selectedAlgorithm.name}\n预估耗时：约 ${estimatedSec} 秒`,
@@ -211,11 +249,22 @@ const ProcessingPage: React.FC = () => {
       cancelText: "取消",
       success: (res) => {
         if (res.confirm) {
+          retryCountRef.current = 0;
           handleProcess();
         }
       },
     });
   }, [currentImage, selectedAlgorithm, handleProcess]);
+
+  // 取消处理
+  const handleCancel = useCallback(() => {
+    cancelledRef.current = true;
+    clearAllTimers();
+    setStatus("idle");
+    setErrorMsg("");
+    setElapsedTime(0);
+    Taro.showToast({ title: "已取消处理", icon: "none" });
+  }, [clearAllTimers]);
 
   // 重新处理
   const handleRetry = useCallback(() => {
@@ -223,6 +272,7 @@ const ProcessingPage: React.FC = () => {
     setResult(null);
     setErrorMsg("");
     setElapsedTime(0);
+    retryCountRef.current = 0;
   }, []);
 
   // 返回算法选择
@@ -230,7 +280,7 @@ const ProcessingPage: React.FC = () => {
     Taro.navigateBack();
   }, []);
 
-  // 保存结果到相册（设计文档 2.4.3）
+  // 保存结果到相册
   const handleSaveToAlbum = useCallback(async () => {
     if (!result?.resultUrl) return;
     await saveImageToAlbum(result.resultUrl);
@@ -239,6 +289,21 @@ const ProcessingPage: React.FC = () => {
   // 重置参数
   const handleResetParams = useCallback(() => {
     setParams(DEFAULT_PARAMS);
+  }, []);
+
+  // 应用预设
+  const handleApplyPreset = useCallback((preset: PresetVO) => {
+    try {
+      const presetParams = JSON.parse(preset.params);
+      setParams({
+        strength: presetParams.strength ?? DEFAULT_PARAMS.strength,
+        saturation: presetParams.saturation ?? DEFAULT_PARAMS.saturation,
+        contrast: presetParams.contrast ?? DEFAULT_PARAMS.contrast,
+        sharpen: presetParams.sharpen ?? DEFAULT_PARAMS.sharpen,
+      });
+    } catch {
+      Taro.showToast({ title: "预设参数解析失败", icon: "none" });
+    }
   }, []);
 
   const estimatedTime = estimateTime(selectedAlgorithm);
@@ -320,6 +385,24 @@ const ProcessingPage: React.FC = () => {
 
             {showParams && (
               <View className="params-body">
+                {/* 预设选择 */}
+                {presets.length > 0 && (
+                  <View className="preset-section">
+                    <Text className="preset-label">参数预设</Text>
+                    <ScrollView scrollX className="preset-scroll" enhanced showScrollbar={false}>
+                      {presets.map((preset) => (
+                        <View
+                          key={preset.id}
+                          className="preset-chip"
+                          onClick={() => handleApplyPreset(preset)}
+                        >
+                          <Text>{preset.name}</Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
                 <View className="param-item">
                   <View className="param-row">
                     <Text className="param-label">去雾强度</Text>
@@ -410,6 +493,11 @@ const ProcessingPage: React.FC = () => {
             <Text className="status-hint">
               已用 {formatDuration(elapsedTime)}
             </Text>
+            <View className="action-buttons">
+              <View className="btn btn-secondary" onClick={handleCancel}>
+                <Text>取消处理</Text>
+              </View>
+            </View>
           </View>
         )}
 

@@ -23,6 +23,7 @@
     "dev": "tsup --watch",
     "prepare": "pnpm run build",
     "test": "vitest --run",
+    "test:unit": "vitest --run --config vitest.unit.config.ts",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:java": "cross-env BACKEND_URL=http://127.0.0.1:8989 vitest --run",

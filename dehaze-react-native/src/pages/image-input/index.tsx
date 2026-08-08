@@ -11,8 +11,8 @@ import {
   Text,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/routes/types';
-import { MainLayout } from '@/layout';
+import type { ToolsStackParamList } from '@/routes/types';
+import { AppHeader } from '@/layout';
 import Card from '@/components/Card';
 import Icon from '@/components/Icon';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -34,7 +34,7 @@ import HistoryList from './components/HistoryList';
 import ImagePreview from './components/ImagePreview';
 import QuickStartBanner from './components/QuickStartBanner';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ImageInput'>;
+type Props = NativeStackScreenProps<ToolsStackParamList, 'ImageInput'>;
 
 const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
   const { containerPadding } = useResponsive();
@@ -77,7 +77,6 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
-    // 导航到算法选择页面，传递选中的图片
     navigation.navigate('AlgorithmSelect', {
       image: selectedImage,
     });
@@ -166,7 +165,8 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <MainLayout title="图像输入">
+    <View style={styles.container}>
+      <AppHeader title="图像输入" showBack onBackPress={() => navigation.goBack()} />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -223,11 +223,15 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         )}
       </ScrollView>
-    </MainLayout>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background.secondary,
+  },
   scrollView: {
     flex: 1,
   },

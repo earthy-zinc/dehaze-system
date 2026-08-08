@@ -33,6 +33,21 @@
           <text class="params-reset" @click="resetParams">重置</text>
         </view>
 
+        <!-- 预设选择 -->
+        <view v-if="presets.length > 0" class="preset-section">
+          <text class="preset-label">参数预设</text>
+          <scroll-view scroll-x class="preset-scroll" :show-scrollbar="false">
+            <view
+              v-for="preset in presets"
+              :key="preset.id"
+              class="preset-chip"
+              @click="handleApplyPreset(preset)"
+            >
+              <text>{{ preset.name }}</text>
+            </view>
+          </scroll-view>
+        </view>
+
         <view class="param-item">
           <view class="param-label">
             <text>去雾强度</text>
@@ -100,7 +115,7 @@
 
       <!-- 错误信息 -->
       <view v-if="store.errorMessage" class="error-card">
-        <u-icon name="error-circle" size="20" color="#ef4444" />
+        <SvgIcon name="error-circle" size="20" color="#ef4444" />
         <text class="error-msg">{{ store.errorMessage }}</text>
       </view>
 
@@ -145,7 +160,11 @@
           <view class="processing-indicator">
             <up-loading-icon mode="circle" size="24" color="#ffffff" />
             <text class="processing-text">去雾处理中...</text>
+            <text class="processing-elapsed"
+              >已用 {{ formatDuration(elapsedTime) }}</text
+            >
           </view>
+          <button class="cancel-btn" @click="handleCancel">取消处理</button>
         </template>
 
         <!-- 完成后 -->
@@ -160,12 +179,13 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore, DEFAULT_DEHAZE_PARAMS } from "@/store/processing";
 import { ModelAPI } from "dehaze-sdk-js";
-import type { PredictionResultVO } from "dehaze-sdk-js";
+import type { PredictionResultVO, PresetVO } from "dehaze-sdk-js";
 import type { SliderChangeEvent } from "@/types/uni-events";
 import { getErrorMessage } from "@/utils/error";
 
@@ -173,6 +193,23 @@ import { getErrorMessage } from "@/utils/error";
 
 const store = useProcessingStore();
 const processing = ref(false);
+const elapsedTime = ref(0);
+const cancelled = ref(false);
+const presets = ref<PresetVO[]>([]);
+let elapsedTimer: ReturnType<typeof setInterval> | null = null;
+
+/** 重试间隔（毫秒）：2s → 5s → 10s */
+const RETRY_DELAYS = [2000, 5000, 10000];
+const MAX_RETRIES = 3;
+
+const clearElapsedTimer = () => {
+  if (elapsedTimer) {
+    clearInterval(elapsedTimer);
+    elapsedTimer = null;
+  }
+};
+
+onUnmounted(clearElapsedTimer);
 
 // ==================== 计算属性 ====================
 
@@ -187,6 +224,13 @@ const statusText = computed(() => {
   };
   return map[store.status] || store.status;
 });
+
+const formatDuration = (ms: number): string => {
+  if (ms < 1000) return `${ms}ms`;
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}秒`;
+  return `${Math.floor(s / 60)}分${s % 60}秒`;
+};
 
 // ==================== 方法 ====================
 
@@ -224,6 +268,54 @@ function buildPredictParams(): string | undefined {
     : undefined;
 }
 
+/** 带递增重试的处理逻辑 */
+async function attemptProcess(attemptNumber: number): Promise<void> {
+  if (cancelled.value) return;
+
+  try {
+    const result: PredictionResultVO = await ModelAPI.predictAndWait({
+      algorithmId: store.selectedAlgorithm!.id,
+      fileId: store.fileId ?? undefined,
+      imageUrl: !store.fileId ? store.currentImage?.url : undefined,
+      params: buildPredictParams(),
+    });
+
+    if (cancelled.value) return;
+    clearElapsedTimer();
+
+    if (result.status === 3) {
+      throw new Error(result.errorMessage || "处理失败");
+    }
+
+    store.complete(result);
+    uni.showToast({
+      title: `处理完成，耗时${result.time ?? 0}s`,
+      icon: "success",
+      duration: 2000,
+    });
+  } catch (error) {
+    if (cancelled.value) return;
+
+    const errMsg = getErrorMessage(error, "处理失败");
+    if (attemptNumber < MAX_RETRIES) {
+      const delay = RETRY_DELAYS[attemptNumber] || 2000;
+      uni.showToast({
+        title: `${errMsg}，${delay / 1000}秒后重试（${attemptNumber + 1}/${MAX_RETRIES}）`,
+        icon: "none",
+        duration: delay,
+      });
+      await new Promise((r) => setTimeout(r, delay));
+      if (!cancelled.value) {
+        return attemptProcess(attemptNumber + 1);
+      }
+    }
+
+    clearElapsedTimer();
+    store.fail(errMsg);
+    uni.showToast({ title: errMsg, icon: "none", duration: 2500 });
+  }
+}
+
 /** 开始处理 */
 async function handleProcess() {
   if (processing.value) return;
@@ -232,36 +324,58 @@ async function handleProcess() {
     return;
   }
 
-  processing.value = true;
-  store.startProcessing();
-
+  // 配额检查
   try {
-    const result: PredictionResultVO = await ModelAPI.predictAndWait({
-      algorithmId: store.selectedAlgorithm.id,
-      fileId: store.fileId ?? undefined,
-      imageUrl: !store.fileId ? store.currentImage.url : undefined,
-      params: buildPredictParams(),
-    });
-
-    // 后端 LogStatusEnum 序列化为整数：3 = FAILED
-    if (result.status === 3) {
-      throw new Error(result.errorMessage || "处理失败");
+    const quota = await ModelAPI.getQuota();
+    if (quota.remaining === 0) {
+      uni.showModal({
+        title: "预测次数不足",
+        content: `当前剩余预测次数为 0（已使用 ${quota.used}/${quota.total}），请及时充值。`,
+        confirmText: "去充值",
+        cancelText: "取消",
+        success: (res) => {
+          if (res.confirm) {
+            uni.navigateTo({ url: "/pages/user-center/index" });
+          }
+        },
+      });
+      return;
     }
-
-    store.complete(result);
-
-    uni.showToast({
-      title: `处理完成，耗时${result.time ?? 0}s`,
-      icon: "success",
-      duration: 2000,
-    });
-  } catch (error) {
-    const msg = getErrorMessage(error, "处理失败");
-    store.fail(msg);
-    uni.showToast({ title: msg, icon: "none", duration: 2500 });
-  } finally {
-    processing.value = false;
+  } catch {
+    // 配额查询失败也允许继续
   }
+
+  // 确认对话框
+  const confirmResult = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: "确认开始去雾处理",
+      content: `图片：${store.currentImage!.name}\n算法：${store.selectedAlgorithm!.name}`,
+      confirmText: "开始处理",
+      cancelText: "取消",
+      success: (res) => resolve(res.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!confirmResult) return;
+
+  processing.value = true;
+  cancelled.value = false;
+  elapsedTime.value = 0;
+  store.startProcessing();
+  elapsedTimer = setInterval(() => {
+    elapsedTime.value += 100;
+  }, 100);
+
+  await attemptProcess(0);
+  processing.value = false;
+}
+
+/** 取消处理 */
+function handleCancel() {
+  cancelled.value = true;
+  clearElapsedTimer();
+  store.reset();
+  uni.showToast({ title: "已取消处理", icon: "none" });
 }
 
 /** 查看对比效果 */
@@ -283,6 +397,21 @@ function handlePreviewResult() {
   });
 }
 
+/** 应用预设 */
+function handleApplyPreset(preset: PresetVO) {
+  try {
+    const p = JSON.parse(preset.params);
+    store.updateParams({
+      strength: p.strength ?? DEFAULT_DEHAZE_PARAMS.strength,
+      saturation: p.saturation ?? DEFAULT_DEHAZE_PARAMS.saturation,
+      contrast: p.contrast ?? DEFAULT_DEHAZE_PARAMS.contrast,
+      sharpness: p.sharpen ?? DEFAULT_DEHAZE_PARAMS.sharpness,
+    });
+  } catch {
+    uni.showToast({ title: "预设参数解析失败", icon: "none" });
+  }
+}
+
 // ==================== 生命周期 ====================
 
 onMounted(() => {
@@ -290,6 +419,9 @@ onMounted(() => {
     uni.showToast({ title: "请先选择算法", icon: "none", duration: 2000 });
     setTimeout(() => uni.navigateBack(), 2000);
   }
+  ModelAPI.getPresets({ pageNum: 1, pageSize: 50 })
+    .then((res) => { presets.value = res.list || []; })
+    .catch(() => { /* 静默 */ });
 });
 </script>
 
@@ -367,6 +499,35 @@ onMounted(() => {
 .params-reset {
   font-size: 24rpx;
   color: #f59e0b;
+}
+
+.preset-section {
+  margin-bottom: 28rpx;
+
+  .preset-label {
+    font-size: 24rpx;
+    color: #6b7280;
+    margin-bottom: 12rpx;
+    display: block;
+  }
+
+  .preset-scroll {
+    white-space: nowrap;
+  }
+
+  .preset-chip {
+    display: inline-block;
+    padding: 10rpx 24rpx;
+    margin-right: 12rpx;
+    font-size: 24rpx;
+    color: #f59e0b;
+    background: #fffbeb;
+    border-radius: 24rpx;
+
+    &:active {
+      background: #fef3c7;
+    }
+  }
 }
 
 .param-item {
@@ -502,6 +663,27 @@ onMounted(() => {
   font-size: 30rpx;
   font-weight: 600;
   color: #ffffff;
+}
+
+.processing-elapsed {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-left: auto;
+}
+
+.cancel-btn {
+  width: 100%;
+  margin-top: 16rpx;
+  padding: 20rpx;
+  background: #f3f4f6;
+  color: #6b7280;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+
+  &:active {
+    background: #e5e7eb;
+  }
 }
 
 .compare-btn {

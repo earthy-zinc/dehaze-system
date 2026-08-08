@@ -53,15 +53,15 @@
 | `/api/v1/message-templates/{id}` | GET | 模板详情 | - | F-MN-006 |
 | `/api/v1/message-templates/{id}` | PUT | 编辑模板 | `notify:template:edit` | F-MN-006 |
 
-### 2.3 内部接口（供其他后端服务调用）
+### 2.3 内部发送接口（供业务模块调用）
 
 **基础路径**：`/api/v1/messages`
 
 | 接口路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |---------|------|---------|---------|-----------|
-| `/api/v1/messages/send` | POST | 发送消息（内部调用） | `internal:notify:send` | F-MN-001 |
+| `/api/v1/messages/send` | POST | 发送消息（业务模块调用） | - | F-MN-001 |
 
-> 内部接口供 dehaze-python / dehaze-go 等后端服务通过 API Key 鉴权调用，用于业务事件触发消息推送。
+> **说明**：发送接口要求登录用户身份，**无独立 API Key/权限标识**（早期设计稿的 `internal:notify:send` 权限标识不存在）；由各业务模块（会员/反馈等）调用触发消息生成。
 
 ## 3. 权限标识汇总
 
@@ -73,7 +73,6 @@
 | `notify:announcement:send` | 发送公告 | 按钮显示 + 接口校验 |
 | `notify:announcement:cancel` | 取消定时公告 | 按钮显示 + 接口校验 |
 | `notify:template:edit` | 编辑消息模板 | 按钮显示 + 接口校验 |
-| `internal:notify:send` | 内部消息发送 | API Key 鉴权 |
 
 ## 4. 状态枚举
 
@@ -106,12 +105,12 @@
 
 ### 4.4 公告状态
 
-| 值 | 显示 | 说明 |
-|----|------|------|
-| 1 | 草稿（灰色标签） | 管理员创建未发送，可编辑 |
-| 2 | 待发送（橙色标签） | 定时发送等待中，可取消 |
-| 3 | 已发送（绿色标签） | 已推送给目标用户 |
-| 4 | 已取消（灰色标签） | 管理员取消定时发送 |
+| 值 | 说明 |
+|----|------|
+| 1 | 草稿：管理员创建未发送，可编辑/发送/删除 |
+| 2 | 待发送：定时发送等待中，可编辑/发送/取消/删除 |
+| 3 | 已发送：已推送给目标用户，不可编辑/取消 |
+| 4 | 已取消：管理员取消定时发送，不可编辑 |
 
 ### 4.5 公告类型
 
@@ -132,15 +131,15 @@
 
 ## 5. 业务错误码
 
-| 错误码 | 常量名 | 错误信息 | 触发场景 |
-|-------|--------|---------|---------|
-| `A0550` | MESSAGE_NOT_FOUND | 消息不存在 | 查询/操作不存在的消息 |
-| `A0551` | MESSAGE_NO_PERMISSION | 无权操作此消息 | 操作非自己的消息 |
-| `A0552` | ANNOUNCEMENT_NOT_FOUND | 公告不存在 | 查询/操作不存在的公告 |
-| `A0553` | ANNOUNCEMENT_STATUS_INVALID | 公告状态不允许此操作 | 编辑已发送公告、取消非待发送公告 |
-| `A0554` | ANNOUNCEMENT_TARGET_EMPTY | 发送范围为空 | 指定用户发送但用户列表为空 |
-| `A0555` | MESSAGE_TEMPLATE_NOT_FOUND | 消息模板不存在 | 引用不存在的模板编码 |
-| `A0556` | TEMPLATE_VAR_MISSING | 模板变量缺失 | 使用模板但未提供全部必填变量 |
-| `A0557` | NOTIFICATION_SETTING_NOT_FOUND | 通知设置不存在 | 用户未初始化通知设置 |
-| `A0558` | TEMPLATE_DISABLED | 模板已禁用 | 使用已禁用的模板发送消息 |
-| `A0559` | MESSAGE_ALREADY_READ | 消息已读 | 重复标记已读 |
+| 错误码 | 常量名 | 错误信息 | 触发场景 | 状态 |
+|-------|--------|---------|---------|------|
+| `A0550` | MESSAGE_NOT_FOUND | 消息不存在 | 查询/操作不存在的消息；**操作他人消息时同样返回（不暴露存在性）** | ✅ 使用中 |
+| `A0551` | MESSAGE_NO_PERMISSION | 无权操作此消息 | 操作非自己的消息 | ⚠️ 已定义未使用（越权统一返回 MESSAGE_NOT_FOUND） |
+| `A0552` | ANNOUNCEMENT_NOT_FOUND | 公告不存在 | 查询/操作不存在的公告 | ✅ 使用中 |
+| `A0553` | ANNOUNCEMENT_STATUS_INVALID | 公告状态不允许此操作 | 编辑已发送公告、取消非待发送公告、发送非草稿/待发送公告 | ✅ 使用中 |
+| `A0554` | ANNOUNCEMENT_TARGET_EMPTY | 发送范围为空 | 指定用户发送但用户列表为空 | ✅ 使用中 |
+| `A0555` | MESSAGE_TEMPLATE_NOT_FOUND | 消息模板不存在 | 引用不存在的模板编码 | ✅ 使用中 |
+| `A0556` | TEMPLATE_VAR_MISSING | 模板变量缺失 | 使用模板但未提供全部必填变量 | ✅ 使用中 |
+| `A0557` | NOTIFICATION_SETTING_NOT_FOUND | 通知设置不存在 | 用户未初始化通知设置 | ⚠️ 已定义未使用（获取设置时 upsert 自动初始化） |
+| `A0558` | TEMPLATE_DISABLED | 模板已禁用 | 使用已禁用的模板发送消息 | ✅ 使用中 |
+| `A0559` | MESSAGE_ALREADY_READ | 消息已读 | 重复标记已读 | ⚠️ 已定义未使用（标记已读幂等静默成功） |

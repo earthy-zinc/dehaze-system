@@ -5,7 +5,7 @@
         class="captcha-input-wrap"
         :class="{ focused: focused, error: !!error }"
       >
-        <u-icon
+        <SvgIcon
           name="checkmark-circle"
           size="20"
           color="#9ca3af"
@@ -34,7 +34,7 @@
       </view>
     </view>
     <text v-if="error" class="error-message">
-      <u-icon name="info-circle" size="12" color="#ef4444" />
+      <SvgIcon name="info-circle" size="12" color="#ef4444" />
       <text>{{ error }}</text>
     </text>
   </view>
@@ -43,6 +43,7 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import { AuthAPI } from "dehaze-sdk-js";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 
 interface Props {
   /** v-model 绑定验证码值 */

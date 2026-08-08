@@ -1,10 +1,10 @@
 /**
- * 个人中心页面
+ * 个人中心（我的 Tab）
  *
- * 展示当前登录用户信息、权限概览、最近处理记录，提供退出登录入口。
- * 用户信息来自 AuthContext，历史记录复用图像输入模块的 historyStorage。
+ * 布局：用户卡 + VIP 横幅 + 数据统计 + 四组入口 + 管理入口（权限过滤）+ 退出登录
+ * 用户信息来自 useAuthStore，会员/额度/收藏统计数据异步加载
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,102 +13,240 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Image,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { IoniconName } from '@/components/Icon';
+import { MemberAPI, ModelAPI, FavoriteAPI, TaskAPI } from 'dehaze-sdk-js';
+import type { MemberProfileVO } from 'dehaze-sdk-js';
 
-import type { RootStackParamList } from '@/routes/types';
-import { MainLayout } from '@/layout';
-import { useAuth } from '@/store';
+import type { ProfileStackParamList } from '@/routes/types';
+import { useAuthStore } from '@/store';
 import { theme } from '@/theme';
-import { historyStorage } from '@/pages/image-input/services/historyStorage';
-import type { HistoryRecord } from '@/pages/image-input/types/imageInput';
-import ImageLoader from '@/components/ImageLoader';
-import { extractFilename } from '@/utils/url';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+type Props = NativeStackScreenProps<ProfileStackParamList, 'Profile'>;
 
-/** 权限概览最大展示条数 */
-const MAX_PERMS_DISPLAY = 5;
-/** 最近处理记录最大展示条数 */
-const MAX_HISTORY_DISPLAY = 3;
+// ==================== 类型 ====================
 
-/** 去除角色前缀（ROLE_） */
-function formatRole(role: string): string {
-  return role.replace(/^ROLE_/, '');
+interface StatItem {
+  label: string;
+  value: string;
+  route: keyof ProfileStackParamList;
 }
 
+interface EntryItem {
+  icon: IoniconName;
+  title: string;
+  route: keyof ProfileStackParamList;
+  permission?: string;
+}
+
+interface EntryGroup {
+  title: string;
+  entries: EntryItem[];
+}
+
+// ==================== 入口配置 ====================
+
+const PERSONAL_DATA_ENTRIES: EntryItem[] = [
+  { icon: 'document-text-outline', title: '我的文件', route: 'PersonalFiles' },
+  { icon: 'server-outline', title: '我的数据集', route: 'Dataset' },
+  { icon: 'time-outline', title: '处理历史', route: 'Task' },
+  { icon: 'heart-outline', title: '我的收藏', route: 'PersonalFavorites' },
+];
+
+const BUSINESS_ENTRIES: EntryItem[] = [
+  { icon: 'diamond-outline', title: '我的会员', route: 'PersonalMember' },
+  { icon: 'cube-outline', title: '我的套餐', route: 'PersonalPackage' },
+  { icon: 'cart-outline', title: '我的订单', route: 'PersonalOrders' },
+  { icon: 'wallet-outline', title: '我的额度', route: 'PersonalQuota' },
+  { icon: 'chatbox-outline', title: '反馈评价', route: 'PersonalFeedback' },
+];
+
+const OTHER_ENTRIES: EntryItem[] = [
+  { icon: 'settings-outline', title: '系统设置', route: 'PersonalSettings' },
+  { icon: 'help-circle-outline', title: '帮助中心', route: 'PersonalHelp' },
+  { icon: 'information-circle-outline', title: '关于我们', route: 'PersonalAbout' },
+  { icon: 'notifications-outline', title: '消息设置', route: 'Notify' },
+];
+
+// 管理入口分组（权限过滤，与 dev-admin 对齐）
+const ADMIN_GROUPS: EntryGroup[] = [
+  {
+    title: '工作台',
+    entries: [
+      { icon: 'speedometer-outline', title: '工作台', route: 'SystemDashboard' },
+    ],
+  },
+  {
+    title: '算法与数据',
+    entries: [
+      { icon: 'git-network-outline', title: '算法管理', route: 'SystemAlgorithm', permission: 'sys:algorithm:*' },
+      { icon: 'server-outline', title: '数据集管理', route: 'SystemDataset', permission: 'sys:dataset:*' },
+    ],
+  },
+  {
+    title: '系统管理',
+    entries: [
+      { icon: 'people-outline', title: '用户管理', route: 'SystemUser', permission: 'sys:user:*' },
+      { icon: 'shield-checkmark-outline', title: '角色管理', route: 'SystemRole', permission: 'sys:role:*' },
+      { icon: 'list-outline', title: '菜单管理', route: 'SystemMenu', permission: 'sys:menu:*' },
+      { icon: 'business-outline', title: '部门管理', route: 'SystemDept', permission: 'sys:dept:*' },
+      { icon: 'book-outline', title: '字典管理', route: 'SystemDict', permission: 'sys:dict:*' },
+      { icon: 'timer-outline', title: '任务管理', route: 'SystemTask', permission: 'sys:task:*' },
+    ],
+  },
+  {
+    title: '运营管理',
+    entries: [
+      { icon: 'diamond-outline', title: '会员管理', route: 'SystemMember', permission: 'sys:member:*' },
+      { icon: 'cube-outline', title: '套餐管理', route: 'SystemPackage', permission: 'sys:package:*' },
+      { icon: 'cart-outline', title: '订单管理', route: 'SystemOrder', permission: 'sys:order:*' },
+      { icon: 'chatbox-outline', title: '反馈评价管理', route: 'SystemFeedback', permission: 'sys:feedback:*' },
+      { icon: 'trending-up-outline', title: '推荐管理', route: 'SystemRecommend', permission: 'sys:recommendation:*' },
+      { icon: 'notifications-outline', title: '消息管理', route: 'SystemMessage', permission: 'sys:notify:*' },
+    ],
+  },
+];
+
+// ==================== 组件 ====================
+
 const ProfileScreen: React.FC<Props> = ({ navigation }) => {
-  const { state, logout, refreshUserInfo } = useAuth();
-  const userInfo = state.userInfo;
+  const userInfo = useAuthStore(s => s.userInfo);
+  const logout = useAuthStore(s => s.logout);
+  const refreshUserInfo = useAuthStore(s => s.refreshUserInfo);
+  const hasPerm = useAuthStore(s => s.hasPerm);
 
-  const [recentHistory, setRecentHistory] = useState<HistoryRecord[]>([]);
+  const [member, setMember] = useState<MemberProfileVO | null>(null);
+  const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
+  const [favoriteCount, setFavoriteCount] = useState<number | null>(null);
+  const [taskCount, setTaskCount] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState(false);
 
-  /** 加载最近处理记录 */
-  const loadRecentHistory = useCallback(async () => {
+  // 加载会员信息
+  const loadMember = useCallback(async () => {
     try {
-      const history = await historyStorage.getHistory();
-      setRecentHistory(history.slice(0, MAX_HISTORY_DISPLAY));
+      const profile = await MemberAPI.getProfile();
+      setMember(profile);
     } catch {
-      setRecentHistory([]);
+      setMember(null);
     }
   }, []);
 
-  // 首次进入：若用户信息缺失则拉取，同时加载历史
-  useEffect(() => {
-    if (!userInfo) {
-      refreshUserInfo().catch(() => setLoadError(true));
+  // 加载统计数据
+  const loadStats = useCallback(async () => {
+    try {
+      const quota = await ModelAPI.getQuota();
+      setQuotaRemaining(quota.remaining ?? null);
+    } catch {
+      setQuotaRemaining(null);
     }
-    loadRecentHistory();
-  }, [userInfo, refreshUserInfo, loadRecentHistory]);
+    try {
+      const fav = await FavoriteAPI.getCount();
+      if (fav && fav.length > 0) {
+        const total = fav.reduce((sum, item) => sum + (item.count || 0), 0);
+        setFavoriteCount(total);
+      }
+    } catch {
+      setFavoriteCount(null);
+    }
+    try {
+      const tasks = await TaskAPI.getPage({ pageNum: 1, pageSize: 1 });
+      setTaskCount(tasks.total ?? null);
+    } catch {
+      setTaskCount(null);
+    }
+  }, []);
 
-  /** 下拉刷新 */
+  useEffect(() => {
+    loadMember();
+    loadStats();
+  }, [loadMember, loadStats]);
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    const results = await Promise.allSettled([refreshUserInfo(), loadRecentHistory()]);
-    if (results[0].status === 'fulfilled') {
-      setLoadError(false);
-    } else {
-      setLoadError(true);
-    }
+    await Promise.allSettled([refreshUserInfo(), loadMember(), loadStats()]);
     setRefreshing(false);
-  }, [refreshUserInfo, loadRecentHistory]);
+  }, [refreshUserInfo, loadMember, loadStats]);
 
-  /** 退出登录二次确认 */
+  // 退出登录
   const handleLogout = useCallback(() => {
     Alert.alert('确认退出', '确定要退出登录吗？', [
       { text: '取消', style: 'cancel' },
-      {
-        text: '确定',
-        style: 'destructive',
-        onPress: () => {
-          logout();
-        },
-      },
+      { text: '确定', style: 'destructive', onPress: () => logout() },
     ]);
   }, [logout]);
 
-  /** 跳转图像输入页查看完整历史（直接切换到历史 Tab） */
-  const handleViewAllHistory = useCallback(() => {
-    navigation.navigate('ImageInput', { initialMethod: 'history' });
-  }, [navigation]);
+  // 过滤管理入口
+  const visibleAdminGroups = useMemo(
+    () =>
+      ADMIN_GROUPS.map(g => ({
+        ...g,
+        entries: g.entries.filter(e => (e.permission ? hasPerm(e.permission) : true)),
+      })).filter(g => g.entries.length > 0),
+    [hasPerm],
+  );
 
+  // 数据统计
+  const stats: StatItem[] = useMemo(
+    () => [
+      { label: '剩余额度', value: quotaRemaining !== null ? `${quotaRemaining} 次` : '-', route: 'PersonalQuota' },
+      { label: '处理次数', value: taskCount !== null ? `${taskCount}` : '-', route: 'Task' },
+      { label: '我的收藏', value: favoriteCount !== null ? `${favoriteCount}` : '-', route: 'PersonalFavorites' },
+    ],
+    [quotaRemaining, taskCount, favoriteCount],
+  );
+
+  // VIP 判断
+  const isVip = !!member && member.levelCode !== 'level_0' && member.levelCode !== 'level_1';
+  const avatarLetter = (userInfo?.nickname || userInfo?.username || 'U').charAt(0).toUpperCase();
   const nickname = userInfo?.nickname || '未登录';
-  const username = userInfo?.username || '—';
-  const avatarLetter = nickname.charAt(0).toUpperCase();
   const roles = userInfo?.roles ?? [];
-  const perms = userInfo?.perms ?? [];
-  const displayPerms = perms.slice(0, MAX_PERMS_DISPLAY);
-  const remainingPerms = Math.max(0, perms.length - MAX_PERMS_DISPLAY);
+
+  const navigateTo = useCallback(
+    (route: keyof ProfileStackParamList) => {
+      (navigation.navigate as (screen: string) => void)(route as string);
+    },
+    [navigation],
+  );
+
+  // ==================== 渲染 ====================
+
+  const renderEntryRow = (entry: EntryItem) => (
+    <TouchableOpacity
+      key={String(entry.route)}
+      style={styles.entryRow}
+      onPress={() => navigateTo(entry.route)}
+      activeOpacity={0.6}
+    >
+      <View style={styles.entryIconWrap}>
+        <Ionicons name={entry.icon} size={20} color={theme.colors.text.secondary} />
+      </View>
+      <Text style={styles.entryTitle}>{entry.title}</Text>
+      <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
+    </TouchableOpacity>
+  );
+
+  const renderGroup = (group: EntryGroup) => (
+    <View key={group.title} style={styles.groupSection}>
+      <Text style={styles.groupTitle}>{group.title}</Text>
+      <View style={styles.groupCard}>
+        {group.entries.map((entry, idx) => (
+          <React.Fragment key={String(entry.route)}>
+            {idx > 0 && <View style={styles.entryDivider} />}
+            {renderEntryRow(entry)}
+          </React.Fragment>
+        ))}
+      </View>
+    </View>
+  );
 
   return (
-    <MainLayout title="个人中心" showBack showBottomNav={false}>
+    <View style={styles.container}>
       <ScrollView
-        style={styles.scrollView}
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -120,434 +258,330 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           />
         }
       >
-        {/* 加载失败提示 */}
-        {loadError && (
-          <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle-outline" size={16} color={theme.colors.status.error} />
-            <Text style={styles.errorBannerText}>加载用户信息失败，请下拉刷新重试</Text>
-          </View>
-        )}
-
-        {/* 用户信息 Hero */}
+        {/* 用户卡 */}
         <LinearGradient
           colors={[theme.colors.primary, '#6366f1']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.hero}
+          style={styles.userCard}
         >
-          <View style={styles.avatarWrap}>
-            <Text style={styles.avatarText}>{avatarLetter}</Text>
-          </View>
-          <Text style={styles.nickname} numberOfLines={1}>
-            {nickname}
-          </Text>
-          <Text style={styles.username} numberOfLines={1}>
-            @{username}
-          </Text>
-          {roles.length > 0 && (
-            <View style={styles.roleTags}>
-              {roles.map(role => (
-                <View key={role} style={styles.roleTag}>
-                  <Text style={styles.roleTagText}>{formatRole(role)}</Text>
-                </View>
-              ))}
+          <View style={styles.userCardInner}>
+            <View style={styles.avatarWrap}>
+              {userInfo?.avatar ? (
+                <Image source={{ uri: userInfo.avatar }} style={styles.avatarImg} />
+              ) : (
+                <Text style={styles.avatarLetter}>{avatarLetter}</Text>
+              )}
             </View>
-          )}
-        </LinearGradient>
-
-        {/* 账号信息 */}
-        <SectionWrap icon="information-circle" title="账号信息">
-          <View style={styles.card}>
-            <InfoRow
-              label="用户ID"
-              value={userInfo ? String(userInfo.userId) : '—'}
-            />
-            <InfoRow label="用户名" value={username} />
-            <InfoRow label="昵称" value={nickname} last />
-          </View>
-        </SectionWrap>
-
-        {/* 权限概览 */}
-        <SectionWrap
-          icon="lock-closed-outline"
-          title="权限概览"
-          extra={`${perms.length} 项`}
-        >
-          <View style={styles.card}>
-            {displayPerms.length > 0 ? (
-              <View style={styles.permList}>
-                {displayPerms.map(perm => (
-                  <View key={perm} style={styles.permChip}>
-                    <Ionicons
-                      name="key-outline"
-                      size={12}
-                      color={theme.colors.primary}
-                      style={styles.permIcon}
-                    />
-                    <Text style={styles.permText} numberOfLines={1}>
-                      {perm}
-                    </Text>
-                  </View>
-                ))}
-                {remainingPerms > 0 && (
-                  <View style={[styles.permChip, styles.permChipMore]}>
-                    <Text style={styles.permMoreText}>+{remainingPerms} 项</Text>
-                  </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.nickname} numberOfLines={1}>{nickname}</Text>
+              <View style={styles.roleRow}>
+                {roles.length > 0 ? (
+                  roles.slice(0, 2).map(role => (
+                    <View key={role} style={styles.roleTag}>
+                      <Text style={styles.roleTagText}>
+                        {role.replace(/^ROLE_/, '')}
+                      </Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.noRoleText}>普通用户</Text>
                 )}
               </View>
-            ) : (
-              <Text style={styles.emptyText}>暂无权限信息</Text>
-            )}
+            </View>
           </View>
-        </SectionWrap>
+        </LinearGradient>
 
-        {/* 最近处理记录 */}
-        <SectionWrap
-          icon="time-outline"
-          title="最近处理"
-          extra="查看全部"
-          onExtraPress={handleViewAllHistory}
+        {/* VIP 横幅 */}
+        <TouchableOpacity
+          style={styles.vipBanner}
+          onPress={() => navigateTo('PersonalMember')}
+          activeOpacity={0.8}
         >
-          <View style={styles.card}>
-            {recentHistory.length > 0 ? (
-              recentHistory.map((record, index) => (
-                <HistoryRow
-                  key={record.id}
-                  record={record}
-                  last={index === recentHistory.length - 1}
-                />
-              ))
-            ) : (
-              <Text style={styles.emptyText}>暂无处理记录</Text>
-            )}
+          <View style={styles.vipLeft}>
+            <Ionicons name="diamond" size={22} color="#f59e0b" />
+            <View style={styles.vipTextWrap}>
+              <Text style={styles.vipTitle}>
+                {isVip ? `${member?.levelName || '会员'}专属权益` : '开通 VIP 畅享更多次数'}
+              </Text>
+              <Text style={styles.vipDesc}>
+                {isVip
+                  ? `成长值 ${member?.growthValue || 0}，点击查看详情`
+                  : '解锁全部高级功能'}
+              </Text>
+            </View>
           </View>
-        </SectionWrap>
+          <View style={styles.vipAction}>
+            <Text style={styles.vipActionText}>{isVip ? '详情' : '去开通'}</Text>
+            <Ionicons name="chevron-forward" size={14} color={theme.colors.primary} />
+          </View>
+        </TouchableOpacity>
+
+        {/* 数据统计 */}
+        <View style={styles.statsCard}>
+          {stats.map((stat, idx) => (
+            <TouchableOpacity
+              key={stat.label}
+              style={[styles.statItem, idx < stats.length - 1 && styles.statDivider]}
+              onPress={() => navigateTo(stat.route)}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.statValue}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* 个人数据分组 */}
+        <View style={styles.groupSection}>
+          <Text style={styles.groupTitle}>个人数据</Text>
+          <View style={styles.groupCard}>
+            {PERSONAL_DATA_ENTRIES.map((entry, idx) => (
+              <React.Fragment key={String(entry.route)}>
+                {idx > 0 && <View style={styles.entryDivider} />}
+                {renderEntryRow(entry)}
+              </React.Fragment>
+            ))}
+          </View>
+        </View>
+
+        {/* 商业服务分组 */}
+        <View style={styles.groupSection}>
+          <Text style={styles.groupTitle}>商业服务</Text>
+          <View style={styles.groupCard}>
+            {BUSINESS_ENTRIES.map((entry, idx) => (
+              <React.Fragment key={String(entry.route)}>
+                {idx > 0 && <View style={styles.entryDivider} />}
+                {renderEntryRow(entry)}
+              </React.Fragment>
+            ))}
+          </View>
+        </View>
+
+        {/* 其他分组 */}
+        <View style={styles.groupSection}>
+          <Text style={styles.groupTitle}>其他</Text>
+          <View style={styles.groupCard}>
+            {OTHER_ENTRIES.map((entry, idx) => (
+              <React.Fragment key={String(entry.route)}>
+                {idx > 0 && <View style={styles.entryDivider} />}
+                {renderEntryRow(entry)}
+              </React.Fragment>
+            ))}
+          </View>
+        </View>
+
+        {/* 管理入口分组（权限过滤） */}
+        {visibleAdminGroups.map(renderGroup)}
 
         {/* 退出登录 */}
         <TouchableOpacity
-          style={styles.logoutButton}
+          style={styles.logoutBtn}
           onPress={handleLogout}
           activeOpacity={0.7}
         >
           <Ionicons name="log-out-outline" size={20} color={theme.colors.status.error} />
           <Text style={styles.logoutText}>退出登录</Text>
         </TouchableOpacity>
+
+        {/* 页脚 */}
+        <Text style={styles.footer}>图像去雾系统 v1.0</Text>
       </ScrollView>
-    </MainLayout>
-  );
-};
-
-/** 区块包装 */
-const SectionWrap: React.FC<{
-  icon: string;
-  title: string;
-  extra?: string;
-  onExtraPress?: () => void;
-  children: React.ReactNode;
-}> = ({ icon, title, extra, onExtraPress, children }) => (
-  <View style={styles.sectionWrap}>
-    <View style={styles.sectionTitleRow}>
-      <View style={styles.sectionTitleIcon}>
-        <Ionicons name={icon as IoniconName} size={16} color={theme.colors.primary} />
-      </View>
-      <Text style={styles.sectionTitleText}>{title}</Text>
-      {extra && (
-        <TouchableOpacity
-          onPress={onExtraPress}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={styles.sectionExtra}>{extra}</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-    {children}
-  </View>
-);
-
-/** 信息行 */
-const InfoRow: React.FC<{ label: string; value: string; last?: boolean }> = ({
-  label,
-  value,
-  last,
-}) => (
-  <View style={[styles.infoRow, last && styles.infoRowLast]}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue} numberOfLines={1}>
-      {value}
-    </Text>
-  </View>
-);
-
-/** 历史记录紧凑行 */
-const HistoryRow: React.FC<{ record: HistoryRecord; last?: boolean }> = ({
-  record,
-  last,
-}) => {
-  const filename = extractFilename(record.originalImageUrl);
-  const time = historyStorage.formatTimestamp(record.createTime);
-  const thumbUrl = record.originalThumbnailUrl || '';
-
-  return (
-    <View style={[styles.historyRow, last && styles.historyRowLast]}>
-      <View style={styles.historyThumb}>
-        {thumbUrl ? (
-          <ImageLoader
-            source={{ uri: thumbUrl }}
-            style={styles.historyThumbImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <Ionicons name="image-outline" size={20} color={theme.colors.text.tertiary} />
-        )}
-      </View>
-      <View style={styles.historyInfo}>
-        <Text style={styles.historyFilename} numberOfLines={1}>
-          {filename}
-        </Text>
-        <View style={styles.historyMeta}>
-          {record.algorithmName && (
-            <Text style={styles.historyAlgo} numberOfLines={1}>
-              {record.algorithmName}
-            </Text>
-          )}
-          {time && <Text style={styles.historyTime}>· {time}</Text>}
-        </View>
-      </View>
-      <Ionicons
-        name="chevron-forward"
-        size={16}
-        color={theme.colors.text.tertiary}
-      />
     </View>
   );
 };
+
+// ==================== 样式 ====================
 
 const styles = StyleSheet.create({
-  scrollView: {
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background.secondary,
+  },
+  scroll: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: theme.spacing.xxxl,
   },
-  // 加载失败提示
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.layout.borderRadius.md,
-    backgroundColor: `${theme.colors.status.error}15`,
-  },
-  errorBannerText: {
-    flex: 1,
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.status.error,
-  },
-  // Hero
-  hero: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
-    paddingHorizontal: theme.spacing.lg,
+  // 用户卡
+  userCard: {
     marginHorizontal: theme.spacing.md,
     marginTop: theme.spacing.md,
     borderRadius: theme.layout.borderRadius.xxl,
     ...theme.layout.shadows.lg,
   },
+  userCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
   avatarWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  avatarText: {
-    fontSize: 34,
-    fontWeight: theme.typography.weights.bold,
-    color: '#fff',
-  },
-  nickname: {
-    fontSize: theme.typography.sizes.h5,
-    fontWeight: theme.typography.weights.bold,
-    color: '#fff',
-    letterSpacing: theme.typography.letterSpacing.normal,
-  },
-  username: {
-    fontSize: theme.typography.sizes.bodySmall,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 4,
-  },
-  roleTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: theme.spacing.sm,
-  },
-  roleTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: theme.layout.borderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  roleTagText: {
-    fontSize: theme.typography.sizes.small,
-    fontWeight: theme.typography.weights.semibold,
-    color: '#fff',
-  },
-  // 区块
-  sectionWrap: {
-    marginTop: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.md,
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: theme.spacing.sm,
-    paddingHorizontal: 4,
-  },
-  sectionTitleIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: theme.layout.borderRadius.sm,
-    backgroundColor: `${theme.colors.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sectionTitleText: {
-    flex: 1,
-    fontSize: theme.typography.sizes.medium,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.primary,
-    letterSpacing: 0.3,
-  },
-  sectionExtra: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.primary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  // 卡片
-  card: {
-    backgroundColor: theme.colors.background.primary,
-    borderRadius: theme.layout.borderRadius.lg,
-    padding: theme.spacing.md,
-    ...theme.layout.shadows.sm,
-  },
-  // 信息行
-  infoRow: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.light,
-  },
-  infoRowLast: {
-    borderBottomWidth: 0,
-  },
-  infoLabel: {
-    width: 80,
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.text.tertiary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  infoValue: {
-    flex: 1,
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.text.primary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  // 权限
-  permList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  permChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: theme.layout.borderRadius.sm,
-    backgroundColor: theme.colors.primaryLight,
-    maxWidth: '100%',
-  },
-  permIcon: {
-    marginRight: 4,
-  },
-  permText: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.primary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  permChipMore: {
-    backgroundColor: theme.colors.background.tertiary,
-  },
-  permMoreText: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.weights.semibold,
-  },
-  // 空状态
-  emptyText: {
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
-    paddingVertical: theme.spacing.md,
-  },
-  // 历史记录行
-  historyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.light,
-    gap: theme.spacing.sm,
-  },
-  historyRowLast: {
-    borderBottomWidth: 0,
-  },
-  historyThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.layout.borderRadius.sm,
-    backgroundColor: theme.colors.background.tertiary,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
-  historyThumbImage: {
+  avatarImg: {
     width: '100%',
     height: '100%',
   },
-  historyInfo: {
+  avatarLetter: {
+    fontSize: 28,
+    fontWeight: theme.typography.weights.bold,
+    color: '#fff',
+  },
+  userInfo: {
     flex: 1,
   },
-  historyFilename: {
+  nickname: {
+    fontSize: theme.typography.sizes.large,
+    fontWeight: theme.typography.weights.bold,
+    color: '#fff',
+  },
+  roleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  roleTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: theme.layout.borderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  roleTagText: {
+    fontSize: theme.typography.sizes.tiny,
+    fontWeight: theme.typography.weights.semibold,
+    color: '#fff',
+  },
+  noRoleText: {
+    fontSize: theme.typography.sizes.tiny,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  // VIP 横幅
+  vipBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+    borderRadius: theme.layout.borderRadius.lg,
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  vipLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    flex: 1,
+  },
+  vipTextWrap: {
+    flex: 1,
+  },
+  vipTitle: {
+    fontSize: theme.typography.sizes.bodySmall,
+    fontWeight: theme.typography.weights.semibold,
+    color: '#92400e',
+  },
+  vipDesc: {
+    fontSize: theme.typography.sizes.small,
+    color: '#a16207',
+    marginTop: 2,
+  },
+  vipAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  vipActionText: {
+    fontSize: theme.typography.sizes.bodySmall,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.primary,
+  },
+  // 数据统计
+  statsCard: {
+    flexDirection: 'row',
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.layout.borderRadius.lg,
+    ...theme.layout.shadows.sm,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+  },
+  statDivider: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: theme.colors.border.light,
+  },
+  statValue: {
+    fontSize: theme.typography.sizes.h5,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text.primary,
+  },
+  statLabel: {
+    fontSize: theme.typography.sizes.small,
+    color: theme.colors.text.tertiary,
+    marginTop: 4,
+  },
+  // 分组
+  groupSection: {
+    marginTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+  },
+  groupTitle: {
+    fontSize: theme.typography.sizes.small,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: theme.spacing.sm,
+    paddingHorizontal: 4,
+  },
+  groupCard: {
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.layout.borderRadius.lg,
+    ...theme.layout.shadows.sm,
+  },
+  // 入口行
+  entryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  entryIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: theme.colors.background.tertiary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  entryTitle: {
+    flex: 1,
     fontSize: theme.typography.sizes.bodySmall,
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.text.primary,
-    marginBottom: 2,
   },
-  historyMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  historyAlgo: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.primary,
-    flexShrink: 1,
-  },
-  historyTime: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.tertiary,
+  entryDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.border.light,
+    marginHorizontal: theme.spacing.md,
   },
   // 退出登录
-  logoutButton: {
+  logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -563,6 +597,14 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.medium,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.status.error,
+  },
+  // 页脚
+  footer: {
+    textAlign: 'center',
+    fontSize: theme.typography.sizes.small,
+    color: theme.colors.text.tertiary,
+    marginTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
   },
 });
 

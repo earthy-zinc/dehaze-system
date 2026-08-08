@@ -42,12 +42,12 @@ class ComparisonScaffold extends StatelessWidget {
   final String currentRoute;
 
   /// 全部对比模式（路由, 显示名）
-  static const _allModes = <(String, String)>[
+  static final _allModes = <(String, String)>[
     (AppRouterConfig.sideBySide, '并排对比'),
     (AppRouterConfig.overlay, '重叠对比'),
     (AppRouterConfig.magnifier, '放大镜'),
     (AppRouterConfig.filter, '滤镜调节'),
-    (AppRouterConfig.metrics, '指标评估'),
+    (AppRouterConfig.compareMetrics, '指标评估'),
     (AppRouterConfig.algorithm, '算法信息'),
   ];
 

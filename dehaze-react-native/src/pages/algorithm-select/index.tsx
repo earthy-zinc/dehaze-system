@@ -22,8 +22,8 @@ import {
   TextInput,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/routes/types';
-import { MainLayout } from '@/layout';
+import type { ToolsStackParamList } from '@/routes/types';
+import { AppHeader } from '@/layout';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import type { SelectedImage } from '@/types/image';
@@ -35,7 +35,7 @@ import AlgorithmCard from './components/AlgorithmCard';
 import CompareBar from './components/CompareBar';
 import CompareModal from './components/CompareModal';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'AlgorithmSelect'>;
+type Props = NativeStackScreenProps<ToolsStackParamList, 'AlgorithmSelect'>;
 
 type TabKey = 'recommend' | 'browse' | 'favorites';
 
@@ -530,7 +530,8 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   return (
-    <MainLayout title="算法选择">
+    <View style={styles.screenContainer}>
+      <AppHeader title="算法选择" showBack onBackPress={() => navigation.goBack()} />
       <View style={styles.container}>
         <ScrollView
           style={styles.scrollView}
@@ -570,11 +571,15 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
           onSelect={handleSelect}
         />
       </View>
-    </MainLayout>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background.secondary,
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.secondary,

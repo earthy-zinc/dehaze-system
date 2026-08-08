@@ -38,7 +38,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "lint": "pnpm run lint:eslint && pnpm run lint:stylelint && pnpm run lint:prettier",
-    "lint:eslint": "eslint --fix ./src/**/*.{ts,tsx,js,jsx}",
+    "lint:eslint": "eslint --fix ./src/**/*.{ts,vue}",
     "lint:prettier": "prettier --write \"**/*.{js,cjs,json,jsx,ts,tsx,css,less,scss,vue,html,md}\"",
     "lint:stylelint": "stylelint \"**/*.{css,less,scss}\" --fix",
     "type-check": "vue-tsc --noEmit"
@@ -67,7 +67,6 @@
     "dayjs": "^1.11.18",
     "dehaze-sdk-js": "workspace:*",
     "pinia": "2.2.4",
-    "uview-plus": "^3.6.4",
     "vue": "^3.4.21",
     "vue-i18n": "^9.14.5"
   },
@@ -99,6 +98,7 @@
     "stylelint-config-standard": "^39.0.1",
     "typescript": "^5.9.3",
     "vite": "5.2.8",
+    "vite-plugin-svg-icons": "^2.0.1",
     "vue-eslint-parser": "^10.2.0",
     "vue-tsc": "^3.1.1"
   }

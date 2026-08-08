@@ -2,7 +2,7 @@
   <view class="process-step" @click="handleClick">
     <view class="step-number">{{ number }}</view>
     <view class="step-icon">
-      <u-icon :name="icon" size="32" color="#ffffff" />
+      <SvgIcon :name="icon" size="32" color="#ffffff" />
     </view>
     <text class="step-title">{{ title }}</text>
     <text class="step-desc">{{ description }}</text>
@@ -10,6 +10,8 @@
 </template>
 
 <script lang="ts" setup>
+import SvgIcon from "@/components/SvgIcon/index.vue";
+
 interface Props {
   number: string;
   title: string;

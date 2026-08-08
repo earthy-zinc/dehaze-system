@@ -52,6 +52,7 @@ public class SecurityConfig {
                                 .requestMatchers("/api/v1/auth/captcha").permitAll()
                                 .requestMatchers("/api/v1/orders/payment/wechat/callback").permitAll()
                                 .requestMatchers("/api/v1/orders/payment/alipay/callback").permitAll()
+                                .requestMatchers("/api/v1/logs/client").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .exceptionHandling(httpSecurityExceptionHandlingConfigurer ->

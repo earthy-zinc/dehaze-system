@@ -83,6 +83,53 @@ func SessionAuth() gin.HandlerFunc {
 	}
 }
 
+// OptionalSessionAuth 可选会话认证中间件。
+//
+// 与 SessionAuth 的区别：session 缺失或无效时放行（匿名），仅当存在合法 session 时解析并注入
+// user_id。用于允许匿名访问但需要"已登录则注入操作者"的接口（如前端日志接收 POST /api/v1/logs/client，
+// 对齐 Java permitAll + SessionFilter 的行为）。
+func OptionalSessionAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sessionID := extractSessionID(c)
+		if sessionID == "" {
+			c.Next()
+			return
+		}
+
+		cacheClient := cache.GetCache()
+		if cacheClient == nil {
+			c.Next()
+			return
+		}
+
+		sessionJSON, err := cacheClient.Get(c.Request.Context(), SessionPrefix+sessionID)
+		if err != nil || sessionJSON == "" {
+			c.Next()
+			return
+		}
+
+		var session SessionData
+		if err := json.Unmarshal([]byte(sessionJSON), &session); err != nil {
+			logger.Error("解析Session数据失败", zap.String("sessionId", sessionID), zap.Error(err))
+			c.Next()
+			return
+		}
+
+		claims := &security.CustomClaims{
+			UserID:      session.UserID,
+			DeptID:      session.DeptID,
+			DataScope:   session.DataScope,
+			Authorities: session.Authorities,
+		}
+		claims.Subject = session.Username
+		claims.ID = sessionID
+		c.Set("claims", claims)
+		c.Request = c.Request.WithContext(trace.WithUserID(c.Request.Context(), session.UserID))
+
+		c.Next()
+	}
+}
+
 func ExtractSessionID(c *gin.Context) string {
 	if cookie, err := c.Cookie(SessionCookieName); err == nil && cookie != "" {
 		return cookie

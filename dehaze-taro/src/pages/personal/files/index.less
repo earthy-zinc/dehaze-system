@@ -1,0 +1,114 @@
+.personal-files-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f8fafc;
+}
+
+.files-scroll {
+  flex: 1;
+  padding: 16rpx 24rpx;
+}
+
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 4rpx rgb(0 0 0 / 4%);
+}
+
+.file-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80rpx;
+  height: 80rpx;
+  background: #ecfdf5;
+  border-radius: 16rpx;
+  font-size: 36rpx;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 6rpx;
+}
+
+.file-meta {
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
+.file-arrow {
+  flex-shrink: 0;
+  font-size: 32rpx;
+  color: #d1d5db;
+}
+
+.no-more {
+  padding: 24rpx;
+  font-size: 24rpx;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.load-more {
+  padding: 24rpx;
+  font-size: 26rpx;
+  color: #3b82f6;
+  text-align: center;
+  cursor: pointer;
+}
+
+.loading-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
+.empty-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 160rpx 48rpx;
+
+  .empty-icon {
+    margin-bottom: 32rpx;
+    font-size: 96rpx;
+  }
+
+  .empty-title {
+    margin-bottom: 12rpx;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .empty-desc {
+    font-size: 24rpx;
+    color: #6b7280;
+    text-align: center;
+  }
+}

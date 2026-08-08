@@ -17,10 +17,8 @@ class LoginRequest {
   final String username;
   final String password;
 
-  @JsonKey(name: 'captchaKey')
   final String captchaKey;
 
-  @JsonKey(name: 'captchaCode')
   final String captchaCode;
 
   Map<String, dynamic> toJson() => _$LoginRequestToJson(this);
@@ -36,10 +34,8 @@ class LoginResponse {
   factory LoginResponse.fromJson(Map<String, dynamic> json) =>
       _$LoginResponseFromJson(json);
 
-  @JsonKey(name: 'sessionId')
   final String sessionId;
 
-  @JsonKey(name: 'user')
   final LoginUser user;
 
   Map<String, dynamic> toJson() => _$LoginResponseToJson(this);
@@ -73,10 +69,8 @@ class CaptchaResponse {
   factory CaptchaResponse.fromJson(Map<String, dynamic> json) =>
       _$CaptchaResponseFromJson(json);
 
-  @JsonKey(name: 'captchaKey')
   final String captchaKey;
 
-  @JsonKey(name: 'captchaBase64')
   final String captchaBase64;
 
   Map<String, dynamic> toJson() => _$CaptchaResponseToJson(this);

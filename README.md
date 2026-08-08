@@ -217,24 +217,17 @@ pnpm run dev
 #### dehaze-react-native
 
 ```bash
-# 安装依赖
-yarn
-
 # 运行 Android
 yarn android
-# 或先启动 Metro，再运行原生构建:
-yarn start
-yarn react-native run-android
 
 # 运行 iOS
+cd ios && pod install
 yarn ios
+
 # 或先启动 Metro，再运行原生构建:
 yarn start
 yarn react-native run-ios
-
-# 测试与检查
-yarn test
-yarn lint
+yarn react-native run-android
 ```
 
 #### dehaze-taro/dehaze-uniapp

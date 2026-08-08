@@ -3,7 +3,14 @@ import { View, Text } from "@tarojs/components";
 import "./EmptyState.less";
 
 interface EmptyStateProps {
-  type?: "dataset" | "image" | "search" | "history" | "compare";
+  type?:
+    | "dataset"
+    | "image"
+    | "search"
+    | "history"
+    | "compare"
+    | "empty"
+    | "message";
   title?: string;
   description?: string;
   className?: string;

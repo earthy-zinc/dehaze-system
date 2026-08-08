@@ -1,3 +1,4 @@
 export default definePageConfig({
-  navigationBarTitleText: "注册页",
+  navigationBarTitleText: "注册",
+  navigationStyle: "custom",
 });

@@ -1,53 +1,36 @@
+/**
+ * 算法库浏览版（L2）
+ * 个人浏览视角：算法列表、智能推荐、详情查看、使用该算法带入去雾流程
+ * 无审计/上下架/删除等管理操作
+ */
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, Input, ScrollView } from "@tarojs/components";
 import Taro, { useLoad, usePullDownRefresh } from "@tarojs/taro";
 import { Navbar, Loading, Tag, Button } from "@taroify/core";
 import { ArrowLeft, Search } from "@taroify/icons";
-import { AlgorithmAPI } from "dehaze-sdk-js";
-import type { Algorithm, AlgorithmAuditForm } from "dehaze-sdk-js";
+import { AlgorithmAPI, RecommendationAPI } from "dehaze-sdk-js";
+import type { Algorithm } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
 import { getErrorMessage } from "@/utils/error";
-import { usePermission } from "@/hooks/usePermission";
-import {
-  STATUS_INFO,
-  STATUS_FILTERS,
-  flattenTree,
-  filterTree,
-  updateAlgorithmInTree,
-  removeAlgorithmFromTree,
-} from "./utils";
+import { STATUS_INFO, flattenTree, filterTree } from "./utils";
 import type { FlatNode } from "./utils";
 import AlgorithmDetailPopup from "./components/AlgorithmDetailPopup";
-import AlgorithmAuditPopup from "./components/AlgorithmAuditPopup";
 import "./index.less";
 
-// ==================== 页面组件 ====================
-
-const AlgorithmManagePage: React.FC = () => {
-  const { hasPermission } = usePermission();
-  const canAudit = hasPermission("sys:algorithm:audit");
-  const canEdit = hasPermission("sys:algorithm:edit");
-  const canDelete = hasPermission("sys:algorithm:delete");
-
+const AlgorithmBrowsePage: React.FC = () => {
   const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState<number | "">("");
+  const [statusFilter, setStatusFilter] = useState<number | "">(4); // 默认显示已发布
+
+  // 推荐
+  const [recommendLoading, setRecommendLoading] = useState(false);
+  const [recommendedIds, setRecommendedIds] = useState<Set<number>>(new Set());
 
   // 详情弹窗
   const [detailAlgo, setDetailAlgo] = useState<Algorithm | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
-
-  // 审核弹窗
-  const [auditAlgo, setAuditAlgo] = useState<Algorithm | null>(null);
-  const [auditVisible, setAuditVisible] = useState(false);
-  const [auditApproved, setAuditApproved] = useState(true);
-  const [auditRemark, setAuditRemark] = useState("");
-  const [auditSubmitting, setAuditSubmitting] = useState(false);
-
-  // 操作加载状态
-  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
   // ==================== 数据加载 ====================
 
@@ -72,6 +55,26 @@ const AlgorithmManagePage: React.FC = () => {
     fetchAlgorithms().finally(() => Taro.stopPullDownRefresh());
   });
 
+  // ==================== 智能推荐 ====================
+
+  const fetchRecommendations = useCallback(async () => {
+    setRecommendLoading(true);
+    try {
+      const recs = await RecommendationAPI.getAlgorithmRecommendations({});
+      const ids = new Set<number>();
+      (recs || []).forEach((r) => ids.add(r.algorithmId));
+      setRecommendedIds(ids);
+    } catch {
+      // 推荐加载失败不影响主列表
+    } finally {
+      setRecommendLoading(false);
+    }
+  }, []);
+
+  useLoad(() => {
+    fetchRecommendations();
+  });
+
   // ==================== 过滤后的平铺列表 ====================
 
   const flatList = useMemo(() => {
@@ -81,11 +84,9 @@ const AlgorithmManagePage: React.FC = () => {
 
   // ==================== 事件处理 ====================
 
-  /** 查看详情 */
   const handleDetail = useCallback(async (algo: Algorithm) => {
     setDetailAlgo(algo);
     setDetailVisible(true);
-    // 拉取最新详情
     try {
       const detail = await AlgorithmAPI.getAlgorithmInfoById(algo.id);
       setDetailAlgo(detail);
@@ -94,117 +95,19 @@ const AlgorithmManagePage: React.FC = () => {
     }
   }, []);
 
-  /** 修改状态（启用/停用） */
-  const handleToggleStatus = useCallback(async (algo: Algorithm) => {
-    const isPublished = algo.status === 3;
-    const newStatus = isPublished ? 4 : 3;
-    const actionText = isPublished ? "停用" : "启用";
-    Taro.showModal({
-      title: `确认${actionText}`,
-      content: `确认${actionText}算法"${algo.name}"吗？`,
-      success: async (res) => {
-        if (!res.confirm) return;
-        setActionLoadingId(algo.id);
-        try {
-          await AlgorithmAPI.updateStatus(algo.id, newStatus);
-          // 本地更新
-          setAlgorithms((prev) =>
-            updateAlgorithmInTree(prev, algo.id, { status: newStatus })
-          );
-          setDetailAlgo((prev) =>
-            prev?.id === algo.id ? { ...prev, status: newStatus } : prev
-          );
-          Taro.showToast({ title: `${actionText}成功`, icon: "success" });
-        } catch (err: unknown) {
-          Taro.showToast({
-            title: getErrorMessage(err, `${actionText}失败`),
-            icon: "none",
-          });
-        } finally {
-          setActionLoadingId(null);
-        }
-      },
-    });
-  }, []);
-
-  /** 打开审核弹窗 */
-  const handleOpenAudit = useCallback((algo: Algorithm, approved: boolean) => {
-    setAuditAlgo(algo);
-    setAuditApproved(approved);
-    setAuditRemark("");
-    setAuditVisible(true);
-  }, []);
-
-  /** 提交审核 */
-  const handleAuditSubmit = useCallback(async () => {
-    if (!auditAlgo) return;
-    if (!auditApproved && !auditRemark.trim()) {
-      Taro.showToast({ title: "驳回需填写原因", icon: "none" });
-      return;
-    }
-    setAuditSubmitting(true);
-    try {
-      const form: AlgorithmAuditForm = {
-        approved: auditApproved,
-        remark: auditRemark.trim() || undefined,
-      };
-      await AlgorithmAPI.auditAlgorithm(auditAlgo.id, form);
-      const newStatus = auditApproved ? 3 : 1;
-      setAlgorithms((prev) =>
-        updateAlgorithmInTree(prev, auditAlgo.id, { status: newStatus })
-      );
-      setDetailAlgo((prev) =>
-        prev?.id === auditAlgo.id ? { ...prev, status: newStatus } : prev
-      );
-      setAuditVisible(false);
-      Taro.showToast({
-        title: auditApproved ? "审核通过" : "已驳回",
-        icon: "success",
-      });
-    } catch (err: unknown) {
-      Taro.showToast({ title: getErrorMessage(err, "审核失败"), icon: "none" });
-    } finally {
-      setAuditSubmitting(false);
-    }
-  }, [auditAlgo, auditApproved, auditRemark]);
-
-  /** 删除算法 */
-  const handleDelete = useCallback((algo: Algorithm) => {
-    Taro.showModal({
-      title: "确认删除",
-      content: `确认删除算法"${algo.name}"吗？此操作不可恢复。`,
-      confirmColor: "#ff4d4f",
-      success: async (res) => {
-        if (!res.confirm) return;
-        setActionLoadingId(algo.id);
-        try {
-          await AlgorithmAPI.deleteByIds([String(algo.id)]);
-          setAlgorithms((prev) => removeAlgorithmFromTree(prev, algo.id));
-          setDetailAlgo((prev) => (prev?.id === algo.id ? null : prev));
-          Taro.showToast({ title: "删除成功", icon: "success" });
-        } catch (err: unknown) {
-          Taro.showToast({
-            title: getErrorMessage(err, "删除失败"),
-            icon: "none",
-          });
-        } finally {
-          setActionLoadingId(null);
-        }
-      },
-    });
+  const handleUseAlgorithm = useCallback((algo: Algorithm) => {
+    // 将算法带入去雾流程
+    Taro.setStorageSync("selected_algorithm", JSON.stringify(algo));
+    // 跳转到 processing 页面
+    Taro.navigateTo({ url: "/pages/processing/index" });
   }, []);
 
   // ==================== 渲染 ====================
 
-  /** 渲染算法节点 */
   const renderNode = (item: FlatNode) => {
     const { algorithm: algo, level, hasChildren } = item;
     const statusInfo = STATUS_INFO[algo.status ?? 0] || STATUS_INFO[1];
-    const isPending = algo.status === 3;
-    const isPublished = algo.status === 4;
-    const isDisabled = algo.status === 5;
-    const isDeletableStatus =
-      algo.status === 1 || algo.status === 5 || algo.status === 6;
+    const isRecommended = recommendedIds.has(algo.id);
 
     return (
       <View
@@ -220,65 +123,42 @@ const AlgorithmManagePage: React.FC = () => {
             <Text className="node-name">{algo.name}</Text>
           </View>
           <View className="node-meta">
+            {isRecommended && (
+              <Tag color="warning" size="small">
+                推荐
+              </Tag>
+            )}
             <Tag color={statusInfo.color} size="small">
               {statusInfo.label}
             </Tag>
             {algo.type && <Text className="node-type">{algo.type}</Text>}
-            {algo.version && (
-              <Text className="node-version">v{algo.version}</Text>
-            )}
           </View>
         </View>
 
-        {!hasChildren && (canAudit || canEdit || canDelete) && (
+        {!hasChildren && (
           <View className="node-actions" onClick={(e) => e.stopPropagation()}>
-            {isPending && canAudit && (
-              <>
-                <Button
-                  size="mini"
-                  color="success"
-                  onClick={() => handleOpenAudit(algo, true)}
-                >
-                  通过
-                </Button>
-                <Button
-                  size="mini"
-                  color="danger"
-                  onClick={() => handleOpenAudit(algo, false)}
-                >
-                  驳回
-                </Button>
-              </>
-            )}
-            {(isPublished || isDisabled) && canEdit && (
-              <Button
-                size="mini"
-                color={isPublished ? "warning" : "primary"}
-                loading={actionLoadingId === algo.id}
-                onClick={() => handleToggleStatus(algo)}
-              >
-                {isPublished ? "停用" : "启用"}
-              </Button>
-            )}
-            {isDeletableStatus && canDelete && (
-              <Button
-                size="mini"
-                color="danger"
-                loading={actionLoadingId === algo.id}
-                onClick={() => handleDelete(algo)}
-              >
-                删除
-              </Button>
-            )}
+            <Button
+              size="mini"
+              variant="contained"
+              color="primary"
+              onClick={() => handleUseAlgorithm(algo)}
+            >
+              使用该算法
+            </Button>
           </View>
         )}
       </View>
     );
   };
 
+  const statusFilters = [
+    { label: "全部", value: "" },
+    { label: "已发布", value: 4 },
+  ];
+
   return (
-    <View className="algo-manage-page">
-      <Navbar title="算法管理">
+    <View className="algo-browse-page">
+      <Navbar title="算法库">
         <Navbar.NavLeft>
           <ArrowLeft />
         </Navbar.NavLeft>
@@ -298,15 +178,20 @@ const AlgorithmManagePage: React.FC = () => {
 
       {/* 状态筛选 */}
       <ScrollView scrollX className="filter-bar" enhanced showScrollbar={false}>
-        {STATUS_FILTERS.map((filter) => (
+        {statusFilters.map((filter) => (
           <View
             key={String(filter.value)}
             className={`filter-item ${statusFilter === filter.value ? "active" : ""}`}
-            onClick={() => setStatusFilter(filter.value)}
+            onClick={() => setStatusFilter(filter.value as number | "")}
           >
             <Text>{filter.label}</Text>
           </View>
         ))}
+        {recommendLoading && (
+          <View className="filter-item">
+            <Text className="text-muted">加载推荐中...</Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* 算法列表 */}
@@ -330,29 +215,17 @@ const AlgorithmManagePage: React.FC = () => {
       <AlgorithmDetailPopup
         open={detailVisible}
         algorithm={detailAlgo}
-        actionLoadingId={actionLoadingId}
-        canAudit={canAudit}
-        canEdit={canEdit}
-        canDelete={canDelete}
+        actionLoadingId={null}
+        canAudit={false}
+        canEdit={false}
+        canDelete={false}
         onClose={() => setDetailVisible(false)}
-        onToggleStatus={handleToggleStatus}
-        onDelete={handleDelete}
-        onOpenAudit={handleOpenAudit}
-      />
-
-      {/* 审核弹窗 */}
-      <AlgorithmAuditPopup
-        open={auditVisible}
-        algorithm={auditAlgo}
-        approved={auditApproved}
-        remark={auditRemark}
-        submitting={auditSubmitting}
-        onClose={() => setAuditVisible(false)}
-        onRemarkChange={setAuditRemark}
-        onSubmit={handleAuditSubmit}
+        onToggleStatus={() => {}}
+        onDelete={() => {}}
+        onOpenAudit={() => {}}
       />
     </View>
   );
 };
 
-export default AlgorithmManagePage;
+export default AlgorithmBrowsePage;

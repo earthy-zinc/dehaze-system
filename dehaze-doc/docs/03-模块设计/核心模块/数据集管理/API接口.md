@@ -21,15 +21,16 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/datasets` | GET | 获取数据集列表（支持树形） | - | F-M06-001 |
-| `/api/v1/datasets/{id}` | GET | 获取数据集详情 | - | F-M06-003 |
+| `/api/v1/datasets` | GET | 分页查询根级数据集列表（支持 keyword/type/status 筛选，返回树形结构） | - | F-M06-001 |
+| `/api/v1/datasets/children/{parentId}` | GET | 获取子数据集列表（树形懒加载） | - | F-M06-001 |
+| `/api/v1/datasets/options` | GET | 获取数据集下拉选项（仅启用，树形 label-value） | - | F-M06-001 |
+| `/api/v1/datasets/{id}` | GET | 获取数据集详情（含统计信息，缓存优化 &lt;200ms） | - | F-M06-003 |
 | `/api/v1/datasets` | POST | 新增数据集 | `sys:dataset:add` | F-M06-002 |
 | `/api/v1/datasets/{id}` | PUT | 修改数据集 | `sys:dataset:edit` | F-M06-002 |
-| `/api/v1/datasets/{id}` | DELETE | 删除单个数据集 | `sys:dataset:delete` | F-M06-002 |
+| `/api/v1/datasets/{id}` | DELETE | 删除单个数据集（级联删除子数据集与图片） | `sys:dataset:delete` | F-M06-002 |
 | `/api/v1/datasets/batch` | DELETE | 批量删除数据集 | `sys:dataset:delete` | F-M06-002 |
-| `/api/v1/datasets/options` | GET | 获取数据集下拉选项 | - | F-M06-001 |
 
-> **注意**：数据集导出功能已迁移至统一任务接口 `/api/v1/tasks`，请参见 [2.4 任务接口](#24-任务接口)
+> **注意**：数据集导出功能通过统一任务接口 `/api/v1/tasks` 提交 `dataset_export` 任务，见 [2.4 任务接口](#24-任务接口)；`task_type` 维度筛选为本次改造目标（见 [需求规格 §1.1](./需求规格.md)）。
 
 ### 2.2 数据项接口
 
@@ -68,9 +69,9 @@
 
 | 任务类型 | type 值 | 说明 | 权限标识 |
 |---------|---------|------|---------|
-| 数据集导出 | `dataset_export` | 导出整个数据集为 ZIP | `sys:dataset:export` |
-| 数据项下载 | `item_download` | 下载指定数据项的图片 | - |
-| 批量下载 | `batch_download` | 批量下载多个图片 | - |
+| 数据集导出 | `dataset_export` | 导出整个数据集为 ZIP（经任务管理模块异步执行） | - |
+
+> 数据项图片下载通过文件管理模块 `/api/v1/files/download/**` 直接获取；单张/批量图片打包下载**尚未实现**（见 [需求规格 §2.2.4](./需求规格.md)）。任务接口的通用能力（创建/查询/下载/取消/列表）由 [任务管理模块](../../基础模块/任务管理/API接口.md) 统一定义。
 
 ## 3. 权限标识汇总
 
@@ -79,8 +80,8 @@
 | `sys:dataset:add` | 新增数据集 | 按钮显示 + 接口校验 |
 | `sys:dataset:edit` | 编辑数据集/数据项/图片 | 按钮显示 + 接口校验 |
 | `sys:dataset:delete` | 删除数据集/数据项/图片 | 按钮显示 + 接口校验 |
-| `sys:dataset:view` | 查看数据集 | 默认所有用户 |
-| `sys:dataset:export` | 导出数据集 | 按钮显示 + 接口校验 |
+
+> 查看数据集为登录用户默认权限，无 `sys:dataset:view` 权限标识；数据集导出走任务管理模块（无 `sys:dataset:export` 权限标识，任务创建仅需登录态）。
 
 ## 4. 业务错误码
 
@@ -94,5 +95,3 @@
 | `A0230` | token无效或已过期 | 未认证访问 |
 
 > 数据集导出/下载任务相关错误码由任务管理模块统一管理，详见 [任务管理/API接口.md](../../基础模块/任务管理/API接口.md)
-
-## 5. 业务错误码

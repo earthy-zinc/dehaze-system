@@ -1,5 +1,9 @@
 package com.pei.dehaze.sdk;
 
+import com.pei.dehaze.sdk.logger.LogEntry;
+import com.pei.dehaze.sdk.logger.LogLevel;
+import com.pei.dehaze.sdk.logger.Logger;
+import com.pei.dehaze.sdk.logger.TraceManager;
 import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.network.ApiException;
 import com.pei.dehaze.sdk.utils.TokenManager;
@@ -53,6 +57,20 @@ public abstract class ApiCallback<T> implements Callback<Result<T>> {
                 if (TokenManager.isTokenInvalidCode(result.getCode())) {
                     TokenManager.triggerSessionInvalid();
                 }
+                // 业务失败交 Logger 上报
+                if (Logger.isInitialized()) {
+                    LogEntry entry = new LogEntry(LogLevel.ERROR, "API_ERROR",
+                            "", "")
+                            .setTraceId(TraceManager.getCurrentTraceId())
+                            .setMethod(call.request().method().toUpperCase())
+                            .setPath(call.request().url().encodedPath())
+                            .setStatus(response.code())
+                            .setCode(result.getCode())
+                            .setErrorType("api")
+                            .setErrorSource("api_interceptor")
+                            .setErrorStack(result.getMsg());
+                    Logger.getInstance().error("API_ERROR", entry);
+                }
                 onError(result.getCode(), result.getMsg());
             }
         } else {
@@ -66,6 +84,9 @@ public abstract class ApiCallback<T> implements Callback<Result<T>> {
 
     @Override
     public void onFailure(Call<Result<T>> call, Throwable t) {
+        if (call.isCanceled()) {
+            return;
+        }
         onFailure(new ApiException(0, t.getMessage()));
     }
 }

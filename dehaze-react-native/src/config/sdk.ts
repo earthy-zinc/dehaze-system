@@ -1,5 +1,5 @@
 import { configAxios, ResultEnum } from 'dehaze-sdk-js';
-import { API_CONFIG } from './env';
+import { BASE_URL } from './env';
 import { sessionStore, triggerSessionInvalid } from '../utils/tokenStore';
 
 type InterceptorCallbacks = Parameters<typeof configAxios>[0];
@@ -39,4 +39,4 @@ function buildAxiosConfig(baseURL: string): InterceptorCallbacks {
   };
 }
 
-configAxios(buildAxiosConfig(API_CONFIG.JAVA_BASE_URL));
+configAxios(buildAxiosConfig(BASE_URL));

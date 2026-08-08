@@ -40,7 +40,7 @@ class ToolsGridSection extends StatelessWidget {
         icon: Icons.analytics,
         title: '指标评估',
         desc: 'SSIM、PSNR等专业指标定量分析',
-        route: AppRouterConfig.metrics,
+        route: AppRouterConfig.compareMetrics,
       ),
       _ToolData(
         icon: Icons.storage,

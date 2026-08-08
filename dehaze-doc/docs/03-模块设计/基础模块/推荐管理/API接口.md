@@ -16,27 +16,27 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/recommendations/analyze` | POST | 图像特征分析（上传图片或指定 imageId，返回 7 维特征分析结果） | - | F-REC-001 |
-| `/api/v1/recommendations/algorithms` | GET | 获取算法推荐（基于分析结果，返回 Top 3 推荐算法及匹配度和理由） | - | F-REC-002 |
+| `/api/v1/recommendations/analyze` | POST | 图像特征分析（当前为确定性 Mock 实现，仅支持 `imageUrl`，返回 7 维特征分析结果） | - | F-REC-001 |
+| `/api/v1/recommendations/algorithms` | GET | 获取算法推荐（基于场景规则匹配，返回 Top 3 推荐算法及匹配度和理由） | - | F-REC-002 |
 
 ### 2.2 反馈接口
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/recommendations/feedback` | POST | 提交推荐反馈（useful/not_useful） | - | F-REC-003 |
+| `/api/v1/recommendations/feedback` | POST | 提交推荐反馈（useful=true/false → feedback=1/2） | - | F-REC-003 |
 
 ### 2.3 规则管理接口（管理员）
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/recommendations/rules` | GET | 获取推荐规则配置 | `sys:recommendation:rule:view` | F-REC-004 |
-| `/api/v1/recommendations/rules` | PUT | 更新推荐规则配置 | `sys:recommendation:rule:edit` | F-REC-004 |
+| `/api/v1/recommendations/rules` | GET | 获取推荐规则配置（按权重升序） | `sys:recommendation:rule:view` | F-REC-004 |
+| `/api/v1/recommendations/rules` | PUT | 新增（id=0）/更新推荐规则配置 | `sys:recommendation:rule:edit` | F-REC-004 |
 
 ### 2.4 效果报表接口（管理员）
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/recommendations/report` | GET | 推荐效果报表 | `sys:recommendation:report` | F-REC-004 |
+| `/api/v1/recommendations/report` | GET | 推荐效果报表（总量/采纳率/满意度/覆盖率/冷启动成功率/按日趋势） | `sys:recommendation:report` | 推荐效果度量（§5） |
 
 ## 3. 权限标识汇总
 
@@ -52,11 +52,9 @@
 
 | 错误码 | 说明 | 触发场景 |
 |--------|------|---------|
-| `A0401` | 请求资源不存在 | 指定的 imageId 对应图片不存在 |
-| `A0701` | 文件格式不支持 | 上传的图片格式不支持 |
-| `A0702` | 文件大小超限 | 上传图片超过大小限制 |
-| `A0500` | 业务异常 | 推荐规则配置格式不合法 |
-| `A0502` | 数据状态不允许 | 尝试修改被禁用的推荐规则 |
-| `B0100` | 系统执行超时 | 图像特征分析超时（>2s） |
+| `A0401` | 请求资源不存在 | 指定 `imageId` 方式分析（当前暂不支持）；反馈记录不存在 |
+| `A0500` | 业务异常 | 规则权重超出 0-100 范围 |
+| `A0400` | 用户请求参数错误 | imageUrl 与 imageId 均未提供 |
+| `A0701` | 文件格式不支持 | imageUrl 扩展名非 jpg/jpeg/png/webp/bmp/tiff/tif |
 | `A0230` | token无效或已过期 | 未登录访问 |
 | `A0301` | 访问未授权 | 非管理员访问规则管理/报表接口 |

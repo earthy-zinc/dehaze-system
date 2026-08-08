@@ -1,130 +1,370 @@
 <template>
-  <PageLayout level="L2" title="算法信息" class="page">
+  <PageLayout level="L2" title="算法库" class="page">
     <view class="main-content">
+      <!-- 页面标题 -->
       <PageHeaderCard
-        icon="info-circle"
+        icon="server-fill"
         icon-color="#6366f1"
         icon-bg="linear-gradient(135deg, #e0e7ff, #c7d2fe)"
-        title="算法信息"
-        subtitle="查看当前算法详细信息"
+        title="算法库"
+        subtitle="浏览算法、查看详情、智能推荐"
       />
 
-      <view v-if="algorithm" class="content-area">
-        <!-- 基本信息 -->
-        <view class="section">
-          <text class="section-title">基本信息</text>
-          <view class="info-card">
-            <view class="info-row"
-              ><text class="label">名称</text
-              ><text class="value">{{ algorithm.name }}</text></view
-            >
-            <view class="info-row"
-              ><text class="label">类型</text
-              ><text class="value type-tag">{{
-                algorithm.type || "未知"
-              }}</text></view
-            >
-            <view class="info-row"
-              ><text class="label">版本</text
-              ><text class="value">v{{ algorithm.version || "-" }}</text></view
-            >
-            <view class="info-row"
-              ><text class="label">状态</text
-              ><text class="value">{{
-                algorithm.status === 1 ? "✅ 启用" : "⏸ 停用"
-              }}</text></view
-            >
-          </view>
-        </view>
-
-        <!-- 描述 -->
-        <view v-if="algorithm.description" class="section">
-          <text class="section-title">算法描述</text>
-          <view class="desc-card">
-            <text class="desc-text">{{ algorithm.description }}</text>
-          </view>
-        </view>
-
-        <!-- 技术指标 -->
-        <view class="section">
-          <text class="section-title">技术指标</text>
-          <view class="specs-grid">
-            <view class="spec-card">
-              <text class="spec-label">计算量</text>
-              <text class="spec-value">{{ algorithm.flops || "-" }}</text>
-            </view>
-            <view class="spec-card">
-              <text class="spec-label">模型大小</text>
-              <text class="spec-value">{{ algorithm.size || "-" }}</text>
-            </view>
-            <view class="spec-card">
-              <text class="spec-label">路径</text>
-              <text class="spec-value small">{{ algorithm.path || "-" }}</text>
-            </view>
-            <view class="spec-card">
-              <text class="spec-label">创建时间</text>
-              <text class="spec-value small">{{
-                formatRelativeTime(algorithm.createTime || "")
-              }}</text>
-            </view>
-          </view>
-        </view>
-
-        <!-- 参数说明 -->
-        <view v-if="algorithm.params" class="section">
-          <text class="section-title">参数说明</text>
-          <view class="params-card">
-            <text class="params-text">{{ algorithm.params }}</text>
-          </view>
+      <!-- 搜索框 -->
+      <view class="search-bar">
+        <SvgIcon name="search" size="18" color="#9ca3af" />
+        <input
+          v-model="searchKeyword"
+          class="search-input"
+          type="text"
+          placeholder="搜索算法名称、类型或描述"
+          placeholder-class="search-placeholder"
+        />
+        <view
+          v-if="searchKeyword"
+          class="search-clear"
+          @click="searchKeyword = ''"
+        >
+          <SvgIcon name="close-circle-fill" size="16" color="#9ca3af" />
         </view>
       </view>
 
-      <view v-else-if="loading" class="loading-state">
+      <!-- 状态筛选 -->
+      <view class="filter-bar">
+        <view
+          class="filter-item"
+          :class="{ active: statusFilter === '' }"
+          @click="statusFilter = ''"
+        >
+          全部
+        </view>
+        <view
+          class="filter-item"
+          :class="{ active: statusFilter === 4 }"
+          @click="statusFilter = 4"
+        >
+          已发布
+        </view>
+        <view v-if="recommendLoading" class="filter-item">
+          <text class="filter-loading-text">推荐加载中...</text>
+        </view>
+      </view>
+
+      <!-- 加载状态 -->
+      <view v-if="loading" class="loading-state">
         <up-loading-icon mode="circle" size="40" color="#6366f1" />
-        <text class="loading-text">加载算法信息...</text>
+        <text class="loading-text">加载算法列表...</text>
       </view>
 
-      <view v-else class="empty-state">
-        <up-empty mode="search" text="暂无算法信息" />
-        <text class="empty-hint">请先选择算法</text>
+      <!-- 错误状态 -->
+      <view v-else-if="error" class="error-state">
+        <text class="error-text">{{ error }}</text>
+        <button class="retry-btn" @click="fetchAlgorithms">重新加载</button>
+      </view>
+
+      <!-- 算法列表 -->
+      <view v-else class="algorithm-section">
+        <text class="section-label">
+          可用算法 ({{ filteredList.length
+          }}{{ searchKeyword ? "/" + algorithmList.length : "" }})
+        </text>
+
+        <view v-if="filteredList.length === 0" class="empty-state">
+          <up-empty
+            :mode="searchKeyword ? 'search' : 'data'"
+            text="暂无算法数据"
+          />
+        </view>
+
+        <view v-else class="algorithm-list">
+          <view
+            v-for="algorithm in filteredList"
+            :key="algorithm.id"
+            class="algorithm-card"
+            @click="handleDetail(algorithm)"
+          >
+            <view class="card-header">
+              <view class="card-name-row">
+                <text class="card-name">{{ algorithm.name }}</text>
+                <text class="card-type">{{ algorithm.type || "未知" }}</text>
+              </view>
+              <view class="card-tags">
+                <view
+                  v-if="recommendedIds.has(algorithm.id)"
+                  class="tag-recommend"
+                >
+                  推荐
+                </view>
+                <view
+                  class="tag-status"
+                  :class="'status-' + (algorithm.status ?? 0)"
+                >
+                  {{ statusLabel(algorithm.status) }}
+                </view>
+              </view>
+            </view>
+
+            <text v-if="algorithm.description" class="card-desc">
+              {{ algorithm.description }}
+            </text>
+
+            <view class="card-meta">
+              <text v-if="algorithm.version" class="meta-item">
+                v{{ algorithm.version }}
+              </text>
+              <text v-if="algorithm.flops" class="meta-item">
+                {{ algorithm.flops }}
+              </text>
+              <text v-if="algorithm.size" class="meta-item">
+                {{ algorithm.size }}
+              </text>
+            </view>
+
+            <view class="card-actions" @click.stop>
+              <button class="use-btn" @click="handleUseAlgorithm(algorithm)">
+                使用该算法
+              </button>
+            </view>
+          </view>
+        </view>
       </view>
     </view>
+
+    <!-- 算法详情弹层 -->
+    <up-popup
+      :show="detailVisible"
+      mode="bottom"
+      :round="24"
+      :close-on-click-overlay="true"
+      @close="handleCloseDetail"
+    >
+      <view class="detail-popup">
+        <view class="detail-header">
+          <text class="detail-title">{{ detailAlgo?.name || "算法详情" }}</text>
+          <view class="detail-close" @click="handleCloseDetail">
+            <SvgIcon name="close" size="20" color="#6b7280" />
+          </view>
+        </view>
+
+        <scroll-view v-if="detailAlgo" class="detail-scroll" scroll-y>
+          <!-- 基本信息 -->
+          <view class="detail-section">
+            <text class="detail-section-title">基本信息</text>
+            <view class="detail-info-card">
+              <view class="detail-row">
+                <text class="detail-label">名称</text>
+                <text class="detail-value">{{ detailAlgo.name }}</text>
+              </view>
+              <view class="detail-row">
+                <text class="detail-label">类型</text>
+                <text class="detail-value detail-type-tag">
+                  {{ detailAlgo.type || "未知" }}
+                </text>
+              </view>
+              <view class="detail-row">
+                <text class="detail-label">版本</text>
+                <text class="detail-value">
+                  v{{ detailAlgo.version || "-" }}
+                </text>
+              </view>
+              <view class="detail-row">
+                <text class="detail-label">状态</text>
+                <text class="detail-value">
+                  {{ statusLabel(detailAlgo.status) }}
+                </text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 描述 -->
+          <view v-if="detailAlgo.description" class="detail-section">
+            <text class="detail-section-title">算法描述</text>
+            <view class="detail-desc-card">
+              <text class="detail-desc-text">{{ detailAlgo.description }}</text>
+            </view>
+          </view>
+
+          <!-- 技术指标 -->
+          <view class="detail-section">
+            <text class="detail-section-title">技术指标</text>
+            <view class="detail-specs-grid">
+              <view class="detail-spec-card">
+                <text class="detail-spec-label">计算量</text>
+                <text class="detail-spec-value">
+                  {{ detailAlgo.flops || "-" }}
+                </text>
+              </view>
+              <view class="detail-spec-card">
+                <text class="detail-spec-label">模型大小</text>
+                <text class="detail-spec-value">
+                  {{ detailAlgo.size || "-" }}
+                </text>
+              </view>
+              <view class="detail-spec-card">
+                <text class="detail-spec-label">路径</text>
+                <text class="detail-spec-value detail-spec-small">
+                  {{ detailAlgo.path || "-" }}
+                </text>
+              </view>
+              <view class="detail-spec-card">
+                <text class="detail-spec-label">创建时间</text>
+                <text class="detail-spec-value detail-spec-small">
+                  {{ formatRelativeTime(detailAlgo.createTime || "") }}
+                </text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 参数说明 -->
+          <view v-if="detailAlgo.params" class="detail-section">
+            <text class="detail-section-title">参数说明</text>
+            <view class="detail-params-card">
+              <text class="detail-params-text">{{ detailAlgo.params }}</text>
+            </view>
+          </view>
+        </scroll-view>
+
+        <view class="detail-bottom-bar">
+          <button
+            class="detail-use-btn"
+            @click="detailAlgo && handleUseAlgorithm(detailAlgo)"
+          >
+            使用该算法
+          </button>
+        </view>
+      </view>
+    </up-popup>
   </PageLayout>
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
-import { useProcessingStore } from "@/store/processing";
-import { AlgorithmAPI } from "dehaze-sdk-js";
+import SvgIcon from "@/components/SvgIcon/index.vue";
+import { AlgorithmAPI, RecommendationAPI } from "dehaze-sdk-js";
 import type { Algorithm } from "dehaze-sdk-js";
 import { formatRelativeTime } from "@/utils/format";
+import { getErrorMessage } from "@/utils/error";
 
-const store = useProcessingStore();
+// ==================== 状态 ====================
+
+const algorithmList = ref<Algorithm[]>([]);
 const loading = ref(false);
-const algorithm = ref<Algorithm | null>(null);
+const error = ref("");
+const searchKeyword = ref("");
+const statusFilter = ref<number | "">(4);
 
-async function loadDetail() {
-  if (!store.selectedAlgorithm?.id) return;
+// 智能推荐
+const recommendLoading = ref(false);
+const recommendedIds = ref<Set<number>>(new Set());
+
+// 详情弹层
+const detailAlgo = ref<Algorithm | null>(null);
+const detailVisible = ref(false);
+
+// ==================== 计算属性 ====================
+
+/** 过滤算法列表：仅叶子节点，按搜索关键词和状态筛选 */
+const filteredList = computed<Algorithm[]>(() => {
+  let list = algorithmList.value;
+
+  if (statusFilter.value !== "") {
+    list = list.filter((a) => a.status === statusFilter.value);
+  }
+
+  const kw = searchKeyword.value.trim().toLowerCase();
+  if (!kw) return list;
+  return list.filter(
+    (a) =>
+      a.name.toLowerCase().includes(kw) ||
+      (a.type || "").toLowerCase().includes(kw) ||
+      (a.description || "").toLowerCase().includes(kw)
+  );
+});
+
+// ==================== 方法 ====================
+
+const STATUS_MAP: Record<number, string> = {
+  0: "待审核",
+  1: "已通过",
+  2: "已驳回",
+  3: "已下架",
+  4: "已发布",
+  5: "已归档",
+};
+
+function statusLabel(status?: number): string {
+  if (status == null) return "未知";
+  return STATUS_MAP[status] || `状态${status}`;
+}
+
+/** 加载算法列表 */
+async function fetchAlgorithms() {
+  if (loading.value) return;
   loading.value = true;
+  error.value = "";
   try {
-    const detail = await AlgorithmAPI.getAlgorithmInfoById(
-      store.selectedAlgorithm.id
-    );
-    algorithm.value = detail;
-  } catch {
-    algorithm.value = store.selectedAlgorithm;
+    const data = await AlgorithmAPI.getList();
+    algorithmList.value = data || [];
+  } catch (e) {
+    error.value = getErrorMessage(e, "加载失败，请重试");
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(() => {
-  if (store.selectedAlgorithm) {
-    algorithm.value = store.selectedAlgorithm;
-    loadDetail();
+/** 加载智能推荐（无图像上下文时获取默认推荐） */
+async function fetchRecommendations() {
+  recommendLoading.value = true;
+  try {
+    const recs = await RecommendationAPI.getAlgorithmRecommendations({});
+    const ids = new Set<number>();
+    (recs || []).forEach((r) => ids.add(r.algorithmId));
+    recommendedIds.value = ids;
+  } catch {
+    // 推荐失败不影响主列表
+  } finally {
+    recommendLoading.value = false;
   }
+}
+
+/** 查看算法详情 */
+async function handleDetail(algo: Algorithm) {
+  detailAlgo.value = algo;
+  detailVisible.value = true;
+  try {
+    const detail = await AlgorithmAPI.getAlgorithmInfoById(algo.id);
+    detailAlgo.value = detail;
+  } catch {
+    // 使用列表数据
+  }
+}
+
+/** 关闭详情弹层 */
+function handleCloseDetail() {
+  detailVisible.value = false;
+  detailAlgo.value = null;
+}
+
+/** 使用该算法：带入去雾流程 */
+function handleUseAlgorithm(algo: Algorithm) {
+  // 存储选中算法到本地
+  uni.setStorageSync("selected_algorithm", JSON.stringify(algo));
+  // 跳转到 algorithm-select 页面
+  uni.navigateTo({
+    url: `/pages/algorithm-select/index?algorithmId=${algo.id}`,
+    fail: () => {
+      uni.showToast({ title: "页面跳转失败", icon: "none" });
+    },
+  });
+}
+
+// ==================== 生命周期 ====================
+
+onMounted(() => {
+  fetchAlgorithms();
+  fetchRecommendations();
 });
 </script>
 
@@ -132,64 +372,357 @@ onMounted(() => {
 .page {
   width: 100%;
   min-height: 100vh;
-  background: #f9fafb;
-}
-.main-content {
-  padding: 24rpx;
-  padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
+  background: $color-bg-primary;
 }
 
-.section {
-  margin-bottom: 24rpx;
+.main-content {
+  padding: $spacing-md;
+  padding-bottom: calc(120rpx + $safe-area-bottom-env);
 }
-.section-title {
-  font-size: 28rpx;
+
+/* 搜索框 */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  background: $color-white;
+  border-radius: $radius-lg;
+  padding: 20rpx 24rpx;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-sm;
+}
+
+.search-input {
+  flex: 1;
+  font-size: $font-md;
+  color: $color-text-primary;
+}
+
+.search-placeholder {
+  color: $color-text-placeholder;
+  font-size: $font-md;
+}
+
+.search-clear {
+  padding: $spacing-sm 24rpx;
+  min-width: 88rpx;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 筛选 */
+.filter-bar {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.filter-item {
+  padding: 14rpx 28rpx;
+  background: $color-white;
+  border-radius: 32rpx;
+  font-size: $font-sm;
+  color: $color-text-secondary;
+  box-shadow: $shadow-sm;
+
+  &.active {
+    background: #e0e7ff;
+    color: $color-secondary;
+    font-weight: 600;
+  }
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.filter-loading-text {
+  color: $color-text-placeholder;
+}
+
+/* 加载/错误/空 */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+
+.loading-text {
+  margin-top: $spacing-md;
+  font-size: $font-md;
+  color: $color-text-placeholder;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 0;
+}
+
+.error-text {
+  font-size: $font-md;
+  color: $color-danger;
+  margin-bottom: $spacing-md;
+}
+
+.retry-btn {
+  padding: $spacing-sm 48rpx;
+  background: $color-secondary;
+  color: $color-white;
+  border: none;
+  border-radius: $radius-lg;
+  font-size: $font-md;
+}
+
+.empty-state {
+  padding: 80rpx 0;
+}
+
+/* 算法列表 */
+.algorithm-section {
+  margin-bottom: $spacing-md;
+}
+
+.section-label {
+  font-size: $font-md;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.algorithm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.algorithm-card {
+  background: $color-white;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  box-shadow: $shadow-md;
+  border: 2rpx solid transparent;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.card-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.card-name {
+  font-size: $font-lg;
+  font-weight: 700;
+  color: $color-text-primary;
+}
+
+.card-type {
+  font-size: $font-xs;
+  color: $color-secondary;
+  background: #e0e7ff;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  flex-shrink: 0;
+}
+
+.card-tags {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.tag-recommend {
+  font-size: $font-xs;
+  color: #d97706;
+  background: #fef3c7;
+  padding: 2rpx 10rpx;
+  border-radius: $radius-sm;
+  font-weight: 600;
+}
+
+.tag-status {
+  font-size: $font-xs;
+  padding: 2rpx 10rpx;
+  border-radius: $radius-sm;
+
+  &.status-4 {
+    color: $color-success;
+    background: $color-success-bg;
+  }
+
+  &.status-0 {
+    color: $color-warning;
+    background: $color-warning-bg;
+  }
+
+  &.status-3 {
+    color: $color-info;
+    background: $color-bg-secondary;
+  }
+}
+
+.card-desc {
+  display: block;
+  font-size: $font-sm;
+  color: $color-text-secondary;
+  line-height: 1.5;
+  margin-bottom: 12rpx;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-meta {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.meta-item {
+  font-size: $font-xs;
+  color: $color-text-placeholder;
+  background: $color-bg-secondary;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.use-btn {
+  padding: 14rpx 32rpx;
+  background: $gradient-primary;
+  color: $color-white;
+  border: none;
+  border-radius: $radius-lg;
+  font-size: $font-sm;
+  font-weight: 600;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+/* ==================== 详情弹层 ==================== */
+
+.detail-popup {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: $radius-xl $radius-xl 0 0;
+  overflow: hidden;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg;
+  border-bottom: 1rpx solid $color-border-light;
+  flex-shrink: 0;
+}
+
+.detail-title {
+  font-size: $font-xl;
+  font-weight: 700;
+  color: $color-text-primary;
+}
+
+.detail-close {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: $color-bg-secondary;
+}
+
+.detail-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-md;
+}
+
+.detail-section {
+  margin-bottom: $spacing-md;
+}
+
+.detail-section-title {
+  font-size: $font-md;
   font-weight: 600;
   color: #374151;
   margin-bottom: 12rpx;
   display: block;
 }
 
-.info-card,
-.desc-card,
-.params-card {
-  background: #fff;
-  border-radius: 20rpx;
+.detail-info-card,
+.detail-desc-card,
+.detail-params-card {
+  background: $color-bg-secondary;
+  border-radius: $radius-lg;
   padding: 28rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 }
-.info-row {
+
+.detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 14rpx 0;
+
   & + & {
-    border-top: 1rpx solid #f3f4f6;
+    border-top: 1rpx solid $color-border;
   }
 }
-.label {
-  font-size: 26rpx;
-  color: #6b7280;
-}
-.value {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: #1f2937;
-}
-.type-tag {
-  color: #6366f1;
-  background: #e0e7ff;
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  font-size: 22rpx;
+
+.detail-label {
+  font-size: $font-sm;
+  color: $color-text-secondary;
 }
 
-.desc-text {
-  font-size: 26rpx;
+.detail-value {
+  font-size: $font-sm;
+  font-weight: 500;
+  color: $color-text-primary;
+}
+
+.detail-type-tag {
+  color: $color-secondary;
+  background: #e0e7ff;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+
+.detail-desc-text {
+  font-size: $font-sm;
   color: #4b5563;
   line-height: 1.6;
 }
-.params-text {
+
+.detail-params-text {
   font-size: 24rpx;
   color: #4b5563;
   line-height: 1.6;
@@ -197,56 +730,57 @@ onMounted(() => {
   white-space: pre-wrap;
 }
 
-.specs-grid {
+.detail-specs-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16rpx;
+  gap: $spacing-sm;
 }
-.spec-card {
-  background: #fff;
-  border-radius: 16rpx;
+
+.detail-spec-card {
+  background: $color-bg-secondary;
+  border-radius: $radius-lg;
   padding: 24rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
   text-align: center;
 }
-.spec-label {
+
+.detail-spec-label {
   display: block;
-  font-size: 22rpx;
-  color: #9ca3af;
-  margin-bottom: 8rpx;
+  font-size: $font-xs;
+  color: $color-text-placeholder;
+  margin-bottom: $spacing-xs;
 }
-.spec-value {
+
+.detail-spec-value {
   display: block;
-  font-size: 28rpx;
+  font-size: $font-md;
   font-weight: 700;
-  color: #1f2937;
-  &.small {
-    font-size: 22rpx;
-    font-weight: 500;
+  color: $color-text-primary;
+}
+
+.detail-spec-small {
+  font-size: $font-xs;
+  font-weight: 500;
+}
+
+.detail-bottom-bar {
+  padding: $spacing-md $spacing-lg;
+  padding-bottom: calc($spacing-md + $safe-area-bottom-env);
+  border-top: 1rpx solid $color-border-light;
+  flex-shrink: 0;
+}
+
+.detail-use-btn {
+  width: 100%;
+  padding: 24rpx;
+  background: $gradient-primary;
+  color: $color-white;
+  border: none;
+  border-radius: $radius-lg;
+  font-size: $font-lg;
+  font-weight: 700;
+
+  &:active {
+    opacity: 0.85;
   }
-}
-
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 120rpx 0;
-}
-.loading-text {
-  margin-top: 24rpx;
-  font-size: 28rpx;
-  color: #9ca3af;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 120rpx 0;
-}
-.empty-hint {
-  font-size: 26rpx;
-  color: #9ca3af;
-  margin-top: 16rpx;
 }
 </style>

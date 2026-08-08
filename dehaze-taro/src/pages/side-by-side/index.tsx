@@ -3,7 +3,7 @@ import { View, Text, Image, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Button } from "@taroify/core";
 import { ModelAPI } from "dehaze-sdk-js";
-import CompareNavbar from "@/components/compare/CompareNavbar";
+import ImmersiveLayout from "@/layout/immersive";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
 import { loadCompareContext } from "@/components/compare/types";
@@ -86,11 +86,16 @@ const SideBySidePage: React.FC = () => {
   };
 
   return (
-    <View className="side-by-side-page">
-      {/* 顶部导航 */}
-      <CompareNavbar title="效果对比" />
-
-      {/* 对比内容 */}
+    <ImmersiveLayout
+      title="效果对比"
+      toolbar={
+        <CompareToolbar
+          currentMode="side-by-side"
+          resultUrl={result?.resultUrl}
+          resultId={result?.logId}
+        />
+      }
+    >
       <ScrollView className="compare-content" scrollY>
         {!hasResult ? (
           <EmptyState type="compare" />
@@ -156,13 +161,7 @@ const SideBySidePage: React.FC = () => {
           </>
         )}
       </ScrollView>
-
-      {/* 底部工具栏 */}
-      <CompareToolbar
-        currentMode="side-by-side"
-        resultUrl={result?.resultUrl}
-      />
-    </View>
+    </ImmersiveLayout>
   );
 };
 

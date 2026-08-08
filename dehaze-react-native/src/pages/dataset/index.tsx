@@ -1,11 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { MainLayout } from '@/layout';
+import { useNavigation } from '@react-navigation/native';
+import { AppHeader } from '@/layout';
 import DatasetListSection from './components/DatasetListSection';
 import DatasetDetailSection from './components/DatasetDetailSection';
 import type { DatasetTreeNode } from './types/dataset';
 
 const DatasetScreen: React.FC = () => {
+  const navigation = useNavigation();
   const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
   const [selectedDatasetId, setSelectedDatasetId] = useState<number | null>(null);
   const [searchValue, setSearchValue] = useState('');
@@ -26,7 +28,8 @@ const DatasetScreen: React.FC = () => {
   }, []);
 
   return (
-    <MainLayout title="数据集管理">
+    <View style={styles.container}>
+      <AppHeader title="数据集管理" showBack onBackPress={() => navigation.goBack()} />
       <View style={styles.content}>
         {currentView === 'list' ? (
           <DatasetListSection
@@ -41,11 +44,14 @@ const DatasetScreen: React.FC = () => {
           />
         ) : null}
       </View>
-    </MainLayout>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   content: {
     flex: 1,
   },

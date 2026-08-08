@@ -15,11 +15,11 @@
       <text class="card-desc">{{ dataset.description || "暂无描述" }}</text>
       <view class="card-stats">
         <view class="stat-item">
-          <u-icon name="photo" size="14" color="#14b8a6" />
+          <SvgIcon name="photo" size="14" color="#14b8a6" />
           <text class="stat-text">{{ imageCount }}</text>
         </view>
         <view class="stat-item">
-          <u-icon name="clock" size="14" color="#9ca3af" />
+          <SvgIcon name="clock" size="14" color="#9ca3af" />
           <text class="stat-text">{{ formattedDate }}</text>
         </view>
       </view>
@@ -29,6 +29,7 @@
 
 <script lang="ts" setup>
 import { ref, computed, onMounted } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import { DatasetItemAPI } from "dehaze-sdk-js";
 import type { Dataset } from "dehaze-sdk-js";
 import { formatRelativeTime } from "@/utils/format";

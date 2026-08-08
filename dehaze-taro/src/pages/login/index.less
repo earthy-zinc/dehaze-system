@@ -32,6 +32,24 @@
   }
 }
 
+// 左上角关闭按钮（L0 认证页：无导航栏，仅关闭/返回）
+.login-close-btn {
+  position: absolute;
+  top: 64rpx;
+  left: 32rpx;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #fff;
+  background: rgb(255 255 255 / 15%);
+  border-radius: 50%;
+}
+
 // 顶部 Logo 区
 .login-header {
   position: relative;
@@ -153,6 +171,38 @@
     &:disabled {
       background: #d1d5db;
       box-shadow: none;
+    }
+  }
+
+  .remember-row {
+    display: flex;
+    gap: 12rpx;
+    align-items: center;
+
+    .remember-checkbox {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36rpx;
+      height: 36rpx;
+      border: 2rpx solid #d1d5db;
+      border-radius: 8rpx;
+      transition: all 0.2s ease;
+
+      &.checked {
+        background: #3b82f6;
+        border-color: #3b82f6;
+      }
+
+      .remember-check {
+        font-size: 24rpx;
+        color: #fff;
+      }
+    }
+
+    .remember-text {
+      font-size: 26rpx;
+      color: #6b7280;
     }
   }
 

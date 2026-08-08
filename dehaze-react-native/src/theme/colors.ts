@@ -1,14 +1,26 @@
+export const gradientColors = {
+  primary: ['#3b82f6', '#6366f1'],
+  metric: ['#667eea', '#764ba2'],
+};
+
 export const colors = {
   primary: '#3b82f6',
   primaryLight: '#eff6ff',
-  primaryDark: '#1e40af',
+  primaryDark: '#1d4ed8',
   secondary: '#14b8a6',
   secondaryLight: '#f0fdfa',
+  gradient: gradientColors,
   status: {
-    success: '#34d399',
-    warning: '#fbbf24',
-    error: '#ef4444',
-    info: '#3b82f6',
+    success: '#4caf50',
+    warning: '#ff9800',
+    error: '#f44336',
+    info: '#2196f3',
+  },
+  badge: {
+    success: { bg: 'rgba(76,175,80,0.12)', text: '#2e7d32' },
+    warning: { bg: 'rgba(255,152,0,0.12)', text: '#ef6c00' },
+    error: { bg: 'rgba(244,67,54,0.12)', text: '#c62828' },
+    info: { bg: 'rgba(33,150,243,0.12)', text: '#1565c0' },
   },
   text: {
     primary: '#1f2937',

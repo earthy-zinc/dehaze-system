@@ -215,19 +215,11 @@
                 android:orientation="horizontal">
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_edit"
+                    android:id="@+id/btn_use"
                     style="@style/Widget.MaterialComponents.Button"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="编辑" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_toggle_status"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="状态流转" />
+                    android:text="使用该算法" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_favorite"
@@ -236,15 +228,6 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:text="收藏" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_delete"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="删除"
-                    android:textColor="#D32F2F" />
             </LinearLayout>
 
         </LinearLayout>

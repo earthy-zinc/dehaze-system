@@ -26,7 +26,7 @@ interface AuthStore extends AuthState {
   initAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
+export const useAuthStore = create<AuthStore>()((set) => ({
   user: null,
   sessionId: null,
   isAuthenticated: false,

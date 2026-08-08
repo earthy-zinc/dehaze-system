@@ -17,7 +17,7 @@
       />
 
       <view v-for="index in 2" :key="`arrow-${index}`" class="workflow-arrow">
-        <u-icon name="arrow-right" size="24" color="#d1d5db" />
+        <SvgIcon name="arrow-right" size="24" color="#d1d5db" />
       </view>
     </view>
   </view>
@@ -25,6 +25,7 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import SectionHeader from "@/components/common/SectionHeader.vue";
 import ProcessStep from "@/components/common/ProcessStep.vue";
 import { homeData } from "../data/homeData";

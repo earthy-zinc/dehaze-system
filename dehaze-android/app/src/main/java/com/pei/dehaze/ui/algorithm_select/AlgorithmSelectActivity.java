@@ -36,6 +36,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
 
     public static final String EXTRA_ALGORITHM_ID = "extra_algorithm_id";
     public static final String EXTRA_ALGORITHM_NAME = "extra_algorithm_name";
+    public static final String EXTRA_SEARCH_KEYWORD = "extra_search_keyword";
     private static final Integer[] TOP_N_VALUES = {1, 2, 3, 5, 10};
     private static final int TAB_SEARCH = 0;
     private static final int TAB_RECOMMEND = 1;
@@ -69,6 +70,28 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         setupObservers();
         loadFavorites();
         algorithmViewModel.loadAlgorithms();
+
+        // 处理外部传入的预选算法ID
+        long preselectedId = getIntent().getLongExtra(EXTRA_ALGORITHM_ID, 0L);
+        if (preselectedId > 0) {
+            String preselectedName = getIntent().getStringExtra(EXTRA_ALGORITHM_NAME);
+            if (preselectedName == null) preselectedName = "";
+            Intent data = new Intent();
+            data.putExtra(EXTRA_ALGORITHM_ID, preselectedId);
+            data.putExtra(EXTRA_ALGORITHM_NAME, preselectedName);
+            setResult(Activity.RESULT_OK, data);
+            ToastUtils.showShort(this, "已预选算法：" + preselectedName);
+            finish();
+            return;
+        }
+
+        // 处理外部传入的搜索关键词（从 ToolsFragment 全局搜索跳转过来）
+        String searchKeyword = getIntent().getStringExtra(EXTRA_SEARCH_KEYWORD);
+        if (!TextUtils.isEmpty(searchKeyword)) {
+            binding.etSearchKeywords.setText(searchKeyword);
+            algorithmViewModel.setKeywords(searchKeyword);
+            algorithmViewModel.loadAlgorithms();
+        }
     }
 
     private void initViews() {
@@ -120,13 +143,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         browseAdapter.setOnBrowseActionListener(new AlgorithmBrowseAdapter.OnBrowseActionListener() {
             @Override
             public void onUse(Algorithm algorithm) {
-                Intent data = new Intent();
-                data.putExtra(EXTRA_ALGORITHM_ID, algorithm.getId());
-                data.putExtra(EXTRA_ALGORITHM_NAME, algorithm.getName());
-                setResult(Activity.RESULT_OK, data);
-                ToastUtils.showShort(AlgorithmSelectActivity.this,
-                        "已选择算法：" + algorithm.getName());
-                finish();
+                returnSelectedAlgorithm(algorithm.getId(), algorithm.getName());
             }
 
             @Override
@@ -152,8 +169,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         recommendAdapter.setOnRecommendActionListener(new AlgorithmRecommendAdapter.OnRecommendActionListener() {
             @Override
             public void onUse(RecommendedAlgorithmVO vo) {
-                ToastUtils.showShort(AlgorithmSelectActivity.this,
-                        "已选择算法：" + vo.getAlgorithmName());
+                returnSelectedAlgorithm(vo.getAlgorithmId(), vo.getAlgorithmName());
             }
 
             @Override
@@ -175,11 +191,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         favoriteAdapter.setOnFavoriteActionListener(new AlgorithmFavoriteAdapter.OnFavoriteActionListener() {
             @Override
             public void onUse(FavoriteVO vo) {
-                Intent data = new Intent();
-                data.putExtra(EXTRA_ALGORITHM_ID, vo.getTargetId());
-                data.putExtra(EXTRA_ALGORITHM_NAME, vo.getTargetName());
-                setResult(Activity.RESULT_OK, data);
-                finish();
+                returnSelectedAlgorithm(vo.getTargetId(), vo.getTargetName());
             }
 
             @Override
@@ -195,6 +207,18 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         binding.rvCompare.setAdapter(compareAdapter);
 
         binding.btnCompare.setOnClickListener(v -> doCompare());
+    }
+
+    /**
+     * 选中算法后返回结果给调用方
+     */
+    private void returnSelectedAlgorithm(long id, String name) {
+        Intent data = new Intent();
+        data.putExtra(EXTRA_ALGORITHM_ID, id);
+        data.putExtra(EXTRA_ALGORITHM_NAME, name != null ? name : "");
+        setResult(Activity.RESULT_OK, data);
+        ToastUtils.showShort(AlgorithmSelectActivity.this, "已选择算法：" + name);
+        finish();
     }
 
     private void doSearch() {

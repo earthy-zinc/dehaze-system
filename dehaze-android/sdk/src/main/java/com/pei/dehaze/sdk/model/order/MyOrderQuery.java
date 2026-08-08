@@ -1,0 +1,11 @@
+package com.pei.dehaze.sdk.model.order;
+
+import com.pei.dehaze.sdk.model.PageQuery;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class MyOrderQuery extends PageQuery {
+    private String status;
+}

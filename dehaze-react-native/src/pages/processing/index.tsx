@@ -22,8 +22,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/routes/types';
-import { MainLayout } from '@/layout';
+import type { DehazeStackParamList } from '@/routes/types';
+import { AppHeader } from '@/layout';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
@@ -44,7 +44,7 @@ import ProcessingProgress from './components/ProcessingProgress';
 import ParamsPanel from './components/ParamsPanel';
 import ResultPreview from './components/ResultPreview';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Processing'>;
+type Props = NativeStackScreenProps<DehazeStackParamList, 'Processing'>;
 
 type Phase = 'config' | 'processing' | 'done' | 'failed';
 
@@ -195,7 +195,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleEnterCompare = useCallback(() => {
     if (!image?.url || !result?.resultUrl) return;
     // 默认进入并排对比（携带 algorithmId 与 GT 参考图 cleanUrl，供指标评估使用）
-    navigation.navigate('SideBySide', {
+    navigation.navigate('CompareSideBySide', {
       originalUrl: image.url,
       processedUrl: result.resultUrl,
       cleanUrl: image.cleanUrl,
@@ -205,22 +205,23 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
 
   /** 返回图像输入页 */
   const handleBackToImageInput = useCallback(() => {
-    navigation.navigate('ImageInput');
+    navigation.navigate('ImageInput' as any);
   }, [navigation]);
 
   /** 返回算法选择页 */
   const handleBackToAlgorithmSelect = useCallback(() => {
     if (image) {
-      navigation.navigate('AlgorithmSelect', { image });
+      navigation.navigate('AlgorithmSelect' as any, { image });
     } else {
-      navigation.navigate('AlgorithmSelect');
+      navigation.navigate('AlgorithmSelect' as any);
     }
   }, [navigation, image]);
 
   // 缺少图片或算法参数
   if (!image?.url || !algorithmId) {
     return (
-      <MainLayout title="图像处理" showBack>
+      <View style={styles.screenContainer}>
+        <AppHeader title="图像处理" showBack onBackPress={() => navigation.goBack()} />
         <View style={styles.emptyContainer}>
           <Icon name="image" size={48} color={theme.colors.text.tertiary} />
           <Text style={styles.emptyTitle}>缺少必要的图片或算法信息</Text>
@@ -232,12 +233,13 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.emptyButtonText}>去选择图片</Text>
           </TouchableOpacity>
         </View>
-      </MainLayout>
+      </View>
     );
   }
 
   return (
-    <MainLayout title="图像处理" showBack>
+    <View style={styles.screenContainer}>
+      <AppHeader title="图像处理" showBack onBackPress={() => navigation.goBack()} />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -400,11 +402,15 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
           />
         )}
       </ScrollView>
-    </MainLayout>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background.secondary,
+  },
   scrollView: {
     flex: 1,
   },

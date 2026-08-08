@@ -5,7 +5,7 @@ targets:
         options:
           explicit_to_json: true
           include_if_null: false
-          field_rename: snake
+          field_rename: none
           checked: true
           create_factory: true
           create_to_json: true

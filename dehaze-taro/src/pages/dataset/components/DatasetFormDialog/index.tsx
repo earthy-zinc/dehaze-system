@@ -101,7 +101,7 @@ const DatasetFormDialog: React.FC<DatasetFormDialogProps> = ({
     <Popup
       open={visible}
       placement="bottom"
-      style={{ height: "70%", borderRadius: "16px 16px 0 0" }}
+      style={{ height: "70%", borderRadius: "32rpx 32rpx 0 0" }}
       onClose={onClose}
     >
       <View className="dataset-form-dialog">
@@ -213,7 +213,7 @@ const DatasetFormDialog: React.FC<DatasetFormDialogProps> = ({
       <Popup
         open={showParentSelect}
         placement="bottom"
-        style={{ height: "50%", borderRadius: "16px 16px 0 0" }}
+        style={{ height: "50%", borderRadius: "32rpx 32rpx 0 0" }}
         onClose={() => setShowParentSelect(false)}
       >
         <View className="parent-select">

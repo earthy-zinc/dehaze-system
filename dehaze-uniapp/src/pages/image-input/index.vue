@@ -65,7 +65,7 @@
       <!-- 使用提示 -->
       <view v-if="!currentImage" class="tips-card">
         <view class="tips-header">
-          <u-icon name="info-circle" size="18" color="#3b82f6" />
+          <SvgIcon name="info-circle" size="18" color="#3b82f6" />
           <text class="tips-title">使用提示</text>
         </view>
         <view class="tips-list">
@@ -81,6 +81,7 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore } from "@/store/processing";

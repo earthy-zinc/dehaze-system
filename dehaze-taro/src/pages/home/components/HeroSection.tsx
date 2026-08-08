@@ -7,7 +7,7 @@ import "./HeroSection.less";
 
 const HeroSection: React.FC = () => {
   const handleStartClick = () => {
-    Taro.navigateTo({ url: "/pages/image-input/index" });
+    Taro.switchTab({ url: "/pages/dehaze/index" });
   };
 
   const handleDatasetClick = () => {
@@ -25,7 +25,7 @@ const HeroSection: React.FC = () => {
         </View>
         <View className="hero-cta">
           <Button className="cta-primary" onClick={handleStartClick}>
-            立即开始
+            开始去雾
             <Arrow className="cta-icon" size="14" color="#ffffff" />
           </Button>
           <Button className="cta-secondary" onClick={handleDatasetClick}>

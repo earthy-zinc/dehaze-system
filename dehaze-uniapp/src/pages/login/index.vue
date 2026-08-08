@@ -23,7 +23,7 @@
     <view class="option-row">
       <view class="remember-me" @click="rememberMe = !rememberMe">
         <view class="remember-checkbox" :class="{ checked: rememberMe }">
-          <u-icon
+          <SvgIcon
             v-if="rememberMe"
             name="checkmark"
             size="14"
@@ -55,6 +55,7 @@
 
 <script lang="ts" setup>
 import { reactive, ref, onMounted } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import AuthShell from "@/components/auth/AuthShell.vue";
 import AuthInput from "@/components/auth/AuthInput.vue";
 import AuthCaptcha from "@/components/auth/AuthCaptcha.vue";

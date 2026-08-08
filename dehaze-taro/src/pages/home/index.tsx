@@ -14,7 +14,7 @@ import "./index.less";
 
 const HomePage: React.FC = () => {
   return (
-    <PageLayout level="L1" title="首页">
+    <PageLayout level="L1" title="首页" isHome>
       <View className="home-page">
         <HeroSection />
         <ShowcaseSection />

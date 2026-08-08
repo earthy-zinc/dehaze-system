@@ -46,7 +46,7 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
       {/* 图片网格 */}
       {loading ? (
         <View className="loading-container">
-          <Loading size="32px" />
+          <Loading size={64} />
           <Text className="loading-text">加载中...</Text>
         </View>
       ) : samples.length === 0 ? (

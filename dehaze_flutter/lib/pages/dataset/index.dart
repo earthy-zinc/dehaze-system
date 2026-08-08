@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_result.dart';
+import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format_utils.dart';
 import '../../utils/responsive_utils.dart';
@@ -14,10 +15,10 @@ import 'widgets/dataset_info_card.dart';
 import 'widgets/image_grid.dart';
 import 'widgets/type_filter_tabs.dart';
 
-/// 数据集管理页面
+/// 数据集浏览页面（L2，ToolsStack 内）
 ///
-/// 与设计稿 dataset.js 功能对应
-/// 支持：数据集列表、数据集详情、图片浏览、类型筛选、搜索
+/// 浏览公开/共享数据集，支持列表、详情、图片网格浏览、类型筛选、搜索。
+/// 管理操作（CRUD）归 dev-admin 负责。
 class DatasetPage extends ConsumerStatefulWidget {
   const DatasetPage({super.key, this.initialDatasetId});
 
@@ -51,9 +52,38 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
     setState(() => _loadingDetail = true);
     try {
       final service = ref.read(datasetServiceProvider);
-      final dataset = await service.getDatasetDetail(datasetId);
+      final globalDataset = await service.getDatasetInfoById(datasetId);
       if (!mounted) return;
-      _showDatasetDetail(dataset);
+      final localModel = DatasetModel(
+        id: globalDataset.id,
+        parentId: globalDataset.parentId,
+        name: globalDataset.name,
+        type: globalDataset.type,
+        path: globalDataset.path,
+        description: globalDataset.description,
+        createTime: globalDataset.createTime ?? '',
+        updateTime: globalDataset.updateTime,
+        children: globalDataset.children
+                ?.map((d) => DatasetModel(
+                      id: d.id,
+                      parentId: d.parentId,
+                      name: d.name,
+                      type: d.type,
+                      path: d.path,
+                      description: d.description,
+                      createTime: d.createTime ?? '',
+                      updateTime: d.updateTime,
+                      hasChildren: d.hasChildren ?? false,
+                      total: d.total,
+                      status: d.status,
+                    ))
+                .toList() ??
+            const [],
+        hasChildren: globalDataset.hasChildren ?? false,
+        total: globalDataset.total,
+        status: globalDataset.status,
+      );
+      _showDatasetDetail(localModel);
     } catch (e) {
       if (!mounted) return;
       showError(context, '加载数据集失败: ${extractErrorMessage(e)}');
@@ -132,7 +162,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  selectedDataset != null ? '数据集详情' : '数据集管理',
+                  selectedDataset != null ? '数据集详情' : '数据集',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -146,7 +176,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
             Text(
               selectedDataset != null
                   ? '浏览 ${selectedDataset.name} 中的图片'
-                  : '浏览和管理图像去雾数据集',
+                  : '浏览公开和共享的图像去雾数据集',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

@@ -1,12 +1,40 @@
 <resources>
     <string name="app_name">图像去雾系统</string>
-    <!-- Strings used for fragments for navigation -->
     <string name="first_fragment_label">First Fragment</string>
     <string name="second_fragment_label">Second Fragment</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
+    <string name="lorem_ipsum">欢迎使用图像去雾系统</string>
 
-    <string name="lorem_ipsum">
-        欢迎使用图像去雾系统
-    </string>
+    <!-- 入口名称 -->
+    <string name="entry_files">我的文件</string>
+    <string name="entry_dataset">我的数据集</string>
+    <string name="entry_history">处理历史</string>
+    <string name="entry_favorites">我的收藏</string>
+    <string name="entry_member">我的会员</string>
+    <string name="entry_package">我的套餐</string>
+    <string name="entry_orders">我的订单</string>
+    <string name="entry_quota">我的额度</string>
+    <string name="entry_feedback">反馈评价</string>
+    <string name="entry_settings">系统设置</string>
+    <string name="entry_help">帮助中心</string>
+    <string name="entry_about">关于我们</string>
+    <string name="entry_notify">消息设置</string>
+
+    <!-- 管理入口 -->
+    <string name="entry_dashboard">工作台</string>
+    <string name="entry_admin_algorithm">算法管理</string>
+    <string name="entry_admin_dataset">数据集管理</string>
+    <string name="entry_admin_user">用户管理</string>
+    <string name="entry_admin_role">角色管理</string>
+    <string name="entry_admin_menu">菜单管理</string>
+    <string name="entry_admin_dept">部门管理</string>
+    <string name="entry_admin_dict">字典管理</string>
+    <string name="entry_admin_task">任务管理</string>
+    <string name="entry_admin_member">会员管理</string>
+    <string name="entry_admin_package">套餐管理</string>
+    <string name="entry_admin_order">订单管理</string>
+    <string name="entry_admin_feedback">反馈评价管理</string>
+    <string name="entry_admin_recommend">推荐管理</string>
+    <string name="entry_admin_notify">消息管理</string>
 </resources>

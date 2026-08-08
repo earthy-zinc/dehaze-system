@@ -1,6 +1,7 @@
 package com.pei.dehaze.ui.algorithm;
 
-import androidx.appcompat.app.AlertDialog;
+import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -9,16 +10,16 @@ import androidx.lifecycle.ViewModelProvider;
 import com.pei.dehaze.databinding.ActivityAlgorithmDetailBinding;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
+import com.pei.dehaze.ui.algorithm.viewmodel.AlgorithmBrowseViewModel;
 import com.pei.dehaze.ui.algorithm.viewmodel.AlgorithmViewModel;
+import com.pei.dehaze.ui.algorithm_select.AlgorithmSelectActivity;
 import com.pei.dehaze.ui.algorithm_select.viewmodel.AlgorithmSelectViewModel;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 
-import android.content.res.ColorStateList;
-
-import java.util.Collections;
-import java.util.List;
-
+/**
+ * 算法详情（浏览版）— 查看详情 + 收藏 + 使用该算法
+ */
 public class AlgorithmDetailActivity extends AppCompatActivity {
 
     private AlgorithmViewModel algorithmViewModel;
@@ -52,27 +53,18 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
         setSupportActionBar(binding.toolbar);
         binding.toolbar.setNavigationOnClickListener(v -> finish());
 
-        binding.btnEdit.setOnClickListener(v -> {
+        binding.btnUse.setOnClickListener(v -> {
             if (currentAlgorithm != null) {
-                showAlgorithmFormDialog(currentAlgorithm);
-            }
-        });
-
-        binding.btnToggleStatus.setOnClickListener(v -> {
-            if (currentAlgorithm != null) {
-                showStatusTransitionDialog(currentAlgorithm);
+                Intent intent = new Intent(this, AlgorithmSelectActivity.class);
+                intent.putExtra(AlgorithmSelectActivity.EXTRA_ALGORITHM_ID, currentAlgorithm.getId());
+                intent.putExtra(AlgorithmSelectActivity.EXTRA_ALGORITHM_NAME, currentAlgorithm.getName());
+                startActivity(intent);
             }
         });
 
         binding.btnFavorite.setOnClickListener(v -> {
             if (currentAlgorithm != null) {
                 selectViewModel.addFavorite(currentAlgorithm.getId());
-            }
-        });
-
-        binding.btnDelete.setOnClickListener(v -> {
-            if (currentAlgorithm != null) {
-                showDeleteConfirmDialog(currentAlgorithm);
             }
         });
     }
@@ -97,13 +89,10 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
             }
         });
 
-        algorithmViewModel.getOperationResult().observe(this, result -> {
+        selectViewModel.getOperationResult().observe(this, result -> {
             if (result != null && !result.isEmpty()) {
                 ToastUtils.showShort(this, result);
-                algorithmViewModel.clearOperationResult();
-                if (algorithmId > 0) {
-                    algorithmViewModel.loadAlgorithmDetail(algorithmId);
-                }
+                selectViewModel.clearOperationResult();
             }
         });
 
@@ -111,13 +100,6 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
             if (errorMessage != null && !errorMessage.isEmpty()) {
                 ToastUtils.showShort(this, errorMessage);
                 selectViewModel.clearError();
-            }
-        });
-
-        selectViewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                selectViewModel.clearOperationResult();
             }
         });
     }
@@ -138,52 +120,6 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
         binding.chipStatus.setTextColor(0xFFFFFFFF);
     }
 
-    private void showStatusTransitionDialog(Algorithm algorithm) {
-        AlgorithmStatus currentStatus = algorithm.getStatus() != null ? algorithm.getStatus() : AlgorithmStatus.DRAFT;
-        List<AlgorithmStatus> nextStatuses = currentStatus.nextStatuses();
-        if (nextStatuses.isEmpty()) {
-            ToastUtils.showShort(this, "当前状态「" + currentStatus.getLabel() + "」不可流转");
-            return;
-        }
-        String[] items = new String[nextStatuses.size()];
-        for (int i = 0; i < nextStatuses.size(); i++) {
-            items[i] = nextStatuses.get(i).getLabel();
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("状态流转 - " + StringUtils.safe(algorithm.getName()))
-                .setItems(items, (dialog, which) -> {
-                    AlgorithmStatus newStatus = nextStatuses.get(which);
-                    algorithmViewModel.updateAlgorithmStatus(algorithm.getId(), newStatus);
-                })
-                .show();
-    }
-
-    private void showDeleteConfirmDialog(Algorithm algorithm) {
-        new AlertDialog.Builder(this)
-                .setTitle("删除确认")
-                .setMessage("确认删除算法「" + StringUtils.safe(algorithm.getName()) + "」吗？删除后不可恢复。")
-                .setPositiveButton("确定", (dialog, which) -> {
-                    algorithmViewModel.deleteAlgorithms(Collections.singletonList(algorithm.getId()));
-                    finish();
-                })
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    private void showAlgorithmFormDialog(Algorithm existing) {
-        AlgorithmFormDialogHelper.show(this, existing, new AlgorithmFormDialogHelper.OnSubmitListener() {
-            @Override
-            public void onCreate(Algorithm data) {
-                // 详情页只支持编辑
-            }
-
-            @Override
-            public void onUpdate(Algorithm data, long existingId) {
-                algorithmViewModel.updateAlgorithm(existingId, data);
-            }
-        });
-    }
-
     private int statusColor(AlgorithmStatus status) {
         if (status == null) return 0xFF9E9E9E;
         switch (status) {
@@ -196,5 +132,4 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
             default: return 0xFF9E9E9E;
         }
     }
-
 }

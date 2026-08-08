@@ -11,7 +11,7 @@ import lombok.EqualsAndHashCode;
 @Data
 public class ImageItemQuery extends PageQuery {
     private Long datasetId;
-    private String keywords;
+    private String keyword;
     private String sceneType;
     private String hazeLevel;
 }

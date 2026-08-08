@@ -28,6 +28,16 @@
       ref="captchaRef"
     />
 
+    <!-- 协议勾选 -->
+    <view class="agreement-row" @click="agreed = !agreed">
+      <view class="agreement-checkbox" :class="{ checked: agreed }">
+        <SvgIcon v-if="agreed" name="checkmark" size="14" color="#ffffff" />
+      </view>
+      <text class="agreement-text">
+        我已阅读并同意《用户协议》和《隐私政策》
+      </text>
+    </view>
+
     <button
       :disabled="loading"
       class="submit-button"
@@ -48,6 +58,7 @@
 
 <script lang="ts" setup>
 import { reactive, ref, onMounted } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import AuthShell from "@/components/auth/AuthShell.vue";
 import AuthInput from "@/components/auth/AuthInput.vue";
 import AuthCaptcha from "@/components/auth/AuthCaptcha.vue";
@@ -56,6 +67,7 @@ import { HOME_PATH, LOGIN_PATH } from "@/routers/guard";
 import { getErrorMessage } from "@/utils/error";
 
 const loading = ref(false);
+const agreed = ref(false);
 const captchaError = ref("");
 const authStore = useAuthStore();
 const captchaRef = ref<InstanceType<typeof AuthCaptcha>>();
@@ -98,6 +110,10 @@ const validateForm = (): boolean => {
   }
   if (!form.captchaCode.trim()) {
     captchaError.value = "请输入验证码";
+    return false;
+  }
+  if (!agreed.value) {
+    uni.showToast({ title: "请先阅读并同意用户协议和隐私政策", icon: "none" });
     return false;
   }
 
@@ -210,6 +226,37 @@ onMounted(async () => {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+.agreement-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+
+  .agreement-checkbox {
+    width: 36rpx;
+    height: 36rpx;
+    border-radius: 8rpx;
+    border: 2rpx solid $color-border;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2rpx;
+    transition: all 0.2s ease;
+
+    &.checked {
+      background: $color-primary;
+      border-color: $color-primary;
+    }
+  }
+
+  .agreement-text {
+    font-size: 24rpx;
+    color: $color-text-secondary;
+    line-height: 1.6;
   }
 }
 

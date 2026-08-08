@@ -47,7 +47,7 @@ class _AlgorithmInfoPageState extends ConsumerState<AlgorithmInfoPage> {
 
     try {
       final service = ref.read(algorithmServiceProvider);
-      final algorithms = await service.getAlgorithmList();
+      final algorithms = await service.getList();
 
       // 展平树形结构，只取已发布的叶子算法
       final flatAlgorithms = algorithms.flatPublishedLeaves;

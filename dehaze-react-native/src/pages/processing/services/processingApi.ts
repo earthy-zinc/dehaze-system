@@ -110,9 +110,9 @@ function serializeParams(params?: CommonAlgorithmParams): string | undefined {
 function toProcessingResult(vo: PredictionResultVO): ProcessingResult {
   return {
     logId: vo.logId,
-    resultUrl: vo.resultUrl,
-    resultThumbnailUrl: vo.resultThumbnailUrl,
-    time: vo.time,
+    resultUrl: vo.resultUrl ?? '',
+    resultThumbnailUrl: vo.resultThumbnailUrl ?? undefined,
+    time: vo.time ?? 0,
     fromCache: vo.fromCache,
   };
 }

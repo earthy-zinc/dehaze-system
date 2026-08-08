@@ -10,6 +10,7 @@ import com.pei.dehaze.sdk.model.evaluation.EvaluationLogVO;
 import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 import com.pei.dehaze.sdk.model.prediction.PredParam;
 import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
+import com.pei.dehaze.sdk.model.prediction.PredictionQuota;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.sdk.network.ApiException;
 import com.pei.dehaze.sdk.service.ModelApiService;
@@ -235,6 +236,14 @@ public class ModelAPI {
                                           ApiCallback<PageResult<EvaluationLogVO>> callback) {
         Call<Result<PageResult<EvaluationLogVO>>> call = DehazeSDK.getInstance().getModelApiService()
                 .listEvaluationLogs(algorithmId, pageNum, pageSize);
+        call.enqueue(callback);
+    }
+
+    /**
+     * 查询 VIP 配额（剩余处理次数）
+     */
+    public static void getQuota(ApiCallback<PredictionQuota> callback) {
+        Call<Result<PredictionQuota>> call = DehazeSDK.getInstance().getModelApiService().getQuota();
         call.enqueue(callback);
     }
 

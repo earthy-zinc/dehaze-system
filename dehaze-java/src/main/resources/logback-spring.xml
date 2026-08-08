@@ -88,6 +88,44 @@
         </filter>
     </appender>
 
+    <!-- 4. client 文件：前端日志（通过 POST /api/v1/logs/client 写入，NDJSON，供 filebeat 采集）
+         SizeAndTimeBasedRollingPolicy：按日期切目录 + 按大小分片，活动文件 client.log，超 maxFileSize 归档为 client.%i.log -->
+    <appender name="FILE_CLIENT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/%d{yyyy-MM-dd}/client.%i.log</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>[ignore]</thread>
+                <level>level</level>
+            </fieldNames>
+            <customFields>{"service":"client"}</customFields>
+            <includeMdcKeyName>trace_id</includeMdcKeyName>
+            <includeMdcKeyName>method</includeMdcKeyName>
+            <includeMdcKeyName>path</includeMdcKeyName>
+            <includeMdcKeyName>ip</includeMdcKeyName>
+            <includeMdcKeyName>user_agent</includeMdcKeyName>
+            <includeMdcKeyName>user_id</includeMdcKeyName>
+            <charset>UTF-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- 前端日志专用 logger：additivity=false 仅写 client.log，不污染 info/error 应用日志 -->
+    <logger name="client-log" level="INFO" additivity="false">
+        <appender-ref ref="FILE_CLIENT"/>
+    </logger>
+
     <!-- 开发环境：控制台（人类可读）+ info/error 文件（JSON 结构化） -->
     <springProfile name="dev">
         <root level="INFO">

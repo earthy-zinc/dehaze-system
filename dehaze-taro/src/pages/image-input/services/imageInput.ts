@@ -35,13 +35,16 @@ export const validateImageFile = async (
   tempFile: TempFile
 ): Promise<{ valid: boolean; error?: string }> => {
   // 格式校验
-  const ext = getFileExtension(tempFile.path) as "jpg" | "jpeg" | "png";
-  if (!ext || !SupportedFormats.includes(ext)) {
-    return {
-      valid: false,
-      error: ErrorMessages[ErrorCodes.UNSUPPORTED_FORMAT],
-    };
-  }
+    const ext = getFileExtension(tempFile.path);
+    if (
+      !ext ||
+      !SupportedFormats.includes(ext as (typeof SupportedFormats)[number])
+    ) {
+      return {
+        valid: false,
+        error: ErrorMessages[ErrorCodes.UNSUPPORTED_FORMAT],
+      };
+    }
 
   // 大小校验
   if (tempFile.size > FileSizeLimit.MAX_SIZE) {

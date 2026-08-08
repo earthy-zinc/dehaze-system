@@ -23,6 +23,12 @@ class AuthState {
   bool get isAuthenticated => user != null && sessionId != null;
   bool get isLoading => status == AuthStatus.loading;
 
+  /// 检查当前用户是否拥有指定权限
+  bool hasPerm(String perm) => user?.hasPermission(perm) ?? false;
+
+  /// 检查当前用户是否拥有指定角色
+  bool hasRole(String role) => user?.hasRole(role) ?? false;
+
   AuthState copyWith({
     UserModel? user,
     String? sessionId,

@@ -17,8 +17,8 @@ import {
   Alert,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/routes/types';
-import { MainLayout } from '@/layout';
+import type { DehazeStackParamList } from '@/routes/types';
+import { ImmersiveHeader } from '@/layout/components';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import { ModelAPI } from 'dehaze-sdk-js';
@@ -28,7 +28,7 @@ import CompareEmptyState from '@/components/CompareEmptyState';
 import ImageLoader from '@/components/ImageLoader';
 import type { EvaluationMetrics } from '@/types/evaluation';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Metrics'>;
+type Props = NativeStackScreenProps<DehazeStackParamList, 'CompareMetrics'>;
 
 interface MetricItem {
   key: string;
@@ -94,16 +94,18 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
   // 缺少必要参数时显示空状态（例如从底部 Tab 直接进入）
   if (!originalUrl || !processedUrl) {
     return (
-      <MainLayout title="指标评估" showBack>
-        <CompareEmptyState onPress={() => navigation.navigate('ImageInput')} />
-      </MainLayout>
+      <View style={styles.screenContainer}>
+        <ImmersiveHeader title="指标评估" />
+        <CompareEmptyState onPress={() => navigation.goBack()} />
+      </View>
     );
   }
 
   return (
-    <MainLayout title="指标评估" showBack>
+    <View style={styles.screenContainer}>
+      <ImmersiveHeader title="指标评估" />
       <CompareModeSwitcher
-        current="Metrics"
+        current="CompareMetrics"
         navigation={navigation}
         params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
       />
@@ -213,7 +215,7 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
       </ScrollView>
-    </MainLayout>
+    </View>
   );
 };
 
@@ -346,6 +348,10 @@ function getBarColor(key: string, value: number): string {
 }
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
   scrollView: {
     flex: 1,
   },

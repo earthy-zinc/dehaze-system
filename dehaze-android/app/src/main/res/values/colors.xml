@@ -35,6 +35,7 @@
     <color name="bg_page">#FFF5F7FA</color>
     <color name="bg_card">#FFFFFFFF</color>
     <color name="border_light">#FFE5E7EB</color>
+    <color name="bg_brand_light">#FFDBEAFE</color>
 
     <!-- ===== 指标卡片渐变（#667EEA → #764BA2） ===== -->
     <color name="metric_gradient_start">#FF667EEA</color>

@@ -35,7 +35,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
     return (
       <View className="history-list">
         <View className="loading-container">
-          <Loading size="32px" />
+          <Loading size={64} />
           <Text className="loading-text">加载中...</Text>
         </View>
       </View>

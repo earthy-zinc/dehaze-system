@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../constants/app_constants.dart';
+
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../router/config.dart';
@@ -9,66 +9,302 @@ import '../theme/app_theme.dart';
 import '../widgets/logout_confirm_dialog.dart';
 import 'menu_config.dart';
 
-/// 主布局组件
+/// 主布局组件（响应式双布局）
 ///
-/// 提供响应式布局，支持：
-/// - 移动端：底部导航栏 + 抽屉菜单
-/// - 平板/桌面：侧边导航栏
+/// 接收 [StatefulNavigationShell]，响应式切换布局：
+/// - 移动端（< 768px）：Scaffold + NavigationBar（Material 3，5 Tab）
+/// - 桌面端（≥ 768px）：Row（248px 侧边栏 + 内容区 + 顶栏面包屑）
 class MainLayout extends ConsumerWidget {
-  const MainLayout({required this.child, super.key});
+  const MainLayout({required this.navigationShell, super.key});
 
-  final Widget child;
-
-  /// 判断是否为宽屏设备（平板/桌面）
-  bool _isWideScreen(BuildContext context) =>
-      MediaQuery.of(context).size.width >= 768;
+  final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isWide = _isWideScreen(context);
+    final isWide = MediaQuery.sizeOf(context).width >= 768;
+    return isWide ? _DesktopLayout(shell: navigationShell) : _MobileLayout(shell: navigationShell);
+  }
+}
+
+// ==================== 移动端布局 ====================
+
+class _MobileLayout extends ConsumerWidget {
+  const _MobileLayout({required this.shell});
+
+  final StatefulNavigationShell shell;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentIndex = shell.currentIndex;
+    final isHome = currentIndex == 0;
 
     return Scaffold(
-      appBar: _buildAppBar(context, ref),
-      drawer: isWide ? null : _buildDrawer(context, ref),
-      body: isWide ? _buildWideLayout(context, ref) : child,
-      bottomNavigationBar: isWide ? null : _buildBottomNav(context),
+      appBar: AppBar(
+        title: isHome
+            ? Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.getPrimaryGradient(),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: AppTheme.shadowLevel1,
+                    ),
+                    child: const Icon(Icons.cloud_outlined, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('图像去雾系统'),
+                ],
+              )
+            : Text(MenuConfig.tabs[currentIndex].title),
+        centerTitle: false,
+      ),
+      body: shell,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: (index) => _goBranch(index),
+        destinations: [
+          for (final tab in MenuConfig.tabs)
+            NavigationDestination(
+              icon: Icon(tab.icon),
+              selectedIcon: Icon(tab.selectedIcon),
+              label: tab.title,
+            ),
+        ],
+      ),
     );
   }
 
-  /// 构建顶部导航栏
-  PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref) {
+  void _goBranch(int index) {
+    shell.goBranch(
+      index,
+      initialLocation: index == shell.currentIndex,
+    );
+  }
+}
+
+// ==================== 桌面端布局 ====================
+
+class _DesktopLayout extends ConsumerStatefulWidget {
+  const _DesktopLayout({required this.shell});
+
+  final StatefulNavigationShell shell;
+
+  @override
+  ConsumerState<_DesktopLayout> createState() => _DesktopLayoutState();
+}
+
+class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
+  bool _sidebarCollapsed = false;
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
+    final shell = widget.shell;
+    final theme = Theme.of(context);
+    final sidebarWidth = _sidebarCollapsed ? 64.0 : 248.0;
 
-    return AppBar(
-      title: Row(
+    return Scaffold(
+      body: Row(
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: AppTheme.getPrimaryGradient(),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: AppTheme.shadowLevel1,
-            ),
-            child: const Icon(
-              Icons.cloud_outlined,
-              color: Colors.white,
-              size: 18,
+          // 侧边栏
+          _buildSidebar(theme, user, sidebarWidth),
+          // 内容区
+          Expanded(
+            child: Column(
+              children: [
+                _buildTopBar(theme, user),
+                Expanded(child: shell),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          const Text(AppConstants.appName),
         ],
       ),
-      actions: [
-        // 用户信息/登录按钮
-        if (user != null)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => context.go(AppRouterConfig.profile),
-              child: Center(
+    );
+  }
+
+  Widget _buildSidebar(ThemeData theme, UserModel? user, double width) {
+    final currentIndex = widget.shell.currentIndex;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: width,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          right: BorderSide(color: theme.dividerColor, width: 1),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Logo 区
+          Container(
+            height: 64,
+            padding: EdgeInsets.symmetric(horizontal: _sidebarCollapsed ? 0 : 16),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: theme.dividerColor)),
+            ),
+            child: _sidebarCollapsed
+                ? Center(
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.getPrimaryGradient(),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.cloud_outlined, color: Colors.white, size: 20),
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.getPrimaryGradient(),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.cloud_outlined, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          '图像去雾',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          // 导航项
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                for (int i = 0; i < MenuConfig.tabs.length; i++)
+                  _buildSidebarItem(theme, MenuConfig.tabs[i], isActive: i == currentIndex),
+              ],
+            ),
+          ),
+          // 底部用户信息
+          _buildSidebarFooter(theme, user),
+          // 折叠按钮
+          InkWell(
+            onTap: () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
+            child: Container(
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: theme.dividerColor)),
+              ),
+              child: Icon(
+                _sidebarCollapsed ? Icons.chevron_right : Icons.chevron_left,
+                size: 20,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarItem(ThemeData theme, MenuItemData item, {bool isActive = false}) {
+    final colorScheme = theme.colorScheme;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: _sidebarCollapsed ? 8.0 : 12.0,
+        vertical: 2,
+      ),
+      child: Material(
+        color: isActive ? colorScheme.primary.withValues(alpha: 0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        child: InkWell(
+          onTap: () {
+            final index = MenuConfig.tabs.indexOf(item);
+            widget.shell.goBranch(
+              index,
+              initialLocation: index == widget.shell.currentIndex,
+            );
+          },
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          child: _sidebarCollapsed
+              ? SizedBox(
+                  height: 48,
+                  child: Center(
+                    child: Icon(
+                      isActive ? item.selectedIcon : item.icon,
+                      size: 24,
+                      color: isActive ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isActive ? item.selectedIcon : item.icon,
+                        size: 20,
+                        color: isActive ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isActive ? colorScheme.primary : colorScheme.onSurface,
+                            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebarFooter(ThemeData theme, UserModel? user) {
+    if (user == null) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: theme.dividerColor)),
+        ),
+        child: _sidebarCollapsed
+            ? IconButton(
+                icon: const Icon(Icons.login, size: 20),
+                onPressed: () => _goLogin(),
+              )
+            : SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _goLogin(),
+                  icon: const Icon(Icons.login, size: 18),
+                  label: const Text('登录'),
+                ),
+              ),
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: _sidebarCollapsed ? 0 : 12,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: theme.dividerColor)),
+      ),
+      child: _sidebarCollapsed
+          ? Center(
+              child: GestureDetector(
+                onTap: () => widget.shell.goBranch(4),
                 child: Container(
                   width: 32,
                   height: 32,
@@ -79,527 +315,118 @@ class MainLayout extends ConsumerWidget {
                   child: Center(
                     child: Text(
                       user.avatarInitials,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
               ),
-            ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: TextButton.icon(
-              onPressed: () => context.go(AppRouterConfig.login),
-              icon: const Icon(Icons.login, size: 18),
-              label: const Text('登录'),
-            ),
-          ),
-      ],
-    );
-  }
-
-  /// 构建宽屏布局（侧边栏 + 内容区）
-  Widget _buildWideLayout(BuildContext context, WidgetRef ref) => Row(
-        children: [
-          // 侧边导航栏
-          _buildSideNav(context, ref),
-          // 内容区
-          Expanded(child: child),
-        ],
-      );
-
-  /// 构建侧边导航栏（平板/桌面）
-  Widget _buildSideNav(BuildContext context, WidgetRef ref) {
-    final currentLocation = GoRouterState.of(context).uri.toString();
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
-
-    return Container(
-      width: 260,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          right: BorderSide(
-            color: Theme.of(context).dividerColor,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          // 导航菜单
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(vertical: AppTheme.spacingM),
+            )
+          : Row(
               children: [
-                // 首页
-            _buildNavItem(
-              context,
-              MenuConfig.homeItem,
-              isActive: currentLocation.startsWith(AppRouterConfig.home),
-            ),
-                const Divider(),
-                // 分组菜单
-                ...MenuConfig.menuSections.map(
-                  (section) =>
-                      _buildNavSection(context, section, currentLocation),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppTheme.brandBlue,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      user.avatarInitials,
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        user.nickname ?? user.username,
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (user.roleNames.isNotEmpty)
+                        Text(
+                          user.roleNames.first,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout, size: 18),
+                  tooltip: '退出登录',
+                  onPressed: () => showLogoutConfirm(context, ref),
                 ),
               ],
             ),
-          ),
-          // 底部用户信息
-          _buildUserFooter(context, ref, user),
-        ],
-      ),
     );
   }
 
-  /// 构建底部用户信息
-  Widget _buildUserFooter(
-    BuildContext context,
-    WidgetRef ref,
-    UserModel? user,
-  ) {
-    final theme = Theme.of(context);
-
-    if (user == null) {
-      return Container(
-        padding: EdgeInsets.all(AppTheme.spacingM),
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: theme.dividerColor, width: 1),
-          ),
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: () => context.go(AppRouterConfig.login),
-            icon: const Icon(Icons.login, size: 18),
-            label: const Text('登录'),
-          ),
-        ),
-      );
-    }
+  Widget _buildTopBar(ThemeData theme, UserModel? user) {
+    final currentIndex = widget.shell.currentIndex;
+    final currentTab = MenuConfig.tabs[currentIndex];
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
-        vertical: AppTheme.spacingS,
-      ),
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: theme.dividerColor, width: 1),
-        ),
+        color: theme.colorScheme.surface,
+        border: Border(bottom: BorderSide(color: theme.dividerColor)),
       ),
       child: Row(
         children: [
-          // 头像
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppTheme.brandBlue,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Center(
-              child: Text(
-                user.avatarInitials,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+          // 面包屑
+          Text(
+            currentTab.title,
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const Spacer(),
+          // 通知按钮
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, size: 22),
+            tooltip: '通知',
+            onPressed: () => widget.shell.goBranch(3),
+          ),
+          const SizedBox(width: 4),
+          // 用户头像
+          if (user != null)
+            GestureDetector(
+              onTap: () => widget.shell.goBranch(4),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppTheme.brandBlue,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Text(
+                    user.avatarInitials,
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
+            )
+          else
+            TextButton.icon(
+              onPressed: () => _goLogin(),
+              icon: const Icon(Icons.login, size: 18),
+              label: const Text('登录'),
             ),
-          ),
-          const SizedBox(width: 12),
-          // 用户名
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  user.nickname ?? user.username,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (user.roles.isNotEmpty)
-                  Text(
-                    user.roles.first,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // 登出按钮
-          IconButton(
-            icon: const Icon(Icons.logout, size: 20),
-            tooltip: '退出登录',
-            onPressed: () => showLogoutConfirm(context, ref),
-          ),
         ],
       ),
     );
   }
 
-  /// 构建导航分组
-  Widget _buildNavSection(
-    BuildContext context,
-    MenuSection section,
-    String currentLocation,
-  ) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingM,
-          vertical: AppTheme.spacingS,
-        ),
-        child: Row(
-          children: [
-            if (section.icon != null) ...[
-              Icon(
-                section.icon,
-                size: 16,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-            ],
-            Text(
-              section.title,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-      ...section.items.map(
-        (item) => _buildNavItem(
-          context,
-          item,
-          isActive: currentLocation.startsWith(item.route),
-        ),
-      ),
-      SizedBox(height: AppTheme.spacingS),
-    ],
-  );
-
-  /// 构建单个导航项
-  Widget _buildNavItem(
-    BuildContext context,
-    MenuItemData item, {
-    bool isActive = false,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: 2,
-      ),
-      child: Material(
-        color: isActive
-            ? colorScheme.primary.withValues(alpha: 0.1)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        child: InkWell(
-          onTap: () => context.go(item.route),
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppTheme.spacingM,
-              vertical: AppTheme.spacingS,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  item.icon,
-                  size: 20,
-                  color: isActive
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant,
-                ),
-                SizedBox(width: AppTheme.spacingM),
-                Expanded(
-                  child: Text(
-                    item.title,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isActive
-                          ? colorScheme.primary
-                          : colorScheme.onSurface,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                ),
-                if (item.badge != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      item.badge!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 构建抽屉菜单（移动端）
-  Widget _buildDrawer(BuildContext context, WidgetRef ref) {
-    final currentLocation = GoRouterState.of(context).uri.toString();
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
-
-    return Drawer(
-      child: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            // 抽屉头部
-            Container(
-              padding: EdgeInsets.all(AppTheme.spacingL),
-              decoration: BoxDecoration(
-                gradient: AppTheme.getPrimaryGradient(),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: user != null
-                            ? Center(
-                                child: Text(
-                                  user.avatarInitials,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              )
-                            : const Icon(
-                                Icons.cloud_outlined,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user?.nickname ??
-                                  user?.username ??
-                                  AppConstants.appName,
-                              style:
-                                  Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            if (user != null && user.roles.isNotEmpty)
-                              Text(
-                                user.roles.first,
-                                style:
-                                    Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    user != null ? '功能菜单' : '点击登录以使用完整功能',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  if (user == null) ...[
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          context.go(AppRouterConfig.login);
-                        },
-                        icon: const Icon(Icons.login, size: 18),
-                        label: const Text('登录'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppTheme.brandBlue,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            // 首页
-            _buildDrawerItem(
-              context,
-              MenuConfig.homeItem,
-              isActive: currentLocation.startsWith(AppRouterConfig.home),
-            ),
-            const Divider(),
-            // 分组菜单
-            ...MenuConfig.menuSections.expand(
-              (section) => [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    AppTheme.spacingM,
-                    AppTheme.spacingM,
-                    AppTheme.spacingM,
-                    AppTheme.spacingS,
-                  ),
-                  child: Text(
-                    section.title,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                ...section.items.map(
-                  (item) => _buildDrawerItem(
-                    context,
-                    item,
-                    isActive: currentLocation.startsWith(item.route),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 构建抽屉菜单项
-  Widget _buildDrawerItem(
-    BuildContext context,
-    MenuItemData item, {
-    bool isActive = false,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return ListTile(
-      leading: Icon(
-        item.icon,
-        color: isActive ? colorScheme.primary : colorScheme.onSurfaceVariant,
-      ),
-      title: Text(
-        item.title,
-        style: TextStyle(
-          color: isActive ? colorScheme.primary : colorScheme.onSurface,
-          fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-        ),
-      ),
-      selected: isActive,
-      selectedTileColor: colorScheme.primary.withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-      ),
-      onTap: () {
-        Navigator.pop(context); // 关闭 Drawer
-        context.go(item.route); // 跳转
-      },
-    );
-  }
-
-  /// 构建底部导航栏（移动端）
-  Widget _buildBottomNav(BuildContext context) {
-    final currentIndex = _getCurrentIndex(context);
-
-    return NavigationBar(
-      selectedIndex: currentIndex,
-      onDestinationSelected: (index) {
-        switch (index) {
-          case 0:
-            context.go(AppRouterConfig.home);
-            break;
-          case 1:
-            context.go(AppRouterConfig.dataset);
-            break;
-          case 2:
-            context.go(AppRouterConfig.profile);
-            break;
-          case 3:
-            context.go(AppRouterConfig.taskHistory);
-            break;
-        }
-      },
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
-          label: '首页',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.storage_outlined),
-          selectedIcon: Icon(Icons.storage),
-          label: '数据集',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person),
-          label: '我的',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.history_outlined),
-          selectedIcon: Icon(Icons.history),
-          label: '历史',
-        ),
-      ],
-    );
-  }
-
-  int _getCurrentIndex(BuildContext context) {
-    final location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith(AppRouterConfig.home)) return 0;
-    if (location.startsWith(AppRouterConfig.dataset)) return 1;
-    if (location.startsWith(AppRouterConfig.profile)) return 2;
-    if (location.startsWith(AppRouterConfig.taskHistory)) return 3;
-    return 0;
+  void _goLogin() {
+    final router = GoRouter.of(context);
+    router.go(AppRouterConfig.login);
   }
 }

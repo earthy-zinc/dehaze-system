@@ -2,20 +2,29 @@ package com.pei.dehaze.sdk;
 
 import com.pei.dehaze.sdk.service.AlgorithmApiService;
 import com.pei.dehaze.sdk.service.AlgorithmSelectApiService;
+import com.pei.dehaze.sdk.service.AnnouncementApiService;
 import com.pei.dehaze.sdk.service.ApiKeyApiService;
 import com.pei.dehaze.sdk.service.AuthApiService;
 import com.pei.dehaze.sdk.service.DatasetApiService;
 import com.pei.dehaze.sdk.service.DeptApiService;
 import com.pei.dehaze.sdk.service.DictApiService;
 import com.pei.dehaze.sdk.service.FavoriteApiService;
+import com.pei.dehaze.sdk.service.FeedbackApiService;
 import com.pei.dehaze.sdk.service.FileApiService;
 import com.pei.dehaze.sdk.service.InputHistoryApiService;
+import com.pei.dehaze.sdk.service.MemberApiService;
 import com.pei.dehaze.sdk.service.MenuApiService;
+import com.pei.dehaze.sdk.service.MessageApiService;
+import com.pei.dehaze.sdk.service.MessageTemplateApiService;
 import com.pei.dehaze.sdk.service.ModelApiService;
+import com.pei.dehaze.sdk.service.NotificationSettingApiService;
+import com.pei.dehaze.sdk.service.OrderApiService;
+import com.pei.dehaze.sdk.service.PackageApiService;
 import com.pei.dehaze.sdk.service.RecommendationApiService;
 import com.pei.dehaze.sdk.service.RoleApiService;
 import com.pei.dehaze.sdk.service.TaskApiService;
 import com.pei.dehaze.sdk.service.UserApiService;
+import com.pei.dehaze.sdk.network.TraceInterceptor;
 import com.pei.dehaze.sdk.utils.TokenManager;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
 import com.pei.dehaze.sdk.model.EnableStatus;
@@ -70,6 +79,14 @@ public class DehazeSDK {
     private final ModelApiService modelApiService;
     private final RoleApiService roleApiService;
     private final TaskApiService taskApiService;
+    private final MemberApiService memberApiService;
+    private final PackageApiService packageApiService;
+    private final OrderApiService orderApiService;
+    private final FeedbackApiService feedbackApiService;
+    private final MessageApiService messageApiService;
+    private final AnnouncementApiService announcementApiService;
+    private final MessageTemplateApiService messageTemplateApiService;
+    private final NotificationSettingApiService notificationSettingApiService;
 
     private static final List<String> PUBLIC_ENDPOINTS = Arrays.asList(
             "/api/v1/auth/login",
@@ -80,6 +97,9 @@ public class DehazeSDK {
         String baseUrl = builder.baseUrl;
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder();
+
+        // 日志与 trace_id 拦截器（注入 X-Trace-Id、失败上报）
+        okHttpClientBuilder.addInterceptor(new TraceInterceptor());
 
         okHttpClientBuilder.addInterceptor(new Interceptor() {
             @NotNull
@@ -213,6 +233,14 @@ public class DehazeSDK {
         this.modelApiService = retrofit.create(ModelApiService.class);
         this.roleApiService = retrofit.create(RoleApiService.class);
         this.taskApiService = retrofit.create(TaskApiService.class);
+        this.memberApiService = retrofit.create(MemberApiService.class);
+        this.packageApiService = retrofit.create(PackageApiService.class);
+        this.orderApiService = retrofit.create(OrderApiService.class);
+        this.feedbackApiService = retrofit.create(FeedbackApiService.class);
+        this.messageApiService = retrofit.create(MessageApiService.class);
+        this.announcementApiService = retrofit.create(AnnouncementApiService.class);
+        this.messageTemplateApiService = retrofit.create(MessageTemplateApiService.class);
+        this.notificationSettingApiService = retrofit.create(NotificationSettingApiService.class);
     }
 
     public static DehazeSDK getInstance() {

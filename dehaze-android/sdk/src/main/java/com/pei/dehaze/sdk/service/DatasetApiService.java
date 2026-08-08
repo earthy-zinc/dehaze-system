@@ -36,7 +36,7 @@ public interface DatasetApiService {
     Call<Result<PageResult<Dataset>>> getDatasetList(
             @Query("pageNum") int pageNum,
             @Query("pageSize") int pageSize,
-            @Query("keywords") String keywords,
+            @Query("keyword") String keyword,
             @Query("type") String type,
             @Query("status") Integer status);
 

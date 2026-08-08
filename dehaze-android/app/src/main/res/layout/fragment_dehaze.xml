@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_page"
+    android:orientation="vertical">
+
+    <!-- 步骤指示器 -->
+    <LinearLayout
+        android:id="@+id/stepIndicator"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@color/bg_card"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        app:elevation="2dp">
+
+        <TextView
+            android:id="@+id/tvStep1"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="上传"
+            android:textColor="@color/white"
+            android:textSize="13sp"
+            android:background="@drawable/bg_primary_gradient" />
+
+        <View
+            android:layout_width="20dp"
+            android:layout_height="2dp"
+            android:background="@color/border_light" />
+
+        <TextView
+            android:id="@+id/tvStep2"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="算法"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:background="@color/bg_page" />
+
+        <View
+            android:layout_width="20dp"
+            android:layout_height="2dp"
+            android:background="@color/border_light" />
+
+        <TextView
+            android:id="@+id/tvStep3"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="参数"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:background="@color/bg_page" />
+
+        <View
+            android:layout_width="20dp"
+            android:layout_height="2dp"
+            android:background="@color/border_light" />
+
+        <TextView
+            android:id="@+id/tvStep4"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="处理"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:background="@color/bg_page" />
+
+        <View
+            android:layout_width="20dp"
+            android:layout_height="2dp"
+            android:background="@color/border_light" />
+
+        <TextView
+            android:id="@+id/tvStep5"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="对比"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:background="@color/bg_page" />
+    </LinearLayout>
+
+    <!-- 步骤内容 ViewFlipper -->
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- 底部操作栏 -->
+    <LinearLayout
+        android:id="@+id/bottomBar"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="@color/bg_card"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        app:elevation="4dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPrev"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="12dp"
+            android:layout_weight="1"
+            android:text="上一步"
+            android:textColor="@color/brand_primary"
+            android:visibility="gone"
+            app:cornerRadius="8dp"
+            app:strokeColor="@color/brand_primary" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNext"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:text="下一步"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            app:backgroundTint="@color/brand_primary"
+            app:cornerRadius="8dp" />
+    </LinearLayout>
+</LinearLayout>

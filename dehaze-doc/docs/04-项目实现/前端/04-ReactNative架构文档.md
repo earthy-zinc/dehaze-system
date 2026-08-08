@@ -1,6 +1,6 @@
 # React Native (dehaze-react-native)
 
-基于 React Native + TypeScript 构建的移动端图像去雾应用，支持 iOS 和 Android 双平台。
+基于 React Native 0.81 + React 19 + TypeScript 构建的移动端图像去雾应用，支持 iOS 和 Android 双平台。
 
 > 构建运行、测试命令、部署说明见项目根目录 [README](/README.md)。
 
@@ -15,27 +15,24 @@ flowchart TB
 
     subgraph UI["视图层"]
         Pages["pages/ 业务页面"]
-        Layout["layout/ MainLayout/AppHeader/BottomTabBar/DrawerMenu/SideNav"]
-        Components["components/ 通用组件 (Badge/Button/Card/EmptyState/Icon/ImageLoader/Modal/Section)"]
-        FavoriteComp["components/ FavoriteButton"]
-        RecommendComp["components/ RecommendationWidget"]
+        Layout["layout/ AppHeader / ImmersiveHeader"]
+        Components["components/ 通用组件"]
     end
 
     subgraph State["状态管理"]
-        AuthCtx["AuthContext"]
-        AlgorithmCtx["AlgorithmContext"]
-        ImageCtx["ImageContext"]
-        FavoriteCtx["FavoriteContext"]
+        AuthStore["zustand auth store (persist)"]
+        MessagesStore["zustand messages store"]
     end
 
-    subgraph Navigation["路由层"]
-        Routes["routes/ 自研路由系统"]
-        Navigator["导航器 (类型安全)"]
+    subgraph Navigation["导航层"]
+        Root["RootNavigator（条件渲染）"]
+        MainTabs["MainTabs（BottomTabNavigator + 5 嵌套 Stack）"]
+        Types["types.ts（独立 ParamList）"]
     end
 
     subgraph API["API 层"]
-        SDK["config/sdk.ts"]
-        ApiModules["api/ 模块"]
+        SDK["dehaze-sdk-js"]
+        Token["tokenStore（session 注入）"]
     end
 
     subgraph Theme["主题层"]
@@ -54,10 +51,10 @@ flowchart TB
     Pages --> Components
     Layout --> Components
     State --> SDK
-    SDK --> ApiModules
-    ApiModules --> REST
-    Routes --> Navigator
-    Navigator --> Pages
+    SDK --> Token
+    Token --> REST
+    Root --> MainTabs
+    MainTabs --> Pages
     UI --> Theme
 ```
 
@@ -68,60 +65,349 @@ dehaze-react-native/
 ├── android/                       # Android 原生工程
 ├── ios/                           # iOS 原生工程
 ├── src/
-│   ├── App.tsx                    # 应用入口
-│   ├── api/                       # API 接口封装
-│   ├── components/                # 通用组件（Badge/Button/Card/EmptyState/Icon/ImageLoader/Modal/Section）
+│   ├── App.tsx                    # 应用入口（直接渲染 RootNavigator，无 Provider）
+│   ├── components/                # 通用组件
+│   │   ├── Badge/                 # 角标组件
+│   │   ├── Button/                # 按钮组件
+│   │   ├── Card/                  # 卡片容器
+│   │   ├── CompareEmptyState/     # 对比空状态
+│   │   ├── EmptyState/            # 通用空状态
+│   │   ├── Icon/                  # 图标组件
+│   │   ├── ImageLoader/           # 图片加载器
+│   │   ├── LoadingSpinner/        # 加载指示器
+│   │   ├── Modal/                 # 模态弹窗
+│   │   ├── Section/               # 区块容器
+│   │   └── SliderControl/         # 滑块控制
 │   ├── config/                    # env、sdk 配置
 │   ├── enums/                     # 枚举（CacheEnum）
-│   ├── hooks/                     # 通用 hooks（useAnimation/useResponsive）
-│   ├── layout/                    # 主布局（MainLayout/AppHeader/BottomTabBar/DrawerMenu/SideNav/MenuConfig）
-│   ├── pages/                     # 业务页面
-│   │   ├── home/                  # 首页（Hero/Algorithm/Features/FinalCTA/Showcase/TechSpecs）
-│   │   ├── login/                 # 登录
-│   │   ├── image-input/           # 图像输入（CameraCapture/UploadArea/SampleGallery/HistoryList）
-│   │   ├── algorithm-select/      # 算法选择（AlgorithmCard/AlgorithmTree/CompareBar/CompareModal）
-│   │   ├── processing/            # 去雾处理（ParamsPanel/ProcessingProgress/ResultPreview）
-│   │   ├── compare/               # 效果对比（Filter/Magnifier/Metrics/Overlay/SideBySide）
-│   │   ├── dataset/               # 数据集管理（DatasetListSection/ImageGrid/ImageViewer/TypeFilter）
-│   │   ├── algorithm/             # 算法列表
-│   │   └── task/                  # 任务历史
-│   ├── routes/                    # 路由配置（config/navigator/types/utils）
-│   ├── store/                     # 全局状态（AuthContext/AlgorithmContext/ImageContext）
-│   ├── theme/                     # 主题（colors/spacing/typography）
-│   ├── types/                     # 类型定义（algorithm/evaluation/image/processing）
-│   └── utils/                     # storage/tokenStore
+│   ├── hooks/                     # 通用 hooks
+│   ├── layout/                    # 布局组件
+│   │   ├── components/
+│   │   │   ├── AppHeader.tsx      # 通用导航栏（L1/L2）
+│   │   │   └── ImmersiveHeader.tsx # 沉浸式导航栏（L3）
+│   │   └── index.ts
+│   ├── pages/                     # 业务页面（按视角拆分）
+│   │   ├── home/                  # 首页（L1 Tab）
+│   │   ├── tools/                 # 工具（L1 Tab）
+│   │   ├── dehaze/                # 去雾（L1 Tab）
+│   │   ├── messages/              # 消息（L1 Tab）
+│   │   ├── profile/               # 我的（L1 Tab）
+│   │   ├── login/                 # 登录（L0）
+│   │   ├── register/              # 注册（L0）
+│   │   ├── image-input/           # 图像输入（L2）
+│   │   ├── algorithm-select/      # 算法选择（L2）
+│   │   ├── processing/            # 去雾处理（L2）
+│   │   ├── algorithm-browse/      # 算法库浏览（L2）
+│   │   ├── dataset-browse/        # 数据集浏览（L2）
+│   │   ├── batch/                 # 批量处理（L2）
+│   │   ├── metrics-manage/        # 指标管理（L2）
+│   │   ├── task/                  # 处理历史（L2）
+│   │   ├── notify/                # 消息设置（L2）
+│   │   ├── compare/               # 沉浸对比页（L3）
+│   │   │   ├── SideBySide/        # 并排对比
+│   │   │   ├── Overlay/           # 叠加对比
+│   │   │   ├── Magnifier/         # 放大镜对比
+│   │   │   ├── Filter/            # 滤镜对比
+│   │   │   └── Metrics/           # 指标对比
+│   │   ├── personal/              # 个人侧页面（L2）
+│   │   ├── dashboard/             # 管理工作台（L2）
+│   │   └── system/                # 管理模块（L2）
+│   ├── routes/                    # 导航配置
+│   │   ├── RootNavigator.tsx      # 根导航（条件渲染）
+│   │   ├── MainTabs.tsx           # 底部 Tab + 嵌套 Stack
+│   │   ├── types.ts               # 类型定义（各 Stack 独立 ParamList）
+│   │   └── index.tsx
+│   ├── store/                     # 全局状态（zustand）
+│   │   ├── auth.ts                # 认证状态（persist + AsyncStorage）
+│   │   └── messages.ts            # 未读消息数（TabBar 角标）
+│   ├── theme/                     # 主题令牌
+│   │   ├── colors.ts              # 颜色令牌
+│   │   ├── spacing.ts             # 间距令牌
+│   │   └── typography.ts          # 排版令牌
+│   ├── types/                     # 类型定义
+│   ├── utils/                     # storage / tokenStore
+│   └── assets/                    # 静态资源
 ├── index.js                       # 应用入口文件
 └── package.json
 ```
 
-## 3. 核心功能
+## 3. 导航架构
 
-- Session 认证：登录/Token 管理/权限校验
-- 首页展示：Hero 区、算法介绍、功能特性、工作流、技术规格、CTA
-- 图像输入：本地上传、相机拍照、样张画廊、快速开始、历史记录
-- 算法选择：算法卡片、算法树、对比栏、对比弹窗、智能推荐
-- 去雾处理：参数面板、处理进度、结果预览、处理历史
-- 效果对比：并排对比、重叠对比、放大镜、滤镜、指标评估
-- 收藏管理：跨模块统一收藏、收藏聚合页、左滑删除
-- 推荐管理：推荐算法展示、推荐理由、一键使用
-- 数据集管理：列表、详情、图片网格、类型筛选、图片查看器
-- 任务历史：历史任务列表与详情
+本次重构废弃旧"单 Stack + 自绘 BottomTabBar"架构，重构为"BottomTabNavigator + 嵌套 Stack"，采用 @react-navigation v7 原生方案。
 
-## 4. 关键技术决策
+### 3.1 导航树
+
+```
+Root（NavigationContainer）
+├── AuthStack（L0 认证，createNativeStackNavigator）
+│   ├── Login
+│   └── Register
+└── MainTabs（L1，createBottomTabNavigator，内置 TabBar）
+    ├── HomeStack → Home (L1) + 子页面 (L2/L3)
+    ├── ToolsStack → Tools (L1) + image-input/algorithm-browse/dataset-browse/batch/metrics-manage/algorithm-select (L2)
+    ├── DehazeStack → Dehaze (L1) + algorithm-select/processing (L2) + compare/* (L3)
+    ├── MessagesStack → Messages (L1) + detail (L2)
+    └── ProfileStack → Profile (L1) + personal/* (L2) + system/* (L2) + notify (L2)
+```
+
+### 3.2 关键文件
+
+| 文件 | 职责 |
+|------|------|
+| `src/routes/RootNavigator.tsx` | NavigationContainer 容器 + 根据 sessionId 条件渲染 AuthStack 或 MainTabs；loading 态显示启动屏 |
+| `src/routes/MainTabs.tsx` | BottomTabNavigator + 5 个嵌套 Stack Navigator，配置 TabBar 图标和颜色 |
+| `src/routes/types.ts` | 每个 Tab Stack 独立 ParamList 类型定义，确保类型安全导航 |
+
+### 3.3 TabBar 配置
+
+- 使用内置 BottomTabBar，不自定义渲染函数
+- `tabBarActiveTintColor: '#3B82F6'`（colors.primary），`tabBarInactiveTintColor: '#9CA3AF'`（colors.text.tertiary）
+- Ionicons outline/fill 图标切换：`home/home-outline`、`grid/grid-outline`、`color-wand/color-wand-outline`、`notifications/notifications-outline`、`person/person-outline`
+- Messages Tab 通过 `navigation.setOptions({ tabBarBadge })` 动态设置未读消息角标，订阅 `useMessagesStore(s => s.unreadCount)`
+
+### 3.4 导航分层说明
+
+| 层级 | 导航形态 | 典型页面 | 头部组件 |
+|------|---------|---------|---------|
+| L0 | 无 TabBar，无通用头部 | 登录、注册 | 页面自身 |
+| L1 | 底部 TabBar + 顶部标题栏 | 首页、工具、去雾、消息、我的 | AppHeader（isHome / 纯标题） |
+| L2 | 无 TabBar，顶部导航栏（返回+标题+操作区） | 图像输入、算法选择、个人侧页面、管理页面 | AppHeader（showBack + rightActions） |
+| L3 | 无 TabBar，深色沉浸导航栏 | 并排对比、叠加对比、放大镜、滤镜、指标对比 | ImmersiveHeader |
+
+## 4. 页面层级与布局体系
+
+### 4.1 AppHeader（通用导航栏）
+
+`src/layout/components/AppHeader.tsx`，按层级差异化渲染：
+
+- **L1（isHome）**：品牌 Logo（渐变色图标 + "图像去雾系统"）+ 标题，仅首页显示 Logo
+- **L1（其他 Tab）**：仅标题居左
+- **L2（showBack）**：左侧返回按钮 + 居中标题 + 右侧操作 slot（`rightActions`），不传 `rightActions` 时不显示
+- 使用 `useSafeAreaInsets().top` 适配状态栏安全区
+- StatusBar 暗色内容 + 透明背景
+
+### 4.2 ImmersiveHeader（沉浸式导航栏）
+
+`src/layout/components/ImmersiveHeader.tsx`，用于 L3 沉浸对比页：
+
+- 深色半透明工具栏，返回按钮 + 标题 + 右侧操作 slot
+- 5 个对比页（SideBySide / Overlay / Magnifier / Filter / Metrics）统一使用
+
+### 4.3 废弃组件
+
+以下组件已在本次改造中废弃删除：
+- `MainLayout.tsx` — 旧主布局（单 Stack 容器）
+- `BottomTabBar.tsx` — 自绘底部 TabBar
+- `DrawerMenu.tsx` / `SideNav.tsx` — 侧边导航
+- `MenuConfig.ts` — 菜单配置
+
+## 5. 完整页面清单
+
+### 5.1 L0 认证页（AuthStack，无 TabBar）
+
+| 页面路径 | 功能 |
+|---------|------|
+| pages/login/index | 登录 |
+| pages/register/index | 注册 |
+
+### 5.2 L1 Tab 根页面（BottomTabNavigator，内置 TabBar）
+
+| Tab | 页面路径 | 功能要点 |
+|-----|---------|---------|
+| 首页 | pages/home/index | 品牌 Hero + 快捷入口 + 数据统计 + 特色能力（融合设计稿保留 8 区块） |
+| 工具 | pages/tools/index | 页内搜索 + 快捷入口横滑 + 功能网格 ≤3 列 |
+| 去雾 | pages/dehaze/index | 步骤流 5 步：上传 → 算法 → 参数 → 处理 → 对比入口 |
+| 消息 | pages/messages/index | 消息列表 + 分类 + 未读角标 + 设置入口，MessageAPI |
+| 我的 | pages/profile/index | 用户卡 + VIP 横幅 + 数据统计 + 四组入口 + 管理入口权限过滤 + 退出 |
+
+### 5.3 L2 工具/业务页面（归 ToolsStack / DehazeStack）
+
+| 页面路径 | 归属 Stack | 功能 | 对接 API |
+|---------|-----------|------|---------|
+| pages/image-input/index | ToolsStack | 图像输入：上传/拍照/样例/历史 | — |
+| pages/algorithm-select/index | ToolsStack / DehazeStack | 算法选择，带入去雾流程 | RecommendationAPI.analyze |
+| pages/processing/index | DehazeStack | 去雾处理，实时进度 | ModelAPI.predictAndWait |
+| pages/algorithm-browse/index | ToolsStack / DehazeStack | 算法库浏览：列表 + 推荐 + 详情 + "使用该算法"带入流程 | — |
+| pages/dataset-browse/index | ToolsStack | 数据集浏览：公开/共享浏览 + 图片网格 | — |
+| pages/batch/index | ToolsStack / DehazeStack | 批量处理：≤20 张 + 进度 + 结果 | ModelAPI.batchPredict |
+| pages/metrics-manage/index | ToolsStack | 指标管理：评估指标历史 + 对比 | ModelAPI.getEvalMetrics / getEvalLogs |
+
+### 5.4 L2 个人侧页面（pages/personal/，归 ProfileStack）
+
+| 页面路径 | 功能 | 对接 API |
+|---------|------|---------|
+| pages/personal/files/index | 我的文件 | — |
+| pages/personal/orders/index | 我的订单 | OrderAPI.listMy |
+| pages/personal/quota/index | 我的额度 | ModelAPI.getQuota |
+| pages/personal/member/index | 我的会员 | MemberAPI.getProfile |
+| pages/personal/package/index | 我的套餐 | — |
+| pages/personal/feedback/index | 反馈评价 | — |
+| pages/personal/favorites/index | 我的收藏 | FavoriteAPI |
+| pages/personal/settings/index | 系统设置 | — |
+| pages/personal/help/index | 帮助中心 | — |
+| pages/personal/about/index | 关于我们 | — |
+| pages/task/index | 处理历史（归位 ProfileStack） | TaskAPI.getPage |
+| pages/notify/index | 消息设置 | NotificationSettingAPI |
+
+### 5.5 L3 沉浸对比页（ImmersiveHeader，归 DehazeStack）
+
+| 页面路径 | 功能 |
+|---------|------|
+| pages/compare/SideBySide | 并排对比 |
+| pages/compare/Overlay | 叠加对比 |
+| pages/compare/Magnifier | 放大镜对比 |
+| pages/compare/Filter | 滤镜对比 |
+| pages/compare/Metrics | 指标对比模式 |
+
+### 5.6 管理模块（pages/system/，归 ProfileStack，权限过滤）
+
+管理入口统一归入"我的"页面底部管理入口组，受权限过滤（无 `sys:module:*` 权限的用户整组不显示）。
+
+**管理工作台**：
+
+| 页面路径 | 功能 |
+|---------|------|
+| pages/dashboard/index | 工作台 |
+
+**管理子模块**：
+
+| 页面路径 | 功能 | 权限码 |
+|---------|------|-------|
+| pages/system/user/index + form | 用户管理 | sys:user:* |
+| pages/system/role/index + form + perm | 角色管理 | sys:role:* |
+| pages/system/menu/index + form | 菜单管理 | sys:menu:* |
+| pages/system/dept/index + form | 部门管理 | sys:dept:* |
+| pages/system/dict/index + type-form + items + item-form | 字典管理 | sys:dict:* |
+| pages/system/algorithm/index + form + audit | 算法管理（审计上下架） | sys:algorithm:* |
+| pages/system/dataset/index + form | 数据集管理（CRUD） | sys:dataset:* |
+| pages/system/task/index | 任务管理（全用户视角） | sys:task:* |
+| pages/system/member/index + detail + growth-log | 会员管理（列表/详情/成长日志） | sys:member:* |
+| pages/system/package/index + form | 套餐管理（CRUD/上下架） | sys:package:* |
+| pages/system/order/index + detail + refund | 订单管理（列表/详情/退款审核） | sys:order:* |
+| pages/system/feedback/index + detail | 反馈评价管理（回复/处理） | sys:feedback:* |
+| pages/system/message/index + announcement + template + send | 消息管理（公告/模板/群发） | sys:notify:* |
+| pages/system/recommend/index + rule-form | 推荐管理（规则编辑） | sys:recommendation:* |
+
+## 6. 视角拆分
+
+以下模块从"个人+管理混用"严格拆分为两套独立页面：
+
+| 业务域 | 个人视角页面 | 管理视角页面 |
+|--------|-------------|-------------|
+| 算法 | pages/algorithm-browse（算法库浏览） | pages/system/algorithm（审计上下架） |
+| 数据集 | pages/dataset-browse（公开/共享浏览） | pages/system/dataset（CRUD） |
+| 会员 | pages/personal/member（我的会员） | pages/system/member（会员管理） |
+| 套餐 | pages/personal/package（我的套餐） | pages/system/package（套餐管理） |
+| 反馈 | pages/personal/feedback（反馈评价） | pages/system/feedback（反馈评价管理） |
+| 任务 | pages/task（个人处理历史） | pages/system/task（全用户管理） |
+| 订单 | pages/personal/orders（我的订单） | pages/system/order（订单管理） |
+| 消息 | pages/messages（消息列表）+ pages/notify（消息设置） | pages/system/message（消息管理） |
+| 推荐 | —（无个人视角） | pages/system/recommend（推荐管理） |
+
+## 7. 状态管理（zustand 迁移）
+
+本次改造从 Context API（AuthContext / useReducer）迁移至 zustand，并废弃 Redux 依赖。
+
+### 7.1 认证状态（src/store/auth.ts）
+
+- `zustand create` + `persist` 中间件，`createJSONStorage(() => AsyncStorage)` 持久化
+- 持久化字段：`sessionId`、`userInfo`
+- `onRehydrateStorage`：水合后恢复 `sessionStore`（SDK 层 session 注入）
+- 接口：
+  - `login(data)`：调用 AuthAPI.login，写入 sessionStore + AsyncStorage，获取用户信息
+  - `logout()`：调用 AuthAPI.logout（容错），清除存储
+  - `refreshUserInfo()`：刷新用户信息
+  - `hasPerm(perm)` / `hasRole(role)`：权限/角色判断
+- Session 失效处理：模块加载时注册 `setOnSessionInvalid` 回调，弹出 Alert 提示"登录已失效"
+
+### 7.2 消息状态（src/store/messages.ts）
+
+- `unreadCount` 状态，供 Messages TabBar 角标订阅
+- 通过 `navigation.setOptions({ tabBarBadge })` 动态更新
+
+### 7.3 架构变化
+
+| 旧方案 | 新方案 |
+|--------|--------|
+| AuthContext（useReducer） | zustand auth store（persist） |
+| AppProviders 包裹 | 无 Provider，App.tsx 直接渲染 RootNavigator |
+| redux / react-redux / redux-thunk | 已卸载 |
+
+## 8. 权限模型
+
+管理模块采用权限码控制可见性。权限标识格式为 `sys:模块:*`：
+
+| 权限码 | 模块 |
+|--------|------|
+| sys:user:* | 用户管理 |
+| sys:role:* | 角色管理 |
+| sys:menu:* | 菜单管理 |
+| sys:dept:* | 部门管理 |
+| sys:dict:* | 字典管理 |
+| sys:algorithm:* | 算法管理 |
+| sys:dataset:* | 数据集管理 |
+| sys:task:* | 任务管理 |
+| sys:member:* | 会员管理 |
+| sys:package:* | 套餐管理 |
+| sys:order:* | 订单管理 |
+| sys:feedback:* | 反馈评价管理 |
+| sys:notify:* | 消息管理 |
+| sys:recommendation:* | 推荐管理 |
+
+无 `sys:module:*` 权限的用户，管理入口组整组不显示。权限判断通过 `useAuthStore(s => s.hasPerm)` 实现。
+
+## 9. 设计稿还原策略
+
+本次改造对齐《移动端界面设计规范》与 dehaze-mobile 设计稿，采用差异化还原策略：
+
+| 页面 | 策略 | 说明 |
+|------|------|------|
+| 首页（home） | 融合策略 | 保留现有 8 区块丰富度，仅做视觉优化，不照搬设计稿 |
+| 工具/去雾/消息/我的 | 重构策略 | 按设计稿（tools-v2/dehaze-flow/messages/profile）重构布局与交互 |
+| 登录/注册 | 视觉对齐 | 对照 login-optimized/register-optimized 视觉规范对齐 |
+
+全局约束：
+- 复用 `src/theme/` 令牌（`colors.ts` / `spacing.ts` / `typography.ts`），不引入设计稿 `--dehaze-*` token
+- 排除设计稿元信息（交互说明、占位文本、注释框）
+- 主题令牌为 JS 对象常量，非 CSS 变量；StyleSheet.create 内联引用
+
+## 10. 防迷失设计
+
+- **主入口唯一**：首页、工具快捷区仅作引用跳转，不重复实现功能
+- **管理功能不裸露**：管理入口统一归入"我的"页面底部管理入口组，受权限过滤
+- **主链路 ≤2 步**：工具选图/选算法通过"开始去雾/使用该算法"直接带入流程
+- **带入衔接**：工具页与算法浏览页通过明确的操作按钮将用户带入去雾处理流程
+- **返回路径完整**：所有 L2/L3 页面均提供返回按钮，L2 通过 AppHeader（showBack）、L3 通过 ImmersiveHeader 内置返回
+- **跨 Stack 跳转**：ToolsStack 和 DehazeStack 共享 algorithm-select、algorithm-browse、batch 等页面，通过各自 ParamList 类型安全路由
+
+## 11. 核心功能
+
+- Session 认证：登录/注册/权限校验，zustand persist 持久化，Session 失效 Alert 提示
+- 首页展示：品牌 Hero、快捷入口、数据统计、特色能力（融合设计稿保留 8 区块）
+- 图像输入：本地上传、相机拍照、样张画廊、历史记录
+- 算法选择：算法列表、参数配置、算法说明、智能推荐
+- 去雾处理：实时进度、结果预览、参数调节、处理历史
+- 效果对比：并排对比、叠加对比、放大镜、滤镜、指标评估（均使用 ImmersiveHeader 沉浸式导航栏）
+- 批量处理：批量上传（≤20 张）、批量进度、结果对比/下载
+- 指标管理：评估指标历史查询、筛选、对比
+- 收藏管理：跨模块统一收藏（算法/处理结果/数据集）、"我的收藏"聚合页
+- 推荐管理：算法推荐展示、推荐理由、一键使用（个人）+ 规则编辑（管理）
+- 数据集：公开/共享浏览 + 图片网格（个人）+ CRUD（管理）
+- 消息：消息列表 + 分类 + 未读角标 + 消息设置 + 消息管理（公告/模板/群发）
+- 系统管理：工作台 + 用户、部门、角色、菜单、字典、算法审计、数据集管理、任务管理、会员管理、套餐管理、订单管理、反馈管理、消息管理、推荐管理
+
+## 12. 关键技术决策
 
 | 决策 | 选择 | 理由 |
 |------|------|------|
-| 框架 | React Native + TypeScript | iOS/Android 双平台原生体验 |
-| 状态管理 | Context API（AuthContext/AlgorithmContext/ImageContext/FavoriteContext） | 轻量级，无额外依赖 |
-| 路由 | 自研路由系统 | 类型安全导航，支持导航器配置 |
-| 网络层 | config/sdk.ts + api/ 封装 | 统一 Token 注入 |
-| 主题 | 统一设计令牌（colors/spacing/typography） | 全局一致视觉风格 |
-| 响应式适配 | useResponsive hook | 移动端/平板/桌面端自适应布局 |
-| 布局 | BottomTabBar（移动端） + SideNav/DrawerMenu（桌面端） | 按设备类型切换导航模式 |
-| 收藏状态同步 | FavoriteContext + AsyncStorage 持久化 | RN 端通过 Context 共享收藏状态，AsyncStorage 持久化离线可用；收藏按钮使用 TouchableOpacity + 触觉反馈（HapticFeedback）|
-| 推荐图片上传 | react-native-image-picker + 压缩 | RN 端通过原生模块访问相册/相机，上传前通过 react-native-image-resizer 压缩至 5MB 内，适配弱网环境 |
-
-## 5. 模块间交互
-
-- 通过 RESTful API 调用 Java/Go/Python 后端
-- 完整的移动端去雾业务链路：输入 -> 选算法 -> 处理 -> 对比 -> 历史
+| 框架 | React Native 0.81 + React 19 + TypeScript | iOS/Android 双平台原生体验，类型安全 |
+| 导航 | @react-navigation v7（bottom-tabs + native-stack） | 原生 TabBar 与 Stack 导航，性能优于自绘方案 |
+| 状态管理 | zustand + persist（AsyncStorage） | 无 Provider 依赖，persist 中间件实现持久化，API 简洁 |
+| 样式方案 | StyleSheet + theme 令牌（JS 对象） | RN 原生样式系统，无 CSS 变量，令牌直接引用 |
+| 图标 | react-native-vector-icons/Ionicons | Ionicons 提供丰富的 outline/fill 双态图标，适配 TabBar 选中态切换 |
+| 安全区适配 | react-native-safe-area-context | 适配刘海屏和底部指示条，AppHeader 使用 insets.top |
+| 导航头部 | AppHeader（L1/L2）+ ImmersiveHeader（L3） | 按层级差异化，L3 沉浸页深色半透明工具栏 |
+| 视角拆分 | 个人/管理严格分离为独立页面 | 避免条件渲染混乱，职责清晰 |
+| 网络层 | dehaze-sdk-js + tokenStore | 统一 Token 注入与错误处理 |
+| Session 失效 | setOnSessionInvalid + Alert 弹窗 | 全局监听 session 过期，弹出原生 Alert 引导重新登录 |
+| TabBar 角标 | messages store + navigation.setOptions | zustand 管理未读数，通过 setOptions 动态更新 TabBarBadge |

@@ -413,6 +413,9 @@ func (a *Application) Init() error {
 	// feedback module apis
 	feedbackApi := api.NewFeedbackApi(ratingService, feedbackService)
 
+	// frontend log module api
+	clientLogApi := api.NewClientLogApi()
+
 	// recommendation module apis
 	recommendationApi := api.NewRecommendationApi(recommendationService)
 
@@ -440,6 +443,8 @@ func (a *Application) Init() error {
 	router.RegisterPaymentRoutes(v1, paymentApi)
 	// 文件下载 - 公开访问（对齐 Java SecurityConfig permitAll，供算法服务等内部调用无需鉴权）
 	v1.GET("/files/download/*objectName", fileApi.DownloadFile)
+	// 前端日志接收 - 匿名允许上报（OptionalSessionAuth 仅注入已登录 user_id），对齐 Java permitAll
+	router.RegisterClientLogRoutes(v1, clientLogApi)
 
 	// 需要Session认证保护的路由
 	protectedV1 := v1.Group("")

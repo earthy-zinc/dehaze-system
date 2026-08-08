@@ -19,7 +19,7 @@
       <text class="card-name">{{ sample.name }}</text>
       <view class="card-meta">
         <text v-if="sample.scene" class="meta-scene">{{ sample.scene }}</text>
-        <u-icon name="arrow-right" size="14" color="#9ca3af" />
+        <SvgIcon name="arrow-right" size="14" color="#9ca3af" />
       </view>
     </view>
   </view>
@@ -27,6 +27,7 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import type { SampleImage } from "../data/imageInputData";
 import {
   DIFFICULTY_COLORS,

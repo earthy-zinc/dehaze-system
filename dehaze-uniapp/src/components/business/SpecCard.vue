@@ -1,7 +1,7 @@
 <template>
   <view class="spec-card">
     <view class="spec-icon">
-      <u-icon :name="icon" size="36" color="#ffffff" />
+      <SvgIcon :name="icon" size="36" color="#ffffff" />
     </view>
     <text class="spec-title">{{ title }}</text>
     <text class="spec-value">{{ value }}</text>
@@ -10,6 +10,8 @@
 </template>
 
 <script lang="ts" setup>
+import SvgIcon from "@/components/SvgIcon/index.vue";
+
 interface Props {
   icon: string;
   title: string;

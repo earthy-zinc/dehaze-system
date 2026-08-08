@@ -7,7 +7,7 @@
         :class="{ active: displayMode === 'grid' }"
         @click="handleModeChange('grid')"
       >
-        <u-icon
+        <SvgIcon
           name="grid"
           size="18"
           :color="displayMode === 'grid' ? '#ffffff' : '#6b7280'"
@@ -18,7 +18,7 @@
         :class="{ active: displayMode === 'waterfall' }"
         @click="handleModeChange('waterfall')"
       >
-        <u-icon
+        <SvgIcon
           name="list"
           size="18"
           :color="displayMode === 'waterfall' ? '#ffffff' : '#6b7280'"
@@ -92,6 +92,7 @@ import {
   onUnmounted,
   getCurrentInstance,
 } from "vue";
+import SvgIcon from "@/components/SvgIcon/index.vue";
 import ImageCard from "./ImageCard.vue";
 import type { DatasetImageItem, DisplayMode } from "../data/datasetData";
 

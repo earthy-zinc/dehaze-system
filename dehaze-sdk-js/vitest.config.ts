@@ -12,7 +12,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["test/**/*.test.ts"],
+    include: ["test/modules/**/*.test.ts"],
     // 供 reporter 输出失败用例的 文件:行号
     includeTaskLocation: true,
     // 串行运行测试文件，避免并行测试文件共享数据库时互相删除数据

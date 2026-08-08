@@ -79,7 +79,7 @@ const MANAGEMENT_ENTRIES: ManagementEntry[] = [
   {
     icon: "🎯",
     title: "推荐规则",
-    route: "/pages/recommend/index",
+    route: "/pages/system/recommend/index",
     sysModule: "recommendation",
   },
 ];

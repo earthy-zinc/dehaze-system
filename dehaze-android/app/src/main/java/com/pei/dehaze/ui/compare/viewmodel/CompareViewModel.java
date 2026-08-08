@@ -6,10 +6,12 @@ import androidx.lifecycle.MutableLiveData;
 import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
 import com.pei.dehaze.sdk.api.AlgorithmAPI;
+import com.pei.dehaze.sdk.api.AlgorithmSelectAPI;
 import com.pei.dehaze.sdk.api.FileAPI;
 import com.pei.dehaze.sdk.api.ModelAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.sdk.model.Option;
+import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmDetailVO;
 import com.pei.dehaze.sdk.model.evaluation.EvalParam;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
@@ -29,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CompareViewModel extends BaseViewModel {
 
     private final MutableLiveData<FileInfo> uploadedFile = new MutableLiveData<>();
+    private final MutableLiveData<FileInfo> uploadedGtFile = new MutableLiveData<>();
     private final MutableLiveData<List<Option>> algorithmOptions = new MutableLiveData<>();
     private final MutableLiveData<PredResult> predictionResult = new MutableLiveData<>();
     private final MutableLiveData<Map<Long, PredResult>> multiPredictionResults = new MutableLiveData<>();
@@ -36,6 +39,7 @@ public class CompareViewModel extends BaseViewModel {
     private final MutableLiveData<List<PredictionLogVO>> predictionLogs = new MutableLiveData<>();
 
     private String originalImageUrl;
+    private Long currentAlgorithmId;
 
     public void uploadImage(File imageFile) {
         FileAPI.upload(imageFile, RepositoryAdapters.wrap(withLoading(fileInfo -> {
@@ -59,6 +63,7 @@ public class CompareViewModel extends BaseViewModel {
             error.setValue(invalidMsg);
             return;
         }
+        currentAlgorithmId = algorithmId;
         PredParam param = new PredParam();
         param.setAlgorithmId(algorithmId);
         param.setImageUrl(originalImageUrl);
@@ -88,6 +93,7 @@ public class CompareViewModel extends BaseViewModel {
             return;
         }
         loading.setValue(true);
+        currentAlgorithmId = algorithmIds.get(0);
         Map<Long, PredResult> results = new HashMap<>();
         AtomicInteger pending = new AtomicInteger(algorithmIds.size());
         for (Long algorithmId : algorithmIds) {
@@ -150,6 +156,23 @@ public class CompareViewModel extends BaseViewModel {
                 predictionLogs.postValue(logs != null ? logs : new ArrayList<>()))));
     }
 
+    /**
+     * 上传参考图（GT）用于指标评估。
+     */
+    public void uploadGtImage(File gtFile) {
+        FileAPI.upload(gtFile, RepositoryAdapters.wrap(withLoading(fileInfo -> {
+            uploadedGtFile.postValue(fileInfo);
+            operationResult.postValue("参考图上传成功");
+        })));
+    }
+
+    /**
+     * 加载算法详情（用于"算法信息"对比模式）。
+     */
+    public void loadAlgorithmDetail(long algorithmId, RepositoryCallback<AlgorithmDetailVO> callback) {
+        AlgorithmSelectAPI.getDetail(algorithmId, RepositoryAdapters.wrap(callback));
+    }
+
     public LiveData<FileInfo> getUploadedFile() {
         return uploadedFile;
     }
@@ -176,5 +199,13 @@ public class CompareViewModel extends BaseViewModel {
 
     public String getOriginalImageUrl() {
         return originalImageUrl;
+    }
+
+    public LiveData<FileInfo> getUploadedGtFile() {
+        return uploadedGtFile;
+    }
+
+    public Long getCurrentAlgorithmId() {
+        return currentAlgorithmId;
     }
 }

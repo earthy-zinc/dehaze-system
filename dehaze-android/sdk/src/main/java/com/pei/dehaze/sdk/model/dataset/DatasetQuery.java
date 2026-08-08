@@ -10,7 +10,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class DatasetQuery extends PageQuery {
-    private String keywords;
+    private String keyword;
     private String type;
     private Integer status;
 }

@@ -2,45 +2,60 @@
   <view class="history-card" @click="handleLoad">
     <view class="card-thumbnail">
       <up-image
-        v-if="record.predUrl"
-        :src="record.predUrl"
+        v-if="thumbnailUrl"
+        :src="thumbnailUrl"
         mode="aspectFill"
         width="120rpx"
         height="120rpx"
         :lazy-load="true"
         :fade="true"
       />
+      <view v-else class="thumbnail-placeholder">
+        <SvgIcon name="photo" size="28" color="#d1d5db" />
+      </view>
+      <view v-if="record.status === 1" class="result-badge">
+        <text>已处理</text>
+      </view>
     </view>
 
     <view class="card-content">
-      <text class="card-algo">{{ record.algorithmName || "未知算法" }}</text>
-      <text class="card-time"
-        >耗时 {{ record.time != null ? record.time + "s" : "-" }}</text
-      >
-      <text class="card-date">{{
-        formatRelativeTime(record.createTime || "")
-      }}</text>
+      <text class="card-name">{{ displayName }}</text>
+      <text class="card-time">{{ formatTimestamp(record.createTime) }}</text>
+      <text v-if="record.algorithmName" class="card-algo">{{ record.algorithmName }}</text>
     </view>
 
     <view class="card-arrow">
-      <u-icon name="arrow-right" size="16" color="#d1d5db" />
+      <SvgIcon name="arrow-right" size="16" color="#d1d5db" />
     </view>
   </view>
 </template>
 
 <script lang="ts" setup>
-import type { PredLogVO } from "dehaze-sdk-js";
-import { formatRelativeTime } from "@/utils/format";
+import { computed } from "vue";
+import type { InputHistoryVO } from "dehaze-sdk-js";
+import SvgIcon from "@/components/SvgIcon/index.vue";
+import { formatTimestamp } from "../services/historyService";
 
 interface Props {
-  record: PredLogVO;
+  record: InputHistoryVO;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  (e: "load", record: PredLogVO): void;
+  (e: "load", record: InputHistoryVO): void;
 }>();
+
+const thumbnailUrl = computed(() => {
+  return props.record.originalThumbnailUrl || props.record.originalImageUrl || "";
+});
+
+const displayName = computed(() => {
+  const url = props.record.originalImageUrl || "";
+  const path = url.split("?")[0];
+  const segments = path.split("/");
+  return segments[segments.length - 1] || "未命名图片";
+});
 
 const handleLoad = () => {
   emit("load", props.record);
@@ -72,12 +87,34 @@ const handleLoad = () => {
   background: #f3f4f6;
 }
 
+.thumbnail-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-badge {
+  position: absolute;
+  bottom: 4rpx;
+  left: 4rpx;
+  padding: 4rpx 10rpx;
+  background: #10b981;
+  border-radius: 6rpx;
+
+  text {
+    font-size: 18rpx;
+    color: #ffffff;
+  }
+}
+
 .card-content {
   flex: 1;
   min-width: 0;
 }
 
-.card-algo {
+.card-name {
   display: block;
   font-size: 28rpx;
   font-weight: 600;
@@ -95,9 +132,9 @@ const handleLoad = () => {
   margin-bottom: 4rpx;
 }
 
-.card-date {
+.card-algo {
   font-size: 22rpx;
-  color: #9ca3af;
+  color: #3b82f6;
 }
 
 .card-arrow {
