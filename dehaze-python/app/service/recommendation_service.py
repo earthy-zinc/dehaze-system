@@ -141,8 +141,6 @@ class RecommendationService:
                 algorithmName=alg.name or "",
                 matchScore=match_score,
                 reason=f"{alg.name}：{reason}",
-                rating=3.5,
-                estimatedTime=5000,
                 effectDescription=f"该算法在{scene_type}场景下表现稳定",
             ))
 

@@ -39,8 +39,8 @@ class RecommendedAlgorithmVO(BaseModel):
     algorithmName: str = Field(..., description="算法名称")
     matchScore: int = Field(..., description="匹配度(0-100)")
     reason: str = Field(..., description="推荐理由")
-    rating: float = Field(..., description="算法评分(0-5)")
-    estimatedTime: int = Field(..., description="预估耗时(ms)")
+    rating: Optional[float] = Field(default=None, description="算法评分(0-5)，待真实数据采集后填充")
+    estimatedTime: Optional[int] = Field(default=None, description="预估耗时(ms)，待真实数据采集后填充")
     effectDescription: str = Field(..., description="预期效果描述")
 
 
