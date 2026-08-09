@@ -2,18 +2,16 @@
 
 ## 1. 文档概述
 
-本文档定义 **算法管理** 模块的 HTTP API 规范,是该模块 API 契约的**唯一权威来源**。
+本文档定义 **算法管理** 模块的 HTTP API 规范，是该模块 API 契约的唯一权威来源。
 
-- **基础路径**:
-  - 算法管理: `/api/v1/algorithms`
-  - 算法导入导出: `/api/v1/algorithms`（通用导入导出框架，模块名 `algorithm` 映射为复数路径）
-  - 模型预测: `/api/v1/prediction`
-  - 效果评估: `/api/v1/evaluation`
-- **公共约定**: 参见 [../../02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md)
-- **需求规格**: [需求规格.md](./需求规格.md)
-- **后端实现**: [后端实现.md](./后端实现.md)
+- **基础路径**：
+  - 算法管理：`/api/v1/algorithms`
+  - 模型预测：`/api/v1/prediction`
+  - 效果评估：`/api/v1/evaluation`
+- **公共约定**：参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md)
+- **需求规格**：[需求规格.md](./需求规格.md)
 
-> **重要**: 接口详细参数/响应结构可通过 API 文档 MCP 查询,本文档仅定义接口清单和权限标识。
+> 算法导入导出由通用导入导出框架统一调度，路径为 `/api/v1/algorithms`。
 
 ## 2. 接口清单
 
@@ -33,8 +31,6 @@
 | `/api/v1/algorithms/{id}/version` | POST | 新增算法版本 | `sys:algorithm:version` | F-M05-005 |
 | `/api/v1/algorithms/{id}/versions` | GET | 获取算法版本历史 | - | F-M05-005 |
 | `/api/v1/algorithms/{id}/rollback` | POST | 版本回滚（`versionId` 查询参数） | `sys:algorithm:version` | F-M05-005 |
-
-> 删除接口说明：系统仅提供批量删除接口 `DELETE /api/v1/algorithms?ids=1,2,3`，单个删除同样通过传入单个 id 实现。删除时递归收集子孙算法一并删除。
 
 ### 2.2 算法导入/导出接口
 
@@ -58,54 +54,38 @@
 
 ### 2.4 模型预测接口
 
-> **异步任务模式**：POST 立即返回 logId + status，前端通过 GET 轮询直至终态。
+> 异步任务模式：POST 立即返回任务 ID 与状态，前端通过 GET 轮询直至终态（1=处理中/2=已完成/3=失败）。
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/prediction` | POST | 提交预测任务，立即返回 logId + status=processing | - | F-M05-009 |
-| `/api/v1/prediction/{taskId}` | GET | 轮询预测任务状态（processing/completed/failed） | - | F-M05-009 |
+| `/api/v1/prediction` | POST | 提交预测任务（异步） | - | F-M05-009 |
+| `/api/v1/prediction/{taskId}` | GET | 轮询预测任务状态 | - | F-M05-009 |
 | `/api/v1/prediction/logs` | GET | 获取预测日志列表 | - | F-M05-009 |
-
-**POST 响应**（`PredictionResultVO`）：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `logId` | Long | 预测日志 ID |
-| `status` | int | 任务状态：`1=处理中(processing)` / `2=已完成(completed)` / `3=失败(failed)` |
-| `resultUrl` | String | 结果图 URL（GET 轮询 completed 时返回） |
-| `resultThumbnailUrl` | String | 结果缩略图 URL（GET 轮询 completed 时返回） |
-| `time` | int | 处理耗时（毫秒，GET 轮询 completed/failed 时返回） |
-| `errorMessage` | String | 失败错误信息（GET 轮询 failed 时返回） |
-
-> 缓存命中时 POST 直接返回 `status=2(completed)` + 完整结果，无需轮询。
 
 ### 2.5 效果评估接口
 
-> **异步任务模式**：与模型预测同理，POST 立即返回 logId + status，前端通过 GET 轮询直至终态。
+> 异步任务模式：与模型预测同理，POST 立即返回任务 ID 与状态，前端通过 GET 轮询直至终态。
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/evaluation` | POST | 提交评估任务，立即返回 logId + status=processing | - | F-M05-010 |
-| `/api/v1/evaluation/{taskId}` | GET | 轮询评估任务状态（processing/completed/failed） | - | F-M05-010 |
+| `/api/v1/evaluation` | POST | 提交评估任务（异步） | - | F-M05-010 |
+| `/api/v1/evaluation/{taskId}` | GET | 轮询评估任务状态 | - | F-M05-010 |
 | `/api/v1/evaluation/logs` | GET | 获取评估日志列表 | - | F-M05-010 |
 
 ## 3. 权限标识汇总
 
-| 权限标识 | 说明 | 控制范围 |
-|---------|------|---------|
-| `sys:algorithm:add` | 新增算法 | 按钮显示 + 接口校验 |
-| `sys:algorithm:edit` | 编辑算法、状态变更（停用/启用/归档） | 按钮显示 + 接口校验 |
-| `sys:algorithm:audit` | 审核算法（通过/驳回） | 按钮显示 + 接口校验 |
-| `sys:algorithm:delete` | 删除算法 | 按钮显示 + 接口校验 |
-| `sys:algorithm:version` | 新增版本、版本回滚 | 按钮显示 + 接口校验 |
-| `sys:algorithm:import` | 导入算法、下载模板 | 按钮显示 + 接口校验 |
-| `sys:algorithm:export` | 导出算法 | 按钮显示 + 接口校验 |
-
-> **说明**：查看算法详情、监控数据、版本历史查询为登录用户默认权限，无独立权限标识（实现中未配置 `sys:algorithm:view/monitor/stop`）；停用/启用通过编辑接口（`sys:algorithm:edit`）执行状态变更。
+| 权限标识 | 说明 |
+|---------|------|
+| `sys:algorithm:add` | 新增算法 |
+| `sys:algorithm:edit` | 编辑算法、状态变更（停用/启用/归档） |
+| `sys:algorithm:audit` | 审核算法（通过/驳回） |
+| `sys:algorithm:delete` | 删除算法 |
+| `sys:algorithm:version` | 新增版本、版本回滚 |
+| `sys:algorithm:import` | 导入算法、下载模板 |
+| `sys:algorithm:export` | 导出算法 |
+| - | 登录态接口：查看算法详情、监控数据、版本历史查询、模型预测、效果评估 |
 
 ## 4. 业务错误码
-
-算法模块复用系统通用错误码体系（A 系列），不单独定义 B02xx 算法专属错误码。B0200/B0210/B0220 等为系统级错误码（容灾/限流/降级），与算法业务无关。
 
 | 错误码 | 说明 | 触发场景 |
 |--------|------|---------|
@@ -118,7 +98,4 @@
 | `A0707` | 数据校验失败 | 导入时名称重复、类型不合法 |
 | `B0001` | 系统执行出错 | 通用业务异常（如驳回原因未填写、状态流转非法） |
 | `A0230` | token无效或已过期 | 未认证访问 |
-
-
-
 

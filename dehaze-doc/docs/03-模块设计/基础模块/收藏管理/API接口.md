@@ -14,26 +14,21 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/favorites/page` | GET | 收藏列表分页查询（支持 targetType 单选筛选、关键词搜索、时间排序） | - | F-FAV-002 |
-| `/api/v1/favorites` | POST | 添加收藏（请求体：targetType + targetId；重复收藏幂等返回原记录） | - | F-FAV-001 |
-| `/api/v1/favorites/{ids}` | DELETE | 批量取消收藏（逗号分隔记录 ID，逻辑删除） | - | F-FAV-001 |
-| `/api/v1/favorites/{targetId}/status` | GET | 检查指定对象是否已收藏（参数：targetType） | - | F-FAV-001 |
-| `/api/v1/favorites/count` | GET | 收藏数量统计（按类型分组，参数 targetType 可选） | - | F-FAV-002 |
-
-> **说明**：所有接口要求登录用户身份，自动识别当前用户，无特殊权限标识。
+| `/api/v1/favorites/page` | GET | 收藏列表分页查询（支持 targetType 筛选、关键词搜索、时间排序） | - | F-FAV-002 |
+| `/api/v1/favorites` | POST | 添加收藏 | - | F-FAV-001 |
+| `/api/v1/favorites/{ids}` | DELETE | 批量取消收藏 | - | F-FAV-001 |
+| `/api/v1/favorites/{targetId}/status` | GET | 检查指定对象是否已收藏 | - | F-FAV-001 |
+| `/api/v1/favorites/count` | GET | 收藏数量统计（按类型分组） | - | F-FAV-002 |
 
 ## 3. 权限标识汇总
 
 | 权限标识 | 说明 |
 |---------|------|
-| - | 收藏管理无特殊权限，登录用户即可操作 |
+| - | 收藏管理无特殊权限，登录用户即可访问 |
 
 ## 4. 业务错误码
 
 | 错误码 | 说明 | 触发场景 |
 |--------|------|---------|
-| `A0401` | 请求资源不存在 | 收藏对象不存在（algorithm/dataset/result 类型校验；targetId 为空） |
+| `A0401` | 请求资源不存在 | 收藏对象不存在；targetId 为空 |
 | `A0500` | 业务异常 | 收藏容量已满（普通用户 200 条 / VIP 用户 500 条） |
-| `A0230` | token无效或已过期 | 未登录访问 |
-
-> **说明**：重复收藏同一对象为**幂等成功**（upsert 返回原记录 ID），不返回错误。

@@ -12,102 +12,46 @@
 
 ### 2.1 用户端接口
 
-**基础路径**：`/api/v1/members`
-
-| 接口路径 | 方法 | 功能描述 | 权限标识 |
-|---------|------|---------|---------|
-| `/api/v1/members/profile` | GET | 当前用户会员信息 | - |
-| `/api/v1/members/growth-logs` | GET | 成长值变动明细 | - |
-| `/api/v1/members/sign-in` | POST | 每日签到 | - |
-| `/api/v1/members/sign-in/calendar` | GET | 签到日历 | - |
+| 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
+|------|------|---------|---------|-----------|
+| `/api/v1/members/profile` | GET | 当前用户会员信息 | - | F-MM-012 |
+| `/api/v1/members/growth-logs` | GET | 成长值变动明细 | - | F-MM-013 |
+| `/api/v1/members/sign-in` | POST | 每日签到 | - | F-MM-014 |
+| `/api/v1/members/sign-in/calendar` | GET | 签到日历 | - | F-MM-014 |
 
 
 
 ### 2.2 后台管理接口
 
-**基础路径**：`/api/v1/members`
-
-| 接口路径 | 方法 | 功能描述 | 权限标识 |
-|---------|------|---------|---------|
-| `/api/v1/members/page` | GET | 会员分页列表 | - |
-| `/api/v1/members/{userId}` | GET | 会员详情 | - |
-| `/api/v1/members/{userId}/level` | PUT | 等级调整 | member:level:edit |
-| `/api/v1/members/{userId}/growth` | PUT | 成长值调整 | member:growth:edit |
-| `/api/v1/members/{userId}/status` | PUT | 冻结/解冻 | member:status:edit |
-| `/api/v1/members/benefits` | GET | 权益配置列表 | - |
-| `/api/v1/members/benefits/{level}` | PUT | 修改权益配置 | member:benefit:edit |
+| 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
+|------|------|---------|---------|-----------|
+| `/api/v1/members/page` | GET | 会员分页列表 | - | F-MM-006 |
+| `/api/v1/members/{userId}` | GET | 会员详情 | - | F-MM-007 |
+| `/api/v1/members/{userId}/level` | PUT | 等级调整 | member:level:edit | F-MM-008 |
+| `/api/v1/members/{userId}/growth` | PUT | 成长值调整 | member:growth:edit | F-MM-009 |
+| `/api/v1/members/{userId}/status` | PUT | 冻结/解冻 | member:status:edit | F-MM-010 |
+| `/api/v1/members/benefits` | GET | 权益配置列表 | - | F-MM-011 |
+| `/api/v1/members/benefits/{level}` | PUT | 修改权益配置 | member:benefit:edit | F-MM-011 |
 
 
 
 ## 3. 权限标识汇总
 
-| 权限标识 | 功能 | 控制方式 |
-|---------|------|---------|
-| member:level:edit | 等级调整 | 按钮显示 + 接口校验 |
-| member:growth:edit | 成长值调整 | 按钮显示 + 接口校验 |
-| member:status:edit | 冻结/解冻 | 按钮显示 + 接口校验 |
-| member:benefit:edit | 权益配置 | 按钮显示 + 接口校验 |
+| 权限标识 | 说明 |
+|---------|------|
+| member:level:edit | 等级调整 |
+| member:growth:edit | 成长值调整 |
+| member:status:edit | 冻结/解冻 |
+| member:benefit:edit | 权益配置 |
 
-## 4. 状态枚举
+> 用户端接口（会员信息/成长值明细/签到/签到日历）与后台查询接口（会员列表/详情/权益配置列表）均为登录态访问。
 
-### 4.1 会员状态
+## 4. 业务错误码
 
-| 状态值 | 显示 | 说明 |
-|--------|------|------|
-| 1 | 正常（绿色标签） | 会员可正常使用所有功能 |
-| 0 | 冻结（红色标签） | 会员无法使用付费功能 |
-
-### 4.2 会员等级
-
-| levelCode | 等级值 | 名称 | 成长值区间 |
-|-----------|--------|------|-----------|
-| `level_0` | 0 | 普通用户 | 0 - 999 |
-| `level_1` | 1 | VIP1 | 1000 - 4999 |
-| `level_2` | 2 | VIP2 | 5000 - 19999 |
-| `level_3` | 3 | SVIP | ≥20000 |
-
-### 4.3 等级来源 (level_source)
-
-记录会员当前等级的获得来源。**自动升级不限来源**（成长值达到更高等级阈值时任何来源的会员均自动升级）；**自动降级受来源与有效期约束**：
-
-| 值 | 说明 | 自动降级 |
-|----|------|---------|
-| `growth` | 成长值达标 | 是，成长值低于等级下限时自动降级 |
-| `purchase` | 套餐购买 | 套餐有效期内不降级；套餐到期后按成长值重算等级并置为 `growth` |
-| `admin` | 管理员调整 | 有效期内不降级；到期后（若设置有效期）按成长值重算并置为 `growth` |
-
-### 4.4 成长值变动类型 (change_type)
-
-| 值 | 说明 |
-|----|------|
-| `process` | 图像处理（覆盖去雾/去雨/去雪/低光/超分/去噪/修复各任务类型） |
-| `evaluate` | 效果评估 |
-| `rating` | 提交评价 |
-| `sign_in` | 每日签到 |
-| `sign_in_bonus` | 连续签到奖励 |
-| `consume` | 购买套餐 |
-| `refund_deduct` | 退款扣减 |
-| `admin_adjust` | 管理员调整 |
-
-### 4.5 处理优先级 (priority)
-
-权益配置中的处理优先级枚举：
-
-| 值 | 说明 |
-|----|------|
-| 1 | 普通 |
-| 2 | 优先 |
-| 3 | 高优先 |
-| 4 | 最高 |
-
-## 5. 业务错误码
-
-会员管理模块错误码均映射到全局状态码体系（参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md) §5），三端（Java/Go/Python）统一使用以下定义：
-
-| 错误码常量 | 全局码 | 错误信息 | 触发场景 |
-|-------|-------|---------|---------|
-| MEMBER_NOT_FOUND | `A0510` | 会员不存在 | 查询/操作时会员记录不存在 |
-| MEMBER_FROZEN | `A0511` | 会员已冻结 | 冻结状态会员尝试使用付费功能 |
-| SIGN_IN_ALREADY | `A0512` | 今日已签到 | 重复签到 |
-| GROWTH_INSUFFICIENT | `A0513` | 成长值不足 | 扣减成长值时余额不足 |
-| BENEFIT_CONFIG_INVALID | `A0514` | 权益配置无效 | 权益配置缺少必填项或数值非法 |
+| 错误码 | 说明 | 触发场景 |
+|--------|------|---------|
+| A0510 | 会员不存在 | 查询/操作时会员记录不存在 |
+| A0511 | 会员已冻结 | 冻结状态会员尝试使用付费功能 |
+| A0512 | 今日已签到 | 重复签到 |
+| A0513 | 成长值不足 | 扣减成长值时余额不足 |
+| A0514 | 权益配置无效 | 权益配置缺少必填项或数值非法 |
