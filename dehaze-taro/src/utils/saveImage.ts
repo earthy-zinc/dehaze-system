@@ -4,6 +4,7 @@
 
 import Taro from "@tarojs/taro";
 import { getErrorMessage } from "./error";
+import { isH5 } from "@/utils/platform";
 
 interface SaveImageOptions {
   /** H5 端是否通过 a 标签触发下载（默认 true） */
@@ -27,7 +28,7 @@ export async function saveImageToAlbum(
       throw new Error("下载结果图片失败");
     }
 
-    if (process.env.TARO_ENV === "h5" && h5Download) {
+    if (isH5 && h5Download) {
       // H5 端：通过 a 标签触发下载
       const link = document.createElement("a");
       link.href = downloadRes.tempFilePath;

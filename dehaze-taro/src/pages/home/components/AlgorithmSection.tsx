@@ -3,7 +3,6 @@ import { View, Text, Button, Image } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Arrow, Success } from "@taroify/icons";
 import { DatasetItemAPI } from "dehaze-sdk-js";
-import type { DatasetItemVO } from "dehaze-sdk-js";
 
 import "./AlgorithmSection.less";
 
@@ -18,7 +17,7 @@ const AlgorithmSection: React.FC = () => {
       sortOrder: "desc",
     })
       .then((res) => {
-        const item = (res.list as unknown as DatasetItemVO[])?.[0];
+        const item = res.list?.[0];
         const url = item?.clearImage?.url;
         if (url) setAlgorithmImageUrl(url);
       })

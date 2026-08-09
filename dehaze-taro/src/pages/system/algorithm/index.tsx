@@ -53,6 +53,19 @@ const AlgorithmManagePage: React.FC = () => {
 
   const resetAddForm = () => setAddForm({ name: "", type: "", version: "", description: "", path: "", importPath: "" });
 
+  const fetchAlgorithms = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await AlgorithmAPI.getList();
+      setAlgorithms(data || []);
+    } catch (err: unknown) {
+      setLoadError(getErrorMessage(err, "加载失败，请重试"));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const handleAdd = useCallback(async () => {
     const { name, type, version } = addForm;
     if (!name.trim() || !type.trim() || !version.trim()) {
@@ -83,19 +96,6 @@ const AlgorithmManagePage: React.FC = () => {
       setAddSubmitting(false);
     }
   }, [addForm, fetchAlgorithms]);
-
-  const fetchAlgorithms = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const data = await AlgorithmAPI.getList();
-      setAlgorithms(data || []);
-    } catch (err: unknown) {
-      setLoadError(getErrorMessage(err, "加载失败，请重试"));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useLoad(() => {
     fetchAlgorithms();

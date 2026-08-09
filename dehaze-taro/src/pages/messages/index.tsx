@@ -75,7 +75,7 @@ const MessagesPage: React.FC = () => {
         if (type) queryParams.type = type;
 
         const res = await MessageAPI.getPage(queryParams);
-        const list = (res.list as unknown as MessageVO[]) || [];
+        const list = res.list || [];
         if (append) {
           setMessages((prev) => [...prev, ...list]);
         } else {
@@ -100,7 +100,7 @@ const MessagesPage: React.FC = () => {
       try {
         setLoading(true);
         const res = await MessageAPI.search({ keyword: kw.trim(), pageNum: page, pageSize: 20 });
-        const list = (res.list as unknown as MessageVO[]) || [];
+        const list = res.list || [];
         if (append) {
           setMessages((prev) => [...prev, ...list]);
         } else {

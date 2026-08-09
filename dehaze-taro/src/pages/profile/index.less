@@ -25,7 +25,7 @@
   .user-card-bg {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   }
 
   .user-card-content {
@@ -55,7 +55,7 @@
       .avatar-text {
         font-size: 52rpx;
         font-weight: 600;
-        color: #fff;
+        color: var(--color-text-inverse);
       }
     }
 
@@ -97,7 +97,7 @@
   justify-content: space-between;
   padding: 28rpx 24rpx;
   margin: 0 24rpx 24rpx;
-  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-info));
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 
@@ -118,7 +118,7 @@
       .vip-banner-title {
         font-size: var(--font-md);
         font-weight: 600;
-        color: #fff;
+        color: var(--color-text-inverse);
       }
 
       .vip-banner-desc {
@@ -138,7 +138,7 @@
       font-size: var(--font-sm);
       font-weight: 500;
       color: var(--color-primary);
-      background-color: #fff;
+      background-color: var(--color-bg-card);
       border-radius: var(--radius-md);
     }
 

@@ -12,6 +12,7 @@ import Taro from "@tarojs/taro";
 import { Button } from "@taroify/core";
 import { ModelAPI } from "dehaze-sdk-js";
 import ImmersiveLayout from "@/layout/immersive";
+import { isH5 } from "@/utils/platform";
 import CompareToolbar from "@/components/compare/CompareToolbar";
 import { loadCompareContext } from "@/components/compare/types";
 import EmptyState from "@/components/common/EmptyState";
@@ -172,7 +173,7 @@ const FilterPage: React.FC = () => {
 
   // 小程序端：获取图片尺寸以确定 Canvas 显示尺寸
   useEffect(() => {
-    if (process.env.TARO_ENV === "h5") return;
+    if (isH5) return;
     if (!hasResult || !currentPreviewUrl) {
       setCanvasDisplaySize({ width: 0, height: 0 });
       return;
@@ -209,7 +210,7 @@ const FilterPage: React.FC = () => {
 
   // 小程序端：在 Canvas 上绘制带滤镜的图片
   useEffect(() => {
-    if (process.env.TARO_ENV === "h5") return;
+    if (isH5) return;
     if (!hasResult || !currentPreviewUrl) return;
     if (canvasDisplaySize.width === 0 || canvasDisplaySize.height === 0) return;
 
@@ -342,21 +343,37 @@ const FilterPage: React.FC = () => {
             setReportLoading(false);
             setReportDownloading(true);
             try {
-              const filePath = await Taro.downloadFile({ url: statusRes.downloadUrl });
+              const filePath = await Taro.downloadFile({
+                url: statusRes.downloadUrl,
+              });
               if (filePath.tempFilePath) {
-                await Taro.openDocument({ filePath: filePath.tempFilePath, showMenu: true });
+                await Taro.openDocument({
+                  filePath: filePath.tempFilePath,
+                  showMenu: true,
+                });
               }
-            } catch { Taro.showToast({ title: "打开报告失败", icon: "none" }); }
-            finally { setReportDownloading(false); }
-          } else { throw new Error("报告生成但无下载链接"); }
+            } catch {
+              Taro.showToast({ title: "打开报告失败", icon: "none" });
+            } finally {
+              setReportDownloading(false);
+            }
+          } else {
+            throw new Error("报告生成但无下载链接");
+          }
           break;
         }
-        if (status === 3) throw new Error(statusRes.errorMessage || "报告生成失败");
+        if (status === 3)
+          throw new Error(statusRes.errorMessage || "报告生成失败");
         await new Promise((r) => setTimeout(r, 2000));
       }
     } catch (err: unknown) {
-      Taro.showToast({ title: err instanceof Error ? err.message : "报告生成失败", icon: "none" });
-    } finally { setReportLoading(false); }
+      Taro.showToast({
+        title: err instanceof Error ? err.message : "报告生成失败",
+        icon: "none",
+      });
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   // 是否有参数变更
@@ -366,14 +383,15 @@ const FilterPage: React.FC = () => {
     );
   }, [params]);
 
-  // 是否为 H5 环境
-  const isH5 = process.env.TARO_ENV === "h5";
-
   return (
     <ImmersiveLayout
       title="滤镜调节"
       toolbar={
-        <CompareToolbar currentMode="filter" resultUrl={result?.resultUrl} resultId={result?.logId} />
+        <CompareToolbar
+          currentMode="filter"
+          resultUrl={result?.resultUrl}
+          resultId={result?.logId}
+        />
       }
     >
       {!hasResult ? (
@@ -465,7 +483,7 @@ const FilterPage: React.FC = () => {
                     max={config.max}
                     value={params[config.key]}
                     step={1}
-                    activeColor="#1890ff"
+                    activeColor="#3b82f6"
                     onChanging={(e: BaseEventOrig<{ value: number }>) =>
                       handleParamChange(config.key, e.detail.value)
                     }

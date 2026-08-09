@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { PhotoOutlined, BulbOutlined, Fire, Arrow } from "@taroify/icons";
+import { useProcessStore } from "@/stores/process";
 
 import "./WorkflowSection.less";
 
@@ -21,14 +22,9 @@ const WorkflowStep: React.FC<WorkflowStepProps> = ({
   target,
 }) => {
   const handleClick = () => {
-    // algorithm-select 和 processing 依赖 current_image，未选择图片时引导用户先去图像输入
+    // algorithm-select 和 processing 依赖当前图片，未选择图片时引导用户先去图像输入
     if (target === "algorithm-select" || target === "processing") {
-      let hasImage = false;
-      try {
-        hasImage = !!Taro.getStorageSync("current_image");
-      } catch {
-        hasImage = false;
-      }
+      const hasImage = !!useProcessStore.getState().image;
       if (!hasImage) {
         Taro.showToast({ title: "请先选择图片", icon: "none" });
         setTimeout(

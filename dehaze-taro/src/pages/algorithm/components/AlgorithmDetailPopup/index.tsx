@@ -5,6 +5,7 @@ import { Tag, Button, Popup, Loading } from "@taroify/core";
 import type { Algorithm } from "dehaze-sdk-js";
 import { AlgorithmAPI } from "dehaze-sdk-js";
 import { STATUS_INFO } from "../../utils";
+import { useProcessStore } from "@/stores/process";
 
 interface MonitorData {
   callCount: number;
@@ -78,7 +79,7 @@ const AlgorithmDetailPopup: React.FC<AlgorithmDetailPopupProps> = ({
 
   const handleUseAlgorithm = () => {
     if (!algorithm) return;
-    Taro.setStorageSync("selected_algorithm", JSON.stringify(algorithm));
+    useProcessStore.getState().setAlgorithm(algorithm);
     onClose();
     Taro.navigateTo({ url: "/pages/processing/index" });
   };

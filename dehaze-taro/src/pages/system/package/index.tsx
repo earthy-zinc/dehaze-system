@@ -3,7 +3,7 @@ import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag, Loading, Empty, Popup, Input } from "@taroify/core";
 import { PackageAPI } from "dehaze-sdk-js";
-import type { PackagePageVO } from "dehaze-sdk-js";
+import type { PackagePageVO, PackageQuery, PackageStatus } from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import { usePermission } from "@/hooks/usePermission";
 import { getErrorMessage } from "@/utils/error";
@@ -46,9 +46,9 @@ const PackageManagePage: React.FC = () => {
     async (page: number, kw: string, status?: number) => {
       setLoading(true);
       try {
-        const params: any = { pageNum: page, pageSize: 15 };
+        const params: PackageQuery = { pageNum: page, pageSize: 15 };
         if (kw) params.name = kw;
-        if (status !== undefined) params.status = status;
+        if (status !== undefined) params.status = status as PackageStatus;
         const res = await PackageAPI.getPage(params);
         setPackages(res.list);
         setTotal(res.total);

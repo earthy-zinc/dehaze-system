@@ -3,7 +3,13 @@ import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag, Loading, Empty, Tabs, Popup, Input, Textarea } from "@taroify/core";
 import { FeedbackAPI } from "dehaze-sdk-js";
-import type { FeedbackPageVO, RatingPageVO } from "dehaze-sdk-js";
+import type {
+  FeedbackPageVO,
+  RatingPageVO,
+  FeedbackQuery,
+  FeedbackStatus,
+  FeedbackType,
+} from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import { usePermission } from "@/hooks/usePermission";
 import { getErrorMessage } from "@/utils/error";
@@ -54,10 +60,10 @@ const FeedbackManagePage: React.FC = () => {
     async (page: number, kw: string, status: string, type: string) => {
       setLoading(true);
       try {
-        const params: any = { pageNum: page, pageSize: 15 };
+        const params: FeedbackQuery = { pageNum: page, pageSize: 15 };
         if (kw) params.keywords = kw;
-        if (status) params.status = status;
-        if (type) params.feedbackType = type;
+        if (status) params.status = status as FeedbackStatus;
+        if (type) params.feedbackType = type as FeedbackType;
         const res = await FeedbackAPI.listFeedback(params);
         setFeedbacks(res.list);
         setTotalFeedback(res.total);

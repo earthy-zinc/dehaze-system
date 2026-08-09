@@ -13,6 +13,7 @@ import type { Algorithm, PredictionResultVO, PresetVO } from "dehaze-sdk-js";
 import { uploadImage } from "@/config/upload";
 import { getErrorMessage } from "@/utils/error";
 import { formatFileSize, formatDuration } from "@/utils/format";
+import { useProcessStore } from "@/stores/process";
 import "./index.less";
 
 type StepKey = "upload" | "algorithm" | "params" | "processing" | "compare";
@@ -277,7 +278,7 @@ const DehazePage: React.FC = () => {
         setResult(res);
         setProcessStatus("success");
         retryCountRef.current = 0;
-        Taro.setStorageSync("prediction_result", JSON.stringify(res));
+        useProcessStore.getState().setResult(res);
         Taro.showToast({ title: "处理完成", icon: "success" });
         goStep(4);
       } catch (error: unknown) {

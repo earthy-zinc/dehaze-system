@@ -29,7 +29,7 @@
     bottom: 24rpx;
     padding: 12rpx 28rpx;
     font-size: 24rpx;
-    color: #fff;
+    color: var(--color-text-inverse);
     background-color: rgb(0 0 0 / 60%);
     border-radius: 32rpx;
   }
@@ -43,7 +43,7 @@
   .filter-sliders {
     padding: 24rpx 32rpx;
     margin: 24rpx 32rpx;
-    background-color: #fff;
+    background-color: var(--color-bg-card);
     border-radius: 16rpx;
   }
 
@@ -56,13 +56,13 @@
     .section-title {
       font-size: 28rpx;
       font-weight: 600;
-      color: #262626;
+      color: var(--color-text-primary);
     }
 
     .save-preset-btn,
     .reset-btn {
       font-size: 26rpx;
-      color: #1890ff;
+      color: var(--color-primary);
     }
   }
 
@@ -74,14 +74,14 @@
     .preset-item {
       padding: 12rpx 32rpx;
       font-size: 26rpx;
-      color: #595959;
-      background-color: #fff;
-      border: 2rpx solid #d9d9d9;
+      color: var(--color-text-secondary);
+      background-color: var(--color-bg-card);
+      border: 2rpx solid var(--color-border);
       border-radius: 32rpx;
 
       &.custom {
-        color: #722ed1;
-        border-color: #722ed1;
+        color: var(--color-info);
+        border-color: var(--color-info);
       }
 
       &:active {
@@ -105,13 +105,13 @@
 
       .slider-label {
         font-size: 26rpx;
-        color: #595959;
+        color: var(--color-text-secondary);
       }
 
       .slider-value {
         font-size: 26rpx;
         font-weight: 500;
-        color: #1890ff;
+        color: var(--color-primary);
       }
     }
   }

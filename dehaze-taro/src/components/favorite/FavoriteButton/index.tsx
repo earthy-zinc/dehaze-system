@@ -35,9 +35,9 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   return (
     <View className="favorite-button" onClick={handleTap}>
       {isFavorited ? (
-        <Star size={size} color="#f59e0b" />
+        <Star size={size} color="var(--color-warning)" />
       ) : (
-        <StarOutlined size={size} color="#9ca3af" />
+        <StarOutlined size={size} color="var(--color-text-muted)" />
       )}
       {showLabel && (
         <View className="fav-label">{isFavorited ? "已收藏" : "收藏"}</View>

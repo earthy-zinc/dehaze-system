@@ -16,7 +16,7 @@ import HistoryList from "./components/HistoryList";
 import ImagePreview from "./components/ImagePreview";
 
 // Store
-import { ImageInputProvider, useImageInput } from "./store/imageInputStore";
+import { useImageInput } from "./store/imageInputStore";
 
 import "./index.less";
 
@@ -141,13 +141,9 @@ const ImageInputContent: React.FC = () => {
   );
 };
 
-// 页面组件（包装 Provider）
+// 页面组件
 const ImageInputPage: React.FC = () => {
-  return (
-    <ImageInputProvider>
-      <ImageInputContent />
-    </ImageInputProvider>
-  );
+  return <ImageInputContent />;
 };
 
 export default ImageInputPage;

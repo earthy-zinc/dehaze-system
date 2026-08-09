@@ -53,7 +53,7 @@ const TaskManagePage: React.FC = () => {
         status: status || undefined,
       };
       const res = await TaskAPI.getPage(query);
-      const list = (res.list as unknown as TaskVO[]) || [];
+      const list = res.list || [];
       setTaskList(list);
       setPageNum(1);
       setHasMore(list.length < (res.total || 0));
@@ -74,7 +74,7 @@ const TaskManagePage: React.FC = () => {
         status: statusFilter || undefined,
       };
       const res = await TaskAPI.getPage(query);
-      const list = (res.list as unknown as TaskVO[]) || [];
+      const list = res.list || [];
       setTaskList((prev) => [...prev, ...list]);
       setPageNum(nextPage);
       setHasMore(list.length >= PAGE_SIZE);

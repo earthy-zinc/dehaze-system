@@ -35,6 +35,7 @@ const ALL_TYPES: { key: "" | FavoriteTargetType; label: string }[] = [
 
 interface FavoriteItem extends FavoriteVO {
   targetType: FavoriteTargetType;
+  status?: number;
 }
 
 const FavoritePage: React.FC = () => {
@@ -57,7 +58,7 @@ const FavoritePage: React.FC = () => {
           targetType: typeFilter || undefined,
         };
         const res = await FavoriteAPI.getPage(query);
-        const list = (res.list as unknown as FavoriteItem[]) || [];
+        const list = res.list || [];
         if (reset) {
           setFavorites(list);
         } else {
@@ -217,7 +218,7 @@ const FavoritePage: React.FC = () => {
                           {item.targetName || "未命名"}
                         </Text>
                         <StatusTag
-                          status={(item as any).status ?? 1}
+                          status={item.status ?? 1}
                           size="small"
                         />
                       </View>

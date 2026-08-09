@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { View, Text } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { saveImageToAlbum } from "@/utils/saveImage";
+import { isH5 } from "@/utils/platform";
 import { FavoriteAPI } from "dehaze-sdk-js";
 import { COMPARE_MODES, type CompareMode } from "../types";
 import "./index.less";
@@ -58,7 +59,7 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
       Taro.showToast({ title: "无结果图片可分享", icon: "none" });
       return;
     }
-    if (process.env.TARO_ENV === "h5") {
+    if (isH5) {
       if (typeof navigator !== "undefined" && navigator.share) {
         navigator.share({ title: "去雾结果", url: resultUrl }).catch(() => {
           window.open(resultUrl, "_blank");

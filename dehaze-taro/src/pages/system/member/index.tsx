@@ -3,7 +3,13 @@ import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag, Loading, Empty, Popup, Input } from "@taroify/core";
 import { MemberAPI } from "dehaze-sdk-js";
-import type { MemberPageVO, BenefitVO, GrowthLogVO } from "dehaze-sdk-js";
+import type {
+  MemberPageVO,
+  BenefitVO,
+  GrowthLogVO,
+  MemberQuery,
+  MemberLevelCode,
+} from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import { usePermission } from "@/hooks/usePermission";
 import { getErrorMessage } from "@/utils/error";
@@ -39,9 +45,9 @@ const MemberManagePage: React.FC = () => {
     async (page: number, kw: string, lv: string) => {
       setLoading(true);
       try {
-        const params: any = { pageNum: page, pageSize: 15 };
+        const params: MemberQuery = { pageNum: page, pageSize: 15 };
         if (kw) params.keywords = kw;
-        if (lv) params.levelCode = lv;
+        if (lv) params.levelCode = lv as MemberLevelCode;
         const res = await MemberAPI.getPage(params);
         setMembers(res.list);
         setTotal(res.total);
@@ -103,7 +109,7 @@ const MemberManagePage: React.FC = () => {
     });
     if (!res.confirm) return;
     try {
-      await MemberAPI.updateStatus(member.userId, { status: newStatus as any });
+      await MemberAPI.updateStatus(member.userId, { status: newStatus });
       Taro.showToast({ title: `${label}成功`, icon: "success" });
       fetchMembers(pageNum, keyword, levelFilter);
     } catch (err: unknown) {
@@ -118,7 +124,7 @@ const MemberManagePage: React.FC = () => {
     }
     try {
       await MemberAPI.adjustLevel(selectedUserId, {
-        levelCode: adjustLevelCode as any,
+        levelCode: adjustLevelCode as MemberLevelCode,
         reason: "管理员手动调整",
       });
       Taro.showToast({ title: "等级调整成功", icon: "success" });

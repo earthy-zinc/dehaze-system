@@ -15,12 +15,16 @@ import PageLayout from "@/layout";
 import EmptyState from "@/components/common/EmptyState";
 import "./index.less";
 
-const STATUS_CONFIG: Record<FeedbackStatus, { label: string; color: string }> = {
-  pending: { label: "待处理", color: "#f59e0b" },
-  processing: { label: "处理中", color: "#3b82f6" },
-  replied: { label: "已回复", color: "#10b981" },
-  closed: { label: "已关闭", color: "#6b7280" },
-};
+type TagColor =
+  "default" | "primary" | "info" | "success" | "warning" | "danger";
+
+const STATUS_CONFIG: Record<FeedbackStatus, { label: string; color: string }> =
+  {
+    pending: { label: "待处理", color: "#f59e0b" },
+    processing: { label: "处理中", color: "#3b82f6" },
+    replied: { label: "已回复", color: "#10b981" },
+    closed: { label: "已关闭", color: "#6b7280" },
+  };
 
 const TYPE_CONFIG: Record<FeedbackType, { label: string }> = {
   suggestion: { label: "建议" },
@@ -51,8 +55,9 @@ const FeedbackPage: React.FC = () => {
 
   // 反馈详情
   const [detailVisible, setDetailVisible] = useState(false);
-  const [feedbackDetail, setFeedbackDetail] =
-    useState<FeedbackDetailVO | null>(null);
+  const [feedbackDetail, setFeedbackDetail] = useState<FeedbackDetailVO | null>(
+    null
+  );
   const [supplementVisible, setSupplementVisible] = useState(false);
   const [supplementContent, setSupplementContent] = useState("");
   const [supplementing, setSupplementing] = useState(false);
@@ -68,7 +73,7 @@ const FeedbackPage: React.FC = () => {
         pageNum: 1,
         pageSize: 20,
       });
-      setFeedbackList((res.list as FeedbackPageVO[]) || []);
+      setFeedbackList(res.list || []);
     } catch {
       Taro.showToast({ title: "加载失败", icon: "none" });
     } finally {
@@ -83,7 +88,7 @@ const FeedbackPage: React.FC = () => {
         pageNum: 1,
         pageSize: 20,
       });
-      setRatings((res.list as MyRatingVO[]) || []);
+      setRatings(res.list || []);
     } catch {
       Taro.showToast({ title: "加载评价失败", icon: "none" });
     } finally {
@@ -210,7 +215,7 @@ const FeedbackPage: React.FC = () => {
                       <View className="feedback-top">
                         <View className="feedback-title-row">
                           <Text className="feedback-title">{item.title}</Text>
-                          <Tag color={statusCfg.color as any} size="small">
+                          <Tag color={statusCfg.color as TagColor} size="small">
                             {statusCfg.label}
                           </Tag>
                         </View>
@@ -258,9 +263,7 @@ const FeedbackPage: React.FC = () => {
                 <View key={r.id} className="feedback-card">
                   <View className="feedback-top">
                     <View className="feedback-title-row">
-                      <Text className="feedback-title">
-                        {r.algorithmName}
-                      </Text>
+                      <Text className="feedback-title">{r.algorithmName}</Text>
                       <Tag color="warning" size="small">
                         {"★".repeat(r.rating)}
                       </Tag>
@@ -376,9 +379,8 @@ const FeedbackPage: React.FC = () => {
                   <View className="detail-row">
                     <Text className="detail-label">类型</Text>
                     <Tag size="small" color="default">
-                      {TYPE_CONFIG[
-                        feedbackDetail.feedbackType as FeedbackType
-                      ]?.label || feedbackDetail.feedbackType}
+                      {TYPE_CONFIG[feedbackDetail.feedbackType as FeedbackType]
+                        ?.label || feedbackDetail.feedbackType}
                     </Tag>
                   </View>
                   <View className="detail-row">
@@ -386,9 +388,8 @@ const FeedbackPage: React.FC = () => {
                     <Tag
                       size="small"
                       color={
-                        STATUS_CONFIG[
-                          feedbackDetail.status as FeedbackStatus
-                        ]?.color as any
+                        STATUS_CONFIG[feedbackDetail.status as FeedbackStatus]
+                          ?.color as TagColor
                       }
                     >
                       {STATUS_CONFIG[feedbackDetail.status as FeedbackStatus]
@@ -397,9 +398,7 @@ const FeedbackPage: React.FC = () => {
                   </View>
                   <View className="detail-row">
                     <Text className="detail-label">标题</Text>
-                    <Text className="detail-value">
-                      {feedbackDetail.title}
-                    </Text>
+                    <Text className="detail-value">{feedbackDetail.title}</Text>
                   </View>
                   <View className="detail-row">
                     <Text className="detail-label">内容</Text>
@@ -418,9 +417,7 @@ const FeedbackPage: React.FC = () => {
                   <View className="detail-row">
                     <Text className="detail-label">时间</Text>
                     <Text className="detail-value">
-                      {new Date(
-                        feedbackDetail.createTime
-                      ).toLocaleString()}
+                      {new Date(feedbackDetail.createTime).toLocaleString()}
                     </Text>
                   </View>
                 </View>
@@ -436,14 +433,10 @@ const FeedbackPage: React.FC = () => {
                               {reply.replierName}
                             </Text>
                             <Text className="reply-time">
-                              {new Date(
-                                reply.createTime
-                              ).toLocaleString()}
+                              {new Date(reply.createTime).toLocaleString()}
                             </Text>
                           </View>
-                          <Text className="reply-content">
-                            {reply.content}
-                          </Text>
+                          <Text className="reply-content">{reply.content}</Text>
                         </View>
                       ))}
                     </View>
@@ -485,9 +478,7 @@ const FeedbackPage: React.FC = () => {
               className="content-textarea"
               placeholder="请输入补充内容..."
               value={supplementContent}
-              onChange={(e) =>
-                setSupplementContent(e.detail?.value || "")
-              }
+              onChange={(e) => setSupplementContent(e.detail?.value || "")}
               maxlength={2000}
             />
             <Button

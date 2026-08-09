@@ -1,5 +1,5 @@
-import Taro from "@tarojs/taro";
 import type { Algorithm, PredictionResultVO } from "dehaze-sdk-js";
+import { useProcessStore } from "@/stores/process";
 
 /**
  * 对比模式类型（含放大镜和滤镜）
@@ -49,35 +49,9 @@ export interface CompareContext {
 }
 
 /**
- * 从 storage 加载对比数据
+ * 从内存 store 加载对比数据
  */
 export const loadCompareContext = (): CompareContext => {
-  let originImage: CompareImageData | null = null;
-  let result: PredictionResultVO | null = null;
-  let algorithm: Algorithm | null = null;
-
-  try {
-    const imgStr = Taro.getStorageSync("current_image");
-    if (imgStr) {
-      originImage = JSON.parse(imgStr);
-    }
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const resStr = Taro.getStorageSync("prediction_result");
-    if (resStr) result = JSON.parse(resStr);
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const algoStr = Taro.getStorageSync("selected_algorithm");
-    if (algoStr) algorithm = JSON.parse(algoStr);
-  } catch {
-    /* ignore */
-  }
-
-  return { originImage, result, algorithm };
+  const { image, algorithm, result } = useProcessStore.getState();
+  return { originImage: image, result, algorithm };
 };

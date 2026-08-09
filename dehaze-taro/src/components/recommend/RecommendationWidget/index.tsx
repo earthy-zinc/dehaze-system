@@ -45,13 +45,16 @@ const COMPLEXITY_LABELS: Record<string, string> = {
   other: "其他",
 };
 
-const HAZE_LEVEL_COLORS = {
-  clear: "#10b981",
-  light: "#f59e0b",
-  moderate: "#ef4444",
-  heavy: "#7c3aed",
-  severe: "#be123c",
-  other: "#6b7280",
+const HAZE_LEVEL_COLORS: Record<
+  string,
+  "success" | "warning" | "danger" | "info" | "default"
+> = {
+  clear: "success",
+  light: "warning",
+  moderate: "danger",
+  heavy: "info",
+  severe: "danger",
+  other: "default",
 };
 
 const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
@@ -134,7 +137,7 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
           </Text>
         </View>
         <View className="rec-empty-area" onClick={handleChooseImage}>
-          <Photograph size="48" color="#9ca3af" />
+          <Photograph size="48" color="var(--color-text-muted)" />
           <Text className="rec-empty-text">点击选择图片</Text>
         </View>
       </View>
@@ -159,7 +162,7 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
             onClick={handleChooseImage}
             className="rec-action-btn"
           >
-            <Photograph size="14" color="#3b82f6" />
+            <Photograph size="14" color="var(--color-primary)" />
             <Text className="rec-action-text">换图</Text>
           </Button>
           {!analysis && !analyzing && (
@@ -169,7 +172,7 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
               onClick={handleAnalyze}
               className="rec-action-btn"
             >
-              <Star size="14" color="#ffffff" />
+              <Star size="14" color="var(--color-text-inverse)" />
               <Text className="rec-action-text">开始分析</Text>
             </Button>
           )}
@@ -198,13 +201,12 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
               <View className="rec-feature-value">
                 <Tag
                   color={
-                    (HAZE_LEVEL_COLORS as any)[analysis.hazeLevel] ||
-                    (HAZE_LEVEL_COLORS as any).other
+                    HAZE_LEVEL_COLORS[analysis.hazeLevel] ||
+                    HAZE_LEVEL_COLORS.other
                   }
                   size="small"
                 >
-                  {(analysis.hazeLevel as any)?.replace(/_/g, " ") ||
-                    analysis.hazeLevel}
+                  {analysis.hazeLevel?.replace(/_/g, " ") || analysis.hazeLevel}
                 </Tag>
               </View>
             </View>
@@ -235,7 +237,7 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
               <Text className="rec-feature-label">复杂度</Text>
               <View className="rec-feature-value">
                 <Tag color="danger" size="small">
-                  {(COMPLEXITY_LABELS as any)[analysis.complexity] ||
+                  {COMPLEXITY_LABELS[String(analysis.complexity)] ||
                     analysis.complexity}
                 </Tag>
               </View>

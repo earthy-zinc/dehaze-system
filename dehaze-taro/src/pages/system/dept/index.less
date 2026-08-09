@@ -2,13 +2,13 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--color-bg-page);
 }
 
 .search-bar {
   padding: 24rpx 32rpx;
-  background-color: #fff;
-  border-bottom: 2rpx solid #f0f0f0;
+  background-color: var(--color-bg-card);
+  border-bottom: 2rpx solid var(--color-border-light);
 }
 
 .dept-list {
@@ -24,7 +24,7 @@
 .dept-swipe-cell {
   margin-bottom: 16rpx;
   overflow: hidden;
-  background-color: #fff;
+  background-color: var(--color-bg-card);
   border-radius: 16rpx;
   box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 
@@ -32,19 +32,19 @@
     height: 100%;
     padding: 0 32rpx;
     font-size: 24rpx;
-    color: #fff;
+    color: var(--color-text-inverse);
     border: none;
 
     &.add-btn {
-      background-color: #52c41a;
+      background-color: var(--color-success);
     }
 
     &.edit-btn {
-      background-color: #1890ff;
+      background-color: var(--color-primary);
     }
 
     &.delete-btn {
-      background-color: #ff4d4f;
+      background-color: var(--color-danger);
     }
   }
 }
@@ -69,14 +69,14 @@
 
   .arrow-collapsed {
     font-size: 28rpx;
-    color: #8c8c8c;
+    color: var(--color-text-muted);
     transform: rotate(-90deg);
     transition: transform 0.2s ease;
   }
 
   .arrow-expanded {
     font-size: 28rpx;
-    color: #8c8c8c;
+    color: var(--color-text-muted);
     transform: rotate(90deg);
     transition: transform 0.2s ease;
   }
@@ -102,7 +102,7 @@
   .dept-name {
     font-size: 30rpx;
     font-weight: 500;
-    color: #262626;
+    color: var(--color-text-primary);
   }
 }
 
@@ -113,7 +113,7 @@
 
   .meta-text {
     font-size: 24rpx;
-    color: #8c8c8c;
+    color: var(--color-text-muted);
   }
 }
 
@@ -126,17 +126,17 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #fff;
+  background-color: var(--color-bg-card);
 }
 
 .form-header {
   padding: 32rpx;
-  border-bottom: 2rpx solid #f0f0f0;
+  border-bottom: 2rpx solid var(--color-border-light);
 
   .form-title {
     font-size: 32rpx;
     font-weight: 600;
-    color: #262626;
+    color: var(--color-text-primary);
   }
 }
 
@@ -153,7 +153,7 @@
     display: block;
     margin-bottom: 16rpx;
     font-size: 28rpx;
-    color: #595959;
+    color: var(--color-text-secondary);
   }
 
   .form-input {
@@ -161,13 +161,13 @@
     width: 100%;
     padding: 16rpx 24rpx;
     font-size: 28rpx;
-    color: #262626;
-    border: 2rpx solid #d9d9d9;
+    color: var(--color-text-primary);
+    border: 2rpx solid var(--color-border);
     border-radius: 8rpx;
 
     &:focus {
       outline: none;
-      border-color: #1890ff;
+      border-color: var(--color-primary);
     }
   }
 }
@@ -175,8 +175,8 @@
 .parent-dept-display {
   padding: 16rpx 24rpx;
   font-size: 28rpx;
-  color: #595959;
-  background-color: #f5f5f5;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-hover);
   border-radius: 8rpx;
 }
 
@@ -187,7 +187,7 @@
 
   text {
     font-size: 28rpx;
-    color: #595959;
+    color: var(--color-text-secondary);
   }
 }
 
@@ -195,7 +195,7 @@
   display: flex;
   gap: 24rpx;
   padding: 32rpx;
-  border-top: 2rpx solid #f0f0f0;
+  border-top: 2rpx solid var(--color-border-light);
 
   button {
     flex: 1;

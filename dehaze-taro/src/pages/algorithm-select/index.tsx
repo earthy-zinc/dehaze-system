@@ -1,18 +1,22 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { View, Text, Image, ScrollView, Input } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { ArrowLeft, Search, Star, StarOutlined, Close } from "@taroify/icons";
-import {
-  AlgorithmAPI,
-  RecommendationAPI,
-  FavoriteAPI,
-} from "dehaze-sdk-js";
+import { AlgorithmAPI, RecommendationAPI, FavoriteAPI } from "dehaze-sdk-js";
 import type {
+  Algorithm,
   AlgorithmDetailVO,
   RecommendedAlgorithm,
   AlgorithmCompareVO,
 } from "dehaze-sdk-js";
 import EmptyState from "@/components/common/EmptyState";
+import { useProcessStore } from "@/stores/process";
 import { getErrorMessage } from "@/utils/error";
 import AlgorithmDetailPopup from "./components/AlgorithmDetailPopup";
 import {
@@ -34,7 +38,9 @@ const AlgorithmSelectPage: React.FC = () => {
 
   // ==================== 推荐 ====================
   const [currentImageUrl, setCurrentImageUrl] = useState("");
-  const [recommendations, setRecommendations] = useState<RecommendedAlgorithm[]>([]);
+  const [recommendations, setRecommendations] = useState<
+    RecommendedAlgorithm[]
+  >([]);
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [imageAnalysis, setImageAnalysis] = useState<{
     hazeLevel: string;
@@ -43,7 +49,9 @@ const AlgorithmSelectPage: React.FC = () => {
 
   // ==================== 收藏 ====================
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
-  const [favoriteMap, setFavoriteMap] = useState<Map<number, number>>(new Map());
+  const [favoriteMap, setFavoriteMap] = useState<Map<number, number>>(
+    new Map()
+  );
   const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
 
   // ==================== 搜索 ====================
@@ -57,12 +65,15 @@ const AlgorithmSelectPage: React.FC = () => {
   // ==================== 筛选（预留） ====================
 
   // ==================== 详情 ====================
-  const [detailAlgorithm, setDetailAlgorithm] = useState<AlgorithmDetailVO | null>(null);
+  const [detailAlgorithm, setDetailAlgorithm] =
+    useState<AlgorithmDetailVO | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   // ==================== 对比 ====================
   const [compareList, setCompareList] = useState<TreeNode[]>([]);
-  const [compareResult, setCompareResult] = useState<AlgorithmCompareVO[] | null>(null);
+  const [compareResult, setCompareResult] = useState<
+    AlgorithmCompareVO[] | null
+  >(null);
   const [compareLoading, setCompareLoading] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
 
@@ -115,19 +126,16 @@ const AlgorithmSelectPage: React.FC = () => {
     fetchTree();
     fetchFavorites();
     setSearchHistory(getSearchHistory());
-    try {
-      const stored = Taro.getStorageSync("current_image");
-      if (stored) {
-        const imageData = JSON.parse(stored);
-        setCurrentImageUrl(imageData.url || "");
-      }
-    } catch {
-      // 无图片
+    const image = useProcessStore.getState().image;
+    if (image) {
+      setCurrentImageUrl(image.url || "");
     }
   }, [fetchTree, fetchFavorites]);
 
   // ==================== 智能推荐 ====================
-  const hasRemoteImage = !!(currentImageUrl && currentImageUrl.startsWith("http"));
+  const hasRemoteImage = !!(
+    currentImageUrl && currentImageUrl.startsWith("http")
+  );
 
   useEffect(() => {
     if (!hasRemoteImage || recommendations.length > 0) return;
@@ -175,57 +183,63 @@ const AlgorithmSelectPage: React.FC = () => {
     }, 300);
   }, []);
 
-  const handleSearchSubmit = useCallback((keyword: string) => {
-    if (!keyword.trim()) return;
-    const history = saveSearchHistory(keyword.trim());
-    setSearchHistory(history);
-    setShowHistory(false);
-    handleSearchInput(keyword);
-  }, [handleSearchInput]);
+  const handleSearchSubmit = useCallback(
+    (keyword: string) => {
+      if (!keyword.trim()) return;
+      const history = saveSearchHistory(keyword.trim());
+      setSearchHistory(history);
+      setShowHistory(false);
+      handleSearchInput(keyword);
+    },
+    [handleSearchInput]
+  );
 
   // ==================== 收藏切换 ====================
-  const toggleFavorite = useCallback(async (algorithmId: number) => {
-    if (togglingIds.has(algorithmId)) return;
-    setTogglingIds((prev) => new Set(prev).add(algorithmId));
+  const toggleFavorite = useCallback(
+    async (algorithmId: number) => {
+      if (togglingIds.has(algorithmId)) return;
+      setTogglingIds((prev) => new Set(prev).add(algorithmId));
 
-    try {
-      const existed = favoriteIds.has(algorithmId);
-      if (existed) {
-        const favId = favoriteMap.get(algorithmId);
-        if (favId) await FavoriteAPI.deleteByIds([favId]);
-        setFavoriteIds((prev) => {
+      try {
+        const existed = favoriteIds.has(algorithmId);
+        if (existed) {
+          const favId = favoriteMap.get(algorithmId);
+          if (favId) await FavoriteAPI.deleteByIds([favId]);
+          setFavoriteIds((prev) => {
+            const next = new Set(prev);
+            next.delete(algorithmId);
+            return next;
+          });
+          setFavoriteMap((prev) => {
+            const next = new Map(prev);
+            next.delete(algorithmId);
+            return next;
+          });
+          Taro.showToast({ title: "已取消收藏", icon: "none" });
+        } else {
+          const favId = await FavoriteAPI.add({
+            targetType: "algorithm",
+            targetId: algorithmId,
+          });
+          setFavoriteIds((prev) => new Set(prev).add(algorithmId));
+          setFavoriteMap((prev) => new Map(prev).set(algorithmId, favId));
+          Taro.showToast({ title: "已收藏", icon: "none" });
+        }
+      } catch (error: unknown) {
+        Taro.showToast({
+          title: getErrorMessage(error, "操作失败"),
+          icon: "none",
+        });
+      } finally {
+        setTogglingIds((prev) => {
           const next = new Set(prev);
           next.delete(algorithmId);
           return next;
         });
-        setFavoriteMap((prev) => {
-          const next = new Map(prev);
-          next.delete(algorithmId);
-          return next;
-        });
-        Taro.showToast({ title: "已取消收藏", icon: "none" });
-      } else {
-        const favId = await FavoriteAPI.add({
-          targetType: "algorithm",
-          targetId: algorithmId,
-        });
-        setFavoriteIds((prev) => new Set(prev).add(algorithmId));
-        setFavoriteMap((prev) => new Map(prev).set(algorithmId, favId));
-        Taro.showToast({ title: "已收藏", icon: "none" });
       }
-    } catch (error: unknown) {
-      Taro.showToast({
-        title: getErrorMessage(error, "操作失败"),
-        icon: "none",
-      });
-    } finally {
-      setTogglingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(algorithmId);
-        return next;
-      });
-    }
-  }, [favoriteIds, favoriteMap, togglingIds]);
+    },
+    [favoriteIds, favoriteMap, togglingIds]
+  );
 
   // ==================== 展开/收起 ====================
   const toggleExpand = useCallback((id: number) => {
@@ -238,7 +252,7 @@ const AlgorithmSelectPage: React.FC = () => {
 
   // ==================== 选择算法 ====================
   const handleSelectAlgorithm = useCallback((node: TreeNode) => {
-    Taro.setStorageSync("selected_algorithm", JSON.stringify(node));
+    useProcessStore.getState().setAlgorithm(node as unknown as Algorithm);
     Taro.navigateTo({ url: "/pages/processing/index" });
   }, []);
 
@@ -259,26 +273,29 @@ const AlgorithmSelectPage: React.FC = () => {
   }, []);
 
   // ==================== 自定义测试 ====================
-  const handleCustomTest = useCallback(async (algorithmId: number) => {
-    if (!currentImageUrl) {
-      Taro.showToast({ title: "请先选择图片", icon: "none" });
-      return;
-    }
-    setTestLoading(true);
-    try {
-      const result = await AlgorithmAPI.test(algorithmId, {
-        imageUrl: currentImageUrl,
-      });
-      setTestResult(result?.resultUrl || "");
-    } catch (error: unknown) {
-      Taro.showToast({
-        title: getErrorMessage(error, "测试失败"),
-        icon: "none",
-      });
-    } finally {
-      setTestLoading(false);
-    }
-  }, [currentImageUrl]);
+  const handleCustomTest = useCallback(
+    async (algorithmId: number) => {
+      if (!currentImageUrl) {
+        Taro.showToast({ title: "请先选择图片", icon: "none" });
+        return;
+      }
+      setTestLoading(true);
+      try {
+        const result = await AlgorithmAPI.test(algorithmId, {
+          imageUrl: currentImageUrl,
+        });
+        setTestResult(result?.resultUrl || "");
+      } catch (error: unknown) {
+        Taro.showToast({
+          title: getErrorMessage(error, "测试失败"),
+          icon: "none",
+        });
+      } finally {
+        setTestLoading(false);
+      }
+    },
+    [currentImageUrl]
+  );
 
   // ==================== 算法对比 ====================
   const allLeafAlgorithms = useMemo(() => collectLeafAlgorithms(tree), [tree]);
@@ -290,7 +307,10 @@ const AlgorithmSelectPage: React.FC = () => {
         return prev.filter((c) => c.id !== node.id);
       }
       if (prev.length >= COMPARE_MAX) {
-        Taro.showToast({ title: `最多对比 ${COMPARE_MAX} 个算法`, icon: "none" });
+        Taro.showToast({
+          title: `最多对比 ${COMPARE_MAX} 个算法`,
+          icon: "none",
+        });
         return prev;
       }
       return [...prev, node];
@@ -355,7 +375,10 @@ const AlgorithmSelectPage: React.FC = () => {
             <Text className="recommend-effect">{rec.effectDescription}</Text>
           )}
           <View className="match-score-bar">
-            <View className="match-score-fill" style={{ width: `${matchScore}%` }} />
+            <View
+              className="match-score-fill"
+              style={{ width: `${matchScore}%` }}
+            />
           </View>
         </View>
         <View
@@ -365,7 +388,11 @@ const AlgorithmSelectPage: React.FC = () => {
             toggleFavorite(rec.algorithmId);
           }}
         >
-          {isFav ? <Star size="18" color="#f59e0b" /> : <StarOutlined size="18" color="#9ca3af" />}
+          {isFav ? (
+            <Star size="18" color="var(--color-warning)" />
+          ) : (
+            <StarOutlined size="18" color="var(--color-text-muted)" />
+          )}
         </View>
       </View>
     );
@@ -418,7 +445,11 @@ const AlgorithmSelectPage: React.FC = () => {
                   toggleFavorite(node.id);
                 }}
               >
-                {isFav ? <Star size="16" color="#f59e0b" /> : <StarOutlined size="16" color="#9ca3af" />}
+                {isFav ? (
+                  <Star size="16" color="var(--color-warning)" />
+                ) : (
+                  <StarOutlined size="16" color="var(--color-text-muted)" />
+                )}
               </View>
               <View
                 className="action-icon"
@@ -427,7 +458,14 @@ const AlgorithmSelectPage: React.FC = () => {
                   handleShowDetail(node);
                 }}
               >
-                <Text style={{ fontSize: "22rpx", color: "#6b7280" }}>详情</Text>
+                <Text
+                  style={{
+                    fontSize: "22rpx",
+                    color: "var(--color-text-secondary)",
+                  }}
+                >
+                  详情
+                </Text>
               </View>
               <View
                 className={`action-icon ${inCompare ? "in-compare" : ""}`}
@@ -436,7 +474,16 @@ const AlgorithmSelectPage: React.FC = () => {
                   toggleCompare(node);
                 }}
               >
-                <Text style={{ fontSize: "20rpx", color: inCompare ? "#8b5cf6" : "#9ca3af" }}>对比</Text>
+                <Text
+                  style={{
+                    fontSize: "20rpx",
+                    color: inCompare
+                      ? "var(--color-info)"
+                      : "var(--color-text-muted)",
+                  }}
+                >
+                  对比
+                </Text>
               </View>
             </View>
           )}
@@ -458,25 +505,36 @@ const AlgorithmSelectPage: React.FC = () => {
         <View className="compare-panel">
           <View className="compare-header">
             <Text className="compare-title">算法对比</Text>
-            <View className="compare-close" onClick={() => setShowCompare(false)}>
-              <Close size="20" color="#6b7280" />
+            <View
+              className="compare-close"
+              onClick={() => setShowCompare(false)}
+            >
+              <Close size="20" color="var(--color-text-secondary)" />
             </View>
           </View>
           <ScrollView className="compare-body" scrollY>
             {compareLoading ? (
-              <View className="loading-state"><Text>对比中...</Text></View>
+              <View className="loading-state">
+                <Text>对比中...</Text>
+              </View>
             ) : compareResult && compareResult.length > 0 ? (
               <View className="compare-table">
                 <View className="compare-row header-row">
-                  <View className="compare-cell label-cell"><Text>指标</Text></View>
+                  <View className="compare-cell label-cell">
+                    <Text>指标</Text>
+                  </View>
                   {compareResult.map((c) => (
                     <View key={c.algorithmId} className="compare-cell">
-                      <Text className="compare-alg-name">{c.algorithmName}</Text>
+                      <Text className="compare-alg-name">
+                        {c.algorithmName}
+                      </Text>
                     </View>
                   ))}
                 </View>
                 <View className="compare-row">
-                  <View className="compare-cell label-cell"><Text>处理耗时</Text></View>
+                  <View className="compare-cell label-cell">
+                    <Text>处理耗时</Text>
+                  </View>
                   {compareResult.map((c) => (
                     <View key={c.algorithmId} className="compare-cell">
                       <Text>{c.time ? `${c.time}ms` : "-"}</Text>
@@ -485,11 +543,17 @@ const AlgorithmSelectPage: React.FC = () => {
                 </View>
                 {compareResult.some((c) => c.resultUrl) && (
                   <View className="compare-row">
-                    <View className="compare-cell label-cell"><Text>效果预览</Text></View>
+                    <View className="compare-cell label-cell">
+                      <Text>效果预览</Text>
+                    </View>
                     {compareResult.map((c) => (
                       <View key={c.algorithmId} className="compare-cell">
                         {c.resultUrl ? (
-                          <Image src={c.resultUrl} className="compare-preview-img" mode="aspectFill" />
+                          <Image
+                            src={c.resultUrl}
+                            className="compare-preview-img"
+                            mode="aspectFill"
+                          />
                         ) : (
                           <Text>-</Text>
                         )}
@@ -513,7 +577,7 @@ const AlgorithmSelectPage: React.FC = () => {
       {/* L2 导航栏：返回 + 标题 */}
       <View className="navbar">
         <View className="nav-back" onClick={() => Taro.navigateBack()}>
-          <ArrowLeft size="20" color="#333" />
+          <ArrowLeft size="20" color="var(--color-text-primary)" />
         </View>
         <Text className="nav-title">选择算法</Text>
       </View>
@@ -524,37 +588,53 @@ const AlgorithmSelectPage: React.FC = () => {
           <View className="current-image-section">
             <Text className="section-label">当前图片</Text>
             <View className="current-image-wrapper">
-              <Image src={currentImageUrl} className="current-image" mode="aspectFill" lazyLoad />
+              <Image
+                src={currentImageUrl}
+                className="current-image"
+                mode="aspectFill"
+                lazyLoad
+              />
             </View>
           </View>
         )}
 
         {/* 智能推荐 */}
-        {hasRemoteImage && (recommendLoading || recommendations.length > 0 || imageAnalysis) && (
-          <View className="recommend-section">
-            <Text className="section-label">智能推荐</Text>
-            {imageAnalysis && (
-              <View className="analysis-tags">
-                <Text className="analysis-tag">雾霾: {imageAnalysis.hazeLevel}</Text>
-                <Text className="analysis-tag">场景: {imageAnalysis.sceneType}</Text>
-              </View>
-            )}
-            {recommendLoading ? (
-              <View className="loading-state"><Text>分析中...</Text></View>
-            ) : recommendations.length > 0 ? (
-              <View className="recommend-list">
-                {recommendations.map((rec, idx) => renderRecommendCard(rec, idx))}
-              </View>
-            ) : (
-              <View className="loading-state"><Text>暂无推荐</Text></View>
-            )}
-          </View>
-        )}
+        {hasRemoteImage &&
+          (recommendLoading || recommendations.length > 0 || imageAnalysis) && (
+            <View className="recommend-section">
+              <Text className="section-label">智能推荐</Text>
+              {imageAnalysis && (
+                <View className="analysis-tags">
+                  <Text className="analysis-tag">
+                    雾霾: {imageAnalysis.hazeLevel}
+                  </Text>
+                  <Text className="analysis-tag">
+                    场景: {imageAnalysis.sceneType}
+                  </Text>
+                </View>
+              )}
+              {recommendLoading ? (
+                <View className="loading-state">
+                  <Text>分析中...</Text>
+                </View>
+              ) : recommendations.length > 0 ? (
+                <View className="recommend-list">
+                  {recommendations.map((rec, idx) =>
+                    renderRecommendCard(rec, idx)
+                  )}
+                </View>
+              ) : (
+                <View className="loading-state">
+                  <Text>暂无推荐</Text>
+                </View>
+              )}
+            </View>
+          )}
 
         {/* 搜索栏 */}
         <View className="search-section">
           <View className="search-input-wrapper">
-            <Search size="18" color="#9ca3af" />
+            <Search size="18" color="var(--color-text-muted)" />
             <Input
               className="search-input"
               placeholder="搜索算法名称、类型或描述"
@@ -568,10 +648,13 @@ const AlgorithmSelectPage: React.FC = () => {
               onInput={(e) => handleSearchInput(e.detail.value)}
             />
             {searchKeyword && (
-              <View className="clear-btn" onClick={() => {
-                setSearchKeyword("");
-                setSearchResults(null);
-              }}>
+              <View
+                className="clear-btn"
+                onClick={() => {
+                  setSearchKeyword("");
+                  setSearchResults(null);
+                }}
+              >
                 <Text>×</Text>
               </View>
             )}
@@ -582,10 +665,13 @@ const AlgorithmSelectPage: React.FC = () => {
             <View className="search-history-panel">
               <View className="history-header">
                 <Text className="history-title">搜索历史</Text>
-                <View className="history-clear" onClick={() => {
-                  clearSearchHistory();
-                  setSearchHistory([]);
-                }}>
+                <View
+                  className="history-clear"
+                  onClick={() => {
+                    clearSearchHistory();
+                    setSearchHistory([]);
+                  }}
+                >
                   <Text>清空</Text>
                 </View>
               </View>
@@ -614,17 +700,19 @@ const AlgorithmSelectPage: React.FC = () => {
               {compareList.map((c) => (
                 <View key={c.id} className="compare-bar-tag">
                   <Text>{c.name}</Text>
-                  <View className="compare-bar-remove" onClick={() => toggleCompare(c)}>
-                    <Close size="12" color="#9ca3af" />
+                  <View
+                    className="compare-bar-remove"
+                    onClick={() => toggleCompare(c)}
+                  >
+                    <Close size="12" color="var(--color-text-muted)" />
                   </View>
                 </View>
               ))}
             </View>
-            <View
-              className="compare-bar-btn"
-              onClick={handleCompare}
-            >
-              <Text>对比 ({compareList.length}/{COMPARE_MAX})</Text>
+            <View className="compare-bar-btn" onClick={handleCompare}>
+              <Text>
+                对比 ({compareList.length}/{COMPARE_MAX})
+              </Text>
             </View>
           </View>
         )}
@@ -632,7 +720,9 @@ const AlgorithmSelectPage: React.FC = () => {
         {/* 算法树 */}
         <View className="algorithm-tree-wrapper">
           {loading ? (
-            <View className="loading-state"><Text>加载中...</Text></View>
+            <View className="loading-state">
+              <Text>加载中...</Text>
+            </View>
           ) : filteredTree.length === 0 ? (
             <EmptyState
               type="search"
@@ -650,7 +740,9 @@ const AlgorithmSelectPage: React.FC = () => {
       {/* 详情弹窗 */}
       <AlgorithmDetailPopup
         algorithm={detailAlgorithm}
-        isFavorite={detailAlgorithm ? favoriteIds.has(detailAlgorithm.id) : false}
+        isFavorite={
+          detailAlgorithm ? favoriteIds.has(detailAlgorithm.id) : false
+        }
         loading={detailLoading}
         testResult={testResult}
         testLoading={testLoading}
@@ -664,7 +756,9 @@ const AlgorithmSelectPage: React.FC = () => {
         }}
         onSelect={() => {
           if (detailAlgorithm) {
-            Taro.setStorageSync("selected_algorithm", JSON.stringify(detailAlgorithm));
+            useProcessStore
+              .getState()
+              .setAlgorithm(detailAlgorithm as Algorithm);
             Taro.navigateTo({ url: "/pages/processing/index" });
           }
         }}

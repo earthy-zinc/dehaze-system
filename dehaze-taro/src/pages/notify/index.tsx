@@ -2,21 +2,46 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, ScrollView, Switch, Picker } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { NotificationSettingAPI } from "dehaze-sdk-js";
-import type { NotificationSettings } from "dehaze-sdk-js";
+import type {
+  NotificationSettings,
+  NotificationSettingsForm,
+} from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import "./index.less";
 
 const MODULE_SWITCHES = [
-  { key: "system", label: "系统通知", desc: "接收系统公告和重要通知", icon: "🔔" },
-  { key: "business", label: "业务通知", desc: "接收业务流程相关通知", icon: "📋" },
-  { key: "member", label: "会员通知", desc: "接收会员权益和到期提醒", icon: "👑" },
-  { key: "activity", label: "活动通知", desc: "接收优惠活动和促销信息", icon: "🎉" },
+  {
+    key: "system",
+    label: "系统通知",
+    desc: "接收系统公告和重要通知",
+    icon: "🔔",
+  },
+  {
+    key: "business",
+    label: "业务通知",
+    desc: "接收业务流程相关通知",
+    icon: "📋",
+  },
+  {
+    key: "member",
+    label: "会员通知",
+    desc: "接收会员权益和到期提醒",
+    icon: "👑",
+  },
+  {
+    key: "activity",
+    label: "活动通知",
+    desc: "接收优惠活动和促销信息",
+    icon: "🎉",
+  },
 ];
 
 const TIME_OPTIONS: string[] = [];
 for (let h = 0; h < 24; h++) {
   for (let m = 0; m < 60; m += 30) {
-    TIME_OPTIONS.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    TIME_OPTIONS.push(
+      `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+    );
   }
 }
 
@@ -24,7 +49,7 @@ const NotifyPage: React.FC = () => {
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [loading, setLoading] = useState(false);
   const [dndStartPickerIdx, setDndStartPickerIdx] = useState<number[]>([44]); // 22:00
-  const [dndEndPickerIdx, setDndEndPickerIdx] = useState<number[]>([16]);   // 08:00
+  const [dndEndPickerIdx, setDndEndPickerIdx] = useState<number[]>([16]); // 08:00
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -50,9 +75,9 @@ const NotifyPage: React.FC = () => {
     loadSettings();
   }, [loadSettings]);
 
-  const doSave = useCallback(async (data: Record<string, unknown>) => {
+  const doSave = useCallback(async (data: NotificationSettingsForm) => {
     try {
-      await NotificationSettingAPI.update(data as any);
+      await NotificationSettingAPI.update(data);
       Taro.showToast({ title: "已保存", icon: "success" });
     } catch {
       Taro.showToast({ title: "保存失败", icon: "none" });
@@ -75,7 +100,10 @@ const NotifyPage: React.FC = () => {
           ...prev,
           preferences: {
             ...prev.preferences,
-            moduleSwitches: { ...prev.preferences.moduleSwitches, [module]: val },
+            moduleSwitches: {
+              ...prev.preferences.moduleSwitches,
+              [module]: val,
+            },
           },
         };
       });
@@ -97,8 +125,10 @@ const NotifyPage: React.FC = () => {
   );
 
   const handleDndStartChange = useCallback(
-    (e: { detail: { value: number[] } }) => {
-      const idx = e.detail.value[0];
+    (e: { detail: { value: string | number | number[] } }) => {
+      const idx = Number(
+        Array.isArray(e.detail.value) ? e.detail.value[0] : e.detail.value
+      );
       setDndStartPickerIdx([idx]);
       const time = TIME_OPTIONS[idx];
       setSettings((prev) => (prev ? { ...prev, dndStart: time } : prev));
@@ -108,8 +138,10 @@ const NotifyPage: React.FC = () => {
   );
 
   const handleDndEndChange = useCallback(
-    (e: { detail: { value: number[] } }) => {
-      const idx = e.detail.value[0];
+    (e: { detail: { value: string | number | number[] } }) => {
+      const idx = Number(
+        Array.isArray(e.detail.value) ? e.detail.value[0] : e.detail.value
+      );
       setDndEndPickerIdx([idx]);
       const time = TIME_OPTIONS[idx];
       setSettings((prev) => (prev ? { ...prev, dndEnd: time } : prev));
@@ -147,7 +179,9 @@ const NotifyPage: React.FC = () => {
                   <Text className="settings-icon">📢</Text>
                   <View className="settings-item-info">
                     <Text className="settings-title">推送通知</Text>
-                    <Text className="settings-desc">接收所有类型的推送通知</Text>
+                    <Text className="settings-desc">
+                      接收所有类型的推送通知
+                    </Text>
                   </View>
                 </View>
                 <Switch
@@ -157,7 +191,7 @@ const NotifyPage: React.FC = () => {
                 />
               </View>
 
-              {MODULE_SWITCHES.map((mod, idx) => (
+              {MODULE_SWITCHES.map((mod) => (
                 <React.Fragment key={mod.key}>
                   <View className="settings-divider" />
                   <View className="settings-item">
@@ -171,7 +205,9 @@ const NotifyPage: React.FC = () => {
                     <Switch
                       checked={getModuleSwitchVal(mod.key)}
                       color="#3b82f6"
-                      onChange={(e) => toggleModuleSwitch(mod.key, e.detail.value)}
+                      onChange={(e) =>
+                        toggleModuleSwitch(mod.key, e.detail.value)
+                      }
                     />
                   </View>
                 </React.Fragment>
@@ -211,7 +247,7 @@ const NotifyPage: React.FC = () => {
                     <Picker
                       mode="selector"
                       range={TIME_OPTIONS}
-                      value={dndStartPickerIdx}
+                      value={dndStartPickerIdx[0]}
                       onChange={handleDndStartChange}
                     >
                       <Text className="settings-value">
@@ -228,7 +264,7 @@ const NotifyPage: React.FC = () => {
                     <Picker
                       mode="selector"
                       range={TIME_OPTIONS}
-                      value={dndEndPickerIdx}
+                      value={dndEndPickerIdx[0]}
                       onChange={handleDndEndChange}
                     >
                       <Text className="settings-value">

@@ -1,5 +1,5 @@
 import Taro from "@tarojs/taro";
-import type { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { AxiosHeaders, type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { configAxios, ResponseData, ResultEnum } from "dehaze-sdk-js";
 import { storage } from "@/utils/storage";
 import { BASE_URL } from "@/config/constants";
@@ -97,7 +97,7 @@ export default function configRequest(): void {
     onRequest: (config: InternalAxiosRequestConfig) => {
       const sessionId = storage.getSessionId();
       if (sessionId) {
-        if (!config.headers) config.headers = {} as any;
+        if (!config.headers) config.headers = new AxiosHeaders();
         config.headers["X-Session-Id"] = sessionId;
       }
       return {

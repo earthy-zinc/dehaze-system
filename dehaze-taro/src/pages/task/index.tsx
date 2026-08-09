@@ -18,6 +18,7 @@ import type { PredLogVO } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
 import { getErrorMessage } from "@/utils/error";
 import { formatDateTime } from "@/utils/format";
+import { useProcessStore } from "@/stores/process";
 import "./index.less";
 
 const PAGE_SIZE = 15;
@@ -30,26 +31,32 @@ const TaskPage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
 
   /** 加载处理历史 */
-  const loadData = useCallback(async (page: number) => {
-    if (loading) return;
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const res = await ModelAPI.getPredLogs({ pageNum: page, pageSize: PAGE_SIZE });
-      const list = (res.list as unknown as PredLogVO[]) || [];
-      if (page === 1) {
-        setRecords(list);
-      } else {
-        setRecords((prev) => [...prev, ...list]);
+  const loadData = useCallback(
+    async (page: number) => {
+      if (loading) return;
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const res = await ModelAPI.getPredLogs({
+          pageNum: page,
+          pageSize: PAGE_SIZE,
+        });
+        const list = res.list || [];
+        if (page === 1) {
+          setRecords(list);
+        } else {
+          setRecords((prev) => [...prev, ...list]);
+        }
+        setPageNum(page);
+        setHasMore(list.length >= PAGE_SIZE);
+      } catch (err: unknown) {
+        setLoadError(getErrorMessage(err, "加载失败"));
+      } finally {
+        setLoading(false);
       }
-      setPageNum(page);
-      setHasMore(list.length >= PAGE_SIZE);
-    } catch (err: unknown) {
-      setLoadError(getErrorMessage(err, "加载失败"));
-    } finally {
-      setLoading(false);
-    }
-  }, [loading]);
+    },
+    [loading]
+  );
 
   useLoad(() => {
     loadData(1);
@@ -71,11 +78,11 @@ const TaskPage: React.FC = () => {
       Taro.showToast({ title: "缺少原图或结果图", icon: "none" });
       return;
     }
-    Taro.setStorageSync("prediction_result", JSON.stringify({
+    useProcessStore.getState().setResult({
       status: 2,
       resultUrl: record.predUrl,
       time: record.time || 0,
-    }));
+    });
     Taro.navigateTo({ url: "/pages/side-by-side/index" });
   }, []);
 
@@ -93,12 +100,11 @@ const TaskPage: React.FC = () => {
     try {
       const algorithm = await AlgorithmAPI.getAlgorithmInfoById(record.algorithmId);
       Taro.hideLoading();
-      // 保存图片和算法到 storage，供处理页读取
-      Taro.setStorageSync("current_image", JSON.stringify({
+      useProcessStore.getState().setImage({
         url: record.originUrl,
         name: record.originUrl.split("/").pop() || "历史图片",
-      }));
-      Taro.setStorageSync("selected_algorithm", JSON.stringify(algorithm));
+      });
+      useProcessStore.getState().setAlgorithm(algorithm);
       Taro.navigateTo({ url: "/pages/processing/index" });
     } catch (e) {
       Taro.hideLoading();

@@ -20,6 +20,7 @@ import { formatDateTime } from "@/utils/format";
 import { ArrowLeft, Add, Edit, Delete, Lock } from "@taroify/icons";
 import { useRoleManagement } from "@/hooks/useRoleManagement";
 import { usePermission } from "@/hooks/usePermission";
+import type { RolePageVO } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
 import StatusTag from "@/components/common/StatusTag";
 import "./index.less";
@@ -101,7 +102,7 @@ const RoleListPage: React.FC = () => {
   };
 
   // 删除确认
-  const handleDelete = async (role: any) => {
+  const handleDelete = async (role: RolePageVO) => {
     const confirmed = await confirmDialog({
       title: "确认删除",
       content: `确定要删除角色 "${role.name}" 吗？此操作不可恢复。`,
@@ -113,8 +114,8 @@ const RoleListPage: React.FC = () => {
   };
 
   // 确认删除
-  const confirmDelete = async (role: any) => {
-    if (!role) return;
+  const confirmDelete = async (role: RolePageVO) => {
+    if (!role?.id) return;
     try {
       await deleteRole(role.id);
     } catch (error) {
