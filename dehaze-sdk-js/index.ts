@@ -24,6 +24,7 @@ import RecommendationAPI from "./src/api/recommendation";
 import RoleAPI from "./src/api/role";
 import TaskAPI from "./src/api/task";
 import UserAPI from "./src/api/user";
+import VoiceAPI from "./src/api/voice";
 
 // API 模型导出
 export * from "./src/api/algorithm/model";
@@ -47,6 +48,7 @@ export * from "./src/api/recommendation/model";
 export * from "./src/api/role/model";
 export * from "./src/api/task/model";
 export * from "./src/api/user/model";
+export * from "./src/api/voice/model";
 export * from "./src/types";
 export * from "./src/enums";
 
@@ -93,4 +95,5 @@ export {
   RoleAPI,
   TaskAPI,
   UserAPI,
+  VoiceAPI,
 };

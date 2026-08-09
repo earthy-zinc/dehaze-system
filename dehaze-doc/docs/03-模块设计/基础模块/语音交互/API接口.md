@@ -25,11 +25,25 @@
 | `/api/v1/voice/tts` | POST | 文本转语音（返回音频 URL 或 HTTP 流式响应） | - | F-VS-002 |
 | `/api/v1/voice/tts/voices` | GET | 可用音色列表 | - | F-VS-002 |
 
+### 2.3 热词管理接口
+
+> 热词用于提升 ASR 对领域专业术语的识别率。全局热词（所有用户生效）由管理员配置，用户级热词（仅本人生效）由用户自行管理。
+
+| 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
+|------|------|---------|---------|-----------|
+| `/api/v1/voice/hotwords` | GET | 查询当前用户热词列表 | - | F-VS-004 |
+| `/api/v1/voice/hotwords` | POST | 新增用户热词 | `voice:hotword:edit` | F-VS-004 |
+| `/api/v1/voice/hotwords/{id}` | DELETE | 删除用户热词 | `voice:hotword:edit` | F-VS-004 |
+| `/api/v1/voice/hotwords/global` | GET | 查询全局热词列表 | - | F-VS-004 |
+| `/api/v1/voice/hotwords/global` | POST | 新增全局热词（管理员） | `voice:hotword:edit` | F-VS-004 |
+| `/api/v1/voice/hotwords/global/{id}` | DELETE | 删除全局热词（管理员） | `voice:hotword:edit` | F-VS-004 |
+
 ## 3. 权限标识汇总
 
 | 权限标识 | 说明 |
 |---------|------|
-| - | 语音交互模块为系统基础能力，登录用户均可使用，无需特殊权限标识 |
+| - | 语音交互模块基础能力（ASR/TTS/热词查询），登录用户均可使用 |
+| `voice:hotword:edit` | 热词新增/删除（用户级仅本人，全局需管理员） |
 
 ## 4. 业务错误码
 
