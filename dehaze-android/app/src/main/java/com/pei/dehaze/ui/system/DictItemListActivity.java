@@ -9,7 +9,6 @@ import android.widget.RadioGroup;
 import com.pei.dehaze.utils.ToastUtils;
 
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -21,10 +20,11 @@ import com.pei.dehaze.ui.system.viewmodel.DictItemViewModel;
 import com.pei.dehaze.sdk.model.dict.DictForm;
 import com.pei.dehaze.sdk.model.dict.DictPageVO;
 import com.pei.dehaze.utils.StringUtils;
+import com.pei.dehaze.ui.common.BaseActivity;
 
 import java.util.Collections;
 
-public class DictItemListActivity extends AppCompatActivity {
+public class DictItemListActivity extends BaseActivity {
 
     private DictItemViewModel dictItemViewModel;
     private DictItemAdapter dictItemAdapter;
@@ -48,14 +48,7 @@ public class DictItemListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        }
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
-        if (!TextUtils.isEmpty(typeName)) {
-            getSupportActionBar().setTitle("字典数据 - " + typeName);
-        }
+        setupToolbar(binding.toolbar, TextUtils.isEmpty(typeName) ? null : "字典数据 - " + typeName);
 
         dictItemAdapter = new DictItemAdapter();
         dictItemAdapter.setListener(new DictItemAdapter.OnDictItemActionListener() {
@@ -110,17 +103,8 @@ public class DictItemListActivity extends AppCompatActivity {
         dictItemViewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        dictItemViewModel.getError().observe(this, errorMsg -> {
-            if (!TextUtils.isEmpty(errorMsg)) {
-                ToastUtils.showShort(this, errorMsg);
-            }
-        });
-
-        dictItemViewModel.getOperationResult().observe(this, result -> {
-            if (!TextUtils.isEmpty(result)) {
-                ToastUtils.showShort(this, result);
-            }
-        });
+        observeError(dictItemViewModel);
+        observeOperationResult(dictItemViewModel, null);
 
         dictItemViewModel.getDictForm().observe(this, form -> showFormDialog(form));
     }

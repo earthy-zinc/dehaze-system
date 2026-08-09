@@ -13,7 +13,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -36,7 +36,7 @@ import java.util.List;
  * 文件列表页
  * 支持分页查询、关键字搜索、上传、下载、删除、查看详情
  */
-public class FileListActivity extends AppCompatActivity {
+public class FileListActivity extends BaseActivity {
 
     private FileViewModel fileViewModel;
     private FileAdapter fileAdapter;
@@ -139,32 +139,15 @@ public class FileListActivity extends AppCompatActivity {
             binding.progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE);
         });
 
-        fileViewModel.getError().observe(this, msg -> {
-            if (!TextUtils.isEmpty(msg)) {
-                ToastUtils.showShort(this, msg);
-            }
-        });
+        observeError(fileViewModel);
 
-        fileViewModel.getOperationResult().observe(this, msg -> {
-            if (!TextUtils.isEmpty(msg)) {
-                ToastUtils.showShort(this, msg);
-            }
-        });
+        observeOperationResult(fileViewModel, null);
 
         fileViewModel.getFileDetail().observe(this, file -> showDetailDialog(file));
     }
 
     private void loadData() {
         fileViewModel.loadFiles();
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(android.view.MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 
     private boolean checkStoragePermission() {

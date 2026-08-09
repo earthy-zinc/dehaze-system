@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.pei.dehaze.databinding.ActivityAlgorithmDetailBinding;
@@ -16,11 +15,12 @@ import com.pei.dehaze.ui.algorithm_select.AlgorithmSelectActivity;
 import com.pei.dehaze.ui.algorithm_select.viewmodel.AlgorithmSelectViewModel;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
+import com.pei.dehaze.ui.common.BaseActivity;
 
 /**
  * 算法详情（浏览版）— 查看详情 + 收藏 + 使用该算法
  */
-public class AlgorithmDetailActivity extends AppCompatActivity {
+public class AlgorithmDetailActivity extends BaseActivity {
 
     private AlgorithmViewModel algorithmViewModel;
     private AlgorithmSelectViewModel selectViewModel;
@@ -50,8 +50,7 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, null);
 
         binding.btnUse.setOnClickListener(v -> {
             if (currentAlgorithm != null) {
@@ -82,26 +81,11 @@ public class AlgorithmDetailActivity extends AppCompatActivity {
             }
         });
 
-        algorithmViewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                algorithmViewModel.clearError();
-            }
-        });
+        observeError(algorithmViewModel);
 
-        selectViewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                selectViewModel.clearOperationResult();
-            }
-        });
+        observeOperationResult(selectViewModel, null);
 
-        selectViewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                selectViewModel.clearError();
-            }
-        });
+        observeError(selectViewModel);
     }
 
     private void updateUI(Algorithm algorithm) {

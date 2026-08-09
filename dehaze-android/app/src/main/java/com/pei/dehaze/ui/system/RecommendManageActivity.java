@@ -7,7 +7,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -15,14 +15,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.pei.dehaze.databinding.ActivityManageListBinding;
 import com.pei.dehaze.sdk.model.recommendation.RecommendationRule;
 import com.pei.dehaze.ui.system.viewmodel.RecommendManageViewModel;
-import com.pei.dehaze.utils.ToastUtils;
 
 import java.util.List;
 
 /**
  * 推荐管理（sys:recommendation:*）
  */
-public class RecommendManageActivity extends AppCompatActivity {
+public class RecommendManageActivity extends BaseActivity {
 
     private RecommendManageViewModel viewModel;
     private ActivityManageListBinding binding;
@@ -39,9 +38,7 @@ public class RecommendManageActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setTitle("推荐管理");
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, "推荐管理");
 
         // 推荐管理没有搜索和状态筛选，隐藏对应控件
         binding.etKeywords.setVisibility(View.GONE);
@@ -72,19 +69,8 @@ public class RecommendManageActivity extends AppCompatActivity {
         viewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        viewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                viewModel.clearError();
-            }
-        });
-
-        viewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                viewModel.clearOperationResult();
-            }
-        });
+        observeError(viewModel);
+        observeOperationResult(viewModel, null);
     }
 
     private void loadData() {

@@ -5,9 +5,8 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.pei.dehaze.repository.RepositoryCallback;
-import com.pei.dehaze.sdk.DehazeSDK;
-
-import okhttp3.OkHttpClient;
+import com.pei.dehaze.sdk.network.CallTracker;
+import com.pei.dehaze.sdk.network.RequestScope;
 
 /**
  * ViewModel 基类，提供统一的 loading/error/operationResult 状态管理
@@ -16,6 +15,9 @@ public abstract class BaseViewModel extends ViewModel {
     protected final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
     protected final MutableLiveData<String> error = new MutableLiveData<>();
     protected final MutableLiveData<String> operationResult = new MutableLiveData<>();
+
+    /** 当前 ViewModel 发起的进行中请求跟踪器，onCleared 时仅取消自身请求。 */
+    private final CallTracker callTracker = new CallTracker();
 
     public LiveData<Boolean> getLoading() { return loading; }
     public LiveData<String> getError() { return error; }
@@ -27,23 +29,7 @@ public abstract class BaseViewModel extends ViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
-        cancelPendingRequests();
-    }
-
-    /**
-     * 取消所有进行中的网络请求。
-     * 折中方案：通过 OkHttp Dispatcher 全局取消，而非逐个 Call 跟踪，
-     * 避免改造全部 SDK API / Repository / ViewModel 三层调用链。
-     * 当 ViewModel 被销毁时（Activity/Fragment 销毁），取消其发起的请求。
-     */
-    private void cancelPendingRequests() {
-        try {
-            okhttp3.Call.Factory factory = DehazeSDK.getInstance().getRetrofit().callFactory();
-            if (factory instanceof OkHttpClient) {
-                ((OkHttpClient) factory).dispatcher().cancelAll();
-            }
-        } catch (Exception ignored) {
-        }
+        callTracker.cancelAll();
     }
 
     /**
@@ -94,6 +80,10 @@ public abstract class BaseViewModel extends ViewModel {
      */
     protected <T> RepositoryCallback<T> withLoading(OnSuccess<T> onSuccess, OnError onError) {
         loading.setValue(true);
+        // 将当前 VM 的 tracker 放入请求作用域，供 TrackedCall.enqueue 登记本次请求。
+        // withLoading 返回的回调会被调用方立即同步传入 Repository 发起 SDK 调用，
+        // 因此 setTracker 与 TrackedCall 的读取发生在同一线程的同步调用链中。
+        RequestScope.setTracker(callTracker);
         return new RepositoryCallback<T>() {
             @Override
             public void onSuccess(T data) {

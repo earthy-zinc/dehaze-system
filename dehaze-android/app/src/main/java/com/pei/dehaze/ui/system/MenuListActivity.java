@@ -9,7 +9,7 @@ import android.widget.RadioGroup;
 import com.pei.dehaze.utils.ToastUtils;
 
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -25,7 +25,7 @@ import com.pei.dehaze.utils.StringUtils;
 
 import java.util.List;
 
-public class MenuListActivity extends AppCompatActivity {
+public class MenuListActivity extends BaseActivity {
 
     private MenuViewModel menuViewModel;
     private MenuAdapter menuAdapter;
@@ -44,11 +44,7 @@ public class MenuListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        }
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, null);
 
         menuAdapter = new MenuAdapter();
         menuAdapter.setListener(new MenuAdapter.OnMenuActionListener() {
@@ -90,17 +86,8 @@ public class MenuListActivity extends AppCompatActivity {
         menuViewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        menuViewModel.getError().observe(this, errorMsg -> {
-            if (!TextUtils.isEmpty(errorMsg)) {
-                ToastUtils.showShort(this, errorMsg);
-            }
-        });
-
-        menuViewModel.getOperationResult().observe(this, result -> {
-            if (!TextUtils.isEmpty(result)) {
-                ToastUtils.showShort(this, result);
-            }
-        });
+        observeError(menuViewModel);
+        observeOperationResult(menuViewModel, null);
 
         menuViewModel.getMenuForm().observe(this, form -> showFormDialog(form));
     }

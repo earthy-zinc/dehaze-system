@@ -104,7 +104,7 @@ public class DatasetDetailViewModel extends BaseViewModel {
         query.setDatasetId(datasetId);
         query.setPageNum(pageNum);
         query.setPageSize(pageSize);
-        query.setKeywords(keywords);
+        query.setKeyword(keywords);
         query.setSceneType(sceneType);
         query.setHazeLevel(hazeLevel);
         return query;

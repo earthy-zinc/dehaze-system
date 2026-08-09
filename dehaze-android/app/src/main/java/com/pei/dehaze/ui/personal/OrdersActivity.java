@@ -1,18 +1,15 @@
 package com.pei.dehaze.ui.personal;
 
-import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -23,8 +20,8 @@ import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.sdk.api.OrderAPI;
 import com.pei.dehaze.sdk.model.order.MyOrderQuery;
 import com.pei.dehaze.sdk.model.order.MyOrderVO;
-import com.pei.dehaze.ui.common.BaseViewModel;
-import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.ui.common.BaseActivity;
+import com.pei.dehaze.ui.common.BaseLoadMoreViewModel;
 import com.pei.dehaze.utils.ToastUtils;
 
 import java.util.ArrayList;
@@ -32,22 +29,14 @@ import java.util.List;
 
 /**
  * 我的订单 — 卡片化列表（订单号 + 套餐名 + 金额 + 状态徽章 + 下单时间 + 操作按钮）
+ *
+ * <p>分页状态与请求由 {@link OrderListViewModel} 持有，Activity 仅负责展示与交互。
  */
-public class OrdersActivity extends AppCompatActivity {
+public class OrdersActivity extends BaseActivity {
 
     private ActivitySimpleListBinding binding;
     private OrderListViewModel viewModel;
     private OrderAdapter adapter;
-    private int currentPage = 1;
-    private static final int PAGE_SIZE = 20;
-    private boolean isLoading = false;
-    private boolean hasMore = true;
-
-    // 状态颜色映射
-    private static final int COLOR_PENDING = 0xFFFF9800;   // 待支付 — 橙
-    private static final int COLOR_PAID = 0xFF4CAF50;      // 已支付 — 绿
-    private static final int COLOR_CANCELLED = 0xFF9E9E9E; // 已取消 — 灰
-    private static final int COLOR_REFUNDED = 0xFF2196F3;  // 已退款 — 蓝
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,13 +44,10 @@ public class OrdersActivity extends AppCompatActivity {
         binding = ActivitySimpleListBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("我的订单");
-        }
+        setupActionBar("我的订单");
 
         viewModel = new ViewModelProvider(this).get(OrderListViewModel.class);
-        adapter = new OrderAdapter(this, new OrderAdapter.OnOrderActionListener() {
+        adapter = new OrderAdapter(new OrderAdapter.OnOrderActionListener() {
             @Override
             public void onPay(MyOrderVO order) {
                 ToastUtils.showShort(OrdersActivity.this, "支付功能开发中");
@@ -85,17 +71,13 @@ public class OrdersActivity extends AppCompatActivity {
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 LinearLayoutManager lm = (LinearLayoutManager) recyclerView.getLayoutManager();
                 if (lm != null && lm.findLastVisibleItemPosition() + 1 >= adapter.getItemCount()
-                        && hasMore && !isLoading) {
-                    loadMore();
+                        && !Boolean.TRUE.equals(viewModel.getLoading().getValue())) {
+                    viewModel.loadMore();
                 }
             }
         });
 
-        binding.swipeRefresh.setOnRefreshListener(() -> {
-            currentPage = 1;
-            hasMore = true;
-            loadData();
-        });
+        binding.swipeRefresh.setOnRefreshListener(() -> viewModel.reload());
 
         viewModel.getOrders().observe(this, list -> {
             adapter.submitList(list);
@@ -106,50 +88,13 @@ public class OrdersActivity extends AppCompatActivity {
                 binding.emptyView.setVisibility(View.GONE);
             }
         });
-        viewModel.getLoading().observe(this, loading -> {
-            isLoading = loading != null && loading;
-            binding.swipeRefresh.setRefreshing(isLoading);
-        });
-        viewModel.getError().observe(this, msg -> {
-            if (msg != null && !msg.isEmpty()) ToastUtils.showShort(this, msg);
-        });
+        viewModel.getLoading().observe(this, loading ->
+                binding.swipeRefresh.setRefreshing(Boolean.TRUE.equals(loading)));
 
-        viewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                viewModel.clearOperationResult();
-                currentPage = 1;
-                hasMore = true;
-                loadData();
-            }
-        });
+        observeError(viewModel);
+        observeOperationResult(viewModel, () -> viewModel.reload());
 
-        loadData();
-    }
-
-    private void loadData() {
-        MyOrderQuery query = new MyOrderQuery();
-        query.setPageNum(currentPage);
-        query.setPageSize(PAGE_SIZE);
-        OrderAPI.listMy(query, RepositoryAdapters.wrap(viewModel.createLoadingCallback(data -> {
-            List<MyOrderVO> list = data.getList();
-            viewModel.setOrders(list != null ? list : new ArrayList<>());
-            hasMore = list != null && list.size() >= PAGE_SIZE;
-        })));
-    }
-
-    private void loadMore() {
-        currentPage++;
-        MyOrderQuery query = new MyOrderQuery();
-        query.setPageNum(currentPage);
-        query.setPageSize(PAGE_SIZE);
-        OrderAPI.listMy(query, RepositoryAdapters.wrap(viewModel.createLoadingCallback(data -> {
-            List<MyOrderVO> list = data.getList();
-            if (list != null) {
-                adapter.addAll(list);
-            }
-            hasMore = list != null && list.size() >= PAGE_SIZE;
-        })));
+        viewModel.reload();
     }
 
     private void showCancelDialog(MyOrderVO order) {
@@ -165,25 +110,25 @@ public class OrdersActivity extends AppCompatActivity {
                 .show();
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
     // region ViewModel
 
-    public static class OrderListViewModel extends BaseViewModel {
-        private final androidx.lifecycle.MutableLiveData<List<MyOrderVO>> orders =
-                new androidx.lifecycle.MutableLiveData<>();
-        public androidx.lifecycle.LiveData<List<MyOrderVO>> getOrders() { return orders; }
-        public void setOrders(List<MyOrderVO> list) { orders.postValue(list); }
+    public static class OrderListViewModel extends BaseLoadMoreViewModel<MyOrderVO> {
 
-        public <T> RepositoryCallback<T> createLoadingCallback(OnSuccess<T> onSuccess) {
-            return withLoading(onSuccess);
+        public OrderListViewModel() {
+            super(20);
+        }
+
+        @Override
+        protected void loadPage() {
+            MyOrderQuery query = new MyOrderQuery();
+            query.setPageNum(pageNum);
+            query.setPageSize(pageSize);
+            OrderAPI.listMy(query, RepositoryAdapters.wrap(withLoading(data ->
+                    onPageLoaded(data.getList(), data.getTotal()))));
+        }
+
+        public LiveData<List<MyOrderVO>> getOrders() {
+            return itemList;
         }
 
         public void cancelOrder(String orderNo) {
@@ -206,7 +151,7 @@ public class OrdersActivity extends AppCompatActivity {
             void onDetail(MyOrderVO order);
         }
 
-        OrderAdapter(Object ignored, OnOrderActionListener actionListener) {
+        OrderAdapter(OnOrderActionListener actionListener) {
             this.actionListener = actionListener;
         }
 
@@ -214,14 +159,6 @@ public class OrdersActivity extends AppCompatActivity {
             items.clear();
             if (newItems != null) items.addAll(newItems);
             notifyDataSetChanged();
-        }
-
-        void addAll(List<MyOrderVO> newItems) {
-            if (newItems != null) {
-                int start = items.size();
-                items.addAll(newItems);
-                notifyItemRangeInserted(start, newItems.size());
-            }
         }
 
         @NonNull @Override

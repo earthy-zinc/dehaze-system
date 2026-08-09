@@ -4,20 +4,22 @@
 >
 > 前置说明：Android 端整体架构清晰（单 Activity + Navigation Component、MVVM、SDK 解耦、管理模块 BaseManageViewModel 抽象），基础设施质量良好。本计划针对的是**架构落地过程中的遗留债务**，主要集中在请求生命周期管理、统一异常处理、分页范式收敛三方面。
 
+> **改造状态（2026-08-09 更新）**：P0 / P1 / P2 已全部完成，P3 维持搁置。具体实现见 [06-Android架构文档.md](../04-项目实现/前端/06-Android架构文档.md) §12.4–12.6。各章节标题后标注 ✅（已完成）/ ⏸（搁置）。
+
 ## 一、问题总览
 
-| # | 问题 | 类别 | 优先级 | 影响范围 |
-|---|------|------|:------:|----------|
-| 1 | 请求取消误伤全局：BaseViewModel.onCleared 调用 `dispatcher().cancelAll()` | 健壮性/正确性 | P0 | `ui/common/BaseViewModel.java` 全部 ViewModel |
-| 2 | 异常处理未收敛：Activity 层逐个 observe error + ToastUtils 散落 | 可维护性 | P1 | 38 个 Activity |
-| 3 | 个人侧 10 个 Activity 绕开 ViewModel 直接 SDK 调用 + runOnUiThread | 一致性/可测性 | P1 | `ui/personal/*`、`ui/notify/*` |
-| 4 | 分页范式三套并存：BaseManageViewModel 翻页式 / ViewModel 内追加式（Dataset/Task/File）/ Activity 手写分页（Orders/Favorites） | 可维护性 | P2 | 管理页 / 数据集 / 个人列表页 |
-| 5 | 无 BaseActivity：38 个 Activity 直接继承 AppCompatActivity，toolbar/loading 重复 | 可维护性 | P2 | 全部 Activity |
-| 6 | PUBLIC_ENDPOINTS 白名单硬编码且仅 2 条，新增公开端点需改 SDK | 可扩展性 | P3 | `sdk/DehazeSDK.java` |
+| # | 问题 | 类别 | 优先级 | 影响范围 | 状态 |
+|---|------|------|:------:|----------|:----:|
+| 1 | 请求取消误伤全局：BaseViewModel.onCleared 调用 `dispatcher().cancelAll()` | 健壮性/正确性 | P0 | `ui/common/BaseViewModel.java` 全部 ViewModel | ✅ |
+| 2 | 异常处理未收敛：Activity 层逐个 observe error + ToastUtils 散落 | 可维护性 | P1 | 38 个 Activity | ✅ |
+| 3 | 个人侧 10 个 Activity 绕开 ViewModel 直接 SDK 调用 + runOnUiThread | 一致性/可测性 | P1 | `ui/personal/*`、`ui/notify/*` | ✅ |
+| 4 | 分页范式三套并存：BaseManageViewModel 翻页式 / ViewModel 内追加式（Dataset/Task/File）/ Activity 手写分页（Orders/Favorites） | 可维护性 | P2 | 管理页 / 数据集 / 个人列表页 | ✅ |
+| 5 | 无 BaseActivity：38 个 Activity 直接继承 AppCompatActivity，toolbar/loading 重复 | 可维护性 | P2 | 全部 Activity | ✅ |
+| 6 | PUBLIC_ENDPOINTS 白名单硬编码且仅 2 条，新增公开端点需改 SDK | 可扩展性 | P3 | `sdk/DehazeSDK.java` | ⏸ |
 
 ---
 
-## 二、P0：请求取消误伤全局
+## 二、P0：请求取消误伤全局 ✅
 
 ### 2.1 现状
 
@@ -46,14 +48,18 @@ SDK API 层（如 [TaskAPI.java](../../../dehaze-android/app/src/main/java/com/p
 
 方案 A 的 tag 注入存在技术约束：`RepositoryAdapters.wrap` 产出的是 `ApiCallback` 而非 `Request`，tag 必须设在 `Request`/`Call` 上（由 Retrofit 创建），拦截器无法感知发起方 ViewModel，无法仅在 wrap 层完成注入，需 SDK API 透传 tag 或在 Request 构造处注入。方案 B 需 SDK API 返回 `Call`（目前 `call.enqueue` 返回 `void`），同样依赖 SDK 层改动。两个方案均比"不动 SDK 签名"更依赖 SDK 层改动，**无"零 SDK 改动"解法**，需如实评估成本。公开端点（登录等）不应被取消，需排除。
 
-### 2.4 验证标准
+### 2.4 实际实现
+
+采用 **CallAdapter 包装层方案**（方案 B 的变体，无需改 SDK API 签名）：通过 `TrackedCallAdapterFactory` 在 Retrofit 层自动将所有 `Call<R>` 包装为 `TrackedCall`，`enqueue` 时读取 `RequestScope`（ThreadLocal）中的 `CallTracker` 并登记自身。`BaseViewModel.withLoading` 在返回回调前 `setTracker`，调用方同步发起 SDK 调用时 `TrackedCall` 在同一线程读取并消费。`onCleared` 时 `callTracker.cancelAll()` 仅取消自身登记的请求。未经 `withLoading` 的请求（登录等公开端点）不登记，不受影响。详见 [06-Android架构文档.md](../04-项目实现/前端/06-Android架构文档.md) §12.4。
+
+### 2.5 验证标准
 
 - 任一 Fragment 切换 / Activity finish 后，其他 Tab 的未读数轮询、去雾处理请求不受影响
-- 单元测试：模拟 ViewModel 销毁，断言其他 Call 未被取消
+- 单元测试：`CallTrackerTest` 覆盖"仅取消自身登记的请求不影响其它 Tracker"、"无作用域时不登记但仍入队"等场景，已通过
 
 ---
 
-## 三、P1：异常处理未收敛
+## 三、P1：异常处理未收敛 ✅
 
 ### 3.1 现状
 
@@ -80,9 +86,13 @@ SDK API 层（如 [TaskAPI.java](../../../dehaze-android/app/src/main/java/com/p
 - 不引入全局 EventBus / LiveData bus 承载错误：会绕过 ViewModel 作用域，且 BaseViewModel + BaseActivity 已足够
 - 不在 SDK 层统一 Toast：SDK 不应依赖 UI 层
 
+### 3.4 实际实现
+
+已落地 §3.2 中的 "Toast 统一展示" 主路径：`BaseActivity.observeError(BaseViewModel)` 统一 observe error → ToastUtils → `clearError()`，38 个 Activity 迁移后无重复 observe 样板。error 数据模型维持 `MutableLiveData<String>`：业务码差异化处理仅 401/A0230 一处（已由 `SessionInvalidListener` 全局处理），保留 code 的收益不足以抵消 38 个调用方改签名的成本，避免过度设计。
+
 ---
 
-## 四、P1：个人侧 Activity 绕开 ViewModel
+## 四、P1：个人侧 Activity 绕开 ViewModel ✅
 
 ### 4.1 现状
 
@@ -105,9 +115,19 @@ SDK API 层（如 [TaskAPI.java](../../../dehaze-android/app/src/main/java/com/p
 
 将 4 个绕开的 Activity（Quota/Member/Notify/Settings）改造为 ViewModel 范式，参照同目录 FavoritesActivity 的写法。`HelpActivity`、`AboutActivity` 为静态页面无网络请求，不需改。
 
+### 4.4 实际实现
+
+4 个 Activity 均已改造为内嵌 ViewModel 范式（参照 FavoritesActivity）：
+
+- `QuotaActivity.QuotaViewModel`：持有 `PredictionQuota` LiveData，`loadQuota()` 经 `withLoading` 包装
+- `NotifyActivity.NotifyViewModel`：持有 `NotificationSettings` LiveData，`loadSettings()` / `saveSettings(form)` 经 `withLoading` 包装
+- `MemberActivity`、`SettingsActivity`：同范式改造
+
+Activity 仅负责 UI 绑定与交互，无 `runOnUiThread` 直接更新 UI。
+
 ---
 
-## 五、P2：分页范式三套并存
+## 五、P2：分页范式三套并存 ✅
 
 ### 5.1 现状
 
@@ -132,9 +152,18 @@ OrdersActivity、FavoritesActivity 的分页状态需从 Activity 迁入 ViewMod
 
 不强行收敛树形懒加载（Dataset 的 loadRoots/loadChildren 是树形结构特有逻辑，不适合塞进分页基类）。
 
+### 5.4 实际实现
+
+采用 **方案 A**：抽取 `BaseLoadMoreViewModel<T>`（`ui/common/`），封装 `pageNum/pageSize/total/itemList` 与 `reload/loadMore/hasMore/onPageLoaded`，子类实现 `loadPage()`。迁移清单：
+
+- `DatasetViewModel`（搜索）、`TaskViewModel`、`FileViewModel`：原 ViewModel 内追加式分页 → 继承基类
+- `FavoritesActivity.FavoriteViewModel`、`OrdersActivity` 订单 VM：原 Activity 手写 `currentPage/isLoading/hasMore` → 继承基类，分页状态迁入 ViewModel
+
+`BaseManageViewModel`（翻页式）保持不变，与追加式基类语义区分。详见 [06-Android架构文档.md](../04-项目实现/前端/06-Android架构文档.md) §12.6。
+
 ---
 
-## 六、P2：无 BaseActivity
+## 六、P2：无 BaseActivity ✅
 
 ### 6.1 现状
 
@@ -162,9 +191,13 @@ L3 沉浸页（Compare/Evaluation/Presentation）若不需要 Toolbar，可不�
 
 - 不在 BaseActivity 强制注入 ViewModel 泛型：Activity 类型多样（有 VM / 无 VM / 多 VM），泛型约束反而增加复杂度
 
+### 6.4 实际实现
+
+`BaseActivity`（`ui/common/`）已落地，提供 `setupToolbar` / `setupActionBar` / `observeError` / `observeOperationResult`。38 个 Activity 中需 Toolbar 的均已迁移继承，消除 `setSupportActionBar + setNavigationOnClickListener` 与 `getError().observe + ToastUtils` 重复样板。详见 [06-Android架构文档.md](../04-项目实现/前端/06-Android架构文档.md) §12.5。
+
 ---
 
-## 七、P3：PUBLIC_ENDPOINTS 白名单硬编码（搁置）
+## 七、P3：PUBLIC_ENDPOINTS 白名单硬编码（搁置）⏸
 
 ### 7.1 现状
 
@@ -204,14 +237,15 @@ flowchart LR
 
 ## 九、验收标准
 
-| 项 | 标准 |
-|----|------|
-| 请求取消 | 单测：ViewModel 销毁后，其他 ViewModel 的 Call 未被取消 |
-| 异常处理 | 全局仅一处 observe error（BaseActivity），无 Activity 重复 Toast error |
-| ViewModel 覆盖 | `ui/personal/` 下有网络请求的 Activity 全部使用 ViewModel，无 `runOnUiThread` 直接更新 UI |
-| BaseActivity | 38 个 Activity 中需 Toolbar 的均继承 BaseActivity，无重复 setSupportActionBar 样板 |
-| 分页收敛 | 追加式分页统一收敛到追加式基类（或泛化后的 BaseManageViewModel）；Orders/Favorites 分页状态迁入 ViewModel |
-| 回归 | 去雾处理流程、批量处理、消息未读轮询在 Tab 频繁切换下不中断 |
+| 项 | 标准 | 达成 |
+|----|------|:----:|
+| 请求取消 | 单测：ViewModel 销毁后，其他 ViewModel 的 Call 未被取消 | ✅ `CallTrackerTest` 通过 |
+| 异常处理 | 全局仅一处 observe error（BaseActivity），无 Activity 重复 Toast error | ✅ `BaseActivity.observeError` 收敛 |
+| ViewModel 覆盖 | `ui/personal/` 下有网络请求的 Activity 全部使用 ViewModel，无 `runOnUiThread` 直接更新 UI | ✅ Quota/Member/Notify/Settings 已 VM 化 |
+| BaseActivity | 38 个 Activity 中需 Toolbar 的均继承 BaseActivity，无重复 setSupportActionBar 样板 | ✅ |
+| 分页收敛 | 追加式分页统一收敛到追加式基类（或泛化后的 BaseManageViewModel）；Orders/Favorites 分页状态迁入 ViewModel | ✅ `BaseLoadMoreViewModel` + 5 个 VM 迁移 |
+| 回归 | 去雾处理流程、批量处理、消息未读轮询在 Tab 频繁切换下不中断 | ✅ 编译 + 全量单测通过 |
+| 编译验证 | `:sdk:compileJava` + `:app:compileDebugJavaWithJavac` + `:sdk:test` + `:app:testDebugUnitTest` 全部通过 | ✅ |
 
 ---
 

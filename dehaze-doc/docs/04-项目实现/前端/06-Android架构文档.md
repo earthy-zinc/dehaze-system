@@ -103,7 +103,7 @@ dehaze-android/
 │   │   │   ├── dashboard/                        # 工作台（L2 Fragment，归 Profile 管理入口）
 │   │   │   ├── personal/                         # 个人侧页面（10 个独立 Activity）
 │   │   │   ├── system/                           # 管理模块（15 个独立 Activity，权限过滤）
-│   │   │   ├── common/                           # 公共 UI 组件
+│   │   │   ├── common/                           # 公共基类（BaseActivity / BaseViewModel / BaseLoadMoreViewModel）
 │   │   │   └── file/                             # 文件相关
 │   │   ├── repository/                           # 数据仓库层
 │   │   ├── security/                             # 安全相关
@@ -120,7 +120,13 @@ dehaze-android/
     │   ├── api/                                   # API 接口层（24 个 API 类）
     │   ├── service/                               # Retrofit Service 接口（24 个）
     │   ├── model/                                 # 数据模型（按业务域分包：auth/algorithm/dataset/order/member/message/...）
-    │   ├── network/                               # 网络配置（OkHttp 拦截器、Token 注入）
+    │   ├── network/                               # 网络配置（OkHttp 拦截器、Token 注入、请求跟踪）
+    │   │   ├── TraceInterceptor.java              # trace_id 注入 + 失败上报
+    │   │   ├── ApiException.java                  # 统一 API 异常
+    │   │   ├── CallTracker.java                   # ViewModel 级请求跟踪器
+    │   │   ├── RequestScope.java                  # 线程作用域传递 CallTracker
+    │   │   ├── TrackedCall.java                   # 包装 retrofit2.Call，登记到 Tracker
+    │   │   └── TrackedCallAdapterFactory.java     # Retrofit CallAdapter 工厂
     │   ├── logger/                                # 日志模块（Logger + Transport + TraceManager）
     │   └── utils/                                 # SDK 工具类
     └── build.gradle
@@ -403,6 +409,63 @@ MainActivity（唯一宿主 Activity）
 
 各管理模块的 ViewModel 均继承泛型基类 `BaseManageViewModel<T>`，统一封装列表/分页/搜索/操作结果能力，子类仅实现 `loadData()` 及各自操作方法。Activity 侧复用 `activity_manage_list.xml` 通用列表布局，差异通过 Adapter 与表单 Dialog 体现，避免 15 个管理页重复样板代码。
 
+### 12.4 请求生命周期管理（CallTracker）
+
+早期 `BaseViewModel.onCleared()` 直接调用 `OkHttpClient.dispatcher().cancelAll()` 取消全局所有请求，会误伤其他 Tab 的轮询、后台去雾处理等。现改为 **ViewModel 级精确请求跟踪**，由 SDK 层 4 个组件协同实现：
+
+| 组件 | 职责 |
+|------|------|
+| `CallTracker` | 每个 ViewModel 持有一个，登记自身发起的进行中 `Call`，`cancelAll()` 仅取消登记的请求 |
+| `RequestScope` | 基于 `ThreadLocal` 在调用线程上传递当前 ViewModel 的 `CallTracker` |
+| `TrackedCall` | 包装 `retrofit2.Call`，`enqueue` 时读取 `RequestScope` 登记自身，消费作用域 |
+| `TrackedCallAdapterFactory` | Retrofit `CallAdapter.Factory`，将所有 `Call<R>` 包装为 `TrackedCall` |
+
+调用链：
+
+```
+BaseViewModel.withLoading()       // 主线程
+   ├─ RequestScope.setTracker(callTracker)
+   └─ return RepositoryCallback
+        └─ ViewModel 同步调用 Repository / SDK API
+             └─ Retrofit 创建 Call → TrackedCallAdapterFactory.adapt() → TrackedCall
+                  └─ TrackedCall.enqueue()
+                       ├─ RequestScope.currentTracker() 读取并 register(this)
+                       ├─ RequestScope.clear()           消费作用域
+                       └─ delegate.enqueue(callback)     实际入队
+
+BaseViewModel.onCleared()
+   └─ callTracker.cancelAll()     // 仅取消自身登记的请求
+```
+
+`withLoading` 返回的回调被调用方立即同步用于发起 SDK 调用，`setTracker` 与 `TrackedCall` 的读取发生在同一线程的同步调用链中，`ThreadLocal` 传递安全。未经 `withLoading` 的请求（如登录等公开端点）不会登记，不受 ViewModel 销毁影响。单测见 `CallTrackerTest`，覆盖"仅取消自身登记的请求不影响其它 Tracker"、"无作用域时不登记但仍入队"等场景。
+
+### 12.5 BaseActivity 通用基类
+
+所有需要 Toolbar 的 Activity 继承 `BaseActivity`，收敛三类重复样板：
+
+| 能力 | 方法 | 说明 |
+|------|------|------|
+| Toolbar 统一 | `setupToolbar(Toolbar, String)` / `setupActionBar(String)` | 设置标题与返回键，统一 `onOptionsItemSelected` 处理 home 按钮 |
+| error 统一 | `observeError(BaseViewModel)` | 统一 observe `error` LiveData → ToastUtils → `clearError()`，避免旋转屏重复弹出 |
+| operationResult 统一 | `observeOperationResult(BaseViewModel, Runnable)` | 统一 observe `operationResult` → Toast + 后续动作（刷新列表 / finish） |
+
+不强制注入 ViewModel 泛型：Activity 类型多样（有 VM / 无 VM / 多 VM），泛型约束反而增加复杂度。沉浸页（Compare / Evaluation / Presentation）若不需要 Toolbar，可不调用 `setupToolbar`。
+
+### 12.6 追加式分页基类 BaseLoadMoreViewModel
+
+`ui/common/BaseLoadMoreViewModel<T>` 收敛无限滚动追加式分页逻辑，与 `BaseManageViewModel`（翻页式，prev/next + 整列表替换）语义区分：
+
+| 状态/方法 | 说明 |
+|-----------|------|
+| `itemList` | `LiveData<List<T>>`，第 1 页替换、其余页追加 |
+| `pageNum` / `pageSize` / `total` | 分页状态，基类维护 |
+| `loadPage()` | 子类实现：按当前 `pageNum` 与筛选条件发起请求，成功调用 `onPageLoaded` |
+| `reload()` | 回到第 1 页，整列表替换 |
+| `loadMore()` | 追加下一页，无更多数据时为空操作 |
+| `hasMore()` | `currentList().size() < total` |
+
+继承该基类的 ViewModel：`DatasetViewModel`（搜索）、`TaskViewModel`、`FileViewModel`、`FavoritesActivity.FavoriteViewModel`、`OrdersActivity` 的订单 VM。Orders/Favorites 的分页状态已从 Activity 迁入 ViewModel，消除 Activity 内 `currentPage/isLoading/hasMore` 样板。树形懒加载（Dataset 的 `loadRoots/loadChildren`）是树形结构特有逻辑，不塞入分页基类。
+
 ## 13. 关键技术决策
 
 | 决策 | 选择 | 理由 |
@@ -415,6 +478,9 @@ MainActivity（唯一宿主 Activity）
 | 顶级目的地 | AppBarConfiguration（5 个） | 自动管理返回箭头显隐，无需手动处理 |
 | 页面实现 | Fragment + 独立 Activity 混合 | Fragment 用于 nav_graph 内导航流页面；独立 Activity 用于需要独立生命周期、过渡动画或全屏沉浸的页面 |
 | 数据访问 | RepositoryAdapters 回调适配 + 4 个专用 Repository | 统一 ApiCallback→RepositoryCallback 适配与错误解析；仅 Dashboard/Dataset/File/Task 设独立 Repository，其余 ViewModel 经 RepositoryAdapters 直调 SDK |
+| 请求取消 | CallTracker + RequestScope + TrackedCall + TrackedCallAdapterFactory | ViewModel 级精确取消，替代全局 `dispatcher().cancelAll()` 误伤；SDK CallAdapter 包装层零侵入调用方 |
+| Activity 基类 | BaseActivity（不强制 ViewModel 泛型） | 收敛 toolbar / error / operationResult 样板；Activity 类型多样，泛型约束反而增加复杂度 |
+| 追加式分页 | BaseLoadMoreViewModel\<T\>（独立于 BaseManageViewModel） | 追加式与翻页式语义不同，独立基类避免把追加式塞进翻页式基类 |
 | 对象装配 | ViewModelProvider（无 DI 框架） | 标准 Jetpack 方式创建 ViewModel，SDK API 为静态方法调用 |
 | 网络层 | Retrofit2 + OkHttp3 | 成熟稳定的 HTTP 客户端 |
 | 图片加载 | Glide | 高性能图片加载、缓存、自动压缩 |

@@ -11,7 +11,6 @@ import android.widget.TextView;
 import com.pei.dehaze.utils.ToastUtils;
 
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -23,10 +22,11 @@ import com.pei.dehaze.ui.system.viewmodel.DictTypeViewModel;
 import com.pei.dehaze.sdk.model.dict.DictTypeForm;
 import com.pei.dehaze.sdk.model.dict.DictTypePageVO;
 import com.pei.dehaze.utils.StringUtils;
+import com.pei.dehaze.ui.common.BaseActivity;
 
 import java.util.Collections;
 
-public class DictTypeListActivity extends AppCompatActivity {
+public class DictTypeListActivity extends BaseActivity {
 
     public static final String EXTRA_TYPE_CODE = "type_code";
     public static final String EXTRA_TYPE_NAME = "type_name";
@@ -48,11 +48,7 @@ public class DictTypeListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        }
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, null);
 
         dictTypeAdapter = new DictTypeAdapter();
         dictTypeAdapter.setListener(new DictTypeAdapter.OnDictTypeActionListener() {
@@ -125,17 +121,8 @@ public class DictTypeListActivity extends AppCompatActivity {
         dictTypeViewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        dictTypeViewModel.getError().observe(this, errorMsg -> {
-            if (!TextUtils.isEmpty(errorMsg)) {
-                ToastUtils.showShort(this, errorMsg);
-            }
-        });
-
-        dictTypeViewModel.getOperationResult().observe(this, result -> {
-            if (!TextUtils.isEmpty(result)) {
-                ToastUtils.showShort(this, result);
-            }
-        });
+        observeError(dictTypeViewModel);
+        observeOperationResult(dictTypeViewModel, null);
 
         dictTypeViewModel.getDictTypeForm().observe(this, form -> showFormDialog(form));
     }

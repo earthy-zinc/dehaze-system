@@ -3,7 +3,6 @@ package com.pei.dehaze.ui.personal;
 import android.app.Dialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -32,7 +31,9 @@ import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.feedback.FeedbackCreateForm;
 import com.pei.dehaze.sdk.model.feedback.FeedbackPageVO;
 import com.pei.dehaze.sdk.model.feedback.MyRatingVO;
+import com.pei.dehaze.ui.common.BaseActivity;
 import com.pei.dehaze.ui.common.BaseViewModel;
+import com.pei.dehaze.ui.common.BaseActivity;
 import com.pei.dehaze.utils.ToastUtils;
 
 import java.util.ArrayList;
@@ -41,7 +42,7 @@ import java.util.List;
 /**
  * 反馈评价 — 双Tab（我的反馈 / 我的评价）+ 新增反馈
  */
-public class FeedbackActivity extends AppCompatActivity {
+public class FeedbackActivity extends BaseActivity {
 
     private TabLayout tabLayout;
     private ViewPager2 viewPager;
@@ -123,15 +124,6 @@ public class FeedbackActivity extends AppCompatActivity {
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
         dialog.show();
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 
     // ---- ViewPager Adapter ----

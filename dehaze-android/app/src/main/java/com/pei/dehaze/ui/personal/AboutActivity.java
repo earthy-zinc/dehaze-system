@@ -7,15 +7,14 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityAboutBinding;
+import com.pei.dehaze.ui.common.BaseActivity;
 
 /**
  * 关于我们 — Logo + 版本号 + 简介 + 隐私政策/用户协议
  */
-public class AboutActivity extends AppCompatActivity {
+public class AboutActivity extends BaseActivity {
 
     private ActivityAboutBinding binding;
 
@@ -41,14 +40,5 @@ public class AboutActivity extends AppCompatActivity {
     private void openUrl(String url) {
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
         startActivity(intent);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 }

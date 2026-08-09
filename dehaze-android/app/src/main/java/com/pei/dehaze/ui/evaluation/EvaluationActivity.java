@@ -8,7 +8,7 @@ import android.view.View;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -35,7 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class EvaluationActivity extends AppCompatActivity {
+public class EvaluationActivity extends BaseActivity {
 
     private EvaluationViewModel evaluationViewModel;
     private ActivityEvaluationBinding binding;
@@ -146,18 +146,8 @@ public class EvaluationActivity extends AppCompatActivity {
                 statePlaceholder.showLoading("正在处理中…");
             }
         });
-        evaluationViewModel.getError().observe(this, errorMessage -> {
-            if (!TextUtils.isEmpty(errorMessage)) {
-                ToastUtils.showShort(this, errorMessage);
-                evaluationViewModel.clearError();
-            }
-        });
-        evaluationViewModel.getOperationResult().observe(this, result -> {
-            if (!TextUtils.isEmpty(result)) {
-                ToastUtils.showShort(this, result);
-                evaluationViewModel.clearOperationResult();
-            }
-        });
+        observeError(evaluationViewModel);
+        observeOperationResult(evaluationViewModel, null);
     }
 
     private void showHazyImage(FileInfo fileInfo) {

@@ -2,18 +2,16 @@ package com.pei.dehaze.ui.personal;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.MenuItem;
-import android.view.View;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.pei.dehaze.MainActivity;
-import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivitySettingsBinding;
-import com.pei.dehaze.sdk.api.AuthAPI;
 import com.pei.dehaze.repository.RepositoryAdapters;
+import com.pei.dehaze.sdk.api.AuthAPI;
+import com.pei.dehaze.ui.common.BaseActivity;
+import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.ui.notify.NotifyActivity;
 import com.pei.dehaze.utils.ToastUtils;
 
@@ -22,9 +20,10 @@ import java.io.File;
 /**
  * 系统设置 — 缓存清理 / 通知入口 / 版本号 / 退出登录
  */
-public class SettingsActivity extends AppCompatActivity {
+public class SettingsActivity extends BaseActivity {
 
     private ActivitySettingsBinding binding;
+    private SettingsViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,15 +31,15 @@ public class SettingsActivity extends AppCompatActivity {
         binding = ActivitySettingsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("系统设置");
-        }
+        setupActionBar("系统设置");
 
         binding.tvVersion.setText("v1.0");
 
+        viewModel = new ViewModelProvider(this).get(SettingsViewModel.class);
+        observeError(viewModel);
+        observeOperationResult(viewModel, this::navigateToLogin);
+
         binding.itemClearCache.setOnClickListener(v -> {
-            // 清理应用缓存目录
             try {
                 File cacheDir = getCacheDir();
                 deleteDir(cacheDir);
@@ -57,19 +56,7 @@ public class SettingsActivity extends AppCompatActivity {
                 new AlertDialog.Builder(this)
                         .setTitle("退出登录")
                         .setMessage("确定要退出当前账号吗？")
-                        .setPositiveButton("确定", (d, w) -> {
-                            AuthAPI.logout(RepositoryAdapters.wrap(new com.pei.dehaze.repository.RepositoryCallback<Void>() {
-                                @Override
-                                public void onSuccess(Void data) {
-                                    runOnUiThread(() -> navigateToLogin());
-                                }
-
-                                @Override
-                                public void onError(String errorMessage) {
-                                    runOnUiThread(() -> ToastUtils.showShort(SettingsActivity.this, errorMessage));
-                                }
-                            }));
-                        })
+                        .setPositiveButton("确定", (d, w) -> viewModel.logout())
                         .setNegativeButton("取消", null)
                         .show());
     }
@@ -80,15 +67,6 @@ public class SettingsActivity extends AppCompatActivity {
         intent.putExtra("logout", true);
         startActivity(intent);
         finishAffinity();
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 
     private boolean deleteDir(File dir) {
@@ -103,5 +81,11 @@ public class SettingsActivity extends AppCompatActivity {
             }
         }
         return dir != null && dir.delete();
+    }
+
+    public static class SettingsViewModel extends BaseViewModel {
+        public void logout() {
+            AuthAPI.logout(RepositoryAdapters.wrap(withLoading(v -> operationResult.postValue("已退出登录"))));
+        }
     }
 }

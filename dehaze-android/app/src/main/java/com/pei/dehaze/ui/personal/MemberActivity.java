@@ -1,21 +1,25 @@
 package com.pei.dehaze.ui.personal;
 
 import android.os.Bundle;
-import android.view.MenuItem;
 
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.pei.dehaze.databinding.ActivityMemberBinding;
 import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.sdk.api.MemberAPI;
-import com.pei.dehaze.utils.ToastUtils;
+import com.pei.dehaze.sdk.model.member.MemberProfileVO;
+import com.pei.dehaze.ui.common.BaseActivity;
+import com.pei.dehaze.ui.common.BaseViewModel;
 
 /**
  * 我的会员 — 等级/成长值/权益
  */
-public class MemberActivity extends AppCompatActivity {
+public class MemberActivity extends BaseActivity {
 
     private ActivityMemberBinding binding;
+    private MemberViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -23,46 +27,32 @@ public class MemberActivity extends AppCompatActivity {
         binding = ActivityMemberBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("我的会员");
-        }
+        setupActionBar("我的会员");
 
-        loadProfile();
+        viewModel = new ViewModelProvider(this).get(MemberViewModel.class);
+
+        viewModel.getProfile().observe(this, profile -> {
+            if (profile == null) return;
+            binding.tvMemberLevel.setText(profile.getLevelName() != null ? profile.getLevelName() : "普通用户");
+            binding.tvGrowthValue.setText("成长值: " + (profile.getGrowthValue() != null ? profile.getGrowthValue() : 0));
+            String desc = "月度去雾: " + (profile.getMonthlyDehazeQuota() != null ? profile.getMonthlyDehazeQuota() : 0)
+                    + " / 月度评估: " + (profile.getMonthlyEvaluateQuota() != null ? profile.getMonthlyEvaluateQuota() : 0);
+            binding.tvMemberDesc.setText(desc);
+        });
+        observeError(viewModel);
+
+        viewModel.loadProfile();
     }
 
-    private void loadProfile() {
-        MemberAPI.getProfile(RepositoryAdapters.wrap(new com.pei.dehaze.repository.RepositoryCallback<com.pei.dehaze.sdk.model.member.MemberProfileVO>() {
-            @Override
-            public void onSuccess(com.pei.dehaze.sdk.model.member.MemberProfileVO profile) {
-                runOnUiThread(() -> {
-                    if (profile != null) {
-                        binding.tvMemberLevel.setText(profile.getLevelName() != null ? profile.getLevelName() : "普通用户");
-                        binding.tvGrowthValue.setText("成长值: " + (profile.getGrowthValue() != null ? profile.getGrowthValue() : 0));
-                        String desc = "月度去雾: " + (profile.getMonthlyDehazeQuota() != null ? profile.getMonthlyDehazeQuota() : 0)
-                                + " / 月度评估: " + (profile.getMonthlyEvaluateQuota() != null ? profile.getMonthlyEvaluateQuota() : 0);
-                        binding.tvMemberDesc.setText(desc);
-                    }
-                });
-            }
+    public static class MemberViewModel extends BaseViewModel {
+        private final MutableLiveData<MemberProfileVO> profile = new MutableLiveData<>();
 
-            @Override
-            public void onError(String errorMessage) {
-                runOnUiThread(() -> {
-                    binding.tvMemberLevel.setText("普通用户");
-                    binding.tvGrowthValue.setText("成长值: --");
-                    binding.tvMemberDesc.setText("会员信息加载失败");
-                });
-            }
-        }));
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
+        public LiveData<MemberProfileVO> getProfile() {
+            return profile;
         }
-        return super.onOptionsItemSelected(item);
+
+        public void loadProfile() {
+            MemberAPI.getProfile(RepositoryAdapters.wrap(withLoading(data -> profile.postValue(data))));
+        }
     }
 }

@@ -1,21 +1,19 @@
 package com.pei.dehaze.ui.personal;
 
 import android.os.Bundle;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityHelpBinding;
+import com.pei.dehaze.ui.common.BaseActivity;
 
 /**
  * 帮助中心 — FAQ 折叠列表（静态）
  */
-public class HelpActivity extends AppCompatActivity {
+public class HelpActivity extends BaseActivity {
 
     private ActivityHelpBinding binding;
 
@@ -33,10 +31,7 @@ public class HelpActivity extends AppCompatActivity {
         binding = ActivityHelpBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("帮助中心");
-        }
+        setupActionBar("帮助中心");
 
         for (int i = 0; i < faqs.length; i++) {
             View item = getLayoutInflater().inflate(R.layout.item_help_faq, binding.faqContainer, false);
@@ -53,14 +48,5 @@ public class HelpActivity extends AppCompatActivity {
 
             binding.faqContainer.addView(item);
         }
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 }

@@ -8,7 +8,7 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -32,7 +32,7 @@ import androidx.appcompat.app.AlertDialog;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AlgorithmSelectActivity extends AppCompatActivity {
+public class AlgorithmSelectActivity extends BaseActivity {
 
     public static final String EXTRA_ALGORITHM_ID = "extra_algorithm_id";
     public static final String EXTRA_ALGORITHM_NAME = "extra_algorithm_name";
@@ -255,12 +255,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
             binding.swipeCompare.setRefreshing(loading);
         });
 
-        viewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                viewModel.clearError();
-            }
-        });
+        observeError(viewModel);
 
         viewModel.getOperationResult().observe(this, result -> {
             if (result != null && !result.isEmpty()) {
@@ -281,19 +276,9 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         algorithmViewModel.getLoading().observe(this, isLoading ->
                 binding.swipeSearch.setRefreshing(isLoading != null && isLoading));
 
-        algorithmViewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                algorithmViewModel.clearError();
-            }
-        });
+        observeError(algorithmViewModel);
 
-        algorithmViewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                algorithmViewModel.clearOperationResult();
-            }
-        });
+        observeOperationResult(algorithmViewModel, null);
     }
 
     private void doRecommend() {

@@ -9,7 +9,6 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -22,6 +21,7 @@ import com.pei.dehaze.sdk.api.OrderAPI;
 import com.pei.dehaze.sdk.api.PackageAPI;
 import com.pei.dehaze.sdk.model.order.OrderCreateForm;
 import com.pei.dehaze.sdk.model.pkg.PackageDetailVO;
+import com.pei.dehaze.ui.common.BaseActivity;
 import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.utils.ToastUtils;
 
@@ -31,7 +31,7 @@ import java.util.List;
 /**
  * 套餐购买 — 套餐卡片列表 + 下单
  */
-public class PackageActivity extends AppCompatActivity {
+public class PackageActivity extends BaseActivity {
 
     private ActivitySimpleListBinding binding;
     private PackageListViewModel viewModel;
@@ -43,10 +43,7 @@ public class PackageActivity extends AppCompatActivity {
         binding = ActivitySimpleListBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("商业服务");
-        }
+        setupActionBar("商业服务");
 
         viewModel = new ViewModelProvider(this).get(PackageListViewModel.class);
         adapter = new PackageAdapter();
@@ -94,15 +91,6 @@ public class PackageActivity extends AppCompatActivity {
                 ToastUtils.showShort(PackageActivity.this, errorMessage);
             }
         }));
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 
     public static class PackageListViewModel extends BaseViewModel {

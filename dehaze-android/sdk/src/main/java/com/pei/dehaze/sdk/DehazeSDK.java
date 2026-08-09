@@ -25,6 +25,7 @@ import com.pei.dehaze.sdk.service.RoleApiService;
 import com.pei.dehaze.sdk.service.TaskApiService;
 import com.pei.dehaze.sdk.service.UserApiService;
 import com.pei.dehaze.sdk.network.TraceInterceptor;
+import com.pei.dehaze.sdk.network.TrackedCallAdapterFactory;
 import com.pei.dehaze.sdk.utils.TokenManager;
 import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
 import com.pei.dehaze.sdk.model.EnableStatus;
@@ -214,6 +215,7 @@ public class DehazeSDK {
         retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
                 .client(okHttpClientBuilder.build())
+                .addCallAdapterFactory(new TrackedCallAdapterFactory())
                 .addConverterFactory(GsonConverterFactory.create(gsonBuilder.create()))
                 .build();
 

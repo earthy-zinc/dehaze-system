@@ -2,11 +2,10 @@ package com.pei.dehaze.ui.messages.detail;
 
 import android.os.Bundle;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.pei.dehaze.databinding.ActivityMessagesDetailBinding;
+import com.pei.dehaze.ui.common.BaseActivity;
 
-public class MessagesDetailActivity extends AppCompatActivity {
+public class MessagesDetailActivity extends BaseActivity {
 
     private ActivityMessagesDetailBinding binding;
 
@@ -16,8 +15,7 @@ public class MessagesDetailActivity extends AppCompatActivity {
         binding = ActivityMessagesDetailBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, null);
 
         String title = getIntent().getStringExtra("message_title");
         String type = getIntent().getStringExtra("message_type");

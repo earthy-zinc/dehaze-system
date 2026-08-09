@@ -13,7 +13,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -41,7 +41,7 @@ import java.util.List;
  * 任务列表页
  * 支持任务列表、状态/类型筛选、创建、取消、下载、删除、查看详情
  */
-public class TaskListActivity extends AppCompatActivity {
+public class TaskListActivity extends BaseActivity {
 
     private TaskViewModel taskViewModel;
     private TaskAdapter taskAdapter;
@@ -177,17 +177,9 @@ public class TaskListActivity extends AppCompatActivity {
             binding.progressBar.setVisibility(isLoading != null && isLoading ? View.VISIBLE : View.GONE);
         });
 
-        taskViewModel.getError().observe(this, msg -> {
-            if (!TextUtils.isEmpty(msg)) {
-                ToastUtils.showShort(this, msg);
-            }
-        });
+        observeError(taskViewModel);
 
-        taskViewModel.getOperationResult().observe(this, msg -> {
-            if (!TextUtils.isEmpty(msg)) {
-                ToastUtils.showShort(this, msg);
-            }
-        });
+        observeOperationResult(taskViewModel, null);
 
         taskViewModel.getTaskDetail().observe(this, task -> showDetailDialog(task));
     }

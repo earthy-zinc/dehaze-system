@@ -10,7 +10,7 @@ import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
 
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -34,7 +34,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
-public class RoleListActivity extends AppCompatActivity {
+public class RoleListActivity extends BaseActivity {
 
     private static final Pattern CODE_PATTERN = Pattern.compile("^[A-Z_]+$");
     private static final String[] DATA_SCOPE_LABELS = {"全部数据", "自定义数据", "本部门数据", "本部门及以下", "仅本人数据"};
@@ -60,8 +60,7 @@ public class RoleListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, null);
 
         roleAdapter = new RoleAdapter();
         binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));

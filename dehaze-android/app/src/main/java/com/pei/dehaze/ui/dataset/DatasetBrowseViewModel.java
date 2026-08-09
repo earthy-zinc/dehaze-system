@@ -44,7 +44,7 @@ public class DatasetBrowseViewModel extends BaseViewModel {
     public void search(String keywords) {
         loading.setValue(true);
         DatasetQuery query = new DatasetQuery();
-        query.setKeywords(keywords);
+        query.setKeyword(keywords);
         query.setPageNum(1);
         query.setPageSize(50);
         DatasetAPI.getList(query, RepositoryAdapters.wrap(new RepositoryCallback<PageResult<Dataset>>() {

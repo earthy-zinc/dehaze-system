@@ -12,7 +12,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -21,6 +20,7 @@ import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityManageListBinding;
 import com.pei.dehaze.sdk.model.pkg.PackageForm;
 import com.pei.dehaze.sdk.model.pkg.PackagePageVO;
+import com.pei.dehaze.ui.common.BaseActivity;
 import com.pei.dehaze.ui.system.viewmodel.PackageManageViewModel;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
@@ -30,7 +30,7 @@ import java.util.List;
 /**
  * 套餐管理（sys:package:*）— 完整 CRUD：列表、新增/编辑、上下架、删除
  */
-public class PackageManageActivity extends AppCompatActivity {
+public class PackageManageActivity extends BaseActivity {
 
     private PackageManageViewModel viewModel;
     private ActivityManageListBinding binding;
@@ -53,9 +53,7 @@ public class PackageManageActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setTitle("套餐管理");
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, "套餐管理");
 
         ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item,
@@ -105,19 +103,8 @@ public class PackageManageActivity extends AppCompatActivity {
         viewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        viewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                viewModel.clearError();
-            }
-        });
-
-        viewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                viewModel.clearOperationResult();
-            }
-        });
+        observeError(viewModel);
+        observeOperationResult(viewModel, null);
     }
 
     private void loadData() {

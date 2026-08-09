@@ -8,7 +8,7 @@ import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * 消息管理（sys:notify:*）
  */
-public class MessageManageActivity extends AppCompatActivity {
+public class MessageManageActivity extends BaseActivity {
 
     private MessageManageViewModel viewModel;
     private ActivityManageListBinding binding;
@@ -40,9 +40,7 @@ public class MessageManageActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setTitle("消息管理");
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, "消息管理");
 
         ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item,
@@ -87,19 +85,8 @@ public class MessageManageActivity extends AppCompatActivity {
         viewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        viewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                viewModel.clearError();
-            }
-        });
-
-        viewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                viewModel.clearOperationResult();
-            }
-        });
+        observeError(viewModel);
+        observeOperationResult(viewModel, null);
     }
 
     private void loadData() {

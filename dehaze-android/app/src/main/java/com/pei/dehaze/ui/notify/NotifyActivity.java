@@ -1,27 +1,28 @@
 package com.pei.dehaze.ui.notify;
 
 import android.os.Bundle;
-import android.view.MenuItem;
 import android.view.View;
 
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.pei.dehaze.databinding.ActivityNotifyBinding;
 import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.sdk.api.NotificationSettingAPI;
 import com.pei.dehaze.sdk.model.message.NotificationSettings;
 import com.pei.dehaze.sdk.model.message.NotificationSettingsForm;
+import com.pei.dehaze.ui.common.BaseActivity;
+import com.pei.dehaze.ui.common.BaseViewModel;
 import com.pei.dehaze.utils.ToastUtils;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * 消息设置 — 通知开关 + 免打扰时段
  */
-public class NotifyActivity extends AppCompatActivity {
+public class NotifyActivity extends BaseActivity {
 
     private ActivityNotifyBinding binding;
+    private NotifyViewModel viewModel;
 
     private boolean pushEnabled = true;
     private boolean dndEnabled = false;
@@ -34,30 +35,15 @@ public class NotifyActivity extends AppCompatActivity {
         binding = ActivityNotifyBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("消息设置");
-        }
+        setupActionBar("消息设置");
+
+        viewModel = new ViewModelProvider(this).get(NotifyViewModel.class);
+        viewModel.getSettings().observe(this, this::applySettings);
+        observeError(viewModel);
 
         setupSwitches();
         setupDnd();
-        loadSettings();
-    }
-
-    private void loadSettings() {
-        NotificationSettingAPI.get(RepositoryAdapters.wrap(new com.pei.dehaze.repository.RepositoryCallback<NotificationSettings>() {
-            @Override
-            public void onSuccess(NotificationSettings settings) {
-                runOnUiThread(() -> applySettings(settings));
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                runOnUiThread(() -> {
-                    // 加载失败使用默认值
-                });
-            }
-        }));
+        viewModel.loadSettings();
     }
 
     private void applySettings(NotificationSettings settings) {
@@ -120,29 +106,27 @@ public class NotifyActivity extends AppCompatActivity {
         form.setDndEnabled(dndEnabled);
         form.setDndStart(dndStart);
         form.setDndEnd(dndEnd);
-        NotificationSettingAPI.update(form, RepositoryAdapters.wrap(new com.pei.dehaze.repository.RepositoryCallback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                // 保存成功
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                runOnUiThread(() -> ToastUtils.showShort(NotifyActivity.this, "保存设置失败"));
-            }
-        }));
+        viewModel.saveSettings(form);
     }
 
     private void showToast(String msg) {
         ToastUtils.showShort(this, msg);
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
+    public static class NotifyViewModel extends BaseViewModel {
+        private final MutableLiveData<NotificationSettings> settings = new MutableLiveData<>();
+
+        public LiveData<NotificationSettings> getSettings() {
+            return settings;
         }
-        return super.onOptionsItemSelected(item);
+
+        public void loadSettings() {
+            NotificationSettingAPI.get(RepositoryAdapters.wrap(withLoading(data -> settings.postValue(data))));
+        }
+
+        public void saveSettings(NotificationSettingsForm form) {
+            NotificationSettingAPI.update(form, RepositoryAdapters.wrap(withLoading(v -> {
+            })));
+        }
     }
 }

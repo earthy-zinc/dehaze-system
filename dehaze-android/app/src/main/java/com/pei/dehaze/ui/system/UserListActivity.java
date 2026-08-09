@@ -20,7 +20,7 @@ import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -37,6 +37,7 @@ import com.pei.dehaze.sdk.model.user.UserForm;
 import com.pei.dehaze.sdk.model.user.UserPageVO;
 import com.pei.dehaze.ui.system.adapter.UserAdapter;
 import com.pei.dehaze.ui.system.viewmodel.UserViewModel;
+import com.pei.dehaze.ui.common.BaseActivity;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 
@@ -49,7 +50,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class UserListActivity extends AppCompatActivity {
+public class UserListActivity extends BaseActivity {
 
     private static final int REQUEST_IMPORT_FILE = 1002;
     private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
@@ -95,8 +96,7 @@ public class UserListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, null);
 
         userAdapter = new UserAdapter();
         binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -242,12 +242,7 @@ public class UserListActivity extends AppCompatActivity {
         userViewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        userViewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                userViewModel.clearError();
-            }
-        });
+        observeError(userViewModel);
 
         userViewModel.getOperationResult().observe(this, result -> {
             if (result != null && !result.isEmpty()) {

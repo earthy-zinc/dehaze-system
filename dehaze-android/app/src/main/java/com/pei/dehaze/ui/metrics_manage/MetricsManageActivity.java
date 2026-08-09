@@ -13,13 +13,14 @@ import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.pei.dehaze.databinding.ActivityMetricsManageBinding;
 import com.pei.dehaze.ui.metrics_manage.viewmodel.MetricsManageViewModel;
+import com.pei.dehaze.ui.common.BaseActivity;
 import com.pei.dehaze.utils.ToastUtils;
 
 /**
  * 指标管理 L2 Activity
  * 评估日志列表 + 筛选 + 对比表格
  */
-public class MetricsManageActivity extends AppCompatActivity {
+public class MetricsManageActivity extends BaseActivity {
 
     private MetricsManageViewModel viewModel;
     private ActivityMetricsManageBinding binding;

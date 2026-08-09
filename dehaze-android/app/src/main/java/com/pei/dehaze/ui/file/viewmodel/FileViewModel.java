@@ -6,35 +6,32 @@ import androidx.lifecycle.MutableLiveData;
 import com.pei.dehaze.repository.FileRepository;
 import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.sdk.api.FileAPI;
-import com.pei.dehaze.ui.common.BaseViewModel;
-import com.pei.dehaze.sdk.model.PageResult;
+import com.pei.dehaze.ui.common.BaseLoadMoreViewModel;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 文件管理 ViewModel
  */
-public class FileViewModel extends BaseViewModel {
+public class FileViewModel extends BaseLoadMoreViewModel<FileInfo> {
 
     private final FileRepository fileRepository = new FileRepository();
 
-    private final MutableLiveData<List<FileInfo>> fileList = new MutableLiveData<>();
     private final MutableLiveData<FileInfo> fileDetail = new MutableLiveData<>();
 
-    private int pageNum = 1;
-    private int pageSize = 10;
     private String keywords = "";
-    private long total = 0;
+
+    public FileViewModel() {
+        super(10);
+    }
 
     /**
      * 加载文件列表（首页）
      */
     public void loadFiles() {
-        pageNum = 1;
-        fetchFiles();
+        reload();
     }
 
     /**
@@ -42,36 +39,13 @@ public class FileViewModel extends BaseViewModel {
      */
     public void searchFiles(String keywords) {
         this.keywords = keywords;
-        pageNum = 1;
-        fetchFiles();
+        reload();
     }
 
-    /**
-     * 加载下一页
-     */
-    public void loadMore() {
-        if (fileList.getValue() == null || fileList.getValue().size() >= total) {
-            return;
-        }
-        pageNum++;
-        fetchFiles();
-    }
-
-    private void fetchFiles() {
-        FileAPI.getFilePage(pageNum, pageSize, keywords, RepositoryAdapters.wrap(withLoading(data -> {
-            List<FileInfo> files = data.getList();
-            FileViewModel.this.total = data.getTotal();
-            if (pageNum == 1) {
-                fileList.postValue(files);
-            } else {
-                List<FileInfo> current = fileList.getValue();
-                if (current == null) {
-                    current = new ArrayList<>();
-                }
-                current.addAll(files);
-                fileList.postValue(current);
-            }
-        })));
+    @Override
+    protected void loadPage() {
+        FileAPI.getFilePage(pageNum, pageSize, keywords, RepositoryAdapters.wrap(withLoading(data ->
+                onPageLoaded(data.getList(), data.getTotal()))));
     }
 
     /**
@@ -112,7 +86,7 @@ public class FileViewModel extends BaseViewModel {
     }
 
     public LiveData<List<FileInfo>> getFileList() {
-        return fileList;
+        return itemList;
     }
 
     public LiveData<FileInfo> getFileDetail() {

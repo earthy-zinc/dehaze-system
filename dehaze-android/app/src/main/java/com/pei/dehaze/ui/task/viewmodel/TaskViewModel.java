@@ -6,40 +6,37 @@ import androidx.lifecycle.MutableLiveData;
 import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.TaskRepository;
 import com.pei.dehaze.sdk.api.TaskAPI;
-import com.pei.dehaze.ui.common.BaseViewModel;
-import com.pei.dehaze.sdk.model.PageResult;
+import com.pei.dehaze.ui.common.BaseLoadMoreViewModel;
 import com.pei.dehaze.sdk.model.task.TaskCreateForm;
 import com.pei.dehaze.sdk.model.task.TaskQuery;
 import com.pei.dehaze.sdk.model.task.TaskStatus;
 import com.pei.dehaze.sdk.model.task.TaskType;
 import com.pei.dehaze.sdk.model.task.TaskVO;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 任务管理 ViewModel
  */
-public class TaskViewModel extends BaseViewModel {
+public class TaskViewModel extends BaseLoadMoreViewModel<TaskVO> {
 
     private final TaskRepository taskRepository = new TaskRepository();
 
-    private final MutableLiveData<List<TaskVO>> taskList = new MutableLiveData<>();
     private final MutableLiveData<TaskVO> taskDetail = new MutableLiveData<>();
     private final MutableLiveData<TaskVO> createdTask = new MutableLiveData<>();
 
-    private int pageNum = 1;
-    private int pageSize = 10;
     private TaskStatus statusFilter;
     private TaskType typeFilter;
-    private long total = 0;
+
+    public TaskViewModel() {
+        super(10);
+    }
 
     /**
      * 加载任务列表（首页）
      */
     public void loadTasks() {
-        pageNum = 1;
-        fetchTasks();
+        reload();
     }
 
     /**
@@ -47,8 +44,7 @@ public class TaskViewModel extends BaseViewModel {
      */
     public void filterByStatus(TaskStatus status) {
         this.statusFilter = status;
-        pageNum = 1;
-        fetchTasks();
+        reload();
     }
 
     /**
@@ -56,41 +52,18 @@ public class TaskViewModel extends BaseViewModel {
      */
     public void filterByType(TaskType taskType) {
         this.typeFilter = taskType;
-        pageNum = 1;
-        fetchTasks();
+        reload();
     }
 
-    /**
-     * 加载下一页
-     */
-    public void loadMore() {
-        if (taskList.getValue() == null || taskList.getValue().size() >= total) {
-            return;
-        }
-        pageNum++;
-        fetchTasks();
-    }
-
-    private void fetchTasks() {
+    @Override
+    protected void loadPage() {
         TaskQuery query = new TaskQuery();
         query.setPageNum(pageNum);
         query.setPageSize(pageSize);
         query.setStatus(statusFilter);
         query.setTaskType(typeFilter);
-        TaskAPI.getTaskPage(query, RepositoryAdapters.wrap(withLoading(data -> {
-            List<TaskVO> tasks = data.getList();
-            TaskViewModel.this.total = data.getTotal();
-            if (pageNum == 1) {
-                taskList.postValue(tasks);
-            } else {
-                List<TaskVO> current = taskList.getValue();
-                if (current == null) {
-                    current = new ArrayList<>();
-                }
-                current.addAll(tasks);
-                taskList.postValue(current);
-            }
-        })));
+        TaskAPI.getTaskPage(query, RepositoryAdapters.wrap(withLoading(data ->
+                onPageLoaded(data.getList(), data.getTotal()))));
     }
 
     /**
@@ -132,7 +105,7 @@ public class TaskViewModel extends BaseViewModel {
     }
 
     public LiveData<List<TaskVO>> getTaskList() {
-        return taskList;
+        return itemList;
     }
 
     public LiveData<TaskVO> getTaskDetail() {

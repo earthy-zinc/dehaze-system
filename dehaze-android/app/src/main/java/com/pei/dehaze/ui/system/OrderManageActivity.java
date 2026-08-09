@@ -11,7 +11,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -28,7 +28,7 @@ import java.util.List;
 /**
  * 订单管理（sys:order:*）— 列表查看、取消订单、退款处理
  */
-public class OrderManageActivity extends AppCompatActivity {
+public class OrderManageActivity extends BaseActivity {
 
     private OrderManageViewModel viewModel;
     private ActivityManageListBinding binding;
@@ -46,9 +46,7 @@ public class OrderManageActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setTitle("订单管理");
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, "订单管理");
 
         ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item,

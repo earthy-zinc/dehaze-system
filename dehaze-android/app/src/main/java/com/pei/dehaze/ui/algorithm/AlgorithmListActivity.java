@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -17,11 +16,12 @@ import com.pei.dehaze.ui.algorithm.adapter.AlgorithmAdapter;
 import com.pei.dehaze.ui.algorithm.viewmodel.AlgorithmViewModel;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
+import com.pei.dehaze.ui.common.BaseActivity;
 
 import java.util.Collections;
 import java.util.List;
 
-public class AlgorithmListActivity extends AppCompatActivity {
+public class AlgorithmListActivity extends BaseActivity {
 
     private AlgorithmViewModel algorithmViewModel;
     private AlgorithmAdapter algorithmAdapter;
@@ -40,8 +40,7 @@ public class AlgorithmListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, null);
 
         algorithmAdapter = new AlgorithmAdapter();
         binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -101,19 +100,9 @@ public class AlgorithmListActivity extends AppCompatActivity {
         algorithmViewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        algorithmViewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                algorithmViewModel.clearError();
-            }
-        });
+        observeError(algorithmViewModel);
 
-        algorithmViewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                algorithmViewModel.clearOperationResult();
-            }
-        });
+        observeOperationResult(algorithmViewModel, null);
     }
 
     private void loadData() {

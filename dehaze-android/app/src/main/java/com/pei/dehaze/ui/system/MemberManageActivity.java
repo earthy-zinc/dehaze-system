@@ -9,7 +9,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -19,14 +19,13 @@ import com.pei.dehaze.databinding.ActivityManageListBinding;
 import com.pei.dehaze.sdk.model.member.MemberPageVO;
 import com.pei.dehaze.ui.system.viewmodel.MemberManageViewModel;
 import com.pei.dehaze.utils.StringUtils;
-import com.pei.dehaze.utils.ToastUtils;
 
 import java.util.List;
 
 /**
  * 会员管理（sys:member:*）— 完整 CRUD：列表查看、等级调整、状态切换、禁用（删除）
  */
-public class MemberManageActivity extends AppCompatActivity {
+public class MemberManageActivity extends BaseActivity {
 
     private MemberManageViewModel viewModel;
     private ActivityManageListBinding binding;
@@ -44,9 +43,7 @@ public class MemberManageActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setTitle("会员管理");
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, "会员管理");
 
         ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item,
@@ -92,19 +89,8 @@ public class MemberManageActivity extends AppCompatActivity {
         viewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        viewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                viewModel.clearError();
-            }
-        });
-
-        viewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                viewModel.clearOperationResult();
-            }
-        });
+        observeError(viewModel);
+        observeOperationResult(viewModel, null);
     }
 
     private void loadData() {

@@ -25,7 +25,7 @@ public class DatasetManageViewModel extends BaseViewModel {
         DatasetQuery query = new DatasetQuery();
         query.setPageNum(pageNum);
         query.setPageSize(pageSize);
-        query.setKeywords(keywords.isEmpty() ? null : keywords);
+        query.setKeyword(keywords.isEmpty() ? null : keywords);
         DatasetAPI.getList(query, RepositoryAdapters.wrap(withLoading(data -> {
             datasetList.postValue(data.getList());
             total.postValue(data.getTotal());

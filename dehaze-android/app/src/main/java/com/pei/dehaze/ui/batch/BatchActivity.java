@@ -9,7 +9,7 @@ import android.view.View;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -34,7 +34,7 @@ import java.util.List;
  * 批量处理 Activity（L2）
  * 步骤1: 选择图片 → 步骤2: 选择算法 → 步骤3: 批量处理 → 查看结果
  */
-public class BatchActivity extends AppCompatActivity {
+public class BatchActivity extends BaseActivity {
 
     private static final int MAX_IMAGES = 20;
 
@@ -206,11 +206,6 @@ public class BatchActivity extends AppCompatActivity {
             binding.tvProgress.setText(count != null && !count.isEmpty() ? "进度: " + count : "");
         });
 
-        viewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                viewModel.clearError();
-            }
-        });
+        observeError(viewModel);
     }
 }

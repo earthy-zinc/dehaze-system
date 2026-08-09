@@ -13,7 +13,7 @@ import android.widget.SeekBar;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
@@ -42,7 +42,7 @@ import java.util.List;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 
-public class PresentationActivity extends AppCompatActivity {
+public class PresentationActivity extends BaseActivity {
 
     private PresentationViewModel presentationViewModel;
     private ActivityPresentationBinding binding;
@@ -72,8 +72,7 @@ public class PresentationActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, null);
 
         binding.btnSelectImage.setOnClickListener(v ->
                 pickImageLauncher.launch("image/*"));

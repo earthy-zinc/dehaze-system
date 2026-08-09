@@ -11,7 +11,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -24,7 +24,7 @@ import com.pei.dehaze.utils.ToastUtils;
 
 import java.util.List;
 
-public class DatasetManageActivity extends AppCompatActivity {
+public class DatasetManageActivity extends BaseActivity {
 
     private DatasetManageViewModel viewModel;
     private ActivityDatasetManageBinding binding;
@@ -41,8 +41,7 @@ public class DatasetManageActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, null);
 
         ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, new String[]{"全部", "启用", "禁用"});
@@ -88,19 +87,8 @@ public class DatasetManageActivity extends AppCompatActivity {
         viewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        viewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                viewModel.clearError();
-            }
-        });
-
-        viewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                viewModel.clearOperationResult();
-            }
-        });
+        observeError(viewModel);
+        observeOperationResult(viewModel, null);
     }
 
     private void loadData() {

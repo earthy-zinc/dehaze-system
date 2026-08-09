@@ -12,7 +12,7 @@ import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.ViewModelProvider;
@@ -42,7 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class CompareActivity extends AppCompatActivity {
+public class CompareActivity extends BaseActivity {
 
     private CompareViewModel compareViewModel;
     private ActivityCompareBinding binding;
@@ -152,18 +152,8 @@ public class CompareActivity extends AppCompatActivity {
                 statePlaceholder.showLoading("正在处理中…");
             }
         });
-        compareViewModel.getError().observe(this, errorMessage -> {
-            if (!TextUtils.isEmpty(errorMessage)) {
-                ToastUtils.showShort(this, errorMessage);
-                compareViewModel.clearError();
-            }
-        });
-        compareViewModel.getOperationResult().observe(this, result -> {
-            if (!TextUtils.isEmpty(result)) {
-                ToastUtils.showShort(this, result);
-                compareViewModel.clearOperationResult();
-            }
-        });
+        observeError(compareViewModel);
+        observeOperationResult(compareViewModel, null);
     }
 
     private void showUploadedImage(FileInfo fileInfo) {

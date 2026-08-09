@@ -11,7 +11,7 @@ import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
+import com.pei.dehaze.ui.common.BaseActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class DeptListActivity extends AppCompatActivity {
+public class DeptListActivity extends BaseActivity {
 
     private static final String[] STATUS_LABELS = {"全部", "启用", "禁用"};
     private static final Integer[] STATUS_VALUES = {null, 1, 0};
@@ -53,8 +53,7 @@ public class DeptListActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        setSupportActionBar(binding.toolbar);
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+        setupToolbar(binding.toolbar, null);
 
         deptAdapter = new DeptAdapter();
         binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -115,19 +114,8 @@ public class DeptListActivity extends AppCompatActivity {
         deptViewModel.getLoading().observe(this, isLoading ->
                 binding.swipeRefresh.setRefreshing(isLoading != null && isLoading));
 
-        deptViewModel.getError().observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(this, errorMessage);
-                deptViewModel.clearError();
-            }
-        });
-
-        deptViewModel.getOperationResult().observe(this, result -> {
-            if (result != null && !result.isEmpty()) {
-                ToastUtils.showShort(this, result);
-                deptViewModel.clearOperationResult();
-            }
-        });
+        observeError(deptViewModel);
+        observeOperationResult(deptViewModel, null);
 
         deptViewModel.getDeptForm().observe(this, form -> {
             if (form != null) {

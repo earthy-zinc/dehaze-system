@@ -7,8 +7,7 @@ import com.pei.dehaze.repository.DatasetRepository;
 import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
 import com.pei.dehaze.sdk.api.DatasetAPI;
-import com.pei.dehaze.ui.common.BaseViewModel;
-import com.pei.dehaze.sdk.model.PageResult;
+import com.pei.dehaze.ui.common.BaseLoadMoreViewModel;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
 import com.pei.dehaze.sdk.model.dataset.DatasetQuery;
 
@@ -17,27 +16,32 @@ import java.util.List;
 
 /**
  * 数据集列表页 ViewModel（树形列表 + CRUD）
+ *
+ * <p>两套数据：
+ * <ul>
+ *   <li>树形：{@link #rootDatasets} + {@link #loadChildren(long, RepositoryCallback)} 懒加载，不走分页基类</li>
+ *   <li>搜索：复用 {@link BaseLoadMoreViewModel} 的 itemList/分页机制，{@link #loadPage()} 发起搜索请求</li>
+ * </ul>
  */
-public class DatasetViewModel extends BaseViewModel {
+public class DatasetViewModel extends BaseLoadMoreViewModel<Dataset> {
 
     private final DatasetRepository repository = new DatasetRepository();
 
     private final MutableLiveData<List<Dataset>> rootDatasets = new MutableLiveData<>();
-    private final MutableLiveData<List<Dataset>> searchResults = new MutableLiveData<>();
 
     private boolean searchMode = false;
     private String keywords = "";
 
-    private int searchPageNum = 1;
-    private final int searchPageSize = 20;
-    private long searchTotal = 0;
+    public DatasetViewModel() {
+        super(20);
+    }
 
     public LiveData<List<Dataset>> getRootDatasets() {
         return rootDatasets;
     }
 
     public LiveData<List<Dataset>> getSearchResults() {
-        return searchResults;
+        return itemList;
     }
 
     public boolean isSearchMode() {
@@ -66,39 +70,26 @@ public class DatasetViewModel extends BaseViewModel {
     public void search(String keywords) {
         this.keywords = keywords == null ? "" : keywords.trim();
         searchMode = true;
-        searchPageNum = 1;
-        loadSearchPage();
+        reload();
     }
 
     public void searchNextPage() {
-        long totalPages = (long) Math.ceil(searchTotal * 1.0 / searchPageSize);
-        if (searchPageNum < totalPages) {
-            searchPageNum++;
-            loadSearchPage();
-        }
+        loadMore();
     }
 
-    private void loadSearchPage() {
+    @Override
+    protected void loadPage() {
         DatasetQuery query = new DatasetQuery();
-        query.setPageNum(searchPageNum);
-        query.setPageSize(searchPageSize);
-        query.setKeywords(keywords);
-        DatasetAPI.getList(query, RepositoryAdapters.wrap(withLoading(data -> {
-            searchTotal = data != null ? data.getTotal() : 0;
-            List<Dataset> list = data != null ? data.getList() : new ArrayList<>();
-            if (searchPageNum == 1) {
-                searchResults.postValue(list);
-            } else {
-                List<Dataset> merged = new ArrayList<>(searchResults.getValue() != null
-                        ? searchResults.getValue() : new ArrayList<>());
-                merged.addAll(list);
-                searchResults.postValue(merged);
-            }
-        })));
+        query.setPageNum(pageNum);
+        query.setPageSize(pageSize);
+        query.setKeyword(keywords);
+        DatasetAPI.getList(query, RepositoryAdapters.wrap(withLoading(data ->
+                onPageLoaded(data != null ? data.getList() : null,
+                        data != null ? data.getTotal() : 0))));
     }
 
     public long getSearchTotal() {
-        return searchTotal;
+        return total;
     }
 
     /**
@@ -116,7 +107,7 @@ public class DatasetViewModel extends BaseViewModel {
     public void addDataset(Dataset form) {
         DatasetAPI.add(form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("新增数据集成功");
-            reload();
+            refresh();
         })));
     }
 
@@ -126,7 +117,7 @@ public class DatasetViewModel extends BaseViewModel {
     public void updateDataset(long id, Dataset form) {
         DatasetAPI.update(id, form, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("修改数据集成功");
-            reload();
+            refresh();
         })));
     }
 
@@ -136,7 +127,7 @@ public class DatasetViewModel extends BaseViewModel {
     public void deleteDataset(long id) {
         DatasetAPI.delete(id, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除数据集成功");
-            reload();
+            refresh();
         })));
     }
 
@@ -146,13 +137,16 @@ public class DatasetViewModel extends BaseViewModel {
     public void batchDeleteDatasets(List<Long> ids) {
         repository.batchDeleteDatasets(ids, withLoading(v -> {
             operationResult.postValue("批量删除成功");
-            reload();
+            refresh();
         }));
     }
 
-    private void reload() {
+    /**
+     * CRUD 后按当前模式刷新：搜索模式重新搜索，树形模式重载根节点。
+     */
+    private void refresh() {
         if (searchMode) {
-            search(keywords);
+            reload();
         } else {
             loadRoots();
         }

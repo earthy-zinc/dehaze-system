@@ -2,7 +2,6 @@ package com.pei.dehaze.ui.personal;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -11,7 +10,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -19,12 +18,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityFilesBinding;
+import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.sdk.api.FileAPI;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.ui.common.BaseViewModel;
-import com.pei.dehaze.repository.RepositoryAdapters;
-import com.pei.dehaze.repository.RepositoryCallback;
-import com.pei.dehaze.utils.ToastUtils;
+import com.pei.dehaze.ui.common.BaseActivity;
+import com.pei.dehaze.ui.common.BaseLoadMoreViewModel;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,20 +32,14 @@ import java.util.Set;
 
 /**
  * 我的文件 — 卡片化文件列表（缩略图 + 文件名 + 大小 + 上传时间 + 删除操作）
+ *
+ * <p>分页状态与请求由 {@link FilesViewModel} 持有，Activity 仅负责展示与交互。
  */
-public class FilesActivity extends AppCompatActivity {
+public class FilesActivity extends BaseActivity {
 
     private ActivityFilesBinding binding;
     private FilesViewModel viewModel;
     private FilesAdapter adapter;
-    private int currentPage = 1;
-    private static final int PAGE_SIZE = 20;
-    private boolean isLoading = false;
-    private boolean hasMore = true;
-
-    /** 图片类型的扩展名，用 Glide 加载缩略图 */
-    private static final Set<String> IMAGE_EXTENSIONS = new HashSet<>(Arrays.asList(
-            "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"));
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,10 +47,7 @@ public class FilesActivity extends AppCompatActivity {
         binding = ActivityFilesBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("我的文件");
-        }
+        setupActionBar("我的文件");
 
         viewModel = new ViewModelProvider(this).get(FilesViewModel.class);
         adapter = new FilesAdapter(this, fileInfo -> showDeleteDialog(fileInfo));
@@ -70,47 +59,23 @@ public class FilesActivity extends AppCompatActivity {
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 LinearLayoutManager lm = (LinearLayoutManager) recyclerView.getLayoutManager();
                 if (lm != null && lm.findLastVisibleItemPosition() + 1 >= adapter.getItemCount()
-                        && hasMore && !isLoading) {
-                    loadMore();
+                        && !Boolean.TRUE.equals(viewModel.getLoading().getValue())) {
+                    viewModel.loadMore();
                 }
             }
         });
 
-        binding.swipeRefresh.setOnRefreshListener(() -> {
-            currentPage = 1;
-            hasMore = true;
-            loadData();
-        });
+        binding.swipeRefresh.setOnRefreshListener(() -> viewModel.reload());
 
-        viewModel.getFiles().observe(this, files -> adapter.submitList(files));
-        viewModel.getLoading().observe(this, loading -> {
-            isLoading = loading != null && loading;
-            binding.swipeRefresh.setRefreshing(isLoading);
-        });
-        viewModel.getError().observe(this, msg -> {
-            if (msg != null && !msg.isEmpty()) ToastUtils.showShort(this, msg);
-        });
+        viewModel.getFiles().observe(this, list ->
+                adapter.submitList(list));
+        viewModel.getLoading().observe(this, loading ->
+                binding.swipeRefresh.setRefreshing(Boolean.TRUE.equals(loading)));
 
-        loadData();
-    }
+        observeError(viewModel);
+        observeOperationResult(viewModel, () -> viewModel.reload());
 
-    private void loadData() {
-        FileAPI.getFilePage(currentPage, PAGE_SIZE, null,
-                RepositoryAdapters.wrap(viewModel.createLoadingCallback(data -> {
-                    List<FileInfo> list = data.getList();
-                    adapter.submitList(list != null ? list : new ArrayList<>());
-                    hasMore = list != null && list.size() >= PAGE_SIZE;
-                })));
-    }
-
-    private void loadMore() {
-        currentPage++;
-        FileAPI.getFilePage(currentPage, PAGE_SIZE, null,
-                RepositoryAdapters.wrap(viewModel.createLoadingCallback(data -> {
-                    List<FileInfo> list = data.getList();
-                    if (list != null) adapter.addAll(list);
-                    hasMore = list != null && list.size() >= PAGE_SIZE;
-                })));
+        viewModel.reload();
     }
 
     private void showDeleteDialog(FileInfo fileInfo) {
@@ -126,30 +91,28 @@ public class FilesActivity extends AppCompatActivity {
                 .show();
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
     // region ViewModel
 
-    public static class FilesViewModel extends BaseViewModel {
-        private final androidx.lifecycle.MutableLiveData<List<FileInfo>> files =
-                new androidx.lifecycle.MutableLiveData<>();
-        public androidx.lifecycle.LiveData<List<FileInfo>> getFiles() { return files; }
+    public static class FilesViewModel extends BaseLoadMoreViewModel<FileInfo> {
 
-        public <T> RepositoryCallback<T> createLoadingCallback(OnSuccess<T> onSuccess) {
-            return withLoading(onSuccess);
+        public FilesViewModel() {
+            super(20);
+        }
+
+        @Override
+        protected void loadPage() {
+            FileAPI.getFilePage(pageNum, pageSize, null,
+                    RepositoryAdapters.wrap(withLoading(data ->
+                            onPageLoaded(data.getList(), data.getTotal()))));
+        }
+
+        public LiveData<List<FileInfo>> getFiles() {
+            return itemList;
         }
 
         public void deleteFile(Long fileId) {
-            FileAPI.delete(fileId, RepositoryAdapters.wrap(withLoading(v -> {
-                operationResult.postValue("文件已删除");
-            })));
+            FileAPI.delete(fileId, RepositoryAdapters.wrap(withLoading(v ->
+                    operationResult.postValue("文件已删除"))));
         }
     }
 
@@ -158,6 +121,9 @@ public class FilesActivity extends AppCompatActivity {
     // region Adapter
 
     static class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.VH> {
+        private static final Set<String> IMAGE_EXTENSIONS = new HashSet<>(Arrays.asList(
+                "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"));
+
         private final List<FileInfo> items = new ArrayList<>();
         private final Context context;
         private final OnFileActionListener actionListener;
@@ -177,14 +143,6 @@ public class FilesActivity extends AppCompatActivity {
             notifyDataSetChanged();
         }
 
-        void addAll(List<FileInfo> newItems) {
-            if (newItems != null) {
-                int start = items.size();
-                items.addAll(newItems);
-                notifyItemRangeInserted(start, newItems.size());
-            }
-        }
-
         @NonNull @Override
         public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = android.view.LayoutInflater.from(parent.getContext())
@@ -199,7 +157,6 @@ public class FilesActivity extends AppCompatActivity {
             holder.tvFileSize.setText(formatSize(item.getSize()));
             holder.tvFileTime.setText(item.getCreateTime() != null ? item.getCreateTime() : "");
 
-            // 缩略图：图片类型用 Glide 加载，其他用类型图标
             if (isImageFile(item.getName())) {
                 Glide.with(context)
                         .load(item.getUrl())
@@ -212,7 +169,6 @@ public class FilesActivity extends AppCompatActivity {
                 holder.ivThumbnail.setImageResource(R.drawable.ic_file_placeholder);
             }
 
-            // 更多操作菜单
             holder.ivMore.setOnClickListener(v -> {
                 PopupMenu popup = new PopupMenu(v.getContext(), holder.ivMore);
                 popup.getMenuInflater().inflate(R.menu.menu_file_item, popup.getMenu());
