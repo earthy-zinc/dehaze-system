@@ -467,6 +467,7 @@ Android 端日志实现位于 SDK `com.pei.dehaze.sdk.logger` 包（`Logger.java
 - **崩溃捕获**：`DehazeApplication.onCreate` 注册 `Thread.setDefaultUncaughtExceptionHandler`，error_type=native
 - **trace_id 透传**：SDK `TraceInterceptor`（OkHttp）注入 `X-Trace-Id` 请求头，`TraceManager` 管理请求级 trace_id
 - **API 失败上报**：`TraceInterceptor`（HTTP/网络失败）+ `ApiCallback`（业务失败）构造 `method/path/status/duration/code` 字段交 Logger
+- **ERROR 去重**：相同 `message + error_stack` fingerprint 在 10s 窗口内只输出首条，窗口结束时补发汇总条目（`dedupCount` 标记总命中次数，message 标注 `(10s 内重复 N 次)`），防止崩溃处理器高频触发日志风暴且不丢失次数信息；与 JS/Flutter 端范式一致
 - **离线缓存/崩溃补报**：生产环境 `RemoteTransport` + `FileTransport`（3 天保留）双写，崩溃后下次启动调用 `flushFromDisk()` 从本地文件补报
 - **不暴露 `user_id` 字段**：前端 SDK 不上报 `user_id`，由三端后端从会话统一解析注入
 

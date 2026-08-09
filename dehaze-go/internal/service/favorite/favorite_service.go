@@ -9,10 +9,12 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
+	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
+	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	favrepo "github.com/earthyzinc/dehaze-go/internal/repository/favorite"
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
+	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
-	"gorm.io/gorm"
 )
 
 const (
@@ -29,16 +31,26 @@ const (
 var validTargetTypes = []string{targetTypeAlgorithm, targetTypeResult, targetTypeDataset, targetTypeImage, targetTypePreset}
 
 type FavoriteService struct {
-	db         *gorm.DB
-	favRepo    favrepo.IFavoriteRepository
-	memberRepo memberrepo.IMemberRepository
+	favRepo       favrepo.IFavoriteRepository
+	memberRepo    memberrepo.IMemberRepository
+	algorithmRepo algorepo.IAlgorithmRepository
+	predLogRepo   predrepo.IPredLogRepository
+	datasetRepo   datasetrepo.IDatasetRepository
 }
 
-func NewFavoriteService(db *gorm.DB, favRepo favrepo.IFavoriteRepository, memberRepo memberrepo.IMemberRepository) *FavoriteService {
+func NewFavoriteService(
+	favRepo favrepo.IFavoriteRepository,
+	memberRepo memberrepo.IMemberRepository,
+	algorithmRepo algorepo.IAlgorithmRepository,
+	predLogRepo predrepo.IPredLogRepository,
+	datasetRepo datasetrepo.IDatasetRepository,
+) *FavoriteService {
 	return &FavoriteService{
-		db:         db,
-		favRepo:    favRepo,
-		memberRepo: memberRepo,
+		favRepo:       favRepo,
+		memberRepo:    memberRepo,
+		algorithmRepo: algorithmRepo,
+		predLogRepo:   predLogRepo,
+		datasetRepo:   datasetRepo,
 	}
 }
 
@@ -75,27 +87,27 @@ func (s *FavoriteService) Add(ctx context.Context, userID int64, form *bo.Favori
 func (s *FavoriteService) checkTargetExists(ctx context.Context, targetType string, targetID int64) error {
 	switch targetType {
 	case targetTypeAlgorithm:
-		var count int64
-		if err := s.db.WithContext(ctx).Model(&model.SysAlgorithm{}).Where("id = ?", targetID).Count(&count).Error; err != nil {
+		exists, err := s.algorithmRepo.ExistsByID(ctx, targetID)
+		if err != nil {
 			return common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
 		}
-		if count == 0 {
+		if !exists {
 			return common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
 		}
 	case targetTypeDataset:
-		var count int64
-		if err := s.db.WithContext(ctx).Model(&model.SysDataset{}).Where("id = ?", targetID).Count(&count).Error; err != nil {
+		exists, err := s.datasetRepo.ExistsByID(ctx, targetID)
+		if err != nil {
 			return common.WrapBizError(common.DATABASE_ERROR, "查询数据集失败", err)
 		}
-		if count == 0 {
+		if !exists {
 			return common.NewBizError(common.RESOURCE_NOT_FOUND, "数据集不存在")
 		}
 	case targetTypeResult:
-		var count int64
-		if err := s.db.WithContext(ctx).Model(&model.SysPredLog{}).Where("id = ?", targetID).Count(&count).Error; err != nil {
+		exists, err := s.predLogRepo.ExistsByID(ctx, targetID)
+		if err != nil {
 			return common.WrapBizError(common.DATABASE_ERROR, "查询处理记录失败", err)
 		}
-		if count == 0 {
+		if !exists {
 			return common.NewBizError(common.RESOURCE_NOT_FOUND, "处理记录不存在")
 		}
 	}

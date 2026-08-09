@@ -2,8 +2,8 @@ package com.pei.dehaze.common.util;
 
 import cn.hutool.core.io.FileUtil;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.model.bo.FileBO;
-import com.pei.dehaze.model.bo.ItemFileBO;
+import com.pei.dehaze.model.dto.FileDTO;
+import com.pei.dehaze.model.dto.ItemFileDTO;
 import com.pei.dehaze.service.ImageProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,63 +16,63 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 /**
- * FileBO 工厂类
- * 从 FileUploadUtils 抽取的 FileBO 构建逻辑，职责更加单一
+ * FileDTO 工厂类
+ * 从 FileUploadUtils 抽取的 FileDTO 构建逻辑，职责更加单一
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class FileBOFactory {
+public class FileDTOFactory {
 
     private final ImageProcessingService imageProcessingService;
 
     /**
-     * 从 MultipartFile 创建 FileBO
+     * 从 MultipartFile 创建 FileDTO
      *
      * @param file 上传的文件
      * @param path 存储路径前缀（如数据集名称）
-     * @return FileBO
+     * @return FileDTO
      */
-    public FileBO createFileBO(MultipartFile file, String path) {
+    public FileDTO createFileDTO(MultipartFile file, String path) {
         try {
-            FileBO fileBO = new FileBO();
-            populateFileBO(file, path, fileBO);
-            return fileBO;
+            FileDTO fileDTO = new FileDTO();
+            populateFileDTO(file, path, fileDTO);
+            return fileDTO;
         } catch (IOException e) {
-            throw new BusinessException("创建 FileBO 失败: " + e.getMessage(), e);
+            throw new BusinessException("创建 FileDTO 失败: " + e.getMessage(), e);
         }
     }
 
     /**
-     * 从 File 创建 FileBO
+     * 从 File 创建 FileDTO
      *
      * @param file 文件对象
      * @param path 存储路径前缀
-     * @return FileBO
+     * @return FileDTO
      */
-    public FileBO createFileBO(File file, String path) {
+    public FileDTO createFileDTO(File file, String path) {
         try (FileInputStream stream = new FileInputStream(file)) {
-            FileBO fileBO = new FileBO();
+            FileDTO fileDTO = new FileDTO();
 
             String filename = file.getName();
             String extension = FileUtil.extName(filename);
             String md5 = FileUploadUtils.getMd5(stream);
             String objectName = path + "/" + md5 + "." + extension;
 
-            fileBO.setFile(file);
-            fileBO.setName(filename);
-            fileBO.setObjectName(objectName);
-            fileBO.setExtension(extension);
-            fileBO.setMd5(md5);
-            fileBO.setSize(file.length());
-            return fileBO;
+            fileDTO.setFile(file);
+            fileDTO.setName(filename);
+            fileDTO.setObjectName(objectName);
+            fileDTO.setExtension(extension);
+            fileDTO.setMd5(md5);
+            fileDTO.setSize(file.length());
+            return fileDTO;
         } catch (IOException e) {
-            throw new BusinessException("创建 FileBO 失败: " + e.getMessage(), e);
+            throw new BusinessException("创建 FileDTO 失败: " + e.getMessage(), e);
         }
     }
 
     /**
-     * 从 MultipartFile 创建 ItemFileBO（数据项图片）
+     * 从 MultipartFile 创建 ItemFileDTO（数据项图片）
      *
      * @param file        上传的文件
      * @param path        存储路径前缀（如数据集名称）
@@ -80,9 +80,9 @@ public class FileBOFactory {
      * @param description 描述
      * @param sceneType   场景类型
      * @param hazeLevel   雾霾等级
-     * @return ItemFileBO
+     * @return ItemFileDTO
      */
-    public ItemFileBO createItemFileBO(
+    public ItemFileDTO createItemFileDTO(
             MultipartFile file,
             String path,
             String type,
@@ -90,8 +90,8 @@ public class FileBOFactory {
             String sceneType,
             String hazeLevel) {
         try {
-            ItemFileBO itemBO = new ItemFileBO();
-            populateFileBO(file, path, itemBO);
+            ItemFileDTO itemBO = new ItemFileDTO();
+            populateFileDTO(file, path, itemBO);
             itemBO.setType(type);
             itemBO.setDescription(description);
             itemBO.setSceneType(sceneType);
@@ -104,14 +104,14 @@ public class FileBOFactory {
 
             return itemBO;
         } catch (IOException e) {
-            throw new BusinessException("创建 ItemFileBO 失败: " + e.getMessage(), e);
+            throw new BusinessException("创建 ItemFileDTO 失败: " + e.getMessage(), e);
         }
     }
 
     /**
-     * 填充 FileBO 的公共字段
+     * 填充 FileDTO 的公共字段
      */
-    private void populateFileBO(MultipartFile file, String path, FileBO fileBO) throws IOException {
+    private void populateFileDTO(MultipartFile file, String path, FileDTO fileDTO) throws IOException {
         String filename = file.getOriginalFilename();
         String extension = FileUtil.extName(filename);
 
@@ -127,11 +127,11 @@ public class FileBOFactory {
 
         String objectName = path + "/" + md5 + "." + extension;
 
-        fileBO.setFile(tempFile);
-        fileBO.setName(filename);
-        fileBO.setObjectName(objectName);
-        fileBO.setExtension(extension);
-        fileBO.setMd5(md5);
-        fileBO.setSize(file.getSize());
+        fileDTO.setFile(tempFile);
+        fileDTO.setName(filename);
+        fileDTO.setObjectName(objectName);
+        fileDTO.setExtension(extension);
+        fileDTO.setMd5(md5);
+        fileDTO.setSize(file.getSize());
     }
 }

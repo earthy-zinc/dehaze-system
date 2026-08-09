@@ -3,7 +3,7 @@ package com.pei.dehaze.converter;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.base.IBaseEnum;
 import com.pei.dehaze.common.enums.GenderEnum;
-import com.pei.dehaze.model.bo.UserBO;
+import com.pei.dehaze.model.read.UserRead;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.vo.UserInfoVO;
@@ -22,9 +22,9 @@ import org.mapstruct.Mappings;
 public interface UserConverter {
 
     @Mappings({
-            @Mapping(target = "genderLabel", expression = "java(IBaseEnum.getLabelByValue(bo.getGender(), GenderEnum.class))")
+            @Mapping(target = "genderLabel", expression = "java(IBaseEnum.getLabelByValue(read.getGender(), GenderEnum.class))")
     })
-    UserPageVO bo2PageVo(UserBO bo);
+    UserPageVO read2PageVo(UserRead read);
 
     @Mappings({
         @Mapping(ignore = true, target = "countId"),
@@ -34,7 +34,7 @@ public interface UserConverter {
         @Mapping(ignore = true, target = "orders"),
         @Mapping(ignore = true, target = "searchCount"),
     })
-    Page<UserPageVO> bo2PageVo(Page<UserBO> bo);
+    Page<UserPageVO> read2PageVo(Page<UserRead> read);
 
     @Mappings({
             @Mapping(target = "id", ignore = true),

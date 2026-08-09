@@ -2,7 +2,7 @@ package com.pei.dehaze.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pei.dehaze.model.bo.UserBO;
+import com.pei.dehaze.model.read.UserRead;
 import com.pei.dehaze.model.dto.UserAuthInfo;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
@@ -28,7 +28,7 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
      * @return
      */
     @DataPermission(deptAlias = "u")
-    Page<UserBO> listPagedUsers(Page<UserBO> page, UserPageQuery queryParams);
+    Page<UserRead> listPagedUsers(Page<UserRead> page, UserPageQuery queryParams);
 
     /**
      * 获取用户表单详情

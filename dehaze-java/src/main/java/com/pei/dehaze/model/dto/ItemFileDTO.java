@@ -1,11 +1,11 @@
-package com.pei.dehaze.model.bo;
+package com.pei.dehaze.model.dto;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class ItemFileBO extends FileBO{
+public class ItemFileDTO extends FileDTO {
     /**
      * 图片类型
      */

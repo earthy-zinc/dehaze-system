@@ -1,7 +1,7 @@
 package com.pei.dehaze.common.util;
 
-import com.pei.dehaze.model.bo.FileBO;
-import com.pei.dehaze.model.bo.ItemFileBO;
+import com.pei.dehaze.model.dto.FileDTO;
+import com.pei.dehaze.model.dto.ItemFileDTO;
 import com.pei.dehaze.service.ImageProcessingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,24 +22,24 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("FileBOFactory 单元测试")
-class FileBOFactoryTest {
+@DisplayName("FileDTOFactory 单元测试")
+class FileDTOFactoryTest {
 
     @Mock
     private ImageProcessingService imageProcessingService;
 
-    private FileBOFactory fileBOFactory;
+    private FileDTOFactory fileDTOFactory;
 
     @TempDir
     Path tempDir;
 
     @BeforeEach
     void setUp() {
-        fileBOFactory = new FileBOFactory(imageProcessingService);
+        fileDTOFactory = new FileDTOFactory(imageProcessingService);
     }
 
     @Test
-    @DisplayName("从 MultipartFile 创建 FileBO - 成功")
+    @DisplayName("从 MultipartFile 创建 FileDTO - 成功")
     void createFileBO_fromMultipartFile_shouldSucceed() {
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -48,7 +48,7 @@ class FileBOFactoryTest {
                 "test content".getBytes()
         );
 
-        FileBO result = fileBOFactory.createFileBO(file, "upload/20250120");
+        FileDTO result = fileDTOFactory.createFileDTO(file, "upload/20250120");
 
         assertNotNull(result);
         assertEquals("test.jpg", result.getName());
@@ -59,14 +59,14 @@ class FileBOFactoryTest {
     }
 
     @Test
-    @DisplayName("从 File 创建 FileBO - 成功")
+    @DisplayName("从 File 创建 FileDTO - 成功")
     void createFileBO_fromFile_shouldSucceed() throws IOException {
         File testFile = tempDir.resolve("test.png").toFile();
         try (FileWriter writer = new FileWriter(testFile)) {
             writer.write("test content");
         }
 
-        FileBO result = fileBOFactory.createFileBO(testFile, "upload/20250120");
+        FileDTO result = fileDTOFactory.createFileDTO(testFile, "upload/20250120");
 
         assertNotNull(result);
         assertEquals("test.png", result.getName());
@@ -76,8 +76,8 @@ class FileBOFactoryTest {
     }
 
     @Test
-    @DisplayName("创建 ItemFileBO - 包含图片信息")
-    void createItemFileBO_shouldIncludeImageInfo() {
+    @DisplayName("创建 ItemFileDTO - 包含图片信息")
+    void createItemFileDTO_shouldIncludeImageInfo() {
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "test.jpg",
@@ -88,7 +88,7 @@ class FileBOFactoryTest {
         when(imageProcessingService.getImageDimensions(any(File.class)))
                 .thenReturn(new int[]{800, 600});
 
-        ItemFileBO result = fileBOFactory.createItemFileBO(
+        ItemFileDTO result = fileDTOFactory.createItemFileDTO(
                 file, "dataset1", "clear", "description", "outdoor", "light"
         );
 
@@ -103,8 +103,8 @@ class FileBOFactoryTest {
     }
 
     @Test
-    @DisplayName("创建 ItemFileBO - 图片宽高为0时设置为null")
-    void createItemFileBO_whenDimensionsZero_shouldSetNull() {
+    @DisplayName("创建 ItemFileDTO - 图片宽高为0时设置为null")
+    void createItemFileDTO_whenDimensionsZero_shouldSetNull() {
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "test.jpg",
@@ -115,7 +115,7 @@ class FileBOFactoryTest {
         when(imageProcessingService.getImageDimensions(any(File.class)))
                 .thenReturn(new int[]{0, 0});
 
-        ItemFileBO result = fileBOFactory.createItemFileBO(
+        ItemFileDTO result = fileDTOFactory.createItemFileDTO(
                 file, "dataset1", "hazy", null, null, null
         );
 

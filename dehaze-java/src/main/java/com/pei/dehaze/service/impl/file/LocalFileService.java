@@ -5,7 +5,7 @@ import cn.hutool.core.io.file.PathUtil;
 import cn.hutool.core.lang.Assert;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.util.PathSecurityUtil;
-import com.pei.dehaze.model.bo.FileBO;
+import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.service.FileService;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -47,8 +47,8 @@ public class LocalFileService implements FileService {
     }
 
     @Override
-    public FileBO uploadFile(FileBO fileBO) {
-        Path filePath = Path.of(uploadPath, fileBO.getObjectName());
+    public FileDTO uploadFile(FileDTO fileDTO) {
+        Path filePath = Path.of(uploadPath, fileDTO.getObjectName());
         Path dirPath = filePath.getParent();
         if (!PathUtil.isDirectory(dirPath) && !PathUtil.exists(dirPath, true)) {
             try {
@@ -60,15 +60,15 @@ public class LocalFileService implements FileService {
 
         String absolutePath = filePath.toAbsolutePath().toString();
 
-        File file = fileBO.getFile();
+        File file = fileDTO.getFile();
         try (FileInputStream stream = new FileInputStream(file)) {
             FileUtil.writeFromStream(stream, absolutePath);
         } catch (IOException e) {
             throw new BusinessException("无法保存文件", e);
         }
 
-        fileBO.setStorage(getStorageType());
-        return fileBO;
+        fileDTO.setStorage(getStorageType());
+        return fileDTO;
     }
 
     @Override

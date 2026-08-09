@@ -11,7 +11,9 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
+	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	pkgsalerepo "github.com/earthyzinc/dehaze-go/internal/repository/pkgsale"
+	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
@@ -22,6 +24,8 @@ type CouponService struct {
 	db             *gorm.DB
 	couponRepo     pkgsalerepo.ICouponRepository
 	userCouponRepo pkgsalerepo.IUserCouponRepository
+	memberRepo     memberrepo.IMemberRepository
+	userRepo       userrepo.IUserRepository
 	cache          types.ICache
 }
 
@@ -29,12 +33,16 @@ func NewCouponService(
 	db *gorm.DB,
 	couponRepo pkgsalerepo.ICouponRepository,
 	userCouponRepo pkgsalerepo.IUserCouponRepository,
+	memberRepo memberrepo.IMemberRepository,
+	userRepo userrepo.IUserRepository,
 	cache types.ICache,
 ) *CouponService {
 	return &CouponService{
 		db:             db,
 		couponRepo:     couponRepo,
 		userCouponRepo: userCouponRepo,
+		memberRepo:     memberRepo,
+		userRepo:       userRepo,
 		cache:          cache,
 	}
 }
@@ -414,24 +422,11 @@ func (s *CouponService) BatchDistribute(ctx context.Context, form *bo.CouponBatc
 }
 
 func (s *CouponService) findUserIDsByLevelCodes(ctx context.Context, levelCodes []string) ([]int64, error) {
-	if len(levelCodes) == 0 {
-		return nil, nil
-	}
-	var ids []int64
-	err := s.db.WithContext(ctx).
-		Table("sys_member").
-		Where("level_code IN ? AND deleted = 0 AND status = 1", levelCodes).
-		Pluck("user_id", &ids).Error
-	return ids, err
+	return s.memberRepo.FindUserIDsByLevelCodes(ctx, levelCodes)
 }
 
 func (s *CouponService) findAllUserIDs(ctx context.Context) ([]int64, error) {
-	var ids []int64
-	err := s.db.WithContext(ctx).
-		Table("sys_user").
-		Where("deleted = 0 AND status = 1").
-		Pluck("id", &ids).Error
-	return ids, err
+	return s.userRepo.FindAllActiveUserIDs(ctx)
 }
 
 func parseScope(scope string) []int64 {

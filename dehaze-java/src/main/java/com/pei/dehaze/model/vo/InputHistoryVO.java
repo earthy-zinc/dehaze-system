@@ -43,14 +43,11 @@ public class InputHistoryVO {
     @Schema(description = "处理耗时（毫秒）")
     private Integer processingTime;
 
-    @Schema(description = "处理状态")
+    @Schema(description = "处理状态（1=成功，2=失败，3=处理中），创建时确定，不随处理进度更新")
     private Integer status;
 
     @Schema(description = "图片来源")
     private String inputSource;
-
-    @Schema(description = "同步状态")
-    private Integer syncStatus;
 
     @Schema(description = "创建时间")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

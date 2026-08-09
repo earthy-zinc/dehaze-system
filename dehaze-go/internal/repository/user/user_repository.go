@@ -549,5 +549,78 @@ func (r *UserRepository) UpdateWithRoles(ctx context.Context, userID int64, upda
 	})
 }
 
+// FindUsernameByID 查询用户名
+func (r *UserRepository) FindUsernameByID(ctx context.Context, userID int64) (string, error) {
+	var username string
+	err := r.db.WithContext(ctx).
+		Table("sys_user").
+		Where("id = ? AND deleted = 0", userID).
+		Select("username").
+		Scan(&username).Error
+	return username, err
+}
+
+// FindUsernamesByIDs 批量查询用户名
+func (r *UserRepository) FindUsernamesByIDs(ctx context.Context, ids []int64) (map[int64]string, error) {
+	result := make(map[int64]string)
+	if len(ids) == 0 {
+		return result, nil
+	}
+	type row struct {
+		ID       int64  `gorm:"column:id"`
+		Username string `gorm:"column:username"`
+	}
+	var rows []row
+	err := r.db.WithContext(ctx).
+		Table("sys_user").
+		Where("id IN ? AND deleted = 0", ids).
+		Select("id, username").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		result[r.ID] = r.Username
+	}
+	return result, nil
+}
+
+// FindUserInfoByID 查询用户名和头像
+func (r *UserRepository) FindUserInfoByID(ctx context.Context, userID int64) (string, string, error) {
+	type userRow struct {
+		Username string `gorm:"column:username"`
+		Avatar   string `gorm:"column:avatar"`
+	}
+	var row userRow
+	err := r.db.WithContext(ctx).
+		Table("sys_user").
+		Where("id = ? AND deleted = 0", userID).
+		Select("username, avatar").
+		Scan(&row).Error
+	return row.Username, row.Avatar, err
+}
+
+// FindAdminUserIDs 查询所有管理员用户ID（ROOT/ADMIN 角色）
+func (r *UserRepository) FindAdminUserIDs(ctx context.Context) ([]int64, error) {
+	var ids []int64
+	err := r.db.WithContext(ctx).
+		Table("sys_user u").
+		Joins("INNER JOIN sys_user_role ur ON u.id = ur.user_id").
+		Joins("INNER JOIN sys_role r ON ur.role_id = r.id").
+		Where("r.code IN ? AND u.deleted = 0 AND u.status = 1", []string{"ROOT", "ADMIN"}).
+		Pluck("DISTINCT u.id", &ids).Error
+	return ids, err
+}
+
+// FindAllActiveUserIDs 查询所有正常状态用户ID
+func (r *UserRepository) FindAllActiveUserIDs(ctx context.Context) ([]int64, error) {
+	var ids []int64
+	err := r.db.WithContext(ctx).
+		Model(&model.SysUser{}).
+		Where("deleted = 0 AND status = 1").
+		Pluck("id", &ids).Error
+	return ids, err
+}
+
 // Ensure UserRepository implements IUserRepository
 var _ IUserRepository = (*UserRepository)(nil)

@@ -48,12 +48,9 @@ public class SysInputHistory extends BaseEntity {
     /** 处理耗时（毫秒） */
     private Integer processingTime;
 
-    /** 处理状态（1=成功，2=失败，3=处理中） */
+    /** 处理状态（1=成功，2=失败，3=处理中），创建时确定，不随处理进度更新 */
     private Integer status;
 
     /** 图片来源（upload/camera/sample） */
     private String inputSource;
-
-    /** 同步状态（0=未同步，1=已同步） */
-    private Integer syncStatus;
 }

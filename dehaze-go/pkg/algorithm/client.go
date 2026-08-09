@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/pkg/cache/protection"
@@ -39,7 +40,12 @@ type Client struct {
 }
 
 // NewClient 创建算法服务客户端
-func NewClient(cfg options.Algorithm) *Client {
+// ServiceURL 为空时返回 error，启动阶段即失败，避免延迟到首次调用才暴露配置缺失
+func NewClient(cfg options.Algorithm) (*Client, error) {
+	if strings.TrimSpace(cfg.ServiceURL) == "" {
+		return nil, errors.New("算法服务配置 algorithm.serviceUrl 未配置，无法创建算法客户端")
+	}
+
 	timeout := time.Duration(cfg.Timeout) * time.Second
 	if cfg.Timeout <= 0 {
 		timeout = 60 * time.Second
@@ -93,7 +99,7 @@ func NewClient(cfg options.Algorithm) *Client {
 		maxRetry: maxRetry,
 		backoff:  backoff,
 		apiKey:   cfg.ApiKey,
-	}
+	}, nil
 }
 
 // doPost 通用 POST 请求 — 集成熔断器 + 重试 + 幂等键

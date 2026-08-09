@@ -49,4 +49,7 @@ type IUserService interface {
 
 	// UpdatePassword 修改用户密码
 	UpdatePassword(ctx context.Context, id int64, password string) error
+
+	// Register 用户注册（创建用户并分配 GUEST 角色），返回创建的用户及 GUEST 角色的 dataScope
+	Register(ctx context.Context, username, nickname, password string) (*model.SysUser, int8, error)
 }

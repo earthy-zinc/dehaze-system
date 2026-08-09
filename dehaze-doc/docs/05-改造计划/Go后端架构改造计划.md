@@ -2,13 +2,13 @@
 
 > 本文档聚焦 dehaze-go 在**代码架构层面**的实际问题与改造方向，供后续重构参考。文档失真问题（服务虚构、路径错误、配额机制描述失实等）已在 [02-Go架构文档.md](../04-项目实现/后端/02-Go架构文档.md) 修复中处理，本文不重复。
 >
-> 三端对照结论：dehaze-go 与 dehaze-java 在 XxlJob 覆盖上接近对齐（Go 14 个、Java 15 个，Java 多 `processDelayedPush`）、MQ 拓扑（`task.export` + `feedback.low_rating` + DLX）、错误码体系上已对齐；dehaze-python 业务 Job 落后（仅 5 个）。推荐模块伪特征是 **Java + Go 共有** 债务，Python 端已实现真实图像分析服务但未被两端调用。
+> 三端对照结论：dehaze-go 与 dehaze-java 在 XxlJob 覆盖上接近对齐（Go 14 个、Java 15 个，Java 多 `processDelayedPush`——该 Job 绑定 Java 独有的 DND 延迟推送架构，Go/Python 仅简单 WebSocket 推送无此机制）、MQ 拓扑（`task.export` + `feedback.low_rating` + DLX）、错误码体系上已对齐；dehaze-python 业务 Job 已补齐（17 个，含 Python 专属的模型健康检查/孤儿文件/临时文件清理）。三端 handler 命名已统一（`autoRenew`/`resetMonthlyQuota`，详见 [Java 改造计划 §2.1](./Java后端架构改造计划.md)）。推荐模块伪特征原为 **Java + Go 共有** 债务，现已改造完成（Java/Go 均通过 HTTP 调用 Python 图像特征分析服务，详见 §二）。
 
 ## 一、问题总览
 
-| # | 问题 | 类别 | 优先级 | 三端是否共有 |
-|---|------|------|:------:|:----------:|
-| 1 | 推荐模块伪特征（MD5 哈希），Python 真实图像分析服务未被调用 | 功能/架构 | P1 | Java + Go 共有 |
+| # | 问题 | 类别 | 优先级 | 三端是否共有 | 状态 |
+|---|------|------|:------:|:----------:|:----:|
+| 1 | 推荐模块伪特征（MD5 哈希），Python 真实图像分析服务未被调用 | 功能/架构 | P1 | Java + Go 共有 | ✅ 已完成（详见 §二） |
 | 2 | 核心业务逻辑零测试覆盖 | 质量 | P1 | Go 独有 |
 | 3 | 定时任务逻辑内嵌业务 Service（关注点未分离） | 可维护性 | P2 | 需核实 Java |
 | 4 | 异步 goroutine 无 context 取消，优雅关闭可能丢数据 | 可靠性 | P2 | Go 独有 |
@@ -18,7 +18,7 @@
 | 8 | 去雾预测状态表与 Java 端不一致（sys_pred_log vs sys_input_history） | 跨端一致性 | P3 | Java + Go 分歧 |
 | 9 | CancelExpiredOrders 订单+优惠券更新无事务 | 数据一致性 | P3 | Go 独有 |
 
-## 二、P1：推荐模块伪特征
+## 二、P1：推荐模块伪特征 ✅ 已完成
 
 ### 2.1 现状
 
@@ -31,10 +31,10 @@ Go 端 `RecommendationService.Analyze`（`internal/service/recommendation/recomm
 | 端 | 图像特征分析实现 | 是否调用 Python |
 |----|----------------|:---:|
 | Python | 真实实现：PyTorch 场景分类 + OpenCV 暗通道/边缘/直方图（架构文档 §3.8） | 本端即实现 |
-| Java | **MD5 伪特征**（`RecommendationServiceImpl.java:70-73`，注释明确"实际生产环境应调用 Python 算法服务提取真实特征"） | 否 |
-| Go | **MD5 伪特征**（同 Java 实现一致） | 否 |
+| Java | ✅ 已接入：`PythonAlgorithmClient.analyzeImage` 调用 Python `/api/v1/recommendations/analyze`（复用重试/熔断/幂等机制） | 是 |
+| Go | ✅ 已接入：`pkg/algorithm.Client.AnalyzeImage` 调用 Python `/api/v1/recommendations/analyze` | 是 |
 
-Python 端架构文档 §3.8 声称"Java/Go 后端的 ImageAnalysisService 通过 HTTP 调用此服务"，但 Java 与 Go 代码均**未调用**——Python 端图像分析服务目前是未被调用的死基础设施。
+Java/Go 端在 Python 服务不可用时均返回明确错误（Java: C0001 / Go: B0001），不降级为伪特征。
 
 ### 2.3 影响
 
@@ -55,7 +55,9 @@ Python 端架构文档 §3.8 声称"Java/Go 后端的 ImageAnalysisService 通�
 - Python 服务不可用时返回明确错误，不返回伪特征
 - 推荐管理模块测试用例覆盖真实特征输入
 
-## 三、P1：核心业务逻辑零测试覆盖
+**完成情况**：Go 端 `pkg/algorithm.Client.AnalyzeImage` + `RecommendationService.Analyze` 已改造完成；Java 端 `PythonAlgorithmClient.analyzeImage` + `RecommendationServiceImpl.analyze` 已于 2026-08-09 改造完成（详见 [Java 改造计划 §1.3](./Java后端架构改造计划.md)）。Python 架构文档 §3.8、推荐管理后端实现/需求规格文档已同步更新。
+
+## 三、P1：核心业务逻辑零测试覆盖（暂缓实现）
 
 ### 3.1 现状
 

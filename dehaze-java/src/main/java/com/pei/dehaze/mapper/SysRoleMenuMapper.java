@@ -1,7 +1,7 @@
 package com.pei.dehaze.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.pei.dehaze.model.bo.RolePermsBO;
+import com.pei.dehaze.model.read.RolePermsRead;
 import com.pei.dehaze.model.entity.SysRoleMenu;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -27,5 +27,5 @@ public interface SysRoleMenuMapper extends BaseMapper<SysRoleMenu> {
     /**
      * 获取权限和拥有权限的角色列表
      */
-    List<RolePermsBO> getRolePermsList(String roleCode);
+    List<RolePermsRead> getRolePermsList(String roleCode);
 }

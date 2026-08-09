@@ -9,31 +9,31 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/read"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
+	fbrepo "github.com/earthyzinc/dehaze-go/internal/repository/feedback"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
-	"gorm.io/gorm"
 )
 
 // AlgorithmSelectService 算法选择服务
 type AlgorithmSelectService struct {
-	db           *gorm.DB
 	algorithmRepo algorepo.IAlgorithmRepository
 	predLogRepo   predrepo.IPredLogRepository
+	ratingRepo    fbrepo.IRatingRepository
 	predService   *predservice.PredictionService
 }
 
 // NewAlgorithmSelectService 创建算法选择服务实例
 func NewAlgorithmSelectService(
-	db *gorm.DB,
 	algorithmRepo algorepo.IAlgorithmRepository,
 	predLogRepo predrepo.IPredLogRepository,
+	ratingRepo fbrepo.IRatingRepository,
 	predService *predservice.PredictionService,
 ) *AlgorithmSelectService {
 	return &AlgorithmSelectService{
-		db:           db,
 		algorithmRepo: algorithmRepo,
 		predLogRepo:   predLogRepo,
+		ratingRepo:    ratingRepo,
 		predService:   predService,
 	}
 }
@@ -124,9 +124,10 @@ func (s *AlgorithmSelectService) GetDetail(ctx context.Context, id int64) (*vo.A
 	}
 
 	// 使用次数（从 pred_log 统计）
-	var usageCount int64
-	s.db.WithContext(ctx).Model(&model.SysPredLog{}).
-		Where("algorithm_id = ?", id).Count(&usageCount)
+	usageCount, err := s.predLogRepo.CountByAlgorithmID(ctx, id)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询使用次数失败", err)
+	}
 	detail.UsageCount = usageCount
 
 	// 样例效果图（最近3条完成的预测记录）
@@ -136,44 +137,23 @@ func (s *AlgorithmSelectService) GetDetail(ctx context.Context, id int64) (*vo.A
 }
 
 func (s *AlgorithmSelectService) getRatingStats(ctx context.Context, algorithmID int64) *vo.AlgorithmRatingStatsVO {
-	type ratingRow struct {
-		Rating int8
-		Count  int64
-	}
-	var rows []ratingRow
-	err := s.db.WithContext(ctx).Model(&model.SysRating{}).
-		Select("rating, COUNT(*) as count").
-		Where("algorithm_id = ? AND is_hidden = 0 AND deleted = 0", algorithmID).
-		Group("rating").Scan(&rows).Error
-	if err != nil {
-		return nil
-	}
-
-	var totalCount int64
-	var totalScore float64
-	dist := make(map[int8]int64)
-	for _, r := range rows {
-		dist[r.Rating] = r.Count
-		totalCount += r.Count
-		totalScore += float64(r.Rating) * float64(r.Count)
-	}
-
-	if totalCount == 0 {
+	totalCount, avgRating, dist, err := s.ratingRepo.GetStatsByAlgorithmID(ctx, algorithmID)
+	if err != nil || totalCount == 0 {
 		return nil
 	}
 
 	return &vo.AlgorithmRatingStatsVO{
-		Average:      math.Round(totalScore/float64(totalCount)*10) / 10,
+		Average:      math.Round(avgRating*10) / 10,
 		Count:        totalCount,
 		Distribution: dist,
 	}
 }
 
 func (s *AlgorithmSelectService) getSampleImages(ctx context.Context, algorithmID int64) []vo.AlgorithmSampleVO {
-	var logs []model.SysPredLog
-	s.db.WithContext(ctx).Model(&model.SysPredLog{}).
-		Where("algorithm_id = ? AND pred_url IS NOT NULL AND pred_url <> ''", algorithmID).
-		Order("create_time DESC").Limit(3).Find(&logs)
+	logs, err := s.predLogRepo.FindSampleImagesByAlgorithm(ctx, algorithmID, 3)
+	if err != nil {
+		return nil
+	}
 
 	samples := make([]vo.AlgorithmSampleVO, 0, len(logs))
 	for _, l := range logs {
@@ -187,28 +167,8 @@ func (s *AlgorithmSelectService) getSampleImages(ctx context.Context, algorithmI
 
 // Search 搜索算法（按名称模糊匹配已发布算法）
 func (s *AlgorithmSelectService) Search(ctx context.Context, keyword string, pageNum, pageSize int) (*vo.PageResult[vo.AlgorithmSelectVO], error) {
-	if pageNum <= 0 {
-		pageNum = 1
-	}
-	if pageSize <= 0 {
-		pageSize = 10
-	}
-
-	query := s.db.WithContext(ctx).Model(&model.SysAlgorithm{}).
-		Where("status = 4 AND deleted = 0")
-
-	if keyword != "" {
-		like := "%" + keyword + "%"
-		query = query.Where("name LIKE ? OR type LIKE ? OR description LIKE ?", like, like, like)
-	}
-
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法数量失败", err)
-	}
-
-	var algorithms []model.SysAlgorithm
-	if err := query.Offset((pageNum - 1) * pageSize).Limit(pageSize).Find(&algorithms).Error; err != nil {
+	algorithms, total, err := s.algorithmRepo.SearchPublished(ctx, keyword, pageNum, pageSize)
+	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "搜索算法失败", err)
 	}
 
@@ -233,10 +193,10 @@ func (s *AlgorithmSelectService) Search(ctx context.Context, keyword string, pag
 			item.Rating = stats.Average
 		}
 		// 附加使用次数
-		var count int64
-		s.db.WithContext(ctx).Model(&model.SysPredLog{}).
-			Where("algorithm_id = ?", algo.ID).Count(&count)
-		item.UsageCount = count
+		count, err := s.predLogRepo.CountByAlgorithmID(ctx, algo.ID)
+		if err == nil {
+			item.UsageCount = count
+		}
 		list = append(list, item)
 	}
 
@@ -294,25 +254,18 @@ func (s *AlgorithmSelectService) Compare(ctx context.Context, form *bo.Algorithm
 		}
 
 		// 使用次数
-		var usageCount int64
-		s.db.WithContext(ctx).Model(&model.SysPredLog{}).
-			Where("algorithm_id = ?", algoID).Count(&usageCount)
-		item.UsageCount = usageCount
+		usageCount, err := s.predLogRepo.CountByAlgorithmID(ctx, algoID)
+		if err == nil {
+			item.UsageCount = usageCount
+		}
 
 		// 平均处理时间和成功率
-		var avgTime float64
-		var totalPred int64
-		var successCount int64
-		s.db.WithContext(ctx).Model(&model.SysPredLog{}).
-			Where("algorithm_id = ? AND time IS NOT NULL", algoID).
-			Select("COALESCE(AVG(time), 0)").Row().Scan(&avgTime)
-		s.db.WithContext(ctx).Model(&model.SysPredLog{}).
-			Where("algorithm_id = ?", algoID).Count(&totalPred)
-		s.db.WithContext(ctx).Model(&model.SysPredLog{}).
-			Where("algorithm_id = ? AND pred_url IS NOT NULL AND pred_url <> ''", algoID).Count(&successCount)
-		item.AvgTime = math.Round(avgTime*100) / 100
-		if totalPred > 0 {
-			item.SuccessRate = math.Round(float64(successCount)/float64(totalPred)*10000) / 100
+		avgTime, totalPred, successCount, err := s.predLogRepo.GetAlgorithmPredStats(ctx, algoID)
+		if err == nil {
+			item.AvgTime = math.Round(avgTime*100) / 100
+			if totalPred > 0 {
+				item.SuccessRate = math.Round(float64(successCount)/float64(totalPred)*10000) / 100
+			}
 		}
 
 		// 执行对比预测

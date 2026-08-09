@@ -10,6 +10,7 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 20;
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_STACK_LENGTH = 8000;
+const DEDUP_WINDOW_MS = 10_000;
 
 const REPORT_SAMPLE_RATE: Record<LogLevel, number> = {
   ERROR: 100,
@@ -87,6 +88,14 @@ export class Logger {
   private readonly registeredHandlers: Array<[EventTarget, string, EventListener]> = [];
   private disposePerformance: (() => void) | undefined;
 
+  // ERROR 去重：相同 message + error_stack fingerprint 在 10s 窗口内只输出首条，
+  // 窗口结束时若存在重复则补发一条汇总（dedup_count 标记总次数），避免日志风暴同时保留次数信息
+  private lastErrorFingerprint = 0;
+  private lastErrorTime = 0;
+  private errorDedupCount = 0;
+  private lastDedupEntry: LogEntry | undefined;
+  private dedupSummaryTimer: ReturnType<typeof setTimeout> | undefined;
+
   private constructor(config: InstallConfig) {
     this.app = config.app;
     this.appVersion = config.appVersion;
@@ -107,9 +116,7 @@ export class Logger {
     }
     const logger = new Logger(config);
     Logger.instance = logger;
-    logger.registerGlobalHandlers();
-    logger.startPerformanceMonitoring();
-    logger.startFlushTimer();
+    logger.startGlobalHandlers();
     return logger;
   }
 
@@ -124,31 +131,56 @@ export class Logger {
   static reset(): void {
     const logger = Logger.instance;
     if (!logger) return;
-    if (logger.flushTimer) {
-      clearInterval(logger.flushTimer);
-      logger.flushTimer = undefined;
-    }
-    if (logger.backoffTimer) {
-      clearTimeout(logger.backoffTimer);
-      logger.backoffTimer = undefined;
-    }
-    logger.disposePerformance?.();
-    logger.disposePerformance = undefined;
-    for (const [target, type, handler] of logger.registeredHandlers) {
-      target.removeEventListener(type, handler);
-    }
-    logger.registeredHandlers.length = 0;
+    logger.disposeGlobalHandlers();
     Logger.instance = undefined;
   }
 
+  /**
+   * 二次 install 时更新配置：若传入 transports，先 dispose 旧的全局处理器与定时器
+   * （避免日志输出到已失效的 transport），更新 transports 后重新注册，保证全局错误捕获
+   * 走新 transport。保留 queue 与限流计数，不丢失未上报日志。
+   */
   private configure(config: InstallConfig): void {
     if (config.transports) {
+      this.disposeGlobalHandlers();
       this.transports.splice(0, this.transports.length, ...config.transports);
+      this.startGlobalHandlers();
     }
   }
 
+  /** 清理全局错误处理器、性能监控、定时器（保留 queue 与限流计数） */
+  private disposeGlobalHandlers(): void {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = undefined;
+    }
+    if (this.backoffTimer) {
+      clearTimeout(this.backoffTimer);
+      this.backoffTimer = undefined;
+    }
+    if (this.dedupSummaryTimer) {
+      clearTimeout(this.dedupSummaryTimer);
+      this.dedupSummaryTimer = undefined;
+    }
+    this.disposePerformance?.();
+    this.disposePerformance = undefined;
+    for (const [target, type, handler] of this.registeredHandlers) {
+      target.removeEventListener(type, handler);
+    }
+    this.registeredHandlers.length = 0;
+  }
+
+  /** 注册全局错误处理器、性能监控、flush 定时器 */
+  private startGlobalHandlers(): void {
+    this.registerGlobalHandlers();
+    this.startPerformanceMonitoring();
+    this.startFlushTimer();
+  }
+
   log(level: LogLevel, message: string, fields: Partial<LogEntry> = {}): void {
-    const traceId = fields.trace_id ?? getCurrentTraceId() ?? "";
+    // trace_id 仅由调用方通过 fields.trace_id 显式传入（请求链路从 config.metadata 读取）。
+    // 不再读取全局变量：并发请求时全局变量会被覆盖，导致非请求日志 trace_id 串号；
+    // 全局错误/性能日志语义上不属于请求链路，trace_id 留空。
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
@@ -157,7 +189,7 @@ export class Logger {
       app: this.app,
       url: fields.url ?? currentUrl(),
       user_agent: fields.user_agent ?? currentUserAgent(),
-      trace_id: traceId,
+      trace_id: fields.trace_id ?? "",
       ...fields,
     };
     if (this.appVersion) {
@@ -167,13 +199,23 @@ export class Logger {
       entry.error_stack = truncate(entry.error_stack, MAX_STACK_LENGTH);
     }
 
+    // ERROR 去重：相同 fingerprint 在 10s 窗口内只输出首条，窗口结束时补发汇总
+    if (level === "ERROR" && this.shouldDedupError(entry)) {
+      return;
+    }
+
+    this.emit(entry);
+  }
+
+  /** 实际输出日志条目：transport 输出 + 采样 + 限流 + 入队。去重汇总补发也走此路径 */
+  private emit(entry: LogEntry): void {
     // 逐条本地输出（Console），不受采样/限流影响
     for (const transport of this.transports) {
       transport.log?.(entry);
     }
 
     // 采样过滤：仅 ERROR 全量 / WARN 50% / INFO 不上报
-    if (Math.random() * 100 > REPORT_SAMPLE_RATE[level]) {
+    if (Math.random() * 100 > REPORT_SAMPLE_RATE[entry.level]) {
       return;
     }
     // 单设备限流：60s 内最多上报 20 条
@@ -196,21 +238,31 @@ export class Logger {
     this.log("INFO", message, fields);
   }
 
-  /** 在请求入口复用/生成 trace_id，并注入当前上下文供日志串联 */
+  /**
+   * 在请求入口复用/生成 trace_id，并写入全局变量供日志串联。
+   *
+   * ⚠️ 仅供宿主在非 SDK 请求链路（如 WebSocket、fetch 直调）中手动管理 trace_id 使用。
+   * SDK 内部 Axios 请求链路不再调用此方法（trace_id 绑定到 config.metadata，避免并发覆盖）。
+   * 全局变量在并发请求下会被覆盖，不应依赖其作为请求间共享的 trace_id 载体。
+   */
   ensureTraceId(): string {
     const traceId = getCurrentTraceId() || generateTraceId();
     setCurrentTraceId(traceId);
     return traceId;
   }
 
-  /** 响应头 X-Trace-Id 回写对齐 */
+  /**
+   * 响应头 X-Trace-Id 回写对齐到全局变量。
+   *
+   * ⚠️ 仅供宿主手动管理 trace_id 使用。SDK Axios 链路改为对齐到 config.metadata.traceId。
+   */
   alignTraceId(traceId: string | undefined): void {
     if (traceId) {
       setCurrentTraceId(traceId);
     }
   }
 
-  /** 暴露当前 trace_id 供拦截器写入请求头 */
+  /** 暴露当前全局 trace_id，供宿主在非 SDK 链路中读取 */
   getTraceId(): string {
     return getCurrentTraceId();
   }
@@ -228,6 +280,77 @@ export class Logger {
     }
     this.sentTimestamps.push(now);
     return true;
+  }
+
+  /**
+   * ERROR 去重判定：相同 message + error_stack fingerprint 在 10s 窗口内只输出首条。
+   * 窗口内重复命中累加计数并跳过输出；新 fingerprint 或窗口过期时补发上一轮汇总。
+   * 返回 true 表示该条应被去重跳过，false 表示正常输出。
+   */
+  private shouldDedupError(entry: LogEntry): boolean {
+    const fingerprint = fingerprintHash(entry.message, entry.error_stack);
+    const now = Date.now();
+    const inWindow = this.lastErrorTime > 0 && now - this.lastErrorTime < DEDUP_WINDOW_MS;
+
+    if (fingerprint === this.lastErrorFingerprint && inWindow) {
+      this.errorDedupCount++;
+      return true;
+    }
+
+    // 新 burst：先补发上一轮汇总（若有重复）
+    this.flushDedupSummary();
+    this.lastErrorFingerprint = fingerprint;
+    this.lastErrorTime = now;
+    this.errorDedupCount = 1;
+    this.lastDedupEntry = entry;
+    this.scheduleDedupSummary();
+    return false;
+  }
+
+  /** 窗口结束时补发汇总条目：携带 dedup_count 标记本轮总次数，message 标注重复次数 */
+  private flushDedupSummary(): void {
+    if (this.dedupSummaryTimer) {
+      clearTimeout(this.dedupSummaryTimer);
+      this.dedupSummaryTimer = undefined;
+    }
+    const count = this.errorDedupCount;
+    const original = this.lastDedupEntry;
+    this.errorDedupCount = 0;
+    this.lastErrorFingerprint = 0;
+    this.lastErrorTime = 0;
+    this.lastDedupEntry = undefined;
+
+    // 单次命中无重复时不补发，避免噪声
+    if (count <= 1 || !original) {
+      return;
+    }
+
+    this.emit({
+      timestamp: new Date().toISOString(),
+      level: "ERROR",
+      message: truncate(`${original.message} (10s 内重复 ${count - 1} 次)`, MAX_MESSAGE_LENGTH),
+      service: "client",
+      app: this.app,
+      url: currentUrl(),
+      user_agent: currentUserAgent(),
+      // 汇总条目沿用首条的 trace_id（首条已由请求链路显式传入），不读全局变量
+      trace_id: original.trace_id,
+      ...(original.error_type ? { error_type: original.error_type } : {}),
+      ...(original.error_source ? { error_source: original.error_source } : {}),
+      ...(original.error_stack ? { error_stack: original.error_stack } : {}),
+      dedup_count: count,
+      ...(this.appVersion ? { app_version: this.appVersion } : {}),
+    });
+  }
+
+  private scheduleDedupSummary(): void {
+    if (this.dedupSummaryTimer) {
+      clearTimeout(this.dedupSummaryTimer);
+    }
+    this.dedupSummaryTimer = setTimeout(() => {
+      this.dedupSummaryTimer = undefined;
+      this.flushDedupSummary();
+    }, DEDUP_WINDOW_MS);
   }
 
   private enqueue(entry: LogEntry): void {
@@ -433,6 +556,16 @@ export class Logger {
 
 function truncate(value: string, max: number): string {
   return value.length > max ? value.slice(0, max) : value;
+}
+
+/** ERROR 去重 fingerprint：message + error_stack 的轻量 hash（djb2 变体，无需强 hash） */
+function fingerprintHash(message: string, errorStack: string | undefined): number {
+  const str = `${message}|${errorStack ?? ""}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (Math.imul(hash, 31) + str.charCodeAt(i)) | 0;
+  }
+  return hash;
 }
 
 // ---------- trace_id 生成与当前请求 trace 管理 ----------

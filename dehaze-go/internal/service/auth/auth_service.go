@@ -11,8 +11,8 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/dto"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
-	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	loginlogservice "github.com/earthyzinc/dehaze-go/internal/service/login_log"
+	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
 	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -23,8 +23,6 @@ import (
 	"github.com/mojocn/base64Captcha"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 )
@@ -33,17 +31,15 @@ type AuthService struct {
 	cacheClient     types.ICache
 	userService     userservice.IUserService
 	loginLogService *loginlogservice.LoginLogService
-	memberRepo      memberrepo.IMemberRepository
-	db              *gorm.DB
+	memberService   memberservice.IMemberService
 }
 
-func NewAuthService(cacheClient types.ICache, userService userservice.IUserService, loginLogService *loginlogservice.LoginLogService, memberRepo memberrepo.IMemberRepository, db *gorm.DB) IAuthService {
+func NewAuthService(cacheClient types.ICache, userService userservice.IUserService, loginLogService *loginlogservice.LoginLogService, memberService memberservice.IMemberService) IAuthService {
 	return &AuthService{
 		cacheClient:     cacheClient,
 		userService:     userService,
 		loginLogService: loginLogService,
-		memberRepo:      memberRepo,
-		db:              db,
+		memberService:   memberService,
 	}
 }
 
@@ -191,59 +187,15 @@ func (s *AuthService) Register(ctx context.Context, req *bo.RegisterRequest, cli
 		return nil, common.NewBizError(common.VERIFY_CODE_ERROR, "验证码错误")
 	}
 
-	var existingCount int64
-	if err := s.db.WithContext(ctx).Model(&model.SysUser{}).
-		Where("username = ?", username).Count(&existingCount).Error; err != nil {
-		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "检查用户名失败", err)
-	}
-	if existingCount > 0 {
-		return nil, common.NewBizError(common.DATA_EXISTS, "用户名已被注册")
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	// 通过 UserService 完成用户创建 + GUEST 角色分配，不在 auth 层直接操作用户表
+	user, dataScope, err := s.userService.Register(ctx, username, nickname, req.Password)
 	if err != nil {
-		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "密码加密失败", err)
+		return nil, err
 	}
 
-	user := &model.SysUser{
-		Username: username,
-		Nickname: nickname,
-		Password: string(hashedPassword),
-		Gender:   1,
-		Status:   1,
-		Deleted:  0,
-	}
-	if err := s.db.WithContext(ctx).Create(user).Error; err != nil {
-		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "创建用户失败", err)
-	}
-
-	var guestRole model.SysRole
-	if err := s.db.WithContext(ctx).
-		Where("code = ? AND status = 1", "GUEST").
-		First(&guestRole).Error; err == nil {
-		userRole := &model.SysUserRole{UserID: user.ID, RoleID: guestRole.ID}
-		s.db.WithContext(ctx).Create(userRole)
-	}
-
-	var defaultBenefit model.SysMemberBenefit
-	s.db.WithContext(ctx).Where("level_code = ? AND status = 1", "level_0").First(&defaultBenefit)
-	now := time.Now()
-	quotaMonth, _ := strconv.Atoi(now.Format("200601"))
-	member := &model.SysMember{
-		UserID:               user.ID,
-		LevelCode:            "level_0",
-		LevelSource:          "growth",
-		GrowthValue:          0,
-		TotalConsumption:     0,
-		Status:               1,
-		MonthlyDehazeQuota:   defaultBenefit.MonthlyDehazeQuota,
-		MonthlyEvaluateQuota: defaultBenefit.MonthlyEvaluateQuota,
-		MonthlyDehazeUsed:    0,
-		MonthlyEvaluateUsed:  0,
-		QuotaResetMonth:      &quotaMonth,
-	}
-	if err := s.memberRepo.Upsert(ctx, member); err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建会员记录失败", err)
+	// 通过 MemberService 初始化默认会员记录
+	if err := s.memberService.InitDefaultMember(ctx, user.ID); err != nil {
+		return nil, err
 	}
 
 	s.resetLoginFailCount(ctx, clientIP, username)
@@ -256,7 +208,7 @@ func (s *AuthService) Register(ctx context.Context, req *bo.RegisterRequest, cli
 		Username:    user.Username,
 		Nickname:    user.Nickname,
 		DeptID:      0,
-		DataScope:   guestRole.DataScope,
+		DataScope:   dataScope,
 		Authorities: authorities,
 	}
 

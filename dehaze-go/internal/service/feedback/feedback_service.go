@@ -12,6 +12,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	fbrepo "github.com/earthyzinc/dehaze-go/internal/repository/feedback"
+	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"gorm.io/gorm"
@@ -41,6 +42,7 @@ type FeedbackService struct {
 	db                *gorm.DB
 	feedbackRepo     fbrepo.IFeedbackRepository
 	feedbackReplyRepo fbrepo.IFeedbackReplyRepository
+	userRepo         userrepo.IUserRepository
 	cache            types.ICache
 }
 
@@ -48,12 +50,14 @@ func NewFeedbackService(
 	db *gorm.DB,
 	feedbackRepo fbrepo.IFeedbackRepository,
 	feedbackReplyRepo fbrepo.IFeedbackReplyRepository,
+	userRepo userrepo.IUserRepository,
 	cache types.ICache,
 ) *FeedbackService {
 	return &FeedbackService{
 		db:                db,
 		feedbackRepo:      feedbackRepo,
 		feedbackReplyRepo: feedbackReplyRepo,
+		userRepo:          userRepo,
 		cache:             cache,
 	}
 }
@@ -467,20 +471,7 @@ func (s *FeedbackService) findReplierNames(ctx context.Context, replies []model.
 	for id := range idSet {
 		ids = append(ids, id)
 	}
-	nameMap := make(map[int64]string)
-	type userRow struct {
-		ID       int64  `gorm:"column:id"`
-		Username string `gorm:"column:username"`
-	}
-	var rows []userRow
-	s.db.WithContext(ctx).
-		Table("sys_user").
-		Where("id IN ? AND deleted = 0", ids).
-		Select("id, username").
-		Scan(&rows)
-	for _, row := range rows {
-		nameMap[row.ID] = row.Username
-	}
+	nameMap, _ := s.userRepo.FindUsernamesByIDs(ctx, ids)
 	for i, r := range replies {
 		names[i] = nameMap[r.ReplierID]
 	}
@@ -488,30 +479,13 @@ func (s *FeedbackService) findReplierNames(ctx context.Context, replies []model.
 }
 
 func (s *FeedbackService) findFeedbackUserinfo(ctx context.Context, fb *model.SysFeedback) (string, string) {
-	type userRow struct {
-		Username string `gorm:"column:username"`
-	}
-	type assigneeRow struct {
-		Username string `gorm:"column:assignee_name"`
-	}
-	var uRow userRow
-	s.db.WithContext(ctx).
-		Table("sys_user").
-		Where("id = ? AND deleted = 0", fb.UserID).
-		Select("username").
-		Scan(&uRow)
+	username, _ := s.userRepo.FindUsernameByID(ctx, fb.UserID)
 
 	assigneeName := ""
 	if fb.AssigneeID != nil && *fb.AssigneeID > 0 {
-		var aRow userRow
-		s.db.WithContext(ctx).
-			Table("sys_user").
-			Where("id = ? AND deleted = 0", *fb.AssigneeID).
-			Select("username").
-			Scan(&aRow)
-		assigneeName = aRow.Username
+		assigneeName, _ = s.userRepo.FindUsernameByID(ctx, *fb.AssigneeID)
 	}
-	return uRow.Username, assigneeName
+	return username, assigneeName
 }
 
 func toFeedbackPageVO(f *model.SysFeedback, username, assigneeName string) vo.FeedbackPageVO {

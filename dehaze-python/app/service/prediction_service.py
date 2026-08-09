@@ -53,9 +53,9 @@ PREDICTION_CACHE_TTL = 24 * 60 * 60
 
 # 算法推理专用线程池：PyTorch 推理为 CPU 密集型同步操作，
 # 必须在线程池中执行以避免阻塞 asyncio 事件循环。
-# 限制并发数避免线程过多导致 GIL 争抢和内存爆炸。
+# 并发数通过 INFERENCE_THREAD_POOL_SIZE 配置，按 GPU 显存/卡数调整。
 _inference_executor = ThreadPoolExecutor(
-    max_workers=2, thread_name_prefix="algo-inference")
+    max_workers=settings.INFERENCE_THREAD_POOL_SIZE, thread_name_prefix="algo-inference")
 
 
 def _build_interceptor_chain() -> PredictionInterceptorChain:
@@ -191,7 +191,7 @@ class PredictionService:
 
         # 7. 提交异步任务（不等待完成）
         loop = asyncio.get_running_loop()
-        loop.create_task(self._execute_async(
+        background_task = loop.create_task(self._execute_async(
             log_id=log_id,
             algorithm_id=algorithm_id,
             image_bytes=image_bytes,
@@ -200,6 +200,18 @@ class PredictionService:
             cache_key=cache_key,
             user_id=user_id,
         ))
+
+        # 注册到 TaskTracker，支持优雅关闭与全局任务视图
+        try:
+            from app.service.task_tracker import get_task_tracker
+            await get_task_tracker().register(
+                task_id=f"pred:{log_id}",
+                task=background_task,
+                task_type="prediction",
+                metadata={"log_id": log_id, "algorithm_id": algorithm_id, "user_id": user_id},
+            )
+        except Exception as e:
+            logger.warning("预测任务追踪注册失败（不影响执行）: %s", e)
 
         # 8. 立即返回 processing
         return {

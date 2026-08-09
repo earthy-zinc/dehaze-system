@@ -35,13 +35,11 @@
 | `/api/v1/image-input/history` | GET | 分页查询历史记录 | - | F-M01-004 |
 | `/api/v1/image-input/history/{id}` | GET | 获取历史记录详情 | - | F-M01-004 |
 | `/api/v1/image-input/history` | POST | 创建历史记录 | - | F-M01-004 |
-| `/api/v1/image-input/history/{id}` | PUT | 更新历史记录 | - | F-M01-004 |
-
-> **注意**：收藏状态通过收藏管理模块 `/api/v1/favorites` 统一管理，历史记录接口不再维护 `is_favorite` 字段。
 | `/api/v1/image-input/history/{id}` | DELETE | 删除单条历史记录 | - | F-M01-004 |
 | `/api/v1/image-input/history/batch` | DELETE | 批量删除历史记录 | - | F-M01-004 |
 | `/api/v1/image-input/history/clear` | DELETE | 清空历史记录 | - | F-M01-004 |
-| `/api/v1/image-input/history/sync` | POST | 同步本地与云端历史记录 | - | F-M01-004 |
+
+> **注意**：收藏状态通过收藏管理模块 `/api/v1/favorites` 统一管理，历史记录接口不再维护 `is_favorite` 字段。
 
 ### 2.4 拍照功能接口（前端原生能力）
 
@@ -75,7 +73,7 @@
 
 **说明**：
 - 历史记录接口无需特殊权限，通过用户身份自动隔离数据
-- 游客模式下历史记录仅存储在本地，注册用户可云端同步
+- 游客模式下历史记录仅存储在本地，注册用户记录保存至云端数据库
 
 ## 4. 业务错误码
 
@@ -88,7 +86,6 @@
 | `B0107` | 配对图片分辨率不一致 | 配对图片尺寸不匹配 |
 | `B0300` | 历史记录不存在 | 查询/删除不存在的历史记录 |
 | `B0301` | 历史记录已达上限 | 超过用户配额限制 |
-| `B0302` | 同步冲突 | 本地与云端数据冲突 |
 | `ERR_FILE_TOO_LARGE` | 文件过大 | 文件大小超过限制 |
 | `ERR_UNSUPPORTED_FORMAT` | 格式不支持 | 上传不支持的图片格式 |
 | `ERR_NETWORK_ERROR` | 网络异常 | 网络连接失败 |

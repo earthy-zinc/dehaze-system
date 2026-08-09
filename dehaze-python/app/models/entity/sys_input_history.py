@@ -28,9 +28,7 @@ class SysInputHistory(BaseModel):
     algorithm_name: Mapped[Optional[str]] = mapped_column(String(100), comment='算法名称（冗余）')
     algorithm_params: Mapped[Optional[str]] = mapped_column(Text, comment='算法参数（JSON）')
     processing_time: Mapped[Optional[int]] = mapped_column(Integer, comment='处理耗时（毫秒）')
-    # 处理状态（1=成功，2=失败，3=处理中）
+    # 处理状态（1=成功，2=失败，3=处理中），创建时确定，不随处理进度更新
     status: Mapped[Optional[int]] = mapped_column(
-        mysql_types.TINYINT, default=3, comment='处理状态（1=成功，2=失败，3=处理中）')
+        mysql_types.TINYINT, default=3, comment='处理状态（1=成功，2=失败，3=处理中），创建时确定，不随处理进度更新')
     input_source: Mapped[Optional[str]] = mapped_column(String(20), comment='图片来源（upload/camera/sample）')
-    sync_status: Mapped[Optional[int]] = mapped_column(
-        mysql_types.TINYINT, default=0, comment='同步状态（0=未同步，1=已同步）')

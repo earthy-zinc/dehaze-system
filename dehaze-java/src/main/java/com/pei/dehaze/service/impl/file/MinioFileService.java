@@ -3,7 +3,7 @@ package com.pei.dehaze.service.impl.file;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.Assert;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.model.bo.FileBO;
+import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.service.FileService;
 import io.minio.*;
 import io.minio.errors.*;
@@ -124,14 +124,14 @@ public class MinioFileService implements FileService {
     }
 
     @Override
-    public FileBO uploadFile(FileBO fileBO) {
+    public FileDTO uploadFile(FileDTO fileDTO) {
         ensureBucketInitialized();
-        String objectName = fileBO.getObjectName();
-        String mimeType = FileUtil.getMimeType(fileBO.getName());
+        String objectName = fileDTO.getObjectName();
+        String mimeType = FileUtil.getMimeType(fileDTO.getName());
         Assert.notBlank(objectName);
         Assert.notBlank(mimeType);
 
-        File file = fileBO.getFile();
+        File file = fileDTO.getFile();
         try (FileInputStream stream = new FileInputStream(file)){
             PutObjectArgs putObjectArgs = PutObjectArgs.builder()
                     .bucket(bucketName)
@@ -140,8 +140,8 @@ public class MinioFileService implements FileService {
                     .stream(stream, stream.available(), -1)
                     .build();
             minioClient.putObject(putObjectArgs);
-            fileBO.setStorage(getStorageType());
-            return fileBO;
+            fileDTO.setStorage(getStorageType());
+            return fileDTO;
         } catch (Exception e) {
             throw new BusinessException("无法保存文件", e);
         }

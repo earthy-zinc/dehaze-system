@@ -23,8 +23,8 @@ type PerfEntry = {
 
 class MockPerformanceObserver {
   static instances: MockPerformanceObserver[] = [];
-  private entryType: string | undefined;
-  private callback: (entries: PerfEntry[], observer: MockPerformanceObserver) => void;
+  entryType: string | undefined;
+  callback: (entries: PerfEntry[], observer: MockPerformanceObserver) => void;
 
   constructor(callback: (entries: PerfEntry[], observer: MockPerformanceObserver) => void) {
     this.callback = callback;
@@ -110,12 +110,8 @@ function emitPerfEntry(entry: PerfEntry): void {
   pending.push(entry);
   (globalThis as any).__perfPending = pending;
   for (const instance of MockPerformanceObserver.instances) {
-    const obs = instance as unknown as {
-      entryType?: string;
-      callback?: (e: PerfEntry[], o: MockPerformanceObserver) => void;
-    };
-    if (obs.entryType === entry.entryType && obs.callback) {
-      obs.callback([entry], instance);
+    if (instance.entryType === entry.entryType && instance.callback) {
+      instance.callback([entry], instance);
     }
   }
 }

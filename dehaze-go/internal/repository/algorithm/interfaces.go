@@ -43,4 +43,19 @@ type IAlgorithmRepository interface {
 
 	// ExistsByVersion 检查算法版本是否存在（查全表含软删行）
 	ExistsByVersion(ctx context.Context, algorithmID int64, version string, excludeID ...int64) (bool, error)
+
+	// SearchPublished 搜索已发布算法（status=4），支持关键词模糊匹配
+	SearchPublished(ctx context.Context, keyword string, pageNum, pageSize int) ([]model.SysAlgorithm, int64, error)
+
+	// FindAllPublished 查询所有已发布算法（status=4）
+	FindAllPublished(ctx context.Context) ([]model.SysAlgorithm, error)
+
+	// CountPublished 统计已发布算法数量
+	CountPublished(ctx context.Context) (int64, error)
+
+	// FindNameByID 查询算法名称
+	FindNameByID(ctx context.Context, id int64) (string, error)
+
+	// ExistsByID 检查算法是否存在
+	ExistsByID(ctx context.Context, id int64) (bool, error)
 }

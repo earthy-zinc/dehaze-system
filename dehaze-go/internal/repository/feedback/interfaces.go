@@ -71,6 +71,7 @@ type IRatingRepository interface {
 	GetRatingCountByValue(ctx context.Context, rating int, startTime, endTime string) (int64, error)
 	CountLowRatingsByAlgorithmSince(ctx context.Context, algorithmID int64, since time.Time) (int64, error)
 	GetTodayLowRatingCounts(ctx context.Context) (lowCount int64, totalCount int64, err error)
+	GetStatsByAlgorithmID(ctx context.Context, algorithmID int64) (totalCount int64, avgRating float64, distribution map[int8]int64, err error)
 }
 
 type IFeedbackRepository interface {

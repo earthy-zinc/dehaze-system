@@ -37,6 +37,7 @@ type IDatasetRepository interface {
 	FindByParentIDs(ctx context.Context, parentIDs []int64) ([]model.SysDataset, error)
 	CountHasChildren(ctx context.Context, parentIDs []int64) (map[int64]bool, error)
 	ExistsByParentIDAndName(ctx context.Context, parentID int64, name string, excludeID int64) (bool, error)
+	ExistsByID(ctx context.Context, id int64) (bool, error)
 	Create(ctx context.Context, dataset *model.SysDataset) error
 	Update(ctx context.Context, dataset *model.SysDataset) error
 	SoftDeleteByIDs(ctx context.Context, ids []int64, updateBy int64) error

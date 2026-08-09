@@ -1,7 +1,7 @@
 package com.pei.dehaze.service.impl.file;
 
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.model.bo.FileBO;
+import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.service.FileService;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +50,7 @@ public class NginxStaticFileService implements FileService {
     }
 
     @Override
-    public FileBO uploadFile(FileBO fileBO) {
+    public FileDTO uploadFile(FileDTO fileDTO) {
         throw new BusinessException("nginx-static 后端不支持通过 Java 上传文件");
     }
 

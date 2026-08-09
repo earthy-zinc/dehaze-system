@@ -3,7 +3,7 @@ package com.pei.dehaze.common.util;
 
 import cn.hutool.core.io.FileUtil;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.model.bo.FileBO;
+import com.pei.dehaze.model.dto.FileDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.DigestUtils;
 
@@ -41,24 +41,24 @@ public class FileUploadUtils {
         return FileUtil.readableFileSize(FileUtil.size(new File(filePath)));
     }
 
-    public static FileBO createFileBO(File file, String path) {
+    public static FileDTO createFileDTO(File file, String path) {
         try (FileInputStream stream = new FileInputStream(file)) {
-            FileBO fileBO = new FileBO();
+            FileDTO fileDTO = new FileDTO();
 
             String filename = file.getName();
             String extension = FileUtil.extName(filename);
             String md5 = FileUploadUtils.getMd5(stream);
             String objectName = path + "/" + md5 + "." + extension;
 
-            fileBO.setFile(file);
-            fileBO.setName(filename);
-            fileBO.setObjectName(objectName);
-            fileBO.setExtension(extension);
-            fileBO.setMd5(md5);
-            fileBO.setSize(file.length());
-            return fileBO;
+            fileDTO.setFile(file);
+            fileDTO.setName(filename);
+            fileDTO.setObjectName(objectName);
+            fileDTO.setExtension(extension);
+            fileDTO.setMd5(md5);
+            fileDTO.setSize(file.length());
+            return fileDTO;
         } catch (IOException e) {
-            throw new BusinessException("无法创建FileBO", e);
+            throw new BusinessException("无法创建FileDTO", e);
         }
     }
 

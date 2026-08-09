@@ -9,7 +9,7 @@ import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
 import com.pei.dehaze.mapper.SysDatasetMapper;
 import com.pei.dehaze.mapper.SysItemFileMapper;
-import com.pei.dehaze.model.bo.ItemFileBO;
+import com.pei.dehaze.model.dto.ItemFileDTO;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysFile;
@@ -65,7 +65,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     private final SysItemFileService self;
 
     @Override
-    public ImageUrlVO saveItemFile(Long itemId, ItemFileBO itemBO) {
+    public ImageUrlVO saveItemFile(Long itemId, ItemFileDTO itemBO) {
         // 1. 图片校验（事务外，避免占用数据库连接）
         imageProcessingService.validateImageFile(itemBO.getFile());
 
@@ -75,7 +75,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             // 2. 上传源文件到 MinIO（事务外，避免长事务占用连接）
             SysFile sysFile = sysFileService.saveFile(itemBO);
             // 3. 生成缩略图并上传（事务外）
-            ItemFileBO thumbnailItemBO = getThumbnailItemBO(itemBO);
+            ItemFileDTO thumbnailItemBO = getThumbnailItemBO(itemBO);
             thumbnailTempFile = thumbnailItemBO.getFile();
             SysFile thumbnailSysFile = sysFileService.saveFile(thumbnailItemBO);
 
@@ -102,7 +102,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public SysItemFile saveItemFileRecord(Long itemId, ItemFileBO itemBO, SysFile sysFile, SysFile thumbnailSysFile) {
+    public SysItemFile saveItemFileRecord(Long itemId, ItemFileDTO itemBO, SysFile sysFile, SysFile thumbnailSysFile) {
         SysItemFile sysItemFile = new SysItemFile();
         sysItemFile.setItemId(itemId);
         sysItemFile.setFileId(sysFile.getId());
@@ -215,7 +215,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         return result;
     }
 
-    private ItemFileBO getThumbnailItemBO(ItemFileBO itemBO) {
+    private ItemFileDTO getThumbnailItemBO(ItemFileDTO itemBO) {
         // 使用 ImageProcessingService 生成缩略图
         File thumbnailFile = imageProcessingService.generateThumbnail(itemBO.getFile(), 400, 400);
 
@@ -227,7 +227,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             // 使用 FilePathBuilder 构建缩略图路径
             String objectName = filePathBuilder.buildThumbnailObjectName(itemBO.getObjectName(), md5, extension);
 
-            ItemFileBO thumbnailItemBO = new ItemFileBO();
+            ItemFileDTO thumbnailItemBO = new ItemFileDTO();
             thumbnailItemBO.setFile(thumbnailFile);
             thumbnailItemBO.setName(name);
             thumbnailItemBO.setObjectName(objectName);

@@ -1,11 +1,11 @@
-package com.pei.dehaze.model.bo;
+package com.pei.dehaze.model.dto;
 
 import lombok.Data;
 
 import java.io.File;
 
 @Data
-public class FileBO {
+public class FileDTO {
     // 文件输入流
     private File file;
     // 文件名

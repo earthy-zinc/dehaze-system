@@ -8,11 +8,12 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
+	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
 	fbrepo "github.com/earthyzinc/dehaze-go/internal/repository/feedback"
+	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
 	msgservice "github.com/earthyzinc/dehaze-go/internal/service/message"
 	"github.com/earthyzinc/dehaze-go/pkg/mq"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 const (
@@ -32,23 +33,26 @@ type ratingEvent struct {
 }
 
 type LowRatingAlertService struct {
-	db             *gorm.DB
 	ratingRepo     fbrepo.IRatingRepository
+	userRepo       userrepo.IUserRepository
+	algorithmRepo  algorepo.IAlgorithmRepository
 	messageService msgservice.IMessageService
 	publisher      *mq.Publisher
 	logger         *zap.Logger
 }
 
 func NewLowRatingAlertService(
-	db *gorm.DB,
 	ratingRepo fbrepo.IRatingRepository,
+	userRepo userrepo.IUserRepository,
+	algorithmRepo algorepo.IAlgorithmRepository,
 	messageService msgservice.IMessageService,
 	publisher *mq.Publisher,
 	logger *zap.Logger,
 ) *LowRatingAlertService {
 	return &LowRatingAlertService{
-		db:             db,
 		ratingRepo:     ratingRepo,
+		userRepo:       userRepo,
+		algorithmRepo:  algorithmRepo,
 		messageService: messageService,
 		publisher:      publisher,
 		logger:         logger,
@@ -214,26 +218,17 @@ func (s *LowRatingAlertService) checkSevereAlert(ctx context.Context, rating *mo
 }
 
 func (s *LowRatingAlertService) findAdminUserIDs(ctx context.Context) ([]int64, error) {
-	var ids []int64
-	err := s.db.WithContext(ctx).
-		Table("sys_user u").
-		Joins("INNER JOIN sys_user_role ur ON u.id = ur.user_id").
-		Joins("INNER JOIN sys_role r ON ur.role_id = r.id").
-		Where("r.code IN ? AND u.deleted = 0 AND u.status = 1", []string{"ROOT", "ADMIN"}).
-		Pluck("DISTINCT u.id", &ids).Error
-	if err != nil {
-		return nil, err
-	}
-	return ids, nil
+	return s.userRepo.FindAdminUserIDs(ctx)
 }
 
 func (s *LowRatingAlertService) findAlgorithmName(ctx context.Context, algorithmID int64) string {
-	var name string
-	s.db.WithContext(ctx).
-		Table("sys_algorithm").
-		Where("id = ? AND deleted = 0", algorithmID).
-		Select("name").
-		Scan(&name)
+	name, err := s.algorithmRepo.FindNameByID(ctx, algorithmID)
+	if err != nil {
+		s.logger.Warn("查询算法名称失败",
+			zap.Int64("algorithmID", algorithmID),
+			zap.Error(err))
+		return ""
+	}
 	return name
 }
 

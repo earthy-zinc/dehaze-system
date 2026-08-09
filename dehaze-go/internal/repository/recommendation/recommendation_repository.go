@@ -36,6 +36,19 @@ func (r *recommendationRepository) Update(ctx context.Context, id int64, updates
 		Updates(updates).Error
 }
 
+func (r *recommendationRepository) FindLatestByImageMd5(ctx context.Context, imageMd5 string) (*model.SysRecommendation, error) {
+	var rec model.SysRecommendation
+	err := r.db.WithContext(ctx).
+		Where("image_md5 = ?", imageMd5).
+		Order("id DESC").
+		Limit(1).
+		First(&rec).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &rec, err
+}
+
 func (r *recommendationRepository) CountTotal(ctx context.Context, startTime, endTime string) (int64, error) {
 	db := r.db.WithContext(ctx).Model(&model.SysRecommendation{})
 	if startTime != "" {

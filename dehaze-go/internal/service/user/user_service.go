@@ -415,3 +415,48 @@ func (s *UserService) GetCurrentUserInfo(ctx context.Context, userID int64) (*vo
 
 	return &userInfoVO, nil
 }
+
+// Register 用户注册流程：校验用户名、创建用户并分配 GUEST 角色
+// 返回创建的用户实体及 GUEST 角色的 dataScope，供 AuthService 构建 Session
+func (s *UserService) Register(ctx context.Context, username, nickname, password string) (*model.SysUser, int8, error) {
+	exists, err := s.userRepo.ExistsByUsername(ctx, username)
+	if err != nil {
+		return nil, 0, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "检查用户名失败", err)
+	}
+	if exists {
+		return nil, 0, common.NewBizError(common.DATA_EXISTS, "用户名已被注册")
+	}
+
+	guestRole, err := s.roleRepo.FindByCode(ctx, "GUEST")
+	if err != nil {
+		return nil, 0, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "查询 GUEST 角色失败", err)
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, 0, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "密码加密失败", err)
+	}
+
+	user := &model.SysUser{
+		Username: username,
+		Nickname: nickname,
+		Password: string(hashedPassword),
+		Gender:   1,
+		Status:   1,
+		Deleted:  0,
+	}
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
+
+	var roleIDs []int64
+	var dataScope int8
+	if guestRole != nil && guestRole.Status == 1 {
+		roleIDs = []int64{guestRole.ID}
+		dataScope = guestRole.DataScope
+	}
+
+	if err := s.userRepo.CreateWithRoles(ctx, user, roleIDs); err != nil {
+		return nil, 0, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "创建用户失败", err)
+	}
+	return user, dataScope, nil
+}

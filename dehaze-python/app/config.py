@@ -273,6 +273,10 @@ class Settings(BaseSettings):
     TASK_REDIS_TTL: int = Field(default=3600, gt=0)
     GRACEFUL_SHUTDOWN_TIMEOUT: int = Field(default=30, gt=0)
 
+    # ===== 算法推理 =====
+    # PyTorch 推理线程池并发数，按 GPU 显存/卡数调整（单卡 24GB 建议 1-2）
+    INFERENCE_THREAD_POOL_SIZE: int = Field(default=2, gt=0)
+
     # ===== 缓存 =====
     CACHE_L1_ENABLED: bool = True
     CACHE_L1_MAXSIZE: int = Field(default=1000, gt=0)

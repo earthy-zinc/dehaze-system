@@ -5,7 +5,7 @@
 <mapper namespace="com.pei.dehaze.mapper.SysUserMapper">
 
     <!-- 用户分页列表 -->
-    <select id="listPagedUsers" resultType="com.pei.dehaze.model.bo.UserBO">
+    <select id="listPagedUsers" resultType="com.pei.dehaze.model.read.UserRead">
         SELECT
             u.id,
             u.username,

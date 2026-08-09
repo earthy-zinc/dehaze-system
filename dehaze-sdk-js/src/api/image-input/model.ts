@@ -14,9 +14,6 @@ export interface HistoryForm {
   inputSource?: string;
 }
 
-/** 历史记录更新表单 */
-export interface HistoryUpdateForm {}
-
 /** 历史记录查询参数 */
 export interface HistoryQuery extends PageQuery {
   status?: number;
@@ -36,6 +33,5 @@ export interface InputHistoryVO {
   processingTime?: number;
   status?: number;
   inputSource?: string;
-  syncStatus?: number;
   createTime?: string;
 }

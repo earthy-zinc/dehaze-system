@@ -49,6 +49,8 @@ export interface LogEntry {
   navigation_type?: string;
   /** 资源 URL（仅 resource_error / 资源加载耗时） */
   resource_url?: string;
+  /** ERROR 去重汇总标记：10s 窗口内相同 fingerprint 的总命中次数（仅汇总条目携带，>1） */
+  dedup_count?: number;
 }
 
 export interface LoggerStorage {

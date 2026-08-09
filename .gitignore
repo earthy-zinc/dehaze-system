@@ -83,6 +83,12 @@ replay_pid*
 
 # Gradle
 .gradle/
+**/gradle/native/
+**/gradle/wrapper/dists/
+**/gradle/.tmp/
+**/gradle/caches/
+**/gradle/jdks/
+**/gradle/daemon/
 local.properties
 
 # =============================================================================

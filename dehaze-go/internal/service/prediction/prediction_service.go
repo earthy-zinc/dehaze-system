@@ -14,6 +14,7 @@ import (
 	algo "github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/lifecycle"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/metrics"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
@@ -33,10 +34,11 @@ type PredictionService struct {
 	client    *algo.Client
 	cache     types.ICache
 	memberSvc memberservice.IMemberService
+	lifecycle *lifecycle.Manager
 }
 
-func NewPredictionService(repo predrepo.IPredLogRepository, algoRepo algorepo.IAlgorithmRepository, client *algo.Client, cache types.ICache, memberSvc memberservice.IMemberService) *PredictionService {
-	return &PredictionService{repo: repo, algoRepo: algoRepo, client: client, cache: cache, memberSvc: memberSvc}
+func NewPredictionService(repo predrepo.IPredLogRepository, algoRepo algorepo.IAlgorithmRepository, client *algo.Client, cache types.ICache, memberSvc memberservice.IMemberService, lm *lifecycle.Manager) *PredictionService {
+	return &PredictionService{repo: repo, algoRepo: algoRepo, client: client, cache: cache, memberSvc: memberSvc, lifecycle: lm}
 }
 
 // PredictionResult 预测结果 VO
@@ -111,7 +113,9 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 	}
 
 	logID := predLog.ID
-	go s.executeAsync(logID, algorithmID, imageURL, params, imageMD5, userID)
+	s.lifecycle.Go(func(ctx context.Context) {
+		s.executeAsync(ctx, logID, algorithmID, imageURL, params, imageMD5, userID)
+	})
 
 	return &PredictionResult{
 		LogID:  logID,
@@ -120,8 +124,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 }
 
 // executeAsync 异步执行预测任务，更新日志状态
-func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, params, imageMD5 string, userID int64) {
-	ctx := context.Background()
+func (s *PredictionService) executeAsync(ctx context.Context, logID, algorithmID int64, imageURL, params, imageMD5 string, userID int64) {
 	startTime := time.Now()
 
 	resp, err := s.client.Predict(ctx, &algo.PredictionRequest{
@@ -141,7 +144,7 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 			logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
 		metrics.RecordPrediction("failure", time.Since(startTime).Seconds())
-		s.refundQuota(userID)
+		s.refundQuota(ctx, userID)
 		return
 	}
 
@@ -155,7 +158,7 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 				logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 			}
 			metrics.RecordPrediction("failure", time.Since(startTime).Seconds())
-			s.refundQuota(userID)
+			s.refundQuota(ctx, userID)
 			return
 		}
 	}
@@ -168,7 +171,7 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 			logger.Error("更新预测日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
 		metrics.RecordPrediction("failure", time.Since(startTime).Seconds())
-		s.refundQuota(userID)
+		s.refundQuota(ctx, userID)
 		return
 	}
 
@@ -196,9 +199,9 @@ func (s *PredictionService) executeAsync(logID, algorithmID int64, imageURL, par
 }
 
 // refundQuota 预测失败时回补用户配额
-func (s *PredictionService) refundQuota(userID int64) {
+func (s *PredictionService) refundQuota(ctx context.Context, userID int64) {
 	if s.memberSvc != nil {
-		if err := s.memberSvc.RefundQuota(context.Background(), userID, memberservice.QuotaTypeDehaze); err != nil {
+		if err := s.memberSvc.RefundQuota(ctx, userID, memberservice.QuotaTypeDehaze); err != nil {
 			logger.Warn("回补预测配额失败", zap.Int64("userID", userID), zap.Error(err))
 		}
 	}

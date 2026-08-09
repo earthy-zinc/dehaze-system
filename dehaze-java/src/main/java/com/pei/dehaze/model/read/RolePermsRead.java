@@ -1,4 +1,4 @@
-package com.pei.dehaze.model.bo;
+package com.pei.dehaze.model.read;
 
 import lombok.Data;
 
@@ -11,7 +11,7 @@ import java.util.Set;
  * @since 2023/11/29
  */
 @Data
-public class RolePermsBO {
+public class RolePermsRead {
 
     /**
      * 角色编码

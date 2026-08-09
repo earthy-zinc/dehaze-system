@@ -74,6 +74,7 @@ async def get_order_page(
             "paidTimeStart": paidTimeStart,
             "paidTimeEnd": paidTimeEnd,
         },
+        current_user=user,
     )
     return success(data)
 

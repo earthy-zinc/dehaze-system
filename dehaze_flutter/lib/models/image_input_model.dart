@@ -20,7 +20,6 @@ class ImageInputHistoryVO {
     this.processingTime,
     this.status,
     this.inputSource,
-    this.syncStatus,
     this.createTime,
   });
 
@@ -51,7 +50,6 @@ class ImageInputHistoryVO {
   @JsonKey(name: 'inputSource')
   final String? inputSource;
 
-  final int? syncStatus;
   final String? createTime;
 
   Map<String, dynamic> toJson() => _$ImageInputHistoryVOToJson(this);
@@ -110,62 +108,4 @@ class ImageInputHistoryBatchDeleteForm {
   final List<int> ids;
 
   Map<String, dynamic> toJson() => _$ImageInputHistoryBatchDeleteFormToJson(this);
-}
-
-/// 历史记录同步项
-///
-/// 用于同步本地与云端历史记录时的单项数据。
-@JsonSerializable()
-class ImageInputHistorySyncItem {
-  const ImageInputHistorySyncItem({
-    required this.originalImageUrl,
-    this.originalThumbnailUrl,
-    this.resultImageUrl,
-    this.resultThumbnailUrl,
-    this.algorithmId,
-    this.algorithmName,
-    this.algorithmParams,
-    this.processingTime,
-    this.inputSource,
-  });
-
-  factory ImageInputHistorySyncItem.fromJson(Map<String, dynamic> json) =>
-      _$ImageInputHistorySyncItemFromJson(json);
-
-  @JsonKey(name: 'originalImageUrl')
-  final String? originalImageUrl;
-
-  @JsonKey(name: 'originalThumbnailUrl')
-  final String? originalThumbnailUrl;
-
-  @JsonKey(name: 'resultImageUrl')
-  final String? resultImageUrl;
-
-  @JsonKey(name: 'resultThumbnailUrl')
-  final String? resultThumbnailUrl;
-
-  final int? algorithmId;
-  final String? algorithmName;
-  final String? algorithmParams;
-  final int? processingTime;
-
-  @JsonKey(name: 'inputSource')
-  final String? inputSource;
-
-  Map<String, dynamic> toJson() => _$ImageInputHistorySyncItemToJson(this);
-}
-
-/// 历史记录同步表单
-///
-/// 用于批量同步本地与云端历史记录。
-@JsonSerializable()
-class ImageInputHistorySyncForm {
-  const ImageInputHistorySyncForm({required this.items});
-
-  factory ImageInputHistorySyncForm.fromJson(Map<String, dynamic> json) =>
-      _$ImageInputHistorySyncFormFromJson(json);
-
-  final List<ImageInputHistorySyncItem> items;
-
-  Map<String, dynamic> toJson() => _$ImageInputHistorySyncFormToJson(this);
 }

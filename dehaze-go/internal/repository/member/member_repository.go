@@ -127,11 +127,14 @@ func (r *MemberRepository) FindExpiringBetween(ctx context.Context, start, end t
 	return list, err
 }
 
-func (r *MemberRepository) FindUserIDsByLevelCode(ctx context.Context, levelCode string) ([]int64, error) {
+func (r *MemberRepository) FindUserIDsByLevelCodes(ctx context.Context, levelCodes []string) ([]int64, error) {
+	if len(levelCodes) == 0 {
+		return nil, nil
+	}
 	var userIDs []int64
 	err := r.db.WithContext(ctx).
 		Model(&model.SysMember{}).
-		Where("level_code = ? AND deleted = 0", levelCode).
+		Where("level_code IN ? AND deleted = 0", levelCodes).
 		Pluck("user_id", &userIDs).Error
 	return userIDs, err
 }

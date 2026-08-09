@@ -16,7 +16,7 @@ XXL-Job 定时任务 Handler
 - expireOrders:            订单超时自动取消（每 5 分钟）
 - completeExpiredOrders:   已支付订单到期归档（每天凌晨 3 点）
 - expireUserCoupons:       用户优惠券过期处理（每天凌晨 4 点）
-- autoRenewTask:           自动续费扣款（每天凌晨 8 点）
+- autoRenew:               自动续费扣款（每天凌晨 8 点）
 - resetMonthlyQuota:       会员月度配额重置（每月 1 日凌晨 0 点）
 - processExpiredMembers:  会员过期降级（每天凌晨 2 点）
 - retryFailedRefunds:     退款失败重试（每 30 分钟）
@@ -627,7 +627,7 @@ async def expire_user_coupons() -> str:
         set_current_user_id(None)
 
 
-@xxl_handler.register(name="autoRenewTask")
+@xxl_handler.register(name="autoRenew")
 async def auto_renew_task() -> str:
     """
     自动续费扣款
@@ -637,7 +637,7 @@ async def auto_renew_task() -> str:
       - balance: 直接扣减余额并完成订单
       - wechat/alipay: 调用支付渠道 unified_order 下单
     成功后更新 next_renew_time，失败累计 retry_count，超过 AUTO_RENEW_RETRY_MAX 后停用。
-    与 Java AutoRenewJob、Go autoRenewTask 对齐。
+    与 Java AutoRenewJob、Go autoRenew 对齐。
 
     CRON 建议: 0 0 8 * * ? （每天凌晨 8 点）
     """
@@ -667,7 +667,7 @@ async def reset_monthly_quota() -> str:
     每月 1 日扫描 sys_member WHERE quota_reset_month != 当前月份，
     按当前等级权益重置 monthly_dehaze_quota/monthly_evaluate_quota 字段，
     并将 used 字段清零，quota_reset_month 更新为当前月份。
-    与 Java MemberQuotaResetJob、Go resetMonthlyQuota 对齐。
+    与 Java MemberMonthlyQuotaResetJob、Go resetMonthlyQuota 对齐。
 
     CRON 建议: 0 0 0 1 * ? （每月 1 日凌晨 0 点）
     """

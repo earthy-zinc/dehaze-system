@@ -1,7 +1,7 @@
 package com.pei.dehaze.service;
 
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.model.bo.FileBO;
+import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.service.impl.file.LocalFileService;
 import com.pei.dehaze.service.impl.file.MinioFileService;
 import io.minio.MinioClient;
@@ -140,15 +140,15 @@ class FileStorageServiceTest {
             Path tempFile = tempDir.resolve("test.jpg");
             Files.write(tempFile, "test content".getBytes());
 
-            FileBO fileBO = new FileBO();
-            fileBO.setName("test.jpg");
-            fileBO.setObjectName("uploads/test.jpg");
-            fileBO.setFile(tempFile.toFile());
+            FileDTO fileDTO = new FileDTO();
+            fileDTO.setName("test.jpg");
+            fileDTO.setObjectName("uploads/test.jpg");
+            fileDTO.setFile(tempFile.toFile());
 
             when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(null);
 
             // Act
-            FileBO result = minioFileService.uploadFile(fileBO);
+            FileDTO result = minioFileService.uploadFile(fileDTO);
 
             // Assert
             assertThat(result).isNotNull();

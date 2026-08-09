@@ -1,5 +1,6 @@
 package com.pei.dehaze.service.impl;
 
+import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
@@ -21,14 +22,12 @@ import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.RecommendationService;
 import com.pei.dehaze.service.SysAlgorithmService;
+import com.pei.dehaze.service.client.PythonAlgorithmClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -47,16 +46,13 @@ import java.util.stream.Collectors;
 public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapper, SysRecommendation>
         implements RecommendationService {
 
-    private static final List<String> VALID_HAZE_LEVELS = List.of("light", "moderate", "heavy");
     private static final List<String> VALID_SCENE_TYPES = List.of("urban", "landscape", "building", "night", "backlight", "indoor");
-    private static final List<String> VALID_LIGHTINGS = List.of("bright", "normal", "dark", "veryDark", "backlight");
-    private static final List<String> VALID_RESOLUTIONS = List.of("sd", "hd", "uhd");
-    private static final List<String> VALID_NOISE_LEVELS = List.of("low", "medium", "high");
     private static final List<String> IMAGE_EXTENSIONS = List.of(".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif");
     private static final int TOP_N = 3;
 
     private final SysRecommendationRuleMapper ruleMapper;
     private final SysAlgorithmService sysAlgorithmService;
+    private final PythonAlgorithmClient pythonAlgorithmClient;
 
     /**
      * 规则内存缓存，写时复制保证线程安全
@@ -68,27 +64,10 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
         String imageUrl = resolveImageUrl(form);
         validateImageFormat(imageUrl);
 
-        // 基于 imageUrl 生成稳定但确定性的 mock 特征分析结果
-        // 实际生产环境应调用 Python 算法服务提取真实特征
-        String md5 = md5(imageUrl);
-        int seed = Math.abs(md5.hashCode());
-
-        ImageFeatureAnalysisVO vo = new ImageFeatureAnalysisVO();
-        vo.setImageMd5(md5);
-        vo.setHazeLevel(VALID_HAZE_LEVELS.get(seed % VALID_HAZE_LEVELS.size()));
-        vo.setHazeConfidence(0.5 + (seed % 50) / 100.0);
-        vo.setSceneType(VALID_SCENE_TYPES.get(seed % VALID_SCENE_TYPES.size()));
-        vo.setSceneConfidence(0.5 + ((seed / 7) % 50) / 100.0);
-        vo.setLighting(VALID_LIGHTINGS.get(seed % VALID_LIGHTINGS.size()));
-        vo.setComplexity(0.3 + ((seed / 11) % 70) / 100.0);
-        ImageFeatureAnalysisVO.ColorDistribution cd = new ImageFeatureAnalysisVO.ColorDistribution();
-        cd.setTemperature(4000.0 + (seed % 6000));
-        cd.setSaturation(0.3 + ((seed / 13) % 70) / 100.0);
-        vo.setColorDistribution(cd);
-        vo.setResolution(VALID_RESOLUTIONS.get(seed % VALID_RESOLUTIONS.size()));
-        vo.setNoiseLevel(VALID_NOISE_LEVELS.get(seed % VALID_NOISE_LEVELS.size()));
-
-        return vo;
+        // 调用 Python 图像特征分析服务提取真实特征
+        // Python 服务不可用时由 PythonAlgorithmClient 抛出 BusinessException，不降级为伪特征，避免误导用户
+        JSONObject data = pythonAlgorithmClient.analyzeImage(imageUrl);
+        return toFeatureVO(data);
     }
 
     @Override
@@ -317,6 +296,30 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
         }
     }
 
+    /**
+     * 将 Python 图像特征分析响应映射为 VO
+     */
+    private ImageFeatureAnalysisVO toFeatureVO(JSONObject data) {
+        ImageFeatureAnalysisVO vo = new ImageFeatureAnalysisVO();
+        vo.setImageMd5(data.getStr("imageMd5"));
+        vo.setHazeLevel(data.getStr("hazeLevel"));
+        vo.setHazeConfidence(data.getDouble("hazeConfidence"));
+        vo.setSceneType(data.getStr("sceneType"));
+        vo.setSceneConfidence(data.getDouble("sceneConfidence"));
+        vo.setLighting(data.getStr("lighting"));
+        vo.setComplexity(data.getDouble("complexity"));
+        JSONObject cd = data.getJSONObject("colorDistribution");
+        if (cd != null) {
+            ImageFeatureAnalysisVO.ColorDistribution colorDistribution = new ImageFeatureAnalysisVO.ColorDistribution();
+            colorDistribution.setTemperature(cd.getDouble("temperature"));
+            colorDistribution.setSaturation(cd.getDouble("saturation"));
+            vo.setColorDistribution(colorDistribution);
+        }
+        vo.setResolution(data.getStr("resolution"));
+        vo.setNoiseLevel(data.getStr("noiseLevel"));
+        return vo;
+    }
+
     private List<SysRecommendationRule> getEnabledRules() {
         if (!ruleCache.isEmpty()) {
             return ruleCache;
@@ -377,20 +380,6 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
             return startOfDay ? date.atStartOfDay() : date.atTime(23, 59, 59);
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    private static String md5(String input) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : digest) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            return input;
         }
     }
 }

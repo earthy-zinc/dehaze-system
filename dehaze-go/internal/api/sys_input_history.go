@@ -93,34 +93,6 @@ func (api *SysInputHistoryApi) CreateHistory(c *gin.Context) {
 	common.OkWithData(history.ID, c)
 }
 
-// UpdateHistory 更新历史记录
-func (api *SysInputHistoryApi) UpdateHistory(c *gin.Context) {
-	ctx := c.Request.Context()
-	userID, err := security.RequireUserID(c)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "ID格式不正确"))
-		return
-	}
-
-	var updates map[string]interface{}
-	if err := c.ShouldBindJSON(&updates); err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	if err := api.service.Update(ctx, id, userID, updates); err != nil {
-		_ = c.Error(err)
-		return
-	}
-	common.OkWithMessage("更新成功", c)
-}
-
 // DeleteHistory 删除单条历史记录
 func (api *SysInputHistoryApi) DeleteHistory(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -179,11 +151,4 @@ func (api *SysInputHistoryApi) ClearHistory(c *gin.Context) {
 		return
 	}
 	common.OkWithData(count, c)
-}
-
-// SyncHistory 同步历史记录
-// 服务端为数据源，客户端无本地待同步数据时返回 0
-func (api *SysInputHistoryApi) SyncHistory(c *gin.Context) {
-	// 服务端无需从客户端拉取数据，同步计数为 0
-	common.OkWithData(int64(0), c)
 }

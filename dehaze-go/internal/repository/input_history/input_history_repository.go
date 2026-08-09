@@ -13,7 +13,6 @@ type IInputHistoryRepository interface {
 	FindPage(ctx context.Context, userID int64, pageNum, pageSize int, inputSource, keyword string, status int) ([]model.SysInputHistory, int64, error)
 	FindByID(ctx context.Context, id int64) (*model.SysInputHistory, error)
 	Create(ctx context.Context, history *model.SysInputHistory) error
-	Update(ctx context.Context, history *model.SysInputHistory) error
 	DeleteByUserAndIDs(ctx context.Context, userID int64, ids []int64) (int64, error)
 	DeleteByUserID(ctx context.Context, userID int64) (int64, error)
 }
@@ -67,10 +66,6 @@ func (r *inputHistoryRepository) FindByID(ctx context.Context, id int64) (*model
 
 func (r *inputHistoryRepository) Create(ctx context.Context, history *model.SysInputHistory) error {
 	return r.db.WithContext(ctx).Create(history).Error
-}
-
-func (r *inputHistoryRepository) Update(ctx context.Context, history *model.SysInputHistory) error {
-	return r.db.WithContext(ctx).Save(history).Error
 }
 
 func (r *inputHistoryRepository) DeleteByUserAndIDs(ctx context.Context, userID int64, ids []int64) (int64, error) {

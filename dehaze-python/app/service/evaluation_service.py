@@ -108,13 +108,25 @@ class EvaluationService:
 
         # 5. 提交异步任务（不等待完成）
         loop = asyncio.get_running_loop()
-        loop.create_task(self._execute_async(
+        background_task = loop.create_task(self._execute_async(
             log_id=log_id,
             algorithm_id=algorithm_id,
             pred_bytes=pred_bytes,
             gt_bytes=gt_bytes,
             user_id=user_id,
         ))
+
+        # 注册到 TaskTracker，支持优雅关闭与全局任务视图
+        try:
+            from app.service.task_tracker import get_task_tracker
+            await get_task_tracker().register(
+                task_id=f"eval:{log_id}",
+                task=background_task,
+                task_type="evaluation",
+                metadata={"log_id": log_id, "algorithm_id": algorithm_id, "user_id": user_id},
+            )
+        except Exception as e:
+            logger.warning("评估任务追踪注册失败（不影响执行）: %s", e)
 
         # 6. 立即返回 processing
         return {

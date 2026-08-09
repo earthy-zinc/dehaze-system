@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show kDebugMode, kReleaseMode;
+import 'package:flutter/foundation.dart' show kDebugMode, kReleaseMode, visibleForTesting;
 import 'package:go_router/go_router.dart';
 
 import 'log_entry.dart';
@@ -93,10 +93,14 @@ class Logger {
   int _backoffMs = 1000;
   final List<int> _sentTimestamps = [];
 
-  // ERROR 去重：相同 fingerprint 在窗口内只记录一次，避免布局/渲染错误每帧触发日志风暴
+  // ERROR 去重：相同 message + error_stack fingerprint 在 10s 窗口内只输出首条，
+  // 窗口结束时若存在重复则补发一条汇总（dedupCount 标记总次数），避免日志风暴同时保留次数信息
   // （如 RenderFlex overflow 在 layout 阶段每帧抛出，60fps 下每秒 60 条相同日志）
-  int? _lastErrorFingerprint;
+  int _lastErrorFingerprint = 0;
   DateTime? _lastErrorTime;
+  int _errorDedupCount = 0;
+  LogEntry? _lastDedupEntry;
+  Timer? _dedupSummaryTimer;
   static const Duration _dedupeWindow = Duration(seconds: 10);
 
   static const int _maxQueue = 500;
@@ -141,20 +145,6 @@ class Logger {
     double? duration,
     String? code,
   }) {
-    // ERROR 级别去重：相同 message + errorStack fingerprint 在 10s 窗口内只记录一次，
-    // 防止布局/渲染错误在每帧重绘时反复刷屏（不同 trace_id 的 API 错误不会被去重）
-    if (level == LogLevel.error) {
-      final fingerprint = '$message|${errorStack ?? ''}'.hashCode;
-      final now = DateTime.now();
-      if (fingerprint == _lastErrorFingerprint &&
-          _lastErrorTime != null &&
-          now.difference(_lastErrorTime!) < _dedupeWindow) {
-        return;
-      }
-      _lastErrorFingerprint = fingerprint;
-      _lastErrorTime = now;
-    }
-
     final entry = LogEntry(
       timestamp: DateTime.now().toUtc().toIso8601String(),
       level: level,
@@ -174,15 +164,110 @@ class Logger {
       code: code,
     );
 
+    // ERROR 去重：相同 fingerprint 在 10s 窗口内只输出首条，窗口结束时补发汇总
+    if (level == LogLevel.error && _shouldDedupError(entry)) {
+      return;
+    }
+
+    _emit(entry);
+  }
+
+  /// 实际输出日志条目：transport 输出 + 采样 + 限流 + 入队。去重汇总补发也走此路径
+  void _emit(LogEntry entry) {
     for (final transport in _transports) {
       transport.log(entry);
     }
 
     // 采样：ERROR 100% / WARN 50% / INFO 不上报
-    final rate = level == LogLevel.error ? 100 : (level == LogLevel.warn ? 50 : 0);
+    final rate = entry.level == LogLevel.error
+        ? 100
+        : (entry.level == LogLevel.warn ? 50 : 0);
     if (Random().nextDouble() * 100 > rate) return;
     if (!_allowReport()) return;
     _enqueue(entry);
+  }
+
+  /// ERROR 去重判定：相同 message + error_stack fingerprint 在 10s 窗口内只输出首条。
+  /// 窗口内重复命中累加计数并跳过输出；新 fingerprint 或窗口过期时补发上一轮汇总。
+  /// 返回 true 表示该条应被去重跳过，false 表示正常输出。
+  bool _shouldDedupError(LogEntry entry) {
+    final fingerprint = '${entry.message}|${entry.errorStack ?? ''}'.hashCode;
+    final now = DateTime.now();
+    final inWindow = _lastErrorTime != null &&
+        now.difference(_lastErrorTime!) < _dedupeWindow;
+
+    if (fingerprint == _lastErrorFingerprint && inWindow) {
+      _errorDedupCount++;
+      return true;
+    }
+
+    // 新 burst：先补发上一轮汇总（若有重复）
+    _flushDedupSummary();
+    _lastErrorFingerprint = fingerprint;
+    _lastErrorTime = now;
+    _errorDedupCount = 1;
+    _lastDedupEntry = entry;
+    _scheduleDedupSummary();
+    return false;
+  }
+
+  /// 窗口结束时补发汇总条目：携带 dedupCount 标记本轮总次数，message 标注重复次数
+  void _flushDedupSummary() {
+    _dedupSummaryTimer?.cancel();
+    _dedupSummaryTimer = null;
+    final count = _errorDedupCount;
+    final original = _lastDedupEntry;
+    _errorDedupCount = 0;
+    _lastErrorFingerprint = 0;
+    _lastErrorTime = null;
+    _lastDedupEntry = null;
+
+    // 单次命中无重复时不补发，避免噪声
+    if (count <= 1 || original == null) return;
+
+    _emit(LogEntry(
+      timestamp: DateTime.now().toUtc().toIso8601String(),
+      level: LogLevel.error,
+      message: _truncate(
+        '${original.message} (10s 内重复 ${count - 1} 次)',
+        _maxMessageLength,
+      ),
+      app: _app,
+      appVersion: _appVersion,
+      url: _currentRoutePath(),
+      userAgent: 'Flutter/${Platform.operatingSystem}',
+      traceId: Trace.currentTraceId,
+      errorType: original.errorType,
+      errorSource: original.errorSource,
+      errorStack: original.errorStack,
+      dedupCount: count,
+    ));
+  }
+
+  void _scheduleDedupSummary() {
+    _dedupSummaryTimer?.cancel();
+    _dedupSummaryTimer = Timer(_dedupeWindow, _flushDedupSummary);
+  }
+
+  /// 重置单例与所有内部状态（定时器、队列、去重计数）。
+  /// 仅供测试隔离使用，生产环境不应调用。
+  @visibleForTesting
+  static void reset() {
+    final logger = _instance;
+    if (logger == null) return;
+    logger._flushTimer?.cancel();
+    logger._flushTimer = null;
+    logger._backoffTimer?.cancel();
+    logger._backoffTimer = null;
+    logger._dedupSummaryTimer?.cancel();
+    logger._dedupSummaryTimer = null;
+    logger._queue.clear();
+    logger._sentTimestamps.clear();
+    logger._errorDedupCount = 0;
+    logger._lastErrorFingerprint = 0;
+    logger._lastErrorTime = null;
+    logger._lastDedupEntry = null;
+    _instance = null;
   }
 
   void error(String message, {String? url, String? traceId, String? errorType,

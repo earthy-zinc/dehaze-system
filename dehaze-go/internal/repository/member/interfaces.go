@@ -15,7 +15,7 @@ type IMemberRepository interface {
 	FindAllActive(ctx context.Context, excludeQuotaResetMonth *int, limit int) ([]model.SysMember, error)
 	FindExpiredNonGrowth(ctx context.Context, now time.Time) ([]model.SysMember, error)
 	FindExpiringBetween(ctx context.Context, start, end time.Time) ([]model.SysMember, error)
-	FindUserIDsByLevelCode(ctx context.Context, levelCode string) ([]int64, error)
+	FindUserIDsByLevelCodes(ctx context.Context, levelCodes []string) ([]int64, error)
 	Upsert(ctx context.Context, m *model.SysMember) error
 	UpdateLevel(ctx context.Context, userID int64, updates map[string]interface{}) error
 	UpdateGrowth(ctx context.Context, userID int64, growthValue int64) error

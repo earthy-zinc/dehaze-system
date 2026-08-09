@@ -81,6 +81,17 @@ public class PythonAlgorithmClient {
     }
 
     /**
+     * 调用图像特征分析服务：发送图像 URL → 返回 7 维结构化特征（供推荐模块使用）
+     * <p>
+     * Python 服务不可用时由 postWithRetry 抛出 BusinessException，不降级为伪特征，避免误导用户。
+     */
+    public JSONObject analyzeImage(String imageUrl) {
+        JSONObject body = new JSONObject();
+        body.set("imageUrl", imageUrl);
+        return pythonCallTimer.record(() -> postWithRetry(props.getAnalyzePath(), body.toString()));
+    }
+
+    /**
      * 查询预测任务状态（用于异步轮询）
      */
     public JSONObject getPredTaskStatus(Long taskId) {

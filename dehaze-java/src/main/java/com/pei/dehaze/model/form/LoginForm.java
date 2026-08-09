@@ -1,4 +1,4 @@
-package com.pei.dehaze.model.dto;
+package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

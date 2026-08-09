@@ -109,6 +109,7 @@ class UserRepository(BaseRepository[SysUser]):
         dept_ids: list[int] | None = None,
         create_time_start: str | None = None,
         create_time_end: str | None = None,
+        current_user=None,
     ) -> tuple[list[dict], int]:
         """
         分页查询用户列表（含部门名称、角色名称）
@@ -122,11 +123,13 @@ class UserRepository(BaseRepository[SysUser]):
             dept_ids: 部门 ID 列表（包含子部门）
             create_time_start: 创建时间开始
             create_time_end: 创建时间结束
+            current_user: 当前登录用户（用于行级数据权限过滤）
 
         Returns:
             (用户列表字典, 总数)
         """
         from app.models.entity.sys_dept import SysDept
+        from app.repository.data_scope import apply_data_scope
 
         base_query = (
             select(
@@ -166,6 +169,14 @@ class UserRepository(BaseRepository[SysUser]):
         # 部门筛选
         if dept_ids:
             base_query = base_query.where(SysUser.dept_id.in_(dept_ids))
+
+        # 行级数据权限过滤（与 Java/Go 端对齐）
+        if current_user is not None:
+            base_query = await apply_data_scope(
+                base_query, current_user, db,
+                dept_field=SysUser.dept_id,
+                creator_field=SysUser.create_by,
+            )
 
         # 创建时间范围
         if create_time_start:

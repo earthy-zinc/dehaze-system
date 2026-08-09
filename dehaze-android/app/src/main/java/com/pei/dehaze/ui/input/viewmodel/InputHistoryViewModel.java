@@ -11,10 +11,8 @@ import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryForm;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryQuery;
-import com.pei.dehaze.sdk.model.input_history.InputHistoryUpdateForm;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryVO;
 import com.pei.dehaze.sdk.model.input_history.InputSource;
-import com.pei.dehaze.sdk.model.input_history.SyncResultVO;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -27,7 +25,6 @@ public class InputHistoryViewModel extends BaseViewModel {
 
     private final MutableLiveData<List<InputHistoryVO>> historyList = new MutableLiveData<>();
     private final MutableLiveData<Long> total = new MutableLiveData<>(0L);
-    private final MutableLiveData<SyncResultVO> syncResult = new MutableLiveData<>();
     private final MutableLiveData<FileInfo> uploadedFile = new MutableLiveData<>();
 
     private int pageNum = 1;
@@ -44,16 +41,8 @@ public class InputHistoryViewModel extends BaseViewModel {
         return total;
     }
 
-    public LiveData<SyncResultVO> getSyncResult() {
-        return syncResult;
-    }
-
     public LiveData<FileInfo> getUploadedFile() {
         return uploadedFile;
-    }
-
-    public void clearSyncResult() {
-        syncResult.setValue(null);
     }
 
     public void clearUploadedFile() {
@@ -123,13 +112,6 @@ public class InputHistoryViewModel extends BaseViewModel {
         })));
     }
 
-    public void updateHistory(long id, InputHistoryUpdateForm form) {
-        InputHistoryAPI.updateHistory(id, form, RepositoryAdapters.wrap(withLoading(v -> {
-            operationResult.postValue("修改历史记录成功");
-            loadHistory();
-        })));
-    }
-
     public void deleteHistory(long id) {
         InputHistoryAPI.deleteHistory(id, RepositoryAdapters.wrap(withLoading(v -> {
             operationResult.postValue("删除历史记录成功");
@@ -149,10 +131,6 @@ public class InputHistoryViewModel extends BaseViewModel {
             operationResult.postValue("清空历史记录成功");
             loadHistory();
         })));
-    }
-
-    public void syncHistory(List<InputHistoryForm> items) {
-        InputHistoryAPI.syncHistory(items, RepositoryAdapters.wrap(withLoading(syncResult::postValue)));
     }
 
     public void uploadFile(File file) {

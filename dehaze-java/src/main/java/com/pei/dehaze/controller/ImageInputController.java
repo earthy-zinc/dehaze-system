@@ -5,7 +5,6 @@ import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.form.BatchDeleteForm;
 import com.pei.dehaze.model.form.HistoryForm;
-import com.pei.dehaze.model.form.HistoryUpdateForm;
 import com.pei.dehaze.model.query.HistoryQuery;
 import com.pei.dehaze.model.vo.InputHistoryVO;
 import com.pei.dehaze.service.SysInputHistoryService;
@@ -55,15 +54,6 @@ public class ImageInputController {
         return Result.success(id);
     }
 
-    @Operation(summary = "更新历史记录（如添加收藏）")
-    @PutMapping("/{id}")
-    public Result<Void> updateHistory(
-            @Parameter(description = "记录ID") @PathVariable Long id,
-            @RequestBody HistoryUpdateForm form) {
-        boolean result = historyService.updateHistory(id, form);
-        return Result.judge(result);
-    }
-
     @Operation(summary = "删除单条历史记录")
     @DeleteMapping("/{id}")
     public Result<Void> deleteHistory(
@@ -84,12 +74,5 @@ public class ImageInputController {
     public Result<Integer> clearAllHistory() {
         int count = historyService.clearAllHistory();
         return Result.success(count);
-    }
-
-    @Operation(summary = "同步本地与云端历史记录")
-    @PostMapping("/sync")
-    public Result<Integer> syncHistory() {
-        int result = historyService.syncHistory();
-        return Result.success(result);
     }
 }

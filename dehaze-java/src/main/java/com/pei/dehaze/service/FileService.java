@@ -1,6 +1,6 @@
 package com.pei.dehaze.service;
 
-import com.pei.dehaze.model.bo.FileBO;
+import com.pei.dehaze.model.dto.FileDTO;
 
 import java.io.InputStream;
 
@@ -33,12 +33,12 @@ public interface FileService {
     }
 
     /**
-     * 上传文件（基于 FileBO）。
+     * 上传文件（基于 FileDTO）。
      *
-     * @param fileBO 文件包装类
-     * @return 上传完成后的 FileBO（不设置 url，仅写 objectName + storage）
+     * @param fileDTO 文件包装类
+     * @return 上传完成后的 FileDTO（不设置 url，仅写 objectName + storage）
      */
-    FileBO uploadFile(FileBO fileBO);
+    FileDTO uploadFile(FileDTO fileDTO);
 
     /**
      * 上传文件（使用输入流）。

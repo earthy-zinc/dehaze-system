@@ -1,4 +1,4 @@
-package com.pei.dehaze.model.bo;
+package com.pei.dehaze.model.read;
 
 import com.pei.dehaze.common.enums.MenuTypeEnum;
 import lombok.Data;
@@ -9,7 +9,7 @@ import java.util.List;
  * 路由
  */
 @Data
-public class RouteBO {
+public class RouteRead {
 
     private Long id;
 

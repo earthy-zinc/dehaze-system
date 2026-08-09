@@ -433,7 +433,7 @@ flowchart LR
 | 营销 | `autoRenew` | 自动续费扣款 |
 | 消息 | `cleanupExpiredMessages` | 过期消息清理 |
 | 消息 | `refreshUnreadCountCache` | 未读数缓存刷新 |
-| 消息 | `processDelayedPush` | 延迟消息推送 |
+| 消息 | `processDelayedPush` | 延迟消息推送（Java 独有：DND 免打扰期间消息入 Redis 队列，DND 结束后批量补发；Go/Python 仅简单 WebSocket 推送，无此机制） |
 | 公告 | `sendScheduledAnnouncements` | 定时公告发送 |
 
 ## 九、配置管理

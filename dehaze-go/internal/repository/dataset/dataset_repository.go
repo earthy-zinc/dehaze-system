@@ -175,6 +175,15 @@ func (r *DatasetRepository) GetFormData(ctx context.Context, datasetID int64) (*
 	return &dataset, nil
 }
 
+func (r *DatasetRepository) ExistsByID(ctx context.Context, id int64) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.SysDataset{}).
+		Where("id = ? AND deleted = 0", id).
+		Count(&count).Error
+	return count > 0, err
+}
+
 func (r *DatasetRepository) Transaction(ctx context.Context, fn func(txRepo IDatasetRepository) error) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txRepo := NewDatasetRepository(tx)

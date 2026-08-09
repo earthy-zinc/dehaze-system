@@ -14,6 +14,7 @@ import (
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	orderrepo "github.com/earthyzinc/dehaze-go/internal/repository/order"
 	pkgsalerepo "github.com/earthyzinc/dehaze-go/internal/repository/pkgsale"
+	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
 	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
 	paymentsvc "github.com/earthyzinc/dehaze-go/internal/service/payment"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
@@ -32,8 +33,6 @@ const (
 	orderCreateLockTTL     = 5 * time.Second
 	paymentCallbackLockTTL = 30 * time.Second
 	autoRenewMaxFailCount  = 3
-
-	orderJobLockTTL = 5 * time.Minute
 )
 
 type OrderService struct {
@@ -45,11 +44,13 @@ type OrderService struct {
 	packageRepo    pkgsalerepo.IPackageRepository
 	couponRepo     pkgsalerepo.ICouponRepository
 	userCouponRepo pkgsalerepo.IUserCouponRepository
+	userRepo       userrepo.IUserRepository
 	memberRepo     memberrepo.IMemberRepository
 	benefitRepo    memberrepo.IMemberBenefitRepository
 	paymentSvc     paymentsvc.IPaymentChannelService
 	cache          types.ICache
 	auditLogSvc    *auditlogservice.AuditLogService
+	memberCacheInvalidator MemberCacheInvalidator
 }
 
 func NewOrderService(
@@ -61,26 +62,30 @@ func NewOrderService(
 	packageRepo pkgsalerepo.IPackageRepository,
 	couponRepo pkgsalerepo.ICouponRepository,
 	userCouponRepo pkgsalerepo.IUserCouponRepository,
+	userRepo userrepo.IUserRepository,
 	memberRepo memberrepo.IMemberRepository,
 	benefitRepo memberrepo.IMemberBenefitRepository,
 	paymentSvc paymentsvc.IPaymentChannelService,
 	cache types.ICache,
 	auditLogSvc *auditlogservice.AuditLogService,
+	memberCacheInvalidator MemberCacheInvalidator,
 ) *OrderService {
 	return &OrderService{
-		db:             db,
-		orderRepo:      orderRepo,
-		paymentRepo:    paymentRepo,
-		refundRepo:     refundRepo,
-		autoRenewRepo:  autoRenewRepo,
-		packageRepo:    packageRepo,
-		couponRepo:     couponRepo,
-		userCouponRepo: userCouponRepo,
-		memberRepo:     memberRepo,
-		benefitRepo:    benefitRepo,
-		paymentSvc:     paymentSvc,
-		cache:          cache,
-		auditLogSvc:    auditLogSvc,
+		db:                     db,
+		orderRepo:              orderRepo,
+		paymentRepo:            paymentRepo,
+		refundRepo:             refundRepo,
+		autoRenewRepo:          autoRenewRepo,
+		packageRepo:            packageRepo,
+		couponRepo:             couponRepo,
+		userCouponRepo:         userCouponRepo,
+		userRepo:               userRepo,
+		memberRepo:             memberRepo,
+		benefitRepo:            benefitRepo,
+		paymentSvc:             paymentSvc,
+		cache:                  cache,
+		auditLogSvc:            auditLogSvc,
+		memberCacheInvalidator: memberCacheInvalidator,
 	}
 }
 
@@ -96,7 +101,7 @@ func (s *OrderService) Create(ctx context.Context, userID int64, form *bo.OrderC
 		return nil, common.NewBizError(common.PACKAGE_OFF_SHELF, "套餐已下架")
 	}
 
-	lockKey := fmt.Sprintf("order:create:lock:%d:%d", userID, form.PackageID)
+	lockKey := OrderCreateLockKey(userID, form.PackageID)
 	if s.cache != nil {
 		token, ok, _ := s.cache.Lock(ctx, lockKey, orderCreateLockTTL)
 		if !ok {
@@ -298,14 +303,9 @@ func (s *OrderService) updateMemberAfterPaymentInTx(ctx context.Context, txMembe
 }
 
 func (s *OrderService) invalidateMemberCacheAfterPayment(ctx context.Context, userID int64, levelCode string) {
-	if s.cache == nil {
-		return
+	if s.memberCacheInvalidator != nil {
+		s.memberCacheInvalidator.InvalidateMemberCache(ctx, userID, levelCode)
 	}
-	_ = s.cache.Delete(ctx, fmt.Sprintf("member:profile:%d", userID))
-	_ = s.cache.Delete(ctx, fmt.Sprintf("member:level:%d", userID))
-	_ = s.cache.Delete(ctx, fmt.Sprintf("member:benefit:%s", levelCode))
-	_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", userID, "dehaze"))
-	_ = s.cache.Delete(ctx, fmt.Sprintf("member:quota:%d:%s", userID, "evaluate"))
 }
 
 func (s *OrderService) ListMy(ctx context.Context, userID int64, q *query.MyOrderQuery) (*vo.PageResult[vo.MyOrderVO], error) {
@@ -321,7 +321,7 @@ func (s *OrderService) ListMy(ctx context.Context, userID int64, q *query.MyOrde
 }
 
 func (s *OrderService) GetDetail(ctx context.Context, orderNo string) (*vo.OrderDetailVO, error) {
-	cacheKey := fmt.Sprintf("order:detail:%s", orderNo)
+	cacheKey := OrderDetailKey(orderNo)
 	if s.cache != nil {
 		if cached, err := s.cache.Get(ctx, cacheKey); err == nil && cached != "" {
 			var detail vo.OrderDetailVO
@@ -402,7 +402,7 @@ func (s *OrderService) invalidateOrderDetailCache(ctx context.Context, orderNo s
 	if s.cache == nil {
 		return
 	}
-	_ = s.cache.Delete(ctx, fmt.Sprintf("order:detail:%s", orderNo))
+	_ = s.cache.Delete(ctx, OrderDetailKey(orderNo))
 }
 
 func (s *OrderService) Cancel(ctx context.Context, orderNo string, reason string) error {
@@ -894,15 +894,6 @@ func (s *OrderService) GetStats(ctx context.Context, startTime, endTime string) 
 }
 
 func (s *OrderService) CancelExpiredOrders(ctx context.Context) error {
-	if s.cache != nil {
-		token, ok, _ := s.cache.Lock(ctx, "job:order:cancel_expired:lock", orderJobLockTTL)
-		if !ok {
-			logger.Debug("取消超时订单任务已被其他实例持有，跳过执行")
-			return nil
-		}
-		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:cancel_expired:lock", token) }()
-	}
-
 	list, err := s.orderRepo.FindPendingExpired(ctx, time.Now())
 	if err != nil {
 		return err
@@ -913,29 +904,29 @@ func (s *OrderService) CancelExpiredOrders(ctx context.Context) error {
 				logger.Warn("超时关单失败", zap.String("orderNo", o.OrderNo), zap.Error(closeErr))
 			}
 		}
-		_ = s.orderRepo.Update(ctx, o.ID, map[string]interface{}{
-			"status":        4,
-			"cancel_reason": "支付超时自动取消",
-		})
-		if o.CouponID != nil && *o.CouponID > 0 {
-			_ = s.userCouponRepo.Update(ctx, *o.CouponID, map[string]interface{}{
-				"status": 1,
-			})
+		if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			if err := tx.Model(&model.SysOrder{}).Where("id = ?", o.ID).Updates(map[string]interface{}{
+				"status":        4,
+				"cancel_reason": "支付超时自动取消",
+			}).Error; err != nil {
+				return err
+			}
+			if o.CouponID != nil && *o.CouponID > 0 {
+				if err := tx.Model(&model.SysUserCoupon{}).Where("id = ?", *o.CouponID).Updates(map[string]interface{}{
+					"status": 1,
+				}).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			logger.Error("取消超时订单失败", zap.String("orderNo", o.OrderNo), zap.Error(err))
 		}
 	}
 	return nil
 }
 
 func (s *OrderService) CompleteExpiredOrders(ctx context.Context) error {
-	if s.cache != nil {
-		token, ok, _ := s.cache.Lock(ctx, "job:order:complete_expired:lock", orderJobLockTTL)
-		if !ok {
-			logger.Debug("归档到期订单任务已被其他实例持有，跳过执行")
-			return nil
-		}
-		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:complete_expired:lock", token) }()
-	}
-
 	list, err := s.orderRepo.FindPaidExpired(ctx, time.Now())
 	if err != nil {
 		return err
@@ -950,15 +941,6 @@ func (s *OrderService) CompleteExpiredOrders(ctx context.Context) error {
 }
 
 func (s *OrderService) ProcessAutoRenewals(ctx context.Context) error {
-	if s.cache != nil {
-		token, ok, _ := s.cache.Lock(ctx, "job:order:auto_renew:lock", orderJobLockTTL)
-		if !ok {
-			logger.Debug("自动续费任务已被其他实例持有，跳过执行")
-			return nil
-		}
-		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:auto_renew:lock", token) }()
-	}
-
 	dueList, err := s.autoRenewRepo.FindDueRenewals(ctx, time.Now())
 	if err != nil {
 		return fmt.Errorf("查询到期自动续费记录失败: %w", err)
@@ -1160,15 +1142,6 @@ func (s *OrderService) HandlePaymentCallback(ctx context.Context, channel, order
 }
 
 func (s *OrderService) ExpireUserCoupons(ctx context.Context) error {
-	if s.cache != nil {
-		token, ok, _ := s.cache.Lock(ctx, "job:order:expire_coupons:lock", orderJobLockTTL)
-		if !ok {
-			logger.Debug("过期优惠券标记任务已被其他实例持有，跳过执行")
-			return nil
-		}
-		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:expire_coupons:lock", token) }()
-	}
-
 	list, err := s.userCouponRepo.FindExpired(ctx, time.Now())
 	if err != nil {
 		return err
@@ -1184,15 +1157,6 @@ func (s *OrderService) ExpireUserCoupons(ctx context.Context) error {
 }
 
 func (s *OrderService) RetryFailedRefunds(ctx context.Context) error {
-	if s.cache != nil {
-		token, ok, _ := s.cache.Lock(ctx, "job:order:refund_retry:lock", orderJobLockTTL)
-		if !ok {
-			logger.Debug("退款失败重试任务已被其他实例持有，跳过执行")
-			return nil
-		}
-		defer func() { _, _ = s.cache.Unlock(ctx, "job:order:refund_retry:lock", token) }()
-	}
-
 	maxRetryCount := 3
 	list, err := s.refundRepo.FindFailedRetryable(ctx, maxRetryCount)
 	if err != nil {
@@ -1320,16 +1284,7 @@ func (s *OrderService) toRefundRecordVO(ctx context.Context, r *model.SysRefundR
 }
 
 func (s *OrderService) findUsernameByUserID(ctx context.Context, userID int64) (string, error) {
-	var username string
-	err := s.db.WithContext(ctx).
-		Table("sys_user").
-		Where("id = ? AND deleted = 0", userID).
-		Select("username").
-		Scan(&username).Error
-	if err != nil {
-		return "", err
-	}
-	return username, nil
+	return s.userRepo.FindUsernameByID(ctx, userID)
 }
 
 func toMyOrderVO(o *model.SysOrder) vo.MyOrderVO {

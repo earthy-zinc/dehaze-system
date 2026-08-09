@@ -5,7 +5,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.mapper.SysRoleMenuMapper;
-import com.pei.dehaze.model.bo.RolePermsBO;
+import com.pei.dehaze.model.read.RolePermsRead;
 import com.pei.dehaze.model.entity.SysRoleMenu;
 import com.pei.dehaze.service.SysRoleMenuService;
 import jakarta.annotation.PostConstruct;
@@ -62,7 +62,7 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
             stringRedisTemplate.delete(keys);
         }
 
-        List<RolePermsBO> list = this.baseMapper.getRolePermsList(null);
+        List<RolePermsRead> list = this.baseMapper.getRolePermsList(null);
         if (CollUtil.isNotEmpty(list)) {
             list.forEach(item -> {
                 String roleCode = item.getRoleCode();
@@ -79,9 +79,9 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
     public void refreshRolePermsCache(String roleCode) {
         stringRedisTemplate.delete(rolePermsKey(roleCode));
 
-        List<RolePermsBO> list = this.baseMapper.getRolePermsList(roleCode);
+        List<RolePermsRead> list = this.baseMapper.getRolePermsList(roleCode);
         if (CollUtil.isNotEmpty(list)) {
-            RolePermsBO rolePerms = list.get(0);
+            RolePermsRead rolePerms = list.get(0);
             if (rolePerms == null) {
                 return;
             }

@@ -185,9 +185,9 @@ API 类采用静态方法风格（如 `AuthAPI.login(data)`、`UserAPI.list(para
 | 原则 | 说明 |
 |------|------|
 | 多 transport | Logger 单例按需组装 transport（Console / Remote），SDK 不感知 dev/prod，由应用端按构建产物组装 |
-| trace_id 透传 | 请求拦截器注入 `X-Trace-Id`，响应拦截器回读对齐，与后端端到端串联 |
+| trace_id 透传 | 请求拦截器生成 trace_id 注入 `X-Trace-Id` 请求头与 `config.metadata.traceId`（请求级绑定，不写全局变量）；响应拦截器回读响应头对齐到 `config.metadata.traceId`；`reportApiError` / `reportSlowRequest` 从 `config.metadata.traceId` 读取显式传入 `fields.trace_id`。非请求日志（全局错误/性能日志）`trace_id` 留空 |
 | 采样限流 | ERROR 100% / WARN 50% / INFO 不上报；单设备 60s 内最多 20 条（参数见 [07-日志架构设计.md §3.5.4](../../02-系统架构/07-日志架构设计.md)） |
-| ERROR 去重 | 相同 `message + error_stack` fingerprint 在 10s 窗口内只记录一次，防止渲染错误每帧触发日志风暴 |
+| ERROR 去重 | 相同 `message + error_stack` fingerprint 在 10s 窗口内只输出首条，窗口结束时补发汇总条目（`dedup_count` 标记总次数），防止渲染错误每帧触发日志风暴且不丢失次数信息 |
 | 不暴露 user_id | 前端 SDK 不上报 `user_id`，由三端后端从会话统一解析注入（避免前端伪造身份） |
 | 崩溃补报 | 生产环境 Remote + 本地存储双写，刷新/重启后从本地队列恢复补报 |
 
@@ -208,7 +208,7 @@ API 类采用静态方法风格（如 `AuthAPI.login(data)`、`UserAPI.list(para
 | `ConsoleTransport` / `RemoteTransport` | 类 | transport 实现，应用端按需组装 |
 | `ErrorBoundary` | 函数 | React 错误边界组件，依赖 `Logger.install({ react })` 注入的 React 实例；未注入时直接渲染 children |
 | `bindReact` | 函数 | 显式绑定 React 实例（替代 install 时注入） |
-| `generateTraceId` / `getCurrentTraceId` / `setCurrentTraceId` | 函数 | trace_id 工具，供非 SDK 请求链路手动管理 |
+| `generateTraceId` / `getCurrentTraceId` / `setCurrentTraceId` | 函数 | trace_id 工具，仅供宿主在非 SDK 请求链路（WebSocket、fetch 直调）中手动管理；SDK 内部 Axios 链路使用 `config.metadata.traceId` 请求级绑定，不再读写全局变量 |
 | `defaultStorage` | 函数 | 默认存储适配器（Web 用 localStorage） |
 | `LogEntry` / `LogLevel` / `LoggerStorage` / `LogTransport` / `InstallConfig` | 类型 | 日志相关类型 |
 
@@ -224,7 +224,7 @@ API 类采用静态方法风格（如 `AuthAPI.login(data)`、`UserAPI.list(para
 | `rateLimitMax?` | number | 单设备限流窗口内最大上报条数，默认 20 |
 | `rateLimitWindowMs?` | number | 限流窗口毫秒，默认 60000 |
 
-错误日志字段：`error_type`（js/promise/api/resource）、`error_source`、`error_stack`；API 失败日志含 `method/path/status/duration/code`；性能日志含 `metric_name/metric_value/navigation_type/resource_url`。
+错误日志字段：`error_type`（js/promise/api/resource）、`error_source`、`error_stack`；API 失败日志含 `method/path/status/duration/code` + `trace_id`（从 `config.metadata.traceId` 读取）；性能日志含 `metric_name/metric_value/navigation_type/resource_url`（`trace_id` 留空，不属于请求链路）；全局错误日志（`window.onerror`/`unhandledrejection`/资源 error）`trace_id` 留空；ERROR 去重汇总条目含 `dedup_count`（10s 窗口内相同 fingerprint 总命中次数，>1），`trace_id` 沿用首条。
 
 ---
 

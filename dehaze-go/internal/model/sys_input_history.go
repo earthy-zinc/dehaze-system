@@ -1,7 +1,7 @@
 package model
 
 // SysInputHistory 图像输入历史记录表
-// 对齐 config/sql/schema.sql 中 sys_input_history 表定义
+// 对齐 config/sql/schema/sys_input_history.sql 表定义
 type SysInputHistory struct {
 	BaseModel
 	UserID               int64   `gorm:"column:user_id;type:bigint;not null;comment:用户ID" json:"userId"`
@@ -13,9 +13,8 @@ type SysInputHistory struct {
 	AlgorithmName        *string `gorm:"column:algorithm_name;type:varchar(100);comment:算法名称（冗余）" json:"algorithmName"`
 	AlgorithmParams      *string `gorm:"column:algorithm_params;type:json;comment:算法参数（JSON）" json:"algorithmParams"`
 	ProcessingTime       *int    `gorm:"column:processing_time;type:int;comment:处理耗时（毫秒）" json:"processingTime"`
-	Status               *int8   `gorm:"column:status;type:tinyint;default:3;comment:处理状态（1=成功，2=失败，3=处理中）" json:"status"`
+	Status               *int8   `gorm:"column:status;type:tinyint;default:3;comment:处理状态（1=成功，2=失败，3=处理中），创建时确定，不随处理进度更新" json:"status"`
 	InputSource          *string `gorm:"column:input_source;type:varchar(20);comment:图片来源（upload/camera/sample）" json:"inputSource"`
-	SyncStatus           *int8   `gorm:"column:sync_status;type:tinyint;default:0;comment:同步状态（0=未同步，1=已同步）" json:"syncStatus"`
 }
 
 // TableName 指定表名

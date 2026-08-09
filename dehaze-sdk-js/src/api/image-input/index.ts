@@ -1,6 +1,6 @@
 import { PageResult } from "@/types";
 import request from "@/utils/request";
-import { HistoryForm, HistoryQuery, HistoryUpdateForm, InputHistoryVO } from "./model";
+import { HistoryForm, HistoryQuery, InputHistoryVO } from "./model";
 
 class ImageInputHistoryAPI {
   /** 分页查询历史记录 */
@@ -29,15 +29,6 @@ class ImageInputHistoryAPI {
     });
   }
 
-  /** 更新历史记录 */
-  static update(id: number, data: HistoryUpdateForm) {
-    return request({
-      url: `/api/v1/image-input/history/${id}`,
-      method: "put",
-      data,
-    });
-  }
-
   /** 删除单条历史记录 */
   static deleteById(id: number) {
     return request({
@@ -60,14 +51,6 @@ class ImageInputHistoryAPI {
     return request<number>({
       url: "/api/v1/image-input/history/clear",
       method: "delete",
-    });
-  }
-
-  /** 同步本地与云端历史记录 */
-  static sync() {
-    return request<number>({
-      url: "/api/v1/image-input/history/sync",
-      method: "post",
     });
   }
 }

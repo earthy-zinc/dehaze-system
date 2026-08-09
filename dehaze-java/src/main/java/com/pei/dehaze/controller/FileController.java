@@ -5,9 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
-import com.pei.dehaze.common.util.FileBOFactory;
+import com.pei.dehaze.common.util.FileDTOFactory;
 import com.pei.dehaze.common.util.FilePathBuilder;
-import com.pei.dehaze.model.bo.FileBO;
+import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.service.SysFileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,7 +37,7 @@ public class FileController {
 
     private final SysFileService sysFileService;
     private final FilePathBuilder filePathBuilder;
-    private final FileBOFactory fileBOFactory;
+    private final FileDTOFactory fileDTOFactory;
 
     @PostMapping
     @Operation(summary = "文件上传")
@@ -46,8 +46,8 @@ public class FileController {
             @Parameter(description = "模型id") @RequestParam(required = false) Long modelId
     ) {
         String uploadPath = filePathBuilder.buildUploadPath();
-        FileBO fileBO = fileBOFactory.createFileBO(file, uploadPath);
-        SysFile fileInfo = sysFileService.saveFile(fileBO);
+        FileDTO fileDTO = fileDTOFactory.createFileDTO(file, uploadPath);
+        SysFile fileInfo = sysFileService.saveFile(fileDTO);
         if (modelId != null) {
             SysFile wpxFile = sysFileService.getWpxFile(fileInfo, modelId);
             sysFileService.fillUrl(wpxFile);

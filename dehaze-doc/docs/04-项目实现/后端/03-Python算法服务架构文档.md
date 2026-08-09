@@ -163,6 +163,10 @@ flowchart LR
     Cache --> Return3["返回结果"]
 ```
 
+**推理线程池**：PyTorch 推理为 CPU/GPU 密集型同步操作，通过 `ThreadPoolExecutor` 在事件循环外执行以避免阻塞。并发数由 `INFERENCE_THREAD_POOL_SIZE` 配置项控制（默认 2），可按 GPU 显存/卡数调整（单卡 24GB 建议 1-2），无需改代码即可适配不同部署环境。
+
+**后台任务追踪**：预测（`prediction_service`）、评估（`evaluation_service`）、对比（`compare_service`）三个核心推理服务在提交 `asyncio.create_task` 后台任务后，均注册到 `TaskTracker`（`task_id` 形如 `pred:{log_id}` / `eval:{log_id}` / `compare:{task_id}`），与导出/下载任务统一纳入优雅关闭与全局任务视图。注册失败不影响主流程（降级为日志告警），与 `task_service` 行为一致。`TaskTracker.initiate_shutdown()` 在 30s 超时窗口内等待这些推理任务完成，避免 Worker 崩溃或重启时结果文件半写入。
+
 ### 3.3 预测流程插件化（拦截器链）
 
 预测主流程通过责任链模式支持可插拔拦截器：
@@ -246,7 +250,7 @@ flowchart TB
 | 分辨率 | 5% | 尺寸归一化分类（标清/高清/超清） |
 | 噪声水平 | 10% | 局部方差估计 + 频域分析 |
 
-服务通过 HTTP 接口接收图像 URL，内部复用 PyTorch 推理管线（`run_in_executor` 避免阻塞事件循环），特征分析结果按图像 MD5 缓存 1 小时。Java/Go 后端的 ImageAnalysisService 通过 HTTP 调用此服务。
+服务通过 HTTP 接口接收图像 URL，内部复用 PyTorch 推理管线（`run_in_executor` 避免阻塞事件循环），特征分析结果按图像 MD5 缓存 1 小时。Java 后端的 `RecommendationServiceImpl.analyze` 通过 `PythonAlgorithmClient.analyzeImage`（POST `/api/v1/recommendations/analyze`，复用算法服务 HTTP 客户端的重试/熔断/幂等机制）调用此服务获取真实特征；Go 后端的 `RecommendationService.Analyze` 通过 `pkg/algorithm.Client.AnalyzeImage` 调用同一接口。两端在 Python 服务不可用时均返回错误，不降级为伪特征。
 
 **放在 Python 端而非 Java/Go 的理由**：图像特征分析依赖 PyTorch 预训练模型（场景分类）和 OpenCV 图像处理（暗通道、边缘检测、直方图），这些库为 Python 生态原生；复用已有推理管线和 GPU 资源，避免在 Java/Go 端重复引入图像处理依赖。
 
@@ -318,6 +322,27 @@ flowchart LR
 | 限流 | RateLimitMiddleware（Redis 固定窗口） |
 | 防重复提交 | AntiRepeatMiddleware（ASGI 中间件，基于 user_id+method+uri+body_hash，Redis SET NX EX，默认 5 秒；排除文件上传/数据集/数据项等已有自身幂等机制的写接口） |
 
+### 5.1 行级数据权限（DataScope）
+
+与 Java（MyBatis-Plus `DataPermissionInterceptor`）、Go（GORM `dataScopeCallback`）对齐，Python 端基于 SQLAlchemy 2.0 异步 ORM 实现**显式过滤**方案：在需要数据权限的 Repository 查询中显式调用 `apply_data_scope(stmt, user, db, dept_field=..., creator_field=...)` 按当前用户 `data_scope` 追加 `WHERE` 条件。未采用 SQLAlchemy event 自动改写，因异步 Session 下 event 回调难以可靠获取当前请求的用户上下文（ContextVar 在 event 回调中不可靠）。
+
+**data_scope 取值与过滤行为**（与 `sys_role.data_scope` 注释、Go `DataScope*` 常量一致）：
+
+| 取值 | 含义 | 过滤条件 |
+|:----:|------|---------|
+| `NULL` / `0` | 全部数据 | 原样返回（ROOT 用户始终跳过过滤） |
+| `1` | 部门及子部门 | `WHERE dept_field IN (本部门及子部门ID)`，子部门ID由 `dept_repository.get_children_ids` 查询 |
+| `2` | 本部门 | `WHERE dept_field == user.dept_id`；用户无部门时返回空集 |
+| `3` | 本人 | `WHERE creator_field == user.id` |
+
+**调用约定**：
+
+- Repository 查询方法新增 `current_user` 参数，由 Service 层从 `Depends(get_current_user)` 获取并透传
+- `dept_field` 指向业务表的部门字段（如 `SysUser.dept_id`）；无部门字段的表（如订单、反馈）通过 JOIN `sys_user` 取 `dept_id` 实现"本部门"过滤，"本人"过滤使用 `creator_field`（如 `SysOrder.user_id`）
+- 未知 `data_scope` 取值保守返回空集（`WHERE false()`）
+
+**已接入的查询清单**：用户分页（`user_repository.get_page`）、订单分页（`order_repository.get_page`）。新增业务查询如涉及多租户可见性，须按同样方式接入 `apply_data_scope`。
+
 ## 六、数据访问层
 
 | 组件 | 选型 | 说明 |
@@ -381,15 +406,29 @@ Redis 弹性机制：
 
 ## 八、定时任务
 
-通过 pyxxl (XXL-Job Python 执行器) 与 Java/Go 端共享调度中心：
+通过 pyxxl (XXL-Job Python 执行器) 与 Java/Go 端共享调度中心，handler 命名与 Java/Go 端对齐（`autoRenew`/`resetMonthlyQuota` 等三端统一）：
 
-| 任务名 | 功能 |
-|--------|------|
-| `cleanupExpiredTasks` | 删除过期任务，清理 Redis 缓存 |
-| `cleanupStuckTasks` | 将超过 24h 的异常任务标记为 failed |
-| `modelHealthCheck` | 检查 GPU 可用性/显存使用率、DB/Redis 连接 |
-| `cleanupOrphanFiles` | 清理 MinIO 中无数据库记录关联的孤儿文件 |
-| `cleanupTempFiles` | 清理临时目录中过期的临时文件 |
+| 任务名 | 功能 | 三端共有 |
+|--------|------|:--------:|
+| `cleanupExpiredTasks` | 删除过期任务，清理 Redis 缓存 | ✅ |
+| `cleanupStuckTasks` | 将超过 30min 的 processing、24h 的 pending 异常任务标记为 failed | ✅ |
+| `cleanupStuckPredEvalLogs` | 回收预测/评估僵尸任务（超 10min 未更新） | ✅ |
+| `expireOrders` | 待支付订单超时自动取消，释放锁定优惠券 | ✅ |
+| `completeExpiredOrders` | 已支付订单到期归档 | ✅ |
+| `expireUserCoupons` | 用户优惠券过期失效 | ✅ |
+| `retryFailedRefunds` | 退款失败记录重试（上限 3 次） | ✅ |
+| `autoRenew` | 自动续费扣款（balance/wechat/alipay） | ✅ |
+| `resetMonthlyQuota` | 每月 1 日重置会员月度配额 | ✅ |
+| `processExpiredMembers` | 会员过期降级（按成长值重算等级） | ✅ |
+| `sendExpireReminders` | 会员到期前 7/3/1 天推送续费提醒 | ✅ |
+| `sendScheduledAnnouncements` | 发送定时公告 | ✅ |
+| `cleanupExpiredMessages` | 清理过期消息（分批 500 条） | ✅ |
+| `refreshUnreadCountCache` | 未读数缓存全量刷新 | ✅ |
+| `modelHealthCheck` | 检查 GPU 可用性/显存使用率、DB/Redis 连接 | Python 专属 |
+| `cleanupOrphanFiles` | 清理 MinIO 中无数据库记录关联的孤儿文件 | Python 专属 |
+| `cleanupTempFiles` | 清理临时目录中过期的临时文件 | Python 专属 |
+
+> 共 17 个 handler（14 个三端共有 + 3 个 Python 专属运维任务）。Java 独有的 `processDelayedPush`（DND 免打扰延迟推送）Python 端未实现，属独立架构差异（见 [Java 改造计划 §2.1](../../05-改造计划/Java后端架构改造计划.md)）。
 
 ```mermaid
 flowchart LR
@@ -398,11 +437,8 @@ flowchart LR
     end
 
     subgraph PythonExecutor["dehaze-python Executor (port: 9998)"]
-        P1["cleanupExpiredTasks"]
-        P2["cleanupStuckTasks"]
-        P3["modelHealthCheck"]
-        P4["cleanupOrphanFiles"]
-        P5["cleanupTempFiles"]
+        P1["三端共有 Job x14"]
+        P2["Python 专属 Job x3"]
     end
 
     Scheduler --> PythonExecutor
@@ -478,7 +514,7 @@ sequenceDiagram
 | ORM | SQLAlchemy 2.0 (异步) | MyBatis-Plus | GORM | 功能对等 |
 | 缓存 | Redis + local_cache L1 | Spring Cache + 多级 (Caffeine L1 + Redis L2) | 多级缓存 (gkit L1 + Redis) | 已对齐 |
 | 消息队列 | aio-pika RabbitMQ (MQ优先+fallback) | RabbitMQ | RabbitMQ | 共享 Exchange/Queue |
-| 定时任务 | pyxxl XXL-Job (5 个任务) | @Scheduled + XXL-Job | Ticker + XXL-Job | 共享 Admin |
+| 定时任务 | pyxxl XXL-Job (17 个任务) | @XxlJob (15 个) | XXL-Job (14 个) | 共享 Admin，handler 命名统一 |
 | 日志 | Python logging + JSON | Logback | Zap | 格式/级别统一 |
 | 认证 | Redis Session | Spring Security + Session | 自研中间件 + Session | Session 机制互通 |
 | 权限 | RBAC (Depends + @require_permission) | RBAC (@PreAuthorize) | RBAC (中间件) | 权限标识一致 |

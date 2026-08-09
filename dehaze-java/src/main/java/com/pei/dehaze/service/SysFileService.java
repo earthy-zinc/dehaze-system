@@ -1,7 +1,7 @@
 package com.pei.dehaze.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.pei.dehaze.model.bo.FileBO;
+import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.model.entity.SysFile;
 
 import java.io.InputStream;
@@ -23,19 +23,19 @@ public interface SysFileService extends IService<SysFile> {
     /**
      * 保存文件，并记录到数据库中
      *
-     * @param fileBO
+     * @param fileDTO
      * @return
      */
-    SysFile saveFile(FileBO fileBO);
+    SysFile saveFile(FileDTO fileDTO);
 
     /**
      * 仅创建文件记录（不上传到对象存储），用于 nginx 直服的数据集文件
      * MD5 去重：已存在则直接返回
      *
-     * @param fileBO 文件信息（objectName + storage 已设置）
+     * @param fileDTO 文件信息（objectName + storage 已设置）
      * @return 文件记录
      */
-    SysFile saveFileRecord(FileBO fileBO);
+    SysFile saveFileRecord(FileDTO fileDTO);
 
     /**
      * @param oldFile 源文件信息

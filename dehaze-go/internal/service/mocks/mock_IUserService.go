@@ -536,6 +536,74 @@ func (_c *MockIUserService_Login_Call) RunAndReturn(run func(context.Context, *m
 	return _c
 }
 
+// Register provides a mock function with given fields: ctx, username, nickname, password
+func (_m *MockIUserService) Register(ctx context.Context, username string, nickname string, password string) (*model.SysUser, int8, error) {
+	ret := _m.Called(ctx, username, nickname, password)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Register")
+	}
+
+	var r0 *model.SysUser
+	var r1 int8
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) (*model.SysUser, int8, error)); ok {
+		return rf(ctx, username, nickname, password)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) *model.SysUser); ok {
+		r0 = rf(ctx, username, nickname, password)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.SysUser)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) int8); ok {
+		r1 = rf(ctx, username, nickname, password)
+	} else {
+		r1 = ret.Get(1).(int8)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, string, string, string) error); ok {
+		r2 = rf(ctx, username, nickname, password)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockIUserService_Register_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Register'
+type MockIUserService_Register_Call struct {
+	*mock.Call
+}
+
+// Register is a helper method to define mock.On call
+//   - ctx context.Context
+//   - username string
+//   - nickname string
+//   - password string
+func (_e *MockIUserService_Expecter) Register(ctx interface{}, username interface{}, nickname interface{}, password interface{}) *MockIUserService_Register_Call {
+	return &MockIUserService_Register_Call{Call: _e.mock.On("Register", ctx, username, nickname, password)}
+}
+
+func (_c *MockIUserService_Register_Call) Run(run func(ctx context.Context, username string, nickname string, password string)) *MockIUserService_Register_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *MockIUserService_Register_Call) Return(_a0 *model.SysUser, _a1 int8, _a2 error) *MockIUserService_Register_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockIUserService_Register_Call) RunAndReturn(run func(context.Context, string, string, string) (*model.SysUser, int8, error)) *MockIUserService_Register_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ResetPassword provides a mock function with given fields: ctx, id
 func (_m *MockIUserService) ResetPassword(ctx context.Context, id int64) error {
 	ret := _m.Called(ctx, id)

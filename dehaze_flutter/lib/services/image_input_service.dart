@@ -82,12 +82,4 @@ class ImageInputService {
       ApiConstants.imageInputHistoryClear,
     );
   }
-
-  /// 同步本地与云端历史记录
-  Future<void> sync(ImageInputHistorySyncForm form) async {
-    await _dio.post<Map<String, dynamic>>(
-      ApiConstants.imageInputHistorySync,
-      data: form.toJson(),
-    );
-  }
 }

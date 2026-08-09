@@ -45,6 +45,9 @@ public class AlgorithmProperties {
     /** 评估端点路径 */
     private String evaluatePath = "/api/v1/evaluation";
 
+    /** 图像特征分析端点路径（供推荐模块调用） */
+    private String analyzePath = "/api/v1/recommendations/analyze";
+
     /** 服务间调用 API Key（M2M 认证） */
     private String apiKey;
 }

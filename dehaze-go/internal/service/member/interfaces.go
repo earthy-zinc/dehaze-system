@@ -39,4 +39,5 @@ type IMemberService interface {
 	SendExpireReminders(ctx context.Context) error
 	GetLevelCode(ctx context.Context, userID int64) (string, error)
 	GetBatchLimit(ctx context.Context, levelCode string) (int, error)
+	InitDefaultMember(ctx context.Context, userID int64) error
 }

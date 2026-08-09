@@ -33,12 +33,6 @@ export const getHistoryById = (id: number) => ImageInputHistoryAPI.getById(id);
 export const createHistoryRecord = (data: HistoryForm) =>
   ImageInputHistoryAPI.create(data);
 
-/** 更新历史记录（如收藏） */
-export const updateHistoryRecord = (
-  id: number,
-  data: { isFavorite?: boolean }
-) => ImageInputHistoryAPI.update(id, data);
-
 /** 删除单条历史记录 */
 export const deleteHistoryRecord = (id: number) =>
   ImageInputHistoryAPI.deleteById(id);

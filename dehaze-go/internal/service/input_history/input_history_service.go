@@ -51,21 +51,6 @@ func (s *InputHistoryService) Create(ctx context.Context, history *model.SysInpu
 	return s.repo.Create(ctx, history)
 }
 
-// Update 更新历史记录
-func (s *InputHistoryService) Update(ctx context.Context, id, userID int64, updates map[string]interface{}) error {
-	history, err := s.repo.FindByID(ctx, id)
-	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "查询历史记录失败", err)
-	}
-	if history == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "历史记录不存在")
-	}
-	if history.UserID != userID {
-		return common.NewBizError(common.OPERATION_NOT_ALLOW, "无权操作他人的历史记录")
-	}
-	return s.repo.Update(ctx, history)
-}
-
 // Delete 删除单条历史记录（校验归属，幂等：记录不存在时静默成功）
 func (s *InputHistoryService) Delete(ctx context.Context, id, userID int64) error {
 	history, err := s.repo.FindByID(ctx, id)

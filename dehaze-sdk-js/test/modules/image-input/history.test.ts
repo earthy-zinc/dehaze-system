@@ -1,4 +1,4 @@
-import { ImageInputHistoryAPI, HistoryForm, HistoryUpdateForm } from "../../../index";
+import { ImageInputHistoryAPI, HistoryForm } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 
 describe("图像输入历史记录 API 测试", () => {
@@ -134,14 +134,6 @@ describe("图像输入历史记录 API 测试", () => {
     });
   });
 
-  describe("PUT /api/v1/image-input/history/{id} - 更新记录", () => {
-    test("正向测试：空表单更新应成功", async () => {
-      expect(createdIds.length).toBeGreaterThan(0);
-
-      await ImageInputHistoryAPI.update(createdIds[0]!, {});
-    });
-  });
-
   describe("DELETE /api/v1/image-input/history/{id} - 删除记录", () => {
     test("正向测试：删除单条历史记录", async () => {
       // 创建一条用于删除的记录
@@ -193,14 +185,6 @@ describe("图像输入历史记录 API 测试", () => {
           "ERR_BAD_REQUEST",
         ]);
       }
-    });
-  });
-
-  describe("POST /api/v1/image-input/history/sync - 同步", () => {
-    test("正向测试：触发历史记录同步", async () => {
-      const result = await ImageInputHistoryAPI.sync();
-      expect(result).toBeDefined();
-      expect(typeof result).toBe("number");
     });
   });
 

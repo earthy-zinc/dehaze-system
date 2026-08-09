@@ -15,7 +15,7 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.MenuConverter;
 import com.pei.dehaze.mapper.SysMenuMapper;
-import com.pei.dehaze.model.bo.RouteBO;
+import com.pei.dehaze.model.read.RouteRead;
 import com.pei.dehaze.model.entity.SysMenu;
 import com.pei.dehaze.model.entity.SysRole;
 import com.pei.dehaze.model.entity.SysRoleMenu;
@@ -187,9 +187,9 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         if (cached != null) {
             return JSONUtil.parseArray(cached).toList(RouteVO.class);
         }
-        List<RouteBO> menuList = this.baseMapper.listRoutes();
-        Map<Long, List<RouteBO>> parentToChildrenMap = menuList.stream()
-                .collect(Collectors.groupingBy(RouteBO::getParentId));
+        List<RouteRead> menuList = this.baseMapper.listRoutes();
+        Map<Long, List<RouteRead>> parentToChildrenMap = menuList.stream()
+                .collect(Collectors.groupingBy(RouteRead::getParentId));
         List<RouteVO> routes = buildRoutes(SystemConstants.ROOT_NODE_ID, parentToChildrenMap);
         stringRedisTemplate.opsForValue().set(MENU_ROUTES_KEY, JSONUtil.toJsonStr(routes), MENU_CACHE_TTL);
         return routes;
@@ -201,10 +201,10 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @param parentId           父级ID
      * @param parentToChildrenMap 父级ID → 子路由列表 Map（O(1)查找）
      */
-    private List<RouteVO> buildRoutes(Long parentId, Map<Long, List<RouteBO>> parentToChildrenMap) {
+    private List<RouteVO> buildRoutes(Long parentId, Map<Long, List<RouteRead>> parentToChildrenMap) {
         List<RouteVO> routeList = new ArrayList<>();
-        List<RouteBO> children = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
-        for (RouteBO menu : children) {
+        List<RouteRead> children = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
+        for (RouteRead menu : children) {
             RouteVO routeVO = toRouteVo(menu);
             List<RouteVO> subRoutes = buildRoutes(menu.getId(), parentToChildrenMap);
             if (!subRoutes.isEmpty()) {
@@ -237,29 +237,29 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     }
 
     /**
-     * 根据RouteBO创建RouteVO
+     * 根据RouteRead创建RouteVO
      */
-    private RouteVO toRouteVo(RouteBO routeBO) {
+    private RouteVO toRouteVo(RouteRead routeRead) {
         RouteVO routeVO = new RouteVO();
-        String routeName = StringUtils.capitalize(CharSequenceUtil.toCamelCase(routeBO.getPath(), '-'));  // 路由 name 需要驼峰，首字母大写
+        String routeName = StringUtils.capitalize(CharSequenceUtil.toCamelCase(routeRead.getPath(), '-'));  // 路由 name 需要驼峰，首字母大写
         routeVO.setName(routeName); // 根据name路由跳转 this.$router.push({name:xxx})
-        routeVO.setPath(routeBO.getPath()); // 根据path路由跳转 this.$router.push({path:xxx})
-        routeVO.setRedirect(routeBO.getRedirect());
-        routeVO.setComponent(routeBO.getComponent());
+        routeVO.setPath(routeRead.getPath()); // 根据path路由跳转 this.$router.push({path:xxx})
+        routeVO.setRedirect(routeRead.getRedirect());
+        routeVO.setComponent(routeRead.getComponent());
 
         RouteVO.Meta meta = new RouteVO.Meta();
-        meta.setTitle(routeBO.getName());
-        meta.setIcon(routeBO.getIcon());
-        meta.setRoles(routeBO.getRoles());
-        meta.setHidden(StatusEnum.DISABLE.getValue().equals(routeBO.getVisible()));
+        meta.setTitle(routeRead.getName());
+        meta.setIcon(routeRead.getIcon());
+        meta.setRoles(routeRead.getRoles());
+        meta.setHidden(StatusEnum.DISABLE.getValue().equals(routeRead.getVisible()));
         // 【菜单】是否开启页面缓存
-        if (MenuTypeEnum.MENU.equals(routeBO.getType())
-                && ObjectUtil.equals(routeBO.getKeepAlive(), 1)) {
+        if (MenuTypeEnum.MENU.equals(routeRead.getType())
+                && ObjectUtil.equals(routeRead.getKeepAlive(), 1)) {
             meta.setKeepAlive(true);
         }
         // 【目录】只有一个子路由是否始终显示
-        if (MenuTypeEnum.CATALOG.equals(routeBO.getType())
-                && ObjectUtil.equals(routeBO.getAlwaysShow(), 1)) {
+        if (MenuTypeEnum.CATALOG.equals(routeRead.getType())
+                && ObjectUtil.equals(routeRead.getAlwaysShow(), 1)) {
             meta.setAlwaysShow(true);
         }
 

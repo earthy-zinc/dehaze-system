@@ -269,4 +269,34 @@ func (r *RatingRepository) GetTodayLowRatingCounts(ctx context.Context) (int64, 
 	return lowCount, totalCount, nil
 }
 
+func (r *RatingRepository) GetStatsByAlgorithmID(ctx context.Context, algorithmID int64) (int64, float64, map[int8]int64, error) {
+	type row struct {
+		Rating int8  `gorm:"column:rating"`
+		Count  int64 `gorm:"column:count"`
+	}
+	var rows []row
+	err := r.db.WithContext(ctx).
+		Model(&model.SysRating{}).
+		Select("rating, COUNT(*) as count").
+		Where("algorithm_id = ? AND is_hidden = 0 AND deleted = 0", algorithmID).
+		Group("rating").
+		Scan(&rows).Error
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	var totalCount int64
+	var totalScore float64
+	dist := make(map[int8]int64)
+	for _, r := range rows {
+		dist[r.Rating] = r.Count
+		totalCount += r.Count
+		totalScore += float64(r.Rating) * float64(r.Count)
+	}
+	if totalCount == 0 {
+		return 0, 0, dist, nil
+	}
+	avg := totalScore / float64(totalCount)
+	return totalCount, avg, dist, nil
+}
+
 var _ IRatingRepository = (*RatingRepository)(nil)

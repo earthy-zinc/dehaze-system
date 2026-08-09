@@ -75,7 +75,9 @@ class ApiKeyAuthMiddleware(BaseHTTPMiddleware):
 
         roles = await user_repository.get_user_role_codes(db, user.id)
         redis = await get_redis_client()
-        data_scope = await role_repository.get_maximum_data_scope(db, roles) if redis else 0
+        # Redis 不可用时降级为最小权限：data_scope=1（仅本人）、perms 为空集，
+        # 与 perms 的降级方向保持一致，避免 Redis 故障期间获得最大数据权限
+        data_scope = await role_repository.get_maximum_data_scope(db, roles) if redis else 1
         perms = await MenuService.list_role_perms(db, redis, set(roles)) if redis else set()
 
         # 更新最后使用时间

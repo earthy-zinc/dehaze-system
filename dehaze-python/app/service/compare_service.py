@@ -73,13 +73,25 @@ class CompareService:
 
         # 提交异步任务
         loop = asyncio.get_running_loop()
-        loop.create_task(self._generate_async(
+        background_task = loop.create_task(self._generate_async(
             task_id=task_id,
             algorithm_id=algorithm_id,
             origin_url=origin_url,
             result_url=result_url,
             user_id=user_id,
         ))
+
+        # 注册到 TaskTracker，支持优雅关闭与全局任务视图
+        try:
+            from app.service.task_tracker import get_task_tracker
+            await get_task_tracker().register(
+                task_id=f"compare:{task_id}",
+                task=background_task,
+                task_type="compare",
+                metadata={"task_id": task_id, "algorithm_id": algorithm_id, "user_id": user_id},
+            )
+        except Exception as e:
+            logger.warning("对比报告任务追踪注册失败（不影响执行）: %s", e)
 
         return {"taskId": task_id, "status": LogStatus.PROCESSING.value}
 

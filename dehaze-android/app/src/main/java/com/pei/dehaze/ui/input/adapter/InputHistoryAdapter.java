@@ -32,11 +32,7 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
     public interface OnHistoryActionListener {
         void onItemClick(InputHistoryVO item);
 
-        void onEdit(InputHistoryVO item);
-
         void onDelete(InputHistoryVO item);
-
-        void onToggleFavorite(InputHistoryVO item);
     }
 
     public interface OnSelectionChangedListener {
@@ -61,7 +57,6 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
                     && Objects.equals(oldItem.getOriginalImageUrl(), newItem.getOriginalImageUrl())
                     && Objects.equals(oldItem.getResultImageUrl(), newItem.getResultImageUrl())
                     && Objects.equals(oldItem.getStatus(), newItem.getStatus())
-                    && Objects.equals(oldItem.getIsFavorite(), newItem.getIsFavorite())
                     && Objects.equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName());
         }
     };
@@ -137,12 +132,8 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
         private final TextView tvStatus;
         private final TextView tvSource;
         private final TextView tvProcessingTime;
-        private final TextView tvFavorite;
-        private final TextView tvSyncStatus;
         private final TextView tvCreateTime;
-        private final TextView tvEdit;
         private final TextView tvDelete;
-        private final TextView tvFavoriteAction;
         private final LinearLayout layoutActions;
 
         HistoryViewHolder(@NonNull View itemView) {
@@ -154,12 +145,8 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
             tvStatus = itemView.findViewById(R.id.tv_status);
             tvSource = itemView.findViewById(R.id.tv_source);
             tvProcessingTime = itemView.findViewById(R.id.tv_processing_time);
-            tvFavorite = itemView.findViewById(R.id.tv_favorite);
-            tvSyncStatus = itemView.findViewById(R.id.tv_sync_status);
             tvCreateTime = itemView.findViewById(R.id.tv_create_time);
-            tvEdit = itemView.findViewById(R.id.tv_edit);
             tvDelete = itemView.findViewById(R.id.tv_delete);
-            tvFavoriteAction = itemView.findViewById(R.id.tv_favorite_action);
             layoutActions = itemView.findViewById(R.id.layout_actions);
         }
 
@@ -169,8 +156,6 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
             tvSource.setText("来源: " + (item.getInputSource() != null ? item.getInputSource().getLabel() : ""));
             tvProcessingTime.setText(item.getProcessingTime() != null
                     ? "耗时: " + item.getProcessingTime() + "ms" : "耗时: -");
-            tvFavorite.setText(item.getIsFavorite() != null && item.getIsFavorite() == 1 ? "已收藏" : "未收藏");
-            tvSyncStatus.setText(item.getSyncStatus() != null && item.getSyncStatus() == 1 ? "已同步" : "未同步");
             tvCreateTime.setText(StringUtils.safe(item.getCreateTime()));
 
             loadImage(ivOriginal, item.getOriginalImageUrl());
@@ -210,14 +195,8 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
                 cbSelect.setOnCheckedChangeListener(null);
                 layoutActions.setVisibility(View.VISIBLE);
                 itemView.setOnClickListener(null);
-                tvEdit.setOnClickListener(v -> {
-                    if (actionListener != null) actionListener.onEdit(item);
-                });
                 tvDelete.setOnClickListener(v -> {
                     if (actionListener != null) actionListener.onDelete(item);
-                });
-                tvFavoriteAction.setOnClickListener(v -> {
-                    if (actionListener != null) actionListener.onToggleFavorite(item);
                 });
             }
 

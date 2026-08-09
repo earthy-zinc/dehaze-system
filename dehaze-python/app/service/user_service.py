@@ -11,6 +11,7 @@ from typing import Any
 
 from app.config import settings
 from app.core.exceptions import BusinessException
+from app.dependencies.auth import UserContext
 from app.models.base import get_current_user_id
 from app.models.entity.sys_user import SysUser
 from app.repository.dept_repository import dept_repository
@@ -83,6 +84,7 @@ class UserService:
         dept_id: int | None = None,
         create_time_start: str | None = None,
         create_time_end: str | None = None,
+        current_user: UserContext | None = None,
     ) -> tuple[list[SysUser], int]:
         """
         获取用户列表（分页）
@@ -96,6 +98,7 @@ class UserService:
             dept_id: 部门ID筛选（包含下级部门）
             create_time_start: 创建时间开始
             create_time_end: 创建时间结束
+            current_user: 当前登录用户（用于行级数据权限过滤）
 
         Returns:
             (用户列表, 总数)
@@ -113,6 +116,7 @@ class UserService:
             dept_ids=dept_ids,
             create_time_start=create_time_start,
             create_time_end=create_time_end,
+            current_user=current_user,
         )
 
     @staticmethod

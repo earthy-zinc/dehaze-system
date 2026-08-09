@@ -1,7 +1,7 @@
 package com.pei.dehaze.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.pei.dehaze.model.bo.RouteBO;
+import com.pei.dehaze.model.read.RouteRead;
 import com.pei.dehaze.model.entity.SysMenu;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -17,7 +17,7 @@ import java.util.Set;
 @Mapper
 public interface SysMenuMapper extends BaseMapper<SysMenu> {
 
-    List<RouteBO> listRoutes();
+    List<RouteRead> listRoutes();
 
     /**
      * 获取角色权限集合

@@ -266,7 +266,7 @@ Flutter 端特有决策：
 - **trace_id 透传**：`TraceInterceptor` 注入 `X-Trace-Id` 请求头，响应头回写对齐
 - **API 失败上报**：`TraceInterceptor.onError` 构造 `method/path/status/duration/code` 交 Logger（error_type=api）
 - **路由自动填充 url**：根 Widget build 时 `Logger.instance.attachRouter(goRouter)`，`log()` 自动取 `routerDelegate.currentConfiguration.last.matchedLocation`（调用点显式传 url 优先）
-- **ERROR 去重**：相同 `message + errorStack` fingerprint 在 10s 窗口内只记录一次，防止布局错误（如 RenderFlex overflow 60fps）触发日志风暴；不同 trace_id 的 API 错误 fingerprint 不同，不误去重
+- **ERROR 去重**：相同 `message + errorStack` fingerprint 在 10s 窗口内只输出首条，窗口结束时补发汇总条目（`dedupCount` 标记总命中次数，message 标注 `(10s 内重复 N 次)`），防止布局错误（如 RenderFlex overflow 60fps）触发日志风暴且不丢失次数信息；不同 trace_id 的 API 错误 fingerprint 不同，不误去重
 - **开发者面板**：`lib/pages/dev_logs/` 日志浏览与导出（仅 debug）
 - **不暴露 user_id**：前端 SDK 不上报 user_id，由三端后端从会话统一解析注入
 

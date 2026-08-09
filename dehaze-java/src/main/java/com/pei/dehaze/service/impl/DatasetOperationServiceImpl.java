@@ -5,9 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.annotation.AuditLog;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
-import com.pei.dehaze.common.util.FileBOFactory;
+import com.pei.dehaze.common.util.FileDTOFactory;
 import com.pei.dehaze.common.util.TreeDataUtils;
-import com.pei.dehaze.model.bo.ItemFileBO;
+import com.pei.dehaze.model.dto.ItemFileDTO;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysItemFile;
@@ -30,7 +30,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
@@ -63,7 +62,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
 
     private final SysItemFileService sysItemFileService;
 
-    private final FileBOFactory fileBOFactory;
+    private final FileDTOFactory fileDTOFactory;
 
     private final ImageProcessingService imageProcessingService;
 
@@ -90,7 +89,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
 
         // 保存清晰图（可选）
         if (form.getClearImage() != null) {
-            ItemFileBO clearItemBO = fileBOFactory.createItemFileBO(
+            ItemFileDTO clearItemBO = fileDTOFactory.createItemFileDTO(
                     form.getClearImage(),
                     "",
                     "clear",
@@ -106,7 +105,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
             for (int i = 0; i < form.getHazyImages().size(); i++) {
                 String hazeLevel = form.getHazeLevels() != null && i < form.getHazeLevels().size()
                         ? form.getHazeLevels().get(i) : "";
-                ItemFileBO hazyItemBO = fileBOFactory.createItemFileBO(
+                ItemFileDTO hazyItemBO = fileDTOFactory.createItemFileDTO(
                         form.getHazyImages().get(i),
                         "",
                         "hazy",

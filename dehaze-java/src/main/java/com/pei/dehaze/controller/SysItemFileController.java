@@ -1,8 +1,8 @@
 package com.pei.dehaze.controller;
 
 import com.pei.dehaze.common.result.Result;
-import com.pei.dehaze.common.util.FileBOFactory;
-import com.pei.dehaze.model.bo.ItemFileBO;
+import com.pei.dehaze.common.util.FileDTOFactory;
+import com.pei.dehaze.model.dto.ItemFileDTO;
 import com.pei.dehaze.model.form.BatchDeleteForm;
 import com.pei.dehaze.model.form.ItemFileUploadForm;
 import com.pei.dehaze.model.form.ItemFileUpdateForm;
@@ -27,7 +27,7 @@ public class SysItemFileController {
 
     private final SysItemFileService sysItemFileService;
     private final SysDatasetService sysDatasetService;
-    private final FileBOFactory fileBOFactory;
+    private final FileDTOFactory fileDTOFactory;
 
     @GetMapping("/{id}")
     @Operation(
@@ -59,7 +59,7 @@ public class SysItemFileController {
     ) {
         // 获取数据集名称用于存储路径
         String datasetName = sysDatasetService.getDatasetNameByItemId(form.getItemId());
-        ItemFileBO itemBO = fileBOFactory.createItemFileBO(
+        ItemFileDTO itemBO = fileDTOFactory.createItemFileDTO(
                 form.getFile(), datasetName,
                 form.getType(), form.getDescription(), form.getSceneType(), form.getHazeLevel()
         );

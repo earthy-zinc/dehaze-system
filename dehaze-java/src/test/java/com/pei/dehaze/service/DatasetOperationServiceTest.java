@@ -2,7 +2,7 @@ package com.pei.dehaze.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.common.util.FileBOFactory;
+import com.pei.dehaze.common.util.FileDTOFactory;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysItemFile;
@@ -45,7 +45,7 @@ class DatasetOperationServiceTest {
     private SysItemFileService sysItemFileService;
 
     @Mock
-    private FileBOFactory fileBOFactory;
+    private FileDTOFactory fileDTOFactory;
 
     @Mock
     private ImageProcessingService imageProcessingService;

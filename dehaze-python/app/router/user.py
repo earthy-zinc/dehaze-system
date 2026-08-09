@@ -40,6 +40,7 @@ async def get_user_page(
         dept_id=deptId,
         create_time_start=startTime,
         create_time_end=endTime,
+        current_user=user,
     )
 
     user_list = []

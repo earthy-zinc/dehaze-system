@@ -1,4 +1,4 @@
-package com.pei.dehaze.model.bo;
+package com.pei.dehaze.model.read;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
@@ -12,7 +12,7 @@ import java.util.Date;
  * @since 2022/6/10
  */
 @Data
-public class UserBO {
+public class UserRead {
 
     /**
      * 用户ID

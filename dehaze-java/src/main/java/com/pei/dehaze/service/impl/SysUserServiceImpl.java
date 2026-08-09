@@ -16,7 +16,7 @@ import com.pei.dehaze.common.util.DateUtils;
 import com.pei.dehaze.common.util.IdUtils;
 import com.pei.dehaze.converter.UserConverter;
 import com.pei.dehaze.mapper.SysUserMapper;
-import com.pei.dehaze.model.bo.UserBO;
+import com.pei.dehaze.model.read.UserRead;
 import com.pei.dehaze.model.dto.UserAuthInfo;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
@@ -74,16 +74,16 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 参数构建
         int pageNum = queryParams.getPageNum();
         int pageSize = queryParams.getPageSize();
-        Page<UserBO> page = new Page<>(pageNum, pageSize);
+        Page<UserRead> page = new Page<>(pageNum, pageSize);
 
         // 格式化为数据库日期格式，避免日期比较使用格式化函数导致索引失效
         DateUtils.toDatabaseFormat(queryParams, "startTime", "endTime");
 
         // 查询数据
-        Page<UserBO> userPage = this.baseMapper.listPagedUsers(page, queryParams);
+        Page<UserRead> userPage = this.baseMapper.listPagedUsers(page, queryParams);
 
         // 实体转换
-        return userConverter.bo2PageVo(userPage);
+        return userConverter.read2PageVo(userPage);
     }
 
     /**

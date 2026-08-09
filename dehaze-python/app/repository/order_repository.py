@@ -85,6 +85,7 @@ class OrderRepository(BaseRepository[SysOrder]):
         amount_max: Optional[int] = None,
         paid_time_start: Optional[str] = None,
         paid_time_end: Optional[str] = None,
+        current_user=None,
     ) -> tuple[list[dict], int]:
         stmt = (
             select(
@@ -94,6 +95,15 @@ class OrderRepository(BaseRepository[SysOrder]):
             .outerjoin(SysUser, SysOrder.user_id == SysUser.id)
             .where(SysOrder.deleted == 0)
         )
+
+        # 行级数据权限过滤（订单表无 dept_id，通过已 JOIN 的 sys_user.dept_id 过滤部门范围）
+        if current_user is not None:
+            from app.repository.data_scope import apply_data_scope
+            stmt = await apply_data_scope(
+                stmt, current_user, db,
+                dept_field=SysUser.dept_id,
+                creator_field=SysOrder.user_id,
+            )
 
         if order_no:
             stmt = stmt.where(SysOrder.order_no == order_no)

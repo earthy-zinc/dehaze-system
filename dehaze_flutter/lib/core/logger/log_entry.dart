@@ -23,6 +23,7 @@ class LogEntry {
     this.status,
     this.duration,
     this.code,
+    this.dedupCount,
   });
 
   /// ISO8601 UTC 时间戳
@@ -73,6 +74,9 @@ class LogEntry {
   /// 业务错误码
   final String? code;
 
+  /// ERROR 去重汇总标记：10s 窗口内相同 fingerprint 的总命中次数（仅汇总条目携带，>1）
+  final int? dedupCount;
+
   /// 序列化为 API 上报/落盘的 JSON map（NDJSON）。
   ///
   /// 仅输出非空字段，避免冗余。
@@ -95,6 +99,7 @@ class LogEntry {
     if (status != null) map['status'] = status;
     if (duration != null) map['duration'] = duration;
     if (code != null) map['code'] = code;
+    if (dedupCount != null) map['dedup_count'] = dedupCount;
     return map;
   }
 

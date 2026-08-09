@@ -20,6 +20,14 @@ type IPredLogRepository interface {
 	UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error
 	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
 	CountByUserAndMonth(ctx context.Context, userID int64, year, month int) (int64, error)
+	// CountByAlgorithmID 统计指定算法的预测总次数
+	CountByAlgorithmID(ctx context.Context, algorithmID int64) (int64, error)
+	// ExistsByID 检查预测记录是否存在
+	ExistsByID(ctx context.Context, id int64) (bool, error)
+	// FindSampleImagesByAlgorithm 查询算法最近完成的样例效果图
+	FindSampleImagesByAlgorithm(ctx context.Context, algorithmID int64, limit int) ([]model.SysPredLog, error)
+	// GetAlgorithmPredStats 获取算法预测统计（平均耗时、总数、成功数）
+	GetAlgorithmPredStats(ctx context.Context, algorithmID int64) (avgTime float64, totalPred int64, successCount int64, err error)
 }
 
 // MonitorStats 算法监控统计原始数据
@@ -187,4 +195,63 @@ func (r *predLogRepository) CountByUserAndMonth(ctx context.Context, userID int6
 		Where("create_by = ? AND create_time >= ? AND create_time < ?", userID, startTime, endTime).
 		Count(&count).Error
 	return count, err
+}
+
+// CountByAlgorithmID 统计指定算法的预测总次数
+func (r *predLogRepository) CountByAlgorithmID(ctx context.Context, algorithmID int64) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.SysPredLog{}).
+		Where("algorithm_id = ?", algorithmID).
+		Count(&count).Error
+	return count, err
+}
+
+// ExistsByID 检查预测记录是否存在
+func (r *predLogRepository) ExistsByID(ctx context.Context, id int64) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.SysPredLog{}).
+		Where("id = ?", id).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// FindSampleImagesByAlgorithm 查询算法最近完成的样例效果图
+func (r *predLogRepository) FindSampleImagesByAlgorithm(ctx context.Context, algorithmID int64, limit int) ([]model.SysPredLog, error) {
+	var logs []model.SysPredLog
+	err := r.db.WithContext(ctx).
+		Where("algorithm_id = ? AND pred_url IS NOT NULL AND pred_url <> ''", algorithmID).
+		Order("create_time DESC").
+		Limit(limit).
+		Find(&logs).Error
+	return logs, err
+}
+
+// GetAlgorithmPredStats 获取算法预测统计（平均耗时、总数、成功数）
+func (r *predLogRepository) GetAlgorithmPredStats(ctx context.Context, algorithmID int64) (avgTime float64, totalPred int64, successCount int64, err error) {
+	if err = r.db.WithContext(ctx).
+		Model(&model.SysPredLog{}).
+		Where("algorithm_id = ?", algorithmID).
+		Count(&totalPred).Error; err != nil {
+		return
+	}
+	if totalPred == 0 {
+		return
+	}
+	row := r.db.WithContext(ctx).
+		Model(&model.SysPredLog{}).
+		Where("algorithm_id = ? AND time IS NOT NULL", algorithmID).
+		Select("COALESCE(AVG(time), 0)").
+		Row()
+	if err = row.Scan(&avgTime); err != nil {
+		return
+	}
+	if err = r.db.WithContext(ctx).
+		Model(&model.SysPredLog{}).
+		Where("algorithm_id = ? AND pred_url IS NOT NULL AND pred_url <> ''", algorithmID).
+		Count(&successCount).Error; err != nil {
+		return
+	}
+	return
 }

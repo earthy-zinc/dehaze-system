@@ -9,7 +9,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/repository/dept"
 	"github.com/earthyzinc/dehaze-go/internal/service/import_export"
-	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -28,11 +27,12 @@ func (h *UserExportHandler) GetModule() string { return "user" }
 func (h *UserExportHandler) EstimateCount(params map[string]interface{}) int64 {
 	q := buildUserQuery(params)
 	var count int64
-	h.db.Model(&model.SysUser{}).Count(&count)
+	tx := h.db.Model(&model.SysUser{}).Where("deleted = 0")
 	if q.Keywords != "" {
 		like := "%" + q.Keywords + "%"
-		h.db.Model(&model.SysUser{}).Where("(username LIKE ? OR nickname LIKE ? OR mobile LIKE ?)", like, like, like).Count(&count)
+		tx = tx.Where("(username LIKE ? OR nickname LIKE ? OR mobile LIKE ?)", like, like, like)
 	}
+	tx.Count(&count)
 	return count
 }
 
@@ -61,7 +61,7 @@ type userExportProvider struct {
 func (p *userExportProvider) FetchBatch(pageNum, pageSize int) [][]interface{} {
 	var users []model.SysUser
 	q := buildUserQuery(p.ctx.QueryParams)
-	tx := p.db.Model(&model.SysUser{})
+	tx := p.db.Model(&model.SysUser{}).Where("deleted = 0")
 	if q.Keywords != "" {
 		like := "%" + q.Keywords + "%"
 		tx = tx.Where("username LIKE ? OR nickname LIKE ? OR mobile LIKE ?", like, like, like)
@@ -160,12 +160,13 @@ func buildUserQuery(params map[string]interface{}) *query.UserPageQuery {
 
 type UserImportHandler struct {
 	import_export.BaseImportHandler
-	db       *gorm.DB
-	deptRepo dept.IDeptRepository
+	db              *gorm.DB
+	deptRepo        dept.IDeptRepository
+	defaultPassword string
 }
 
-func NewUserImportHandler(db *gorm.DB, deptRepo dept.IDeptRepository) *UserImportHandler {
-	return &UserImportHandler{db: db, deptRepo: deptRepo}
+func NewUserImportHandler(db *gorm.DB, deptRepo dept.IDeptRepository, defaultPassword string) *UserImportHandler {
+	return &UserImportHandler{db: db, deptRepo: deptRepo, defaultPassword: defaultPassword}
 }
 
 func (h *UserImportHandler) GetModule() string { return "user" }
@@ -265,8 +266,7 @@ func (h *UserImportHandler) ImportBatch(rows []map[string]interface{}, options i
 		mobile, _ := row["mobile"].(string)
 		email, _ := row["email"].(string)
 
-		defaultPassword := config.GetConfig().System.DefaultPassword
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(h.defaultPassword), bcrypt.DefaultCost)
 		if err != nil {
 			failureCount++
 			errors = append(errors, import_export.ImportError{Row: rowNum, Field: "password", Message: "密码加密失败"})

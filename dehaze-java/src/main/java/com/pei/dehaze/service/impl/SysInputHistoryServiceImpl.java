@@ -10,7 +10,6 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysInputHistoryMapper;
 import com.pei.dehaze.model.entity.SysInputHistory;
 import com.pei.dehaze.model.form.HistoryForm;
-import com.pei.dehaze.model.form.HistoryUpdateForm;
 import com.pei.dehaze.model.query.HistoryQuery;
 import com.pei.dehaze.model.vo.InputHistoryVO;
 import com.pei.dehaze.service.SysInputHistoryService;
@@ -86,24 +85,11 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
         SysInputHistory history = new SysInputHistory();
         BeanUtil.copyProperties(form, history);
         history.setUserId(userId);
-        history.setSyncStatus(0);
         if (form.getStatus() == null) {
             history.setStatus(3); // 默认处理中
         }
         this.save(history);
         return history.getId();
-    }
-
-    @Override
-    public boolean updateHistory(Long id, HistoryUpdateForm form) {
-        SysInputHistory history = this.getById(id);
-        if (history == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "历史记录不存在");
-        }
-        checkOwnership(history);
-
-        // 历史记录更新接口保留，具体更新字段由前端决定（如更新标注信息等）
-        return this.updateById(history);
     }
 
     @Override
@@ -138,20 +124,6 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
         this.remove(wrapper);
         log.debug("用户 {} 清空了 {} 条历史记录", userId, count);
         return (int) count;
-    }
-
-    @Override
-    public int syncHistory() {
-        // 当前版本：标记所有未同步记录为已同步
-        Long userId = getCurrentUserId();
-        LambdaUpdateWrapper<SysInputHistory> wrapper = new LambdaUpdateWrapper<SysInputHistory>()
-                .eq(SysInputHistory::getUserId, userId)
-                .eq(SysInputHistory::getSyncStatus, 0)
-                .set(SysInputHistory::getSyncStatus, 1)
-                .set(SysInputHistory::getUpdateBy, userId);
-        boolean result = this.update(wrapper);
-        log.debug("用户 {} 同步历史记录完成", userId);
-        return result ? 1 : 0;
     }
 
     // ==================== 内部方法 ====================

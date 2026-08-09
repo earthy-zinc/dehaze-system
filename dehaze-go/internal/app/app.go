@@ -71,6 +71,7 @@ import (
 	_ "github.com/earthyzinc/dehaze-go/pkg/database/postgres"
 	_ "github.com/earthyzinc/dehaze-go/pkg/database/sqlite"
 	"github.com/earthyzinc/dehaze-go/pkg/job"
+	"github.com/earthyzinc/dehaze-go/pkg/lifecycle"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/mongo"
 	"github.com/earthyzinc/dehaze-go/pkg/mq"
@@ -95,6 +96,7 @@ type Application struct {
 	consumer        *mq.Consumer
 	publisher       *mq.Publisher
 	auditLogService *auditlogservice.AuditLogService
+	lifecycleMgr    *lifecycle.Manager
 }
 
 func New() *Application {
@@ -156,6 +158,9 @@ func (a *Application) Init() error {
 	// 6) 显式 wiring：repo -> service -> api -> router
 	gormDB := database.DB()
 	cacheClient := cache.GetCache()
+
+	// 应用级生命周期管理器（异步 goroutine context + 优雅关闭等待）
+	a.lifecycleMgr = lifecycle.NewManager()
 
 	// repositories
 	userRepo := userrepo.NewUserRepository(gormDB)
@@ -224,7 +229,6 @@ func (a *Application) Init() error {
 		a.auditLogService = auditlogservice.NewAuditLogService(auditLogRepo)
 	}
 	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo, a.auditLogService)
-	authService := authservice.NewAuthService(cacheClient, userService, loginLogService, memberRepo, gormDB)
 	algorithmService := algoservice.NewAlgorithmService(algorithmRepo, predLogRepo)
 	menuService := menuservice.NewMenuService(cacheClient, menuRepo, roleRepo)
 	roleService := roleservice.NewRoleService(cacheClient, roleRepo, menuRepo, a.auditLogService)
@@ -263,7 +267,7 @@ func (a *Application) Init() error {
 		handlers.NewAlgorithmExportHandler(gormDB),
 	}
 	importHandlers := []importexportservice.ImportHandler{
-		handlers.NewUserImportHandler(gormDB, deptRepo),
+		handlers.NewUserImportHandler(gormDB, deptRepo, cfg.System.DefaultPassword),
 		handlers.NewRoleImportHandler(gormDB),
 		handlers.NewDeptImportHandler(gormDB),
 		handlers.NewMenuImportHandler(gormDB),
@@ -299,7 +303,10 @@ func (a *Application) Init() error {
 	taskApi := api.NewSysTaskApi(taskService)
 	importExportApi := api.NewImportExportApi(importExportService)
 	inputHistoryService := ihservice.NewInputHistoryService(inputHistoryRepo)
-	algoClient := algo.NewClient(cfg.Algorithm)
+	algoClient, err := algo.NewClient(cfg.Algorithm)
+	if err != nil {
+		return fmt.Errorf("初始化算法客户端失败: %w", err)
+	}
 	evalLogRepo := evalrepo.NewEvalLogRepository(gormDB)
 	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService)
 
@@ -309,23 +316,26 @@ func (a *Application) Init() error {
 	messageTemplateService := msgservice.NewMessageTemplateService(msgTplRepo)
 	notificationSettingService := msgservice.NewNotificationSettingService(notifySettingRepo)
 
-	// member module services（需在 predictionService 之前构造，预测/评估需调用权益校验）
-	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient, a.auditLogService, messageService)
+	// member module services（需在 predictionService/authService 之前构造，预测/评估/注册需调用权益校验）
+	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient, a.auditLogService, messageService, a.lifecycleMgr)
 
-	predictionService := predservice.NewPredictionService(predLogRepo, algorithmRepo, algoClient, cacheClient, memberService)
+	// authService 依赖 userService + memberService（注册流程通过 UserService 创建用户、MemberService 初始化会员）
+	authService := authservice.NewAuthService(cacheClient, userService, loginLogService, memberService)
+
+	predictionService := predservice.NewPredictionService(predLogRepo, algorithmRepo, algoClient, cacheClient, memberService, a.lifecycleMgr)
 	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algorithmRepo, algoClient, memberService)
 
 	// package & order module services
 	packageService := pkgsaleservice.NewPackageService(gormDB, packageRepo, couponRepo, userCouponRepo, memberBenefitRepo, cacheClient)
-	couponService := pkgsaleservice.NewCouponService(gormDB, couponRepo, userCouponRepo, cacheClient)
+	couponService := pkgsaleservice.NewCouponService(gormDB, couponRepo, userCouponRepo, memberRepo, userRepo, cacheClient)
 	paymentSvc := paymentsvc.NewPaymentChannelService(cfg.Payment)
-	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, memberRepo, memberBenefitRepo, paymentSvc, cacheClient, a.auditLogService)
+	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, userRepo, memberRepo, memberBenefitRepo, paymentSvc, cacheClient, a.auditLogService, memberService)
 
 	// favorite module services
-	favoriteService := favoriteservice.NewFavoriteService(gormDB, favoriteRepo, memberRepo)
+	favoriteService := favoriteservice.NewFavoriteService(favoriteRepo, memberRepo, algorithmRepo, predLogRepo, datasetRepo)
 
 	// algorithm select module services
-	algorithmSelectService := algoSelectService.NewAlgorithmSelectService(gormDB, algorithmRepo, predLogRepo, predictionService)
+	algorithmSelectService := algoSelectService.NewAlgorithmSelectService(algorithmRepo, predLogRepo, ratingRepo, predictionService)
 
 	// feedback module services
 	var alertPublisher *mq.Publisher
@@ -336,10 +346,10 @@ func (a *Application) Init() error {
 		}
 	}
 	a.publisher = alertPublisher
-	lowRatingAlertService := fbservice.NewLowRatingAlertService(gormDB, ratingRepo, messageService, alertPublisher, zap.L())
+	lowRatingAlertService := fbservice.NewLowRatingAlertService(ratingRepo, userRepo, algorithmRepo, messageService, alertPublisher, zap.L())
 	ratingService := fbservice.NewRatingService(gormDB, ratingRepo, predLogRepo, memberService, cacheClient, lowRatingAlertService, zap.L())
-	feedbackService := fbservice.NewFeedbackService(gormDB, feedbackRepo, feedbackReplyRepo, cacheClient)
-	recommendationService := recservice.NewRecommendationService(gormDB, recommendationRepo, recommendationRuleRepo)
+	feedbackService := fbservice.NewFeedbackService(gormDB, feedbackRepo, feedbackReplyRepo, userRepo, cacheClient)
+	recommendationService := recservice.NewRecommendationService(algoClient, recommendationRepo, recommendationRuleRepo, algorithmRepo)
 	presetService := presetservice.NewPresetService(gormDB, presetRepo, memberService)
 	presetservice.SeedSystemPresets(gormDB)
 	compareService := compareservice.NewCompareService(evalLogRepo, predLogRepo, algorithmRepo)
@@ -365,7 +375,7 @@ func (a *Application) Init() error {
 	// 启动 XXL-Job 执行器并注册定时任务
 	xxlExecutor := xxljob.Init(cfg)
 	if xxlExecutor != nil {
-		job.InitJobs(xxlExecutor, defaultStorage, predLogRepo, evalLogRepo, orderService, announcementService, messageService, memberService)
+		job.InitJobs(xxlExecutor, defaultStorage, predLogRepo, evalLogRepo, orderService, announcementService, messageService, memberService, cacheClient)
 		go func() {
 			if err := xxlExecutor.Run(); err != nil {
 				logger.Error("XXL-Job 执行器运行失败", zap.Error(err))
@@ -526,7 +536,17 @@ func (a *Application) shutdown() error {
 
 	var errs []error
 
-	// 0) 停止 WebSocket 管理器
+	// 0) 取消应用级 context 并等待关键异步 goroutine 完成（预测执行、配额落库）
+	//    超时 8s，留 2s 给后续资源关闭
+	if a.lifecycleMgr != nil {
+		if err := a.lifecycleMgr.Shutdown(8 * time.Second); err != nil {
+			logger.Warn("生命周期管理器关闭时部分任务未完成", zap.Error(err))
+		} else {
+			logger.Info("所有异步任务已完成")
+		}
+	}
+
+	// 0.1) 停止 WebSocket 管理器
 	if wsManager := websocket.GetManager(); wsManager != nil {
 		wsManager.Stop()
 	}

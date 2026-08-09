@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.model.entity.SysInputHistory;
 import com.pei.dehaze.model.form.HistoryForm;
-import com.pei.dehaze.model.form.HistoryUpdateForm;
 import com.pei.dehaze.model.query.HistoryQuery;
 import com.pei.dehaze.model.vo.InputHistoryVO;
 
@@ -27,9 +26,6 @@ public interface SysInputHistoryService extends IService<SysInputHistory> {
     /** 创建历史记录 */
     Long createHistory(HistoryForm form);
 
-    /** 更新历史记录（如收藏） */
-    boolean updateHistory(Long id, HistoryUpdateForm form);
-
     /** 删除单条历史记录 */
     boolean deleteHistory(Long id);
 
@@ -38,7 +34,4 @@ public interface SysInputHistoryService extends IService<SysInputHistory> {
 
     /** 清空当前用户的所有历史记录 */
     int clearAllHistory();
-
-    /** 同步历史记录（占位接口，后续实现云端同步） */
-    int syncHistory();
 }

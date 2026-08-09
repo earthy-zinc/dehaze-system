@@ -71,4 +71,19 @@ type IUserRepository interface {
 
 	// UpdateWithRoles 更新用户并更新角色（事务）
 	UpdateWithRoles(ctx context.Context, userID int64, updates map[string]interface{}, roleIDs []int64) error
+
+	// FindUsernameByID 查询用户名
+	FindUsernameByID(ctx context.Context, userID int64) (string, error)
+
+	// FindUsernamesByIDs 批量查询用户名
+	FindUsernamesByIDs(ctx context.Context, ids []int64) (map[int64]string, error)
+
+	// FindUserInfoByID 查询用户名和头像
+	FindUserInfoByID(ctx context.Context, userID int64) (username, avatar string, err error)
+
+	// FindAdminUserIDs 查询所有管理员用户ID（ROOT/ADMIN 角色）
+	FindAdminUserIDs(ctx context.Context) ([]int64, error)
+
+	// FindAllActiveUserIDs 查询所有正常状态用户ID
+	FindAllActiveUserIDs(ctx context.Context) ([]int64, error)
 }

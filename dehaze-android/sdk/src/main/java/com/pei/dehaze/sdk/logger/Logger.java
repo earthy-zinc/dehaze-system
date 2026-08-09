@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -38,6 +39,7 @@ public class Logger {
     private static final int MAX_STACK_LENGTH = 8000;
     private static final int INITIAL_BACKOFF_MS = 1000;
     private static final int MAX_BACKOFF_MS = 60_000;
+    private static final long DEDUP_WINDOW_MS = 10_000L;
 
     // 采样率（%）：ERROR 100% / WARN 50% / INFO 不上报
     private static int sampleRate(LogLevel level) {
@@ -52,6 +54,14 @@ public class Logger {
     private int backoffMs = INITIAL_BACKOFF_MS;
     private final ScheduledExecutorService executor =
             Executors.newSingleThreadScheduledExecutor();
+
+    // ERROR 去重：相同 message + error_stack fingerprint 在 10s 窗口内只输出首条，
+    // 窗口结束时若存在重复则补发一条汇总（dedupCount 标记总次数），避免日志风暴同时保留次数信息
+    private int lastErrorFingerprint = 0;
+    private long lastErrorTime = 0L;
+    private int errorDedupCount = 0;
+    private LogEntry lastDedupEntry = null;
+    private ScheduledFuture<?> dedupSummaryFuture = null;
 
     private Logger(String app, String appVersion, List<LogTransport> transports) {
         this.app = app;
@@ -77,6 +87,28 @@ public class Logger {
             instance.transports.clear();
             instance.transports.addAll(transports);
         }
+    }
+
+    /**
+     * 重置单例与所有内部状态（去重计数、定时任务、队列）。
+     * 仅供测试隔离使用，生产环境不应调用。
+     */
+    public static void resetForTest() {
+        if (instance == null) return;
+        if (instance.dedupSummaryFuture != null) {
+            instance.dedupSummaryFuture.cancel(false);
+            instance.dedupSummaryFuture = null;
+        }
+        instance.executor.shutdownNow();
+        instance.errorDedupCount = 0;
+        instance.lastErrorFingerprint = 0;
+        instance.lastErrorTime = 0L;
+        instance.lastDedupEntry = null;
+        synchronized (instance.queue) {
+            instance.queue.clear();
+        }
+        instance.sentTimestamps.clear();
+        instance = null;
     }
 
     public static Logger getInstance() {
@@ -119,6 +151,16 @@ public class Logger {
             entry.setTraceId(TraceManager.getCurrentTraceId());
         }
 
+        // ERROR 去重：相同 fingerprint 在 10s 窗口内只输出首条，窗口结束时补发汇总
+        if (level == LogLevel.ERROR && shouldDedupError(entry)) {
+            return;
+        }
+
+        emit(entry);
+    }
+
+    /** 实际输出日志条目：transport 输出 + 采样 + 限流 + 入队。去重汇总补发也走此路径 */
+    private void emit(LogEntry entry) {
         // 逐条本地输出（Console/File transport），不受采样/限流影响
         for (LogTransport transport : transports) {
             transport.log(entry);
@@ -126,7 +168,7 @@ public class Logger {
 
         // 采样过滤
         Random random = new Random();
-        if (random.nextInt(100) >= sampleRate(level)) {
+        if (random.nextInt(100) >= sampleRate(entry.getLevel())) {
             return;
         }
         // 限流
@@ -143,6 +185,81 @@ public class Logger {
                 flush();
             }
         }
+    }
+
+    /**
+     * ERROR 去重判定：相同 message + error_stack fingerprint 在 10s 窗口内只输出首条。
+     * 窗口内重复命中累加计数并跳过输出；新 fingerprint 或窗口过期时补发上一轮汇总。
+     * 返回 true 表示该条应被去重跳过，false 表示正常输出。
+     */
+    private boolean shouldDedupError(LogEntry entry) {
+        int fingerprint = fingerprintHash(entry.getMessage(), entry.getErrorStack());
+        long now = System.currentTimeMillis();
+        boolean inWindow = lastErrorTime > 0 && (now - lastErrorTime) < DEDUP_WINDOW_MS;
+
+        if (fingerprint == lastErrorFingerprint && inWindow) {
+            errorDedupCount++;
+            return true;
+        }
+
+        // 新 burst：先补发上一轮汇总（若有重复）
+        flushDedupSummary();
+        lastErrorFingerprint = fingerprint;
+        lastErrorTime = now;
+        errorDedupCount = 1;
+        lastDedupEntry = entry;
+        scheduleDedupSummary();
+        return false;
+    }
+
+    /** 窗口结束时补发汇总条目：携带 dedupCount 标记本轮总次数，message 标注重复次数 */
+    private synchronized void flushDedupSummary() {
+        if (dedupSummaryFuture != null) {
+            dedupSummaryFuture.cancel(false);
+            dedupSummaryFuture = null;
+        }
+        int count = errorDedupCount;
+        LogEntry original = lastDedupEntry;
+        errorDedupCount = 0;
+        lastErrorFingerprint = 0;
+        lastErrorTime = 0L;
+        lastDedupEntry = null;
+
+        // 单次命中无重复时不补发，避免噪声
+        if (count <= 1 || original == null) {
+            return;
+        }
+
+        LogEntry summary = new LogEntry(LogLevel.ERROR,
+                truncate(original.getMessage() + " (10s 内重复 " + (count - 1) + " 次)",
+                        MAX_MESSAGE_LENGTH),
+                app, appVersion)
+                .setUrl(original.getUrl())
+                .setUserAgent(original.getUserAgent())
+                .setTraceId(TraceManager.getCurrentTraceId())
+                .setErrorType(original.getErrorType())
+                .setErrorSource(original.getErrorSource())
+                .setErrorStack(original.getErrorStack())
+                .setDedupCount(count);
+        emit(summary);
+    }
+
+    private void scheduleDedupSummary() {
+        if (dedupSummaryFuture != null) {
+            dedupSummaryFuture.cancel(false);
+        }
+        dedupSummaryFuture = executor.schedule(this::flushDedupSummary,
+                DEDUP_WINDOW_MS, TimeUnit.MILLISECONDS);
+    }
+
+    /** ERROR 去重 fingerprint：message + error_stack 的轻量 hash（djb2 变体，无需强 hash） */
+    private static int fingerprintHash(String message, String errorStack) {
+        String str = message + "|" + (errorStack != null ? errorStack : "");
+        int hash = 0;
+        for (int i = 0; i < str.length(); i++) {
+            hash = hash * 31 + str.charAt(i);
+        }
+        return hash;
     }
 
     public void error(String message, LogEntry extras) {

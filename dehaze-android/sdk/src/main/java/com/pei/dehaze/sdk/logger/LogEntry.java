@@ -31,6 +31,7 @@ public class LogEntry {
     private Integer status;
     private Double duration;
     private String code;
+    private Integer dedupCount;
 
     public LogEntry(LogLevel level, String message, String app, String appVersion) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
@@ -104,6 +105,11 @@ public class LogEntry {
         return this;
     }
 
+    public LogEntry setDedupCount(Integer dedupCount) {
+        this.dedupCount = dedupCount;
+        return this;
+    }
+
     // ==================== getters ====================
 
     public String getTimestamp() { return timestamp; }
@@ -123,6 +129,7 @@ public class LogEntry {
     public Integer getStatus() { return status; }
     public Double getDuration() { return duration; }
     public String getCode() { return code; }
+    public Integer getDedupCount() { return dedupCount; }
 
     /**
      * 序列化为 NDJSON 对象（仅输出非空字段）。
@@ -146,6 +153,7 @@ public class LogEntry {
         if (status != null) obj.addProperty("status", status);
         if (duration != null) obj.addProperty("duration", duration);
         if (code != null) obj.addProperty("code", code);
+        if (dedupCount != null) obj.addProperty("dedup_count", dedupCount);
         return obj;
     }
 }

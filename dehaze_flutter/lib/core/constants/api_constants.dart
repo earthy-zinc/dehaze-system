@@ -159,7 +159,6 @@ class ApiConstants {
   static const String imageInputHistory = '/image-input/history';
   static const String imageInputHistoryBatch = '$imageInputHistory/batch';
   static const String imageInputHistoryClear = '$imageInputHistory/clear';
-  static const String imageInputHistorySync = '$imageInputHistory/sync';
 
   // Import Export
   static const String importExport = '/import-export';

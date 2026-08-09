@@ -5,6 +5,7 @@ import (
 
 	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
+	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
@@ -23,17 +24,17 @@ func wrapWithTrace(handler func(ctx context.Context, param *xxl.RunReq) string) 
 	}
 }
 
-func InitJobs(executor xxl.Executor, storageSvc StorageService, predLogRepo predrepo.IPredLogRepository, evalLogRepo evalrepo.IEvalLogRepository, orderRunner OrderJobRunner, announcementSvc AnnouncementRunner, messageSvc MessageRunner, memberRunner MemberJobRunner) {
+func InitJobs(executor xxl.Executor, storageSvc StorageService, predLogRepo predrepo.IPredLogRepository, evalLogRepo evalrepo.IEvalLogRepository, orderRunner OrderJobRunner, announcementSvc AnnouncementRunner, messageSvc MessageRunner, memberRunner MemberJobRunner, cache types.ICache) {
 	if executor == nil {
 		logger.Warn("XXL-Job 执行器未初始化，跳过任务注册")
 		return
 	}
 
 	cleanupJob := NewCleanupJob(storageSvc, predLogRepo, evalLogRepo)
-	orderJob := NewOrderJob(orderRunner)
+	orderJob := NewOrderJob(orderRunner, cache)
 	announcementJob := NewAnnouncementJob(announcementSvc)
 	messageJob := NewMessageJob(messageSvc)
-	memberJob := NewMemberJob(memberRunner)
+	memberJob := NewMemberJob(memberRunner, cache)
 
 	executor.RegTask("cleanupExpiredTasks", wrapWithTrace(cleanupJob.HandleCleanupExpiredTasks))
 	executor.RegTask("cleanupStuckTasks", wrapWithTrace(cleanupJob.HandleCleanupStuckTasks))
@@ -45,7 +46,7 @@ func InitJobs(executor xxl.Executor, storageSvc StorageService, predLogRepo pred
 	executor.RegTask("sendScheduledAnnouncements", wrapWithTrace(announcementJob.HandleSendScheduledAnnouncements))
 	executor.RegTask("cleanupExpiredMessages", wrapWithTrace(messageJob.HandleCleanupExpiredMessages))
 	executor.RegTask("refreshUnreadCountCache", wrapWithTrace(messageJob.HandleRefreshUnreadCountCache))
-	executor.RegTask("resetMemberMonthlyQuota", wrapWithTrace(memberJob.HandleResetMonthlyQuota))
+	executor.RegTask("resetMonthlyQuota", wrapWithTrace(memberJob.HandleResetMonthlyQuota))
 	executor.RegTask("processExpiredMembers", wrapWithTrace(memberJob.HandleProcessExpiredMembers))
 	executor.RegTask("retryFailedRefunds", wrapWithTrace(orderJob.HandleRetryFailedRefunds))
 	executor.RegTask("sendExpireReminders", wrapWithTrace(memberJob.HandleSendExpireReminders))

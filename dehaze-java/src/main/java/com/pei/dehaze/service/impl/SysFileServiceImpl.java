@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysFileMapper;
-import com.pei.dehaze.model.bo.FileBO;
+import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.model.entity.SysAlgorithm;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysWpxFile;
@@ -48,40 +48,40 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
     }
 
     @Override
-    public SysFile saveFile(FileBO fileBO) {
-        fileBO = storageServiceFactory.getDefault().uploadFile(fileBO);
+    public SysFile saveFile(FileDTO fileDTO) {
+        fileDTO = storageServiceFactory.getDefault().uploadFile(fileDTO);
         Long userId = SecurityUtils.getUserId();
         baseMapper.upsertByMd5(
-                fileBO.getMd5(),
-                fileBO.getExtension(),
-                fileBO.getName(),
-                fileBO.getObjectName(),
-                fileBO.getStorage(),
-                FileUtil.readableFileSize(fileBO.getSize()),
-                fileBO.getSize(),
+                fileDTO.getMd5(),
+                fileDTO.getExtension(),
+                fileDTO.getName(),
+                fileDTO.getObjectName(),
+                fileDTO.getStorage(),
+                FileUtil.readableFileSize(fileDTO.getSize()),
+                fileDTO.getSize(),
                 userId
         );
         meterRegistry.counter("dehaze_file_upload_total").increment();
         return this.getOne(new LambdaQueryWrapper<SysFile>()
-                .eq(SysFile::getMd5, fileBO.getMd5())
+                .eq(SysFile::getMd5, fileDTO.getMd5())
                 .last("LIMIT 1"));
     }
 
     @Override
-    public SysFile saveFileRecord(FileBO fileBO) {
+    public SysFile saveFileRecord(FileDTO fileDTO) {
         Long userId = SecurityUtils.getUserId();
         baseMapper.upsertByMd5(
-                fileBO.getMd5(),
-                fileBO.getExtension(),
-                fileBO.getName(),
-                fileBO.getObjectName(),
-                fileBO.getStorage(),
-                FileUtil.readableFileSize(fileBO.getSize()),
-                fileBO.getSize(),
+                fileDTO.getMd5(),
+                fileDTO.getExtension(),
+                fileDTO.getName(),
+                fileDTO.getObjectName(),
+                fileDTO.getStorage(),
+                FileUtil.readableFileSize(fileDTO.getSize()),
+                fileDTO.getSize(),
                 userId
         );
         return this.getOne(new LambdaQueryWrapper<SysFile>()
-                .eq(SysFile::getMd5, fileBO.getMd5())
+                .eq(SysFile::getMd5, fileDTO.getMd5())
                 .last("LIMIT 1"));
     }
 

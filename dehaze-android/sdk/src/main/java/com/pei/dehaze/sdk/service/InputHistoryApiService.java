@@ -4,18 +4,13 @@ import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.model.input_history.BatchDeleteForm;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryForm;
-import com.pei.dehaze.sdk.model.input_history.InputHistoryUpdateForm;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryVO;
-import com.pei.dehaze.sdk.model.input_history.SyncResultVO;
-
-import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
-import retrofit2.http.PUT;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 
@@ -51,13 +46,6 @@ public interface InputHistoryApiService {
     Call<Result<InputHistoryVO>> createHistory(@Body InputHistoryForm form);
 
     /**
-     * 更新历史记录（如收藏、补充处理结果）
-     * PUT /api/v1/image-input/history/{id}
-     */
-    @PUT("/api/v1/image-input/history/{id}")
-    Call<Result<InputHistoryVO>> updateHistory(@Path("id") long id, @Body InputHistoryUpdateForm form);
-
-    /**
      * 删除单条历史记录
      * DELETE /api/v1/image-input/history/{id}
      */
@@ -77,11 +65,4 @@ public interface InputHistoryApiService {
      */
     @DELETE("/api/v1/image-input/history/clear")
     Call<Result<Void>> clearHistory();
-
-    /**
-     * 同步本地与云端历史
-     * POST /api/v1/image-input/history/sync
-     */
-    @POST("/api/v1/image-input/history/sync")
-    Call<Result<SyncResultVO>> syncHistory(@Body List<InputHistoryForm> items);
 }

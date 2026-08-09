@@ -35,3 +35,9 @@ type IOrderJobRunner interface {
 	ExpireUserCoupons(ctx context.Context) error
 	RetryFailedRefunds(ctx context.Context) error
 }
+
+// MemberCacheInvalidator 会员缓存失效接口，由 MemberService 实现
+// OrderService 支付完成后通过此接口失效会员缓存，避免重复实现失效逻辑
+type MemberCacheInvalidator interface {
+	InvalidateMemberCache(ctx context.Context, userID int64, levelCode string)
+}

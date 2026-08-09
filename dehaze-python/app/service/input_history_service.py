@@ -6,7 +6,6 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import BusinessException
 from app.models.entity.sys_input_history import SysInputHistory
 from app.repository.input_history_repository import input_history_repository
 from app.utils.datetime_utils import format_time
@@ -64,40 +63,8 @@ class InputHistoryService:
             processing_time=data.get("processingTime"),
             status=data.get("status", 3),
             input_source=data.get("inputSource", "upload"),
-            sync_status=0,
         )
         return history.id
-
-    @staticmethod
-    async def update_history(
-        db: AsyncSession,
-        history_id: int,
-        data: dict[str, Any],
-        user_id: int,
-    ) -> None:
-        """更新历史记录（如补充处理结果）"""
-        history = await input_history_repository.get_by_id(db, history_id)
-        if not history:
-            raise BusinessException("历史记录不存在")
-        if history.user_id != user_id:
-            raise BusinessException("无权操作该历史记录")
-
-        updatable_fields = {
-            "originalImageUrl": "original_image_url",
-            "originalThumbnailUrl": "original_thumbnail_url",
-            "resultImageUrl": "result_image_url",
-            "resultThumbnailUrl": "result_thumbnail_url",
-            "algorithmId": "algorithm_id",
-            "algorithmName": "algorithm_name",
-            "algorithmParams": "algorithm_params",
-            "processingTime": "processing_time",
-            "status": "status",
-            "inputSource": "input_source",
-        }
-        for camel_key, db_field in updatable_fields.items():
-            if camel_key in data:
-                setattr(history, db_field, data[camel_key])
-        await db.flush()
 
     @staticmethod
     async def delete_history(db: AsyncSession, history_id: int, user_id: int) -> None:
@@ -117,12 +84,6 @@ class InputHistoryService:
         return result
 
     @staticmethod
-    async def sync_history(db: AsyncSession, user_id: int) -> int:
-        """同步历史记录（对齐 Java syncHistory：标记所有未同步记录为已同步）"""
-        count = await input_history_repository.mark_all_synced(db, user_id)
-        return count
-
-    @staticmethod
     def _to_vo(history: SysInputHistory) -> dict[str, Any]:
         """转换为 VO (对齐 Java InputHistoryVO 字段)"""
         return {
@@ -138,7 +99,6 @@ class InputHistoryService:
             "processingTime": history.processing_time,
             "status": history.status,
             "inputSource": history.input_source,
-            "syncStatus": history.sync_status,
             "createTime": format_time(history.create_time),
             "updateTime": format_time(history.update_time),
         }

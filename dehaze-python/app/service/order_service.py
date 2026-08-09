@@ -537,7 +537,7 @@ class OrderService:
         return {"list": list_data, "total": total}
 
     @staticmethod
-    async def list_paged(db: AsyncSession, query: dict) -> dict:
+    async def list_paged(db: AsyncSession, query: dict, current_user=None) -> dict:
         items, total = await order_repository.get_page(
             db,
             query["pageNum"],
@@ -550,6 +550,7 @@ class OrderService:
             amount_max=query.get("amountMax"),
             paid_time_start=query.get("paidTimeStart"),
             paid_time_end=query.get("paidTimeEnd"),
+            current_user=current_user,
         )
         list_data = [_build_admin_order_vo(item["order"], item.get("username") or "") for item in items]
         return {"list": list_data, "total": total}

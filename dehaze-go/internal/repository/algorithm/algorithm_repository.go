@@ -209,5 +209,70 @@ func (r *AlgorithmRepository) ExistsByVersion(ctx context.Context, algorithmID i
 	return count > 0, err
 }
 
+// SearchPublished 搜索已发布算法（status=4），支持关键词模糊匹配
+func (r *AlgorithmRepository) SearchPublished(ctx context.Context, keyword string, pageNum, pageSize int) ([]model.SysAlgorithm, int64, error) {
+	if pageNum <= 0 {
+		pageNum = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+	db := r.db.WithContext(ctx).Model(&model.SysAlgorithm{}).
+		Where("status = 4 AND deleted = 0")
+	if keyword != "" {
+		like := "%" + keyword + "%"
+		db = db.Where("name LIKE ? OR type LIKE ? OR description LIKE ?", like, like, like)
+	}
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []model.SysAlgorithm
+	if err := db.Offset((pageNum - 1) * pageSize).Limit(pageSize).Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
+}
+
+// FindAllPublished 查询所有已发布算法（status=4）
+func (r *AlgorithmRepository) FindAllPublished(ctx context.Context) ([]model.SysAlgorithm, error) {
+	var list []model.SysAlgorithm
+	err := r.db.WithContext(ctx).
+		Where("status = 4 AND deleted = 0").
+		Find(&list).Error
+	return list, err
+}
+
+// CountPublished 统计已发布算法数量
+func (r *AlgorithmRepository) CountPublished(ctx context.Context) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.SysAlgorithm{}).
+		Where("status = 4 AND deleted = 0").
+		Count(&count).Error
+	return count, err
+}
+
+// FindNameByID 查询算法名称
+func (r *AlgorithmRepository) FindNameByID(ctx context.Context, id int64) (string, error) {
+	var name string
+	err := r.db.WithContext(ctx).
+		Table("sys_algorithm").
+		Where("id = ? AND deleted = 0", id).
+		Select("name").
+		Scan(&name).Error
+	return name, err
+}
+
+// ExistsByID 检查算法是否存在
+func (r *AlgorithmRepository) ExistsByID(ctx context.Context, id int64) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.SysAlgorithm{}).
+		Where("id = ? AND deleted = 0", id).
+		Count(&count).Error
+	return count > 0, err
+}
+
 // Ensure AlgorithmRepository implements IAlgorithmRepository
 var _ IAlgorithmRepository = (*AlgorithmRepository)(nil)

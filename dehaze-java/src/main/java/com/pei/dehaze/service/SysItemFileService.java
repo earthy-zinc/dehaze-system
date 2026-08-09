@@ -1,10 +1,9 @@
 package com.pei.dehaze.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.pei.dehaze.model.bo.ItemFileBO;
+import com.pei.dehaze.model.dto.ItemFileDTO;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
-import com.pei.dehaze.model.form.BatchDeleteForm;
 import com.pei.dehaze.model.form.ItemFileUpdateForm;
 import com.pei.dehaze.model.vo.BatchDeleteResultVO;
 import com.pei.dehaze.model.vo.ImageUrlVO;
@@ -21,7 +20,7 @@ public interface SysItemFileService extends IService<SysItemFile> {
      * @param itemBO 图片业务对象
      * @return 图片信息VO
      */
-    ImageUrlVO saveItemFile(Long itemId, ItemFileBO itemBO);
+    ImageUrlVO saveItemFile(Long itemId, ItemFileDTO itemBO);
 
     /**
      * 短事务写入数据项文件关联记录（将 DB 写入与 MinIO 上传分离）
@@ -32,7 +31,7 @@ public interface SysItemFileService extends IService<SysItemFile> {
      * @param thumbnailSysFile 缩略图文件实体
      * @return 数据项文件实体
      */
-    SysItemFile saveItemFileRecord(Long itemId, ItemFileBO itemBO, SysFile sysFile, SysFile thumbnailSysFile);
+    SysItemFile saveItemFileRecord(Long itemId, ItemFileDTO itemBO, SysFile sysFile, SysFile thumbnailSysFile);
 
     /**
      * 获取指定数据项的图片列表

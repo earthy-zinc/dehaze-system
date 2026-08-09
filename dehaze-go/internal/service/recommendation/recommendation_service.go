@@ -2,10 +2,8 @@ package recommendation
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -13,19 +11,16 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
+	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
 	recrepo "github.com/earthyzinc/dehaze-go/internal/repository/recommendation"
+	"github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
-	"gorm.io/gorm"
 )
 
 var (
-	validHazeLevels  = []string{"light", "moderate", "heavy"}
-	validSceneTypes  = []string{"urban", "landscape", "building", "night", "backlight", "indoor"}
-	validLightings   = []string{"bright", "normal", "dark", "veryDark", "backlight"}
-	validResolutions = []string{"sd", "hd", "uhd"}
-	validNoiseLevels = []string{"low", "medium", "high"}
-	imageExtensions  = []string{".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif"}
-	topN             = 3
+	validSceneTypes = []string{"urban", "landscape", "building", "night", "backlight", "indoor"}
+	imageExtensions = []string{".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif"}
+	topN            = 3
 
 	reasonTemplates = map[string]string{
 		"urban":     "处理速度快，对城市雾霾效果出色",
@@ -38,44 +33,55 @@ var (
 )
 
 type RecommendationService struct {
-	db        *gorm.DB
-	recRepo   recrepo.RecommendationRepository
-	ruleRepo  recrepo.RuleRepository
-	ruleCache []model.SysRecommendationRule
-	mu        sync.RWMutex
+	algoClient    *algorithm.Client
+	recRepo       recrepo.RecommendationRepository
+	ruleRepo      recrepo.RuleRepository
+	algorithmRepo algorepo.IAlgorithmRepository
+	ruleCache     []model.SysRecommendationRule
+	mu            sync.RWMutex
 }
 
-func NewRecommendationService(db *gorm.DB, recRepo recrepo.RecommendationRepository, ruleRepo recrepo.RuleRepository) *RecommendationService {
+func NewRecommendationService(
+	algoClient *algorithm.Client,
+	recRepo recrepo.RecommendationRepository,
+	ruleRepo recrepo.RuleRepository,
+	algorithmRepo algorepo.IAlgorithmRepository,
+) *RecommendationService {
 	return &RecommendationService{
-		db:       db,
-		recRepo:  recRepo,
-		ruleRepo: ruleRepo,
+		algoClient:    algoClient,
+		recRepo:       recRepo,
+		ruleRepo:      ruleRepo,
+		algorithmRepo: algorithmRepo,
 	}
 }
 
+// Analyze 调用 Python 图像特征分析服务提取真实特征
+// Python 服务不可用时返回错误，不降级为伪特征，避免误导用户
 func (s *RecommendationService) Analyze(ctx context.Context, form *bo.AnalyzeForm) (*vo.ImageFeatureAnalysisVO, error) {
 	imageURL := s.resolveImageURL(form)
 	if err := s.validateImageFormat(imageURL); err != nil {
 		return nil, err
 	}
 
-	hash := fmt.Sprintf("%x", md5.Sum([]byte(imageURL)))
-	seed := int(math.Abs(float64(hashCode(hash))))
+	resp, err := s.algoClient.AnalyzeImage(ctx, imageURL)
+	if err != nil {
+		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "图像特征分析服务不可用", err)
+	}
 
 	return &vo.ImageFeatureAnalysisVO{
-		ImageMd5:        hash,
-		HazeLevel:       validHazeLevels[seed%len(validHazeLevels)],
-		HazeConfidence:  0.5 + float64(seed%50)/100.0,
-		SceneType:       validSceneTypes[seed%len(validSceneTypes)],
-		SceneConfidence: 0.5 + float64((seed/7)%50)/100.0,
-		Lighting:        validLightings[seed%len(validLightings)],
-		Complexity:      0.3 + float64((seed/11)%70)/100.0,
+		ImageMd5:         resp.ImageMd5,
+		HazeLevel:        resp.HazeLevel,
+		HazeConfidence:   resp.HazeConfidence,
+		SceneType:        resp.SceneType,
+		SceneConfidence:  resp.SceneConfidence,
+		Lighting:         resp.Lighting,
+		Complexity:       resp.Complexity,
 		ColorDistribution: vo.ColorDistribution{
-			Temperature: 4000.0 + float64(seed%6000),
-			Saturation:  0.3 + float64((seed/13)%70)/100.0,
+			Temperature: resp.ColorDistribution.Temperature,
+			Saturation:  resp.ColorDistribution.Saturation,
 		},
-		Resolution: validResolutions[seed%len(validResolutions)],
-		NoiseLevel: validNoiseLevels[seed%len(validNoiseLevels)],
+		Resolution: resp.Resolution,
+		NoiseLevel: resp.NoiseLevel,
 	}, nil
 }
 
@@ -102,13 +108,11 @@ func (s *RecommendationService) GetAlgorithmRecommendations(ctx context.Context,
 		}
 	}
 	if sceneType == "urban" && imageMd5 != "" {
-		var rec model.SysRecommendation
-		err := s.db.WithContext(ctx).
-			Where("image_md5 = ?", imageMd5).
-			Order("id DESC").
-			Limit(1).
-			First(&rec).Error
-		if err == nil && rec.AnalysisResult != nil {
+		rec, err := s.recRepo.FindLatestByImageMd5(ctx, imageMd5)
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "查询推荐记录失败", err)
+		}
+		if rec != nil && rec.AnalysisResult != nil {
 			var ar map[string]any
 			if json.Unmarshal([]byte(*rec.AnalysisResult), &ar) == nil {
 				if st, ok := ar["sceneType"].(string); ok && containsString(validSceneTypes, st) {
@@ -136,10 +140,7 @@ func (s *RecommendationService) GetAlgorithmRecommendations(ctx context.Context,
 	}
 
 	// 获取已发布算法作为候选池
-	var publishedAlgs []model.SysAlgorithm
-	err := s.db.WithContext(ctx).
-		Where("status = 4 AND deleted = 0").
-		Find(&publishedAlgs).Error
+	publishedAlgs, err := s.algorithmRepo.FindAllPublished(ctx)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法列表失败", err)
 	}
@@ -351,8 +352,10 @@ func (s *RecommendationService) GetReport(ctx context.Context, startDate, endDat
 	}
 
 	// 获取已发布算法总数
-	var publishedCount int64
-	s.db.WithContext(ctx).Model(&model.SysAlgorithm{}).Where("status = 4 AND deleted = 0").Count(&publishedCount)
+	publishedCount, err := s.algorithmRepo.CountPublished(ctx)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计已发布算法失败", err)
+	}
 
 	report := &vo.RecommendationReportVO{
 		TotalRecommendations: total,
@@ -397,7 +400,7 @@ func (s *RecommendationService) resolveImageURL(form *bo.AnalyzeForm) string {
 
 func (s *RecommendationService) validateImageFormat(imageURL string) error {
 	if imageURL == "" {
-		return nil
+		return common.NewBizError(common.PARAM_ERROR, "imageId和imageUrl至少提供一个")
 	}
 	lower := strings.ToLower(imageURL)
 	if idx := strings.Index(lower, "?"); idx > 0 {
@@ -508,15 +511,4 @@ func containsString(slice []string, s string) bool {
 		}
 	}
 	return false
-}
-
-func hashCode(s string) int {
-	h := 0
-	for _, c := range s {
-		h = 31*h + int(c)
-	}
-	if h < 0 {
-		h = -h
-	}
-	return h
 }

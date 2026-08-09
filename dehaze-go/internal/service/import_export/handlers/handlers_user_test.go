@@ -245,12 +245,12 @@ func TestUserExportHandler_GetDataProvider_EmptyPage(t *testing.T) {
 }
 
 func TestUserImportHandler_GetModule(t *testing.T) {
-	handler := NewUserImportHandler(nil, nil)
+	handler := NewUserImportHandler(nil, nil, "testPassword123")
 	assert.Equal(t, "user", handler.GetModule())
 }
 
 func TestUserImportHandler_GetFieldConfigs(t *testing.T) {
-	handler := NewUserImportHandler(nil, nil)
+	handler := NewUserImportHandler(nil, nil, "testPassword123")
 	fields := handler.GetFieldConfigs()
 	assert.Len(t, fields, 7)
 	assert.Equal(t, "username", fields[0].Field)
@@ -260,7 +260,7 @@ func TestUserImportHandler_GetFieldConfigs(t *testing.T) {
 }
 
 func TestUserImportHandler_GetTemplateSampleData(t *testing.T) {
-	handler := NewUserImportHandler(nil, nil)
+	handler := NewUserImportHandler(nil, nil, "testPassword123")
 	samples := handler.GetTemplateSampleData()
 	assert.Len(t, samples, 2)
 	assert.Equal(t, "user001", samples[0]["username"])
@@ -270,7 +270,7 @@ func TestUserImportHandler_GetTemplateSampleData(t *testing.T) {
 func TestUserImportHandler_ImportBatch_Success(t *testing.T) {
 	db := newTestDB(t)
 	deptRepo := &mockDeptRepo{namesToIDs: map[string]int64{"研发部": 100}}
-	handler := NewUserImportHandler(db, deptRepo)
+	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
 		{"username": "u1", "nickname": "n1", "gender": "男", "deptName": "研发部", "mobile": "13800138000", "email": "u1@example.com", "status": "启用"},
@@ -302,7 +302,7 @@ func TestUserImportHandler_ImportBatch_Success(t *testing.T) {
 func TestUserImportHandler_ImportBatch_MissingRequiredFields(t *testing.T) {
 	db := newTestDB(t)
 	deptRepo := &mockDeptRepo{}
-	handler := NewUserImportHandler(db, deptRepo)
+	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
 		{"username": "", "nickname": "n1"},
@@ -331,7 +331,7 @@ func TestUserImportHandler_ImportBatch_DuplicateUsername(t *testing.T) {
 	assert.NoError(t, db.Create(&existing).Error)
 
 	deptRepo := &mockDeptRepo{}
-	handler := NewUserImportHandler(db, deptRepo)
+	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
 		{"username": "dup", "nickname": "n1"},
@@ -355,7 +355,7 @@ func TestUserImportHandler_ImportBatch_DuplicateUsername(t *testing.T) {
 func TestUserImportHandler_ImportBatch_StatusParsing(t *testing.T) {
 	db := newTestDB(t)
 	deptRepo := &mockDeptRepo{}
-	handler := NewUserImportHandler(db, deptRepo)
+	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
 		{"username": "u1", "nickname": "n1", "status": "0"},
@@ -378,7 +378,7 @@ func TestUserImportHandler_ImportBatch_StatusParsing(t *testing.T) {
 func TestUserImportHandler_ImportBatch_GenderParsing(t *testing.T) {
 	db := newTestDB(t)
 	deptRepo := &mockDeptRepo{}
-	handler := NewUserImportHandler(db, deptRepo)
+	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
 		{"username": "u1", "nickname": "n1", "gender": "男"},
@@ -401,7 +401,7 @@ func TestUserImportHandler_ImportBatch_GenderParsing(t *testing.T) {
 func TestUserImportHandler_ImportBatch_DeptNameResolution(t *testing.T) {
 	db := newTestDB(t)
 	deptRepo := &mockDeptRepo{namesToIDs: map[string]int64{"研发部": 100, "测试部": 200}}
-	handler := NewUserImportHandler(db, deptRepo)
+	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
 		{"username": "u1", "nickname": "n1", "deptName": "研发部"},
@@ -424,7 +424,7 @@ func TestUserImportHandler_ImportBatch_DeptNameResolution(t *testing.T) {
 func TestUserImportHandler_ImportBatch_CallbackCancelled(t *testing.T) {
 	db := newTestDB(t)
 	deptRepo := &mockDeptRepo{}
-	handler := NewUserImportHandler(db, deptRepo)
+	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
 		{"username": "u1", "nickname": "n1"},
@@ -446,7 +446,7 @@ func TestUserImportHandler_ImportBatch_CallbackCancelled(t *testing.T) {
 func TestUserImportHandler_ImportBatch_DeptRepoError_FallsBackToZero(t *testing.T) {
 	db := newTestDB(t)
 	deptRepo := &mockDeptRepo{err: assert.AnError}
-	handler := NewUserImportHandler(db, deptRepo)
+	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
 		{"username": "u1", "nickname": "n1", "deptName": "研发部"},
