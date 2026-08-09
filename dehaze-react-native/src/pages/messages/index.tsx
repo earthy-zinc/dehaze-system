@@ -17,14 +17,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { MessageAPI } from 'dehaze-sdk-js';
-import type { MessageVO } from 'dehaze-sdk-js';
+import type { MessageVO, MessageQuery } from 'dehaze-sdk-js';
 import { colors } from '@/theme/colors';
 import { spacing, layout } from '@/theme/spacing';
 import { useMessagesStore } from '@/store/messages';
-import type { RootStackParamList } from '@/routes/types';
+import type { MessagesStackParamList, TabParamList } from '@/routes/types';
 
 type MessageType = 'all' | 'system' | 'processing' | 'activity';
 
@@ -38,7 +39,7 @@ const TYPE_TABS: { key: MessageType; label: string }[] = [
 const PAGE_SIZE = 20;
 
 export default function MessagesScreen() {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<MessagesStackParamList, 'Index'>>();
   const { unreadCount, setUnreadCount, decrementUnread } = useMessagesStore();
 
   const [activeType, setActiveType] = useState<MessageType>('all');
@@ -49,7 +50,7 @@ export default function MessagesScreen() {
   const [pageNum, setPageNum] = useState(1);
 
   useEffect(() => {
-    navigation.setOptions({ tabBarBadge: unreadCount > 0 ? unreadCount : undefined } as any);
+    navigation.getParent<BottomTabNavigationProp<TabParamList>>()?.setOptions({ tabBarBadge: unreadCount > 0 ? unreadCount : undefined });
   }, [unreadCount, navigation]);
 
   const loadUnreadCount = useCallback(async () => {
@@ -63,7 +64,7 @@ export default function MessagesScreen() {
       if (loading) return;
       setLoading(true);
       try {
-        const params: Record<string, any> = { pageNum: page, pageSize: PAGE_SIZE };
+        const params: MessageQuery = { pageNum: page, pageSize: PAGE_SIZE };
         if (type !== 'all') params.type = type;
         const res = await MessageAPI.getPage(params);
         const list = (res.list as unknown as MessageVO[]) ?? [];
@@ -118,7 +119,9 @@ export default function MessagesScreen() {
     ]);
   }, [activeType, setUnreadCount]);
 
-  const handleSettings = useCallback(() => { navigation.navigate('Notify' as any); }, [navigation]);
+  const handleSettings = useCallback(() => {
+    navigation.getParent<BottomTabNavigationProp<TabParamList>>()?.navigate('Profile', { screen: 'Notify' });
+  }, [navigation]);
 
   const formatTime = (timeStr?: string) => {
     if (!timeStr) return '';

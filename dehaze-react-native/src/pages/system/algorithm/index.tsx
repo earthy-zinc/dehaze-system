@@ -17,12 +17,12 @@ import type { Algorithm } from 'dehaze-sdk-js'
 type Props = NativeStackScreenProps<ProfileStackParamList, 'SystemAlgorithm'>;
 
 const STATUS_MAP: Record<number, { label: string; color: string }> = {
-  0: { label: '草稿', color: '#9ca3af' },
-  1: { label: '待审核', color: '#fbbf24' },
-  2: { label: '已发布', color: '#34d399' },
-  3: { label: '已驳回', color: '#ef4444' },
-  4: { label: '已下架', color: '#6b7280' },
-  5: { label: '归档', color: '#6b7280' },
+  0: { label: '草稿', color: theme.colors.text.tertiary },
+  1: { label: '待审核', color: theme.colors.status.warning },
+  2: { label: '已发布', color: theme.colors.status.success },
+  3: { label: '已驳回', color: theme.colors.status.error },
+  4: { label: '已下架', color: theme.colors.text.secondary },
+  5: { label: '归档', color: theme.colors.text.secondary },
 };
 
 const SystemAlgorithmScreen: React.FC<Props> = ({ navigation }) => {
@@ -83,7 +83,7 @@ const SystemAlgorithmScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderItem = ({ item }: { item: Algorithm }) => {
-    const st = STATUS_MAP[item.status ?? 0] || { label: '未知', color: '#9ca3af' };
+    const st = STATUS_MAP[item.status ?? 0] || { label: '未知', color: theme.colors.text.tertiary };
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>

@@ -18,19 +18,21 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { colors } from '@/theme/colors';
 import { spacing, layout } from '@/theme/spacing';
+import SliderControl from '@/components/SliderControl';
 import { AlgorithmAPI } from 'dehaze-sdk-js';
 import type { Algorithm } from 'dehaze-sdk-js';
-import type { RootStackParamList } from '@/routes/types';
+import type { DehazeStackParamList } from '@/routes/types';
 import type { SelectedImage } from '@/types/image';
-import type { CommonAlgorithmParams, ProcessingResult, TaskProgress } from '@/types/processing';
-import { predictSingle, DEFAULT_PARAMS } from '@/pages/processing/services/processingApi';
+import type { CommonAlgorithmParams } from '@/types/processing';
+import { DEFAULT_PARAMS, PARAM_SCHEMAS } from '@/pages/processing/services/processingApi';
+import { useProcessing } from '@/hooks/useProcessing';
 
 type Step = 1 | 2 | 3 | 4 | 5;
-type Phase = 'config' | 'processing' | 'done' | 'failed';
 
 const STEPS = [
   { step: 1 as Step, label: '上传' },
@@ -41,7 +43,7 @@ const STEPS = [
 ];
 
 export default function DehazeScreen() {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<DehazeStackParamList>>();
 
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
@@ -49,10 +51,15 @@ export default function DehazeScreen() {
   const [algoLoading, setAlgoLoading] = useState(false);
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<Algorithm | null>(null);
   const [params, setParams] = useState<CommonAlgorithmParams>({ ...DEFAULT_PARAMS });
-  const [phase, setPhase] = useState<Phase>('config');
-  const [progress, setProgress] = useState<TaskProgress | null>(null);
-  const [result, setResult] = useState<ProcessingResult | null>(null);
-  const cancelSignalRef = useRef<{ canceled: boolean }>({ canceled: false });
+  const { phase, progress, result, predict, cancel, retry } = useProcessing();
+  const prevPhaseRef = useRef(phase);
+
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    if (phase === 'done') setCurrentStep(5);
+    else if (phase === 'config' && prev === 'processing') setCurrentStep(3);
+  }, [phase]);
 
   useEffect(() => {
     if (currentStep === 2 && algorithms.length === 0) {
@@ -86,16 +93,39 @@ export default function DehazeScreen() {
   );
 
   const handlePickImage = useCallback(() => {
-    Alert.alert('选择图片', '请通过图像输入页选择图片，或使用样例图片', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '使用样例',
-        onPress: () => {
-          setSelectedImage({ url: 'https://picsum.photos/800/600', thumbUrl: 'https://picsum.photos/200/150', name: '样例图片', source: 'sample' });
-          setCurrentStep(2);
-        },
-      },
-    ]);
+    launchImageLibrary({
+      mediaType: 'photo',
+      quality: 0.9,
+      includeBase64: false,
+      selectionLimit: 1,
+    })
+      .then(result => {
+        if (result.didCancel) {
+          Alert.alert('提示', '已取消选择图片');
+          return;
+        }
+        if (result.errorCode) {
+          Alert.alert('错误', result.errorMessage || '选择图片失败');
+          return;
+        }
+        const asset = result.assets?.[0];
+        const uri = asset?.uri ?? asset?.originalPath;
+        if (!asset || !uri) {
+          Alert.alert('错误', '无法获取图片信息');
+          return;
+        }
+        setSelectedImage({
+          url: uri,
+          thumbUrl: uri,
+          name: asset.fileName,
+          width: asset.width,
+          height: asset.height,
+          size: asset.fileSize,
+          source: 'upload',
+        });
+        setCurrentStep(2);
+      })
+      .catch(() => Alert.alert('错误', '选择图片时发生错误'));
   }, []);
 
   const handleSelectAlgorithm = useCallback((algo: Algorithm) => {
@@ -110,37 +140,12 @@ export default function DehazeScreen() {
   const handleStartProcessing = useCallback(() => {
     if (!selectedImage?.url || !selectedAlgorithm?.id) { Alert.alert('提示', '缺少图片或算法信息'); return; }
     setCurrentStep(4);
-    cancelSignalRef.current = { canceled: false };
-    setPhase('processing');
-    setProgress({ status: 0, elapsed: 0 });
-    setResult(null);
-    predictSingle({
-      algorithmId: selectedAlgorithm.id,
-      imageUrl: selectedImage.url,
-      params,
-      onProgress: p => setProgress(p),
-      cancelSignal: cancelSignalRef.current,
-    })
-      .then(res => { setResult(res); setPhase('done'); setCurrentStep(5); })
-      .catch(err => {
-        const isCanceled = err instanceof Error && err.message.includes('取消');
-        setProgress(prev => ({ status: isCanceled ? 4 : 3, elapsed: prev?.elapsed ?? 0, error: err instanceof Error ? err.message : '处理失败' }));
-        setPhase(isCanceled ? 'config' : 'failed');
-        if (isCanceled) setCurrentStep(3);
-        else Alert.alert('处理失败', err instanceof Error ? err.message : '请稍后重试');
-      });
-  }, [selectedImage, selectedAlgorithm, params]);
-
-  const handleCancel = useCallback(() => {
-    Alert.alert('确认取消', '确定要取消当前处理任务吗？', [
-      { text: '继续处理', style: 'cancel' },
-      { text: '取消处理', style: 'destructive', onPress: () => { cancelSignalRef.current.canceled = true; } },
-    ]);
-  }, []);
+    predict(selectedImage, selectedAlgorithm, params);
+  }, [selectedImage, selectedAlgorithm, params, predict]);
 
   const handleEnterCompare = useCallback(() => {
     if (!selectedImage?.url || !result?.resultUrl) return;
-    navigation.navigate('CompareSideBySide' as any, { originalUrl: selectedImage.url, processedUrl: result.resultUrl, algorithmId: selectedAlgorithm?.id });
+    navigation.navigate('CompareSideBySide', { originalUrl: selectedImage.url, processedUrl: result.resultUrl, algorithmId: selectedAlgorithm?.id });
   }, [selectedImage, result, selectedAlgorithm, navigation]);
 
   const formatTime = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
@@ -229,31 +234,21 @@ export default function DehazeScreen() {
           <TouchableOpacity onPress={() => setCurrentStep(2)}><Text style={styles.changeText}>更换</Text></TouchableOpacity>
         </View>
       )}
-      {([
-        { key: 'strength' as const, label: '去雾强度', min: 0, max: 100, step: 25, defaultVal: 50 },
-        { key: 'saturation' as const, label: '色彩饱和度', min: 0, max: 200, step: 50, defaultVal: 100 },
-        { key: 'contrast' as const, label: '对比度', min: 0, max: 200, step: 50, defaultVal: 100 },
-        { key: 'sharpen' as const, label: '锐化程度', min: 0, max: 100, step: 25, defaultVal: 30 },
-      ] as const).map(p => {
-        const val = params[p.key] ?? p.defaultVal;
-        const marks: number[] = [];
-        for (let v = p.min; v <= p.max; v += p.step) marks.push(v);
+      {PARAM_SCHEMAS.map(schema => {
+        const val = params[schema.key] ?? schema.default;
         return (
-          <View style={styles.paramGroup} key={p.key}>
+          <View style={styles.paramGroup} key={schema.key}>
             <View style={styles.paramHeader}>
-              <Text style={styles.paramLabel}>{p.label}</Text>
+              <Text style={styles.paramLabel}>{schema.label}</Text>
               <Text style={styles.paramValue}>{val}</Text>
             </View>
-            <View style={styles.sliderTrack}>
-              <View style={[styles.sliderFill, { width: `${((val - p.min) / (p.max - p.min)) * 100}%` as any }]} />
-            </View>
-            <View style={styles.sliderBtns}>
-              {marks.map(v => (
-                <TouchableOpacity key={v} onPress={() => handleParamChange(p.key, v)}>
-                  <Text style={[styles.sliderBtnText, val === v && styles.sliderBtnActive]}>{v}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <SliderControl
+              value={val}
+              min={schema.min}
+              max={schema.max}
+              step={schema.step}
+              onChange={v => handleParamChange(schema.key, v)}
+            />
           </View>
         );
       })}
@@ -268,22 +263,28 @@ export default function DehazeScreen() {
     </View>
   );
 
+  const getProgressText = (status: number) => {
+    if (status === 2) return '处理完成';
+    if (status === 3) return '处理失败';
+    return '正在处理...';
+  };
+
   const renderProcessing = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>处理中</Text>
       {progress && (
         <View style={styles.progressCard}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.progressText}>{progress.status === 2 ? '处理完成' : progress.status === 3 ? '处理失败' : '正在处理...'}</Text>
+          <Text style={styles.progressText}>{getProgressText(progress.status)}</Text>
           {progress.elapsed !== undefined && <Text style={styles.progressTime}>已用 {formatTime(progress.elapsed)}</Text>}
           {progress.error && <Text style={styles.progressError}>{progress.error}</Text>}
         </View>
       )}
       {phase === 'processing' && (
-        <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}><Text style={styles.cancelBtnText}>取消处理</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.cancelBtn} onPress={cancel}><Text style={styles.cancelBtnText}>取消处理</Text></TouchableOpacity>
       )}
       {phase === 'failed' && (
-        <TouchableOpacity style={styles.startBtn} onPress={handleStartProcessing}><Text style={styles.startBtnText}>重新处理</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.startBtn} onPress={retry}><Text style={styles.startBtnText}>重新处理</Text></TouchableOpacity>
       )}
     </View>
   );
@@ -309,7 +310,7 @@ export default function DehazeScreen() {
             <Ionicons name="git-compare-outline" size={18} color="#fff" />
             <Text style={styles.compareBtnText}>进入效果对比</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.reprocessBtn} onPress={() => { setResult(null); setPhase('config'); setCurrentStep(3); }}>
+          <TouchableOpacity style={styles.reprocessBtn} onPress={() => setCurrentStep(3)}>
             <Text style={styles.reprocessBtnText}>重新处理</Text>
           </TouchableOpacity>
         </View>
@@ -385,11 +386,6 @@ const styles = StyleSheet.create({
   paramHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
   paramLabel: { fontSize: 14, fontWeight: '500', color: colors.text.primary },
   paramValue: { fontSize: 14, fontWeight: '600', color: colors.primary },
-  sliderTrack: { height: 6, backgroundColor: colors.background.tertiary, borderRadius: 3, marginBottom: spacing.sm, overflow: 'hidden' },
-  sliderFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
-  sliderBtns: { flexDirection: 'row', justifyContent: 'space-between' },
-  sliderBtnText: { fontSize: 12, color: colors.text.tertiary },
-  sliderBtnActive: { color: colors.primary, fontWeight: '600' },
   startBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, backgroundColor: colors.primary, borderRadius: layout.borderRadius.md, marginTop: spacing.md },
   startBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
   backLink: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.xs, marginTop: spacing.md, paddingVertical: spacing.sm },

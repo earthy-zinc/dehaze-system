@@ -140,6 +140,7 @@ lib/
 │   ├── constants/                     # api_constants / storage_constants
 │   ├── logger/                        # Logger + transports + log_entry
 │   ├── network/                       # Dio + 4 拦截器 + task_poller + api_result/page_result
+│   ├── state/                         # paged_list_notifier（PagedListNotifier 基类 + LoadMoreListener）
 │   ├── storage/                       # TokenStorage（基于 SharedPreferences）
 │   └── types/                         # option_type 通用类型
 ├── models/                            # 共享数据模型（24 个，json_serializable 生成 .g.dart）
@@ -189,7 +190,7 @@ lib/
 | 收藏管理 | 跨模块统一收藏（算法/处理结果/数据集） | favoriteProvider + Dismissible 左滑删除 |
 | 推荐管理 | 推荐算法展示与一键使用 | recommendation_service |
 | 数据集管理 (dataset/) | 列表 / 详情 / 图片浏览 / 类型筛选 | 模块内 providers/ + widgets/ 自治 |
-| 系统管理 (system/) | 14 个后台管理页 | user/role/menu/dept/dict/algorithm/dataset/task/member/package/order/feedback/message/recommend |
+| 系统管理 (system/) | 14 个后台管理页 | user/role/menu/dept/dict/algorithm/dataset/task/member/package/order/feedback/message/recommend，统一采用 `PagedListNotifier` 范式（`StateNotifier<AsyncValue<PagedList<T>>>`） |
 | 个人中心 (personal/) | 10 个用户子页 | settings/quota/package/orders/member/files/feedback/favorites/help/about |
 | 消息中心 (messages/) | 消息列表 + 详情 | announcement + message + notification_settings |
 | 响应式布局 (MainLayout) | 单代码库适配全平台 | `MediaQuery.width >= 768` 切换：移动端 NavigationBar 5 Tab / 桌面端 248px 侧边栏 + 面包屑 |
@@ -200,8 +201,8 @@ lib/
 | 决策 | 选择 | 理由 |
 |------|------|------|
 | 框架 | Flutter | 单代码库支持 iOS/Android/Web/Desktop 全平台 |
-| 状态管理 | Riverpod (StateNotifier) | 编译时安全，Provider 依赖注入；StateNotifier 承载可变状态 |
-| 网络层 | Dio + 4 拦截器 | TraceInterceptor（trace_id）/ AuthInterceptor（Token 注入）/ ResponseInterceptor（统一拆包）/ ErrorInterceptor（401 处理） |
+| 状态管理 | Riverpod (StateNotifier) | 编译时安全，Provider 依赖注入；StateNotifier 承载可变状态；system 管理页通过 `PagedListNotifier` 基类统一分页列表状态（`StateNotifier<AsyncValue<PagedList<T>>>`） |
+| 网络层 | Dio + 4 拦截器 | TraceInterceptor（trace_id）/ AuthInterceptor（Token 注入）/ ResponseInterceptor（统一拆包）/ ErrorInterceptor（401 处理 + 2s 防抖窗口，避免并发 401 多次触发 onAuthError） |
 | 路由 | GoRouter (StatefulShellRoute) | 声明式路由，5 Tab 状态保持，支持深层链接与 ShellRoute 外沉浸页 |
 | 存储 | SharedPreferences | Token (sessionId) 持久化，跨平台一致性，无平台特有依赖 |
 | 响应式布局 | 移动端 NavigationBar + 桌面端 SideBar | `MediaQuery.sizeOf` 实时切换，单 Widget 树双布局 |
@@ -221,7 +222,7 @@ lib/
 | 工具 | `/tools` | image-input / algorithm-browse / dataset (含 :id 详情) / batch / metrics-manage |
 | 去雾 | `/dehaze` | algorithm-select / processing |
 | 消息 | `/messages` | :id 详情 / notify |
-| 我的 | `/profile` | task-history / files / orders / quota / member / package / feedback / favorites / settings / help / about / notify / dashboard / system/* (14 管理页) |
+| 我的 | `/profile` | task-history / files / orders / quota / member / package / feedback / favorites / settings / help / about / notify / dashboard / admin/* (14 管理页，路径 `/profile/admin/*`) |
 
 ShellRoute 外的沉浸页（无 Tab 框架）：`/compare/side-by-side`、`/compare/overlay`、`/compare/magnifier`、`/compare/filter`、`/compare/metrics`、`/algorithm`。
 
@@ -232,6 +233,9 @@ ShellRoute 外的沉浸页（无 Tab 框架）：`/compare/side-by-side`、`/com
 - 未登录访问非公开路由 → 重定向 `/login`
 - 已登录访问 `/login` 或 `/register` → 重定向 `/home`
 - 公开路由白名单：`/login`、`/register`、`/home`
+- 权限守卫：登录态检查后，按 `AppRouterConfig.adminRoutePermissions` 映射（14 项，路径→权限标识，如 `/profile/admin/user-manage` → `sys:user:*`）校验 `authState.hasPerm`，已登录但无权限的用户访问管理页 → 重定向 `/home`
+
+页面内访问控制（无权限渲染"无权限访问"）已上移至路由层统一处理，14 个管理页 build 顶部的 `hasPerm` 样板已删除（功能可见性 `hasPerm`，如新增按钮，仍保留在页面内）。
 
 ### 5.3 错误处理
 
@@ -246,12 +250,17 @@ ShellRoute 外的沉浸页（无 Tab 框架）：`/compare/side-by-side`、`/com
 | 基础设施 Provider | providers.dart | sharedPreferences / tokenStorage / dioClient / authErrorCallback |
 | 服务 Provider | providers.dart | 25 个 service Provider，一行 dio 注入 |
 | 全局业务 Provider | auth_provider.dart / processing_provider.dart | 跨页面共享的认证态与处理流程态 |
-| 页面级 Provider | pages/{module}/providers/ | image_input_provider / sample_provider / dataset_provider / image_provider，仅模块内使用 |
+| 页面级 Provider | pages/{module}/providers/ | image_input_provider / sample_provider / dataset_provider（状态类型 `AsyncValue<List<Dataset>>`，去除本地 `DatasetModel` 冗余映射）/ image_provider，仅模块内使用 |
+
+system 管理页 Provider（14 个，均位于 `pages/system/`，基于 `PagedListNotifier` 基类）：
+
+- 分页页（10 个）：user / role / dept / dict / dataset / task / member / package / order / feedback / message——`StateNotifierProvider<XxxManageNotifier, AsyncValue<PagedList<T>>>`，构造时自动首次加载，提供 `search` / `refresh` / `loadMore`
+- 非分页页（4 个）：menu / dept 树形、algorithm、recommend——`StateNotifierProvider<XxxManageNotifier, AsyncValue<List<T>>>`
 
 ### 6.2 模块间交互
 
 - **后端通信**：通过 Dio 调用 Java/Go/Python 三端 RESTful API，4 拦截器统一处理 trace_id 注入、Token 注入、响应拆包、401 错误
-- **认证错误传播**：`ErrorInterceptor` 检测 401 → `AuthErrorHandler.handle()` → `authProvider.onAuthError()` 清空 Token 并切换状态 → GoRouter 守卫触发跳转 `/login`。静态容器设计避免 Provider 循环依赖
+- **认证错误传播**：`ErrorInterceptor` 检测 401 → `AuthErrorHandler.handle()` → `authProvider.onAuthError()` 清空 Token 并切换状态 → GoRouter 守卫触发跳转 `/login`。静态容器设计避免 Provider 循环依赖。`ErrorInterceptor` 内置 401 防抖（2s 窗口，避免并发 401 多次触发 `onAuthError`）
 - **去雾处理流程**：UI → `processingProvider.process()` → `PredictionService.predictAndWait()` → POST 立即返回 taskId → `pollTask` 轮询 GET 直至 completed/failed → 状态回填 UI
 - **跨模块状态共享**：如收藏状态通过 favoriteProvider 全局共享，任意页面收藏按钮变更后自动重建
 

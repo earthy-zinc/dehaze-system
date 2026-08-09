@@ -172,7 +172,7 @@ const PersonalMemberScreen: React.FC = () => {
 
       {!isVip && (
         <View style={styles.upgradeHint}>
-          <Ionicons name="diamond-outline" size={18} color="#f59e0b" />
+          <Ionicons name="diamond-outline" size={18} color={theme.colors.status.warning} />
           <Text style={styles.upgradeText}>开通 VIP 会员享受更多权益</Text>
         </View>
       )}

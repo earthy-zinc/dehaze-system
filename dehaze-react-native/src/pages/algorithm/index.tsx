@@ -1,9 +1,6 @@
 /**
  * 算法详情页面 (F-M03-004)
  *
- * 实现文档 `03-模块设计/核心模块/算法选择/需求规格.md` 中 F-M03-004 节定义的详情页结构：
- *  - 基本信息 / 算法描述 / 效果样例 / 参数配置 / 性能指标 / 用户评价 / 相关链接 / 版本历史
- *
  * 数据来源：
  *  - AlgorithmAPI.getAlgorithmInfoById(id) → 基本信息
  *  - AlgorithmAPI.getMonitorData(id)       → 性能指标
@@ -14,23 +11,18 @@
  *  - 单列滚动的章节内容
  *  - 底部固定的「立即使用 / 收藏 / 对比」操作栏
  */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
-  StyleSheet,
   TouchableOpacity,
-  LayoutChangeEvent,
   Alert,
   Share,
-  type NativeSyntheticEvent,
-  type NativeScrollEvent,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import type { IoniconName } from '@/components/Icon';
 
 import type { DehazeStackParamList } from '@/routes/types';
 import { AppHeader } from '@/layout';
@@ -38,6 +30,7 @@ import { theme } from '@/theme';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import EmptyState from '@/components/EmptyState';
 import Badge from '@/components/Badge';
+import { useSectionScroll, type SectionDef } from '@/hooks/useSectionScroll';
 
 import { AlgorithmAPI, FavoriteAPI } from 'dehaze-sdk-js';
 import type {
@@ -46,6 +39,11 @@ import type {
   AlgorithmMonitorVO,
 } from 'dehaze-sdk-js';
 
+import SectionTitle from './components/SectionTitle';
+import InfoRow from './components/InfoRow';
+import MetricBar from './components/MetricBar';
+import { styles } from './styles';
+
 type Props = NativeStackScreenProps<DehazeStackParamList, 'Algorithm'>;
 
 /** 算法状态枚举映射 (来自后端 AlgorithmStatusEnum) */
@@ -53,21 +51,39 @@ const ALGORITHM_STATUS_MAP: Record<
   number,
   { label: string; color: string; bgColor: string }
 > = {
-  1: { label: '草稿', color: '#6B7280', bgColor: '#F3F4F6' },
-  2: { label: '测试中', color: '#B45309', bgColor: '#FEF3C7' },
-  3: { label: '待审核', color: '#1D4ED8', bgColor: '#DBEAFE' },
-  4: { label: '已发布', color: '#047857', bgColor: '#D1FAE5' },
-  5: { label: '已停用', color: '#B91C1C', bgColor: '#FEE2E2' },
-  6: { label: '已归档', color: '#6B7280', bgColor: '#E5E7EB' },
+  1: {
+    label: '草稿',
+    color: theme.colors.text.tertiary,
+    bgColor: theme.colors.background.tertiary,
+  },
+  2: {
+    label: '测试中',
+    color: theme.colors.badge.warning.text,
+    bgColor: theme.colors.badge.warning.bg,
+  },
+  3: {
+    label: '待审核',
+    color: theme.colors.badge.info.text,
+    bgColor: theme.colors.badge.info.bg,
+  },
+  4: {
+    label: '已发布',
+    color: theme.colors.badge.success.text,
+    bgColor: theme.colors.badge.success.bg,
+  },
+  5: {
+    label: '已停用',
+    color: theme.colors.badge.error.text,
+    bgColor: theme.colors.badge.error.bg,
+  },
+  6: {
+    label: '已归档',
+    color: theme.colors.text.secondary,
+    bgColor: theme.colors.background.tertiary,
+  },
 };
 
 /** 章节定义 */
-interface SectionDef {
-  key: string;
-  label: string;
-  icon: string;
-}
-
 const SECTIONS: SectionDef[] = [
   { key: 'basic', label: '基本信息', icon: 'information-circle' },
   { key: 'description', label: '算法描述', icon: 'document-text' },
@@ -78,6 +94,15 @@ const SECTIONS: SectionDef[] = [
   { key: 'links', label: '相关链接', icon: 'link' },
   { key: 'versions', label: '版本历史', icon: 'git-branch' },
 ];
+
+/** 格式化参数 JSON */
+function formatParams(params: string): string {
+  try {
+    return JSON.stringify(JSON.parse(params), null, 2);
+  } catch {
+    return params;
+  }
+}
 
 const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
   const algorithmId = route.params?.algorithmId;
@@ -90,13 +115,17 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
   const [error, setError] = useState<string | null>(null);
 
   // UI 状态
-  const [activeSection, setActiveSection] = useState('basic');
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
 
-  // 章节位置测量（用于点击锚点后滚动定位）
-  const sectionLayouts = useRef<Record<string, number>>({});
-  const scrollRef = useRef<ScrollView>(null);
+  // 章节锚点滚动
+  const {
+    scrollRef,
+    activeSection,
+    handleSectionPress,
+    handleSectionLayout,
+    handleScroll,
+  } = useSectionScroll(SECTIONS);
 
   /** 加载算法详情 */
   const loadAlgorithm = useCallback(async () => {
@@ -140,41 +169,6 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
         /* 收藏服务不可用时静默忽略 */
       });
   }, [algorithmId]);
-
-  /** 章节锚点点击 → 滚动到对应位置 */
-  const handleSectionPress = useCallback((key: string) => {
-    setActiveSection(key);
-    const y = sectionLayouts.current[key];
-    if (y !== undefined && scrollRef.current) {
-      scrollRef.current.scrollTo({ y: y - 140, animated: true });
-    }
-  }, []);
-
-  /** 测量章节位置 */
-  const handleSectionLayout = useCallback(
-    (key: string) => (e: LayoutChangeEvent) => {
-      sectionLayouts.current[key] = e.nativeEvent.layout.y;
-    },
-    [],
-  );
-
-  /** 滚动时更新激活章节 */
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const y = event.nativeEvent.contentOffset.y + 160;
-      let current = activeSection;
-      for (const section of SECTIONS) {
-        const top = sectionLayouts.current[section.key];
-        if (top !== undefined && top <= y) {
-          current = section.key;
-        }
-      }
-      if (current !== activeSection) {
-        setActiveSection(current);
-      }
-    },
-    [activeSection],
-  );
 
   /** 立即使用 → 跳转处理页 */
   const handleUse = useCallback(() => {
@@ -299,7 +293,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
         >
           {/* Hero 区域 */}
           <LinearGradient
-            colors={['#3B82F6', '#6366F1']}
+            colors={theme.colors.gradient.primary}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.hero}
@@ -457,28 +451,28 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
                     label="调用总数"
                     value={monitor.callCount}
                     max={Math.max(monitor.callCount, 100)}
-                    color="#3B82F6"
+                    color={theme.colors.primary}
                     suffix="次"
                   />
                   <MetricBar
                     label="今日调用"
                     value={monitor.todayCallCount}
                     max={Math.max(monitor.todayCallCount, 50)}
-                    color="#14B8A6"
+                    color={theme.colors.secondary}
                     suffix="次"
                   />
                   <MetricBar
                     label="平均耗时"
                     value={monitor.avgTime}
                     max={Math.max(monitor.avgTime, 1000)}
-                    color="#F59E0B"
+                    color={theme.colors.status.warning}
                     suffix="ms"
                   />
                   <MetricBar
                     label="成功率"
                     value={monitor.successRate * 100}
                     max={100}
-                    color="#10B981"
+                    color={theme.colors.status.success}
                     suffix="%"
                     precision={1}
                   />
@@ -599,7 +593,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={['#3B82F6', '#6366F1']}
+              colors={theme.colors.gradient.primary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.actionPrimaryGradient}
@@ -613,490 +607,5 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
     </View>
   );
 };
-
-/** 章节标题 */
-const SectionTitle: React.FC<{ icon: string; title: string }> = ({ icon, title }) => (
-  <View style={styles.sectionTitleRow}>
-    <View style={styles.sectionTitleIcon}>
-      <Ionicons name={icon as IoniconName} size={16} color={theme.colors.primary} />
-    </View>
-    <Text style={styles.sectionTitleText}>{title}</Text>
-  </View>
-);
-
-/** 信息行 */
-const InfoRow: React.FC<{
-  label: string;
-  value: string;
-  mono?: boolean;
-}> = ({ label, value, mono }) => (
-  <View style={styles.infoRow}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text
-      style={[styles.infoValue, mono && styles.infoValueMono]}
-      numberOfLines={mono ? 2 : 1}
-    >
-      {value}
-    </Text>
-  </View>
-);
-
-/** 指标条 */
-const MetricBar: React.FC<{
-  label: string;
-  value: number;
-  max: number;
-  color: string;
-  suffix?: string;
-  precision?: number;
-}> = ({ label, value, max, color, suffix = '', precision = 0 }) => {
-  const pct = Math.min(100, (value / max) * 100);
-  return (
-    <View style={styles.metricBarWrap}>
-      <View style={styles.metricBarHeader}>
-        <Text style={styles.metricLabel}>{label}</Text>
-        <Text style={[styles.metricValue, { color }]}>
-          {value.toFixed(precision)}
-          <Text style={styles.metricSuffix}>{suffix}</Text>
-        </Text>
-      </View>
-      <View style={styles.metricBarTrack}>
-        <View
-          style={[
-            styles.metricBarFill,
-            { width: `${pct}%`, backgroundColor: color },
-          ]}
-        />
-      </View>
-    </View>
-  );
-};
-
-/** 格式化参数 JSON */
-function formatParams(params: string): string {
-  try {
-    return JSON.stringify(JSON.parse(params), null, 2);
-  } catch {
-    return params;
-  }
-}
-
-const styles = StyleSheet.create({
-  screenContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background.secondary,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.secondary,
-  },
-  stateContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background.secondary,
-  },
-  // 章节锚点导航
-  sectionNav: {
-    backgroundColor: theme.colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-    maxHeight: 52,
-  },
-  sectionNavContent: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    gap: theme.spacing.sm,
-  },
-  sectionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: theme.layout.borderRadius.full,
-    backgroundColor: theme.colors.background.tertiary,
-    marginRight: 4,
-  },
-  sectionChipActive: {
-    backgroundColor: theme.colors.primary,
-  },
-  sectionChipText: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  sectionChipTextActive: {
-    color: '#fff',
-    fontWeight: theme.typography.weights.semibold,
-  },
-  // 滚动容器
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: theme.spacing.xl,
-  },
-  bottomSpacer: {
-    height: 100,
-  },
-  // Hero
-  hero: {
-    padding: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing.xl,
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.md,
-    borderRadius: theme.layout.borderRadius.xxl,
-    ...theme.layout.shadows.lg,
-  },
-  heroTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: theme.spacing.md,
-  },
-  heroIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.layout.borderRadius.lg,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  heroBadges: {
-    flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-  },
-  heroBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: theme.layout.borderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  heroBadgeText: {
-    fontSize: theme.typography.sizes.small,
-    fontWeight: theme.typography.weights.semibold,
-  },
-  heroBadgeTextLight: {
-    fontSize: theme.typography.sizes.small,
-    color: '#fff',
-    fontWeight: theme.typography.weights.semibold,
-  },
-  heroTitle: {
-    fontSize: 26,
-    fontWeight: theme.typography.weights.bold,
-    color: '#fff',
-    marginBottom: 6,
-    letterSpacing: -0.5,
-  },
-  heroSubtitle: {
-    fontSize: theme.typography.sizes.medium,
-    color: 'rgba(255,255,255,0.85)',
-    marginBottom: theme.spacing.sm,
-    fontWeight: theme.typography.weights.medium,
-  },
-  heroDesc: {
-    fontSize: theme.typography.sizes.bodySmall,
-    color: 'rgba(255,255,255,0.75)',
-    lineHeight: 20,
-    marginBottom: theme.spacing.md,
-  },
-  heroMetrics: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: theme.layout.borderRadius.lg,
-    paddingVertical: theme.spacing.sm,
-  },
-  heroMetricItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  heroMetricValue: {
-    fontSize: 20,
-    fontWeight: theme.typography.weights.bold,
-    color: '#fff',
-  },
-  heroMetricLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-  },
-  heroMetricDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginVertical: 4,
-  },
-  // 章节
-  sectionWrap: {
-    marginTop: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.md,
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: theme.spacing.sm,
-    paddingHorizontal: 4,
-  },
-  sectionTitleIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: theme.layout.borderRadius.sm,
-    backgroundColor: `${theme.colors.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sectionTitleText: {
-    fontSize: theme.typography.sizes.medium,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.primary,
-    letterSpacing: 0.3,
-  },
-  // 卡片
-  card: {
-    backgroundColor: theme.colors.background.primary,
-    borderRadius: theme.layout.borderRadius.lg,
-    padding: theme.spacing.md,
-    ...theme.layout.shadows.sm,
-  },
-  // 信息行
-  infoRow: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.light,
-  },
-  infoLabel: {
-    width: 80,
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.text.tertiary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  infoValue: {
-    flex: 1,
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.text.primary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  infoValueMono: {
-    fontFamily: 'Menlo',
-    fontSize: 12,
-    color: theme.colors.text.secondary,
-  },
-  // 描述
-  descriptionText: {
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.text.secondary,
-    lineHeight: 22,
-  },
-  emptyInlineText: {
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
-    paddingVertical: theme.spacing.md,
-  },
-  // 效果样例
-  sampleHint: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.tertiary,
-    marginBottom: theme.spacing.md,
-  },
-  sampleCompareRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sampleImageBox: {
-    flex: 1,
-  },
-  sampleImagePlaceholder: {
-    aspectRatio: 1,
-    borderRadius: theme.layout.borderRadius.md,
-    backgroundColor: theme.colors.background.tertiary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: theme.colors.border.light,
-  },
-  sampleImagePlaceholderClean: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
-  },
-  sampleImageLabel: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  sampleArrow: {
-    paddingHorizontal: 2,
-  },
-  sampleNote: {
-    fontSize: 11,
-    color: theme.colors.text.tertiary,
-    marginTop: theme.spacing.sm,
-    textAlign: 'center',
-  },
-  // 参数代码块
-  codeBlock: {
-    backgroundColor: '#0F172A',
-    borderRadius: theme.layout.borderRadius.md,
-    padding: theme.spacing.md,
-  },
-  codeText: {
-    fontFamily: 'Menlo',
-    fontSize: 12,
-    color: '#E2E8F0',
-    lineHeight: 18,
-  },
-  // 指标条
-  metricBarWrap: {
-    marginBottom: theme.spacing.md,
-  },
-  metricBarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  metricLabel: {
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  metricValue: {
-    fontSize: theme.typography.sizes.medium,
-    fontWeight: theme.typography.weights.bold,
-  },
-  metricSuffix: {
-    fontSize: theme.typography.sizes.small,
-    fontWeight: theme.typography.weights.regular,
-    color: theme.colors.text.tertiary,
-    marginLeft: 2,
-  },
-  metricBarTrack: {
-    height: 8,
-    backgroundColor: theme.colors.background.tertiary,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  metricBarFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  // 版本时间线
-  timeline: {
-    paddingTop: 4,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-  },
-  timelineLeft: {
-    width: 20,
-    alignItems: 'center',
-  },
-  timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.colors.text.tertiary,
-    marginTop: 4,
-  },
-  timelineDotActive: {
-    backgroundColor: theme.colors.primary,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginTop: 3,
-    borderWidth: 2,
-    borderColor: '#fff',
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  timelineLine: {
-    flex: 1,
-    width: 1,
-    backgroundColor: theme.colors.border.light,
-    marginTop: 4,
-    marginBottom: 0,
-    minHeight: 40,
-  },
-  timelineContent: {
-    flex: 1,
-    paddingBottom: theme.spacing.md,
-    marginLeft: 8,
-  },
-  timelineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  timelineVersion: {
-    fontSize: theme.typography.sizes.bodySmall,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.primary,
-  },
-  timelineChangeLog: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.secondary,
-    lineHeight: 18,
-    marginBottom: 4,
-  },
-  timelineTime: {
-    fontSize: 11,
-    color: theme.colors.text.tertiary,
-  },
-  // 底部操作栏
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.background.primary,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
-    ...theme.layout.shadows.md,
-  },
-  actionIconBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minWidth: 52,
-  },
-  actionIconText: {
-    fontSize: 11,
-    color: theme.colors.text.secondary,
-    marginTop: 2,
-    fontWeight: theme.typography.weights.medium,
-  },
-  actionIconTextActive: {
-    color: theme.colors.status.error,
-  },
-  actionPrimaryBtn: {
-    flex: 1,
-    borderRadius: theme.layout.borderRadius.md,
-    overflow: 'hidden',
-  },
-  actionPrimaryGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 6,
-  },
-  actionPrimaryText: {
-    fontSize: theme.typography.sizes.medium,
-    fontWeight: theme.typography.weights.bold,
-    color: '#fff',
-  },
-});
 
 export default AlgorithmScreen;

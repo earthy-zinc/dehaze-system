@@ -92,7 +92,7 @@ const LoginScreen: React.FC = () => {
 
   return (
     <LinearGradient
-      colors={['#3B82F6', '#6366F1']}
+      colors={[colors.primary, colors.gradient.primary[1]]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.gradient}
@@ -111,7 +111,7 @@ const LoginScreen: React.FC = () => {
               <View style={styles.header}>
                 <View style={styles.logoContainer}>
                   <LinearGradient
-                    colors={['#3B82F6', '#6366F1']}
+                    colors={[colors.primary, colors.gradient.primary[1]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.logoGradient}
@@ -134,13 +134,13 @@ const LoginScreen: React.FC = () => {
                     <Ionicons
                       name="person-outline"
                       size={18}
-                      color="#9ca3af"
+                      color={colors.text.tertiary}
                       style={styles.inputIcon}
                     />
                     <TextInput
                       style={styles.input}
                       placeholder="请输入用户名"
-                      placeholderTextColor="#9ca3af"
+                      placeholderTextColor={colors.text.tertiary}
                       value={username}
                       onChangeText={setUsername}
                       autoCapitalize="none"
@@ -156,13 +156,13 @@ const LoginScreen: React.FC = () => {
                     <Ionicons
                       name="lock-closed-outline"
                       size={18}
-                      color="#9ca3af"
+                      color={colors.text.tertiary}
                       style={styles.inputIcon}
                     />
                     <TextInput
                       style={styles.input}
                       placeholder="请输入密码"
-                      placeholderTextColor="#9ca3af"
+                      placeholderTextColor={colors.text.tertiary}
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
@@ -176,7 +176,7 @@ const LoginScreen: React.FC = () => {
                       <Ionicons
                         name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                         size={18}
-                        color="#9ca3af"
+                        color={colors.text.tertiary}
                       />
                     </TouchableOpacity>
                   </View>
@@ -190,13 +190,13 @@ const LoginScreen: React.FC = () => {
                       <Ionicons
                         name="shield-checkmark-outline"
                         size={18}
-                        color="#9ca3af"
+                        color={colors.text.tertiary}
                         style={styles.inputIcon}
                       />
                       <TextInput
                         style={styles.input}
                         placeholder="请输入验证码"
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={colors.text.tertiary}
                         value={captchaCode}
                         onChangeText={setCaptchaCode}
                         autoCapitalize="none"
@@ -210,7 +210,7 @@ const LoginScreen: React.FC = () => {
                       activeOpacity={0.8}
                     >
                       {captchaLoading ? (
-                        <ActivityIndicator color="#3B82F6" />
+                        <ActivityIndicator color={colors.primary} />
                       ) : captcha ? (
                         <Image
                           style={styles.captchaImage}
@@ -219,7 +219,7 @@ const LoginScreen: React.FC = () => {
                         />
                       ) : (
                         <View style={styles.captchaRetry}>
-                          <Ionicons name="refresh-outline" size={16} color="#9ca3af" />
+                          <Ionicons name="refresh-outline" size={16} color={colors.text.tertiary} />
                           <Text style={styles.captchaRetryText}>重试</Text>
                         </View>
                       )}
@@ -236,7 +236,7 @@ const LoginScreen: React.FC = () => {
                   <Ionicons
                     name={rememberMe ? 'checkbox-outline' : 'square-outline'}
                     size={20}
-                    color={rememberMe ? '#3B82F6' : '#9ca3af'}
+                    color={rememberMe ? colors.primary : colors.text.tertiary}
                   />
                   <Text style={styles.rememberText}>记住我（7天内免登录）</Text>
                 </TouchableOpacity>
@@ -249,7 +249,7 @@ const LoginScreen: React.FC = () => {
                   activeOpacity={0.9}
                 >
                   <LinearGradient
-                    colors={loading ? ['#93c5fd', '#a5b4fc'] : ['#3B82F6', '#6366F1']}
+                    colors={loading ? ['#93c5fd', '#a5b4fc'] : [colors.primary, colors.gradient.primary[1]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.button}
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   },
   captchaRetryText: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: colors.text.tertiary,
   },
   rememberRow: {
     flexDirection: 'row',

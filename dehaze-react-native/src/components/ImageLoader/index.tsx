@@ -7,6 +7,7 @@ import {
   ViewStyle,
   ImageStyle,
 } from 'react-native';
+import { colors } from '@/theme/colors';
 
 interface ImageLoaderProps {
   source: { uri: string } | number;
@@ -46,7 +47,7 @@ const ImageLoader: React.FC<ImageLoaderProps> = ({
     <View style={[styles.container, containerStyle]}>
       {loading && (
         <View style={[styles.loadingContainer, style]}>
-          <ActivityIndicator size="small" color="#3b82f6" />
+          <ActivityIndicator size="small" color={colors.primary} />
         </View>
       )}
 
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.background.tertiary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -100,14 +101,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.background.tertiary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   errorPlaceholder: {
     width: 50,
     height: 50,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.border.light,
     borderRadius: 8,
   },
 });

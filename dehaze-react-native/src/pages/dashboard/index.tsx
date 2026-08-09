@@ -134,7 +134,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
       >
         {/* 欢迎横幅 */}
         <LinearGradient
-          colors={[theme.colors.primary, '#6366f1']}
+          colors={[theme.colors.primary, theme.colors.gradient.primary[1]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
@@ -156,7 +156,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
               {stats.map((stat) => (
                 <View key={stat.label} style={styles.statCard}>
                   <View style={[styles.statIconWrap, { backgroundColor: stat.color + '20' }]}>
-                    <Ionicons name={stat.icon as any} size={20} color={stat.color} />
+                    <Ionicons name={stat.icon} size={20} color={stat.color} />
                   </View>
                   <Text style={styles.statValue}>{stat.value}</Text>
                   <Text style={styles.statLabel}>{stat.label}</Text>
@@ -182,7 +182,7 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                   onPress={() => handleEntry(entry)}
                 >
                   <View style={[styles.entryIconWrap, { backgroundColor: entry.color + '18' }]}>
-                    <Ionicons name={entry.icon as any} size={24} color={entry.color} />
+                    <Ionicons name={entry.icon} size={24} color={entry.color} />
                   </View>
                   <Text style={styles.entryLabel} numberOfLines={1}>
                     {entry.label}

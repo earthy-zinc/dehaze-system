@@ -11,7 +11,7 @@
  * 7. 处理完成显示结果预览（ResultPreview），可进入效果对比或重新处理
  * 8. 支持取消处理
  */
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,36 +21,39 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { DehazeStackParamList } from '@/routes/types';
+import type { DehazeStackParamList, ToolsStackParamList } from '@/routes/types';
 import { AppHeader } from '@/layout';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
 import { AlgorithmAPI } from 'dehaze-sdk-js';
 import type { Algorithm } from 'dehaze-sdk-js';
-import type {
-  CommonAlgorithmParams,
-  ProcessingResult,
-  TaskProgress,
-} from '@/types/processing';
+import type { CommonAlgorithmParams } from '@/types/processing';
 import { useResponsive } from '@/hooks/useResponsive';
-import {
-  predictSingle,
-  DEFAULT_PARAMS,
-} from './services/processingApi';
+import { useProcessing } from '@/hooks/useProcessing';
+import { DEFAULT_PARAMS } from './services/processingApi';
 import { historyStorage } from '@/pages/image-input/services/historyStorage';
 import ProcessingProgress from './components/ProcessingProgress';
 import ParamsPanel from './components/ParamsPanel';
 import ResultPreview from './components/ResultPreview';
 
-type Props = NativeStackScreenProps<DehazeStackParamList, 'Processing'>;
-
-type Phase = 'config' | 'processing' | 'done' | 'failed';
+type Props = CompositeScreenProps<
+  NativeStackScreenProps<DehazeStackParamList, 'Processing'>,
+  NativeStackScreenProps<ToolsStackParamList, 'Processing'>
+>;
 
 const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
   const { containerPadding } = useResponsive();
   const { algorithmId, image } = route.params ?? {};
+  const { phase, progress, result, predict, cancel, retry, reset } = useProcessing();
+
+  const getResultStatusText = () => {
+    if (result) return '已完成';
+    if (phase === 'processing') return '处理中...';
+    return '待处理';
+  };
 
   // 算法详情
   const [algorithm, setAlgorithm] = useState<Algorithm | null>(null);
@@ -70,14 +73,6 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
   });
   const [showParams, setShowParams] = useState(false);
 
-  // 处理状态
-  const [phase, setPhase] = useState<Phase>('config');
-  const [progress, setProgress] = useState<TaskProgress | null>(null);
-  const [result, setResult] = useState<ProcessingResult | null>(null);
-
-  // 取消信号（使用 ref 避免闭包陈旧）
-  const cancelSignalRef = useRef<{ canceled: boolean }>({ canceled: false });
-
   // 加载算法详情
   useEffect(() => {
     if (!algorithmId) return;
@@ -90,63 +85,32 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
       .finally(() => setAlgorithmLoading(false));
   }, [algorithmId]);
 
-  /** 开始去雾处理（实际执行） */
+  /** 开始去雾处理（确认弹窗确认后实际执行） */
   const startProcessing = useCallback(() => {
-    if (!image?.url || !algorithmId) return;
+    if (!image?.url || !algorithmId || !algorithm) return;
+    predict(image, algorithm, params);
+  }, [image, algorithmId, algorithm, params, predict]);
 
-    // 重置状态
-    cancelSignalRef.current = { canceled: false };
-    setPhase('processing');
-    setProgress({
-      status: 0,
-      elapsed: 0,
-    });
-    setResult(null);
-
-    predictSingle({
-      algorithmId,
-      imageUrl: image.url,
-      params,
-      onProgress: p => {
-        setProgress(p);
-      },
-      cancelSignal: cancelSignalRef.current,
-    })
-      .then(res => {
-        setResult(res);
-        setPhase('done');
-
-        // 写入图像输入历史记录（失败不阻塞主流程）
-        historyStorage
-          .addRecord({
-            originalImageUrl: image.url,
-            originalThumbnailUrl: image.thumbUrl,
-            resultImageUrl: res.resultUrl,
-            resultThumbnailUrl: res.resultThumbnailUrl,
-            algorithmId,
-            algorithmName: algorithm?.name,
-            algorithmParams: JSON.stringify(params),
-            processingTime: res.time,
-            status: 1,
-            inputSource: image.source,
-          })
-          .catch(() => {
-            /* 历史记录写入失败不影响处理结果展示 */
-          });
+  // 处理完成后写入图像输入历史记录（失败不阻塞主流程）
+  useEffect(() => {
+    if (phase !== 'done' || !result) return;
+    historyStorage
+      .addRecord({
+        originalImageUrl: image?.url ?? '',
+        originalThumbnailUrl: image?.thumbUrl,
+        resultImageUrl: result.resultUrl,
+        resultThumbnailUrl: result.resultThumbnailUrl,
+        algorithmId,
+        algorithmName: algorithm?.name,
+        algorithmParams: JSON.stringify(params),
+        processingTime: result.time,
+        status: 1,
+        inputSource: image?.source,
       })
-      .catch(err => {
-        const isCanceled = err instanceof Error && err.message.includes('取消');
-        setProgress(prev => ({
-          status: isCanceled ? 4 : 3,
-          elapsed: prev?.elapsed ?? 0,
-          error: err instanceof Error ? err.message : '处理失败',
-        }));
-        setPhase(isCanceled ? 'config' : 'failed');
-        if (!isCanceled) {
-          Alert.alert('处理失败', err instanceof Error ? err.message : '请稍后重试');
-        }
+      .catch(() => {
+        /* 历史记录写入失败不影响处理结果展示 */
       });
-  }, [image, algorithmId, algorithm, params]);
+  }, [phase, result, image, algorithmId, algorithm, params]);
 
   /** 开始去雾处理（弹出确认对话框） */
   const handleStart = useCallback(() => {
@@ -170,27 +134,6 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   }, [image, algorithmId, algorithm, params, startProcessing]);
 
-  /** 取消处理 */
-  const handleCancel = useCallback(() => {
-    Alert.alert('确认取消', '确定要取消当前处理任务吗？', [
-      { text: '继续处理', style: 'cancel' },
-      {
-        text: '取消处理',
-        style: 'destructive',
-        onPress: () => {
-          cancelSignalRef.current.canceled = true;
-        },
-      },
-    ]);
-  }, []);
-
-  /** 重新处理 */
-  const handleReprocess = useCallback(() => {
-    setResult(null);
-    setProgress(null);
-    setPhase('config');
-  }, []);
-
   /** 进入效果对比 */
   const handleEnterCompare = useCallback(() => {
     if (!image?.url || !result?.resultUrl) return;
@@ -205,15 +148,15 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
 
   /** 返回图像输入页 */
   const handleBackToImageInput = useCallback(() => {
-    navigation.navigate('ImageInput' as any);
+    navigation.navigate('ImageInput');
   }, [navigation]);
 
   /** 返回算法选择页 */
   const handleBackToAlgorithmSelect = useCallback(() => {
     if (image) {
-      navigation.navigate('AlgorithmSelect' as any, { image });
+      navigation.navigate('AlgorithmSelect', { image });
     } else {
-      navigation.navigate('AlgorithmSelect' as any);
+      navigation.navigate('AlgorithmSelect');
     }
   }, [navigation, image]);
 
@@ -304,9 +247,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
                 )}
               </View>
               <Text style={styles.imageLabel}>处理结果</Text>
-              <Text style={styles.imageName}>
-                {result ? '已完成' : phase === 'processing' ? '处理中...' : '待处理'}
-              </Text>
+              <Text style={styles.imageName}>{getResultStatusText()}</Text>
             </View>
           </View>
         </View>
@@ -368,7 +309,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
             <ProcessingProgress progress={progress} />
             <TouchableOpacity
               style={styles.cancelButton}
-              onPress={handleCancel}
+              onPress={cancel}
               activeOpacity={0.8}
             >
               <Icon name="times" size={16} color={theme.colors.status.error} />
@@ -383,7 +324,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
             <ProcessingProgress progress={progress} />
             <TouchableOpacity
               style={styles.startButton}
-              onPress={startProcessing}
+              onPress={retry}
               activeOpacity={0.8}
             >
               <Icon name="refresh" size={18} color="#fff" />
@@ -398,7 +339,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
             originalUrl={image.url}
             result={result}
             onEnterCompare={handleEnterCompare}
-            onReprocess={handleReprocess}
+            onReprocess={reset}
           />
         )}
       </ScrollView>

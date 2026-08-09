@@ -18,10 +18,10 @@ type Props = NativeStackScreenProps<ProfileStackParamList, 'SystemFeedback'>;
 
 const PAGE_SIZE = 15;
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  pending: { label: '待处理', color: '#fbbf24' },
-  processing: { label: '处理中', color: '#3b82f6' },
-  replied: { label: '已回复', color: '#34d399' },
-  closed: { label: '已关闭', color: '#6b7280' },
+  pending: { label: '待处理', color: theme.colors.status.warning },
+  processing: { label: '处理中', color: theme.colors.primary },
+  replied: { label: '已回复', color: theme.colors.status.success },
+  closed: { label: '已关闭', color: theme.colors.text.secondary },
 };
 
 const SystemFeedbackScreen: React.FC<Props> = ({ navigation }) => {
@@ -48,7 +48,7 @@ const SystemFeedbackScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => { setLoading(true); fetchList(1).finally(() => setLoading(false)); }, [fetchList]);
 
   const renderItem = ({ item }: { item: FeedbackPageVO }) => {
-    const st = STATUS_MAP[item.status] || { label: item.status, color: '#9ca3af' };
+    const st = STATUS_MAP[item.status] || { label: item.status, color: theme.colors.text.tertiary };
     return (
       <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('SystemFeedbackDetail', { feedbackId: item.id })}>
         <View style={styles.cardHeader}>

@@ -15,19 +15,19 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { MessageAPI } from 'dehaze-sdk-js';
 import type { MessageVO } from 'dehaze-sdk-js';
 import { colors } from '@/theme/colors';
 import { spacing, layout } from '@/theme/spacing';
 import { useMessagesStore } from '@/store/messages';
-import type { RootStackParamList } from '@/routes/types';
+import type { MessagesStackParamList } from '@/routes/types';
 
-type MessageDetailRouteProp = RouteProp<RootStackParamList, 'MessageDetail'>;
+type MessageDetailRouteProp = RouteProp<MessagesStackParamList, 'MessageDetail'>;
 
 const MessageDetailScreen: React.FC = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<MessagesStackParamList, 'MessageDetail'>>();
   const route = useRoute<MessageDetailRouteProp>();
   const { messageId } = route.params;
   const { decrementUnread } = useMessagesStore();
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: layout.borderRadius.sm,
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.badge.warning.bg,
   },
   priorityText: {
     fontSize: 11,

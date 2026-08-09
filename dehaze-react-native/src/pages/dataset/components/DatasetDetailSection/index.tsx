@@ -23,6 +23,7 @@ import type {
 import { isImageAnnotated } from '../../types/dataset';
 import { datasetApi } from '../../services/datasetApi';
 import { taskApi } from '../../../task/services/taskApi';
+import { colors } from '@/theme/colors';
 
 interface DatasetDetailSectionProps {
   datasetId: number;
@@ -233,7 +234,7 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
             title="返回"
             onPress={onBack}
             variant="secondary"
-            icon={<Icon name="back" size={14} color="#3b82f6" />}
+            icon={<Icon name="back" size={14} color={colors.primary} />}
           />
         </View>
         <View style={styles.loadingContainer}>
@@ -251,7 +252,7 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
             title="返回"
             onPress={onBack}
             variant="secondary"
-            icon={<Icon name="back" size={14} color="#3b82f6" />}
+            icon={<Icon name="back" size={14} color={colors.primary} />}
           />
         </View>
         <EmptyState
@@ -271,13 +272,13 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
           title="返回"
           onPress={onBack}
           variant="secondary"
-          icon={<Icon name="back" size={14} color="#3b82f6" />}
+          icon={<Icon name="back" size={14} color={colors.primary} />}
         />
         <Button
           title="导出"
           onPress={handleExport}
           variant="primary"
-          icon={<Icon name="export" size={14} color="#ffffff" />}
+          icon={<Icon name="export" size={14} color={colors.text.inverse} />}
         />
       </View>
 
@@ -348,7 +349,7 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background.secondary,
   },
   header: {
     flexDirection: 'row',
@@ -356,9 +357,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     paddingBottom: 8,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.background.tertiary,
   },
   infoSection: {
     marginHorizontal: 20,

@@ -15,6 +15,7 @@ import {
   getBadgeVariant,
   getHazeLevelLabel,
 } from '../../utils/imageLabels';
+import { colors } from '@/theme/colors';
 
 interface ImageCardProps {
   image: DatasetImage;
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 12,
   },
   image: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.background.tertiary,
     width: '100%',
     height: '100%',
   },
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
   },
   filename: {
     fontSize: 12,
-    color: '#4b5563',
+    color: colors.text.secondary,
     textAlign: 'center',
   },
 });

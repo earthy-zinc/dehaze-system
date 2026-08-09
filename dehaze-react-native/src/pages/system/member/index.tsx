@@ -45,7 +45,7 @@ const SystemMemberScreen: React.FC<Props> = ({ navigation }) => {
     Alert.alert(`确认${action}`, `确定要${action}会员"${item.nickname}"吗？`, [
       { text: '取消', style: 'cancel' },
       { text: '确定', onPress: async () => {
-        try { await MemberAPI.updateStatus(item.userId, { status: newStatus as any }); fetchList(1); } catch { Alert.alert('错误', '操作失败'); }
+        try { await MemberAPI.updateStatus(item.userId, { status: newStatus }); fetchList(1); } catch { Alert.alert('错误', '操作失败'); }
       }},
     ]);
   };

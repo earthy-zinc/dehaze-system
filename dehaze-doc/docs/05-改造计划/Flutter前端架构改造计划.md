@@ -4,6 +4,8 @@
 >
 > 前置说明：Flutter 端已完成首轮架构重构（Riverpod 引入、Dio 拦截器、GoRouter、日志模块），基础设施层质量良好。本计划针对的是**首轮重构未覆盖到的遗留债务**，主要集中在状态管理范式统一、路由权限守卫、并发场景健壮性三方面。
 
+> **实施状态（2026-08-09）**：本文档 7 项问题已全部修复并通过 `flutter analyze`（零 issue）。核心成果：新增 `core/state/paged_list_notifier.dart`（`PagedListNotifier` 基类 + `LoadMoreListener`）、`PageResult.fromResponse`、`ErrorInterceptor` 401 防抖、14 个 system 管理页状态范式统一、`dataset_provider` 去冗余映射、路由路径 `system/`→`admin/` + 路由权限守卫。以下问题分析保留作为历史记录。
+
 ## 一、问题总览
 
 | # | 问题 | 类别 | 优先级 | 影响范围 |

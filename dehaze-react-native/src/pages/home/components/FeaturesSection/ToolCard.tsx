@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, StyleSheet, Animated } from 'react-native';
 import Card from '@/components/Card';
 import Icon from '@/components/Icon';
+import { colors } from '@/theme/colors';
 
 interface ToolCardProps {
   icon: string;
@@ -28,8 +29,8 @@ const ToolCard: React.FC<ToolCardProps> = ({
         <Icon
           name={icon}
           size={24}
-          color="#3b82f6"
-          backgroundColor="#eff6ff"
+          color={colors.primary}
+          backgroundColor={colors.primaryLight}
           borderRadius={14}
         />
       </Animated.View>
@@ -51,12 +52,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: colors.text.primary,
     marginBottom: 8,
   },
   description: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.secondary,
     lineHeight: 22,
   },
 });

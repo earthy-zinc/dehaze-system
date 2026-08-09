@@ -66,7 +66,7 @@ const SystemUserFormScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
-  const updateField = (field: keyof UserForm, value: any) => {
+  const updateField = (field: keyof UserForm, value: string | number) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 

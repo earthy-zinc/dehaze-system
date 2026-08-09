@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import Card from '@/components/Card';
 import Icon from '@/components/Icon';
+import { colors } from '@/theme/colors';
 
 interface SpecCardProps {
   icon: string;
@@ -54,8 +55,8 @@ const SpecCard: React.FC<SpecCardProps> = ({
           <Icon
             name={icon}
             size={compact ? 24 : 32}
-            color="#ffffff"
-            backgroundColor="#3b82f6"
+            color={colors.text.inverse}
+            backgroundColor={colors.primary}
             borderRadius={compact ? 28 : 36}
           />
         </View>
@@ -79,7 +80,7 @@ const SpecCard: React.FC<SpecCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border.light,
   },
   iconContainer: {
     alignSelf: 'center',
@@ -91,7 +92,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
+    color: colors.text.secondary,
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
@@ -103,7 +104,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: colors.text.tertiary,
     lineHeight: 21,
     textAlign: 'center',
   },

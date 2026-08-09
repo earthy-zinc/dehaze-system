@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from '../Icon';
+import { colors } from '@/theme/colors';
 
 interface EmptyStateProps {
   icon?: string;
@@ -15,7 +16,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   title,
   description,
   iconSize = 60,
-  iconColor = '#d1d5db',
+  iconColor = colors.border.light,
 }) => {
   return (
     <View style={styles.container}>
@@ -46,13 +47,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
+    color: colors.text.secondary,
     textAlign: 'center',
     marginBottom: 8,
   },
   description: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: colors.text.muted,
     textAlign: 'center',
     lineHeight: 20,
   },

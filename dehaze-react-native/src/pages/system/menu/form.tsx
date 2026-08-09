@@ -10,6 +10,7 @@ import { AppHeader } from '@/layout';
 import { theme } from '@/theme';
 import { MenuAPI } from 'dehaze-sdk-js'
 import type { MenuForm } from 'dehaze-sdk-js'
+import { MenuTypeEnum } from 'dehaze-sdk-js'
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'SystemMenuForm'>;
 
@@ -18,7 +19,7 @@ const SystemMenuFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const isEdit = !!menuId;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<MenuForm>({ name: '', type: 1 as any, visible: 1, sort: 0 });
+  const [form, setForm] = useState<MenuForm>({ name: '', type: MenuTypeEnum.MENU, visible: 1, sort: 0 });
 
   useEffect(() => {
     if (isEdit && menuId) {

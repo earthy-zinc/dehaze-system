@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { colors } from '@/theme/colors';
 
 interface LoadingSpinnerProps {
   size?: 'small' | 'large';
@@ -10,7 +11,7 @@ interface LoadingSpinnerProps {
 
 const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = 'small',
-  color = '#14b8a6',
+  color = colors.primary,
   text,
   showText = true,
 }) => {

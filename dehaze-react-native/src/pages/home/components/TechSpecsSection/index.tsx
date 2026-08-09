@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import Section from '@/components/Section';
 import SpecCard from './SpecCard';
 import { useResponsive } from '@/hooks/useResponsive';
+import { colors } from '@/theme/colors';
 
 const TechSpecsSection: React.FC = () => {
   const { width, isMobile, isTablet, spacing, containerPadding } = useResponsive();
@@ -63,7 +64,7 @@ const TechSpecsSection: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.primary,
   },
   specsGrid: {
     flexDirection: 'row',

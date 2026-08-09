@@ -8,6 +8,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import Icon from '../Icon';
+import { colors } from '@/theme/colors';
 
 interface ModalProps {
   visible: boolean;
@@ -52,7 +53,7 @@ const Modal: React.FC<ModalProps> = ({
                     onPress={onClose}
                     activeOpacity={0.8}
                   >
-                    <Icon name="times" size={20} color="#6b7280" />
+                    <Icon name="times" size={20} color={colors.text.secondary} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.primary,
     borderRadius: 16,
     width: '100%',
     maxWidth: 500,
@@ -93,19 +94,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.background.tertiary,
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
+    color: colors.text.primary,
     flex: 1,
   },
   closeButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },

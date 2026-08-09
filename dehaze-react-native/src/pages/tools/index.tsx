@@ -17,17 +17,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '@/theme/colors';
 import { spacing, layout } from '@/theme/spacing';
-import type { RootStackParamList } from '@/routes/types';
+import type { ToolsStackParamList, TabParamList } from '@/routes/types';
 
 interface QuickEntry {
   key: string;
   icon: string;
   label: string;
-  route: keyof RootStackParamList;
+  route: keyof ToolsStackParamList | 'PersonalFavorites';
 }
 
 interface GridItem {
@@ -35,14 +36,14 @@ interface GridItem {
   icon: string;
   label: string;
   desc: string;
-  route?: keyof RootStackParamList;
+  route?: keyof ToolsStackParamList;
   comingSoon?: string;
 }
 
 const QUICK_ENTRIES: QuickEntry[] = [
   { key: 'history', icon: 'time-outline', label: '处理历史', route: 'Task' },
   { key: 'favorites', icon: 'heart-outline', label: '我的收藏', route: 'PersonalFavorites' },
-  { key: 'batch', icon: 'layers-outline', label: '批量处理', route: 'Processing' },
+  { key: 'batch', icon: 'layers-outline', label: '批量处理', route: 'Batch' },
   { key: 'algorithm', icon: 'git-network-outline', label: '算法选择', route: 'AlgorithmSelect' },
 ];
 
@@ -50,7 +51,7 @@ const GRID_ITEMS: GridItem[] = [
   { key: 'image-input', icon: 'images-outline', label: '图像输入', desc: '上传/拍照/样例库', route: 'ImageInput' },
   { key: 'algorithm-lib', icon: 'code-slash-outline', label: '算法库', desc: '浏览与对比算法', route: 'AlgorithmBrowse' },
   { key: 'dataset', icon: 'server-outline', label: '数据集', desc: '公开与共享数据集', route: 'Dataset' },
-  { key: 'batch', icon: 'duplicate-outline', label: '批量处理', desc: '批量上传与执行', route: 'Processing' },
+  { key: 'batch', icon: 'duplicate-outline', label: '批量处理', desc: '批量上传与执行', route: 'Batch' },
   { key: 'metrics', icon: 'analytics-outline', label: '指标管理', desc: 'PSNR/SSIM 查询', route: 'MetricsManage' },
   { key: 'api-doc', icon: 'document-text-outline', label: 'API 文档', desc: '开放接口文档', comingSoon: 'API 文档功能敬请期待' },
 ];
@@ -58,20 +59,33 @@ const GRID_ITEMS: GridItem[] = [
 const GRID_NUM_COLUMNS = 3;
 
 export default function ToolsScreen() {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<ToolsStackParamList>>();
   const [searchText, setSearchText] = useState('');
 
-  const handleQuickEntry = useCallback(
-    (item: QuickEntry) => { navigation.navigate(item.route as any); },
+  const navigateToToolRoute = useCallback(
+    (route: keyof ToolsStackParamList) => {
+      (navigation.navigate as (screen: string) => void)(route as string);
+    },
     [navigation],
+  );
+
+  const handleQuickEntry = useCallback(
+    (item: QuickEntry) => {
+      if (item.route === 'PersonalFavorites') {
+        navigation.getParent<BottomTabNavigationProp<TabParamList>>()?.navigate('Profile', { screen: 'PersonalFavorites' });
+        return;
+      }
+      navigateToToolRoute(item.route);
+    },
+    [navigation, navigateToToolRoute],
   );
 
   const handleGridItem = useCallback(
     (item: GridItem) => {
-      if (item.route) { navigation.navigate(item.route as any); }
+      if (item.route) { navigateToToolRoute(item.route); }
       else if (item.comingSoon) { Alert.alert('提示', item.comingSoon); }
     },
-    [navigation],
+    [navigateToToolRoute],
   );
 
   const renderGridItem = ({ item }: { item: GridItem }) => (

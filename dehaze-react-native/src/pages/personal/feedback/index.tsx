@@ -26,7 +26,7 @@ import { AppHeader } from '@/layout';
 const PAGE_SIZE = 20;
 
 const FEEDBACK_STATUS_MAP: Record<string, { label: string; color: string }> = {
-  PENDING: { label: '待处理', color: '#f59e0b' },
+  PENDING: { label: '待处理', color: theme.colors.status.warning },
   PROCESSING: { label: '处理中', color: theme.colors.primary },
   RESOLVED: { label: '已解决', color: theme.colors.status.success },
   CLOSED: { label: '已关闭', color: theme.colors.text.tertiary },

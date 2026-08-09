@@ -27,6 +27,10 @@ const ENTRIES: EntryItem[] = [
 ];
 
 const SystemMessageScreen: React.FC<Props> = ({ navigation }) => {
+  const handleEntryPress = (route: keyof ProfileStackParamList) => {
+    (navigation.navigate as (screen: string) => void)(route as string);
+  };
+
   return (
     <View style={styles.container}>
       <AppHeader title="消息管理" showBack onBackPress={() => navigation.goBack()} />
@@ -36,10 +40,10 @@ const SystemMessageScreen: React.FC<Props> = ({ navigation }) => {
             key={entry.route}
             style={styles.card}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate(entry.route as any)}
+            onPress={() => handleEntryPress(entry.route)}
           >
             <View style={styles.iconWrap}>
-              <Ionicons name={entry.icon as any} size={28} color={theme.colors.primary} />
+              <Ionicons name={entry.icon} size={28} color={theme.colors.primary} />
             </View>
             <View style={styles.info}>
               <Text style={styles.label}>{entry.label}</Text>

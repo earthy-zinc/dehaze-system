@@ -23,12 +23,12 @@ import { AppHeader } from '@/layout';
 const PAGE_SIZE = 20;
 
 const ORDER_STATUS_MAP: Record<string, { label: string; color: string }> = {
-  PENDING_PAYMENT: { label: '待支付', color: '#f59e0b' },
+  PENDING_PAYMENT: { label: '待支付', color: theme.colors.status.warning },
   PAID: { label: '已支付', color: theme.colors.primary },
   PROCESSING: { label: '处理中', color: '#8b5cf6' },
   COMPLETED: { label: '已完成', color: theme.colors.status.success },
   CANCELLED: { label: '已取消', color: theme.colors.text.tertiary },
-  REFUNDING: { label: '退款中', color: '#f59e0b' },
+  REFUNDING: { label: '退款中', color: theme.colors.status.warning },
   REFUNDED: { label: '已退款', color: theme.colors.text.tertiary },
 };
 

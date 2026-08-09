@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { colors } from '@/theme/colors';
 
 interface BadgeProps {
   text: string;
-  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'foggy' | 'clear' | 'annotated';
+  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'foggy';
   size?: 'small' | 'medium' | 'large';
   rounded?: boolean;
 }
@@ -17,23 +18,19 @@ const Badge: React.FC<BadgeProps> = ({
   const getVariantStyle = () => {
     switch (variant) {
       case 'primary':
-        return { backgroundColor: '#3b82f6', color: '#ffffff' };
+        return { backgroundColor: colors.primary, color: colors.text.inverse };
       case 'secondary':
-        return { backgroundColor: '#f3f4f6', color: '#6b7280' };
+        return { backgroundColor: colors.background.tertiary, color: colors.text.secondary };
       case 'success':
-        return { backgroundColor: '#10b981', color: '#ffffff' };
+        return { backgroundColor: colors.badge.success.bg, color: colors.badge.success.text };
       case 'warning':
-        return { backgroundColor: '#f59e0b', color: '#ffffff' };
+        return { backgroundColor: colors.badge.warning.bg, color: colors.badge.warning.text };
       case 'info':
-        return { backgroundColor: '#06b6d4', color: '#ffffff' };
+        return { backgroundColor: colors.badge.info.bg, color: colors.badge.info.text };
       case 'foggy':
-        return { backgroundColor: '#6b7280', color: '#ffffff' };
-      case 'clear':
-        return { backgroundColor: '#3b82f6', color: '#ffffff' };
-      case 'annotated':
-        return { backgroundColor: '#10b981', color: '#ffffff' };
+        return { backgroundColor: colors.text.secondary, color: colors.text.inverse };
       default:
-        return { backgroundColor: '#3b82f6', color: '#ffffff' };
+        return { backgroundColor: colors.primary, color: colors.text.inverse };
     }
   };
 

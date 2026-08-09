@@ -60,12 +60,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           ) : isHome ? (
             <View style={styles.logoContainer}>
               <LinearGradient
-                colors={[colors.primary, '#6366f1']}
+                colors={colors.gradient.primary}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.logoGradient}
               >
-                <Ionicons name="cloud-outline" size={18} color="#fff" />
+                <Ionicons name="cloud-outline" size={18} color={colors.text.inverse} />
               </LinearGradient>
               <Text style={styles.title}>{title}</Text>
             </View>

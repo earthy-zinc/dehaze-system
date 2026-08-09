@@ -30,6 +30,7 @@ import AlgorithmSelectScreen from '@/pages/algorithm-select';
 import AlgorithmBrowseScreen from '@/pages/algorithm-browse';
 import AlgorithmScreen from '@/pages/algorithm';
 import DatasetScreen from '@/pages/dataset';
+import DatasetDetailScreen from '@/pages/dataset/detail';
 import DatasetBrowseScreen from '@/pages/dataset-browse';
 import BatchScreen from '@/pages/batch';
 import MetricsManageScreen from '@/pages/metrics-manage';
@@ -84,6 +85,7 @@ function ToolsStackNavigator() {
       <ToolsStack.Screen name="Algorithm" component={AlgorithmScreen} />
       <ToolsStack.Screen name="Dataset" component={DatasetScreen} />
       <ToolsStack.Screen name="DatasetBrowse" component={DatasetBrowseScreen} />
+      <ToolsStack.Screen name="DatasetDetail" component={DatasetDetailScreen} />
       <ToolsStack.Screen name="Task" component={TaskScreen} />
       <ToolsStack.Screen name="MetricsManage" component={MetricsManageScreen} />
       <ToolsStack.Screen name="Batch" component={BatchScreen} />
@@ -200,6 +202,7 @@ function ProfileStackNavigator() {
       {/* Task + Dataset 归位 */}
       <ProfileStack.Screen name="Task" component={TaskScreen} />
       <ProfileStack.Screen name="Dataset" component={DatasetScreen} />
+      <ProfileStack.Screen name="DatasetDetail" component={DatasetDetailScreen} />
       {/* ===== 管理入口 (dev-admin) ===== */}
       <ProfileStack.Screen name="SystemDashboard" component={SystemDashboardScreen} />
       <ProfileStack.Screen name="SystemUser" component={SystemUserScreen} />

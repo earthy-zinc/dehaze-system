@@ -18,6 +18,7 @@ import {
   getBadgeVariant,
   getHazeLevelLabel,
 } from '../../utils/imageLabels';
+import { colors } from '@/theme/colors';
 
 interface ImageViewerProps {
   visible: boolean;
@@ -82,7 +83,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
             onPress={onClose}
             activeOpacity={0.8}
           >
-            <Icon name="times" size={20} color="#ffffff" />
+            <Icon name="times" size={20} color={colors.text.inverse} />
           </TouchableOpacity>
         </View>
 
@@ -221,38 +222,38 @@ const styles = StyleSheet.create({
     height: screenHeight * 0.6,
   },
   tabsContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.primary,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.background.tertiary,
   },
   tab: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.background.tertiary,
     marginRight: 8,
   },
   activeTab: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: colors.secondary,
   },
   tabText: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.text.secondary,
     fontWeight: '500',
   },
   activeTabText: {
-    color: '#ffffff',
+    color: colors.text.inverse,
   },
   imageInfo: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.primary,
     padding: 20,
   },
   filename: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
+    color: colors.text.primary,
     marginBottom: 16,
   },
   badgesRow: {
@@ -269,16 +270,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.background.tertiary,
   },
   detailLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.secondary,
     fontWeight: '500',
   },
   detailValue: {
     fontSize: 14,
-    color: '#1f2937',
+    color: colors.text.primary,
     flex: 1,
     textAlign: 'right',
     marginLeft: 20,

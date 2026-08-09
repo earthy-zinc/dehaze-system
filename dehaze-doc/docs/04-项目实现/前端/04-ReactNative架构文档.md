@@ -81,6 +81,10 @@ dehaze-react-native/
 │   ├── config/                    # env、sdk 配置
 │   ├── enums/                     # 枚举（CacheEnum）
 │   ├── hooks/                     # 通用 hooks
+│   │   ├── useProcessing.ts       # 去雾处理流程 hook（predict/cancel/retry + 状态）
+│   │   ├── useSectionScroll.ts    # algorithm 详情页章节锚点滚动测量
+│   │   ├── useResponsive.ts       # 响应式容器间距
+│   │   └── useAnimation.ts        # 动画 hook
 │   ├── layout/                    # 布局组件
 │   │   ├── components/
 │   │   │   ├── AppHeader.tsx      # 通用导航栏（L1/L2）
@@ -96,11 +100,11 @@ dehaze-react-native/
 │   │   ├── register/              # 注册（L0）
 │   │   ├── image-input/           # 图像输入（L2）
 │   │   ├── algorithm-select/      # 算法选择（L2）
-│   │   ├── algorithm/            # 算法详情页（L2，F-M03-004）
-│   │   ├── processing/            # 去雾处理（L2）
+│   │   ├── algorithm/            # 算法详情页（L2，F-M03-004；内联组件拆至 components/，样式拆至 styles.ts）
+│   │   ├── processing/            # 去雾处理（L2，消费 useProcessing hook）
 │   │   ├── algorithm-browse/      # 算法库浏览（L2）
 │   │   ├── dataset-browse/        # 数据集浏览（L2）
-│   │   ├── dataset/              # 数据集管理（L2，含 list/detail 视图，为 dataset-browse 提供共享组件）
+│   │   ├── dataset/              # 数据集管理（L2，list 与 detail 独立路由：index=列表，detail.tsx=详情）
 │   │   ├── batch/                 # 批量处理（L2）
 │   │   ├── metrics-manage/        # 指标管理（L2）
 │   │   ├── task/                  # 处理历史（L2）
@@ -178,7 +182,7 @@ flowchart TB
 |------|------|
 | `src/routes/RootNavigator.tsx` | NavigationContainer 容器 + 根据 sessionId 条件渲染 AuthStack 或 MainTabs；loading 态显示启动屏 |
 | `src/routes/MainTabs.tsx` | BottomTabNavigator + 5 个嵌套 Stack Navigator，配置 TabBar 图标和颜色 |
-| `src/routes/types.ts` | 每个 Tab Stack 独立 ParamList 类型定义，确保类型安全导航 |
+| `src/routes/types.ts` | 每个 Tab Stack 独立 ParamList 类型定义；**无全局 `RootStackParamList` 交叉类型**，跨 Stack 共享页面用 `CompositeNavigationProp` 组成其注册的多个 Stack 类型，保证导航类型安全 |
 
 ### 3.3 TabBar 配置
 
@@ -243,8 +247,8 @@ flowchart TB
 | pages/processing/index | DehazeStack | 去雾处理，实时进度 | ModelAPI.predictAndWait |
 | pages/algorithm-browse/index | ToolsStack / DehazeStack | 算法库浏览：列表 + 推荐 + 详情 + "使用该算法"带入流程 | — |
 | pages/algorithm/index | ToolsStack / DehazeStack | 算法详情页：Hero + 监控指标 + 版本时间线 + 底部操作栏（立即使用/收藏/分享），由 algorithm-browse / algorithm-select 经 navigate('Algorithm', { algorithmId }) 进入 | AlgorithmAPI.getAlgorithmInfoById / getMonitorData / getVersions |
-| pages/dataset-browse/index | ToolsStack | 数据集浏览：公开/共享浏览 + 图片网格 | — |
-| pages/dataset/index | ToolsStack / ProfileStack | 数据集管理：list/detail 视图切换，为 dataset-browse 提供共享组件（DatasetDetailSection/SearchBar） | — |
+| pages/dataset-browse/index | ToolsStack | 数据集浏览：公开/共享浏览 + 图片网格，点击跳转 `DatasetDetail` 路由 | — |
+| pages/dataset/index（list）+ pages/dataset/detail | ToolsStack / ProfileStack | 数据集管理：list 与 detail 独立路由（detail 经 `navigate('DatasetDetail',{datasetId})` 进入），返回键可回列表，为 dataset-browse 提供共享组件（DatasetDetailSection/SearchBar） | — |
 | pages/batch/index | ToolsStack / DehazeStack | 批量处理：≤20 张 + 进度 + 结果 | ModelAPI.batchPredict |
 | pages/metrics-manage/index | ToolsStack | 指标管理：评估指标历史 + 对比 | ModelAPI.getEvalMetrics / getEvalLogs |
 
@@ -368,7 +372,7 @@ flowchart TB
 
 端实现补充：
 - **返回路径**：L2 通过 AppHeader（showBack）、L3 通过 ImmersiveHeader 内置返回
-- **跨 Stack 跳转**：ToolsStack 和 DehazeStack 共享 algorithm-select、algorithm-browse、algorithm、batch 等页面，通过各自 ParamList 类型安全路由
+- **跨 Stack 跳转**：ToolsStack 和 DehazeStack 共享 algorithm-select、algorithm-browse、algorithm、batch、processing 等页面，通过各自 ParamList 类型安全路由；跨 Tab 跳转用 `getParent<BottomTabNavigationProp<TabParamList>>()?.navigate('Tools', { screen: 'ImageInput' })` 形式，共享页面用 `CompositeNavigationProp` 组合其注册的多个 Stack 类型，全程无 `as any`
 
 ## 11. 关键技术决策
 
@@ -381,6 +385,7 @@ flowchart TB
 | 图标 | react-native-vector-icons/Ionicons | Ionicons 提供丰富的 outline/fill 双态图标，适配 TabBar 选中态切换 |
 | 安全区适配 | react-native-safe-area-context | 适配刘海屏和底部指示条，AppHeader 使用 insets.top |
 | 导航头部 | AppHeader（L1/L2）+ ImmersiveHeader（L3） | 按层级差异化，L3 沉浸页深色半透明工具栏 |
+| 处理流程复用 | useProcessing hook（predict/cancel/retry + 状态） | dehaze 与 processing 两页同源处理流程抽取为 hook，仅封装核心调用链，避免复制粘贴；各页 historyStorage 写入、确认弹窗与 UI 渲染保留在页面内 |
 | 视角拆分 | 个人/管理严格分离为独立页面 | 避免条件渲染混乱，职责清晰 |
 | 网络层 | dehaze-sdk-js + tokenStore | 统一 Token 注入与错误处理 |
 | Session 失效 | setOnSessionInvalid + Alert 弹窗 | 全局监听 session 过期，弹出原生 Alert 引导重新登录 |

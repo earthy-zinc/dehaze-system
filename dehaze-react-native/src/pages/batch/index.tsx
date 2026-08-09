@@ -21,16 +21,20 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { launchImageLibrary } from 'react-native-image-picker';
-import type { ToolsStackParamList } from '@/routes/types';
+import type { ToolsStackParamList, DehazeStackParamList } from '@/routes/types';
 import { AppHeader } from '@/layout';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import { AlgorithmAPI, ModelAPI } from 'dehaze-sdk-js';
 import type { Algorithm, PredictionResultVO } from 'dehaze-sdk-js';
 
-type Props = NativeStackScreenProps<ToolsStackParamList, 'Batch'>;
+type Props = CompositeScreenProps<
+  NativeStackScreenProps<ToolsStackParamList, 'Batch'>,
+  NativeStackScreenProps<DehazeStackParamList, 'Batch'>
+>;
 
 interface BatchItem {
   id: string;
@@ -200,7 +204,7 @@ const BatchScreen: React.FC<Props> = ({ navigation }) => {
   const handleViewResult = useCallback(
     (item: BatchItem) => {
       if (!item.result?.resultUrl) return;
-      navigation.navigate('CompareSideBySide' as any, {
+      navigation.navigate('CompareSideBySide', {
         originalUrl: item.uri,
         processedUrl: item.result.resultUrl,
         algorithmId: selectedAlgId ?? undefined,

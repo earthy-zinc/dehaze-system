@@ -81,7 +81,7 @@ const SystemRoleScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         )}
         <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('SystemRolePerm', { roleId: item.id! })}>
-          <Ionicons name="shield-outline" size={18} color="#6366f1" />
+          <Ionicons name="shield-outline" size={18} color={theme.colors.gradient.primary[1]} />
         </TouchableOpacity>
         {hasPerm('sys:role:delete') && (
           <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item)}>

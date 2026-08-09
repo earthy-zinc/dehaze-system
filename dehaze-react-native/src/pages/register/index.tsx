@@ -103,7 +103,14 @@ const RegisterScreen: React.FC = () => {
     }
   };
 
-  const inputGroups = [
+  const inputGroups: {
+     label: string;
+     icon: string;
+     value: string;
+     onChange: (v: string) => void;
+     placeholder: string;
+     secure: boolean;
+   }[] = [
     {
       label: '用户名',
       icon: 'person-outline',
@@ -140,7 +147,7 @@ const RegisterScreen: React.FC = () => {
 
   return (
     <LinearGradient
-      colors={['#3B82F6', '#6366F1']}
+      colors={[colors.primary, colors.gradient.primary[1]]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.gradient}
@@ -158,7 +165,7 @@ const RegisterScreen: React.FC = () => {
               <View style={styles.header}>
                 <View style={styles.logoContainer}>
                   <LinearGradient
-                    colors={['#3B82F6', '#6366F1']}
+                    colors={[colors.primary, colors.gradient.primary[1]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.logoGradient}
@@ -176,15 +183,15 @@ const RegisterScreen: React.FC = () => {
                     <Text style={styles.label}>{group.label}</Text>
                     <View style={styles.inputWrap}>
                       <Ionicons
-                        name={group.icon as any}
+                        name={group.icon}
                         size={18}
-                        color="#9ca3af"
+                        color={colors.text.tertiary}
                         style={styles.inputIcon}
                       />
                       <TextInput
                         style={styles.input}
                         placeholder={group.placeholder}
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={colors.text.tertiary}
                         value={group.value}
                         onChangeText={group.onChange}
                         secureTextEntry={group.secure}
@@ -200,7 +207,7 @@ const RegisterScreen: React.FC = () => {
                           <Ionicons
                             name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                             size={18}
-                            color="#9ca3af"
+                            color={colors.text.tertiary}
                           />
                         </TouchableOpacity>
                       )}
@@ -216,13 +223,13 @@ const RegisterScreen: React.FC = () => {
                         <Ionicons
                           name="shield-checkmark-outline"
                           size={18}
-                          color="#9ca3af"
+                          color={colors.text.tertiary}
                           style={styles.inputIcon}
                         />
                         <TextInput
                           style={styles.input}
                           placeholder="请输入验证码"
-                          placeholderTextColor="#9ca3af"
+                          placeholderTextColor={colors.text.tertiary}
                           value={captchaCode}
                           onChangeText={setCaptchaCode}
                           autoCapitalize="none"
@@ -236,7 +243,7 @@ const RegisterScreen: React.FC = () => {
                         activeOpacity={0.8}
                       >
                         {captchaLoading ? (
-                          <ActivityIndicator color="#3B82F6" />
+                          <ActivityIndicator color={colors.primary} />
                         ) : (
                           <Image
                             style={styles.captchaImage}
@@ -256,7 +263,7 @@ const RegisterScreen: React.FC = () => {
                   activeOpacity={0.9}
                 >
                   <LinearGradient
-                    colors={loading ? ['#93c5fd', '#a5b4fc'] : ['#3B82F6', '#6366F1']}
+                    colors={loading ? ['#93c5fd', '#a5b4fc'] : [colors.primary, colors.gradient.primary[1]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.button}

@@ -10,12 +10,19 @@ import FeaturesSection from './components/FeaturesSection';
 import AlgorithmSection from './components/AlgorithmSection';
 import TechSpecsSection from './components/TechSpecsSection';
 import FinalCTASection from './components/FinalCTASection';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { TabParamList } from '@/routes/types';
+import { CompositeScreenProps } from '@react-navigation/native';
+import type { HomeStackParamList, TabParamList } from '@/routes/types';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-type HomeScreenProps = BottomTabScreenProps<TabParamList, 'Home'>;
+// HomeScreen 注册在 HomeStack(NativeStack) 的 Index，同时需访问父级 BottomTab
+// 以使用 jumpTo 及跨 Tab navigate，故用 CompositeScreenProps 组合两者
+type HomeScreenProps = CompositeScreenProps<
+  NativeStackScreenProps<HomeStackParamList, 'Index'>,
+  BottomTabScreenProps<TabParamList, 'Home'>
+>;
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const userInfo = useAuthStore(s => s.userInfo);
@@ -31,25 +38,29 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   // "开始去雾"：跳转到去雾 Tab
   const handleStartDehaze = () => {
-    navigation.jumpTo('Dehaze' as any);
+    navigation.jumpTo('Dehaze');
   };
 
-  // 跨 Stack 导航用 getParent()（arch-infra 导航重构后，Tab 内嵌套 Stack）
-  const nav = navigation.getParent() ?? navigation;
+  // 跨 Tab 导航：跳转到目标 Tab 内对应 Stack 的 Screen
+  const goToRoute = (route: 'Dehaze' | 'Task' | 'ImageInput' | 'PersonalMember') => {
+    if (route === 'Dehaze') navigation.jumpTo('Dehaze');
+    else if (route === 'PersonalMember') navigation.navigate('Profile', { screen: 'PersonalMember' });
+    else navigation.navigate('Tools', { screen: route });
+  };
 
   const handleImageInputPress = () => {
-    (nav as any).navigate('ImageInput');
+    navigation.navigate('Tools', { screen: 'ImageInput' });
   };
 
   const handleAlgorithmSelectPress = () => {
-    (nav as any).navigate('AlgorithmSelect');
+    navigation.navigate('Tools', { screen: 'AlgorithmSelect' });
   };
 
   const handleProcessingPress = () => {
     Alert.alert(
       '提示',
       '请先选择图片和算法后再进行去雾处理',
-      [{ text: '去选择图片', onPress: () => (nav as any).navigate('ImageInput') }, { text: '取消' }]
+      [{ text: '去选择图片', onPress: () => navigation.navigate('Tools', { screen: 'ImageInput' }) }, { text: '取消' }]
     );
   };
 
@@ -57,20 +68,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     Alert.alert(
       '提示',
       '请先完成去雾处理后才能使用效果对比功能',
-      [{ text: '去处理', onPress: () => (nav as any).navigate('ImageInput') }, { text: '取消' }]
+      [{ text: '去处理', onPress: () => navigation.navigate('Tools', { screen: 'ImageInput' }) }, { text: '取消' }]
     );
   };
 
   const handleDatasetManagePress = () => {
-    (nav as any).navigate('Dataset');
+    navigation.navigate('Tools', { screen: 'Dataset' });
   };
 
   const handleTaskCenterPress = () => {
-    (nav as any).navigate('Task');
+    navigation.navigate('Tools', { screen: 'Task' });
   };
 
   const handleLearnMorePress = () => {
-    (nav as any).navigate('AlgorithmBrowse');
+    navigation.navigate('Tools', { screen: 'AlgorithmBrowse' });
   };
 
   return (
@@ -86,21 +97,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       {/* 快捷入口 */}
       <View style={styles.quickEntrySection}>
         {[
-          { icon: 'flash', label: '快速体验', route: 'Dehaze', color: '#3b82f6' },
-          { icon: 'time', label: '处理历史', route: 'Task', color: '#6366f1' },
-          { icon: 'images', label: '样例库', route: 'ImageInput', color: '#8b5cf6' },
-          { icon: 'diamond', label: '会员权益', route: 'PersonalMember', color: '#f59e0b' },
+          { icon: 'flash', label: '快速体验', route: 'Dehaze' as const, color: '#3b82f6' },
+          { icon: 'time', label: '处理历史', route: 'Task' as const, color: '#6366f1' },
+          { icon: 'images', label: '样例库', route: 'ImageInput' as const, color: '#8b5cf6' },
+          { icon: 'diamond', label: '会员权益', route: 'PersonalMember' as const, color: '#f59e0b' },
         ].map((item, i) => (
           <TouchableOpacity
             key={i}
             style={styles.quickEntryCard}
-            onPress={() => {
-              if (item.route === 'Dehaze') {
-                navigation.jumpTo('Dehaze' as any);
-              } else {
-                (nav as any).navigate(item.route);
-              }
-            }}
+            onPress={() => goToRoute(item.route)}
           >
             <View style={[styles.quickEntryIcon, { backgroundColor: item.color + '15' }]}>
               <Ionicons name={item.icon} size={24} color={item.color} />

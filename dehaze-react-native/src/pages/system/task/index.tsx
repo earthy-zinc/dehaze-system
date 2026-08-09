@@ -17,11 +17,11 @@ type Props = NativeStackScreenProps<ProfileStackParamList, 'SystemTask'>;
 
 const PAGE_SIZE = 15;
 const STATUS_MAP: Record<number, { label: string; color: string }> = {
-  1: { label: '待处理', color: '#fbbf24' },
-  2: { label: '处理中', color: '#3b82f6' },
-  3: { label: '已完成', color: '#34d399' },
-  4: { label: '失败', color: '#ef4444' },
-  5: { label: '已取消', color: '#6b7280' },
+  1: { label: '待处理', color: theme.colors.status.warning },
+  2: { label: '处理中', color: theme.colors.primary },
+  3: { label: '已完成', color: theme.colors.status.success },
+  4: { label: '失败', color: theme.colors.status.error },
+  5: { label: '已取消', color: theme.colors.text.secondary },
 };
 
 const SystemTaskScreen: React.FC<Props> = ({ navigation }) => {
@@ -63,7 +63,7 @@ const SystemTaskScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderItem = ({ item }: { item: TaskVO }) => {
-    const st = STATUS_MAP[item.status] || { label: '未知', color: '#9ca3af' };
+    const st = STATUS_MAP[item.status] || { label: '未知', color: theme.colors.text.tertiary };
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>

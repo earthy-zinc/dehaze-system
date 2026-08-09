@@ -19,12 +19,12 @@ export function getTypeLabel(type?: string): string {
 }
 
 /** Badge 变体（与 components/Badge 的 variant 对齐） */
-export type BadgeVariant = 'clear' | 'foggy' | 'secondary';
+export type BadgeVariant = 'primary' | 'foggy' | 'secondary';
 
 export function getBadgeVariant(type?: string): BadgeVariant {
   switch (type) {
     case 'clear':
-      return 'clear';
+      return 'primary';
     case 'hazy':
       return 'foggy';
     default:

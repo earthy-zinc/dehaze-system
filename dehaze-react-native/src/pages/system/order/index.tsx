@@ -18,12 +18,12 @@ type Props = NativeStackScreenProps<ProfileStackParamList, 'SystemOrder'>;
 
 const PAGE_SIZE = 15;
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  pending: { label: '待支付', color: '#fbbf24' },
-  paid: { label: '已支付', color: '#3b82f6' },
-  completed: { label: '已完成', color: '#34d399' },
-  cancelled: { label: '已取消', color: '#6b7280' },
-  refunding: { label: '退款中', color: '#f97316' },
-  refunded: { label: '已退款', color: '#ef4444' },
+  pending: { label: '待支付', color: theme.colors.status.warning },
+  paid: { label: '已支付', color: theme.colors.primary },
+  completed: { label: '已完成', color: theme.colors.status.success },
+  cancelled: { label: '已取消', color: theme.colors.text.secondary },
+  refunding: { label: '退款中', color: theme.colors.status.warning },
+  refunded: { label: '已退款', color: theme.colors.status.error },
 };
 
 const SystemOrderScreen: React.FC<Props> = ({ navigation }) => {
@@ -50,7 +50,7 @@ const SystemOrderScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => { setLoading(true); fetchList(1).finally(() => setLoading(false)); }, [fetchList]);
 
   const renderItem = ({ item }: { item: OrderPageVO }) => {
-    const st = STATUS_MAP[item.status] || { label: item.status, color: '#9ca3af' };
+    const st = STATUS_MAP[item.status] || { label: item.status, color: theme.colors.text.tertiary };
     return (
       <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('SystemOrderDetail', { orderNo: item.orderNo })}>
         <View style={styles.cardHeader}>

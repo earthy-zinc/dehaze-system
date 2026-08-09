@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TextStyle } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { colors } from '@/theme/colors';
 
 /** Ionicons 图标名称类型，供直接使用 Ionicons 组件的场景做类型约束 */
 export type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -85,7 +86,7 @@ const iconMap: { [key: string]: string } = {
 const Icon: React.FC<IconProps> = ({
   name,
   size = 24,
-  color = '#3b82f6',
+  color = colors.primary,
   backgroundColor,
   borderRadius = 12,
   style,

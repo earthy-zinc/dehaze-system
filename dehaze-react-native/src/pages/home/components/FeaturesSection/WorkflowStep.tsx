@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Card from '@/components/Card';
 import Icon from '@/components/Icon';
+import { colors } from '@/theme/colors';
 
 interface WorkflowStepProps {
   number: string;
@@ -39,8 +40,8 @@ const WorkflowStep: React.FC<WorkflowStepProps> = ({
         <Icon
           name={icon}
           size={28}
-          color="#ffffff"
-          backgroundColor="#3b82f6"
+          color={colors.text.inverse}
+          backgroundColor={colors.primary}
           borderRadius={16}
         />
       </View>
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
     right: 16,
     width: 32,
     height: 32,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -71,7 +72,7 @@ const styles = StyleSheet.create({
   number: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   iconContainer: {
     alignSelf: 'center',
@@ -80,13 +81,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1f2937',
+    color: colors.text.primary,
     marginBottom: 12,
     textAlign: 'center',
   },
   description: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.secondary,
     lineHeight: 22.4,
     textAlign: 'center',
   },

@@ -1,3 +1,4 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { EvaluationMetrics } from '@/types/evaluation';
 import type { SelectedImage } from '@/types/image';
 import type { InputMethod } from '@/pages/image-input/types/imageInput';
@@ -38,6 +39,7 @@ export type ToolsStackParamList = {
   Algorithm: { algorithmId: number } | undefined;
   Dataset: undefined;
   DatasetBrowse: undefined;
+  DatasetDetail: { datasetId: number };
   Task: undefined;
   MetricsManage: undefined;
   Batch: undefined;
@@ -89,6 +91,7 @@ export type ProfileStackParamList = {
   // Task 归位（处理历史）
   Task: undefined;
   Dataset: undefined;
+  DatasetDetail: { datasetId: number };
   // ===== 管理入口 (dev-admin) =====
   SystemDashboard: undefined;
   SystemUser: undefined;
@@ -134,20 +137,9 @@ export type ProfileStackParamList = {
 // Bottom Tab ParamList
 // ============================================================
 export type TabParamList = {
-  Home: undefined;
-  Tools: undefined;
-  Dehaze: undefined;
-  Messages: undefined;
-  Profile: undefined;
+  Home: NavigatorScreenParams<HomeStackParamList> | undefined;
+  Tools: NavigatorScreenParams<ToolsStackParamList> | undefined;
+  Dehaze: NavigatorScreenParams<DehazeStackParamList> | undefined;
+  Messages: NavigatorScreenParams<MessagesStackParamList> | undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
-
-// ============================================================
-// 兼容旧版（过渡期）
-// ============================================================
-export type RootStackParamList = AuthStackParamList &
-  TabParamList &
-  HomeStackParamList &
-  ToolsStackParamList &
-  DehazeStackParamList &
-  MessagesStackParamList &
-  ProfileStackParamList;

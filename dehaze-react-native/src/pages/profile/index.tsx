@@ -26,7 +26,7 @@ import type { ProfileStackParamList } from '@/routes/types';
 import { useAuthStore } from '@/store';
 import { theme } from '@/theme';
 
-type Props = NativeStackScreenProps<ProfileStackParamList, 'Profile'>;
+type Props = NativeStackScreenProps<ProfileStackParamList, 'Index'>;
 
 // ==================== 类型 ====================
 
@@ -260,7 +260,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       >
         {/* 用户卡 */}
         <LinearGradient
-          colors={[theme.colors.primary, '#6366f1']}
+          colors={[theme.colors.primary, theme.colors.gradient.primary[1]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.userCard}
@@ -299,7 +299,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           activeOpacity={0.8}
         >
           <View style={styles.vipLeft}>
-            <Ionicons name="diamond" size={22} color="#f59e0b" />
+            <Ionicons name="diamond" size={22} color={theme.colors.status.warning} />
             <View style={styles.vipTextWrap}>
               <Text style={styles.vipTitle}>
                 {isVip ? `${member?.levelName || '会员'}专属权益` : '开通 VIP 畅享更多次数'}

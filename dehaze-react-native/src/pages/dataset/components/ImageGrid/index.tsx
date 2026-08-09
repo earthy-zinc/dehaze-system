@@ -8,6 +8,7 @@ import {
 import ImageCard from '../ImageCard';
 import { DatasetImage } from '../../types/dataset';
 import { useResponsive } from '@/hooks/useResponsive';
+import { colors } from '@/theme/colors';
 
 interface ImageGridProps {
   images: DatasetImage[];
@@ -76,8 +77,8 @@ const ImageGrid: React.FC<ImageGridProps> = ({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#14b8a6"
-            colors={['#14b8a6']}
+            tintColor={colors.secondary}
+            colors={[colors.secondary]}
           />
         ) : undefined
       }

@@ -1,5 +1,7 @@
 # React Native 前端架构改造计划
 
+> ✅ **实施状态：已完成**。§二导航类型安全治理、§三 useProcessing 抽取、§四令牌统一、§五 algorithm 拆分、§六 dehaze 实现质量、§七 any 清理、§八 dataset 路由化均已落地至 `dehaze-react-native`，相关文档已同步（见 §十一）。本文保留原始改造方案供追溯。
+
 > 本文档聚焦 `dehaze-react-native` 在**代码架构层面**的实际问题与改造方向，供后续重构参考。架构文档遗漏页面（algorithm/dataset）与迭代叙事问题已在 [04-ReactNative架构文档.md](../04-项目实现/前端/04-ReactNative架构文档.md) 修复中处理，本文不重复。
 
 > 前置说明：RN 端基础设施质量良好——zustand + persist 持久化、@react-navigation v7 嵌套 Stack、SDK 拦截器、theme 令牌定义均到位。本计划针对的是**导航类型安全**与**处理流程复用**两类核心债务，以及组件/页面的实现质量问题。
