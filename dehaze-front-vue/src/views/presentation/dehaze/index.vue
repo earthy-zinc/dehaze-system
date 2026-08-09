@@ -91,11 +91,11 @@ function handleCameraSave(file: File) {
 }
 
 function handleSelectModel(id: number) {
-  imageShowStore.setModelId(id);
+  imageShowStore.modelId = id;
 }
 
 function handleImageUpload(file: File) {
-  imageShowStore.setLoading(true);
+  imageShowStore.loading = true;
   // 上传文件
   FileAPI.upload(file, imageShowStore.modelId)
     .then((res) => {
@@ -107,13 +107,13 @@ function handleImageUpload(file: File) {
       ElMessage.error(err.message || "图片上传失败");
     })
     .finally(() => {
-      imageShowStore.setLoading(false);
+      imageShowStore.loading = false;
     });
 }
 
 function handleReset() {
-  imageShowStore.setImageUrls([]);
-  imageShowStore.setMagnifierShow(false);
+  imageShowStore.imageInfo.images.urls = [];
+  imageShowStore.magnifierInfo.enabled = false;
   cleanUrl.value = "";
   activePage.value = "example";
 }
@@ -201,8 +201,8 @@ async function handleGenerateImage() {
   cancelFlag = false;
   processing.value = true;
   progress.value = 0;
-  imageShowStore.setLoading(true);
-  imageShowStore.setModelId(modelId);
+  imageShowStore.loading = true;
+  imageShowStore.modelId = modelId;
   activePage.value = "loading";
   // 启动模拟进度
   startProgressSimulation(95);
@@ -242,7 +242,7 @@ async function handleGenerateImage() {
     .finally(() => {
       stopProgressSimulation();
       processing.value = false;
-      imageShowStore.setLoading(false);
+      imageShowStore.loading = false;
     });
 }
 
@@ -371,7 +371,7 @@ async function handleStartBatch() {
   const modelId = selectedModel.value;
   batchCancelled.value = false;
   batchProcessing.value = true;
-  imageShowStore.setModelId(modelId);
+  imageShowStore.modelId = modelId;
   for (const task of batchTasks.value) {
     if (task.status !== "pending") continue;
     if (batchCancelled.value) break;
@@ -447,7 +447,7 @@ function handleRemoveBatch(task: BatchTask) {
 
 // 查看批量任务结果
 function handleViewBatchResult(task: BatchTask) {
-  imageShowStore.setImageUrls([]);
+  imageShowStore.imageInfo.images.urls = [];
   if (task.hazeUrl) {
     imageShowStore.setImageUrl(task.hazeUrl, ImageTypeEnum.HAZE);
   }
@@ -522,13 +522,18 @@ function handleEval() {
     ElMessage.error("请先选择去雾模型");
     return;
   }
-  router.push("/evaluation/index").then(() => {
-    imageShowStore.setModelId(selectedModel.value!);
-    imageShowStore.setImageUrls(imgUrls.value);
-    if (cleanUrl.value) {
-      imageShowStore.setImageUrl(cleanUrl.value, ImageTypeEnum.CLEAN);
-    }
-  });
+  router
+    .push({
+      path: "/evaluation/index",
+      query: { params: JSON.stringify(dehazeParams.value) },
+    })
+    .then(() => {
+      imageShowStore.modelId = selectedModel.value!;
+      imageShowStore.imageInfo.images.urls = imgUrls.value;
+      if (cleanUrl.value) {
+        imageShowStore.setImageUrl(cleanUrl.value, ImageTypeEnum.CLEAN);
+      }
+    });
 }
 
 const dialogVisible = ref(false);
@@ -537,7 +542,7 @@ const dialogVisible = ref(false);
 function loadImageFromQuery() {
   const imageUrl = route.query.imageUrl as string;
   if (imageUrl) {
-    imageShowStore.setImageUrls([]);
+    imageShowStore.imageInfo.images.urls = [];
     imageShowStore.setImageUrl(imageUrl, ImageTypeEnum.HAZE);
     activePage.value = "singleImage";
     // 清除 query 参数，避免回退时重复加载
@@ -548,13 +553,13 @@ function loadImageFromQuery() {
 }
 
 onMounted(() => {
-  imageShowStore.setLoading(true);
+  imageShowStore.loading = true;
   getAlgorithmList();
-  imageShowStore.setImageUrls([]);
+  imageShowStore.imageInfo.images.urls = [];
   if (!loadImageFromQuery()) {
     activePage.value = "example";
   }
-  imageShowStore.setLoading(false);
+  imageShowStore.loading = false;
 });
 
 onActivated(() => {

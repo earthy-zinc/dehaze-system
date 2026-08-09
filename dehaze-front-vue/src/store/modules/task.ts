@@ -34,7 +34,7 @@ export const useTaskStore = defineStore("task", () => {
     await TaskAPI.cancel(taskId);
   };
 
-  /** 下载任务结果 */
+  /** 校验任务状态并返回结果下载地址 */
   const downloadResult = async (taskId: string) => {
     const task = await TaskAPI.getStatus(taskId);
     if (task.status !== 3) {
@@ -46,13 +46,7 @@ export const useTaskStore = defineStore("task", () => {
     if (task.expiresAt && new Date(task.expiresAt) < new Date()) {
       throw new Error("任务结果已过期");
     }
-    const link = document.createElement("a");
-    link.href = task.downloadUrl;
-    link.download = "";
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    return task.downloadUrl;
   };
 
   /** 轮询更新进行中任务的状态 */

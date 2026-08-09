@@ -19,7 +19,19 @@ defineOptions({
 });
 
 const imageShowStore = useImageShowStore();
-const { modelId, dehazeParams } = toRefs(imageShowStore);
+const { modelId } = toRefs(imageShowStore);
+const route = useRoute();
+// 去雾参数（默认 50/50/50/30），从去雾处理页经路由 query 传入用于参数对比
+const dehazeParams = ref({
+  dehazeStrength: 50,
+  colorSaturation: 50,
+  contrast: 50,
+  sharpen: 30,
+});
+const routeParams = route.query.params as string;
+if (routeParams) {
+  Object.assign(dehazeParams.value, JSON.parse(routeParams));
+}
 const loading = ref(false);
 const showResult = ref(false);
 // 对比模式：指标对比 / 图片对比 / 参数对比
@@ -79,19 +91,21 @@ function handleMagnifierChange(
   switch (type) {
     case "enable":
       state.magnifier.enabled = !state.magnifier.enabled;
-      imageShowStore.setMagnifierShow(state.magnifier.enabled);
+      imageShowStore.magnifierInfo.enabled = state.magnifier.enabled;
       break;
     case "shape":
-      imageShowStore.setMagnifierShape(value);
+      imageShowStore.magnifierInfo.shape = value;
       break;
     case "zoomLevel":
-      imageShowStore.setMagnifierZoomLevel(value);
+      imageShowStore.magnifierInfo.zoomLevel = value;
       break;
     case "height":
-      imageShowStore.setMagnifierSize(state.magnifier.width, value);
+      imageShowStore.magnifierInfo.width = state.magnifier.width;
+      imageShowStore.magnifierInfo.height = value;
       break;
     case "width":
-      imageShowStore.setMagnifierSize(value, state.magnifier.height);
+      imageShowStore.magnifierInfo.width = value;
+      imageShowStore.magnifierInfo.height = state.magnifier.height;
       break;
     default:
       break;
@@ -105,13 +119,13 @@ function handleImageFilterChange(
   value = transform(value);
   switch (type) {
     case "brightness":
-      imageShowStore.setBrightness(value);
+      imageShowStore.imageInfo.brightness = value;
       break;
     case "contrast":
-      imageShowStore.setContrast(value);
+      imageShowStore.imageInfo.contrast = value;
       break;
     case "saturate":
-      imageShowStore.setSaturate(value);
+      imageShowStore.imageInfo.saturate = value;
       break;
     default:
       break;
@@ -119,7 +133,7 @@ function handleImageFilterChange(
 }
 
 function handleReset() {
-  imageShowStore.setImageUrls([]);
+  imageShowStore.imageInfo.images.urls = [];
   showResult.value = false;
   metrics.value = undefined;
   algorithmInfo.value = null;

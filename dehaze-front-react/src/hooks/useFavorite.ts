@@ -25,15 +25,11 @@ export function useFavorite(targetType: FavoriteTargetType, targetId: number) {
       const result: any = await dispatch(
         toggleFavorite({ targetType, targetId })
       ).unwrap();
-      if (result?.favorited !== undefined) {
-        message.success(result.favorited ? "已加入收藏" : "已取消收藏");
-      } else {
-        message.success(status ? "已取消收藏" : "已加入收藏");
-      }
+      message.success(result.favorited ? "已加入收藏" : "已取消收藏");
     } catch (err: any) {
       message.error(err?.message || "操作失败");
     }
-  }, [dispatch, targetType, targetId, status]);
+  }, [dispatch, targetType, targetId]);
 
   return { isFavorited: status, loading, toggle };
 }

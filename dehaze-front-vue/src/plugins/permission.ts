@@ -3,6 +3,20 @@ import { usePermissionStore, useUserStore } from "@/store";
 import NProgress from "@/utils/nprogress";
 import { RouteRecordRaw } from "vue-router";
 
+async function addDynamicRoutes(roles: string[]) {
+  const permissionStore = usePermissionStore();
+  const accessRoutes = await permissionStore.generateRoutes(roles);
+  accessRoutes.forEach((route: RouteRecordRaw) => {
+    router.addRoute(route);
+  });
+  // 动态路由加载后追加兜底，确保不存在的路径跳转 404 而非静默取消
+  router.addRoute({
+    path: "/:pathMatch(.*)*",
+    component: () => import("@/views/error-page/404.vue"),
+    meta: { hidden: true },
+  });
+}
+
 export function setupPermission() {
   const whiteList = ["/login", "/register"];
   let isDynamicRoutesAdded = false;
@@ -31,20 +45,8 @@ export function setupPermission() {
 
     if (hasRoles) {
       if (!isDynamicRoutesAdded) {
-        const permissionStore = usePermissionStore();
         try {
-          const accessRoutes = await permissionStore.generateRoutes(
-            userStore.user.roles
-          );
-          accessRoutes.forEach((route: RouteRecordRaw) => {
-            router.addRoute(route);
-          });
-          // 动态路由加载后追加兜底，确保不存在的路径跳转 404 而非静默取消
-          router.addRoute({
-            path: "/:pathMatch(.*)*",
-            component: () => import("@/views/error-page/404.vue"),
-            meta: { hidden: true },
-          });
+          await addDynamicRoutes(userStore.user.roles);
           isDynamicRoutesAdded = true;
         } catch (e) {
           userStore.resetToken();
@@ -57,18 +59,9 @@ export function setupPermission() {
       }
       next();
     } else {
-      const permissionStore = usePermissionStore();
       try {
         const { roles } = await userStore.getUserInfo();
-        const accessRoutes = await permissionStore.generateRoutes(roles);
-        accessRoutes.forEach((route: RouteRecordRaw) => {
-          router.addRoute(route);
-        });
-        router.addRoute({
-          path: "/:pathMatch(.*)*",
-          component: () => import("@/views/error-page/404.vue"),
-          meta: { hidden: true },
-        });
+        await addDynamicRoutes(roles);
         isDynamicRoutesAdded = true;
         next({ ...to, replace: true });
       } catch (e) {

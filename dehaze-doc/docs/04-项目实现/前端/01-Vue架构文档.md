@@ -62,7 +62,7 @@ flowchart TB
   - `views` - 存放页面组件
   - `components` - 封装复用组件
   - `layout` - 布局组件（NavBar/Sidebar/TagsView/Settings）
-  - `composables` - 组合式 API（usePagination/useTableSelection/useDebounce/useAsyncTask/useConfirm/useImportExport）
+  - `composables` - 组合式 API（usePagination/useImportExport）
   - `router` - 路由配置与导航守卫
   - `store/modules` - 按业务领域拆分 Pinia 模块（user/permission/settings/task/algorithm/imageShow/notification/tagsView/app）
   - `enums` - 集中管理枚举类型
@@ -80,10 +80,7 @@ flowchart TB
   - `RecommendationPanel` - 图像分析推荐面板
 - 组合式 API：
   - `usePagination` - 通用分页逻辑
-  - `useTableSelection` - 表格多选逻辑
-  - `useDebounce` / `useDebouncedRef` - 防抖函数与响应式防抖
-  - `useAsyncTask` - 异步任务 loading/error/data 三态管理
-  - `useConfirm` / `useDeleteConfirm` - 二次确认弹窗
+  - `useImportExport` - 通用导入导出工具（含 `downloadBlob` 等）
 
 ## 3. 核心模块
 

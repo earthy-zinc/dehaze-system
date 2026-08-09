@@ -55,7 +55,7 @@ flowchart TB
 - `layout/` - 布局组件
 - `hooks/` - 自定义 Hook
 - `router/` - 路由配置
-- `store/modules/` - Redux Toolkit slice（app/dataset/favorite/imageShow/permission/settings/task/user）
+- `store/modules/` - Redux Toolkit slice（app/favorite/imageShow/permission/settings/task/user）
 - `enums/` - 枚举类型
 - `typings/` - 类型声明
 - `utils/` - 工具函数

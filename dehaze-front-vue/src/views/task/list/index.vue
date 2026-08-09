@@ -199,6 +199,7 @@
 import { TaskVO, TaskQuery, TaskCategory } from "dehaze-sdk-js";
 import { Refresh } from "@element-plus/icons-vue";
 import { useTaskStore } from "@/store";
+import { downloadByUrl } from "@/utils";
 
 defineOptions({
   name: "TaskList",
@@ -390,7 +391,8 @@ async function handleCancel(task: TaskVO) {
 async function handleDownload(task: TaskVO) {
   downloadLoadingId.value = task.taskId;
   try {
-    await taskStore.downloadResult(task.taskId);
+    const url = await taskStore.downloadResult(task.taskId);
+    downloadByUrl(url);
     ElMessage.success("开始下载");
   } catch (e: any) {
     ElMessage.error(e.message || "下载失败");

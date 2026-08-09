@@ -1,6 +1,7 @@
 import { FavoriteAPI, type FavoriteTargetType } from "dehaze-sdk-js";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
+import type { RootState } from "@/store/index";
 
 interface FavoriteStatusMap {
   [targetId: number]: boolean;
@@ -42,19 +43,31 @@ export const fetchFavoriteStatus = createAsyncThunk(
 );
 
 /** 切换收藏状态（自动判断添加/取消） */
-export const toggleFavorite = createAsyncThunk(
-  "favorite/toggle",
-  async ({
-    targetType,
-    targetId,
-  }: {
+export const toggleFavorite = createAsyncThunk<
+  {
     targetType: FavoriteTargetType;
     targetId: number;
-  }) => {
-    const isFavorited = false; // will be checked inside thunk caller
-    return { targetType, targetId, isFavorited };
+    favorited: boolean;
+  },
+  { targetType: FavoriteTargetType; targetId: number },
+  { state: RootState }
+>("favorite/toggle", async ({ targetType, targetId }, thunkAPI) => {
+  const isFavorited =
+    thunkAPI.getState().favorite.status[targetType]?.[targetId] ?? false;
+  if (isFavorited) {
+    const { list } = await FavoriteAPI.getPage({
+      targetType,
+      pageSize: 500,
+    });
+    const record = list.find((item) => item.targetId === targetId);
+    if (record) {
+      await FavoriteAPI.deleteByIds([record.id]);
+    }
+    return { targetType, targetId, favorited: false };
   }
-);
+  await FavoriteAPI.add({ targetType, targetId });
+  return { targetType, targetId, favorited: true };
+});
 
 /** 获取收藏数量统计 */
 export const fetchFavoriteCount = createAsyncThunk(
@@ -121,8 +134,8 @@ const favoriteSlice = createSlice({
         state.loading = true;
       })
       .addCase(toggleFavorite.fulfilled, (state, action) => {
-        const { targetType, targetId, isFavorited } = action.payload;
-        state.status[targetType][targetId] = !isFavorited;
+        const { targetType, targetId, favorited } = action.payload;
+        state.status[targetType][targetId] = favorited;
         state.loading = false;
       })
       .addCase(toggleFavorite.rejected, (state) => {

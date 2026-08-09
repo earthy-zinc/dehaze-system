@@ -158,8 +158,10 @@ function adjustSize() {
     containerStyle.value.width = `${width}px`;
     containerStyle.value.height = `${height}px`;
 
-    imageShowStore.setImageSize(width, height);
-    imageShowStore.setImageNaturalSize(img.naturalWidth, img.naturalHeight);
+    imageShowStore.imageInfo.width = width;
+    imageShowStore.imageInfo.height = height;
+    imageShowStore.imageInfo.images.naturalWidth = img.naturalWidth;
+    imageShowStore.imageInfo.images.naturalHeight = img.naturalHeight;
   };
 }
 
@@ -239,7 +241,8 @@ function setContainerRect(e: MouseEvent | TouchEvent) {
   containerRect.top = rect.top;
   containerRect.width = rect.width;
   containerRect.height = rect.height;
-  imageShowStore.setMouseXY(clientX, clientY);
+  imageShowStore.mouse.x = clientX;
+  imageShowStore.mouse.y = clientY;
 }
 
 const initialPinchDistance = ref(0);
@@ -255,7 +258,7 @@ function mousedown(e: MouseEvent | TouchEvent) {
     initialPinchDistance.value = getDistance(e.touches);
   }
   isDragMask.value = true;
-  imageShowStore.setMagnifierShow(true);
+  imageShowStore.magnifierInfo.enabled = true;
   setContainerRect(e);
   handleMaskMove();
 }
@@ -271,7 +274,7 @@ function mousemove(e: MouseEvent | TouchEvent) {
     const zoomFactor = 1 + delta / 100; // 调整缩放因子以适应需求
     let newZoomLevel = magnifierInfo.value.zoomLevel * zoomFactor;
     newZoomLevel = Math.min(Math.max(newZoomLevel, 1), 10); // 保持放大倍率在1到10之间
-    imageShowStore.setMagnifierZoomLevel(newZoomLevel);
+    imageShowStore.magnifierInfo.zoomLevel = newZoomLevel;
     handleMaskMove();
     initialPinchDistance.value = currentDistance;
   } else {
@@ -281,7 +284,7 @@ function mousemove(e: MouseEvent | TouchEvent) {
 
 function mouseup() {
   isDragMask.value = false;
-  imageShowStore.setMagnifierShow(false);
+  imageShowStore.magnifierInfo.enabled = false;
 }
 
 const zoomIn = ref(false);
@@ -292,7 +295,7 @@ function mousewheel(e: WheelEvent) {
     zoomIn.value = e.deltaY < 0;
     zoomLevel += e.deltaY > 0 ? -0.2 : 0.2;
     zoomLevel = Math.min(Math.max(zoomLevel, 1), 10); // 保持放大倍率在1到10之间
-    imageShowStore.setMagnifierZoomLevel(zoomLevel);
+    imageShowStore.magnifierInfo.zoomLevel = zoomLevel;
     handleMaskMove();
   }
 }
@@ -311,7 +314,8 @@ function handleMaskMove() {
     0,
     Math.min(y, containerRect.height - maskHeight.value)
   );
-  imageShowStore.setMaskXY(maskX, maskY);
+  imageShowStore.mask.x = maskX;
+  imageShowStore.mask.y = maskY;
 }
 
 const { width, height } = useWindowSize();

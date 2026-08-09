@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import Magnifier from "@/components/Magnifier/newIndex.vue";
+import Magnifier from "@/components/Magnifier/index.vue";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { Arrayable, useWindowSize } from "@vueuse/core";
 import { UploadFile, UploadUserFile } from "element-plus";
@@ -134,19 +134,21 @@ function handleMagnifierChange(
   switch (type) {
     case "enable":
       state.magnifier.enabled = !state.magnifier.enabled;
-      imageShowStore.setMagnifierShow(state.magnifier.enabled);
+      imageShowStore.magnifierInfo.enabled = state.magnifier.enabled;
       break;
     case "shape":
-      imageShowStore.setMagnifierShape(value);
+      imageShowStore.magnifierInfo.shape = value;
       break;
     case "zoomLevel":
-      imageShowStore.setMagnifierZoomLevel(value);
+      imageShowStore.magnifierInfo.zoomLevel = value;
       break;
     case "height":
-      imageShowStore.setMagnifierSize(state.magnifier.width, value);
+      imageShowStore.magnifierInfo.width = state.magnifier.width;
+      imageShowStore.magnifierInfo.height = value;
       break;
     case "width":
-      imageShowStore.setMagnifierSize(value, state.magnifier.height);
+      imageShowStore.magnifierInfo.width = value;
+      imageShowStore.magnifierInfo.height = state.magnifier.height;
       break;
     default:
       break;
@@ -160,13 +162,13 @@ function handleImageFilterChange(
   value = transform(value);
   switch (type) {
     case "brightness":
-      imageShowStore.setBrightness(value);
+      imageShowStore.imageInfo.brightness = value;
       break;
     case "contrast":
-      imageShowStore.setContrast(value);
+      imageShowStore.imageInfo.contrast = value;
       break;
     case "saturate":
-      imageShowStore.setSaturate(value);
+      imageShowStore.imageInfo.saturate = value;
       break;
     default:
       break;

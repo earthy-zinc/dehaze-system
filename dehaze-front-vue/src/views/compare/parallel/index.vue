@@ -105,8 +105,10 @@ function adjustSizes() {
     wrapperStyle.value.width = `${width}px`;
     wrapperStyle.value.height = `${height}px`;
 
-    imageShowStore.setImageSize(width, height);
-    imageShowStore.setImageNaturalSize(img.naturalWidth, img.naturalHeight);
+    imageShowStore.imageInfo.width = width;
+    imageShowStore.imageInfo.height = height;
+    imageShowStore.imageInfo.images.naturalWidth = img.naturalWidth;
+    imageShowStore.imageInfo.images.naturalHeight = img.naturalHeight;
   };
 }
 
@@ -124,7 +126,8 @@ function mousedown(e: MouseEvent | TouchEvent) {
   const containerRect = (e.target as HTMLElement).getBoundingClientRect();
   selectedWrapperRect.left = containerRect.left;
   selectedWrapperRect.top = containerRect.top;
-  imageShowStore.setMouseXY(clientX, clientY);
+  imageShowStore.mouse.x = clientX;
+  imageShowStore.mouse.y = clientY;
   handleMouseEvent();
 }
 
@@ -140,7 +143,8 @@ function mousemove(e: MouseEvent | TouchEvent) {
     const containerRect = (e.target as HTMLElement).getBoundingClientRect();
     selectedWrapperRect.left = containerRect.left;
     selectedWrapperRect.top = containerRect.top;
-    imageShowStore.setMouseXY(clientX, clientY);
+    imageShowStore.mouse.x = clientX;
+    imageShowStore.mouse.y = clientY;
     handleMouseEvent();
   }
 }
@@ -153,7 +157,7 @@ function mousewheel(e: WheelEvent) {
     zoomIn.value = e.deltaY < 0;
     zoomLevel += e.deltaY > 0 ? -0.2 : 0.2;
     zoomLevel = Math.min(Math.max(zoomLevel, 1), 10); // 保持放大倍率在1到10之间
-    imageShowStore.setMagnifierZoomLevel(zoomLevel);
+    imageShowStore.magnifierInfo.zoomLevel = zoomLevel;
     handleMouseEvent();
   }
 }

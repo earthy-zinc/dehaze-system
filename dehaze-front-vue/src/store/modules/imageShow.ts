@@ -74,29 +74,9 @@ export const useImageShowStore = defineStore("imageShow", () => {
     enabled: true,
   });
 
-  // 去雾算法参数（处理时使用，效果对比页用于参数对比）
-  const dehazeParams = reactive({
-    dehazeStrength: 50,
-    colorSaturation: 50,
-    contrast: 50,
-    sharpen: 30,
-  });
-
   const disableGenerate = computed(() => {
     return imageInfo.images.urls.length !== 1 || !modelId.value;
   });
-
-  function setLoading(flag: boolean) {
-    loading.value = flag;
-  }
-
-  function setModelId(id: number) {
-    modelId.value = id;
-  }
-
-  function setImageUrls(urls: ImageUrlType[]) {
-    imageInfo.images.urls = urls;
-  }
 
   function setImageUrl(url: string, type: ImageTypeEnum) {
     const index = imageInfo.images.urls.findIndex(
@@ -128,61 +108,8 @@ export const useImageShowStore = defineStore("imageShow", () => {
     }
   }
 
-  function setImageNaturalSize(width: number, height: number) {
-    imageInfo.images.naturalWidth = width;
-    imageInfo.images.naturalHeight = height;
-  }
-
-  function setImageSize(width: number, height: number) {
-    imageInfo.width = width;
-    imageInfo.height = height;
-  }
-
-  function setBrightness(brightness: number) {
-    imageInfo.brightness = brightness;
-  }
-
-  function setContrast(contrast: number) {
-    imageInfo.contrast = contrast;
-  }
-
-  function setSaturate(saturate: number) {
-    imageInfo.saturate = saturate;
-  }
-
-  function setMagnifierShow(enabled: boolean) {
-    magnifierInfo.enabled = enabled;
-  }
-
-  function setDividerShow(enabled: boolean) {
-    dividerInfo.enabled = enabled;
-  }
-
   function toggleDividerShow() {
     dividerInfo.enabled = !dividerInfo.enabled;
-  }
-
-  function setMagnifierShape(shape: "circle" | "square") {
-    magnifierInfo.shape = shape;
-  }
-
-  function setMagnifierSize(width: number, height: number) {
-    magnifierInfo.width = width;
-    magnifierInfo.height = height;
-  }
-
-  function setMagnifierZoomLevel(zoomLevel: number) {
-    magnifierInfo.zoomLevel = zoomLevel;
-  }
-
-  function setMaskXY(x: number, y: number) {
-    mask.x = x;
-    mask.y = y;
-  }
-
-  function setMouseXY(x: number, y: number) {
-    mouse.x = x;
-    mouse.y = y;
   }
 
   return {
@@ -197,24 +124,8 @@ export const useImageShowStore = defineStore("imageShow", () => {
     maskWidth,
     maskHeight,
     dividerInfo,
-    dehazeParams,
     disableGenerate,
-    setLoading,
-    setModelId,
-    setImageUrls,
     setImageUrl,
-    setImageNaturalSize,
-    setImageSize,
-    setBrightness,
-    setContrast,
-    setSaturate,
-    setMagnifierShow,
-    setDividerShow,
     toggleDividerShow,
-    setMagnifierShape,
-    setMagnifierSize,
-    setMagnifierZoomLevel,
-    setMaskXY,
-    setMouseXY,
   };
 });

@@ -200,19 +200,7 @@ export const imageShowSlice = createSlice({
 const imageShowPersistConfig = {
   key: "imageShow",
   storage,
-  whitelist: [
-    "loading",
-    "modelId",
-    "urls",
-    "naturalWidth",
-    "naturalHeight",
-    "width",
-    "height",
-    "magnifier",
-    "mask",
-    "divider",
-    "mouse",
-  ],
+  whitelist: ["modelId", "magnifier", "divider"],
 };
 
 export const {
