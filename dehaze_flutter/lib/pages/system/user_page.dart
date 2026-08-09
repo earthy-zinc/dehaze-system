@@ -2,12 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/dept_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
-// services are accessed via providers from providers.dart
+import '../../services/user_service.dart';
 import '../../theme/app_theme.dart';
+
+final userManageProvider =
+    StateNotifierProvider<UserManageNotifier, AsyncValue<PagedList<UserPageVO>>>(
+  (ref) => UserManageNotifier(ref.watch(userServiceProvider)),
+);
+
+class UserManageNotifier extends PagedListNotifier<UserPageVO> {
+  UserManageNotifier(this._service) : super();
+  final UserService _service;
+
+  @override
+  Future<PageResult<UserPageVO>> fetchPage(int pageNum) {
+    return _service.getPage(
+      UserQuery(pageNum: pageNum, pageSize: 10, keywords: keyword),
+    );
+  }
+}
 
 /// 用户管理页面（L2）
 ///
@@ -21,56 +40,11 @@ class UserManagePage extends ConsumerStatefulWidget {
 
 class _UserManagePageState extends ConsumerState<UserManagePage> {
   final _searchController = TextEditingController();
-  List<UserPageVO> _items = [];
-  int _total = 0;
-  int _pageNum = 1;
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _fetchData({bool reset = false}) async {
-    if (reset) {
-      _pageNum = 1;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final service = ref.read(userServiceProvider);
-      final result = await service.getPage(
-        UserQuery(
-          pageNum: _pageNum,
-          pageSize: 10,
-          keywords: _searchController.text,
-        ),
-      );
-      setState(() {
-        if (reset) {
-          _items = result.list;
-        } else {
-          _items.addAll(result.list);
-        }
-        _total = result.total;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = extractErrorMessage(e);
-        _loading = false;
-      });
-    }
   }
 
   Future<void> _deleteUser(int userId) async {
@@ -97,7 +71,7 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
     try {
       await ref.read(userServiceProvider).deleteByIds([userId]);
       _showSnack('删除成功');
-      _fetchData(reset: true);
+      ref.read(userManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -138,7 +112,7 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
           .read(userServiceProvider)
           .updateStatus(userId, currentStatus == 1 ? 0 : 1);
       _showSnack('状态已更新');
-      _fetchData(reset: true);
+      ref.read(userManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -155,13 +129,8 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:user:*')) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('用户管理')),
-        body: const Center(child: Text('无权限访问')),
-      );
-    }
     final theme = Theme.of(context);
+    final state = ref.watch(userManageProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -188,111 +157,104 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
                   icon: const Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
-                    _fetchData(reset: true);
+                    ref.read(userManageProvider.notifier).search('');
                   },
                 ),
               ),
-              onSubmitted: (_) => _fetchData(reset: true),
+              onSubmitted: (v) => ref.read(userManageProvider.notifier).search(v),
             ),
           ),
           Expanded(
-            child: _buildList(theme),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildList(ThemeData theme) {
-    if (_loading && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _error!,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.error),
-            ),
-            SizedBox(height: AppTheme.spacingM),
-            FilledButton(
-              onPressed: () => _fetchData(reset: true),
-              child: const Text('重试'),
-            ),
-          ],
-        ),
-      );
-    }
-    if (_items.isEmpty) {
-      return const Center(child: Text('暂无数据'));
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _fetchData(reset: true),
-      child: ListView.builder(
-        itemCount: _items.length + (_items.length < _total ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= _items.length) {
-            if (!_loading) {
-              _pageNum++;
-              _fetchData();
-            }
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          final item = _items[index];
-          final status = item.status ?? 1;
-          return Card(
-            child: ListTile(
-              leading: CircleAvatar(
-                child: Text(
-                  ((item.nickname ?? item.username ?? '?')[0]).toUpperCase(),
+            child: state.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      extractErrorMessage(e),
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: theme.colorScheme.error),
+                    ),
+                    SizedBox(height: AppTheme.spacingM),
+                    FilledButton(
+                      onPressed: () =>
+                          ref.read(userManageProvider.notifier).refresh(),
+                      child: const Text('重试'),
+                    ),
+                  ],
                 ),
               ),
-              title: Text(item.nickname ?? item.username ?? ''),
-              subtitle: Text(item.username ?? ''),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.lock_reset,
-                        size: 20, color: AppTheme.warningColor),
-                    tooltip: '重置密码',
-                    onPressed: () => _resetPassword(item.id),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      status == 1 ? Icons.block : Icons.check_circle,
-                      size: 20,
-                      color: status == 1
-                          ? AppTheme.errorColor
-                          : AppTheme.successColor,
+              data: (page) => page.items.isEmpty
+                  ? const Center(child: Text('暂无数据'))
+                  : RefreshIndicator(
+                      onRefresh: () =>
+                          ref.read(userManageProvider.notifier).refresh(),
+                      child: LoadMoreListener(
+                        onLoadMore: () =>
+                            ref.read(userManageProvider.notifier).loadMore(),
+                        child: ListView.builder(
+                          itemCount: page.items.length,
+                          itemBuilder: (context, index) {
+                            final item = page.items[index];
+                            final status = item.status ?? 1;
+                            return Card(
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  child: Text(
+                                    ((item.nickname ??
+                                                item.username ??
+                                                '?')[0])
+                                        .toUpperCase(),
+                                  ),
+                                ),
+                                title: Text(item.nickname ?? item.username ?? ''),
+                                subtitle: Text(item.username ?? ''),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(Icons.lock_reset,
+                                          size: 20, color: AppTheme.warningColor),
+                                      tooltip: '重置密码',
+                                      onPressed: () => _resetPassword(item.id),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        status == 1
+                                            ? Icons.block
+                                            : Icons.check_circle,
+                                        size: 20,
+                                        color: status == 1
+                                            ? AppTheme.errorColor
+                                            : AppTheme.successColor,
+                                      ),
+                                      tooltip: status == 1 ? '禁用' : '启用',
+                                      onPressed: () =>
+                                          _toggleStatus(item.id, status),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, size: 20),
+                                      tooltip: '编辑',
+                                      onPressed: () => _showForm(userId: item.id),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete,
+                                          size: 20, color: AppTheme.errorColor),
+                                      tooltip: '删除',
+                                      onPressed: () => _deleteUser(item.id),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                    tooltip: status == 1 ? '禁用' : '启用',
-                    onPressed: () => _toggleStatus(item.id, status),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    tooltip: '编辑',
-                    onPressed: () => _showForm(userId: item.id),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor),
-                    tooltip: '删除',
-                    onPressed: () => _deleteUser(item.id),
-                  ),
-                ],
-              ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -305,7 +267,7 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
       builder: (c) => _UserFormSheet(
         userId: userId,
         onSaved: () {
-          _fetchData(reset: true);
+          ref.read(userManageProvider.notifier).refresh();
           Navigator.pop(c);
         },
       ),

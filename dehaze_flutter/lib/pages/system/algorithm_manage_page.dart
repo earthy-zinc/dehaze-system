@@ -5,7 +5,40 @@ import '../../core/network/api_result.dart';
 import '../../models/algorithm_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
+import '../../services/algorithm_service.dart';
 import '../../theme/app_theme.dart';
+
+final algorithmManageProvider = StateNotifierProvider<
+    AlgorithmManageNotifier, AsyncValue<List<AlgorithmModel>>>(
+  (ref) => AlgorithmManageNotifier(ref.watch(algorithmServiceProvider)),
+);
+
+class AlgorithmManageNotifier
+    extends StateNotifier<AsyncValue<List<AlgorithmModel>>> {
+  AlgorithmManageNotifier(this._service) : super(const AsyncValue.loading()) {
+    loadData();
+  }
+
+  final AlgorithmService _service;
+  String _keyword = '';
+
+  Future<void> loadData() async {
+    state = const AsyncValue.loading();
+    try {
+      final items = await _service.getList(keywords: _keyword);
+      if (!mounted) return;
+      state = AsyncValue.data(items);
+    } catch (e, st) {
+      if (!mounted) return;
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> search(String keyword) async {
+    _keyword = keyword;
+    await loadData();
+  }
+}
 
 /// 算法管理页面（L2）
 ///
@@ -20,45 +53,11 @@ class AlgorithmManagePage extends ConsumerStatefulWidget {
 
 class _AlgorithmManagePageState extends ConsumerState<AlgorithmManagePage> {
   final _searchController = TextEditingController();
-  List<AlgorithmModel> _items = [];
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _fetchData() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final items = await ref
-          .read(algorithmServiceProvider)
-          .getList(keywords: _searchController.text);
-      if (mounted) {
-        setState(() {
-          _items = items;
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = extractErrorMessage(e);
-          _loading = false;
-        });
-      }
-    }
   }
 
   Future<void> _toggleStatus(int id, AlgorithmStatus currentStatus) async {
@@ -71,7 +70,7 @@ class _AlgorithmManagePageState extends ConsumerState<AlgorithmManagePage> {
           .read(algorithmServiceProvider)
           .updateStatus(id, newStatus.index);
       _showSnack('状态已更新');
-      _fetchData();
+      ref.read(algorithmManageProvider.notifier).loadData();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -108,7 +107,7 @@ class _AlgorithmManagePageState extends ConsumerState<AlgorithmManagePage> {
         ),
       );
       _showSnack('审核完成');
-      _fetchData();
+      ref.read(algorithmManageProvider.notifier).loadData();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -130,7 +129,7 @@ class _AlgorithmManagePageState extends ConsumerState<AlgorithmManagePage> {
           (c) => _AlgorithmFormSheet(
             algoId: algoId,
             onSaved: () {
-              _fetchData();
+              ref.read(algorithmManageProvider.notifier).loadData();
               Navigator.pop(c);
             },
           ),
@@ -142,13 +141,8 @@ class _AlgorithmManagePageState extends ConsumerState<AlgorithmManagePage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:algorithm:*')) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('算法管理')),
-        body: const Center(child: Text('无权限访问')),
-      );
-    }
     final theme = Theme.of(context);
+    final state = ref.watch(algorithmManageProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -175,93 +169,96 @@ class _AlgorithmManagePageState extends ConsumerState<AlgorithmManagePage> {
                   icon: const Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
-                    _fetchData();
+                    ref.read(algorithmManageProvider.notifier).search('');
                   },
                 ),
               ),
-              onSubmitted: (_) => _fetchData(),
+              onSubmitted: (v) => ref.read(algorithmManageProvider.notifier).search(v),
             ),
           ),
-          Expanded(child: _buildList(theme, auth)),
+          Expanded(child: _buildBody(theme, auth, state)),
         ],
       ),
     );
   }
 
-  Widget _buildList(ThemeData theme, AuthState auth) {
-    if (_loading && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
+  Widget _buildBody(
+      ThemeData theme, AuthState auth, AsyncValue<List<AlgorithmModel>> state) {
+    return state.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+            Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)),
             SizedBox(height: AppTheme.spacingM),
-            FilledButton(onPressed: _fetchData, child: const Text('重试')),
+            FilledButton(
+              onPressed: () => ref.read(algorithmManageProvider.notifier).loadData(),
+              child: const Text('重试'),
+            ),
           ],
         ),
-      );
-    }
-    if (_items.isEmpty) {
-      return const Center(child: Text('暂无数据'));
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _fetchData(),
-      child: ListView.builder(
-        itemCount: _items.length,
-        itemBuilder: (context, index) {
-          final item = _items[index];
-          final statusIdx = item.status.index;
-          final label =
-              statusIdx >= 0 && statusIdx < _statusLabels.length
-                  ? _statusLabels[statusIdx]
-                  : '未知';
-          return Card(
-            child: ListTile(
-              leading: CircleAvatar(
-                child: Text(item.name[0].toUpperCase()),
-              ),
-              title: Text(item.name),
-              subtitle: Text('版本: ${item.version ?? '-'} | 状态: $label'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (auth.hasPerm('sys:algorithm:audit') &&
-                      item.status == AlgorithmStatus.pendingAudit)
-                    IconButton(
-                      icon: const Icon(
-                        Icons.fact_check,
-                        size: 20,
-                        color: AppTheme.infoColor,
-                      ),
-                      tooltip: '审核',
-                      onPressed: () => _audit(item.id),
-                    ),
-                  IconButton(
-                    icon: Icon(
-                      item.status == AlgorithmStatus.disabled
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                      size: 20,
-                    ),
-                    tooltip:
-                        item.status == AlgorithmStatus.disabled ? '下架' : '上架',
-                    onPressed: () => _toggleStatus(item.id, item.status),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    tooltip: '编辑',
-                    onPressed: () => _showForm(algoId: item.id),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
+      data: (items) {
+        if (items.isEmpty) {
+          return const Center(child: Text('暂无数据'));
+        }
+        return RefreshIndicator(
+          onRefresh: () => ref.read(algorithmManageProvider.notifier).loadData(),
+          child: ListView.builder(
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              final statusIdx = item.status.index;
+              final label =
+                  statusIdx >= 0 && statusIdx < _statusLabels.length
+                      ? _statusLabels[statusIdx]
+                      : '未知';
+              return Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    child: Text(item.name[0].toUpperCase()),
+                  ),
+                  title: Text(item.name),
+                  subtitle: Text('版本: ${item.version ?? '-'} | 状态: $label'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (auth.hasPerm('sys:algorithm:audit') &&
+                          item.status == AlgorithmStatus.pendingAudit)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.fact_check,
+                            size: 20,
+                            color: AppTheme.infoColor,
+                          ),
+                          tooltip: '审核',
+                          onPressed: () => _audit(item.id),
+                        ),
+                      IconButton(
+                        icon: Icon(
+                          item.status == AlgorithmStatus.disabled
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          size: 20,
+                        ),
+                        tooltip:
+                            item.status == AlgorithmStatus.disabled ? '下架' : '上架',
+                        onPressed: () => _toggleStatus(item.id, item.status),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit, size: 20),
+                        tooltip: '编辑',
+                        onPressed: () => _showForm(algoId: item.id),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

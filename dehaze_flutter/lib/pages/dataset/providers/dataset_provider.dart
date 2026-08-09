@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/dataset_model.dart' as g;
 import '../../../providers/providers.dart';
 import '../../../services/dataset_service.dart';
-import '../models/dataset_model.dart';
 
 /// 数据集列表状态管理
-class DatasetNotifier extends StateNotifier<AsyncValue<List<DatasetModel>>> {
+class DatasetNotifier extends StateNotifier<AsyncValue<List<g.Dataset>>> {
   DatasetNotifier(this._service) : super(const AsyncValue.loading());
 
   final DatasetService _service;
@@ -23,9 +22,7 @@ class DatasetNotifier extends StateNotifier<AsyncValue<List<DatasetModel>>> {
         keyword: search.isEmpty ? null : search,
         pageSize: 100,
       ));
-      state = AsyncValue.data(
-        result.list.map(_datasetToModel).toList(),
-      );
+      state = AsyncValue.data(result.list);
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
     }
@@ -42,33 +39,12 @@ class DatasetNotifier extends StateNotifier<AsyncValue<List<DatasetModel>>> {
   }
 }
 
-/// 将全局 Dataset 映射为本地 DatasetModel
-DatasetModel _datasetToModel(g.Dataset d) {
-  return DatasetModel(
-    id: d.id,
-    parentId: d.parentId,
-    name: d.name,
-    type: d.type,
-    path: d.path,
-    description: d.description,
-    usageCount: null,
-    createBy: null,
-    createTime: d.createTime ?? '',
-    updateTime: d.updateTime,
-    updateBy: null,
-    children: d.children?.map(_datasetToModel).toList() ?? const [],
-    hasChildren: d.hasChildren ?? false,
-    total: d.total,
-    status: d.status,
-  );
-}
-
 /// 数据集列表 Provider
 final datasetProvider =
-    StateNotifierProvider<DatasetNotifier, AsyncValue<List<DatasetModel>>>((ref) {
+    StateNotifierProvider<DatasetNotifier, AsyncValue<List<g.Dataset>>>((ref) {
   final service = ref.watch(datasetServiceProvider);
   return DatasetNotifier(service);
 });
 
 /// 选中的数据集 Provider
-final selectedDatasetProvider = StateProvider<DatasetModel?>((ref) => null);
+final selectedDatasetProvider = StateProvider<g.Dataset?>((ref) => null);

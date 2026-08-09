@@ -6,56 +6,6 @@ part of 'dataset_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-DatasetModel _$DatasetModelFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('DatasetModel', json, ($checkedConvert) {
-      final val = DatasetModel(
-        id: $checkedConvert('id', (v) => (v as num).toInt()),
-        name: $checkedConvert('name', (v) => v as String),
-        createTime: $checkedConvert('createTime', (v) => v as String),
-        parentId: $checkedConvert('parentId', (v) => (v as num?)?.toInt()),
-        type: $checkedConvert('type', (v) => v as String?),
-        path: $checkedConvert('path', (v) => v as String?),
-        description: $checkedConvert('description', (v) => v as String?),
-        remark: $checkedConvert('remark', (v) => v as String?),
-        usageCount: $checkedConvert('usageCount', (v) => (v as num?)?.toInt()),
-        createBy: $checkedConvert('createBy', (v) => v as String?),
-        updateTime: $checkedConvert('updateTime', (v) => v as String?),
-        updateBy: $checkedConvert('updateBy', (v) => v as String?),
-        children: $checkedConvert(
-          'children',
-          (v) =>
-              (v as List<dynamic>?)
-                  ?.map((e) => DatasetModel.fromJson(e as Map<String, dynamic>))
-                  .toList() ??
-              const [],
-        ),
-        hasChildren: $checkedConvert('hasChildren', (v) => v as bool? ?? false),
-        total: $checkedConvert('total', (v) => (v as num?)?.toInt()),
-        status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
-      );
-      return val;
-    });
-
-Map<String, dynamic> _$DatasetModelToJson(DatasetModel instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      if (instance.parentId case final value?) 'parentId': value,
-      'name': instance.name,
-      if (instance.type case final value?) 'type': value,
-      if (instance.path case final value?) 'path': value,
-      if (instance.description case final value?) 'description': value,
-      if (instance.remark case final value?) 'remark': value,
-      if (instance.usageCount case final value?) 'usageCount': value,
-      if (instance.createBy case final value?) 'createBy': value,
-      'createTime': instance.createTime,
-      if (instance.updateBy case final value?) 'updateBy': value,
-      if (instance.updateTime case final value?) 'updateTime': value,
-      'children': instance.children.map((e) => e.toJson()).toList(),
-      'hasChildren': instance.hasChildren,
-      if (instance.total case final value?) 'total': value,
-      if (instance.status case final value?) 'status': value,
-    };
-
 DatasetItemModel _$DatasetItemModelFromJson(
   Map<String, dynamic> json,
 ) => $checkedCreate('DatasetItemModel', json, ($checkedConvert) {

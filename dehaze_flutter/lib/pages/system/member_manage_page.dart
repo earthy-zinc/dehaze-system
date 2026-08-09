@@ -2,11 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/member_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
 import '../../services/member_service.dart';
 import '../../theme/app_theme.dart';
+
+final memberManageProvider =
+    StateNotifierProvider<MemberManageNotifier, AsyncValue<PagedList<MemberPageVO>>>(
+  (ref) => MemberManageNotifier(ref.watch(memberServiceProvider)),
+);
+
+class MemberManageNotifier extends PagedListNotifier<MemberPageVO> {
+  MemberManageNotifier(this._service) : super();
+  final MemberService _service;
+
+  @override
+  Future<PageResult<MemberPageVO>> fetchPage(int pageNum) {
+    return _service.getPage(
+      MemberQuery(pageNum: pageNum, pageSize: 10, keywords: keyword),
+    );
+  }
+}
 
 /// 会员管理页面（L2）
 ///
@@ -20,17 +38,6 @@ class MemberManagePage extends ConsumerStatefulWidget {
 
 class _MemberManagePageState extends ConsumerState<MemberManagePage> {
   final _searchController = TextEditingController();
-  List<MemberPageVO> _items = [];
-  int _total = 0;
-  int _pageNum = 1;
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
 
   @override
   void dispose() {
@@ -39,39 +46,6 @@ class _MemberManagePageState extends ConsumerState<MemberManagePage> {
   }
 
   MemberService get _service => ref.read(memberServiceProvider);
-
-  Future<void> _fetchData({bool reset = false}) async {
-    if (reset) {
-      _pageNum = 1;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final result = await _service.getPage(
-        MemberQuery(
-          pageNum: _pageNum,
-          pageSize: 10,
-          keywords: _searchController.text,
-        ),
-      );
-      setState(() {
-        if (reset) {
-          _items = result.list;
-        } else {
-          _items.addAll(result.list);
-        }
-        _total = result.total;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = extractErrorMessage(e);
-        _loading = false;
-      });
-    }
-  }
 
   void _showSnack(String msg) {
     if (!mounted) {
@@ -122,7 +96,7 @@ class _MemberManagePageState extends ConsumerState<MemberManagePage> {
                 }
                 Navigator.pop(c);
                 _showSnack('等级已调整');
-                _fetchData(reset: true);
+                ref.read(memberManageProvider.notifier).refresh();
               } catch (e) {
                 if (!mounted) {
                   return;
@@ -179,7 +153,7 @@ class _MemberManagePageState extends ConsumerState<MemberManagePage> {
                 }
                 Navigator.pop(c);
                 _showSnack('成长值已调整');
-                _fetchData(reset: true);
+                ref.read(memberManageProvider.notifier).refresh();
               } catch (e) {
                 if (!mounted) {
                   return;
@@ -196,14 +170,8 @@ class _MemberManagePageState extends ConsumerState<MemberManagePage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:member:*')) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('会员管理')),
-        body: const Center(child: Text('无权限访问')),
-      );
-    }
     final theme = Theme.of(context);
+    final state = ref.watch(memberManageProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('会员管理')),
@@ -220,83 +188,68 @@ class _MemberManagePageState extends ConsumerState<MemberManagePage> {
                   icon: const Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
-                    _fetchData(reset: true);
+                    ref.read(memberManageProvider.notifier).search('');
                   },
                 ),
               ),
-              onSubmitted: (_) => _fetchData(reset: true),
+              onSubmitted: (v) => ref.read(memberManageProvider.notifier).search(v),
             ),
           ),
-          Expanded(child: _buildList(theme)),
+          Expanded(
+            child: state.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)),
+                    SizedBox(height: AppTheme.spacingM),
+                    FilledButton(
+                      onPressed: () => ref.read(memberManageProvider.notifier).refresh(),
+                      child: const Text('重试'),
+                    ),
+                  ],
+                ),
+              ),
+              data: (page) => page.items.isEmpty
+                  ? const Center(child: Text('暂无数据'))
+                  : RefreshIndicator(
+                      onRefresh: () => ref.read(memberManageProvider.notifier).refresh(),
+                      child: LoadMoreListener(
+                        onLoadMore: () => ref.read(memberManageProvider.notifier).loadMore(),
+                        child: ListView.builder(
+                          itemCount: page.items.length,
+                          itemBuilder: (context, index) {
+                            final item = page.items[index];
+                            return Card(
+                              child: ListTile(
+                                leading: const Icon(Icons.card_membership),
+                                title: Text(item.nickname.isNotEmpty ? item.nickname : item.username),
+                                subtitle: Text('等级: ${item.levelName} | 成长值: ${item.growthValue}'),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.stars, size: 20),
+                                      tooltip: '调整等级',
+                                      onPressed: () => _showLevelAdjust(item.userId),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.trending_up, size: 20),
+                                      tooltip: '调整成长值',
+                                      onPressed: () => _showGrowthAdjust(item.userId),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+            ),
+          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildList(ThemeData theme) {
-    if (_loading && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
-            SizedBox(height: AppTheme.spacingM),
-            FilledButton(
-              onPressed: () => _fetchData(reset: true),
-              child: const Text('重试'),
-            ),
-          ],
-        ),
-      );
-    }
-    if (_items.isEmpty) {
-      return const Center(child: Text('暂无数据'));
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _fetchData(reset: true),
-      child: ListView.builder(
-        itemCount: _items.length + (_items.length < _total ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= _items.length) {
-            if (!_loading) {
-              _pageNum++;
-              _fetchData();
-            }
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          final item = _items[index];
-          return Card(
-            child: ListTile(
-              leading: const Icon(Icons.card_membership),
-              title: Text(item.nickname.isNotEmpty ? item.nickname : item.username),
-              subtitle: Text('等级: ${item.levelName} | 成长值: ${item.growthValue}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.stars, size: 20),
-                    tooltip: '调整等级',
-                    onPressed: () => _showLevelAdjust(item.userId),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.trending_up, size: 20),
-                    tooltip: '调整成长值',
-                    onPressed: () => _showGrowthAdjust(item.userId),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }

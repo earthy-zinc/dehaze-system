@@ -2,11 +2,89 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/announcement_model.dart';
 import '../../models/message_template_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
+import '../../services/announcement_service.dart';
+import '../../services/message_service.dart';
+import '../../services/message_template_service.dart';
 import '../../theme/app_theme.dart';
+
+// ---------------------------------------------------------------------------
+// 消息列表
+// ---------------------------------------------------------------------------
+
+final messageListManageProvider = StateNotifierProvider<
+    MessageListManageNotifier, AsyncValue<PagedList<Map<String, dynamic>>>>(
+  (ref) => MessageListManageNotifier(ref.watch(messageServiceProvider)),
+);
+
+class MessageListManageNotifier
+    extends PagedListNotifier<Map<String, dynamic>> {
+  MessageListManageNotifier(this._service) : super(pageSize: 20);
+  final MessageService _service;
+
+  @override
+  Future<PageResult<Map<String, dynamic>>> fetchPage(int pageNum) async {
+    final response = await _service.getPage(pageNum: pageNum, pageSize: 20);
+    final data = response['data'] as Map<String, dynamic>;
+    final list = (data['list'] as List<dynamic>?)
+            ?.map((e) => e as Map<String, dynamic>)
+            .toList() ??
+        [];
+    return PageResult<Map<String, dynamic>>(
+      list: list,
+      total: (data['total'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 公告管理
+// ---------------------------------------------------------------------------
+
+final announcementManageProvider = StateNotifierProvider<
+    AnnouncementManageNotifier, AsyncValue<PagedList<AnnouncementVO>>>(
+  (ref) => AnnouncementManageNotifier(ref.watch(announcementServiceProvider)),
+);
+
+class AnnouncementManageNotifier extends PagedListNotifier<AnnouncementVO> {
+  AnnouncementManageNotifier(this._service) : super();
+  final AnnouncementService _service;
+
+  @override
+  Future<PageResult<AnnouncementVO>> fetchPage(int pageNum) {
+    return _service.getPage(AnnouncementQuery(pageNum: pageNum, pageSize: pageSize));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 消息模板
+// ---------------------------------------------------------------------------
+
+final messageTemplateManageProvider = StateNotifierProvider<
+    MessageTemplateManageNotifier, AsyncValue<PagedList<MessageTemplateVO>>>(
+  (ref) => MessageTemplateManageNotifier(ref.watch(messageTemplateServiceProvider)),
+);
+
+class MessageTemplateManageNotifier
+    extends PagedListNotifier<MessageTemplateVO> {
+  MessageTemplateManageNotifier(this._service) : super();
+  final MessageTemplateService _service;
+
+  @override
+  Future<PageResult<MessageTemplateVO>> fetchPage(int pageNum) {
+    return _service.getPage(
+      MessageTemplateQuery(pageNum: pageNum, pageSize: pageSize),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 主页面
+// ---------------------------------------------------------------------------
 
 /// 消息管理页面（L2）
 ///
@@ -36,13 +114,6 @@ class _MessageManagePageState extends ConsumerState<MessageManagePage>
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:notify:*')) {
-      return Scaffold(
-          appBar: AppBar(title: const Text('消息管理')),
-          body: const Center(child: Text('无权限访问')));
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('消息管理'),
@@ -64,65 +135,19 @@ class _MessageManagePageState extends ConsumerState<MessageManagePage>
   }
 }
 
-class _MessageListTab extends ConsumerStatefulWidget {
+// ---------------------------------------------------------------------------
+// Tab: 消息列表
+// ---------------------------------------------------------------------------
+
+class _MessageListTab extends ConsumerWidget {
   const _MessageListTab();
 
-  @override
-  ConsumerState<_MessageListTab> createState() => _MessageListTabState();
-}
-
-class _MessageListTabState extends ConsumerState<_MessageListTab> {
-  List<Map<String, dynamic>> _items = [];
-  int _total = 0;
-  int _pageNum = 1;
-  bool _loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
-
-  Future<void> _fetchData({bool reset = false}) async {
-    if (reset) {
-      _pageNum = 1;
-    }
-    setState(() {
-      _loading = true;
-    });
-    try {
-      final result = await ref
-          .read(messageServiceProvider)
-          .getPage(pageNum: _pageNum, pageSize: 20);
-      final data = result['data'] as Map<String, dynamic>;
-      final list = (data['list'] as List<dynamic>?)
-              ?.map((e) => e as Map<String, dynamic>)
-              .toList() ??
-          [];
-      setState(() {
-        if (reset) {
-          _items = list;
-        } else {
-          _items.addAll(list);
-        }
-        _total = (data['total'] as int?) ?? 0;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
-
-  void _showSnack(String msg) {
-    if (!mounted) {
-      return;
-    }
+  void _showSnack(BuildContext context, String msg) {
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  void _showSendDialog() {
+  void _showSendDialog(BuildContext context, WidgetRef ref) {
     final titleCtrl = TextEditingController();
     final contentCtrl = TextEditingController();
     showDialog<void>(
@@ -153,10 +178,10 @@ class _MessageListTabState extends ConsumerState<_MessageListTab> {
                     return;
                   }
                   Navigator.pop(c);
-                  _showSnack('发送成功');
-                  _fetchData(reset: true);
+                  _showSnack(context, '发送成功');
+                  ref.read(messageListManageProvider.notifier).refresh();
                 } catch (e) {
-                  _showSnack(extractErrorMessage(e));
+                  _showSnack(context, extractErrorMessage(e));
                 }
               },
               child: const Text('发送')),
@@ -166,7 +191,8 @@ class _MessageListTabState extends ConsumerState<_MessageListTab> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(messageListManageProvider);
     return Column(
       children: [
         Padding(
@@ -174,96 +200,68 @@ class _MessageListTabState extends ConsumerState<_MessageListTab> {
           child: SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                  onPressed: _showSendDialog,
+                  onPressed: () => _showSendDialog(context, ref),
                   icon: const Icon(Icons.send),
                   label: const Text('群发消息'))),
         ),
-        Expanded(
-            child: _loading && _items.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : _items.isEmpty
-                    ? const Center(child: Text('暂无消息'))
-                    : RefreshIndicator(
-                        onRefresh: () => _fetchData(reset: true),
-                        child: ListView.builder(
-                          itemCount: _items.length +
-                              (_items.length < _total ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index >= _items.length) {
-                              if (!_loading) {
-                                _pageNum++;
-                                _fetchData();
-                              }
-                              return const Center(
-                                  child: Padding(
-                                      padding: EdgeInsets.all(16),
-                                      child: CircularProgressIndicator()));
-                            }
-                            final item = _items[index];
-                            return Card(
-                              child: ListTile(
-                                title: Text(item['title'] as String? ?? ''),
-                                subtitle: Text(item['type'] as String? ?? ''),
-                              ),
-                            );
-                          },
-                        ),
-                      )),
+        Expanded(child: _buildBody(ref, state)),
       ],
+    );
+  }
+
+  Widget _buildBody(WidgetRef ref, AsyncValue<PagedList<Map<String, dynamic>>> state) {
+    return state.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(extractErrorMessage(e)),
+            SizedBox(height: AppTheme.spacingM),
+            FilledButton(
+              onPressed: () => ref.read(messageListManageProvider.notifier).refresh(),
+              child: const Text('重试'),
+            ),
+          ],
+        ),
+      ),
+      data: (page) => page.items.isEmpty
+          ? const Center(child: Text('暂无消息'))
+          : RefreshIndicator(
+              onRefresh: () => ref.read(messageListManageProvider.notifier).refresh(),
+              child: LoadMoreListener(
+                onLoadMore: () => ref.read(messageListManageProvider.notifier).loadMore(),
+                child: ListView.builder(
+                  itemCount: page.items.length,
+                  itemBuilder: (context, index) {
+                    final item = page.items[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(item['title'] as String? ?? ''),
+                        subtitle: Text(item['type'] as String? ?? ''),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
     );
   }
 }
 
-class _AnnouncementTab extends ConsumerStatefulWidget {
+// ---------------------------------------------------------------------------
+// Tab: 公告管理
+// ---------------------------------------------------------------------------
+
+class _AnnouncementTab extends ConsumerWidget {
   const _AnnouncementTab();
 
-  @override
-  ConsumerState<_AnnouncementTab> createState() => _AnnouncementTabState();
-}
-
-class _AnnouncementTabState extends ConsumerState<_AnnouncementTab> {
-  List<AnnouncementVO> _items = [];
-  int _total = 0;
-  int _pageNum = 1;
-  bool _loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
-
-  Future<void> _fetchData({bool reset = false}) async {
-    if (reset) {
-      _pageNum = 1;
-    }
-    setState(() => _loading = true);
-    try {
-      final result = await ref
-          .read(announcementServiceProvider)
-          .getPage(AnnouncementQuery(pageNum: _pageNum, pageSize: 10));
-      setState(() {
-        if (reset) {
-          _items = result.list;
-        } else {
-          _items.addAll(result.list);
-        }
-        _total = result.total;
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() => _loading = false);
-    }
-  }
-
-  void _showSnack(String msg) {
-    if (!mounted) {
-      return;
-    }
+  void _showSnack(BuildContext context, String msg) {
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  void _showForm() {
+  void _showForm(BuildContext context, WidgetRef ref) {
     final titleCtrl = TextEditingController();
     final contentCtrl = TextEditingController();
     showDialog<void>(
@@ -299,10 +297,10 @@ class _AnnouncementTabState extends ConsumerState<_AnnouncementTab> {
                     return;
                   }
                   Navigator.pop(c);
-                  _showSnack('创建成功');
-                  _fetchData(reset: true);
+                  _showSnack(context, '创建成功');
+                  ref.read(announcementManageProvider.notifier).refresh();
                 } catch (e) {
-                  _showSnack(extractErrorMessage(e));
+                  _showSnack(context, extractErrorMessage(e));
                 }
               },
               child: const Text('创建')),
@@ -311,27 +309,32 @@ class _AnnouncementTabState extends ConsumerState<_AnnouncementTab> {
     );
   }
 
-  Future<void> _send(int id) async {
+  Future<void> _send(BuildContext context, WidgetRef ref, int id) async {
     try {
       await ref.read(announcementServiceProvider).send(id);
-      _showSnack('发送成功');
+      if (!context.mounted) return;
+      _showSnack(context, '发送成功');
     } catch (e) {
-      _showSnack(extractErrorMessage(e));
+      if (!context.mounted) return;
+      _showSnack(context, extractErrorMessage(e));
     }
   }
 
-  Future<void> _delete(int id) async {
+  Future<void> _delete(BuildContext context, WidgetRef ref, int id) async {
     try {
       await ref.read(announcementServiceProvider).delete(id);
-      _showSnack('删除成功');
-      _fetchData(reset: true);
+      ref.read(announcementManageProvider.notifier).refresh();
+      if (!context.mounted) return;
+      _showSnack(context, '删除成功');
     } catch (e) {
-      _showSnack(extractErrorMessage(e));
+      if (!context.mounted) return;
+      _showSnack(context, extractErrorMessage(e));
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(announcementManageProvider);
     return Column(
       children: [
         Padding(
@@ -339,114 +342,83 @@ class _AnnouncementTabState extends ConsumerState<_AnnouncementTab> {
           child: SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                  onPressed: _showForm,
+                  onPressed: () => _showForm(context, ref),
                   icon: const Icon(Icons.add),
                   label: const Text('新建公告'))),
         ),
-        Expanded(
-            child: _loading && _items.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : _items.isEmpty
-                    ? const Center(child: Text('暂无公告'))
-                    : RefreshIndicator(
-                        onRefresh: () => _fetchData(reset: true),
-                        child: ListView.builder(
-                          itemCount: _items.length +
-                              (_items.length < _total ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index >= _items.length) {
-                              if (!_loading) {
-                                _pageNum++;
-                                _fetchData();
-                              }
-                              return const Center(
-                                  child: Padding(
-                                      padding: EdgeInsets.all(16),
-                                      child: CircularProgressIndicator()));
-                            }
-                            final item = _items[index];
-                            return Card(
-                              child: ListTile(
-                                title: Text(item.title),
-                                subtitle: Text(item.statusName ?? ''),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                        icon:
-                                            const Icon(Icons.send, size: 20),
-                                        tooltip: '发送',
-                                        onPressed: () => _send(item.id)),
-                                    IconButton(
-                                        icon: Icon(Icons.delete,
-                                            size: 20,
-                                            color: AppTheme.errorColor),
-                                        onPressed: () => _delete(item.id)),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      )),
+        Expanded(child: _buildBody(ref, state)),
       ],
+    );
+  }
+
+  Widget _buildBody(WidgetRef ref, AsyncValue<PagedList<AnnouncementVO>> state) {
+    return state.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(extractErrorMessage(e)),
+            SizedBox(height: AppTheme.spacingM),
+            FilledButton(
+              onPressed: () => ref.read(announcementManageProvider.notifier).refresh(),
+              child: const Text('重试'),
+            ),
+          ],
+        ),
+      ),
+      data: (page) => page.items.isEmpty
+          ? const Center(child: Text('暂无公告'))
+          : RefreshIndicator(
+              onRefresh: () => ref.read(announcementManageProvider.notifier).refresh(),
+              child: LoadMoreListener(
+                onLoadMore: () => ref.read(announcementManageProvider.notifier).loadMore(),
+                child: ListView.builder(
+                  itemCount: page.items.length,
+                  itemBuilder: (context, index) {
+                    final item = page.items[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(item.title),
+                        subtitle: Text(item.statusName ?? ''),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                                icon:
+                                    const Icon(Icons.send, size: 20),
+                                tooltip: '发送',
+                                onPressed: () => _send(context, ref, item.id)),
+                            IconButton(
+                                icon: Icon(Icons.delete,
+                                    size: 20,
+                                    color: AppTheme.errorColor),
+                                onPressed: () => _delete(context, ref, item.id)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
     );
   }
 }
 
-class _MessageTemplateTab extends ConsumerStatefulWidget {
+// ---------------------------------------------------------------------------
+// Tab: 消息模板
+// ---------------------------------------------------------------------------
+
+class _MessageTemplateTab extends ConsumerWidget {
   const _MessageTemplateTab();
 
-  @override
-  ConsumerState<_MessageTemplateTab> createState() =>
-      _MessageTemplateTabState();
-}
-
-class _MessageTemplateTabState extends ConsumerState<_MessageTemplateTab> {
-  List<MessageTemplateVO> _items = [];
-  int _total = 0;
-  int _pageNum = 1;
-  bool _loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
-
-  Future<void> _fetchData({bool reset = false}) async {
-    if (reset) {
-      _pageNum = 1;
-    }
-    setState(() => _loading = true);
-    try {
-      final result = await ref
-          .read(messageTemplateServiceProvider)
-          .getPage(MessageTemplateQuery(pageNum: _pageNum, pageSize: 10));
-      setState(() {
-        if (reset) {
-          _items = result.list;
-        } else {
-          _items.addAll(result.list);
-        }
-        _total = result.total;
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() => _loading = false);
-    }
-  }
-
-  void _showSnack(String msg) {
-    if (!mounted) {
-      return;
-    }
+  void _showSnack(BuildContext context, String msg) {
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  void _edit(int id) {
-    final current =
-        _items.firstWhere((e) => e.id == id);
+  void _edit(BuildContext context, WidgetRef ref, MessageTemplateVO current) {
     final contentCtrl =
         TextEditingController(text: current.content);
     showDialog<void>(
@@ -464,7 +436,7 @@ class _MessageTemplateTabState extends ConsumerState<_MessageTemplateTab> {
               onPressed: () async {
                 try {
                   await ref.read(messageTemplateServiceProvider).update(
-                        id,
+                        current.id,
                         MessageTemplateForm(
                           code: current.code,
                           name: current.name,
@@ -480,10 +452,10 @@ class _MessageTemplateTabState extends ConsumerState<_MessageTemplateTab> {
                     return;
                   }
                   Navigator.pop(c);
-                  _showSnack('更新成功');
-                  _fetchData(reset: true);
+                  _showSnack(context, '更新成功');
+                  ref.read(messageTemplateManageProvider.notifier).refresh();
                 } catch (e) {
-                  _showSnack(extractErrorMessage(e));
+                  _showSnack(context, extractErrorMessage(e));
                 }
               },
               child: const Text('保存')),
@@ -493,37 +465,52 @@ class _MessageTemplateTabState extends ConsumerState<_MessageTemplateTab> {
   }
 
   @override
-  Widget build(BuildContext context) => _loading && _items.isEmpty
-      ? const Center(child: CircularProgressIndicator())
-      : _items.isEmpty
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(messageTemplateManageProvider);
+    return _buildBody(context, ref, state);
+  }
+
+  Widget _buildBody(BuildContext context, WidgetRef ref,
+      AsyncValue<PagedList<MessageTemplateVO>> state) {
+    return state.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(extractErrorMessage(e)),
+            SizedBox(height: AppTheme.spacingM),
+            FilledButton(
+              onPressed: () => ref.read(messageTemplateManageProvider.notifier).refresh(),
+              child: const Text('重试'),
+            ),
+          ],
+        ),
+      ),
+      data: (page) => page.items.isEmpty
           ? const Center(child: Text('暂无模板'))
           : RefreshIndicator(
-              onRefresh: () => _fetchData(reset: true),
-              child: ListView.builder(
-                itemCount: _items.length + (_items.length < _total ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index >= _items.length) {
-                    if (!_loading) {
-                      _pageNum++;
-                      _fetchData();
-                    }
-                    return const Center(
-                        child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: CircularProgressIndicator()));
-                  }
-                  final item = _items[index];
-                  return Card(
-                    child: ListTile(
-                      title: Text(item.name),
-                      subtitle: Text(item.content,
-                          maxLines: 2, overflow: TextOverflow.ellipsis),
-                      trailing: IconButton(
-                          icon: const Icon(Icons.edit, size: 20),
-                          onPressed: () => _edit(item.id)),
-                    ),
-                  );
-                },
+              onRefresh: () => ref.read(messageTemplateManageProvider.notifier).refresh(),
+              child: LoadMoreListener(
+                onLoadMore: () => ref.read(messageTemplateManageProvider.notifier).loadMore(),
+                child: ListView.builder(
+                  itemCount: page.items.length,
+                  itemBuilder: (context, index) {
+                    final item = page.items[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(item.name),
+                        subtitle: Text(item.content,
+                            maxLines: 2, overflow: TextOverflow.ellipsis),
+                        trailing: IconButton(
+                            icon: const Icon(Icons.edit, size: 20),
+                            onPressed: () => _edit(context, ref, item)),
+                      ),
+                    );
+                  },
+                ),
               ),
-            );
+            ),
+    );
+  }
 }

@@ -2,11 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/package_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
 import '../../services/package_service.dart';
 import '../../theme/app_theme.dart';
+
+final packageManageProvider = StateNotifierProvider<
+    PackageManageNotifier, AsyncValue<PagedList<PackagePageVO>>>(
+  (ref) => PackageManageNotifier(ref.watch(packageServiceProvider)),
+);
+
+class PackageManageNotifier extends PagedListNotifier<PackagePageVO> {
+  PackageManageNotifier(this._service) : super();
+  final PackageService _service;
+
+  @override
+  Future<PageResult<PackagePageVO>> fetchPage(int pageNum) {
+    return _service.getPage(
+      PackageQuery(pageNum: pageNum, pageSize: pageSize, keyword: keyword),
+    );
+  }
+}
 
 /// 套餐管理页面（L2）
 ///
@@ -20,17 +39,6 @@ class PackageManagePage extends ConsumerStatefulWidget {
 
 class _PackageManagePageState extends ConsumerState<PackageManagePage> {
   final _searchController = TextEditingController();
-  List<PackagePageVO> _items = [];
-  int _total = 0;
-  int _pageNum = 1;
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
 
   @override
   void dispose() {
@@ -38,47 +46,12 @@ class _PackageManagePageState extends ConsumerState<PackageManagePage> {
     super.dispose();
   }
 
-  PackageService get _service => ref.read(packageServiceProvider);
-
-  Future<void> _fetchData({bool reset = false}) async {
-    if (reset) {
-      _pageNum = 1;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final result = await _service.getPage(
-        PackageQuery(
-          pageNum: _pageNum,
-          pageSize: 10,
-          keyword: _searchController.text,
-        ),
-      );
-      setState(() {
-        if (reset) {
-          _items = result.list;
-        } else {
-          _items.addAll(result.list);
-        }
-        _total = result.total;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = extractErrorMessage(e);
-        _loading = false;
-      });
-    }
-  }
-
   Future<void> _toggleStatus(int id, int currentStatus) async {
     final newStatus = currentStatus == 1 ? 0 : 1;
     try {
-      await _service.updateStatus(id, newStatus);
+      await ref.read(packageServiceProvider).updateStatus(id, newStatus);
       _showSnack('状态已更新');
-      _fetchData(reset: true);
+      ref.read(packageManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -106,9 +79,9 @@ class _PackageManagePageState extends ConsumerState<PackageManagePage> {
       return;
     }
     try {
-      await _service.delete(id);
+      await ref.read(packageServiceProvider).delete(id);
       _showSnack('删除成功');
-      _fetchData(reset: true);
+      ref.read(packageManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -129,7 +102,7 @@ class _PackageManagePageState extends ConsumerState<PackageManagePage> {
       builder: (c) => _PackageFormSheet(
         packageId: packageId,
         onSaved: () {
-          _fetchData(reset: true);
+          ref.read(packageManageProvider.notifier).refresh();
           Navigator.pop(c);
         },
       ),
@@ -139,13 +112,8 @@ class _PackageManagePageState extends ConsumerState<PackageManagePage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:package:*')) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('套餐管理')),
-        body: const Center(child: Text('无权限访问')),
-      );
-    }
     final theme = Theme.of(context);
+    final state = ref.watch(packageManageProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -172,91 +140,81 @@ class _PackageManagePageState extends ConsumerState<PackageManagePage> {
                   icon: const Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
-                    _fetchData(reset: true);
+                    ref.read(packageManageProvider.notifier).search('');
                   },
                 ),
               ),
-              onSubmitted: (_) => _fetchData(reset: true),
+              onSubmitted: (v) => ref.read(packageManageProvider.notifier).search(v),
             ),
           ),
-          Expanded(child: _buildList(theme)),
+          Expanded(child: _buildBody(theme, state)),
         ],
       ),
     );
   }
 
-  Widget _buildList(ThemeData theme) {
-    if (_loading && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
+  Widget _buildBody(ThemeData theme, AsyncValue<PagedList<PackagePageVO>> state) {
+    return state.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+            Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)),
             SizedBox(height: AppTheme.spacingM),
             FilledButton(
-              onPressed: () => _fetchData(reset: true),
+              onPressed: () => ref.read(packageManageProvider.notifier).refresh(),
               child: const Text('重试'),
             ),
           ],
         ),
-      );
-    }
-    if (_items.isEmpty) {
-      return const Center(child: Text('暂无数据'));
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _fetchData(reset: true),
-      child: ListView.builder(
-        itemCount: _items.length + (_items.length < _total ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= _items.length) {
-            if (!_loading) {
-              _pageNum++;
-              _fetchData();
-            }
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          final item = _items[index];
-          final status = item.status;
-          return Card(
-            child: ListTile(
-              leading: const Icon(Icons.shopping_bag),
-              title: Text(item.name),
-              subtitle: Text('¥${item.currentPrice} | ${item.periodName}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      status == 1 ? Icons.visibility_off : Icons.visibility,
-                      size: 20,
-                    ),
-                    tooltip: status == 1 ? '下架' : '上架',
-                    onPressed: () => _toggleStatus(item.id, status),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () => _showForm(packageId: item.id),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor),
-                    onPressed: () => _delete(item.id),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
+      data: (page) {
+        if (page.items.isEmpty) {
+          return const Center(child: Text('暂无数据'));
+        }
+        return RefreshIndicator(
+          onRefresh: () => ref.read(packageManageProvider.notifier).refresh(),
+          child: LoadMoreListener(
+            onLoadMore: () => ref.read(packageManageProvider.notifier).loadMore(),
+            child: ListView.builder(
+              itemCount: page.items.length,
+              itemBuilder: (context, index) {
+                final item = page.items[index];
+                final status = item.status;
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.shopping_bag),
+                    title: Text(item.name),
+                    subtitle: Text('¥${item.currentPrice} | ${item.periodName}'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            status == 1 ? Icons.visibility_off : Icons.visibility,
+                            size: 20,
+                          ),
+                          tooltip: status == 1 ? '下架' : '上架',
+                          onPressed: () => _toggleStatus(item.id, status),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: () => _showForm(packageId: item.id),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor),
+                          onPressed: () => _delete(item.id),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

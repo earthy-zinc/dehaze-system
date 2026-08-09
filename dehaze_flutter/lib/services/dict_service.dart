@@ -23,12 +23,9 @@ class DictService {
       ApiConstants.dictTypesPage,
       queryParameters: query.toQuery(),
     );
-    final data = response.data!['data'] as Map<String, dynamic>;
-    return PageResult<DictType>(
-      list: (data['list'] as List<dynamic>)
-          .map((e) => DictType.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      total: (data['total'] as num).toInt(),
+    return PageResult.fromResponse(
+      response.data!['data'] as Map<String, dynamic>,
+      DictType.fromJson,
     );
   }
 
@@ -85,12 +82,9 @@ class DictService {
       ApiConstants.dictPage,
       queryParameters: query.toQuery(),
     );
-    final data = response.data!['data'] as Map<String, dynamic>;
-    return PageResult<Dict>(
-      list: (data['list'] as List<dynamic>)
-          .map((e) => Dict.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      total: (data['total'] as num).toInt(),
+    return PageResult.fromResponse(
+      response.data!['data'] as Map<String, dynamic>,
+      Dict.fromJson,
     );
   }
 

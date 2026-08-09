@@ -2,11 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/order_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
 import '../../services/order_service.dart';
 import '../../theme/app_theme.dart';
+
+final orderManageProvider =
+    StateNotifierProvider<OrderManageNotifier, AsyncValue<PagedList<OrderPageVO>>>(
+  (ref) => OrderManageNotifier(ref.watch(orderServiceProvider)),
+);
+
+class OrderManageNotifier extends PagedListNotifier<OrderPageVO> {
+  OrderManageNotifier(this._service) : super();
+  final OrderService _service;
+
+  @override
+  Future<PageResult<OrderPageVO>> fetchPage(int pageNum) {
+    return _service.getPage(
+      OrderQuery(pageNum: pageNum, pageSize: pageSize, keyword: keyword),
+    );
+  }
+}
+
+final refundManageProvider = StateNotifierProvider<
+    RefundManageNotifier, AsyncValue<PagedList<RefundRecordVO>>>(
+  (ref) => RefundManageNotifier(ref.watch(orderServiceProvider)),
+);
+
+class RefundManageNotifier extends PagedListNotifier<RefundRecordVO> {
+  RefundManageNotifier(this._service) : super();
+  final OrderService _service;
+
+  @override
+  Future<PageResult<RefundRecordVO>> fetchPage(int pageNum) {
+    return _service.getRefundPage(
+      RefundQuery(pageNum: pageNum, pageSize: pageSize),
+    );
+  }
+}
 
 /// 订单管理页面（L2）
 ///
@@ -22,22 +57,11 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
   final _searchController = TextEditingController();
-  List<OrderPageVO> _orders = [];
-  List<RefundRecordVO> _refunds = [];
-  int _orderTotal = 0, _refundTotal = 0;
-  int _orderPageNum = 1, _refundPageNum = 1;
-  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 2, vsync: this);
-    _tabCtrl.addListener(() {
-      if (!_tabCtrl.indexIsChanging) {
-        _fetchCurrent();
-      }
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchOrders());
   }
 
   @override
@@ -47,71 +71,11 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
     super.dispose();
   }
 
-  OrderService get _service => ref.read(orderServiceProvider);
-
-  void _fetchCurrent() {
+  void _searchCurrent(String v) {
     if (_tabCtrl.index == 0) {
-      _fetchOrders();
+      ref.read(orderManageProvider.notifier).search(v);
     } else {
-      _fetchRefunds();
-    }
-  }
-
-  Future<void> _fetchOrders({bool reset = false}) async {
-    if (reset) {
-      _orderPageNum = 1;
-    }
-    setState(() {
-      _loading = true;
-    });
-    try {
-      final result = await _service.getPage(
-        OrderQuery(
-          pageNum: _orderPageNum,
-          pageSize: 10,
-          keyword: _searchController.text,
-        ),
-      );
-      setState(() {
-        if (reset) {
-          _orders = result.list;
-        } else {
-          _orders.addAll(result.list);
-        }
-        _orderTotal = result.total;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
-
-  Future<void> _fetchRefunds({bool reset = false}) async {
-    if (reset) {
-      _refundPageNum = 1;
-    }
-    setState(() {
-      _loading = true;
-    });
-    try {
-      final result = await _service.getRefundPage(
-        RefundQuery(pageNum: _refundPageNum, pageSize: 10),
-      );
-      setState(() {
-        if (reset) {
-          _refunds = result.list;
-        } else {
-          _refunds.addAll(result.list);
-        }
-        _refundTotal = result.total;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _loading = false;
-      });
+      ref.read(refundManageProvider.notifier).search(v);
     }
   }
 
@@ -141,7 +105,7 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
       return;
     }
     try {
-      await _service.auditRefund(
+      await ref.read(orderServiceProvider).auditRefund(
         RefundAuditForm(
           refundId: refundId,
           approved: approved,
@@ -149,7 +113,7 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
         ),
       );
       _showSnack('审核完成');
-      _fetchRefunds(reset: true);
+      ref.read(refundManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -164,14 +128,9 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:order:*')) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('订单管理')),
-        body: const Center(child: Text('无权限访问')),
-      );
-    }
     final theme = Theme.of(context);
+    final orderState = ref.watch(orderManageProvider);
+    final refundState = ref.watch(refundManageProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -194,19 +153,19 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
                   icon: const Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
-                    _fetchCurrent();
+                    _searchCurrent('');
                   },
                 ),
               ),
-              onSubmitted: (_) => _fetchCurrent(),
+              onSubmitted: (v) => _searchCurrent(v),
             ),
           ),
           Expanded(
             child: TabBarView(
               controller: _tabCtrl,
               children: [
-                _buildOrderList(theme),
-                _buildRefundList(theme),
+                _buildOrderList(theme, orderState),
+                _buildRefundList(theme, refundState),
               ],
             ),
           ),
@@ -215,101 +174,112 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
     );
   }
 
-  Widget _buildOrderList(ThemeData theme) {
-    if (_loading && _orders.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_orders.isEmpty) {
-      return const Center(child: Text('暂无订单'));
-    }
-    return RefreshIndicator(
-      onRefresh: () => _fetchOrders(reset: true),
-      child: ListView.builder(
-        itemCount: _orders.length + (_orders.length < _orderTotal ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= _orders.length) {
-            if (!_loading) {
-              _orderPageNum++;
-              _fetchOrders();
-            }
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          final item = _orders[index];
-          return Card(
-            child: ListTile(
-              leading: const Icon(Icons.receipt_long),
-              title: Text(item.orderNo),
-              subtitle: Text('¥${item.amount} | ${item.statusName}'),
+  Widget _buildOrderList(ThemeData theme, AsyncValue<PagedList<OrderPageVO>> state) {
+    return state.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)),
+            SizedBox(height: AppTheme.spacingM),
+            FilledButton(
+              onPressed: () => ref.read(orderManageProvider.notifier).refresh(),
+              child: const Text('重试'),
             ),
-          );
-        },
+          ],
+        ),
       ),
+      data: (page) {
+        if (page.items.isEmpty) {
+          return const Center(child: Text('暂无订单'));
+        }
+        return RefreshIndicator(
+          onRefresh: () => ref.read(orderManageProvider.notifier).refresh(),
+          child: LoadMoreListener(
+            onLoadMore: () => ref.read(orderManageProvider.notifier).loadMore(),
+            child: ListView.builder(
+              itemCount: page.items.length,
+              itemBuilder: (context, index) {
+                final item = page.items[index];
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.receipt_long),
+                    title: Text(item.orderNo),
+                    subtitle: Text('¥${item.amount} | ${item.statusName}'),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildRefundList(ThemeData theme) {
-    if (_loading && _refunds.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_refunds.isEmpty) {
-      return const Center(child: Text('暂无退款申请'));
-    }
-    return RefreshIndicator(
-      onRefresh: () => _fetchRefunds(reset: true),
-      child: ListView.builder(
-        itemCount:
-            _refunds.length + (_refunds.length < _refundTotal ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= _refunds.length) {
-            if (!_loading) {
-              _refundPageNum++;
-              _fetchRefunds();
-            }
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          final item = _refunds[index];
-          return Card(
-            child: ListTile(
-              leading: const Icon(Icons.money_off),
-              title: Text('退款单号: ${item.orderNo}'),
-              subtitle: Text('¥${item.amount} | ${item.statusName}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.check_circle,
-                      size: 20,
-                      color: AppTheme.successColor,
-                    ),
-                    tooltip: '通过',
-                    onPressed: () => _auditRefund(item.id, true),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.cancel,
-                      size: 20,
-                      color: AppTheme.errorColor,
-                    ),
-                    tooltip: '驳回',
-                    onPressed: () => _auditRefund(item.id, false),
-                  ),
-                ],
-              ),
+  Widget _buildRefundList(ThemeData theme, AsyncValue<PagedList<RefundRecordVO>> state) {
+    return state.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)),
+            SizedBox(height: AppTheme.spacingM),
+            FilledButton(
+              onPressed: () => ref.read(refundManageProvider.notifier).refresh(),
+              child: const Text('重试'),
             ),
-          );
-        },
+          ],
+        ),
       ),
+      data: (page) {
+        if (page.items.isEmpty) {
+          return const Center(child: Text('暂无退款申请'));
+        }
+        return RefreshIndicator(
+          onRefresh: () => ref.read(refundManageProvider.notifier).refresh(),
+          child: LoadMoreListener(
+            onLoadMore: () => ref.read(refundManageProvider.notifier).loadMore(),
+            child: ListView.builder(
+              itemCount: page.items.length,
+              itemBuilder: (context, index) {
+                final item = page.items[index];
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.money_off),
+                    title: Text('退款单号: ${item.orderNo}'),
+                    subtitle: Text('¥${item.amount} | ${item.statusName}'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.check_circle,
+                            size: 20,
+                            color: AppTheme.successColor,
+                          ),
+                          tooltip: '通过',
+                          onPressed: () => _auditRefund(item.id, true),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.cancel,
+                            size: 20,
+                            color: AppTheme.errorColor,
+                          ),
+                          tooltip: '驳回',
+                          onPressed: () => _auditRefund(item.id, false),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

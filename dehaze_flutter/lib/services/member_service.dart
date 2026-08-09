@@ -30,11 +30,10 @@ class MemberService {
       ApiConstants.membersGrowthLogs,
       queryParameters: query.toJson(),
     );
-    final data = response.data!['data'] as Map<String, dynamic>;
-    final list = (data['list'] as List<dynamic>)
-        .map((e) => GrowthLogVO.fromJson(e as Map<String, dynamic>))
-        .toList();
-    return PageResult(list: list, total: data['total'] as int);
+    return PageResult.fromResponse(
+      response.data!['data'] as Map<String, dynamic>,
+      GrowthLogVO.fromJson,
+    );
   }
 
   /// 每日签到
@@ -69,11 +68,10 @@ class MemberService {
       ApiConstants.membersPage,
       queryParameters: query.toJson(),
     );
-    final data = response.data!['data'] as Map<String, dynamic>;
-    final list = (data['list'] as List<dynamic>)
-        .map((e) => MemberPageVO.fromJson(e as Map<String, dynamic>))
-        .toList();
-    return PageResult(list: list, total: data['total'] as int);
+    return PageResult.fromResponse(
+      response.data!['data'] as Map<String, dynamic>,
+      MemberPageVO.fromJson,
+    );
   }
 
   /// 会员详情

@@ -18,12 +18,9 @@ class DatasetService {
       ApiConstants.datasets,
       queryParameters: queryParams?.toJson(),
     );
-    final data = response.data!['data'] as Map<String, dynamic>;
-    return PageResult<Dataset>(
-      list: (data['list'] as List<dynamic>)
-          .map((e) => Dataset.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      total: data['total'] as int,
+    return PageResult.fromResponse(
+      response.data!['data'] as Map<String, dynamic>,
+      Dataset.fromJson,
     );
   }
 
@@ -107,12 +104,9 @@ class DatasetItemService {
       ApiConstants.datasetItems,
       queryParameters: queryParams?.toJson(),
     );
-    final data = response.data!['data'] as Map<String, dynamic>;
-    return PageResult<DatasetItemVO>(
-      list: (data['list'] as List<dynamic>)
-          .map((e) => DatasetItemVO.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      total: data['total'] as int,
+    return PageResult.fromResponse(
+      response.data!['data'] as Map<String, dynamic>,
+      DatasetItemVO.fromJson,
     );
   }
 

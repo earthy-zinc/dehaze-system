@@ -2,10 +2,49 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/dict_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
+import '../../services/dict_service.dart';
 import '../../theme/app_theme.dart';
+
+final dictTypeManageProvider =
+    StateNotifierProvider<DictTypeManageNotifier, AsyncValue<PagedList<DictType>>>(
+  (ref) => DictTypeManageNotifier(ref.watch(dictServiceProvider)),
+);
+
+class DictTypeManageNotifier extends PagedListNotifier<DictType> {
+  DictTypeManageNotifier(this._service) : super();
+  final DictService _service;
+
+  @override
+  Future<PageResult<DictType>> fetchPage(int pageNum) {
+    return _service.getTypePage(
+      DictTypeQuery(pageNum: pageNum, pageSize: 10, keywords: keyword),
+    );
+  }
+}
+
+final dictItemManageProvider = StateNotifierProvider.family<
+    DictItemManageNotifier, AsyncValue<PagedList<Dict>>, String>(
+  (ref, typeCode) =>
+      DictItemManageNotifier(ref.watch(dictServiceProvider), typeCode),
+);
+
+class DictItemManageNotifier extends PagedListNotifier<Dict> {
+  DictItemManageNotifier(this._service, this.typeCode) : super(pageSize: 20);
+  final DictService _service;
+  final String typeCode;
+
+  @override
+  Future<PageResult<Dict>> fetchPage(int pageNum) {
+    return _service.getDictPage(
+      DictQuery(pageNum: pageNum, pageSize: 20, typeCode: typeCode),
+    );
+  }
+}
 
 /// 字典管理页面（L2）
 ///
@@ -19,39 +58,11 @@ class DictManagePage extends ConsumerStatefulWidget {
 
 class _DictManagePageState extends ConsumerState<DictManagePage> {
   final _searchController = TextEditingController();
-  List<DictType> _types = [];
-  int _typeTotal = 0;
-  int _typePageNum = 1;
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchTypes());
-  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _fetchTypes({bool reset = false}) async {
-    if (reset) { _typePageNum = 1; }
-    setState(() { _loading = true; _error = null; });
-    try {
-      final result = await ref.read(dictServiceProvider).getTypePage(
-        DictTypeQuery(pageNum: _typePageNum, pageSize: 10, keywords: _searchController.text),
-      );
-      setState(() {
-        if (reset) { _types = result.list; } else { _types.addAll(result.list); }
-        _typeTotal = result.total;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() { _error = extractErrorMessage(e); _loading = false; });
-    }
   }
 
   Future<void> _deleteType(int id) async {
@@ -66,7 +77,7 @@ class _DictManagePageState extends ConsumerState<DictManagePage> {
     try {
       await ref.read(dictServiceProvider).deleteType(id);
       _showSnack('删除成功');
-      _fetchTypes(reset: true);
+      ref.read(dictTypeManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -82,7 +93,7 @@ class _DictManagePageState extends ConsumerState<DictManagePage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (c) => _DictTypeFormSheet(typeId: typeId, onSaved: () { _fetchTypes(reset: true); Navigator.pop(c); }),
+      builder: (c) => _DictTypeFormSheet(typeId: typeId, onSaved: () { ref.read(dictTypeManageProvider.notifier).refresh(); Navigator.pop(c); }),
     );
   }
 
@@ -93,10 +104,8 @@ class _DictManagePageState extends ConsumerState<DictManagePage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:dict:*')) {
-      return Scaffold(appBar: AppBar(title: const Text('字典管理')), body: const Center(child: Text('无权限访问')));
-    }
     final theme = Theme.of(context);
+    final state = ref.watch(dictTypeManageProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -111,52 +120,49 @@ class _DictManagePageState extends ConsumerState<DictManagePage> {
             padding: EdgeInsets.all(AppTheme.spacingM),
             child: TextField(
               controller: _searchController,
-              decoration: InputDecoration(hintText: '搜索字典类型', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(icon: const Icon(Icons.clear), onPressed: () { _searchController.clear(); _fetchTypes(reset: true); })),
-              onSubmitted: (_) => _fetchTypes(reset: true),
+              decoration: InputDecoration(hintText: '搜索字典类型', prefixIcon: const Icon(Icons.search), suffixIcon: IconButton(icon: const Icon(Icons.clear), onPressed: () { _searchController.clear(); ref.read(dictTypeManageProvider.notifier).search(''); })),
+              onSubmitted: (v) => ref.read(dictTypeManageProvider.notifier).search(v),
             ),
           ),
-          Expanded(child: _buildList(theme)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildList(ThemeData theme) {
-    if (_loading && _types.isEmpty) { return const Center(child: CircularProgressIndicator()); }
-    if (_error != null) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(_error!, style: TextStyle(color: theme.colorScheme.error)), SizedBox(height: AppTheme.spacingM),
-        FilledButton(onPressed: () => _fetchTypes(reset: true), child: const Text('重试')),
-      ]));
-    }
-    if (_types.isEmpty) { return const Center(child: Text('暂无数据')); }
-
-    return RefreshIndicator(
-      onRefresh: () => _fetchTypes(reset: true),
-      child: ListView.builder(
-        itemCount: _types.length + (_types.length < _typeTotal ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= _types.length) {
-            if (!_loading) { _typePageNum++; _fetchTypes(); }
-            return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
-          }
-          final item = _types[index];
-          return Card(
-            child: ListTile(
-              leading: const Icon(Icons.list_alt),
-              title: Text(item.name),
-              subtitle: Text('编码: ${item.code}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(icon: const Icon(Icons.format_list_bulleted, size: 20), tooltip: '管理字典项', onPressed: () => _showDictItems(item.code, item.name)),
-                  IconButton(icon: const Icon(Icons.edit, size: 20), tooltip: '编辑', onPressed: () => _showTypeForm(typeId: item.id)),
-                  IconButton(icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor), tooltip: '删除', onPressed: () => _deleteType(item.id)),
-                ],
-              ),
+          Expanded(
+            child: state.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)), SizedBox(height: AppTheme.spacingM),
+                FilledButton(onPressed: () => ref.read(dictTypeManageProvider.notifier).refresh(), child: const Text('重试')),
+              ])),
+              data: (page) => page.items.isEmpty
+                ? const Center(child: Text('暂无数据'))
+                : RefreshIndicator(
+                  onRefresh: () => ref.read(dictTypeManageProvider.notifier).refresh(),
+                  child: LoadMoreListener(
+                    onLoadMore: () => ref.read(dictTypeManageProvider.notifier).loadMore(),
+                    child: ListView.builder(
+                      itemCount: page.items.length,
+                      itemBuilder: (context, index) {
+                        final item = page.items[index];
+                        return Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.list_alt),
+                            title: Text(item.name),
+                            subtitle: Text('编码: ${item.code}'),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(icon: const Icon(Icons.format_list_bulleted, size: 20), tooltip: '管理字典项', onPressed: () => _showDictItems(item.code, item.name)),
+                                IconButton(icon: const Icon(Icons.edit, size: 20), tooltip: '编辑', onPressed: () => _showTypeForm(typeId: item.id)),
+                                IconButton(icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor), tooltip: '删除', onPressed: () => _deleteType(item.id)),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -251,114 +257,85 @@ class _DictTypeFormSheetState extends ConsumerState<_DictTypeFormSheet> {
 }
 
 /// 字典项管理页面
-class _DictItemManagePage extends ConsumerStatefulWidget {
+class _DictItemManagePage extends ConsumerWidget {
   const _DictItemManagePage({required this.typeCode, required this.typeName});
   final String typeCode;
   final String typeName;
 
   @override
-  ConsumerState<_DictItemManagePage> createState() => _DictItemManagePageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final state = ref.watch(dictItemManageProvider(typeCode));
 
-class _DictItemManagePageState extends ConsumerState<_DictItemManagePage> {
-  List<Dict> _items = [];
-  int _total = 0;
-  int _pageNum = 1;
-  bool _loading = false;
-  String? _error;
+    Future<void> deleteItem(int id) async {
+      try {
+        await ref.read(dictServiceProvider).deleteDict(id);
+        ref.read(dictItemManageProvider(typeCode).notifier).refresh();
+        if (!context.mounted) return;
+        _showSnack(context, '删除成功');
+      } catch (e) {
+        if (!context.mounted) return;
+        _showSnack(context, extractErrorMessage(e));
+      }
+    }
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
-
-  Future<void> _fetchData({bool reset = false}) async {
-    if (reset) { _pageNum = 1; }
-    setState(() { _loading = true; _error = null; });
-    try {
-      final result = await ref.read(dictServiceProvider).getDictPage(
-        DictQuery(pageNum: _pageNum, pageSize: 20, typeCode: widget.typeCode),
+    void showForm({int? itemId}) {
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (c) => _DictItemFormSheet(typeCode: typeCode, itemId: itemId, onSaved: () { ref.read(dictItemManageProvider(typeCode).notifier).refresh(); Navigator.pop(c); }),
       );
-      setState(() {
-        if (reset) { _items = result.list; } else { _items.addAll(result.list); }
-        _total = result.total;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() { _error = extractErrorMessage(e); _loading = false; });
-    }
-  }
-
-  Future<void> _deleteItem(int id) async {
-    try {
-      await ref.read(dictServiceProvider).deleteDict(id);
-      _showSnack('删除成功');
-      _fetchData(reset: true);
-    } catch (e) {
-      _showSnack(extractErrorMessage(e));
-    }
-  }
-
-  void _showSnack(String msg) {
-    if (!mounted) { return; }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  void _showForm({int? itemId}) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (c) => _DictItemFormSheet(typeCode: widget.typeCode, itemId: itemId, onSaved: () { _fetchData(reset: true); Navigator.pop(c); }),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:dict:*')) {
-      return Scaffold(appBar: AppBar(title: Text(widget.typeName)), body: const Center(child: Text('无权限访问')));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.typeName),
+        title: Text(typeName),
         actions: [
-          IconButton(icon: const Icon(Icons.add), tooltip: '新增字典项', onPressed: () => _showForm()),
+          IconButton(icon: const Icon(Icons.add), tooltip: '新增字典项', onPressed: () => showForm()),
         ],
       ),
-      body: _loading && _items.isEmpty ? const Center(child: CircularProgressIndicator())
-          : _error != null ? Center(child: Text(_error!))
-          : _items.isEmpty ? const Center(child: Text('暂无字典项'))
+      body: state.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)), SizedBox(height: AppTheme.spacingM),
+          FilledButton(onPressed: () => ref.read(dictItemManageProvider(typeCode).notifier).refresh(), child: const Text('重试')),
+        ])),
+        data: (page) => page.items.isEmpty
+          ? const Center(child: Text('暂无字典项'))
           : RefreshIndicator(
-            onRefresh: () => _fetchData(reset: true),
-            child: ListView.builder(
-              itemCount: _items.length + (_items.length < _total ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index >= _items.length) {
-                  if (!_loading) { _pageNum++; _fetchData(); }
-                  return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
-                }
-                final item = _items[index];
-                return Card(
-                  child: ListTile(
-                    title: Text(item.label ?? ''),
-                    subtitle: Text('值: ${item.value} | 排序: ${item.sort}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: () => _showForm(itemId: item.id)),
-                        IconButton(icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor), onPressed: () => _deleteItem(item.id!)),
-                      ],
+            onRefresh: () => ref.read(dictItemManageProvider(typeCode).notifier).refresh(),
+            child: LoadMoreListener(
+              onLoadMore: () => ref.read(dictItemManageProvider(typeCode).notifier).loadMore(),
+              child: ListView.builder(
+                itemCount: page.items.length,
+                itemBuilder: (context, index) {
+                  final item = page.items[index];
+                  return Card(
+                    child: ListTile(
+                      title: Text(item.label ?? ''),
+                      subtitle: Text('值: ${item.value} | 排序: ${item.sort}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: () => showForm(itemId: item.id)),
+                          IconButton(icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor), onPressed: () => deleteItem(item.id!)),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
+      ),
     );
   }
+}
+
+void _showSnack(BuildContext context, String msg) {
+  if (!context.mounted) { return; }
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 }
 
 class _DictItemFormSheet extends ConsumerStatefulWidget {

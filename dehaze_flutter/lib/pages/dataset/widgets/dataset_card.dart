@@ -3,7 +3,7 @@ import '../../../core/network/api_config.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/responsive_utils.dart';
 import '../../../widgets/dehaze_image.dart';
-import '../models/dataset_model.dart';
+import '../../../models/dataset_model.dart';
 
 /// 数据集卡片组件
 ///
@@ -11,7 +11,7 @@ import '../models/dataset_model.dart';
 class DatasetCard extends StatefulWidget {
   const DatasetCard({required this.dataset, super.key, this.onTap});
 
-  final DatasetModel dataset;
+  final Dataset dataset;
   final VoidCallback? onTap;
 
   @override
@@ -83,7 +83,7 @@ class _DatasetCardState extends State<DatasetCard> {
   /// path 为空或图片加载失败时，fallback 到渐变图标占位。
   Widget _buildThumbnail({double? width, double? height}) {
     final path = widget.dataset.path;
-    final hasSample = path != null && path.isNotEmpty;
+    final hasSample = path.isNotEmpty;
 
     if (!hasSample) {
       return _buildGradientFallback(width: width, height: height);
@@ -102,37 +102,40 @@ class _DatasetCardState extends State<DatasetCard> {
   }
 
   /// 渐变图标占位（path 为空或图片加载失败时的 fallback）
-  Widget _buildGradientFallback({double? width, double? height}) => Container(
-        width: width ?? double.infinity,
-        height: height,
-        decoration: BoxDecoration(
-          gradient: AppTheme.getSecondaryGradient(),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                widget.dataset.hasChildren
-                    ? Icons.folder_outlined
-                    : Icons.storage_outlined,
-                color: Colors.white,
-                size: 40,
-              ),
-              if (widget.dataset.hasChildren) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '${widget.dataset.children.length} 个子集',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 12,
-                  ),
+  Widget _buildGradientFallback({double? width, double? height}) {
+    final hasChildren = widget.dataset.hasChildren ?? false;
+    return Container(
+      width: width ?? double.infinity,
+      height: height,
+      decoration: BoxDecoration(
+        gradient: AppTheme.getSecondaryGradient(),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              hasChildren
+                  ? Icons.folder_outlined
+                  : Icons.storage_outlined,
+              color: Colors.white,
+              size: 40,
+            ),
+            if (hasChildren) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${widget.dataset.children?.length ?? 0} 个子集',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 12,
                 ),
-              ],
+              ),
             ],
-          ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 
   /// 构建内容区域
   Widget _buildContent(ThemeData theme) => Padding(
@@ -168,19 +171,17 @@ class _DatasetCardState extends State<DatasetCard> {
             // 统计信息
             Row(
               children: [
-                if (widget.dataset.type != null) ...[
-                  _buildStatItem(
-                    context,
-                    Icons.category_outlined,
-                    widget.dataset.type!,
-                    const Color(0xFF14B8A6),
-                  ),
-                  const SizedBox(width: 16),
-                ],
+                _buildStatItem(
+                  context,
+                  Icons.category_outlined,
+                  widget.dataset.type,
+                  const Color(0xFF14B8A6),
+                ),
+                const SizedBox(width: 16),
                 _buildStatItem(
                   context,
                   Icons.access_time_outlined,
-                  _formatDate(widget.dataset.createTime),
+                  _formatDate(widget.dataset.createTime ?? ''),
                   const Color(0xFF9CA3AF),
                 ),
               ],

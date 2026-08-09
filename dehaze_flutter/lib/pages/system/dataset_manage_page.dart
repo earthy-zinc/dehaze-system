@@ -2,10 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/dataset_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
+import '../../services/dataset_service.dart';
 import '../../theme/app_theme.dart';
+
+final datasetManageProvider =
+    StateNotifierProvider<DatasetManageNotifier, AsyncValue<PagedList<Dataset>>>(
+  (ref) => DatasetManageNotifier(ref.watch(datasetServiceProvider)),
+);
+
+class DatasetManageNotifier extends PagedListNotifier<Dataset> {
+  DatasetManageNotifier(this._service) : super();
+  final DatasetService _service;
+
+  @override
+  Future<PageResult<Dataset>> fetchPage(int pageNum) {
+    return _service.getList(
+      DatasetQuery(pageNum: pageNum, pageSize: pageSize, keyword: keyword),
+    );
+  }
+}
 
 /// 数据集管理页面（L2）
 ///
@@ -19,55 +39,11 @@ class DatasetManagePage extends ConsumerStatefulWidget {
 
 class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
   final _searchController = TextEditingController();
-  List<Dataset> _items = [];
-  int _total = 0;
-  int _pageNum = 1;
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _fetchData({bool reset = false}) async {
-    if (reset) {
-      _pageNum = 1;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final result = await ref.read(datasetServiceProvider).getList(
-        DatasetQuery(
-          pageNum: _pageNum,
-          pageSize: 10,
-          keyword: _searchController.text,
-        ),
-      );
-      setState(() {
-        if (reset) {
-          _items = result.list;
-        } else {
-          _items.addAll(result.list);
-        }
-        _total = result.total;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = extractErrorMessage(e);
-        _loading = false;
-      });
-    }
   }
 
   Future<void> _delete(int id) async {
@@ -95,7 +71,7 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
     try {
       await ref.read(datasetServiceProvider).deleteById(id);
       _showSnack('删除成功');
-      _fetchData(reset: true);
+      ref.read(datasetManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -117,7 +93,7 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
           (c) => _DatasetFormSheet(
             datasetId: datasetId,
             onSaved: () {
-              _fetchData(reset: true);
+              ref.read(datasetManageProvider.notifier).refresh();
               Navigator.pop(c);
             },
           ),
@@ -127,13 +103,8 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:dataset:*')) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('数据集管理')),
-        body: const Center(child: Text('无权限访问')),
-      );
-    }
     final theme = Theme.of(context);
+    final state = ref.watch(datasetManageProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -160,84 +131,74 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
                   icon: const Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
-                    _fetchData(reset: true);
+                    ref.read(datasetManageProvider.notifier).search('');
                   },
                 ),
               ),
-              onSubmitted: (_) => _fetchData(reset: true),
+              onSubmitted: (v) => ref.read(datasetManageProvider.notifier).search(v),
             ),
           ),
-          Expanded(child: _buildList(theme)),
+          Expanded(child: _buildBody(theme, state)),
         ],
       ),
     );
   }
 
-  Widget _buildList(ThemeData theme) {
-    if (_loading && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
+  Widget _buildBody(ThemeData theme, AsyncValue<PagedList<Dataset>> state) {
+    return state.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+            Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)),
             SizedBox(height: AppTheme.spacingM),
             FilledButton(
-              onPressed: () => _fetchData(reset: true),
+              onPressed: () => ref.read(datasetManageProvider.notifier).refresh(),
               child: const Text('重试'),
             ),
           ],
         ),
-      );
-    }
-    if (_items.isEmpty) {
-      return const Center(child: Text('暂无数据'));
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _fetchData(reset: true),
-      child: ListView.builder(
-        itemCount: _items.length + (_items.length < _total ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= _items.length) {
-            if (!_loading) {
-              _pageNum++;
-              _fetchData();
-            }
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          final item = _items[index];
-          return Card(
-            child: ListTile(
-              leading: const Icon(Icons.storage),
-              title: Text(item.name),
-              subtitle: Text(
-                '${item.statistics?.itemCount ?? 0} 张图片',
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () => _showForm(datasetId: item.id),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor),
-                    onPressed: () => _delete(item.id),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
+      data: (page) {
+        if (page.items.isEmpty) {
+          return const Center(child: Text('暂无数据'));
+        }
+        return RefreshIndicator(
+          onRefresh: () => ref.read(datasetManageProvider.notifier).refresh(),
+          child: LoadMoreListener(
+            onLoadMore: () => ref.read(datasetManageProvider.notifier).loadMore(),
+            child: ListView.builder(
+              itemCount: page.items.length,
+              itemBuilder: (context, index) {
+                final item = page.items[index];
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.storage),
+                    title: Text(item.name),
+                    subtitle: Text(
+                      '${item.statistics?.itemCount ?? 0} 张图片',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: () => _showForm(datasetId: item.id),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor),
+                          onPressed: () => _delete(item.id),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

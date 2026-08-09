@@ -103,6 +103,24 @@ class AppRouterConfig {
 
   /// 登录态白名单
   static const List<String> publicRoutes = [login, register, home];
+
+  /// 管理页路由 → 所需权限标识映射（用于 redirect 统一权限拦截）
+  static const Map<String, String> adminRoutePermissions = {
+    '/profile/admin/user-manage': 'sys:user:*',
+    '/profile/admin/role-manage': 'sys:role:*',
+    '/profile/admin/menu-manage': 'sys:menu:*',
+    '/profile/admin/dept-manage': 'sys:dept:*',
+    '/profile/admin/dict-manage': 'sys:dict:*',
+    '/profile/admin/algorithm-manage': 'sys:algorithm:*',
+    '/profile/admin/dataset-manage': 'sys:dataset:*',
+    '/profile/admin/task-manage': 'sys:task:*',
+    '/profile/admin/member-manage': 'sys:member:*',
+    '/profile/admin/package-manage': 'sys:package:*',
+    '/profile/admin/order-manage': 'sys:order:*',
+    '/profile/admin/feedback-manage': 'sys:feedback:*',
+    '/profile/admin/message-manage': 'sys:notify:*',
+    '/profile/admin/recommend-manage': 'sys:recommendation:*',
+  };
 }
 
 /// GoRouter Provider
@@ -342,72 +360,72 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const DashboardPage(),
                   ),
                   GoRoute(
-                    path: 'system/user-manage',
+                    path: 'admin/user-manage',
                     name: 'user-manage',
                     builder: (context, state) => const UserManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/role-manage',
+                    path: 'admin/role-manage',
                     name: 'role-manage',
                     builder: (context, state) => const RoleManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/menu-manage',
+                    path: 'admin/menu-manage',
                     name: 'menu-manage',
                     builder: (context, state) => const MenuManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/dept-manage',
+                    path: 'admin/dept-manage',
                     name: 'dept-manage',
                     builder: (context, state) => const DeptManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/dict-manage',
+                    path: 'admin/dict-manage',
                     name: 'dict-manage',
                     builder: (context, state) => const DictManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/algorithm-manage',
+                    path: 'admin/algorithm-manage',
                     name: 'algorithm-manage',
                     builder: (context, state) => const AlgorithmManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/dataset-manage',
+                    path: 'admin/dataset-manage',
                     name: 'dataset-manage',
                     builder: (context, state) => const DatasetManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/task-manage',
+                    path: 'admin/task-manage',
                     name: 'task-manage',
                     builder: (context, state) => const TaskManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/member-manage',
+                    path: 'admin/member-manage',
                     name: 'member-manage',
                     builder: (context, state) => const MemberManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/package-manage',
+                    path: 'admin/package-manage',
                     name: 'package-manage',
                     builder: (context, state) => const PackageManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/order-manage',
+                    path: 'admin/order-manage',
                     name: 'order-manage',
                     builder: (context, state) => const OrderManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/feedback-manage',
+                    path: 'admin/feedback-manage',
                     name: 'feedback-manage',
                     builder: (context, state) => const FeedbackManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/message-manage',
+                    path: 'admin/message-manage',
                     name: 'message-manage',
                     builder: (context, state) => const MessageManagePage(),
                   ),
                   GoRoute(
-                    path: 'system/recommend-manage',
+                    path: 'admin/recommend-manage',
                     name: 'recommend-manage',
                     builder: (context, state) => const RecommendManagePage(),
                   ),
@@ -461,6 +479,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
       if (isLoggedIn && isGoingToAuthPage) {
         return AppRouterConfig.home;
+      }
+
+      // 权限守卫：对管理页统一做权限拦截，无权限重定向到首页
+      if (isLoggedIn) {
+        final requiredPerm =
+            AppRouterConfig.adminRoutePermissions[state.matchedLocation];
+        if (requiredPerm != null && !authState.hasPerm(requiredPerm)) {
+          return AppRouterConfig.home;
+        }
       }
 
       return null;

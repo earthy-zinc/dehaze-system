@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_result.dart';
+import '../../models/dataset_model.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format_utils.dart';
@@ -52,38 +53,9 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
     setState(() => _loadingDetail = true);
     try {
       final service = ref.read(datasetServiceProvider);
-      final globalDataset = await service.getDatasetInfoById(datasetId);
+      final dataset = await service.getDatasetInfoById(datasetId);
       if (!mounted) return;
-      final localModel = DatasetModel(
-        id: globalDataset.id,
-        parentId: globalDataset.parentId,
-        name: globalDataset.name,
-        type: globalDataset.type,
-        path: globalDataset.path,
-        description: globalDataset.description,
-        createTime: globalDataset.createTime ?? '',
-        updateTime: globalDataset.updateTime,
-        children: globalDataset.children
-                ?.map((d) => DatasetModel(
-                      id: d.id,
-                      parentId: d.parentId,
-                      name: d.name,
-                      type: d.type,
-                      path: d.path,
-                      description: d.description,
-                      createTime: d.createTime ?? '',
-                      updateTime: d.updateTime,
-                      hasChildren: d.hasChildren ?? false,
-                      total: d.total,
-                      status: d.status,
-                    ))
-                .toList() ??
-            const [],
-        hasChildren: globalDataset.hasChildren ?? false,
-        total: globalDataset.total,
-        status: globalDataset.status,
-      );
-      _showDatasetDetail(localModel);
+      _showDatasetDetail(dataset);
     } catch (e) {
       if (!mounted) return;
       showError(context, '加载数据集失败: ${extractErrorMessage(e)}');
@@ -126,7 +98,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
   }
 
   /// 构建页面头部（作为 Sliver）
-  Widget _buildHeaderSliver(DatasetModel? selectedDataset) {
+  Widget _buildHeaderSliver(Dataset? selectedDataset) {
     final theme = Theme.of(context);
 
     return SliverToBoxAdapter(
@@ -193,7 +165,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
   }
 
   /// 构建搜索栏
-  Widget _buildSearchBar(DatasetModel? selectedDataset) => TextField(
+  Widget _buildSearchBar(Dataset? selectedDataset) => TextField(
         controller: _searchController,
         focusNode: _searchFocusNode,
         decoration: InputDecoration(
@@ -233,7 +205,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
 
   /// 构建数据集列表视图
   Widget _buildListView(
-    AsyncValue<List<DatasetModel>> datasetsAsync,
+    AsyncValue<List<Dataset>> datasetsAsync,
     bool isWide,
   ) =>
       RefreshIndicator(
@@ -276,7 +248,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
       );
 
   /// 构建数据集网格（宽屏）- Sliver 版本
-  Widget _buildDatasetGridSliver(List<DatasetModel> datasets) {
+  Widget _buildDatasetGridSliver(List<Dataset> datasets) {
     final crossAxisCount = ResponsiveUtils.getGridCrossAxisCount(
       context,
       mobile: 1,
@@ -306,7 +278,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
   }
 
   /// 构建数据集列表（窄屏）- Sliver 版本
-  Widget _buildDatasetListSliver(List<DatasetModel> datasets) => SliverPadding(
+  Widget _buildDatasetListSliver(List<Dataset> datasets) => SliverPadding(
         padding: ResponsiveUtils.getResponsivePadding(context),
         sliver: SliverList(
           delegate: SliverChildBuilderDelegate(
@@ -323,7 +295,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
       );
 
   /// 构建详情视图
-  Widget _buildDetailView(DatasetModel dataset, bool isWide) {
+  Widget _buildDetailView(Dataset dataset, bool isWide) {
     final imagesAsync = ref.watch(imageProvider);
 
     return RefreshIndicator(
@@ -443,7 +415,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
     }
   }
 
-  void _showDatasetDetail(DatasetModel dataset) {
+  void _showDatasetDetail(Dataset dataset) {
     ref.read(selectedDatasetProvider.notifier).state = dataset;
     ref
         .read(imageProvider.notifier)

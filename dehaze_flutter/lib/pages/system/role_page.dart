@@ -2,12 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/menu_model.dart';
 import '../../models/role_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
-// services are accessed via providers from providers.dart
+import '../../services/role_service.dart';
 import '../../theme/app_theme.dart';
+
+final roleManageProvider =
+    StateNotifierProvider<RoleManageNotifier, AsyncValue<PagedList<RolePageVO>>>(
+  (ref) => RoleManageNotifier(ref.watch(roleServiceProvider)),
+);
+
+class RoleManageNotifier extends PagedListNotifier<RolePageVO> {
+  RoleManageNotifier(this._service) : super();
+  final RoleService _service;
+
+  @override
+  Future<PageResult<RolePageVO>> fetchPage(int pageNum) {
+    return _service.getPage(
+      RoleQuery(pageNum: pageNum, pageSize: 10, keywords: keyword),
+    );
+  }
+}
 
 /// 角色管理页面（L2）
 ///
@@ -21,55 +40,11 @@ class RoleManagePage extends ConsumerStatefulWidget {
 
 class _RoleManagePageState extends ConsumerState<RoleManagePage> {
   final _searchController = TextEditingController();
-  List<RolePageVO> _items = [];
-  int _total = 0;
-  int _pageNum = 1;
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _fetchData({bool reset = false}) async {
-    if (reset) {
-      _pageNum = 1;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final result = await ref.read(roleServiceProvider).getPage(
-            RoleQuery(
-              pageNum: _pageNum,
-              pageSize: 10,
-              keywords: _searchController.text,
-            ),
-          );
-      setState(() {
-        if (reset) {
-          _items = result.list;
-        } else {
-          _items.addAll(result.list);
-        }
-        _total = result.total;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = extractErrorMessage(e);
-        _loading = false;
-      });
-    }
   }
 
   Future<void> _deleteRole(int roleId) async {
@@ -96,7 +71,7 @@ class _RoleManagePageState extends ConsumerState<RoleManagePage> {
     try {
       await ref.read(roleServiceProvider).deleteByIds([roleId]);
       _showSnack('删除成功');
-      _fetchData(reset: true);
+      ref.read(roleManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -119,7 +94,7 @@ class _RoleManagePageState extends ConsumerState<RoleManagePage> {
         roleId: roleId,
         roleName: roleName,
         onSaved: () {
-          _fetchData(reset: true);
+          ref.read(roleManageProvider.notifier).refresh();
           Navigator.pop(c);
         },
       ),
@@ -134,7 +109,7 @@ class _RoleManagePageState extends ConsumerState<RoleManagePage> {
       builder: (c) => _RoleFormSheet(
         roleId: roleId,
         onSaved: () {
-          _fetchData(reset: true);
+          ref.read(roleManageProvider.notifier).refresh();
           Navigator.pop(c);
         },
       ),
@@ -144,13 +119,8 @@ class _RoleManagePageState extends ConsumerState<RoleManagePage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:role:*')) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('角色管理')),
-        body: const Center(child: Text('无权限访问')),
-      );
-    }
     final theme = Theme.of(context);
+    final state = ref.watch(roleManageProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -177,97 +147,85 @@ class _RoleManagePageState extends ConsumerState<RoleManagePage> {
                   icon: const Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
-                    _fetchData(reset: true);
+                    ref.read(roleManageProvider.notifier).search('');
                   },
                 ),
               ),
-              onSubmitted: (_) => _fetchData(reset: true),
+              onSubmitted: (v) => ref.read(roleManageProvider.notifier).search(v),
             ),
           ),
-          Expanded(child: _buildList(theme)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildList(ThemeData theme) {
-    if (_loading && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _error!,
-              style: TextStyle(color: theme.colorScheme.error),
-            ),
-            SizedBox(height: AppTheme.spacingM),
-            FilledButton(
-              onPressed: () => _fetchData(reset: true),
-              child: const Text('重试'),
-            ),
-          ],
-        ),
-      );
-    }
-    if (_items.isEmpty) {
-      return const Center(child: Text('暂无数据'));
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _fetchData(reset: true),
-      child: ListView.builder(
-        itemCount: _items.length + (_items.length < _total ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= _items.length) {
-            if (!_loading) {
-              _pageNum++;
-              _fetchData();
-            }
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          final item = _items[index];
-          return Card(
-            child: ListTile(
-              leading: CircleAvatar(
-                child: Text(
-                  ((item.name ?? 'R')[0]).toUpperCase(),
+          Expanded(
+            child: state.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      extractErrorMessage(e),
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                    SizedBox(height: AppTheme.spacingM),
+                    FilledButton(
+                      onPressed: () =>
+                          ref.read(roleManageProvider.notifier).refresh(),
+                      child: const Text('重试'),
+                    ),
+                  ],
                 ),
               ),
-              title: Text(item.name ?? ''),
-              subtitle: Text('编码: ${item.code ?? ''}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.security, size: 20),
-                    tooltip: '权限分配',
-                    onPressed: () => _showPermissionDialog(
-                        item.id, item.name ?? ''),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    tooltip: '编辑',
-                    onPressed: () => _showForm(roleId: item.id),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.delete,
-                        size: 20, color: AppTheme.errorColor),
-                    tooltip: '删除',
-                    onPressed: () => _deleteRole(item.id),
-                  ),
-                ],
-              ),
+              data: (page) => page.items.isEmpty
+                  ? const Center(child: Text('暂无数据'))
+                  : RefreshIndicator(
+                      onRefresh: () =>
+                          ref.read(roleManageProvider.notifier).refresh(),
+                      child: LoadMoreListener(
+                        onLoadMore: () =>
+                            ref.read(roleManageProvider.notifier).loadMore(),
+                        child: ListView.builder(
+                          itemCount: page.items.length,
+                          itemBuilder: (context, index) {
+                            final item = page.items[index];
+                            return Card(
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  child: Text(
+                                    ((item.name ?? 'R')[0]).toUpperCase(),
+                                  ),
+                                ),
+                                title: Text(item.name ?? ''),
+                                subtitle: Text('编码: ${item.code ?? ''}'),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.security, size: 20),
+                                      tooltip: '权限分配',
+                                      onPressed: () => _showPermissionDialog(
+                                          item.id, item.name ?? ''),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, size: 20),
+                                      tooltip: '编辑',
+                                      onPressed: () => _showForm(roleId: item.id),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete,
+                                          size: 20, color: AppTheme.errorColor),
+                                      tooltip: '删除',
+                                      onPressed: () => _deleteRole(item.id),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }

@@ -58,11 +58,10 @@ class FileService {
       ApiConstants.filesPage,
       queryParameters: query?.toJson(),
     );
-    final data = response.data!['data'] as Map<String, dynamic>;
-    final list = (data['list'] as List<dynamic>)
-        .map((e) => FileInfo.fromJson(e as Map<String, dynamic>))
-        .toList();
-    return PageResult(list: list, total: data['total'] as int);
+    return PageResult.fromResponse(
+      response.data!['data'] as Map<String, dynamic>,
+      FileInfo.fromJson,
+    );
   }
 
   /// 根据 ID 获取文件信息

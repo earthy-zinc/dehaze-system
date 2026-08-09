@@ -2,11 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/menu_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
-// services are accessed via providers from providers.dart
+import '../../services/menu_service.dart';
 import '../../theme/app_theme.dart';
+
+final menuManageProvider =
+    StateNotifierProvider<MenuManageNotifier, AsyncValue<PagedList<Menu>>>(
+  (ref) => MenuManageNotifier(ref.watch(menuServiceProvider)),
+);
+
+class MenuManageNotifier extends PagedListNotifier<Menu> {
+  MenuManageNotifier(this._service) : super();
+  final MenuService _service;
+
+  @override
+  Future<PageResult<Menu>> fetchPage(int pageNum) async {
+    final list = await _service.getList(name: keyword);
+    return PageResult(list: list, total: list.length);
+  }
+}
 
 /// 菜单管理页面（L2）
 ///
@@ -20,44 +38,11 @@ class MenuManagePage extends ConsumerStatefulWidget {
 
 class _MenuManagePageState extends ConsumerState<MenuManagePage> {
   final _searchController = TextEditingController();
-  List<Menu> _menus = [];
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _fetchData() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final menus =
-          await ref.read(menuServiceProvider).getList(name: _searchController.text);
-      if (mounted) {
-        setState(() {
-          _menus = menus;
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = extractErrorMessage(e);
-          _loading = false;
-        });
-      }
-    }
   }
 
   Future<void> _deleteMenu(int id) async {
@@ -84,7 +69,7 @@ class _MenuManagePageState extends ConsumerState<MenuManagePage> {
     try {
       await ref.read(menuServiceProvider).deleteByIds([id]);
       _showSnack('删除成功');
-      _fetchData();
+      ref.read(menuManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -107,7 +92,7 @@ class _MenuManagePageState extends ConsumerState<MenuManagePage> {
         menuId: menuId,
         parentId: parentId,
         onSaved: () {
-          _fetchData();
+          ref.read(menuManageProvider.notifier).refresh();
           Navigator.pop(c);
         },
       ),
@@ -169,13 +154,8 @@ class _MenuManagePageState extends ConsumerState<MenuManagePage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:menu:*')) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('菜单管理')),
-        body: const Center(child: Text('无权限访问')),
-      );
-    }
     final theme = Theme.of(context);
+    final state = ref.watch(menuManageProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -202,41 +182,47 @@ class _MenuManagePageState extends ConsumerState<MenuManagePage> {
                   icon: const Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
-                    _fetchData();
+                    ref.read(menuManageProvider.notifier).search('');
                   },
                 ),
               ),
-              onSubmitted: (_) => _fetchData(),
+              onSubmitted: (v) => ref.read(menuManageProvider.notifier).search(v),
             ),
           ),
           Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _error!,
-                              style:
-                                  TextStyle(color: theme.colorScheme.error),
-                            ),
-                            SizedBox(height: AppTheme.spacingM),
-                            FilledButton(
-                              onPressed: _fetchData,
-                              child: const Text('重试'),
-                            ),
-                          ],
+            child: state.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      extractErrorMessage(e),
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                    SizedBox(height: AppTheme.spacingM),
+                    FilledButton(
+                      onPressed: () =>
+                          ref.read(menuManageProvider.notifier).refresh(),
+                      child: const Text('重试'),
+                    ),
+                  ],
+                ),
+              ),
+              data: (page) => page.items.isEmpty
+                  ? const Center(child: Text('暂无数据'))
+                  : RefreshIndicator(
+                      onRefresh: () =>
+                          ref.read(menuManageProvider.notifier).refresh(),
+                      child: LoadMoreListener(
+                        onLoadMore: () =>
+                            ref.read(menuManageProvider.notifier).loadMore(),
+                        child: ListView(
+                          children: _buildTree(page.items, 0),
                         ),
-                      )
-                    : _menus.isEmpty
-                        ? const Center(child: Text('暂无数据'))
-                        : RefreshIndicator(
-                            onRefresh: () => _fetchData(),
-                            child:
-                                ListView(children: _buildTree(_menus, 0)),
-                          ),
+                      ),
+                    ),
+            ),
           ),
         ],
       ),

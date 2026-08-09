@@ -17,11 +17,10 @@ class AnnouncementService {
       ApiConstants.announcementsPage,
       queryParameters: query.toQuery(),
     );
-    final data = response.data!['data'] as Map<String, dynamic>;
-    final list = (data['list'] as List<dynamic>)
-        .map((e) => AnnouncementVO.fromJson(e as Map<String, dynamic>))
-        .toList();
-    return PageResult(list: list, total: data['total'] as int);
+    return PageResult.fromResponse(
+      response.data!['data'] as Map<String, dynamic>,
+      AnnouncementVO.fromJson,
+    );
   }
 
   /// 获取公告详情

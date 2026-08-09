@@ -2,65 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/feedback_model.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
+import '../../services/feedback_service.dart';
 import '../../theme/app_theme.dart';
+
+final feedbackManageProvider = StateNotifierProvider<
+    FeedbackManageNotifier, AsyncValue<PagedList<FeedbackPageVO>>>(
+  (ref) => FeedbackManageNotifier(ref.watch(feedbackServiceProvider)),
+);
+
+class FeedbackManageNotifier extends PagedListNotifier<FeedbackPageVO> {
+  FeedbackManageNotifier(this._service) : super();
+  final FeedbackService _service;
+  String? statusFilter;
+
+  @override
+  Future<PageResult<FeedbackPageVO>> fetchPage(int pageNum) {
+    return _service.getFeedbackPage(
+      FeedbackQuery(pageNum: pageNum, pageSize: pageSize, status: statusFilter),
+    );
+  }
+
+  Future<void> filterByStatus(String? status) async {
+    statusFilter = status;
+    await refresh();
+  }
+}
 
 /// 反馈评价管理页面（L2）
 ///
 /// 权限：sys:feedback:*
-class FeedbackManagePage extends ConsumerStatefulWidget {
+class FeedbackManagePage extends ConsumerWidget {
   const FeedbackManagePage({super.key});
 
-  @override
-  ConsumerState<FeedbackManagePage> createState() => _FeedbackManagePageState();
-}
-
-class _FeedbackManagePageState extends ConsumerState<FeedbackManagePage> {
-  List<FeedbackPageVO> _items = [];
-  int _total = 0;
-  int _pageNum = 1;
-  bool _loading = false;
-  String? _error;
-  String? _statusFilter;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
-
-  Future<void> _fetchData({bool reset = false}) async {
-    if (reset) {
-      _pageNum = 1;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final result = await ref.read(feedbackServiceProvider).getFeedbackPage(
-            FeedbackQuery(pageNum: _pageNum, pageSize: 10, status: _statusFilter),
-          );
-      setState(() {
-        if (reset) {
-          _items = result.list;
-        } else {
-          _items.addAll(result.list);
-        }
-        _total = result.total;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = extractErrorMessage(e);
-        _loading = false;
-      });
-    }
-  }
-
-  void _showReply(int feedbackId) {
+  void _showReply(BuildContext context, WidgetRef ref, int feedbackId) {
     final ctrl = TextEditingController();
     showDialog<void>(
       context: context,
@@ -85,10 +63,10 @@ class _FeedbackManagePageState extends ConsumerState<FeedbackManagePage> {
                     return;
                   }
                   Navigator.pop(c);
-                  _showSnack('回复成功');
-                  _fetchData(reset: true);
+                  _showSnack(context, '回复成功');
+                  ref.read(feedbackManageProvider.notifier).refresh();
                 } catch (e) {
-                  _showSnack(extractErrorMessage(e));
+                  _showSnack(context, extractErrorMessage(e));
                 }
               },
               child: const Text('发送')),
@@ -97,7 +75,7 @@ class _FeedbackManagePageState extends ConsumerState<FeedbackManagePage> {
     );
   }
 
-  void _closeFeedback(int feedbackId) {
+  void _closeFeedback(BuildContext context, WidgetRef ref, int feedbackId) {
     final ctrl = TextEditingController();
     showDialog<void>(
       context: context,
@@ -121,10 +99,10 @@ class _FeedbackManagePageState extends ConsumerState<FeedbackManagePage> {
                     return;
                   }
                   Navigator.pop(c);
-                  _showSnack('已关闭');
-                  _fetchData(reset: true);
+                  _showSnack(context, '已关闭');
+                  ref.read(feedbackManageProvider.notifier).refresh();
                 } catch (e) {
-                  _showSnack(extractErrorMessage(e));
+                  _showSnack(context, extractErrorMessage(e));
                 }
               },
               child: const Text('确定')),
@@ -133,22 +111,18 @@ class _FeedbackManagePageState extends ConsumerState<FeedbackManagePage> {
     );
   }
 
-  void _showSnack(String msg) {
-    if (!mounted) {
+  void _showSnack(BuildContext context, String msg) {
+    if (!context.mounted) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
-  Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:feedback:*')) {
-      return Scaffold(
-          appBar: AppBar(title: const Text('反馈评价管理')),
-          body: const Center(child: Text('无权限访问')));
-    }
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final state = ref.watch(feedbackManageProvider);
+    final statusFilter = ref.watch(feedbackManageProvider.notifier).statusFilter;
 
     return Scaffold(
       appBar: AppBar(title: const Text('反馈评价管理')),
@@ -160,7 +134,7 @@ class _FeedbackManagePageState extends ConsumerState<FeedbackManagePage> {
             child: Row(children: [
               Expanded(
                 child: DropdownButtonFormField<String?>(
-                  initialValue: _statusFilter,
+                  initialValue: statusFilter,
                   decoration: const InputDecoration(
                       labelText: '状态筛选', isDense: true),
                   items: const [
@@ -170,76 +144,69 @@ class _FeedbackManagePageState extends ConsumerState<FeedbackManagePage> {
                         value: 'IN_PROGRESS', child: Text('处理中')),
                     DropdownMenuItem(value: 'CLOSED', child: Text('已关闭')),
                   ],
-                  onChanged: (v) {
-                    _statusFilter = v;
-                    _fetchData(reset: true);
-                  },
+                  onChanged: (v) =>
+                      ref.read(feedbackManageProvider.notifier).filterByStatus(v),
                 ),
               ),
             ]),
           ),
-          Expanded(child: _buildList(theme)),
+          Expanded(child: _buildBody(theme, ref, state)),
         ],
       ),
     );
   }
 
-  Widget _buildList(ThemeData theme) {
-    if (_loading && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
+  Widget _buildBody(ThemeData theme, WidgetRef ref,
+      AsyncValue<PagedList<FeedbackPageVO>> state) {
+    return state.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+        Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)),
         SizedBox(height: AppTheme.spacingM),
         FilledButton(
-            onPressed: () => _fetchData(reset: true),
+            onPressed: () => ref.read(feedbackManageProvider.notifier).refresh(),
             child: const Text('重试')),
-      ]));
-    }
-    if (_items.isEmpty) {
-      return const Center(child: Text('暂无数据'));
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _fetchData(reset: true),
-      child: ListView.builder(
-        itemCount: _items.length + (_items.length < _total ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= _items.length) {
-            if (!_loading) {
-              _pageNum++;
-              _fetchData();
-            }
-            return const Center(
-                child:
-                    Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
-          }
-          final item = _items[index];
-          return Card(
-            child: ListTile(
-              title: Text(item.title),
-              subtitle: Text(
-                  '${item.statusName ?? item.status} | ${item.createTime}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                      icon: const Icon(Icons.reply, size: 20),
-                      tooltip: '回复',
-                      onPressed: () => _showReply(item.id)),
-                  IconButton(
-                      icon: Icon(Icons.archive,
-                          size: 20, color: AppTheme.gray500),
-                      tooltip: '关闭',
-                      onPressed: () => _closeFeedback(item.id)),
-                ],
-              ),
+      ])),
+      data: (page) {
+        if (page.items.isEmpty) {
+          return const Center(child: Text('暂无数据'));
+        }
+        return RefreshIndicator(
+          onRefresh: () => ref.read(feedbackManageProvider.notifier).refresh(),
+          child: LoadMoreListener(
+            onLoadMore: () => ref.read(feedbackManageProvider.notifier).loadMore(),
+            child: ListView.builder(
+              itemCount: page.items.length,
+              itemBuilder: (context, index) {
+                final item = page.items[index];
+                return Card(
+                  child: ListTile(
+                    title: Text(item.title),
+                    subtitle: Text(
+                        '${item.statusName ?? item.status} | ${item.createTime}'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                            icon: const Icon(Icons.reply, size: 20),
+                            tooltip: '回复',
+                            onPressed: () => _showReply(context, ref, item.id)),
+                        IconButton(
+                            icon: Icon(Icons.archive,
+                                size: 20, color: AppTheme.gray500),
+                            tooltip: '关闭',
+                            onPressed: () =>
+                                _closeFeedback(context, ref, item.id)),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

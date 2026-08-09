@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../utils/responsive_utils.dart';
-import '../models/dataset_model.dart';
+import '../../../models/dataset_model.dart';
 
 /// 数据集信息卡片组件
 ///
@@ -8,7 +8,7 @@ import '../models/dataset_model.dart';
 class DatasetInfoCard extends StatelessWidget {
   const DatasetInfoCard({required this.dataset, super.key});
 
-  final DatasetModel dataset;
+  final Dataset dataset;
 
   @override
   Widget build(BuildContext context) {
@@ -71,11 +71,10 @@ class DatasetInfoCard extends StatelessWidget {
 
   Widget _buildInfoGrid(BuildContext context, bool isMobile) {
     final info = [
-      _InfoData('类型', dataset.type ?? '未分类'),
-      _InfoData('创建时间', dataset.createTime),
-      if (dataset.usageCount != null) _InfoData('使用次数', '${dataset.usageCount}'),
-      if (dataset.children.isNotEmpty)
-        _InfoData('子数据集', '${dataset.children.length}'),
+      _InfoData('类型', dataset.type),
+      _InfoData('创建时间', dataset.createTime ?? '未知'),
+      if (dataset.children != null && dataset.children!.isNotEmpty)
+        _InfoData('子数据集', '${dataset.children!.length}'),
     ];
 
     return Wrap(

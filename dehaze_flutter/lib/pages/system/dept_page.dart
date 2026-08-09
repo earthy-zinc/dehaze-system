@@ -2,128 +2,131 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
+import '../../core/network/page_result.dart';
+import '../../core/state/paged_list_notifier.dart';
 import '../../models/dept_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/providers.dart';
+import '../../services/dept_service.dart';
 import '../../theme/app_theme.dart';
+
+final deptManageProvider =
+    StateNotifierProvider<DeptManageNotifier, AsyncValue<PagedList<Dept>>>(
+  (ref) => DeptManageNotifier(ref.watch(deptServiceProvider)),
+);
+
+class DeptManageNotifier extends PagedListNotifier<Dept> {
+  DeptManageNotifier(this._service) : super();
+  final DeptService _service;
+
+  @override
+  Future<PageResult<Dept>> fetchPage(int pageNum) async {
+    final list = await _service.getList();
+    return PageResult(list: list, total: list.length);
+  }
+}
 
 /// 部门管理页面（L2）
 ///
 /// 权限：sys:dept:*
-class DeptManagePage extends ConsumerStatefulWidget {
+class DeptManagePage extends ConsumerWidget {
   const DeptManagePage({super.key});
 
   @override
-  ConsumerState<DeptManagePage> createState() => _DeptManagePageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+    final theme = Theme.of(context);
+    final state = ref.watch(deptManageProvider);
 
-class _DeptManagePageState extends ConsumerState<DeptManagePage> {
-  List<Dept> _depts = [];
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
-  }
-
-  Future<void> _fetchData() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      final depts = await ref.read(deptServiceProvider).getList();
-      if (mounted) { setState(() { _depts = depts; _loading = false; }); }
-    } catch (e) {
-      if (mounted) { setState(() { _error = extractErrorMessage(e); _loading = false; }); }
-    }
-  }
-
-  Future<void> _deleteDept(int id) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(title: const Text('确认删除'), content: const Text('删除部门将同时删除子部门，确定？'), actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('取消')),
-        FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('确定')),
-      ]),
-    );
-    if (confirmed != true) { return; }
-    try {
-      await ref.read(deptServiceProvider).delete(id);
-      _showSnack('删除成功');
-      _fetchData();
-    } catch (e) {
-      _showSnack(extractErrorMessage(e));
-    }
-  }
-
-  void _showSnack(String msg) {
-    if (!mounted) { return; }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  void _showForm({int? deptId, int? parentId}) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (c) => _DeptFormSheet(deptId: deptId, parentId: parentId, onSaved: () { _fetchData(); Navigator.pop(c); }),
-    );
-  }
-
-  List<Widget> _buildTree(List<Dept> items, int depth) {
-    final widgets = <Widget>[];
-    for (final item in items) {
-      final children = item.children;
-      final status = item.status;
-      widgets.add(
-        Card(
-          child: ListTile(
-            contentPadding: EdgeInsets.only(left: 16.0 + depth * 24.0, right: 8),
-            leading: Icon(Icons.business, size: 20, color: status == 1 ? AppTheme.successColor : AppTheme.errorColor),
-            title: Text(item.name, style: TextStyle(fontWeight: depth == 0 ? FontWeight.w600 : FontWeight.w400)),
-            subtitle: Text('排序: ${item.sort}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(icon: const Icon(Icons.add, size: 20), tooltip: '添加子部门', onPressed: () => _showForm(parentId: item.id)),
-                IconButton(icon: const Icon(Icons.edit, size: 20), tooltip: '编辑', onPressed: () => _showForm(deptId: item.id)),
-                IconButton(icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor), tooltip: '删除', onPressed: () => _deleteDept(item.id)),
-              ],
-            ),
-          ),
-        ),
+    Future<void> deleteDept(int id) async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(title: const Text('确认删除'), content: const Text('删除部门将同时删除子部门，确定？'), actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('确定')),
+        ]),
       );
-      if (children != null && children.isNotEmpty) {
-        widgets.addAll(_buildTree(children, depth + 1));
+      if (confirmed != true) { return; }
+      try {
+        await ref.read(deptServiceProvider).delete(id);
+        ref.read(deptManageProvider.notifier).refresh();
+        if (!context.mounted) return;
+        _showSnack(context, '删除成功');
+      } catch (e) {
+        if (!context.mounted) return;
+        _showSnack(context, extractErrorMessage(e));
       }
     }
-    return widgets;
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-    if (!auth.hasPerm('sys:dept:*')) {
-      return Scaffold(appBar: AppBar(title: const Text('部门管理')), body: const Center(child: Text('无权限访问')));
+    void showForm({int? deptId, int? parentId}) {
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (c) => _DeptFormSheet(deptId: deptId, parentId: parentId, onSaved: () { ref.read(deptManageProvider.notifier).refresh(); Navigator.pop(c); }),
+      );
     }
-    final theme = Theme.of(context);
+
+    List<Widget> buildTree(List<Dept> items, int depth) {
+      final widgets = <Widget>[];
+      for (final item in items) {
+        final children = item.children;
+        final status = item.status;
+        widgets.add(
+          Card(
+            child: ListTile(
+              contentPadding: EdgeInsets.only(left: 16.0 + depth * 24.0, right: 8),
+              leading: Icon(Icons.business, size: 20, color: status == 1 ? AppTheme.successColor : AppTheme.errorColor),
+              title: Text(item.name, style: TextStyle(fontWeight: depth == 0 ? FontWeight.w600 : FontWeight.w400)),
+              subtitle: Text('排序: ${item.sort}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(icon: const Icon(Icons.add, size: 20), tooltip: '添加子部门', onPressed: () => showForm(parentId: item.id)),
+                  IconButton(icon: const Icon(Icons.edit, size: 20), tooltip: '编辑', onPressed: () => showForm(deptId: item.id)),
+                  IconButton(icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor), tooltip: '删除', onPressed: () => deleteDept(item.id)),
+                ],
+              ),
+            ),
+          ),
+        );
+        if (children != null && children.isNotEmpty) {
+          widgets.addAll(buildTree(children, depth + 1));
+        }
+      }
+      return widgets;
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('部门管理'),
         actions: [
-          if (auth.hasPerm('sys:dept:add')) IconButton(icon: const Icon(Icons.add), tooltip: '新增部门', onPressed: () => _showForm()),
+          if (auth.hasPerm('sys:dept:add')) IconButton(icon: const Icon(Icons.add), tooltip: '新增部门', onPressed: () => showForm()),
         ],
       ),
-      body: _loading ? const Center(child: CircularProgressIndicator())
-          : _error != null ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(_error!, style: TextStyle(color: theme.colorScheme.error)), SizedBox(height: AppTheme.spacingM),
-            FilledButton(onPressed: _fetchData, child: const Text('重试')),
-          ]))
-          : _depts.isEmpty ? const Center(child: Text('暂无数据'))
-          : RefreshIndicator(onRefresh: () => _fetchData(), child: ListView(children: _buildTree(_depts, 0))),
+      body: state.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)), SizedBox(height: AppTheme.spacingM),
+          FilledButton(onPressed: () => ref.read(deptManageProvider.notifier).refresh(), child: const Text('重试')),
+        ])),
+        data: (page) => page.items.isEmpty
+          ? const Center(child: Text('暂无数据'))
+          : RefreshIndicator(
+            onRefresh: () => ref.read(deptManageProvider.notifier).refresh(),
+            child: LoadMoreListener(
+              onLoadMore: () => ref.read(deptManageProvider.notifier).loadMore(),
+              child: ListView(children: buildTree(page.items, 0)),
+            ),
+          ),
+      ),
     );
   }
+}
+
+void _showSnack(BuildContext context, String msg) {
+  if (!context.mounted) { return; }
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 }
 
 class _DeptFormSheet extends ConsumerStatefulWidget {

@@ -6,10 +6,27 @@ import '../api_result.dart';
 ///
 /// 统一处理各类网络/业务错误，转换为友好的异常信息
 class ErrorInterceptor extends Interceptor {
-  ErrorInterceptor({this.onAuthError});
+  ErrorInterceptor({
+    this.onAuthError,
+    this.authErrorDebounce = const Duration(seconds: 2),
+  });
 
   /// 认证失败回调（401 或 token 过期）
   final void Function()? onAuthError;
+
+  /// 认证错误防抖窗口，避免并发请求同时 401 时多次触发回调
+  final Duration authErrorDebounce;
+  DateTime? _lastAuthErrorTime;
+
+  void _triggerAuthError() {
+    final now = DateTime.now();
+    final last = _lastAuthErrorTime;
+    if (last != null && now.difference(last) < authErrorDebounce) {
+      return;
+    }
+    _lastAuthErrorTime = now;
+    onAuthError?.call();
+  }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
@@ -23,8 +40,8 @@ class ErrorInterceptor extends Interceptor {
     if (err.error is ApiException) {
       final apiError = err.error as ApiException;
       // 认证/权限错误触发回调
-      if (apiError.isAuthError && onAuthError != null) {
-        onAuthError!();
+      if (apiError.isAuthError) {
+        _triggerAuthError();
       }
       return err;
     }
@@ -56,7 +73,7 @@ class ErrorInterceptor extends Interceptor {
       case DioExceptionType.badResponse:
         final statusCode = err.response?.statusCode;
         if (statusCode == 401) {
-          if (onAuthError != null) onAuthError!();
+          _triggerAuthError();
           return DioException(
             requestOptions: err.requestOptions,
             response: err.response,

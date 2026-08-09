@@ -17,11 +17,10 @@ class UserService {
       ApiConstants.usersPage,
       queryParameters: query.toQuery(),
     );
-    final data = response.data!['data'] as Map<String, dynamic>;
-    final list = (data['list'] as List<dynamic>)
-        .map((e) => UserPageVO.fromJson(e as Map<String, dynamic>))
-        .toList();
-    return PageResult(list: list, total: data['total'] as int);
+    return PageResult.fromResponse(
+      response.data!['data'] as Map<String, dynamic>,
+      UserPageVO.fromJson,
+    );
   }
 
   /// 管理端 - 用户详情
