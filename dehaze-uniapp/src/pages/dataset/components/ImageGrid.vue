@@ -56,13 +56,13 @@
 
     <!-- 加载状态 -->
     <view v-if="loading" class="loading-container">
-      <up-loading-icon mode="circle" size="32" color="#14b8a6" />
+      <view class="loading-spinner" style="border-top-color: #14b8a6" />
       <text class="loading-text">加载中...</text>
     </view>
 
     <!-- 空状态 -->
     <view v-else-if="images.length === 0" class="empty-container">
-      <up-empty mode="data" text="暂无图片" icon="photo" />
+      <view class="empty-tip">暂无图片</view>
     </view>
 
     <!-- 加载更多触发器 -->
@@ -257,7 +257,7 @@ watch(
   align-items: center;
   justify-content: center;
   border-radius: 12rpx;
-  background: #f3f4f6;
+  background: $color-bg-secondary;
   transition: all 0.2s;
 
   &:active {
@@ -300,7 +300,7 @@ watch(
 .loading-text {
   margin-top: 16rpx;
   font-size: 28rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 /* 空状态 */
@@ -316,7 +316,7 @@ watch(
 
 .load-more-text {
   font-size: 26rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 /* 加载完成 */
@@ -327,7 +327,7 @@ watch(
 
 .load-complete-text {
   font-size: 26rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 /* 响应式网格 */

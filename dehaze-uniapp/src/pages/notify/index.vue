@@ -66,7 +66,9 @@
               :value="dndStartIdx"
               @change="handleDndStartChange"
             >
-              <text class="setting-value">{{ settings.dndStart || "22:00" }}</text>
+              <text class="setting-value">{{
+                settings.dndStart || "22:00"
+              }}</text>
             </picker>
           </view>
           <view v-if="settings.dndEnabled" class="setting-item">
@@ -77,7 +79,9 @@
               :value="dndEndIdx"
               @change="handleDndEndChange"
             >
-              <text class="setting-value">{{ settings.dndEnd || "08:00" }}</text>
+              <text class="setting-value">{{
+                settings.dndEnd || "08:00"
+              }}</text>
             </picker>
           </view>
         </view>
@@ -96,16 +100,38 @@ import PageLayout from "@/layout/index.vue";
 import { NotificationSettingAPI } from "dehaze-sdk-js";
 
 const moduleSwitches = [
-  { key: "system", label: "系统通知", desc: "接收系统公告和重要通知", icon: "🔔" },
-  { key: "business", label: "业务通知", desc: "接收业务流程相关通知", icon: "📋" },
-  { key: "member", label: "会员通知", desc: "接收会员权益和到期提醒", icon: "👑" },
-  { key: "activity", label: "活动通知", desc: "接收优惠活动和促销信息", icon: "🎉" },
+  {
+    key: "system",
+    label: "系统通知",
+    desc: "接收系统公告和重要通知",
+    icon: "🔔",
+  },
+  {
+    key: "business",
+    label: "业务通知",
+    desc: "接收业务流程相关通知",
+    icon: "📋",
+  },
+  {
+    key: "member",
+    label: "会员通知",
+    desc: "接收会员权益和到期提醒",
+    icon: "👑",
+  },
+  {
+    key: "activity",
+    label: "活动通知",
+    desc: "接收优惠活动和促销信息",
+    icon: "🎉",
+  },
 ];
 
 const timeOptions: string[] = [];
 for (let h = 0; h < 24; h++) {
   for (let m = 0; m < 60; m += 30) {
-    timeOptions.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    timeOptions.push(
+      `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+    );
   }
 }
 
@@ -122,7 +148,7 @@ const settings = reactive({
 
 const saving = ref(false);
 const dndStartIdx = ref<number[]>([44]); // 22:00
-const dndEndIdx = ref<number[]>([16]);   // 08:00
+const dndEndIdx = ref<number[]>([16]); // 08:00
 
 function getModuleSwitch(module: string): boolean {
   return settings.preferences.moduleSwitches[module] !== false;
@@ -159,7 +185,7 @@ function toggleDndEnabled(val: boolean) {
 function handleDndStartChange(e: { detail: { value: number } }) {
   const idx = e.detail.value;
   dndStartIdx.value = [idx];
-  const time = timeOptions[idx];
+  const time = timeOptions[idx] ?? "22:00";
   settings.dndStart = time;
   doSave({ dndStart: time });
 }
@@ -167,7 +193,7 @@ function handleDndStartChange(e: { detail: { value: number } }) {
 function handleDndEndChange(e: { detail: { value: number } }) {
   const idx = e.detail.value;
   dndEndIdx.value = [idx];
-  const time = timeOptions[idx];
+  const time = timeOptions[idx] ?? "08:00";
   settings.dndEnd = time;
   doSave({ dndEnd: time });
 }

@@ -1,12 +1,10 @@
 <template>
   <view class="dataset-card" @click="handleClick">
     <view class="card-thumbnail">
-      <up-image
+      <image
         v-if="thumbnailUrl"
         :src="thumbnailUrl"
         mode="aspectFill"
-        width="100%"
-        height="100%"
         :lazy-load="true"
       />
     </view>
@@ -19,7 +17,7 @@
           <text class="stat-text">{{ imageCount }}</text>
         </view>
         <view class="stat-item">
-          <SvgIcon name="clock" size="14" color="#9ca3af" />
+          <SvgIcon name="clock" size="14" color="$color-text-placeholder" />
           <text class="stat-text">{{ formattedDate }}</text>
         </view>
       </view>
@@ -107,6 +105,11 @@ onMounted(loadThumbnail);
   height: 240rpx;
   flex-shrink: 0;
   background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
+
+  image {
+    width: 100%;
+    height: 100%;
+  }
 }
 
 .card-content {
@@ -121,7 +124,7 @@ onMounted(loadThumbnail);
 .card-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #1f2937;
+  color: $color-text-primary;
   margin-bottom: 12rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -153,7 +156,7 @@ onMounted(loadThumbnail);
 
 .stat-text {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 /* PC端悬停效果 */

@@ -1,33 +1,54 @@
 <template>
   <PageLayout level="L2" :title="isEdit ? '编辑角色' : '新增角色'">
     <view class="page-body">
-      <u-form :model="form">
-        <u-form-item label="角色名称" required
-          ><u-input v-model="form.name" placeholder="请输入角色名称"
-        /></u-form-item>
-        <u-form-item label="角色编码" required
-          ><u-input v-model="form.code" placeholder="请输入角色编码"
-        /></u-form-item>
-        <u-form-item label="排序"
-          ><u-input
-            v-model.number="form.sort"
-            type="number"
-            placeholder="请输入排序"
-        /></u-form-item>
-        <u-form-item label="状态" v-if="isEdit">
-          <u-switch
-            :checked="form.status === 1"
-            @change="(val: boolean) => (form.status = val ? 1 : 0)"
-          />
-        </u-form-item>
-      </u-form>
+      <view class="form-row">
+        <text class="form-label"><text class="required">*</text>角色名称</text>
+        <input
+          class="form-input"
+          v-model="form.name"
+          placeholder="请输入角色名称"
+        />
+      </view>
+      <view class="form-row">
+        <text class="form-label"><text class="required">*</text>角色编码</text>
+        <input
+          class="form-input"
+          v-model="form.code"
+          placeholder="请输入角色编码"
+        />
+      </view>
+      <view class="form-row">
+        <text class="form-label">排序</text>
+        <input
+          class="form-input"
+          type="number"
+          v-model.number="form.sort"
+          placeholder="请输入排序"
+        />
+      </view>
+      <view v-if="isEdit" class="form-row">
+        <text class="form-label">状态</text>
+        <switch
+          :checked="form.status === 1"
+          @change="(e: any) => (form.status = e.detail.value ? 1 : 0)"
+        />
+      </view>
       <view class="btn-area">
-        <u-button type="primary" @click="handleSubmit" :loading="submitting"
-          >保存</u-button
+        <button
+          v-if="isEdit ? canEdit : canAdd"
+          class="btn btn-primary"
+          :loading="submitting"
+          @click="handleSubmit"
         >
-        <u-button v-if="isEdit" type="warning" @click="goPermission"
-          >权限分配</u-button
+          保存
+        </button>
+        <button
+          v-if="isEdit && canEdit"
+          class="btn btn-warning"
+          @click="goPermission"
         >
+          权限分配
+        </button>
       </view>
     </view>
   </PageLayout>
@@ -38,6 +59,11 @@ import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import PageLayout from "@/layout/index.vue";
 import { RoleAPI } from "dehaze-sdk-js";
+import { useAuthStore } from "@/store/auth";
+
+const authStore = useAuthStore();
+const canAdd = computed(() => authStore.hasPerm("sys:role:add"));
+const canEdit = computed(() => authStore.hasPerm("sys:role:edit"));
 
 const id = ref(0);
 const isEdit = computed(() => id.value > 0);
@@ -81,9 +107,45 @@ const goPermission = () =>
 .page-body {
   padding: 20rpx;
 }
+.form-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid $color-border;
+}
+.form-label {
+  width: 180rpx;
+  flex-shrink: 0;
+  color: $color-text-primary;
+}
+.required {
+  color: $color-danger;
+  margin-right: 4rpx;
+}
+.form-input {
+  flex: 1;
+  font-size: $font-sm;
+}
 .btn-area {
   display: flex;
   gap: 20rpx;
   margin-top: 40rpx;
+}
+.btn {
+  padding: 8rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+
+  &::after {
+    border: none;
+  }
+}
+.btn-primary {
+  background: $color-primary;
+  color: $color-white;
+}
+.btn-warning {
+  background: $color-warning;
+  color: $color-white;
 }
 </style>

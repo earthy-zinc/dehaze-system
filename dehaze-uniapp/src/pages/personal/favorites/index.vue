@@ -32,7 +32,7 @@
 
       <!-- 加载状态 -->
       <view v-if="loading" class="loading-container">
-        <up-loading-icon mode="circle" size="40" color="#f59e0b" />
+        <view class="loading-spinner" />
         <text class="loading-text">加载中...</text>
       </view>
 
@@ -42,12 +42,22 @@
           <view class="fav-info">
             <text class="fav-name">{{ fav.targetName || "未命名" }}</text>
             <view class="fav-meta">
-              <view class="fav-tag" :style="{ backgroundColor: getTypeColor(fav.targetType) + '20' }">
-                <text class="fav-tag-text" :style="{ color: getTypeColor(fav.targetType) }">
+              <view
+                class="fav-tag"
+                :style="{
+                  backgroundColor: getTypeColor(fav.targetType) + '20',
+                }"
+              >
+                <text
+                  class="fav-tag-text"
+                  :style="{ color: getTypeColor(fav.targetType) }"
+                >
                   {{ getTypeLabel(fav.targetType) }}
                 </text>
               </view>
-              <text class="fav-time">{{ formatRelativeTime(fav.createTime) }}</text>
+              <text class="fav-time">{{
+                formatRelativeTime(fav.createTime)
+              }}</text>
             </view>
           </view>
           <view class="fav-action" @click.stop="removeFavorite(fav.id)">
@@ -60,7 +70,7 @@
 
       <!-- 空状态 -->
       <view v-else class="empty-state">
-        <up-empty mode="list" text="暂无收藏" />
+        <view class="empty-tip">暂无收藏</view>
         <text class="empty-hint">收藏的处理结果或算法会显示在这里</text>
       </view>
     </view>
@@ -92,7 +102,13 @@ const typeTabs = [
 ];
 
 function getTypeColor(type: string): string {
-  const map: Record<string, string> = { algorithm: "#3b82f6", result: "#10b981", dataset: "#f59e0b", image: "#ec4899", preset: "#7c3aed" };
+  const map: Record<string, string> = {
+    algorithm: "#3b82f6",
+    result: "#10b981",
+    dataset: "#f59e0b",
+    image: "#ec4899",
+    preset: "#7c3aed",
+  };
   return map[type] || "#9ca3af";
 }
 
@@ -155,6 +171,8 @@ onMounted(() => loadData());
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .page {
   width: 100%;
   min-height: 100vh;
@@ -162,7 +180,7 @@ onMounted(() => loadData());
 }
 .main-content {
   padding: $spacing-md;
-  padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
+  @include safe-area-bottom(80rpx);
 }
 
 /* 搜索栏 */
@@ -170,7 +188,7 @@ onMounted(() => loadData());
   display: flex;
   align-items: center;
   gap: 16rpx;
-  background: #fff;
+  background: $color-white;
   border-radius: 16rpx;
   padding: 20rpx 24rpx;
   margin-bottom: 16rpx;
@@ -179,10 +197,10 @@ onMounted(() => loadData());
 .search-input {
   flex: 1;
   font-size: 28rpx;
-  color: #1f2937;
+  color: $color-text-primary;
 }
 .search-placeholder {
-  color: #9ca3af;
+  color: $color-text-placeholder;
   font-size: 28rpx;
 }
 .search-clear {
@@ -201,10 +219,10 @@ onMounted(() => loadData());
   flex-shrink: 0;
   padding: 10rpx 28rpx;
   margin-right: 16rpx;
-  background: #f3f4f6;
+  background: $color-bg-secondary;
   border-radius: 32rpx;
   font-size: 26rpx;
-  color: #6b7280;
+  color: $color-text-secondary;
 }
 .type-item.active {
   background: #fef3c7;
@@ -222,7 +240,7 @@ onMounted(() => loadData());
   display: flex;
   align-items: center;
   gap: 16rpx;
-  background: #fff;
+  background: $color-white;
   border-radius: $radius-lg;
   padding: 24rpx;
   box-shadow: $shadow-sm;
@@ -291,6 +309,9 @@ onMounted(() => loadData());
   flex-direction: column;
   align-items: center;
   padding: 80rpx 0;
+}
+.empty-tip {
+  font-size: $font-md;
 }
 .empty-hint {
   font-size: $font-sm;

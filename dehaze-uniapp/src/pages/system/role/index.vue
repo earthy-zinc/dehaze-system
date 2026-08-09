@@ -1,43 +1,50 @@
 <template>
   <PageLayout level="L2" title="角色管理">
     <view class="page-body">
-      <u-table>
-        <u-tr v-for="role in list" :key="role.id">
-          <u-td @click="goDetail(role.id)">{{ role.name }}</u-td>
-          <u-td @click="goDetail(role.id)">{{ role.code }}</u-td>
-          <u-td @click="goDetail(role.id)">
-            <u-tag
-              :text="role.status === 1 ? '启用' : '禁用'"
-              :type="role.status === 1 ? 'success' : 'error'"
-              size="mini"
-            />
-          </u-td>
-          <u-td>
-            <view class="row-actions">
-              <SvgIcon name="lock" @click="goPermission(role.id)" />
-              <SvgIcon name="edit-pen" @click="goDetail(role.id)" />
-              <SvgIcon
-                name="trash"
-                @click="delRole(role.id)"
-                color="$color-error"
-              />
-            </view>
-          </u-td>
-        </u-tr>
-      </u-table>
-      <u-empty v-if="!loading && list.length === 0" text="暂无角色" />
+      <view class="list-row" v-for="role in list" :key="role.id">
+        <text class="cell" @click="goDetail(role.id)">{{ role.name }}</text>
+        <text class="cell" @click="goDetail(role.id)">{{ role.code }}</text>
+        <view class="cell" @click="goDetail(role.id)">
+          <view
+            class="tag"
+            :class="role.status === 1 ? 'tag-success' : 'tag-danger'"
+          >
+            {{ role.status === 1 ? "启用" : "禁用" }}
+          </view>
+        </view>
+        <view class="cell row-actions">
+          <SvgIcon v-if="canEdit" name="lock" @click="goPermission(role.id)" />
+          <SvgIcon v-if="canEdit" name="edit-pen" @click="goDetail(role.id)" />
+          <SvgIcon
+            v-if="canDelete"
+            name="trash"
+            color="#ef4444"
+            @click="delRole(role.id)"
+          />
+        </view>
+      </view>
+      <view v-if="!loading && list.length === 0" class="empty-tip"
+        >暂无角色</view
+      >
     </view>
-    <view class="fab-btn" @click="goDetail(0)"
-      ><SvgIcon name="plus" color="#fff" size="24"
-    /></view>
+    <FabButton v-if="canAdd" @click="goDetail(0)">
+      <SvgIcon name="plus" color="#fff" size="24" />
+    </FabButton>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import PageLayout from "@/layout/index.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
+import FabButton from "@/components/common/FabButton.vue";
 import { RoleAPI } from "dehaze-sdk-js";
+import { useAuthStore } from "@/store/auth";
+
+const authStore = useAuthStore();
+const canAdd = computed(() => authStore.hasPerm("sys:role:add"));
+const canEdit = computed(() => authStore.hasPerm("sys:role:edit"));
+const canDelete = computed(() => authStore.hasPerm("sys:role:delete"));
 
 const list = ref<any[]>([]);
 const loading = ref(false);
@@ -77,22 +84,35 @@ fetchList();
 .page-body {
   padding: 20rpx;
 }
-.row-actions {
-  display: flex;
-  gap: 16rpx;
-}
-.fab-btn {
-  position: fixed;
-  right: 40rpx;
-  bottom: 100rpx;
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 50%;
-  background: $color-primary;
+.list-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
-  z-index: 99;
+  padding: 24rpx 20rpx;
+  border-bottom: 1rpx solid $color-border;
+
+  .cell {
+    flex: 1;
+    font-size: $font-sm;
+    color: $color-text-primary;
+  }
+
+  .row-actions {
+    display: flex;
+    gap: 16rpx;
+  }
+}
+.tag {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+.tag-success {
+  background: $color-success-bg;
+  color: $color-success;
+}
+.tag-danger {
+  background: $color-danger-bg;
+  color: $color-danger;
 }
 </style>

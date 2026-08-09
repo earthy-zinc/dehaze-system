@@ -17,12 +17,18 @@
 
       <!-- 评估操作 -->
       <view class="eval-actions">
-        <button class="eval-btn" :disabled="evaluating || !canEvaluate" @click="handleEvaluate">
+        <button
+          class="eval-btn"
+          :disabled="evaluating || !canEvaluate"
+          @click="handleEvaluate"
+        >
           <text v-if="evaluating">评估中...</text>
           <text v-else>开始评估</text>
         </button>
         <view v-if="hasImages && !gtUrl" class="gt-hint">
-          <text class="gt-hint-text">当前图片无 GT 参考，仅可计算无参考指标 (NIQE/BRISQUE)</text>
+          <text class="gt-hint-text"
+            >当前图片无 GT 参考，仅可计算无参考指标 (NIQE/BRISQUE)</text
+          >
         </view>
       </view>
 
@@ -34,9 +40,15 @@
         <view v-if="hasReferenceMetrics" class="metric-group">
           <text class="group-title">图像质量指标 (有参考)</text>
           <view class="metrics-grid">
-            <view v-for="m in referenceMetrics" :key="m.key" class="metric-card">
+            <view
+              v-for="m in referenceMetrics"
+              :key="m.key"
+              class="metric-card"
+            >
               <text class="metric-key">{{ m.label }}</text>
-              <text class="metric-value" :style="{ color: m.color }">{{ m.displayValue }}</text>
+              <text class="metric-value" :style="{ color: m.color }">{{
+                m.displayValue
+              }}</text>
               <text class="metric-desc">{{ m.desc }}</text>
             </view>
           </view>
@@ -48,7 +60,9 @@
           <view class="metrics-grid">
             <view v-for="m in noRefMetrics" :key="m.key" class="metric-card">
               <text class="metric-key">{{ m.label }}</text>
-              <text class="metric-value" :style="{ color: m.color }">{{ m.displayValue }}</text>
+              <text class="metric-value" :style="{ color: m.color }">{{
+                m.displayValue
+              }}</text>
               <text class="metric-desc">{{ m.desc }}</text>
             </view>
           </view>
@@ -131,8 +145,12 @@ const NEUTRAL = "#9ca3af";
 
 function getColor(key: string, value: number, higherBetter: boolean): string {
   const thresholds: Record<string, [number, number]> = {
-    psnr: [30, 25], ssim: [0.9, 0.7], mse: [100, 500],
-    niqe: [5, 8], brisque: [20, 40], entropy: [7.5, 6.5],
+    psnr: [30, 25],
+    ssim: [0.9, 0.7],
+    mse: [100, 500],
+    niqe: [5, 8],
+    brisque: [20, 40],
+    entropy: [7.5, 6.5],
   };
   const range = thresholds[key];
   if (!range) return NEUTRAL;
@@ -151,8 +169,14 @@ const referenceMetrics = computed<MetricDisplay[]>(() => {
   ];
   return defs.map((d) => {
     const val = metrics[d.key];
-    if (val === undefined) return { ...d, value: 0, displayValue: "-", color: NEUTRAL };
-    return { ...d, value: val, displayValue: d.unit ? `${val.toFixed(2)} ${d.unit}` : val.toFixed(4), color: getColor(d.key, val, d.key !== "mse") };
+    if (val === undefined)
+      return { ...d, value: 0, displayValue: "-", color: NEUTRAL };
+    return {
+      ...d,
+      value: val,
+      displayValue: d.unit ? `${val.toFixed(2)} ${d.unit}` : val.toFixed(4),
+      color: getColor(d.key, val, d.key !== "mse"),
+    };
   });
 });
 
@@ -160,25 +184,65 @@ const noRefMetrics = computed<MetricDisplay[]>(() => {
   const metrics = evalResult.value?.metrics || {};
   const defs = [
     { key: "niqe", label: "NIQE", unit: "", desc: "自然图像质量，<5 为好" },
-    { key: "brisque", label: "BRISQUE", unit: "", desc: "无参考质量，越低越好" },
+    {
+      key: "brisque",
+      label: "BRISQUE",
+      unit: "",
+      desc: "无参考质量，越低越好",
+    },
     { key: "entropy", label: "信息熵", unit: "", desc: "图像信息量，7-8 为佳" },
   ];
   return defs.map((d) => {
     const val = metrics[d.key];
-    if (val === undefined) return { ...d, value: 0, displayValue: "-", color: NEUTRAL };
-    return { ...d, value: val, displayValue: val.toFixed(2), color: getColor(d.key, val, d.key === "entropy") };
+    if (val === undefined)
+      return { ...d, value: 0, displayValue: "-", color: NEUTRAL };
+    return {
+      ...d,
+      value: val,
+      displayValue: val.toFixed(2),
+      color: getColor(d.key, val, d.key === "entropy"),
+    };
   });
 });
 
-const hasReferenceMetrics = computed(() => referenceMetrics.value.some((m) => m.value !== 0));
-const hasNoRefMetrics = computed(() => noRefMetrics.value.some((m) => m.value !== 0));
+const hasReferenceMetrics = computed(() =>
+  referenceMetrics.value.some((m) => m.value !== 0)
+);
+const hasNoRefMetrics = computed(() =>
+  noRefMetrics.value.some((m) => m.value !== 0)
+);
 
 const modes = [
-  { key: "side-by-side", label: "并排", path: "/pages/side-by-side/index", icon: "grid" },
-  { key: "overlay", label: "重叠", path: "/pages/overlay/index", icon: "photo" },
-  { key: "magnifier", label: "放大镜", path: "/pages/magnifier/index", icon: "search" },
-  { key: "filter", label: "滤镜", path: "/pages/filter/index", icon: "setting" },
-  { key: "metrics", label: "指标", path: "/pages/metrics/index", icon: "integral" },
+  {
+    key: "side-by-side",
+    label: "并排",
+    path: "/pages/side-by-side/index",
+    icon: "grid",
+  },
+  {
+    key: "overlay",
+    label: "重叠",
+    path: "/pages/overlay/index",
+    icon: "photo",
+  },
+  {
+    key: "magnifier",
+    label: "放大镜",
+    path: "/pages/magnifier/index",
+    icon: "search",
+  },
+  {
+    key: "filter",
+    label: "滤镜",
+    path: "/pages/filter/index",
+    icon: "setting",
+  },
+  {
+    key: "metrics",
+    label: "指标",
+    path: "/pages/metrics/index",
+    icon: "integral",
+  },
 ];
 
 async function handleEvaluate() {
@@ -250,10 +314,19 @@ onMounted(() => {
     padding: 12rpx 0;
     border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
 
-    &:last-child { border-bottom: none; }
+    &:last-child {
+      border-bottom: none;
+    }
 
-    .info-label { font-size: 26rpx; color: rgba(255, 255, 255, 0.5); }
-    .info-value { font-size: 26rpx; font-weight: 500; color: rgba(255, 255, 255, 0.8); }
+    .info-label {
+      font-size: 26rpx;
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .info-value {
+      font-size: 26rpx;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.8);
+    }
   }
 
   .cache-tag {
@@ -284,7 +357,9 @@ onMounted(() => {
   font-size: 30rpx;
   font-weight: 600;
 
-  &:disabled { opacity: 0.6; }
+  &:disabled {
+    opacity: 0.6;
+  }
 }
 
 .gt-hint {

@@ -18,15 +18,10 @@
       <image :src="algorithmImageUrl" mode="widthFix" class="algorithm-image" />
     </view>
 
-    <up-button
-      type="primary"
-      :plain="true"
-      @click="handleLearnMore"
-      :custom-style="learnMoreButtonStyle"
-    >
+    <button class="learn-more-btn" @click="handleLearnMore">
       了解更多算法详情
       <SvgIcon name="arrow-right" size="16" color="#3b82f6" :margin-left="8" />
-    </up-button>
+    </button>
   </view>
 </template>
 
@@ -49,13 +44,6 @@ const algorithmFeatures = ref(homeData.algorithmFeatures);
 // 使用真实数据集图片
 const algorithmImageUrl = `${DATASET_BASE_URL}/datasets/NH-HAZE-2023/clean/003.JPG`;
 
-const learnMoreButtonStyle = {
-  background: "#ffffff",
-  color: "#3b82f6",
-  border: "2rpx solid #ffffff",
-  borderRadius: "10rpx",
-};
-
 const handleLearnMore = () => {
   emit("learn-more");
 };
@@ -64,15 +52,28 @@ const handleLearnMore = () => {
 <style lang="scss" scoped>
 .algorithm-section {
   padding: 80rpx 40rpx;
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, $color-primary 100%);
   color: white;
+}
+
+.learn-more-btn {
+  background: $color-white;
+  color: $color-primary;
+  border: 2rpx solid $color-white;
+  border-radius: 10rpx;
+  padding: 8rpx 20rpx;
+  font-size: 26rpx;
+
+  &::after {
+    border: none;
+  }
 }
 
 .section-title {
   display: block;
   font-size: 48rpx;
   font-weight: 700;
-  color: #ffffff;
+  color: $color-white;
   margin-bottom: 16rpx;
   letter-spacing: -0.02em;
 }

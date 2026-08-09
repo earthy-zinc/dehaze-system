@@ -11,7 +11,7 @@
 
       <!-- 加载状态 -->
       <view v-if="loading" class="loading-container">
-        <up-loading-icon mode="circle" size="40" color="#6366f1" />
+        <view class="loading-spinner" />
         <text class="loading-text">加载中...</text>
       </view>
 
@@ -69,7 +69,7 @@
 
       <!-- 空状态 -->
       <view v-else class="empty-state">
-        <up-empty mode="list" text="暂无处理记录" />
+        <view class="empty-tip">暂无处理记录</view>
         <text class="empty-hint">去雾处理过的图片会显示在这里</text>
         <button class="start-btn" @click="handleStart">开始去雾处理</button>
       </view>
@@ -187,14 +187,16 @@ onMounted(() => loadData());
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .page {
   width: 100%;
   min-height: 100vh;
-  background: #f9fafb;
+  background: $color-bg-primary;
 }
 .main-content {
   padding: 24rpx;
-  padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
+  @include safe-area-bottom(80rpx);
 }
 
 .record-list {
@@ -206,12 +208,12 @@ onMounted(() => loadData());
   display: flex;
   align-items: center;
   gap: 20rpx;
-  background: #fff;
+  background: $color-white;
   border-radius: 20rpx;
   padding: 24rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
   &:active {
-    background: #f9fafb;
+    background: $color-bg-primary;
   }
 }
 .record-thumb {
@@ -220,7 +222,7 @@ onMounted(() => loadData());
   border-radius: 16rpx;
   overflow: hidden;
   flex-shrink: 0;
-  background: #f3f4f6;
+  background: $color-bg-secondary;
 }
 .thumb-img {
   width: 100%;
@@ -234,7 +236,7 @@ onMounted(() => loadData());
   display: block;
   font-size: 28rpx;
   font-weight: 600;
-  color: #1f2937;
+  color: $color-text-primary;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -243,13 +245,13 @@ onMounted(() => loadData());
 .record-time {
   display: block;
   font-size: 24rpx;
-  color: #6b7280;
+  color: $color-text-secondary;
   margin-bottom: 4rpx;
 }
 .record-date {
   display: block;
   font-size: 22rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
   margin-bottom: 12rpx;
 }
 .record-actions {
@@ -276,11 +278,11 @@ onMounted(() => loadData());
 }
 .compare-btn {
   background: #dbeafe;
-  color: #3b82f6;
+  color: $color-primary;
 }
 .reprocess-btn {
   background: #fef3c7;
-  color: #f59e0b;
+  color: $color-warning;
 }
 .record-arrow {
   flex-shrink: 0;
@@ -308,7 +310,7 @@ onMounted(() => loadData());
 .loading-text {
   margin-top: 24rpx;
   font-size: 28rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 .empty-state {
@@ -317,15 +319,18 @@ onMounted(() => loadData());
   align-items: center;
   padding: 80rpx 0;
 }
+.empty-tip {
+  font-size: 28rpx;
+}
 .empty-hint {
   font-size: 26rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
   margin: 16rpx 0 32rpx;
 }
 .start-btn {
   padding: 16rpx 48rpx;
   background: #6366f1;
-  color: #fff;
+  color: $color-white;
   border: none;
   border-radius: 16rpx;
   font-size: 28rpx;

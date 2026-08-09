@@ -13,11 +13,12 @@
       <!-- 反馈列表 -->
       <view v-if="tab === 0">
         <view class="search-bar">
-          <u-search
+          <input
+            class="search-input"
             v-model="keyword"
             placeholder="搜索反馈内容"
-            @search="handleSearch"
-            @clear="handleSearch"
+            confirm-type="search"
+            @confirm="handleSearch"
           />
           <view class="filter-row">
             <view
@@ -42,7 +43,7 @@
         </view>
 
         <view v-if="loading" class="loading-container">
-          <up-loading-icon mode="circle" size="40" />
+          <view class="loading-spinner" />
           <text class="loading-text">加载中...</text>
         </view>
 
@@ -65,24 +66,28 @@
             <view class="card-footer">
               <text class="card-time">{{ f.createTime }}</text>
               <view v-if="f.status !== 'closed'" class="card-actions">
-                <text class="action-btn" @click="openReply(f.id, 'feedback')">回复</text>
-                <text class="action-btn danger" @click="openClose(f.id)">关闭</text>
+                <text class="action-btn" @click="openReply(f.id, 'feedback')"
+                  >回复</text
+                >
+                <text class="action-btn danger" @click="openClose(f.id)"
+                  >关闭</text
+                >
               </view>
             </view>
           </view>
           <view v-if="!hasMoreFb" class="end-text">— 没有更多了 —</view>
-          <view v-else class="load-more" @click="loadMoreFeedback">加载更多</view>
+          <view v-else class="load-more" @click="loadMoreFeedback"
+            >加载更多</view
+          >
         </view>
 
-        <view v-else class="empty-state">
-          <up-empty mode="list" text="暂无反馈数据" />
-        </view>
+        <view v-else class="empty-tip">暂无反馈数据</view>
       </view>
 
       <!-- 评价列表 -->
       <view v-else>
         <view v-if="ratingLoading" class="loading-container">
-          <up-loading-icon mode="circle" size="40" />
+          <view class="loading-spinner" />
           <text class="loading-text">加载中...</text>
         </view>
 
@@ -91,12 +96,14 @@
             <view class="card-header">
               <text class="card-title">{{ r.algorithmName }}</text>
               <view class="stars">
-                <text v-for="i in 5" :key="i" :class="{ active: i <= r.rating }">★</text>
+                <text v-for="i in 5" :key="i" :class="{ active: i <= r.rating }"
+                  >★</text
+                >
               </view>
             </view>
             <text v-if="r.comment" class="card-content">{{ r.comment }}</text>
             <view class="card-meta">
-              <text>用户: {{ r.username || 'ID:' + r.userId }}</text>
+              <text>用户: {{ r.username || "ID:" + r.userId }}</text>
             </view>
             <view v-if="r.adminReply" class="admin-reply">
               <text>管理员回复: {{ r.adminReply }}</text>
@@ -104,55 +111,84 @@
             <view class="card-footer">
               <text class="card-time">{{ r.createTime }}</text>
               <view class="card-actions">
-                <text class="action-btn" @click="openReply(r.id, 'rating')">回复</text>
-                <text v-if="r.isHidden !== 1" class="action-btn danger" @click="handleHideRating(r.id)">隐藏</text>
+                <text class="action-btn" @click="openReply(r.id, 'rating')"
+                  >回复</text
+                >
+                <text
+                  v-if="r.isHidden !== 1"
+                  class="action-btn danger"
+                  @click="handleHideRating(r.id)"
+                  >隐藏</text
+                >
               </view>
             </view>
           </view>
           <view v-if="!hasMoreR" class="end-text">— 没有更多了 —</view>
-          <view v-else class="load-more" @click="loadMoreRatings">加载更多</view>
+          <view v-else class="load-more" @click="loadMoreRatings"
+            >加载更多</view
+          >
         </view>
 
-        <view v-else class="empty-state">
-          <up-empty mode="list" text="暂无评价数据" />
-        </view>
+        <view v-else class="empty-tip">暂无评价数据</view>
       </view>
 
       <!-- 回复弹窗 -->
-      <u-popup :show="replyVisible" mode="bottom" round="24" @close="replyVisible = false">
+      <Popup
+        :show="replyVisible"
+        mode="bottom"
+        round
+        @close="replyVisible = false"
+      >
         <view class="popup-content">
           <text class="popup-title">回复</text>
-          <u-input
+          <textarea
+            class="form-textarea"
             v-model="replyContent"
-            type="textarea"
             placeholder="请输入回复内容"
-            border="surround"
-            :rows="4"
           />
           <view class="popup-footer">
-            <u-button text="取消" @click="replyVisible = false" />
-            <u-button text="提交" type="primary" @click="handleReply" :loading="replying" />
+            <button class="btn btn-default" @click="replyVisible = false">
+              取消
+            </button>
+            <button
+              class="btn btn-primary"
+              :disabled="replying"
+              @click="handleReply"
+            >
+              提交
+            </button>
           </view>
         </view>
-      </u-popup>
+      </Popup>
 
       <!-- 关闭弹窗 -->
-      <u-popup :show="closeVisible" mode="bottom" round="24" @close="closeVisible = false">
+      <Popup
+        :show="closeVisible"
+        mode="bottom"
+        round
+        @close="closeVisible = false"
+      >
         <view class="popup-content">
           <text class="popup-title">关闭反馈</text>
-          <u-input
+          <textarea
+            class="form-textarea"
             v-model="closeReason"
-            type="textarea"
             placeholder="请填写关闭原因（必填）"
-            border="surround"
-            :rows="3"
           />
           <view class="popup-footer">
-            <u-button text="取消" @click="closeVisible = false" />
-            <u-button text="确认关闭" type="error" @click="handleClose" :loading="closing" />
+            <button class="btn btn-default" @click="closeVisible = false">
+              取消
+            </button>
+            <button
+              class="btn btn-danger"
+              :disabled="closing"
+              @click="handleClose"
+            >
+              确认关闭
+            </button>
           </view>
         </view>
-      </u-popup>
+      </Popup>
     </view>
   </PageLayout>
 </template>
@@ -160,8 +196,10 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import PageLayout from "@/layout/index.vue";
+import Popup from "@/components/common/Popup.vue";
+import { usePagedList } from "@/composables/usePagedList";
 import { FeedbackAPI } from "dehaze-sdk-js";
-import type { FeedbackPageVO, RatingPageVO, FeedbackStatus, FeedbackType } from "dehaze-sdk-js";
+import type { FeedbackPageVO, RatingPageVO } from "dehaze-sdk-js";
 
 const statusMap: Record<string, string> = {
   pending: "待处理",
@@ -195,24 +233,45 @@ const typeOptions = [
 
 const tab = ref(0);
 
-// 反馈
-const feedbacks = ref<FeedbackPageVO[]>([]);
-const loading = ref(false);
-const fbPage = ref(1);
-const hasMoreFb = ref(true);
-const keyword = ref("");
 const statusFilter = ref("");
 const typeFilter = ref("");
 
-// 评价
-const ratings = ref<RatingPageVO[]>([]);
-const ratingLoading = ref(false);
-const rPage = ref(1);
-const hasMoreR = ref(true);
+const {
+  list: feedbacks,
+  keyword,
+  hasMore: hasMoreFb,
+  loading,
+  fetchList: fetchFeedbacks,
+  handleSearch,
+  loadMore: loadMoreFeedback,
+} = usePagedList<FeedbackPageVO>({
+  fetcher: (p) => {
+    const params: any = { pageNum: p.pageNum, pageSize: 15 };
+    if (p.keyword) params.keywords = p.keyword;
+    if (statusFilter.value) params.status = statusFilter.value;
+    if (typeFilter.value) params.feedbackType = typeFilter.value;
+    return FeedbackAPI.listFeedback(params).then((r) => r.list || []);
+  },
+});
+
+const {
+  list: ratings,
+  hasMore: hasMoreR,
+  loading: ratingLoading,
+  fetchList: fetchRatings,
+  loadMore: loadMoreRatings,
+} = usePagedList<RatingPageVO>({
+  fetcher: (p) =>
+    FeedbackAPI.listRatings({ pageNum: p.pageNum, pageSize: 15 }).then(
+      (r) => r.list || []
+    ),
+});
 
 // 回复
 const replyVisible = ref(false);
-const replyTarget = ref<{ id: number; type: "feedback" | "rating" } | null>(null);
+const replyTarget = ref<{ id: number; type: "feedback" | "rating" } | null>(
+  null
+);
 const replyContent = ref("");
 const replying = ref(false);
 
@@ -222,60 +281,14 @@ const closeTargetId = ref(0);
 const closeReason = ref("");
 const closing = ref(false);
 
-async function fetchFeedbacks(page = 1) {
-  loading.value = true;
-  try {
-    const params: any = { pageNum: page, pageSize: 15 };
-    if (keyword.value) params.keywords = keyword.value;
-    if (statusFilter.value) params.status = statusFilter.value;
-    if (typeFilter.value) params.feedbackType = typeFilter.value;
-    const res = await FeedbackAPI.listFeedback(params);
-    if (page === 1) feedbacks.value = res.list;
-    else feedbacks.value = [...feedbacks.value, ...res.list];
-    hasMoreFb.value = feedbacks.value.length < res.total;
-    fbPage.value = page;
-  } catch {
-    uni.showToast({ title: "加载失败", icon: "none" });
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function fetchRatings(page = 1) {
-  ratingLoading.value = true;
-  try {
-    const res = await FeedbackAPI.listRatings({ pageNum: page, pageSize: 15 });
-    if (page === 1) ratings.value = res.list;
-    else ratings.value = [...ratings.value, ...res.list];
-    hasMoreR.value = ratings.value.length < res.total;
-    rPage.value = page;
-  } catch {
-    uni.showToast({ title: "加载评价失败", icon: "none" });
-  } finally {
-    ratingLoading.value = false;
-  }
-}
-
-function handleSearch() {
-  fetchFeedbacks(1);
-}
-
 function applyStatusFilter(val: string) {
   statusFilter.value = val;
-  fetchFeedbacks(1);
+  fetchFeedbacks(true);
 }
 
 function applyTypeFilter(val: string) {
   typeFilter.value = val;
-  fetchFeedbacks(1);
-}
-
-function loadMoreFeedback() {
-  if (hasMoreFb.value) fetchFeedbacks(fbPage.value + 1);
-}
-
-function loadMoreRatings() {
-  if (hasMoreR.value) fetchRatings(rPage.value + 1);
+  fetchFeedbacks(true);
 }
 
 function openReply(id: number, type: "feedback" | "rating") {
@@ -292,14 +305,16 @@ async function handleReply() {
   replying.value = true;
   try {
     if (replyTarget.value.type === "feedback") {
-      await FeedbackAPI.replyFeedback(replyTarget.value.id, { content: replyContent.value });
+      await FeedbackAPI.replyFeedback(replyTarget.value.id, {
+        content: replyContent.value,
+      });
     } else {
       await FeedbackAPI.replyRating(replyTarget.value.id, replyContent.value);
     }
     uni.showToast({ title: "回复成功", icon: "success" });
     replyVisible.value = false;
-    if (replyTarget.value.type === "feedback") fetchFeedbacks(fbPage.value);
-    else fetchRatings(rPage.value);
+    if (replyTarget.value.type === "feedback") fetchFeedbacks(true);
+    else fetchRatings(true);
   } catch {
     uni.showToast({ title: "回复失败", icon: "error" });
   } finally {
@@ -320,10 +335,12 @@ async function handleClose() {
   }
   closing.value = true;
   try {
-    await FeedbackAPI.closeFeedback(closeTargetId.value, { closeReason: closeReason.value });
+    await FeedbackAPI.closeFeedback(closeTargetId.value, {
+      closeReason: closeReason.value,
+    });
     uni.showToast({ title: "已关闭", icon: "success" });
     closeVisible.value = false;
-    fetchFeedbacks(fbPage.value);
+    fetchFeedbacks(true);
   } catch {
     uni.showToast({ title: "关闭失败", icon: "error" });
   } finally {
@@ -332,19 +349,22 @@ async function handleClose() {
 }
 
 async function handleHideRating(id: number) {
-  const res = await uni.showModal({ title: "确认隐藏", content: "确定要隐藏这条评价吗？" });
+  const res = await uni.showModal({
+    title: "确认隐藏",
+    content: "确定要隐藏这条评价吗？",
+  });
   if (!res.confirm) return;
   try {
     await FeedbackAPI.hideRating(id);
     uni.showToast({ title: "已隐藏", icon: "success" });
-    fetchRatings(rPage.value);
+    fetchRatings(true);
   } catch {
     uni.showToast({ title: "操作失败", icon: "error" });
   }
 }
 
-fetchFeedbacks(1);
-fetchRatings(1);
+fetchFeedbacks(true);
+fetchRatings(true);
 </script>
 
 <style lang="scss" scoped>
@@ -355,7 +375,7 @@ fetchRatings(1);
 
 .tabs {
   display: flex;
-  background: #fff;
+  background: $color-white;
   border-radius: $radius-lg;
   margin-bottom: $spacing-md;
   overflow: hidden;
@@ -374,10 +394,19 @@ fetchRatings(1);
 }
 
 .search-bar {
-  background: #fff;
+  background: $color-white;
   border-radius: $radius-lg;
   padding: 16rpx;
   margin-bottom: $spacing-md;
+
+  .search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14rpx 20rpx;
+    font-size: 28rpx;
+    background: $color-bg-secondary;
+    border-radius: $radius-md;
+  }
 }
 .filter-row {
   display: flex;
@@ -392,7 +421,7 @@ fetchRatings(1);
   background: $color-bg-primary;
   border-radius: 8rpx;
   &.active {
-    color: #fff;
+    color: $color-white;
     background: $color-primary;
   }
 }
@@ -403,7 +432,7 @@ fetchRatings(1);
   gap: 16rpx;
 }
 .card {
-  background: #fff;
+  background: $color-white;
   border-radius: $radius-lg;
   padding: 24rpx;
   box-shadow: $shadow-sm;
@@ -432,10 +461,22 @@ fetchRatings(1);
   padding: 4rpx 12rpx;
   border-radius: 8rpx;
 }
-.s-pending { color: #f59e0b; background: #fef3c7; }
-.s-processing { color: #3b82f6; background: #dbeafe; }
-.s-replied { color: #10b981; background: #ecfdf5; }
-.s-closed { color: #9ca3af; background: #f3f4f6; }
+.s-pending {
+  color: $color-warning;
+  background: $color-warning-bg;
+}
+.s-processing {
+  color: $color-primary;
+  background: $color-primary-bg;
+}
+.s-replied {
+  color: $color-success;
+  background: $color-success-bg;
+}
+.s-closed {
+  color: $color-text-placeholder;
+  background: $color-bg-secondary;
+}
 
 .card-meta {
   display: flex;
@@ -469,24 +510,24 @@ fetchRatings(1);
   font-size: $font-sm;
   color: $color-primary;
   &.danger {
-    color: #ef4444;
+    color: $color-danger;
   }
 }
 
 .admin-reply {
   margin: 12rpx 0;
   padding: 12rpx 16rpx;
-  background: #eff6ff;
+  background: $color-primary-bg;
   border-radius: 8rpx;
   font-size: $font-sm;
-  color: #3b82f6;
+  color: $color-primary;
 }
 
 .stars {
   font-size: $font-md;
-  color: #d1d5db;
+  color: $color-text-disabled;
   .active {
-    color: #f59e0b;
+    color: $color-warning;
   }
 }
 
@@ -513,12 +554,6 @@ fetchRatings(1);
   font-size: $font-md;
   color: $color-text-placeholder;
 }
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 80rpx 0;
-}
 
 .popup-content {
   padding: 32rpx;
@@ -530,9 +565,40 @@ fetchRatings(1);
   display: block;
   margin-bottom: 24rpx;
 }
+.form-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 160rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  border: 1rpx solid $color-border;
+  border-radius: $radius-md;
+}
 .popup-footer {
   display: flex;
   gap: 16rpx;
   margin-top: 24rpx;
+}
+.btn {
+  flex: 1;
+  padding: 12rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+  line-height: 1.6;
+  &::after {
+    border: none;
+  }
+}
+.btn-primary {
+  color: $color-white;
+  background: $color-primary;
+}
+.btn-danger {
+  color: $color-white;
+  background: $color-danger;
+}
+.btn-default {
+  color: $color-text-primary;
+  background: $color-bg-secondary;
 }
 </style>

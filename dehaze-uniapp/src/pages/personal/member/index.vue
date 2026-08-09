@@ -6,9 +6,15 @@
         <text class="growth-label">成长值</text>
         <text class="growth-value">{{ profile.growthValue }}</text>
         <view class="growth-bar">
-          <view class="growth-fill" :style="{ width: profile.progressPercent + '%' }" />
+          <view
+            class="growth-fill"
+            :style="{ width: profile.progressPercent + '%' }"
+          />
         </view>
-        <text class="next-hint" v-if="profile.nextLevelGrowth && profile.nextLevelGrowth > 0">
+        <text
+          class="next-hint"
+          v-if="profile.nextLevelGrowth && profile.nextLevelGrowth > 0"
+        >
           距下一级还需 {{ profile.nextLevelGrowth }} 成长值
         </text>
       </view>
@@ -17,11 +23,19 @@
         <text class="section-title">本月用量</text>
         <view class="usage-row">
           <view class="usage-item">
-            <text class="usage-num">{{ profile.monthlyDehazeUsed }}/{{ profile.monthlyDehazeQuota }}</text>
+            <text class="usage-num"
+              >{{ profile.monthlyDehazeUsed }}/{{
+                profile.monthlyDehazeQuota
+              }}</text
+            >
             <text class="usage-label">去雾处理</text>
           </view>
           <view class="usage-item">
-            <text class="usage-num">{{ profile.monthlyEvaluateUsed }}/{{ profile.monthlyEvaluateQuota }}</text>
+            <text class="usage-num"
+              >{{ profile.monthlyEvaluateUsed }}/{{
+                profile.monthlyEvaluateQuota
+              }}</text
+            >
             <text class="usage-label">评估分析</text>
           </view>
         </view>
@@ -30,7 +44,11 @@
       <view class="benefit-card" v-if="benefitItems.length > 0">
         <text class="section-title">会员权益</text>
         <view class="benefit-list">
-          <view class="benefit-item" v-for="item in benefitItems" :key="item.key">
+          <view
+            class="benefit-item"
+            v-for="item in benefitItems"
+            :key="item.key"
+          >
             <text class="benefit-value">{{ item.value }}</text>
             <text class="benefit-name">{{ item.label }}</text>
           </view>

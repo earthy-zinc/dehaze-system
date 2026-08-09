@@ -15,68 +15,79 @@
           ><text class="stat-label">总退款</text></view
         >
       </view>
-      <u-tabs
-        :list="tabs"
-        :current="currentTab"
-        @change="
-          (i: any) => {
-            currentTab = i.index;
-            if (i.index === 0) fetchList(true);
-            else fetchRefunds();
-          }
-        "
-      />
-      <u-table v-if="currentTab === 0">
-        <u-tr v-for="item in list" :key="item.orderNo" @click="goDetail(item.orderNo)">
-          <u-td>{{ item.orderNo }}</u-td>
-          <u-td>¥{{ item.payableAmount }}</u-td>
-          <u-td>
-            <u-tag
-              :text="orderStatusMap[item.status] || item.status"
-              :type="orderTagType(item.status)"
-              size="mini"
-            />
-          </u-td>
-          <u-td><SvgIcon name="arrow-right" /></u-td>
-        </u-tr>
-      </u-table>
-      <u-table v-if="currentTab === 1">
-        <u-tr v-for="item in refunds" :key="item.id">
-          <u-td>{{ item.orderNo }}</u-td>
-          <u-td>¥{{ item.refundAmount }}</u-td>
-          <u-td>{{ item.reason }}</u-td>
-          <u-td>
-            <u-button
+      <view class="tabs">
+        <view
+          v-for="(t, i) in tabs"
+          :key="i"
+          class="tab-item"
+          :class="{ active: currentTab === i }"
+          @click="onTabChange(i)"
+        >
+          {{ t.name }}
+        </view>
+      </view>
+      <template v-if="currentTab === 0">
+        <view class="list-row list-row-head">
+          <text class="cell">订单号</text>
+          <text class="cell">金额</text>
+          <text class="cell">状态</text>
+          <text class="cell"></text>
+        </view>
+        <view
+          v-for="item in list"
+          :key="item.orderNo"
+          class="list-row"
+          @click="goDetail(item.orderNo)"
+        >
+          <text class="cell">{{ item.orderNo }}</text>
+          <text class="cell">¥{{ item.payableAmount }}</text>
+          <view class="cell">
+            <view
+              class="tag tag-sm"
+              :class="'tag-' + orderTagType(item.status)"
+            >
+              {{ orderStatusMap[item.status] || item.status }}
+            </view>
+          </view>
+          <view class="cell"><SvgIcon name="arrow-right" /></view>
+        </view>
+        <view v-if="!loading && list.length === 0" class="empty-tip"
+          >暂无订单</view
+        >
+        <view class="load-more" v-if="hasMore" @click="loadMore">加载更多</view>
+      </template>
+      <template v-if="currentTab === 1">
+        <view class="list-row list-row-head">
+          <text class="cell">订单号</text>
+          <text class="cell">退款金额</text>
+          <text class="cell">原因</text>
+          <text class="cell">操作</text>
+        </view>
+        <view v-for="item in refunds" :key="item.id" class="list-row">
+          <text class="cell">{{ item.orderNo }}</text>
+          <text class="cell">¥{{ item.refundAmount }}</text>
+          <text class="cell">{{ item.reason }}</text>
+          <view class="cell cell-actions">
+            <button
               v-if="item.status === 'refunding'"
-              size="mini"
-              type="success"
+              class="btn btn-success btn-sm"
               @click="approveRefund(item.id)"
-              >通过</u-button
             >
-            <u-button
+              通过
+            </button>
+            <button
               v-if="item.status === 'refunding'"
-              size="mini"
-              type="error"
+              class="btn btn-danger btn-sm"
               @click="rejectRefund(item.id)"
-              >拒绝</u-button
             >
-          </u-td>
-        </u-tr>
-      </u-table>
-      <u-empty
-        v-if="!loading && currentTab === 0 && list.length === 0"
-        text="暂无订单"
-      />
-      <u-empty
-        v-if="!loading && currentTab === 1 && refunds.length === 0"
-        text="暂无退款申请"
-      />
-      <view
-        class="load-more"
-        v-if="currentTab === 0 && hasMore"
-        @click="loadMore"
-        >加载更多</view
-      >
+              拒绝
+            </button>
+          </view>
+        </view>
+        <view v-if="!refundsLoading && refunds.length === 0" class="empty-tip"
+          >暂无退款申请</view
+        >
+      </template>
     </view>
   </PageLayout>
 </template>
@@ -85,6 +96,7 @@
 import { ref } from "vue";
 import PageLayout from "@/layout/index.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
+import { usePagedList } from "@/composables/usePagedList";
 import { OrderAPI } from "dehaze-sdk-js";
 
 const tabs = [{ name: "订单列表" }, { name: "退款审核" }];
@@ -97,54 +109,56 @@ const orderStatusMap: Record<string, string> = {
   refunded: "已退款",
 };
 const currentTab = ref(0);
-const list = ref<any[]>([]);
+
+const { list, hasMore, loading, fetchList, loadMore } = usePagedList<any>({
+  fetcher: (p) =>
+    OrderAPI.getPage({
+      pageNum: p.pageNum,
+      pageSize: 20,
+    }).then((r) => r.list || []),
+});
+
 const refunds = ref<any[]>([]);
+const refundsLoading = ref(false);
 const stats = ref<any>(null);
-const pageNum = ref(1);
-const hasMore = ref(false);
-const loading = ref(false);
 
 const fetchStats = async () => {
   try {
     stats.value = await OrderAPI.getStats();
   } catch {}
 };
-const fetchList = async (reset = false) => {
-  if (reset) {
-    pageNum.value = 1;
-    list.value = [];
-  }
-  loading.value = true;
-  try {
-    const res = await OrderAPI.getPage({
-      pageNum: pageNum.value,
-      pageSize: 20,
-    });
-    const records = res.list || [];
-    if (reset) list.value = records;
-    else list.value.push(...records);
-    hasMore.value = records.length === 20;
-    pageNum.value++;
-  } finally {
-    loading.value = false;
-  }
-};
 const fetchRefunds = async () => {
+  refundsLoading.value = true;
   try {
     const res = await OrderAPI.listRefunds({ pageNum: 1, pageSize: 100 });
     refunds.value = res.list || [];
-  } catch {}
+  } catch {
+    refunds.value = [];
+  } finally {
+    refundsLoading.value = false;
+  }
 };
 
-const loadMore = () => fetchList();
+const onTabChange = (i: number) => {
+  currentTab.value = i;
+  if (i === 0) fetchList(true);
+  else fetchRefunds();
+};
+
 const orderTagType = (s: string) => {
   switch (s) {
-    case "completed": return "success";
-    case "cancelled": return "error";
-    case "paid": return "primary";
-    case "refunding": return "warning";
-    case "refunded": return "info";
-    default: return "warning";
+    case "completed":
+      return "success";
+    case "cancelled":
+      return "danger";
+    case "paid":
+      return "primary";
+    case "refunding":
+      return "warning";
+    case "refunded":
+      return "info";
+    default:
+      return "warning";
   }
 };
 const goDetail = (orderNo: string) =>
@@ -187,7 +201,7 @@ fetchRefunds();
 .stat-item {
   flex: 1;
   background: $color-white;
-  border-radius: 16rpx;
+  border-radius: $radius-lg;
   padding: 20rpx;
   text-align: center;
 }
@@ -201,6 +215,98 @@ fetchRefunds();
   font-size: 24rpx;
   color: $color-text-secondary;
   margin-top: 8rpx;
+}
+.tabs {
+  display: flex;
+  background: $color-white;
+  border-radius: $radius-lg;
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx;
+  font-size: 28rpx;
+  color: $color-text-secondary;
+}
+.tab-item.active {
+  color: $color-primary;
+  font-weight: 600;
+  border-bottom: 4rpx solid $color-primary;
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 16rpx;
+  border-bottom: 1rpx solid $color-border;
+  font-size: 26rpx;
+
+  .cell {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cell-actions {
+    display: flex;
+    gap: 8rpx;
+  }
+}
+.list-row-head {
+  background: $color-bg-secondary;
+  font-weight: 600;
+  color: $color-text-secondary;
+}
+.tag {
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+.tag-sm {
+  padding: 2rpx 10rpx;
+}
+.tag-primary {
+  color: $color-primary;
+  background: $color-primary-bg;
+}
+.tag-success {
+  color: $color-success;
+  background: $color-success-bg;
+}
+.tag-warning {
+  color: $color-warning;
+  background: $color-warning-bg;
+}
+.tag-danger {
+  color: $color-danger;
+  background: $color-danger-bg;
+}
+.tag-info {
+  color: $color-text-secondary;
+  background: $color-bg-secondary;
+}
+.btn {
+  padding: 8rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+  line-height: 1.6;
+  &::after {
+    border: none;
+  }
+}
+.btn-sm {
+  padding: 4rpx 16rpx;
+  font-size: $font-xs;
+}
+.btn-success {
+  color: $color-white;
+  background: $color-success;
+}
+.btn-danger {
+  color: $color-white;
+  background: $color-danger;
 }
 .load-more {
   text-align: center;

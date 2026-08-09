@@ -29,7 +29,7 @@
               v-if="img.status === 'processing'"
               class="image-status processing"
             >
-              <up-loading-icon mode="circle" size="16" color="#f59e0b" />
+              <view class="loading-spinner" />
             </view>
             <view
               v-else-if="img.status === 'completed'"
@@ -63,7 +63,7 @@
         </view>
 
         <view v-if="algoLoading" class="algo-loading">
-          <up-loading-icon mode="circle" size="16" color="#f59e0b" />
+          <view class="loading-spinner" />
           <text class="algo-loading-text">加载算法中...</text>
         </view>
 
@@ -187,9 +187,9 @@ import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
-import { ModelAPI, AlgorithmAPI } from "dehaze-sdk-js";
+import { AlgorithmAPI } from "dehaze-sdk-js";
 import type { Algorithm } from "dehaze-sdk-js";
-import { getErrorMessage } from "@/utils/error";
+import { useProcessingStore } from "@/store/processing";
 
 // ==================== 类型 ====================
 
@@ -209,12 +209,34 @@ const MAX_IMAGES = 20;
 
 // ==================== 状态 ====================
 
+const store = useProcessingStore();
 const images = ref<BatchItem[]>([]);
 const algorithms = ref<Algorithm[]>([]);
 const algoLoading = ref(false);
 const selectedAlgoId = ref<number | null>(null);
 const params = ref("");
 const processing = ref(false);
+
+/** 配额耗尽弹窗（去充值） */
+function showQuotaExhaustedModal({
+  used,
+  total,
+}: {
+  used: number;
+  total: number;
+}) {
+  uni.showModal({
+    title: "预测次数不足",
+    content: `当前剩余预测次数为 0（已使用 ${used}/${total}），请及时充值。`,
+    confirmText: "去充值",
+    cancelText: "取消",
+    success: (r) => {
+      if (r.confirm) {
+        uni.navigateTo({ url: "/pages/personal/quota/index" });
+      }
+    },
+  });
+}
 
 // ==================== 计算属性 ====================
 
@@ -277,7 +299,7 @@ function removeImage(id: string) {
   images.value = images.value.filter((img) => img.id !== id);
 }
 
-/** 开始批量处理 */
+/** 开始批量处理：逐张调用 store.runPrediction，复用配额校验/重试/计时 */
 async function handleStartBatch() {
   if (!selectedAlgoId.value) {
     uni.showToast({ title: "请先选择算法", icon: "none" });
@@ -289,102 +311,52 @@ async function handleStartBatch() {
   }
 
   processing.value = true;
-  images.value = images.value.map((img) => ({
+  const batch = images.value.map((img) => ({
     ...img,
     status: "pending" as const,
   }));
 
-  try {
-    const result = await ModelAPI.batchPredict({
-      algorithmId: selectedAlgoId.value,
-      items: images.value.map((img) => ({
-        imageUrl: img.localPath,
-        params: params.value || undefined,
-      })),
-    });
-
-    if (result.results && result.results.length > 0) {
-      images.value = images.value.map((img, idx) => {
-        const r = result.results[idx];
-        if (!r) return img;
-        if (r.status === 2)
-          return {
-            ...img,
-            status: "completed" as const,
-            resultUrl: r.resultUrl,
-            time: r.time,
-          };
-        if (r.status === 3)
-          return {
-            ...img,
-            status: "failed" as const,
-            errorMessage: r.errorMessage,
-          };
-        return { ...img, status: "processing" as const, logId: r.logId };
-      });
-
-      // 轮询未完成的任务
-      const pendingTasks = result.results
-        .map((r, idx) => ({ ...r, idx }))
-        .filter((r) => r.status === 1);
-
-      if (pendingTasks.length > 0) {
-        const pollPromises = pendingTasks.map(async (task) => {
-          try {
-            const imgItem = images.value[task.idx];
-            if (!imgItem) return;
-            const finalResult = await ModelAPI.predictAndWait(
-              {
-                algorithmId: selectedAlgoId.value!,
-                imageUrl: imgItem.localPath,
-                params: params.value || undefined,
-              },
-              { intervalMs: 2000, timeoutMs: 120000 }
-            );
-            images.value = images.value.map((img, idx) => {
-              if (idx !== task.idx) return img;
-              if (finalResult.status === 2) {
-                return {
-                  ...img,
-                  status: "completed" as const,
-                  resultUrl: finalResult.resultUrl,
-                  time: finalResult.time,
-                };
-              }
-              return {
-                ...img,
-                status: "failed" as const,
-                errorMessage: finalResult.errorMessage,
-              };
-            });
-          } catch {
-            images.value = images.value.map((img, idx) =>
-              idx === task.idx
-                ? {
-                    ...img,
-                    status: "failed" as const,
-                    errorMessage: "处理超时",
-                  }
-                : img
-            );
-          }
-        });
-        await Promise.all(pollPromises);
-      }
-    }
-  } catch (err: unknown) {
-    uni.showToast({
-      title: getErrorMessage(err, "批量处理失败"),
-      icon: "none",
-    });
-    images.value = images.value.map((img) =>
-      img.status === "pending"
-        ? { ...img, status: "failed" as const, errorMessage: "提交失败" }
-        : img
+  for (const img of batch) {
+    images.value = images.value.map((item) =>
+      item.id === img.id ? { ...item, status: "processing" as const } : item
     );
-  } finally {
-    processing.value = false;
+
+    const res = await store.runPrediction({
+      algorithmId: selectedAlgoId.value,
+      imageUrl: img.localPath,
+      params: params.value || undefined,
+      onQuotaExhausted: showQuotaExhaustedModal,
+    });
+
+    if (res.ok && res.result) {
+      images.value = images.value.map((item) =>
+        item.id === img.id
+          ? {
+              ...item,
+              status: "completed" as const,
+              resultUrl: res.result!.resultUrl,
+              time: res.result!.time,
+            }
+          : item
+      );
+    } else if (!res.ok && res.error) {
+      images.value = images.value.map((item) =>
+        item.id === img.id
+          ? { ...item, status: "failed" as const, errorMessage: res.error }
+          : item
+      );
+    } else {
+      // 配额耗尽或已取消，停止批量处理
+      images.value = images.value.map((item) =>
+        item.id === img.id
+          ? { ...item, status: "failed" as const, errorMessage: "已取消" }
+          : item
+      );
+      break;
+    }
   }
+
+  processing.value = false;
 }
 
 /** 重试单张图片 */
@@ -393,35 +365,32 @@ async function handleRetryImage(img: BatchItem) {
   images.value = images.value.map((item) =>
     item.id === img.id ? { ...item, status: "processing" as const } : item
   );
-  try {
-    const result = await ModelAPI.predictAndWait({
-      algorithmId: selectedAlgoId.value,
-      imageUrl: img.localPath,
-      params: params.value || undefined,
-    });
-    images.value = images.value.map((item) => {
-      if (item.id !== img.id) return item;
-      if (result.status === 2) {
-        return {
-          ...item,
-          status: "completed" as const,
-          resultUrl: result.resultUrl,
-          time: result.time,
-        };
-      }
-      return {
-        ...item,
-        status: "failed" as const,
-        errorMessage: result.errorMessage,
-      };
-    });
-  } catch (err: unknown) {
+
+  const res = await store.runPrediction({
+    algorithmId: selectedAlgoId.value,
+    imageUrl: img.localPath,
+    params: params.value || undefined,
+    onQuotaExhausted: showQuotaExhaustedModal,
+  });
+
+  if (res.ok && res.result) {
+    images.value = images.value.map((item) =>
+      item.id === img.id
+        ? {
+            ...item,
+            status: "completed" as const,
+            resultUrl: res.result!.resultUrl,
+            time: res.result!.time,
+          }
+        : item
+    );
+  } else {
     images.value = images.value.map((item) =>
       item.id === img.id
         ? {
             ...item,
             status: "failed" as const,
-            errorMessage: getErrorMessage(err, "处理失败"),
+            errorMessage: res.error || "已取消",
           }
         : item
     );
@@ -549,7 +518,7 @@ onMounted(() => {
 .image-add {
   width: calc(25% - 12rpx);
   aspect-ratio: 1;
-  border: 2rpx dashed #d1d5db;
+  border: 2rpx dashed $color-text-disabled;
   border-radius: $radius-md;
   display: flex;
   flex-direction: column;
@@ -582,6 +551,15 @@ onMounted(() => {
   color: $color-text-placeholder;
 }
 
+.loading-spinner {
+  width: 24rpx;
+  height: 24rpx;
+  border: 3rpx solid rgba(245, 158, 11, 0.3);
+  border-top-color: $color-warning;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
 .algo-list {
   display: flex;
   flex-direction: column;
@@ -598,8 +576,8 @@ onMounted(() => {
   position: relative;
 
   &.selected {
-    border-color: #f59e0b;
-    background: #fffbeb;
+    border-color: $color-warning;
+    background: $color-warning-bg;
   }
 
   &:active {
@@ -628,7 +606,7 @@ onMounted(() => {
   position: absolute;
   top: 16rpx;
   right: 16rpx;
-  color: #f59e0b;
+  color: $color-warning;
   font-size: $font-lg;
   font-weight: 700;
 }
@@ -665,7 +643,7 @@ onMounted(() => {
 
 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, $color-warning, #d97706);
   border-radius: 6rpx;
   transition: width 0.3s ease;
 }
@@ -691,10 +669,10 @@ onMounted(() => {
   border-radius: $radius-md;
 
   &.completed {
-    background: #ecfdf5;
+    background: $color-success-bg;
   }
   &.failed {
-    background: #fef2f2;
+    background: $color-danger-bg;
   }
 }
 
@@ -775,7 +753,7 @@ onMounted(() => {
 .process-btn {
   width: 100%;
   padding: 24rpx;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, $color-warning, #d97706);
   color: $color-white;
   border: none;
   border-radius: $radius-lg;

@@ -11,7 +11,10 @@ export interface GroupedHistory {
 }
 
 /** 分页查询历史记录 */
-export async function getHistoryPage(): Promise<{ list: InputHistoryVO[]; total: number }> {
+export async function getHistoryPage(): Promise<{
+  list: InputHistoryVO[];
+  total: number;
+}> {
   const res = await ImageInputHistoryAPI.getPage({
     pageNum: 1,
     pageSize: 100,
@@ -41,18 +44,21 @@ export function clearAllHistory() {
 }
 
 /** 将历史记录按时间分组 */
-export function groupHistoryByDate(records: InputHistoryVO[]): GroupedHistory[] {
+export function groupHistoryByDate(
+  records: InputHistoryVO[]
+): GroupedHistory[] {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
   const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const groups: Record<string, InputHistoryVO[]> = {
-    今天: [],
-    昨天: [],
-    最近7天: [],
-    更早: [],
-  };
+  const groups: Record<"今天" | "昨天" | "最近7天" | "更早", InputHistoryVO[]> =
+    {
+      今天: [],
+      昨天: [],
+      最近7天: [],
+      更早: [],
+    };
 
   records.forEach((record) => {
     const ts = record.createTime;
@@ -61,7 +67,11 @@ export function groupHistoryByDate(records: InputHistoryVO[]): GroupedHistory[] 
       return;
     }
     const recordDate = new Date(ts);
-    const recordDay = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate());
+    const recordDay = new Date(
+      recordDate.getFullYear(),
+      recordDate.getMonth(),
+      recordDate.getDate()
+    );
 
     if (recordDay.getTime() === today.getTime()) {
       groups["今天"].push(record);
@@ -88,8 +98,10 @@ export function formatTimestamp(timestamp?: string): string {
 
   if (diff < 60 * 1000) return "刚刚";
   if (diff < 60 * 60 * 1000) return `${Math.floor(diff / (60 * 1000))}分钟前`;
-  if (diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / (60 * 60 * 1000))}小时前`;
-  if (diff < 7 * 24 * 60 * 60 * 1000) return `${Math.floor(diff / (24 * 60 * 60 * 1000))}天前`;
+  if (diff < 24 * 60 * 60 * 1000)
+    return `${Math.floor(diff / (60 * 60 * 1000))}小时前`;
+  if (diff < 7 * 24 * 60 * 60 * 1000)
+    return `${Math.floor(diff / (24 * 60 * 60 * 1000))}天前`;
 
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

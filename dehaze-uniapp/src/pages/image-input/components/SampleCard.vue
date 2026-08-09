@@ -1,14 +1,7 @@
 <template>
   <view class="sample-card" @click="handleClick">
     <view class="card-image">
-      <up-image
-        :src="sample.url"
-        mode="aspectFill"
-        width="100%"
-        height="200rpx"
-        :lazy-load="true"
-        :fade="true"
-      />
+      <image :src="sample.url" mode="aspectFill" :lazy-load="true" />
       <view class="difficulty-badge" :style="{ background: difficultyBgColor }">
         <text class="difficulty-text" :style="{ color: difficultyColor }">
           {{ sample.difficulty }}
@@ -58,7 +51,7 @@ const handleClick = () => {
 
 <style lang="scss" scoped>
 .sample-card {
-  background: #ffffff;
+  background: $color-white;
   border-radius: 16rpx;
   overflow: hidden;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
@@ -75,6 +68,11 @@ const handleClick = () => {
   width: 100%;
   height: 200rpx;
   overflow: hidden;
+
+  image {
+    width: 100%;
+    height: 100%;
+  }
 }
 
 .difficulty-badge {
@@ -113,6 +111,6 @@ const handleClick = () => {
 
 .meta-scene {
   font-size: 22rpx;
-  color: #6b7280;
+  color: $color-text-secondary;
 }
 </style>

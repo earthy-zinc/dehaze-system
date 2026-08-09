@@ -133,8 +133,14 @@
           <text>换算法</text>
         </view>
         <view class="action-item" @click="handleFavorite">
-          <SvgIcon :name="favorited ? 'star-fill' : 'star'" size="18" :color="favorited ? '#f59e0b' : 'rgba(255,255,255,0.7)'" />
-          <text :style="{ color: favorited ? '#f59e0b' : '' }">{{ favorited ? '已收藏' : '收藏' }}</text>
+          <SvgIcon
+            :name="favorited ? 'star-fill' : 'star'"
+            size="18"
+            :color="favorited ? '#f59e0b' : 'rgba(255,255,255,0.7)'"
+          />
+          <text :style="{ color: favorited ? '#f59e0b' : '' }">{{
+            favorited ? "已收藏" : "收藏"
+          }}</text>
         </view>
       </view>
     </template>
@@ -181,7 +187,12 @@ const borderStyle = ref<BorderStyle>("circle");
 const posX = ref(150);
 const posY = ref(200);
 const active = ref(false);
-const wrapperRect = ref<{ left: number; top: number; width: number; height: number } | null>(null);
+const wrapperRect = ref<{
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+} | null>(null);
 
 // 双指捏合
 let lastPinchDist = 0;
@@ -189,10 +200,14 @@ let lastPinchDist = 0;
 const originUrl = computed(() => store.originUrl);
 const resultUrl = computed(() => store.result?.resultUrl || "");
 const hasImages = computed(() => !!(originUrl.value && resultUrl.value));
-const resultId = computed(() => store.result?.id);
+const resultId = computed(() => store.result?.logId);
 
-const showOriginLens = computed(() => displayMode.value === "origin" || displayMode.value === "compare");
-const showResultLens = computed(() => displayMode.value === "result" || displayMode.value === "compare");
+const showOriginLens = computed(
+  () => displayMode.value === "origin" || displayMode.value === "compare"
+);
+const showResultLens = computed(
+  () => displayMode.value === "result" || displayMode.value === "compare"
+);
 
 const borderRadius = computed(() => {
   if (borderStyle.value === "circle") return "50%";
@@ -201,11 +216,36 @@ const borderRadius = computed(() => {
 });
 
 const modes = [
-  { key: "side-by-side", label: "并排", path: "/pages/side-by-side/index", icon: "grid" },
-  { key: "overlay", label: "重叠", path: "/pages/overlay/index", icon: "photo" },
-  { key: "magnifier", label: "放大镜", path: "/pages/magnifier/index", icon: "search" },
-  { key: "filter", label: "滤镜", path: "/pages/filter/index", icon: "setting" },
-  { key: "metrics", label: "指标", path: "/pages/metrics/index", icon: "integral" },
+  {
+    key: "side-by-side",
+    label: "并排",
+    path: "/pages/side-by-side/index",
+    icon: "grid",
+  },
+  {
+    key: "overlay",
+    label: "重叠",
+    path: "/pages/overlay/index",
+    icon: "photo",
+  },
+  {
+    key: "magnifier",
+    label: "放大镜",
+    path: "/pages/magnifier/index",
+    icon: "search",
+  },
+  {
+    key: "filter",
+    label: "滤镜",
+    path: "/pages/filter/index",
+    icon: "setting",
+  },
+  {
+    key: "metrics",
+    label: "指标",
+    path: "/pages/metrics/index",
+    icon: "integral",
+  },
 ];
 
 function lensStyle(_imgUrl: string, side: "left" | "right" = "left") {
@@ -252,7 +292,12 @@ function lensImageStyle(imgUrl: string) {
 function updateRect(e: any) {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect?.();
   if (rect) {
-    wrapperRect.value = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+    wrapperRect.value = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
   }
 }
 
@@ -276,9 +321,9 @@ function handleTouchMove(e: any) {
     if (lastPinchDist > 0 && Math.abs(dist - lastPinchDist) > 20) {
       const curIdx = zoomOptions.indexOf(zoom.value);
       if (dist > lastPinchDist && curIdx < zoomOptions.length - 1) {
-        zoom.value = zoomOptions[curIdx + 1];
+        zoom.value = zoomOptions[curIdx + 1] as ZoomValue;
       } else if (dist < lastPinchDist && curIdx > 0) {
-        zoom.value = zoomOptions[curIdx - 1];
+        zoom.value = zoomOptions[curIdx - 1] as ZoomValue;
       }
       lastPinchDist = dist;
     }
@@ -311,7 +356,8 @@ function handleSave() {
       if (res.statusCode === 200) {
         uni.saveImageToPhotosAlbum({
           filePath: res.tempFilePath,
-          success: () => uni.showToast({ title: "已保存到相册", icon: "success" }),
+          success: () =>
+            uni.showToast({ title: "已保存到相册", icon: "success" }),
           fail: () => uni.showToast({ title: "保存失败", icon: "none" }),
         });
       }
@@ -356,7 +402,9 @@ onMounted(() => {
     uni.showToast({ title: "请先完成去雾处理", icon: "none" });
   if (resultId.value) {
     FavoriteAPI.getStatus("result", resultId.value)
-      .then((res) => { favorited.value = res.favorited; })
+      .then((res) => {
+        favorited.value = res.favorited;
+      })
       .catch(() => {});
   }
 });
@@ -384,13 +432,19 @@ onMounted(() => {
 .lens {
   position: fixed;
   border: 4rpx solid;
-  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.5), 0 0 0 9999rpx rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 4rpx 24rpx rgba(0, 0, 0, 0.5),
+    0 0 0 9999rpx rgba(0, 0, 0, 0.3);
   overflow: hidden;
   pointer-events: none;
   z-index: 999;
 
-  &.lens-origin { border-color: #3b82f6; }
-  &.lens-result { border-color: #34d399; }
+  &.lens-origin {
+    border-color: #3b82f6;
+  }
+  &.lens-result {
+    border-color: #34d399;
+  }
 }
 
 .lens-image {
@@ -428,7 +482,9 @@ onMounted(() => {
 .control-group {
   margin-bottom: 24rpx;
 
-  &:last-child { margin-bottom: 0; }
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .control-label {

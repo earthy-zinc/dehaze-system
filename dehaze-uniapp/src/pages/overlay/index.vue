@@ -8,17 +8,9 @@
         @touchend="handleTouchEnd"
       >
         <!-- 底层：处理后图片 -->
-        <image
-          :src="resultUrl"
-          class="base-image"
-          mode="widthFix"
-          lazy-load
-        />
+        <image :src="resultUrl" class="base-image" mode="widthFix" lazy-load />
         <!-- 上层：原图，通过 clip-path 控制显示区域 -->
-        <view
-          class="overlay-image-wrapper"
-          :style="{ clipPath: clipStyle }"
-        >
+        <view class="overlay-image-wrapper" :style="{ clipPath: clipStyle }">
           <image
             :src="originUrl"
             class="overlay-image"
@@ -27,10 +19,7 @@
           />
         </view>
         <!-- 滑动分隔线 -->
-        <view
-          class="slider-divider"
-          :style="dividerStyle"
-        >
+        <view class="slider-divider" :style="dividerStyle">
           <view class="slider-line" />
           <view class="slider-handle">
             <text class="handle-icon">⟷</text>
@@ -38,10 +27,16 @@
         </view>
         <!-- 标签 -->
         <view class="image-labels">
-          <view class="label-tag label-original" :style="{ opacity: sliderPos > 10 ? 1 : 0 }">
+          <view
+            class="label-tag label-original"
+            :style="{ opacity: sliderPos > 10 ? 1 : 0 }"
+          >
             <text>原图</text>
           </view>
-          <view class="label-tag label-result" :style="{ opacity: sliderPos < 90 ? 1 : 0 }">
+          <view
+            class="label-tag label-result"
+            :style="{ opacity: sliderPos < 90 ? 1 : 0 }"
+          >
             <text>处理后</text>
           </view>
         </view>
@@ -122,8 +117,14 @@
           <text>换算法</text>
         </view>
         <view class="action-item" @click="handleFavorite">
-          <SvgIcon :name="favorited ? 'star-fill' : 'star'" size="18" :color="favorited ? '#f59e0b' : 'rgba(255,255,255,0.7)'" />
-          <text :style="{ color: favorited ? '#f59e0b' : '' }">{{ favorited ? '已收藏' : '收藏' }}</text>
+          <SvgIcon
+            :name="favorited ? 'star-fill' : 'star'"
+            size="18"
+            :color="favorited ? '#f59e0b' : 'rgba(255,255,255,0.7)'"
+          />
+          <text :style="{ color: favorited ? '#f59e0b' : '' }">{{
+            favorited ? "已收藏" : "收藏"
+          }}</text>
         </view>
       </view>
     </template>
@@ -154,7 +155,7 @@ const resultUrl = computed(() => store.result?.resultUrl || "");
 const algorithm = computed(() => store.selectedAlgorithm);
 const result = computed(() => store.result);
 const hasImages = computed(() => !!(originUrl.value && resultUrl.value));
-const resultId = computed(() => store.result?.id);
+const resultId = computed(() => store.result?.logId);
 
 const clipStyle = computed(() => {
   if (isVertical.value) {
@@ -165,17 +166,54 @@ const clipStyle = computed(() => {
 
 const dividerStyle = computed(() => {
   if (isVertical.value) {
-    return { left: `${sliderPos.value}%`, top: "0", bottom: "0", width: "4rpx", height: "auto" };
+    return {
+      left: `${sliderPos.value}%`,
+      top: "0",
+      bottom: "0",
+      width: "4rpx",
+      height: "auto",
+    };
   }
-  return { top: `${sliderPos.value}%`, left: "0", right: "0", height: "4rpx", width: "auto" };
+  return {
+    top: `${sliderPos.value}%`,
+    left: "0",
+    right: "0",
+    height: "4rpx",
+    width: "auto",
+  };
 });
 
 const modes = [
-  { key: "side-by-side", label: "并排", path: "/pages/side-by-side/index", icon: "grid" },
-  { key: "overlay", label: "重叠", path: "/pages/overlay/index", icon: "photo" },
-  { key: "magnifier", label: "放大镜", path: "/pages/magnifier/index", icon: "search" },
-  { key: "filter", label: "滤镜", path: "/pages/filter/index", icon: "setting" },
-  { key: "metrics", label: "指标", path: "/pages/metrics/index", icon: "integral" },
+  {
+    key: "side-by-side",
+    label: "并排",
+    path: "/pages/side-by-side/index",
+    icon: "grid",
+  },
+  {
+    key: "overlay",
+    label: "重叠",
+    path: "/pages/overlay/index",
+    icon: "photo",
+  },
+  {
+    key: "magnifier",
+    label: "放大镜",
+    path: "/pages/magnifier/index",
+    icon: "search",
+  },
+  {
+    key: "filter",
+    label: "滤镜",
+    path: "/pages/filter/index",
+    icon: "setting",
+  },
+  {
+    key: "metrics",
+    label: "指标",
+    path: "/pages/metrics/index",
+    icon: "integral",
+  },
 ];
 
 function getTouchPos(e: TouchEvent): number {
@@ -213,7 +251,10 @@ function toggleDirection() {
 function handleAutoPlay() {
   if (playing.value) {
     playing.value = false;
-    if (playTimer) { clearInterval(playTimer); playTimer = null; }
+    if (playTimer) {
+      clearInterval(playTimer);
+      playTimer = null;
+    }
     return;
   }
   playing.value = true;
@@ -240,7 +281,8 @@ function handleSave() {
       if (res.statusCode === 200) {
         uni.saveImageToPhotosAlbum({
           filePath: res.tempFilePath,
-          success: () => uni.showToast({ title: "已保存到相册", icon: "success" }),
+          success: () =>
+            uni.showToast({ title: "已保存到相册", icon: "success" }),
           fail: () => uni.showToast({ title: "保存失败", icon: "none" }),
         });
       }
@@ -285,13 +327,18 @@ onMounted(() => {
     uni.showToast({ title: "请先完成去雾处理", icon: "none" });
   if (resultId.value) {
     FavoriteAPI.getStatus("result", resultId.value)
-      .then((res) => { favorited.value = res.favorited; })
+      .then((res) => {
+        favorited.value = res.favorited;
+      })
       .catch(() => {});
   }
 });
 
 onUnmounted(() => {
-  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  if (playTimer) {
+    clearInterval(playTimer);
+    playTimer = null;
+  }
 });
 </script>
 
@@ -442,7 +489,9 @@ onUnmounted(() => {
     padding: 12rpx 0;
     border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
 
-    &:last-child { border-bottom: none; }
+    &:last-child {
+      border-bottom: none;
+    }
 
     .info-label {
       font-size: 26rpx;

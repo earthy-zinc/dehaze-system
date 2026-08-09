@@ -4,7 +4,7 @@
 
     <!-- 加载中 -->
     <view v-if="loading" class="state-wrap">
-      <up-loading-icon mode="circle" size="32" color="#8b5cf6" />
+      <view class="loading-spinner" />
       <text class="state-text">加载算法中...</text>
     </view>
 
@@ -91,7 +91,7 @@ onMounted(loadAlgorithms);
 <style lang="scss" scoped>
 .recommend-section {
   padding: 80rpx 40rpx;
-  background: #ffffff;
+  background: $color-white;
 }
 
 .state-wrap {
@@ -104,12 +104,12 @@ onMounted(loadAlgorithms);
 
 .state-text {
   font-size: 26rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 .retry-link {
   font-size: 26rpx;
-  color: #8b5cf6;
+  color: $color-accent;
   font-weight: 600;
 }
 
@@ -141,7 +141,7 @@ onMounted(loadAlgorithms);
   width: 64rpx;
   height: 64rpx;
   border-radius: 16rpx;
-  background: #ffffff;
+  background: $color-white;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -185,7 +185,7 @@ onMounted(loadAlgorithms);
 
 .more-link {
   font-size: 26rpx;
-  color: #8b5cf6;
+  color: $color-accent;
   font-weight: 600;
   padding: 12rpx 32rpx;
 

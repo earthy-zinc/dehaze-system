@@ -15,14 +15,22 @@
             <text>取消</text>
           </view>
         </view>
-        <view v-if="!keyword && searchHistory.length > 0" class="messages-search-history">
+        <view
+          v-if="!keyword && searchHistory.length > 0"
+          class="messages-search-history"
+        >
           <text class="search-history-title">搜索历史</text>
           <view class="search-history-tags">
             <view
               v-for="h in searchHistory"
               :key="h"
               class="search-history-tag"
-              @click="() => { keyword = h; doSearch(1, h, false); }"
+              @click="
+                () => {
+                  keyword = h;
+                  doSearch(1, h, false);
+                }
+              "
             >
               <text>{{ h }}</text>
             </view>
@@ -55,12 +63,20 @@
             <view class="messages-action-btn" @click="exitDeleteMode">
               <text>取消</text>
             </view>
-            <view v-if="selectedIds.size > 0" class="messages-action-btn danger" @click="handleBatchDelete">
+            <view
+              v-if="selectedIds.size > 0"
+              class="messages-action-btn danger"
+              @click="handleBatchDelete"
+            >
               <text>删除({{ selectedIds.size }})</text>
             </view>
           </template>
           <template v-else>
-            <view v-if="unreadCount > 0" class="messages-mark-all" @click="handleMarkAllRead">
+            <view
+              v-if="unreadCount > 0"
+              class="messages-mark-all"
+              @click="handleMarkAllRead"
+            >
               <text>全部已读</text>
             </view>
             <view class="messages-header-icon" @click="deleteMode = true">
@@ -74,21 +90,30 @@
       </view>
 
       <!-- 消息列表 -->
-      <scroll-view class="messages-list" scroll-y @scrolltolower="handleLoadMore">
+      <scroll-view
+        class="messages-list"
+        scroll-y
+        @scrolltolower="handleLoadMore"
+      >
         <view v-if="loading && messages.length === 0" class="messages-status">
           <text>加载中...</text>
         </view>
         <view v-else-if="messages.length === 0" class="messages-empty">
           <SvgIcon name="bell" size="56" color="#d1d5db" />
           <text class="messages-empty-text">暂无消息</text>
-          <text class="messages-empty-sub">处理完成、系统通知等将在这里展示</text>
+          <text class="messages-empty-sub"
+            >处理完成、系统通知等将在这里展示</text
+          >
         </view>
         <view v-else class="messages-items">
           <view
             v-for="msg in messages"
             :key="msg.id"
             class="message-item"
-            :class="{ unread: msg.readStatus === 0, selected: deleteMode && selectedIds.has(msg.id) }"
+            :class="{
+              unread: msg.readStatus === 0,
+              selected: deleteMode && selectedIds.has(msg.id),
+            }"
             @click="handleMessageClick(msg)"
             @longpress="handleDeleteSingle(msg.id)"
           >
@@ -98,14 +123,20 @@
                   {{ msg.typeLabel || getTypeLabel(msg.type) }}
                 </text>
                 <view v-if="msg.readStatus === 0" class="message-unread-dot" />
-                <view v-if="deleteMode" class="message-checkbox" :class="{ checked: selectedIds.has(msg.id) }">
+                <view
+                  v-if="deleteMode"
+                  class="message-checkbox"
+                  :class="{ checked: selectedIds.has(msg.id) }"
+                >
                   <text v-if="selectedIds.has(msg.id)">✓</text>
                 </view>
               </view>
               <text class="message-item-title">{{ msg.title }}</text>
               <text class="message-item-summary">{{ msg.summary || "" }}</text>
             </view>
-            <text class="message-item-time">{{ formatTime(msg.createTime) }}</text>
+            <text class="message-item-time">{{
+              formatTime(msg.createTime)
+            }}</text>
           </view>
         </view>
         <view v-if="loading && messages.length > 0" class="messages-status">
@@ -180,7 +211,10 @@ const fetchUnreadCount = async () => {
 const fetchMessages = async (page: number, type: string, append = false) => {
   try {
     loading.value = true;
-    const queryParams: Record<string, unknown> = { pageNum: page, pageSize: 20 };
+    const queryParams: Record<string, unknown> = {
+      pageNum: page,
+      pageSize: 20,
+    };
     if (type) queryParams.type = type;
     const res = await MessageAPI.getPage(queryParams);
     const list = (res.list as unknown as MessageVO[]) || [];
@@ -191,7 +225,10 @@ const fetchMessages = async (page: number, type: string, append = false) => {
     }
     hasMore.value = list.length >= 20;
   } catch (error) {
-    uni.showToast({ title: getErrorMessage(error, "加载消息失败"), icon: "none" });
+    uni.showToast({
+      title: getErrorMessage(error, "加载消息失败"),
+      icon: "none",
+    });
   } finally {
     loading.value = false;
   }
@@ -201,7 +238,11 @@ const doSearch = async (page: number, kw: string, append = false) => {
   if (!kw.trim()) return;
   try {
     loading.value = true;
-    const res = await MessageAPI.search({ keyword: kw.trim(), pageNum: page, pageSize: 20 });
+    const res = await MessageAPI.search({
+      keyword: kw.trim(),
+      pageNum: page,
+      pageSize: 20,
+    });
     const list = (res.list as unknown as MessageVO[]) || [];
     if (append) {
       messages.value = [...messages.value, ...list];
@@ -209,7 +250,10 @@ const doSearch = async (page: number, kw: string, append = false) => {
       messages.value = list;
     }
     hasMore.value = list.length >= 20;
-    searchHistory.value = [kw.trim(), ...searchHistory.value.filter((h) => h !== kw.trim())].slice(0, 5);
+    searchHistory.value = [
+      kw.trim(),
+      ...searchHistory.value.filter((h) => h !== kw.trim()),
+    ].slice(0, 5);
   } catch (error) {
     uni.showToast({ title: getErrorMessage(error, "搜索失败"), icon: "none" });
   } finally {
@@ -310,7 +354,10 @@ const handleGoSettings = () => {
 
 const handleDeleteSingle = async (id: number) => {
   if (deleteMode.value) return;
-  const res = await uni.showModal({ title: "确认删除", content: "确定删除这条消息吗？" });
+  const res = await uni.showModal({
+    title: "确认删除",
+    content: "确定删除这条消息吗？",
+  });
   if (!res.confirm) return;
   try {
     await MessageAPI.deleteByIds(String(id));
@@ -337,7 +384,10 @@ const handleBatchDelete = async () => {
     uni.showToast({ title: `已删除`, icon: "success" });
     fetchUnreadCount();
   } catch (error) {
-    uni.showToast({ title: getErrorMessage(error, "批量删除失败"), icon: "none" });
+    uni.showToast({
+      title: getErrorMessage(error, "批量删除失败"),
+      icon: "none",
+    });
   }
 };
 

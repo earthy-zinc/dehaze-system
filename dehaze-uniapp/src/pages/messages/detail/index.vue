@@ -13,7 +13,9 @@
             <text>{{ message.typeLabel }}</text>
           </view>
           <text class="message-detail-title">{{ message.title }}</text>
-          <text class="message-detail-time">{{ formatDateTime(message.createTime) }}</text>
+          <text class="message-detail-time">{{
+            formatDateTime(message.createTime)
+          }}</text>
         </view>
         <view class="message-detail-body">
           <rich-text

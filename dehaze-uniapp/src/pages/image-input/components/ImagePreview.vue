@@ -11,23 +11,19 @@
 
       <!-- 图片区域 -->
       <view class="preview-image">
-        <up-image
-          :src="image.url"
-          mode="aspectFit"
-          width="100%"
-          height="400rpx"
-          :lazy-load="false"
-          @click="handlePreviewImage"
-        />
+        <image :src="image.url" mode="aspectFit" @click="handlePreviewImage" />
       </view>
 
       <!-- 图片信息 -->
       <view class="preview-info">
         <view v-if="image.size != null" class="info-item">
-          <SvgIcon name="photo" size="16" color="#3b82f6" />
+          <SvgIcon name="photo" size="16" color="$color-primary" />
           <text class="info-text">{{ formatFileSize(image.size) }}</text>
         </view>
-        <view v-if="image.width != null && image.height != null" class="info-item">
+        <view
+          v-if="image.width != null && image.height != null"
+          class="info-item"
+        >
           <SvgIcon name="scan" size="16" color="#10b981" />
           <text class="info-text">{{ image.width }} × {{ image.height }}</text>
         </view>
@@ -36,20 +32,22 @@
       <!-- 样例信息（如果有） -->
       <view v-if="image.sampleInfo" class="sample-info">
         <view class="sample-tag">
-          <SvgIcon name="star" size="14" color="#f59e0b" />
+          <SvgIcon name="star" size="14" color="$color-warning" />
           <text class="tag-text">样例图片</text>
         </view>
         <text class="sample-name">{{ image.sampleInfo.name }}</text>
         <view v-if="image.sampleInfo.recommendAlgorithm" class="recommend-algo">
           <text class="recommend-label">推荐算法:</text>
-          <text class="recommend-value">{{ image.sampleInfo.recommendAlgorithm }}</text>
+          <text class="recommend-value">{{
+            image.sampleInfo.recommendAlgorithm
+          }}</text>
         </view>
       </view>
 
       <!-- 操作按钮 -->
       <view class="preview-actions">
         <view class="action-btn primary" @click="handleNext">
-          <SvgIcon name="arrow-right" size="18" color="#ffffff" />
+          <SvgIcon name="arrow-right" size="18" color="$color-white" />
           <text class="action-text">下一步：选择算法</text>
         </view>
       </view>
@@ -95,7 +93,7 @@ const handlePreviewImage = () => {
 }
 
 .preview-card {
-  background: #ffffff;
+  background: $color-white;
   border-radius: 24rpx;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
   overflow: hidden;
@@ -106,13 +104,13 @@ const handlePreviewImage = () => {
   align-items: center;
   justify-content: space-between;
   padding: 24rpx 28rpx;
-  border-bottom: 2rpx solid #f3f4f6;
+  border-bottom: 2rpx solid $color-bg-secondary;
 }
 
 .preview-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #1f2937;
+  color: $color-text-primary;
 }
 
 .close-btn {
@@ -121,24 +119,29 @@ const handlePreviewImage = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
+  background: $color-bg-secondary;
   border-radius: 50%;
 
   &:active {
-    background: #e5e7eb;
+    background: $color-border;
   }
 }
 
 .preview-image {
   padding: 24rpx;
-  background: #f9fafb;
+  background: $color-bg-primary;
+
+  image {
+    width: 100%;
+    height: 400rpx;
+  }
 }
 
 .preview-info {
   display: flex;
   gap: 32rpx;
   padding: 20rpx 28rpx;
-  border-bottom: 2rpx solid #f3f4f6;
+  border-bottom: 2rpx solid $color-bg-secondary;
 }
 
 .info-item {
@@ -163,7 +166,7 @@ const handlePreviewImage = () => {
   align-items: center;
   gap: 8rpx;
   padding: 6rpx 16rpx;
-  background: #ffffff;
+  background: $color-white;
   border-radius: 20rpx;
   margin-bottom: 12rpx;
 }
@@ -171,7 +174,7 @@ const handlePreviewImage = () => {
 .tag-text {
   font-size: 22rpx;
   font-weight: 600;
-  color: #f59e0b;
+  color: $color-warning;
 }
 
 .sample-name {
@@ -217,7 +220,7 @@ const handlePreviewImage = () => {
   }
 
   &.primary {
-    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    background: linear-gradient(135deg, $color-primary, $color-secondary);
     box-shadow: 0 4rpx 16rpx rgba(59, 130, 246, 0.3);
   }
 }
@@ -225,6 +228,6 @@ const handlePreviewImage = () => {
 .action-text {
   font-size: 30rpx;
   font-weight: 600;
-  color: #ffffff;
+  color: $color-white;
 }
 </style>

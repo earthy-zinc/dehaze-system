@@ -4,12 +4,20 @@
       <view v-if="feedback.id" class="detail-card">
         <view class="info-row">
           <text class="label">类型</text>
-          <text>{{ typeMap[feedback.feedbackType] || feedback.feedbackType }}</text>
+          <text>{{
+            feedback.feedbackType
+              ? typeMap[feedback.feedbackType] || feedback.feedbackType
+              : ""
+          }}</text>
         </view>
         <view class="info-row">
           <text class="label">状态</text>
           <text :class="['status-tag', 's-' + feedback.status]">
-            {{ statusMap[feedback.status] || feedback.status }}
+            {{
+              feedback.status
+                ? statusMap[feedback.status] || feedback.status
+                : ""
+            }}
           </text>
         </view>
         <view class="info-row">
@@ -46,51 +54,75 @@
         </view>
       </view>
 
-      <view v-if="feedback.replies && feedback.replies.length > 0" class="replies-section">
+      <view
+        v-if="feedback.replies && feedback.replies.length > 0"
+        class="replies-section"
+      >
         <text class="section-title">回复记录</text>
-        <view v-for="reply in feedback.replies" :key="reply.id" class="reply-item">
+        <view
+          v-for="replyItem in feedback.replies"
+          :key="replyItem.id"
+          class="reply-item"
+        >
           <view class="reply-header">
-            <text class="reply-author">{{ reply.replierName }}</text>
-            <text class="reply-time">{{ reply.createTime }}</text>
+            <text class="reply-author">{{ replyItem.replierName }}</text>
+            <text class="reply-time">{{ replyItem.createTime }}</text>
           </view>
-          <text class="reply-content">{{ reply.content }}</text>
+          <text class="reply-content">{{ replyItem.content }}</text>
         </view>
       </view>
 
-      <view v-if="feedback.id && feedback.status !== 'closed'" class="action-section">
+      <view
+        v-if="feedback.id && feedback.status !== 'closed'"
+        class="action-section"
+      >
         <text class="section-title">操作</text>
-        <u-input
+        <textarea
+          class="form-textarea"
           v-model="reply"
-          type="textarea"
           placeholder="请输入回复内容"
-          border="surround"
-          :rows="4"
-          class="reply-input"
         />
         <view class="btn-row">
-          <u-button type="primary" @click="handleReply" :loading="replying">回复</u-button>
-          <u-button type="warning" @click="openClose" v-if="feedback.status !== 'closed'">关闭反馈</u-button>
+          <button
+            class="btn btn-primary"
+            :disabled="replying"
+            @click="handleReply"
+          >
+            回复
+          </button>
+          <button class="btn btn-warning" @click="openClose">关闭反馈</button>
         </view>
       </view>
     </view>
 
     <!-- 关闭弹窗 -->
-    <u-popup :show="closeVisible" mode="bottom" round="24" @close="closeVisible = false">
+    <Popup
+      :show="closeVisible"
+      mode="bottom"
+      round
+      @close="closeVisible = false"
+    >
       <view class="popup-content">
         <text class="popup-title">关闭反馈</text>
-        <u-input
+        <textarea
+          class="form-textarea"
           v-model="closeReason"
-          type="textarea"
           placeholder="请填写关闭原因（必填）"
-          border="surround"
-          :rows="3"
         />
         <view class="popup-footer">
-          <u-button text="取消" @click="closeVisible = false" />
-          <u-button text="确认关闭" type="error" @click="handleClose" :loading="closing" />
+          <button class="btn btn-default" @click="closeVisible = false">
+            取消
+          </button>
+          <button
+            class="btn btn-danger"
+            :disabled="closing"
+            @click="handleClose"
+          >
+            确认关闭
+          </button>
         </view>
       </view>
-    </u-popup>
+    </Popup>
   </PageLayout>
 </template>
 
@@ -98,8 +130,13 @@
 import { ref, reactive } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import PageLayout from "@/layout/index.vue";
+import Popup from "@/components/common/Popup.vue";
 import { FeedbackAPI } from "dehaze-sdk-js";
-import type { FeedbackDetailVO, FeedbackStatus, FeedbackType } from "dehaze-sdk-js";
+import type {
+  FeedbackDetailVO,
+  FeedbackStatus,
+  FeedbackType,
+} from "dehaze-sdk-js";
 
 const statusMap: Record<string, string> = {
   pending: "待处理",
@@ -167,7 +204,9 @@ async function handleClose() {
   if (!feedback.id) return;
   closing.value = true;
   try {
-    await FeedbackAPI.closeFeedback(feedback.id, { closeReason: closeReason.value });
+    await FeedbackAPI.closeFeedback(feedback.id, {
+      closeReason: closeReason.value,
+    });
     uni.showToast({ title: "已关闭", icon: "success" });
     closeVisible.value = false;
     fetchDetail(feedback.id);
@@ -213,23 +252,35 @@ async function handleClose() {
   padding: 4rpx 12rpx;
   border-radius: 8rpx;
 }
-.s-pending { color: #f59e0b; background: #fef3c7; }
-.s-processing { color: #3b82f6; background: #dbeafe; }
-.s-replied { color: #10b981; background: #ecfdf5; }
-.s-closed { color: #9ca3af; background: #f3f4f6; }
+.s-pending {
+  color: $color-warning;
+  background: $color-warning-bg;
+}
+.s-processing {
+  color: $color-primary;
+  background: $color-primary-bg;
+}
+.s-replied {
+  color: $color-success;
+  background: $color-success-bg;
+}
+.s-closed {
+  color: $color-text-placeholder;
+  background: $color-bg-secondary;
+}
 
 .replies-section {
   margin-bottom: 30rpx;
 }
 .section-title {
-  font-size: 30rpx;
+  font-size: $font-lg;
   font-weight: bold;
   padding: 20rpx 0;
   display: block;
 }
 .reply-item {
   background: $color-bg-primary;
-  border-radius: 12rpx;
+  border-radius: $radius-md;
   padding: 16rpx;
   margin-bottom: 12rpx;
 }
@@ -254,14 +305,48 @@ async function handleClose() {
 }
 
 .action-section {
-  .reply-input {
-    margin-bottom: 16rpx;
-  }
+  margin-bottom: 30rpx;
+}
+.form-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 160rpx;
+  padding: 16rpx 20rpx;
+  font-size: $font-md;
+  border: 1rpx solid $color-border;
+  border-radius: $radius-md;
+  margin-bottom: 16rpx;
 }
 .btn-row {
   display: flex;
   gap: 20rpx;
   margin-top: 20rpx;
+}
+.btn {
+  flex: 1;
+  padding: 12rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+  line-height: 1.6;
+  &::after {
+    border: none;
+  }
+}
+.btn-primary {
+  color: $color-white;
+  background: $color-primary;
+}
+.btn-warning {
+  color: $color-white;
+  background: $color-warning;
+}
+.btn-danger {
+  color: $color-white;
+  background: $color-danger;
+}
+.btn-default {
+  color: $color-text-primary;
+  background: $color-bg-secondary;
 }
 
 .popup-content {

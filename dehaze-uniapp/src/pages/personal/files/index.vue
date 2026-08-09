@@ -3,7 +3,7 @@
     <view class="main-content">
       <!-- 加载状态 -->
       <view v-if="loading" class="loading-container">
-        <up-loading-icon mode="circle" size="40" color="#10b981" />
+        <view class="loading-spinner" />
         <text class="loading-text">加载中...</text>
       </view>
 
@@ -38,7 +38,7 @@
 
       <!-- 空状态 -->
       <view v-else class="empty-state">
-        <up-empty mode="list" text="暂无文件" />
+        <view class="empty-tip">暂无文件</view>
         <text class="empty-hint">上传图片后文件会显示在这里</text>
       </view>
     </view>
@@ -104,6 +104,8 @@ onMounted(() => loadData());
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .page {
   width: 100%;
   min-height: 100vh;
@@ -111,7 +113,7 @@ onMounted(() => loadData());
 }
 .main-content {
   padding: $spacing-md;
-  padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
+  @include safe-area-bottom(80rpx);
 }
 
 .file-list {
@@ -123,12 +125,12 @@ onMounted(() => loadData());
   display: flex;
   align-items: center;
   gap: 20rpx;
-  background: #fff;
+  background: $color-white;
   border-radius: 20rpx;
   padding: 24rpx;
   box-shadow: $shadow-sm;
   &:active {
-    background: #f9fafb;
+    background: $color-bg-primary;
   }
 }
 .file-icon {
@@ -175,7 +177,7 @@ onMounted(() => loadData());
 }
 .load-more-text {
   font-size: $font-sm;
-  color: #10b981;
+  color: $color-success;
 }
 
 .loading-container {
@@ -195,6 +197,9 @@ onMounted(() => loadData());
   flex-direction: column;
   align-items: center;
   padding: 80rpx 0;
+}
+.empty-tip {
+  font-size: $font-md;
 }
 .empty-hint {
   font-size: $font-sm;

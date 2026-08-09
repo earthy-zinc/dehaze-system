@@ -49,7 +49,9 @@
         <view class="panel">
           <view class="panel-header">
             <text class="panel-title">参数调节</text>
-            <text v-if="hasChanges" class="reset-btn" @click="handleReset">重置</text>
+            <text v-if="hasChanges" class="reset-btn" @click="handleReset"
+              >重置</text
+            >
           </view>
           <view v-for="item in filters" :key="item.key" class="slider-item">
             <view class="slider-label-row">
@@ -99,8 +101,14 @@
           <text>换算法</text>
         </view>
         <view class="action-item" @click="handleFavorite">
-          <SvgIcon :name="favorited ? 'star-fill' : 'star'" size="18" :color="favorited ? '#f59e0b' : 'rgba(255,255,255,0.7)'" />
-          <text :style="{ color: favorited ? '#f59e0b' : '' }">{{ favorited ? '已收藏' : '收藏' }}</text>
+          <SvgIcon
+            :name="favorited ? 'star-fill' : 'star'"
+            size="18"
+            :color="favorited ? '#f59e0b' : 'rgba(255,255,255,0.7)'"
+          />
+          <text :style="{ color: favorited ? '#f59e0b' : '' }">{{
+            favorited ? "已收藏" : "收藏"
+          }}</text>
         </view>
       </view>
     </template>
@@ -126,8 +134,10 @@ const favoriteLoading = ref(false);
 const resultUrl = computed(() => store.result?.resultUrl || "");
 const originUrl = computed(() => store.originUrl);
 const hasImages = computed(() => !!resultUrl.value);
-const currentPreviewUrl = computed(() => (showOrigin.value ? originUrl.value : resultUrl.value));
-const resultId = computed(() => store.result?.id);
+const currentPreviewUrl = computed(() =>
+  showOrigin.value ? originUrl.value : resultUrl.value
+);
+const resultId = computed(() => store.result?.logId);
 
 interface FilterItem {
   key: string;
@@ -144,24 +154,121 @@ interface Preset {
 }
 
 const filters = reactive<FilterItem[]>([
-  { key: "brightness", label: "亮度", value: 0, min: -100, max: 100, color: "#fbbf24" },
-  { key: "contrast", label: "对比度", value: 0, min: -100, max: 100, color: "#f59e0b" },
-  { key: "saturation", label: "饱和度", value: 0, min: -100, max: 100, color: "#34d399" },
-  { key: "temperature", label: "色温", value: 0, min: -100, max: 100, color: "#f87171" },
-  { key: "sharpen", label: "锐化", value: 0, min: 0, max: 100, color: "#60a5fa" },
-  { key: "denoise", label: "降噪", value: 0, min: 0, max: 100, color: "#a78bfa" },
+  {
+    key: "brightness",
+    label: "亮度",
+    value: 0,
+    min: -100,
+    max: 100,
+    color: "#fbbf24",
+  },
+  {
+    key: "contrast",
+    label: "对比度",
+    value: 0,
+    min: -100,
+    max: 100,
+    color: "#f59e0b",
+  },
+  {
+    key: "saturation",
+    label: "饱和度",
+    value: 0,
+    min: -100,
+    max: 100,
+    color: "#34d399",
+  },
+  {
+    key: "temperature",
+    label: "色温",
+    value: 0,
+    min: -100,
+    max: 100,
+    color: "#f87171",
+  },
+  {
+    key: "sharpen",
+    label: "锐化",
+    value: 0,
+    min: 0,
+    max: 100,
+    color: "#60a5fa",
+  },
+  {
+    key: "denoise",
+    label: "降噪",
+    value: 0,
+    min: 0,
+    max: 100,
+    color: "#a78bfa",
+  },
 ]);
 
 const defaultParams: Record<string, number> = {
-  brightness: 0, contrast: 0, saturation: 0, temperature: 0, sharpen: 0, denoise: 0,
+  brightness: 0,
+  contrast: 0,
+  saturation: 0,
+  temperature: 0,
+  sharpen: 0,
+  denoise: 0,
 };
 
 const builtinPresets: Preset[] = [
-  { name: "自然", params: { brightness: 5, contrast: 10, saturation: 5, temperature: 0, sharpen: 0, denoise: 0 } },
-  { name: "鲜艳", params: { brightness: 0, contrast: 30, saturation: 40, temperature: 0, sharpen: 0, denoise: 0 } },
-  { name: "柔和", params: { brightness: 0, contrast: -20, saturation: 0, temperature: 0, sharpen: -10, denoise: 0 } },
-  { name: "清晰", params: { brightness: 0, contrast: 20, saturation: 0, temperature: 0, sharpen: 40, denoise: 0 } },
-  { name: "复古", params: { brightness: 0, contrast: 0, saturation: -20, temperature: 30, sharpen: 0, denoise: 0 } },
+  {
+    name: "自然",
+    params: {
+      brightness: 5,
+      contrast: 10,
+      saturation: 5,
+      temperature: 0,
+      sharpen: 0,
+      denoise: 0,
+    },
+  },
+  {
+    name: "鲜艳",
+    params: {
+      brightness: 0,
+      contrast: 30,
+      saturation: 40,
+      temperature: 0,
+      sharpen: 0,
+      denoise: 0,
+    },
+  },
+  {
+    name: "柔和",
+    params: {
+      brightness: 0,
+      contrast: -20,
+      saturation: 0,
+      temperature: 0,
+      sharpen: -10,
+      denoise: 0,
+    },
+  },
+  {
+    name: "清晰",
+    params: {
+      brightness: 0,
+      contrast: 20,
+      saturation: 0,
+      temperature: 0,
+      sharpen: 40,
+      denoise: 0,
+    },
+  },
+  {
+    name: "复古",
+    params: {
+      brightness: 0,
+      contrast: 0,
+      saturation: -20,
+      temperature: 30,
+      sharpen: 0,
+      denoise: 0,
+    },
+  },
 ];
 
 const customPresets = ref<Preset[]>([]);
@@ -182,14 +289,41 @@ function getVal(key: string): number {
   return filters.find((f) => f.key === key)?.value ?? 0;
 }
 
-const hasChanges = computed(() => filters.some((f) => f.value !== (defaultParams[f.key] ?? 0)));
+const hasChanges = computed(() =>
+  filters.some((f) => f.value !== (defaultParams[f.key] ?? 0))
+);
 
 const modes = [
-  { key: "side-by-side", label: "并排", path: "/pages/side-by-side/index", icon: "grid" },
-  { key: "overlay", label: "重叠", path: "/pages/overlay/index", icon: "photo" },
-  { key: "magnifier", label: "放大镜", path: "/pages/magnifier/index", icon: "search" },
-  { key: "filter", label: "滤镜", path: "/pages/filter/index", icon: "setting" },
-  { key: "metrics", label: "指标", path: "/pages/metrics/index", icon: "integral" },
+  {
+    key: "side-by-side",
+    label: "并排",
+    path: "/pages/side-by-side/index",
+    icon: "grid",
+  },
+  {
+    key: "overlay",
+    label: "重叠",
+    path: "/pages/overlay/index",
+    icon: "photo",
+  },
+  {
+    key: "magnifier",
+    label: "放大镜",
+    path: "/pages/magnifier/index",
+    icon: "search",
+  },
+  {
+    key: "filter",
+    label: "滤镜",
+    path: "/pages/filter/index",
+    icon: "setting",
+  },
+  {
+    key: "metrics",
+    label: "指标",
+    path: "/pages/metrics/index",
+    icon: "integral",
+  },
 ];
 
 function updateFilter(key: string, value: number) {
@@ -202,7 +336,8 @@ function updateFilter(key: string, value: number) {
 
 function applyPreset(p: Preset) {
   filters.forEach((f) => {
-    if (p.params[f.key] !== undefined) f.value = p.params[f.key];
+    const v = p.params[f.key];
+    if (v !== undefined) f.value = v;
   });
   activePreset.value = p.name;
 }
@@ -219,13 +354,18 @@ function handleSavePreset() {
     title: "保存预设",
     editable: true,
     placeholderText: "请输入预设名称",
-    success(res) {
+    success(res: UniApp.ShowModalRes) {
       const name = (res.content || "").trim();
       if (res.confirm && name) {
         const params: Record<string, number> = {};
-        filters.forEach((f) => { params[f.key] = f.value; });
+        filters.forEach((f) => {
+          params[f.key] = f.value;
+        });
         customPresets.value.push({ name, params });
-        uni.setStorageSync(CUSTOM_PRESETS_KEY, JSON.stringify(customPresets.value));
+        uni.setStorageSync(
+          CUSTOM_PRESETS_KEY,
+          JSON.stringify(customPresets.value)
+        );
         uni.showToast({ title: "预设已保存", icon: "success" });
       }
     },
@@ -239,7 +379,10 @@ function handleDeletePreset(index: number) {
     success(res) {
       if (res.confirm) {
         customPresets.value.splice(index, 1);
-        uni.setStorageSync(CUSTOM_PRESETS_KEY, JSON.stringify(customPresets.value));
+        uni.setStorageSync(
+          CUSTOM_PRESETS_KEY,
+          JSON.stringify(customPresets.value)
+        );
         uni.showToast({ title: "已删除", icon: "success" });
       }
     },
@@ -261,7 +404,8 @@ function handleSave() {
       if (res.statusCode === 200) {
         uni.saveImageToPhotosAlbum({
           filePath: res.tempFilePath,
-          success: () => uni.showToast({ title: "已保存到相册", icon: "success" }),
+          success: () =>
+            uni.showToast({ title: "已保存到相册", icon: "success" }),
           fail: () => uni.showToast({ title: "保存失败", icon: "none" }),
         });
       }
@@ -305,12 +449,16 @@ onMounted(() => {
   try {
     const stored = uni.getStorageSync(CUSTOM_PRESETS_KEY);
     if (stored) customPresets.value = JSON.parse(stored);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   if (!hasImages.value)
     uni.showToast({ title: "请先完成去雾处理", icon: "none" });
   if (resultId.value) {
     FavoriteAPI.getStatus("result", resultId.value)
-      .then((res) => { favorited.value = res.favorited; })
+      .then((res) => {
+        favorited.value = res.favorited;
+      })
       .catch(() => {});
   }
 });
@@ -406,7 +554,9 @@ onMounted(() => {
 .slider-item {
   margin-bottom: 32rpx;
 
-  &:last-child { margin-bottom: 0; }
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .slider-label-row {

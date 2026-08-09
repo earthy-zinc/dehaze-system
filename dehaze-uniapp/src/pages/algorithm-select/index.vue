@@ -24,7 +24,10 @@
 
       <!-- 智能推荐 -->
       <view
-        v-if="processingStore.hasImage && (recommendLoading || recommendList.length > 0 || imageAnalysis)"
+        v-if="
+          processingStore.hasImage &&
+          (recommendLoading || recommendList.length > 0 || imageAnalysis)
+        "
         class="recommend-section"
       >
         <text class="section-label">智能推荐</text>
@@ -33,7 +36,7 @@
           <text class="analysis-tag">场景: {{ imageAnalysis.sceneType }}</text>
         </view>
         <view v-if="recommendLoading" class="recommend-loading">
-          <up-loading-icon mode="circle" size="28" color="#8b5cf6" />
+          <view class="loading-spinner" style="border-top-color: #8b5cf6" />
           <text class="recommend-loading-text">分析中...</text>
         </view>
         <view v-else class="recommend-list">
@@ -47,9 +50,13 @@
             <view class="recommend-info">
               <view class="recommend-header">
                 <text class="recommend-name">{{ item.algorithmName }}</text>
-                <text class="recommend-score">{{ Math.round(item.matchScore) }}%</text>
+                <text class="recommend-score"
+                  >{{ Math.round(item.matchScore) }}%</text
+                >
               </view>
-              <text v-if="item.reason" class="recommend-reason">{{ item.reason }}</text>
+              <text v-if="item.reason" class="recommend-reason">{{
+                item.reason
+              }}</text>
               <view class="match-score-bar">
                 <view
                   class="match-score-fill"
@@ -64,7 +71,9 @@
               <SvgIcon
                 :name="favoriteIds.has(item.algorithmId) ? 'star-fill' : 'star'"
                 size="18"
-                :color="favoriteIds.has(item.algorithmId) ? '#f59e0b' : '#9ca3af'"
+                :color="
+                  favoriteIds.has(item.algorithmId) ? '#f59e0b' : '#9ca3af'
+                "
               />
             </view>
           </view>
@@ -90,7 +99,10 @@
       </view>
 
       <!-- 搜索历史 -->
-      <view v-if="showHistory && !searchKeyword && searchHistory.length > 0" class="search-history-panel">
+      <view
+        v-if="showHistory && !searchKeyword && searchHistory.length > 0"
+        class="search-history-panel"
+      >
         <view class="history-header">
           <text class="history-title">搜索历史</text>
           <view class="history-clear" @click="clearHistory">
@@ -126,7 +138,7 @@
 
       <!-- 加载状态 -->
       <view v-if="loading" class="loading-container">
-        <up-loading-icon mode="circle" size="40" color="#8b5cf6" />
+        <view class="loading-spinner" />
         <text class="loading-text">加载算法列表...</text>
       </view>
 
@@ -153,10 +165,9 @@
 
           <!-- 空状态 -->
           <view v-if="displayTree.length === 0" class="empty-state">
-            <up-empty
-              :mode="searchKeyword ? 'search' : 'data'"
-              :text="searchKeyword ? '未找到匹配的算法' : '暂无可用算法'"
-            />
+            <view class="empty-tip">{{
+              searchKeyword ? "未找到匹配的算法" : "暂无可用算法"
+            }}</view>
           </view>
         </view>
       </template>
@@ -218,9 +229,17 @@
             </view>
             <view v-if="detailData.avgRating !== undefined" class="detail-item">
               <text class="detail-label">评分</text>
-              <text class="detail-value">{{ detailData.avgRating }} / 5 ({{ detailData.ratingCount || 0 }} 评价)</text>
+              <text class="detail-value"
+                >{{ detailData.avgRating }} / 5 ({{
+                  detailData.ratingCount || 0
+                }}
+                评价)</text
+              >
             </view>
-            <view v-if="detailData.usageCount !== undefined" class="detail-item">
+            <view
+              v-if="detailData.usageCount !== undefined"
+              class="detail-item"
+            >
               <text class="detail-label">使用次数</text>
               <text class="detail-value">{{ detailData.usageCount }}</text>
             </view>
@@ -229,7 +248,10 @@
             <text class="detail-section-title">算法描述</text>
             <text class="detail-desc">{{ detailData.description }}</text>
           </view>
-          <view v-if="detailData.size || detailData.params || detailData.flops" class="detail-section">
+          <view
+            v-if="detailData.size || detailData.params || detailData.flops"
+            class="detail-section"
+          >
             <text class="detail-section-title">性能指标</text>
             <view v-if="detailData.size" class="detail-item">
               <text class="detail-label">模型大小</text>
@@ -244,7 +266,10 @@
               <text class="detail-value">{{ detailData.flops }}</text>
             </view>
           </view>
-          <view v-if="detailData.sampleImages && detailData.sampleImages.length > 0" class="detail-section">
+          <view
+            v-if="detailData.sampleImages && detailData.sampleImages.length > 0"
+            class="detail-section"
+          >
             <text class="detail-section-title">效果样例</text>
             <scroll-view class="sample-scroll" scroll-x>
               <view class="sample-list">
@@ -260,8 +285,18 @@
           </view>
           <view v-if="processingStore.hasImage" class="detail-section">
             <text class="detail-section-title">自定义测试</text>
-            <image v-if="testResult" :src="testResult" class="test-result-image" mode="widthFix" />
-            <button v-else class="test-btn" :loading="testLoading" @click="handleCustomTest">
+            <image
+              v-if="testResult"
+              :src="testResult"
+              class="test-result-image"
+              mode="widthFix"
+            />
+            <button
+              v-else
+              class="test-btn"
+              :loading="testLoading"
+              @click="handleCustomTest"
+            >
               使用当前图片测试效果
             </button>
           </view>
@@ -271,12 +306,11 @@
             class="footer-btn outline"
             @click="detailData && handleToggleFavorite(detailData.id)"
           >
-            {{ detailData && favoriteIds.has(detailData.id) ? "取消收藏" : "收藏" }}
+            {{
+              detailData && favoriteIds.has(detailData.id) ? "取消收藏" : "收藏"
+            }}
           </button>
-          <button
-            class="footer-btn primary"
-            @click="handleUseFromDetail"
-          >
+          <button class="footer-btn primary" @click="handleUseFromDetail">
             立即使用
           </button>
         </view>
@@ -284,7 +318,11 @@
     </view>
 
     <!-- 算法对比弹窗 -->
-    <view v-if="showCompare" class="detail-overlay" @click="showCompare = false">
+    <view
+      v-if="showCompare"
+      class="detail-overlay"
+      @click="showCompare = false"
+    >
       <view class="compare-panel" @click.stop>
         <view class="detail-header">
           <text class="detail-title">算法对比</text>
@@ -296,29 +334,52 @@
           <view v-if="compareLoading" class="loading-container">
             <text>对比中...</text>
           </view>
-          <view v-else-if="compareResult && compareResult.length > 0" class="compare-table">
+          <view
+            v-else-if="compareResult && compareResult.length > 0"
+            class="compare-table"
+          >
             <view class="compare-row header-row">
               <view class="compare-cell label-cell"><text>指标</text></view>
-              <view v-for="c in compareResult" :key="c.algorithmId" class="compare-cell">
+              <view
+                v-for="c in compareResult"
+                :key="c.algorithmId"
+                class="compare-cell"
+              >
                 <text class="compare-alg-name">{{ c.algorithmName }}</text>
               </view>
             </view>
             <view class="compare-row">
               <view class="compare-cell label-cell"><text>处理耗时</text></view>
-              <view v-for="c in compareResult" :key="c.algorithmId" class="compare-cell">
-                <text>{{ c.time ? c.time + 'ms' : '-' }}</text>
+              <view
+                v-for="c in compareResult"
+                :key="c.algorithmId"
+                class="compare-cell"
+              >
+                <text>{{ c.time ? c.time + "ms" : "-" }}</text>
               </view>
             </view>
-            <view v-if="compareResult.some(c => c.resultUrl)" class="compare-row">
+            <view
+              v-if="compareResult.some((c) => c.resultUrl)"
+              class="compare-row"
+            >
               <view class="compare-cell label-cell"><text>效果预览</text></view>
-              <view v-for="c in compareResult" :key="c.algorithmId" class="compare-cell">
-                <image v-if="c.resultUrl" :src="c.resultUrl" class="compare-preview-img" mode="aspectFill" />
+              <view
+                v-for="c in compareResult"
+                :key="c.algorithmId"
+                class="compare-cell"
+              >
+                <image
+                  v-if="c.resultUrl"
+                  :src="c.resultUrl"
+                  class="compare-preview-img"
+                  mode="aspectFill"
+                />
                 <text v-else>-</text>
               </view>
             </view>
           </view>
           <view v-else class="empty-state">
-            <up-empty mode="data" text="暂无对比数据" />
+            <view class="empty-tip">暂无对比数据</view>
           </view>
         </scroll-view>
       </view>
@@ -333,7 +394,12 @@ import SvgIcon from "@/components/SvgIcon/index.vue";
 import AlgorithmTreeNode from "./components/AlgorithmTreeNode.vue";
 import { useProcessingStore } from "@/store/processing";
 import { AlgorithmAPI, FavoriteAPI, RecommendationAPI } from "dehaze-sdk-js";
-import type { AlgorithmSelectNodeVO, AlgorithmDetailVO, RecommendedAlgorithm, AlgorithmCompareVO } from "dehaze-sdk-js";
+import type {
+  AlgorithmSelectNodeVO,
+  AlgorithmDetailVO,
+  RecommendedAlgorithm,
+  AlgorithmCompareVO,
+} from "dehaze-sdk-js";
 import { getErrorMessage } from "@/utils/error";
 
 // ==================== 常量 ====================
@@ -364,7 +430,9 @@ let searchTimer: ReturnType<typeof setTimeout> | null = null;
 // 推荐
 const recommendList = ref<RecommendedAlgorithm[]>([]);
 const recommendLoading = ref(false);
-const imageAnalysis = ref<{ hazeLevel: string; sceneType: string } | null>(null);
+const imageAnalysis = ref<{ hazeLevel: string; sceneType: string } | null>(
+  null
+);
 
 // 详情
 const showDetail = ref(false);
@@ -404,7 +472,11 @@ async function loadData() {
   try {
     const [data, favPage] = await Promise.all([
       AlgorithmAPI.tree(),
-      FavoriteAPI.getPage({ targetType: "algorithm", pageNum: 1, pageSize: 200 }).catch(() => null),
+      FavoriteAPI.getPage({
+        targetType: "algorithm",
+        pageNum: 1,
+        pageSize: 200,
+      }).catch(() => null),
     ]);
     tree.value = data || [];
     expandedKeys.value = new Set((data || []).map((n) => n.id));
@@ -427,24 +499,44 @@ async function loadRecommendations() {
   if (!processingStore.originUrl) return;
   recommendLoading.value = true;
   try {
-    const analysis = await RecommendationAPI.analyze({ imageUrl: processingStore.originUrl });
-    imageAnalysis.value = { hazeLevel: analysis.hazeLevel || "", sceneType: analysis.sceneType || "" };
-    if (!analysis.imageMd5) { recommendList.value = []; return; }
-    const list = await RecommendationAPI.getAlgorithmRecommendations({ imageMd5: analysis.imageMd5 });
+    const analysis = await RecommendationAPI.analyze({
+      imageUrl: processingStore.originUrl,
+    });
+    imageAnalysis.value = {
+      hazeLevel: analysis.hazeLevel || "",
+      sceneType: analysis.sceneType || "",
+    };
+    if (!analysis.imageMd5) {
+      recommendList.value = [];
+      return;
+    }
+    const list = await RecommendationAPI.getAlgorithmRecommendations({
+      imageMd5: analysis.imageMd5,
+    });
     recommendList.value = list || [];
-  } catch { recommendList.value = []; }
-  finally { recommendLoading.value = false; }
+  } catch {
+    recommendList.value = [];
+  } finally {
+    recommendLoading.value = false;
+  }
 }
 
 function toggleExpand(id: number) {
   const next = new Set(expandedKeys.value);
-  next.has(id) ? next.delete(id) : next.add(id);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
   expandedKeys.value = next;
 }
 
 function handleSelect(node: AlgorithmSelectNodeVO) {
   selectedAlgorithm.value = node;
-  processingStore.setAlgorithm({ id: node.id, name: node.name, parentId: node.parentId, type: node.type || "", description: "" } as any);
+  processingStore.setAlgorithm({
+    id: node.id,
+    name: node.name,
+    parentId: node.parentId,
+    type: node.type || "",
+    description: "",
+  } as any);
 }
 
 function collectLeaf(nodes: AlgorithmSelectNodeVO[]): AlgorithmSelectNodeVO[] {
@@ -471,13 +563,18 @@ async function handleToggleFavorite(algorithmId: number) {
     if (existed) {
       const favId = favoriteMap.value.get(algorithmId);
       if (favId) await FavoriteAPI.deleteByIds([favId]);
-      const nextIds = new Set(favoriteIds.value); nextIds.delete(algorithmId);
+      const nextIds = new Set(favoriteIds.value);
+      nextIds.delete(algorithmId);
       favoriteIds.value = nextIds;
-      const nextMap = new Map(favoriteMap.value); nextMap.delete(algorithmId);
+      const nextMap = new Map(favoriteMap.value);
+      nextMap.delete(algorithmId);
       favoriteMap.value = nextMap;
       uni.showToast({ title: "已取消收藏", icon: "none" });
     } else {
-      const favId = await FavoriteAPI.add({ targetType: "algorithm", targetId: algorithmId });
+      const favId = await FavoriteAPI.add({
+        targetType: "algorithm",
+        targetId: algorithmId,
+      });
       favoriteIds.value = new Set(favoriteIds.value).add(algorithmId);
       favoriteMap.value = new Map(favoriteMap.value).set(algorithmId, favId);
       uni.showToast({ title: "已收藏", icon: "none" });
@@ -485,7 +582,8 @@ async function handleToggleFavorite(algorithmId: number) {
   } catch (e) {
     uni.showToast({ title: getErrorMessage(e, "操作失败"), icon: "none" });
   } finally {
-    const next = new Set(togglingIds.value); next.delete(algorithmId);
+    const next = new Set(togglingIds.value);
+    next.delete(algorithmId);
     togglingIds.value = next;
   }
 }
@@ -493,12 +591,17 @@ async function handleToggleFavorite(algorithmId: number) {
 function onSearchInput() {
   if (searchTimer) clearTimeout(searchTimer);
   const kw = searchKeyword.value.trim();
-  if (!kw) { searchResults.value = null; return; }
+  if (!kw) {
+    searchResults.value = null;
+    return;
+  }
   searchTimer = setTimeout(async () => {
     try {
       const results = await AlgorithmAPI.search(kw);
       searchResults.value = results || [];
-    } catch { searchResults.value = []; }
+    } catch {
+      searchResults.value = [];
+    }
   }, 300);
 }
 
@@ -509,7 +612,9 @@ function handleSearchSubmit() {
   list.unshift(kw);
   const trimmed = list.slice(0, SEARCH_HISTORY_MAX);
   searchHistory.value = trimmed;
-  try { uni.setStorageSync(SEARCH_HISTORY_KEY, JSON.stringify(trimmed)); } catch {}
+  try {
+    uni.setStorageSync(SEARCH_HISTORY_KEY, JSON.stringify(trimmed));
+  } catch {}
   showHistory.value = false;
   onSearchInput();
 }
@@ -526,11 +631,15 @@ function clearSearch() {
 
 function clearHistory() {
   searchHistory.value = [];
-  try { uni.removeStorageSync(SEARCH_HISTORY_KEY); } catch {}
+  try {
+    uni.removeStorageSync(SEARCH_HISTORY_KEY);
+  } catch {}
 }
 
 function onSearchBlur() {
-  setTimeout(() => { showHistory.value = false; }, 200);
+  setTimeout(() => {
+    showHistory.value = false;
+  }, 200);
 }
 
 async function handleShowDetail(node: AlgorithmSelectNodeVO) {
@@ -552,7 +661,9 @@ async function handleCustomTest() {
   if (!detailData.value || !processingStore.originUrl) return;
   testLoading.value = true;
   try {
-    const result = await AlgorithmAPI.test(detailData.value.id, { imageUrl: processingStore.originUrl });
+    const result = await AlgorithmAPI.test(detailData.value.id, {
+      imageUrl: processingStore.originUrl,
+    });
     testResult.value = result?.resultUrl || "";
   } catch (e) {
     uni.showToast({ title: getErrorMessage(e, "测试失败"), icon: "none" });
@@ -563,7 +674,13 @@ async function handleCustomTest() {
 
 function handleUseFromDetail() {
   if (!detailData.value) return;
-  selectedAlgorithm.value = { id: detailData.value.id, parentId: 0, name: detailData.value.name, type: detailData.value.type || "", leaf: true };
+  selectedAlgorithm.value = {
+    id: detailData.value.id,
+    parentId: 0,
+    name: detailData.value.name,
+    type: detailData.value.type || "",
+    leaf: true,
+  };
   showDetail.value = false;
 }
 
@@ -602,8 +719,14 @@ async function handleCompare() {
 }
 
 function handleNext() {
-  if (!selectedAlgorithm.value) { uni.showToast({ title: "请选择算法", icon: "none" }); return; }
-  if (!processingStore.hasImage) { uni.showToast({ title: "请先选择图片", icon: "none" }); return; }
+  if (!selectedAlgorithm.value) {
+    uni.showToast({ title: "请选择算法", icon: "none" });
+    return;
+  }
+  if (!processingStore.hasImage) {
+    uni.showToast({ title: "请先选择图片", icon: "none" });
+    return;
+  }
   uni.navigateTo({ url: "/pages/processing/index" });
 }
 
@@ -619,117 +742,527 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .algorithm-select-page {
   width: 100%;
   min-height: 100vh;
-  background: #f9fafb;
+  background: $color-bg-primary;
 }
 
 .main-content {
   padding: 24rpx;
-  padding-bottom: calc(180rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+  @include safe-area-bottom(180rpx);
 }
 
 /* 图片预览 */
-.image-preview-section { margin-bottom: 24rpx; }
-.section-label { font-size: 28rpx; font-weight: 600; color: #374151; margin-bottom: 16rpx; display: block; }
-.preview-card { display: flex; align-items: center; gap: 20rpx; background: #fff; border-radius: 20rpx; padding: 20rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }
-.preview-image { width: 120rpx; height: 120rpx; border-radius: 16rpx; background: #f3f4f6; flex-shrink: 0; }
-.preview-info { flex: 1; min-width: 0; }
-.preview-name { display: block; font-size: 28rpx; font-weight: 600; color: #1f2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 8rpx; }
-.preview-size { font-size: 24rpx; color: #9ca3af; }
+.image-preview-section {
+  margin-bottom: 24rpx;
+}
+.section-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 16rpx;
+  display: block;
+}
+.preview-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  background: $color-white;
+  border-radius: 20rpx;
+  padding: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+.preview-image {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 16rpx;
+  background: $color-bg-secondary;
+  flex-shrink: 0;
+}
+.preview-info {
+  flex: 1;
+  min-width: 0;
+}
+.preview-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $color-text-primary;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 8rpx;
+}
+.preview-size {
+  font-size: 24rpx;
+  color: $color-text-placeholder;
+}
 
 /* 智能推荐 */
-.recommend-section { margin-bottom: 24rpx; }
-.analysis-tags { display: flex; gap: 12rpx; margin-bottom: 16rpx; }
-.analysis-tag { padding: 6rpx 16rpx; font-size: 22rpx; color: #6366f1; background: #eef2ff; border-radius: 8rpx; }
-.recommend-loading { display: flex; align-items: center; gap: 16rpx; padding: 40rpx 0; justify-content: center; }
-.recommend-loading-text { font-size: 28rpx; color: #9ca3af; }
-.recommend-list { display: flex; flex-direction: column; gap: 16rpx; }
-.recommend-card { display: flex; gap: 20rpx; align-items: center; padding: 24rpx; background: #fff; border-radius: 20rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }
-.recommend-rank { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 56rpx; height: 56rpx; font-size: 24rpx; font-weight: 700; color: #fff; background: linear-gradient(135deg, #3b82f6, #6366f1); border-radius: 50%; }
-.recommend-info { flex: 1; min-width: 0; }
-.recommend-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
-.recommend-name { font-size: 28rpx; font-weight: 600; color: #1f2937; }
-.recommend-score { font-size: 24rpx; color: #8b5cf6; font-weight: 600; flex-shrink: 0; }
-.recommend-reason { display: block; font-size: 22rpx; color: #3b82f6; margin-bottom: 8rpx; }
-.match-score-bar { height: 8rpx; background: #e5e7eb; border-radius: 4rpx; overflow: hidden; }
-.match-score-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border-radius: 4rpx; }
-.fav-btn { flex-shrink: 0; padding: 16rpx; }
+.recommend-section {
+  margin-bottom: 24rpx;
+}
+.analysis-tags {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+.analysis-tag {
+  padding: 6rpx 16rpx;
+  font-size: 22rpx;
+  color: $color-secondary;
+  background: #eef2ff;
+  border-radius: 8rpx;
+}
+.recommend-loading {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 40rpx 0;
+  justify-content: center;
+}
+.recommend-loading-text {
+  font-size: 28rpx;
+  color: $color-text-placeholder;
+}
+.recommend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.recommend-card {
+  display: flex;
+  gap: 20rpx;
+  align-items: center;
+  padding: 24rpx;
+  background: $color-white;
+  border-radius: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+.recommend-rank {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: $color-white;
+  background: linear-gradient(135deg, $color-primary, $color-secondary);
+  border-radius: 50%;
+}
+.recommend-info {
+  flex: 1;
+  min-width: 0;
+}
+.recommend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+.recommend-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $color-text-primary;
+}
+.recommend-score {
+  font-size: 24rpx;
+  color: $color-accent;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.recommend-reason {
+  display: block;
+  font-size: 22rpx;
+  color: $color-primary;
+  margin-bottom: 8rpx;
+}
+.match-score-bar {
+  height: 8rpx;
+  background: $color-border;
+  border-radius: 4rpx;
+  overflow: hidden;
+}
+.match-score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, $color-primary, $color-accent);
+  border-radius: 4rpx;
+}
+.fav-btn {
+  flex-shrink: 0;
+  padding: 16rpx;
+}
 
 /* 搜索 */
-.search-bar { display: flex; align-items: center; gap: 16rpx; background: #fff; border-radius: 16rpx; padding: 20rpx 24rpx; margin-bottom: 24rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }
-.search-input { flex: 1; font-size: 28rpx; color: #1f2937; }
-.search-placeholder { color: #9ca3af; font-size: 28rpx; }
-.search-clear { padding: 16rpx 24rpx; min-width: 88rpx; min-height: 88rpx; display: flex; align-items: center; justify-content: center; }
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  background: $color-white;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: $color-text-primary;
+}
+.search-placeholder {
+  color: $color-text-placeholder;
+  font-size: 28rpx;
+}
+.search-clear {
+  padding: 16rpx 24rpx;
+  min-width: 88rpx;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* 搜索历史 */
-.search-history-panel { background: #fff; border-radius: 16rpx; padding: 20rpx 24rpx; margin-bottom: 24rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }
-.history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
-.history-title { font-size: 26rpx; color: #6b7280; }
-.history-clear { font-size: 24rpx; color: #3b82f6; }
-.history-tags { display: flex; flex-wrap: wrap; gap: 12rpx; }
-.history-tag { padding: 8rpx 20rpx; font-size: 24rpx; color: #4b5563; background: #f3f4f6; border-radius: 20rpx; }
+.search-history-panel {
+  background: $color-white;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+.history-title {
+  font-size: 26rpx;
+  color: $color-text-secondary;
+}
+.history-clear {
+  font-size: 24rpx;
+  color: $color-primary;
+}
+.history-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+.history-tag {
+  padding: 8rpx 20rpx;
+  font-size: 24rpx;
+  color: #4b5563;
+  background: $color-bg-secondary;
+  border-radius: 20rpx;
+}
 
 /* 对比栏 */
-.compare-bar { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 24rpx; background: #fff; border-radius: 16rpx; margin-bottom: 24rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04); }
-.compare-bar-tags { display: flex; flex-wrap: wrap; gap: 8rpx; flex: 1; min-width: 0; }
-.compare-bar-tag { display: flex; align-items: center; gap: 4rpx; padding: 6rpx 16rpx; font-size: 22rpx; color: #8b5cf6; background: #ede9fe; border-radius: 16rpx; }
-.compare-bar-remove { padding: 4rpx; }
-.compare-bar-btn { flex-shrink: 0; padding: 12rpx 28rpx; font-size: 24rpx; font-weight: 600; color: #fff; background: #8b5cf6; border-radius: 24rpx; }
+.compare-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  background: $color-white;
+  border-radius: 16rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+.compare-bar-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  flex: 1;
+  min-width: 0;
+}
+.compare-bar-tag {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 6rpx 16rpx;
+  font-size: 22rpx;
+  color: $color-accent;
+  background: #ede9fe;
+  border-radius: 16rpx;
+}
+.compare-bar-remove {
+  padding: 4rpx;
+}
+.compare-bar-btn {
+  flex-shrink: 0;
+  padding: 12rpx 28rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: $color-white;
+  background: $color-accent;
+  border-radius: 24rpx;
+}
 
 /* 算法树 */
-.algorithm-section { margin-bottom: 24rpx; }
-.algorithm-tree { background: #fff; border-radius: 20rpx; overflow: hidden; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }
+.algorithm-section {
+  margin-bottom: 24rpx;
+}
+.algorithm-tree {
+  background: $color-white;
+  border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
 
 /* 加载/空/错误 */
-.loading-container { display: flex; flex-direction: column; align-items: center; padding: 120rpx 0; }
-.loading-text { margin-top: 24rpx; font-size: 28rpx; color: #9ca3af; }
-.empty-state { padding: 80rpx 0; }
-.error-state { display: flex; flex-direction: column; align-items: center; padding: 80rpx 0; }
-.error-text { font-size: 28rpx; color: #ef4444; margin-bottom: 24rpx; }
-.retry-btn { padding: 16rpx 48rpx; background: #8b5cf6; color: #fff; border: none; border-radius: 16rpx; font-size: 28rpx; }
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+.loading-text {
+  margin-top: 24rpx;
+  font-size: 28rpx;
+  color: $color-text-placeholder;
+}
+.empty-state {
+  padding: 80rpx 0;
+}
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 0;
+}
+.error-text {
+  font-size: 28rpx;
+  color: $color-danger;
+  margin-bottom: 24rpx;
+}
+.retry-btn {
+  padding: 16rpx 48rpx;
+  background: $color-accent;
+  color: $color-white;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+}
 
 /* 底部操作栏 */
-.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1rpx solid #f3f4f6; padding: 20rpx 32rpx; padding-bottom: calc(20rpx + constant(safe-area-inset-bottom)); padding-bottom: calc(20rpx + env(safe-area-inset-bottom)); box-shadow: 0 -4rpx 16rpx rgba(0,0,0,0.04); z-index: 100; }
-.bar-content { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; }
-.selection-info { flex: 1; min-width: 0; }
-.selected-name { font-size: 28rpx; font-weight: 600; color: #8b5cf6; }
-.no-selection { font-size: 26rpx; color: #9ca3af; }
-.next-btn { padding: 20rpx 48rpx; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: #fff; border: none; border-radius: 16rpx; font-size: 28rpx; font-weight: 600; white-space: nowrap; }
-.next-btn:disabled { background: #d1d5db; color: #9ca3af; }
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $color-white;
+  border-top: 1rpx solid $color-border-light;
+  padding: 20rpx 32rpx;
+  @include safe-area-bottom(20rpx);
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.04);
+  z-index: 100;
+}
+.bar-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+.selection-info {
+  flex: 1;
+  min-width: 0;
+}
+.selected-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $color-accent;
+}
+.no-selection {
+  font-size: 26rpx;
+  color: $color-text-placeholder;
+}
+.next-btn {
+  padding: 20rpx 48rpx;
+  background: linear-gradient(135deg, $color-accent, $color-secondary);
+  color: $color-white;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.next-btn:disabled {
+  background: $color-text-disabled;
+  color: $color-text-placeholder;
+}
 
 /* 详情/对比弹窗 */
-.detail-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: flex-end; }
-.detail-panel { width: 100%; height: 80%; background: #fff; border-radius: 32rpx 32rpx 0 0; display: flex; flex-direction: column; }
-.compare-panel { width: 100%; height: 75%; background: #fff; border-radius: 32rpx 32rpx 0 0; display: flex; flex-direction: column; }
-.detail-header { display: flex; align-items: center; justify-content: space-between; padding: 32rpx 40rpx; border-bottom: 2rpx solid #f1f5f9; flex-shrink: 0; }
-.detail-title { font-size: 34rpx; font-weight: 600; color: #1f2937; }
-.detail-close { padding: 8rpx; }
-.detail-body { flex: 1; padding: 24rpx 40rpx 32rpx; }
-.detail-section { margin-bottom: 28rpx; }
-.detail-section-title { display: block; font-size: 28rpx; font-weight: 600; color: #1f2937; margin-bottom: 16rpx; padding-bottom: 8rpx; border-bottom: 2rpx solid #f3f4f6; }
-.detail-desc { display: block; font-size: 26rpx; line-height: 1.6; color: #4b5563; }
-.detail-item { display: flex; align-items: center; padding: 16rpx 0; }
-.detail-label { flex-shrink: 0; width: 160rpx; font-size: 26rpx; color: #6b7280; }
-.detail-value { flex: 1; font-size: 28rpx; color: #1f2937; }
-.sample-scroll { white-space: nowrap; }
-.sample-list { display: inline-flex; gap: 16rpx; }
-.sample-image { width: 240rpx; height: 180rpx; border-radius: 12rpx; background: #f3f4f6; flex-shrink: 0; }
-.test-result-image { width: 100%; border-radius: 12rpx; }
-.test-btn { padding: 16rpx 32rpx; font-size: 26rpx; color: #8b5cf6; background: #ede9fe; border: none; border-radius: 12rpx; }
-.detail-footer { display: flex; gap: 24rpx; padding: 24rpx 40rpx; border-top: 2rpx solid #f1f5f9; flex-shrink: 0; }
-.footer-btn { flex: 1; padding: 20rpx 0; font-size: 28rpx; border-radius: 16rpx; border: none; text-align: center; }
-.footer-btn.outline { color: #8b5cf6; background: #ede9fe; }
-.footer-btn.primary { color: #fff; background: linear-gradient(135deg, #8b5cf6, #6366f1); }
+.detail-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+.detail-panel {
+  width: 100%;
+  height: 80%;
+  background: $color-white;
+  border-radius: 32rpx 32rpx 0 0;
+  display: flex;
+  flex-direction: column;
+}
+.compare-panel {
+  width: 100%;
+  height: 75%;
+  background: $color-white;
+  border-radius: 32rpx 32rpx 0 0;
+  display: flex;
+  flex-direction: column;
+}
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 40rpx;
+  border-bottom: 2rpx solid #f1f5f9;
+  flex-shrink: 0;
+}
+.detail-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: $color-text-primary;
+}
+.detail-close {
+  padding: 8rpx;
+}
+.detail-body {
+  flex: 1;
+  padding: 24rpx 40rpx 32rpx;
+}
+.detail-section {
+  margin-bottom: 28rpx;
+}
+.detail-section-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $color-text-primary;
+  margin-bottom: 16rpx;
+  padding-bottom: 8rpx;
+  border-bottom: 2rpx solid $color-border-light;
+}
+.detail-desc {
+  display: block;
+  font-size: 26rpx;
+  line-height: 1.6;
+  color: #4b5563;
+}
+.detail-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+}
+.detail-label {
+  flex-shrink: 0;
+  width: 160rpx;
+  font-size: 26rpx;
+  color: $color-text-secondary;
+}
+.detail-value {
+  flex: 1;
+  font-size: 28rpx;
+  color: $color-text-primary;
+}
+.sample-scroll {
+  white-space: nowrap;
+}
+.sample-list {
+  display: inline-flex;
+  gap: 16rpx;
+}
+.sample-image {
+  width: 240rpx;
+  height: 180rpx;
+  border-radius: 12rpx;
+  background: $color-bg-secondary;
+  flex-shrink: 0;
+}
+.test-result-image {
+  width: 100%;
+  border-radius: 12rpx;
+}
+.test-btn {
+  padding: 16rpx 32rpx;
+  font-size: 26rpx;
+  color: $color-accent;
+  background: #ede9fe;
+  border: none;
+  border-radius: 12rpx;
+}
+.detail-footer {
+  display: flex;
+  gap: 24rpx;
+  padding: 24rpx 40rpx;
+  border-top: 2rpx solid #f1f5f9;
+  flex-shrink: 0;
+}
+.footer-btn {
+  flex: 1;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  border-radius: 16rpx;
+  border: none;
+  text-align: center;
+}
+.footer-btn.outline {
+  color: $color-accent;
+  background: #ede9fe;
+}
+.footer-btn.primary {
+  color: $color-white;
+  background: linear-gradient(135deg, $color-accent, $color-secondary);
+}
 
 /* 对比表格 */
-.compare-table { }
-.compare-row { display: flex; border-bottom: 2rpx solid #f3f4f6; }
-.compare-row.header-row { background: #f9fafb; font-weight: 600; }
-.compare-cell { flex: 1; padding: 20rpx 12rpx; font-size: 26rpx; color: #4b5563; text-align: center; display: flex; align-items: center; justify-content: center; }
-.compare-cell.label-cell { flex-shrink: 0; width: 140rpx; color: #6b7280; font-size: 24rpx; }
-.compare-alg-name { font-weight: 600; color: #1f2937; }
-.compare-preview-img { width: 120rpx; height: 90rpx; border-radius: 8rpx; background: #f3f4f6; }
+.compare-table {
+}
+.compare-row {
+  display: flex;
+  border-bottom: 2rpx solid $color-border-light;
+}
+.compare-row.header-row {
+  background: $color-bg-primary;
+  font-weight: 600;
+}
+.compare-cell {
+  flex: 1;
+  padding: 20rpx 12rpx;
+  font-size: 26rpx;
+  color: #4b5563;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.compare-cell.label-cell {
+  flex-shrink: 0;
+  width: 140rpx;
+  color: $color-text-secondary;
+  font-size: 24rpx;
+}
+.compare-alg-name {
+  font-weight: 600;
+  color: $color-text-primary;
+}
+.compare-preview-img {
+  width: 120rpx;
+  height: 90rpx;
+  border-radius: 8rpx;
+  background: $color-bg-secondary;
+}
 </style>

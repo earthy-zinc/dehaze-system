@@ -1,62 +1,75 @@
 <template>
   <PageLayout level="L2" title="字典管理">
     <view class="page-body">
-      <u-table>
-        <u-tr v-for="dict in list" :key="dict.id">
-          <u-td @click="goItems(dict)">{{ dict.name }}</u-td>
-          <u-td @click="goItems(dict)">{{ dict.code }}</u-td>
-          <u-td @click="goItems(dict)">
-            <u-tag
-              :text="dict.status === 1 ? '启用' : '禁用'"
-              :type="dict.status === 1 ? 'success' : 'error'"
-              size="mini"
-            />
-          </u-td>
-          <u-td>
-            <view class="row-actions">
-              <SvgIcon name="edit-pen" @click="editType(dict)" />
-              <SvgIcon name="arrow-right" @click="goItems(dict)" />
-            </view>
-          </u-td>
-        </u-tr>
-      </u-table>
-      <u-empty v-if="list.length === 0" text="暂无字典类型" />
+      <view class="list-row" v-for="dict in list" :key="dict.id">
+        <text class="cell" @click="goItems(dict)">{{ dict.name }}</text>
+        <text class="cell" @click="goItems(dict)">{{ dict.code }}</text>
+        <view class="cell" @click="goItems(dict)">
+          <view
+            class="tag"
+            :class="dict.status === 1 ? 'tag-success' : 'tag-danger'"
+          >
+            {{ dict.status === 1 ? "启用" : "禁用" }}
+          </view>
+        </view>
+        <view class="cell row-actions">
+          <SvgIcon v-if="canEdit" name="edit-pen" @click="editType(dict)" />
+          <SvgIcon name="arrow-right" @click="goItems(dict)" />
+        </view>
+      </view>
+      <view v-if="list.length === 0" class="empty-tip">暂无字典类型</view>
     </view>
-    <view class="fab-btn" @click="showForm = true"
-      ><SvgIcon name="plus" color="#fff" size="24"
-    /></view>
-    <u-popup :show="showForm" @close="showForm = false" round>
-      <view class="popup-content">
+    <FabButton v-if="canAdd" @click="openAdd">
+      <SvgIcon name="plus" color="#fff" size="24" />
+    </FabButton>
+    <Popup :show="showForm" mode="center" round @close="showForm = false">
+      <view class="popup-body">
         <view class="popup-title">{{
           editId ? "编辑字典类型" : "新增字典类型"
         }}</view>
-        <u-form :model="form">
-          <u-form-item label="名称"
-            ><u-input v-model="form.name" placeholder="字典名称"
-          /></u-form-item>
-          <u-form-item label="编码"
-            ><u-input v-model="form.code" placeholder="字典编码"
-          /></u-form-item>
-          <u-form-item label="状态">
-            <u-switch
-              :checked="form.status === 1"
-              @change="(val: boolean) => (form.status = val ? 1 : 0)"
-            />
-          </u-form-item>
-        </u-form>
-        <u-button type="primary" @click="handleSave" :loading="saving"
-          >保存</u-button
-        >
+        <view class="form-row">
+          <text class="form-label">名称</text>
+          <input
+            class="form-input"
+            v-model="form.name"
+            placeholder="字典名称"
+          />
+        </view>
+        <view class="form-row">
+          <text class="form-label">编码</text>
+          <input
+            class="form-input"
+            v-model="form.code"
+            placeholder="字典编码"
+          />
+        </view>
+        <view class="form-row">
+          <text class="form-label">状态</text>
+          <switch
+            :checked="form.status === 1"
+            @change="(e: any) => (form.status = e.detail.value ? 1 : 0)"
+          />
+        </view>
+        <button class="btn btn-primary" :loading="saving" @click="handleSave">
+          保存
+        </button>
       </view>
-    </u-popup>
+    </Popup>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import PageLayout from "@/layout/index.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
+import FabButton from "@/components/common/FabButton.vue";
+import Popup from "@/components/common/Popup.vue";
 import { DictAPI } from "dehaze-sdk-js";
+import { useAuthStore } from "@/store/auth";
+
+const authStore = useAuthStore();
+const canAdd = computed(() => authStore.hasPerm("sys:dict:type:add"));
+const canEdit = computed(() => authStore.hasPerm("sys:dict:type:edit"));
 
 const list = ref<any[]>([]);
 const showForm = ref(false);
@@ -74,6 +87,11 @@ const goItems = (dict: any) =>
   uni.navigateTo({
     url: `/pages/system/dict/items?typeCode=${dict.code}&name=${encodeURIComponent(dict.name)}`,
   });
+const openAdd = () => {
+  editId.value = 0;
+  form.value = { name: "", code: "", status: 1 };
+  showForm.value = true;
+};
 const editType = (dict: any) => {
   editId.value = dict.id;
   form.value = {
@@ -109,31 +127,74 @@ fetchList();
 .page-body {
   padding: 20rpx;
 }
-.row-actions {
-  display: flex;
-  gap: 16rpx;
-}
-.fab-btn {
-  position: fixed;
-  right: 40rpx;
-  bottom: 100rpx;
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 50%;
-  background: $color-primary;
+.list-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
-  z-index: 99;
+  padding: 24rpx 20rpx;
+  border-bottom: 1rpx solid $color-border;
+
+  .cell {
+    flex: 1;
+    font-size: $font-sm;
+    color: $color-text-primary;
+  }
+
+  .row-actions {
+    display: flex;
+    gap: 16rpx;
+  }
 }
-.popup-content {
+.tag {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+.tag-success {
+  background: $color-success-bg;
+  color: $color-success;
+}
+.tag-danger {
+  background: $color-danger-bg;
+  color: $color-danger;
+}
+.popup-body {
   padding: 30rpx;
   width: 90vw;
 }
 .popup-title {
-  font-size: 32rpx;
+  font-size: $font-lg;
   font-weight: bold;
   margin-bottom: 20rpx;
+}
+.form-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid $color-border;
+}
+.form-label {
+  width: 180rpx;
+  flex-shrink: 0;
+  color: $color-text-primary;
+}
+.form-input {
+  flex: 1;
+  font-size: $font-sm;
+}
+.btn {
+  width: 100%;
+  margin-top: 40rpx;
+  padding: 16rpx 0;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+
+  &::after {
+    border: none;
+  }
+}
+.btn-primary {
+  background: $color-primary;
+  color: $color-white;
 }
 </style>

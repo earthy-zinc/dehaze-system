@@ -11,7 +11,7 @@
 
       <!-- 加载状态 -->
       <view v-if="loading" class="loading-container">
-        <up-loading-icon mode="circle" size="40" color="#10b981" />
+        <view class="loading-spinner" />
         <text class="loading-text">加载中...</text>
       </view>
 
@@ -46,7 +46,7 @@
 
       <!-- 空状态 -->
       <view v-else class="empty-state">
-        <up-empty mode="list" text="暂无文件" />
+        <view class="empty-tip">暂无文件</view>
         <text class="empty-hint">上传图片后文件会显示在这里</text>
       </view>
     </view>
@@ -117,14 +117,16 @@ onMounted(() => loadData());
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .page {
   width: 100%;
   min-height: 100vh;
-  background: #f9fafb;
+  background: $color-bg-primary;
 }
 .main-content {
   padding: 24rpx;
-  padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
+  @include safe-area-bottom(80rpx);
 }
 
 .file-list {
@@ -136,12 +138,12 @@ onMounted(() => loadData());
   display: flex;
   align-items: center;
   gap: 20rpx;
-  background: #fff;
+  background: $color-white;
   border-radius: 20rpx;
   padding: 24rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
   &:active {
-    background: #f9fafb;
+    background: $color-bg-primary;
   }
 }
 .file-icon {
@@ -162,7 +164,7 @@ onMounted(() => loadData());
   display: block;
   font-size: 28rpx;
   font-weight: 500;
-  color: #1f2937;
+  color: $color-text-primary;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -170,7 +172,7 @@ onMounted(() => loadData());
 }
 .file-meta {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 .file-arrow {
   flex-shrink: 0;
@@ -188,7 +190,7 @@ onMounted(() => loadData());
 }
 .load-more-text {
   font-size: 26rpx;
-  color: #10b981;
+  color: $color-success;
 }
 
 .loading-container {
@@ -200,7 +202,7 @@ onMounted(() => loadData());
 .loading-text {
   margin-top: 24rpx;
   font-size: 28rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 .empty-state {
@@ -209,9 +211,12 @@ onMounted(() => loadData());
   align-items: center;
   padding: 80rpx 0;
 }
+.empty-tip {
+  font-size: 28rpx;
+}
 .empty-hint {
   font-size: 26rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
   margin-top: 16rpx;
 }
 </style>

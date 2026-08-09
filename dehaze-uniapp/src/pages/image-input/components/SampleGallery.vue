@@ -19,7 +19,10 @@
 
     <!-- 加载状态 -->
     <view v-if="loading" class="loading-container">
-      <up-loading-icon mode="circle" size="32" color="#9ca3af" />
+      <view
+        class="loading-spinner"
+        style="border-top-color: $color-text-placeholder"
+      />
       <text class="loading-text">加载中...</text>
     </view>
 
@@ -35,7 +38,7 @@
 
     <!-- 空状态 -->
     <view v-else class="empty-state">
-      <up-empty mode="search" text="暂无样例图片" />
+      <view class="empty-tip">暂无样例图片</view>
     </view>
 
     <!-- 快速体验提示 -->
@@ -158,7 +161,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 16rpx 28rpx;
-  background: #f3f4f6;
+  background: $color-bg-secondary;
   border-radius: 32rpx;
   transition: all 0.2s ease;
 
@@ -167,11 +170,11 @@ onMounted(() => {
   }
 
   &.active {
-    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    background: linear-gradient(135deg, $color-primary, $color-secondary);
     box-shadow: 0 4rpx 12rpx rgba(59, 130, 246, 0.3);
 
     .tab-text {
-      color: #ffffff;
+      color: $color-white;
     }
   }
 }
@@ -193,7 +196,7 @@ onMounted(() => {
 .loading-text {
   margin-top: 16rpx;
   font-size: 26rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 .sample-grid {
@@ -214,7 +217,7 @@ onMounted(() => {
 
 .tip-text {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 @media (min-width: 768px) {

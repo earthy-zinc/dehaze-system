@@ -13,7 +13,7 @@
       </view>
 
       <view v-if="loading" class="loading-container">
-        <up-loading-icon mode="circle" size="40" />
+        <view class="loading-spinner" />
         <text class="loading-text">加载中...</text>
       </view>
 
@@ -21,65 +21,108 @@
         <view v-for="rule in rules" :key="rule.id" class="rule-card">
           <view class="rule-top">
             <text class="rule-name">{{ rule.ruleName }}</text>
-            <text :class="['status-tag', rule.enabled ? 's-enabled' : 's-disabled']">
-              {{ rule.enabled ? '生效中' : '已禁用' }}
+            <text
+              :class="['status-tag', rule.enabled ? 's-enabled' : 's-disabled']"
+            >
+              {{ rule.enabled ? "生效中" : "已禁用" }}
             </text>
           </view>
           <view class="rule-meta">
-            <text v-if="rule.sceneType" class="meta-tag">场景: {{ rule.sceneType }}</text>
+            <text v-if="rule.sceneType" class="meta-tag"
+              >场景: {{ rule.sceneType }}</text
+            >
             <text class="meta-tag">权重: {{ rule.weight }}</text>
           </view>
-          <view v-if="rule.algorithmIds && rule.algorithmIds.length > 0" class="rule-algos">
+          <view
+            v-if="rule.algorithmIds && rule.algorithmIds.length > 0"
+            class="rule-algos"
+          >
             <text class="algo-label">关联算法: </text>
-            <text>{{ rule.algorithmIds.join(', ') }}</text>
+            <text>{{ rule.algorithmIds.join(", ") }}</text>
           </view>
-          <view class="rule-actions">
+          <view v-if="canEdit" class="rule-actions">
             <text class="action-btn" @click="editRule(rule)">编辑</text>
-            <text class="action-btn danger" @click="handleDelete(rule)">删除</text>
+            <text class="action-btn danger" @click="handleDelete(rule)"
+              >删除</text
+            >
           </view>
         </view>
       </view>
 
-      <view v-else class="empty-state">
-        <up-empty mode="list" text="暂无推荐规则" />
-      </view>
+      <view v-else class="empty-tip">暂无推荐规则</view>
     </view>
 
     <!-- 编辑弹窗 -->
-    <u-popup :show="showForm" mode="bottom" round="24" @close="showForm = false">
+    <Popup :show="showForm" mode="bottom" round @close="showForm = false">
       <view class="popup-content">
         <text class="popup-title">编辑推荐规则</text>
-        <u-form :model="form">
-          <u-form-item label="规则名称">
-            <u-input v-model="form.ruleName" placeholder="请输入规则名称" />
-          </u-form-item>
-          <u-form-item label="场景类型">
-            <u-input v-model="form.sceneType" placeholder="如: urban, landscape" />
-          </u-form-item>
-          <u-form-item label="关联算法ID">
-            <u-input v-model="form.algorithmIds" placeholder="逗号分隔, 如: 1,2,3" />
-          </u-form-item>
-          <u-form-item label="匹配权重">
-            <u-input v-model="form.weight" type="number" placeholder="0-100" />
-          </u-form-item>
-          <u-form-item label="启用规则">
-            <u-switch :checked="form.enabled" @change="(val: boolean) => (form.enabled = val)" />
-          </u-form-item>
-        </u-form>
+        <view class="form-item">
+          <text class="form-label">规则名称</text>
+          <input
+            class="form-input"
+            v-model="form.ruleName"
+            placeholder="请输入规则名称"
+          />
+        </view>
+        <view class="form-item">
+          <text class="form-label">场景类型</text>
+          <input
+            class="form-input"
+            v-model="form.sceneType"
+            placeholder="如: urban, landscape"
+          />
+        </view>
+        <view class="form-item">
+          <text class="form-label">关联算法ID</text>
+          <input
+            class="form-input"
+            v-model="form.algorithmIds"
+            placeholder="逗号分隔, 如: 1,2,3"
+          />
+        </view>
+        <view class="form-item">
+          <text class="form-label">匹配权重</text>
+          <input
+            class="form-input"
+            v-model="form.weight"
+            type="number"
+            placeholder="0-100"
+          />
+        </view>
+        <view class="form-item switch-row">
+          <text class="form-label">启用规则</text>
+          <switch
+            :checked="form.enabled"
+            @change="(e: any) => (form.enabled = e.detail.value)"
+          />
+        </view>
         <view class="popup-footer">
-          <u-button text="取消" @click="showForm = false" />
-          <u-button text="保存" type="primary" @click="handleSave" :loading="saving" />
+          <button class="btn btn-default" @click="showForm = false">
+            取消
+          </button>
+          <button
+            class="btn btn-primary"
+            :disabled="saving"
+            @click="handleSave"
+          >
+            保存
+          </button>
         </view>
       </view>
-    </u-popup>
+    </Popup>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import PageLayout from "@/layout/index.vue";
+import Popup from "@/components/common/Popup.vue";
 import { RecommendationAPI } from "dehaze-sdk-js";
 import type { RecommendationRule } from "dehaze-sdk-js";
+import { useAuthStore } from "@/store/auth";
+
+const auth = useAuthStore();
+const canEdit = computed(() => auth.hasPerm("sys:recommendation:rule:edit"));
 
 const rules = ref<RecommendationRule[]>([]);
 const loading = ref(false);
@@ -95,7 +138,9 @@ const form = ref({
   enabled: true,
 });
 
-const enabledCount = computed(() => rules.value.filter((r) => r.enabled).length);
+const enabledCount = computed(
+  () => rules.value.filter((r) => r.enabled).length
+);
 
 async function fetchRules() {
   loading.value = true;
@@ -190,7 +235,7 @@ fetchRules();
   flex-direction: column;
   align-items: center;
   padding: 20rpx;
-  background: #fff;
+  background: $color-white;
   border-radius: $radius-lg;
 }
 .stat-value {
@@ -209,7 +254,7 @@ fetchRules();
   gap: 16rpx;
 }
 .rule-card {
-  background: #fff;
+  background: $color-white;
   border-radius: $radius-lg;
   padding: 24rpx;
   border-left: 6rpx solid $color-primary;
@@ -238,12 +283,12 @@ fetchRules();
   flex-shrink: 0;
 }
 .s-enabled {
-  color: #10b981;
-  background: #ecfdf5;
+  color: $color-success;
+  background: $color-success-bg;
 }
 .s-disabled {
-  color: #9ca3af;
-  background: #f3f4f6;
+  color: $color-text-placeholder;
+  background: $color-bg-secondary;
 }
 
 .rule-meta {
@@ -276,7 +321,7 @@ fetchRules();
   font-size: $font-sm;
   color: $color-primary;
   &.danger {
-    color: #ef4444;
+    color: $color-danger;
   }
 }
 
@@ -291,11 +336,10 @@ fetchRules();
   font-size: $font-md;
   color: $color-text-placeholder;
 }
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.empty-tip {
+  text-align: center;
   padding: 80rpx 0;
+  color: $color-text-secondary;
 }
 
 .popup-content {
@@ -308,9 +352,56 @@ fetchRules();
   display: block;
   margin-bottom: 24rpx;
 }
+.form-item {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid $color-border;
+  &:last-child {
+    border-bottom: none;
+  }
+}
+.form-label {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: $font-sm;
+  color: $color-text-secondary;
+}
+.form-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14rpx 20rpx;
+  font-size: $font-md;
+  background: $color-bg-primary;
+  border-radius: $radius-md;
+}
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  .form-label {
+    margin-bottom: 0;
+  }
+}
 .popup-footer {
   display: flex;
   gap: 16rpx;
   margin-top: 24rpx;
+}
+.btn {
+  flex: 1;
+  padding: 12rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+  line-height: 1.6;
+  &::after {
+    border: none;
+  }
+}
+.btn-primary {
+  color: $color-white;
+  background: $color-primary;
+}
+.btn-default {
+  color: $color-text-primary;
+  background: $color-bg-secondary;
 }
 </style>

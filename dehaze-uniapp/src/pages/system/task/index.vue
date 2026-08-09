@@ -2,66 +2,75 @@
   <PageLayout level="L2" title="任务管理">
     <view class="page-body">
       <view class="search-bar">
-        <u-search
+        <input
+          class="search-input"
           v-model="keyword"
           placeholder="搜索任务类型"
-          @search="handleSearch"
-          @clear="handleSearch"
+          confirm-type="search"
+          @confirm="handleSearch"
         />
       </view>
-      <u-table>
-        <u-tr v-for="item in list" :key="item.taskId">
-          <u-td>{{ taskTypeLabel(item.taskType) }}</u-td>
-          <u-td>{{ item.taskId?.slice(0, 8) }}...</u-td>
-          <u-td>
-            <u-tag
-              :text="statusMap[item.status] || String(item.status)"
-              :type="statusTagType(item.status)"
-              size="mini"
-            />
-          </u-td>
-          <u-td>
-            <u-button
-              v-if="item.status === 1 || item.status === 2"
-              size="mini"
-              type="error"
-              @click="cancelTask(item.taskId)"
-              >取消</u-button
-            >
-            <u-button
-              v-if="item.status === 4"
-              size="mini"
-              type="warning"
-              @click="retryTask(item.taskId)"
-              >重试</u-button
-            >
-          </u-td>
-        </u-tr>
-      </u-table>
-      <u-empty v-if="!loading && list.length === 0" text="暂无任务" />
+      <view class="list-row list-row-head">
+        <text class="cell">任务类型</text>
+        <text class="cell">任务ID</text>
+        <text class="cell">状态</text>
+        <text class="cell">操作</text>
+      </view>
+      <view v-for="item in list" :key="item.taskId" class="list-row">
+        <text class="cell">{{ taskTypeLabel(item.taskType) }}</text>
+        <text class="cell cell-id">{{ item.taskId?.slice(0, 8) }}...</text>
+        <view class="cell">
+          <view class="tag tag-sm" :class="'tag-' + statusTagType(item.status)">
+            {{ statusMap[item.status] || String(item.status) }}
+          </view>
+        </view>
+        <view class="cell cell-actions">
+          <button
+            v-if="item.status === 1 || item.status === 2"
+            class="btn btn-danger btn-sm"
+            @click="cancelTask(item.taskId)"
+          >
+            取消
+          </button>
+          <button
+            v-if="item.status === 4"
+            class="btn btn-warning btn-sm"
+            @click="retryTask(item.taskId)"
+          >
+            重试
+          </button>
+        </view>
+      </view>
+      <view v-if="!loading && list.length === 0" class="empty-tip"
+        >暂无任务</view
+      >
       <view class="load-more" v-if="hasMore" @click="loadMore">加载更多</view>
     </view>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
 import PageLayout from "@/layout/index.vue";
+import { usePagedList } from "@/composables/usePagedList";
 import { TaskAPI } from "dehaze-sdk-js";
-import type { TaskStatus } from "dehaze-sdk-js";
 
-const statusMap: Record<TaskStatus, string> = {
+const statusMap: Record<number, string> = {
   1: "待处理",
   2: "处理中",
   3: "已完成",
   4: "失败",
   5: "已取消",
 };
-const list = ref<any[]>([]);
-const keyword = ref("");
-const pageNum = ref(1);
-const hasMore = ref(false);
-const loading = ref(false);
+
+const { list, keyword, hasMore, loading, fetchList, handleSearch, loadMore } =
+  usePagedList<any>({
+    fetcher: (p) =>
+      TaskAPI.getPage({
+        pageNum: p.pageNum,
+        pageSize: 20,
+        taskType: p.keyword,
+      }).then((r) => r.list || []),
+  });
 
 const taskTypeLabel = (type?: string) => {
   const map: Record<string, string> = {
@@ -82,32 +91,18 @@ const taskTypeLabel = (type?: string) => {
   return map[type || ""] || type || "未知类型";
 };
 
-const fetchList = async (reset = false) => {
-  if (reset) {
-    pageNum.value = 1;
-    list.value = [];
-  }
-  loading.value = true;
-  try {
-    const res = await TaskAPI.getPage({
-      pageNum: pageNum.value,
-      pageSize: 20,
-      taskType: keyword.value || undefined,
-    });
-    const records = res.list || [];
-    if (reset) list.value = records;
-    else list.value.push(...records);
-    hasMore.value = records.length === 20;
-    pageNum.value++;
-  } finally {
-    loading.value = false;
+const statusTagType = (s: number) => {
+  switch (s) {
+    case 3:
+      return "success";
+    case 4:
+      return "danger";
+    case 5:
+      return "info";
+    default:
+      return "warning";
   }
 };
-
-const handleSearch = () => fetchList(true);
-const loadMore = () => fetchList();
-const statusTagType = (s: number) =>
-  s === 3 ? "success" : s === 4 ? "error" : s === 5 ? "info" : "warning";
 
 const cancelTask = async (taskId: string) => {
   const res = await uni.showModal({
@@ -142,6 +137,91 @@ fetchList(true);
 }
 .search-bar {
   margin-bottom: 20rpx;
+
+  .search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14rpx 20rpx;
+    font-size: 28rpx;
+    background: $color-bg-secondary;
+    border-radius: $radius-md;
+  }
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 16rpx;
+  border-bottom: 1rpx solid $color-border;
+  font-size: 26rpx;
+
+  .cell {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cell-id {
+    color: $color-text-secondary;
+  }
+  .cell-actions {
+    display: flex;
+    gap: 8rpx;
+  }
+}
+.list-row-head {
+  background: $color-bg-secondary;
+  font-weight: 600;
+  color: $color-text-secondary;
+}
+.tag {
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+.tag-sm {
+  padding: 2rpx 10rpx;
+}
+.tag-primary {
+  color: $color-primary;
+  background: $color-primary-bg;
+}
+.tag-success {
+  color: $color-success;
+  background: $color-success-bg;
+}
+.tag-warning {
+  color: $color-warning;
+  background: $color-warning-bg;
+}
+.tag-danger {
+  color: $color-danger;
+  background: $color-danger-bg;
+}
+.tag-info {
+  color: $color-text-secondary;
+  background: $color-bg-secondary;
+}
+.btn {
+  padding: 8rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+  line-height: 1.6;
+  &::after {
+    border: none;
+  }
+}
+.btn-sm {
+  padding: 4rpx 16rpx;
+  font-size: $font-xs;
+}
+.btn-warning {
+  color: $color-white;
+  background: $color-warning;
+}
+.btn-danger {
+  color: $color-white;
+  background: $color-danger;
 }
 .load-more {
   text-align: center;

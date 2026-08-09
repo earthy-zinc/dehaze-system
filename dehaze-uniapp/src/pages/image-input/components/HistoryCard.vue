@@ -1,14 +1,11 @@
 <template>
   <view class="history-card" @click="handleLoad">
     <view class="card-thumbnail">
-      <up-image
+      <image
         v-if="thumbnailUrl"
         :src="thumbnailUrl"
         mode="aspectFill"
-        width="120rpx"
-        height="120rpx"
         :lazy-load="true"
-        :fade="true"
       />
       <view v-else class="thumbnail-placeholder">
         <SvgIcon name="photo" size="28" color="#d1d5db" />
@@ -21,7 +18,9 @@
     <view class="card-content">
       <text class="card-name">{{ displayName }}</text>
       <text class="card-time">{{ formatTimestamp(record.createTime) }}</text>
-      <text v-if="record.algorithmName" class="card-algo">{{ record.algorithmName }}</text>
+      <text v-if="record.algorithmName" class="card-algo">{{
+        record.algorithmName
+      }}</text>
     </view>
 
     <view class="card-arrow">
@@ -47,12 +46,14 @@ const emit = defineEmits<{
 }>();
 
 const thumbnailUrl = computed(() => {
-  return props.record.originalThumbnailUrl || props.record.originalImageUrl || "";
+  return (
+    props.record.originalThumbnailUrl || props.record.originalImageUrl || ""
+  );
 });
 
 const displayName = computed(() => {
   const url = props.record.originalImageUrl || "";
-  const path = url.split("?")[0];
+  const path = url.split("?")[0] ?? "";
   const segments = path.split("/");
   return segments[segments.length - 1] || "未命名图片";
 });
@@ -68,12 +69,12 @@ const handleLoad = () => {
   align-items: center;
   gap: 20rpx;
   padding: 20rpx;
-  background: #ffffff;
+  background: $color-white;
   border-radius: 16rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 
   &:active {
-    background: #f9fafb;
+    background: $color-bg-primary;
   }
 }
 
@@ -84,7 +85,12 @@ const handleLoad = () => {
   border-radius: 12rpx;
   overflow: hidden;
   flex-shrink: 0;
-  background: #f3f4f6;
+  background: $color-bg-secondary;
+
+  image {
+    width: 100%;
+    height: 100%;
+  }
 }
 
 .thumbnail-placeholder {
@@ -100,12 +106,12 @@ const handleLoad = () => {
   bottom: 4rpx;
   left: 4rpx;
   padding: 4rpx 10rpx;
-  background: #10b981;
+  background: $color-success;
   border-radius: 6rpx;
 
   text {
     font-size: 18rpx;
-    color: #ffffff;
+    color: $color-white;
   }
 }
 
@@ -118,7 +124,7 @@ const handleLoad = () => {
   display: block;
   font-size: 28rpx;
   font-weight: 600;
-  color: #1f2937;
+  color: $color-text-primary;
   margin-bottom: 8rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -128,13 +134,13 @@ const handleLoad = () => {
 .card-time {
   display: block;
   font-size: 24rpx;
-  color: #6b7280;
+  color: $color-text-secondary;
   margin-bottom: 4rpx;
 }
 
 .card-algo {
   font-size: 22rpx;
-  color: #3b82f6;
+  color: $color-primary;
 }
 
 .card-arrow {

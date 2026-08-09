@@ -5,7 +5,11 @@
     @click="handleClick"
   >
     <view class="card-icon">
-      <SvgIcon :name="icon" :size="28" :color="active ? '#3b82f6' : '#6b7280'" />
+      <SvgIcon
+        :name="icon"
+        :size="28"
+        :color="active ? '#3b82f6' : '#6b7280'"
+      />
     </view>
     <view class="card-content">
       <text class="card-title">{{ title }}</text>

@@ -24,23 +24,32 @@
         >
         <view class="info-row">
           <text class="label">状态</text>
-          <u-tag
-            :text="member.status === 1 ? '正常' : '冻结'"
-            :type="member.status === 1 ? 'success' : 'error'"
-            size="mini"
+          <view
+            class="tag tag-sm"
+            :class="member.status === 1 ? 'tag-success' : 'tag-danger'"
+          >
+            {{ member.status === 1 ? "正常" : "冻结" }}
+          </view>
+          <switch
+            :checked="member.status === 1"
+            @change="(e: any) => toggleStatus(e.detail.value)"
           />
-          <u-switch :checked="member.status === 1" @change="toggleStatus" />
         </view>
       </view>
       <view class="section-title">成长日志</view>
-      <u-table>
-        <u-tr v-for="log in growthLogs" :key="log.id">
-          <u-td>{{ log.reason || "成长值变动" }}</u-td>
-          <u-td>{{ log.changeValue > 0 ? "+" + log.changeValue : log.changeValue }}</u-td>
-          <u-td>{{ log.createTime }}</u-td>
-        </u-tr>
-      </u-table>
-      <u-empty v-if="growthLogs.length === 0" text="暂无成长日志" />
+      <view class="list-row list-row-head">
+        <text class="cell">原因</text>
+        <text class="cell">变动</text>
+        <text class="cell">时间</text>
+      </view>
+      <view v-for="log in growthLogs" :key="log.id" class="list-row">
+        <text class="cell">{{ log.reason || "成长值变动" }}</text>
+        <text class="cell">{{
+          log.changeValue > 0 ? "+" + log.changeValue : log.changeValue
+        }}</text>
+        <text class="cell">{{ log.createTime }}</text>
+      </view>
+      <view v-if="growthLogs.length === 0" class="empty-tip">暂无成长日志</view>
     </view>
   </PageLayout>
 </template>
@@ -89,13 +98,14 @@ const toggleStatus = async (val: boolean) => {
 }
 .info-card {
   background: $color-white;
-  border-radius: 16rpx;
+  border-radius: $radius-lg;
   padding: 20rpx;
   margin-bottom: 30rpx;
 }
 .info-row {
   display: flex;
   align-items: center;
+  gap: 16rpx;
   justify-content: space-between;
   padding: 16rpx 0;
   border-bottom: 1rpx solid $color-border;
@@ -110,5 +120,41 @@ const toggleStatus = async (val: boolean) => {
   font-size: 30rpx;
   font-weight: bold;
   padding: 20rpx 0;
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 16rpx;
+  border-bottom: 1rpx solid $color-border;
+  font-size: 26rpx;
+
+  .cell {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+.list-row-head {
+  background: $color-bg-secondary;
+  font-weight: 600;
+  color: $color-text-secondary;
+}
+.tag {
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+.tag-sm {
+  padding: 2rpx 10rpx;
+}
+.tag-success {
+  color: $color-success;
+  background: $color-success-bg;
+}
+.tag-danger {
+  color: $color-danger;
+  background: $color-danger-bg;
 }
 </style>

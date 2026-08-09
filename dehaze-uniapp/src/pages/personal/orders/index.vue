@@ -2,7 +2,7 @@
   <PageLayout level="L2" title="我的订单" class="page">
     <view class="main-content">
       <view v-if="loading" class="loading-container">
-        <up-loading-icon mode="circle" size="40" color="#10b981" />
+        <view class="loading-spinner" />
         <text class="loading-text">加载中...</text>
       </view>
 
@@ -34,7 +34,7 @@
       </view>
 
       <view v-else class="empty-state">
-        <up-empty mode="list" text="暂无订单" />
+        <view class="empty-tip">暂无订单</view>
         <text class="empty-hint">购买套餐后订单会显示在这里</text>
       </view>
     </view>
@@ -108,6 +108,8 @@ onMounted(() => loadData());
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .page {
   width: 100%;
   min-height: 100vh;
@@ -115,7 +117,7 @@ onMounted(() => loadData());
 }
 .main-content {
   padding: $spacing-md;
-  padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
+  @include safe-area-bottom(80rpx);
 }
 
 .order-list {
@@ -124,12 +126,12 @@ onMounted(() => loadData());
   gap: 16rpx;
 }
 .order-card {
-  background: #fff;
+  background: $color-white;
   border-radius: 20rpx;
   padding: 24rpx;
   box-shadow: $shadow-sm;
   &:active {
-    background: #f9fafb;
+    background: $color-bg-primary;
   }
 }
 .order-header {
@@ -150,23 +152,23 @@ onMounted(() => loadData());
   border-radius: 8rpx;
 }
 .status-pending {
-  color: #f59e0b;
+  color: $color-warning;
   background: #fef3c7;
 }
 .status-paid {
-  color: #3b82f6;
+  color: $color-primary;
   background: #dbeafe;
 }
 .status-done {
-  color: #10b981;
+  color: $color-success;
   background: #ecfdf5;
 }
 .status-cancel {
-  color: #9ca3af;
-  background: #f3f4f6;
+  color: $color-text-placeholder;
+  background: $color-bg-secondary;
 }
 .status-warn {
-  color: #ef4444;
+  color: $color-danger;
   background: #fef2f2;
 }
 
@@ -184,7 +186,7 @@ onMounted(() => loadData());
 .order-amount {
   font-size: $font-lg;
   font-weight: 700;
-  color: #f59e0b;
+  color: $color-warning;
 }
 .order-footer {
 }
@@ -221,6 +223,9 @@ onMounted(() => loadData());
   flex-direction: column;
   align-items: center;
   padding: 80rpx 0;
+}
+.empty-tip {
+  font-size: $font-md;
 }
 .empty-hint {
   font-size: $font-sm;

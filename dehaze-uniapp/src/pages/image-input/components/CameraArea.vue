@@ -2,7 +2,7 @@
   <view class="camera-area">
     <view class="camera-placeholder">
       <view class="camera-icon">
-        <SvgIcon name="camera" size="56" color="#9ca3af" />
+        <SvgIcon name="camera" size="56" color="$color-text-placeholder" />
       </view>
       <text class="camera-text">点击下方按钮打开相机</text>
       <text class="camera-hint">拍摄需要去雾的图片</text>
@@ -10,7 +10,7 @@
 
     <view class="camera-actions">
       <view class="action-btn" @click="handleOpenCamera">
-        <SvgIcon name="camera-fill" size="24" color="#ffffff" />
+        <SvgIcon name="camera-fill" size="24" color="$color-white" />
         <text class="action-text">打开相机</text>
       </view>
     </view>
@@ -18,7 +18,7 @@
     <!-- 拍照进度 -->
     <view v-if="processing" class="processing-overlay">
       <view class="processing-content">
-        <up-loading-icon mode="circle" size="32" color="#3b82f6" />
+        <view class="loading-spinner" />
         <text class="processing-text">处理中...</text>
       </view>
     </view>
@@ -80,7 +80,9 @@ const openCamera = () => {
     sourceType: ["camera"],
     success: async (res) => {
       const tempFilePath = res.tempFilePaths[0];
-      const tempFiles = Array.isArray(res.tempFiles) ? res.tempFiles : [res.tempFiles];
+      const tempFiles = Array.isArray(res.tempFiles)
+        ? res.tempFiles
+        : [res.tempFiles];
       const tempFile = tempFiles[0];
       if (!tempFilePath || !tempFile) return;
 
@@ -137,7 +139,7 @@ const openCamera = () => {
   align-items: center;
   justify-content: center;
   padding: 64rpx 32rpx;
-  background: #f9fafb;
+  background: $color-bg-primary;
   border-radius: 20rpx;
 }
 
@@ -147,7 +149,7 @@ const openCamera = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e5e7eb;
+  background: $color-border;
   border-radius: 50%;
   margin-bottom: 24rpx;
 }
@@ -161,7 +163,7 @@ const openCamera = () => {
 
 .camera-hint {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 .camera-error {
@@ -172,7 +174,7 @@ const openCamera = () => {
 
   text {
     font-size: 26rpx;
-    color: #ef4444;
+    color: $color-danger;
   }
 }
 
@@ -186,7 +188,7 @@ const openCamera = () => {
   justify-content: center;
   gap: 12rpx;
   padding: 24rpx 48rpx;
-  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  background: linear-gradient(135deg, #3b82f6, $color-secondary);
   border-radius: 16rpx;
   box-shadow: 0 4rpx 16rpx rgba(59, 130, 246, 0.3);
 
@@ -199,7 +201,7 @@ const openCamera = () => {
 .action-text {
   font-size: 30rpx;
   font-weight: 600;
-  color: #ffffff;
+  color: $color-white;
 }
 
 .processing-overlay {

@@ -52,7 +52,7 @@
 
       <!-- 加载状态 -->
       <view v-if="loading" class="loading-state">
-        <up-loading-icon mode="circle" size="40" color="#6366f1" />
+        <view class="loading-spinner" />
         <text class="loading-text">加载算法列表...</text>
       </view>
 
@@ -70,10 +70,7 @@
         </text>
 
         <view v-if="filteredList.length === 0" class="empty-state">
-          <up-empty
-            :mode="searchKeyword ? 'search' : 'data'"
-            text="暂无算法数据"
-          />
+          <view class="empty-tip">暂无算法数据</view>
         </view>
 
         <view v-else class="algorithm-list">
@@ -131,13 +128,7 @@
     </view>
 
     <!-- 算法详情弹层 -->
-    <up-popup
-      :show="detailVisible"
-      mode="bottom"
-      :round="24"
-      :close-on-click-overlay="true"
-      @close="handleCloseDetail"
-    >
+    <Popup :show="detailVisible" mode="bottom" round @close="handleCloseDetail">
       <view class="detail-popup">
         <view class="detail-header">
           <text class="detail-title">{{ detailAlgo?.name || "算法详情" }}</text>
@@ -233,7 +224,7 @@
           </button>
         </view>
       </view>
-    </up-popup>
+    </Popup>
   </PageLayout>
 </template>
 
@@ -241,6 +232,7 @@
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
+import Popup from "@/components/common/Popup.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
 import { AlgorithmAPI, RecommendationAPI } from "dehaze-sdk-js";
 import type { Algorithm } from "dehaze-sdk-js";

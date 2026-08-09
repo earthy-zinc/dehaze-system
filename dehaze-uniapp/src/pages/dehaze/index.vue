@@ -115,7 +115,11 @@
             <!-- 预设选择 -->
             <view v-if="presets.length > 0" class="dehaze-preset-section">
               <text class="dehaze-preset-label">参数预设</text>
-              <scroll-view scroll-x class="dehaze-preset-scroll" :show-scrollbar="false">
+              <scroll-view
+                scroll-x
+                class="dehaze-preset-scroll"
+                :show-scrollbar="false"
+              >
                 <view
                   v-for="preset in presets"
                   :key="preset.id"
@@ -217,7 +221,7 @@
             <view class="dehaze-spinner" />
             <text class="dehaze-status-text">正在去雾处理中...</text>
             <text class="dehaze-status-hint"
-              >已用 {{ formatDuration(elapsedTime) }}</text
+              >已用 {{ formatDuration(store.elapsedTime) }}</text
             >
             <view class="dehaze-step-action">
               <view
@@ -309,13 +313,13 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
 import PageLayout from "@/layout/index.vue";
 import { AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
 import type { Algorithm, PredictionResultVO, PresetVO } from "dehaze-sdk-js";
 import { uploadImage } from "@/api/file";
-import { getErrorMessage } from "@/utils/error";
+import { useProcessingStore } from "@/store/processing";
 
 interface StepDef {
   key: string;
@@ -354,10 +358,7 @@ const DEFAULT_PARAMS: ProcessParams = {
 
 type ProcessStatus = "idle" | "processing" | "success" | "error";
 
-/** 重试间隔（毫秒）：2s → 5s → 10s */
-const RETRY_DELAYS = [2000, 5000, 10000];
-const MAX_RETRIES = 3;
-
+const store = useProcessingStore();
 const currentStep = ref(0);
 const currentImage = ref<ImageData | null>(null);
 const algorithms = ref<Algorithm[]>([]);
@@ -368,28 +369,20 @@ const params = ref<ProcessParams>({ ...DEFAULT_PARAMS });
 const processStatus = ref<ProcessStatus>("idle");
 const result = ref<PredictionResultVO | null>(null);
 const errorMsg = ref("");
-const elapsedTime = ref(0);
 const uploadedFileId = ref<number | null>(null);
-const cancelled = ref(false);
 const presets = ref<PresetVO[]>([]);
-let elapsedTimer: ReturnType<typeof setInterval> | null = null;
-
-const clearTimer = () => {
-  if (elapsedTimer) {
-    clearInterval(elapsedTimer);
-    elapsedTimer = null;
-  }
-};
-
-onUnmounted(clearTimer);
 
 onMounted(() => {
   if (currentStep.value === 1 && algorithms.value.length === 0) {
     loadAlgorithms();
   }
   ModelAPI.getPresets({ pageNum: 1, pageSize: 50 })
-    .then((res) => { presets.value = res.list || []; })
-    .catch(() => { /* 静默 */ });
+    .then((res) => {
+      presets.value = res.list || [];
+    })
+    .catch(() => {
+      /* 静默 */
+    });
 });
 
 const loadAlgorithms = async () => {
@@ -496,27 +489,6 @@ const handleSelectAlgorithm = (algorithm: Algorithm) => {
 const handleProcess = async () => {
   if (!currentImage.value || !selectedAlgorithm.value) return;
 
-  // 配额检查
-  try {
-    const quota = await ModelAPI.getQuota();
-    if (quota.remaining === 0) {
-      uni.showModal({
-        title: "预测次数不足",
-        content: `当前剩余预测次数为 0（已使用 ${quota.used}/${quota.total}），请及时充值。`,
-        confirmText: "去充值",
-        cancelText: "取消",
-        success: (res) => {
-          if (res.confirm) {
-            uni.navigateTo({ url: "/pages/user-center/index" });
-          }
-        },
-      });
-      return;
-    }
-  } catch {
-    // 配额查询失败也允许继续
-  }
-
   // 确认对话框
   const confirmResult = await new Promise<boolean>((resolve) => {
     uni.showModal({
@@ -530,62 +502,53 @@ const handleProcess = async () => {
   });
   if (!confirmResult) return;
 
+  // 上传图片（如果尚未上传）
+  if (!uploadedFileId.value) {
+    try {
+      const fileInfo = await uploadImage({ url: currentImage.value!.url });
+      uploadedFileId.value = fileInfo.id;
+    } catch {
+      uni.showToast({ title: "上传图片失败", icon: "none" });
+      return;
+    }
+  }
+
   processStatus.value = "processing";
   errorMsg.value = "";
   result.value = null;
-  cancelled.value = false;
-  elapsedTime.value = 0;
-  elapsedTimer = setInterval(() => {
-    elapsedTime.value += 100;
-  }, 100);
 
-  const attempt = async (attemptNumber: number): Promise<void> => {
-    if (cancelled.value) return;
-
-    try {
-      if (!uploadedFileId.value) {
-        const fileInfo = await uploadImage({ url: currentImage.value!.url });
-        uploadedFileId.value = fileInfo.id;
-      }
-
-      const res = await ModelAPI.predictAndWait({
-        algorithmId: selectedAlgorithm.value!.id,
-        fileId: uploadedFileId.value,
-        params: JSON.stringify(params.value),
+  const res = await store.runPrediction({
+    algorithmId: selectedAlgorithm.value.id,
+    fileId: uploadedFileId.value!,
+    params: JSON.stringify(params.value),
+    onQuotaExhausted: ({ used, total }) => {
+      uni.showModal({
+        title: "预测次数不足",
+        content: `当前剩余预测次数为 0（已使用 ${used}/${total}），请及时充值。`,
+        confirmText: "去充值",
+        cancelText: "取消",
+        success: (r) => {
+          if (r.confirm) {
+            uni.navigateTo({ url: "/pages/personal/quota/index" });
+          }
+        },
       });
+    },
+  });
 
-      if (cancelled.value) return;
-      clearTimer();
-
-      if (res.status === 3) {
-        throw new Error(res.errorMessage || "处理失败");
-      }
-
-      result.value = res;
-      processStatus.value = "success";
-      uni.setStorageSync("prediction_result", JSON.stringify(res));
-      uni.showToast({ title: "处理完成", icon: "success" });
-      goStep(4);
-    } catch (error) {
-      if (cancelled.value) return;
-
-      const errMsg = getErrorMessage(error, "处理失败");
-      if (attemptNumber < MAX_RETRIES) {
-        const delay = RETRY_DELAYS[attemptNumber] || 2000;
-        errorMsg.value = `${errMsg}，${delay / 1000}秒后自动重试（${attemptNumber + 1}/${MAX_RETRIES}）`;
-        await new Promise((r) => setTimeout(r, delay));
-        if (!cancelled.value) {
-          return attempt(attemptNumber + 1);
-        }
-      }
-
-      clearTimer();
-      processStatus.value = "error";
-      errorMsg.value = errMsg;
-    }
-  };
-
-  await attempt(0);
+  if (res.ok && res.result) {
+    result.value = res.result;
+    processStatus.value = "success";
+    uni.setStorageSync("prediction_result", JSON.stringify(res.result));
+    uni.showToast({ title: "处理完成", icon: "success" });
+    goStep(4);
+  } else if (!res.ok && res.error) {
+    processStatus.value = "error";
+    errorMsg.value = res.error;
+  } else {
+    // 已取消或配额耗尽
+    processStatus.value = "idle";
+  }
 };
 
 const handleGoCompare = () => {
@@ -611,11 +574,9 @@ const resetParams = () => {
 };
 
 const handleCancelProcess = () => {
-  cancelled.value = true;
-  clearTimer();
+  store.cancelProcessing();
   processStatus.value = "idle";
   errorMsg.value = "";
-  elapsedTime.value = 0;
   uni.showToast({ title: "已取消处理", icon: "none" });
 };
 
@@ -627,10 +588,7 @@ const handleReset = () => {
   processStatus.value = "idle";
   result.value = null;
   errorMsg.value = "";
-  elapsedTime.value = 0;
   uploadedFileId.value = null;
-  cancelled.value = false;
-  clearTimer();
 };
 
 const formatSize = (bytes?: number): string => {
@@ -928,12 +886,6 @@ const formatDuration = (ms: number): string => {
   border-top-color: $color-primary;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .dehaze-success-icon {

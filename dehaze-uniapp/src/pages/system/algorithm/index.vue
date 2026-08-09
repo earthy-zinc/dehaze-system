@@ -3,40 +3,38 @@
     <view class="page-body">
       <!-- 搜索栏 + 新增按钮 -->
       <view class="search-bar">
-        <u-search
+        <input
+          class="search-input"
           v-model="keyword"
           placeholder="搜索算法名称或类型"
-          @search="handleSearch"
-          @clear="handleSearch"
+          confirm-type="search"
+          @confirm="handleSearch"
         />
-        <u-button
-          v-if="canAdd"
-          type="primary"
-          size="small"
-          class="add-btn"
-          @click="openAdd"
-        >
+        <button v-if="canAdd" class="btn btn-primary btn-sm" @click="openAdd">
           新增
-        </u-button>
+        </button>
       </view>
 
       <!-- 状态筛选 -->
       <view class="filter-row">
-        <u-tag
+        <view
           v-for="f in statusFilters"
           :key="f.value"
-          :text="f.label"
-          :type="statusFilter === f.value ? 'primary' : 'info'"
+          class="tag"
+          :class="statusFilter === f.value ? 'tag-primary' : 'tag-info'"
           @click="statusFilter = f.value"
-        />
+        >
+          {{ f.label }}
+        </view>
       </view>
 
       <!-- 算法列表（树形） -->
       <view v-if="loading" class="loading-wrapper">
-        <u-loading-icon text="加载中..." />
+        <view class="loading-spinner" />
+        <text class="loading-text">加载中...</text>
       </view>
-      <view v-else-if="flatList.length === 0" class="empty-wrapper">
-        <u-empty text="暂无算法数据" />
+      <view v-else-if="flatList.length === 0" class="empty-tip">
+        暂无算法数据
       </view>
       <view v-else class="algo-list">
         <view
@@ -48,17 +46,24 @@
         >
           <view class="node-main">
             <view class="node-info">
-              <text class="node-icon">{{ item.hasChildren ? '📁' : '📄' }}</text>
+              <text class="node-icon">{{
+                item.hasChildren ? "📁" : "📄"
+              }}</text>
               <text class="node-name">{{ item.algorithm.name }}</text>
             </view>
             <view class="node-meta">
-              <u-tag
-                :text="statusLabel(item.algorithm.status)"
-                :type="statusTagType(item.algorithm.status)"
-                size="mini"
-              />
-              <text v-if="item.algorithm.type" class="node-type">{{ item.algorithm.type }}</text>
-              <text v-if="item.algorithm.version" class="node-version">v{{ item.algorithm.version }}</text>
+              <view
+                class="tag tag-sm"
+                :class="'tag-' + statusTagType(item.algorithm.status)"
+              >
+                {{ statusLabel(item.algorithm.status) }}
+              </view>
+              <text v-if="item.algorithm.type" class="node-type">{{
+                item.algorithm.type
+              }}</text>
+              <text v-if="item.algorithm.version" class="node-version"
+                >v{{ item.algorithm.version }}</text
+              >
             </view>
           </view>
 
@@ -68,55 +73,59 @@
             class="node-actions"
             @click.stop
           >
-            <u-button
+            <button
               v-if="item.algorithm.status === 3 && canAudit"
-              type="success"
-              size="small"
+              class="btn btn-success btn-sm"
               @click="openAudit(item.algorithm, true)"
             >
               通过
-            </u-button>
-            <u-button
+            </button>
+            <button
               v-if="item.algorithm.status === 3 && canAudit"
-              type="error"
-              size="small"
+              class="btn btn-danger btn-sm"
               @click="openAudit(item.algorithm, false)"
             >
               驳回
-            </u-button>
-            <u-button
-              v-if="(item.algorithm.status === 4 || item.algorithm.status === 5) && canEdit"
-              :type="item.algorithm.status === 4 ? 'warning' : 'primary'"
-              size="small"
-              :loading="actionLoadingId === item.algorithm.id"
+            </button>
+            <button
+              v-if="
+                (item.algorithm.status === 4 || item.algorithm.status === 5) &&
+                canEdit
+              "
+              class="btn btn-sm"
+              :class="
+                item.algorithm.status === 4 ? 'btn-warning' : 'btn-primary'
+              "
+              :disabled="actionLoadingId === item.algorithm.id"
               @click="handleToggleStatus(item.algorithm)"
             >
-              {{ item.algorithm.status === 4 ? '停用' : '启用' }}
-            </u-button>
-            <u-button
+              {{ item.algorithm.status === 4 ? "停用" : "启用" }}
+            </button>
+            <button
               v-if="isDeletable(item.algorithm.status) && canDelete"
-              type="error"
-              size="small"
-              :loading="actionLoadingId === item.algorithm.id"
+              class="btn btn-danger btn-sm"
+              :disabled="actionLoadingId === item.algorithm.id"
               @click="handleDelete(item.algorithm)"
             >
               删除
-            </u-button>
+            </button>
           </view>
         </view>
       </view>
 
       <!-- 算法详情弹窗 -->
-      <u-popup
+      <Popup
         :show="detailVisible"
         mode="bottom"
-        round="20"
+        round
         @close="detailVisible = false"
       >
         <scroll-view scroll-y class="detail-content">
           <view class="detail-header">
             <text class="detail-title">{{ detailAlgo?.name }}</text>
-            <text class="detail-close" @click="detailVisible = false">关闭</text>
+            <text class="detail-close" @click="detailVisible = false"
+              >关闭</text
+            >
           </view>
 
           <view class="detail-section">
@@ -125,11 +134,12 @@
             <DetailItem label="算法类型" :value="detailAlgo?.type" />
             <DetailItem label="描述" :value="detailAlgo?.description" />
             <DetailItem label="状态">
-              <u-tag
-                :text="statusLabel(detailAlgo?.status)"
-                :type="statusTagType(detailAlgo?.status)"
-                size="mini"
-              />
+              <view
+                class="tag tag-sm"
+                :class="'tag-' + statusTagType(detailAlgo?.status)"
+              >
+                {{ statusLabel(detailAlgo?.status) }}
+              </view>
             </DetailItem>
             <DetailItem label="版本" :value="detailAlgo?.version" />
             <DetailItem label="大小" :value="detailAlgo?.size" />
@@ -145,7 +155,10 @@
 
           <view class="detail-section" v-if="detailAlgo?.auditBy != null">
             <text class="section-title">审核信息</text>
-            <DetailItem label="审核人" :value="String(detailAlgo?.auditBy || '')" />
+            <DetailItem
+              label="审核人"
+              :value="String(detailAlgo?.auditBy || '')"
+            />
             <DetailItem label="审核时间" :value="detailAlgo?.auditTime" />
             <DetailItem label="审核备注" :value="detailAlgo?.auditRemark" />
           </view>
@@ -153,86 +166,89 @@
           <DetailItem label="创建时间" :value="detailAlgo?.createTime" />
 
           <view class="detail-footer">
-            <u-button
+            <button
               v-if="detailAlgo?.status === 3 && canAudit"
-              type="success"
+              class="btn btn-success"
               @click="openAudit(detailAlgo!, true)"
             >
               审核通过
-            </u-button>
-            <u-button
+            </button>
+            <button
               v-if="detailAlgo?.status === 3 && canAudit"
-              type="error"
+              class="btn btn-danger"
               @click="openAudit(detailAlgo!, false)"
             >
               审核驳回
-            </u-button>
-            <u-button
+            </button>
+            <button
               v-if="detailAlgo?.status === 4 && canEdit"
-              type="warning"
-              :loading="actionLoadingId === detailAlgo?.id"
+              class="btn btn-warning"
+              :disabled="actionLoadingId === detailAlgo?.id"
               @click="handleToggleStatus(detailAlgo!)"
             >
               停用算法
-            </u-button>
-            <u-button
+            </button>
+            <button
               v-if="detailAlgo?.status === 5 && canEdit"
-              type="primary"
-              :loading="actionLoadingId === detailAlgo?.id"
+              class="btn btn-primary"
+              :disabled="actionLoadingId === detailAlgo?.id"
               @click="handleToggleStatus(detailAlgo!)"
             >
               启用算法
-            </u-button>
-            <u-button
+            </button>
+            <button
               v-if="isDeletable(detailAlgo?.status) && canDelete"
-              type="error"
-              :loading="actionLoadingId === detailAlgo?.id"
+              class="btn btn-danger"
+              :disabled="actionLoadingId === detailAlgo?.id"
               @click="handleDelete(detailAlgo!)"
             >
               删除算法
-            </u-button>
+            </button>
           </view>
         </scroll-view>
-      </u-popup>
+      </Popup>
 
       <!-- 审核弹窗 -->
-      <u-popup
+      <Popup
         :show="auditVisible"
         mode="center"
-        round="20"
+        round
         @close="auditVisible = false"
       >
         <view class="audit-content">
-          <text class="audit-title">{{ auditApproved ? '审核通过' : '审核驳回' }}</text>
-          <text v-if="auditAlgo" class="audit-name">算法：{{ auditAlgo.name }}</text>
+          <text class="audit-title">{{
+            auditApproved ? "审核通过" : "审核驳回"
+          }}</text>
+          <text v-if="auditAlgo" class="audit-name"
+            >算法：{{ auditAlgo.name }}</text
+          >
           <view v-if="!auditApproved" class="audit-remark">
             <text class="remark-label">驳回原因（必填）</text>
-            <u-textarea
+            <textarea
+              class="form-textarea"
               v-model="auditRemark"
               placeholder="请输入驳回原因"
               maxlength="200"
             />
           </view>
           <view class="audit-footer">
-            <u-button @click="auditVisible = false">取消</u-button>
-            <u-button
-              :type="auditApproved ? 'success' : 'error'"
-              :loading="auditSubmitting"
+            <button class="btn btn-default" @click="auditVisible = false">
+              取消
+            </button>
+            <button
+              class="btn"
+              :class="auditApproved ? 'btn-success' : 'btn-danger'"
+              :disabled="auditSubmitting"
               @click="handleAuditSubmit"
             >
               确认
-            </u-button>
+            </button>
           </view>
         </view>
-      </u-popup>
+      </Popup>
 
       <!-- 新增算法弹窗 -->
-      <u-popup
-        :show="addVisible"
-        mode="bottom"
-        round="20"
-        @close="addVisible = false"
-      >
+      <Popup :show="addVisible" mode="bottom" round @close="addVisible = false">
         <scroll-view scroll-y class="detail-content">
           <view class="detail-header">
             <text class="detail-title">新增算法</text>
@@ -242,35 +258,68 @@
             <text class="section-title">基本信息</text>
             <view class="form-item">
               <text class="form-label">名称 *</text>
-              <u-input v-model="addForm.name" placeholder="算法名称" border="bottom" />
+              <input
+                class="form-input"
+                v-model="addForm.name"
+                placeholder="算法名称"
+              />
             </view>
             <view class="form-item">
               <text class="form-label">类型 *</text>
-              <u-input v-model="addForm.type" placeholder="算法类型" border="bottom" />
+              <input
+                class="form-input"
+                v-model="addForm.type"
+                placeholder="算法类型"
+              />
             </view>
             <view class="form-item">
               <text class="form-label">版本号 *</text>
-              <u-input v-model="addForm.version" placeholder="v1.0.0" border="bottom" />
+              <input
+                class="form-input"
+                v-model="addForm.version"
+                placeholder="v1.0.0"
+              />
             </view>
             <view class="form-item">
               <text class="form-label">描述</text>
-              <u-textarea v-model="addForm.description" placeholder="算法描述" maxlength="500" />
+              <textarea
+                class="form-textarea"
+                v-model="addForm.description"
+                placeholder="算法描述"
+                maxlength="500"
+              />
             </view>
             <view class="form-item">
               <text class="form-label">模型路径</text>
-              <u-input v-model="addForm.path" placeholder="模型文件路径" border="bottom" />
+              <input
+                class="form-input"
+                v-model="addForm.path"
+                placeholder="模型文件路径"
+              />
             </view>
             <view class="form-item">
               <text class="form-label">导入路径</text>
-              <u-input v-model="addForm.importPath" placeholder="模型导入路径" border="bottom" />
+              <input
+                class="form-input"
+                v-model="addForm.importPath"
+                placeholder="模型导入路径"
+              />
             </view>
           </view>
           <view class="detail-footer">
-            <u-button @click="addVisible = false">取消</u-button>
-            <u-button type="primary" :loading="addSubmitting" @click="handleAdd">提交</u-button>
+            <button class="btn btn-default" @click="addVisible = false">
+              取消
+            </button>
+            <button
+              class="btn btn-primary"
+              :disabled="addSubmitting"
+              @click="handleAdd"
+            >
+              提交
+            </button>
           </view>
         </scroll-view>
-      </u-popup>
+      </Popup>
     </view>
   </PageLayout>
 </template>
@@ -278,6 +327,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import PageLayout from "@/layout/index.vue";
+import Popup from "@/components/common/Popup.vue";
 import { AlgorithmAPI } from "dehaze-sdk-js";
 import type { Algorithm, AlgorithmAuditForm } from "dehaze-sdk-js";
 import { useAuthStore } from "@/store/auth";
@@ -294,7 +344,7 @@ const STATUS_INFO: Record<number, { label: string; color: string }> = {
   6: { label: "已归档", color: "default" },
 };
 
-const statusFilters = [
+const statusFilters: { label: string; value: number | "" }[] = [
   { label: "全部", value: "" },
   { label: "草稿", value: 1 },
   { label: "测试中", value: 2 },
@@ -305,8 +355,13 @@ const statusFilters = [
 
 const statusLabel = (s?: number) => STATUS_INFO[s ?? 0]?.label || "未知";
 
-const statusTagType = (s?: number): "primary" | "success" | "warning" | "error" | "info" => {
-  const map: Record<string, "primary" | "success" | "warning" | "error" | "info"> = {
+const statusTagType = (
+  s?: number
+): "primary" | "success" | "warning" | "error" | "info" => {
+  const map: Record<
+    string,
+    "primary" | "success" | "warning" | "error" | "info"
+  > = {
     default: "info",
     primary: "primary",
     success: "success",
@@ -336,10 +391,17 @@ function flattenTree(nodes: Algorithm[], level = 0): FlatNode[] {
   return result;
 }
 
-function filterTree(nodes: Algorithm[], keyword: string, statusFilter: number | ""): Algorithm[] {
+function filterTree(
+  nodes: Algorithm[],
+  keyword: string,
+  statusFilter: number | ""
+): Algorithm[] {
   const lowerKeyword = keyword.toLowerCase();
   const match = (algo: Algorithm): boolean => {
-    const kwMatch = !keyword || (algo.name || "").toLowerCase().includes(lowerKeyword) || (algo.type || "").toLowerCase().includes(lowerKeyword);
+    const kwMatch =
+      !keyword ||
+      (algo.name || "").toLowerCase().includes(lowerKeyword) ||
+      (algo.type || "").toLowerCase().includes(lowerKeyword);
     const sMatch = statusFilter === "" || algo.status === statusFilter;
     return kwMatch && sMatch;
   };
@@ -347,25 +409,41 @@ function filterTree(nodes: Algorithm[], keyword: string, statusFilter: number | 
     const result: Algorithm[] = [];
     for (const node of list) {
       const children = node.children ? walk(node.children) : [];
-      if (match(node) || children.length > 0) result.push({ ...node, children: children.length > 0 ? children : undefined });
+      if (match(node) || children.length > 0)
+        result.push({
+          ...node,
+          children: children.length > 0 ? children : undefined,
+        });
     }
     return result;
   };
   return walk(nodes);
 }
 
-function updateAlgorithmInTree(nodes: Algorithm[], id: number, patch: Partial<Algorithm>): Algorithm[] {
+function updateAlgorithmInTree(
+  nodes: Algorithm[],
+  id: number,
+  patch: Partial<Algorithm>
+): Algorithm[] {
   return nodes.map((node) => {
     if (node.id === id) return { ...node, ...patch };
-    if (node.children) return { ...node, children: updateAlgorithmInTree(node.children, id, patch) };
+    if (node.children)
+      return {
+        ...node,
+        children: updateAlgorithmInTree(node.children, id, patch),
+      };
     return node;
   });
 }
 
 function removeAlgorithmFromTree(nodes: Algorithm[], id: number): Algorithm[] {
-  return nodes.filter((node) => node.id !== id).map((node) =>
-    node.children ? { ...node, children: removeAlgorithmFromTree(node.children, id) } : node
-  );
+  return nodes
+    .filter((node) => node.id !== id)
+    .map((node) =>
+      node.children
+        ? { ...node, children: removeAlgorithmFromTree(node.children, id) }
+        : node
+    );
 }
 
 // ==================== 权限 ====================
@@ -393,13 +471,24 @@ const auditRemark = ref("");
 const auditSubmitting = ref(false);
 
 const addVisible = ref(false);
-const addForm = ref({ name: "", type: "", version: "", description: "", path: "", importPath: "" });
+const addForm = ref({
+  name: "",
+  type: "",
+  version: "",
+  description: "",
+  path: "",
+  importPath: "",
+});
 const addSubmitting = ref(false);
 
 const actionLoadingId = ref<number | null>(null);
 
 const flatList = computed(() => {
-  const filtered = filterTree(algorithms.value, keyword.value, statusFilter.value);
+  const filtered = filterTree(
+    algorithms.value,
+    keyword.value,
+    statusFilter.value
+  );
   return flattenTree(filtered);
 });
 
@@ -420,7 +509,7 @@ async function fetchAlgorithms() {
 fetchAlgorithms();
 
 function handleSearch() {
-  fetchAlgorithms();
+  // 关键词过滤由 flatList computed 实时计算，无需重新请求
 }
 
 // ==================== 详情 ====================
@@ -450,11 +539,17 @@ async function handleToggleStatus(algo: Algorithm) {
   actionLoadingId.value = algo.id;
   try {
     await AlgorithmAPI.updateStatus(algo.id, newStatus);
-    algorithms.value = updateAlgorithmInTree(algorithms.value, algo.id, { status: newStatus });
-    if (detailAlgo.value?.id === algo.id) detailAlgo.value = { ...detailAlgo.value, status: newStatus };
+    algorithms.value = updateAlgorithmInTree(algorithms.value, algo.id, {
+      status: newStatus,
+    });
+    if (detailAlgo.value?.id === algo.id)
+      detailAlgo.value = { ...detailAlgo.value, status: newStatus };
     uni.showToast({ title: `${actionText}成功`, icon: "success" });
   } catch (err: unknown) {
-    uni.showToast({ title: getErrorMessage(err, `${actionText}失败`), icon: "error" });
+    uni.showToast({
+      title: getErrorMessage(err, `${actionText}失败`),
+      icon: "error",
+    });
   } finally {
     actionLoadingId.value = null;
   }
@@ -505,10 +600,18 @@ async function handleAuditSubmit() {
     };
     await AlgorithmAPI.auditAlgorithm(auditAlgo.value.id, form);
     const newStatus = auditApproved.value ? 4 : 2;
-    algorithms.value = updateAlgorithmInTree(algorithms.value, auditAlgo.value.id, { status: newStatus });
-    if (detailAlgo.value?.id === auditAlgo.value.id) detailAlgo.value = { ...detailAlgo.value, status: newStatus };
+    algorithms.value = updateAlgorithmInTree(
+      algorithms.value,
+      auditAlgo.value.id,
+      { status: newStatus }
+    );
+    if (detailAlgo.value?.id === auditAlgo.value.id)
+      detailAlgo.value = { ...detailAlgo.value, status: newStatus };
     auditVisible.value = false;
-    uni.showToast({ title: auditApproved.value ? "审核通过" : "已驳回", icon: "success" });
+    uni.showToast({
+      title: auditApproved.value ? "审核通过" : "已驳回",
+      icon: "success",
+    });
   } catch (err: unknown) {
     uni.showToast({ title: getErrorMessage(err, "审核失败"), icon: "error" });
   } finally {
@@ -519,7 +622,14 @@ async function handleAuditSubmit() {
 // ==================== 新增 ====================
 
 function openAdd() {
-  addForm.value = { name: "", type: "", version: "", description: "", path: "", importPath: "" };
+  addForm.value = {
+    name: "",
+    type: "",
+    version: "",
+    description: "",
+    path: "",
+    importPath: "",
+  };
   addVisible.value = true;
 }
 
@@ -567,12 +677,12 @@ async function handleAdd() {
   gap: 16rpx;
   margin-bottom: 20rpx;
 
-  :deep(.u-search) {
+  .search-input {
     flex: 1;
-  }
-
-  .add-btn {
-    flex-shrink: 0;
+    padding: 14rpx 20rpx;
+    font-size: 28rpx;
+    background: $color-bg-secondary;
+    border-radius: $radius-md;
   }
 }
 
@@ -585,17 +695,94 @@ async function handleAdd() {
   flex-wrap: wrap;
 }
 
-// ==================== 列表 ====================
+// ==================== 通用标签 ====================
+
+.tag {
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+.tag-sm {
+  font-size: $font-xs;
+  padding: 2rpx 10rpx;
+}
+.tag-primary {
+  color: $color-primary;
+  background: $color-primary-bg;
+}
+.tag-success {
+  color: $color-success;
+  background: $color-success-bg;
+}
+.tag-warning {
+  color: $color-warning;
+  background: $color-warning-bg;
+}
+.tag-danger {
+  color: $color-danger;
+  background: $color-danger-bg;
+}
+.tag-info {
+  color: $color-text-secondary;
+  background: $color-bg-secondary;
+}
+
+// ==================== 通用按钮 ====================
+
+.btn {
+  padding: 8rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+  line-height: 1.6;
+  &::after {
+    border: none;
+  }
+}
+.btn-sm {
+  padding: 4rpx 16rpx;
+  font-size: $font-xs;
+}
+.btn-primary {
+  color: $color-white;
+  background: $color-primary;
+}
+.btn-success {
+  color: $color-white;
+  background: $color-success;
+}
+.btn-warning {
+  color: $color-white;
+  background: $color-warning;
+}
+.btn-danger {
+  color: $color-white;
+  background: $color-danger;
+}
+.btn-default {
+  color: $color-text-primary;
+  background: $color-bg-secondary;
+}
+
+// ==================== 加载/空 ====================
 
 .loading-wrapper {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   padding: 160rpx 0;
+}
+.loading-text {
+  margin-top: 16rpx;
+  font-size: $font-md;
+  color: $color-text-placeholder;
+}
+.empty-tip {
+  text-align: center;
+  padding: 160rpx 0;
+  color: $color-text-secondary;
 }
 
-.empty-wrapper {
-  padding: 160rpx 0;
-}
+// ==================== 列表 ====================
 
 .algo-list {
   display: flex;
@@ -605,9 +792,9 @@ async function handleAdd() {
 
 .algo-node {
   padding: 40rpx 48rpx;
-  background: #fff;
-  border-radius: 24rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  background: $color-white;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-sm;
 
   .node-main {
     display: flex;
@@ -631,7 +818,7 @@ async function handleAdd() {
         text-overflow: ellipsis;
         font-size: 56rpx;
         font-weight: 500;
-        color: #262626;
+        color: $color-text-primary;
         white-space: nowrap;
       }
     }
@@ -645,7 +832,7 @@ async function handleAdd() {
       .node-type,
       .node-version {
         font-size: 44rpx;
-        color: #8c8c8c;
+        color: $color-text-secondary;
       }
     }
   }
@@ -656,7 +843,7 @@ async function handleAdd() {
     justify-content: flex-end;
     padding-top: 32rpx;
     margin-top: 32rpx;
-    border-top: 2rpx solid #f5f5f5;
+    border-top: 2rpx solid $color-border-light;
   }
 }
 
@@ -673,17 +860,17 @@ async function handleAdd() {
   justify-content: space-between;
   padding-bottom: 48rpx;
   margin-bottom: 48rpx;
-  border-bottom: 2rpx solid #f0f0f0;
+  border-bottom: 2rpx solid $color-border;
 
   .detail-title {
     font-size: 68rpx;
     font-weight: 600;
-    color: #262626;
+    color: $color-text-primary;
   }
 
   .detail-close {
     font-size: 56rpx;
-    color: #1890ff;
+    color: $color-primary;
   }
 }
 
@@ -696,8 +883,8 @@ async function handleAdd() {
     margin-bottom: 32rpx;
     font-size: 56rpx;
     font-weight: 600;
-    color: #595959;
-    border-left: 12rpx solid #1890ff;
+    color: $color-text-secondary;
+    border-left: 12rpx solid $color-primary;
   }
 }
 
@@ -719,7 +906,7 @@ async function handleAdd() {
     margin-bottom: 32rpx;
     font-size: 68rpx;
     font-weight: 600;
-    color: #262626;
+    color: $color-text-primary;
     text-align: center;
   }
 
@@ -727,7 +914,7 @@ async function handleAdd() {
     display: block;
     margin-bottom: 48rpx;
     font-size: 56rpx;
-    color: #595959;
+    color: $color-text-secondary;
     text-align: center;
   }
 }
@@ -739,7 +926,7 @@ async function handleAdd() {
     display: block;
     margin-bottom: 24rpx;
     font-size: 52rpx;
-    color: #595959;
+    color: $color-text-secondary;
   }
 }
 
@@ -752,12 +939,26 @@ async function handleAdd() {
 
 .form-item {
   padding: 24rpx 0;
+  border-bottom: 1rpx solid $color-border;
 
   .form-label {
     display: block;
     margin-bottom: 16rpx;
     font-size: 52rpx;
-    color: #595959;
+    color: $color-text-secondary;
+  }
+
+  .form-input {
+    width: 100%;
+    font-size: 52rpx;
+    padding: 8rpx 0;
+  }
+
+  .form-textarea {
+    width: 100%;
+    min-height: 120rpx;
+    font-size: 52rpx;
+    padding: 8rpx 0;
   }
 }
 </style>

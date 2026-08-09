@@ -20,7 +20,7 @@
       <!-- 反馈列表 -->
       <view v-if="activeTab === 'feedback'">
         <view v-if="loading" class="loading-container">
-          <up-loading-icon mode="circle" size="40" color="#ec4899" />
+          <view class="loading-spinner" />
           <text class="loading-text">加载中...</text>
         </view>
 
@@ -44,7 +44,7 @@
         </view>
 
         <view v-else class="empty-state">
-          <up-empty mode="list" text="暂无反馈" />
+          <view class="empty-tip">暂无反馈</view>
         </view>
 
         <view class="submit-btn" @click="showForm = true">
@@ -56,7 +56,7 @@
       <!-- 评价列表 -->
       <view v-else>
         <view v-if="loading" class="loading-container">
-          <up-loading-icon mode="circle" size="40" color="#ec4899" />
+          <view class="loading-spinner" />
           <text class="loading-text">加载中...</text>
         </view>
 
@@ -85,60 +85,51 @@
         </view>
 
         <view v-else class="empty-state">
-          <up-empty mode="list" text="暂无评价" />
+          <view class="empty-tip">暂无评价</view>
         </view>
       </view>
 
       <!-- 提交反馈弹窗 -->
-      <u-popup
-        :show="showForm"
-        mode="bottom"
-        round="24"
-        @close="showForm = false"
-      >
+      <Popup :show="showForm" mode="bottom" round @close="showForm = false">
         <view class="form-container">
           <text class="form-title">提交反馈</text>
           <view class="type-selector">
             <view
               v-for="t in feedbackTypes"
               :key="t.value"
-              :class="['type-option', { active: form.feedbackType === t.value }]"
+              :class="[
+                'type-option',
+                { active: form.feedbackType === t.value },
+              ]"
               @click="form.feedbackType = t.value"
             >
               {{ t.label }}
             </view>
           </view>
-          <u-input
-            v-model="form.title"
-            placeholder="标题"
-            border="surround"
-            class="form-item"
-          />
-          <u-input
+          <input v-model="form.title" placeholder="标题" class="form-item" />
+          <textarea
             v-model="form.content"
             placeholder="内容"
-            type="textarea"
-            border="surround"
             class="form-item"
             :rows="4"
           />
-          <u-input
+          <input
             v-model="form.contact"
             placeholder="联系方式（选填）"
-            border="surround"
             class="form-item"
           />
           <view class="form-footer">
-            <u-button text="取消" @click="showForm = false" />
-            <u-button
-              text="提交"
-              type="primary"
+            <button class="btn" @click="showForm = false">取消</button>
+            <button
+              class="btn btn-primary"
+              :disabled="submitting"
               @click="submitFeedback"
-              :loading="submitting"
-            />
+            >
+              提交
+            </button>
           </view>
         </view>
-      </u-popup>
+      </Popup>
     </view>
   </PageLayout>
 </template>
@@ -147,8 +138,14 @@
 import { ref, onMounted, watch } from "vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
 import PageLayout from "@/layout/index.vue";
+import Popup from "@/components/common/Popup.vue";
 import { FeedbackAPI } from "dehaze-sdk-js";
-import type { FeedbackPageVO, FeedbackStatus, MyRatingVO, FeedbackType } from "dehaze-sdk-js";
+import type {
+  FeedbackPageVO,
+  FeedbackStatus,
+  MyRatingVO,
+  FeedbackType,
+} from "dehaze-sdk-js";
 import { formatRelativeTime } from "@/utils/format";
 
 const activeTab = ref("feedback");
@@ -262,7 +259,12 @@ async function submitFeedback() {
     });
     uni.showToast({ title: "提交成功", icon: "success" });
     showForm.value = false;
-    form.value = { feedbackType: "suggestion", title: "", content: "", contact: "" };
+    form.value = {
+      feedbackType: "suggestion",
+      title: "",
+      content: "",
+      contact: "",
+    };
     loadFeedbacks(1);
   } catch {
     uni.showToast({ title: "提交失败", icon: "none" });
@@ -280,6 +282,8 @@ onMounted(() => loadFeedbacks(1));
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .page {
   width: 100%;
   min-height: 100vh;
@@ -287,12 +291,12 @@ onMounted(() => loadFeedbacks(1));
 }
 .main-content {
   padding: $spacing-md;
-  padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
+  @include safe-area-bottom(120rpx);
 }
 
 .tabs {
   display: flex;
-  background: #fff;
+  background: $color-white;
   border-radius: $radius-lg;
   margin-bottom: $spacing-md;
   overflow: hidden;
@@ -316,7 +320,7 @@ onMounted(() => loadFeedbacks(1));
   gap: 16rpx;
 }
 .card {
-  background: #fff;
+  background: $color-white;
   border-radius: $radius-lg;
   padding: 24rpx;
   box-shadow: $shadow-sm;
@@ -356,20 +360,20 @@ onMounted(() => loadFeedbacks(1));
   flex-shrink: 0;
 }
 .s-pending {
-  color: #f59e0b;
+  color: $color-warning;
   background: #fef3c7;
 }
 .s-processing {
-  color: #3b82f6;
+  color: $color-primary;
   background: #dbeafe;
 }
 .s-replied {
-  color: #10b981;
+  color: $color-success;
   background: #ecfdf5;
 }
 .s-closed {
-  color: #9ca3af;
-  background: #f3f4f6;
+  color: $color-text-placeholder;
+  background: $color-bg-secondary;
 }
 
 .stars {
@@ -377,7 +381,7 @@ onMounted(() => loadFeedbacks(1));
   color: #d1d5db;
 }
 .stars .active {
-  color: #f59e0b;
+  color: $color-warning;
 }
 
 .end-text {
@@ -409,6 +413,9 @@ onMounted(() => loadFeedbacks(1));
   align-items: center;
   padding: 80rpx 0;
 }
+.empty-tip {
+  font-size: $font-md;
+}
 
 .submit-btn {
   display: flex;
@@ -416,7 +423,7 @@ onMounted(() => loadFeedbacks(1));
   justify-content: center;
   gap: 8rpx;
   background: $color-primary;
-  color: #fff;
+  color: $color-white;
   font-size: $font-md;
   padding: 24rpx;
   border-radius: $radius-lg;
@@ -448,17 +455,44 @@ onMounted(() => loadFeedbacks(1));
   background: $color-bg-primary;
   border-radius: $radius-md;
   &.active {
-    color: #fff;
+    color: $color-white;
     background: $color-primary;
   }
 }
 .form-item {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20rpx 24rpx;
   margin-bottom: 16rpx;
+  font-size: $font-md;
+  color: $color-text-primary;
+  background: $color-bg-primary;
+  border: 2rpx solid $color-border;
+  border-radius: $radius-md;
 }
 .form-footer {
   display: flex;
   gap: 16rpx;
   margin-top: 24rpx;
+}
+.btn {
+  flex: 1;
+  padding: 20rpx;
+  border-radius: $radius-md;
+  font-size: $font-md;
+  background: $color-bg-secondary;
+  color: $color-text-secondary;
+  &::after {
+    border: none;
+  }
+}
+.btn-primary {
+  background: $color-primary;
+  color: $color-white;
+  &:disabled {
+    opacity: 0.5;
+  }
 }
 
 .admin-reply {
@@ -467,6 +501,6 @@ onMounted(() => loadFeedbacks(1));
   background: #eff6ff;
   border-radius: 8rpx;
   font-size: $font-sm;
-  color: #3b82f6;
+  color: $color-primary;
 }
 </style>

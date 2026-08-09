@@ -38,6 +38,10 @@ const handleQuickStart = async () => {
     }
 
     const sample = samples[Math.floor(Math.random() * samples.length)];
+    if (!sample) {
+      uni.showToast({ title: "暂无可用样例图片", icon: "none" });
+      return;
+    }
 
     const downloadResult = await downloadImage(sample.url);
     const imageInfo = await getImageInfo(downloadResult.tempFilePath);

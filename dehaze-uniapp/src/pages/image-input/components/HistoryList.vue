@@ -11,13 +11,20 @@
 
     <!-- 加载状态 -->
     <view v-if="loading" class="loading-container">
-      <up-loading-icon mode="circle" size="32" color="#9ca3af" />
+      <view
+        class="loading-spinner"
+        style="border-top-color: $color-text-placeholder"
+      />
       <text class="loading-text">加载中...</text>
     </view>
 
     <!-- 分组列表 -->
     <view v-else-if="groupedRecords.length > 0" class="history-list-content">
-      <view v-for="group in groupedRecords" :key="group.title" class="history-group">
+      <view
+        v-for="group in groupedRecords"
+        :key="group.title"
+        class="history-group"
+      >
         <text class="group-title">{{ group.title }}</text>
         <view class="group-list">
           <view
@@ -27,18 +34,21 @@
           >
             <view class="item-main" @click="handleSelect(record)">
               <view class="item-thumbnail">
-                <up-image
+                <image
                   v-if="record.originalThumbnailUrl || record.originalImageUrl"
-                  :src="record.originalThumbnailUrl || record.originalImageUrl || ''"
+                  :src="
+                    record.originalThumbnailUrl || record.originalImageUrl || ''
+                  "
                   mode="aspectFill"
-                  width="120rpx"
-                  height="120rpx"
                   :lazy-load="true"
                 />
                 <view v-else class="thumbnail-placeholder">
                   <SvgIcon name="photo" size="28" color="#d1d5db" />
                 </view>
-                <view v-if="record.status === 1 && record.resultImageUrl" class="result-badge">
+                <view
+                  v-if="record.status === 1 && record.resultImageUrl"
+                  class="result-badge"
+                >
                   <text>已处理</text>
                 </view>
                 <view v-if="record.status === 2" class="result-badge failed">
@@ -46,16 +56,25 @@
                 </view>
               </view>
               <view class="item-info">
-                <text class="item-name">{{ extractFilename(record.originalImageUrl || "") || "未命名图片" }}</text>
-                <text class="item-time">{{ formatTimestamp(record.createTime) }}</text>
-                <text v-if="record.algorithmName" class="item-algorithm">{{ record.algorithmName }}</text>
+                <text class="item-name">{{
+                  extractFilename(record.originalImageUrl || "") || "未命名图片"
+                }}</text>
+                <text class="item-time">{{
+                  formatTimestamp(record.createTime)
+                }}</text>
+                <text v-if="record.algorithmName" class="item-algorithm">{{
+                  record.algorithmName
+                }}</text>
               </view>
               <view class="item-arrow">
                 <SvgIcon name="arrow-right" size="16" color="#d1d5db" />
               </view>
             </view>
             <view class="item-actions">
-              <view class="action-btn reprocess" @click="handleReprocess(record)">
+              <view
+                class="action-btn reprocess"
+                @click="handleReprocess(record)"
+              >
                 <text>重新处理</text>
               </view>
               <view class="action-btn delete" @click="handleDelete(record.id)">
@@ -117,7 +136,7 @@ const loadHistory = async () => {
 
 const extractFilename = (url: string): string => {
   if (!url) return "";
-  const path = url.split("?")[0];
+  const path = url.split("?")[0] ?? "";
   const segments = path.split("/");
   return segments[segments.length - 1] || "";
 };
@@ -141,7 +160,10 @@ const handleReprocess = (record: InputHistoryVO) => {
     uni.showToast({ title: "原图地址缺失", icon: "none" });
     return;
   }
-  uni.setStorageSync("current_image", JSON.stringify({ url, path: url, name: extractFilename(url) }));
+  uni.setStorageSync(
+    "current_image",
+    JSON.stringify({ url, path: url, name: extractFilename(url) })
+  );
   uni.navigateTo({ url: "/pages/algorithm-select/index" });
 };
 
@@ -217,13 +239,13 @@ defineExpose({
   border-radius: 8rpx;
 
   &:active {
-    background: #fef2f2;
+    background: $color-danger-bg;
   }
 }
 
 .clear-text {
   font-size: 24rpx;
-  color: #ef4444;
+  color: $color-danger;
 }
 
 .loading-container {
@@ -236,7 +258,7 @@ defineExpose({
 .loading-text {
   margin-top: 16rpx;
   font-size: 26rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 .history-list-content {
@@ -263,7 +285,7 @@ defineExpose({
 }
 
 .history-item {
-  background: #ffffff;
+  background: $color-white;
   border-radius: 16rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
   overflow: hidden;
@@ -276,7 +298,7 @@ defineExpose({
   padding: 20rpx;
 
   &:active {
-    background: #f9fafb;
+    background: $color-bg-primary;
   }
 }
 
@@ -287,7 +309,12 @@ defineExpose({
   border-radius: 12rpx;
   overflow: hidden;
   flex-shrink: 0;
-  background: #f3f4f6;
+  background: $color-bg-secondary;
+
+  image {
+    width: 100%;
+    height: 100%;
+  }
 }
 
 .thumbnail-placeholder {
@@ -303,12 +330,12 @@ defineExpose({
   bottom: 6rpx;
   left: 6rpx;
   padding: 4rpx 10rpx;
-  background: #10b981;
+  background: $color-success;
   border-radius: 6rpx;
 
   text {
     font-size: 18rpx;
-    color: #ffffff;
+    color: $color-white;
   }
 
   &.failed {
@@ -325,7 +352,7 @@ defineExpose({
   display: block;
   font-size: 28rpx;
   font-weight: 600;
-  color: #1f2937;
+  color: $color-text-primary;
   margin-bottom: 6rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -335,13 +362,13 @@ defineExpose({
 .item-time {
   display: block;
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
   margin-bottom: 4rpx;
 }
 
 .item-algorithm {
   font-size: 22rpx;
-  color: #3b82f6;
+  color: $color-primary;
 }
 
 .item-arrow {
@@ -350,7 +377,7 @@ defineExpose({
 
 .item-actions {
   display: flex;
-  border-top: 2rpx solid #f3f4f6;
+  border-top: 2rpx solid $color-bg-secondary;
 }
 
 .action-btn {
@@ -370,15 +397,15 @@ defineExpose({
 
   &.reprocess {
     text {
-      color: #3b82f6;
+      color: $color-primary;
     }
   }
 
   &.delete {
-    border-left: 2rpx solid #f3f4f6;
+    border-left: 2rpx solid $color-bg-secondary;
 
     text {
-      color: #ef4444;
+      color: $color-danger;
     }
   }
 }
@@ -391,7 +418,7 @@ defineExpose({
 
 .footer-text {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 .empty-state {
@@ -408,7 +435,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
+  background: $color-bg-secondary;
   border-radius: 50%;
   margin-bottom: 24rpx;
 }
@@ -422,6 +449,6 @@ defineExpose({
 
 .empty-hint {
   font-size: 26rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 </style>

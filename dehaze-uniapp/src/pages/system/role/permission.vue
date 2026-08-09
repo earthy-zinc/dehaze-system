@@ -4,8 +4,9 @@
       <view class="menu-tree">
         <view v-for="menu in menuTree" :key="menu.id" class="tree-node">
           <view class="tree-item" @click="toggleMenu(menu)">
-            <u-checkbox
+            <checkbox
               :checked="checkedIds.includes(menu.id)"
+              color="#3b82f6"
               @click.stop="togglePerm(menu.id)"
             />
             <text class="tree-label">{{ menu.name }}</text>
@@ -27,27 +28,34 @@
               class="tree-item child"
               @click="togglePerm(child.id)"
             >
-              <u-checkbox :checked="checkedIds.includes(child.id)" />
+              <checkbox
+                :checked="checkedIds.includes(child.id)"
+                color="#3b82f6"
+              />
               <text class="tree-label">{{ child.name }}</text>
             </view>
           </view>
         </view>
       </view>
-      <view class="btn-area">
-        <u-button type="primary" @click="handleSave" :loading="saving"
-          >保存权限</u-button
-        >
+      <view v-if="canEdit" class="btn-area">
+        <button class="btn btn-primary" :loading="saving" @click="handleSave">
+          保存权限
+        </button>
       </view>
     </view>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import PageLayout from "@/layout/index.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
 import { RoleAPI, MenuAPI } from "dehaze-sdk-js";
+import { useAuthStore } from "@/store/auth";
+
+const authStore = useAuthStore();
+const canEdit = computed(() => authStore.hasPerm("sys:role:edit"));
 
 const roleId = ref(0);
 const menuTree = ref<any[]>([]);
@@ -125,5 +133,18 @@ const handleSave = async () => {
 }
 .btn-area {
   padding: 20rpx 0;
+}
+.btn {
+  padding: 8rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+
+  &::after {
+    border: none;
+  }
+}
+.btn-primary {
+  background: $color-primary;
+  color: $color-white;
 }
 </style>

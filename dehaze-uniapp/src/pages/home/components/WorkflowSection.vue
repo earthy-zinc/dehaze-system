@@ -7,7 +7,7 @@
 
     <view class="workflow-container">
       <ProcessStep
-        v-for="(step, index) in workflowSteps"
+        v-for="step in workflowSteps"
         :key="step.id"
         :number="step.number"
         :title="step.title"

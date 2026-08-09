@@ -1,56 +1,90 @@
 <template>
   <PageLayout level="L2" :title="isEdit ? '编辑用户' : '新增用户'">
     <view class="page-body">
-      <u-form :model="form" ref="formRef">
-        <u-form-item label="用户名" required
-          ><u-input v-model="form.username" placeholder="请输入用户名"
-        /></u-form-item>
-        <u-form-item label="昵称" required
-          ><u-input v-model="form.nickname" placeholder="请输入昵称"
-        /></u-form-item>
-        <u-form-item v-if="!isEdit" label="密码" required
-          ><u-input
-            v-model="form.password"
-            type="password"
-            placeholder="请输入密码"
-        /></u-form-item>
-        <u-form-item label="手机号"
-          ><u-input v-model="form.mobile" placeholder="请输入手机号"
-        /></u-form-item>
-        <u-form-item label="邮箱"
-          ><u-input v-model="form.email" placeholder="请输入邮箱"
-        /></u-form-item>
-        <u-form-item label="角色">
-          <view class="role-picker" @click="showRolePicker = true">
-            <text v-if="selectedRoles.length">{{
-              selectedRoles.map((r) => r.label).join("、")
-            }}</text>
-            <text v-else class="placeholder">请选择角色</text>
-            <SvgIcon name="arrow-right" />
-          </view>
-        </u-form-item>
-        <u-form-item label="状态" v-if="isEdit">
-          <u-switch
-            :checked="form.status === 1"
-            @change="(val: boolean) => (form.status = val ? 1 : 0)"
-          />
-        </u-form-item>
-      </u-form>
+      <view class="form-row">
+        <text class="form-label"><text class="required">*</text>用户名</text>
+        <input
+          class="form-input"
+          v-model="form.username"
+          placeholder="请输入用户名"
+        />
+      </view>
+      <view class="form-row">
+        <text class="form-label"><text class="required">*</text>昵称</text>
+        <input
+          class="form-input"
+          v-model="form.nickname"
+          placeholder="请输入昵称"
+        />
+      </view>
+      <view v-if="!isEdit" class="form-row">
+        <text class="form-label"><text class="required">*</text>密码</text>
+        <input
+          class="form-input"
+          v-model="form.password"
+          password
+          placeholder="请输入密码"
+        />
+      </view>
+      <view class="form-row">
+        <text class="form-label">手机号</text>
+        <input
+          class="form-input"
+          v-model="form.mobile"
+          placeholder="请输入手机号"
+        />
+      </view>
+      <view class="form-row">
+        <text class="form-label">邮箱</text>
+        <input
+          class="form-input"
+          v-model="form.email"
+          placeholder="请输入邮箱"
+        />
+      </view>
+      <view class="form-row">
+        <text class="form-label">角色</text>
+        <view class="role-picker" @click="showRolePicker = true">
+          <text v-if="selectedRoles.length">{{
+            selectedRoles.map((r) => r.label).join("、")
+          }}</text>
+          <text v-else class="placeholder">请选择角色</text>
+          <SvgIcon name="arrow-right" />
+        </view>
+      </view>
+      <view v-if="isEdit" class="form-row">
+        <text class="form-label">状态</text>
+        <switch
+          :checked="form.status === 1"
+          @change="(e: any) => (form.status = e.detail.value ? 1 : 0)"
+        />
+      </view>
       <view class="btn-area">
-        <u-button type="primary" @click="handleSubmit" :loading="submitting"
-          >保存</u-button
+        <button
+          v-if="isEdit ? canEdit : canAdd"
+          class="btn btn-primary"
+          :loading="submitting"
+          @click="handleSubmit"
         >
-        <u-button
-          v-if="isEdit"
-          type="error"
-          @click="handleResetPwd"
+          保存
+        </button>
+        <button
+          v-if="isEdit && canEdit"
+          class="btn btn-danger"
           :loading="resetting"
-          >重置密码</u-button
+          @click="handleResetPwd"
         >
+          重置密码
+        </button>
       </view>
     </view>
-    <u-popup :show="showRolePicker" @close="showRolePicker = false" round>
-      <view class="popup-content">
+    <Popup
+      :show="showRolePicker"
+      mode="center"
+      round
+      @close="showRolePicker = false"
+    >
+      <view class="popup-body">
         <scroll-view scroll-y class="role-scroll">
           <view
             v-for="role in allRoles"
@@ -58,17 +92,17 @@
             class="role-item"
             @click="toggleRole(role)"
           >
-            <u-checkbox :checked="selectedRoleIds.includes(role.value)" />
-            <text>{{ role.label }}</text>
+            <checkbox :checked="selectedRoleIds.includes(role.value)" />
+            <text class="role-label">{{ role.label }}</text>
           </view>
         </scroll-view>
         <view class="popup-footer">
-          <u-button type="primary" @click="showRolePicker = false"
-            >确定</u-button
-          >
+          <button class="btn btn-primary" @click="showRolePicker = false">
+            确定
+          </button>
         </view>
       </view>
-    </u-popup>
+    </Popup>
   </PageLayout>
 </template>
 
@@ -77,7 +111,13 @@ import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import PageLayout from "@/layout/index.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
+import Popup from "@/components/common/Popup.vue";
 import { UserAPI, RoleAPI } from "dehaze-sdk-js";
+import { useAuthStore } from "@/store/auth";
+
+const authStore = useAuthStore();
+const canAdd = computed(() => authStore.hasPerm("sys:user:add"));
+const canEdit = computed(() => authStore.hasPerm("sys:user:edit"));
 
 const id = ref(0);
 const isEdit = computed(() => id.value > 0);
@@ -170,22 +210,59 @@ const handleResetPwd = async () => {
 .page-body {
   padding: 20rpx;
 }
+.form-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid $color-border;
+}
+.form-label {
+  width: 180rpx;
+  flex-shrink: 0;
+  color: $color-text-primary;
+}
+.required {
+  color: $color-danger;
+  margin-right: 4rpx;
+}
+.form-input {
+  flex: 1;
+  font-size: $font-sm;
+}
 .role-picker {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 .placeholder {
-  color: $color-text-secondary;
+  color: $color-text-placeholder;
 }
 .btn-area {
   display: flex;
   gap: 20rpx;
   margin-top: 40rpx;
 }
-.popup-content {
-  padding: 20rpx;
-  max-height: 600rpx;
+.btn {
+  padding: 8rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+
+  &::after {
+    border: none;
+  }
+}
+.btn-primary {
+  background: $color-primary;
+  color: $color-white;
+}
+.btn-danger {
+  background: $color-danger;
+  color: $color-white;
+}
+.popup-body {
+  padding: 30rpx;
+  width: 86vw;
 }
 .role-scroll {
   max-height: 400rpx;
@@ -196,6 +273,9 @@ const handleResetPwd = async () => {
   gap: 16rpx;
   padding: 16rpx 0;
   border-bottom: 1rpx solid $color-border;
+}
+.role-label {
+  flex: 1;
 }
 .popup-footer {
   padding-top: 20rpx;

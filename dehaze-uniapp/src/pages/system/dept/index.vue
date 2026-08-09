@@ -5,11 +5,12 @@
         <view class="tree-item" @click="toggleExpand(dept)">
           <text class="tree-label">{{ dept.name }}</text>
           <view class="tree-actions" @click.stop>
-            <SvgIcon name="edit-pen" @click="editDept(dept)" />
+            <SvgIcon v-if="canEdit" name="edit-pen" @click="editDept(dept)" />
             <SvgIcon
+              v-if="canDelete"
               name="trash"
+              color="#ef4444"
               @click="delDept(dept.id)"
-              color="$color-error"
             />
           </view>
           <SvgIcon
@@ -29,61 +30,83 @@
           >
             <text class="tree-label">{{ child.name }}</text>
             <view class="tree-actions">
-              <SvgIcon name="edit-pen" @click="editDept(child)" />
               <SvgIcon
+                v-if="canEdit"
+                name="edit-pen"
+                @click="editDept(child)"
+              />
+              <SvgIcon
+                v-if="canDelete"
                 name="trash"
+                color="#ef4444"
                 @click="delDept(child.id)"
-                color="$color-error"
               />
             </view>
           </view>
         </view>
       </view>
-      <u-empty v-if="deptTree.length === 0" text="暂无部门" />
+      <view v-if="deptTree.length === 0" class="empty-tip">暂无部门</view>
     </view>
-    <view class="fab-btn" @click="editDept(null)"
-      ><SvgIcon name="plus" color="#fff" size="24"
-    /></view>
-    <u-popup :show="showForm" @close="showForm = false" round>
-      <view class="popup-content">
+    <FabButton v-if="canAdd" @click="editDept(null)">
+      <SvgIcon name="plus" color="#fff" size="24" />
+    </FabButton>
+    <Popup :show="showForm" mode="center" round @close="showForm = false">
+      <view class="popup-body">
         <view class="popup-title">{{ form.id ? "编辑部门" : "新增部门" }}</view>
-        <u-form :model="form">
-          <u-form-item label="名称"
-            ><u-input v-model="form.name" placeholder="部门名称"
-          /></u-form-item>
-          <u-form-item label="上级部门">
-            <u-input
-              v-model.number="form.parentId"
-              type="number"
-              placeholder="上级部门ID（0为顶级）"
-            />
-          </u-form-item>
-          <u-form-item label="排序"
-            ><u-input
-              v-model.number="form.sort"
-              type="number"
-              placeholder="排序"
-          /></u-form-item>
-          <u-form-item label="状态">
-            <u-switch
-              :checked="form.status === 1"
-              @change="(val: boolean) => (form.status = val ? 1 : 0)"
-            />
-          </u-form-item>
-        </u-form>
-        <u-button type="primary" @click="handleSave" :loading="saving"
-          >保存</u-button
-        >
+        <view class="form-row">
+          <text class="form-label">名称</text>
+          <input
+            class="form-input"
+            v-model="form.name"
+            placeholder="部门名称"
+          />
+        </view>
+        <view class="form-row">
+          <text class="form-label">上级部门</text>
+          <input
+            class="form-input"
+            type="number"
+            v-model.number="form.parentId"
+            placeholder="上级部门ID（0为顶级）"
+          />
+        </view>
+        <view class="form-row">
+          <text class="form-label">排序</text>
+          <input
+            class="form-input"
+            type="number"
+            v-model.number="form.sort"
+            placeholder="排序"
+          />
+        </view>
+        <view class="form-row">
+          <text class="form-label">状态</text>
+          <switch
+            :checked="form.status === 1"
+            @change="(e: any) => (form.status = e.detail.value ? 1 : 0)"
+          />
+        </view>
+        <button class="btn btn-primary" :loading="saving" @click="handleSave">
+          保存
+        </button>
       </view>
-    </u-popup>
+    </Popup>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import PageLayout from "@/layout/index.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
+import FabButton from "@/components/common/FabButton.vue";
+import Popup from "@/components/common/Popup.vue";
 import { DeptAPI } from "dehaze-sdk-js";
+import { useAuthStore } from "@/store/auth";
+
+const authStore = useAuthStore();
+const canAdd = computed(() => authStore.hasPerm("sys:dept:add"));
+const canEdit = computed(() => authStore.hasPerm("sys:dept:edit"));
+const canDelete = computed(() => authStore.hasPerm("sys:dept:delete"));
 
 const deptTree = ref<any[]>([]);
 const expandedIds = ref<number[]>([]);
@@ -165,27 +188,43 @@ fetchTree();
   border-left: 2rpx solid $color-border;
   margin-left: 24rpx;
 }
-.fab-btn {
-  position: fixed;
-  right: 40rpx;
-  bottom: 100rpx;
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 50%;
-  background: $color-primary;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
-  z-index: 99;
-}
-.popup-content {
+.popup-body {
   padding: 30rpx;
   width: 90vw;
 }
 .popup-title {
-  font-size: 32rpx;
+  font-size: $font-lg;
   font-weight: bold;
   margin-bottom: 20rpx;
+}
+.form-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid $color-border;
+}
+.form-label {
+  width: 180rpx;
+  flex-shrink: 0;
+  color: $color-text-primary;
+}
+.form-input {
+  flex: 1;
+  font-size: $font-sm;
+}
+.btn {
+  width: 100%;
+  margin-top: 40rpx;
+  padding: 16rpx 0;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+
+  &::after {
+    border: none;
+  }
+}
+.btn-primary {
+  background: $color-primary;
+  color: $color-white;
 }
 </style>

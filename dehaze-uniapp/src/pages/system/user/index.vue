@@ -2,85 +2,79 @@
   <PageLayout level="L2" title="用户管理">
     <view class="page-body">
       <view class="search-bar">
-        <u-search
+        <input
+          class="search-input"
           v-model="keyword"
           placeholder="搜索用户名/手机号"
-          @search="handleSearch"
-          @clear="handleSearch"
+          confirm-type="search"
+          @confirm="handleSearch"
         />
       </view>
-      <u-table>
-        <u-tr v-for="user in list" :key="user.id">
-          <u-td @click="goDetail(user.id)">{{ user.nickname }}</u-td>
-          <u-td @click="goDetail(user.id)">@{{ user.username }}</u-td>
-          <u-td @click="goDetail(user.id)">
-            <u-tag
-              :type="user.status === 1 ? 'success' : 'error'"
-              :text="user.status === 1 ? '正常' : '禁用'"
-              size="mini"
-            />
-          </u-td>
-          <u-td>
-            <view class="row-actions">
-              <SvgIcon name="edit-pen" @click="goDetail(user.id)" />
-              <SvgIcon
-                name="trash"
-                @click="delUser(user.id)"
-                color="$color-error"
-              />
-            </view>
-          </u-td>
-        </u-tr>
-      </u-table>
-      <u-empty v-if="!loading && list.length === 0" text="暂无用户" />
-      <view class="load-more" v-if="hasMore" @click="loadMore">加载更多</view>
+      <view class="list-row" v-for="user in list" :key="user.id">
+        <text class="cell" @click="goDetail(user.id)">{{ user.nickname }}</text>
+        <text class="cell" @click="goDetail(user.id)"
+          >@{{ user.username }}</text
+        >
+        <view class="cell" @click="goDetail(user.id)">
+          <view
+            class="tag"
+            :class="user.status === 1 ? 'tag-success' : 'tag-danger'"
+          >
+            {{ user.status === 1 ? "正常" : "禁用" }}
+          </view>
+        </view>
+        <view class="cell row-actions">
+          <SvgIcon v-if="canEdit" name="edit-pen" @click="goDetail(user.id)" />
+          <SvgIcon
+            v-if="canDelete"
+            name="trash"
+            color="#ef4444"
+            @click="delUser(user.id)"
+          />
+        </view>
+      </view>
+      <view v-if="!loading && list.length === 0" class="empty-tip"
+        >暂无用户</view
+      >
+      <view v-if="hasMore" class="load-more" @click="loadMore">加载更多</view>
     </view>
-    <view class="fab-btn" @click="goDetail(0)"
-      ><SvgIcon name="plus" color="#fff" size="24"
-    /></view>
+    <FabButton v-if="canAdd" @click="goDetail(0)">
+      <SvgIcon name="plus" color="#fff" size="24" />
+    </FabButton>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed } from "vue";
 import PageLayout from "@/layout/index.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
+import FabButton from "@/components/common/FabButton.vue";
+import { usePagedList } from "@/composables/usePagedList";
 import { UserAPI } from "dehaze-sdk-js";
+import { useAuthStore } from "@/store/auth";
 
-const list = ref<any[]>([]);
-const keyword = ref("");
-const pageNum = ref(1);
-const hasMore = ref(false);
-const loading = ref(false);
+const authStore = useAuthStore();
+const canAdd = computed(() => authStore.hasPerm("sys:user:add"));
+const canEdit = computed(() => authStore.hasPerm("sys:user:edit"));
+const canDelete = computed(() => authStore.hasPerm("sys:user:delete"));
 
-const fetchList = async (reset = false) => {
-  if (reset) {
-    pageNum.value = 1;
-    list.value = [];
-  }
-  loading.value = true;
-  try {
-    const res = await UserAPI.getPage({
-      pageNum: pageNum.value,
-      pageSize: 20,
-      keywords: keyword.value || undefined,
-    });
-    const records = res.list || [];
-    if (reset) list.value = records;
-    else list.value.push(...records);
-    hasMore.value = records.length === 20;
-    pageNum.value++;
-  } finally {
-    loading.value = false;
-  }
+const { list, keyword, hasMore, loading, fetchList, handleSearch, loadMore } =
+  usePagedList({
+    fetcher: (p) =>
+      UserAPI.getPage({
+        pageNum: p.pageNum,
+        pageSize: p.pageSize,
+        keywords: p.keyword,
+      }).then((r) => r.list || []),
+  });
+
+const goDetail = (id?: number) => {
+  if (id === undefined) return;
+  uni.navigateTo({ url: `/pages/system/user/detail?id=${id}` });
 };
 
-const handleSearch = () => fetchList(true);
-const loadMore = () => fetchList();
-const goDetail = (id: number) =>
-  uni.navigateTo({ url: `/pages/system/user/detail?id=${id}` });
-
-const delUser = async (id: number) => {
+const delUser = async (id?: number) => {
+  if (id === undefined) return;
   const res = await uni.showModal({
     title: "确认删除",
     content: "确定删除该用户吗？",
@@ -105,23 +99,44 @@ fetchList(true);
 .search-bar {
   margin-bottom: 20rpx;
 }
-.fab-btn {
-  position: fixed;
-  right: 40rpx;
-  bottom: 100rpx;
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 50%;
-  background: $color-primary;
+.search-input {
+  width: 100%;
+  height: 72rpx;
+  padding: 0 20rpx;
+  background: $color-bg-secondary;
+  border-radius: $radius-md;
+  font-size: $font-sm;
+}
+.list-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
-  z-index: 99;
+  padding: 24rpx 20rpx;
+  border-bottom: 1rpx solid $color-border;
+
+  .cell {
+    flex: 1;
+    font-size: $font-sm;
+    color: $color-text-primary;
+  }
+
+  .row-actions {
+    display: flex;
+    gap: 16rpx;
+  }
 }
-.row-actions {
-  display: flex;
-  gap: 16rpx;
+.tag {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+.tag-success {
+  background: $color-success-bg;
+  color: $color-success;
+}
+.tag-danger {
+  background: $color-danger-bg;
+  color: $color-danger;
 }
 .load-more {
   text-align: center;

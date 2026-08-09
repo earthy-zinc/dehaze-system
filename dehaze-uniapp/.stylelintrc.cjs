@@ -44,7 +44,20 @@ module.exports = {
     "at-rule-no-unknown": [
       true,
       {
-        ignoreAtRules: ["apply", "use"],
+        ignoreAtRules: [
+          "apply",
+          "use",
+          "mixin",
+          "include",
+          "content",
+          "function",
+          "return",
+          "if",
+          "else",
+          "for",
+          "each",
+          "while",
+        ],
       },
     ],
     // 允许 uni-app 的 rpx 单位

@@ -13,7 +13,7 @@
     <!-- 上传进度 -->
     <view v-if="uploading" class="upload-progress">
       <view class="progress-content">
-        <up-loading-icon mode="circle" size="32" color="#3b82f6" />
+        <view class="loading-spinner" />
         <text class="progress-text">正在上传... {{ uploadProgress }}%</text>
         <view class="progress-bar">
           <view
@@ -64,7 +64,9 @@ const handleChooseImage = () => {
     sourceType: ["album"],
     success: async (res) => {
       const tempFilePath = res.tempFilePaths[0];
-      const tempFiles = Array.isArray(res.tempFiles) ? res.tempFiles : [res.tempFiles];
+      const tempFiles = Array.isArray(res.tempFiles)
+        ? res.tempFiles
+        : [res.tempFiles];
       const tempFile = tempFiles[0];
       if (!tempFilePath || !tempFile) return;
 
@@ -98,7 +100,11 @@ const handleChooseImage = () => {
 
         // 大于 5MB 自动压缩
         if (tempFile.size > COMPRESS_THRESHOLD) {
-          uni.showToast({ title: "图片较大，正在压缩...", icon: "loading", duration: 2000 });
+          uni.showToast({
+            title: "图片较大，正在压缩...",
+            icon: "loading",
+            duration: 2000,
+          });
           try {
             finalPath = await compressImage(tempFilePath);
           } catch {
@@ -128,7 +134,11 @@ const handleChooseImage = () => {
           imageData.remoteUrl = fileInfo.url;
           uni.showToast({ title: "上传成功", icon: "success" });
         } catch {
-          uni.showToast({ title: "上传失败，将使用本地图片处理", icon: "none", duration: 2000 });
+          uni.showToast({
+            title: "上传失败，将使用本地图片处理",
+            icon: "none",
+            duration: 2000,
+          });
         }
 
         processingStore.setImage(imageData);
@@ -177,14 +187,14 @@ const extractFileName = (path: string): string => {
   align-items: center;
   justify-content: center;
   padding: 64rpx 32rpx;
-  background: #f9fafb;
-  border: 2rpx dashed #d1d5db;
+  background: $color-bg-primary;
+  border: 2rpx dashed $color-text-disabled;
   border-radius: 20rpx;
   transition: all 0.2s ease;
 
   &:active {
-    background: #f3f4f6;
-    border-color: #3b82f6;
+    background: $color-bg-secondary;
+    border-color: $color-primary;
   }
 }
 
@@ -194,7 +204,7 @@ const extractFileName = (path: string): string => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e5e7eb;
+  background: $color-border;
   border-radius: 50%;
   margin-bottom: 24rpx;
 }
@@ -202,25 +212,25 @@ const extractFileName = (path: string): string => {
 .upload-text {
   font-size: 30rpx;
   font-weight: 600;
-  color: #374151;
+  color: $color-text-primary;
   margin-bottom: 12rpx;
 }
 
 .upload-hint {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
   line-height: 1.5;
 }
 
 .upload-error {
   margin-top: 16rpx;
   padding: 16rpx 24rpx;
-  background: #fef2f2;
+  background: $color-danger-bg;
   border-radius: 12rpx;
 
   text {
     font-size: 26rpx;
-    color: #ef4444;
+    color: $color-danger;
   }
 }
 
@@ -245,22 +255,31 @@ const extractFileName = (path: string): string => {
   width: 70%;
 }
 
+.loading-spinner {
+  width: 32rpx;
+  height: 32rpx;
+  border: 4rpx solid $color-border;
+  border-top-color: $color-primary;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
 .progress-text {
   font-size: 28rpx;
-  color: #3b82f6;
+  color: $color-primary;
 }
 
 .progress-bar {
   width: 100%;
   height: 8rpx;
-  background: #e5e7eb;
+  background: $color-border;
   border-radius: 4rpx;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  background: linear-gradient(90deg, $color-primary, $color-secondary);
   border-radius: 4rpx;
   transition: width 0.3s ease;
 }

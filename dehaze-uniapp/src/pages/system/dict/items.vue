@@ -1,71 +1,87 @@
 <template>
   <PageLayout level="L2" :title="dictName + ' - 字典项'">
     <view class="page-body">
-      <u-table>
-        <u-tr v-for="item in list" :key="item.id">
-          <u-td>{{ item.name }}</u-td>
-          <u-td>{{ item.value }}</u-td>
-          <u-td>
-            <u-tag
-              :text="item.status === 1 ? '启用' : '禁用'"
-              :type="item.status === 1 ? 'success' : 'error'"
-              size="mini"
-            />
-          </u-td>
-          <u-td>
-            <SvgIcon name="edit-pen" @click="editItem(item)" />
-            <SvgIcon
-              name="trash"
-              @click="delItem(item.id)"
-              color="$color-error"
-            />
-          </u-td>
-        </u-tr>
-      </u-table>
-      <u-empty v-if="list.length === 0" text="暂无字典项" />
+      <view class="list-row" v-for="item in list" :key="item.id">
+        <text class="cell">{{ item.name }}</text>
+        <text class="cell">{{ item.value }}</text>
+        <view class="cell">
+          <view
+            class="tag"
+            :class="item.status === 1 ? 'tag-success' : 'tag-danger'"
+          >
+            {{ item.status === 1 ? "启用" : "禁用" }}
+          </view>
+        </view>
+        <view class="cell row-actions">
+          <SvgIcon v-if="canEdit" name="edit-pen" @click="editItem(item)" />
+          <SvgIcon
+            v-if="canDelete"
+            name="trash"
+            color="#ef4444"
+            @click="delItem(item.id)"
+          />
+        </view>
+      </view>
+      <view v-if="list.length === 0" class="empty-tip">暂无字典项</view>
     </view>
-    <view class="fab-btn" @click="editItem(null)"
-      ><SvgIcon name="plus" color="#fff" size="24"
-    /></view>
-    <u-popup :show="showForm" @close="showForm = false" round>
-      <view class="popup-content">
+    <FabButton v-if="canAdd" @click="editItem(null)">
+      <SvgIcon name="plus" color="#fff" size="24" />
+    </FabButton>
+    <Popup :show="showForm" mode="center" round @close="showForm = false">
+      <view class="popup-body">
         <view class="popup-title">{{
           editId ? "编辑字典项" : "新增字典项"
         }}</view>
-        <u-form :model="form">
-          <u-form-item label="标签"
-            ><u-input v-model="form.name" placeholder="显示标签"
-          /></u-form-item>
-          <u-form-item label="值"
-            ><u-input v-model="form.value" placeholder="字典值"
-          /></u-form-item>
-          <u-form-item label="排序"
-            ><u-input
-              v-model.number="form.sort"
-              type="number"
-              placeholder="排序"
-          /></u-form-item>
-          <u-form-item label="状态">
-            <u-switch
-              :checked="form.status === 1"
-              @change="(val: boolean) => (form.status = val ? 1 : 0)"
-            />
-          </u-form-item>
-        </u-form>
-        <u-button type="primary" @click="handleSave" :loading="saving"
-          >保存</u-button
-        >
+        <view class="form-row">
+          <text class="form-label">标签</text>
+          <input
+            class="form-input"
+            v-model="form.name"
+            placeholder="显示标签"
+          />
+        </view>
+        <view class="form-row">
+          <text class="form-label">值</text>
+          <input class="form-input" v-model="form.value" placeholder="字典值" />
+        </view>
+        <view class="form-row">
+          <text class="form-label">排序</text>
+          <input
+            class="form-input"
+            type="number"
+            v-model.number="form.sort"
+            placeholder="排序"
+          />
+        </view>
+        <view class="form-row">
+          <text class="form-label">状态</text>
+          <switch
+            :checked="form.status === 1"
+            @change="(e: any) => (form.status = e.detail.value ? 1 : 0)"
+          />
+        </view>
+        <button class="btn btn-primary" :loading="saving" @click="handleSave">
+          保存
+        </button>
       </view>
-    </u-popup>
+    </Popup>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import PageLayout from "@/layout/index.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
+import FabButton from "@/components/common/FabButton.vue";
+import Popup from "@/components/common/Popup.vue";
 import { DictAPI } from "dehaze-sdk-js";
+import { useAuthStore } from "@/store/auth";
+
+const authStore = useAuthStore();
+const canAdd = computed(() => authStore.hasPerm("sys:dict:data:add"));
+const canEdit = computed(() => authStore.hasPerm("sys:dict:data:edit"));
+const canDelete = computed(() => authStore.hasPerm("sys:dict:data:delete"));
 
 const typeCode = ref("");
 const dictName = ref("");
@@ -115,8 +131,7 @@ const handleSave = async () => {
         id: editId.value,
         typeCode: typeCode.value,
       });
-    else
-      await DictAPI.addDict({ ...form.value, typeCode: typeCode.value });
+    else await DictAPI.addDict({ ...form.value, typeCode: typeCode.value });
     showForm.value = false;
     editId.value = 0;
     fetchList();
@@ -145,27 +160,74 @@ const delItem = async (id: number) => {
 .page-body {
   padding: 20rpx;
 }
-.fab-btn {
-  position: fixed;
-  right: 40rpx;
-  bottom: 100rpx;
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 50%;
-  background: $color-primary;
+.list-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
-  z-index: 99;
+  padding: 24rpx 20rpx;
+  border-bottom: 1rpx solid $color-border;
+
+  .cell {
+    flex: 1;
+    font-size: $font-sm;
+    color: $color-text-primary;
+  }
+
+  .row-actions {
+    display: flex;
+    gap: 16rpx;
+  }
 }
-.popup-content {
+.tag {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+.tag-success {
+  background: $color-success-bg;
+  color: $color-success;
+}
+.tag-danger {
+  background: $color-danger-bg;
+  color: $color-danger;
+}
+.popup-body {
   padding: 30rpx;
   width: 90vw;
 }
 .popup-title {
-  font-size: 32rpx;
+  font-size: $font-lg;
   font-weight: bold;
   margin-bottom: 20rpx;
+}
+.form-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid $color-border;
+}
+.form-label {
+  width: 180rpx;
+  flex-shrink: 0;
+  color: $color-text-primary;
+}
+.form-input {
+  flex: 1;
+  font-size: $font-sm;
+}
+.btn {
+  width: 100%;
+  margin-top: 40rpx;
+  padding: 16rpx 0;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+
+  &::after {
+    border: none;
+  }
+}
+.btn-primary {
+  background: $color-primary;
+  color: $color-white;
 }
 </style>

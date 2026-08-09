@@ -51,6 +51,8 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .page-layout {
   width: 100%;
   min-height: 100vh;
@@ -61,8 +63,7 @@ withDefaults(defineProps<Props>(), {
   width: 100%;
 
   &.with-tabbar {
-    padding-bottom: calc(100rpx + constant(safe-area-inset-bottom));
-    padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
+    @include safe-area-bottom(100rpx);
   }
 }
 </style>

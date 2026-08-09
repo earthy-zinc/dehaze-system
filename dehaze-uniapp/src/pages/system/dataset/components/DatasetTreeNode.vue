@@ -4,7 +4,7 @@
     <view
       class="tree-node"
       :class="{ disabled: dataset.status === 0 }"
-      :style="{ paddingLeft: (12 + depth * 20) + 'px' }"
+      :style="{ paddingLeft: 12 + depth * 20 + 'px' }"
       @click="handleClick"
     >
       <!-- 展开/收起按钮 -->
@@ -23,13 +23,10 @@
       <view class="node-info">
         <view class="node-header">
           <text class="node-name">{{ dataset.name }}</text>
-          <u-tag :text="typeLabel" size="mini" />
-          <u-tag
-            v-if="dataset.status === 0"
-            text="禁用"
-            type="error"
-            size="mini"
-          />
+          <view class="tag tag-info tag-sm">{{ typeLabel }}</view>
+          <view v-if="dataset.status === 0" class="tag tag-danger tag-sm"
+            >禁用</view
+          >
         </view>
         <text class="node-desc">{{ dataset.description || "暂无描述" }}</text>
         <view class="node-stats">
@@ -40,30 +37,15 @@
 
       <!-- 操作按钮 -->
       <view class="node-actions">
-        <u-button
-          v-if="onAddChild"
-          type="primary"
-          size="mini"
-          @click.stop="handleAddChild"
-        >
-          <text>+子</text>
-        </u-button>
-        <u-button
-          v-if="onEdit"
-          type="warning"
-          size="mini"
-          @click.stop="handleEdit"
-        >
-          <text>✎</text>
-        </u-button>
-        <u-button
-          v-if="onDelete"
-          type="error"
-          size="mini"
-          @click.stop="handleDelete"
-        >
-          <text>✕</text>
-        </u-button>
+        <button class="btn btn-primary btn-sm" @click.stop="handleAddChild">
+          +子
+        </button>
+        <button class="btn btn-warning btn-sm" @click.stop="handleEdit">
+          ✎
+        </button>
+        <button class="btn btn-danger btn-sm" @click.stop="handleDelete">
+          ✕
+        </button>
       </view>
     </view>
 
@@ -137,7 +119,9 @@ const isExpanded = computed(() => props.expandedIds.includes(props.dataset.id));
 const isLoading = computed(() => !!props.childrenLoading[props.dataset.id]);
 const children = computed(() => props.childrenMap[props.dataset.id]);
 
-const typeLabel = computed(() => typeLabels[props.dataset.type] || props.dataset.type);
+const typeLabel = computed(
+  () => typeLabels[props.dataset.type] || props.dataset.type
+);
 const fileCount = computed(
   () => props.dataset.statistics?.fileCount || props.dataset.total || 0
 );
@@ -177,12 +161,12 @@ export default {
   display: flex;
   align-items: center;
   padding: 16rpx 20rpx;
-  background: #ffffff;
-  border-bottom: 2rpx solid #f3f4f6;
+  background: $color-white;
+  border-bottom: 2rpx solid $color-border-light;
   transition: background 0.2s;
 
   &:active {
-    background: #f9fafb;
+    background: $color-bg-primary;
   }
 
   &.disabled {
@@ -197,7 +181,7 @@ export default {
   align-items: center;
   justify-content: center;
   font-size: 20rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
   flex-shrink: 0;
 
   &.expanded {
@@ -212,11 +196,6 @@ export default {
 
 .expand-loading {
   animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .node-info {
@@ -235,7 +214,7 @@ export default {
 .node-name {
   font-size: 28rpx;
   font-weight: 600;
-  color: #1f2937;
+  color: $color-text-primary;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -244,7 +223,7 @@ export default {
 .node-desc {
   display: block;
   font-size: 24rpx;
-  color: #6b7280;
+  color: $color-text-secondary;
   margin-bottom: 8rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -255,7 +234,7 @@ export default {
   display: flex;
   gap: 24rpx;
   font-size: 22rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
 }
 
 .node-actions {
@@ -264,11 +243,58 @@ export default {
   flex-shrink: 0;
 }
 
+.tag {
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+.tag-sm {
+  padding: 2rpx 10rpx;
+}
+.tag-primary {
+  color: $color-primary;
+  background: $color-primary-bg;
+}
+.tag-danger {
+  color: $color-danger;
+  background: $color-danger-bg;
+}
+.tag-info {
+  color: $color-text-secondary;
+  background: $color-bg-secondary;
+}
+
+.btn {
+  padding: 8rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-sm;
+  line-height: 1.6;
+  &::after {
+    border: none;
+  }
+}
+.btn-sm {
+  padding: 4rpx 16rpx;
+  font-size: $font-xs;
+}
+.btn-primary {
+  color: $color-white;
+  background: $color-primary;
+}
+.btn-warning {
+  color: $color-white;
+  background: $color-warning;
+}
+.btn-danger {
+  color: $color-white;
+  background: $color-danger;
+}
+
 .children-loading,
 .empty-children {
   padding: 16rpx 32rpx;
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $color-text-placeholder;
   text-align: center;
 }
 </style>

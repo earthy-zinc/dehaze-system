@@ -148,20 +148,20 @@
         >
           <button
             class="process-btn"
-            :disabled="processing"
+            :disabled="store.isProcessing"
             @click="handleProcess"
           >
-            {{ processing ? "处理中..." : "开始处理" }}
+            {{ store.isProcessing ? "处理中..." : "开始处理" }}
           </button>
         </template>
 
         <!-- 处理中 -->
         <template v-else-if="store.status === 'processing'">
           <view class="processing-indicator">
-            <up-loading-icon mode="circle" size="24" color="#ffffff" />
+            <view class="loading-spinner" />
             <text class="processing-text">去雾处理中...</text>
             <text class="processing-elapsed"
-              >已用 {{ formatDuration(elapsedTime) }}</text
+              >已用 {{ formatDuration(store.elapsedTime) }}</text
             >
           </view>
           <button class="cancel-btn" @click="handleCancel">取消处理</button>
@@ -179,37 +179,19 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import { useProcessingStore, DEFAULT_DEHAZE_PARAMS } from "@/store/processing";
 import { ModelAPI } from "dehaze-sdk-js";
-import type { PredictionResultVO, PresetVO } from "dehaze-sdk-js";
+import type { PresetVO } from "dehaze-sdk-js";
 import type { SliderChangeEvent } from "@/types/uni-events";
-import { getErrorMessage } from "@/utils/error";
 
 // ==================== 状态 ====================
 
 const store = useProcessingStore();
-const processing = ref(false);
-const elapsedTime = ref(0);
-const cancelled = ref(false);
 const presets = ref<PresetVO[]>([]);
-let elapsedTimer: ReturnType<typeof setInterval> | null = null;
-
-/** 重试间隔（毫秒）：2s → 5s → 10s */
-const RETRY_DELAYS = [2000, 5000, 10000];
-const MAX_RETRIES = 3;
-
-const clearElapsedTimer = () => {
-  if (elapsedTimer) {
-    clearInterval(elapsedTimer);
-    elapsedTimer = null;
-  }
-};
-
-onUnmounted(clearElapsedTimer);
 
 // ==================== 计算属性 ====================
 
@@ -268,81 +250,12 @@ function buildPredictParams(): string | undefined {
     : undefined;
 }
 
-/** 带递增重试的处理逻辑 */
-async function attemptProcess(attemptNumber: number): Promise<void> {
-  if (cancelled.value) return;
-
-  try {
-    const result: PredictionResultVO = await ModelAPI.predictAndWait({
-      algorithmId: store.selectedAlgorithm!.id,
-      fileId: store.fileId ?? undefined,
-      imageUrl: !store.fileId ? store.currentImage?.url : undefined,
-      params: buildPredictParams(),
-    });
-
-    if (cancelled.value) return;
-    clearElapsedTimer();
-
-    if (result.status === 3) {
-      throw new Error(result.errorMessage || "处理失败");
-    }
-
-    store.complete(result);
-    uni.showToast({
-      title: `处理完成，耗时${result.time ?? 0}s`,
-      icon: "success",
-      duration: 2000,
-    });
-  } catch (error) {
-    if (cancelled.value) return;
-
-    const errMsg = getErrorMessage(error, "处理失败");
-    if (attemptNumber < MAX_RETRIES) {
-      const delay = RETRY_DELAYS[attemptNumber] || 2000;
-      uni.showToast({
-        title: `${errMsg}，${delay / 1000}秒后重试（${attemptNumber + 1}/${MAX_RETRIES}）`,
-        icon: "none",
-        duration: delay,
-      });
-      await new Promise((r) => setTimeout(r, delay));
-      if (!cancelled.value) {
-        return attemptProcess(attemptNumber + 1);
-      }
-    }
-
-    clearElapsedTimer();
-    store.fail(errMsg);
-    uni.showToast({ title: errMsg, icon: "none", duration: 2500 });
-  }
-}
-
 /** 开始处理 */
 async function handleProcess() {
-  if (processing.value) return;
+  if (store.isProcessing) return;
   if (!store.selectedAlgorithm || !store.currentImage) {
     uni.showToast({ title: "缺少图片或算法", icon: "none" });
     return;
-  }
-
-  // 配额检查
-  try {
-    const quota = await ModelAPI.getQuota();
-    if (quota.remaining === 0) {
-      uni.showModal({
-        title: "预测次数不足",
-        content: `当前剩余预测次数为 0（已使用 ${quota.used}/${quota.total}），请及时充值。`,
-        confirmText: "去充值",
-        cancelText: "取消",
-        success: (res) => {
-          if (res.confirm) {
-            uni.navigateTo({ url: "/pages/user-center/index" });
-          }
-        },
-      });
-      return;
-    }
-  } catch {
-    // 配额查询失败也允许继续
   }
 
   // 确认对话框
@@ -358,23 +271,40 @@ async function handleProcess() {
   });
   if (!confirmResult) return;
 
-  processing.value = true;
-  cancelled.value = false;
-  elapsedTime.value = 0;
-  store.startProcessing();
-  elapsedTimer = setInterval(() => {
-    elapsedTime.value += 100;
-  }, 100);
+  const res = await store.runPrediction({
+    algorithmId: store.selectedAlgorithm.id,
+    fileId: store.fileId ?? undefined,
+    imageUrl: !store.fileId ? store.currentImage?.url : undefined,
+    params: buildPredictParams(),
+    onQuotaExhausted: ({ used, total }) => {
+      uni.showModal({
+        title: "预测次数不足",
+        content: `当前剩余预测次数为 0（已使用 ${used}/${total}），请及时充值。`,
+        confirmText: "去充值",
+        cancelText: "取消",
+        success: (r) => {
+          if (r.confirm) {
+            uni.navigateTo({ url: "/pages/personal/quota/index" });
+          }
+        },
+      });
+    },
+  });
 
-  await attemptProcess(0);
-  processing.value = false;
+  if (res.ok && res.result) {
+    uni.showToast({
+      title: `处理完成，耗时${res.result.time ?? 0}s`,
+      icon: "success",
+      duration: 2000,
+    });
+  } else if (!res.ok && res.error) {
+    uni.showToast({ title: res.error, icon: "none", duration: 2500 });
+  }
 }
 
 /** 取消处理 */
 function handleCancel() {
-  cancelled.value = true;
-  clearElapsedTimer();
-  store.reset();
+  store.cancelProcessing();
   uni.showToast({ title: "已取消处理", icon: "none" });
 }
 
@@ -420,27 +350,32 @@ onMounted(() => {
     setTimeout(() => uni.navigateBack(), 2000);
   }
   ModelAPI.getPresets({ pageNum: 1, pageSize: 50 })
-    .then((res) => { presets.value = res.list || []; })
-    .catch(() => { /* 静默 */ });
+    .then((res) => {
+      presets.value = res.list || [];
+    })
+    .catch(() => {
+      /* 静默 */
+    });
 });
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .processing-page {
   width: 100%;
   min-height: 100vh;
-  background: #f9fafb;
+  background: $color-bg-primary;
 }
 
 .main-content {
   padding: 24rpx;
-  padding-bottom: calc(180rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+  @include safe-area-bottom(180rpx);
 }
 
 /* 处理信息 */
 .info-section {
-  background: #ffffff;
+  background: $color-white;
   border-radius: 20rpx;
   padding: 24rpx;
   margin-bottom: 24rpx;
@@ -454,18 +389,18 @@ onMounted(() => {
   padding: 16rpx 0;
 
   & + & {
-    border-top: 1rpx solid #f3f4f6;
+    border-top: 1rpx solid $color-border-light;
   }
 }
 
 .info-label {
   font-size: 26rpx;
-  color: #6b7280;
+  color: $color-text-secondary;
 }
 .info-value {
   font-size: 28rpx;
   font-weight: 500;
-  color: #1f2937;
+  color: $color-text-primary;
 }
 
 .ellipsis {
@@ -477,7 +412,7 @@ onMounted(() => {
 
 /* 参数面板 */
 .params-card {
-  background: #ffffff;
+  background: $color-white;
   border-radius: 20rpx;
   padding: 28rpx;
   margin-bottom: 24rpx;
@@ -494,11 +429,11 @@ onMounted(() => {
 .params-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #1f2937;
+  color: $color-text-primary;
 }
 .params-reset {
   font-size: 24rpx;
-  color: #f59e0b;
+  color: $color-warning;
 }
 
 .preset-section {
@@ -506,7 +441,7 @@ onMounted(() => {
 
   .preset-label {
     font-size: 24rpx;
-    color: #6b7280;
+    color: $color-text-secondary;
     margin-bottom: 12rpx;
     display: block;
   }
@@ -520,8 +455,8 @@ onMounted(() => {
     padding: 10rpx 24rpx;
     margin-right: 12rpx;
     font-size: 24rpx;
-    color: #f59e0b;
-    background: #fffbeb;
+    color: $color-warning;
+    background: $color-warning-bg;
     border-radius: 24rpx;
 
     &:active {
@@ -543,7 +478,7 @@ onMounted(() => {
 }
 
 .param-value {
-  color: #f59e0b;
+  color: $color-warning;
   font-weight: 600;
 }
 
@@ -552,7 +487,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  background: #fef2f2;
+  background: $color-danger-bg;
   border: 2rpx solid #fecaca;
   border-radius: 16rpx;
   padding: 20rpx 24rpx;
@@ -561,7 +496,7 @@ onMounted(() => {
 
 .error-msg {
   font-size: 26rpx;
-  color: #ef4444;
+  color: $color-danger;
   flex: 1;
 }
 
@@ -578,11 +513,11 @@ onMounted(() => {
 }
 
 .result-card {
-  background: #ffffff;
+  background: $color-white;
   border-radius: 20rpx;
   overflow: hidden;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
-  border: 2rpx solid #10b981;
+  border: 2rpx solid $color-success;
 }
 
 .result-image {
@@ -599,12 +534,12 @@ onMounted(() => {
 
 .result-time {
   font-size: 26rpx;
-  color: #6b7280;
+  color: $color-text-secondary;
 }
 .cache-badge {
   font-size: 22rpx;
-  color: #10b981;
-  background: #ecfdf5;
+  color: $color-success;
+  background: $color-success-bg;
   padding: 4rpx 12rpx;
   border-radius: 8rpx;
 }
@@ -615,11 +550,10 @@ onMounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: #ffffff;
-  border-top: 1rpx solid #f3f4f6;
+  background: $color-white;
+  border-top: 1rpx solid $color-border-light;
   padding: 20rpx 32rpx;
-  padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  @include safe-area-bottom(20rpx);
   box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.04);
   z-index: 100;
 }
@@ -633,16 +567,16 @@ onMounted(() => {
 .process-btn {
   width: 100%;
   padding: 24rpx;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #ffffff;
+  background: linear-gradient(135deg, $color-warning, #d97706);
+  color: $color-white;
   border: none;
   border-radius: 16rpx;
   font-size: 32rpx;
   font-weight: 700;
 
   &:disabled {
-    background: #d1d5db;
-    color: #9ca3af;
+    background: $color-text-disabled;
+    color: $color-text-placeholder;
   }
 
   &:active:not(:disabled) {
@@ -650,19 +584,28 @@ onMounted(() => {
   }
 }
 
+.loading-spinner {
+  width: 32rpx;
+  height: 32rpx;
+  border: 3rpx solid rgba(255, 255, 255, 0.3);
+  border-top-color: $color-white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
 .processing-indicator {
   display: flex;
   align-items: center;
   gap: 16rpx;
   padding: 24rpx 48rpx;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, $color-warning, #d97706);
   border-radius: 16rpx;
 }
 
 .processing-text {
   font-size: 30rpx;
   font-weight: 600;
-  color: #ffffff;
+  color: $color-white;
 }
 
 .processing-elapsed {
@@ -675,22 +618,22 @@ onMounted(() => {
   width: 100%;
   margin-top: 16rpx;
   padding: 20rpx;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: $color-bg-secondary;
+  color: $color-text-secondary;
   border: none;
   border-radius: 16rpx;
   font-size: 28rpx;
 
   &:active {
-    background: #e5e7eb;
+    background: $color-border;
   }
 }
 
 .compare-btn {
   width: 100%;
   padding: 24rpx;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: #ffffff;
+  background: linear-gradient(135deg, $color-success, #059669);
+  color: $color-white;
   border: none;
   border-radius: 16rpx;
   font-size: 32rpx;

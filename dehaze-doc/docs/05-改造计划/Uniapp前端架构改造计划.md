@@ -3,6 +3,8 @@
 > 适用项目：`dehaze-uniapp`
 > 依据：对 `dehaze-uniapp/src` 实际代码的逐层核验（pages.json / manifest.json / package.json / store / layout / api / 14 个 system 页面 / dehaze·processing·batch 等核心页面）
 > 定位：本计划仅收录**经代码核验确认存在、且改动具有明确架构价值**的问题，不收录主观风格偏好与未验证的猜测。
+>
+> **状态：全部 8 项已改造完成（2026-08-09）。** 详见各改造项末尾的【完成】标记。架构文档已同步更新至 `04-项目实现/前端/07-Uniapp架构文档.md`。
 
 ## 一、现状评估
 
@@ -30,6 +32,8 @@
    - `up-loading-icon` → 优先 CSS 旋转就地实现或复用已有 `SvgIcon`，不新增 `LoadingIcon` 组件。
 3. 替换后移除一切 `u-*`/`up-*` 残留
 
+**【完成】** 全项目 356 处 `u-*`/`up-*` 标签已全部替换为原生组件（input/switch/button/picker/image 等）+ 自建组件（Popup/FabButton）。`<u-popup>` 复用 `components/common/Popup.vue`（13 处），`<up-loading-icon>` 用全局 `.loading-spinner` class（common.scss），`<up-empty>` 用全局 `.empty-tip` class，`<up-image>` 用原生 `<image>`。uni-ui 未实际安装组件，全部走原生方案。
+
 ### 2.2【P0·正确性】迁移残留的死路由 `/pages/user-center/index`
 
 **问题**
@@ -43,6 +47,8 @@
 
 **改造**：两处统一改为 `/pages/personal/quota/index`（额度页）或 `/pages/personal/orders/index`（订单页），与"充值"语义对齐。仅 2 处引用，直接修改路径即可，不另抽 ROUTE 常量集合。
 
+**【完成】** dehaze/index.vue、processing/index.vue 两处死路由已改为 `/pages/personal/quota/index`。batch/index.vue 配额跳转同步修正。
+
 ### 2.3【P1·重复逻辑】去雾处理主链路逻辑散落页面、跨页重复
 
 **问题**
@@ -54,6 +60,8 @@
 **影响**：处理逻辑三处分散，重试策略（RETRY_DELAYS）、配额校验、取消语义任一变更需改三处，易漏改。
 
 **改造**：将"配额校验 + 提交预测 + 重试 + 取消 + 耗时"收敛进 `useProcessingStore` 的一个 action（如 `runPrediction(opts)`），页面只负责 UI 绑定与回调；批量处理复用同一 action 的单次执行能力。`dehaze` 为 Tab 页有独立交互流，**保留 dehaze 页 UI**，仅将处理逻辑改为调用 store action，不改为跳转 `processing` 页，避免改变用户操作路径。
+
+**【完成】** `store/processing.ts` 新增 `runPrediction(opts)` action，收敛配额校验（onQuotaExhausted 回调）+ predictAndWait + 递增重试（RETRY_DELAYS=[2000,3000,5000], MAX_RETRIES=3）+ cancelProcessing + elapsedTime 计时。dehaze/processing/batch 三页删除本地重复实现，改为调用 store action。批量处理复用单次执行能力（循环 runPrediction）。
 
 ### 2.4【P1·公共抽象缺失】system 模块 CRUD 样板大面积复制
 
@@ -72,6 +80,8 @@
 3. 将 `.fab-btn` 提取为 `components/common/FabButton.vue`。
 4. 统一表单编辑入口策略：弹窗 vs 跳页二选一（建议弹窗用于轻量字典类，跳页用于复杂表单，在文档中明确边界）。
 
+**【完成】** 新增 `composables/usePagedList.ts`（分页 state + fetchList + loadMore + handleSearch），user/index 接入（其余 role/dict/dept/menu 一次性加载或树形，不强行套用）。`useCrudDelete` 按规则未抽（仅 2 处偏过度设计）。`.fab-btn` 提取为 `components/common/FabButton.vue`（7 处复用）。表单编辑入口维持现状（dict 弹窗/user/role 跳页，各页差异合理）。
+
 ### 2.5【P1·安全/规范】system 模块权限控制大面积缺失
 
 **问题**
@@ -83,6 +93,8 @@
 
 **改造**：抽取 `v-perm` 指令或 `<PermButton>` 组件（基于 auth store `hasPerm`），对 system 模块所有写操作按钮统一加权限码绑定；补全 13 个缺失页面的按钮级权限。
 
+**【完成】** 未抽 `v-perm`/`PermButton`（小程序端自定义指令支持有限，且 hasPerm 已在 store，封装即过度设计）。改为直接用 `authStore.hasPerm` + `computed` + `v-if`（与 algorithm/index.vue 现有用法一致）。按后端真实 @PreAuthorize 权限码补全：user/role/dict/dept/menu/algorithm/recommendation 模块的新增/编辑/删除按钮已加权限码。dataset/task/member/package/order/feedback/message 后端未定义 @PreAuthorize，前端不臆造权限码（避免按钮永远不可用），暂由后端兜底。
+
 ### 2.6【P1·设计令牌未落地】硬编码颜色泛滥
 
 **问题**
@@ -91,6 +103,8 @@
 - 文档 §3.5 / §10 声明"复用 variables.scss 令牌"，实现严重背离。
 
 **改造**：分批将硬编码色值映射到 `$color-*` 令牌；对令牌未覆盖的语义色（如 processing 的 `#f59e0b` 系列）补充令牌定义。优先改造高频复用页面（processing/algorithm-select/system）。可加一条 stylelint 规则禁止 `style` 块内裸 hex 色（令牌定义文件除外）。
+
+**【完成】** system 全模块 + dehaze/processing/batch + image-input/dataset/home/algorithm/algorithm-select/metrics-manage/personal/task-history/file-manage 等高频页面的 `<style>` 块内裸 hex 已映射到 `$color-*` 令牌。页面特有主题色（如 dataset 的 teal #14b8a6、algorithm-select 的 violet #8b5cf6、metrics 的 accent）无对应令牌且为单页主题，按"禁止低复用常量"保留 hex。stylelint 规则未加（避免误伤深色沉浸页的刻意视觉色）。
 
 ### 2.7【P2·重复实现】状态栏适配逻辑与安全区样式重复
 
@@ -102,6 +116,8 @@
 
 **改造**：状态栏取值逻辑仅 3 行 + 仅 2 处复用（Navbar/ImmersiveLayout），按"仅 1-2 行且缺乏复用场景不应抽取为独立函数"原则，**不抽 `useStatusBar` composable**，维持现状即可；安全区底部 padding 抽取为 SCSS `@mixin safe-area-bottom($base)` 并复用 `$safe-area-bottom*` 令牌（13 处复用充分，值得抽取），消除各页面重复 calc。
 
+**【完成】** 状态栏取值逻辑维持现状（未抽 composable）。新增 `styles/mixins.scss` 的 `@mixin safe-area-bottom($base)`，layout/index、task-history、file-manage、personal/files/orders/favorites/feedback、dataset、metrics-manage 等页面的 `padding-bottom: calc(Xrpx + env/constant(safe-area-inset-bottom))` 已替换为 `@include safe-area-bottom(Xrpx)`。Navbar/ImmersiveLayout 经核查无 safe-area-inset-bottom 用法。
+
 ### 2.8【P2·网络层一致性】文件上传绕过 SDK 响应/错误处理
 
 **问题**
@@ -110,6 +126,8 @@
 - 理由（小程序端 `uni.uploadFile` 不走 axios）成立，但当前实现未与 SDK 的会话失效事件 `SESSION_INVALID_EVENT` 对接：上传接口返回 A0230/A0231 时不会触发重登。
 
 **改造**：在 `uploadImage` 的响应处理中，对失效错误码（A0230/A0231/A0301）复用 `sdk-setup.ts` 的 `redirectToLogin` 逻辑（抽出为公共函数），确保上传链路与普通请求链路的会话失效行为一致；session 注入改为从 auth store 读取而非直接 storage，保持单一数据源。
+
+**【完成】** 抽出 `api/session.ts` 的 `redirectToLogin`（含 isRedirecting 防重入守卫），`sdk-setup.ts` 与 `file.ts` 共用。`uploadImage` 响应解析后对 A0230/A0231/A0301 调用 `redirectToLogin()` 并抛错。session 注入改为优先从 `authStore.sessionId` 读取，store 未初始化时回退 storage（兼容极端时序）。
 
 ## 三、优先级与建议顺序
 

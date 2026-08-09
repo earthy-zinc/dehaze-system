@@ -41,23 +41,31 @@ const convertItemToSample = (item: DatasetItemVO): SampleImage | null => {
     url: image.url,
     category,
     scene: sceneType,
-    difficulty: hazyImage?.hazeLevel === "heavy" ? "困难" : hazyImage?.hazeLevel === "medium" ? "中等" : "简单",
+    difficulty:
+      hazyImage?.hazeLevel === "heavy"
+        ? "困难"
+        : hazyImage?.hazeLevel === "medium"
+          ? "中等"
+          : "简单",
     recommendAlgorithm: undefined,
   };
 };
 
-export async function fetchSampleImages(category: FogLevel): Promise<SampleImage[]> {
+export async function fetchSampleImages(
+  category: FogLevel
+): Promise<SampleImage[]> {
   try {
     const res = await DatasetItemAPI.getList({
       pageNum: 1,
       pageSize: 50,
-      isPublic: true,
       sortBy: "usageCount",
       sortOrder: "desc",
     });
 
     const items = (res.list as unknown as DatasetItemVO[]) || [];
-    const samples = items.map(convertItemToSample).filter((s): s is SampleImage => s !== null);
+    const samples = items
+      .map(convertItemToSample)
+      .filter((s): s is SampleImage => s !== null);
 
     if (category === "all") return samples;
     return samples.filter((s) => s.category === category);

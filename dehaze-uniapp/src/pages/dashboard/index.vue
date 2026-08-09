@@ -1,5 +1,5 @@
 <template>
-  <PageLayout level="L1" title="工作台" :isHome="true" :showSearch="false">
+  <PageLayout level="L1" title="工作台" :is-home="true" :show-search="false">
     <view class="page-body">
       <view class="stats-section">
         <view class="section-title">数据概览</view>

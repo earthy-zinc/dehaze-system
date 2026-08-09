@@ -115,8 +115,14 @@
           <text>换算法</text>
         </view>
         <view class="action-item" @click="handleFavorite">
-          <SvgIcon :name="favorited ? 'star-fill' : 'star'" size="18" :color="favorited ? '#f59e0b' : 'rgba(255,255,255,0.7)'" />
-          <text :style="{ color: favorited ? '#f59e0b' : '' }">{{ favorited ? '已收藏' : '收藏' }}</text>
+          <SvgIcon
+            :name="favorited ? 'star-fill' : 'star'"
+            size="18"
+            :color="favorited ? '#f59e0b' : 'rgba(255,255,255,0.7)'"
+          />
+          <text :style="{ color: favorited ? '#f59e0b' : '' }">{{
+            favorited ? "已收藏" : "收藏"
+          }}</text>
         </view>
       </view>
     </template>
@@ -145,14 +151,39 @@ const algorithm = computed(() => store.selectedAlgorithm);
 const algorithmName = computed(() => store.selectedAlgorithm?.name);
 const result = computed(() => store.result);
 const hasImages = computed(() => !!(originUrl.value && resultUrl.value));
-const resultId = computed(() => store.result?.id);
+const resultId = computed(() => store.result?.logId);
 
 const modes = [
-  { key: "side-by-side", label: "并排对比", path: "/pages/side-by-side/index", icon: "grid" },
-  { key: "overlay", label: "重叠对比", path: "/pages/overlay/index", icon: "photo" },
-  { key: "magnifier", label: "放大镜", path: "/pages/magnifier/index", icon: "search" },
-  { key: "filter", label: "滤镜", path: "/pages/filter/index", icon: "setting" },
-  { key: "metrics", label: "指标", path: "/pages/metrics/index", icon: "integral" },
+  {
+    key: "side-by-side",
+    label: "并排对比",
+    path: "/pages/side-by-side/index",
+    icon: "grid",
+  },
+  {
+    key: "overlay",
+    label: "重叠对比",
+    path: "/pages/overlay/index",
+    icon: "photo",
+  },
+  {
+    key: "magnifier",
+    label: "放大镜",
+    path: "/pages/magnifier/index",
+    icon: "search",
+  },
+  {
+    key: "filter",
+    label: "滤镜",
+    path: "/pages/filter/index",
+    icon: "setting",
+  },
+  {
+    key: "metrics",
+    label: "指标",
+    path: "/pages/metrics/index",
+    icon: "integral",
+  },
 ];
 
 function switchPage(url: string) {
@@ -170,7 +201,8 @@ function handleSave() {
       if (res.statusCode === 200) {
         uni.saveImageToPhotosAlbum({
           filePath: res.tempFilePath,
-          success: () => uni.showToast({ title: "已保存到相册", icon: "success" }),
+          success: () =>
+            uni.showToast({ title: "已保存到相册", icon: "success" }),
           fail: () => uni.showToast({ title: "保存失败", icon: "none" }),
         });
       }
@@ -223,14 +255,18 @@ async function handleExportReport() {
             url: statusRes.downloadUrl,
             success(dlRes) {
               if (dlRes.statusCode === 200 && dlRes.tempFilePath) {
-                uni.openDocument({ filePath: dlRes.tempFilePath, showMenu: true });
+                uni.openDocument({
+                  filePath: dlRes.tempFilePath,
+                  showMenu: true,
+                });
               }
             },
           });
         }
         break;
       }
-      if (status === 3) throw new Error(statusRes.errorMessage || "报告生成失败");
+      if (status === 3)
+        throw new Error(statusRes.errorMessage || "报告生成失败");
     }
   } catch (e: any) {
     uni.showToast({ title: e.message || "报告生成失败", icon: "none" });
@@ -269,7 +305,9 @@ onMounted(() => {
   }
   if (resultId.value) {
     FavoriteAPI.getStatus("result", resultId.value)
-      .then((res) => { favorited.value = res.favorited; })
+      .then((res) => {
+        favorited.value = res.favorited;
+      })
       .catch(() => {});
   }
 });

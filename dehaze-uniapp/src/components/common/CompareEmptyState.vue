@@ -1,6 +1,6 @@
 <template>
   <view class="compare-empty-state">
-    <up-empty mode="image" :text="text" />
+    <view class="empty-tip">{{ text }}</view>
     <text v-if="hint" class="empty-hint">{{ hint }}</text>
     <button
       class="back-btn"
@@ -36,6 +36,11 @@ function handleBack() {
   align-items: center;
   padding: 120rpx 0;
 }
+.empty-tip {
+  text-align: center;
+  padding: 60rpx 0;
+  color: rgba(255, 255, 255, 0.6);
+}
 .empty-hint {
   font-size: 26rpx;
   color: rgba(255, 255, 255, 0.4);
@@ -44,7 +49,7 @@ function handleBack() {
 .back-btn {
   margin-top: 32rpx;
   padding: 16rpx 48rpx;
-  color: #fff;
+  color: $color-white;
   border: none;
   border-radius: 16rpx;
   font-size: 28rpx;

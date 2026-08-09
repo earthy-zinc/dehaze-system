@@ -24,11 +24,10 @@
         >
         <view class="info-row"
           ><text class="label">状态</text
-          ><u-tag
-            :text="statusMap[order.status] || order.status"
-            :type="tagType(order.status)"
-            size="mini"
-        /></view>
+          ><view class="tag tag-sm" :class="'tag-' + tagType(order.status)">
+            {{ statusMap[order.status] || order.status }}
+          </view></view
+        >
         <view class="info-row"
           ><text class="label">创建时间</text
           ><text>{{ order.createTime }}</text></view
@@ -75,12 +74,18 @@ const fetchDetail = async (orderNo: string) => {
 };
 const tagType = (s: string) => {
   switch (s) {
-    case "completed": return "success";
-    case "cancelled": return "error";
-    case "paid": return "primary";
-    case "refunding": return "warning";
-    case "refunded": return "info";
-    default: return "warning";
+    case "completed":
+      return "success";
+    case "cancelled":
+      return "danger";
+    case "paid":
+      return "primary";
+    case "refunding":
+      return "warning";
+    case "refunded":
+      return "info";
+    default:
+      return "warning";
   }
 };
 </script>
@@ -91,7 +96,7 @@ const tagType = (s: string) => {
 }
 .info-card {
   background: $color-white;
-  border-radius: 16rpx;
+  border-radius: $radius-lg;
   padding: 20rpx;
 }
 .info-row {
@@ -106,5 +111,33 @@ const tagType = (s: string) => {
 }
 .label {
   color: $color-text-secondary;
+}
+.tag {
+  padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+  font-size: $font-xs;
+}
+.tag-sm {
+  padding: 2rpx 10rpx;
+}
+.tag-primary {
+  color: $color-primary;
+  background: $color-primary-bg;
+}
+.tag-success {
+  color: $color-success;
+  background: $color-success-bg;
+}
+.tag-warning {
+  color: $color-warning;
+  background: $color-warning-bg;
+}
+.tag-danger {
+  color: $color-danger;
+  background: $color-danger-bg;
+}
+.tag-info {
+  color: $color-text-secondary;
+  background: $color-bg-secondary;
 }
 </style>

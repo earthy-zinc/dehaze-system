@@ -10,8 +10,14 @@
       @click="handleClick"
     >
       <!-- 展开/收起图标 -->
-      <view v-if="hasChildren" class="tree-node__expand" @click.stop="emit('toggleExpand', node.id)">
-        <text :class="{ expanded: isExpanded }">{{ isExpanded ? '▼' : '▶' }}</text>
+      <view
+        v-if="hasChildren"
+        class="tree-node__expand"
+        @click.stop="emit('toggleExpand', node.id)"
+      >
+        <text :class="{ expanded: isExpanded }">{{
+          isExpanded ? "▼" : "▶"
+        }}</text>
       </view>
       <view v-else class="tree-node__icon">
         <text>⚡</text>
@@ -27,7 +33,10 @@
 
       <!-- 叶子节点操作按钮 -->
       <view v-if="isLeaf" class="tree-node__actions">
-        <view class="tree-node__action" @click.stop="emit('toggleFavorite', node.id)">
+        <view
+          class="tree-node__action"
+          @click.stop="emit('toggleFavorite', node.id)"
+        >
           <SvgIcon
             :name="favorite ? 'star-fill' : 'star'"
             size="16"
@@ -42,7 +51,9 @@
           :class="{ 'tree-node__action--compare': inCompare }"
           @click.stop="emit('toggleCompare', node)"
         >
-          <text class="tree-node__compare-btn" :class="{ active: inCompare }">对比</text>
+          <text class="tree-node__compare-btn" :class="{ active: inCompare }"
+            >对比</text
+          >
         </view>
       </view>
     </view>
@@ -88,11 +99,15 @@ const emit = defineEmits<{
   toggleCompare: [node: AlgorithmSelectNodeVO];
 }>();
 
-const hasChildren = computed(() => !!(props.node.children && props.node.children.length > 0));
+const hasChildren = computed(
+  () => !!(props.node.children && props.node.children.length > 0)
+);
 const isExpanded = computed(() => props.expandedKeys.has(props.node.id));
 const isLeaf = computed(() => !hasChildren.value && props.node.leaf);
 const favorite = computed(() => props.favoriteIds.has(props.node.id));
-const inCompare = computed(() => props.compareList.some((c) => c.id === props.node.id));
+const inCompare = computed(() =>
+  props.compareList.some((c) => c.id === props.node.id)
+);
 
 function handleClick() {
   if (hasChildren.value) {

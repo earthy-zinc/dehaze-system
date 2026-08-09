@@ -12,22 +12,31 @@
 
       <!-- 搜索栏 -->
       <view class="search-wrapper">
-        <up-search
-          v-model="searchKeyword"
-          placeholder="搜索数据集或图片..."
-          :show-action="false"
-          bg-color="#f3f4f6"
-          shape="round"
-          @search="handleSearch"
-          @clear="handleClearSearch"
-        />
+        <view class="search-bar">
+          <SvgIcon name="search" size="18" color="#9ca3af" />
+          <input
+            v-model="searchKeyword"
+            class="search-input"
+            type="text"
+            placeholder="搜索数据集或图片..."
+            placeholder-class="search-placeholder"
+            @confirm="handleSearch"
+          />
+          <view
+            v-if="searchKeyword"
+            class="search-clear"
+            @click="handleClearSearch"
+          >
+            <SvgIcon name="close-circle-fill" size="16" color="#9ca3af" />
+          </view>
+        </view>
       </view>
 
       <!-- 数据集列表视图 -->
       <view v-if="currentView === 'list'" class="list-view">
         <!-- 加载状态 -->
         <view v-if="listLoading" class="loading-container">
-          <up-loading-icon mode="circle" size="40" color="#14b8a6" />
+          <view class="loading-spinner" />
           <text class="loading-text">加载中...</text>
         </view>
 
@@ -40,13 +49,11 @@
             @click="handleDatasetClick(dataset)"
           >
             <view class="card-thumbnail">
-              <up-image
+              <image
                 v-if="thumbnailMap[dataset.id]"
                 :src="thumbnailMap[dataset.id]"
                 mode="aspectFill"
-                width="100%"
-                height="100%"
-                :lazy-load="true"
+                class="thumbnail-img"
               />
             </view>
             <view class="card-content">
@@ -70,14 +77,13 @@
                   </text>
                 </view>
               </view>
-
             </view>
           </view>
         </view>
 
         <!-- 空状态 -->
         <view v-else class="empty-container">
-          <up-empty mode="search" text="暂无数据集" />
+          <view class="empty-tip">暂无数据集</view>
         </view>
       </view>
 
@@ -124,7 +130,7 @@
         <!-- 图片网格 -->
         <view class="image-section">
           <view v-if="imagesLoading" class="loading-container">
-            <up-loading-icon mode="circle" size="40" color="#14b8a6" />
+            <view class="loading-spinner" />
             <text class="loading-text">加载图片中...</text>
           </view>
 
@@ -135,12 +141,10 @@
               class="image-card"
               @click="handleImageClick(image)"
             >
-              <up-image
+              <image
                 :src="image.imageUrl"
                 mode="aspectFill"
-                width="100%"
-                height="240rpx"
-                :lazy-load="true"
+                class="grid-image"
               />
               <view class="image-overlay">
                 <text class="image-type">
@@ -151,7 +155,7 @@
           </view>
 
           <view v-else class="empty-container">
-            <up-empty mode="data" text="暂无图片" />
+            <view class="empty-tip">暂无图片</view>
           </view>
         </view>
       </view>
@@ -171,11 +175,10 @@
     </view>
 
     <!-- 图片预览弹窗 -->
-    <up-popup
+    <Popup
       :show="showImageViewer"
       mode="center"
-      :round="16"
-      :close-on-click-overlay="true"
+      round
       @close="closeImageViewer"
     >
       <view v-if="selectedImage" class="image-viewer">
@@ -186,11 +189,10 @@
           </view>
         </view>
         <view class="viewer-image">
-          <up-image
+          <image
             :src="selectedImage.imageUrl"
             mode="widthFix"
-            width="100%"
-            :lazy-load="false"
+            class="viewer-img"
           />
         </view>
         <view class="viewer-info">
@@ -220,7 +222,7 @@
           </view>
         </view>
       </view>
-    </up-popup>
+    </Popup>
   </PageLayout>
 </template>
 
@@ -366,14 +368,16 @@ onMounted(() => {
   if (datasetId) {
     const id = Number(datasetId);
     if (!Number.isNaN(id)) {
-      DatasetAPI.getDatasetInfoById(id).then((detail) => {
-        currentDataset.value = detail;
-        currentView.value = "detail";
-        loadImages();
-      }).catch(() => {
-        uni.showToast({ title: "加载失败", icon: "none" });
-        loadDatasets();
-      });
+      DatasetAPI.getDatasetInfoById(id)
+        .then((detail) => {
+          currentDataset.value = detail;
+          currentView.value = "detail";
+          loadImages();
+        })
+        .catch(() => {
+          uni.showToast({ title: "加载失败", icon: "none" });
+          loadDatasets();
+        });
       return;
     }
   }
@@ -382,6 +386,8 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .dataset-page {
   width: 100%;
   min-height: 100vh;
@@ -390,8 +396,7 @@ onMounted(() => {
 
 .main-content {
   padding: $spacing-md;
-  padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  @include safe-area-bottom(120rpx);
 }
 
 /* 搜索栏 */
@@ -598,6 +603,10 @@ onMounted(() => {
   padding: 120rpx 0;
 }
 
+.loading-spinner {
+  border-top-color: #14b8a6;
+}
+
 .loading-text {
   margin-top: $spacing-md;
   font-size: $font-md;
@@ -686,6 +695,10 @@ onMounted(() => {
 .viewer-image {
   width: 100%;
   background: $color-black;
+}
+
+.viewer-img {
+  width: 100%;
 }
 
 .viewer-info {

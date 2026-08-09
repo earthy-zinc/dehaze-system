@@ -2,7 +2,7 @@
   <PageLayout level="L2" title="我的套餐" class="page">
     <view class="main-content">
       <view v-if="loading" class="loading-container">
-        <up-loading-icon mode="circle" size="40" color="#f59e0b" />
+        <view class="loading-spinner" />
         <text class="loading-text">加载中...</text>
       </view>
 
@@ -32,7 +32,7 @@
       </view>
 
       <view v-else class="empty-state">
-        <up-empty mode="list" text="暂无套餐" />
+        <view class="empty-tip">暂无套餐</view>
         <text class="empty-hint">当前没有可购买的套餐</text>
       </view>
     </view>
@@ -98,7 +98,7 @@ onMounted(async () => {
   gap: 16rpx;
 }
 .package-card {
-  background: #fff;
+  background: $color-white;
   border-radius: $radius-xl;
   padding: 28rpx;
   box-shadow: $shadow-sm;
@@ -119,7 +119,7 @@ onMounted(async () => {
 .pkg-price {
   font-size: $font-lg;
   font-weight: 700;
-  color: #f59e0b;
+  color: $color-warning;
 }
 .pkg-desc {
   font-size: $font-sm;
@@ -147,7 +147,7 @@ onMounted(async () => {
 .buy-btn {
   font-size: $font-sm;
   font-weight: 600;
-  color: #fff;
+  color: $color-white;
   background: $gradient-primary;
   padding: 16rpx 40rpx;
   border-radius: 12rpx;
@@ -172,6 +172,9 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   padding: 80rpx 0;
+}
+.empty-tip {
+  font-size: $font-md;
 }
 .empty-hint {
   font-size: $font-sm;

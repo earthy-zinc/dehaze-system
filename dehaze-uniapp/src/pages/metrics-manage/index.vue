@@ -77,7 +77,7 @@
 
       <!-- 加载状态 -->
       <view v-if="loading" class="loading-state">
-        <up-loading-icon mode="circle" size="40" color="#8b5cf6" />
+        <view class="loading-spinner" />
         <text class="loading-text">加载评估记录...</text>
       </view>
 
@@ -89,7 +89,7 @@
 
       <!-- 空状态 -->
       <view v-else-if="records.length === 0" class="empty-state">
-        <up-empty mode="data" text="暂无评估记录" />
+        <view class="empty-tip">暂无评估记录</view>
         <text class="empty-hint">完成去雾处理后可在对比页生成评估指标</text>
       </view>
 
@@ -253,6 +253,8 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+@import "@/styles/mixins.scss";
+
 .page {
   width: 100%;
   min-height: 100vh;
@@ -261,7 +263,7 @@ onMounted(() => {
 
 .main-content {
   padding: $spacing-md;
-  padding-bottom: calc(120rpx + $safe-area-bottom-env);
+  @include safe-area-bottom(120rpx);
 }
 
 /* 工具栏 */
@@ -288,7 +290,7 @@ onMounted(() => {
 
 .toolbar-btn {
   padding: 12rpx 32rpx;
-  background: #8b5cf6;
+  background: $color-accent;
   color: $color-white;
   border: none;
   border-radius: $radius-lg;
@@ -298,8 +300,8 @@ onMounted(() => {
 
   &.outline {
     background: transparent;
-    color: #8b5cf6;
-    border: 2rpx solid #8b5cf6;
+    color: $color-accent;
+    border: 2rpx solid $color-accent;
   }
 
   &:active {
@@ -357,7 +359,7 @@ onMounted(() => {
 
   &.value {
     font-weight: 600;
-    color: #8b5cf6;
+    color: $color-accent;
   }
 }
 
@@ -372,6 +374,10 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   padding: 120rpx 0;
+}
+
+.loading-spinner {
+  border-top-color: $color-accent;
 }
 
 .loading-text {
@@ -395,7 +401,7 @@ onMounted(() => {
 
 .retry-btn {
   padding: $spacing-sm 48rpx;
-  background: #8b5cf6;
+  background: $color-accent;
   color: $color-white;
   border: none;
   border-radius: $radius-lg;
@@ -404,6 +410,10 @@ onMounted(() => {
 
 .empty-state {
   padding: 80rpx 0;
+}
+
+.empty-tip {
+  font-size: $font-md;
 }
 
 .empty-hint {
@@ -429,7 +439,7 @@ onMounted(() => {
   border: 2rpx solid transparent;
 
   &.selected {
-    border-color: #8b5cf6;
+    border-color: $color-accent;
     background: #faf5ff;
   }
 
@@ -479,7 +489,7 @@ onMounted(() => {
 .select-mark {
   width: 40rpx;
   height: 40rpx;
-  background: #8b5cf6;
+  background: $color-accent;
   color: $color-white;
   border-radius: 50%;
   display: flex;
@@ -512,7 +522,7 @@ onMounted(() => {
 
 .mini-value {
   font-size: $font-xs;
-  color: #8b5cf6;
+  color: $color-accent;
   font-weight: 600;
 }
 

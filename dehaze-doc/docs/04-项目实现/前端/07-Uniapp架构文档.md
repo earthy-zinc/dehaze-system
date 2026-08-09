@@ -80,11 +80,12 @@ dehaze-uniapp/
 │   │   ├── sdk-setup.ts           # SDK 初始化（token/request adapter/baseURL）
 │   │   ├── uni-adapter.ts         # uni.request → SDK request adapter
 │   │   ├── constants.ts           # API 常量（SESSION_INVALID_EVENT 等）
-│   │   └── file.ts                # 文件上传封装
+│   │   ├── session.ts             # 会话失效统一处理（redirectToLogin，供 axios 拦截器与上传链路共用）
+│   │   └── file.ts                # 文件上传封装（接入会话失效处理）
 │   ├── components/                # 通用组件
 │   │   ├── auth/                  # AuthShell / AuthInput / AuthCaptcha
 │   │   ├── business/              # FeatureCard / SpecCard
-│   │   └── common/                # CompareEmptyState / PageHeaderCard / ProcessStep / SectionHeader
+│   │   └── common/                # CompareEmptyState / PageHeaderCard / ProcessStep / SectionHeader / FabButton / Popup
 │   ├── layout/                    # 布局组件
 │   │   ├── index.vue              # PageLayout（L1/L2/L3 层级路由布局）
 │   │   ├── Navbar.vue             # AppNavbar 导航栏（L1/L2 差异化）
@@ -117,11 +118,15 @@ dehaze-uniapp/
 │   │   └── dashboard/             # 管理入口工作台
 │   ├── routers/                   # 路由守卫
 │   │   └── guard.ts               # 登录拦截 + 白名单 + 路由常量
+│   ├── composables/               # 组合式函数
+│   │   └── usePagedList.ts        # 分页列表逻辑（list/keyword/hasMore/fetchList/loadMore）
 │   ├── store/                     # Pinia 状态管理
 │   │   ├── auth.ts                # 认证 store（登录/注册/登出/hasPerm/hasRole）
-│   │   └── processing.ts          # 处理 store（任务状态）
+│   │   └── processing.ts          # 处理 store（任务状态 + runPrediction 去雾主链路 action）
 │   ├── styles/                    # 全局样式
-│   │   └── variables.scss         # 设计令牌（颜色/间距/圆角/字号/阴影/安全区域）
+│   │   ├── variables.scss         # 设计令牌（颜色/间距/圆角/字号/阴影/安全区域）
+│   │   ├── mixins.scss            # SCSS mixin（safe-area-bottom）
+│   │   └── common.scss            # 通用 class（loading-spinner/empty-tip/tag/btn-sm/form-row/list-row 等）
 │   ├── utils/                     # 工具函数
 │   │   ├── error.ts               # 错误处理
 │   │   └── format.ts              # 格式化
@@ -213,7 +218,7 @@ L3 沉浸页统一骨架（`src/layout/ImmersiveLayout.vue`），提供三区域
 | pages/processing/index | 去雾处理，实时进度 | ModelAPI.predictAndWait |
 | pages/algorithm/index | 算法库浏览：列表 + 智能推荐 + 详情弹层 + "使用该算法"带入流程 | — |
 | pages/dataset/index | 数据集浏览：公开/共享浏览 + 图片网格 | — |
-| pages/batch/index | 批量处理：批量上传 ≤20 张 + 批量进度 + 结果对比 | ModelAPI.batchPredict |
+| pages/batch/index | 批量处理：批量上传 ≤20 张 + 逐张处理进度 + 结果对比 | store.runPrediction（循环单次） |
 | pages/metrics-manage/index | 指标管理：评估指标历史查询/筛选/对比 | ModelAPI.getEvalMetrics / getEvalLogs |
 | pages/task-history/index | 处理历史（个人视角） | TaskAPI.getPage |
 | pages/file-manage/index | 文件管理 | — |
@@ -296,26 +301,26 @@ L3 沉浸页统一骨架（`src/layout/ImmersiveLayout.vue`），提供三区域
 
 ## 6. 权限模型
 
-管理模块采用 Pinia auth store 的 `hasPerm` / `hasRole` 方法实现权限判断。权限标识格式为 `sys:模块:*`，各模块对应权限码如下：
+管理模块采用 Pinia auth store 的 `hasPerm` / `hasRole` 方法实现权限判断。权限标识格式为 `sys:模块:操作`，各模块对应权限码如下：
 
-| 权限码 | 模块 |
-|--------|------|
-| sys:user:* | 用户管理 |
-| sys:role:* | 角色管理 |
-| sys:dict:* | 字典管理 |
-| sys:menu:* | 菜单管理 |
-| sys:dept:* | 部门管理 |
-| sys:algorithm:* | 算法管理 |
-| sys:dataset:* | 数据集管理 |
-| sys:task:* | 任务管理 |
-| sys:member:* | 会员管理 |
-| sys:package:* | 套餐管理 |
-| sys:order:* | 订单管理 |
-| sys:feedback:* | 反馈评价管理 |
-| sys:notify:* | 消息管理 |
-| sys:recommendation:* | 推荐管理 |
+| 权限码 | 模块 | 前端按钮级控制 |
+|--------|------|--------------|
+| sys:user:add/edit/delete | 用户管理 | 已落地 |
+| sys:role:add/edit/delete | 角色管理 | 已落地 |
+| sys:dict:type:add/edit/delete + sys:dict:data:add/edit/delete | 字典管理 | 已落地 |
+| sys:menu:add/edit/delete | 菜单管理 | 已落地 |
+| sys:dept:add/edit/delete | 部门管理 | 已落地 |
+| sys:algorithm:add/edit/delete/audit | 算法管理 | 已落地 |
+| sys:recommendation:rule:edit | 推荐管理 | 已落地 |
+| sys:dataset:* | 数据集管理 | 后端未定义 @PreAuthorize，前端暂无按钮级控制（后端兜底） |
+| sys:task:* | 任务管理 | 同上 |
+| sys:member:* | 会员管理 | 同上 |
+| sys:package:* | 套餐管理 | 同上 |
+| sys:order:* | 订单管理 | 同上 |
+| sys:feedback:* | 反馈评价管理 | 同上 |
+| sys:notify:* | 消息管理 | 同上 |
 
-权限判断基于 `AuthAPI.getCurrentUser()` 返回的 `perms` 数组，通过 `authStore.hasPerm('sys:user:*')` 进行页面级或操作级判断。无 `sys:module:*` 权限的用户，管理入口组整组不显示。
+权限判断基于 `AuthAPI.getCurrentUser()` 返回的 `perms` 数组，通过 `authStore.hasPerm('sys:user:add')` 进行操作级判断（computed + v-if）。无 `sys:module:*` 权限的用户，管理入口组整组不显示。已落地的模块对新增/编辑/删除按钮绑定对应权限码；后端未定义权限码的模块暂由后端兜底，前端不臆造权限码。
 
 ### 6.1 路由守卫
 
@@ -349,8 +354,8 @@ L3 沉浸页统一骨架（`src/layout/ImmersiveLayout.vue`），提供三区域
 
 ## 9. 核心能力主线
 
-- 认证与会话：登录/注册/权限校验，Pinia auth store 维护会话态，请求自动注入会话头，失效统一重登
-- 去雾主链路：图像输入 → 算法选择 → 参数配置 → 实时处理 → 效果对比，工具页与算法库均可一键带入流程
+- 认证与会话：登录/注册/权限校验，Pinia auth store 维护会话态，请求自动注入会话头，失效统一重登（axios 拦截器与上传链路共用 `session.ts` 的 `redirectToLogin`）
+- 去雾主链路：图像输入 → 算法选择 → 参数配置 → 实时处理 → 效果对比，处理逻辑（配额校验 + 提交预测 + 递增重试 + 取消 + 耗时计时）收敛至 `useProcessingStore.runPrediction` action，dehaze/processing/batch 三页复用同一 action
 - 效果对比套件：并排/叠加/放大镜/滤镜/指标评估 5 种模式，统一复用 ImmersiveLayout 骨架
 - 批量与指标：批量处理（≤20 张）+ 评估指标历史查询/筛选/对比
 - 商业化：会员、套餐、订单、额度（个人视角）+ 后台管理（管理视角）
@@ -362,15 +367,16 @@ L3 沉浸页统一骨架（`src/layout/ImmersiveLayout.vue`），提供三区域
 |------|------|------|
 | 跨端框架 | uni-app (Vue 3) + Vite | 一份代码编译 H5 / 微信 / 支付宝 / 百度 / 抖音小程序及 App（Android/iOS） |
 | UI 框架 | Vue 3 `<script setup>` SFC + TypeScript | Composition API 类型安全，代码组织清晰 |
-| UI 组件库 | 自建业务组件 + SvgIcon（vite-plugin-svg-icons） | 业务自建组件，不依赖第三方 UI 库；图标走本地 svg sprite（`src/assets/icons/`），按需引入零冗余 |
+| UI 组件库 | 自建业务组件 + 原生组件 + SvgIcon（vite-plugin-svg-icons） | 已移除 uview-plus，全部使用 uni 原生组件（input/switch/button/picker/image 等）+ 自建组件（Popup/FabButton 等）；图标走本地 svg sprite |
 | 状态管理 | Pinia | Vue 3 官方推荐，模块化 store，支持 SSR |
-| 样式方案 | SCSS + variables.scss 全局令牌 | 统一的颜色/间距/圆角/字号/阴影变量，保证视觉一致性 |
+| 公共抽象 | usePagedList composable + FabButton/Popup 组件 + common.scss 通用 class + safe-area-bottom mixin | 消除分页样板/弹窗/FAB/加载指示器/空状态等重复逻辑，杜绝代码重复 |
+| 样式方案 | SCSS + variables.scss 全局令牌 + common.scss 通用 class | 统一的颜色/间距/圆角/字号/阴影变量，保证视觉一致性；通用 class 全局复用 |
 | 样式单位 | rpx（750 设计稿基准） | uni-app 原生响应式单位，多端自适应 |
 | 布局体系 | PageLayout（L0-L3）+ ImmersiveLayout（L3） | 按层级差异化导航，沉浸页统一骨架，避免页面重复实现导航逻辑 |
 | 路由配置 | pages.json 单一来源 | uni-app 标准路由配置，集中管理页面路径/tabBar/easycom |
 | 权限控制 | Pinia auth store（hasPerm/hasRole） | 页面级和操作级权限判断，管理入口组整体过滤 |
 | 视角拆分 | 个人/管理严格分离为独立页面 | 避免条件渲染混乱，职责清晰，代码可维护 |
-| 网络层 | dehaze-sdk-js + uni-adapter | 通过 uni.request 适配器接入 SDK；请求拦截器注入 `X-Session-Id`，会话失效错误码（A0230/A0231/A0301）统一触发 reLaunch 重登并防重入 |
+| 网络层 | dehaze-sdk-js + uni-adapter | 通过 uni.request 适配器接入 SDK；请求拦截器注入 `X-Session-Id`，会话失效错误码（A0230/A0231/A0301）统一触发 reLaunch 重登并防重入；上传链路（uni.uploadFile 不走 axios）同样接入 `session.ts` 的 `redirectToLogin`，session 从 auth store 读取 |
 | 路由守卫 | uni.addInterceptor 拦截 + 白名单 | 轻量级未登录拦截，无需引入额外路由库 |
 | 组件导入 | easycom 自动导入 | `autoscan` 自动扫描 + `^App(.*)` 映射至 `@/components/layout/App$1.vue`，布局组件按需自动导入 |
 | 日志采集 | dehaze-sdk-js Logger | trace_id 透传、采样限流、崩溃补报；契约与各端实现见 [08-SDK架构文档.md](./08-SDK架构文档.md) |

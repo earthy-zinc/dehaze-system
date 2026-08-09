@@ -120,3 +120,155 @@
     background: $color-text-disabled;
   }
 }
+
+// 行内小按钮（表格/列表行内操作）
+.btn-sm {
+  padding: 8rpx 20rpx;
+  font-size: $font-sm;
+  color: $color-text-primary;
+  background: $color-bg-secondary;
+  border: none;
+  border-radius: $radius-sm;
+
+  &::after {
+    border: none;
+  }
+
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.btn-sm-primary {
+  color: $color-white;
+  background: $color-primary;
+}
+
+.btn-sm-success {
+  color: $color-white;
+  background: $color-success;
+}
+
+.btn-sm-danger {
+  color: $color-white;
+  background: $color-danger;
+}
+
+// ==================== 加载指示器 ====================
+.loading-spinner {
+  width: 40rpx;
+  height: 40rpx;
+  border: 4rpx solid $color-border;
+  border-top-color: $color-primary;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ==================== 空状态提示 ====================
+.empty-tip {
+  padding: 60rpx 0;
+  font-size: $font-sm;
+  color: $color-text-secondary;
+  text-align: center;
+}
+
+// ==================== 标签 ====================
+.tag {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  font-size: $font-xs;
+  border-radius: $radius-sm;
+}
+
+.tag-primary {
+  color: $color-primary;
+  background: $color-primary-bg;
+}
+
+.tag-success {
+  color: $color-success;
+  background: $color-success-bg;
+}
+
+.tag-warning {
+  color: $color-warning;
+  background: $color-warning-bg;
+}
+
+.tag-danger {
+  color: $color-danger;
+  background: $color-danger-bg;
+}
+
+.tag-info {
+  color: $color-info;
+  background: $color-bg-secondary;
+}
+
+// ==================== 表单行 ====================
+.form-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid $color-border;
+}
+
+.form-label {
+  flex-shrink: 0;
+  width: 180rpx;
+  color: $color-text-primary;
+}
+
+.form-input {
+  flex: 1;
+}
+
+.required {
+  margin-right: 4rpx;
+  color: $color-danger;
+}
+
+// ==================== 列表行 ====================
+.list-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  border-bottom: 1rpx solid $color-border;
+}
+
+.cell {
+  flex: 1;
+}
+
+// ==================== 搜索输入框 ====================
+.search-input {
+  flex: 1;
+  height: 64rpx;
+  padding: 0 20rpx;
+  font-size: $font-md;
+  background: $color-bg-secondary;
+  border-radius: $radius-md;
+}
+
+// ==================== 标签页 ====================
+.tabs {
+  display: flex;
+}
+
+.tab-item {
+  flex: 1;
+  padding: 20rpx;
+  color: $color-text-secondary;
+  text-align: center;
+}
+
+.tab-active {
+  color: $color-primary;
+  border-bottom: 4rpx solid $color-primary;
+}

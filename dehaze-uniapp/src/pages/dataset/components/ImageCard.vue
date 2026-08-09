@@ -5,13 +5,10 @@
     @click="handleClick"
   >
     <view class="image-wrapper" :style="wrapperStyle">
-      <up-image
+      <image
         :src="image.imageUrl"
         :mode="isWaterfall ? 'widthFix' : 'aspectFill'"
-        width="100%"
-        :height="isWaterfall ? 'auto' : '100%'"
         :lazy-load="true"
-        :fade="true"
         @load="onImageLoad"
       />
       <view class="type-badge" :class="image.type">
@@ -78,7 +75,7 @@ const handleClick = () => {
 
 <style lang="scss" scoped>
 .image-card {
-  background: #ffffff;
+  background: $color-white;
   border-radius: 16rpx;
   overflow: hidden;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
@@ -98,7 +95,12 @@ const handleClick = () => {
 .image-wrapper {
   position: relative;
   width: 100%;
-  background: #f3f4f6;
+  background: $color-bg-secondary;
+
+  image {
+    display: block;
+    width: 100%;
+  }
 
   /* 网格模式：正方形容器 */
   .image-card:not(.waterfall) & {
@@ -106,11 +108,10 @@ const handleClick = () => {
     height: 0;
     padding-bottom: 100%;
 
-    :deep(.u-image) {
+    image {
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
       height: 100%;
     }
   }
@@ -125,7 +126,7 @@ const handleClick = () => {
   font-size: 22rpx;
   font-weight: 500;
   backdrop-filter: blur(8px);
-  color: #ffffff;
+  color: $color-white;
   background: rgba(107, 114, 128, 0.9);
 
   &.clear {
@@ -158,7 +159,7 @@ const handleClick = () => {
   font-size: 22rpx;
   font-weight: 500;
   backdrop-filter: blur(8px);
-  color: #ffffff;
+  color: $color-white;
   background: rgba(16, 185, 129, 0.9);
 }
 

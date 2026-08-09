@@ -1,24 +1,8 @@
 import { configAxios, service, SESSION_KEY } from "dehaze-sdk-js";
 import type { AxiosError, InternalAxiosRequestConfig } from "dehaze-sdk-js";
 import { createUniRequestAdapter } from "./uni-adapter";
-import { API_HOST, SESSION_INVALID_EVENT, USER_INFO_KEY } from "./constants";
-import { LOGIN_PATH } from "@/routers/guard";
-
-let isRedirecting = false;
-function redirectToLogin() {
-  if (isRedirecting) return;
-  isRedirecting = true;
-  // 清理本地认证态（storage + 内存态由 auth store 监听事件同步清空）
-  uni.removeStorageSync(SESSION_KEY);
-  uni.removeStorageSync(USER_INFO_KEY);
-  uni.$emit(SESSION_INVALID_EVENT);
-  uni.reLaunch({
-    url: LOGIN_PATH,
-    complete: () => {
-      isRedirecting = false;
-    },
-  });
-}
+import { API_HOST } from "./constants";
+import { redirectToLogin } from "./session";
 
 function handleResponseError(error: unknown): unknown {
   const axiosError = error as AxiosError<{ code?: string }>;
