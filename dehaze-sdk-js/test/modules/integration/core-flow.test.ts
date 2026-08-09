@@ -221,8 +221,6 @@ describe("核心业务流程集成测试", () => {
       // 4. 生成对比报告（异步任务）
       const reportForm = createCompareReportForm({
         logId: predResult.logId!,
-        format: "pdf",
-        includeMetrics: true,
       });
       const reportTask = await ModelAPI.generateReport(reportForm);
       expect(reportTask).toBeDefined();
@@ -283,7 +281,7 @@ describe("核心业务流程集成测试", () => {
       const systemPresets = await ModelAPI.getPresets({
         pageNum: 1,
         pageSize: 10,
-        isSystem: true,
+        type: "system",
       });
       expect(systemPresets).toBeDefined();
       expect(Array.isArray(systemPresets.list)).toBe(true);

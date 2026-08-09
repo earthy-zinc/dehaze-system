@@ -97,11 +97,45 @@ export interface PriceResult {
   payableAmount: number;
 }
 
+/** 促销活动类型 */
+export type PromotionType = "discount" | "new_user" | "holiday" | "full_reduction";
+
+/** 促销活动状态(1:启用;0:禁用) */
+export type PromotionStatus = 0 | 1;
+
+/** 促销活动查询参数 */
+export interface PromotionQuery extends PageQuery {
+  name?: string;
+  type?: PromotionType;
+  status?: PromotionStatus;
+  startTime?: string;
+  endTime?: string;
+}
+
+/** 促销活动表单 */
+export interface PromotionForm {
+  id?: number;
+  name: string;
+  type: PromotionType;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  activityRules?: Record<string, any>;
+  applicableScope?: number[];
+  newUserOnly?: number;
+  status?: PromotionStatus;
+}
+
+/** 促销活动关联套餐表单 */
+export interface PromotionPackageForm {
+  packageIds: number[];
+}
+
 /** 促销活动VO */
 export interface PromotionVO {
   id: number;
   name: string;
-  type: string;
+  type: PromotionType;
   description?: string;
   startTime: string;
   endTime: string;

@@ -18,6 +18,9 @@ export interface HistoryForm {
 export interface HistoryQuery extends PageQuery {
   status?: number;
   inputSource?: string;
+  isFavorite?: boolean;
+  startTime?: string;
+  endTime?: string;
 }
 
 /** 历史记录视图对象 */

@@ -190,7 +190,7 @@ describe("图像输入历史记录 API 测试", () => {
 
   describe("DELETE /api/v1/image-input/history/clear - 清空", () => {
     test("正向测试：清空当前用户所有历史记录", async () => {
-      const count = await ImageInputHistoryAPI.clearAll();
+      const count = await ImageInputHistoryAPI.clearAll(true);
       expect(count).toBeDefined();
       expect(typeof count).toBe("number");
 

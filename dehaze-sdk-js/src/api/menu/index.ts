@@ -77,6 +77,20 @@ class MenuAPI {
   }
 
   /**
+   * 修改菜单显示状态
+   *
+   * @param menuId
+   * @param visible
+   */
+  static updateVisible(menuId: number, visible: number) {
+    return request({
+      url: "/api/v1/menus/" + menuId,
+      method: "patch",
+      params: { visible },
+    });
+  }
+
+  /**
    * 删除菜单（支持批量，路径参数逗号分隔）
    *
    * @param ids 菜单ID字符串，多个以英文逗号(,)分割

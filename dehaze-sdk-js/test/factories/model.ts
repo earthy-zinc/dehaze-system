@@ -44,7 +44,6 @@ export function createPresetForm(overrides: Partial<PresetForm> = {}): PresetFor
     name: `preset_${Date.now()}`,
     algorithmId: 1,
     params: JSON.stringify({ gamma: 1.0, clipLimit: 2.0 }),
-    isSystem: false,
     ...overrides,
   };
 }
@@ -54,9 +53,6 @@ export function createCompareReportForm(
 ): CompareReportForm {
   return {
     logId: 1,
-    format: "pdf",
-    includeMetrics: true,
-    includeFilters: true,
     ...overrides,
   };
 }

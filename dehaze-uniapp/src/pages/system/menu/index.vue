@@ -230,7 +230,7 @@ const editMenu = (menu: MenuVO | null) => {
       name: menu.name || "",
       type: menu.type ?? MenuTypeEnum.CATALOG,
       parentId: menu.parentId ?? 0,
-      path: menu.routePath || "",
+      path: menu.path || "",
       component: menu.component || "",
       perm: menu.perm || "",
       sort: menu.sort ?? 0,

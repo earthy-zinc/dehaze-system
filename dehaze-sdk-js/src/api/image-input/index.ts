@@ -47,10 +47,11 @@ class ImageInputHistoryAPI {
   }
 
   /** 清空所有历史记录 */
-  static clearAll() {
+  static clearAll(confirm: boolean) {
     return request<number>({
       url: "/api/v1/image-input/history/clear",
       method: "delete",
+      params: { confirm },
     });
   }
 }

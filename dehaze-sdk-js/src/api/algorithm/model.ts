@@ -1,8 +1,9 @@
-/** 模型查询参数类型 */
+/** 算法查询参数 */
 export interface AlgorithmQuery {
   keywords?: string;
 }
 
+/** 算法视图对象（新增/修改时兼作 AlgorithmForm 提交体） */
 export interface Algorithm {
   id: number;
   parentId: number;
@@ -69,7 +70,7 @@ export interface AlgorithmMonitorStatsItemVO {
   successRate: number;
 }
 
-/** 算法对比表单（对应后端 AlgorithmCompareForm） */
+/** 算法对比表单 */
 export interface AlgorithmCompareForm {
   /** 算法ID列表（2-3 个） */
   algorithmIds: number[];
@@ -79,7 +80,7 @@ export interface AlgorithmCompareForm {
   imageUrl?: string;
 }
 
-/** 算法对比结果项（对应后端 AlgorithmCompareVO） */
+/** 算法对比结果项 */
 export interface AlgorithmCompareVO {
   algorithmId: number;
   algorithmName: string;
@@ -91,7 +92,7 @@ export interface AlgorithmCompareVO {
   metrics?: string;
 }
 
-/** 算法选择树节点（对应后端 AlgorithmSelectNodeVO） */
+/** 算法选择树节点 */
 export interface AlgorithmSelectNodeVO {
   id: number;
   /** 父节点 ID（根节点为 0） */
@@ -104,7 +105,7 @@ export interface AlgorithmSelectNodeVO {
   children?: AlgorithmSelectNodeVO[];
 }
 
-/** 算法详情（对应后端 AlgorithmDetailVO） */
+/** 算法详情 */
 export interface AlgorithmDetailVO {
   id: number;
   name: string;
@@ -133,7 +134,7 @@ export interface AlgorithmDetailVO {
   sampleImages?: string[];
 }
 
-/** 自定义图片测试表单（对应后端 AlgorithmTestForm） */
+/** 自定义图片测试表单 */
 export interface AlgorithmTestForm {
   /** 文件 ID（与 imageUrl 二选一） */
   fileId?: number;
@@ -141,4 +142,27 @@ export interface AlgorithmTestForm {
   imageUrl?: string;
   /** 预测参数（JSON） */
   params?: string;
+}
+
+/** 算法推荐匹配表单 */
+export interface AlgorithmRecommendForm {
+  keyword?: string;
+  taskType?: string;
+  sampleAlgorithmId?: number;
+  topN?: number;
+}
+
+/** 算法推荐匹配结果项 */
+export interface AlgorithmRecommendVO {
+  algorithmId: number;
+  algorithmName: string;
+  matchScore: number;
+  reason: string;
+  estimatedTime?: number;
+}
+
+/** 算法推荐匹配结果 */
+export interface AlgorithmRecommendResult {
+  total: number;
+  items: AlgorithmRecommendVO[];
 }

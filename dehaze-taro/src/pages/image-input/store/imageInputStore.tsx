@@ -230,7 +230,7 @@ export const useImageInputStore = create<ImageInputStore>()((set, get) => ({
     });
     if (!confirmed) return;
     try {
-      await clearAllHistory();
+      await clearAllHistory(true);
       set({ historyRecords: [] });
       Taro.showToast({ title: "已清空", icon: "success" });
     } catch (error: unknown) {

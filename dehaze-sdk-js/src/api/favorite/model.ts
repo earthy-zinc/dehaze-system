@@ -4,7 +4,7 @@ import { PageQuery } from "@/types";
 export type FavoriteTargetType = "algorithm" | "result" | "dataset" | "image" | "preset";
 
 /** 收藏排序字段 */
-export type FavoriteSortBy = "createTime" | "rating" | "usageCount";
+export type FavoriteSortBy = "createTime";
 
 /** 收藏查询参数 */
 export interface FavoriteQuery extends PageQuery {
@@ -12,7 +12,7 @@ export interface FavoriteQuery extends PageQuery {
   targetType?: FavoriteTargetType;
   /** 关键词搜索（按收藏对象名称） */
   keywords?: string;
-  /** 排序字段：收藏时间/评分/使用频率 */
+  /** 排序字段：收藏时间 */
   sortBy?: FavoriteSortBy;
   /** 排序方向 */
   sortOrder?: "asc" | "desc";

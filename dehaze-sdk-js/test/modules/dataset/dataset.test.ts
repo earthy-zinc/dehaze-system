@@ -12,7 +12,7 @@ describe("数据集接口测试", () => {
     test("正向测试：获取所有数据集", async () => {
       const query = createDatasetQuery();
       const result = await DatasetAPI.getList(query);
-      // getList 返回分页结构 PageResult<Dataset[]> = { list, total }
+      // getList 返回分页结构 PageResult<DatasetVO[]> = { list, total }
       expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
@@ -38,7 +38,7 @@ describe("数据集接口测试", () => {
     });
 
     test("正向测试：按状态筛选数据集", async () => {
-      const query = createDatasetQuery({ status: "1" });
+      const query = createDatasetQuery({ status: 1 });
       const result = await DatasetAPI.getList(query);
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((item) => {
@@ -84,7 +84,7 @@ describe("数据集接口测试", () => {
     test("正向测试：创建带可选字段的数据集", async () => {
       const form = createDatasetForm({
         description: "带描述的测试数据集",
-        status: "1",
+        status: 1,
       });
       const datasetId = await DatasetAPI.add(form);
       expect(datasetId).toBeGreaterThan(0);
@@ -179,7 +179,7 @@ describe("数据集接口测试", () => {
 
     test("正向测试：更新数据集状态", async () => {
       const form = createDatasetUpdateForm({
-        status: "0",
+        status: 0,
       });
       const result = await DatasetAPI.update(datasetId, form);
       expect(result.status).toBe(0);
@@ -227,13 +227,8 @@ describe("数据集接口测试", () => {
       };
       const result = await DatasetAPI.batchDelete(batchForm);
       expect(result).toBeDefined();
-      if (result.successIds) {
-        expect(result.successIds.length).toBe(3);
-        expect(result.successIds).toEqual(expect.arrayContaining(datasetIds));
-      }
-      if (result.failedItems) {
-        expect(result.failedItems.length).toBe(0);
-      }
+      expect(result.succeeded).toBe(3);
+      expect(result.failed).toBe(0);
     });
 
     test("参数校验：空ID数组", async () => {
@@ -249,12 +244,8 @@ describe("数据集接口测试", () => {
       };
       const result = await DatasetAPI.batchDelete(form);
       expect(result).toBeDefined();
-      if (result.successIds) {
-        expect(result.successIds.length).toBe(0);
-      }
-      if (result.failedItems) {
-        expect(result.failedItems.length).toBe(2);
-      }
+      expect(result.succeeded).toBe(0);
+      expect(result.failed).toBe(2);
     });
 
     test("级联删除：同时选中父数据集和子数据集应递归删除所有子孙数据集", async () => {
@@ -272,9 +263,7 @@ describe("数据集接口测试", () => {
       };
       const result = await DatasetAPI.batchDelete(batchForm);
       expect(result).toBeDefined();
-      if (result.successIds) {
-        expect(result.successIds.length).toBe(3);
-      }
+      expect(result.succeeded).toBe(3);
 
       await expectBizError(DatasetAPI.getDatasetInfoById(parentDatasetId), [
         "A0401",
@@ -308,9 +297,7 @@ describe("数据集接口测试", () => {
       };
       const result = await DatasetAPI.batchDelete(batchForm);
       expect(result).toBeDefined();
-      if (result.successIds) {
-        expect(result.successIds.length).toBe(1);
-      }
+      expect(result.succeeded).toBe(1);
 
       await expectBizError(DatasetAPI.getDatasetInfoById(parentDatasetId), [
         "A0401",
@@ -351,9 +338,7 @@ describe("数据集接口测试", () => {
       };
       const result = await DatasetAPI.batchDelete(batchForm);
       expect(result).toBeDefined();
-      if (result.successIds) {
-        expect(result.successIds.length).toBe(1);
-      }
+      expect(result.succeeded).toBe(1);
 
       await expectBizError(DatasetAPI.getDatasetInfoById(parentDatasetId), [
         "A0401",

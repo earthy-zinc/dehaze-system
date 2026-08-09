@@ -39,8 +39,8 @@ export function deleteHistoryRecord(id: number) {
 }
 
 /** 清空所有历史记录 */
-export function clearAllHistory() {
-  return ImageInputHistoryAPI.clearAll();
+export function clearAllHistory(confirm: boolean) {
+  return ImageInputHistoryAPI.clearAll(confirm);
 }
 
 /** 将历史记录按时间分组 */

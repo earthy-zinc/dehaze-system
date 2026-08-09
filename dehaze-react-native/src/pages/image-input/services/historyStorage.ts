@@ -37,8 +37,8 @@ export const historyStorage = {
   /**
    * 清空所有历史记录
    */
-  clearHistory: async (): Promise<void> => {
-    await ImageInputHistoryAPI.clearAll();
+  clearHistory: async (confirm: boolean): Promise<void> => {
+    await ImageInputHistoryAPI.clearAll(confirm);
   },
 
   /**

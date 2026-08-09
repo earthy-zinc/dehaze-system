@@ -52,9 +52,8 @@ class FileAPI {
    */
   static deleteById(fileId: number) {
     return request<void>({
-      url: "/api/v1/files",
+      url: `/api/v1/files/${fileId}`,
       method: "delete",
-      params: { fileId },
     });
   }
 

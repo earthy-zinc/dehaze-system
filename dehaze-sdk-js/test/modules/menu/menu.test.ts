@@ -158,7 +158,6 @@ describe("菜单管理接口测试", () => {
       const result = await MenuAPI.getFormData(testMenuId);
 
       expect(result).toBeDefined();
-      // 【注意】MenuForm.id 类型定义为 string，但后端实际返回 number
       expect(result.id).toBe(testMenuId);
       expect(result.name).toBe(testMenuName);
       expect(result.type).toBeTruthy();
@@ -351,6 +350,36 @@ describe("菜单管理接口测试", () => {
     test("异常测试：更新不存在的菜单应抛出业务错误", async () => {
       const form = createMenuForm();
       await expectBizError(MenuAPI.update("99999999", { ...form }), ["A0401"]);
+    });
+  });
+
+  describe("PATCH /api/v1/menus/{menuId} - 修改菜单显示状态", () => {
+    let testMenuId: number;
+
+    beforeAll(async () => {
+      const form = createMenuForm({ parentId: 0 });
+      const menuName = form.name!;
+      await MenuAPI.add(form);
+
+      const menuList = await MenuAPI.getList(createMenuQuery({ keywords: menuName }));
+      const createdMenu = findMenuByName(menuList, menuName);
+      expect(createdMenu).not.toBeNull();
+      testMenuId = createdMenu!.id!;
+      createdMenuIds.push(testMenuId);
+    });
+
+    test("正向测试：更新显示状态并验证生效", async () => {
+      await MenuAPI.updateVisible(testMenuId, 0);
+      const menuInfo = await MenuAPI.getFormData(testMenuId);
+      expect(menuInfo.visible).toBe(0);
+
+      await MenuAPI.updateVisible(testMenuId, 1);
+      const restored = await MenuAPI.getFormData(testMenuId);
+      expect(restored.visible).toBe(1);
+    });
+
+    test("异常测试：更新不存在菜单应抛出业务错误", async () => {
+      await expectBizError(MenuAPI.updateVisible(99999999, 0), ["A0401"]);
     });
   });
 

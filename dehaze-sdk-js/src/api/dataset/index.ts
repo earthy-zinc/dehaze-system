@@ -1,9 +1,9 @@
 import {
   BatchDeleteForm,
+  BatchDeleteResult,
   BatchDeleteResultVO,
   BatchOperationResultVO,
   BatchUploadResultVO,
-  Dataset,
   DatasetAddForm,
   DatasetItemCreateForm,
   DatasetItemQuery,
@@ -11,6 +11,7 @@ import {
   DatasetItemVO,
   DatasetQuery,
   DatasetUpdateForm,
+  DatasetVO,
   ImageUrlVO,
   ItemFileUpdateForm,
 } from "./model";
@@ -28,7 +29,7 @@ class DatasetAPI {
    * @param queryParams 查询参数
    */
   static getList(queryParams?: DatasetQuery) {
-    return request<PageResult<Dataset[]>>({
+    return request<PageResult<DatasetVO[]>>({
       url: "/api/v1/datasets",
       method: "get",
       params: queryParams,
@@ -40,7 +41,7 @@ class DatasetAPI {
    * @param parentId 父数据集ID
    */
   static getChildren(parentId: number) {
-    return request<Dataset[]>({
+    return request<DatasetVO[]>({
       url: `/api/v1/datasets/children/${parentId}`,
       method: "get",
     });
@@ -57,11 +58,23 @@ class DatasetAPI {
   }
 
   /**
+   * 获取测试集选项（按 taskType 过滤，仅返回含清晰图 GT 的数据集）
+   * @param taskType 任务类型
+   */
+  static getEvaluationOptions(taskType: string) {
+    return request<OptionType[]>({
+      url: "/api/v1/datasets/evaluation-options",
+      method: "get",
+      params: { taskType },
+    });
+  }
+
+  /**
    * 根据ID获取数据集详细信息
    * @param id 数据集ID
    */
   static getDatasetInfoById(id: number) {
-    return request<Dataset>({
+    return request<DatasetVO>({
       url: `/api/v1/datasets/${id}`,
       method: "get",
     });
@@ -85,7 +98,7 @@ class DatasetAPI {
    * @param data 数据集更新表单
    */
   static update(id: number, data: DatasetUpdateForm) {
-    return request<Dataset>({
+    return request<DatasetVO>({
       url: `/api/v1/datasets/${id}`,
       method: "put",
       data: data,
@@ -108,7 +121,7 @@ class DatasetAPI {
    * @param data 批量删除表单
    */
   static batchDelete(data: BatchDeleteForm) {
-    return request<BatchDeleteResultVO>({
+    return request<BatchDeleteResult>({
       url: "/api/v1/datasets/batch",
       method: "delete",
       data: data,

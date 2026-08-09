@@ -10,6 +10,11 @@ import {
   PackagePageVO,
   PackageQuery,
   PriceResult,
+  PromotionForm,
+  PromotionPackageForm,
+  PromotionQuery,
+  PromotionStatus,
+  PromotionVO,
   SalesStatsVO,
   UserCouponVO,
 } from "./model";
@@ -165,4 +170,59 @@ class CouponAPI {
 }
 
 export default PackageAPI;
-export { CouponAPI };
+export { CouponAPI, PromotionAPI };
+
+class PromotionAPI {
+  /** 后台：促销活动分页列表 */
+  static getPage(queryParams: PromotionQuery) {
+    return request<PageResult<PromotionVO[]>>({
+      url: "/api/v1/packages/promotions/page",
+      method: "get",
+      params: queryParams,
+    });
+  }
+
+  /** 后台：创建促销活动 */
+  static add(data: PromotionForm) {
+    return request<{ id: number }>({
+      url: "/api/v1/packages/promotions",
+      method: "post",
+      data,
+    });
+  }
+
+  /** 后台：修改促销活动 */
+  static update(id: number, data: PromotionForm) {
+    return request({
+      url: "/api/v1/packages/promotions/" + id,
+      method: "put",
+      data,
+    });
+  }
+
+  /** 后台：促销活动上架/下架 */
+  static updateStatus(id: number, status: PromotionStatus) {
+    return request({
+      url: `/api/v1/packages/promotions/${id}/status`,
+      method: "put",
+      params: { status },
+    });
+  }
+
+  /** 后台：删除促销活动 */
+  static delete(id: number) {
+    return request({
+      url: "/api/v1/packages/promotions/" + id,
+      method: "delete",
+    });
+  }
+
+  /** 后台：关联套餐 */
+  static bindPackages(id: number, data: PromotionPackageForm) {
+    return request({
+      url: `/api/v1/packages/promotions/${id}/packages`,
+      method: "put",
+      data,
+    });
+  }
+}

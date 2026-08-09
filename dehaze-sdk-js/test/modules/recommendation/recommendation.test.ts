@@ -128,9 +128,8 @@ describe("推荐管理接口测试", () => {
           expect(rec.matchScore).toBeGreaterThanOrEqual(0);
           expect(rec.matchScore).toBeLessThanOrEqual(100);
           expect(rec.reason).toBeTruthy();
-          expect(typeof rec.rating).toBe("number");
-          expect(rec.rating).toBeGreaterThanOrEqual(0);
-          expect(rec.rating).toBeLessThanOrEqual(5);
+          // 当前 rating 置 null，待真实评分数据填充
+          expect(rec.rating).toBeNull();
         });
       }
     });

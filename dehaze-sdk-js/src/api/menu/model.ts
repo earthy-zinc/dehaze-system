@@ -5,6 +5,10 @@ import { MenuTypeEnum } from "@/enums/MenuTypeEnum";
  */
 export interface MenuQuery {
   keywords?: string;
+  perm?: string;
+  path?: string;
+  type?: MenuTypeEnum;
+  visible?: number;
 }
 
 /**
@@ -36,6 +40,10 @@ export interface MenuVO {
    */
   parentId?: number;
   /**
+   * 路由路径
+   */
+  path?: string;
+  /**
    * 按钮权限标识
    */
   perm?: string;
@@ -43,14 +51,6 @@ export interface MenuVO {
    * 跳转路径
    */
   redirect?: string;
-  /**
-   * 路由名称
-   */
-  routeName?: string;
-  /**
-   * 路由相对路径
-   */
-  routePath?: string;
   /**
    * 菜单排序(数字越小排名越靠前)
    */
@@ -72,7 +72,7 @@ export interface MenuForm {
   /**
    * 菜单ID
    */
-  id?: string;
+  id?: number;
   /**
    * 父菜单ID
    */

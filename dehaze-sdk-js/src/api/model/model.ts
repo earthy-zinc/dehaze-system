@@ -1,14 +1,15 @@
 import { PageQuery } from "@/types";
 
-// ===== 预测/评估 API 类型（对应 Java PredictionController/EvaluationController） =====
+// ===== 预测/评估 API 类型 =====
 
 /**
- * 预测/评估任务状态（与后端 LogStatusEnum 对齐，使用整数）
+ * 预测/评估任务状态（使用整数）
  * - 1: PROCESSING 处理中
  * - 2: COMPLETED 已完成
  * - 3: FAILED 失败
+ * - 4: CANCELED 已取消（仅预测任务，评估任务为三态 1/2/3）
  */
-export type PredEvalTaskStatus = 1 | 2 | 3;
+export type PredEvalTaskStatus = 1 | 2 | 3 | 4;
 
 /** 预测请求 */
 export interface PredictionForm {
@@ -27,6 +28,7 @@ export interface PredictionForm {
  *   - processing: 仅 logId + status
  *   - completed: 包含 resultUrl、time
  *   - failed: 包含 errorMessage、time
+ *   - canceled: 仅 logId + status
  */
 export interface PredictionResultVO {
   logId?: number;
@@ -60,7 +62,13 @@ export interface PredLogQuery extends PageQuery {
 /** 评估请求 */
 export interface EvaluationForm {
   algorithmId: number;
+  /** 预测结果文件 ID（与 predUrl 二选一） */
+  predFileId?: number;
+  /** 预测结果图片 URL（与 predFileId 二选一） */
   predUrl?: string;
+  /** Ground Truth 文件 ID（与 gtUrl 二选一） */
+  gtFileId?: number;
+  /** Ground Truth 图片 URL（与 gtFileId 二选一） */
   gtUrl?: string;
   params?: string;
 }
@@ -95,7 +103,7 @@ export interface EvalLogVO {
   createTime?: string;
 }
 
-/** 评估指标历史（对应后端 EvalMetricsVO） */
+/** 评估指标历史 */
 export interface EvalMetricsVO {
   /** 日志 ID */
   id: number;
@@ -151,17 +159,19 @@ export interface BatchPredictionResultVO {
 
 /** 参数预设表单 */
 export interface PresetForm {
-  id?: number;
   name: string;
   algorithmId: number;
   params: string;
-  /** 是否系统预设 */
-  isSystem?: boolean;
 }
 
 /** 参数预设视图对象 */
-export interface PresetVO extends PresetForm {
+export interface PresetVO {
   id: number;
+  name: string;
+  /** 预设类型（system-系统预设 / custom-用户自定义） */
+  type: string;
+  algorithmId: number;
+  params: string;
   userId?: number;
   createTime: string;
 }
@@ -169,13 +179,14 @@ export interface PresetVO extends PresetForm {
 /** 参数预设查询 */
 export interface PresetQuery extends PageQuery {
   algorithmId?: number;
-  isSystem?: boolean;
+  /** 预设类型筛选（system-系统预设 / custom-用户自定义） */
+  type?: string;
 }
 
 // ===== VIP 配额（去雾处理） =====
 
 /** VIP 配额 */
-export interface PredictionQuota {
+export interface PredictionQuotaVO {
   /** 剩余次数 */
   remaining: number;
   /** 总次数 */
@@ -192,12 +203,6 @@ export interface PredictionQuota {
 export interface CompareReportForm {
   /** 处理日志ID */
   logId: number;
-  /** 报告格式 */
-  format: "pdf" | "image";
-  /** 是否包含指标 */
-  includeMetrics?: boolean;
-  /** 是否包含滤镜参数 */
-  includeFilters?: boolean;
 }
 
 /** 对比报告结果（异步任务） */

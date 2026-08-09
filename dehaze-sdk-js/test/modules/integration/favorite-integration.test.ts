@@ -80,7 +80,7 @@ describe("收藏跨模块集成测试", () => {
       name: `favorite_test_dataset_${Date.now()}`,
       type: "用户数据集",
       description: "收藏集成测试自动创建",
-      status: "1",
+      status: 1,
     });
     datasetCreated = true;
     // 切回 user 账号进行后续测试

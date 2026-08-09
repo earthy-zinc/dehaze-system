@@ -97,7 +97,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
           style: 'destructive',
           onPress: async () => {
             try {
-              await historyStorage.clearHistory();
+              await historyStorage.clearHistory(true);
               setHistoryGroups([]);
             } catch (error) {
               Alert.alert('错误', '清空失败，请重试');

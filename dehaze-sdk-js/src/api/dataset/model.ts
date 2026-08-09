@@ -8,7 +8,8 @@ import { PageQuery } from "@/types";
 export interface DatasetQuery extends PageQuery {
   keyword?: string;
   type?: string;
-  status?: string;
+  /** 状态筛选：1-启用，0-禁用 */
+  status?: number;
 }
 
 /**
@@ -18,15 +19,13 @@ export interface DatasetAddForm {
   /** 父数据集ID，0表示根数据集 */
   parentId: number;
   /** 数据集类型 */
-  type?: string;
+  type: string;
   /** 数据集名称 */
-  name?: string;
+  name: string;
   /** 数据集描述信息 */
   description?: string;
-  /** 数据集存储路径 */
-  path?: string;
   /** 数据集状态：1-启用，0-禁用 */
-  status?: string;
+  status?: number;
 }
 
 /**
@@ -39,15 +38,11 @@ export interface DatasetUpdateForm {
   name?: string;
   /** 数据集描述信息 */
   description?: string;
-  /** 数据集存储路径 */
-  path?: string;
   /** 数据集状态：1-启用，0-禁用 */
-  status?: string;
+  status?: number;
 }
 
-/**
- * 数据集统计信息
- */
+/** 数据集统计信息 */
 export interface DatasetStatistics {
   /** 数据项总数 */
   itemCount: number;
@@ -55,6 +50,8 @@ export interface DatasetStatistics {
   fileCount: number;
   /** 总大小（字节） */
   totalSize: number;
+  /** 使用次数（被用于图像处理的次数，支撑使用次数排序） */
+  usageCount: number;
   /** 已标注图片数量（haze_level 非空） */
   annotatedCount: number;
   /** 未标注图片数量（haze_level 为空） */
@@ -65,14 +62,12 @@ export interface DatasetStatistics {
   hazeDistribution: Record<string, number>;
   /** 文件格式分布 */
   formatDistribution: Record<string, number>;
-  /** 分辨率分布 */
-  resolutionDistribution?: Record<string, number>;
 }
 
 /**
  * 数据集视图对象
  */
-export interface Dataset {
+export interface DatasetVO {
   /** 数据集ID */
   id: number;
   /** 父数据集ID，null表示根数据集 */
@@ -88,7 +83,7 @@ export interface Dataset {
   /** 是否有子数据集 */
   hasChildren?: boolean;
   /** 子数据集列表 */
-  children?: Dataset[];
+  children?: DatasetVO[];
   /** 数据集状态：1-启用，0-禁用 */
   status?: number;
   /** 统计信息 */
@@ -319,8 +314,6 @@ export interface ImageUrlVO {
   type: string;
   /** 图片访问URL */
   url: string;
-  /** 原始图片URL */
-  originUrl?: string;
   /** 缩略图URL */
   thumbnailUrl?: string;
   /** 图片描述信息 */
@@ -376,7 +369,7 @@ export interface FailedItem {
 }
 
 /**
- * 批量删除结果
+ * 批量删除结果（图片文件批量删除）
  */
 export interface BatchDeleteResultVO {
   /** 删除成功的ID列表 */
@@ -387,6 +380,32 @@ export interface BatchDeleteResultVO {
   successCount: number;
   /** 失败删除数量 */
   failedCount: number;
+}
+
+/**
+ * 数据集批量删除结果项
+ */
+export interface DeleteResultItem {
+  /** 数据集ID */
+  id: number;
+  /** 处理状态：success, failed */
+  status: string;
+  /** 失败原因 */
+  message?: string;
+  /** 错误码 */
+  errorCode?: string;
+}
+
+/** 数据集批量删除结果 */
+export interface BatchDeleteResult {
+  /** 总数量 */
+  total: number;
+  /** 成功数量 */
+  succeeded: number;
+  /** 失败数量 */
+  failed: number;
+  /** 每个ID的处理结果 */
+  results: DeleteResultItem[];
 }
 
 /**

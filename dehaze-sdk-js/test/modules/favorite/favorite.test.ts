@@ -33,7 +33,7 @@ describe("收藏管理接口测试", () => {
         name: `favorite_test_dataset_${Date.now()}`,
         type: "用户数据集",
         description: "收藏测试自动创建",
-        status: "1",
+        status: 1,
       });
       datasetCreated = true;
     }

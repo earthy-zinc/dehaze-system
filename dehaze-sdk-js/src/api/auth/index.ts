@@ -1,5 +1,15 @@
 import request from "@/utils/request";
-import { AuthUserInfo, CaptchaResult, LoginData, LoginResult, RegisterData } from "./model";
+import { PageResult } from "@/types";
+import {
+  AuthUserInfo,
+  CaptchaResult,
+  LoginData,
+  LoginLogQuery,
+  LoginLogVO,
+  LoginResult,
+  RegisterData,
+  SessionInfo,
+} from "./model";
 
 class AuthAPI {
   static login(data: LoginData) {
@@ -36,6 +46,38 @@ class AuthAPI {
     return request<CaptchaResult>({
       url: "/api/v1/auth/captcha",
       method: "get",
+    });
+  }
+
+  static getLoginLogs(query: LoginLogQuery) {
+    return request<PageResult<LoginLogVO[]>>({
+      url: "/api/v1/auth/login-logs",
+      method: "get",
+      params: query,
+    });
+  }
+
+  static exportLoginLogs(query: LoginLogQuery) {
+    return request<Blob>({
+      url: "/api/v1/auth/login-logs/export",
+      method: "get",
+      params: query,
+      responseType: "blob",
+    });
+  }
+
+  static getSessions(username: string) {
+    return request<SessionInfo[]>({
+      url: "/api/v1/auth/sessions",
+      method: "get",
+      params: { username },
+    });
+  }
+
+  static kickSession(sessionId: string) {
+    return request({
+      url: "/api/v1/auth/sessions/" + sessionId,
+      method: "delete",
     });
   }
 }

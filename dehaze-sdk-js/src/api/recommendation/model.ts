@@ -74,10 +74,10 @@ export interface RecommendedAlgorithm {
   matchScore: number;
   /** 推荐理由（一句话说明为什么推荐） */
   reason: string;
-  /** 算法评分 0-5（基于用户评价的综合评分） */
-  rating: number;
-  /** 预估处理耗时(ms) */
-  estimatedTime?: number;
+  /** 算法评分 0-5（当前置 null，待真实数据填充） */
+  rating: number | null;
+  /** 预估处理耗时(ms)（当前置 null，待真实数据填充） */
+  estimatedTime: number | null;
   /** 预期效果描述 */
   effectDescription?: string;
 }

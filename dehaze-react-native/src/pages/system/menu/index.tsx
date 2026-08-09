@@ -49,7 +49,7 @@ const SystemMenuScreen: React.FC<Props> = ({ navigation }) => {
       <View style={[styles.menuRow, { paddingLeft: theme.spacing.md + depth * 20 }]}>
         <View style={styles.menuInfo}>
           <Text style={styles.menuName}>{menu.icon && <Text>{menu.icon} </Text>}{menu.name}</Text>
-          <Text style={styles.menuMeta}>{menu.routePath || menu.component || '—'} {menu.perm ? `· ${menu.perm}` : ''}</Text>
+          <Text style={styles.menuMeta}>{menu.path || menu.component || '—'} {menu.perm ? `· ${menu.perm}` : ''}</Text>
         </View>
         <View style={styles.menuActions}>
           {hasPerm('sys:menu:edit') && (

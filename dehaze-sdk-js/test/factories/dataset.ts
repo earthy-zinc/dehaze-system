@@ -15,7 +15,7 @@ export function createDatasetForm(overrides: Partial<DatasetAddForm> = {}): Data
     name: uniqueName("测试数据集"),
     type: "用户数据集",
     description: "这是一个测试数据集",
-    status: "1",
+    status: 1,
     ...overrides,
   };
 }

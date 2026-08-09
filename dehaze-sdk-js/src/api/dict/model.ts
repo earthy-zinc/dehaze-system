@@ -8,6 +8,10 @@ export interface DictTypeQuery extends PageQuery {
    * 关键字(字典类型名称/编码)
    */
   keywords?: string;
+  /**
+   * 状态(1:启用;0:禁用)
+   */
+  status?: number;
 }
 
 /**
@@ -34,6 +38,10 @@ export interface DictTypePageVO {
    * 备注
    */
   remark?: string;
+  /**
+   * 创建时间
+   */
+  createTime?: string;
 }
 
 /**
@@ -79,6 +87,10 @@ export interface DictQuery extends PageQuery {
    * 字典类型编码
    */
   typeCode?: string;
+  /**
+   * 状态(1:启用;0:禁用)
+   */
+  status?: number;
 }
 
 /**
@@ -94,13 +106,33 @@ export interface DictPageVO {
    */
   name?: string;
   /**
+   * 字典值
+   */
+  value?: string;
+  /**
+   * 类型编码
+   */
+  typeCode?: string;
+  /**
+   * 是否默认(1:是;0:否)
+   */
+  defaulted?: number;
+  /**
+   * 排序
+   */
+  sort?: number;
+  /**
    * 状态(1:启用;0:禁用)
    */
   status?: number;
   /**
-   * 字典值
+   * 备注
    */
-  value?: string;
+  remark?: string;
+  /**
+   * 创建时间
+   */
+  createTime?: string;
 }
 
 /**

@@ -19,7 +19,7 @@ import MessageAPI, {
 } from "./src/api/message";
 import ModelAPI from "./src/api/model";
 import OrderAPI from "./src/api/order";
-import PackageAPI, { CouponAPI } from "./src/api/package";
+import PackageAPI, { CouponAPI, PromotionAPI } from "./src/api/package";
 import RecommendationAPI from "./src/api/recommendation";
 import RoleAPI from "./src/api/role";
 import TaskAPI from "./src/api/task";
@@ -52,13 +52,7 @@ export * from "./src/enums";
 
 // 前端日志监控：Logger 多 transport 架构 + 错误捕获 + 离线上报
 export { Logger, ErrorBoundary, ConsoleTransport, RemoteTransport } from "./src/logger";
-export type {
-  LogEntry,
-  LogLevel,
-  LoggerStorage,
-  LogTransport,
-  InstallConfig,
-} from "./src/logger";
+export type { LogEntry, LogLevel, LoggerStorage, LogTransport, InstallConfig } from "./src/logger";
 
 // 配置导出
 export { configAxios } from "./src/config";
@@ -94,6 +88,7 @@ export {
   NotificationSettingAPI,
   OrderAPI,
   PackageAPI,
+  PromotionAPI,
   RecommendationAPI,
   RoleAPI,
   TaskAPI,

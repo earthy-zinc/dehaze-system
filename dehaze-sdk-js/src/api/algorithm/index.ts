@@ -10,6 +10,8 @@ import {
   AlgorithmMonitorVO,
   AlgorithmMonitorStatsItemVO,
   AlgorithmQuery,
+  AlgorithmRecommendForm,
+  AlgorithmRecommendResult,
   AlgorithmSelectNodeVO,
   AlgorithmTestForm,
   AlgorithmVersionForm,
@@ -50,9 +52,9 @@ class AlgorithmAPI {
     });
   }
 
-  /** 新增算法 */
+  /** 新增算法（返回算法ID） */
   static add(data: Partial<Algorithm>) {
-    return request({
+    return request<number>({
       url: "/api/v1/algorithms",
       method: "post",
       data: data,
@@ -68,7 +70,7 @@ class AlgorithmAPI {
     });
   }
 
-  /** 修改算法状态（6生命周期状态：0-5） */
+  /** 修改算法状态（状态值 1-6：1草稿/2测试中/3待审核/4已发布/5已停用/6已归档） */
   static updateStatus(id: number, status: number) {
     return request({
       url: `/api/v1/algorithms/${id}/status`,
@@ -120,15 +122,16 @@ class AlgorithmAPI {
     });
   }
 
-  /** 获取算法统计报表 */
-  static getMonitorStats(id: number) {
+  /** 获取算法统计报表（days 统计天数，默认 7） */
+  static getMonitorStats(id: number, days?: number) {
     return request<AlgorithmMonitorStatsItemVO[]>({
       url: `/api/v1/algorithms/${id}/monitor/stats`,
       method: "get",
+      params: days !== undefined ? { days } : undefined,
     });
   }
 
-  /** 算法对比（最多 3 个，对应 /api/v1/algorithms/select/compare） */
+  /** 算法对比（最多 3 个） */
   static compare(data: AlgorithmCompareForm) {
     return request<AlgorithmCompareVO[]>({
       url: "/api/v1/algorithms/select/compare",
@@ -137,15 +140,16 @@ class AlgorithmAPI {
     });
   }
 
-  /** 获取算法选择树（仅已发布算法，对应 /api/v1/algorithms/select/tree） */
-  static tree() {
+  /** 获取算法选择树（仅已发布算法） */
+  static tree(taskType?: string) {
     return request<AlgorithmSelectNodeVO[]>({
       url: "/api/v1/algorithms/select/tree",
       method: "get",
+      params: taskType ? { taskType } : undefined,
     });
   }
 
-  /** 获取算法详情（含样例效果图、评分、使用次数，对应 /api/v1/algorithms/select/{id}） */
+  /** 获取算法详情（含样例效果图、评分、使用次数） */
   static getSelectDetail(id: number) {
     return request<AlgorithmDetailVO>({
       url: "/api/v1/algorithms/select/" + id,
@@ -153,7 +157,7 @@ class AlgorithmAPI {
     });
   }
 
-  /** 上传自定义图片测试算法效果（对应 /api/v1/algorithms/select/{id}/test） */
+  /** 上传自定义图片测试算法效果 */
   static test(id: number, data: AlgorithmTestForm) {
     return request<PredictionResultVO>({
       url: `/api/v1/algorithms/select/${id}/test`,
@@ -162,12 +166,21 @@ class AlgorithmAPI {
     });
   }
 
-  /** 搜索算法（关键词/拼音/标签，对应 /api/v1/algorithms/select/search） */
-  static search(keyword: string) {
+  /** 搜索算法（关键词/拼音/标签） */
+  static search(keyword: string, taskType?: string) {
     return request<AlgorithmSelectNodeVO[]>({
       url: "/api/v1/algorithms/select/search",
       method: "get",
-      params: { keyword },
+      params: taskType ? { keyword, taskType } : { keyword },
+    });
+  }
+
+  /** 算法推荐匹配（基于关键词/任务类型/样例算法） */
+  static recommend(data: AlgorithmRecommendForm) {
+    return request<AlgorithmRecommendResult>({
+      url: "/api/v1/algorithms/select/recommend",
+      method: "post",
+      data,
     });
   }
 

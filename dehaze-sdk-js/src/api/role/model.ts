@@ -17,6 +17,11 @@ export interface RolePageVO {
   code?: string;
 
   /**
+   * 数据权限
+   */
+  dataScope?: number;
+
+  /**
    * 角色ID
    */
   id?: number;

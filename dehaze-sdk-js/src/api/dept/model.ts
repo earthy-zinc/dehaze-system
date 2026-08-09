@@ -39,6 +39,10 @@ export interface DeptVO {
    */
   status?: number;
   /**
+   * 父节点ID路径(逗号分隔)
+   */
+  treePath?: string;
+  /**
    * 修改时间
    */
   updateTime?: Date;
@@ -55,7 +59,7 @@ export interface DeptForm {
   /**
    * 部门名称
    */
-  name?: string;
+  name: string;
   /**
    * 父部门ID
    */
@@ -63,9 +67,9 @@ export interface DeptForm {
   /**
    * 排序
    */
-  sort?: number;
+  sort: number;
   /**
    * 状态(1:启用；0：禁用)
    */
-  status?: number;
+  status: number;
 }

@@ -16,11 +16,13 @@ export interface UserInfo {
  * 用户查询对象类型
  */
 export interface UserQuery extends PageQuery {
-  keywords?: string;
-  status?: number;
   deptId?: number;
-  startTime?: string;
   endTime?: string;
+  keywords?: string;
+  memberLevel?: string;
+  startTime?: string;
+  status?: number;
+  userType?: string;
 }
 
 /**
@@ -52,6 +54,14 @@ export interface UserPageVO {
    */
   id?: number;
   /**
+   * 会员到期时间
+   */
+  memberExpireTime?: Date;
+  /**
+   * 会员等级（普通/VIP1/VIP2/SVIP）
+   */
+  memberLevel?: string;
+  /**
    * 手机号
    */
   mobile?: string;
@@ -64,6 +74,10 @@ export interface UserPageVO {
    */
   roleNames?: string;
   /**
+   * 配额使用情况（已用/总量）
+   */
+  quotaUsage?: string;
+  /**
    * 用户状态(1:启用;0:禁用)
    */
   status?: number;
@@ -71,6 +85,10 @@ export interface UserPageVO {
    * 用户名
    */
   username?: string;
+  /**
+   * 用户类型（personal/enterprise）
+   */
+  userType?: string;
 }
 
 /**
@@ -114,4 +132,8 @@ export interface UserForm {
    * 用户名
    */
   username?: string;
+  /**
+   * 用户类型（personal/enterprise）
+   */
+  userType?: string;
 }

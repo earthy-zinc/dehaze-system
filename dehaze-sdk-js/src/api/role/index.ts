@@ -39,7 +39,7 @@ class RoleAPI {
   }
 
   /**
-   * 分配菜单权限给角色（PATCH）
+   * 分配菜单权限给角色
    *
    * @param roleId
    * @param menuIds 菜单ID数组
@@ -47,7 +47,7 @@ class RoleAPI {
   static updateRoleMenus(roleId: number, menuIds: number[]) {
     return request({
       url: "/api/v1/roles/" + roleId + "/menus",
-      method: "patch",
+      method: "put",
       data: menuIds,
     });
   }
@@ -92,7 +92,7 @@ class RoleAPI {
   }
 
   /**
-   * 更新角色状态（PATCH）
+   * 更新角色状态
    *
    * @param roleId 角色ID
    * @param status 状态(1-启用;0-禁用)
@@ -100,7 +100,7 @@ class RoleAPI {
   static updateStatus(roleId: number, status: number) {
     return request({
       url: "/api/v1/roles/" + roleId + "/status",
-      method: "patch",
+      method: "put",
       params: { status },
     });
   }

@@ -14,7 +14,7 @@ import {
   PredLogQuery,
   PredLogVO,
   PredictionForm,
-  PredictionQuota,
+  PredictionQuotaVO,
   PredictionResultVO,
   PresetForm,
   PresetQuery,
@@ -28,7 +28,12 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** 终态状态集合（COMPLETED=2 / FAILED=3 / CANCELED=4） */
+const TERMINAL_STATUSES = new Set([2, 3, 4]);
+
 class ModelAPI {
+  // ===== 预测 =====
+
   /** 执行模型预测（去雾处理），返回 logId + status */
   static predict(data: PredictionForm) {
     return request<PredictionResultVO>({
@@ -46,11 +51,19 @@ class ModelAPI {
     });
   }
 
+  /** 取消预测任务（幂等，对终态任务直接返回当前状态） */
+  static cancelPredTask(taskId: number) {
+    return request<PredictionResultVO>({
+      url: `/api/v1/prediction/${taskId}/cancel`,
+      method: "post",
+    });
+  }
+
   /**
    * 提交预测并等待结果（封装 POST + 轮询 GET）
    *
    * - POST 立即返回，若 status=2（COMPLETED，缓存命中）直接返回
-   * - status=1（PROCESSING）时按 intervalMs 轮询 GET，直到 COMPLETED/FAILED 或超时
+   * - status=1（PROCESSING）时按 intervalMs 轮询 GET，直到 COMPLETED/FAILED/CANCELED 或超时
    *
    * 默认：间隔 2s，超时 120s
    */
@@ -65,7 +78,7 @@ class ModelAPI {
     return this.pollPredTask(result.logId!, options);
   }
 
-  /** 轮询预测任务直到终态（COMPLETED=2 / FAILED=3）或超时 */
+  /** 轮询预测任务直到终态（COMPLETED=2 / FAILED=3 / CANCELED=4）或超时 */
   private static async pollPredTask(
     logId: number,
     options?: PollOptions
@@ -78,7 +91,7 @@ class ModelAPI {
       await sleep(interval);
       const result = await this.getPredTaskStatus(logId);
       options?.onPoll?.(result.status);
-      if (result.status === 2 || result.status === 3) {
+      if (TERMINAL_STATUSES.has(result.status)) {
         return result;
       }
     }
@@ -93,6 +106,27 @@ class ModelAPI {
       params: query,
     });
   }
+
+  // ===== 批量预测 / 配额 =====
+
+  /** 批量预测（一次提交多张图片，上限按会员等级动态计算） */
+  static batchPredict(data: BatchPredictionForm) {
+    return request<BatchPredictionResultVO>({
+      url: "/api/v1/prediction/batch",
+      method: "post",
+      data,
+    });
+  }
+
+  /** 查询用户剩余处理次数 */
+  static getQuota() {
+    return request<PredictionQuotaVO>({
+      url: "/api/v1/prediction/quota",
+      method: "get",
+    });
+  }
+
+  // ===== 评估 =====
 
   /** 执行效果评估（PSNR/SSIM/LPIPS等），返回 logId + status */
   static evaluate(data: EvaluationForm) {
@@ -115,7 +149,7 @@ class ModelAPI {
    * 提交评估并等待结果（封装 POST + 轮询 GET）
    *
    * - POST 立即返回，若 status=2（COMPLETED）直接返回
-   * - status=1（PROCESSING）时按 intervalMs 轮询 GET，直到 COMPLETED/FAILED 或超时
+   * - status=1（PROCESSING）时按 intervalMs 轮询 GET，直到 COMPLETED/FAILED/CANCELED 或超时
    *
    * 默认：间隔 2s，超时 120s
    */
@@ -130,7 +164,7 @@ class ModelAPI {
     return this.pollEvalTask(result.logId!, options);
   }
 
-  /** 轮询评估任务直到终态（COMPLETED=2 / FAILED=3）或超时 */
+  /** 轮询评估任务直到终态（COMPLETED=2 / FAILED=3 / CANCELED=4）或超时 */
   private static async pollEvalTask(
     logId: number,
     options?: PollOptions
@@ -143,7 +177,7 @@ class ModelAPI {
       await sleep(interval);
       const result = await this.getEvalTaskStatus(logId);
       options?.onPoll?.(result.status);
-      if (result.status === 2 || result.status === 3) {
+      if (TERMINAL_STATUSES.has(result.status)) {
         return result;
       }
     }
@@ -168,26 +202,7 @@ class ModelAPI {
     });
   }
 
-  // ===== 批量预测 / 配额（去雾处理） =====
-
-  /** 批量预测（一次提交多张图片，最多 20 张） */
-  static batchPredict(data: BatchPredictionForm) {
-    return request<BatchPredictionResultVO>({
-      url: "/api/v1/prediction/batch",
-      method: "post",
-      data,
-    });
-  }
-
-  /** 查询 VIP 配额（剩余处理次数） */
-  static getQuota() {
-    return request<PredictionQuota>({
-      url: "/api/v1/prediction/quota",
-      method: "get",
-    });
-  }
-
-  // ===== 参数预设（去雾处理） =====
+  // ===== 参数预设 =====
 
   /** 参数预设列表（系统预设 + 用户自定义） */
   static getPresets(query?: PresetQuery) {
@@ -226,7 +241,7 @@ class ModelAPI {
 
   // ===== 对比报告（效果对比） =====
 
-  /** 生成对比报告（异步任务，通过任务管理追踪进度） */
+  /** 生成对比报告（异步任务） */
   static generateReport(data: CompareReportForm) {
     return request<CompareReportResultVO>({
       url: "/api/v1/compare/report",

@@ -194,7 +194,7 @@ const handleClear = () => {
     success: async (res) => {
       if (res.confirm) {
         try {
-          await clearAllHistory();
+          await clearAllHistory(true);
           records.value = [];
           uni.showToast({ title: "已清空", icon: "success" });
         } catch {

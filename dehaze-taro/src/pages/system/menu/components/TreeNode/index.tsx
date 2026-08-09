@@ -95,8 +95,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
                 )}
               </View>
               <View className="menu-meta">
-                {node.routePath && (
-                  <Text className="meta-text">路由: {node.routePath}</Text>
+                {node.path && (
+                  <Text className="meta-text">路由: {node.path}</Text>
                 )}
                 {node.perm && (
                   <Text className="meta-text">权限: {node.perm}</Text>
