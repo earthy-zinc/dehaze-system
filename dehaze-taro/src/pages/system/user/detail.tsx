@@ -17,7 +17,7 @@ import { ArrowLeft } from "@taroify/icons";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { useDeptManagement } from "@/hooks/useDeptManagement";
 import { useRoleManagement } from "@/hooks/useRoleManagement";
-import type { UserForm } from "dehaze-sdk-js";
+import type { UserForm, OptionType } from "dehaze-sdk-js";
 import "./detail.less";
 
 const UserDetailPage: React.FC = () => {
@@ -33,7 +33,7 @@ const UserDetailPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [openDeptPicker, setOpenDeptPicker] = useState(false);
   const [openRolePicker, setOpenRolePicker] = useState(false);
-  const [roleOptions, setRoleOptions] = useState<any[]>([]);
+  const [roleOptions, setRoleOptions] = useState<OptionType[]>([]);
   const [formData, setFormData] = useState<UserForm>({
     username: "",
     nickname: "",
@@ -94,11 +94,11 @@ const UserDetailPage: React.FC = () => {
   };
 
   // 表单字段更新
-  const handleFieldChange = (field: keyof UserForm, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const handleFieldChange = (
+    field: keyof UserForm,
+    value: string | number | number[]
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }) as UserForm);
   };
 
   // 表单提交
@@ -185,7 +185,7 @@ const UserDetailPage: React.FC = () => {
                 value={formData.username}
                 readonly={isEdit}
                 placeholder="请输入用户名"
-                onChange={(value) => handleFieldChange("username", value)}
+                onChange={(e) => handleFieldChange("username", e.detail.value)}
               />
             </Form.Control>
           </Form.Item>
@@ -199,7 +199,7 @@ const UserDetailPage: React.FC = () => {
               <Input
                 value={formData.nickname}
                 placeholder="请输入用户昵称"
-                onChange={(value) => handleFieldChange("nickname", value)}
+                onChange={(e) => handleFieldChange("nickname", e.detail.value)}
               />
             </Form.Control>
           </Form.Item>
@@ -254,9 +254,8 @@ const UserDetailPage: React.FC = () => {
                   ? formData.roleIds
                       .map(
                         (roleId) =>
-                          roleOptions?.find(
-                            (role: any) => role.value === roleId
-                          )?.label
+                          roleOptions?.find((role) => role.value === roleId)
+                            ?.label
                       )
                       .filter(Boolean)
                       .join("、")
@@ -289,7 +288,7 @@ const UserDetailPage: React.FC = () => {
                 placeholder="请输入手机号码"
                 type="number"
                 maxlength={11}
-                onChange={(value) => handleFieldChange("mobile", value)}
+                onChange={(e) => handleFieldChange("mobile", e.detail.value)}
               />
             </Form.Control>
           </Form.Item>
@@ -300,7 +299,7 @@ const UserDetailPage: React.FC = () => {
               <Input
                 value={formData.email}
                 placeholder="请输入邮箱"
-                onChange={(value) => handleFieldChange("email", value)}
+                onChange={(e) => handleFieldChange("email", e.detail.value)}
               />
             </Form.Control>
           </Form.Item>

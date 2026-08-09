@@ -5,7 +5,7 @@
  */
 
 import { DatasetItemAPI } from "dehaze-sdk-js";
-import type { DatasetItemVO } from "dehaze-sdk-js";
+import type { DatasetItemVO, DatasetItemQuery } from "dehaze-sdk-js";
 import { SampleImage, SampleCategory } from "./types";
 
 // 场景类型到分类的映射
@@ -80,9 +80,9 @@ export const fetchSampleImages = async (
       isPublic: true,
       sortBy: "usageCount",
       sortOrder: "desc",
-    });
+    } as DatasetItemQuery);
 
-    const items = (res.list as unknown as DatasetItemVO[]) || [];
+    const items = res.list || [];
     const samples = items
       .map(convertItemToSample)
       .filter((s): s is SampleImage => s !== null);

@@ -8,6 +8,7 @@ import Taro from "@tarojs/taro";
 import { FileAPI } from "dehaze-sdk-js";
 import type { FileInfo } from "dehaze-sdk-js";
 import { storage } from "@/utils/storage";
+import { isH5 } from "@/utils/platform";
 import { UPLOAD_URL } from "./constants";
 
 interface UploadResponse {
@@ -92,7 +93,7 @@ export function uploadImage(
   fileName: string,
   onProgress?: (progress: number) => void
 ): Promise<FileInfo> {
-  if (process.env.TARO_ENV === "h5") {
+  if (isH5) {
     return uploadInH5(filePath, fileName, onProgress);
   }
   return uploadInMini(filePath, fileName, onProgress);

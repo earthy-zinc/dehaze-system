@@ -21,8 +21,8 @@ export const getHistoryPage = async (
     pageSize: 100,
     ...query,
   });
-  // SDK PageResult<T> 的 list 类型定义为 T，但后端实际返回数组，此处强制转换
-  const list = (res.list as unknown as InputHistoryVO[]) || [];
+  // SDK PageResult<T> 的 list 类型即 T，直接使用
+  const list = res.list || [];
   return { list, total: res.total || 0 };
 };
 

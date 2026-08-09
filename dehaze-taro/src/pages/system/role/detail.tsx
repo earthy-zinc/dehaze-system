@@ -66,11 +66,8 @@ const RoleDetailPage: React.FC = () => {
   };
 
   // 表单字段更新
-  const handleFieldChange = (field: keyof RoleForm, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const handleFieldChange = (field: keyof RoleForm, value: string | number) => {
+    setFormData((prev) => ({ ...prev, [field]: value }) as RoleForm);
   };
 
   // 表单验证
@@ -149,7 +146,7 @@ const RoleDetailPage: React.FC = () => {
               <Input
                 value={formData.name}
                 placeholder="请输入角色名称"
-                onChange={(value) => handleFieldChange("name", value)}
+                onChange={(e) => handleFieldChange("name", e.detail.value)}
               />
             </Form.Control>
           </Form.Item>
@@ -164,7 +161,7 @@ const RoleDetailPage: React.FC = () => {
                 value={formData.code}
                 placeholder="请输入角色编码"
                 readonly={isEdit}
-                onChange={(value) => handleFieldChange("code", value)}
+                onChange={(e) => handleFieldChange("code", e.detail.value)}
               />
             </Form.Control>
           </Form.Item>

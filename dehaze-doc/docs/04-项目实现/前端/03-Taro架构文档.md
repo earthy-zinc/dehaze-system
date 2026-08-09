@@ -330,7 +330,8 @@ L3 沉浸页统一骨架（`src/layout/immersive/`），提供三区域插槽：
 |------|------|------|
 | 跨端框架 | Taro 4 | 一份代码编译微信小程序/H5/支付宝小程序等多端 |
 | UI 框架 | React 18 + TypeScript | 类型安全，生态丰富 |
-| 状态管理 | zustand | 无 Provider 依赖，选择器订阅避免全量重渲染，API 简洁 |
+| 状态管理 | zustand | 无 Provider 依赖，选择器订阅避免全量重渲染，API 简洁；dataset/image-input 页面级状态亦统一为 zustand |
+| 跨页数据流 | zustand process store + 内存态 | 去雾主流程（选图→选算法→处理→对比）通过 `stores/process.ts`（image/algorithm/result）传递，不再经 Storage 字符串 key 中转；auth 与用户偏好（如自定义滤镜预设）仍持久化 Storage |
 | 样式方案 | Less + 全局变量 | 支持多端样式适配 |
 | 样式单位 | rpx（750 设计稿基准） | 多端自适应，统一视觉产出 |
 | 布局体系 | PageLayout（L1-L3）+ ImmersiveLayout（L3） | 按层级差异化导航，沉浸页统一骨架 |

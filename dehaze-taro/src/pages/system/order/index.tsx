@@ -3,7 +3,13 @@ import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag, Loading, Empty, Tabs, Popup, Input } from "@taroify/core";
 import { OrderAPI } from "dehaze-sdk-js";
-import type { OrderPageVO, RefundRecordVO, OrderStatsVO } from "dehaze-sdk-js";
+import type {
+  OrderPageVO,
+  RefundRecordVO,
+  OrderStatsVO,
+  OrderQuery,
+  OrderStatus,
+} from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import { usePermission } from "@/hooks/usePermission";
 import { getErrorMessage } from "@/utils/error";
@@ -50,9 +56,9 @@ const OrderManagePage: React.FC = () => {
     async (page: number, kw: string, status: string) => {
       setLoading(true);
       try {
-        const params: any = { pageNum: page, pageSize: 15 };
+        const params: OrderQuery = { pageNum: page, pageSize: 15 };
         if (kw) params.keywords = kw;
-        if (status) params.status = status;
+        if (status) params.status = status as OrderStatus;
         const res = await OrderAPI.getPage(params);
         setOrders(res.list);
         setTotalOrders(res.total);

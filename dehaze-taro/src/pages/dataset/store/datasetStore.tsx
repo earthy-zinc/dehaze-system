@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useReducer,
-  ReactNode,
-  useCallback,
-} from "react";
+import { create } from "zustand";
 import Taro from "@tarojs/taro";
 import { DatasetAPI, DatasetItemAPI } from "dehaze-sdk-js";
 import type {
@@ -62,57 +56,35 @@ interface DatasetState {
   selectedImage: ImageUrlVO | null;
 }
 
-// 动作类型定义
-type DatasetAction =
-  | { type: "SET_VIEW"; payload: "list" | "detail" }
-  | { type: "SET_CURRENT_DATASET_ID"; payload: number | null }
-  | { type: "SET_DATASETS_LOADING"; payload: boolean }
-  | { type: "SET_DATASETS_ERROR"; payload: string | null }
-  | {
-      type: "SET_DATASETS";
-      payload: {
-        datasets: Dataset[];
-        page: number;
-        total: number;
-        hasMore: boolean;
-      };
-    }
-  | {
-      type: "APPEND_DATASETS";
-      payload: { datasets: Dataset[]; page: number; hasMore: boolean };
-    }
-  | { type: "SET_EXPANDED"; payload: number[] }
-  | { type: "TOGGLE_EXPAND"; payload: number }
-  | { type: "SET_CHILDREN"; payload: { parentId: number; children: Dataset[] } }
-  | {
-      type: "SET_CHILDREN_LOADING";
-      payload: { parentId: number; loading: boolean };
-    }
-  | { type: "SET_DATASET_OPTIONS"; payload: OptionType[] }
-  | { type: "SET_DATASET_DETAIL_LOADING"; payload: boolean }
-  | { type: "SET_DATASET_DETAIL_ERROR"; payload: string | null }
-  | { type: "SET_CURRENT_DATASET"; payload: Dataset | null }
-  | { type: "SET_IMAGES_LOADING"; payload: boolean }
-  | { type: "SET_IMAGES_ERROR"; payload: string | null }
-  | {
-      type: "SET_IMAGES";
-      payload: {
-        images: ImageUrlVO[];
-        page: number;
-        total: number;
-        hasMore: boolean;
-      };
-    }
-  | {
-      type: "APPEND_IMAGES";
-      payload: { images: ImageUrlVO[]; page: number; hasMore: boolean };
-    }
-  | { type: "SET_ANNOTATION_FILTER"; payload: AnnotationFilter }
-  | { type: "SET_SEARCH_KEYWORD"; payload: string }
-  | { type: "SET_IMAGE_SEARCH_KEYWORD"; payload: string }
-  | { type: "SET_SELECTED_IMAGE"; payload: ImageUrlVO | null }
-  | { type: "RESET_IMAGES" }
-  | { type: "RESET_STATE" };
+interface DatasetStore extends DatasetState {
+  setView: (view: "list" | "detail") => void;
+  setCurrentDatasetId: (id: number | null) => void;
+  fetchDatasets: (
+    page?: number,
+    search?: string,
+    append?: boolean
+  ) => Promise<void>;
+  fetchChildren: (parentId: number) => Promise<void>;
+  toggleExpand: (id: number) => void;
+  fetchDatasetOptions: () => Promise<void>;
+  createDataset: (data: DatasetAddForm) => Promise<boolean>;
+  updateDataset: (id: number, data: DatasetUpdateForm) => Promise<boolean>;
+  deleteDataset: (id: number) => Promise<boolean>;
+  fetchDatasetDetail: (datasetId: number) => Promise<void>;
+  fetchImages: (
+    datasetId: number,
+    page?: number,
+    annotationFilter?: AnnotationFilter,
+    search?: string,
+    append?: boolean
+  ) => Promise<void>;
+  setSearchKeyword: (keyword: string) => void;
+  setImageSearchKeyword: (keyword: string) => void;
+  setAnnotationFilter: (filter: AnnotationFilter) => void;
+  setSelectedImage: (image: ImageUrlVO | null) => void;
+  resetImages: () => void;
+  resetState: () => void;
+}
 
 // 初始状态
 const initialState: DatasetState = {
@@ -142,130 +114,6 @@ const initialState: DatasetState = {
   imageSearchKeyword: "",
   selectedImage: null,
 };
-
-// Reducer
-function datasetReducer(
-  state: DatasetState,
-  action: DatasetAction
-): DatasetState {
-  switch (action.type) {
-    case "SET_VIEW":
-      return { ...state, currentView: action.payload };
-    case "SET_CURRENT_DATASET_ID":
-      return { ...state, currentDatasetId: action.payload };
-    case "SET_DATASETS_LOADING":
-      return { ...state, datasetsLoading: action.payload };
-    case "SET_DATASETS_ERROR":
-      return { ...state, datasetsError: action.payload };
-    case "SET_DATASETS":
-      return {
-        ...state,
-        datasets: action.payload.datasets,
-        datasetsPage: action.payload.page,
-        datasetsTotal: action.payload.total,
-        datasetsHasMore: action.payload.hasMore,
-        datasetsLoading: false,
-        datasetsError: null,
-      };
-    case "APPEND_DATASETS":
-      return {
-        ...state,
-        datasets: [...state.datasets, ...action.payload.datasets],
-        datasetsPage: action.payload.page,
-        datasetsHasMore: action.payload.hasMore,
-        datasetsLoading: false,
-      };
-    case "SET_EXPANDED":
-      return { ...state, expandedIds: action.payload };
-    case "TOGGLE_EXPAND": {
-      const id = action.payload;
-      const isExpanded = state.expandedIds.includes(id);
-      return {
-        ...state,
-        expandedIds: isExpanded
-          ? state.expandedIds.filter((i) => i !== id)
-          : [...state.expandedIds, id],
-      };
-    }
-    case "SET_CHILDREN":
-      return {
-        ...state,
-        childrenMap: {
-          ...state.childrenMap,
-          [action.payload.parentId]: action.payload.children,
-        },
-        childrenLoading: {
-          ...state.childrenLoading,
-          [action.payload.parentId]: false,
-        },
-      };
-    case "SET_CHILDREN_LOADING":
-      return {
-        ...state,
-        childrenLoading: {
-          ...state.childrenLoading,
-          [action.payload.parentId]: action.payload.loading,
-        },
-      };
-    case "SET_DATASET_OPTIONS":
-      return { ...state, datasetOptions: action.payload };
-    case "SET_DATASET_DETAIL_LOADING":
-      return { ...state, datasetDetailLoading: action.payload };
-    case "SET_DATASET_DETAIL_ERROR":
-      return { ...state, datasetDetailError: action.payload };
-    case "SET_CURRENT_DATASET":
-      return {
-        ...state,
-        currentDataset: action.payload,
-        datasetDetailLoading: false,
-        datasetDetailError: null,
-      };
-    case "SET_IMAGES_LOADING":
-      return { ...state, imagesLoading: action.payload };
-    case "SET_IMAGES_ERROR":
-      return { ...state, imagesError: action.payload };
-    case "SET_IMAGES":
-      return {
-        ...state,
-        images: action.payload.images,
-        imagesPage: action.payload.page,
-        imagesTotal: action.payload.total,
-        imagesHasMore: action.payload.hasMore,
-        imagesLoading: false,
-        imagesError: null,
-      };
-    case "APPEND_IMAGES":
-      return {
-        ...state,
-        images: [...state.images, ...action.payload.images],
-        imagesPage: action.payload.page,
-        imagesHasMore: action.payload.hasMore,
-        imagesLoading: false,
-      };
-    case "SET_ANNOTATION_FILTER":
-      return { ...state, currentAnnotationFilter: action.payload };
-    case "SET_SEARCH_KEYWORD":
-      return { ...state, searchKeyword: action.payload };
-    case "SET_IMAGE_SEARCH_KEYWORD":
-      return { ...state, imageSearchKeyword: action.payload };
-    case "SET_SELECTED_IMAGE":
-      return { ...state, selectedImage: action.payload };
-    case "RESET_IMAGES":
-      return {
-        ...state,
-        images: [],
-        imagesPage: 1,
-        imagesHasMore: true,
-        imagesTotal: 0,
-        imageSearchKeyword: "",
-        currentAnnotationFilter: "annotated",
-      };
-    case "RESET_STATE":
-      return initialState;
-    default:
-      return state;
-  }
-}
 
 /**
  * 将数据项列表展平为图片列表，并按标注状态过滤：
@@ -297,316 +145,266 @@ function flattenItems(
   return result;
 }
 
-// Context
-const DatasetContext = createContext<{
-  state: DatasetState;
-  dispatch: React.Dispatch<DatasetAction>;
-} | null>(null);
+export const useDatasetStore = create<DatasetStore>()((set, get) => ({
+  ...initialState,
 
-// Provider
-export function DatasetProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(datasetReducer, initialState);
+  setView: (view) => set({ currentView: view }),
 
-  return (
-    <DatasetContext.Provider value={{ state, dispatch }}>
-      {children}
-    </DatasetContext.Provider>
-  );
-}
-
-// Hook
-export function useDataset() {
-  const context = useContext(DatasetContext);
-  if (!context) {
-    throw new Error("useDataset must be used within a DatasetProvider");
-  }
-
-  const { state, dispatch } = context;
-
-  // Actions
-  const setView = useCallback(
-    (view: "list" | "detail") => {
-      dispatch({ type: "SET_VIEW", payload: view });
-    },
-    [dispatch]
-  );
-
-  const setCurrentDatasetId = useCallback(
-    (id: number | null) => {
-      dispatch({ type: "SET_CURRENT_DATASET_ID", payload: id });
-    },
-    [dispatch]
-  );
+  setCurrentDatasetId: (id) => set({ currentDatasetId: id }),
 
   // 获取数据集列表（根级）
-  const fetchDatasets = useCallback(
-    async (page = 1, search = "", append = false) => {
-      try {
-        dispatch({ type: "SET_DATASETS_LOADING", payload: true });
-        dispatch({ type: "SET_DATASETS_ERROR", payload: null });
+  fetchDatasets: async (page = 1, search = "", append = false) => {
+    try {
+      set({ datasetsLoading: true, datasetsError: null });
 
-        const size = 10;
-        const response = await DatasetAPI.getList({
-          keyword: search || undefined,
-          pageNum: page,
-          pageSize: size,
+      const size = 10;
+      const response = await DatasetAPI.getList({
+        keyword: search || undefined,
+        pageNum: page,
+        pageSize: size,
+      });
+
+      const list = response.list || [];
+      const total = response.total || 0;
+      const hasMore =
+        (append ? get().datasets.length + list.length : list.length) < total;
+
+      if (append) {
+        set({
+          datasets: [...get().datasets, ...list],
+          datasetsPage: page,
+          datasetsHasMore: hasMore,
+          datasetsLoading: false,
         });
-
-        const list = (response.list as unknown as Dataset[]) || [];
-        const total = response.total || 0;
-        const hasMore =
-          (append ? state.datasets.length + list.length : list.length) < total;
-
-        if (append) {
-          dispatch({
-            type: "APPEND_DATASETS",
-            payload: { datasets: list, page, hasMore },
-          });
-        } else {
-          dispatch({
-            type: "SET_DATASETS",
-            payload: { datasets: list, page, total, hasMore },
-          });
-        }
-      } catch (error: any) {
-        dispatch({
-          type: "SET_DATASETS_ERROR",
-          payload: error?.message || "获取数据集列表失败",
+      } else {
+        set({
+          datasets: list,
+          datasetsPage: page,
+          datasetsTotal: total,
+          datasetsHasMore: hasMore,
+          datasetsLoading: false,
+          datasetsError: null,
         });
       }
-    },
-    [dispatch, state.datasets.length]
-  );
+    } catch (error: unknown) {
+      set({
+        datasetsError: getErrorMessage(error, "获取数据集列表失败"),
+      });
+    }
+  },
 
   // 获取子数据集（懒加载）
-  const fetchChildren = useCallback(
-    async (parentId: number) => {
-      try {
-        dispatch({
-          type: "SET_CHILDREN_LOADING",
-          payload: { parentId, loading: true },
-        });
-        const children = await DatasetAPI.getChildren(parentId);
-        dispatch({
-          type: "SET_CHILDREN",
-          payload: { parentId, children: children || [] },
-        });
-      } catch (error) {
-        console.error("获取子数据集失败:", error);
-        dispatch({ type: "SET_CHILDREN", payload: { parentId, children: [] } });
-      }
-    },
-    [dispatch]
-  );
+  fetchChildren: async (parentId) => {
+    try {
+      set({
+        childrenLoading: { ...get().childrenLoading, [parentId]: true },
+      });
+      const children = await DatasetAPI.getChildren(parentId);
+      set({
+        childrenMap: { ...get().childrenMap, [parentId]: children || [] },
+        childrenLoading: { ...get().childrenLoading, [parentId]: false },
+      });
+    } catch (error) {
+      console.error("获取子数据集失败:", error);
+      set({
+        childrenMap: { ...get().childrenMap, [parentId]: [] },
+        childrenLoading: { ...get().childrenLoading, [parentId]: false },
+      });
+    }
+  },
 
   // 切换展开/收起
-  const toggleExpand = useCallback(
-    (id: number) => {
-      const isExpanded = state.expandedIds.includes(id);
-      dispatch({ type: "TOGGLE_EXPAND", payload: id });
-      // 展开时若未加载过子节点，触发懒加载
-      if (!isExpanded && !state.childrenMap[id]) {
-        fetchChildren(id);
-      }
-    },
-    [dispatch, state.expandedIds, state.childrenMap, fetchChildren]
-  );
+  toggleExpand: (id) => {
+    const isExpanded = get().expandedIds.includes(id);
+    set({
+      expandedIds: isExpanded
+        ? get().expandedIds.filter((i) => i !== id)
+        : [...get().expandedIds, id],
+    });
+    // 展开时若未加载过子节点，触发懒加载
+    if (!isExpanded && !get().childrenMap[id]) {
+      get().fetchChildren(id);
+    }
+  },
 
   // 获取数据集下拉选项（用于父级选择）
-  const fetchDatasetOptions = useCallback(async () => {
+  fetchDatasetOptions: async () => {
     try {
       const options = await DatasetAPI.getOptions();
-      dispatch({ type: "SET_DATASET_OPTIONS", payload: options || [] });
+      set({ datasetOptions: options || [] });
     } catch (error) {
       console.error("获取数据集选项失败:", error);
     }
-  }, [dispatch]);
+  },
 
   // 新增数据集
-  const createDataset = useCallback(
-    async (data: DatasetAddForm) => {
-      try {
-        await DatasetAPI.add(data);
-        Taro.showToast({ title: "新增成功", icon: "success" });
-        // 刷新列表
-        fetchDatasets(1, state.searchKeyword, false);
-        // 刷新选项
-        fetchDatasetOptions();
-        return true;
-      } catch (error: any) {
-        Taro.showToast({ title: error?.message || "新增失败", icon: "none" });
-        return false;
-      }
-    },
-    [fetchDatasets, fetchDatasetOptions, state.searchKeyword]
-  );
+  createDataset: async (data) => {
+    try {
+      await DatasetAPI.add(data);
+      Taro.showToast({ title: "新增成功", icon: "success" });
+      // 刷新列表
+      get().fetchDatasets(1, get().searchKeyword, false);
+      // 刷新选项
+      get().fetchDatasetOptions();
+      return true;
+    } catch (error: unknown) {
+      Taro.showToast({
+        title: getErrorMessage(error, "新增失败"),
+        icon: "none",
+      });
+      return false;
+    }
+  },
 
   // 修改数据集
-  const updateDataset = useCallback(
-    async (id: number, data: DatasetUpdateForm) => {
-      try {
-        await DatasetAPI.update(id, data);
-        Taro.showToast({ title: "修改成功", icon: "success" });
-        // 刷新列表
-        fetchDatasets(1, state.searchKeyword, false);
-        // 刷新选项
-        fetchDatasetOptions();
-        return true;
-      } catch (error: unknown) {
-        Taro.showToast({
-          title: getErrorMessage(error, "修改失败"),
-          icon: "none",
-        });
-        return false;
-      }
-    },
-    [fetchDatasets, fetchDatasetOptions, state.searchKeyword]
-  );
+  updateDataset: async (id, data) => {
+    try {
+      await DatasetAPI.update(id, data);
+      Taro.showToast({ title: "修改成功", icon: "success" });
+      // 刷新列表
+      get().fetchDatasets(1, get().searchKeyword, false);
+      // 刷新选项
+      get().fetchDatasetOptions();
+      return true;
+    } catch (error: unknown) {
+      Taro.showToast({
+        title: getErrorMessage(error, "修改失败"),
+        icon: "none",
+      });
+      return false;
+    }
+  },
 
   // 删除数据集
-  const deleteDataset = useCallback(
-    async (id: number) => {
-      try {
-        await DatasetAPI.deleteById(id);
-        Taro.showToast({ title: "删除成功", icon: "success" });
-        // 刷新列表
-        fetchDatasets(1, state.searchKeyword, false);
-        // 刷新选项
-        fetchDatasetOptions();
-        return true;
-      } catch (error: unknown) {
-        Taro.showToast({
-          title: getErrorMessage(error, "删除失败"),
-          icon: "none",
-        });
-        return false;
-      }
-    },
-    [fetchDatasets, fetchDatasetOptions, state.searchKeyword]
-  );
+  deleteDataset: async (id) => {
+    try {
+      await DatasetAPI.deleteById(id);
+      Taro.showToast({ title: "删除成功", icon: "success" });
+      // 刷新列表
+      get().fetchDatasets(1, get().searchKeyword, false);
+      // 刷新选项
+      get().fetchDatasetOptions();
+      return true;
+    } catch (error: unknown) {
+      Taro.showToast({
+        title: getErrorMessage(error, "删除失败"),
+        icon: "none",
+      });
+      return false;
+    }
+  },
 
   // 获取数据集详情
-  const fetchDatasetDetail = useCallback(
-    async (datasetId: number) => {
-      try {
-        dispatch({ type: "SET_DATASET_DETAIL_LOADING", payload: true });
-        dispatch({ type: "SET_DATASET_DETAIL_ERROR", payload: null });
+  fetchDatasetDetail: async (datasetId) => {
+    try {
+      set({ datasetDetailLoading: true, datasetDetailError: null });
 
-        const dataset = await DatasetAPI.getDatasetInfoById(datasetId);
-        dispatch({ type: "SET_CURRENT_DATASET", payload: dataset });
-      } catch (error: unknown) {
-        dispatch({
-          type: "SET_DATASET_DETAIL_ERROR",
-          payload: getErrorMessage(error, "获取数据集详情失败"),
-        });
-      }
-    },
-    [dispatch]
-  );
+      const dataset = await DatasetAPI.getDatasetInfoById(datasetId);
+      set({
+        currentDataset: dataset,
+        datasetDetailLoading: false,
+        datasetDetailError: null,
+      });
+    } catch (error: unknown) {
+      set({
+        datasetDetailError: getErrorMessage(error, "获取数据集详情失败"),
+      });
+    }
+  },
 
   // 获取图片列表（通过数据项接口获取后展平，按标注状态过滤）
-  const fetchImages = useCallback(
-    async (
-      datasetId: number,
-      page = 1,
-      annotationFilter: AnnotationFilter = "annotated",
-      search = "",
-      append = false
-    ) => {
-      try {
-        dispatch({ type: "SET_IMAGES_LOADING", payload: true });
-        dispatch({ type: "SET_IMAGES_ERROR", payload: null });
+  fetchImages: async (
+    datasetId,
+    page = 1,
+    annotationFilter = "annotated",
+    search = "",
+    append = false
+  ) => {
+    try {
+      set({ imagesLoading: true, imagesError: null });
 
-        const size = 20;
-        const response = await DatasetItemAPI.getList({
-          datasetId,
-          keyword: search || undefined,
-          pageNum: page,
-          pageSize: size,
+      const size = 20;
+      const response = await DatasetItemAPI.getList({
+        datasetId,
+        keyword: search || undefined,
+        pageNum: page,
+        pageSize: size,
+      });
+
+      const items = response.list || [];
+      const flattened = flattenItems(items, annotationFilter);
+      const total = response.total || 0;
+      const hasMore = items.length === size;
+
+      if (append) {
+        set({
+          images: [...get().images, ...flattened],
+          imagesPage: page,
+          imagesHasMore: hasMore,
+          imagesLoading: false,
         });
-
-        const items = (response.list as unknown as DatasetItemVO[]) || [];
-        const flattened = flattenItems(items, annotationFilter);
-        const total = response.total || 0;
-        const hasMore = items.length === size;
-
-        if (append) {
-          dispatch({
-            type: "APPEND_IMAGES",
-            payload: { images: flattened, page, hasMore },
-          });
-        } else {
-          dispatch({
-            type: "SET_IMAGES",
-            payload: { images: flattened, page, total, hasMore },
-          });
-        }
-      } catch (error: unknown) {
-        dispatch({
-          type: "SET_IMAGES_ERROR",
-          payload: getErrorMessage(error, "获取图片列表失败"),
+      } else {
+        set({
+          images: flattened,
+          imagesPage: page,
+          imagesTotal: total,
+          imagesHasMore: hasMore,
+          imagesLoading: false,
+          imagesError: null,
         });
       }
-    },
-    [dispatch]
-  );
+    } catch (error: unknown) {
+      set({
+        imagesError: getErrorMessage(error, "获取图片列表失败"),
+      });
+    }
+  },
 
   // 其他简化 actions
-  const setSearchKeyword = useCallback(
-    (keyword: string) => {
-      dispatch({ type: "SET_SEARCH_KEYWORD", payload: keyword });
-    },
-    [dispatch]
-  );
+  setSearchKeyword: (keyword) => set({ searchKeyword: keyword }),
+  setImageSearchKeyword: (keyword) => set({ imageSearchKeyword: keyword }),
+  setAnnotationFilter: (filter) => set({ currentAnnotationFilter: filter }),
+  setSelectedImage: (image) => set({ selectedImage: image }),
 
-  const setImageSearchKeyword = useCallback(
-    (keyword: string) => {
-      dispatch({ type: "SET_IMAGE_SEARCH_KEYWORD", payload: keyword });
-    },
-    [dispatch]
-  );
+  resetImages: () =>
+    set({
+      images: [],
+      imagesPage: 1,
+      imagesHasMore: true,
+      imagesTotal: 0,
+      imageSearchKeyword: "",
+      currentAnnotationFilter: "annotated",
+    }),
 
-  const setAnnotationFilter = useCallback(
-    (filter: AnnotationFilter) => {
-      dispatch({ type: "SET_ANNOTATION_FILTER", payload: filter });
-    },
-    [dispatch]
-  );
+  resetState: () => set({ ...initialState }),
+}));
 
-  const setSelectedImage = useCallback(
-    (image: ImageUrlVO | null) => {
-      dispatch({ type: "SET_SELECTED_IMAGE", payload: image });
-    },
-    [dispatch]
-  );
-
-  const resetImages = useCallback(() => {
-    dispatch({ type: "RESET_IMAGES" });
-  }, [dispatch]);
-
-  const resetState = useCallback(() => {
-    dispatch({ type: "RESET_STATE" });
-  }, [dispatch]);
-
+/**
+ * 兼容 hook：订阅 zustand store，返回 { state, ...actions }，
+ * 与原 Context + Reducer 的 useDataset 返回结构保持一致。
+ */
+export function useDataset() {
+  const state = useDatasetStore();
+  const actions = useDatasetStore.getState();
   return {
     state,
     // Actions
-    setView,
-    setCurrentDatasetId,
-    fetchDatasets,
-    fetchChildren,
-    toggleExpand,
-    fetchDatasetOptions,
-    createDataset,
-    updateDataset,
-    deleteDataset,
-    fetchDatasetDetail,
-    fetchImages,
-    setSearchKeyword,
-    setImageSearchKeyword,
-    setAnnotationFilter,
-    setSelectedImage,
-    resetImages,
-    resetState,
+    setView: actions.setView,
+    setCurrentDatasetId: actions.setCurrentDatasetId,
+    fetchDatasets: actions.fetchDatasets,
+    fetchChildren: actions.fetchChildren,
+    toggleExpand: actions.toggleExpand,
+    fetchDatasetOptions: actions.fetchDatasetOptions,
+    createDataset: actions.createDataset,
+    updateDataset: actions.updateDataset,
+    deleteDataset: actions.deleteDataset,
+    fetchDatasetDetail: actions.fetchDatasetDetail,
+    fetchImages: actions.fetchImages,
+    setSearchKeyword: actions.setSearchKeyword,
+    setImageSearchKeyword: actions.setImageSearchKeyword,
+    setAnnotationFilter: actions.setAnnotationFilter,
+    setSelectedImage: actions.setSelectedImage,
+    resetImages: actions.resetImages,
+    resetState: actions.resetState,
   };
 }

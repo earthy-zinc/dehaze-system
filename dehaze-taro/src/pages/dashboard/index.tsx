@@ -7,6 +7,7 @@ import type { TaskVO } from "dehaze-sdk-js";
 import { useAuth } from "@/hooks/useAuth";
 import { tabBarItems } from "@/config/menu";
 import PageLayout from "@/layout";
+import { useProcessStore } from "@/stores/process";
 import "./index.less";
 
 // ==================== 常量 ====================
@@ -156,7 +157,7 @@ const Dashboard: React.FC = () => {
     }
     if (results[3].status === "fulfilled") {
       newStats.taskTotal = results[3].value.total ?? null;
-      setRecentTasks((results[3].value.list as unknown as TaskVO[]) || []);
+      setRecentTasks(results[3].value.list || []);
     }
 
     setStats(newStats);
@@ -172,13 +173,7 @@ const Dashboard: React.FC = () => {
   const handleNavigate = useCallback((route: string) => {
     // 效果对比入口：需先有处理记录，否则提示用户先处理图片
     if (route === "/pages/side-by-side/index") {
-      const hasPredictionResult = (() => {
-        try {
-          return !!Taro.getStorageSync("prediction_result");
-        } catch {
-          return false;
-        }
-      })();
+      const hasPredictionResult = !!useProcessStore.getState().result;
       if (!hasPredictionResult) {
         Taro.showToast({ title: "请先处理图片后再对比", icon: "none" });
         return;
@@ -189,13 +184,7 @@ const Dashboard: React.FC = () => {
       route === "/pages/algorithm-select/index" ||
       route === "/pages/processing/index"
     ) {
-      const hasImage = (() => {
-        try {
-          return !!Taro.getStorageSync("current_image");
-        } catch {
-          return false;
-        }
-      })();
+      const hasImage = !!useProcessStore.getState().image;
       if (!hasImage) {
         Taro.showToast({ title: "请先选择图片", icon: "none" });
         return;
@@ -267,10 +256,26 @@ const Dashboard: React.FC = () => {
 
           {/* 统计概览 */}
           <View className="stats-grid">
-            {renderStatCard("用户总数", stats.userCount, "#1890ff")}
-            {renderStatCard("数据集", stats.datasetCount, "#52c41a")}
-            {renderStatCard("算法数", stats.algorithmCount, "#722ed1")}
-            {renderStatCard("任务总数", stats.taskTotal, "#fa8c16")}
+            {renderStatCard(
+              "用户总数",
+              stats.userCount,
+              "var(--color-primary)"
+            )}
+            {renderStatCard(
+              "数据集",
+              stats.datasetCount,
+              "var(--color-success)"
+            )}
+            {renderStatCard(
+              "算法数",
+              stats.algorithmCount,
+              "var(--color-info)"
+            )}
+            {renderStatCard(
+              "任务总数",
+              stats.taskTotal,
+              "var(--color-warning)"
+            )}
           </View>
 
           {/* 核心业务流程 */}

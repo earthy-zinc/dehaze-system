@@ -3,7 +3,7 @@ import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag } from "@taroify/core";
 import { OrderAPI } from "dehaze-sdk-js";
-import type { MyOrderVO, OrderStatus } from "dehaze-sdk-js";
+import type { MyOrderVO, OrderStatus, MyOrderQuery } from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import { confirmDialog } from "@/utils/dialog";
 import "./index.less";
@@ -37,8 +37,8 @@ const OrdersPage: React.FC = () => {
   const loadOrders = useCallback(async (page: number, status: string) => {
     setLoading(true);
     try {
-      const params: any = { pageNum: page, pageSize: PAGE_SIZE };
-      if (status) params.status = status;
+      const params: MyOrderQuery = { pageNum: page, pageSize: PAGE_SIZE };
+      if (status) params.status = status as OrderStatus;
       const res = await OrderAPI.listMy(params);
       setOrders(res.list || []);
       setTotal(res.total);

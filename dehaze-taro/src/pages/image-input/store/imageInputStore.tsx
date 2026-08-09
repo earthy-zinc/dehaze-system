@@ -1,20 +1,13 @@
 /**
- * 图像输入模块状态管理
- * 使用 Context + Reducer 模式
+ * 图像输入模块状态管理（zustand）
  */
 
-import {
-  createContext,
-  useContext,
-  useReducer,
-  ReactNode,
-  useCallback,
-  useRef,
-  useEffect,
-} from "react";
+import { create } from "zustand";
+import { useCallback, useRef, useEffect } from "react";
 import Taro from "@tarojs/taro";
 import { confirmDialog } from "@/utils/dialog";
 import { getErrorMessage } from "@/utils/error";
+import { useProcessStore } from "@/stores/process";
 import type { InputHistoryVO } from "dehaze-sdk-js";
 import {
   InputMethod,
@@ -26,7 +19,7 @@ import {
 import { ImageInputService, isImageInputError } from "../services/imageInput";
 import {
   getHistoryPage,
-  deleteHistoryRecord,
+  deleteHistoryRecord as deleteHistoryRecordService,
   clearAllHistory,
 } from "../services/history";
 import { fetchSampleImages } from "../services/sampleData";
@@ -64,21 +57,22 @@ interface ImageInputState {
   previewVisible: boolean;
 }
 
-// 动作类型定义
-type ImageInputAction =
-  | { type: "SET_ACTIVE_METHOD"; payload: InputMethod }
-  | { type: "SET_CURRENT_IMAGE"; payload: ImageData | null }
-  | { type: "SET_UPLOAD_LOADING"; payload: boolean }
-  | { type: "SET_UPLOAD_ERROR"; payload: string | null }
-  | { type: "SET_SAMPLE_CATEGORY"; payload: SampleCategory }
-  | { type: "SET_SAMPLE_LOADING"; payload: boolean }
-  | { type: "SET_SAMPLE_IMAGES"; payload: SampleImage[] }
-  | { type: "SET_HISTORY_RECORDS"; payload: InputHistoryVO[] }
-  | { type: "SET_HISTORY_LOADING"; payload: boolean }
-  | { type: "DELETE_HISTORY_RECORD"; payload: number }
-  | { type: "CLEAR_HISTORY" }
-  | { type: "SET_PREVIEW_VISIBLE"; payload: boolean }
-  | { type: "RESET_STATE" };
+interface ImageInputStore extends ImageInputState {
+  setActiveMethod: (method: InputMethod) => void;
+  setCurrentImage: (image: ImageData | null) => void;
+  handleError: (error: unknown, fallbackMsg: string) => void;
+  chooseImageFromAlbum: () => Promise<void>;
+  takePhoto: () => Promise<void>;
+  selectSampleImage: (sample: SampleImage) => Promise<void>;
+  setSampleCategory: (category: SampleCategory) => void;
+  loadSampleImages: (category: SampleCategory) => Promise<void>;
+  loadHistory: () => Promise<void>;
+  deleteHistoryRecord: (id: number) => Promise<void>;
+  clearHistory: () => Promise<void>;
+  cancelSelection: () => void;
+  confirmAndNavigate: () => void;
+  reprocessHistoryRecord: (record: InputHistoryVO) => void;
+}
 
 // 初始状态
 const initialState: ImageInputState = {
@@ -94,140 +88,54 @@ const initialState: ImageInputState = {
   previewVisible: false,
 };
 
-// Reducer
-function imageInputReducer(
-  state: ImageInputState,
-  action: ImageInputAction
-): ImageInputState {
-  switch (action.type) {
-    case "SET_ACTIVE_METHOD":
-      return { ...state, activeMethod: action.payload };
-    case "SET_CURRENT_IMAGE":
-      return { ...state, currentImage: action.payload };
-    case "SET_UPLOAD_LOADING":
-      return { ...state, uploadLoading: action.payload };
-    case "SET_UPLOAD_ERROR":
-      return { ...state, uploadError: action.payload };
-    case "SET_SAMPLE_CATEGORY":
-      return { ...state, sampleCategory: action.payload };
-    case "SET_SAMPLE_LOADING":
-      return { ...state, sampleLoading: action.payload };
-    case "SET_SAMPLE_IMAGES":
-      return { ...state, sampleImages: action.payload };
-    case "SET_HISTORY_RECORDS":
-      return {
-        ...state,
-        historyRecords: action.payload,
-        historyLoading: false,
-      };
-    case "SET_HISTORY_LOADING":
-      return { ...state, historyLoading: action.payload };
-    case "DELETE_HISTORY_RECORD":
-      return {
-        ...state,
-        historyRecords: state.historyRecords.filter(
-          (r) => r.id !== action.payload
-        ),
-      };
-    case "CLEAR_HISTORY":
-      return { ...state, historyRecords: [] };
-    case "SET_PREVIEW_VISIBLE":
-      return { ...state, previewVisible: action.payload };
-    case "RESET_STATE":
-      return initialState;
-    default:
-      return state;
-  }
-}
+export const useImageInputStore = create<ImageInputStore>()((set, get) => ({
+  ...initialState,
 
-// Context
-const ImageInputContext = createContext<{
-  state: ImageInputState;
-  dispatch: React.Dispatch<ImageInputAction>;
-} | null>(null);
+  setActiveMethod: (method) => set({ activeMethod: method }),
 
-// Provider
-export function ImageInputProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(imageInputReducer, initialState);
-
-  return (
-    <ImageInputContext.Provider value={{ state, dispatch }}>
-      {children}
-    </ImageInputContext.Provider>
-  );
-}
-
-// Hook
-export function useImageInput() {
-  const context = useContext(ImageInputContext);
-  if (!context) {
-    throw new Error("useImageInput must be used within an ImageInputProvider");
-  }
-
-  const { state, dispatch } = context;
-  // 用 ref 跟踪已加载过的样例分类，避免重复请求
-  const loadedSampleCategoryRef = useRef<SampleCategory | null>(null);
-
-  // 切换输入方式
-  const setActiveMethod = useCallback(
-    (method: InputMethod) => {
-      dispatch({ type: "SET_ACTIVE_METHOD", payload: method });
-    },
-    [dispatch]
-  );
-
-  // 设置当前图片
-  const setCurrentImage = useCallback(
-    (image: ImageData | null) => {
-      dispatch({ type: "SET_CURRENT_IMAGE", payload: image });
-      if (image) {
-        dispatch({ type: "SET_PREVIEW_VISIBLE", payload: true });
-      }
-    },
-    [dispatch]
-  );
+  setCurrentImage: (image) => {
+    set({ currentImage: image });
+    if (image) {
+      set({ previewVisible: true });
+    }
+  },
 
   // 统一错误处理
-  const handleError = useCallback(
-    (error: unknown, fallbackMsg: string) => {
-      if (isImageInputError(error) && error.code === ErrorCodes.USER_CANCEL) {
-        // 用户取消，不提示
-        return;
-      }
-      const msg = isImageInputError(error)
-        ? error.message
-        : getErrorMessage(error, fallbackMsg);
-      dispatch({ type: "SET_UPLOAD_ERROR", payload: msg });
-      Taro.showToast({ title: msg, icon: "none" });
-    },
-    [dispatch]
-  );
+  handleError: (error: unknown, fallbackMsg: string) => {
+    if (isImageInputError(error) && error.code === ErrorCodes.USER_CANCEL) {
+      // 用户取消，不提示
+      return;
+    }
+    const msg = isImageInputError(error)
+      ? error.message
+      : getErrorMessage(error, fallbackMsg);
+    set({ uploadError: msg });
+    Taro.showToast({ title: msg, icon: "none" });
+  },
 
   // 从相册选择图片
-  const chooseImageFromAlbum = useCallback(async () => {
+  chooseImageFromAlbum: async () => {
     try {
-      dispatch({ type: "SET_UPLOAD_LOADING", payload: true });
-      dispatch({ type: "SET_UPLOAD_ERROR", payload: null });
+      set({ uploadLoading: true, uploadError: null });
 
       const tempFiles = await ImageInputService.chooseImage(1);
       if (tempFiles.length > 0) {
         const imageData = await ImageInputService.processImageFile(
           tempFiles[0]
         );
-        setCurrentImage(imageData);
+        get().setCurrentImage(imageData);
       }
     } catch (error: unknown) {
-      handleError(error, "选择图片失败");
+      get().handleError(error, "选择图片失败");
     } finally {
-      dispatch({ type: "SET_UPLOAD_LOADING", payload: false });
+      set({ uploadLoading: false });
     }
-  }, [dispatch, setCurrentImage, handleError]);
+  },
 
   // 拍照
-  const takePhoto = useCallback(async () => {
+  takePhoto: async () => {
     try {
-      dispatch({ type: "SET_UPLOAD_LOADING", payload: true });
-      dispatch({ type: "SET_UPLOAD_ERROR", payload: null });
+      set({ uploadLoading: true, uploadError: null });
 
       // 检查相机权限
       const hasPermission = await ImageInputService.checkCameraPermission();
@@ -240,65 +148,147 @@ export function useImageInput() {
 
       const tempFile = await ImageInputService.takePhoto();
       const imageData = await ImageInputService.processImageFile(tempFile);
-      setCurrentImage(imageData);
+      get().setCurrentImage(imageData);
     } catch (error: unknown) {
-      handleError(error, "拍照失败");
+      get().handleError(error, "拍照失败");
     } finally {
-      dispatch({ type: "SET_UPLOAD_LOADING", payload: false });
+      set({ uploadLoading: false });
     }
-  }, [dispatch, setCurrentImage, handleError]);
+  },
 
   // 选择样例图片
-  const selectSampleImage = useCallback(
-    async (sample: SampleImage) => {
-      try {
-        dispatch({ type: "SET_SAMPLE_LOADING", payload: true });
+  selectSampleImage: async (sample) => {
+    try {
+      set({ sampleLoading: true });
 
-        const imageData = await ImageInputService.loadImageFromUrl(
-          sample.url,
-          sample.name
-        );
-        setCurrentImage({
-          ...imageData,
-          sampleInfo: sample,
-          cleanUrl: sample.cleanUrl,
-        });
+      const imageData = await ImageInputService.loadImageFromUrl(
+        sample.url,
+        sample.name
+      );
+      get().setCurrentImage({
+        ...imageData,
+        sampleInfo: sample,
+        cleanUrl: sample.cleanUrl,
+      });
 
-        Taro.showToast({ title: "样例图片加载成功", icon: "success" });
-      } catch (error: unknown) {
-        handleError(error, "加载失败");
-      } finally {
-        dispatch({ type: "SET_SAMPLE_LOADING", payload: false });
-      }
-    },
-    [dispatch, setCurrentImage, handleError]
-  );
+      Taro.showToast({ title: "样例图片加载成功", icon: "success" });
+    } catch (error: unknown) {
+      get().handleError(error, "加载失败");
+    } finally {
+      set({ sampleLoading: false });
+    }
+  },
 
   // 切换样例分类（触发重新加载）
-  const setSampleCategory = useCallback(
-    (category: SampleCategory) => {
-      dispatch({ type: "SET_SAMPLE_CATEGORY", payload: category });
-    },
-    [dispatch]
-  );
+  setSampleCategory: (category) => set({ sampleCategory: category }),
 
   // 加载样例图片
-  const loadSampleImages = useCallback(
-    async (category: SampleCategory) => {
-      try {
-        dispatch({ type: "SET_SAMPLE_LOADING", payload: true });
-        const images = await fetchSampleImages(category);
-        dispatch({ type: "SET_SAMPLE_IMAGES", payload: images });
-        loadedSampleCategoryRef.current = category;
-      } catch (error: unknown) {
-        console.error("加载样例图片失败:", error);
-        dispatch({ type: "SET_SAMPLE_IMAGES", payload: [] });
-      } finally {
-        dispatch({ type: "SET_SAMPLE_LOADING", payload: false });
-      }
-    },
-    [dispatch]
-  );
+  loadSampleImages: async (category) => {
+    try {
+      set({ sampleLoading: true });
+      const images = await fetchSampleImages(category);
+      set({ sampleImages: images });
+    } catch (error: unknown) {
+      console.error("加载样例图片失败:", error);
+      set({ sampleImages: [] });
+    } finally {
+      set({ sampleLoading: false });
+    }
+  },
+
+  // 加载历史记录
+  loadHistory: async () => {
+    try {
+      set({ historyLoading: true });
+      const { list } = await getHistoryPage();
+      set({ historyRecords: list, historyLoading: false });
+    } catch (error: unknown) {
+      console.error("加载历史记录失败:", error);
+      set({ historyRecords: [], historyLoading: false });
+    }
+  },
+
+  // 删除历史记录
+  deleteHistoryRecord: async (id) => {
+    try {
+      await deleteHistoryRecordService(id);
+      set({
+        historyRecords: get().historyRecords.filter((r) => r.id !== id),
+      });
+      Taro.showToast({ title: "已删除", icon: "success" });
+    } catch (error: unknown) {
+      Taro.showToast({ title: "删除失败", icon: "none" });
+    }
+  },
+
+  // 清空历史记录
+  clearHistory: async () => {
+    const confirmed = await confirmDialog({
+      title: "确认清空",
+      content: "确定要清空所有历史记录吗？",
+      confirmColor: "#ef4444",
+    });
+    if (!confirmed) return;
+    try {
+      await clearAllHistory();
+      set({ historyRecords: [] });
+      Taro.showToast({ title: "已清空", icon: "success" });
+    } catch (error: unknown) {
+      Taro.showToast({ title: "清空失败", icon: "none" });
+    }
+  },
+
+  // 取消选择
+  cancelSelection: () => {
+    set({ currentImage: null, previewVisible: false });
+  },
+
+  // 确认选择，跳转算法选择页
+  confirmAndNavigate: () => {
+    const currentImage = get().currentImage;
+    if (!currentImage) {
+      Taro.showToast({ title: "请先选择图片", icon: "none" });
+      return;
+    }
+
+    // 保存当前图片到全局状态
+    useProcessStore.getState().setImage(currentImage);
+
+    // 跳转到算法选择页面
+    Taro.navigateTo({
+      url: "/pages/algorithm-select/index",
+    });
+  },
+
+  // 重新处理历史记录（设计文档：历史记录 → 更换算法 → 重新处理）
+  reprocessHistoryRecord: (record) => {
+    const url = record.originalImageUrl || "";
+    if (!url) {
+      Taro.showToast({ title: "原图地址缺失", icon: "none" });
+      return;
+    }
+    const filename = extractFilenameFromUrl(url);
+    useProcessStore.getState().setImage({
+      url,
+      width: 0,
+      height: 0,
+      size: 0,
+      name: filename,
+    });
+    Taro.navigateTo({ url: "/pages/algorithm-select/index" });
+  },
+}));
+
+/**
+ * 兼容 hook：订阅 zustand store，返回 { state, ...actions }，
+ * 与原 Context + Reducer 的 useImageInput 返回结构保持一致。
+ */
+export function useImageInput() {
+  const state = useImageInputStore();
+  const actions = useImageInputStore.getState();
+
+  // 用 ref 跟踪已加载过的样例分类，避免重复请求
+  const loadedSampleCategoryRef = useRef<SampleCategory | null>(null);
 
   // 当分类变化时重新加载样例图片
   useEffect(() => {
@@ -306,9 +296,9 @@ export function useImageInput() {
       state.activeMethod === "sample" &&
       loadedSampleCategoryRef.current !== state.sampleCategory
     ) {
-      loadSampleImages(state.sampleCategory);
+      actions.loadSampleImages(state.sampleCategory);
     }
-  }, [state.sampleCategory, state.activeMethod, loadSampleImages]);
+  }, [state.sampleCategory, state.activeMethod, actions.loadSampleImages]);
 
   // 获取当前分类的样例图片（从 state 读取）
   const getSampleImages = useCallback(
@@ -319,56 +309,13 @@ export function useImageInput() {
     [state.sampleImages]
   );
 
-  // 加载历史记录
-  const loadHistory = useCallback(async () => {
-    try {
-      dispatch({ type: "SET_HISTORY_LOADING", payload: true });
-      const { list } = await getHistoryPage();
-      dispatch({ type: "SET_HISTORY_RECORDS", payload: list });
-    } catch (error: unknown) {
-      console.error("加载历史记录失败:", error);
-      dispatch({ type: "SET_HISTORY_RECORDS", payload: [] });
-    }
-  }, [dispatch]);
-
-  // 删除历史记录
-  const deleteHistoryRecordHandler = useCallback(
-    async (id: number) => {
-      try {
-        await deleteHistoryRecord(id);
-        dispatch({ type: "DELETE_HISTORY_RECORD", payload: id });
-        Taro.showToast({ title: "已删除", icon: "success" });
-      } catch (error: unknown) {
-        Taro.showToast({ title: "删除失败", icon: "none" });
-      }
-    },
-    [dispatch]
-  );
-
-  // 清空历史记录
-  const clearHistory = useCallback(async () => {
-    const confirmed = await confirmDialog({
-      title: "确认清空",
-      content: "确定要清空所有历史记录吗？",
-      confirmColor: "#ef4444",
-    });
-    if (!confirmed) return;
-    try {
-      await clearAllHistory();
-      dispatch({ type: "CLEAR_HISTORY" });
-      Taro.showToast({ title: "已清空", icon: "success" });
-    } catch (error: unknown) {
-      Taro.showToast({ title: "清空失败", icon: "none" });
-    }
-  }, [dispatch]);
-
   // 选择历史记录
   const selectHistoryRecord = useCallback(
     (record: InputHistoryVO) => {
       // 从历史记录加载原图（后端 VO 未返回尺寸/大小，仅传递 URL 与名称）
       const url = record.originalImageUrl || "";
       const filename = extractFilenameFromUrl(url);
-      setCurrentImage({
+      actions.setCurrentImage({
         url,
         path: url,
         width: 0,
@@ -377,69 +324,25 @@ export function useImageInput() {
         name: filename,
       });
     },
-    [setCurrentImage]
+    [actions.setCurrentImage]
   );
-
-  // 重新处理历史记录（设计文档：历史记录 → 更换算法 → 重新处理）
-  const reprocessHistoryRecord = useCallback((record: InputHistoryVO) => {
-    const url = record.originalImageUrl || "";
-    if (!url) {
-      Taro.showToast({ title: "原图地址缺失", icon: "none" });
-      return;
-    }
-    const filename = extractFilenameFromUrl(url);
-    Taro.setStorageSync(
-      "current_image",
-      JSON.stringify({
-        url,
-        path: url,
-        width: 0,
-        height: 0,
-        size: 0,
-        name: filename,
-      })
-    );
-    Taro.navigateTo({ url: "/pages/algorithm-select/index" });
-  }, []);
-
-  // 取消选择
-  const cancelSelection = useCallback(() => {
-    dispatch({ type: "SET_CURRENT_IMAGE", payload: null });
-    dispatch({ type: "SET_PREVIEW_VISIBLE", payload: false });
-  }, [dispatch]);
-
-  // 确认选择，跳转算法选择页
-  const confirmAndNavigate = useCallback(() => {
-    if (!state.currentImage) {
-      Taro.showToast({ title: "请先选择图片", icon: "none" });
-      return;
-    }
-
-    // 保存当前图片到全局状态
-    Taro.setStorageSync("current_image", JSON.stringify(state.currentImage));
-
-    // 跳转到算法选择页面
-    Taro.navigateTo({
-      url: "/pages/algorithm-select/index",
-    });
-  }, [state.currentImage]);
 
   return {
     state,
     // Actions
-    setActiveMethod,
-    setCurrentImage,
-    chooseImageFromAlbum,
-    takePhoto,
-    selectSampleImage,
-    setSampleCategory,
+    setActiveMethod: actions.setActiveMethod,
+    setCurrentImage: actions.setCurrentImage,
+    chooseImageFromAlbum: actions.chooseImageFromAlbum,
+    takePhoto: actions.takePhoto,
+    selectSampleImage: actions.selectSampleImage,
+    setSampleCategory: actions.setSampleCategory,
     getSampleImages,
-    loadHistory,
-    deleteHistoryRecord: deleteHistoryRecordHandler,
-    clearHistory,
+    loadHistory: actions.loadHistory,
+    deleteHistoryRecord: actions.deleteHistoryRecord,
+    clearHistory: actions.clearHistory,
     selectHistoryRecord,
-    reprocessHistoryRecord,
-    cancelSelection,
-    confirmAndNavigate,
+    reprocessHistoryRecord: actions.reprocessHistoryRecord,
+    cancelSelection: actions.cancelSelection,
+    confirmAndNavigate: actions.confirmAndNavigate,
   };
 }

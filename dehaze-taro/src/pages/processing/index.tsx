@@ -8,6 +8,7 @@ import { formatFileSize, formatDuration } from "@/utils/format";
 import { getErrorMessage } from "@/utils/error";
 import { saveImageToAlbum } from "@/utils/saveImage";
 import { uploadImage } from "@/config/upload";
+import { useProcessStore } from "@/stores/process";
 import "./index.less";
 
 interface ImageData {
@@ -100,35 +101,33 @@ const ProcessingPage: React.FC = () => {
     if (presetsLoaded) return;
     ModelAPI.getPresets({ pageNum: 1, pageSize: 50 })
       .then((res) => setPresets(res.list || []))
-      .catch(() => { /* 静默 */ })
+      .catch(() => {
+        /* 静默 */
+      })
       .finally(() => setPresetsLoaded(true));
   }, [presetsLoaded]);
 
   // 加载当前图片和算法
   useEffect(() => {
-    try {
-      const imgStr = Taro.getStorageSync("current_image");
-      if (imgStr) {
-        setCurrentImage(JSON.parse(imgStr));
-      } else {
-        Taro.showToast({ title: "请先选择图片", icon: "none" });
-        setTimeout(() => Taro.navigateBack(), 1500);
-        return;
-      }
-    } catch {
-      Taro.showToast({ title: "图片数据读取失败", icon: "none" });
+    const { image, algorithm } = useProcessStore.getState();
+    if (!image) {
+      Taro.showToast({ title: "请先选择图片", icon: "none" });
+      setTimeout(() => Taro.navigateBack(), 1500);
+    } else {
+      setCurrentImage({
+        url: image.url,
+        name: image.name,
+        width: image.width ?? 0,
+        height: image.height ?? 0,
+        size: image.size ?? 0,
+      });
     }
 
-    try {
-      const algoStr = Taro.getStorageSync("selected_algorithm");
-      if (algoStr) {
-        setSelectedAlgorithm(JSON.parse(algoStr));
-      } else {
-        Taro.showToast({ title: "请先选择算法", icon: "none" });
-        setTimeout(() => Taro.navigateBack(), 1500);
-      }
-    } catch {
-      Taro.showToast({ title: "算法数据读取失败", icon: "none" });
+    if (!algorithm) {
+      Taro.showToast({ title: "请先选择算法", icon: "none" });
+      setTimeout(() => Taro.navigateBack(), 1500);
+    } else {
+      setSelectedAlgorithm(algorithm);
     }
   }, []);
 
@@ -156,7 +155,10 @@ const ProcessingPage: React.FC = () => {
       try {
         // 本地临时路径（blob:/wxfile://）服务端不可访问，需先上传换取 fileId
         if (!uploadedFileIdRef.current) {
-          const fileInfo = await uploadImage(currentImage.url, currentImage.name);
+          const fileInfo = await uploadImage(
+            currentImage.url,
+            currentImage.name
+          );
           uploadedFileIdRef.current = fileInfo.id;
         }
 
@@ -177,7 +179,7 @@ const ProcessingPage: React.FC = () => {
         setStatus("success");
         retryCountRef.current = 0;
 
-        Taro.setStorageSync("prediction_result", JSON.stringify(res));
+        useProcessStore.getState().setResult(res);
         Taro.showToast({ title: "处理完成", icon: "success" });
 
         setTimeout(() => {
@@ -191,7 +193,9 @@ const ProcessingPage: React.FC = () => {
         if (attemptNumber < MAX_RETRIES) {
           const delay = RETRY_DELAYS[attemptNumber];
           retryCountRef.current = attemptNumber + 1;
-          setErrorMsg(`${errMsg}，${delay / 1000}秒后自动重试（${attemptNumber + 1}/${MAX_RETRIES}）`);
+          setErrorMsg(
+            `${errMsg}，${delay / 1000}秒后自动重试（${attemptNumber + 1}/${MAX_RETRIES}）`
+          );
           await new Promise((resolve) => setTimeout(resolve, delay));
           if (!cancelledRef.current) {
             return attempt(attemptNumber + 1);
@@ -389,7 +393,12 @@ const ProcessingPage: React.FC = () => {
                 {presets.length > 0 && (
                   <View className="preset-section">
                     <Text className="preset-label">参数预设</Text>
-                    <ScrollView scrollX className="preset-scroll" enhanced showScrollbar={false}>
+                    <ScrollView
+                      scrollX
+                      className="preset-scroll"
+                      enhanced
+                      showScrollbar={false}
+                    >
                       {presets.map((preset) => (
                         <View
                           key={preset.id}

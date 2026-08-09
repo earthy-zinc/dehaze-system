@@ -16,7 +16,7 @@ import DatasetList from "./components/DatasetList";
 import DatasetInfo from "./components/DatasetInfo";
 import ImageGrid from "./components/ImageGrid";
 
-import { DatasetProvider, useDataset } from "./store/datasetStore";
+import { useDataset } from "./store/datasetStore";
 import type { Dataset } from "./services/types";
 import {
   AnnotationFilter,
@@ -243,11 +243,7 @@ const DatasetBrowseContent: React.FC = () => {
 };
 
 const DatasetBrowsePage: React.FC = () => {
-  return (
-    <DatasetProvider>
-      <DatasetBrowseContent />
-    </DatasetProvider>
-  );
+  return <DatasetBrowseContent />;
 };
 
 export default DatasetBrowsePage;

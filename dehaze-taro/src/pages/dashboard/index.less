@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background-color: var(--color-bg-page);
 }
 
 .dashboard-scroll {
@@ -20,8 +20,8 @@
   align-items: center;
   padding: 24rpx 32rpx;
   margin: 24rpx;
-  color: #fff;
-  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  color: var(--color-text-inverse);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   border-radius: 20rpx;
   box-shadow: 0 8rpx 24rpx rgb(24 144 255 / 25%);
 
@@ -39,7 +39,7 @@
     .avatar-text {
       font-size: 40rpx;
       font-weight: 600;
-      color: #fff;
+      color: var(--color-text-inverse);
     }
   }
 
@@ -56,7 +56,7 @@
       text-overflow: ellipsis;
       font-size: 34rpx;
       font-weight: 600;
-      color: #fff;
+      color: var(--color-text-inverse);
       white-space: nowrap;
     }
 
@@ -75,7 +75,7 @@
   .refresh-btn {
     padding: 12rpx 24rpx;
     font-size: 26rpx;
-    color: #fff;
+    color: var(--color-text-inverse);
     background-color: rgb(255 255 255 / 20%);
     border-radius: 32rpx;
 
@@ -100,7 +100,7 @@
     align-items: center;
     justify-content: center;
     padding: 32rpx 24rpx;
-    background-color: #fff;
+    background-color: var(--color-bg-card);
     border-radius: 16rpx;
     box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 
@@ -113,7 +113,7 @@
 
     .stat-label {
       font-size: 26rpx;
-      color: #8c8c8c;
+      color: var(--color-text-muted);
     }
   }
 }
@@ -129,7 +129,7 @@
     margin-bottom: 20rpx;
     font-size: 30rpx;
     font-weight: 600;
-    color: #262626;
+    color: var(--color-text-primary);
   }
 
   .section-header {
@@ -144,7 +144,7 @@
 
     .section-more {
       font-size: 26rpx;
-      color: #1890ff;
+      color: var(--color-primary);
 
       &:active {
         opacity: 0.7;
@@ -166,7 +166,7 @@
     align-items: center;
     justify-content: center;
     padding: 32rpx 16rpx;
-    background-color: #fff;
+    background-color: var(--color-bg-card);
     border-radius: 16rpx;
     box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
     transition: transform 0.2s ease;
@@ -184,18 +184,18 @@
       margin-bottom: 8rpx;
       font-size: 28rpx;
       font-weight: 600;
-      color: #262626;
+      color: var(--color-text-primary);
     }
 
     .entry-desc {
       font-size: 22rpx;
-      color: #8c8c8c;
+      color: var(--color-text-muted);
       text-align: center;
     }
   }
 
   .workflow-card {
-    border-left: 6rpx solid #1890ff;
+    border-left: 6rpx solid var(--color-primary);
   }
 }
 
@@ -203,7 +203,7 @@
 
 .management-list {
   overflow: hidden;
-  background-color: #fff;
+  background-color: var(--color-bg-card);
   border-radius: 16rpx;
   box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 
@@ -211,14 +211,14 @@
     display: flex;
     align-items: center;
     padding: 28rpx 24rpx;
-    border-bottom: 1rpx solid #f0f0f0;
+    border-bottom: 1rpx solid var(--color-border-light);
 
     &:last-child {
       border-bottom: none;
     }
 
     &:active {
-      background-color: #f5f5f5;
+      background-color: var(--color-bg-hover);
     }
 
     .management-icon {
@@ -229,13 +229,13 @@
     .management-title {
       flex: 1;
       font-size: 28rpx;
-      color: #262626;
+      color: var(--color-text-primary);
     }
 
     .management-arrow {
       font-size: 32rpx;
       font-weight: 300;
-      color: #bfbfbf;
+      color: var(--color-text-muted);
     }
   }
 }
@@ -244,7 +244,7 @@
 
 .task-list {
   overflow: hidden;
-  background-color: #fff;
+  background-color: var(--color-bg-card);
   border-radius: 16rpx;
   box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 
@@ -253,14 +253,14 @@
     align-items: center;
     justify-content: space-between;
     padding: 24rpx;
-    border-bottom: 1rpx solid #f0f0f0;
+    border-bottom: 1rpx solid var(--color-border-light);
 
     &:last-child {
       border-bottom: none;
     }
 
     &:active {
-      background-color: #f5f5f5;
+      background-color: var(--color-bg-hover);
     }
 
     .task-info {
@@ -274,7 +274,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 26rpx;
-        color: #262626;
+        color: var(--color-text-primary);
         white-space: nowrap;
       }
     }
@@ -282,7 +282,7 @@
     .task-time {
       margin-left: 16rpx;
       font-size: 24rpx;
-      color: #8c8c8c;
+      color: var(--color-text-muted);
     }
   }
 }
@@ -302,8 +302,8 @@
   justify-content: center;
   padding: 48rpx 0;
   font-size: 26rpx;
-  color: #8c8c8c;
-  background-color: #fff;
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-card);
   border-radius: 16rpx;
 }
 
@@ -312,6 +312,6 @@
 .dashboard-footer {
   padding: 32rpx 0 48rpx;
   font-size: 24rpx;
-  color: #bfbfbf;
+  color: var(--color-text-muted);
   text-align: center;
 }

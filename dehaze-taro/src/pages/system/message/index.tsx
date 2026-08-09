@@ -3,13 +3,21 @@ import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag, Loading, Empty, Tabs, Popup, Input } from "@taroify/core";
 import { AnnouncementAPI, MessageTemplateAPI } from "dehaze-sdk-js";
-import type { AnnouncementVO, AnnouncementForm, MessageTemplateVO } from "dehaze-sdk-js";
+import type {
+  AnnouncementVO,
+  AnnouncementForm,
+  AnnouncementQuery,
+  MessageTemplateVO,
+} from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import { usePermission } from "@/hooks/usePermission";
 import { getErrorMessage } from "@/utils/error";
 import "./index.less";
 
-const STATUS_MAP: Record<number, { label: string; color: string }> = {
+type TagColor =
+  "default" | "primary" | "info" | "success" | "warning" | "danger";
+
+const STATUS_MAP: Record<number, { label: string; color: TagColor }> = {
   1: { label: "草稿", color: "default" },
   2: { label: "待发送", color: "warning" },
   3: { label: "已发送", color: "success" },
@@ -73,7 +81,7 @@ const MessageManagePage: React.FC = () => {
     async (page: number, kw: string, status?: number) => {
       setAnnLoading(true);
       try {
-        const params: any = { pageNum: page, pageSize: 15 };
+        const params: AnnouncementQuery = { pageNum: page, pageSize: 15 };
         if (kw) params.title = kw;
         if (status !== undefined) params.status = status;
         const res = await AnnouncementAPI.getPage(params);
@@ -355,7 +363,7 @@ const MessageManagePage: React.FC = () => {
                       <View className="card-header">
                         <View className="card-title-row">
                           <Text className="card-name">{a.title}</Text>
-                          <Tag size="small" color={si.color as any}>
+                          <Tag size="small" color={si.color}>
                             {a.statusLabel || si.label}
                           </Tag>
                         </View>
@@ -371,7 +379,9 @@ const MessageManagePage: React.FC = () => {
                           重要度: {a.importanceLabel || a.importance}
                         </Text>
                         {a.sentCount !== undefined && (
-                          <Text className="meta-item">发送: {a.sentCount}人</Text>
+                          <Text className="meta-item">
+                            发送: {a.sentCount}人
+                          </Text>
                         )}
                       </View>
                       <View className="card-meta">
@@ -473,7 +483,10 @@ const MessageManagePage: React.FC = () => {
                   )}
                   <View className="card-actions">
                     {canManageTemplate && (
-                      <View className="action-btn" onClick={() => openEditTpl(t)}>
+                      <View
+                        className="action-btn"
+                        onClick={() => openEditTpl(t)}
+                      >
                         编辑
                       </View>
                     )}

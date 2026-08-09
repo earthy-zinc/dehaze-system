@@ -269,8 +269,8 @@ const DeptPage: React.FC = () => {
   };
 
   // 表单字段更新
-  const handleFieldChange = (field: keyof DeptForm, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleFieldChange = (field: keyof DeptForm, value: string | number) => {
+    setFormData((prev) => ({ ...prev, [field]: value } as DeptForm));
   };
 
   // 表单校验

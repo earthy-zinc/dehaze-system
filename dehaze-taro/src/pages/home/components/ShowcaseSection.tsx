@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text } from "@tarojs/components";
 import { DatasetItemAPI } from "dehaze-sdk-js";
-import type { DatasetItemVO } from "dehaze-sdk-js";
 import ComparisonItem from "./ComparisonItem";
 import "./ShowcaseSection.less";
 
@@ -16,7 +15,7 @@ const ShowcaseSection: React.FC = () => {
       sortOrder: "desc",
     })
       .then((res) => {
-        const item = (res.list as unknown as DatasetItemVO[])?.[0];
+        const item = res.list?.[0];
         const url = item?.hazyImages?.[0]?.url;
         if (url) setShowcaseImageUrl(url);
       })

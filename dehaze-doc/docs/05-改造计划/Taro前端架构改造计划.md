@@ -1,5 +1,7 @@
 # Taro 前端架构改造计划
 
+> **状态：已实施（2026-08-09）**。§二 P0（跨页 Storage 传参→zustand process store）、§三 P1（设计令牌统一，消除 ANTD 第二套色板）、§四 P1（dataset/image-input 页面级状态迁移 zustand）、§五 P2（any 与冗余双重断言清理）、§六 P2（TARO_ENV 收敛为 `utils/platform.ts` 的 `isH5`）均已落地并通过 `tsc --noEmit` 类型检查。本文档保留为事实记录。
+
 > 本文档聚焦 `dehaze-taro` 在**代码架构层面**的实际问题与改造方向，供后续重构参考。架构文档失真问题（zustand 状态管理未反映、PermissionGuard 虚构、目录结构错误等）已在 [03-Taro架构文档.md](../04-项目实现/前端/03-Taro架构文档.md) 修复中处理，本文不重复。
 
 ## 一、问题总览

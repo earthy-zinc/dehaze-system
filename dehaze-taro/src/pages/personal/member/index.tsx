@@ -36,7 +36,7 @@ const MemberPage: React.FC = () => {
       setMember(info);
       try {
         const logsRes = await MemberAPI.getGrowthLogs({ pageNum: 1, pageSize: 10 });
-        setGrowthLogs((logsRes.list as GrowthLogVO[]) || []);
+        setGrowthLogs(logsRes.list || []);
       } catch {
         // 静默
       }
@@ -57,11 +57,11 @@ const MemberPage: React.FC = () => {
 
   const benefitItems = benefits
     ? Object.entries(BENEFIT_LABELS)
-        .filter(([key]) => (benefits as any)[key] !== undefined)
+        .filter(([key]) => benefits[key as keyof BenefitVO] !== undefined)
         .map(([key, label]) => ({
           key,
           label,
-          value: (benefits as any)[key],
+          value: benefits[key as keyof BenefitVO],
         }))
     : [];
 

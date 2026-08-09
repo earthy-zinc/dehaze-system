@@ -12,6 +12,7 @@ import { AlgorithmAPI, RecommendationAPI } from "dehaze-sdk-js";
 import type { Algorithm } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
 import { getErrorMessage } from "@/utils/error";
+import { useProcessStore } from "@/stores/process";
 import { STATUS_INFO, flattenTree, filterTree } from "./utils";
 import type { FlatNode } from "./utils";
 import AlgorithmDetailPopup from "./components/AlgorithmDetailPopup";
@@ -97,7 +98,7 @@ const AlgorithmBrowsePage: React.FC = () => {
 
   const handleUseAlgorithm = useCallback((algo: Algorithm) => {
     // 将算法带入去雾流程
-    Taro.setStorageSync("selected_algorithm", JSON.stringify(algo));
+    useProcessStore.getState().setAlgorithm(algo);
     // 跳转到 processing 页面
     Taro.navigateTo({ url: "/pages/processing/index" });
   }, []);

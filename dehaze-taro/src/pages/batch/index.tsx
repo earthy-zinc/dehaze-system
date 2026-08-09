@@ -366,7 +366,7 @@ const BatchPage: React.FC = () => {
               className="params-input"
               placeholder='JSON参数，如 {"strength":0.8}'
               value={params}
-              onInput={(e) => setParams((e.target as any).value)}
+              onInput={(e) => setParams((e.target as HTMLTextAreaElement).value)}
             />
           </View>
         </View>

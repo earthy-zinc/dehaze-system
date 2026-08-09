@@ -23,11 +23,11 @@
     transition: opacity 0.2s ease;
 
     &.lens-origin {
-      border-color: #1890ff;
+      border-color: var(--color-primary);
     }
 
     &.lens-result {
-      border-color: #52c41a;
+      border-color: var(--color-success);
     }
   }
 }
@@ -35,17 +35,17 @@
 .magnifier-hint {
   padding: 16rpx 32rpx;
   font-size: 24rpx;
-  color: #8c8c8c;
+  color: var(--color-text-muted);
   text-align: center;
-  background-color: #fff;
-  border-top: 2rpx solid #f0f0f0;
+  background-color: var(--color-bg-card);
+  border-top: 2rpx solid var(--color-border-light);
 }
 
 .control-panel {
   max-height: 560rpx;
   padding: 24rpx 32rpx;
   overflow-y: auto;
-  background-color: #fff;
+  background-color: var(--color-bg-card);
 
   .control-group {
     margin-bottom: 24rpx;
@@ -59,7 +59,7 @@
     display: block;
     margin-bottom: 16rpx;
     font-size: 26rpx;
-    color: #595959;
+    color: var(--color-text-secondary);
   }
 
   .control-options {
@@ -70,15 +70,15 @@
     .control-option {
       padding: 12rpx 32rpx;
       font-size: 26rpx;
-      color: #595959;
-      background-color: #fff;
-      border: 2rpx solid #d9d9d9;
+      color: var(--color-text-secondary);
+      background-color: var(--color-bg-card);
+      border: 2rpx solid var(--color-border);
       border-radius: 32rpx;
 
       &.active {
-        color: #1890ff;
-        background-color: #e6f7ff;
-        border-color: #1890ff;
+        color: var(--color-primary);
+        background-color: var(--color-primary-bg);
+        border-color: var(--color-primary);
       }
     }
   }
