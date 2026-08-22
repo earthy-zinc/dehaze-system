@@ -112,6 +112,14 @@ public enum ResultCode implements IResultCode {
     EXPORT_ROWS_EXCEED_LIMIT("A0709", "导出行数超出限制"),
     MODULE_IMPORT_NOT_SUPPORTED("A0710", "不支持该模块导入"),
 
+    // 文件模块错误码 B04xx
+    FILE_NOT_FOUND("B0401", "文件不存在"),
+    FILE_TOO_LARGE("B0402", "文件大小超过限制"),
+    FILE_TYPE_NOT_SUPPORTED("B0403", "不支持的文件类型"),
+    FILE_MD5_INVALID("B0404", "MD5 格式无效"),
+    FILE_STORAGE_ERROR("B0405", "文件存储失败"),
+    FILE_CORRUPTED("B0406", "文件已损坏"),
+
     SYSTEM_EXECUTION_ERROR("B0001", "系统执行出错"),
     SYSTEM_EXECUTION_TIMEOUT("B0100", "系统执行超时"),
     SYSTEM_ORDER_PROCESSING_TIMEOUT("B0101", "系统订单处理超时"),

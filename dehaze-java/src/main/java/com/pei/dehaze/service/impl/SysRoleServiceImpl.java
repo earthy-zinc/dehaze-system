@@ -13,7 +13,9 @@ import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.IdUtils;
 import com.pei.dehaze.converter.RoleConverter;
+import com.pei.dehaze.mapper.SysMenuMapper;
 import com.pei.dehaze.mapper.SysRoleMapper;
+import com.pei.dehaze.model.entity.SysMenu;
 import com.pei.dehaze.model.entity.SysRole;
 import com.pei.dehaze.model.entity.SysRoleMenu;
 import com.pei.dehaze.model.form.RoleForm;
@@ -44,6 +46,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
     private final SysRoleMenuService roleMenuService;
     private final SysUserRoleService userRoleService;
+    private final SysMenuMapper menuMapper;
     private final RoleConverter roleConverter;
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -121,6 +124,11 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         String roleCode = roleForm.getCode();
         if (StrUtil.isBlank(roleCode)) {
             throw new BusinessException(ResultCode.PARAM_IS_NULL, "角色编码不能为空");
+        }
+
+        // 新增时 dataScope 必填（T-RM-012：数据权限未选择报"数据权限不能为空"）
+        if (roleId == null && roleForm.getDataScope() == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "数据权限不能为空");
         }
 
         // 查重：绕过@TableLogic，查全表（含软删行）
@@ -263,6 +271,16 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         SysRole role = this.getById(roleId);
         if (role == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
+        }
+        // 校验分配的菜单（含按钮/接口节点）必须真实存在（T-RM-036：分配不存在的菜单报"菜单不存在"）
+        if (CollectionUtil.isNotEmpty(menuIds)) {
+            long existCount = menuMapper.selectCount(
+                    new LambdaQueryWrapper<SysMenu>()
+                            .in(SysMenu::getId, menuIds)
+            );
+            if (existCount != menuIds.size()) {
+                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在");
+            }
         }
         roleMenuService.remove(
                 new LambdaQueryWrapper<SysRoleMenu>()

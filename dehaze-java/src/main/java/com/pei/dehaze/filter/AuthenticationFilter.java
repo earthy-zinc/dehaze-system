@@ -5,8 +5,9 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.result.ResultCode;
-import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.common.util.ResponseUtils;
+import com.pei.dehaze.security.model.SysUserDetails;
+import com.pei.dehaze.service.ApiKeyService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -14,8 +15,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.MDC;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -26,25 +29,75 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * Session 认证过滤器 — 纯 Session Cookie/Header 认证，不处理 API Key。
- * API Key 认证由 {@link ApiKeyAuthenticationFilter} 独立负责。
+ * 统一认证过滤器：根据请求凭证类型二选一。
+ * Bearer dhak_* -> API Key 认证；Session Cookie/Header -> Session 认证。
  */
-public class SessionFilter extends OncePerRequestFilter {
+public class AuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String API_KEY_PREFIX = "dhak_";
+    private static final String BEARER_PREFIX = "Bearer ";
+
+    private final ApiKeyService apiKeyService;
     private final StringRedisTemplate redisTemplate;
 
-    public SessionFilter(StringRedisTemplate redisTemplate) {
+    public AuthenticationFilter(ApiKeyService apiKeyService, StringRedisTemplate redisTemplate) {
+        this.apiKeyService = apiKeyService;
         this.redisTemplate = redisTemplate;
     }
 
     @Override
     protected void doFilterInternal(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response, FilterChain chain)
+        @NonNull HttpServletRequest request,
+        @NonNull HttpServletResponse response, 
+        @NonNull FilterChain chain
+    )
+            throws ServletException, IOException {
+
+        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+
+        if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
+            String token = authHeader.substring(BEARER_PREFIX.length()).trim();
+            if (token.startsWith(API_KEY_PREFIX)) {
+                authenticateWithApiKey(token, response, chain, request);
+                return;
+            }
+        }
+
+        authenticateWithSession(request, response, chain);
+    }
+
+    private void authenticateWithApiKey(
+            String apiKey, HttpServletResponse response, FilterChain chain,
+            HttpServletRequest request)
+            throws ServletException, IOException {
+        Authentication authentication = apiKeyService.authenticateByKey(apiKey);
+        if (authentication == null) {
+            ResponseUtils.writeErrMsg(response, ResultCode.TOKEN_INVALID);
+            return;
+        }
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof SysUserDetails userDetails) {
+            if (userDetails.getUserId() != null) {
+                MDC.put("user_id", userDetails.getUserId().toString());
+            }
+        }
+
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            MDC.remove("user_id");
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private void authenticateWithSession(
+            HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
         String sessionId = extractSessionId(request);
-
         if (sessionId == null) {
             ResponseUtils.writeErrMsg(response, ResultCode.TOKEN_INVALID);
             return;
@@ -76,10 +129,8 @@ public class SessionFilter extends OncePerRequestFilter {
                 new UsernamePasswordAuthenticationToken(userDetails, "", authorities);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // 认证通过后，将 user_id 写入 MDC（供日志自动注入到每条日志）
-        Long userId = userDetails.getUserId();
-        if (userId != null) {
-            MDC.put("user_id", userId.toString());
+        if (userDetails.getUserId() != null) {
+            MDC.put("user_id", userDetails.getUserId().toString());
         }
 
         try {
@@ -92,6 +143,7 @@ public class SessionFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
         } finally {
             MDC.remove("user_id");
+            SecurityContextHolder.clearContext();
         }
     }
 
@@ -111,6 +163,7 @@ public class SessionFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
         return path.equals(SecurityConstants.LOGIN_PATH)
+                || path.equals("/api/v1/auth/register")
                 || path.equals("/api/v1/auth/captcha")
                 || path.startsWith("/health")
                 || path.startsWith("/ready")

@@ -1,10 +1,13 @@
 package com.pei.dehaze.controller;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.FileDTOFactory;
 import com.pei.dehaze.common.util.FilePathBuilder;
 import com.pei.dehaze.model.dto.FileDTO;
@@ -71,6 +74,10 @@ public class FileController {
     public Result<SysFile> checkFile(
             @Parameter(description = "文件md5") @RequestParam String md5
     ) {
+        // 校验 MD5 格式：32 位十六进制（T-FM-034/035：无效 MD5 返回 B0404"MD5 格式无效"）
+        if (StrUtil.isBlank(md5) || !md5.matches("^[0-9a-fA-F]{32}$")) {
+            throw new BusinessException(ResultCode.FILE_MD5_INVALID);
+        }
         SysFile fileInfo = sysFileService.check(md5);
         sysFileService.fillUrl(fileInfo);
         return Result.success(fileInfo);
@@ -101,6 +108,9 @@ public class FileController {
             @Parameter(description = "文件ID") @PathVariable Long fileId
     ) {
         SysFile file = sysFileService.getById(fileId);
+        if (file == null) {
+            throw new BusinessException(ResultCode.FILE_NOT_FOUND, "文件不存在");
+        }
         sysFileService.fillUrl(file);
         return Result.success(file);
     }

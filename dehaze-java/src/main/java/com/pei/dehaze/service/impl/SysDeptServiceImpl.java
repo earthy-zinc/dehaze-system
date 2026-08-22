@@ -14,10 +14,12 @@ import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.DeptConverter;
 import com.pei.dehaze.mapper.SysDeptMapper;
 import com.pei.dehaze.model.entity.SysDept;
+import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.DeptForm;
 import com.pei.dehaze.model.query.DeptQuery;
 import com.pei.dehaze.model.vo.DeptVO;
 import com.pei.dehaze.service.SysDeptService;
+import com.pei.dehaze.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,17 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
 
 
     private final DeptConverter deptConverter;
+    private final SysUserService userService;
+
+    /**
+     * 部门最大层级深度（T-DPT-014/018a：超出 5 级报 A0504）
+     */
+    private static final int MAX_DEPT_LEVEL = 5;
+
+    /**
+     * 根部门ID（T-DPT-031/A0234：根部门不可删除）
+     */
+    private static final Long ROOT_DEPT_ID = 1L;
 
     /**
      * 获取部门列表
@@ -142,6 +155,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         // 生成部门路径(tree_path)，generateDeptTreePath 会校验父部门是否存在
         Long parentId = formData.getParentId();
         String treePath = generateDeptTreePath(parentId);
+        assertMaxDeptDepth(treePath);
 
         // form->entity
         SysDept entity = deptConverter.form2Entity(formData);
@@ -189,8 +203,9 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         SysDept entity = deptConverter.form2Entity(formData);
         entity.setId(deptId);
 
-        // 生成部门路径(tree_path)，格式：父节点tree_path + , + 父节点ID，用于删除部门时级联删除子部门
+        // 生成部门路径(tree_path)，格式：父节点tree_path + , + 父节点ID
         String treePath = generateDeptTreePath(parentId);
+        assertMaxDeptDepth(treePath);
         entity.setTreePath(treePath);
 
         // 保存部门并返回部门ID
@@ -198,6 +213,21 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         Assert.isTrue(result, "部门更新失败");
 
         return entity.getId();
+    }
+
+    /**
+     * 校验部门层级不超过 5 级（T-DPT-014/018a，超限返回 A0504）
+     *
+     * @param treePath 部门路径，逗号分隔的父节点ID链
+     */
+    private void assertMaxDeptDepth(String treePath) {
+        if (StrUtil.isBlank(treePath)) {
+            return;
+        }
+        int depth = StrUtil.split(treePath, ',').size();
+        if (depth > MAX_DEPT_LEVEL) {
+            throw new BusinessException(ResultCode.DATA_BIND_EXISTS, "部门层级不能超过5级");
+        }
     }
 
     /**
@@ -234,13 +264,34 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         if (CollectionUtil.isEmpty(ids)) {
             return true;
         }
-        // 批量删除部门及子部门，每个ID均参与级联匹配
-        LambdaQueryWrapper<SysDept> wrapper = new LambdaQueryWrapper<SysDept>()
-                .in(SysDept::getId, ids);
+        // 批量前置校验：全部通过后统一逻辑删除，任一不满足则整体失败（T-DPT-028/029/030/031）
         for (Long id : ids) {
-            wrapper.or().apply("CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')", id);
+            SysDept dept = this.getById(id);
+            if (dept == null) {
+                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "部门不存在");
+            }
+            // 根部门保护（T-DPT-031，返回 A0234）
+            if (ROOT_DEPT_ID.equals(id)) {
+                throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "根部门不可删除");
+            }
+            // 子部门检查：有子部门禁止删除（T-DPT-030，不级联删除）
+            long childCount = this.count(new LambdaQueryWrapper<SysDept>()
+                    .eq(SysDept::getParentId, id));
+            if (childCount > 0) {
+                throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
+                        "该部门下存在子部门，请先删除子部门");
+            }
+            // 关联用户检查：有用户禁止删除（T-DPT-029）
+            long userCount = userService.count(new LambdaQueryWrapper<SysUser>()
+                    .eq(SysUser::getDeptId, id));
+            if (userCount > 0) {
+                throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
+                        "该部门下存在用户，无法删除");
+            }
         }
-        boolean removed = this.remove(wrapper);
+
+        // 全部通过后逻辑删除
+        boolean removed = this.removeByIds(ids);
         if (!removed) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "部门不存在");
         }

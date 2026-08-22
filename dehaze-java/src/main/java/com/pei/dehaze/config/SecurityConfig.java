@@ -1,8 +1,7 @@
 package com.pei.dehaze.config;
 
 import com.pei.dehaze.common.constant.SecurityConstants;
-import com.pei.dehaze.filter.ApiKeyAuthenticationFilter;
-import com.pei.dehaze.filter.SessionFilter;
+import com.pei.dehaze.filter.AuthenticationFilter;
 import com.pei.dehaze.security.exception.MyAccessDeniedHandler;
 import com.pei.dehaze.security.exception.MyAuthenticationEntryPoint;
 import com.pei.dehaze.service.ApiKeyService;
@@ -65,8 +64,7 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
         ;
 
-        http.addFilterBefore(new ApiKeyAuthenticationFilter(apiKeyService), UsernamePasswordAuthenticationFilter.class);
-        http.addFilterBefore(new SessionFilter(stringRedisTemplate), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(new AuthenticationFilter(apiKeyService, stringRedisTemplate), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

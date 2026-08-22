@@ -15,6 +15,7 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.MenuConverter;
 import com.pei.dehaze.mapper.SysMenuMapper;
+import com.pei.dehaze.mapper.SysRoleMapper;
 import com.pei.dehaze.model.read.RouteRead;
 import com.pei.dehaze.model.entity.SysMenu;
 import com.pei.dehaze.model.entity.SysRole;
@@ -26,7 +27,6 @@ import com.pei.dehaze.model.vo.RouteVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysMenuService;
 import com.pei.dehaze.service.SysRoleMenuService;
-import com.pei.dehaze.service.SysRoleService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -54,7 +54,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
 
     private final SysRoleMenuService roleMenuService;
 
-    private final SysRoleService roleService;
+    private final SysRoleMapper roleMapper;
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -124,7 +124,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         if (result) {
             if (isNew) {
                 // 新增菜单默认分配给超级管理员角色
-                SysRole rootRole = roleService.getOne(new LambdaQueryWrapper<SysRole>()
+                SysRole rootRole = roleMapper.selectOne(new LambdaQueryWrapper<SysRole>()
                         .eq(SysRole::getCode, SystemConstants.ROOT_ROLE_CODE));
                 if (rootRole != null) {
                     roleMenuService.save(new SysRoleMenu(rootRole.getId(), entity.getId()));

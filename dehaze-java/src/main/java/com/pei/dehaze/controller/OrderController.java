@@ -97,6 +97,7 @@ public class OrderController {
 
     @Operation(summary = "后台：订单分页列表")
     @GetMapping("/page")
+    @PreAuthorize("@ss.hasPerm('order:list')")
     public PageResult<OrderPageVO> getPage(@ParameterObject OrderPageQuery query) {
         Page<OrderPageVO> page = orderService.getPage(query);
         return PageResult.success(page);
@@ -104,6 +105,7 @@ public class OrderController {
 
     @Operation(summary = "后台：退款审核列表")
     @GetMapping("/refunds/page")
+    @PreAuthorize("@ss.hasPerm('order:refund:list')")
     public PageResult<RefundRecordVO> listRefunds(@ParameterObject RefundPageQuery query) {
         Page<RefundRecordVO> page = orderService.listRefunds(query);
         return PageResult.success(page);
