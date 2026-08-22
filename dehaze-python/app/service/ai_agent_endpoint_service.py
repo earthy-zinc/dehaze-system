@@ -22,7 +22,7 @@ from app.models.entity.sys_ai_agent_endpoint import SysAiAgentEndpoint
 from app.repository.ai_agent_endpoint_repository import (
     ai_agent_endpoint_repository,
 )
-from app.service.ai.a2a_client import A2AClientError, a2a_client
+from app.infrastructure.llm.a2a_client import A2AClientError, a2a_client
 from app.utils.ssrf import is_safe_url
 
 logger = logging.getLogger(__name__)

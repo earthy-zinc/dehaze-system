@@ -15,8 +15,8 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_ai_provider import SysAiProvider
 from app.repository.ai_provider_repository import ai_provider_repository
-from app.service.ai.llm_client import build_auth_headers
-from app.service.ai_provider_key_service import ai_provider_key_service
+from app.infrastructure.llm.model_client import build_auth_headers
+from app.infrastructure.llm.provider_key_selector import provider_key_selector
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ async def test_connection(
     if not provider:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "供应商不存在")
 
-    api_key = await ai_provider_key_service.select_key(db, redis, provider_id)
+    api_key = await provider_key_selector.select_key(db, redis, provider_id)
     if not api_key:
         raise BusinessException(
             ResultCode.OPERATION_NOT_ALLOW,

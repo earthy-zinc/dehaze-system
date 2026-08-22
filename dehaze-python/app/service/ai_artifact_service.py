@@ -23,7 +23,7 @@ from app.repository.file_repository import file_repository
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_repository import member_repository
 from app.repository.pred_eval_log_repository import eval_log_repository, pred_log_repository
-from app.service.ai.llm_client import llm_client
+from app.infrastructure.llm.llm_client import llm_client
 from app.service.storage.factory import get_storage_by_name
 
 # 多模态当日计数的跨会话全局 Redis Key 前缀

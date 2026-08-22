@@ -10,7 +10,7 @@ from app.models.entity.sys_ai_provider import SysAiProvider
 from app.models.schema.ai_provider import ProviderCreate, ProviderResult, ProviderUpdate
 from app.models.schema.common import PageResult
 from app.repository.ai_provider_repository import ai_provider_repository
-from app.service.ai.provider_health_service import (
+from app.infrastructure.llm.provider_health_service import (
     clear_provider_health,
     set_health_check_enabled,
 )
@@ -33,7 +33,7 @@ class AiProviderService:
         size: int,
         keyword: str | None = None,
     ) -> PageResult[ProviderResult]:
-        from app.service.ai.provider_health_service import provider_health_service
+        from app.infrastructure.llm.provider_health_service import provider_health_service
 
         providers, total = await ai_provider_repository.paginate_providers(db, page, size, keyword)
         items = []

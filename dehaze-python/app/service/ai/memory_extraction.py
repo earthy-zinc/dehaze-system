@@ -18,7 +18,7 @@ from app.database import get_db_session
 from app.dependencies.redis import get_redis_client
 from app.models.entity.sys_ai_memory import SysAiMemory
 from app.repository.ai_memory_repository import ai_memory_repository
-from app.service.ai.llm_client import llm_client
+from app.infrastructure.llm.llm_client import llm_client
 from app.service.ai.memory_es_service import sync_memory
 from app.utils.pii import mask_pii
 

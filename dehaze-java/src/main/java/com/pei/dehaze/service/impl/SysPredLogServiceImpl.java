@@ -73,7 +73,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
         SysFile originFile = form.getFileId() != null ? sysFileService.getById(form.getFileId()) : null;
         String imageUrl = resolveImageUrl(form, originFile);
         if (CharSequenceUtil.isBlank(imageUrl)) {
-            throw new BusinessException("图片来源不能为空，请提供 fileId 或 imageUrl");
+            throw new BusinessException(ResultCode.PARAM_IS_NULL, "图片来源不能为空，请提供 fileId 或 imageUrl");
         }
 
         PredictionContext context = PredictionContext.builder()

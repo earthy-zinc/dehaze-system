@@ -20,7 +20,7 @@ from app.core.exceptions import BusinessException
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis_client
-from app.service.ai.a2a_protocol import (
+from app.infrastructure.llm.a2a_protocol import (
     Artifact,
     JsonRpcError,
     JsonRpcRequest,

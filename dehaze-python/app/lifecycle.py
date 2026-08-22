@@ -115,7 +115,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await preset_service.seed_system_presets()
 
-    # 内置 Skill 播种 + 预热 SkillManager 内存索引（F-M08-006）
+    # 内置 Skill 播种 + 预热 SkillManager 内存索引
     from app.database import get_db_session
     from app.service.ai.skill_manager import skill_manager
     from app.service.ai_skill_service import skill_manage_service
@@ -124,17 +124,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await skill_manage_service.ensure_builtin_skills(db)
         await skill_manager.refresh_index(db)
 
-    # 内置本地轻量 LLM：幂等播种 local provider/Key/模型（默认模型路由目标）
-    from app.service.ai.local_llm_bootstrap import ensure_local_llm
+    # 内置本地模型：幂等播种 local provider/Key/LLM+Embedding 模型（默认模型路由目标）
+    from app.infrastructure.llm.model_seeder import ensure_local_models
 
     async with get_db_session() as db:
-        await ensure_local_llm(db)
+        await ensure_local_models(db)
 
     # 主 Worker 后台预下载模型文件（不阻塞启动；首次对话时 ensure_running 兜底）
     if is_main_worker:
         import threading
 
-        from app.service.ai.local_llm_model import (
+        from app.infrastructure.llm.local_llm_model import (
             ensure_embedding_model,
             ensure_model,
             is_downloaded,
@@ -335,7 +335,7 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     logger.info("数据库连接已关闭")
 
     # 10. 回收本地 LLM 子进程（对话与 embedding 推理同进程；TTS 为库内推理无子进程）
-    from app.service.ai.local_llm_manager import shutdown as shutdown_local_llm
+    from app.infrastructure.llm.local_llm_manager import shutdown as shutdown_local_llm
 
     shutdown_local_llm()
 

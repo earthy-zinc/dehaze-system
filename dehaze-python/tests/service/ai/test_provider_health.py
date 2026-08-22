@@ -1,7 +1,7 @@
 import pytest
 
 from app.infrastructure.cache.cache import CacheService
-from app.service.ai.provider_health_service import (
+from app.infrastructure.llm.provider_health_service import (
     _THRESHOLDS_KEY,
     provider_health_service,
     set_health_check_enabled,

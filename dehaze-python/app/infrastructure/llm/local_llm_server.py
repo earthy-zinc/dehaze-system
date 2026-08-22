@@ -17,7 +17,7 @@
 - 配置统一走 app.config（pydantic-settings 天然支持环境变量/.env 覆盖）
 
 启动方式：
-    python -m app.service.ai.local_llm_server  （由 local_llm_manager 在需要时自动拉起，
+    python -m app.infrastructure.llm.local_llm_server  （由 local_llm_manager 在需要时自动拉起，
     也可独立部署为共享推理服务）
 """
 
@@ -35,7 +35,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.config import settings
-from app.service.ai.local_llm_model import embedding_model_path, model_path
+from app.infrastructure.llm.local_llm_model import embedding_model_path, model_path
 
 logger = logging.getLogger(__name__)
 

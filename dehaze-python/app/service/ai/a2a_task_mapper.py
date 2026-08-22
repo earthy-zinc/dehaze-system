@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.service.ai.a2a_protocol import (
+from app.infrastructure.llm.a2a_protocol import (
     Artifact,
     DataPart,
     FilePart,

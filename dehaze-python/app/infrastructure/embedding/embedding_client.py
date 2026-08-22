@@ -13,24 +13,14 @@ from typing import Any
 
 import httpx
 
-from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.repository.ai_provider_repository import ai_provider_repository
-from app.service.ai.local_llm_manager import ensure_running
-from app.service.ai_provider_key_service import ai_provider_key_service
+from app.infrastructure.llm.local_llm_manager import ensure_running
+from app.infrastructure.llm.provider_key_selector import provider_key_selector
 
 logger = logging.getLogger(__name__)
-
-# OpenAI 兼容 embedding 端点基址（按 provider_code 选择，其余供应商暂走 OpenAI 兼容协议）
-_EMBEDDING_ENDPOINTS = {
-    "openai": "https://api.openai.com/v1/embeddings",
-    "qwen": "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding",
-    "cohere": "https://api.cohere.com/v1/embed",
-    # 内置本地 LLM 服务（Qwen3-Embedding-0.6B，1024 维，与 bge-m3 同维度）
-    "local": f"http://{settings.LOCAL_LLM_HOST}:{settings.LOCAL_LLM_PORT}/v1/embeddings",
-}
 
 # 常用模型 -> 向量维度映射（ES dense_vector dims 联动，未知模型时由供应商配置下发）
 _KNOWN_DIMS = {
@@ -46,8 +36,25 @@ def get_embedding_dim(provider: str, model: str) -> int:
     return _KNOWN_DIMS.get(model, 0)
 
 
-async def _get_embedding_api_key(provider_code: str) -> str:
-    """从数据库选取 embedding 供应商的 API Key，无可用 Key 抛业务异常"""
+def _embedding_url(provider_code: str, api_base_url: str) -> str:
+    """从供应商 api_base_url 派生 OpenAI 兼容 embedding 端点（配置化路由）。
+
+    新增 OpenAI 兼容 embedding 供应商仅需在 sys_ai_provider 配置 api_base_url；
+    cohere 使用非 OpenAI 兼容的 /v1/embed 路径，单独特判。
+    """
+    base = (api_base_url or "").rstrip("/")
+    if not base:
+        raise BusinessException(
+            ResultCode.AI_MODEL_NOT_AVAILABLE,
+            f"Embedding 供应商 {provider_code} 未配置 api_base_url",
+        )
+    if provider_code == "cohere":
+        return base + "/v1/embed" if not base.endswith("/v1/embed") else base
+    return base + "/embeddings" if not base.endswith("/embeddings") else base
+
+
+async def _get_embedding_provider_and_key(provider_code: str):
+    """从数据库选取 embedding 供应商及其可用 API Key，返回 (provider, api_key)"""
     from app.database import get_db_session
 
     async with get_db_session() as db:
@@ -58,13 +65,13 @@ async def _get_embedding_api_key(provider_code: str) -> str:
                 f"Embedding 供应商 {provider_code} 不存在或已禁用",
             )
         redis = await get_redis_client()
-        api_key = await ai_provider_key_service.select_key(db, redis, provider.id)
+        api_key = await provider_key_selector.select_key(db, redis, provider.id)
         if not api_key:
             raise BusinessException(
                 ResultCode.AI_MODEL_NOT_AVAILABLE,
                 f"Embedding 供应商 {provider_code} 无可用 API Key",
             )
-        return api_key
+        return provider, api_key
 
 
 async def _embed_batch(
@@ -75,17 +82,12 @@ async def _embed_batch(
     """调用单次 embedding 接口向量化一批文本，返回与 texts 等长的向量列表"""
     if not texts:
         return []
-    url = _EMBEDDING_ENDPOINTS.get(provider_code)
-    if not url:
-        raise BusinessException(
-            ResultCode.AI_MODEL_NOT_AVAILABLE,
-            f"未知 embedding provider_code={provider_code}",
-        )
     if provider_code == "local":
         # 本地 embedding 服务与对话推理共用子进程，调用前确保已拉起
         # （主进程重启后子进程被 PDEATHSIG 回收，需重新拉起）
         await asyncio.to_thread(ensure_running)
-    api_key = await _get_embedding_api_key(provider_code)
+    provider, api_key = await _get_embedding_provider_and_key(provider_code)
+    url = _embedding_url(provider_code, provider.api_base_url)
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(

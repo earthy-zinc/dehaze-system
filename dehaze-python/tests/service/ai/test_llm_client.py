@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from app.core.exceptions import BusinessException
-from app.service.ai.llm_client import LlmClient
+from app.infrastructure.llm.llm_client import LlmClient
 from tests.stubs import FakeStreamResponse
 
 
@@ -68,14 +68,14 @@ def _patch_route_io(model, provider):
     )
     with (
         patch(
-            "app.service.ai.llm_client.ai_model_repository.get_by_id",
+            "app.infrastructure.llm.llm_client.ai_model_repository.get_by_id",
             AsyncMock(return_value=model),
         ),
         patch(
-            "app.service.ai.llm_client.ai_provider_repository.get_by_id",
+            "app.infrastructure.llm.llm_client.ai_provider_repository.get_by_id",
             provider_mock,
         ),
-        patch("app.service.ai.llm_client.decrypt", side_effect=lambda c: f"sk-{c}"),
+        patch("app.infrastructure.llm.llm_client.decrypt", side_effect=lambda c: f"sk-{c}"),
     ):
         yield
 
@@ -104,9 +104,9 @@ class _Services:
 
 
 def _patch_cross_services(get_call_routes, usable_keys=None):
-    from app.service.ai.provider_health_service import provider_health_service
-    from app.service.ai_model_service import ai_model_service
-    from app.service.ai_provider_key_service import ai_provider_key_service
+    from app.infrastructure.llm.model_registry import model_registry
+    from app.infrastructure.llm.provider_health_service import provider_health_service
+    from app.infrastructure.llm.provider_key_selector import provider_key_selector
 
     mocks = {
         "get_call_routes": AsyncMock(return_value=get_call_routes),
@@ -118,18 +118,18 @@ def _patch_cross_services(get_call_routes, usable_keys=None):
     }
     patches = {
         "get_call_routes": patch.object(
-            ai_model_service, "get_call_routes", new=mocks["get_call_routes"]
+            model_registry, "get_call_routes", new=mocks["get_call_routes"]
         ),
         "mark_call_failed": patch.object(
-            ai_provider_key_service, "mark_call_failed", new=mocks["mark_call_failed"]
+            provider_key_selector, "mark_call_failed", new=mocks["mark_call_failed"]
         ),
         "mark_call_success": patch.object(
-            ai_provider_key_service, "mark_call_success", new=mocks["mark_call_success"]
+            provider_key_selector, "mark_call_success", new=mocks["mark_call_success"]
         ),
         "get_status": patch.object(provider_health_service, "get_status", new=mocks["get_status"]),
         "record_call": patch.object(provider_health_service, "record_call", new=mocks["record_call"]),
         "list_usable_keys": patch.object(
-            ai_provider_key_service, "list_usable_keys", new=mocks["list_usable_keys"]
+            provider_key_selector, "list_usable_keys", new=mocks["list_usable_keys"]
         ),
     }
     for p in patches.values():

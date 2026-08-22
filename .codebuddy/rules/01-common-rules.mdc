@@ -1,8 +1,8 @@
 ---
-description: 全局通用规则，适用于所有项目。
+description: 
 alwaysApply: true
 enabled: true
-updatedAt: 2026-07-11T01:03:00.000Z
+updatedAt: 2026-08-22T16:18:19.303Z
 provider: 
 ---
 

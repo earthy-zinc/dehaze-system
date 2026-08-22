@@ -36,7 +36,8 @@ from app.repository.knowledge_base_repository import knowledge_base_repository
 from app.repository.knowledge_chunk_repository import knowledge_chunk_repository
 from app.repository.knowledge_document_repository import knowledge_document_repository
 from app.service.file_service import file_service
-from app.service.kb import chunking_engine, document_parser, embedding_service
+from app.service.kb import chunking_engine, document_parser
+from app.infrastructure.embedding import embedding_client
 from app.service.kb.knowledge_base_service import _check_manage_permission
 from app.service.storage.factory import get_storage_by_name
 
@@ -536,7 +537,7 @@ class DocumentService:
         while retry >= 0:
             try:
                 texts = [c.content for c in chunks]
-                vectors = await embedding_service.embed_texts(
+                vectors = await embedding_client.embed_texts(
                     kb.embedding_provider, kb.embedding_model, texts, settings.KB_INDEX_BATCH_SIZE
                 )
                 es_docs = []

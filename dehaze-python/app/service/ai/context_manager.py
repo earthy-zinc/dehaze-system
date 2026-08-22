@@ -9,7 +9,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository.ai_message_repository import ai_message_repository
-from app.service.ai.llm_client import llm_client
+from app.infrastructure.llm.llm_client import llm_client
 from app.service.ai.memory_injection import inject_memories
 from app.service.ai.prompt_composer import compose_system_prompt
 from app.service.ai_artifact_service import ai_artifact_service

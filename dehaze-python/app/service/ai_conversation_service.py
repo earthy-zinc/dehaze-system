@@ -32,7 +32,7 @@ from app.service.ai.conversation_search_service import (
     sync_conversation_to_es,
 )
 from app.service.ai.interrupt_handler import interrupt_handler
-from app.service.ai.llm_client import llm_client
+from app.infrastructure.llm.llm_client import llm_client
 from app.service.ai.reasoning_service import reasoning_service
 from app.service.ai.scene_templates import SCENE_VALUES, get_scene_prompt
 

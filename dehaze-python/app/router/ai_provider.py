@@ -18,7 +18,7 @@ from app.models.schema.ai_provider import (
 )
 from app.models.schema.common import BasePageQuery, PageResult
 from app.service.ai.provider_connectivity_service import test_connection
-from app.service.ai.provider_health_service import provider_health_service
+from app.infrastructure.llm.provider_health_service import provider_health_service
 from app.service.ai_provider_key_service import ai_provider_key_service
 from app.service.ai_provider_service import ai_provider_service
 

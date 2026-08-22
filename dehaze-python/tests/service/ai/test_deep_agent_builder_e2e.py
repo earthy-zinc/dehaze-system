@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.service.ai import llm_client as llm_client_mod
+from app.infrastructure.llm import llm_client as llm_client_mod
 from app.service.ai.deep_agent_builder import DeepAgentBuilder, _build_agent_core, _make_ctx
 
 

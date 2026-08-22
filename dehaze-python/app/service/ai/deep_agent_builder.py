@@ -29,7 +29,7 @@ from langgraph.graph.state import CompiledStateGraph
 from app.config import settings
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_ai_agent_endpoint import SysAiAgentEndpoint
-from app.service.ai.a2a_client import a2a_client
+from app.infrastructure.llm.a2a_client import a2a_client
 from app.service.ai.a2a_task_mapper import a2a_task_mapper
 from app.service.ai.capability_constraints import CapabilityConstraintsMiddleware
 from app.service.ai.complexity_evaluator import evaluate_complexity

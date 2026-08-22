@@ -23,6 +23,7 @@ from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.enum.log_status import LogStatus
 from app.models.schema.common import PageResult
+from app.models.schema.prediction import BatchPredictionItem
 from app.service.prediction_service import prediction_service
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class BatchPredictionRequest(BaseModel):
     """批量预测请求"""
 
     algorithmId: int = Field(description="算法ID")
-    items: list[dict] = Field(description="批量图片列表，每项含 fileId/imageUrl/params 等")
+    items: list[BatchPredictionItem] = Field(description="批量图片列表，每项含 fileId/imageUrl/params 等")
     recommendedBy: int | None = Field(default=None, description="推荐来源：推荐记录ID")
 
 

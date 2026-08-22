@@ -5,6 +5,7 @@ import pytest
 import app.repository.ai_model_repository as repo_m
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.infrastructure.llm.model_registry import model_registry
 from app.service import ai_model_service as m
 
 
@@ -120,7 +121,7 @@ class TestGetCallRoutes:
 
         _patch([cur_a, cur_b], [fb])
 
-        routes = await m.ai_model_service.get_call_routes(None, "gpt-4o", set())
+        routes = await model_registry.get_call_routes(None, "gpt-4o", set())
         assert [r["model_pk"] for r in routes] == [1, 2, 3]
 
     async def test_capability_filter_skips_unsupported(self, monkeypatch):
@@ -141,7 +142,7 @@ class TestGetCallRoutes:
 
         _patch([_model(pk=1, model_id="gpt-4o", provider_id=1, fallback_pk=3)], [fb_tool, fb_no_tool])
 
-        routes = await m.ai_model_service.get_call_routes(None, "gpt-4o", {"tool_call"})
+        routes = await model_registry.get_call_routes(None, "gpt-4o", {"tool_call"})
         assert [r["model_pk"] for r in routes] == [1, 3]
 
     async def test_cycle_guard(self, monkeypatch):
@@ -162,7 +163,7 @@ class TestGetCallRoutes:
 
         _patch([a], [b])
 
-        routes = await m.ai_model_service.get_call_routes(None, "a", set())
+        routes = await model_registry.get_call_routes(None, "a", set())
         assert [r["model_pk"] for r in routes] == [1, 2]
 
     async def test_depth_limit_caps_chain(self, monkeypatch):
@@ -185,7 +186,7 @@ class TestGetCallRoutes:
 
         _patch([chain[1]], [])
 
-        routes = await m.ai_model_service.get_call_routes(None, "m1", set())
+        routes = await model_registry.get_call_routes(None, "m1", set())
         assert len(routes) == 6
 
 

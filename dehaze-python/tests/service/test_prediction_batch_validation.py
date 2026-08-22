@@ -2,6 +2,7 @@ import pytest
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.models.schema.prediction import BatchPredictionItem
 from app.service.prediction_service import prediction_service
 from tests.stubs import NullDBSession, run_coro
 
@@ -14,7 +15,7 @@ def test_batch_predict_empty_items_rejected():
 
 def test_batch_predict_exceed_limit_a0500():
     svc = prediction_service
-    items = [{"fileId": i} for i in range(1, 7)]
+    items = [BatchPredictionItem(fileId=i) for i in range(1, 7)]
 
     from unittest.mock import AsyncMock, patch
 

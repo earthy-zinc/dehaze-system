@@ -68,7 +68,7 @@ flowchart TB
 | Repository 层 | `repository/` | 数据库 CRUD 封装、分页、模糊搜索、批量操作、复杂查询 |
 | Models 层 | `models/` | ORM 实体、Schema 定义、Enum 常量 |
 | Core 层 | `core/` | 统一错误码、响应封装、业务异常 |
-| 基础设施层 | `infrastructure/` | 第三方客户端连接单例与生命周期（MySQL/Redis/Mongo/MinIO/ES/MQ）、日志、缓存、定时任务、指标采集；不感知 FastAPI 与业务 |
+| 基础设施层 | `infrastructure/` | 第三方客户端连接单例与生命周期（MySQL/Redis/Mongo/MinIO/ES/MQ）、日志、缓存、定时任务、指标采集、**AI 技术资源客户端（LLM/Embedding/语音引擎）**；不感知 FastAPI 与业务 |
 
 ### 基础设施分层规范（连接 / 注入 / 业务）
 
@@ -87,6 +87,7 @@ flowchart TB
 - ES 仅在 service 层内部使用、无请求上下文依赖，采用"infrastructure 封装 + 模块级单例"模式，不经过依赖注入
 - Redis/Mongo 采用"连接 + 注入一体化"（`dependencies/redis.py`、`dependencies/mongo.py`），属 FastAPI 标准实践，保持现状
 - `database.py` 的引擎/会话工厂/Base 属应用级基础设施，与 `config.py` 同类放根目录；`get_db` 为依赖注入提供器
+- **AI 技术资源**：LLM/Embedding/语音引擎等外部模型能力统一收敛到 `infrastructure/` 子目录（`llm/`、`embedding/`、`voice/`），service 层只做业务编排与路由决策，不直接持有协议转换/子进程管理/Key 轮换实现（详见 3.11 AI 模型基础设施）
 
 ### 依赖注入策略
 
@@ -129,7 +130,11 @@ dehaze-python/
 │   ├── dependencies/                  # FastAPI 依赖注入（auth/redis）
 │   ├── decorators/                    # 横切关注点装饰器（permission/rate_limit/repeat_submit）
 │   ├── middleware/                    # ASGI 中间件（trace/operation_log/ip_blacklist/non_null_response）
-│   ├── infrastructure/               # 基础设施层（logging/cache/metrics/mq/job/storage 连接单例）
+│   ├── infrastructure/               # 基础设施层（连接单例 + AI 技术资源客户端）
+│   │   ├── llm/                      #   LLM：model_client(协议工厂)/openai_compat_client/anthropic_client/model_registry(路由)/provider_key_selector(Key 轮换)/model_seeder(播种)/local_llm_manager(本地子进程)
+│   │   ├── embedding/                #   Embedding：embedding_client（端点由 sys_ai_provider.api_base_url 配置化派生）
+│   │   ├── voice/                    #   语音引擎：funasr_client/funasr_engine(ASR)、piper_tts_engine(TTS，进程内推理)
+│   │   └── ...                       #   storage/es/mq/redis/mongo 等外部连接单例
 │   ├── models/                        # 数据模型（entity/schema/enum）
 │   ├── repository/                    # Repository 层（BaseRepository 泛型基类）
 │   ├── router/                        # 路由层（30+ 个业务 APIRouter + health/metrics + WebSocket）
@@ -298,6 +303,56 @@ flowchart LR
 ```
 
 推荐引擎的规则匹配和排序逻辑在 Java/Go 后端实现，Python 端仅负责图像特征向量提取。Python 端的特征分析服务作为推荐管线的第一环节，其输出直接决定推荐候选集。
+
+### 3.11 AI 模型基础设施
+
+LLM / Embedding / TTS / ASR 等模型能力统一作为**基础设施**管理，与业务编排解耦。核心原则：`infrastructure` 回答"如何与外部技术资源对话"（协议转换、子进程、Key 轮换），`service` 回答"业务上该用哪个模型、失败如何降级"（路由决策）。
+
+```mermaid
+flowchart TB
+    subgraph Service["service/（业务编排，决策）"]
+        LLM["llm_client（对话编排/降级）"]
+        KB["知识库/记忆（embedding、rerank 调用）"]
+        Voice["语音交互（ASR/TTS 调用）"]
+    end
+    subgraph Infra["infrastructure/（技术资源对话）"]
+        MR["model_registry<br/>sys_ai_provider/sys_ai_model 路由"]
+        KS["provider_key_selector<br/>Key 轮换/冷却/日额度(Redis)"]
+        MC["model_client 工厂<br/>openai_compat/anthropic"]
+        EC["embedding_client<br/>api_base_url 派生端点"]
+        VE["voice/（FunASR、Piper 进程内引擎）"]
+        MS["model_seeder<br/>本地模型幂等播种"]
+    end
+    subgraph Store["sys_ai_provider / sys_ai_model / sys_ai_provider_key"]
+    end
+    LLM --> MC
+    LLM --> MR --> Store
+    LLM --> KS --> Store
+    KB --> EC --> Store
+    KB --> MR --> Store
+    Voice --> VE
+    MS --> Store
+```
+
+**关键组件与职责**：
+
+| 组件 | 位置 | 职责 |
+|------|------|------|
+| 统一模型客户端接口 | `infrastructure/llm/model_client.py` | `LlmStreamChunk`、鉴权头、`create_chat_client(protocol_type)` 按 `sys_ai_provider.protocol_type`（openai_compat / anthropic）工厂分发，屏蔽协议差异 |
+| OpenAI 兼容客户端 | `infrastructure/llm/openai_compat_client.py` | SSE 流式、tool_call 聚合、reasoning_content 思考流 |
+| Anthropic 客户端 | `infrastructure/llm/anthropic_client.py` | tool_use 三段式聚合、Prompt Caching、thinking 流 |
+| 模型路由注册表 | `infrastructure/llm/model_registry.py` | `get_call_routes` 按 `sys_ai_model` 能力与状态解析降级链候选路由（能力不足时剔除并短路），路由决策完全由数据库配置驱动 |
+| Key 选择器 | `infrastructure/llm/provider_key_selector.py` | 从 `sys_ai_provider_key` 按 优先级/权重/冷却/连续失败/日额度 选取 Key（Redis 状态），调用后回写成功/失败 |
+| 本地模型播种器 | `infrastructure/llm/model_seeder.py` | 幂等播种 local provider / 占位 Key / 内置模型（qwen3-0.6b 对话 + qwen3-embedding-0.6b 向量登记），启动时由 `lifecycle.py` 调用 |
+| Embedding 客户端 | `infrastructure/embedding/embedding_client.py` | 向量化/维度查询；端点由 provider 的 `api_base_url` **配置化派生**（`api_base_url + /embeddings`，cohere 特判 `/v1/embed`），新增 OpenAI 兼容供应商零代码 |
+| 本地 LLM 子进程 | `infrastructure/llm/local_llm_manager.py` 等 | llama-cpp-python 子进程生命周期（拉起/健康检查/回收），对话与 Embedding 共用 `/v1` 端点 |
+| 语音引擎 | `infrastructure/voice/` | FunASR（ASR）与 Piper（TTS）进程内推理，由 `config.py` 的 `VOICE_*` 配置驱动（引擎音色无供应商路由语义，不进入模型注册表） |
+
+**配置化路由与播种边界**：
+
+- 第三方供应商（qwen/openai/anthropic 等）：管理接口写入 `sys_ai_provider`/`sys_ai_model`/`sys_ai_provider_key`，运行时直接生效，**切换/升级/新增供应商无需改代码**
+- 本地模型：`model_seeder.ensure_local_models` 启动时幂等播种 local provider 与占位 Key、内置 LLM（qwen3-0.6b，状态启用）与内置 Embedding（qwen3-embedding-0.6b，状态停用仅登记目录，避免进入对话模型列表）
+- Embedding/Rerank 端点统一由 `sys_ai_provider.api_base_url` 派生（OpenAI 兼容 `/embeddings`、`/rerank`），与对话客户端共用同一供应商配置，不再维护独立的硬编码端点表
 
 ## 四、配置管理
 
@@ -497,10 +552,13 @@ sequenceDiagram
     participant Tracker as 任务追踪器
     participant MQ as RabbitMQ
     participant XXL as XXL-Job
+    participant Seeder as model_seeder
 
     Uvicorn->>Lifespan: 启动 ASGI 应用
     Lifespan->>DB: init_db() 连接测试
     Lifespan->>Redis: check_redis_health()
+    Lifespan->>Seeder: ensure_local_models()（幂等播种 local provider/Key/内置 LLM+Embedding）
+    Seeder->>DB: sys_ai_provider / sys_ai_model / sys_ai_provider_key 补齐
     Lifespan->>Tracker: init_task_tracker() + start()
     Lifespan->>MQ: init_mq() (条件启用)
     Lifespan->>XXL: init_xxljob() (条件启用)

@@ -25,7 +25,7 @@ from app.infrastructure.es import kb_chunk_index
 from app.infrastructure.es.kb_chunk_index import build_filters
 from app.models.entity.sys_knowledge_base import SysKnowledgeBase
 from app.repository.knowledge_base_repository import knowledge_base_repository
-from app.service.kb.embedding_service import embed_text
+from app.infrastructure.embedding.embedding_client import embed_text
 from app.service.kb.rerank_service import rerank
 
 logger = logging.getLogger(__name__)

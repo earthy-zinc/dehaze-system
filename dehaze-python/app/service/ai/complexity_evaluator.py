@@ -7,7 +7,7 @@
 from app.database import get_db_session
 from app.dependencies.redis import get_redis_client
 from app.service.ai.agent_state import AgentState
-from app.service.ai.llm_client import llm_client
+from app.infrastructure.llm.llm_client import llm_client
 
 # 动作关键词 → L1（ReAct）
 _ACTION_KEYWORDS = ("去雾", "处理", "评估", "分析")

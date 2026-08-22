@@ -177,7 +177,7 @@ def _pipeline_env(
         patch(f"{DS}.knowledge_document_repository", doc_repo),
         patch(f"{DS}.knowledge_chunk_repository", chunk_repo),
         patch(f"{DS}.chunking_engine", ce),
-        patch(f"{DS}.embedding_service", emb),
+        patch(f"{DS}.embedding_client", emb),
         patch(f"{DS}.bulk_index_chunks", bulk_mock),
         patch(f"{DS}._push_ws", AsyncMock()),
     )

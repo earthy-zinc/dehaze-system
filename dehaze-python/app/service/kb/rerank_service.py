@@ -11,25 +11,31 @@ from typing import Any
 
 import httpx
 
-from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.repository.ai_provider_repository import ai_provider_repository
-from app.service.ai_provider_key_service import ai_provider_key_service
+from app.infrastructure.llm.provider_key_selector import provider_key_selector
 
 logger = logging.getLogger(__name__)
 
-# OpenAI 兼容 rerank 端点基址（按 provider_code 选择）
-_RERANK_ENDPOINTS = {
-    "openai": "https://api.openai.com/v1/rerank",
-    "qwen": "https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank",
-    "local": settings.MODEL_BASE_URL + "/rerank",
-}
+
+def _rerank_url(provider_code: str, api_base_url: str) -> str:
+    """从供应商 api_base_url 派生 OpenAI 兼容 rerank 端点（配置化路由）。
+
+    新增 rerank 供应商仅需在 sys_ai_provider 配置 api_base_url。
+    """
+    base = (api_base_url or "").rstrip("/")
+    if not base:
+        raise BusinessException(
+            ResultCode.AI_MODEL_NOT_AVAILABLE,
+            f"Rerank 供应商 {provider_code} 未配置 api_base_url",
+        )
+    return base + "/rerank" if not base.endswith("/rerank") else base
 
 
-async def _get_provider_api_key(provider_code: str) -> str:
-    """从数据库选取供应商的 API Key，无可用 Key 抛业务异常"""
+async def _get_provider_and_key(provider_code: str):
+    """从数据库选取供应商及其可用 API Key，返回 (provider, api_key)"""
     from app.database import get_db_session
 
     async with get_db_session() as db:
@@ -40,13 +46,13 @@ async def _get_provider_api_key(provider_code: str) -> str:
                 f"Rerank 供应商 {provider_code} 不存在或已禁用",
             )
         redis = await get_redis_client()
-        api_key = await ai_provider_key_service.select_key(db, redis, provider.id)
+        api_key = await provider_key_selector.select_key(db, redis, provider.id)
         if not api_key:
             raise BusinessException(
                 ResultCode.AI_MODEL_NOT_AVAILABLE,
                 f"Rerank 供应商 {provider_code} 无可用 API Key",
             )
-        return api_key
+        return provider, api_key
 
 
 async def rerank(
@@ -62,13 +68,8 @@ async def rerank(
     """
     if not documents:
         return []
-    url = _RERANK_ENDPOINTS.get(provider_code)
-    if not url:
-        raise BusinessException(
-            ResultCode.AI_MODEL_NOT_AVAILABLE,
-            f"未知 rerank provider_code={provider_code}",
-        )
-    api_key = await _get_provider_api_key(provider_code)
+    provider, api_key = await _get_provider_and_key(provider_code)
+    url = _rerank_url(provider_code, provider.api_base_url)
     payload: dict[str, Any] = {"model": model, "query": query, "documents": documents}
     if top_n:
         payload["top_n"] = top_n

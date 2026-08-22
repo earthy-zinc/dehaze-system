@@ -325,13 +325,16 @@ class Settings(BaseSettings):
     AI_MESSAGE_STREAM_TIMEOUT: int = 120
     # SSE 心跳间隔（秒）
     AI_MESSAGE_HEARTBEAT_INTERVAL: int = 15
-    # 默认模型（内置本地轻量 LLM，Qwen3-0.6B，部署零外部依赖；接入第三方后可在库内改路由）
+    # 默认模型（内置本地轻量 LLM，Qwen3-0.6B，部署零外部依赖；模型清单由
+    # infrastructure/llm/model_seeder 幂等播种，路由由 sys_ai_provider/sys_ai_model 注册表驱动，
+    # 接入第三方/切换供应商只需在库内配置，无需改代码）
     AI_DEFAULT_MODEL: str = "qwen3-0.6b"
-    # 内置本地 LLM 服务（llama-cpp-python 子进程，OpenAI 兼容）
+    # 内置本地模型服务（llama-cpp-python 子进程，OpenAI 兼容；LLM 对话 + Embedding 共用，
+    # 端点由 local provider 的 api_base_url 派生：/v1/chat/completions 与 /v1/embeddings）
     LOCAL_LLM_HOST: str = "127.0.0.1"
     LOCAL_LLM_PORT: int = 8992
-    LOCAL_LLM_MODEL_PATH: str = ""  # 空 = 默认 models/Qwen3-0.6B-Q4_K_M.gguf
-    LOCAL_LLM_EMBEDDING_MODEL_PATH: str = ""  # 空 = 默认 models/Qwen3-Embedding-0.6B-Q8_0.gguf
+    LOCAL_LLM_MODEL_PATH: str = ""  # 空 = 默认 models/Qwen3-0.6B-Q4_K_M.gguf（对话）
+    LOCAL_LLM_EMBEDDING_MODEL_PATH: str = ""  # 空 = 默认 models/Qwen3-Embedding-0.6B-Q8_0.gguf（向量）
     LOCAL_LLM_CTX_SIZE: int = 8192
     LOCAL_LLM_THREADS: int = 0  # 0 = 自动（物理核数）
     LOCAL_LLM_NGPU_LAYERS: int | None = None  # None = 自动（CUDA 构建全量卸载 -1，纯 CPU 构建 0）

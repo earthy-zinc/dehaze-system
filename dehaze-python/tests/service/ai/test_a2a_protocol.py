@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.service.ai.a2a_protocol import (
+from app.infrastructure.llm.a2a_protocol import (
     Artifact,
     DataPart,
     FilePart,

@@ -14,9 +14,7 @@
 import logging
 from typing import Any
 
-import httpx
-
-from app.dependencies.redis import get_redis_client
+from app.infrastructure.embedding.embedding_client import embed_text
 from app.infrastructure.es.ai_memory_index import (
     DEFAULT_DIMS,
     DEFAULT_MODEL,
@@ -31,21 +29,12 @@ from app.infrastructure.es.ai_memory_index import (
 from app.infrastructure.es.ai_memory_index import (
     sync_memory_doc as _es_sync_memory_doc,
 )
-from app.repository.ai_provider_repository import ai_provider_repository
 from app.repository.dict_repository import dict_repository
-from app.service.ai_provider_key_service import ai_provider_key_service
 
 logger = logging.getLogger(__name__)
 
 # Embedding 配置字典类型（provider_code/model/dims 三键种子，见 config/sql/data/sys_dict.sql）
 _EMBEDDING_DICT = "ai_embedding"
-
-# OpenAI 兼容 embedding 端点基址（按 provider_code 选择，其余供应商暂走 OpenAI 兼容协议）
-_EMBEDDING_ENDPOINTS = {
-    "openai": "https://api.openai.com/v1/embeddings",
-    "qwen": "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding",
-    "cohere": "https://api.cohere.com/v1/embed",
-}
 
 
 async def _load_embedding_config() -> dict[str, Any]:
@@ -67,44 +56,13 @@ async def _load_embedding_config() -> dict[str, Any]:
     return config
 
 
-async def _get_embedding_api_key() -> str:
-    """从数据库选取 embedding 供应商的 API Key，无可用 Key 返回空串"""
-    from app.database import get_db_session
-
-    config = await _load_embedding_config()
-    async with get_db_session() as db:
-        provider = await ai_provider_repository.get_by_provider_code(db, config["provider_code"])
-        if not provider or provider.status != 1:
-            return ""
-        redis = await get_redis_client()
-        return await ai_provider_key_service.select_key(db, redis, provider.id) or ""
-
-
 async def get_embedding(text: str) -> list[float]:
-    """调用 embedding 模型获取向量，失败返回空列表"""
+    """调用 embedding 模型获取向量，失败返回空列表（复用 embedding_client 的配置化路由）"""
     config = await _load_embedding_config()
-    api_key = await _get_embedding_api_key()
-    if not api_key:
-        return []
-    url = _EMBEDDING_ENDPOINTS.get(config["provider_code"])
-    if not url:
-        logger.warning("未知 embedding provider_code=%s", config["provider_code"])
-        return []
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                url,
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={"model": config["model"], "input": text},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            # OpenAI 兼容返回 data[0].embedding；cohere 返回 embeddings[0]
-            if "embeddings" in data:
-                return data["embeddings"][0]
-            return data["data"][0]["embedding"]
-    except Exception as e:
-        logger.warning("Embedding 调用失败: %s", e)
+        return await embed_text(config["provider_code"], config["model"], text)
+    except Exception as e:  # noqa: BLE001 - 记忆链路失败静默降级
+        logger.warning("Embedding 调用失败(provider=%s model=%s): %s", config["provider_code"], config["model"], e)
         return []
 
 

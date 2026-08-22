@@ -23,7 +23,7 @@ from app.models.schema.knowledge_base import (
 from app.repository.knowledge_base_repository import knowledge_base_repository
 from app.repository.knowledge_document_repository import knowledge_document_repository
 from app.repository.member_repository import member_repository
-from app.service.kb.embedding_service import get_embedding_dim
+from app.infrastructure.embedding.embedding_client import get_embedding_dim
 
 logger = logging.getLogger(__name__)
 

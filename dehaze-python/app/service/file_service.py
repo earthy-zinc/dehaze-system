@@ -149,12 +149,12 @@ class FileService:
         created_file = await file_repository.upsert_by_md5(
             db,
             md5=new_file.md5,
-            type=new_file.type,
+            type=file_extension,
             name=new_file.name,
             object_name=new_file.object_name,
             storage=new_file.storage,
             size=new_file.size,
-            size_bytes=new_file.size_bytes,
+            size_bytes=file_size,
         )
 
         return created_file

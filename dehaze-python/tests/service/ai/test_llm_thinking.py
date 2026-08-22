@@ -1,7 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-from app.service.ai.llm_client import LlmClient
+from app.infrastructure.llm.anthropic_client import AnthropicClient
+from app.infrastructure.llm.openai_compat_client import OpenAiCompatClient
 from tests.stubs import FakeStreamResponse
 
 
@@ -30,10 +31,8 @@ def _make_provider(
     )
 
 
-def _make_client() -> tuple[LlmClient, Mock]:
-    client = LlmClient.__new__(LlmClient)
-    client._client = Mock()
-    return client, client._client
+def _make_transport() -> Mock:
+    return Mock()
 
 
 class _FakeStream:
@@ -52,7 +51,7 @@ def _stream_lines(lines):
 
 
 async def test_openai_reasoning_content_yields_thinking_delta():
-    client, transport = _make_client()
+    transport = _make_transport()
     lines = [
         'data: {"choices":[{"delta":{"reasoning_content":"让我分析"}}]}',
         'data: {"choices":[{"delta":{"reasoning_content":"一下参数"}}]}',
@@ -62,16 +61,16 @@ async def test_openai_reasoning_content_yields_thinking_delta():
     transport.stream = Mock(side_effect=[_stream_lines(lines)])
     chunks = [
         c
-        async for c in client._stream_openai(
+        async for c in OpenAiCompatClient(transport).stream_chat(
             _make_provider(),
             "sk-x",
             _make_model(),
             [],
             None,
+            None,
+            None,
+            None,
             0.7,
-            None,
-            None,
-            None,
         )
     ]
     assert [c.type for c in chunks] == ["thinking_delta", "thinking_delta", "text_delta"]
@@ -81,7 +80,7 @@ async def test_openai_reasoning_content_yields_thinking_delta():
 
 
 async def test_anthropic_thinking_block_streams_and_discards_signature():
-    client, transport = _make_client()
+    transport = _make_transport()
     lines = [
         'data: {"type":"content_block_start","index":0,"content_block":'
         '{"type":"thinking","thinking":"思考中","signature":"SIG123"}}',
@@ -98,7 +97,7 @@ async def test_anthropic_thinking_block_streams_and_discards_signature():
     transport.stream = Mock(side_effect=[_stream_lines(lines)])
     chunks = [
         c
-        async for c in client._stream_anthropic(
+        async for c in AnthropicClient(transport).stream_chat(
             _make_provider(protocol="anthropic", auth="x-api-key"),
             "sk-x",
             _make_model("claude-3-5-sonnet"),
@@ -117,7 +116,7 @@ async def test_anthropic_thinking_block_streams_and_discards_signature():
 
 
 async def test_anthropic_thinking_start_without_text_still_streams():
-    client, transport = _make_client()
+    transport = _make_transport()
     lines = [
         'data: {"type":"content_block_start","index":0,'
         '"content_block":{"type":"thinking","signature":"SIG"},"signature":"SIG"}',
@@ -127,7 +126,7 @@ async def test_anthropic_thinking_start_without_text_still_streams():
     transport.stream = Mock(side_effect=[_stream_lines(lines)])
     chunks = [
         c
-        async for c in client._stream_anthropic(
+        async for c in AnthropicClient(transport).stream_chat(
             _make_provider(protocol="anthropic", auth="x-api-key"),
             "sk-x",
             _make_model("claude-3-5-sonnet"),

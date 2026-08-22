@@ -26,7 +26,7 @@ import time
 import httpx
 
 from app.config import settings
-from app.service.ai.local_llm_model import ensure_embedding_model, ensure_model
+from app.infrastructure.llm.local_llm_model import ensure_embedding_model, ensure_model
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,7 @@ def _start_and_wait() -> None:
     # preexec_fn 仅 POSIX 支持（Windows 传入直接抛 ValueError）；PDEATHSIG 见 _set_pdeathsig
     popen_kwargs: dict = {"preexec_fn": _set_pdeathsig} if os.name == "posix" else {}
     _PROC = subprocess.Popen(
-        [sys.executable, "-m", "app.service.ai.local_llm_server"],
+        [sys.executable, "-m", "app.infrastructure.llm.local_llm_server"],
         cwd=root,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,

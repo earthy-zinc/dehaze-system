@@ -36,7 +36,7 @@ from langchain_core.utils.function_calling import convert_to_openai_tool
 
 from app.database import get_db_session
 from app.dependencies.redis import get_redis_client
-from app.service.ai.llm_client import llm_client
+from app.infrastructure.llm.llm_client import llm_client
 
 logger = logging.getLogger(__name__)
 

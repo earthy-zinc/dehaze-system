@@ -23,7 +23,7 @@ from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.ai_message_repository import ai_message_repository
 from app.service.ai.credits_service import calculate_credits
-from app.service.ai.llm_client import llm_client
+from app.infrastructure.llm.llm_client import llm_client
 from app.service.billing.billing_service import billing_service
 
 logger = logging.getLogger(__name__)

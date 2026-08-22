@@ -12,7 +12,7 @@ import logging
 
 from app.dependencies.redis import get_redis_client
 from app.repository.ai_agent_thought_repository import ai_agent_thought_repository
-from app.service.ai.llm_client import llm_client
+from app.infrastructure.llm.llm_client import llm_client
 
 logger = logging.getLogger(__name__)
 

@@ -4,8 +4,8 @@ import socket
 import pytest
 from fastapi import HTTPException
 
-from app.service.ai import a2a_client as a2a_client_mod
-from app.service.ai.a2a_client import A2AClient, A2AClientError
+from app.infrastructure.llm import a2a_client as a2a_client_mod
+from app.infrastructure.llm.a2a_client import A2AClient, A2AClientError
 from app.utils import ssrf
 
 

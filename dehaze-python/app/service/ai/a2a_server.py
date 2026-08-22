@@ -28,7 +28,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_ai_agent import SysAiAgent
-from app.service.ai.a2a_protocol import (
+from app.infrastructure.llm.a2a_protocol import (
     Artifact,
     JsonRpcError,
     JsonRpcRequest,

@@ -23,7 +23,7 @@ CHUNKING_STRATEGY_VALUES = ("fixed", "semantic", "recursive", "qa", "table")
 ChunkingStrategy = Literal["fixed", "semantic", "recursive", "qa", "table"]
 # 检索策略(vector:纯向量;keyword:纯关键词;hybrid:混合检索)
 SearchStrategy = Literal["vector", "keyword", "hybrid"]
-# 支持的 Embedding 模型标识(与 embedding_service._KNOWN_DIMS 对齐)
+# 支持的 Embedding 模型标识(与 embedding_client._KNOWN_DIMS 对齐)
 EMBEDDING_MODEL_VALUES = ("text-embedding-3-small", "text-embedding-3-large", "bge-m3")
 
 

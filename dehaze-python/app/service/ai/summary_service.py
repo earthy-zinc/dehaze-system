@@ -19,7 +19,7 @@ from app.service.ai.context_manager import (
     context_manager,
     estimate_context_tokens,
 )
-from app.service.ai.llm_client import llm_client
+from app.infrastructure.llm.llm_client import llm_client
 
 logger = logging.getLogger(__name__)
 

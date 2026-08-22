@@ -36,6 +36,7 @@ from app.models.entity.sys_algorithm import SysAlgorithm
 from app.models.entity.sys_file import SysFile
 from app.models.entity.sys_log import SysPredLog
 from app.models.enum.log_status import LogStatus
+from app.models.schema.prediction import BatchPredictionItem
 from app.repository.algorithm_repository import algorithm_repository
 from app.repository.file_repository import file_repository
 from app.repository.pred_eval_log_repository import pred_log_repository
@@ -762,10 +763,10 @@ class PredictionService:
     async def batch_predict(
         self,
         algorithm_id: int,
-        items: list[dict],
+        items: list[BatchPredictionItem],
         user_id: int,
         skip_quota_check: bool = False,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """批量处理：校验上限后逐张提交预测"""
         # T-DH-027：空 items 直接参数校验失败
         if not items:
@@ -793,11 +794,30 @@ class PredictionService:
 
         results = []
         for item in items:
-            file_id = item.get("fileId")
-            image_url = item.get("imageUrl")
-            params = item.get("params")
+            file_id = item.fileId
+            image_url = item.imageUrl
+            raw_params = item.params
+
+            # 图片来源校验：fileId 或 imageUrl 至少提供一个（对齐单张预测）
+            if file_id is None and not image_url:
+                raise BusinessException(
+                    ResultCode.PARAM_IS_NULL, "图片来源不能为空，请提供 fileId 或 imageUrl"
+                )
+
+            # 类型归一化：fileId 存在时 predict 内部会用库内原始图 URL 覆盖，None 归一为空串
+            image_url = image_url or ""
 
             try:
+                # params 为 JSON 字符串，解析为 dict（对齐单张预测）
+                params = None
+                if raw_params:
+                    try:
+                        params = json.loads(raw_params)
+                    except json.JSONDecodeError:
+                        raise BusinessException(
+                            ResultCode.PARAM_ERROR, f"参数格式错误: {raw_params}"
+                        ) from None
+
                 result = await self.predict(
                     algorithm_id=algorithm_id,
                     image_url=image_url,

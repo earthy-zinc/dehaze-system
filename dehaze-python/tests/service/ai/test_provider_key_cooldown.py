@@ -1,10 +1,10 @@
-from app.service.ai_provider_key_service import (
+from app.infrastructure.llm.provider_key_selector import (
     KEY_DAILY_PREFIX,
     KEY_FAIL_STREAK_PREFIX,
     KEY_LAST_USED_PREFIX,
     KEY_UNAVAILABLE_PREFIX,
-    ai_provider_key_service,
     _cooldown_seconds,
+    provider_key_selector,
 )
 
 
@@ -32,45 +32,43 @@ class TestCooldownEscalation:
 
     async def test_cooldown_escalation_via_redis(self, mock_redis):
         key_id = 7
-        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "429")
+        await provider_key_selector.mark_call_failed(mock_redis, key_id, "429")
         assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 300
         assert int(await mock_redis.get(KEY_FAIL_STREAK_PREFIX.format(key_id))) == 1
 
-        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "429")
+        await provider_key_selector.mark_call_failed(mock_redis, key_id, "429")
         assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 300
 
-        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "429")
+        await provider_key_selector.mark_call_failed(mock_redis, key_id, "429")
         assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 900
 
-        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "500")
+        await provider_key_selector.mark_call_failed(mock_redis, key_id, "500")
         assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 900
 
-        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "401")
+        await provider_key_selector.mark_call_failed(mock_redis, key_id, "401")
         assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 1800
 
     async def test_success_resets_fail_streak(self, mock_redis):
         key_id = 8
         for _ in range(4):
-            await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "429")
+            await provider_key_selector.mark_call_failed(mock_redis, key_id, "429")
         assert int(await mock_redis.get(KEY_FAIL_STREAK_PREFIX.format(key_id))) == 4
 
-        await ai_provider_key_service.mark_call_success(mock_redis, key_id, used_by=100)
+        await provider_key_selector.mark_call_success(mock_redis, key_id, used_by=100)
         assert await mock_redis.get(KEY_FAIL_STREAK_PREFIX.format(key_id)) is None
         assert await mock_redis.get(KEY_LAST_USED_PREFIX.format(key_id)) is not None
 
     async def test_success_does_not_clear_cooldown_marker(self, mock_redis):
         key_id = 9
-        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "429")
+        await provider_key_selector.mark_call_failed(mock_redis, key_id, "429")
         assert await mock_redis.exists(KEY_UNAVAILABLE_PREFIX.format(key_id))
-        await ai_provider_key_service.mark_call_success(mock_redis, key_id, used_by=1)
+        await provider_key_selector.mark_call_success(mock_redis, key_id, used_by=1)
         assert await mock_redis.exists(KEY_UNAVAILABLE_PREFIX.format(key_id))
 
 
 class TestListUsableKeys:
     async def test_filter_and_sort(self, mock_redis, monkeypatch):
-        from app.service.ai_provider_key_service import (
-            ai_provider_key_repository,
-        )
+        from app.repository.ai_provider_key_repository import ai_provider_key_repository
         from datetime import datetime
 
         keys = [
@@ -95,15 +93,13 @@ class TestListUsableKeys:
         today = datetime.now().strftime("%Y%m%d")
         await mock_redis.set(KEY_DAILY_PREFIX.format(6, today), 5)
 
-        usable = await ai_provider_key_service.list_usable_keys(None, mock_redis, 1)
+        usable = await provider_key_selector.list_usable_keys(None, mock_redis, 1)
         ids = [k.id for k in usable]
         assert 5 not in ids and 6 not in ids
         assert ids == [3, 2, 4, 1]
 
     async def test_select_key_uses_same_qualification(self, mock_redis, monkeypatch):
-        from app.service.ai_provider_key_service import (
-            ai_provider_key_repository,
-        )
+        from app.repository.ai_provider_key_repository import ai_provider_key_repository
 
         keys = [
             _make_key(1, priority=0, weight=1),
@@ -120,14 +116,14 @@ class TestListUsableKeys:
             _list_enabled,
         )
         monkeypatch.setattr(
-            "app.service.ai_provider_key_service.decrypt",
+            "app.infrastructure.llm.provider_key_selector.decrypt",
             lambda cipher: cipher,
         )
         await mock_redis.set(KEY_UNAVAILABLE_PREFIX.format(1), 1)
 
         picked = []
         for _ in range(30):
-            key = await ai_provider_key_service.select_key(None, mock_redis, 1)
+            key = await provider_key_selector.select_key(None, mock_redis, 1)
             assert key is not None
             picked.append(key)
         assert "cipher-1" not in picked
