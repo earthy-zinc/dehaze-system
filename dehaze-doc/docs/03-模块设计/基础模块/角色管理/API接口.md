@@ -16,7 +16,7 @@
 | `/api/v1/roles` | POST | 新增角色 | `sys:role:add` | F-RM-002 |
 | `/api/v1/roles/{roleId}/form` | GET | 获取角色表单数据 | - | F-RM-003 |
 | `/api/v1/roles/{id}` | PUT | 修改角色 | `sys:role:edit` | F-RM-003 |
-| `/api/v1/roles/{ids}` | DELETE | 删除角色 | `sys:role:delete` | F-RM-004 |
+| `/api/v1/roles/{ids}` | DELETE | 删除角色；ids 为必填非空路径参数，空列表由 SDK 前置校验拦截（服务端对空路径返回 405） | `sys:role:delete` | F-RM-004 |
 | `/api/v1/roles/{roleId}/status` | PUT | 修改角色状态 | `sys:role:edit` | F-RM-005 |
 | `/api/v1/roles/{roleId}/menuIds` | GET | 获取角色菜单 ID 集合 | - | F-RM-006 |
 | `/api/v1/roles/{roleId}/menus` | PUT | 分配菜单权限 | `sys:role:edit` | F-RM-006 |
@@ -36,7 +36,9 @@
 | 错误码 | 说明 | 触发场景 |
 |--------|------|---------|
 | `A0233` | 超级管理员角色不可删除 | 删除超级管理员角色 |
+| `A0400` | 数据权限不能为空 | 新增角色时未选择 dataScope |
 | `A0401` | 角色不存在 | 编辑/删除时角色不存在 |
+| `A0401` | 菜单不存在 | 分配菜单时 menuIds 含不存在的菜单 ID |
 | `A0501` | 角色编码已存在 | 创建时角色编码重复 |
 | `A0501` | 角色名称已存在 | 创建时角色名称重复 |
 | `A0502` | 角色已关联用户，无法删除 | 删除时角色已关联用户 |

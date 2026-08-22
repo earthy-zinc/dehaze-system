@@ -37,7 +37,7 @@
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/kb/documents/{id}/chunks` | GET | 文档分块列表 | - | F-KB-003 |
-| `/api/v1/kb/documents/{id}/chunks/preview` | GET | 文档分块预览（上传文档时的分块效果预览） | `kb:document:manage` | F-KB-003 |
+| `/api/v1/kb/documents/chunks/preview` | POST | 分块预览（基于 `file_id` + 分块配置，返回分块效果预览，不向量化不写索引，供上传前确认） | `kb:document:manage` | F-KB-003 |
 
 ### 2.4 检索接口
 
@@ -45,6 +45,10 @@
 |------|------|---------|---------|-----------|
 | `/api/v1/kb/search` | POST | 知识库检索（支持多知识库、元数据过滤、Rerank） | - | F-KB-004 |
 | `/api/v1/kb/{id}/retrieve/test` | POST | 检索测试（知识库管理页面的调试工具） | `kb:manage` | F-KB-004 |
+| `/api/v1/kb/{id}/retrieve/test-sets` | POST | 创建召回测试集（问题 + 期望命中段落） | `kb:manage` | F-KB-004 |
+| `/api/v1/kb/{id}/retrieve/test-sets` | GET | 召回测试集列表 | `kb:manage` | F-KB-004 |
+| `/api/v1/kb/{id}/retrieve/test-sets/{testSetId}/run` | POST | 执行召回测试集（返回 Recall@K 与命中率） | `kb:manage` | F-KB-004 |
+| `/api/v1/kb/{id}/chunks/low-quality` | GET | 低质量片段列表（被点踩片段，用于反馈闭环） | `kb:manage` | F-KB-004 |
 
 ### 2.5 MCP Tool 暴露
 

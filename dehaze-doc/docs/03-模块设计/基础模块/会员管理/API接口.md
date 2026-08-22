@@ -25,7 +25,7 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/members/page` | GET | 会员分页列表 | - | F-MM-006 |
+| `/api/v1/members/page` | GET | 会员分页列表 | member:list | F-MM-006 |
 | `/api/v1/members/{userId}` | GET | 会员详情 | - | F-MM-007 |
 | `/api/v1/members/{userId}/level` | PUT | 等级调整 | member:level:edit | F-MM-008 |
 | `/api/v1/members/{userId}/growth` | PUT | 成长值调整 | member:growth:edit | F-MM-009 |
@@ -39,10 +39,13 @@
 
 | 权限标识 | 说明 |
 |---------|------|
+| member:list | 会员分页列表 |
 | member:level:edit | 等级调整 |
 | member:growth:edit | 成长值调整 |
 | member:status:edit | 冻结/解冻 |
 | member:benefit:edit | 权益配置 |
+
+> 权益配置（sys_member_benefit）字段含 `ai_credits_daily`（AI 对话日限额）、`ai_credits_monthly`（AI 对话月限额）、`vip_gift_credits`（VIP 按月赠送积分）、`multimodal_limit`（多模态视觉读取日限额）四个 AI 计费/对话相关配额列。会员记录初始化（get_or_init_member）仅复活软删记录，不会把活跃会员降级清零。
 
 > 用户端接口（会员信息/成长值明细/签到/签到日历）与后台查询接口（会员列表/详情/权益配置列表）均为登录态访问。
 

@@ -34,20 +34,23 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/orders/page` | GET | 订单分页列表 | - | F-OM-009 |
+| `/api/v1/orders/page` | GET | 订单分页列表 | order:list | F-OM-009 |
 | `/api/v1/orders/{orderNo}` | GET | 订单详情 | - | F-OM-010 |
-| `/api/v1/orders/refunds/page` | GET | 退款审核列表 | - | F-OM-011 |
+| `/api/v1/orders/refunds/page` | GET | 退款审核列表 | order:refund:list | F-OM-011 |
 | `/api/v1/orders/refunds/{refundId}/approve` | PUT | 退款审核通过 | order:refund:approve | F-OM-007 |
 | `/api/v1/orders/refunds/{refundId}/reject` | PUT | 退款审核驳回 | order:refund:approve | F-OM-007 |
-| `/api/v1/orders/stats` | GET | 订单统计（总额/状态/支付方式/套餐/每日趋势） | - | F-OM-012 |
+| `/api/v1/orders/stats` | GET | 订单统计（总额/状态/支付方式/套餐/每日趋势） | order:stats | F-OM-012 |
 
 ## 3. 权限标识汇总
 
 | 权限标识 | 说明 |
 |---------|------|
+| order:list | 订单分页列表 |
+| order:stats | 订单统计 |
+| order:refund:list | 退款审核列表 |
 | order:refund:approve | 退款审核通过/驳回 |
 
-> 用户端接口与后台查询接口（订单分页/详情/退款列表/统计）均为登录态访问；用户端仅可操作本人订单，后台管理接口面向管理员全量数据。
+> 用户端接口（创建/我的订单/详情/取消/支付/退款/自动续费配置）均为登录态访问，仅可操作本人订单；后台管理接口（订单分页/退款列表/统计）需对应 order:list / order:refund:list / order:stats 权限，订单详情后台接口登录态可访问。
 
 ## 4. 业务错误码
 

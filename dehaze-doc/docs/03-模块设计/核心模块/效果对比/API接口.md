@@ -18,10 +18,10 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/evaluation` | POST | 提交效果评估（结果图 + 参考图 + 算法ID，异步） | `evaluation:execute` | F-M05-005 |
-| `/api/v1/evaluation/{taskId}` | GET | 查询评估任务状态（1 处理中 / 2 已完成 / 3 失败） | - | F-M05-005 |
-| `/api/v1/evaluation/metrics` | GET | 获取评估指标历史（当前用户，仅已完成记录） | - | F-M05-005 |
-| `/api/v1/evaluation/logs` | GET | 获取评估日志列表（分页，支持算法ID筛选） | - | F-M05-005 |
+| `/api/v1/evaluation` | POST | 提交效果评估（结果图 + 参考图 + 算法ID，异步） | `evaluation:execute` | F-M02-005 |
+| `/api/v1/evaluation/{taskId}` | GET | 查询评估任务状态（1 处理中 / 2 已完成 / 3 失败） | - | F-M02-005 |
+| `/api/v1/evaluation/metrics` | GET | 获取评估指标历史（当前用户，仅已完成记录） | - | F-M02-005 |
+| `/api/v1/evaluation/logs` | GET | 获取评估日志列表（分页，支持算法ID筛选） | - | F-M02-005 |
 
 > 评估指标：PSNR / SSIM / LPIPS（需参考图）；NIQE / NIMA / BRISQUE（无参考指标）。
 
@@ -29,8 +29,8 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/compare/report` | POST | 生成对比报告（异步） | `evaluation:execute` | F-M05-008 |
-| `/api/v1/compare/report/{taskId}` | GET | 查询报告状态（返回 JSON）；`?download=true` 时返回 HTML 报告文件流 | - | F-M05-008 |
+| `/api/v1/compare/report` | POST | 生成对比报告（异步） | `evaluation:execute` | F-M02-008 |
+| `/api/v1/compare/report/{taskId}` | GET | 查询报告状态（返回 JSON）；`?download=true` 时返回 HTML 报告文件流 | - | F-M02-008 |
 
 ## 3. 权限标识汇总
 

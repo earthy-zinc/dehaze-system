@@ -32,10 +32,10 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/evaluation` | POST | 提交指标评估任务（计算 PSNR/SSIM/LPIPS 等指标，异步） | `evaluation:execute` | F-M05-005 |
-| `/api/v1/evaluation/{taskId}` | GET | 轮询评估任务状态 | - | F-M05-005 |
-| `/api/v1/evaluation/metrics` | GET | 评估指标历史列表（当前用户） | - | F-M05-005 |
-| `/api/v1/evaluation/logs` | GET | 评估日志列表（分页） | - | F-M05-005 |
+| `/api/v1/evaluation` | POST | 提交指标评估任务（计算 PSNR/SSIM/LPIPS 等指标，异步） | `evaluation:execute` | F-M02-005 |
+| `/api/v1/evaluation/{taskId}` | GET | 轮询评估任务状态 | - | F-M02-005 |
+| `/api/v1/evaluation/metrics` | GET | 评估指标历史列表（当前用户） | - | F-M02-005 |
+| `/api/v1/evaluation/logs` | GET | 评估日志列表（分页） | - | F-M02-005 |
 
 ### 2.3 参数预设接口
 
@@ -53,6 +53,8 @@
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/prediction/quota` | GET | 查询用户剩余处理次数 | - | F-M04-006 |
+
+> **配额响应字段**：`total`（总配额）、`used`（本月已使用）、`remaining`（本月剩余）、`resetDate`（配额重置日期，月度配额按下月 1 日重置，格式 `YYYY-MM-DD`）。
 
 ## 3. 权限标识汇总
 

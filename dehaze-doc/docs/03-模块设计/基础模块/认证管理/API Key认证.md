@@ -55,8 +55,14 @@ API Key 是面向**机器对机器（M2M）调用**与**第三方系统集成**�
 |------|------|------|------|
 | name | String | 是 | API Key 名称，用于标识用途 |
 | expiresAt | String | 否 | 过期时间；不传则默认永不过期 |
+| dailyQuota | Long | 否 | Key 级日调用配额；不传或 0 表示不限制（Python 端兼容 API 治理已支持，详见 [第三方兼容 §2.3](../../03-模块设计/核心模块/AI对话/后端实现-第三方兼容.md)） |
+| monthlyQuota | Long | 否 | Key 级月调用配额；不传或 0 表示不限制 |
+| rpmLimit | Integer | 否 | 每分钟调用频率上限；不传或 0 表示不限制 |
+| modelWhitelist | Array&lt;String&gt; | 否 | 模型白名单（启用模型 ID 列表）；不传表示继承用户可见模型 |
 
 **响应要点**：创建成功后返回 Key 明文（`apiKey`，前缀 `dhak_`）及其 ID、名称、过期时间。
+
+> **治理说明**：`dailyQuota`/`monthlyQuota`/`rpmLimit`/`modelWhitelist` 为 F-M08-010 第三方兼容接入治理扩展字段，仅影响兼容 API（`/api/v1/chat/completions`、`/api/v1/messages`、`/api/v1/models`）调用：配额计数走 Redis 固定窗口、超限返回官方语义 429、白名单外模型返回 403；计数与用户积分配额双轨独立。
 
 > **重要**：`apiKey` 明文仅在创建成功时返回**一次**，服务端只存储其哈希值，无法再次查询。请务必妥善保存，丢失后只能删除并重新创建。
 

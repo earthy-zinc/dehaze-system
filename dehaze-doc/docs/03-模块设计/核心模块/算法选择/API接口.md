@@ -18,8 +18,8 @@
 | `/api/v1/algorithms/select/{id}` | GET | 获取算法详情（含样例效果图、评分、使用次数） | - | F-M03-004 |
 | `/api/v1/algorithms/select/{id}/test` | POST | 上传自定义图片测试算法效果 | - | F-M03-004 |
 | `/api/v1/algorithms/select/search` | GET | 搜索算法（关键词/拼音/标签） | - | F-M03-003 |
-| `/api/v1/algorithms/select/compare` | POST | 算法对比（最多 3 个算法） | - | F-M03-006 |
-| `/api/v1/algorithms/select/recommend` | POST | 算法推荐匹配（基于关键词/任务类型/样例算法，供 AI 对话 MCP 调用） | - | F-M03-007 |
+| `/api/v1/algorithms/select/compare` | POST | 算法对比（数量需在 2-3 个之间） | - | F-M03-006 |
+| `/api/v1/algorithms/select/recommend` | POST | 算法推荐匹配（基于关键词/任务类型/样例算法，供 AI 对话 MCP 调用）【已实现】 | - | F-M03-007 |
 
 ## 3. 权限标识汇总
 
@@ -34,6 +34,6 @@
 | `A0401` | 请求资源不存在 | 查询的算法不存在或未发布；推荐匹配的样例算法 ID 不存在 |
 | `A0701` | 文件格式不支持 | 测试算法效果时上传的图片格式不支持 |
 | `A0702` | 文件大小超限 | 测试算法效果时上传图片超过大小限制 |
-| `A0500` | 业务异常 | 算法对比数量超过上限（3 个）；推荐匹配的 topN 超出 1-10 范围 |
+| `A0500` | 业务异常 | 算法对比数量需在 2-3 个之间（少于 2 或多于 3 均拒绝）；推荐匹配的 topN 超出 1-10 范围 |
 | `B0100` | 系统执行超时 | 自定义图片测试算法效果超时 |
 | `A0230` | token无效或已过期 | 未登录访问 |

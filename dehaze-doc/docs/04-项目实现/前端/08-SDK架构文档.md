@@ -4,12 +4,6 @@
 
 本文档描述 `dehaze-sdk-js` 的宏观架构与核心技术决策。`dehaze-sdk-js` 是面向 Web/React/Vue/Taro/UniApp/React Native 共用一套的 TypeScript SDK，封装 21 个业务 API 模块、Axios 请求基础设施、前端日志监控（Logger）与运行时配置注入机制，作为各前端项目与三端后端（Java/Python/Go）之间的统一接入层。
 
-### 1.1 相关文档
-
-- 日志架构契约：[02-系统架构/07-日志架构设计.md](../../02-系统架构/07-日志架构设计.md) §3.5（接收链路、字段 schema、采样限流）
-- API 规范：[02-系统架构/04-API规范.md](../../02-系统架构/04-API规范.md)
-- 各模块 API 契约：`03-模块设计/[模块]/API接口.md`
-
 ---
 
 ## 2. 架构总览

@@ -20,10 +20,10 @@
 | `/api/v1/auth/api-keys` | POST | 创建 API Key | - | F-AM-006 |
 | `/api/v1/auth/api-keys` | GET | 查询当前用户的 API Key 列表 | - | F-AM-007 |
 | `/api/v1/auth/api-keys/{id}` | DELETE | 删除/吊销 API Key | - | F-AM-008 |
-| `/api/v1/auth/login-logs` | GET | 登录日志查询 | `sys:auth:log:list` | F-AM-010 |
-| `/api/v1/auth/login-logs/export` | GET | 登录日志导出 | `sys:auth:log:export` | F-AM-010 |
-| `/api/v1/auth/sessions` | GET | 查询用户在线会话列表 | `sys:auth:session:list` | F-AM-011 |
-| `/api/v1/auth/sessions/{sessionId}` | DELETE | 踢出指定会话 | `sys:auth:session:kick` | F-AM-011 |
+| `/api/v1/auth/login-logs` | GET | 登录日志查询（分页/按用户名/IP/状态/时间筛选，管理员全量、普通用户仅本人）【已实现】 | `sys:auth:log:list` | F-AM-010 |
+| `/api/v1/auth/login-logs/export` | GET | 登录日志导出 | `sys:auth:log:export` | F-AM-010 | ➖ 规划中 |
+| `/api/v1/auth/sessions` | GET | 查询用户在线会话列表【规划中：多端会话架构未实现】 | `sys:auth:session:list` | F-AM-011 |
+| `/api/v1/auth/sessions/{sessionId}` | DELETE | 踢出指定会话【规划中】 | `sys:auth:session:kick` | F-AM-011 |
 
 ## 3. 权限标识汇总
 

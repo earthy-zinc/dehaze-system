@@ -15,7 +15,7 @@
 | `/api/v1/depts` | POST | 新增部门 | `sys:dept:add` | F-DM-002 |
 | `/api/v1/depts/{deptId}/form` | GET | 获取部门表单数据 | - | F-DM-003 |
 | `/api/v1/depts/{deptId}` | PUT | 修改部门 | `sys:dept:edit` | F-DM-003 |
-| `/api/v1/depts/{ids}` | DELETE | 删除部门（支持批量） | `sys:dept:delete` | F-DM-004 |
+| `/api/v1/depts/{ids}` | DELETE | 删除部门（支持批量）；ids 为必填非空路径参数，空列表由 SDK 前置校验拦截（服务端对空路径返回 405） | `sys:dept:delete` | F-DM-004 |
 | `/api/v1/depts/options` | GET | 获取部门下拉选项（树形结构） | - | F-DM-008 |
 
 > **业务规则**：存在关联用户或子部门时禁止删除；根部门不可删除、不可修改上级；禁用部门不级联禁用子部门，不影响该部门下用户登录。

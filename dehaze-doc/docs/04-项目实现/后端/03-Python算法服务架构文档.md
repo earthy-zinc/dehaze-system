@@ -357,7 +357,7 @@ flowchart LR
 
 Repository 层引入泛型 `BaseRepository[T]`，提供标准 CRUD 操作，子类只需声明 `model` 类型即可继承全部能力。
 
-审计字段自动填充通过 SQLAlchemy event 事件机制 + ContextVar 实现：`before_insert` 填充 `create_time`/`update_time`/`create_by`/`update_by`，`before_update` 填充 `update_time`/`update_by`。
+审计字段自动填充通过 SQLAlchemy event 事件机制 + ContextVar 实现：`before_insert` 填充 `create_time`/`update_time`/`create_by`/`update_by`，`before_update` 填充 `update_time`/`update_by`。只追加日志/流水/历史表（如 `sys_ai_credit_log`、`sys_ai_agent_thought`）继承 `AppendOnlyModel` 基类，仅自动填充 `create_time`，操作人语义由业务字段表达（`operator_id`/`auditor_id`）。
 
 存储分工：
 
