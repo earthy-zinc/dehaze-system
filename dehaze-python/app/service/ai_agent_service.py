@@ -194,7 +194,7 @@ class AgentService:
     @staticmethod
     async def get_detail(db: AsyncSession, redis: Redis, agent_id: int) -> AgentDetail:
         agent = await _get_agent_or_404(db, agent_id)
-        return await self._build_detail(db, agent)
+        return await AgentService._build_detail(db, agent)
 
     @staticmethod
     async def get_by_code(db: AsyncSession, redis: Redis, agent_code: str) -> AgentDetail | None:
@@ -207,7 +207,7 @@ class AgentService:
         agent = await ai_agent_repository.get_by_code(db, agent_code)
         if not agent:
             return None
-        detail = await self._build_detail(db, agent)
+        detail = await AgentService._build_detail(db, agent)
         # mode="json" 将 datetime 等类型转为 JSON 兼容值，避免 json.dumps 序列化失败
         await cache.set_json(key, detail.model_dump(mode="json"), _AGENT_DETAIL_TTL)
         return detail
@@ -239,7 +239,7 @@ class AgentService:
         )
         await ai_agent_repository.create(db, agent)
         await CacheService(redis).delete(_AGENT_ENABLED_LIST_KEY)
-        return await self._build_detail(db, agent)
+        return await AgentService._build_detail(db, agent)
 
     @staticmethod
     async def update_agent(
@@ -257,7 +257,7 @@ class AgentService:
                 setattr(agent, key, value)
         await db.flush()
         await _clear_agent_caches(redis, agent)
-        return await self._build_detail(db, agent)
+        return await AgentService._build_detail(db, agent)
 
     @staticmethod
     async def set_status(db: AsyncSession, redis: Redis, agent_id: int, status: int) -> None:
@@ -314,7 +314,7 @@ class AgentService:
         )
         await ai_agent_repository.create(db, copy)
         await CacheService(redis).delete(_AGENT_ENABLED_LIST_KEY)
-        return await self._build_detail(db, copy)
+        return await AgentService._build_detail(db, copy)
 
     # ── 关联管理（覆盖式更新）────────────────────────────
 
@@ -376,7 +376,7 @@ class AgentService:
         )
         if not version:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "版本快照不存在")
-        snapshot = await self.get_published_snapshot(db, redis, agent_id, version_no)
+        snapshot = await AgentService.get_published_snapshot(db, redis, agent_id, version_no)
         return version, snapshot
 
     @staticmethod
@@ -414,7 +414,7 @@ class AgentService:
             )
             cached_snapshot = await cache.get_json(version_key)
             if cached_snapshot is not None:
-                return self._apply_resolved_config(cached_snapshot)
+                return _apply_resolved_config(cached_snapshot)
             version = await ai_agent_version_repository.get_by_agent_and_version(
                 db, agent_id, version_no
             )
@@ -422,12 +422,12 @@ class AgentService:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "版本快照不存在")
             snapshot = version.snapshot or {}
             await cache.set_json(version_key, snapshot, _AGENT_VERSION_SNAPSHOT_TTL)
-            return self._apply_resolved_config(snapshot)
+            return _apply_resolved_config(snapshot)
 
         version_key = _AGENT_VERSION_SNAPSHOT_KEY.format(agent_id=agent_id, version_no=version_no)
         cached = await cache.get_json(version_key)
         if cached is not None:
-            return self._apply_resolved_config(cached)
+            return _apply_resolved_config(cached)
         version = await ai_agent_version_repository.get_by_agent_and_version(
             db, agent_id, version_no
         )
@@ -435,7 +435,7 @@ class AgentService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "版本快照不存在")
         snapshot = version.snapshot or {}
         await cache.set_json(version_key, snapshot, _AGENT_VERSION_SNAPSHOT_TTL)
-        return self._apply_resolved_config(snapshot)
+        return _apply_resolved_config(snapshot)
 
     @staticmethod
     def _apply_resolved_config(snapshot: dict) -> dict:
@@ -462,7 +462,7 @@ class AgentService:
 
         from app.service.ai.deep_agent_builder import DeepAgentBuilder
 
-        snapshot = await self.get_published_snapshot(db, redis, agent_id)
+        snapshot = await AgentService.get_published_snapshot(db, redis, agent_id)
         graph = await DeepAgentBuilder().build_from_snapshot(db, redis, snapshot)
 
         config = snapshot["config"]

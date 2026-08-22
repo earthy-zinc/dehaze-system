@@ -110,7 +110,7 @@ class A2AClient:
         context_id: str | None = None,
     ) -> Task:
         """message/send：发送消息，返回 Task（异步，需轮询 tasks/get）。"""
-        params = {"messages": messages}
+        params: dict[str, Any] = {"messages": messages}
         if task_id:
             params["taskId"] = task_id
         if context_id:
