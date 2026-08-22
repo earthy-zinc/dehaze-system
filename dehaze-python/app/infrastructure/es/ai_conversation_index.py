@@ -10,7 +10,6 @@
 import logging
 from datetime import datetime
 
-from app.config import settings
 from app.infrastructure.es.es_client import es_client
 
 logger = logging.getLogger(__name__)
@@ -44,8 +43,6 @@ async def sync_conversation(
     deleted: int = 0,
 ) -> bool:
     """写入/更新会话到 ES（纯文档写入，聚合见 service 层）"""
-    if not settings.ES_ENABLED:
-        return False
     doc = {
         "id": conv_id,
         "user_id": user_id,

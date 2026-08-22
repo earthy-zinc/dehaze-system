@@ -80,7 +80,7 @@ async def _es_empty(user_id, query, *, status, page, size):
 
 
 def _paginate_capturing(captured):
-    async def _stub(_db, uid, p, s, kw=None, status=None):
+    async def _stub(_db, uid, p, s, status=None):
         captured["status"] = status
         return [_conv(id=1)], 1
 
@@ -107,7 +107,7 @@ def _patch(
     async def _default_get_owned(db, cid, uid):
         return _conv(id=cid)
 
-    async def _default_paginate(db, uid, p, s, kw=None, status=None):
+    async def _default_paginate(db, uid, p, s, status=None):
         return [], 0
 
     async def _default_trash(db, uid, p, s, win):
@@ -399,12 +399,14 @@ class TestESList:
         result = AiConversationService._sort_conversations(convs)
         assert [c.id for c in result] == [3, 2, 1]
 
-    async def test_non_es_path_uses_mysql_with_status(self, monkeypatch):
+    async def test_keyword_es_empty_returns_empty_page(self, monkeypatch):
+        """ES 必选：keyword 搜索 ES 无命中时直接返回空页，不降级 MySQL"""
         db = StubAsyncSession()
-        captured = {}
-        _patch(monkeypatch, search=_es_empty, paginate_user_conversations=_paginate_capturing(captured))
-        await AiConversationService.list_conversations(db, 1, 1, 10, keyword="雾", status=2)
-        assert captured["status"] == 2
+        called = {}
+        _patch(monkeypatch, search=_es_empty, paginate_user_conversations=_paginate_capturing(called))
+        result = await AiConversationService.list_conversations(db, 1, 1, 10, keyword="雾", status=2)
+        assert result.list == [] and result.total == 0
+        assert "status" not in called
 
     async def test_status_all_passes_none_to_es(self, monkeypatch):
         db = StubAsyncSession()
@@ -417,13 +419,6 @@ class TestESList:
         _patch(monkeypatch, search=search)
         await AiConversationService.list_conversations(db, 1, 1, 10, keyword="雾", status=0)
         assert es_status["status"] is None
-
-    async def test_status_all_passes_none_to_mysql(self, monkeypatch):
-        db = StubAsyncSession()
-        captured = {}
-        _patch(monkeypatch, search=_es_empty, paginate_user_conversations=_paginate_capturing(captured))
-        await AiConversationService.list_conversations(db, 1, 1, 10, keyword="雾", status=0)
-        assert captured["status"] is None
 
     async def test_status_all_without_keyword_passes_none_to_mysql(self, monkeypatch):
         db = StubAsyncSession()

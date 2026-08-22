@@ -6,9 +6,9 @@
 
 调用方错误语义约定：
 - 记忆保存链路（memory_extraction.save_extracted_memories）：Embedding 失败返回空
-  向量时静默跳过 ES 同步（不抛异常，ES 未启用降级 MySQL LIKE）。
-- 记忆检索链路（memory_injection）：Embedding/检索失败返回空列表，由调用方降级
-  MySQL LIKE。
+  向量时静默跳过 ES 同步（不抛异常，不阻塞主流程）。
+- 记忆检索链路（memory_injection）：Embedding/检索失败返回空列表，由调用方按
+  空结果处理（向量检索无命中时补充 MySQL LIKE 关键词检索）。
 """
 
 import logging
@@ -16,7 +16,6 @@ from typing import Any
 
 import httpx
 
-from app.config import settings
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.es.ai_memory_index import (
     DEFAULT_DIMS,
@@ -83,8 +82,6 @@ async def _get_embedding_api_key() -> str:
 
 async def get_embedding(text: str) -> list[float]:
     """调用 embedding 模型获取向量，失败返回空列表"""
-    if not settings.ES_ENABLED:
-        return []
     config = await _load_embedding_config()
     api_key = await _get_embedding_api_key()
     if not api_key:

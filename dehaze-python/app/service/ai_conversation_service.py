@@ -136,19 +136,18 @@ class AiConversationService:
         if status is None:
             status = 1
         status_filter = None if status == 0 else status
-        # 搜索时优先走 ES 全文检索（分页 + 计数），ES 不可用时降级为 MySQL 标题模糊匹配
+        # keyword 搜索走 ES 全文检索（分页 + 计数），无命中即空结果；无 keyword 走 DB 分页
         if keyword:
             conv_ids, total = await search_conversations(
                 user_id, keyword, status=status_filter, page=page, size=size
             )
-            if conv_ids:
-                convs = await ai_conversation_repository.get_by_ids(db, user_id, conv_ids)
-                convs = AiConversationService._sort_conversations(convs)
-                return PageResult(
-                    list=[await AiConversationService._to_result(db, c) for c in convs], total=total
-                )
+            convs = await ai_conversation_repository.get_by_ids(db, user_id, conv_ids)
+            convs = AiConversationService._sort_conversations(convs)
+            return PageResult(
+                list=[await AiConversationService._to_result(db, c) for c in convs], total=total
+            )
         convs, total = await ai_conversation_repository.paginate_user_conversations(
-            db, user_id, page, size, keyword, status=status_filter
+            db, user_id, page, size, status=status_filter
         )
         return PageResult(
             list=[await AiConversationService._to_result(db, c) for c in convs], total=total

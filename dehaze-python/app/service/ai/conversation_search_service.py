@@ -11,7 +11,6 @@
 - 会话服务内同步调用（ai_conversation_service）：异常随请求上抛。
 """
 
-from app.config import settings
 from app.database import get_db_session
 from app.infrastructure.es.ai_conversation_index import INDEX_NAME, sync_conversation
 from app.infrastructure.es.es_client import es_client
@@ -44,10 +43,8 @@ async def search_conversations(
 ) -> tuple[list[int], int]:
     """全文检索会话，返回 (会话 ID 列表, 命中总数)。
 
-    默认仅检索活跃会话（status=1）；ES 不可用时返回空列表，由调用方降级 MySQL。
+    默认仅检索活跃会话（status=1）；ES 为必选基础设施，无命中返回空列表。
     """
-    if not settings.ES_ENABLED:
-        return [], 0
     filters = [
         {"term": {"user_id": user_id}},
         {"term": {"deleted": 0}},

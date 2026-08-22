@@ -18,10 +18,9 @@ import {
 // AI 知识库模块接口测试
 //
 // 前置说明：
-// - 知识库创建要求 ES 向量索引初始化成功（ensure_kb_index），ES 不可用时创建失败、无降级
-//   （见《测试用例.md》T-KB-008）。
-// - 因此本模块绝大部分用例依赖 ES 可用。顶层 beforeAll 探测一次创建，失败则相关用例按
-//   环境依赖 skip 并注明原因；非 ES 依赖的用例（参数校验、权限、空列表）任意环境可运行。
+// - ES 为必选基础设施（docker-compose 统一部署），知识库创建依赖其向量索引
+//   初始化（ensure_kb_index，见《测试用例.md》T-KB-008）；ES 未就绪时本模块用例
+//   直接失败（无降级、无 skip），属环境问题需修复部署而非跳过。
 // - 向量化使用本地 embedding 服务（8992 /v1/embeddings），createKbForm 默认
 //   embeddingProvider=local + embeddingModel=bge-m3（1024 维，与本地模型同维度）。
 // - 文档上传/批量/分块预览需要真实 fileId，顶层 beforeAll 先上传 txt 测试文件。
@@ -29,18 +28,7 @@ import {
 //   afterAll 及时删除自己创建的库，避免运行中累计超过配额导致创建失败。
 // ============================================================================
 
-let esAvailable = false;
 const testFileIds: number[] = [];
-let externalUrlReachable = false;
-
-const ES_SKIP_MSG =
-  "依赖 ES 向量索引：当前后端 ES 未启用(ES_ENABLED=false)/不可用，知识库无法创建（文档规定 ES 不可用时创建失败、无降级）。需在 dehaze-python 配置 ES 并重启后端。";
-
-function requireEs(ctx: any) {
-  if (!esAvailable) {
-    ctx.skip(ES_SKIP_MSG);
-  }
-}
 
 /** 内容唯一，避免 MD5 秒传合并 */
 function makeTxtFile(prefix: string): File {
@@ -94,43 +82,22 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
   const createdKbIds: number[] = [];
   const createdDocIds: number[] = [];
 
-  /** 创建私有知识库并登记清理，ES 不可用时返回 0 */
+  /** 创建私有知识库并登记清理 */
   async function createKb(localIds: number[]): Promise<number> {
-    if (!esAvailable) return 0;
     const result = await AiKnowledgeBaseAPI.create(createKbForm());
     createdKbIds.push(result.id);
     localIds.push(result.id);
     return result.id;
   }
 
-  // 顶层探测：ES 是否可用（能否成功创建知识库）+ 上传测试文件 + 探测外网
+  // 顶层前置：登录 + 上传测试文件 + 探测外网可达性（ES 不可用属环境故障，用例直接失败）
   beforeAll(async () => {
     await login(USERS.ADMIN.username);
     try {
-      const created = await AiKnowledgeBaseAPI.create(createKbForm());
-      if (created && created.id > 0) {
-        esAvailable = true;
-        createdKbIds.push(created.id);
-      }
-    } catch {
-      // A0500 "ES 索引初始化失败" => ES 不可用，知识库无法创建
-      esAvailable = false;
-    }
-
-    if (esAvailable) {
-      try {
-        testFileIds.push((await FileAPI.upload(makeTxtFile("kb_test_a"))).id);
-        testFileIds.push((await FileAPI.upload(makeTxtFile("kb_test_b"))).id);
-      } catch (e) {
-        console.warn("上传测试文件失败，文档上传类用例将受影响:", e);
-      }
-    }
-
-    try {
-      const resp = await fetch("https://example.com/", { method: "GET" });
-      externalUrlReachable = resp.status === 200;
-    } catch {
-      externalUrlReachable = false;
+      testFileIds.push((await FileAPI.upload(makeTxtFile("kb_test_a"))).id);
+      testFileIds.push((await FileAPI.upload(makeTxtFile("kb_test_b"))).id);
+    } catch (e) {
+      console.warn("上传测试文件失败，文档上传类用例将受影响:", e);
     }
   });
 
@@ -148,16 +115,14 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：创建知识库（基本配置）", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：创建知识库（基本配置）", async () => {
       const result = await AiKnowledgeBaseAPI.create(createKbForm());
       expect(result.id).toBeGreaterThan(0);
       createdKbIds.push(result.id);
       localKbIds.push(result.id);
     });
 
-    test("正向测试：创建知识库（完整配置含 bge-m3 + 语义分块）", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：创建知识库（完整配置含 bge-m3 + 语义分块）", async () => {
       const form = createKbForm({
         embeddingModel: "bge-m3",
         chunkingStrategy: "semantic",
@@ -207,8 +172,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       expect(typeof result.total).toBe("number");
     });
 
-    test("正向测试：按关键字搜索", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：按关键字搜索", async () => {
       const form = createKbForm({ name: `keyword_search_${Date.now()}` });
       const created = await AiKnowledgeBaseAPI.create(form);
       createdKbIds.push(created.id);
@@ -240,8 +204,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：查询知识库详情含配置和统计", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：查询知识库详情含配置和统计", async () => {
       const detail = await AiKnowledgeBaseAPI.getDetail(testKbId);
       expect(detail.id).toBe(testKbId);
       // 后端返回扁平 camelCase 字段（无嵌套 config/statistics）
@@ -273,8 +236,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：修改名称和描述", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：修改名称和描述", async () => {
       const newName = `updated_${Date.now()}`;
       const newDesc = "更新后的描述";
       await AiKnowledgeBaseAPI.update(testKbId, { name: newName, description: newDesc });
@@ -283,8 +245,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       expect(detail.description).toBe(newDesc);
     });
 
-    test("正向测试：修改检索策略（topK/hybridWeight/scoreThreshold）", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：修改检索策略（topK/hybridWeight/scoreThreshold）", async () => {
       await AiKnowledgeBaseAPI.update(testKbId, {
         topK: 10,
         hybridWeight: 0.7,
@@ -298,8 +259,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       expect(detail.enableRerank).toBe(1);
     });
 
-    test("边界：尝试修改 embedding 模型应失败（创建后不可变）", async (ctx) => {
-      requireEs(ctx);
+    test("边界：尝试修改 embedding 模型应失败（创建后不可变）", async () => {
       // 后端 knowledge_base_service.update 检测到请求携带 embedding_model 即抛
       // BUSINESS_ERROR（A0500："创建后不可修改 embedding 模型或分块策略"），拒绝而非静默忽略
       // （对齐文档 T-KB-004）。
@@ -327,8 +287,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：删除知识库", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：删除知识库", async () => {
       const created = await AiKnowledgeBaseAPI.create(createKbForm());
       localKbIds.push(created.id);
       await AiKnowledgeBaseAPI.delete(created.id);
@@ -350,8 +309,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       ]);
     });
 
-    test("安全：越权删除他人私有知识库应失败", async (ctx) => {
-      requireEs(ctx);
+    test("安全：越权删除他人私有知识库应失败", async () => {
       const created = await AiKnowledgeBaseAPI.create(createKbForm({ visibility: "private" }));
       createdKbIds.push(created.id);
       localKbIds.push(created.id);
@@ -380,8 +338,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：自定义文本创建文档", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：自定义文本创建文档", async () => {
       const result = await AiKnowledgeBaseAPI.createTextDocument(testKbId, createTextDocForm());
       expect(result.id).toBeGreaterThan(0);
       expect(result.processingStatus).toBe("pending");
@@ -420,19 +377,13 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
     afterAll(() => deleteKbs(localKbIds));
 
     test("正向测试：导入网页 URL 创建文档", async (ctx) => {
-      requireEs(ctx);
-      if (!externalUrlReachable) {
-        ctx.skip("依赖外部网页可达性：当前环境无法访问 example.com，保持环境性跳过");
-        return;
-      }
       const result = await AiKnowledgeBaseAPI.importUrlDocument(testKbId, createImportUrlForm());
       expect(result.id).toBeGreaterThan(0);
       expect(result.processingStatus).toBe("pending");
       createdDocIds.push(result.id);
     });
 
-    test("参数校验：空 URL 应失败", async (ctx) => {
-      requireEs(ctx);
+    test("参数校验：空 URL 应失败", async () => {
       // 需真实知识库才能到达 URL 校验（service 先校验库存在，再校验 URL）
       const form = createImportUrlForm({ url: "" });
       await expectBizError(AiKnowledgeBaseAPI.importUrlDocument(testKbId, form), [
@@ -442,8 +393,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       ]);
     });
 
-    test("参数校验：非法 URL 格式应失败", async (ctx) => {
-      requireEs(ctx);
+    test("参数校验：非法 URL 格式应失败", async () => {
       const form = createImportUrlForm({ url: "not-a-url" });
       await expectBizError(AiKnowledgeBaseAPI.importUrlDocument(testKbId, form), [
         "A0400",
@@ -464,7 +414,6 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
     afterAll(() => deleteKbs(localKbIds));
 
     test("正向测试：通过 fileId 上传文档", async (ctx) => {
-      requireEs(ctx);
       if (testFileIds.length === 0) {
         ctx.skip("顶层测试文件上传失败，无法通过 fileId 上传文档");
         return;
@@ -478,8 +427,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       createdDocIds.push(result.id);
     });
 
-    test("边界：不存在的 fileId 应失败", async (ctx) => {
-      requireEs(ctx);
+    test("边界：不存在的 fileId 应失败", async () => {
       const form = createDocUploadForm({ fileId: 99999999 });
       await expectBizError(AiKnowledgeBaseAPI.uploadDocument(testKbId, form), [
         "A0401",
@@ -512,7 +460,6 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
     afterAll(() => deleteKbs(localKbIds));
 
     test("正向测试：批量上传 2 个文档", async (ctx) => {
-      requireEs(ctx);
       if (testFileIds.length < 2) {
         ctx.skip("顶层测试文件上传失败，无法批量上传文档");
         return;
@@ -556,15 +503,13 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：查询知识库文档列表", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：查询知识库文档列表", async () => {
       const result = await AiKnowledgeBaseAPI.getDocuments(testKbId, createDocQuery());
       expect(Array.isArray(result.list)).toBe(true);
       expect(result.list.length).toBeGreaterThan(0);
     });
 
-    test("正向测试：按处理状态筛选", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：按处理状态筛选", async () => {
       const result = await AiKnowledgeBaseAPI.getDocuments(
         testKbId,
         createDocQuery({ processingStatus: "pending" })
@@ -574,8 +519,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       });
     });
 
-    test("正向测试：按关键字搜索", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：按关键字搜索", async () => {
       const result = await AiKnowledgeBaseAPI.getDocuments(
         testKbId,
         createDocQuery({ keyword: "text_doc" })
@@ -598,8 +542,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：查询文档详情含解析内容", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：查询文档详情含解析内容", async () => {
       const detail = await AiKnowledgeBaseAPI.getDocumentDetail(testDocId);
       expect(detail.id).toBe(testDocId);
       expect(detail.title).toBeTruthy();
@@ -622,8 +565,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：删除文档", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：删除文档", async () => {
       const kb = await AiKnowledgeBaseAPI.create(createKbForm());
       createdKbIds.push(kb.id);
       localKbIds.push(kb.id);
@@ -658,8 +600,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：重新处理文档", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：重新处理文档", async () => {
       const kb = await AiKnowledgeBaseAPI.create(createKbForm());
       createdKbIds.push(kb.id);
       localKbIds.push(kb.id);
@@ -702,8 +643,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：查询文档分块列表", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：查询文档分块列表", async () => {
       // 后端返回分页对象 {list, total}
       const result = await AiKnowledgeBaseAPI.getChunks(testDocId);
       expect(Array.isArray(result.list)).toBe(true);
@@ -729,7 +669,6 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
   describe("POST /api/v1/kb/documents/chunks/preview - 分块预览", () => {
     test("正向测试：预览文档分块效果", async (ctx) => {
-      requireEs(ctx);
       if (testFileIds.length === 0) {
         ctx.skip("顶层测试文件上传失败，无法预览分块效果");
         return;
@@ -769,8 +708,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：混合检索返回结果", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：混合检索返回结果", async () => {
       const result = await AiKnowledgeBaseAPI.search(
         createSearchForm({ knowledgeBaseIds: [testKbId], query: "去雾算法" })
       );
@@ -778,8 +716,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       expect(Array.isArray(result.results)).toBe(true);
     });
 
-    test("验证：检索结果含完整字段", async (ctx) => {
-      requireEs(ctx);
+    test("验证：检索结果含完整字段", async () => {
       const result = await AiKnowledgeBaseAPI.search(
         createSearchForm({ knowledgeBaseIds: [testKbId], query: "RIDCP" })
       );
@@ -794,16 +731,14 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       }
     });
 
-    test("正向测试：Top-K 控制返回数量", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：Top-K 控制返回数量", async () => {
       const result = await AiKnowledgeBaseAPI.search(
         createSearchForm({ knowledgeBaseIds: [testKbId], query: "去雾", topK: 3 })
       );
       expect(result.results.length).toBeLessThanOrEqual(3);
     });
 
-    test("正向测试：元数据过滤（按文档类型）", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：元数据过滤（按文档类型）", async () => {
       const result = await AiKnowledgeBaseAPI.search(
         createSearchForm({
           knowledgeBaseIds: [testKbId],
@@ -814,8 +749,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       expect(Array.isArray(result.results)).toBe(true);
     });
 
-    test("正向测试：启用 Rerank 重排序", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：启用 Rerank 重排序", async () => {
       const result = await AiKnowledgeBaseAPI.search(
         createSearchForm({ knowledgeBaseIds: [testKbId], query: "RIDCP 算法" })
       );
@@ -830,14 +764,12 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       ]);
     });
 
-    test("安全：检索注入防护（SQL 注入式查询不触发特殊语法）", async (ctx) => {
-      requireEs(ctx);
+    test("安全：检索注入防护（SQL 注入式查询不触发特殊语法）", async () => {
       const result = await AiKnowledgeBaseAPI.search(createSearchForm({ query: "* OR 1=1" }));
       expect(Array.isArray(result.results)).toBe(true);
     });
 
-    test("边界：检索不存在知识库应失败", async (ctx) => {
-      requireEs(ctx);
+    test("边界：检索不存在知识库应失败", async () => {
       // 后端对指定知识库做存在性校验：不存在则抛 A0401（非静默空结果）
       await expectBizError(
         AiKnowledgeBaseAPI.search(
@@ -858,8 +790,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：检索测试返回结果", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：检索测试返回结果", async () => {
       const result = await AiKnowledgeBaseAPI.retrieveTest(
         testKbId,
         createRetrieveTestForm({ query: "去雾算法" })
@@ -867,8 +798,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       expect(Array.isArray(result.results)).toBe(true);
     });
 
-    test("正向测试：自定义 topK 和阈值", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：自定义 topK 和阈值", async () => {
       const result = await AiKnowledgeBaseAPI.retrieveTest(
         testKbId,
         createRetrieveTestForm({ query: "去雾", topK: 3 })
@@ -893,8 +823,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("安全：普通用户无法管理公共知识库", async (ctx) => {
-      requireEs(ctx);
+    test("安全：普通用户无法管理公共知识库", async () => {
       const created = await AiKnowledgeBaseAPI.create(createKbForm({ visibility: "public" }));
       createdKbIds.push(created.id);
       localKbIds.push(created.id);
@@ -910,8 +839,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       });
     });
 
-    test("安全：普通用户可只读访问公共知识库", async (ctx) => {
-      requireEs(ctx);
+    test("安全：普通用户可只读访问公共知识库", async () => {
       const created = await AiKnowledgeBaseAPI.create(createKbForm({ visibility: "public" }));
       createdKbIds.push(created.id);
       localKbIds.push(created.id);
@@ -922,8 +850,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       });
     });
 
-    test("安全：越权查看他人私有知识库文档应失败", async (ctx) => {
-      requireEs(ctx);
+    test("安全：越权查看他人私有知识库文档应失败", async () => {
       const kb = await AiKnowledgeBaseAPI.create(createKbForm({ visibility: "private" }));
       createdKbIds.push(kb.id);
       localKbIds.push(kb.id);
@@ -954,8 +881,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：自定义文本文档处理状态从 pending 流转为 completed/failed", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：自定义文本文档处理状态从 pending 流转为 completed/failed", async () => {
       const doc = await AiKnowledgeBaseAPI.createTextDocument(testKbId, createTextDocForm());
       createdDocIds.push(doc.id);
 
@@ -969,8 +895,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       expect(["completed", "failed"]).toContain(finalStatus);
     }, 45000);
 
-    test("正向测试：重新处理文档后状态回到 pending", async (ctx) => {
-      requireEs(ctx);
+    test("正向测试：重新处理文档后状态回到 pending", async () => {
       const doc = await AiKnowledgeBaseAPI.createTextDocument(testKbId, createTextDocForm());
       createdDocIds.push(doc.id);
 
@@ -986,8 +911,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       }
     }, 15000);
 
-    test("验证：completed 状态文档的分块可查询", async (ctx) => {
-      requireEs(ctx);
+    test("验证：completed 状态文档的分块可查询", async () => {
       const doc = await AiKnowledgeBaseAPI.createTextDocument(testKbId, createTextDocForm());
       createdDocIds.push(doc.id);
 

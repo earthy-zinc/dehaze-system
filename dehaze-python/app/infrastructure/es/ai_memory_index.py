@@ -9,7 +9,6 @@ memory_es_service，勿在此引入 httpx / repository / db session。
 
 import logging
 
-from app.config import settings
 from app.infrastructure.es.es_client import es_client
 
 logger = logging.getLogger(__name__)
@@ -48,8 +47,6 @@ async def ensure_memory_index(dims: int) -> bool:
 
 async def sync_memory_doc(memory: dict, vector: list[float]) -> bool:
     """写入/更新单条记忆到 ES（纯文档写入，vector 由调用方计算）"""
-    if not settings.ES_ENABLED:
-        return False
     doc = {
         "id": memory["id"],
         "user_id": memory["user_id"],
@@ -66,8 +63,6 @@ async def sync_memory_doc(memory: dict, vector: list[float]) -> bool:
 
 async def delete_memory_doc(memory_id: int) -> bool:
     """删除单条记忆的 ES 文档（记忆软删时同步清除向量索引）"""
-    if not settings.ES_ENABLED:
-        return False
     return await es_client.delete_doc(INDEX_NAME, str(memory_id))
 
 

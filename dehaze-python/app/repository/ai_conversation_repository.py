@@ -4,7 +4,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_ai_conversation import SysAiConversation
-from app.repository.base import BaseRepository, escape_like
+from app.repository.base import BaseRepository
 
 
 class AiConversationRepository(BaseRepository[SysAiConversation]):
@@ -16,7 +16,6 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         user_id: int,
         page: int,
         size: int,
-        keyword: str | None = None,
         status: int | None = None,
     ) -> tuple[list[SysAiConversation], int]:
         stmt = select(SysAiConversation).where(
@@ -25,9 +24,6 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         )
         if status is not None:
             stmt = stmt.where(SysAiConversation.status == status)
-        if keyword:
-            escaped = escape_like(keyword)
-            stmt = stmt.where(SysAiConversation.title.like(f"%{escaped}%", escape="\\"))
         stmt = stmt.order_by(
             SysAiConversation.pinned.desc(),
             SysAiConversation.pinned_at.desc(),

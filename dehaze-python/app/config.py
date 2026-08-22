@@ -403,12 +403,11 @@ class Settings(BaseSettings):
     # 历史上下文均值滑动的窗口权重（新值占比）
     AI_BILLING_CTX_AVG_WEIGHT: float = Field(default=0.5, gt=0, le=1)
 
-    # ===== Elasticsearch（记忆向量检索 / 会话全文检索） =====
-    ES_ENABLED: bool = False  # 默认关闭，需手动开启
+    # ===== Elasticsearch（记忆向量检索 / 会话全文检索，必选基础设施，docker-compose 统一部署） =====
     ES_URL: str = "http://localhost:9200"
     ES_API_KEY: str = ""  # 可选；与用户名密码二选一
-    ES_USERNAME: str = ""
-    ES_PASSWORD: str = ""
+    ES_USERNAME: str = "elastic"  # docker-compose 启用 xpack security，elastic 超级用户
+    ES_PASSWORD: str = ""  # 留空则复用 DEHAZE_PASSWORD（由 model_validator 处理）
 
     # ===== AI 知识库 =====
     # 分块默认/边界
@@ -471,6 +470,8 @@ class Settings(BaseSettings):
             self.DEFAULT_PASSWORD = self.DEHAZE_PASSWORD
         if not self.XXLJOB_ACCESS_TOKEN:
             self.XXLJOB_ACCESS_TOKEN = self.DEHAZE_PASSWORD
+        if not self.ES_PASSWORD:
+            self.ES_PASSWORD = self.DEHAZE_PASSWORD
         return self
 
 

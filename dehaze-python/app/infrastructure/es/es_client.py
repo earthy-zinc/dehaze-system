@@ -1,7 +1,8 @@
 """Elasticsearch 客户端封装
 
 提供连接管理、索引 CRUD、向量检索与全文检索能力。
-ES 未启用或不可用时所有方法返回 None / 空列表，不抛异常，保证核心功能降级可用。
+ES 为必选基础设施（docker-compose 统一部署）；运行期故障（连接失败等）时方法
+返回 None / 空列表并记 warning，不抛异常，避免打断对话主流程。
 
 连接由实例持有（es_client 模块级单例），测试 monkeypatch 实例的 _client
 属性即可完成隔离。
@@ -22,9 +23,7 @@ class EsClient:
         self._client: Any = None
 
     async def get_client(self) -> Any:
-        """获取 ES 客户端，不可用时返回 None"""
-        if not settings.ES_ENABLED:
-            return None
+        """获取 ES 客户端，初始化失败返回 None"""
         if self._client is None:
             try:
                 from elasticsearch import AsyncElasticsearch
