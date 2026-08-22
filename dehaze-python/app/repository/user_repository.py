@@ -32,7 +32,7 @@ class UserRepository(BaseRepository[SysUser]):
             .distinct()
         )
         result = await db.execute(stmt)
-        return [int(row) for row in result.fetchall()]
+        return list(result.scalars().all())
 
     async def get_by_username(
         self,

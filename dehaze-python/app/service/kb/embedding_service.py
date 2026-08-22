@@ -7,6 +7,7 @@
 失败语义：向量化失败抛 BusinessException（由上层决定降级/重试），不静默返回空。
 """
 
+import asyncio
 import logging
 from typing import Any
 
@@ -17,6 +18,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.repository.ai_provider_repository import ai_provider_repository
+from app.service.ai.local_llm_manager import ensure_running
 from app.service.ai_provider_key_service import AiProviderKeyService
 
 logger = logging.getLogger(__name__)
@@ -79,6 +81,10 @@ async def _embed_batch(
             ResultCode.AI_MODEL_NOT_AVAILABLE,
             f"未知 embedding provider_code={provider_code}",
         )
+    if provider_code == "local":
+        # 本地 embedding 服务与对话推理共用子进程，调用前确保已拉起
+        # （主进程重启后子进程被 PDEATHSIG 回收，需重新拉起）
+        await asyncio.to_thread(ensure_running)
     api_key = await _get_embedding_api_key(provider_code)
     try:
         async with httpx.AsyncClient(timeout=30) as client:
