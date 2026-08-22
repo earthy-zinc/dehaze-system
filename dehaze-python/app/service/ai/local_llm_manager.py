@@ -75,15 +75,17 @@ def ensure_running() -> str:
     global _PROC, _SHUTDOWN_REGISTERED
     logger.info("拉起本地 LLM 子进程（%s）", _base_url())
     root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    # preexec_fn 仅 POSIX 支持（Windows 传入直接抛 ValueError）；PDEATHSIG 见 _set_pdeathsig
+    popen_kwargs: dict = {"preexec_fn": _set_pdeathsig} if os.name == "posix" else {}
     _PROC = subprocess.Popen(
         [sys.executable, "-m", "app.service.ai.local_llm_server"],
         cwd=root,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        preexec_fn=_set_pdeathsig,  # 父进程被强杀时子进程一并退出，避免孤儿
+        **popen_kwargs,
     )
     if not _SHUTDOWN_REGISTERED:
-        atexit.register(_shutdown)
+        atexit.register(shutdown)
         _SHUTDOWN_REGISTERED = True
 
     for _ in range(120):  # 最多等 60s（含模型加载约 5-15s）
@@ -127,10 +129,16 @@ def _kill_port_holder() -> None:
         logger.warning("清理端口占用进程失败: %s", exc)
 
 
-def _shutdown() -> None:
-    if _PROC and _PROC.poll() is None:
+def shutdown() -> None:
+    """回收本地 LLM 子进程（lifespan 优雅关闭调用，atexit 兜底复用，幂等）。"""
+    global _PROC
+    if _PROC is None:
+        return
+    if _PROC.poll() is None:
+        logger.info("回收本地 LLM 子进程 pid=%s", _PROC.pid)
         _PROC.terminate()
         try:
             _PROC.wait(timeout=5)
         except subprocess.TimeoutExpired:
             _PROC.kill()
+    _PROC = None

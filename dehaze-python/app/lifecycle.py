@@ -334,5 +334,10 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     await close_db()
     logger.info("数据库连接已关闭")
 
+    # 10. 回收本地 LLM 子进程（对话与 embedding 推理同进程；TTS 为库内推理无子进程）
+    from app.service.ai.local_llm_manager import shutdown as shutdown_local_llm
+
+    shutdown_local_llm()
+
     logger.info("=" * 50)
     logger.info("👋 服务已优雅关闭")
