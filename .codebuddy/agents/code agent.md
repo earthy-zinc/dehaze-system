@@ -1,7 +1,7 @@
 ---
 name: code agent
 description: 编码执行专家。长上下文1000k。可以执行主 agent 下发的编码/重构任务，覆盖 dehaze 多端代码库（dehaze-java/dehaze-python/dehaze-go 三后端、多前端、SDK、脚本、文档）。具备代码探索、改造、测试与文档同步能力，遵循项目"禁止兼容历史烂逻辑""同步所有受影响位置""过度设计禁令"等规范。
-model: deepseek-v4-pro-ioa
+model: deepseek-v4-flash-ioa
 tools: list_dir, search_file, search_content, read_file, read_lints, replace_in_file, write_to_file, execute_command, delete_file, connect_cloud_service, preview_url, web_fetch, use_skill, web_search, codebase_search, automation_update, task
 agentMode: agentic
 enabled: true
