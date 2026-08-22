@@ -132,11 +132,31 @@ services:
     networks:
       - pei-network
 
+  # ES 插件初始化（一次性）：安装 analysis-ik 中文分词插件（幂等，已安装则跳过）
+  es-plugin-init:
+    image: alpine:3.20
+    container_name: es-plugin-init
+    command: >
+      sh -c "if [ ! -d /usr/share/elasticsearch/plugins/analysis-ik ]; then
+        apk add --no-cache curl unzip &&
+        curl -fsSL -o /tmp/ik.zip https://get.infini.cloud/elasticsearch/analysis-ik/8.18.2 &&
+        unzip -q /tmp/ik.zip -d /usr/share/elasticsearch/plugins/analysis-ik &&
+        rm -f /tmp/ik.zip;
+      fi"
+    volumes:
+      - es-plugins:/usr/share/elasticsearch/plugins
+    networks:
+      - pei-network
+    restart: "no"
+
   # ElasticSearch
   elasticsearch:
     image: elasticsearch:8.18.2
     container_name: elasticsearch
     restart: unless-stopped
+    depends_on:
+      es-plugin-init:
+        condition: service_completed_successfully
     ports:
       - "9200:9200"
       - "9300:9300"
