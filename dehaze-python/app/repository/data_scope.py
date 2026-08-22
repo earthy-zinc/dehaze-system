@@ -20,8 +20,10 @@ ROOT 用户（roles 含 "ROOT"）跳过过滤。
   "本部门"过滤需调用方在查询中 JOIN sys_user 取 dept_id，此处不自动注入 JOIN。
 """
 
+from typing import Any
+
 from sqlalchemy import Select, false
-from sqlalchemy.sql.expression import ColumnElement
+from sqlalchemy.orm import InstrumentedAttribute
 
 from app.dependencies.auth import UserContext
 from app.repository.dept_repository import dept_repository
@@ -32,8 +34,8 @@ async def apply_data_scope(
     user: UserContext,
     db,
     *,
-    dept_field: ColumnElement | None = None,
-    creator_field: ColumnElement | None = None,
+    dept_field: InstrumentedAttribute[Any] | None = None,
+    creator_field: InstrumentedAttribute[Any] | None = None,
 ) -> Select:
     """
     按用户 data_scope 为查询追加行级过滤条件

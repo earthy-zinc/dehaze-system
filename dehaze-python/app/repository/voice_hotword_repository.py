@@ -15,13 +15,6 @@ class VoiceHotwordRepository(BaseRepository[SysVoiceHotword]):
 
     model = SysVoiceHotword
 
-    async def get_by_id(self, db: AsyncSession, hotword_id: int) -> SysVoiceHotword | None:
-        """按 ID 查询未删除的热词"""
-        stmt = select(SysVoiceHotword).where(
-            SysVoiceHotword.id == hotword_id, SysVoiceHotword.deleted == 0
-        )
-        return (await db.execute(stmt)).scalar_one_or_none()
-
     async def list_by_scope(
         self,
         db: AsyncSession,

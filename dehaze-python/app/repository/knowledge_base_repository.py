@@ -8,12 +8,6 @@ from app.repository.base import BaseRepository, escape_like
 class KnowledgeBaseRepository(BaseRepository[SysKnowledgeBase]):
     model = SysKnowledgeBase
 
-    async def get_by_id(self, db: AsyncSession, id: int) -> SysKnowledgeBase | None:
-        """按 ID 查询（默认过滤软删）"""
-        stmt = select(SysKnowledgeBase).where(SysKnowledgeBase.id == id)
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
     async def get_by_id_include_deleted(
         self, db: AsyncSession, id: int
     ) -> SysKnowledgeBase | None:

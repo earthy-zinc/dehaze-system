@@ -5,15 +5,12 @@ Repository 泛型基类
 特定查询在子类中扩展。
 """
 
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
-from sqlalchemy import Integer, Select, delete, func, or_, select, update
+from sqlalchemy import Select, delete, func, inspect, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.expression import ColumnElement
-
-if TYPE_CHECKING:
-    pass
 
 T = TypeVar("T", bound=DeclarativeBase)
 
@@ -33,23 +30,20 @@ def escape_like(pattern: str) -> str:
 class BaseRepository(Generic[T]):
     """
     泛型 Repository 基类
-
-    使用方式:
-        class UserRepository(BaseRepository[SysUser]):
-            model = SysUser
     """
 
     model: type[T]
 
     # ── 查询 ──────────────────────────────────────────
 
-    def _get_id_column(self) -> ColumnElement[Integer]:
-        """获取 ID 列"""
-        return self.model.id
+    def _get_id_column(self) -> ColumnElement[Any]:
+        """获取主键列（通过 Mapper 获取，不依赖字段名约定）"""
+        return inspect(self.model).primary_key[0]
 
-    def _get_deleted_column(self) -> ColumnElement[Integer]:
-        """获取 deleted 列"""
-        return self.model.deleted
+    def _get_deleted_column(self) -> ColumnElement[Any] | None:
+        """获取逻辑删除列（SoftDeleteMixin 提供），未继承该 Mixin 时返回 None"""
+        columns = inspect(self.model).columns
+        return columns["deleted"] if "deleted" in columns else None
 
     async def get_by_id(
         self,
@@ -220,16 +214,17 @@ class BaseRepository(Generic[T]):
         """按 ID 列表批量软删除（将 deleted 置为 1）"""
         if not ids:
             return 0
-        if not hasattr(self.model, "deleted"):
+        deleted_column = self._get_deleted_column()
+        if deleted_column is None:
             raise AttributeError(f"{self.model.__name__} does not have 'deleted' field")
         id_column = self._get_id_column()
-        values: dict[str, Any] = {"deleted": 1}
+        values: dict[str | ColumnElement[Any], Any] = {deleted_column: 1}
         # Core update 绕过 ORM 事件，需手动填充审计字段
         if hasattr(self.model, "update_by"):
             from app.models.base import get_audit_update_values
 
             values.update(get_audit_update_values())
-        stmt = update(self.model).where(id_column.in_(ids)).values(**values)
+        stmt = update(self.model).where(id_column.in_(ids)).values(values)
         result = await db.execute(stmt)
         return result.rowcount
 

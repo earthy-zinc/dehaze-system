@@ -189,7 +189,7 @@ class UserRepository(BaseRepository[SysUser]):
         if dept_ids:
             base_query = base_query.where(SysUser.dept_id.in_(dept_ids))
 
-        # 行级数据权限过滤（与 Java/Go 端对齐）
+        # 行级数据权限过滤
         if current_user is not None:
             base_query = await apply_data_scope(
                 base_query,

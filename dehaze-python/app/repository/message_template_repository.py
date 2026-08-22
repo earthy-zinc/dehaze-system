@@ -34,14 +34,6 @@ class MessageTemplateRepository(BaseRepository[SysMessageTemplate]):
         items = list(result.scalars().all())
         return items, total
 
-    async def get_by_id(self, db: AsyncSession, template_id: int) -> SysMessageTemplate | None:
-        stmt = select(SysMessageTemplate).where(
-            SysMessageTemplate.id == template_id,
-            SysMessageTemplate.deleted == 0,
-        )
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
     async def get_by_code(self, db: AsyncSession, code: str) -> SysMessageTemplate | None:
         """根据编码查询消息模板（含软删记录，用于查重）"""
         stmt = select(SysMessageTemplate).where(
