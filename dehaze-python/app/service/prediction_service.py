@@ -722,7 +722,7 @@ class PredictionService:
 
         返回 object_name（对象键），URL 由响应层通过 storage.get_url 拼接。
         """
-        from app.service.file_service import get_minio_client
+        from app.infrastructure.storage.minio_client import get_minio_client
 
         date_str = datetime.now().strftime("%Y%m%d")
         filename = f"{algorithm_name}_{int(time.time() * 1000)}.png"

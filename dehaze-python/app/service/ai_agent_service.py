@@ -414,7 +414,7 @@ class AgentService:
             )
             cached_snapshot = await cache.get_json(version_key)
             if cached_snapshot is not None:
-                return _apply_resolved_config(cached_snapshot)
+                return AgentService._apply_resolved_config(cached_snapshot)
             version = await ai_agent_version_repository.get_by_agent_and_version(
                 db, agent_id, version_no
             )
@@ -422,12 +422,12 @@ class AgentService:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "版本快照不存在")
             snapshot = version.snapshot or {}
             await cache.set_json(version_key, snapshot, _AGENT_VERSION_SNAPSHOT_TTL)
-            return _apply_resolved_config(snapshot)
+            return AgentService._apply_resolved_config(snapshot)
 
         version_key = _AGENT_VERSION_SNAPSHOT_KEY.format(agent_id=agent_id, version_no=version_no)
         cached = await cache.get_json(version_key)
         if cached is not None:
-            return _apply_resolved_config(cached)
+            return AgentService._apply_resolved_config(cached)
         version = await ai_agent_version_repository.get_by_agent_and_version(
             db, agent_id, version_no
         )
@@ -435,7 +435,7 @@ class AgentService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "版本快照不存在")
         snapshot = version.snapshot or {}
         await cache.set_json(version_key, snapshot, _AGENT_VERSION_SNAPSHOT_TTL)
-        return _apply_resolved_config(snapshot)
+        return AgentService._apply_resolved_config(snapshot)
 
     @staticmethod
     def _apply_resolved_config(snapshot: dict) -> dict:

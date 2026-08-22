@@ -10,48 +10,28 @@ import hashlib
 import logging
 import re
 from collections.abc import AsyncIterator
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from io import BytesIO
 from urllib.parse import quote
 
 from fastapi.responses import StreamingResponse
-from minio import Minio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.infrastructure.storage.minio_client import get_minio_client, minio_executor
 from app.models.entity.sys_file import SysFile
 from app.repository.file_repository import file_repository
 from app.utils.file import convert_size
 
 logger = logging.getLogger(__name__)
 
-# MinIO 操作线程池（MinIO SDK 是同步的，需要在线程池中执行）
-_minio_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="minio-ops")
-
-# MinIO 客户端单例
-_minio_client: Minio | None = None
-
 # 文件名安全校验正则：禁止路径遍历、空字节、管道等特殊字符
 _UNSAFE_FILENAME_PATTERN = re.compile(r'[\\/:*?"<>|\x00-\x1f]|\.\./')
 
 # 文件下载分块大小 (1MB)
 _DOWNLOAD_CHUNK_SIZE = 1024 * 1024
-
-
-def get_minio_client() -> Minio:
-    """获取 MinIO 客户端单例实例"""
-    global _minio_client
-    if _minio_client is None:
-        _minio_client = Minio(
-            settings.MINIO_ENDPOINT,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE,
-        )
-    return _minio_client
 
 
 def generate_object_name(md5: str, extension: str) -> str:
@@ -147,7 +127,7 @@ class FileService:
 
         try:
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(_minio_executor, _sync_upload)
+            await loop.run_in_executor(minio_executor, _sync_upload)
         except Exception as e:
             logger.error("文件上传到存储服务失败: %s", e, exc_info=True)
             raise BusinessException(
@@ -222,7 +202,7 @@ class FileService:
 
         try:
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(_minio_executor, _sync_remove)
+            await loop.run_in_executor(minio_executor, _sync_remove)
         except Exception as e:
             logger.warning("物理文件删除异常 [%s]: %s", object_name, e)
 
@@ -324,7 +304,7 @@ class FileService:
                 asyncio.run_coroutine_threadsafe(queue.put(_SENTINEL), loop).result()
 
         # 启动生产者线程（非阻塞，在后台运行）
-        loop.run_in_executor(_minio_executor, _producer)
+        loop.run_in_executor(minio_executor, _producer)
 
         try:
             while True:
@@ -383,7 +363,7 @@ class FileService:
 
         try:
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(_minio_executor, _sync_stat)
+            return await loop.run_in_executor(minio_executor, _sync_stat)
         except Exception:
             return None
 
@@ -405,7 +385,7 @@ class FileService:
 
         try:
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(_minio_executor, _sync_check)
+            await loop.run_in_executor(minio_executor, _sync_check)
         except Exception as e:
             logger.warning("检查/创建 MinIO Bucket 失败: %s", e)
 

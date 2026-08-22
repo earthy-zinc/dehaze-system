@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import EXPORT_TASK_TYPES
-from app.service.file_service import _minio_executor, get_minio_client
+from app.infrastructure.storage.minio_client import get_minio_client, minio_executor
 from app.service.import_export.models import ExportContext
 from app.service.import_export.registry import export_handler_registry
 from app.service.task.strategies._common import make_cancel_cb, resolve_module
@@ -87,4 +87,4 @@ async def _upload_to_minio(data: bytes, object_name: str, content_type: str) -> 
         )
 
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(_minio_executor, _sync)
+    await loop.run_in_executor(minio_executor, _sync)

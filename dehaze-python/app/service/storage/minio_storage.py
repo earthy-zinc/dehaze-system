@@ -9,6 +9,7 @@ from io import BytesIO
 from minio import Minio
 
 from app.config import settings
+from app.infrastructure.storage.minio_client import get_minio_client
 from app.service.storage.base import StorageService
 
 logger = logging.getLogger(__name__)
@@ -19,16 +20,11 @@ class MinioStorageService(StorageService):
     MinIO 存储服务实现
 
     所有方法为同步操作，需在线程池中调用以避免阻塞事件循环。
-    客户端实例在构造时创建，整个生命周期复用。
+    客户端复用基础设施层的统一单例。
     """
 
     def __init__(self):
-        self._client = Minio(
-            settings.MINIO_ENDPOINT,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE,
-        )
+        self._client = get_minio_client()
 
     @property
     def name(self) -> str:

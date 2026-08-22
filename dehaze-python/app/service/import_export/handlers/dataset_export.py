@@ -23,7 +23,7 @@ from app.core.exceptions import BusinessException
 from app.models.entity.sys_dataset import SysDatasetItem, SysItemFile
 from app.repository.dataset_repository import dataset_repository
 from app.repository.file_repository import file_repository
-from app.service.file_service import _minio_executor, get_minio_client
+from app.infrastructure.storage.minio_client import get_minio_client, minio_executor
 from app.service.import_export.models import ExportContext, ExportFieldConfig
 from app.service.import_export.registry import ExportHandler
 
@@ -242,7 +242,7 @@ async def _download_from_minio(object_name: str) -> bytes | None:
 
     try:
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(_minio_executor, _sync)
+        return await loop.run_in_executor(minio_executor, _sync)
     except Exception as e:
         logger.error("MinIO 下载执行失败: objectName=%s, error=%s", object_name, e)
         return None

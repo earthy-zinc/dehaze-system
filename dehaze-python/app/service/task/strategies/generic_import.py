@@ -12,6 +12,7 @@ import asyncio
 import io
 import json
 import logging
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +21,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import IMPORT_TASK_TYPES
-from app.service.file_service import _minio_executor, get_minio_client
+from app.infrastructure.storage.minio_client import get_minio_client, minio_executor
 from app.service.import_export.file_parser import parse_csv, parse_excel
 from app.service.import_export.models import ImportOptions
 from app.service.import_export.registry import import_handler_registry
@@ -41,7 +42,7 @@ class GenericImportStrategy(TaskStrategy):
         params_json: str | None,
         progress_callback: ProgressCallback,
         cancel_checker: CancelChecker,
-    ) -> str | None:
+    ) -> dict[str, Any] | None:
         params = json.loads(params_json or "{}")
         module = resolve_module(params, sys_task.task_type)
 
@@ -89,7 +90,7 @@ async def _download_from_minio(object_name: str) -> bytes:
             response.release_conn()
 
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_minio_executor, _sync)
+    return await loop.run_in_executor(minio_executor, _sync)
 
 
 async def _upload_error_report(result, task_id: str, module: str) -> str | None:
@@ -121,7 +122,7 @@ async def _upload_error_report(result, task_id: str, module: str) -> str | None:
 
     try:
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(_minio_executor, _sync)
+        return await loop.run_in_executor(minio_executor, _sync)
     except Exception as e:
         logger.warning("错误报告上传失败: %s", e)
         return None

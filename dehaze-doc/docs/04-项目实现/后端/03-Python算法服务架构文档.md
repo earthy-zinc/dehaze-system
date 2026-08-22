@@ -68,7 +68,25 @@ flowchart TB
 | Repository 层 | `repository/` | 数据库 CRUD 封装、分页、模糊搜索、批量操作、复杂查询 |
 | Models 层 | `models/` | ORM 实体、Schema 定义、Enum 常量 |
 | Core 层 | `core/` | 统一错误码、响应封装、业务异常 |
-| 基础设施层 | `infrastructure/` | 日志、缓存、消息队列、定时任务、指标采集 |
+| 基础设施层 | `infrastructure/` | 第三方客户端连接单例与生命周期（MySQL/Redis/Mongo/MinIO/ES/MQ）、日志、缓存、定时任务、指标采集；不感知 FastAPI 与业务 |
+
+### 基础设施分层规范（连接 / 注入 / 业务）
+
+基础设施按"连接管理、依赖注入、业务服务"三层收敛，统一管理边界：
+
+| 类别 | 位置 | 职责 | 示例 |
+|------|------|------|------|
+| 连接管理 | `infrastructure/` | 第三方客户端单例与生命周期，不感知 FastAPI | `infrastructure/storage/minio_client.py`（`get_minio_client`/`minio_executor`）、`infrastructure/es/`（`es_client` 单例）、`infrastructure/mq/` |
+| 依赖注入 | `dependencies/` | FastAPI `Depends` 提供器，包装连接供 Router/Service 使用 | `dependencies/auth.py`、`dependencies/redis.py`、`dependencies/mongo.py` |
+| 业务服务 | `service/` | 业务编排，通过注入或基础设施单例使用客户端，禁止自行创建连接 | `service/file_service.py`、`service/storage/`（存储策略实现） |
+
+规范约束：
+
+- 单向依赖：`service → dependencies → infrastructure`；service 可直接使用基础设施单例，但禁止在 service 中直接 `Minio(...)` 等新建第三方连接
+- 客户端实例全局唯一，统一封装在 `infrastructure/` 下，供各层复用
+- ES 仅在 service 层内部使用、无请求上下文依赖，采用"infrastructure 封装 + 模块级单例"模式，不经过依赖注入
+- Redis/Mongo 采用"连接 + 注入一体化"（`dependencies/redis.py`、`dependencies/mongo.py`），属 FastAPI 标准实践，保持现状
+- `database.py` 的引擎/会话工厂/Base 属应用级基础设施，与 `config.py` 同类放根目录；`get_db` 为依赖注入提供器
 
 ### 依赖注入策略
 
@@ -111,7 +129,7 @@ dehaze-python/
 │   ├── dependencies/                  # FastAPI 依赖注入（auth/redis）
 │   ├── decorators/                    # 横切关注点装饰器（permission/rate_limit/repeat_submit）
 │   ├── middleware/                    # ASGI 中间件（trace/operation_log/ip_blacklist/non_null_response）
-│   ├── infrastructure/               # 基础设施层（logging/cache/metrics/mq/job）
+│   ├── infrastructure/               # 基础设施层（logging/cache/metrics/mq/job/storage 连接单例）
 │   ├── models/                        # 数据模型（entity/schema/enum）
 │   ├── repository/                    # Repository 层（BaseRepository 泛型基类）
 │   ├── router/                        # 路由层（30+ 个业务 APIRouter + health/metrics + WebSocket）
