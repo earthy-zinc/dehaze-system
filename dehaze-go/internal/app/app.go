@@ -456,10 +456,9 @@ func (a *Application) Init() error {
 	// 前端日志接收 - 匿名允许上报（OptionalSessionAuth 仅注入已登录 user_id），对齐 Java permitAll
 	router.RegisterClientLogRoutes(v1, clientLogApi)
 
-	// 需要Session认证保护的路由
+	// 需要认证保护的路由
 	protectedV1 := v1.Group("")
-	protectedV1.Use(middleware.ApiKeyAuthMiddleware())
-	protectedV1.Use(middleware.SessionAuth())
+	protectedV1.Use(middleware.AuthMiddleware())
 	protectedV1.Use(middleware.UserContextMiddleware())
 	router.RegisterAuthRoutes(protectedV1, authApi)
 	router.RegisterSysUserRoutes(protectedV1, sysUserApi)

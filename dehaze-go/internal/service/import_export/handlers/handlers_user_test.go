@@ -384,18 +384,23 @@ func TestUserImportHandler_ImportBatch_GenderParsing(t *testing.T) {
 		{"username": "u1", "nickname": "n1", "gender": "男"},
 		{"username": "u2", "nickname": "n2", "gender": "女"},
 		{"username": "u3", "nickname": "n3", "gender": ""},
+		{"username": "u4", "nickname": "n4", "gender": "未知"},
 	}
 	result := handler.ImportBatch(rows, import_export.ImportOptions{Mode: "all"}, import_export.NoopProgressCallback{})
 
 	assert.Equal(t, 3, result.SuccessCount)
+	assert.Equal(t, 1, result.FailureCount)
+	assert.Contains(t, result.Errors[0].Message, "性别取值无效")
 
-	var u1, u2, u3 model.SysUser
+	var u1, u2, u3, u4 model.SysUser
 	db.Where("username = ?", "u1").First(&u1)
 	db.Where("username = ?", "u2").First(&u2)
 	db.Where("username = ?", "u3").First(&u3)
+	db.Where("username = ?", "u4").First(&u4)
 	assert.Equal(t, int8(1), u1.Gender)
 	assert.Equal(t, int8(2), u2.Gender)
 	assert.Equal(t, int8(1), u3.Gender)
+	assert.Equal(t, int8(0), u4.Gender)
 }
 
 func TestUserImportHandler_ImportBatch_DeptNameResolution(t *testing.T) {

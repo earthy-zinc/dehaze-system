@@ -1,12 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
@@ -32,62 +33,93 @@ type SessionData struct {
 	Nickname    string   `json:"nickname"`
 }
 
-func SessionAuth() gin.HandlerFunc {
+// ApiKeyAuthenticator 是 API Key 认证的校验函数签名，由 app 层注入具体实现。
+type ApiKeyAuthenticator func(ctx context.Context, rawKey string) (*security.CustomClaims, error)
+
+// ApiKeyAuth 是外部注入的 API Key 校验实现（默认 nil）。
+var ApiKeyAuth ApiKeyAuthenticator
+
+// AuthMiddleware 统一认证中间件：根据请求凭证类型二选一。
+// Bearer dhak_* -> API Key 认证；Session Cookie/Header -> Session 认证。
+func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		sessionID := extractSessionID(c)
-		if sessionID == "" {
-			unauthorized(c)
-			return
-		}
-
-		cacheClient := cache.GetCache()
-		if cacheClient == nil {
-			unauthorized(c)
-			return
-		}
-
-		sessionJSON, err := cacheClient.Get(c.Request.Context(), SessionPrefix+sessionID)
-		if err != nil || sessionJSON == "" {
-			unauthorized(c)
-			return
-		}
-
-		var session SessionData
-		if err := json.Unmarshal([]byte(sessionJSON), &session); err != nil {
-			logger.Error("解析Session数据失败", zap.String("sessionId", sessionID), zap.Error(err))
-			unauthorized(c)
-			return
-		}
-
-		claims := &security.CustomClaims{
-			UserID:      session.UserID,
-			DeptID:      session.DeptID,
-			DataScope:   session.DataScope,
-			Authorities: session.Authorities,
-		}
-		claims.Subject = session.Username
-		claims.ID = sessionID
-		c.Set("claims", claims)
-
-		// 认证通过后，将 user_id 写入请求上下文（供 logger 自动注入到每条日志）
-		c.Request = c.Request.WithContext(trace.WithUserID(c.Request.Context(), session.UserID))
-
-		ttl, err := cacheClient.TTL(c.Request.Context(), SessionPrefix+sessionID)
-		if err == nil && ttl > 0 && ttl < SessionRenewThreshold {
-			if _, err := cacheClient.Expire(c.Request.Context(), SessionPrefix+sessionID, SessionTTL); err != nil {
-				logger.Warn("Session续期失败", zap.String("sessionId", sessionID), zap.Error(err))
+		authHeader := c.Request.Header.Get("Authorization")
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			token := strings.TrimSpace(authHeader[7:])
+			if strings.HasPrefix(token, "dhak_") {
+				authWithApiKey(c, token)
+				return
 			}
 		}
-
-		c.Next()
+		authWithSession(c)
 	}
 }
 
+func authWithApiKey(c *gin.Context, token string) {
+	if ApiKeyAuth == nil {
+		unauthorized(c)
+		return
+	}
+	claims, err := ApiKeyAuth(c.Request.Context(), token)
+	if err != nil {
+		unauthorized(c)
+		return
+	}
+	c.Set("claims", claims)
+	c.Request = c.Request.WithContext(trace.WithUserID(c.Request.Context(), claims.UserID))
+	c.Next()
+}
+
+func authWithSession(c *gin.Context) {
+	sessionID := extractSessionID(c)
+	if sessionID == "" {
+		unauthorized(c)
+		return
+	}
+
+	cacheClient := cache.GetCache()
+	if cacheClient == nil {
+		unauthorized(c)
+		return
+	}
+
+	sessionJSON, err := cacheClient.Get(c.Request.Context(), SessionPrefix+sessionID)
+	if err != nil || sessionJSON == "" {
+		unauthorized(c)
+		return
+	}
+
+	var session SessionData
+	if err := json.Unmarshal([]byte(sessionJSON), &session); err != nil {
+		logger.Error("解析Session数据失败", zap.String("sessionId", sessionID), zap.Error(err))
+		unauthorized(c)
+		return
+	}
+
+	claims := &security.CustomClaims{
+		UserID:      session.UserID,
+		DeptID:      session.DeptID,
+		DataScope:   session.DataScope,
+		Authorities: session.Authorities,
+	}
+	claims.Subject = session.Username
+	claims.ID = sessionID
+	c.Set("claims", claims)
+	c.Request = c.Request.WithContext(trace.WithUserID(c.Request.Context(), session.UserID))
+
+	ttl, err := cacheClient.TTL(c.Request.Context(), SessionPrefix+sessionID)
+	if err == nil && ttl > 0 && ttl < SessionRenewThreshold {
+		if _, err := cacheClient.Expire(c.Request.Context(), SessionPrefix+sessionID, SessionTTL); err != nil {
+			logger.Warn("Session续期失败", zap.String("sessionId", sessionID), zap.Error(err))
+		}
+	}
+
+	c.Next()
+}
+
 // OptionalSessionAuth 可选会话认证中间件。
-//
-// 与 SessionAuth 的区别：session 缺失或无效时放行（匿名），仅当存在合法 session 时解析并注入
-// user_id。用于允许匿名访问但需要"已登录则注入操作者"的接口（如前端日志接收 POST /api/v1/logs/client，
-// 对齐 Java permitAll + SessionFilter 的行为）。
+// session 缺失或无效时放行（匿名），仅当存在合法 session 时解析并注入 user_id。
+// 用于允许匿名访问但需要"已登录则注入操作者"的接口（如前端日志接收 POST /api/v1/logs/client）。
 func OptionalSessionAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sessionID := extractSessionID(c)

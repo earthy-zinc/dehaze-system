@@ -109,6 +109,11 @@ func (s *PackageService) GetDetail(ctx context.Context, id int64) (*vo.PackageDe
 	if p == nil {
 		return nil, common.NewBizError(common.PACKAGE_NOT_FOUND, "套餐不存在")
 	}
+	// 用户端详情仅提供在售套餐（T-PM-004）；后台编辑走 form 端点不受影响。
+	// 缓存路径无此问题：上下架/修改/删除均会失效 package:detail 缓存。
+	if p.Status != 1 {
+		return nil, common.NewBizError(common.PACKAGE_OFF_SHELF, "套餐已下架")
+	}
 
 	benefits, err := s.benefitRepo.FindAll(ctx)
 	if err != nil {

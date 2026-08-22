@@ -114,6 +114,11 @@ func (s *RoleService) Create(ctx context.Context, form *bo.RoleFormBO) error {
 		return common.NewBizError(common.PARAM_ERROR, "角色编码不能为空")
 	}
 
+	// 新增时 dataScope 必填（T-RM-012：数据权限未选择报"数据权限不能为空"）
+	if form.DataScope == nil {
+		return common.NewBizError(common.PARAM_ERROR, "数据权限不能为空")
+	}
+
 	// 检查编码是否重复（查全表含软删行）
 	exists, err := s.roleRepo.ExistsByCode(ctx, form.Code)
 	if err != nil {
@@ -138,7 +143,7 @@ func (s *RoleService) Create(ctx context.Context, form *bo.RoleFormBO) error {
 		Code:      form.Code,
 		Sort:      form.Sort,
 		Status:    form.Status,
-		DataScope: form.DataScope,
+		DataScope: *form.DataScope,
 		Deleted:   0,
 	}
 	role.CreatedAt = time.Now()
@@ -188,7 +193,12 @@ func (s *RoleService) Update(ctx context.Context, id int64, form *bo.RoleFormBO)
 		Code:      form.Code,
 		Sort:      form.Sort,
 		Status:    form.Status,
-		DataScope: form.DataScope,
+	}
+	// dataScope 未随请求提交时保持原值（创建时必填，编辑时可选）
+	if form.DataScope != nil {
+		role.DataScope = *form.DataScope
+	} else {
+		role.DataScope = oldRole.DataScope
 	}
 	role.UpdatedAt = time.Now()
 
@@ -220,7 +230,7 @@ func (s *RoleService) GetFormData(ctx context.Context, id int64) (*bo.RoleFormBO
 		Code:      form.Code,
 		Sort:      form.Sort,
 		Status:    form.Status,
-		DataScope: form.DataScope,
+		DataScope: &form.DataScope,
 	}, nil
 }
 

@@ -241,14 +241,19 @@ func (h *UserImportHandler) ImportBatch(rows []map[string]interface{}, options i
 			continue
 		}
 
+		gender, _ := row["gender"].(string)
+		switch gender {
+		case "", "男", "女":
+		default:
+			failureCount++
+			errors = append(errors, import_export.ImportError{Row: rowNum, Field: "gender", Message: "性别取值无效（应为 男/女）"})
+			continue
+		}
 		var genderInt int8
-		if gender, ok := row["gender"].(string); ok {
-			switch gender {
-			case "男":
-				genderInt = 1
-			case "女":
-				genderInt = 2
-			}
+		if gender == "男" {
+			genderInt = 1
+		} else if gender == "女" {
+			genderInt = 2
 		}
 
 		var status int8 = 1
