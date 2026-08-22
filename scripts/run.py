@@ -13,10 +13,15 @@ VENV_PY = str(ROOT / "dehaze-python" / ".venv" /
               ("Scripts" if IS_WIN else "bin") /
               ("python.exe" if IS_WIN else "python"))
 
+MCP_VENV_PY = str(ROOT / "dehaze-mcp-gateway" / ".venv" /
+              ("Scripts" if IS_WIN else "bin") /
+              ("python.exe" if IS_WIN else "python"))
+
 SERVICES: dict[str, tuple[Path, list[str], int]] = {
     "go":     (ROOT / "dehaze-go",     ["go", "run", "./cmd/main.go"], 8990),
     "python": (ROOT / "dehaze-python", [VENV_PY, "-m", "app.main"], 8991),
     "java":   (ROOT / "dehaze-java",   ["mvn.cmd" if IS_WIN else "mvn", "spring-boot:run", "-DskipTests"], 8989),
+    "mcp":    (ROOT / "dehaze-mcp-gateway", ["uv", "run", "python", "server.py"], 8082),
 }
 
 USAGE = """DehazeSystem 后端服务管理
@@ -26,7 +31,7 @@ USAGE = """DehazeSystem 后端服务管理
     run.py ps
     run.py logs <svc> [lines]
 
-服务: go(8990)  python(8991)  java(8989)
+服务: go(8990)  python(8991)  java(8989)  mcp(8082)
 
 日志统一存放在各服务 logs/{yyyy-MM-dd}/ 下：
     console.log  启动/控制台输出（本脚本重定向）
