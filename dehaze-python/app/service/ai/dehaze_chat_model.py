@@ -35,7 +35,6 @@ from langchain_core.tools import BaseTool
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
 from app.database import get_db_session
-from app.dependencies.redis import get_redis_client
 from app.infrastructure.llm.llm_client import llm_client
 
 logger = logging.getLogger(__name__)
@@ -97,8 +96,8 @@ def _tools_to_openai(tools: list[BaseTool | dict[str, Any]]) -> list[dict]:
 class DehazeChatModel(BaseChatModel):
     """包装 LlmClient 的 LangChain ChatModel 适配器。
 
-    每次调用内部通过 get_db_session/get_redis_client 获取依赖，
-    调用 llm_client.stream_chat 流式拉取并聚合。
+    每次调用内部通过 get_db_session 获取 db，redis 由 llm_client.stream_chat
+    编排层自取；本层只聚合流式结果。
     """
 
     model: str
@@ -205,10 +204,8 @@ class DehazeChatModel(BaseChatModel):
         # 逐块透出，供 SseEventConverter 识别为思考双流
         thinking_accumulated = ""
         async with get_db_session() as db:
-            redis = await get_redis_client()
             async for chunk in llm_client.stream_chat(
                 db,
-                redis,
                 model_id,
                 converted_messages,
                 system_prompt=None,

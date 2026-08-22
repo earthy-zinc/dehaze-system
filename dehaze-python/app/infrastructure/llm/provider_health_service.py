@@ -80,7 +80,7 @@ async def _load_thresholds(redis: Redis) -> _Thresholds:
     cached = await cache.get_json(_THRESHOLDS_KEY)
     if cached is not None:
         return _Thresholds(cached)
-    data = dict(_SEED_THRESHOLDS)
+    data: dict[str, float | int | str] = dict(_SEED_THRESHOLDS)
     try:
         async with get_db_session() as db:
             items = await dict_repository.list_enabled_by_type_code(db, _HEALTH_DICT)
@@ -92,8 +92,8 @@ async def _load_thresholds(redis: Redis) -> _Thresholds:
     return _Thresholds(data)
 
 
-def _coerce_scalar(raw: str) -> float | int:
-    """将 sys_dict 字符串值转换为数值（int/float）。"""
+def _coerce_scalar(raw: str) -> float | int | str:
+    """将 sys_dict 字符串值转换为数值（int/float），无法转换时保留原字符串。"""
     try:
         return int(str(raw))
     except (ValueError, TypeError):
@@ -172,26 +172,28 @@ class ProviderHealthService:
             return
 
         epoch_ms = int(datetime.now(UTC).timestamp() * 1000)
+        latency_key = _LATENCY_KEY.format(provider_id)
+        calls_key = _CALLS_KEY.format(provider_id)
 
-        # 延迟窗口（保留最近 N 条）
-        await redis.lpush(_LATENCY_KEY.format(provider_id), latency_ms)
-        await redis.ltrim(_LATENCY_KEY.format(provider_id), 0, _LATENCY_WINDOW - 1)
+        # 延迟窗口（保留最近 N 条）。
+        # redis-py 的 list 命令（lpush/ltrim/lrange）签名标注为 Union[Awaitable, T]
+        # （同步/异步客户端共用签名），await 触发 Pylance 误报，属库的类型标注缺陷
+        await redis.lpush(latency_key, latency_ms)  # type: ignore
+        await redis.ltrim(latency_key, 0, _LATENCY_WINDOW - 1)  # type: ignore
 
         if success:
             await redis.delete(_STREAK_KEY.format(provider_id))
-            await redis.lpush(_CALLS_KEY.format(provider_id), f"{epoch_ms}:ok")
-        else:
-            streak = await redis.incr(_STREAK_KEY.format(provider_id))
-            await redis.expire(_STREAK_KEY.format(provider_id), 3600)
-            outcome = "limit" if error_code == "429" else "fail"
-            await redis.lpush(_CALLS_KEY.format(provider_id), f"{epoch_ms}:{outcome}")
-
-        await redis.ltrim(_CALLS_KEY.format(provider_id), 0, _CALLS_WINDOW - 1)
-
-        # 仅失败调用参与熔断判定（成功调用只会降低错误率，无需开断）
-        if success:
+            await redis.lpush(calls_key, f"{epoch_ms}:ok")  # type: ignore
+            await redis.ltrim(calls_key, 0, _CALLS_WINDOW - 1)  # type: ignore
             return
 
+        streak = await redis.incr(_STREAK_KEY.format(provider_id))
+        await redis.expire(_STREAK_KEY.format(provider_id), 3600)
+        outcome = "limit" if error_code == "429" else "fail"
+        await redis.lpush(calls_key, f"{epoch_ms}:{outcome}")  # type: ignore
+        await redis.ltrim(calls_key, 0, _CALLS_WINDOW - 1)  # type: ignore
+
+        # 仅失败调用参与熔断判定（成功调用只会降低错误率，无需开断）
         thresholds = await _load_thresholds(redis)
         circuit = streak >= thresholds.consecutive_failures
 
@@ -222,7 +224,8 @@ class ProviderHealthService:
         total, failed, limit = await self._window_counts(
             redis, provider_id, now_ms, return_detail=True
         )
-        latency = [int(x) for x in await redis.lrange(_LATENCY_KEY.format(provider_id), 0, -1)]
+        raw_latency = await redis.lrange(_LATENCY_KEY.format(provider_id), 0, -1)  # type: ignore
+        latency = [int(x) for x in raw_latency]
         p95 = _p95(latency)
         circuit_open = bool(await redis.get(_CIRCUIT_KEY.format(provider_id)))
 
@@ -273,7 +276,7 @@ class ProviderHealthService:
         滑动窗口：读取最近保留的调用记录，过滤 24h 内按结果归类。
         """
         cutoff = now_ms - 86_400_000
-        raw = await redis.lrange(_CALLS_KEY.format(provider_id), 0, -1)
+        raw = await redis.lrange(_CALLS_KEY.format(provider_id), 0, -1)  # type: ignore
         total = failed = limit = 0
         for item in raw:
             try:

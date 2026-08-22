@@ -25,20 +25,22 @@ import time
 from collections.abc import AsyncGenerator, Callable
 
 import httpx
+from redis.asyncio import Redis
 
 from app.config import settings
-from app.infrastructure.llm.local_llm_manager import ensure_running
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.core.result import _get_trace_id
+from app.dependencies.redis import get_redis_client
 from app.infrastructure.crypto.aes_cipher import decrypt
-from app.models.base import get_current_user_id
-from app.repository.ai_model_repository import ai_model_repository
-from app.repository.ai_provider_repository import ai_provider_repository
+from app.infrastructure.llm.local_llm_manager import ensure_running
 from app.infrastructure.llm.model_client import LlmStreamChunk, _map_httpx_error, create_chat_client
 from app.infrastructure.llm.model_registry import model_registry
 from app.infrastructure.llm.provider_health_service import provider_health_service
 from app.infrastructure.llm.provider_key_selector import provider_key_selector
+from app.models.base import get_current_user_id
+from app.repository.ai_model_repository import ai_model_repository
+from app.repository.ai_provider_repository import ai_provider_repository
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +59,16 @@ class LlmClient:
 
     def __init__(self) -> None:
         self._client = httpx.AsyncClient(timeout=httpx.Timeout(settings.AI_MESSAGE_STREAM_TIMEOUT))
+        self._redis: Redis | None = None
+
+    async def _get_redis(self) -> Redis:
+        """惰性获取全局 Redis 客户端（get_redis_client 为单例，仅首次 await 建连）"""
+        if self._redis is None:
+            self._redis = await get_redis_client()
+        return self._redis
 
     async def _record_success(
         self,
-        redis,
         provider_id: int,
         key_id: int,
         latency_ms: int,
@@ -68,6 +76,7 @@ class LlmClient:
         model,
     ) -> None:
         """调用成功：Key 成功标记（含日计数/last_used）+ 供应商健康指标 + 归因透出"""
+        redis = await self._get_redis()
         # 无请求上下文（评测/A2A 临时会话等）时 contextvar 未设值，容忍为 None
         try:
             user_id = get_current_user_id()
@@ -91,7 +100,6 @@ class LlmClient:
     async def _stream_with_key_retry(
         self,
         db,
-        redis,
         provider,
         model,
         messages: list[dict],
@@ -107,6 +115,7 @@ class LlmClient:
         流式失败分两段：首字节前失败可切换下一 Key；流中断（已下发部分内容）
         标记 Key 失败后直接抛出业务异常，不重试整个请求。
         """
+        redis = await self._get_redis()
         started = time.perf_counter()
         keys = await provider_key_selector.list_usable_keys(db, redis, provider.id)
         if not keys:
@@ -135,9 +144,7 @@ class LlmClient:
                     yield chunk
                 # 流正常结束 → 记录成功并透出归因
                 latency_ms = int((time.perf_counter() - started) * 1000)
-                await self._record_success(
-                    redis, provider.id, key_id, latency_ms, on_route_result, model
-                )
+                await self._record_success(provider.id, key_id, latency_ms, on_route_result, model)
                 return
             except (httpx.HTTPStatusError, httpx.TransportError) as exc:
                 error_code, detail = _map_httpx_error(exc)
@@ -177,7 +184,6 @@ class LlmClient:
     async def stream_chat(
         self,
         db,
-        redis,
         model_id: str,
         messages: list[dict],
         system_prompt: str | None = None,
@@ -196,7 +202,13 @@ class LlmClient:
 
         on_route_result 可选：每次调用成功后回调一次，携带实际使用的
         model_id/provider_id/key_id/latency_ms/error_code/request_id（计费归因透出）。
+
+        redis 为实例级基础设施依赖：惰性获取全局单例后由类内私有方法
+        共享同一引用，不向下透传；provider_health_service / provider_key_selector
+        等原子逻辑仍以显式参数接收。
         """
+        redis = await self._get_redis()
+
         # 能力要求：流式恒必；携带工具定义时要求工具调用能力
         required_caps = {"streaming"}
         if tools is not None:
@@ -223,7 +235,6 @@ class LlmClient:
             try:
                 async for chunk in self._stream_with_key_retry(
                     db,
-                    redis,
                     provider,
                     model,
                     messages,

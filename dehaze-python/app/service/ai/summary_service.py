@@ -11,7 +11,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies.redis import get_redis_client
+from app.infrastructure.llm.llm_client import llm_client
 from app.repository.ai_message_repository import ai_message_repository
 from app.repository.ai_model_repository import ai_model_repository
 from app.service.ai.context_manager import (
@@ -19,7 +19,6 @@ from app.service.ai.context_manager import (
     context_manager,
     estimate_context_tokens,
 )
-from app.infrastructure.llm.llm_client import llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -121,10 +120,8 @@ class SummaryService:
     async def _run_llm(db: AsyncSession, model_id: str, content: str) -> str:
         """调用 LLM 生成/压缩文本（非流式，只收集完整内容，temperature=0）"""
         out = ""
-        redis = await get_redis_client()
         async for chunk in llm_client.stream_chat(
             db,
-            redis,
             model_id,
             [{"role": "user", "content": content}],
             system_prompt="你是对话摘要助手",

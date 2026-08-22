@@ -76,14 +76,14 @@ class SseEmitterManager:
         """将事件写入 Redis list 并刷新 TTL"""
         redis = await get_redis_client()
         key = f"{_STREAM_CACHE_PREFIX}{stream_session_id}"
-        await redis.rpush(key, json.dumps(event, ensure_ascii=False))
+        await redis.rpush(key, json.dumps(event, ensure_ascii=False))  # type: ignore
         await redis.expire(key, _STREAM_CACHE_TTL)
 
     async def _get_cached_events(self, stream_session_id: str, last_event_id: int) -> list[dict]:
         """从 Redis 读取断点（last_event_id）之后的事件"""
         redis = await get_redis_client()
         key = f"{_STREAM_CACHE_PREFIX}{stream_session_id}"
-        raw_events = await redis.lrange(key, 0, -1)
+        raw_events = await redis.lrange(key, 0, -1)  # type: ignore
         events = []
         for raw in raw_events:
             try:

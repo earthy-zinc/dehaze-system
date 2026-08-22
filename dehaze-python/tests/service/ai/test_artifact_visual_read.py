@@ -137,7 +137,7 @@ async def test_visual_read_success(monkeypatch, mock_redis):
 
     captured_usage = {"input_tokens": 1200}
 
-    async def _fake_stream_chat(db, redis, model_id, messages, **kwargs):
+    async def _fake_stream_chat(db, model_id, messages, **kwargs):
         assert model_id == "vlm-1"
         assert messages[0]["content"][1]["type"] == "image_url"
         assert messages[0]["content"][1]["image_url"]["url"] == "http://cdn.example.com/pred.jpg"

@@ -33,7 +33,7 @@ def _minimal_snapshot():
 
 @pytest.fixture(autouse=True)
 def _mock_llm_stream(monkeypatch):
-    async def fake_stream_chat(db, redis, model_id, messages, **kw):
+    async def fake_stream_chat(db, model_id, messages, **kw):
         yield SimpleNamespace(type="text_delta", content="去雾完成，图像已清晰。")
         yield SimpleNamespace(type="done", usage={"input_tokens": 10, "output_tokens": 5})
 
@@ -44,11 +44,6 @@ def _mock_llm_stream(monkeypatch):
         yield object()
 
     monkeypatch.setattr("app.service.ai.dehaze_chat_model.get_db_session", _session)
-
-    async def _redis():
-        return SimpleNamespace()
-
-    monkeypatch.setattr("app.service.ai.dehaze_chat_model.get_redis_client", _redis)
 
 
 class TestMakeCtx:

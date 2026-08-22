@@ -13,7 +13,7 @@ from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.database import get_db_session
-from app.dependencies.redis import get_redis_client
+from app.infrastructure.llm.llm_client import llm_client
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.models.entity.sys_ai_conversation import SysAiConversation
 from app.models.entity.sys_ai_message import SysAiMessage
@@ -32,7 +32,6 @@ from app.service.ai.conversation_search_service import (
     sync_conversation_to_es,
 )
 from app.service.ai.interrupt_handler import interrupt_handler
-from app.infrastructure.llm.llm_client import llm_client
 from app.service.ai.reasoning_service import reasoning_service
 from app.service.ai.scene_templates import SCENE_VALUES, get_scene_prompt
 
@@ -238,10 +237,9 @@ class AiConversationService:
                     return
                 model_id = conv.model or settings.AI_DEFAULT_MODEL
                 prompt = f"请为以下对话生成一个简洁的标题（不超过20字）：{first_user_content}"
-                redis = await get_redis_client()
                 chunks = []
                 async for chunk in llm_client.stream_chat(
-                    db, redis, model_id, [{"role": "user", "content": prompt}], max_tokens=50
+                    db, model_id, [{"role": "user", "content": prompt}], max_tokens=50
                 ):
                     if chunk.type == "text_delta":
                         chunks.append(chunk.content)

@@ -18,12 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db_session
-from app.dependencies.redis import get_redis_client
+from app.infrastructure.llm.llm_client import llm_client
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.ai_message_repository import ai_message_repository
 from app.service.ai.credits_service import calculate_credits
-from app.infrastructure.llm.llm_client import llm_client
 from app.service.billing.billing_service import billing_service
 
 logger = logging.getLogger(__name__)
@@ -75,7 +74,6 @@ class SuggestionService:
         self, db: AsyncSession, model_id: str, reply_content: str
     ) -> tuple[list[str], dict] | None:
         """调用 LLM 生成推荐问题，返回 (questions, usage)；失败/超时返回 None。"""
-        redis = await get_redis_client()
         content = ""
         usage: dict = {}
         try:
@@ -84,7 +82,6 @@ class SuggestionService:
                 nonlocal content, usage
                 async for chunk in llm_client.stream_chat(
                     db,
-                    redis,
                     model_id,
                     [
                         {

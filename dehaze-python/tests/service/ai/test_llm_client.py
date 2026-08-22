@@ -58,6 +58,7 @@ def _make_client() -> tuple[LlmClient, Mock]:
     client = LlmClient.__new__(LlmClient)
     transport = Mock()
     client._client = transport
+    client._redis = None
     return client, transport
 
 
@@ -103,7 +104,7 @@ class _Services:
             p.stop()
 
 
-def _patch_cross_services(get_call_routes, usable_keys=None):
+def _patch_cross_services(get_call_routes, usable_keys=None, redis_client=None):
     from app.infrastructure.llm.model_registry import model_registry
     from app.infrastructure.llm.provider_health_service import provider_health_service
     from app.infrastructure.llm.provider_key_selector import provider_key_selector
@@ -132,6 +133,11 @@ def _patch_cross_services(get_call_routes, usable_keys=None):
             provider_key_selector, "list_usable_keys", new=mocks["list_usable_keys"]
         ),
     }
+    if redis_client is not None:
+        patches["get_redis_client"] = patch(
+            "app.infrastructure.llm.llm_client.get_redis_client",
+            new=AsyncMock(return_value=redis_client),
+        )
     for p in patches.values():
         p.start()
     return _Services(mocks, patches)
@@ -139,7 +145,9 @@ def _patch_cross_services(get_call_routes, usable_keys=None):
 
 async def test_429_switch_key(mock_redis):
     route = {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}}
-    svc = _patch_cross_services([route], usable_keys=[_make_key(1), _make_key(2)])
+    svc = _patch_cross_services(
+        [route], usable_keys=[_make_key(1), _make_key(2)], redis_client=mock_redis
+    )
     model = _make_model()
     provider = _make_provider()
     try:
@@ -151,7 +159,6 @@ async def test_429_switch_key(mock_redis):
                 c
                 async for c in client.stream_chat(
                     db=None,
-                    redis=mock_redis,
                     model_id="gpt-4o",
                     messages=[],
                     system_prompt=None,
@@ -172,7 +179,7 @@ async def test_key_exhausted_switch_provider(mock_redis):
         {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}},
         {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 2, "model_config": {}},
     ]
-    svc = _patch_cross_services(routes)
+    svc = _patch_cross_services(routes, redis_client=mock_redis)
     svc.list_usable_keys.side_effect = [
         [_make_key(1, provider_id=1)],
         [_make_key(3, provider_id=2)],
@@ -189,7 +196,6 @@ async def test_key_exhausted_switch_provider(mock_redis):
                 c
                 async for c in client.stream_chat(
                     db=None,
-                    redis=mock_redis,
                     model_id="gpt-4o",
                     messages=[],
                     on_route_result=meta.update,
@@ -206,7 +212,7 @@ async def test_key_exhausted_switch_provider(mock_redis):
 
 async def test_all_fail_raise_business_exception(mock_redis):
     route = {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}}
-    svc = _patch_cross_services([route], usable_keys=[_make_key(1)])
+    svc = _patch_cross_services([route], usable_keys=[_make_key(1)], redis_client=mock_redis)
     model = _make_model()
     provider = _make_provider()
     try:
@@ -215,7 +221,7 @@ async def test_all_fail_raise_business_exception(mock_redis):
             transport.stream = Mock(side_effect=[FakeStreamResponse(500)])
             with pytest.raises(BusinessException) as exc:
                 async for _ in client.stream_chat(
-                    db=None, redis=mock_redis, model_id="gpt-4o", messages=[]
+                    db=None, model_id="gpt-4o", messages=[]
                 ):
                     pass
     finally:
@@ -226,7 +232,7 @@ async def test_all_fail_raise_business_exception(mock_redis):
 
 async def test_required_caps_passed(mock_redis):
     route = {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}}
-    svc = _patch_cross_services([route], usable_keys=[_make_key(1)])
+    svc = _patch_cross_services([route], usable_keys=[_make_key(1)], redis_client=mock_redis)
     model = _make_model()
     provider = _make_provider()
     captured_caps = None
@@ -236,7 +242,6 @@ async def test_required_caps_passed(mock_redis):
             transport.stream = Mock(side_effect=[_ok_stream()])
             async for _ in client.stream_chat(
                 db=None,
-                redis=mock_redis,
                 model_id="gpt-4o",
                 messages=[],
                 tools=[{"type": "function", "function": {"name": "f"}}],
@@ -251,7 +256,7 @@ async def test_required_caps_passed(mock_redis):
 
 async def test_anthropic_cache_control_injected(mock_redis):
     route = {"model_pk": 1, "model_id": "claude-3-5-sonnet", "provider_id": 1, "model_config": {}}
-    svc = _patch_cross_services([route], usable_keys=[_make_key(1)])
+    svc = _patch_cross_services([route], usable_keys=[_make_key(1)], redis_client=mock_redis)
     model = _make_model(
         model_id="claude-3-5-sonnet",
         provider_id=1,
@@ -284,7 +289,6 @@ async def test_anthropic_cache_control_injected(mock_redis):
             transport.stream = Mock(side_effect=_fake_stream)
             async for _ in client.stream_chat(
                 db=None,
-                redis=mock_redis,
                 model_id="claude-3-5-sonnet",
                 messages=[],
                 system_prompt="SYSTEM",
@@ -307,7 +311,9 @@ async def test_anthropic_cache_control_injected(mock_redis):
 
 async def test_stream_interrupt_raises_no_switch(mock_redis):
     route = {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}}
-    svc = _patch_cross_services([route], usable_keys=[_make_key(1), _make_key(2)])
+    svc = _patch_cross_services(
+        [route], usable_keys=[_make_key(1), _make_key(2)], redis_client=mock_redis
+    )
     model = _make_model()
     provider = _make_provider()
     try:
@@ -334,7 +340,7 @@ async def test_stream_interrupt_raises_no_switch(mock_redis):
             seen = []
             with pytest.raises(BusinessException) as exc:
                 async for c in client.stream_chat(
-                    db=None, redis=mock_redis, model_id="gpt-4o", messages=[]
+                    db=None, model_id="gpt-4o", messages=[]
                 ):
                     seen.append(c)
     finally:
@@ -350,7 +356,7 @@ async def test_circuit_open_skips_provider_route(mock_redis):
         {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}},
         {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 2, "model_config": {}},
     ]
-    svc = _patch_cross_services(routes)
+    svc = _patch_cross_services(routes, redis_client=mock_redis)
     svc.list_usable_keys.return_value = [_make_key(3)]
     model = _make_model()
     provider_b = _make_provider(provider_id=2)
@@ -367,7 +373,6 @@ async def test_circuit_open_skips_provider_route(mock_redis):
                 c
                 async for c in client.stream_chat(
                     db=None,
-                    redis=mock_redis,
                     model_id="gpt-4o",
                     messages=[],
                     on_route_result=meta.update,

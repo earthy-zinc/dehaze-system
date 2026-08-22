@@ -5,9 +5,8 @@
 """
 
 from app.database import get_db_session
-from app.dependencies.redis import get_redis_client
-from app.service.ai.agent_state import AgentState
 from app.infrastructure.llm.llm_client import llm_client
+from app.service.ai.agent_state import AgentState
 
 # 动作关键词 → L1（ReAct）
 _ACTION_KEYWORDS = ("去雾", "处理", "评估", "分析")
@@ -50,11 +49,9 @@ async def _llm_eval(state: AgentState) -> tuple[str, dict]:
     try:
         last_content = _get_last_content(state["messages"])
         async with get_db_session() as db:
-            redis = await get_redis_client()
             content = ""
             async for chunk in llm_client.stream_chat(
                 db,
-                redis,
                 state["model_id"],
                 [{"role": "user", "content": last_content}],
                 system_prompt=_EVAL_PROMPT,

@@ -10,9 +10,8 @@
 import json
 import logging
 
-from app.dependencies.redis import get_redis_client
-from app.repository.ai_agent_thought_repository import ai_agent_thought_repository
 from app.infrastructure.llm.llm_client import llm_client
+from app.repository.ai_agent_thought_repository import ai_agent_thought_repository
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +31,8 @@ async def _generate_summaries(db, model_id: str, steps: list[dict]) -> list[str]
     """一次 LLM 调用批量生成步骤概括（temperature=0，失败返回 None）。"""
     steps_text = json.dumps(steps, ensure_ascii=False, indent=1)
     content = ""
-    redis = await get_redis_client()
     async for chunk in llm_client.stream_chat(
         db,
-        redis,
         model_id,
         [{"role": "user", "content": _SUMMARY_PROMPT + steps_text}],
         system_prompt="你是推理步骤摘要助手，为每一步生成一句话概括。",

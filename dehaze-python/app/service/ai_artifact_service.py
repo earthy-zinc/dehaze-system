@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.infrastructure.llm.llm_client import llm_client
 from app.models.entity.sys_ai_artifact import SysAiArtifact
 from app.models.schema.ai_artifact import ArtifactResult
 from app.models.schema.common import PageResult
@@ -23,7 +24,6 @@ from app.repository.file_repository import file_repository
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_repository import member_repository
 from app.repository.pred_eval_log_repository import eval_log_repository, pred_log_repository
-from app.infrastructure.llm.llm_client import llm_client
 from app.service.storage.factory import get_storage_by_name
 
 # 多模态当日计数的跨会话全局 Redis Key 前缀
@@ -312,7 +312,7 @@ class AiArtifactService:
         ]
         text_parts: list[str] = []
         usage: dict = {}
-        async for chunk in llm_client.stream_chat(db, redis, multimodal_model_id, messages):
+        async for chunk in llm_client.stream_chat(db, multimodal_model_id, messages):
             if chunk.type == "text_delta":
                 text_parts.append(chunk.content)
             elif chunk.type == "done" and chunk.usage:
