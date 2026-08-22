@@ -37,6 +37,7 @@ CREATE TABLE `sys_ai_message`
     `cached_input_tokens`  int                                                             NOT NULL DEFAULT 0 COMMENT '其中缓存命中的输入Token数',
     `credits`              bigint                                                          NOT NULL DEFAULT 0 COMMENT '消耗积分数(按模型计费比例换算后)',
     `task_id`              varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '关联异步任务ID(等待图像处理等异步任务时使用)',
+    `used_memory_ids`      json                                                            NULL COMMENT '本次注入引用的记忆ID列表(JSON数组,注入可见性)',
     `edited`               tinyint                                                         NOT NULL DEFAULT 0 COMMENT '是否已编辑(0:否;1:是，编辑重发后原消息标记)',
     `original_content`     LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci     NULL COMMENT '编辑前原文(edited=1时填充，支撑已编辑标识和编辑历史)',
     `deleted`              tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',

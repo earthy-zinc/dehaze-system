@@ -4,12 +4,12 @@
 -- ============================================================
 -- 设计思路:
 -- AI 知识库主表，管理知识库集合。一个知识库包含多个文档，一个文档包含多个分块。
-- 参考 Dify/RAGFlow 的知识库架构，区分知识库级别配置与文档级别管理。
-- embedding_provider/embedding_model 记录向量化策略（不同知识库可用不同 embedding 模型）。
-- chunking_strategy 记录分块策略（fixed:固定长度;semantic:语义切分;recursive:递归切分;qa:问答对;table:表格感知）。
-- search_strategy 记录检索策略（vector:纯向量;keyword:纯关键词;hybrid:混合检索）。
-- document_count/chunk_count/total_tokens 冗余统计，避免 JOIN 查询。
-- 知识库无业务唯一键（允许同名），软删除，按标准逻辑删除处理。
+-- 参考 Dify/RAGFlow 的知识库架构，区分知识库级别配置与文档级别管理。
+-- embedding_provider/embedding_model 记录向量化策略（不同知识库可用不同 embedding 模型）。
+-- chunking_strategy 记录分块策略（fixed:固定长度;semantic:语义切分;recursive:递归切分;qa:问答对;table:表格感知）。
+-- search_strategy 记录检索策略（vector:纯向量;keyword:纯关键词;hybrid:混合检索）。
+-- document_count/chunk_count/total_tokens 冗余统计，避免 JOIN 查询。
+-- 知识库无业务唯一键（允许同名），软删除，按标准逻辑删除处理。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_knowledge_base`;
 CREATE TABLE `sys_knowledge_base`
@@ -17,6 +17,7 @@ CREATE TABLE `sys_knowledge_base`
     `id`                 bigint                                                          NOT NULL AUTO_INCREMENT COMMENT '主键',
     `name`               varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '知识库名称',
     `description`        TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL COMMENT '知识库描述',
+    `visibility`         varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'private' COMMENT '可见性(public:平台公共库全员只读;private:私有库仅创建者可读写)',
     `embedding_provider` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'openai' COMMENT 'Embedding提供商(openai;qwen;cohere;local等)',
     `embedding_model`    varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'text-embedding-3-small' COMMENT 'Embedding模型标识(如text-embedding-3-small;bge-m3等)',
     `chunking_strategy`  varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'semantic' COMMENT '分块策略(fixed:固定长度;semantic:语义切分;recursive:递归切分;qa:问答对;table:表格感知)',
@@ -38,7 +39,8 @@ CREATE TABLE `sys_knowledge_base`
     `create_time`        datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`        datetime                                                        NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
-    INDEX `idx_status` (`status`, `deleted`) USING BTREE
+    INDEX `idx_status` (`status`, `deleted`) USING BTREE,
+    INDEX `idx_create_by_visibility` (`create_by`, `visibility`, `deleted`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI知识库主表'

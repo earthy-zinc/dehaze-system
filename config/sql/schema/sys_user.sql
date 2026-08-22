@@ -20,6 +20,8 @@ CREATE TABLE `sys_user`
     `mobile`      varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '联系方式',
     `status`      tinyint                                                       NULL DEFAULT 1 COMMENT '用户状态((1:正常;0:禁用))',
     `email`       varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '用户邮箱',
+    `credits_balance` decimal(12, 2)                                             NOT NULL DEFAULT 0.00 COMMENT 'AI积分余额(充值/赠送增加;扣减减少)',
+    `credits_version` int                                                        NOT NULL DEFAULT 0 COMMENT 'AI积分余额乐观锁版本号',
     `deleted`     tinyint                                                       NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
     `create_time` datetime                                                      NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` datetime                                                      NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

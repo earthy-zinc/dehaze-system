@@ -21,7 +21,7 @@ CREATE TABLE `sys_eval_log`
     `gt_md5`        char(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci     NULL DEFAULT NULL COMMENT '真值图像md5值',
     `gt_url`        TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL DEFAULT NULL COMMENT '真值图像url',
     `time`          int                                                            NULL DEFAULT 0 COMMENT '评估时间（秒）',
-    `status`        tinyint                                                        NOT NULL DEFAULT 2 COMMENT '任务状态(1:处理中;2:已完成;3:失败)',
+    `status`        tinyint                                                        NOT NULL DEFAULT 2 COMMENT '任务状态(1:处理中;2:已完成;3:失败;4:已取消)',
     `error_message` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL DEFAULT NULL COMMENT '失败错误信息',
     `result`        json                                                           NULL COMMENT '评估指标结果（PSNR/SSIM/LPIPS/NIQE/Entropy等）',
     `create_time`   datetime                                                       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

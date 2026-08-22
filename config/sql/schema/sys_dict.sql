@@ -23,7 +23,10 @@ CREATE TABLE `sys_dict`
     `create_by`   bigint                                                        NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`   bigint                                                        NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_type_value` (`type_code` ASC, `value` ASC) USING BTREE
+    -- 唯一约束落在 (type_code, name)：name 为语义键。AI 系统默认配置（ai_guardrail_defaults
+    -- 等）多个参数项可同值（如多个开关均为 'true'），(type_code, value) 无法承载，
+    -- 故以 name 唯一；常规下拉型字典的 value 唯一性由服务层校验兜底。
+    UNIQUE INDEX `uk_type_name` (`type_code` ASC, `name` ASC) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = '字典数据表'
