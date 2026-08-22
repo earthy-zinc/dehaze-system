@@ -1,4 +1,10 @@
 // API 模块导入
+import AiAgentAPI from "./src/api/ai-agent";
+import AiBillingAPI from "./src/api/ai-billing";
+import AiConversationAPI from "./src/api/ai-conversation";
+import AiKnowledgeBaseAPI from "./src/api/ai-knowledge-base";
+import AiProviderAPI from "./src/api/ai-provider";
+import AiScheduleAPI from "./src/api/ai-schedule";
 import AlgorithmAPI from "./src/api/algorithm";
 import ApiKeyAPI from "./src/api/api-key";
 import AuthAPI from "./src/api/auth";
@@ -25,8 +31,15 @@ import RoleAPI from "./src/api/role";
 import TaskAPI from "./src/api/task";
 import UserAPI from "./src/api/user";
 import VoiceAPI from "./src/api/voice";
+export type { AsrStreamSession } from "./src/api/voice";
 
 // API 模型导出
+export * from "./src/api/ai-agent/model";
+export * from "./src/api/ai-billing/model";
+export * from "./src/api/ai-conversation/model";
+export * from "./src/api/ai-knowledge-base/model";
+export * from "./src/api/ai-provider/model";
+export * from "./src/api/ai-schedule/model";
 export * from "./src/api/algorithm/model";
 export * from "./src/api/api-key/model";
 export * from "./src/api/auth/model";
@@ -62,11 +75,26 @@ export { configAxios } from "./src/config";
 // Axios 实例导出
 export { service } from "./src/utils/request";
 
+// SSE 流式工具导出（供 AI 对话 SSE 流式消息使用）
+export { fetchSSE } from "./src/utils/sse";
+export type { SSEEvent, SSERequestConfig, SSEHandlers } from "./src/utils/sse";
+export type { MessageStreamHandlers } from "./src/api/ai-conversation";
+
+// WebSocket 工具导出（供语音交互流式 ASR 等场景使用）
+export { createWebSocket } from "./src/utils/websocket";
+export type { WSClient, WSClientConfig, WSHandlers } from "./src/utils/websocket";
+
 // Axios 类型导出（供宿主项目配置 adapter / 拦截器使用）
 export type { AxiosAdapter, AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 
 // API 导出
 export {
+  AiAgentAPI,
+  AiBillingAPI,
+  AiConversationAPI,
+  AiKnowledgeBaseAPI,
+  AiProviderAPI,
+  AiScheduleAPI,
   AlgorithmAPI,
   ApiKeyAPI,
   AnnouncementAPI,

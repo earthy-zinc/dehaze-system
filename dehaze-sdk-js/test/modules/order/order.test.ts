@@ -1,4 +1,5 @@
 import { MemberAPI, OrderAPI, PackageAPI } from "../../../index";
+import { PackageStatus } from "@/api/package/model";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import {
@@ -20,16 +21,43 @@ describe("订单管理模块接口测试", () => {
   // 用户端测试账号（有会员记录的普通用户）
   const userAccount = USERS.USER.username;
 
-  beforeAll(async () => {
-    // admin 创建上架套餐供用户端下单测试
+  // 创建套餐并登记清理（status: 1 上架 / 0 下架）
+  async function createPackageWithCleanup(status: PackageStatus): Promise<number> {
     await login(USERS.ADMIN.username);
-    const form = createPackageForm({ status: 1 });
-    await PackageAPI.add(form);
-    const page = await PackageAPI.getPage({ name: form.name, pageNum: 1, pageSize: 10 });
-    const created = page.list.find((p) => p.name === form.name);
-    if (!created?.id) throw new Error("订单测试: 未能创建上架套餐");
-    onSalePackageId = created.id;
-    createdPackageIds.push(onSalePackageId);
+    const pkgForm = createPackageForm({ status });
+    await PackageAPI.add(pkgForm);
+    const page = await PackageAPI.getPage({ name: pkgForm.name, pageNum: 1, pageSize: 10 });
+    const created = page.list.find((p) => p.name === pkgForm.name);
+    if (!created?.id) throw new Error("订单测试: 未能创建套餐");
+    createdPackageIds.push(created.id);
+    return created.id;
+  }
+
+  // 创建订单（余额支付）并登记清理，返回订单号
+  async function createOrder(): Promise<string> {
+    const form = createOrderCreateForm(onSalePackageId);
+    const result = await OrderAPI.create(form);
+    createdOrderNos.push(result.orderNo);
+    return result.orderNo;
+  }
+
+  // 创建订单并确保已支付（余额支付可能因余额不足失败，属预期边界，忽略）
+  async function createPaidOrder(): Promise<string> {
+    const form = createOrderCreateForm(onSalePackageId);
+    const result = await OrderAPI.create(form);
+    createdOrderNos.push(result.orderNo);
+    if (!result.paid) {
+      try {
+        await OrderAPI.pay(result.orderNo, { payMethod: "balance" });
+      } catch {
+        // 余额不足导致支付失败，后续按实际状态判定
+      }
+    }
+    return result.orderNo;
+  }
+
+  beforeAll(async () => {
+    onSalePackageId = await createPackageWithCleanup(1);
   });
 
   afterAll(async () => {
@@ -41,8 +69,8 @@ describe("订单管理模块接口测试", () => {
           if (detail.status === "pending") {
             await OrderAPI.cancel(orderNo, "测试清理");
           }
-        } catch {
-          // 忽略
+        } catch (e) {
+          console.warn(`清理失败:`, e);
         }
       }
     });
@@ -57,8 +85,8 @@ describe("订单管理模块接口测试", () => {
     // 避免影响后续 member 测试对 level_0 用户的断言
     try {
       await MemberAPI.adjustLevel(USERS.USER.id, createLevelAdjustForm({ levelCode: "level_0" }));
-    } catch {
-      // 忽略恢复失败
+    } catch (e) {
+      console.warn(`清理失败:`, e);
     }
   });
 
@@ -73,7 +101,6 @@ describe("订单管理模块接口测试", () => {
       const form = createOrderCreateForm(onSalePackageId, { payMethod: "balance" });
       const result = await OrderAPI.create(form);
 
-      expect(result).toBeDefined();
       expect(result.orderNo).toBeTruthy();
       expect(["wechat", "alipay", "balance", "combined"]).toContain(result.payMethod);
       expect(typeof result.paid).toBe("boolean");
@@ -84,7 +111,6 @@ describe("订单管理模块接口测试", () => {
       const form = createOrderCreateForm(onSalePackageId, { payMethod: "wechat" });
       const result = await OrderAPI.create(form);
 
-      expect(result).toBeDefined();
       expect(result.orderNo).toBeTruthy();
       createdOrderNos.push(result.orderNo);
     });
@@ -95,18 +121,45 @@ describe("订单管理模块接口测试", () => {
     });
 
     test("异常：套餐已下架", async () => {
-      // admin 创建下架套餐
-      await login(USERS.ADMIN.username);
-      const pkgForm = createPackageForm({ status: 0 });
-      await PackageAPI.add(pkgForm);
-      const page = await PackageAPI.getPage({ name: pkgForm.name, pageNum: 1, pageSize: 10 });
-      const offShelfPkg = page.list.find((p) => p.name === pkgForm.name);
-      if (offShelfPkg?.id) createdPackageIds.push(offShelfPkg.id);
-
-      // 切回 user 尝试下单下架套餐
+      const offShelfPkgId = await createPackageWithCleanup(0);
       await login(userAccount);
-      const form = createOrderCreateForm(offShelfPkg!.id!);
+      const form = createOrderCreateForm(offShelfPkgId);
       await expectBizError(OrderAPI.create(form), ["A0521", "A0520", "A0400", "ERR_BAD_REQUEST"]);
+    });
+
+    test("验证：订单号格式为 DH + 14位时间 + 6位随机数", async () => {
+      const orderNo = await createOrder();
+      expect(orderNo).toMatch(/^DH\d{20}$/);
+    });
+
+    test("验证：订单冗余存储套餐信息（packageName/packageLevel）", async () => {
+      const orderNo = await createOrder();
+      const detail = await OrderAPI.getDetail(orderNo);
+      expect(typeof detail.packageName).toBe("string");
+      expect(detail.payableAmount).toBeGreaterThan(0);
+    });
+
+    test("边界：非法支付方式应失败", async () => {
+      const form = createOrderCreateForm(onSalePackageId, {
+        payMethod: "unknown_method" as any,
+      });
+      await expectBizError(OrderAPI.create(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+    });
+
+    test("边界：同一用户同一套餐5秒内重复下单应失败", async () => {
+      // 后端通过 Redis 分布式锁 order:lock:{user}:{package}（TTL 5s）防重复下单，
+      // 锁在下单请求结束后即释放，串行连续下单无法触发，需并发同时发起两个请求。
+      const form = createOrderCreateForm(onSalePackageId, { payMethod: "balance" });
+      const results = await Promise.allSettled([OrderAPI.create(form), OrderAPI.create(form)]);
+      for (const r of results) {
+        if (r.status === "fulfilled") {
+          createdOrderNos.push(r.value.orderNo);
+        } else {
+          const biz = r.reason?.response?.data;
+          expect(["A0539", "A0400", "B0001"]).toContain(biz?.code);
+        }
+      }
+      expect(results.some((r) => r.status === "rejected")).toBe(true);
     });
   });
 
@@ -118,7 +171,6 @@ describe("订单管理模块接口测试", () => {
     test("正向测试：分页查询我的订单", async () => {
       const result = await OrderAPI.listMy({ pageNum: 1, pageSize: 10 });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
       expect(result.list.length).toBeLessThanOrEqual(10);
@@ -147,16 +199,12 @@ describe("订单管理模块接口测试", () => {
 
     beforeAll(async () => {
       await login(userAccount);
-      const form = createOrderCreateForm(onSalePackageId, { payMethod: "balance" });
-      const result = await OrderAPI.create(form);
-      testOrderNo = result.orderNo;
-      createdOrderNos.push(testOrderNo);
+      testOrderNo = await createOrder();
     });
 
     test("正向测试：获取订单详情", async () => {
       const detail = await OrderAPI.getDetail(testOrderNo);
 
-      expect(detail).toBeDefined();
       expect(detail.orderNo).toBe(testOrderNo);
       expect(detail.packageName).toBeTruthy();
       expect(["pending", "paid", "completed", "cancelled", "refunding", "refunded"]).toContain(
@@ -174,6 +222,13 @@ describe("订单管理模块接口测试", () => {
         "ERR_BAD_REQUEST",
       ]);
     });
+
+    test("边界：用户查看他人订单应失败（数据隔离）", async () => {
+      await login(USERS.ADMIN.username);
+      const orderNo = await createOrder();
+      await login(userAccount);
+      await expectBizError(OrderAPI.getDetail(orderNo), ["A0530", "A0400", "ERR_BAD_REQUEST"]);
+    });
   });
 
   describe("PUT /api/v1/orders/{orderNo}/cancel - 取消订单", () => {
@@ -181,10 +236,7 @@ describe("订单管理模块接口测试", () => {
 
     beforeAll(async () => {
       await login(userAccount);
-      const form = createOrderCreateForm(onSalePackageId, { payMethod: "balance" });
-      const result = await OrderAPI.create(form);
-      testOrderNo = result.orderNo;
-      createdOrderNos.push(testOrderNo);
+      testOrderNo = await createOrder();
     });
 
     test("正向测试：取消待支付订单", async () => {
@@ -211,6 +263,20 @@ describe("订单管理模块接口测试", () => {
         "ERR_BAD_REQUEST",
       ]);
     });
+
+    test("边界：已支付订单不可取消", async () => {
+      const orderNo = await createPaidOrder();
+
+      const detail = await OrderAPI.getDetail(orderNo);
+      if (["paid", "completed"].includes(detail.status)) {
+        await expectBizError(OrderAPI.cancel(orderNo, "测试取消已支付"), [
+          "A0531",
+          "A0530",
+          "A0400",
+          "ERR_BAD_REQUEST",
+        ]);
+      }
+    });
   });
 
   describe("POST /api/v1/orders/{orderNo}/pay - 发起支付", () => {
@@ -218,22 +284,30 @@ describe("订单管理模块接口测试", () => {
 
     beforeAll(async () => {
       await login(userAccount);
-      const form = createOrderCreateForm(onSalePackageId, { payMethod: "balance" });
-      const result = await OrderAPI.create(form);
-      testOrderNo = result.orderNo;
-      createdOrderNos.push(testOrderNo);
+      testOrderNo = await createOrder();
     });
 
     test("正向测试：对未支付订单发起支付", async () => {
       const result = await OrderAPI.pay(testOrderNo, { payMethod: "balance" });
 
-      expect(result).toBeDefined();
       expect(result.orderNo).toBe(testOrderNo);
       expect(["wechat", "alipay", "balance", "combined"]).toContain(result.payMethod);
     });
 
     test("异常：订单不存在", async () => {
       await expectBizError(OrderAPI.pay("NON_EXISTENT_ORDER_NO_999999", { payMethod: "balance" }), [
+        "A0530",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("边界：已取消订单发起支付应失败", async () => {
+      const orderNo = await createOrder();
+      await OrderAPI.cancel(orderNo, "测试取消后支付");
+
+      await expectBizError(OrderAPI.pay(orderNo, { payMethod: "balance" }), [
+        "A0531",
         "A0530",
         "A0400",
         "ERR_BAD_REQUEST",
@@ -254,7 +328,6 @@ describe("订单管理模块接口测试", () => {
       });
 
       const config = await OrderAPI.getAutoRenewConfig(onSalePackageId);
-      expect(config).toBeDefined();
       expect(config.packageId).toBe(onSalePackageId);
       expect(config.enabled).toBe(true);
     });
@@ -284,25 +357,15 @@ describe("订单管理模块接口测试", () => {
     test("GET /api/v1/orders/auto-renew/config - 正向测试：查询自动续费配置", async () => {
       const config = await OrderAPI.getAutoRenewConfig(onSalePackageId);
 
-      expect(config).toBeDefined();
       expect(config.packageId).toBe(onSalePackageId);
       expect(typeof config.enabled).toBe("boolean");
       expect(typeof config.failCount).toBe("number");
     });
 
     test("GET /api/v1/orders/auto-renew/config - 正向测试：未配置的套餐返回默认配置", async () => {
-      // admin 创建新套餐未配置过自动续费
-      await login(USERS.ADMIN.username);
-      const pkgForm = createPackageForm({ status: 1 });
-      await PackageAPI.add(pkgForm);
-      const page = await PackageAPI.getPage({ name: pkgForm.name, pageNum: 1, pageSize: 10 });
-      const newPkg = page.list.find((p) => p.name === pkgForm.name);
-      if (newPkg?.id) createdPackageIds.push(newPkg.id);
-
-      // 切回 user 查询
+      const newPkgId = await createPackageWithCleanup(1);
       await login(userAccount);
-      const config = await OrderAPI.getAutoRenewConfig(newPkg!.id!);
-      expect(config).toBeDefined();
+      const config = await OrderAPI.getAutoRenewConfig(newPkgId);
       expect(config.enabled).toBe(false);
     });
   });
@@ -312,29 +375,12 @@ describe("订单管理模块接口测试", () => {
 
     beforeAll(async () => {
       await login(userAccount);
-      // 创建一个已支付订单用于退款测试（通过余额支付自动完成）
-      const form = createOrderCreateForm(onSalePackageId, { payMethod: "balance" });
-      const result = await OrderAPI.create(form);
-      paidOrderNo = result.orderNo;
-      createdOrderNos.push(paidOrderNo);
-
-      // 余额支付若自动完成，则订单为已支付状态；否则跳过退款测试
-      if (!result.paid) {
-        try {
-          await OrderAPI.pay(paidOrderNo, { payMethod: "balance" });
-        } catch {
-          // 忽略，退款测试会按实际状态判定
-        }
-      }
+      paidOrderNo = await createPaidOrder();
     });
 
     test("正向测试：对已支付订单申请退款", async () => {
       const detail = await OrderAPI.getDetail(paidOrderNo);
-      if (detail.status !== "paid") {
-        // 若订单不是已支付状态，跳过此测试（依赖支付流程完成）
-        console.warn("退款测试：订单未处于已支付状态，跳过");
-        return;
-      }
+      expect(detail.status).toBe("paid");
 
       await OrderAPI.applyRefund(paidOrderNo, createRefundApplyForm());
 
@@ -348,6 +394,30 @@ describe("订单管理模块接口测试", () => {
         ["A0530", "A0400", "ERR_BAD_REQUEST"]
       );
     });
+
+    test("边界：非本人订单申请退款应失败", async () => {
+      await login(USERS.ADMIN.username);
+      const orderNo = await createPaidOrder();
+      await login(userAccount);
+      await expectBizError(OrderAPI.applyRefund(orderNo, createRefundApplyForm()), [
+        "A0530",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("边界：重复退款申请应失败", async () => {
+      const detail = await OrderAPI.getDetail(paidOrderNo);
+      if (detail.status === "refunding" || detail.status === "refunded") {
+        await expectBizError(OrderAPI.applyRefund(paidOrderNo, createRefundApplyForm()), [
+          "A0531",
+          "A053A",
+          "A0530",
+          "A0400",
+          "ERR_BAD_REQUEST",
+        ]);
+      }
+    });
   });
 
   // ============ 后台管理接口（使用 admin 账号） ============
@@ -360,7 +430,6 @@ describe("订单管理模块接口测试", () => {
     test("正向测试：分页查询后台订单列表", async () => {
       const result = await OrderAPI.getPage(createOrderQuery({ pageNum: 1, pageSize: 10 }));
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
 
@@ -392,6 +461,54 @@ describe("订单管理模块接口测试", () => {
         expect(order.payMethod).toBe("balance");
       }
     });
+
+    test("正向测试：按订单号精确查询", async () => {
+      const allOrders = await OrderAPI.getPage(createOrderQuery({ pageNum: 1, pageSize: 10 }));
+      expect(allOrders.list.length).toBeGreaterThan(0);
+      const targetOrderNo = allOrders.list[0]!.orderNo;
+
+      const result = await OrderAPI.getPage(
+        createOrderQuery({ orderNo: targetOrderNo, pageNum: 1, pageSize: 10 })
+      );
+      expect(result.list.length).toBeGreaterThan(0);
+      result.list.forEach((order) => {
+        expect(order.orderNo).toBe(targetOrderNo);
+      });
+    });
+
+    test("正向测试：按用户信息模糊查询", async () => {
+      const allOrders = await OrderAPI.getPage(createOrderQuery({ pageNum: 1, pageSize: 10 }));
+      expect(allOrders.list.length).toBeGreaterThan(0);
+      const targetUsername = allOrders.list[0]!.username;
+      const keyword = targetUsername.substring(0, Math.min(3, targetUsername.length));
+
+      const result = await OrderAPI.getPage(
+        createOrderQuery({ keywords: keyword, pageNum: 1, pageSize: 10 })
+      );
+      expect(result.list.length).toBeGreaterThan(0);
+    });
+
+    test("正向测试：按金额区间筛选", async () => {
+      const allOrders = await OrderAPI.getPage(createOrderQuery({ pageNum: 1, pageSize: 100 }));
+      if (allOrders.list.length === 0) {
+        console.warn("无订单数据，跳过金额区间筛选测试");
+        return;
+      }
+
+      const amounts = allOrders.list.map((o) => o.payableAmount).filter((a) => a > 0);
+      if (amounts.length < 2) return;
+
+      const min = Math.min(...amounts);
+      const max = Math.max(...amounts);
+
+      const result = await OrderAPI.getPage(
+        createOrderQuery({ amountMin: min, amountMax: max, pageNum: 1, pageSize: 100 })
+      );
+      result.list.forEach((order) => {
+        expect(order.payableAmount).toBeGreaterThanOrEqual(min);
+        expect(order.payableAmount).toBeLessThanOrEqual(max);
+      });
+    });
   });
 
   describe("GET /api/v1/orders/stats - 订单统计", () => {
@@ -402,7 +519,6 @@ describe("订单管理模块接口测试", () => {
     test("正向测试：获取订单统计数据结构", async () => {
       const stats = await OrderAPI.getStats();
 
-      expect(stats).toBeDefined();
       expect(typeof stats.totalOrders).toBe("number");
       expect(typeof stats.totalRevenue).toBe("number");
       expect(typeof stats.totalRefund).toBe("number");
@@ -418,8 +534,17 @@ describe("订单管理模块接口测试", () => {
       const endTime = "2026-12-31 23:59:59";
       const stats = await OrderAPI.getStats(startTime, endTime);
 
-      expect(stats).toBeDefined();
       expect(typeof stats.totalOrders).toBe("number");
+    });
+
+    test("验证：退款统计包含总退款金额和退款率", async () => {
+      const stats = await OrderAPI.getStats();
+      expect(typeof stats.totalRefund).toBe("number");
+      expect(typeof stats.refundRate).toBe("number");
+      expect(stats.refundRate).toBeGreaterThanOrEqual(0);
+      if (stats.totalRevenue > 0) {
+        expect(stats.refundRate).toBeLessThanOrEqual(1);
+      }
     });
   });
 
@@ -431,7 +556,6 @@ describe("订单管理模块接口测试", () => {
     test("正向测试：分页查询退款列表", async () => {
       const result = await OrderAPI.listRefunds(createRefundQuery({ pageNum: 1, pageSize: 10 }));
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
 
@@ -463,18 +587,7 @@ describe("订单管理模块接口测试", () => {
       await login(USERS.ADMIN.username);
       // 准备一个处于退款中的订单：切到 user 下单支付并申请退款，再切回 admin
       await login(userAccount);
-      const form = createOrderCreateForm(onSalePackageId, { payMethod: "balance" });
-      const result = await OrderAPI.create(form);
-      testOrderNo = result.orderNo;
-      createdOrderNos.push(testOrderNo);
-
-      if (!result.paid) {
-        try {
-          await OrderAPI.pay(testOrderNo, { payMethod: "balance" });
-        } catch {
-          // 忽略
-        }
-      }
+      testOrderNo = await createPaidOrder();
 
       try {
         await OrderAPI.applyRefund(testOrderNo, createRefundApplyForm());
@@ -485,15 +598,12 @@ describe("订单管理模块接口测试", () => {
         const found = refunds.list.find((r) => r.orderNo === testOrderNo);
         if (found?.id) testRefundId = found.id;
       } catch {
-        // 忽略
+        // 忽略：退款申请可能失败，随后续断言判定
       }
     });
 
     test("正向测试：驳回退款申请", async () => {
-      if (!testRefundId) {
-        console.warn("无可用退款记录，跳过驳回测试");
-        return;
-      }
+      expect(testRefundId).toBeGreaterThan(0);
 
       await OrderAPI.rejectRefund(testRefundId, {
         approved: false,
@@ -519,6 +629,85 @@ describe("订单管理模块接口测试", () => {
         "A0537",
         "A0530",
         "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+  });
+
+  describe("状态-动作映射验证（user）", () => {
+    let pendingOrderNo: string;
+    let paidOrderNo: string;
+
+    beforeAll(async () => {
+      await login(userAccount);
+      pendingOrderNo = await createOrder();
+      paidOrderNo = await createPaidOrder();
+    });
+
+    test("验证：待支付状态允许发起支付", async () => {
+      const detail = await OrderAPI.getDetail(pendingOrderNo);
+      if (detail.status === "pending") {
+        const result = await OrderAPI.pay(pendingOrderNo, { payMethod: "balance" });
+        expect(result.orderNo).toBe(pendingOrderNo);
+      }
+    });
+
+    test("验证：已支付状态允许申请退款", async () => {
+      const detail = await OrderAPI.getDetail(paidOrderNo);
+      expect(["paid", "completed", "refunding", "refunded"]).toContain(detail.status);
+    });
+  });
+
+  // ============ 权限测试 ============
+
+  describe("权限测试 - 普通用户访问管理接口应失败", () => {
+    beforeAll(async () => {
+      await login(USERS.USER.username);
+    });
+
+    afterAll(async () => {
+      await login(USERS.ADMIN.username);
+    });
+
+    // 后端已为 orders/page、orders/stats、orders/refunds/page 加 require_permission，
+    // 普通用户访问返回 A0301（访问未授权）。
+    test("边界：普通用户查询后台订单列表应失败", async () => {
+      await expectBizError(OrderAPI.getPage(createOrderQuery()), [
+        "A0301",
+        "A0403",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("边界：普通用户查询订单统计应失败", async () => {
+      await expectBizError(OrderAPI.getStats(), [
+        "A0301",
+        "A0403",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("边界：普通用户查询退款审核列表应失败", async () => {
+      await expectBizError(OrderAPI.listRefunds(createRefundQuery()), [
+        "A0301",
+        "A0403",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("边界：普通用户审核退款应失败", async () => {
+      // 后端 require_permission 无权限返回 HTTP 403 → 全局 handler 映射为 A0301（访问未授权）
+      await expectBizError(OrderAPI.rejectRefund(1, { approved: false, remark: "test" }), [
+        "A0301",
+        "A0403",
+        "A0400",
+        "B0001",
         "ERR_BAD_REQUEST",
       ]);
     });

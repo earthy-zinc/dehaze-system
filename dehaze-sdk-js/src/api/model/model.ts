@@ -203,6 +203,12 @@ export interface PredictionQuotaVO {
 export interface CompareReportForm {
   /** 处理日志ID */
   logId: number;
+  /** 报告格式：pdf 或 image */
+  format: string;
+  /** 是否包含评估指标 */
+  includeMetrics?: boolean;
+  /** 是否包含滤镜参数 */
+  includeFilters?: boolean;
 }
 
 /** 对比报告结果（异步任务） */

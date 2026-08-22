@@ -37,6 +37,11 @@ export interface PageResult<T> {
 }
 
 /**
+ * 通用启用状态：1-启用，0-禁用
+ */
+export type EnabledStatus = 0 | 1;
+
+/**
  * 组件数据源
  */
 export interface OptionType {

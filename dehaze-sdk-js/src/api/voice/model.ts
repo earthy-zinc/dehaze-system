@@ -54,6 +54,28 @@ export interface AsrResultVO {
   status: "completed" | "processing" | "failed";
 }
 
+/** 流式 ASR 识别增量文本（后端 WebSocket 下行 JSON） */
+export interface AsrStreamMessage {
+  /** 识别文本 */
+  text: string;
+  /** 是否为最终结果 */
+  isFinal: boolean;
+}
+
+/** 流式 ASR 回调集合 */
+export interface AsrStreamHandlers {
+  /** 收到识别增量文本时触发 */
+  onMessage: (message: AsrStreamMessage) => void;
+  /** WebSocket 连接建立时触发（可开始发送音频） */
+  onOpen?: () => void;
+  /** 连接关闭时触发 */
+  onClose?: (code: number, reason: string) => void;
+  /** 连接错误时触发 */
+  onError?: (error: Event) => void;
+  /** 重连尝试时触发（attempt 为第几次重试） */
+  onReconnect?: (attempt: number) => void;
+}
+
 /** TTS 合成请求 */
 export interface TtsForm {
   /** 待合成文本 */

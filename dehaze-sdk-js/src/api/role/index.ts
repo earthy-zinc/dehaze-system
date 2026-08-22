@@ -47,7 +47,7 @@ class RoleAPI {
   static updateRoleMenus(roleId: number, menuIds: number[]) {
     return request({
       url: "/api/v1/roles/" + roleId + "/menus",
-      method: "put",
+      method: "patch",
       data: menuIds,
     });
   }
@@ -100,7 +100,7 @@ class RoleAPI {
   static updateStatus(roleId: number, status: number) {
     return request({
       url: "/api/v1/roles/" + roleId + "/status",
-      method: "put",
+      method: "patch",
       params: { status },
     });
   }
@@ -111,6 +111,9 @@ class RoleAPI {
    * @param ids 角色ID字符串，多个以英文逗号(,)分割
    */
   static deleteByIds(ids: string) {
+    if (!ids || !ids.trim()) {
+      return Promise.reject(new Error("待删除的角色 ID 列表不能为空"));
+    }
     return request({
       url: "/api/v1/roles/" + ids,
       method: "delete",

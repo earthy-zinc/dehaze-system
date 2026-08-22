@@ -2,6 +2,7 @@ import { expectBizError } from "#/utils/assertion";
 import { ImportExportAPI, UserAPI } from "../../../index";
 import { ROLES } from "#/factories/constants";
 import { uniqueName, uniqueEmail, uniqueMobile } from "#/factories/common";
+import { TestCleanupRegistry } from "#/utils/cleanup";
 import {
   createCsvFile,
   createInvalidFile,
@@ -9,16 +10,16 @@ import {
   createPartialImportRequest,
 } from "./factories";
 
+const USER_CSV_HEADER = "用户名,昵称,性别,手机号,邮箱,角色编码(多个逗号分隔)";
+
 const buildUserCsvContent = () => {
   const username = uniqueName("imp_user");
   const nickname = uniqueName("导入用户");
   const email = uniqueEmail(username);
   const mobile = uniqueMobile();
-  const roleCodes = ROLES.GUEST.code;
   // CSV 表头需与后端 ImportFieldConfig.label 对齐（中文）
-  const header = "用户名,昵称,性别,手机号,邮箱,角色编码(多个逗号分隔)";
-  const row = `${username},${nickname},男,${mobile},${email},${roleCodes}`;
-  return { content: `${header}\n${row}\n`, username, nickname };
+  const row = `${username},${nickname},男,${mobile},${email},${ROLES.GUEST.code}`;
+  return { content: `${USER_CSV_HEADER}\n${row}\n`, username, nickname };
 };
 
 const isImportResult = (
@@ -45,14 +46,17 @@ const findUserIdByUsername = async (username: string): Promise<number | undefine
 
 describe("通用导入接口测试 - ImportExportAPI.import", () => {
   const createdUserIds: number[] = [];
+  const cleanup = new TestCleanupRegistry();
+  cleanup.registerIds(
+    () => createdUserIds,
+    (id) => UserAPI.deleteByIds(id)
+  );
+  afterAll(() => cleanup.executeAll());
 
-  afterAll(async () => {
-    for (const id of createdUserIds) {
-      try {
-        await UserAPI.deleteByIds(id.toString());
-      } catch {}
-    }
-  });
+  const trackUser = async (username: string) => {
+    const userId = await findUserIdByUsername(username);
+    if (userId) createdUserIds.push(userId);
+  };
 
   describe("POST /api/v1/user/_import - 用户模块导入", () => {
     test("同步导入用户 CSV 文件返回 ImportResult", async () => {
@@ -61,7 +65,6 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
 
       const result = await ImportExportAPI.import("user", { mode: "all" }, file);
 
-      expect(result).toBeDefined();
       expect(isImportResult(result) || isImportTaskResult(result)).toBe(true);
 
       if (isImportResult(result)) {
@@ -71,8 +74,7 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
         expect(Array.isArray(result.errors)).toBe(true);
       }
 
-      const userId = await findUserIdByUsername(username);
-      if (userId) createdUserIds.push(userId);
+      await trackUser(username);
     });
 
     test("强制异步导入用户返回 ImportTaskResult(taskId)", async () => {
@@ -81,7 +83,6 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
 
       const result = await ImportExportAPI.import("user", { mode: "all", async: true }, file);
 
-      expect(result).toBeDefined();
       expect(isImportTaskResult(result)).toBe(true);
       const taskResult = result as { taskId: string; status: number };
       expect(typeof taskResult.taskId).toBe("string");
@@ -89,8 +90,7 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
       // 后端 TaskStatusEnum.PENDING 序列化为数字 1
       expect(taskResult.status).toBe(1);
 
-      const userId = await findUserIdByUsername(username);
-      if (userId) createdUserIds.push(userId);
+      await trackUser(username);
     });
   });
 
@@ -101,11 +101,9 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
 
       const result = await ImportExportAPI.import("user", createPartialImportRequest(), file);
 
-      expect(result).toBeDefined();
       expect(isImportResult(result) || isImportTaskResult(result)).toBe(true);
 
-      const userId = await findUserIdByUsername(username);
-      if (userId) createdUserIds.push(userId);
+      await trackUser(username);
     });
 
     test("partial 模式重复导入相同用户应跳过已存在记录", async () => {
@@ -122,18 +120,16 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
         expect(secondResult.skippedCount).toBeGreaterThanOrEqual(0);
       }
 
-      const userId = await findUserIdByUsername(username);
-      if (userId) createdUserIds.push(userId);
+      await trackUser(username);
     });
   });
 
   describe("错误反馈 - errors 数组", () => {
     test("导入含错误行的 CSV 应返回 errors 错误明细", async () => {
       const username = uniqueName("imp_err");
-      const header = "用户名,昵称,性别,手机号,邮箱,角色编码(多个逗号分隔)";
       const validRow = `${username},导入错误测试,男,${uniqueMobile()},${uniqueEmail(username)},${ROLES.GUEST.code}`;
       const invalidRow = `,,invalid-email,000,99,99,9999,9999`;
-      const content = `${header}\n${validRow}\n${invalidRow}\n`;
+      const content = `${USER_CSV_HEADER}\n${validRow}\n${invalidRow}\n`;
       const file = createCsvFile("user_with_errors.csv", content);
 
       const result = await ImportExportAPI.import("user", { mode: "partial" }, file);
@@ -144,8 +140,7 @@ describe("通用导入接口测试 - ImportExportAPI.import", () => {
         expect(Array.isArray(result.errors)).toBe(true);
       }
 
-      const userId = await findUserIdByUsername(username);
-      if (userId) createdUserIds.push(userId);
+      await trackUser(username);
     });
   });
 

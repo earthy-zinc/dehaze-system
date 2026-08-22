@@ -86,7 +86,7 @@ class MenuAPI {
     return request({
       url: "/api/v1/menus/" + menuId,
       method: "patch",
-      params: { visible },
+      data: { visible },
     });
   }
 
@@ -96,6 +96,9 @@ class MenuAPI {
    * @param ids 菜单ID字符串，多个以英文逗号(,)分割
    */
   static deleteByIds(ids: string) {
+    if (!ids || !ids.trim()) {
+      return Promise.reject(new Error("待删除的菜单 ID 列表不能为空"));
+    }
     return request({
       url: "/api/v1/menus/" + ids,
       method: "delete",

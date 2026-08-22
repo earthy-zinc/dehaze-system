@@ -99,6 +99,9 @@ class UserAPI {
    * @param ids 用户ID字符串，多个以英文逗号(,)分割
    */
   static deleteByIds(ids: string) {
+    if (!ids || !ids.trim()) {
+      return Promise.reject(new Error("待删除的用户 ID 列表不能为空"));
+    }
     return request({
       url: "/api/v1/users/" + ids,
       method: "delete",

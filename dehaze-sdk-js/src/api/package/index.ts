@@ -91,6 +91,9 @@ class PackageAPI {
 
   /** 后台：删除套餐（路径参数，逗号分隔） */
   static deleteByIds(ids: string) {
+    if (!ids || !ids.trim()) {
+      return Promise.reject(new Error("待删除的套餐 ID 列表不能为空"));
+    }
     return request({
       url: "/api/v1/packages/" + ids,
       method: "delete",
@@ -162,6 +165,9 @@ class CouponAPI {
 
   /** 后台：删除优惠券（路径参数，逗号分隔） */
   static deleteByIds(ids: string) {
+    if (!ids || !ids.trim()) {
+      return Promise.reject(new Error("待删除的优惠券 ID 列表不能为空"));
+    }
     return request({
       url: "/api/v1/packages/coupons/" + ids,
       method: "delete",

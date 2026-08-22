@@ -143,6 +143,9 @@ class DictAPI {
    * @param ids 字典项ID，多个以英文逗号(,)分割
    */
   static deleteDictByIds(ids: string) {
+    if (!ids || !ids.trim()) {
+      return Promise.reject(new Error("待删除的字典项 ID 列表不能为空"));
+    }
     return request({
       url: "/api/v1/dict/" + ids,
       method: "delete",

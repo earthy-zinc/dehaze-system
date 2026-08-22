@@ -29,23 +29,17 @@ describe("推荐管理接口测试", () => {
       const request = createAnalyzeRequest();
       const analysis = await RecommendationAPI.analyze(request);
 
-      expect(analysis).toBeDefined();
-      // 验证 7 维特征字段全部存在
       expect(["light", "moderate", "heavy"]).toContain(analysis.hazeLevel);
       expect(analysis.hazeConfidence).toBeGreaterThanOrEqual(0);
       expect(analysis.hazeConfidence).toBeLessThanOrEqual(1);
 
-      expect(
-        ["urban", "landscape", "building", "night", "backlight", "indoor"].includes(
-          analysis.sceneType
-        )
-      ).toBe(true);
+      expect(["urban", "landscape", "building", "night", "backlight", "indoor"]).toContain(
+        analysis.sceneType
+      );
       expect(analysis.sceneConfidence).toBeGreaterThanOrEqual(0);
       expect(analysis.sceneConfidence).toBeLessThanOrEqual(1);
 
-      expect(
-        ["bright", "normal", "dark", "veryDark", "backlight"].includes(analysis.lighting)
-      ).toBe(true);
+      expect(["bright", "normal", "dark", "veryDark", "backlight"]).toContain(analysis.lighting);
 
       expect(analysis.complexity).toBeGreaterThanOrEqual(0);
       expect(analysis.complexity).toBeLessThanOrEqual(1);
@@ -64,7 +58,6 @@ describe("推荐管理接口测试", () => {
       });
       const analysis = await RecommendationAPI.analyze(request);
 
-      expect(analysis).toBeDefined();
       expect(["light", "moderate", "heavy"]).toContain(analysis.hazeLevel);
       expect(typeof analysis.hazeConfidence).toBe("number");
     });
@@ -75,7 +68,6 @@ describe("推荐管理接口测试", () => {
       });
       const analysis = await RecommendationAPI.analyze(request);
 
-      expect(analysis).toBeDefined();
       expect(["light", "moderate", "heavy"]).toContain(analysis.hazeLevel);
     });
 
@@ -102,6 +94,14 @@ describe("推荐管理接口测试", () => {
         "ERR_BAD_REQUEST",
       ]);
     });
+
+    test("边界：imageUrl 与 imageId 均未提供应失败", async () => {
+      await expectBizError(RecommendationAPI.analyze({} as any), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
   });
 
   // ============ GET /api/v1/recommendations/algorithms - 获取算法推荐（普通用户） ============
@@ -116,11 +116,9 @@ describe("推荐管理接口测试", () => {
         imageMd5: "d41d8cd98f00b204e9800998ecf8427e",
       });
 
-      expect(recommendations).toBeDefined();
       expect(Array.isArray(recommendations)).toBe(true);
 
       if (recommendations.length > 0) {
-        // 验证每个推荐项结构
         recommendations.forEach((rec) => {
           expect(rec.algorithmId).toBeGreaterThan(0);
           expect(rec.algorithmName).toBeTruthy();
@@ -128,8 +126,8 @@ describe("推荐管理接口测试", () => {
           expect(rec.matchScore).toBeGreaterThanOrEqual(0);
           expect(rec.matchScore).toBeLessThanOrEqual(100);
           expect(rec.reason).toBeTruthy();
-          // 当前 rating 置 null，待真实评分数据填充
-          expect(rec.rating).toBeNull();
+          // rating 待真实评分数据填充；项目响应契约对 null 字段做省略（exclude_none），JS 侧为 undefined
+          expect(rec.rating ?? null).toBeNull();
         });
       }
     });
@@ -139,7 +137,6 @@ describe("推荐管理接口测试", () => {
         imageMd5: "d41d8cd98f00b204e9800998ecf8427e",
       });
 
-      expect(recommendations).toBeDefined();
       expect(Array.isArray(recommendations)).toBe(true);
 
       if (recommendations.length > 0) {
@@ -151,14 +148,11 @@ describe("推荐管理接口测试", () => {
     });
 
     test("边界测试：无匹配算法场景返回空数组", async () => {
-      // 使用不存在的 analysisId
       const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
         analysisId: 99999999,
       });
 
-      expect(recommendations).toBeDefined();
       expect(Array.isArray(recommendations)).toBe(true);
-      // 无匹配时返回空数组而非报错
       expect(recommendations.length).toBeGreaterThanOrEqual(0);
     });
 
@@ -169,10 +163,36 @@ describe("推荐管理接口测试", () => {
       const req2 = createAnalyzeRequest();
       const analysis2 = await RecommendationAPI.analyze(req2);
 
-      // 相同图片多次分析应返回相同的特征
       expect(analysis1.hazeLevel).toBe(analysis2.hazeLevel);
       expect(analysis1.sceneType).toBe(analysis2.sceneType);
       expect(analysis1.lighting).toBe(analysis2.lighting);
+    });
+
+    test("验证：推荐理由格式为可解释文本", async () => {
+      const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+        imageMd5: "d41d8cd98f00b204e9800998ecf8427e",
+      });
+
+      if (recommendations.length > 0) {
+        recommendations.forEach((rec) => {
+          expect(rec.reason).toBeTruthy();
+          expect(rec.reason!.length).toBeGreaterThan(0);
+        });
+      }
+    });
+
+    test("验证：推荐按匹配度降序排列", async () => {
+      const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+        imageMd5: "d41d8cd98f00b204e9800998ecf8427e",
+      });
+
+      if (recommendations.length > 1) {
+        for (let i = 1; i < recommendations.length; i++) {
+          expect(recommendations[i - 1]!.matchScore).toBeGreaterThanOrEqual(
+            recommendations[i]!.matchScore
+          );
+        }
+      }
     });
   });
 
@@ -250,7 +270,6 @@ describe("推荐管理接口测试", () => {
       const feedback = createFeedback({ recommendationId, useful: true });
       const result = await RecommendationAPI.submitFeedback(feedback);
 
-      expect(result).toBeDefined();
       expect(result.id).toBeGreaterThan(0);
     });
 
@@ -258,7 +277,6 @@ describe("推荐管理接口测试", () => {
       const feedback = createFeedback({ recommendationId, useful: false });
       const result = await RecommendationAPI.submitFeedback(feedback);
 
-      expect(result).toBeDefined();
       expect(result.id).toBeGreaterThan(0);
     });
 
@@ -284,7 +302,6 @@ describe("推荐管理接口测试", () => {
     test("正向测试：管理员获取规则列表", async () => {
       const rules = await RecommendationAPI.getRules();
 
-      expect(rules).toBeDefined();
       expect(Array.isArray(rules)).toBe(true);
 
       if (rules.length > 0) {
@@ -329,7 +346,6 @@ describe("推荐管理接口测试", () => {
       const result = await RecommendationAPI.updateRule(originalRule.id!, updateData);
       expect(result).toBeDefined();
 
-      // 验证更新生效
       const updatedRules = await RecommendationAPI.getRules();
       const updated = updatedRules.find((r) => r.id === originalRule.id);
       expect(updated).toBeDefined();
@@ -346,16 +362,14 @@ describe("推荐管理接口测试", () => {
       const newRule = createRule();
       const result = await RecommendationAPI.updateRule(0, newRule);
 
-      expect(result).toBeDefined();
       expect(result).toBeGreaterThan(0);
 
-      // 验证新增生效
       const rules = await RecommendationAPI.getRules();
       const found = rules.find((r) => r.id === result);
       expect(found).toBeDefined();
       expect(found!.ruleName).toBe(newRule.ruleName);
 
-      // 注册清理
+      // 规则更新接口为 PUT，删除通过禁用实现
       cleanup.registerIds(
         () => [result],
         async (id) => {
@@ -373,7 +387,6 @@ describe("推荐管理接口测试", () => {
       }
 
       const originalRule = rules[0]!;
-      // 设置一个明显超限的权重（例如 200）
       const updateData = createRule({
         ...originalRule,
         weight: 200,
@@ -385,6 +398,43 @@ describe("推荐管理接口测试", () => {
         "B0001",
         "ERR_BAD_REQUEST",
       ]);
+    });
+
+    test("边界：更新不存在的规则应失败", async () => {
+      const rule = createRule();
+      await expectBizError(RecommendationAPI.updateRule(99999999, rule), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("正向测试：禁用规则后该规则不参与匹配", async () => {
+      const rules = await RecommendationAPI.getRules();
+      if (rules.length === 0) {
+        console.warn("无规则数据，跳过禁用规则测试");
+        return;
+      }
+
+      const originalRule = rules[0]!;
+      const originalEnabled = originalRule.enabled;
+
+      await RecommendationAPI.updateRule(originalRule.id!, {
+        ...originalRule,
+        enabled: false,
+      });
+
+      const updatedRules = await RecommendationAPI.getRules();
+      const updated = updatedRules.find((r) => r.id === originalRule.id);
+      expect(updated).toBeDefined();
+      expect(updated!.enabled).toBe(false);
+
+      // 恢复原始状态
+      await RecommendationAPI.updateRule(originalRule.id!, {
+        ...originalRule,
+        enabled: originalEnabled,
+      });
     });
 
     test("权限测试：普通用户无法修改规则（期望 A0301）", async () => {
@@ -402,6 +452,37 @@ describe("推荐管理接口测试", () => {
     });
   });
 
+  // ============ 权限测试 ============
+
+  describe("权限测试 - 普通用户管理操作应失败", () => {
+    let ruleId: number | undefined;
+
+    beforeAll(async () => {
+      // 先以 admin 获取规则列表并取出一个规则 id（普通用户无法调用 getRules）
+      await login(adminAccount);
+      const rules = await RecommendationAPI.getRules();
+      if (rules.length > 0) {
+        ruleId = rules[0]!.id;
+      }
+      await login(USERS.USER.username);
+    });
+
+    afterAll(async () => {
+      await login(USERS.ADMIN.username);
+    });
+
+    test("边界：普通用户修改推荐规则应失败", async () => {
+      if (ruleId !== undefined) {
+        await expectBizError(RecommendationAPI.updateRule(ruleId, { name: "hacked" } as any), [
+          "A0403",
+          "A0400",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
+      }
+    });
+  });
+
   // ============ GET /api/v1/recommendations/report - 效果报表（管理员） ============
 
   describe("GET /api/v1/recommendations/report - 效果报表（管理员）", () => {
@@ -412,7 +493,6 @@ describe("推荐管理接口测试", () => {
     test("正向测试：获取推荐效果报表", async () => {
       const report = await RecommendationAPI.getReport();
 
-      expect(report).toBeDefined();
       expect(typeof report.totalRecommendations).toBe("number");
       expect(report.totalRecommendations).toBeGreaterThanOrEqual(0);
 
@@ -440,15 +520,29 @@ describe("推荐管理接口测试", () => {
 
       const report = await RecommendationAPI.getReport({ startDate, endDate });
 
-      expect(report).toBeDefined();
       expect(typeof report.totalRecommendations).toBe("number");
       expect(Array.isArray(report.trend)).toBe(true);
 
-      // 验证 trend 中的日期在筛选范围内
       report.trend.forEach((item) => {
         expect(item.date).toBeTruthy();
         expect(typeof item.adoptionRate).toBe("number");
       });
+    });
+
+    test("验证：采纳率与满意度数值合理", async () => {
+      const report = await RecommendationAPI.getReport();
+      // 采纳率 = 有用反馈数 / 总反馈数，满意度在简化实现中等同采纳率
+      expect(report.adoptionRate).toBeGreaterThanOrEqual(0);
+      expect(report.adoptionRate).toBeLessThanOrEqual(1);
+      expect(report.satisfactionRate).toBeGreaterThanOrEqual(0);
+      expect(report.satisfactionRate).toBeLessThanOrEqual(1);
+    });
+
+    test("边界：无反馈数据时采纳率为0不报错", async () => {
+      const report = await RecommendationAPI.getReport();
+      expect(typeof report.adoptionRate).toBe("number");
+      expect(typeof report.satisfactionRate).toBe("number");
+      expect(report.totalRecommendations).toBeGreaterThanOrEqual(0);
     });
 
     test("权限测试：普通用户无法访问报表（期望 A0301）", async () => {
@@ -470,14 +564,12 @@ describe("推荐管理接口测试", () => {
       // Step 1: 分析图片
       const analyzeReq = createAnalyzeRequest();
       const analysis = await RecommendationAPI.analyze(analyzeReq);
-      expect(analysis).toBeDefined();
       expect(analysis.hazeLevel).toBeTruthy();
 
       // Step 2: 获取推荐
       const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
         imageMd5: "d41d8cd98f00b204e9800998ecf8427e",
       });
-      expect(recommendations).toBeDefined();
       expect(Array.isArray(recommendations)).toBe(true);
 
       // Step 3: 提交反馈（如果有推荐结果）
@@ -488,7 +580,6 @@ describe("推荐管理接口测试", () => {
           useful: true,
         });
         const feedbackResult = await RecommendationAPI.submitFeedback(feedback);
-        expect(feedbackResult).toBeDefined();
         expect(feedbackResult.id).toBeGreaterThan(0);
       }
     });

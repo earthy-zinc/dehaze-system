@@ -7,7 +7,11 @@ export interface MenuQuery {
   keywords?: string;
   perm?: string;
   path?: string;
-  type?: MenuTypeEnum;
+  /**
+   * 菜单类型查询参数。后端接收整数（1=菜单；2=目录；3=外链；4=按钮），
+   * 为兼容枚举名也允许传 MenuTypeEnum，故定义为联合类型。
+   */
+  type?: MenuTypeEnum | number;
   visible?: number;
 }
 

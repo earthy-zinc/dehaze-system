@@ -13,7 +13,6 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
     test("同步导出用户(默认 Excel)返回 Blob 文件流", async () => {
       const result = await ImportExportAPI.export("user", createExportRequest());
 
-      expect(result).toBeDefined();
       expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
 
       if (isBlobLike(result)) {
@@ -25,7 +24,6 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
     test("强制异步导出用户返回 ExportResult(taskId)", async () => {
       const result = await ImportExportAPI.export("user", createAsyncExportRequest());
 
-      expect(result).toBeDefined();
       expect(isTaskResultLike(result)).toBe(true);
       const taskResult = result as { taskId: string; status: number; estimatedCount?: number };
       expect(typeof taskResult.taskId).toBe("string");
@@ -39,8 +37,7 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
         createExportRequest({ keywords: "admin" })
       );
 
-      expect(result).toBeDefined();
-      expect(isTaskResultLike(result) || isBlobLike(result)).toBe(true);
+      expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
     });
   });
 
@@ -48,14 +45,12 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
     test("同步导出角色 Excel 返回 Blob", async () => {
       const result = await ImportExportAPI.export("role", createExportRequest({ format: "excel" }));
 
-      expect(result).toBeDefined();
       expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
     });
 
     test("导出角色 CSV 格式返回 Blob", async () => {
       const result = await ImportExportAPI.export("role", createCsvExportRequest());
 
-      expect(result).toBeDefined();
       expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
 
       if (isBlobLike(result)) {
@@ -69,8 +64,7 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
     test("数据集导出总是异步返回 taskId", async () => {
       const result = await ImportExportAPI.export("dataset", createExportRequest());
 
-      expect(result).toBeDefined();
-      expect(isTaskResultLike(result) || isBlobLike(result)).toBe(true);
+      expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
     });
   });
 
@@ -78,7 +72,6 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
     test("导出算法列表 Excel 返回 Blob 或 taskId", async () => {
       const result = await ImportExportAPI.export("algorithm", createExportRequest());
 
-      expect(result).toBeDefined();
       expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
     });
   });
@@ -87,14 +80,12 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
     test("导出用户 Excel 格式", async () => {
       const result = await ImportExportAPI.export("user", createExportRequest({ format: "excel" }));
 
-      expect(result).toBeDefined();
       expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
     });
 
     test("导出用户 CSV 格式", async () => {
       const result = await ImportExportAPI.export("user", createCsvExportRequest());
 
-      expect(result).toBeDefined();
       expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
     });
   });
@@ -108,7 +99,6 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
         })
       );
 
-      expect(result).toBeDefined();
       expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
     });
 
@@ -120,14 +110,12 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
         })
       );
 
-      expect(result).toBeDefined();
       expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
     });
 
     test("指定空 fields 数组等价于不传 fields", async () => {
       const result = await ImportExportAPI.export("user", createExportRequest({ fields: [] }));
 
-      expect(result).toBeDefined();
       expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
     });
   });

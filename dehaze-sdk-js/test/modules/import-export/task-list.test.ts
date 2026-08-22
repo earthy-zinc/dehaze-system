@@ -6,7 +6,6 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
     test("无筛选条件返回任务分页列表", async () => {
       const result = await TaskAPI.getPage(pageQuery<TaskQuery>({ pageSize: 10 }));
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
       expect(result.list.length).toBeLessThanOrEqual(10);
@@ -21,7 +20,6 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
         taskCategory: "export",
       });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
         if (task.taskType) {
@@ -37,7 +35,6 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
         taskCategory: "import",
       });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
         if (task.taskType) {
@@ -55,7 +52,6 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
         taskType: "user_export",
       });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
         expect(task.taskType).toBe("user_export");
@@ -69,7 +65,6 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
         taskType: "user_import",
       });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
         expect(task.taskType).toBe("user_import");
@@ -83,7 +78,6 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
         taskType: "dataset_export",
       });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
         expect(task.taskType).toBe("dataset_export");
@@ -97,7 +91,6 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
         taskType: "user_export,user_import",
       });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
         expect(["user_export", "user_import"]).toContain(task.taskType);
@@ -113,7 +106,6 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
         status: 3,
       });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
         expect(task.status).toBe(3);
@@ -127,7 +119,6 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
         status: 1,
       });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
         expect(task.status).toBe(1);
@@ -144,7 +135,6 @@ describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {
         status: 3,
       });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((task) => {
         expect(task.status).toBe(3);

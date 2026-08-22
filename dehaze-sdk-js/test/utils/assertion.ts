@@ -4,13 +4,13 @@ import { expect } from "vitest";
  * 断言 Promise 会抛出业务错误
  * 提供统一的业务错误断言方法，替代手动 throw new Error("应该抛出异常") 的反模式
  * 匹配规则：
- * - 携带业务错误码时，错误码需命中 expectedCode；
- * - 为传输层错误（无业务错误码，或 code 以 ERR_ 开头，如 HTTP 400 / 网络错误）时直接放行——
- *   不同后端（Java/Go/Python）对同一异常场景返回的错误码与错误体格式不一致，测试不应断言传输层细节。
+ * - 错误必须携带业务错误码且命中 expectedCode（严格匹配）；
+ * - 无业务错误码或传输层错误（code 以 ERR_ 开头）均视为断言失败——
+ *   传输层错误说明后端未按契约返回业务错误码信封，属于需要暴露的契约缺陷，而非放行通过。
  *
  * @param promise 待测试的 Promise
- * @param expectedCode 期望的业务错误码（单个或多个，对应不同后端可能的返回）
- * @param msgContains 错误消息应包含的文本（可选，支持单个字符串或字符串数组；仅对非传输层错误生效）
+ * @param expectedCode 期望的业务错误码（单个或多个）
+ * @param msgContains 错误消息应包含的文本（可选，支持单个字符串或字符串数组）
  */
 export async function expectBizError(
   promise: Promise<any>,
@@ -30,14 +30,11 @@ export async function expectBizError(
       bizError = error || {};
     }
 
-    const code = bizError.code;
-    const isAxiosError = code?.startsWith("ERR_") ?? false;
-    // 业务码命中期望集合，或为传输层错误（无业务码 / ERR_ 前缀）即视为码匹配
-    const codeMatch = !code || isAxiosError || codes.includes(code);
+    const code = bizError.code!;
+    const codeMatch = codes.includes(code);
 
     let msgMatch = true;
-    // 仅在非 axios 传输错误时校验消息
-    if (msgContains && !isAxiosError) {
+    if (msgContains) {
       const msgs = Array.isArray(msgContains) ? msgContains : [msgContains];
       msgMatch = msgs.some((msg) => bizError.msg?.includes(msg) ?? false);
     }

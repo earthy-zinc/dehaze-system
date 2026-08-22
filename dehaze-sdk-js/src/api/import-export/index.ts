@@ -14,12 +14,10 @@ import {
  * 算法模块的 CRUD 路径为 /api/v1/algorithms（复数），
  * 导入导出路径需与 CRUD 保持一致，故映射为 "algorithms"。
  */
-const MODULE_PATH_SEGMENT: Record<string, string> = {
-  algorithm: "algorithms",
-};
-
+// 通用导入导出端点的模块段即原始模块名（/api/v1/{module}/_export），
+// 无需映射；单个算法配置 JSON 导出走 /api/v1/algorithms/{id}/_export 专用路由
 function modulePath(module: string): string {
-  return MODULE_PATH_SEGMENT[module] ?? module;
+  return module;
 }
 
 class ImportExportAPI {
@@ -39,7 +37,7 @@ class ImportExportAPI {
       query.fields = fields.join(",");
     }
     return request<ExportResult | Blob>({
-      url: `/api/v1/${modulePath(module)}/_export`,
+      url: `/api/v1/${module}/_export`,
       method: "get",
       params: query,
       responseType: "blob",
@@ -57,7 +55,7 @@ class ImportExportAPI {
    */
   static exportByPost(module: ExportModule, data: ExportRequest) {
     return request<ExportResult | Blob>({
-      url: `/api/v1/${modulePath(module)}/_export`,
+      url: `/api/v1/${module}/_export`,
       method: "post",
       data,
       responseType: "blob",
@@ -98,7 +96,7 @@ class ImportExportAPI {
    */
   static downloadTemplate(module: ImportModule, format: "excel" | "csv" = "excel") {
     return request<Blob>({
-      url: `/api/v1/${modulePath(module)}/template`,
+      url: `/api/v1/${module}/template`,
       method: "get",
       params: { format },
       responseType: "blob",

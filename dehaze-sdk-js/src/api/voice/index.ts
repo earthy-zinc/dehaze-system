@@ -1,6 +1,9 @@
 import request from "@/utils/request";
+import { createWebSocket, type WSClient } from "@/utils/websocket";
 import {
   AsrResultVO,
+  AsrStreamHandlers,
+  AsrStreamMessage,
   HotwordForm,
   HotwordVO,
   OfflineAsrForm,
@@ -12,7 +15,75 @@ import {
   VoiceVO,
 } from "./model";
 
+/** 流式 ASR 会话句柄，封装 WebSocket 连接与音频发送 */
+export interface AsrStreamSession {
+  /** WebSocket 客户端，用于直接操作（如检查连接状态） */
+  ws: WSClient;
+  /** 发送 PCM 音频块（16kHz, 16bit, mono） */
+  sendAudio: (chunk: ArrayBuffer | ArrayBufferView) => void;
+  /**
+   * 发送 EOS 结束信号，告知服务端音频已结束。
+   *
+   * 发送后等待服务端推送最终识别结果并关闭连接，不要立即调用 close()。
+   */
+  stop: () => void;
+  /** 主动关闭连接（通常无需手动调用，服务端会在 EOS 后自动关闭） */
+  close: () => void;
+}
+
 class VoiceAPI {
+  /**
+   * 创建并启动流式 ASR 会话。
+   *
+   * 封装完整流程：
+   * 1. 调用 `createStreamAsrSession` 获取 WebSocket 地址
+   * 2. 建立 WebSocket 连接
+   * 3. 返回会话句柄，调用方通过 `sendAudio` 推送 PCM 音频块，
+   *    通过 `stop` 发送结束信号
+   *
+   * @param form 会话创建参数
+   * @param handlers 识别结果回调
+   * @returns 流式 ASR 会话句柄
+   */
+  static async startStreamAsr(
+    form: StreamAsrSessionForm,
+    handlers: AsrStreamHandlers
+  ): Promise<AsrStreamSession> {
+    const session = await this.createStreamAsrSession(form);
+
+    const ws = createWebSocket({
+      url: session.wsUrl,
+      handlers: {
+        onMessage: (data: string) => {
+          try {
+            const msg = JSON.parse(data) as AsrStreamMessage;
+            handlers.onMessage(msg);
+          } catch {
+            // 非 JSON 消息忽略
+          }
+        },
+        ...(handlers.onOpen ? { onOpen: handlers.onOpen } : {}),
+        ...(handlers.onClose ? { onClose: handlers.onClose } : {}),
+        ...(handlers.onError ? { onError: handlers.onError } : {}),
+        ...(handlers.onReconnect ? { onReconnect: handlers.onReconnect } : {}),
+      },
+    });
+    ws.connect();
+
+    return {
+      ws,
+      sendAudio: (chunk: ArrayBuffer | ArrayBufferView) => {
+        ws.sendBinary(chunk);
+      },
+      stop: () => {
+        ws.send("EOS");
+      },
+      close: () => {
+        ws.close();
+      },
+    };
+  }
+
   /** 创建流式 ASR 会话（获取 WebSocket 连接信息） */
   static createStreamAsrSession(data: StreamAsrSessionForm) {
     return request<StreamAsrSessionVO>({

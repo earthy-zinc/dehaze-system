@@ -86,8 +86,8 @@ class RecommendationAPI {
     return request<number>({
       url: "/api/v1/recommendations/rules",
       method: "put",
-      params: { id },
-      data,
+      // 后端契约：id 随请求体提交（body.id 为 0 时走新增，否则更新）
+      data: { ...data, id },
     });
   }
 

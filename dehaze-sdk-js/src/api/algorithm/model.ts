@@ -101,7 +101,7 @@ export interface AlgorithmSelectNodeVO {
   /** 算法类型 */
   type: string;
   /** 是否为叶子节点（算法节点） */
-  leaf: boolean;
+  isLeaf: boolean;
   children?: AlgorithmSelectNodeVO[];
 }
 

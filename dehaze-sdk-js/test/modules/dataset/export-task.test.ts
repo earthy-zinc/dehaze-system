@@ -4,14 +4,16 @@ import { expectBizError } from "#/utils/assertion";
 
 describe("导出任务接口测试", () => {
   let testDatasetId: number;
-  let testItemIds: number[] = [];
+  const testItemIds: number[] = [];
+
+  function createExportTask() {
+    return TaskAPI.create({ type: "dataset_export", targetId: testDatasetId });
+  }
 
   beforeAll(async () => {
-    // 创建测试数据集
     const datasetForm = createDatasetForm({ type: "图像去雾" });
     testDatasetId = await DatasetAPI.add(datasetForm);
 
-    // 创建多个测试数据项
     for (let i = 0; i < 3; i++) {
       const itemForm = createDatasetItemForm(testDatasetId, {
         sceneType: "urban",
@@ -23,11 +25,11 @@ describe("导出任务接口测试", () => {
   }, 60000);
 
   afterAll(async () => {
-    // 清理测试数据
+    // 清理阶段失败不阻塞用例
     try {
       await DatasetAPI.deleteById(testDatasetId);
     } catch (e) {
-      // 忽略
+      // noop
     }
   });
 
@@ -44,10 +46,7 @@ describe("导出任务接口测试", () => {
     });
 
     test("正向测试：使用默认参数创建导出任务", async () => {
-      const result = await TaskAPI.create({
-        type: "dataset_export",
-        targetId: testDatasetId,
-      });
+      const result = await createExportTask();
       expect(result.taskId).toBeDefined();
     });
 
@@ -58,10 +57,7 @@ describe("导出任务接口测试", () => {
 
   describe("GET /api/v1/tasks/{taskId} - 查询任务状态", () => {
     test("正向测试：查询任务状态", async () => {
-      const createResult = await TaskAPI.create({
-        type: "dataset_export",
-        targetId: testDatasetId,
-      });
+      const createResult = await createExportTask();
 
       expect(createResult.taskId).toBeDefined();
 
@@ -78,19 +74,16 @@ describe("导出任务接口测试", () => {
 
   describe("DELETE /api/v1/tasks/{taskId} - 取消任务", () => {
     test("正向测试：取消进行中的任务", async () => {
-      const createResult = await TaskAPI.create({
-        type: "dataset_export",
-        targetId: testDatasetId,
-      });
+      const createResult = await createExportTask();
 
       expect(createResult.taskId).toBeDefined();
 
-      // 任务创建后立即取消（可能已完成或仍在处理中）
+      // 任务创建后立即取消，可能已完成或仍在处理中；
+      // 取消已完成的任务后端幂等返回，成功与抛幂等业务错误均为合法路径，此处仅需保证不因该分支失败
       try {
         await TaskAPI.cancel(createResult.taskId);
-      } catch (error: any) {
-        // 任务可能已快速完成，取消已完成的任务后端幂等返回
-        expect(error).toBeDefined();
+      } catch {
+        // noop
       }
 
       const status = await TaskAPI.getStatus(createResult.taskId);
@@ -114,7 +107,6 @@ describe("导出任务接口测试", () => {
       });
       await DatasetItemAPI.add(itemForm);
 
-      // 数据集导出
       const exportTask = await TaskAPI.create({
         type: "dataset_export",
         targetId: datasetId,

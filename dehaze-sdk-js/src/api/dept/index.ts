@@ -71,6 +71,9 @@ class DeptAPI {
    * @param ids 部门ID字符串，多个以英文逗号(,)分割
    */
   static deleteByIds(ids: string) {
+    if (!ids || !ids.trim()) {
+      return Promise.reject(new Error("待删除的部门 ID 列表不能为空"));
+    }
     return request({
       url: "/api/v1/depts/" + ids,
       method: "delete",

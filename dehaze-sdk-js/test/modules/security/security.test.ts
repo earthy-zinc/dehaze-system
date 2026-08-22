@@ -15,13 +15,10 @@ import { createDictTypeForm, createDictForm } from "#/factories/dict";
 import { createDatasetForm } from "#/factories/dataset";
 import { createMenuForm } from "#/factories/menu";
 import { createUserForm } from "#/factories/user";
-import { DEPTS, ROLES } from "#/factories/constants";
+import { DEPTS } from "#/factories/constants";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 
 describe("安全性测试", () => {
-  // ──────────────────────────────────────────────────────────────────────
-  // 1. XSS 脚本注入防护测试
-  // ──────────────────────────────────────────────────────────────────────
   describe("XSS 脚本注入防护", () => {
     const xssPayloads = [
       '<script>alert("xss")</script>',
@@ -39,20 +36,18 @@ describe("安全性测试", () => {
         test(`XSS 注入部门名称应被拒绝或转义：${payload.substring(0, 40)}`, async () => {
           const form = createDeptForm({ parentId: DEPTS.CQUPT.id, name: payload });
 
-          // 后端应拒绝或转义，不应存储原始 XSS 内容
           const result = await DeptAPI.add(form).catch(() => null);
 
           if (result !== null && typeof result === "number") {
             cleanup.register(async () => {
               await DeptAPI.deleteByIds(result.toString());
             });
-            // 若后端允许创建，验证返回的名称不包含原始脚本标签
+            // 若后端允许创建，验证返回的名称不含原始脚本标签
             const formData = await DeptAPI.getFormData(result);
             expect(formData.name).not.toContain("<script>");
             expect(formData.name).not.toContain("onerror=");
             expect(formData.name).not.toContain("javascript:");
           }
-          // 若后端拒绝创建（result === null），则视为 XSS 已被拦截，测试通过
         });
       }
     });
@@ -67,11 +62,9 @@ describe("安全性测试", () => {
         const result = await RoleAPI.add(form).catch(() => null);
 
         if (result === undefined || result === null) {
-          // 后端拒绝了创建，XSS 被拦截，测试通过
           return;
         }
 
-        // 若允许创建，查找并清理，验证名称已转义
         const pageResult = await RoleAPI.getPage({ pageNum: 1, pageSize: 100 });
         const createdRole = pageResult.list.find((r: any) => r.code === form.code);
         if (createdRole?.id) {
@@ -91,7 +84,7 @@ describe("安全性测试", () => {
         const result = await DictAPI.addDictType(form).catch(() => null);
 
         if (result === undefined || result === null) {
-          return; // 被拦截
+          return;
         }
 
         const pageResult = await DictAPI.getDictTypePage({ pageNum: 1, pageSize: 100 });
@@ -99,7 +92,9 @@ describe("安全性测试", () => {
         if (created?.id) {
           try {
             await DictAPI.deleteDictTypes(created.id.toString());
-          } catch {}
+          } catch {
+            // 清理失败静默忽略
+          }
           expect(created.name).not.toContain("<script>");
         }
       });
@@ -116,9 +111,10 @@ describe("安全性测试", () => {
           expect(detail.name).not.toContain("<script>");
           try {
             await DatasetAPI.deleteById(datasetId);
-          } catch {}
+          } catch {
+            // 清理失败静默忽略
+          }
         }
-        // 若 datasetId === null，已被拦截，测试通过
       });
     });
 
@@ -129,10 +125,9 @@ describe("安全性测试", () => {
         const result = await UserAPI.add(form).catch(() => null);
 
         if (result === undefined || result === null) {
-          return; // 被拦截
+          return;
         }
 
-        // 查找并清理
         const pageResult = await UserAPI.getPage({
           pageNum: 1,
           pageSize: 100,
@@ -142,7 +137,9 @@ describe("安全性测试", () => {
         if (createdUser?.id) {
           try {
             await UserAPI.deleteByIds(createdUser.id.toString());
-          } catch {}
+          } catch {
+            // 清理失败静默忽略
+          }
           const formData = await UserAPI.getFormData(createdUser.id);
           if (formData?.nickname) {
             expect(formData.nickname).not.toContain("<script>");
@@ -158,17 +155,18 @@ describe("安全性测试", () => {
         const result = await MenuAPI.add(form).catch(() => null);
 
         if (result === undefined || result === null) {
-          return; // 被拦截
+          return;
         }
 
-        // 查找并清理
         const menuList = await MenuAPI.getList({ keywords: form.name ?? "" });
         if (menuList.length > 0) {
           const found = menuList[0];
           if (found?.id) {
             try {
               await MenuAPI.deleteByIds(String(found.id));
-            } catch {}
+            } catch {
+              // 清理失败静默忽略
+            }
             expect(found.name).not.toContain("<script>");
           }
         }
@@ -176,9 +174,6 @@ describe("安全性测试", () => {
     });
   });
 
-  // ──────────────────────────────────────────────────────────────────────
-  // 2. SQL 注入防护测试
-  // ──────────────────────────────────────────────────────────────────────
   describe("SQL 注入防护", () => {
     const sqlPayloads = [
       "' OR '1'='1",
@@ -194,16 +189,15 @@ describe("安全性测试", () => {
 
         const createdId = await DeptAPI.add(form).catch(() => null);
 
-        // 后端拒绝创建时，SQL 注入被拦截，测试通过
         if (createdId === null || typeof createdId !== "number") {
           return;
         }
 
-        // 创建成功说明后端使用参数化查询，payload 仅作为字面字符串存储
-        // 删除创建的部门，验证删除后列表查询正常且该部门已不存在
         try {
           await DeptAPI.deleteByIds(createdId.toString());
-        } catch {}
+        } catch {
+          // 清理失败静默忽略
+        }
 
         const list = await DeptAPI.getList();
         const allIds: number[] = [];
@@ -215,15 +209,12 @@ describe("安全性测试", () => {
         };
         collectIds(list);
 
-        // 列表查询正常返回（未因 SQL 注入报错），且创建的部门已被删除
+        // 若创建成功，则 payload 仅作为字面字符串存储；验证列表查询未报错且该部门已删除
         expect(allIds).not.toContain(createdId);
       });
     }
   });
 
-  // ──────────────────────────────────────────────────────────────────────
-  // 3. 超长字符串拦截测试
-  // ──────────────────────────────────────────────────────────────────────
   describe("超长字符串拦截", () => {
     const longString = "x".repeat(10000);
 
@@ -264,9 +255,6 @@ describe("安全性测试", () => {
     });
   });
 
-  // ──────────────────────────────────────────────────────────────────────
-  // 4. 特殊字符存储污染测试
-  // ──────────────────────────────────────────────────────────────────────
   describe("特殊字符存储污染防护", () => {
     test("特殊字符 <>&\"' 不应造成存储污染", async () => {
       const specialName = "测试<>&\"'特殊字符";
@@ -277,23 +265,21 @@ describe("安全性测试", () => {
       if (deptId !== null && typeof deptId === "number") {
         try {
           const formData = await DeptAPI.getFormData(deptId);
-          // 验证存储的内容与输入一致（特殊字符应被原样保存或转义，不应丢失）
           expect(typeof formData.name).toBe("string");
           expect(formData.name!.length).toBeGreaterThan(0);
-          // 验证不包含原始 HTML 标签污染
+          // 存储内容不应包含完整 HTML 标签污染
           expect(formData.name).not.toMatch(/<[^>]+>/);
         } finally {
           try {
             await DeptAPI.deleteByIds(deptId.toString());
-          } catch {}
+          } catch {
+            // 清理失败静默忽略
+          }
         }
       }
     });
   });
 
-  // ──────────────────────────────────────────────────────────────────────
-  // 5. 未认证访问测试（401 防护）
-  // ──────────────────────────────────────────────────────────────────────
   describe("未认证访问防护（401）", () => {
     // 单独 describe 以便在测试前 logout、测试后重新 login
     beforeAll(async () => {

@@ -163,16 +163,23 @@ service.interceptors.response.use(
           text = JSON.stringify(response.data);
         }
         const parsed = JSON.parse(text);
-        if (parsed.code !== ResultEnum.SUCCESS) {
-          const error = buildBizError(parsed?.msg, response);
-          // 业务码错误在 fulfilled handler 中 reject，不会触发同一拦截器的 rejected handler，
-          // 需在此显式上报，否则 API 失败日志丢失
-          reportApiError(error);
-          return Promise.reject(error);
+        // 仅当响应确为业务信封（含 code 字段）时才做业务码校验；导出类接口返回的
+        // 原始 JSON 内容（如 GET /memories/export）不含 code，应直接透传而非误判失败。
+        if (parsed && typeof parsed === "object" && "code" in parsed) {
+          if (parsed.code !== ResultEnum.SUCCESS) {
+            const error = buildBizError(parsed?.msg, response);
+            // 业务码错误在 fulfilled handler 中 reject，不会触发同一拦截器的 rejected handler，
+            // 需在此显式上报，否则 API 失败日志丢失
+            reportApiError(error);
+            return Promise.reject(error);
+          }
+          const result =
+            (await interceptors.onResponse?.({ ...response, data: parsed })) || parsed.data;
+          return result === null ? undefined : result;
         }
-        const result =
-          (await interceptors.onResponse?.({ ...response, data: parsed })) || parsed.data;
-        return result === null ? undefined : result;
+        const data = new Blob([text], { type: contentType });
+        const result = (await interceptors.onResponse?.({ ...response, data })) || data;
+        return result;
       }
       const data =
         response.data instanceof Blob

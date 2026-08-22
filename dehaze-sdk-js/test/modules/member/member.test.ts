@@ -15,6 +15,26 @@ describe("会员管理模块接口测试", () => {
   let originalLevel: string;
   let originalGrowth: number;
 
+  // 文件级自愈：被历史运行污染的预置用户成长值可能被清零（如成长值归零用例触发
+  // level_source=growth 自动降级），此处恢复各预置用户成长值到预置值，使
+  // _check_and_adjust_level 按成长值重算等级，保证各用例初始状态一致。
+  beforeAll(async () => {
+    await login(USERS.ADMIN.username);
+    const presetGrowth: Record<number, number> = {
+      [USERS.USER.id]: USERS.USER.member!.growthValue,
+      [USERS.VIP1.id]: USERS.VIP1.member!.growthValue,
+      [USERS.VIP2.id]: USERS.VIP2.member!.growthValue,
+      [USERS.SVIP.id]: USERS.SVIP.member!.growthValue,
+    };
+    for (const [uid, target] of Object.entries(presetGrowth)) {
+      const detail = await MemberAPI.getDetail(Number(uid));
+      const delta = target - detail.growthValue;
+      if (delta !== 0) {
+        await MemberAPI.adjustGrowth(Number(uid), createGrowthAdjustForm({ changeValue: delta }));
+      }
+    }
+  });
+
   // ============ 用户端接口（使用 vip1 账号） ============
 
   describe("GET /api/v1/members/profile - 当前用户会员信息", () => {
@@ -25,15 +45,12 @@ describe("会员管理模块接口测试", () => {
     test("正向测试：获取当前用户会员信息", async () => {
       const profile = await MemberAPI.getProfile();
 
-      expect(profile).toBeDefined();
       expect(profile.userId).toBe(targetUser.id);
-      expect(profile.levelCode).toBeDefined();
       expect(["level_0", "level_1", "level_2", "level_3"]).toContain(profile.levelCode);
       expect(profile.levelName).toBeTruthy();
       expect(typeof profile.growthValue).toBe("number");
       expect(profile.growthValue).toBeGreaterThanOrEqual(0);
       expect(typeof profile.progressPercent).toBe("number");
-      expect(profile.benefits).toBeDefined();
       expect(profile.benefits.monthlyDehazeQuota).toBeGreaterThanOrEqual(0);
     });
   });
@@ -46,7 +63,6 @@ describe("会员管理模块接口测试", () => {
     test("正向测试：分页查询成长值流水", async () => {
       const result = await MemberAPI.getGrowthLogs({ pageNum: 1, pageSize: 10 });
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
       expect(result.total).toBeGreaterThanOrEqual(0);
@@ -63,16 +79,28 @@ describe("会员管理模块接口测试", () => {
         expect(log.changeType).toBe("sign_in");
       }
     });
+
+    test("验证：成长值流水记录完整性", async () => {
+      const result = await MemberAPI.getGrowthLogs({ pageNum: 1, pageSize: 10 });
+      if (result.list.length === 0) {
+        console.warn("无成长值流水数据，跳过流水记录完整性测试");
+        return;
+      }
+
+      const log = result.list[0]!;
+      expect(log.id).toBeGreaterThan(0);
+      expect(log.changeType).toBeTruthy();
+      expect(typeof log.changeValue).toBe("number");
+      expect(typeof log.balance).toBe("number");
+      expect(log.createTime).toBeTruthy();
+    });
   });
 
   describe("POST /api/v1/members/sign-in - 每日签到", () => {
-    let signedToday = false;
-
     beforeAll(async () => {
       await login(targetUser.username);
       try {
         await MemberAPI.signIn();
-        signedToday = true;
       } catch {
         // 今日已签到，忽略
       }
@@ -81,11 +109,9 @@ describe("会员管理模块接口测试", () => {
     test("正向测试：签到或重复签到", async () => {
       try {
         const result = await MemberAPI.signIn();
-        expect(result).toBeDefined();
         expect(result.signDate).toBeTruthy();
         expect(result.continuousDays).toBeGreaterThanOrEqual(1);
         expect(result.growthValue).toBeGreaterThan(0);
-        signedToday = true;
       } catch (e: any) {
         // 重复签到返回业务错误
         expect(e).toBeDefined();
@@ -109,7 +135,6 @@ describe("会员管理模块接口测试", () => {
 
       const calendar = await MemberAPI.getSignInCalendar(year, month);
 
-      expect(calendar).toBeDefined();
       expect(Array.isArray(calendar.signDates)).toBe(true);
       expect(calendar.continuousDays).toBeGreaterThanOrEqual(0);
       expect(calendar.totalDays).toBeGreaterThanOrEqual(0);
@@ -117,7 +142,6 @@ describe("会员管理模块接口测试", () => {
 
     test("边界：查询历史月份签到日历", async () => {
       const calendar = await MemberAPI.getSignInCalendar(2025, 1);
-      expect(calendar).toBeDefined();
       expect(Array.isArray(calendar.signDates)).toBe(true);
     });
   });
@@ -132,7 +156,6 @@ describe("会员管理模块接口测试", () => {
     test("正向测试：分页查询会员列表", async () => {
       const result = await MemberAPI.getPage(createMemberQuery({ pageNum: 1, pageSize: 10 }));
 
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(result.total).toBeGreaterThanOrEqual(0);
       expect(result.list.length).toBeLessThanOrEqual(10);
@@ -167,6 +190,39 @@ describe("会员管理模块接口测试", () => {
         expect(member.status).toBe(1);
       }
     });
+
+    test("正向测试：按成长值区间筛选", async () => {
+      const result = await MemberAPI.getPage(
+        createMemberQuery({ growthMin: 0, growthMax: 99999, pageNum: 1, pageSize: 10 })
+      );
+      for (const member of result.list) {
+        expect(member.growthValue).toBeGreaterThanOrEqual(0);
+        expect(member.growthValue).toBeLessThanOrEqual(99999);
+      }
+    });
+
+    test("正向测试：按到期时间范围筛选", async () => {
+      const result = await MemberAPI.getPage(
+        createMemberQuery({
+          expireTimeStart: "2025-01-01 00:00:00",
+          expireTimeEnd: "2099-12-31 23:59:59",
+          pageNum: 1,
+          pageSize: 10,
+        })
+      );
+      expect(Array.isArray(result.list)).toBe(true);
+    });
+
+    test("边界：关键字模糊匹配", async () => {
+      // 使用已知存在会员记录的用户（USER 预置 level_0 会员）构造查询关键字，
+      // 避免依赖分页首条数据导致返回空时跳过用例
+      const keyword = USERS.USER.username.substring(0, 3);
+
+      const result = await MemberAPI.getPage(
+        createMemberQuery({ keywords: keyword, pageNum: 1, pageSize: 10 })
+      );
+      expect(result.list.length).toBeGreaterThan(0);
+    });
   });
 
   describe("GET /api/v1/members/{userId} - 会员详情", () => {
@@ -177,10 +233,8 @@ describe("会员管理模块接口测试", () => {
     test("正向测试：查询会员详情", async () => {
       const detail = await MemberAPI.getDetail(targetUser.id);
 
-      expect(detail).toBeDefined();
       expect(detail.userId).toBe(targetUser.id);
       expect(detail.levelCode).toBeDefined();
-      expect(detail.levelSource).toBeDefined();
       expect(["growth", "purchase", "admin"]).toContain(detail.levelSource);
 
       originalLevel = detail.levelCode;
@@ -188,10 +242,8 @@ describe("会员管理模块接口测试", () => {
     });
 
     test("正向测试：查询不同等级会员详情", async () => {
-      // 验证各等级会员都能查询到详情
       for (const [levelCode, user] of Object.entries(USERS_BY_LEVEL)) {
         const detail = await MemberAPI.getDetail(user.id);
-        expect(detail).toBeDefined();
         expect(detail.userId).toBe(user.id);
         expect(detail.levelCode).toBe(levelCode);
       }
@@ -317,6 +369,21 @@ describe("会员管理模块接口测试", () => {
         ["A0400", "A0706", "ERR_BAD_REQUEST"]
       );
     });
+
+    test("验证：解冻后冻结字段保留（便于追溯）", async () => {
+      await MemberAPI.updateStatus(targetUser.id, { status: 0, reason: "测试冻结字段保留" });
+      const frozen = await MemberAPI.getDetail(targetUser.id);
+      expect(frozen.status).toBe(0);
+      expect(frozen.frozenReason).toBe("测试冻结字段保留");
+      expect(frozen.frozenTime).toBeTruthy();
+
+      await MemberAPI.updateStatus(targetUser.id, { status: 1 });
+      const thawed = await MemberAPI.getDetail(targetUser.id);
+      expect(thawed.status).toBe(1);
+      // 解冻后冻结原因和时间应保留不清空
+      expect(thawed.frozenReason).toBe("测试冻结字段保留");
+      expect(thawed.frozenTime).toBeTruthy();
+    });
   });
 
   describe("GET /api/v1/members/benefits - 权益配置列表", () => {
@@ -366,6 +433,16 @@ describe("会员管理模块接口测试", () => {
       ]);
     });
 
+    test("边界：权益数值下限校验（负数应失败）", async () => {
+      const form = createBenefitForm({ monthlyDehazeQuota: -1 });
+      await expectBizError(MemberAPI.updateBenefit("level_1", form), [
+        "BENEFIT_CONFIG_INVALID",
+        "A0514",
+        "A0400",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
     afterAll(async () => {
       // 恢复原始配置
       await MemberAPI.updateBenefit("level_1", {
@@ -375,6 +452,43 @@ describe("会员管理模块接口测试", () => {
         batchLimit: originalBenefit.batchLimit,
         priority: originalBenefit.priority,
       });
+    });
+  });
+
+  // ============ 权限测试 ============
+
+  describe("权限测试 - 普通用户访问管理接口应失败", () => {
+    beforeAll(async () => {
+      await login(USERS.USER.username);
+    });
+
+    afterAll(async () => {
+      await login(USERS.ADMIN.username);
+    });
+
+    test("边界：普通用户查询会员分页列表应失败", async () => {
+      // 后端已补 member:list 权限校验（普通用户期望 A0301）
+      await expectBizError(MemberAPI.getPage(createMemberQuery()), ["A0301"]);
+    });
+
+    test("边界：普通用户冻结会员应失败", async () => {
+      await expectBizError(MemberAPI.updateStatus(1, { status: 0, reason: "test" } as any), [
+        "A0301",
+        "A0403",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("边界：普通用户修改权益配置应失败", async () => {
+      await expectBizError(MemberAPI.updateBenefit("level_1", createBenefitForm()), [
+        "A0301",
+        "A0403",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -518,8 +632,8 @@ describe("会员管理模块接口测试", () => {
       if (delta !== 0) {
         await MemberAPI.adjustGrowth(targetUser.id, createGrowthAdjustForm({ changeValue: delta }));
       }
-    } catch {
-      // 忽略恢复错误
+    } catch (e) {
+      console.warn(`清理失败:`, e);
     }
   });
 });

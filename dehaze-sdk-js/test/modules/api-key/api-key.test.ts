@@ -1,12 +1,16 @@
-import { describe, test, expect, beforeAll, afterAll } from "vitest";
+import { describe, test, expect, afterAll } from "vitest";
 import { ApiKeyAPI, service } from "../../../index";
 import type { ApiKeyVO } from "@/api/api-key/model";
-import { createApiKeyForm } from "#/factories/api-key";
+import { createApiKeyForm, createGovernedApiKeyForm } from "#/factories/api-key";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 
 describe("API密钥管理", () => {
   const cleanup = new TestCleanupRegistry();
   let createdKey: ApiKeyVO;
+
+  function registerCleanup(keyId: number) {
+    cleanup.register(() => ApiKeyAPI.delete(keyId));
+  }
 
   afterAll(async () => {
     await cleanup.executeAll();
@@ -17,17 +21,13 @@ describe("API密钥管理", () => {
       const form = createApiKeyForm();
       createdKey = await ApiKeyAPI.create(form);
 
-      expect(createdKey).toBeDefined();
       expect(createdKey.id).toBeGreaterThan(0);
       expect(createdKey.name).toBe(form.name);
-      expect(createdKey.apiKey).toBeDefined();
       expect(createdKey.apiKey!.startsWith("dhak_")).toBe(true);
       expect(createdKey.keyPrefix).toBeDefined();
       expect(createdKey.status).toBe(1);
 
-      cleanup.register(async () => {
-        await ApiKeyAPI.delete(createdKey.id);
-      });
+      registerCleanup(createdKey.id);
     });
 
     test("创建带过期时间的密钥", async () => {
@@ -35,14 +35,26 @@ describe("API密钥管理", () => {
       const form = createApiKeyForm({ expiresAt: futureDate });
       const result = await ApiKeyAPI.create(form);
 
-      expect(result).toBeDefined();
-      expect(result.apiKey).toBeDefined();
       expect(result.apiKey!.startsWith("dhak_")).toBe(true);
       expect(result.expiresAt).toBeDefined();
 
-      cleanup.register(async () => {
-        await ApiKeyAPI.delete(result.id);
-      });
+      registerCleanup(result.id);
+    });
+
+    test("创建带治理参数(配额)的密钥应返回并透传", async () => {
+      const form = createGovernedApiKeyForm({
+        dailyQuota: 1000,
+        monthlyQuota: 20000,
+        rpmLimit: 60,
+      }) as any;
+      const result: any = await ApiKeyAPI.create(form);
+
+      expect(result.apiKey!.startsWith("dhak_")).toBe(true);
+      expect(result.dailyQuota).toBe(1000);
+      expect(result.monthlyQuota).toBe(20000);
+      expect(result.rpmLimit).toBe(60);
+
+      registerCleanup(result.id);
     });
   });
 
@@ -63,11 +75,10 @@ describe("API密钥管理", () => {
 
   describe("使用API密钥鉴权", () => {
     test("使用API密钥访问受保护接口应成功", async () => {
-      const response = await service.get("/api/v1/auth/me", {
+      const userInfo = (await service.get("/api/v1/auth/me", {
         headers: { Authorization: `Bearer ${createdKey.apiKey}` },
-      });
+      })) as any;
 
-      const userInfo = response as any;
       expect(userInfo.userId).toBeDefined();
       expect(userInfo.username).toBeDefined();
     });
@@ -91,12 +102,11 @@ describe("API密钥管理", () => {
 
       await ApiKeyAPI.delete(keyToDelete.id);
 
-      // 内部语义：设 revoked_at=now()，列表查询（revoked_at IS NULL）不再返回
+      // 内部语义：软删除设 revoked_at=now()，列表查询（revoked_at IS NULL）不再返回
       const list = await ApiKeyAPI.list();
       const found = list.find((k) => k.id === keyToDelete.id);
       expect(found).toBeUndefined();
 
-      // 吊销后 revoked_at 非空，鉴权要求 revoked_at IS NULL，故鉴权应失败
       await expect(
         service.get("/api/v1/auth/me", {
           headers: { Authorization: `Bearer ${keyToDelete.apiKey}` },

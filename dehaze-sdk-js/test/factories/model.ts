@@ -49,10 +49,12 @@ export function createPresetForm(overrides: Partial<PresetForm> = {}): PresetFor
 }
 
 export function createCompareReportForm(
-  overrides: Partial<CompareReportForm> = {}
-): CompareReportForm {
+  overrides: Partial<CompareReportForm & { format: string }> = {}
+): CompareReportForm & { format: string } {
   return {
     logId: 1,
+    // 后端 CompareReportForm.format 必填（pdf/image），SDK 类型缺该字段，测试侧补齐
+    format: "pdf",
     ...overrides,
   };
 }

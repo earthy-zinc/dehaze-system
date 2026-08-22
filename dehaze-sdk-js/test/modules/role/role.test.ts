@@ -1,6 +1,7 @@
 import { RoleAPI, RoleForm, RoleQuery } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { createRoleForm, createRoleQuery } from "#/factories/role";
+import { uniqueCode } from "#/factories/common";
 import { ROLES } from "#/factories/constants";
 
 describe("角色管理接口测试", () => {
@@ -10,29 +11,38 @@ describe("角色管理接口测试", () => {
     for (const roleId of createdRoleIds) {
       try {
         await RoleAPI.deleteByIds(roleId.toString());
-      } catch {
-        // 忽略删除错误
+      } catch (e) {
+        console.warn(`清理失败:`, e);
       }
     }
   });
+
+  // 创建一个角色并返回其 id（自动登记清理）；失败即抛出，保证用例前置条件
+  async function createRoleAndGetId(overrides?: Partial<RoleForm>): Promise<number> {
+    const form = createRoleForm(overrides);
+    await RoleAPI.add(form);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: form.code }));
+    const createdRole = pageResult.list.find((role) => role.code === form.code);
+    if (!createdRole?.id) {
+      throw new Error("角色创建失败，无法找到创建的角色");
+    }
+    createdRoleIds.push(createdRole.id);
+    return createdRole.id;
+  }
 
   describe("GET /api/v1/roles/page - 角色分页列表", () => {
     test("获取角色分页列表并验证数据结构与业务字段", async () => {
       const query = createRoleQuery({ pageNum: 1, pageSize: 10 });
       const result = await RoleAPI.getPage(query);
 
-      // Assert - 验证结构
-      expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
       expect(result.list.length).toBeLessThanOrEqual(10);
 
-      // Assert - 验证业务字段
       if (result.list.length > 0) {
         const firstRole = result.list[0]!;
         expect(firstRole.id).toBeGreaterThan(0);
-        expect(firstRole.name).toBeTruthy();
-        expect(firstRole.code).toBeTruthy();
         expect(typeof firstRole.name).toBe("string");
         expect(typeof firstRole.code).toBe("string");
       }
@@ -109,23 +119,13 @@ describe("角色管理接口测试", () => {
     });
   });
 
-  describe("PUT /api/v1/roles/{roleId}/menus - 分配菜单(包括按钮权限)给角色", () => {
+  describe("PATCH /api/v1/roles/{roleId}/menus - 分配菜单(包括按钮权限)给角色", () => {
     let testRoleId: number;
     let originalMenuIds: number[] = [];
 
     beforeAll(async () => {
-      const form = createRoleForm();
-      await RoleAPI.add(form);
-
-      const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: form.code }));
-      const createdRole = pageResult.list.find((role) => role.code === form.code);
-      if (createdRole?.id) {
-        testRoleId = createdRole.id;
-        createdRoleIds.push(testRoleId);
-        originalMenuIds = await RoleAPI.getRoleMenuIds(testRoleId);
-      } else {
-        throw new Error("角色菜单测试：角色创建失败，无法找到创建的角色");
-      }
+      testRoleId = await createRoleAndGetId();
+      originalMenuIds = await RoleAPI.getRoleMenuIds(testRoleId);
     });
 
     test("为角色分配菜单并验证权限确实被分配", async () => {
@@ -173,6 +173,34 @@ describe("角色管理接口测试", () => {
 
     test("为不存在的角色分配菜单应返回业务错误", async () => {
       await expectBizError(RoleAPI.updateRoleMenus(99999999, [1, 2, 3]), "A0401", "不存在");
+    });
+
+    test("参数校验：分配不存在的菜单应失败", async () => {
+      await expectBizError(RoleAPI.updateRoleMenus(testRoleId, [99999999]), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+      // 验证原有权限未被修改
+      const currentMenuIds = await RoleAPI.getRoleMenuIds(testRoleId);
+      expect(currentMenuIds).not.toContain(99999999);
+    });
+
+    test("验证：分配菜单权限后正确回显", async () => {
+      // 先清空，再分配已知菜单 ID
+      await RoleAPI.updateRoleMenus(testRoleId, []);
+      const menuIdsToAssign = [1, 2, 3];
+      await RoleAPI.updateRoleMenus(testRoleId, menuIdsToAssign);
+
+      const echoedMenuIds = await RoleAPI.getRoleMenuIds(testRoleId);
+      expect(Array.isArray(echoedMenuIds)).toBe(true);
+      menuIdsToAssign.forEach((id) => {
+        expect(echoedMenuIds).toContain(id);
+      });
+
+      // 恢复原始权限
+      await RoleAPI.updateRoleMenus(testRoleId, originalMenuIds);
     });
   });
 
@@ -259,6 +287,31 @@ describe("角色管理接口测试", () => {
       }
     });
 
+    test("正向测试：创建全部数据权限角色（dataScope=0）并验证", async () => {
+      const form = createRoleForm({ dataScope: 0, sort: 103 });
+      await RoleAPI.add(form);
+
+      const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: form.code }));
+      const createdRole = pageResult.list.find((role) => role.code === form.code);
+      expect(createdRole).toBeDefined();
+
+      const formData = await RoleAPI.getFormData(createdRole!.id!);
+      expect(formData.dataScope).toBe(0);
+      createdRoleIds.push(createdRole!.id!);
+    });
+
+    // T-RM-012：后端已去除 RoleForm.dataScope 的 schema 默认值（原 default=0 架空必填
+    // 校验），缺省时 service 抛 A0400「数据权限不能为空」。
+    test("参数校验：缺少数据权限应失败", async () => {
+      const form: Partial<RoleForm> = {
+        name: "测试角色",
+        code: uniqueCode("TEST_ROLE"),
+        status: 1,
+        sort: 100,
+      };
+      await expectBizError(RoleAPI.add(form as RoleForm), ["A0400"], "数据权限不能为空");
+    });
+
     test("参数校验：缺少必需字段 code", async () => {
       const form: Partial<RoleForm> = {
         name: "测试角色",
@@ -285,20 +338,10 @@ describe("角色管理接口测试", () => {
 
   describe("PUT /api/v1/roles/{id} - 修改角色", () => {
     let testRoleId: number;
-    let originalRole: any;
+    let originalRole: RoleForm;
 
     beforeAll(async () => {
-      const form = createRoleForm({ dataScope: 1 });
-      await RoleAPI.add(form);
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: form.code }));
-      const createdRole = pageResult.list.find((role) => role.code === form.code);
-      expect(createdRole).toBeDefined();
-      expect(createdRole!.id).toBeGreaterThan(0);
-      testRoleId = createdRole!.id!;
-      createdRoleIds.push(testRoleId);
+      testRoleId = await createRoleAndGetId({ dataScope: 1 });
       originalRole = await RoleAPI.getFormData(testRoleId);
     });
 
@@ -308,7 +351,7 @@ describe("角色管理接口测试", () => {
         id: testRoleId,
         code: originalRole.code,
         name: newName,
-        status: originalRole.status,
+        status: originalRole.status!,
         dataScope: originalRole.dataScope || 1,
       };
 
@@ -439,21 +482,60 @@ describe("角色管理接口测试", () => {
     });
   });
 
+  describe("PATCH /api/v1/roles/{roleId}/status - 角色状态管理", () => {
+    let testRoleId: number;
+    let originalStatus: number;
+
+    beforeAll(async () => {
+      testRoleId = await createRoleAndGetId({ status: 1 });
+      originalStatus = (await RoleAPI.getFormData(testRoleId)).status!;
+    });
+
+    test("正向测试：禁用角色并验证状态变更", async () => {
+      await RoleAPI.updateStatus(testRoleId, 0);
+      const formData = await RoleAPI.getFormData(testRoleId);
+      expect(formData.status).toBe(0);
+    });
+
+    test("正向测试：启用角色并验证状态变更", async () => {
+      await RoleAPI.updateStatus(testRoleId, 1);
+      const formData = await RoleAPI.getFormData(testRoleId);
+      expect(formData.status).toBe(1);
+    });
+
+    test("异常测试：禁用超级管理员角色应失败", async () => {
+      // 内置角色（ROOT）不可修改状态，后端返回 A0503（OPERATION_NOT_ALLOW）。
+      // 若后端保护失效，本用例会真实禁用 ROOT 并连锁污染其他模块的权限用例，
+      // 故失败路径上保底恢复 ROOT 为启用状态。
+      try {
+        await expectBizError(RoleAPI.updateStatus(ROLES.ROOT.id, 0), [
+          "A0503",
+          "A0233",
+          "A0400",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
+      } finally {
+        await RoleAPI.updateStatus(ROLES.ROOT.id, 1).catch(() => {});
+      }
+    });
+
+    test("异常测试：更新不存在角色的状态应失败", async () => {
+      await expectBizError(RoleAPI.updateStatus(99999999, 0), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+  });
+
   describe("DELETE /api/v1/roles/{ids} - 删除角色", () => {
     let testRoleIds: number[] = [];
 
     beforeAll(async () => {
       for (let i = 0; i < 3; i++) {
-        const form = createRoleForm({ sort: 100 + i });
-        await RoleAPI.add(form);
-
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: form.code }));
-        const createdRole = pageResult.list.find((role) => role.code === form.code);
-        expect(createdRole).toBeDefined();
-        expect(createdRole!.id).toBeGreaterThan(0);
-        testRoleIds.push(createdRole!.id!);
+        testRoleIds.push(await createRoleAndGetId({ sort: 100 + i }));
       }
       expect(testRoleIds.length).toBe(3);
     });
@@ -484,8 +566,20 @@ describe("角色管理接口测试", () => {
       await expectBizError(RoleAPI.deleteByIds("99999999"), "A0401", "不存在");
     });
 
-    test("参数校验：空的ID列表", async () => {
-      await expectBizError(RoleAPI.deleteByIds(""), ["B0001", "ERR_BAD_REQUEST"]);
+    // 空 ID 列表属调用方编程错误，由 SDK 前置校验拦截（DELETE /{ids} 路由无法接收空路径参数）
+    test("参数校验：空的ID列表由 SDK 前置校验拦截", async () => {
+      await expect(RoleAPI.deleteByIds("")).rejects.toThrow("不能为空");
+    });
+
+    test("边界：删除超级管理员角色应失败（超级管理员保护）", async () => {
+      // 后端对内置角色（ROOT/ADMIN）返回 A0503 OPERATION_NOT_ALLOW
+      await expectBizError(RoleAPI.deleteByIds(ROLES.ROOT.id.toString()), "A0503", "不可删除");
+    });
+
+    test("边界：删除已关联用户的角色应失败", async () => {
+      // ROLES.USER (id=5) 关联了多个预置用户（user、vip1、vip2、svip）
+      // 后端返回 A0500 BUSINESS_ERROR
+      await expectBizError(RoleAPI.deleteByIds(ROLES.USER.id.toString()), "A0500", "用户关联");
     });
   });
 });

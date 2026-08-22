@@ -12,13 +12,7 @@ export {
 } from "./Logger";
 export { ConsoleTransport, RemoteTransport } from "./transports";
 export { createErrorBoundary };
-export type {
-  LogEntry,
-  LogLevel,
-  LoggerStorage,
-  LogTransport,
-  InstallConfig,
-} from "./types";
+export type { LogEntry, LogLevel, LoggerStorage, LogTransport, InstallConfig } from "./types";
 
 /**
  * React 错误边界组件（对外契约）。依赖宿主通过 `Logger.install({ react })` 注入的 React 实例。

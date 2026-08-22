@@ -34,6 +34,9 @@ class FavoriteAPI {
 
   /** 批量取消收藏 */
   static deleteByIds(ids: number[]) {
+    if (!ids || ids.length === 0) {
+      return Promise.reject(new Error("待取消收藏的 ID 列表不能为空"));
+    }
     return request({
       url: "/api/v1/favorites/" + ids.join(","),
       method: "delete",

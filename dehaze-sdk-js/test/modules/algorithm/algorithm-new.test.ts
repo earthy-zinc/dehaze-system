@@ -1,20 +1,19 @@
-import { AlgorithmAPI, Algorithm, ImportExportAPI } from "../../../index";
+import { AlgorithmAPI, ImportExportAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
+import { createAlgorithmForm } from "#/factories/algorithm";
+import { login } from "#/utils/auth";
+import { USERS } from "#/factories/constants";
 
 describe("算法管理新增端点测试", () => {
   let testAlgorithmId: number;
 
-  // 创建一个测试算法（通过前端的 AlgorithmFormDialog 新增后自动状态=1 草稿）
+  // 前端 AlgorithmFormDialog 新增后自动状态=1 草稿
   beforeAll(async () => {
-    const form: Partial<Algorithm> = {
-      parentId: 0,
-      name: `SdkTest_${Date.now()}`,
-      type: "TEST",
-      description: "SDK 测试用算法",
-      status: 1,
-    };
-    const id = (await AlgorithmAPI.add(form)) as unknown as number;
-    testAlgorithmId = typeof id === "number" ? id : Number(id);
+    // 本文件管理端点需要管理权限，显式登录避免依赖其他文件的接续身份
+    await login(USERS.ADMIN.username);
+    testAlgorithmId = await AlgorithmAPI.add(
+      createAlgorithmForm({ description: "SDK 测试用算法" })
+    );
   });
 
   afterAll(async () => {
@@ -29,10 +28,8 @@ describe("算法管理新增端点测试", () => {
 
   describe("PUT /api/v1/algorithms/{id}/status - 状态变更", () => {
     test("正向测试：将草稿(1)切换为测试中(2)", async () => {
-      // 草稿 → 测试中
       await AlgorithmAPI.updateStatus(testAlgorithmId, 2);
 
-      // 验证状态持久化
       const info = await AlgorithmAPI.getAlgorithmInfoById(testAlgorithmId);
       expect(info.status).toBe(2);
 
@@ -61,7 +58,7 @@ describe("算法管理新增端点测试", () => {
   describe("GET /api/v1/algorithms/{id}/versions - 版本管理", () => {
     test("正向测试：获取版本历史列表", async () => {
       const versions = await AlgorithmAPI.getVersions(testAlgorithmId);
-      expect(versions).toBeDefined();
+
       expect(Array.isArray(versions)).toBe(true);
 
       versions.forEach((v: any) => {
@@ -74,11 +71,9 @@ describe("算法管理新增端点测试", () => {
       // 不存在的算法ID：可能返回错误，也可能返回空数组（两种都是合理的业务行为）
       const versions = await AlgorithmAPI.getVersions(99999999).catch(() => null);
       if (versions === null) {
-        // 后端抛出错误，合理
         return;
       }
       expect(Array.isArray(versions)).toBe(true);
-      // 不存在的算法不应有版本数据
       expect(versions.length).toBe(0);
     });
   });
@@ -87,7 +82,6 @@ describe("算法管理新增端点测试", () => {
     test("正向测试：获取监控数据", async () => {
       const monitor = await AlgorithmAPI.getMonitorData(testAlgorithmId);
 
-      expect(monitor).toBeDefined();
       expect(typeof monitor.callCount).toBe("number");
       expect(monitor.callCount).toBeGreaterThanOrEqual(0);
       expect(typeof monitor.avgTime).toBe("number");
@@ -101,10 +95,8 @@ describe("算法管理新增端点测试", () => {
 
     test("正向测试：获取监控统计报表", async () => {
       const stats = await AlgorithmAPI.getMonitorStats(testAlgorithmId);
-      expect(stats).toBeDefined();
       expect(Array.isArray(stats)).toBe(true);
       expect(stats.length).toBeGreaterThan(0);
-      // 每条记录应包含 date、callCount、avgTime、successRate 字段
       const first = stats[0]!;
       expect(typeof first.date).toBe("string");
       expect(typeof first.callCount).toBe("number");
