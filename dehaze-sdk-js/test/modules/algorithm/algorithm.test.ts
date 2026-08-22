@@ -546,12 +546,10 @@ describe("算法管理接口测试", () => {
 
   describe("POST /api/v1/algorithms/select/{id}/test - 自定义图片测试", () => {
     test("异常测试：不存在的算法ID应抛出业务错误", async () => {
-      await expectBizError(AlgorithmAPI.test(99999999, { imageUrl: "https://example.com/x.png" }), [
-        "A0401",
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      await expectBizError(
+        AlgorithmAPI.test(99999999, { imageUrl: "https://www.baidu.com/x.png" }),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"]
+      );
     });
   });
 

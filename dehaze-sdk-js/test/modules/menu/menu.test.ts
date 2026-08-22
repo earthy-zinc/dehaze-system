@@ -342,7 +342,7 @@ describe("菜单管理接口测试", () => {
       const form = createMenuForm({
         parentId: 0,
         type: MenuTypeEnum.EXTLINK,
-        path: "https://example.com",
+        path: "https://www.baidu.com",
       });
       const menuId = await createMenuAndGetId(form);
 

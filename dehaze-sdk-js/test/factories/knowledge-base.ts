@@ -55,7 +55,7 @@ export const createBatchUploadForm = (fileIds?: number[]): DocumentBatchUploadFo
 export const createImportUrlForm = (
   overrides?: Partial<DocumentImportUrlForm>
 ): DocumentImportUrlForm => ({
-  url: "https://example.com/",
+  url: "https://www.baidu.com/",
   title: uniqueName("imported_doc"),
   ...overrides,
 });
