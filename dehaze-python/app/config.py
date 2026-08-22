@@ -334,7 +334,7 @@ class Settings(BaseSettings):
     LOCAL_LLM_EMBEDDING_MODEL_PATH: str = ""  # 空 = 默认 models/Qwen3-Embedding-0.6B-Q8_0.gguf
     LOCAL_LLM_CTX_SIZE: int = 8192
     LOCAL_LLM_THREADS: int = 0  # 0 = 自动（物理核数）
-    LOCAL_LLM_NGPU_LAYERS: int = 0  # CPU 推理；GPU 环境设为层数或 -1 全量卸载
+    LOCAL_LLM_NGPU_LAYERS: int | None = None  # None = 自动（CUDA 构建全量卸载 -1，纯 CPU 构建 0）
     # 速度档位 P95 延迟阈值（毫秒）：P95 < fast 为快；< medium 为中；其余为慢
     AI_SPEED_TIER_FAST_P95_MS: int = 2000
     AI_SPEED_TIER_MEDIUM_P95_MS: int = 8000

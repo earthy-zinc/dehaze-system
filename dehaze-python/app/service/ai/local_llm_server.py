@@ -7,7 +7,9 @@
 - Qwen3 关闭思考模式：system 尾部注入 /no_think 软指令，输出层再剥离 <think> 残留，
   保证消息内容干净
 - 模型懒加载单例：进程启动后首次请求时加载 GGUF
-- 推理串行化：本地单模型 CPU 推理，llama.cpp 并发调用不稳定，对话与嵌入共用
+- GPU 优先推理：llama-cpp-python 为 CUDA 构建时全量卸载至 GPU（自动检测，纯 CPU
+  构建回退 CPU）。GPU 推理快且不占满 CPU 核心，/health 等管理面请求不受争用拖慢
+- 推理串行化：本地单模型推理，llama.cpp 并发调用不稳定，对话与嵌入共用
   asyncio.Lock，同一时刻仅一个推理执行，其余排队（排队等待可被取消）
 - 断连即停：流式请求由工作线程独占推理锁并逐 token 投递，客户端断连后置停止标志，
   工作线程在当前 token 完成后退出并释放锁——已断连的请求不再空转生成剩余 token，
@@ -42,6 +44,19 @@ app = FastAPI(title="Dehaze Local LLM", docs_url=None, redoc_url=None)
 _llm: Any = None
 _llm_lock = threading.Lock()
 
+
+def _n_gpu_layers() -> int:
+    """GPU 卸载层数：自动检测（CUDA 构建时全量卸载 -1，纯 CPU 构建为 0），
+    LOCAL_LLM_NGPU_LAYERS 显式配置时优先。"""
+    if settings.LOCAL_LLM_NGPU_LAYERS is not None:
+        return settings.LOCAL_LLM_NGPU_LAYERS
+    try:
+        from llama_cpp import llama_cpp
+
+        return -1 if llama_cpp.llama_supports_gpu_offload() else 0
+    except Exception:  # noqa: BLE001 检测失败按纯 CPU 处理
+        return 0
+
 # 推理串行化锁：本地单模型 CPU 推理，llama.cpp create_completion 并发调用不稳定，
 # 对话与嵌入共用同一把锁，保证每次只有一个推理在执行，其余排队。
 # 用 asyncio.Lock 使排队等待可被取消：客户端断连时在 await 处直接放弃排队。
@@ -71,13 +86,14 @@ def _get_llm() -> Any:
                     raise RuntimeError(
                         f"本地模型文件不存在: {path}，请检查 local_llm_manager 是否正确拉起本进程"
                     )
-                logger.info("加载本地模型: %s", path)
+                n_gpu = _n_gpu_layers()
+                logger.info("加载本地模型: %s（GPU 卸载层数 %s）", path, n_gpu)
                 started = time.perf_counter()
                 _llm = Llama(
                     model_path=path,
                     n_ctx=settings.LOCAL_LLM_CTX_SIZE,
                     n_threads=settings.LOCAL_LLM_THREADS or None,
-                    n_gpu_layers=settings.LOCAL_LLM_NGPU_LAYERS,
+                    n_gpu_layers=n_gpu,
                     verbose=False,
                 )
                 logger.info("模型加载完成，耗时 %.1fs", time.perf_counter() - started)
@@ -97,12 +113,13 @@ def _get_embed_llm() -> Any:
                     raise RuntimeError(
                         f"本地向量模型文件不存在: {path}，请检查 local_llm_model.ensure_embedding_model"
                     )
-                logger.info("加载本地向量模型: %s", path)
+                n_gpu = _n_gpu_layers()
+                logger.info("加载本地向量模型: %s（GPU 卸载层数 %s）", path, n_gpu)
                 started = time.perf_counter()
                 _embed_llm = Llama(
                     model_path=path,
                     n_threads=settings.LOCAL_LLM_THREADS or None,
-                    n_gpu_layers=settings.LOCAL_LLM_NGPU_LAYERS,
+                    n_gpu_layers=n_gpu,
                     embedding=True,
                     verbose=False,
                 )

@@ -91,6 +91,12 @@ dependencies = [
     "langgraph-supervisor>=0.0.31",
     "langchain-mcp-adapters>=0.3.2",
     "croniter>=6.2.4",
+    # 跨平台基线：lock 锁定 PyPI sdist，uv sync 各平台本地编译（CPU 版，按本机指令集生成）。
+    # Linux + NVIDIA GPU 加速需源码编译 CUDA 版覆盖安装（详见 docs 03-模块设计/AI对话/后端实现-模型管理.md §2.13）：
+    #   uv cache clean llama-cpp-python
+    #   CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++-11" uv pip install \
+    #     --python .venv/bin/python --no-deps --no-binary llama-cpp-python --force-reinstall llama-cpp-python==0.3.35
+    # （官方 cu121 wheel 在 12-14 代 Intel 消费级 CPU 上会 SIGILL 崩溃，不可用）
     "llama-cpp-python>=0.3,<0.4",
     # 语音交互 TTS 引擎（Piper 本地推理，CPU 密集，延迟导入；模型自动从 hf-mirror 下载缓存，
     # lameenc 为 MP3 编码依赖；pathvalidate 由 piper-tts 传递引入）

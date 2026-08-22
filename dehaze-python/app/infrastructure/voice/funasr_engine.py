@@ -66,6 +66,16 @@ def ensure_model(model: str | None, default_logical: str) -> None:
     _load_model(resolve_model_id(model, default_logical))
 
 
+def _device() -> str:
+    """FunASR 推理设备：torch CUDA 可用时用 GPU，否则 CPU"""
+    try:
+        import torch
+
+        return "cuda:0" if torch.cuda.is_available() else "cpu"
+    except Exception:  # noqa: BLE001 检测失败按 CPU 处理
+        return "cpu"
+
+
 def _load_model(model_id: str) -> Any:
     """加载（或复用）funasr AutoModel，线程安全懒加载"""
     with _models_lock:
@@ -77,9 +87,10 @@ def _load_model(model_id: str) -> Any:
             raise FunASREngineError(
                 "funasr 未安装，语音识别不可用，请执行 uv sync 修复依赖"
             ) from e
-        logger.info("加载 FunASR 模型: %s", model_id)
+        device = _device()
+        logger.info("加载 FunASR 模型: %s（%s）", model_id, device)
         try:
-            _models[model_id] = AutoModel(model=model_id, disable_update=True)
+            _models[model_id] = AutoModel(model=model_id, disable_update=True, device=device)
         except Exception as e:
             raise FunASREngineError(f"加载 FunASR 模型失败: {model_id} error={e}") from e
         return _models[model_id]

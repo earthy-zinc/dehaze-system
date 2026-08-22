@@ -1,11 +1,13 @@
-"""本地 TTS 引擎（Piper，进程内部署，CPU 推理）
+"""本地 TTS 引擎（Piper，进程内部署，GPU 优先 / CPU 回退）
 
 对齐 FunASR 引擎的部署形态（后端实现 §3.3）：
 - 模型懒加载：首次合成请求时才加载 ONNX 模型，未使用语音功能时不占内存
+- GPU 优先：onnxruntime 带 CUDAExecutionProvider 时经 use_cuda 启用 GPU 合成
+  （需安装 onnxruntime-gpu 替换 CPU 版），否则纯 CPU
 - 模型自动下载：文件缺失时经 hf-mirror 下载（断点续传 + fcntl 跨进程锁，
   对齐 local_llm_model 的零手工部署策略；Windows 无 fcntl 退化为无锁直下），
   回退 huggingface.co
-- 推理在专用线程池执行（CPU 密集，不阻塞事件循环；espeak 音素化由 Piper
+- 推理在专用线程池执行（不阻塞事件循环；espeak 音素化由 Piper
   内部全局锁保护，onnxruntime 会话线程安全）
 - 输出编码：PCM 重采样（torchaudio sinc 插值）→ WAV 封装 / MP3 编码（lameenc）/ 裸 PCM
 """
@@ -136,6 +138,16 @@ def _download_with_fallback(filename: str, path: str, expected_size: int | None)
     ) from last_error
 
 
+def _use_cuda() -> bool:
+    """onnxruntime 带 CUDAExecutionProvider 时启用 GPU 合成（需安装 onnxruntime-gpu）"""
+    try:
+        import onnxruntime as ort
+
+        return "CUDAExecutionProvider" in ort.get_available_providers()
+    except Exception:  # noqa: BLE001 检测失败按纯 CPU 处理
+        return False
+
+
 def _load_model(voice: str) -> Any:
     """加载（或复用）PiperVoice，线程安全懒加载"""
     with _models_lock:
@@ -148,9 +160,10 @@ def _load_model(voice: str) -> Any:
                 "piper-tts 未安装，语音合成不可用，请执行 uv sync 修复依赖"
             ) from e
         onnx_path = _ensure_downloaded(voice)
-        logger.info("加载本地 TTS 模型: %s", onnx_path)
+        use_cuda = _use_cuda()
+        logger.info("加载本地 TTS 模型: %s（%s）", onnx_path, "GPU" if use_cuda else "CPU")
         try:
-            _models[voice] = PiperVoice.load(onnx_path)
+            _models[voice] = PiperVoice.load(onnx_path, use_cuda=use_cuda)
         except Exception as e:
             raise LocalTtsError(f"加载 TTS 模型失败: {onnx_path} error={e}") from e
         return _models[voice]

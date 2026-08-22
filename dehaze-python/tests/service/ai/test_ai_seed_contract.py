@@ -1,18 +1,13 @@
 from pathlib import Path
 
-_ROOTS = (
-    Path("/data/workspace/dehaze-system/config/sql/data"),
-    Path("config/sql/data"),
-    Path("/data/workspace/dehaze-system/dehaze-python/../config/sql/data"),
-)
-
 
 def _find_sql(name: str) -> Path:
-    for root in _ROOTS:
-        p = root / name
-        if p.exists():
-            return p
-    raise FileNotFoundError(f"未找到种子文件 {name}（尝试过 {_ROOTS}）")
+    """在仓库根的 config/sql/data 下定位种子 SQL（基于测试文件位置，不依赖 cwd）"""
+    for base in Path(__file__).resolve().parents:
+        sql_dir = base / "config" / "sql" / "data"
+        if (sql_dir / name).exists():
+            return sql_dir / name
+    raise FileNotFoundError(f"未找到种子文件 {name}（config/sql/data 不在仓库内）")
 
 
 REASONING_KEYS = {

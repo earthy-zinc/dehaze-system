@@ -576,7 +576,7 @@ describe("推荐管理接口测试", () => {
       if (recommendations.length > 0) {
         const firstRec = recommendations[0]!;
         const feedback = createFeedback({
-          recommendationId: firstRec.algorithmId,
+          recommendationId: firstRec.recommendationId,
           useful: true,
         });
         const feedbackResult = await RecommendationAPI.submitFeedback(feedback);
