@@ -91,7 +91,8 @@ class Settings(BaseSettings):
     FILE_STORAGE_TYPE: Literal["minio", "local", "nginx-static"] = "minio"
     LOCAL_STORAGE_PATH: str = "/data/files"
     FILE_TEMP_CLEANUP_HOURS: int = Field(default=24, gt=0)
-    MODEL_CACHE_DIR: str = "../models"
+    # 统一模型文件目录（算法权重缓存 / LLM / embedding / TTS 模型均存放于此）
+    MODEL_CACHE_DIR: str = str(Path(__file__).resolve().parent.parent.parent / "models")
     MODEL_FALLBACK_TO_LOCAL: bool = True
     TEMP_DIR: str = ""
 

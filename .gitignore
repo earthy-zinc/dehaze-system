@@ -472,7 +472,6 @@ dehaze-sdk-js/.session-cache.json
 # 项目根目录数据
 /datasets
 /models
-dehaze-python/models
 
 .agent
 docker-compose-dev.yml

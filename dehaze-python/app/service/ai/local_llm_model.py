@@ -5,10 +5,14 @@
 - 镜像回退：hf-mirror.com → huggingface.co
 - 断点续传：.part 临时文件 + HTTP Range 请求接续已下载字节
 - 完整性校验：最终字节数与远端 x-linked-size 比对后原子 rename 生效
-- 跨进程互斥：fcntl 文件锁（多 worker 并发触发时仅一个进程实际下载，其余等待）
+- 跨进程互斥：fcntl 文件锁（多 worker 并发触发时仅一个进程实际下载，其余等待；
+  Windows 无 fcntl，开发环境单进程退化为无锁直下）
 """
 
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Windows 无 fcntl
+    fcntl = None
 import logging
 import os
 import time
@@ -39,20 +43,16 @@ _CHUNK = 1024 * 1024  # 1MB
 _PROGRESS_STEP = 0.1
 
 
-def _models_root() -> str:
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-
-
 def model_path() -> str:
-    """对话模型路径（项目根 models/，不入 git；可经 LOCAL_LLM_MODEL_PATH 覆盖）"""
+    """对话模型路径（仓库根 models/，不入 git；可经 LOCAL_LLM_MODEL_PATH 覆盖）"""
     configured = settings.LOCAL_LLM_MODEL_PATH.strip()
-    return configured if configured else os.path.join(_models_root(), "models", MODEL_FILE)
+    return configured if configured else os.path.join(settings.MODEL_CACHE_DIR, MODEL_FILE)
 
 
 def embedding_model_path() -> str:
     """向量模型路径（可经 LOCAL_LLM_EMBEDDING_MODEL_PATH 覆盖）"""
     configured = settings.LOCAL_LLM_EMBEDDING_MODEL_PATH.strip()
-    return configured if configured else os.path.join(_models_root(), "models", EMBEDDING_MODEL_FILE)
+    return configured if configured else os.path.join(settings.MODEL_CACHE_DIR, EMBEDDING_MODEL_FILE)
 
 
 def is_downloaded() -> bool:
@@ -79,16 +79,18 @@ def _ensure(path: str, expected_size: int, urls: list[str]) -> str:
     if _file_ready(path, expected_size):
         return path
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    lock_path = path + ".lock"
-    with open(lock_path, "w") as lock_file:
-        fcntl.flock(lock_file, fcntl.LOCK_EX)
-        try:
-            if _file_ready(path, expected_size):  # 等锁期间其他进程已完成
-                return path
-            _download(path, expected_size, urls)
+    lock_file = open(path + ".lock", "w") if fcntl else None  # Windows：无锁直下
+    try:
+        if lock_file:
+            fcntl.flock(lock_file, fcntl.LOCK_EX)
+        if _file_ready(path, expected_size):  # 等锁期间其他进程已完成
             return path
-        finally:
+        _download(path, expected_size, urls)
+        return path
+    finally:
+        if lock_file:
             fcntl.flock(lock_file, fcntl.LOCK_UN)
+            lock_file.close()
 
 
 def _file_ready(path: str, expected_size: int) -> bool:

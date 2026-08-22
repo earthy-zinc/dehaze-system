@@ -3,14 +3,14 @@
 对齐 FunASR 引擎的部署形态（后端实现 §3.3）：
 - 模型懒加载：首次合成请求时才加载 ONNX 模型，未使用语音功能时不占内存
 - 模型自动下载：文件缺失时经 hf-mirror 下载（断点续传 + fcntl 跨进程锁，
-  对齐 local_llm_model 的零手工部署策略），回退 huggingface.co
+  对齐 local_llm_model 的零手工部署策略；Windows 无 fcntl 退化为无锁直下），
+  回退 huggingface.co
 - 推理在专用线程池执行（CPU 密集，不阻塞事件循环；espeak 音素化由 Piper
   内部全局锁保护，onnxruntime 会话线程安全）
 - 输出编码：PCM 重采样（torchaudio sinc 插值）→ WAV 封装 / MP3 编码（lameenc）/ 裸 PCM
 """
 
 import asyncio
-import fcntl
 import io
 import logging
 import os
@@ -20,6 +20,11 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import httpx
+
+try:
+    import fcntl
+except ImportError:  # Windows 无 fcntl
+    fcntl = None
 
 from app.config import settings
 
@@ -52,16 +57,12 @@ class LocalTtsError(Exception):
     """本地 TTS 引擎调用失败（依赖缺失/模型加载或下载失败/合成失败/音色不支持）"""
 
 
-def _models_root() -> str:
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-
-
 def _model_path(voice: str) -> str:
-    """音色模型 onnx 路径（默认项目根 models/piper/，可经 VOICE_TTS_MODEL_PATH 覆盖默认音色）"""
+    """音色模型 onnx 路径（默认仓库根 models/piper/，可经 VOICE_TTS_MODEL_PATH 覆盖默认音色）"""
     configured = settings.VOICE_TTS_MODEL_PATH.strip()
     if configured:
         return configured
-    return os.path.join(_models_root(), "models", "piper", _VOICE_MODEL_FILES[voice])
+    return os.path.join(settings.MODEL_CACHE_DIR, "piper", _VOICE_MODEL_FILES[voice])
 
 
 def _file_ready(path: str, expected_size: int | None) -> bool:
@@ -103,18 +104,20 @@ def _ensure_downloaded(voice: str) -> str:
     if _file_ready(onnx_path, _VOICE_MODEL_SIZES.get(voice)) and _file_ready(json_path, None):
         return onnx_path
     os.makedirs(os.path.dirname(onnx_path), exist_ok=True)
-    lock_path = onnx_path + ".lock"
-    with open(lock_path, "w") as lock_file:
-        fcntl.flock(lock_file, fcntl.LOCK_EX)
-        try:
-            if not _file_ready(onnx_path, _VOICE_MODEL_SIZES.get(voice)):
-                _download_with_fallback(_VOICE_MODEL_FILES[voice], onnx_path,
-                                        _VOICE_MODEL_SIZES.get(voice))
-            if not _file_ready(json_path, None):
-                _download_with_fallback(_VOICE_MODEL_FILES[voice] + ".json", json_path, None)
-            return onnx_path
-        finally:
+    lock_file = open(onnx_path + ".lock", "w") if fcntl else None  # Windows：无锁直下
+    try:
+        if lock_file:
+            fcntl.flock(lock_file, fcntl.LOCK_EX)
+        if not _file_ready(onnx_path, _VOICE_MODEL_SIZES.get(voice)):
+            _download_with_fallback(_VOICE_MODEL_FILES[voice], onnx_path,
+                                    _VOICE_MODEL_SIZES.get(voice))
+        if not _file_ready(json_path, None):
+            _download_with_fallback(_VOICE_MODEL_FILES[voice] + ".json", json_path, None)
+        return onnx_path
+    finally:
+        if lock_file:
             fcntl.flock(lock_file, fcntl.LOCK_UN)
+            lock_file.close()
 
 
 def _download_with_fallback(filename: str, path: str, expected_size: int | None) -> None:
