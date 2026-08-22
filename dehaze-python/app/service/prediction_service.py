@@ -43,6 +43,7 @@ from app.service.prediction import (
     PredictionContext,
     PredictionInterceptorChain,
 )
+from app.service.storage.base import StorageService
 from app.service.prediction.wpxnet_interceptor import WpxNetPredictionInterceptor
 from app.utils.file import calculate_bytes_md5
 
@@ -121,6 +122,7 @@ class PredictionService:
         # 2. fileId 存在时查询原始文件并用其真实 object_name 拼接访问 URL
         #   （对齐 Java resolveImageUrl）
         origin_file: SysFile | None = None
+        storage_service: StorageService | None = None
         if file_id is not None:
             async with async_session_factory() as db:
                 origin_file = await file_repository.get_by_id(db, file_id)
@@ -163,6 +165,8 @@ class PredictionService:
 
         # 4. 下载输入图片（系统存储文件用 SDK 下载避免 minio 私有 bucket 匿名 GET 403）
         if origin_file is not None:
+            # origin_file 仅在 file_id 非空分支赋值，此时 storage_service 必已获取
+            assert storage_service is not None
             bucket = settings.MINIO_BUCKET_NAME
             loop = asyncio.get_running_loop()
             raw = await loop.run_in_executor(
