@@ -15,7 +15,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from redis.asyncio import Redis
 
@@ -57,8 +57,8 @@ class TaskTracker:
         self._shutdown_event = asyncio.Event()
         self._is_shutting_down = False
         self._shutdown_timeout = shutdown_timeout
-        self._redis: Optional[Redis] = None
-        self._heartbeat_task: Optional[asyncio.Task] = None
+        self._redis: Redis | None = None
+        self._heartbeat_task: asyncio.Task | None = None
         self._worker_id = str(os.getpid())
 
     @property
@@ -102,7 +102,7 @@ class TaskTracker:
         task_id: str,
         task: asyncio.Task,
         task_type: str = "default",
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         注册任务
@@ -131,15 +131,13 @@ class TaskTracker:
         await self._register_in_redis(task_id, task_type, metadata)
 
         # 任务完成时同步清理
-        task.add_done_callback(lambda _: asyncio.create_task(
-            self._cleanup_task(task_id)
-        ))
+        task.add_done_callback(lambda _: asyncio.create_task(self._cleanup_task(task_id)))
 
     async def _register_in_redis(
         self,
         task_id: str,
         task_type: str,
-        metadata: Optional[dict[str, Any]],
+        metadata: dict[str, Any] | None,
     ):
         """将任务状态写入 Redis"""
         if not self._redis:
@@ -147,12 +145,15 @@ class TaskTracker:
         try:
             key = f"{settings.TASK_REDIS_KEY_PREFIX}:{task_id}"
             pipe = self._redis.pipeline()
-            pipe.hset(key, mapping={
-                "task_type": task_type,
-                "worker": self._worker_id,
-                "started_at": str(time.time()),
-                "metadata": json.dumps(metadata or {}, ensure_ascii=False),
-            })
+            pipe.hset(
+                key,
+                mapping={
+                    "task_type": task_type,
+                    "worker": self._worker_id,
+                    "started_at": str(time.time()),
+                    "metadata": json.dumps(metadata or {}, ensure_ascii=False),
+                },
+            )
             pipe.expire(key, settings.TASK_REDIS_TTL)
             await pipe.execute()
         except Exception as e:
@@ -179,7 +180,7 @@ class TaskTracker:
 
     async def wait_for_completion(
         self,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> tuple[int, int]:
         """
         等待本 Worker 所有任务完成
@@ -250,6 +251,30 @@ class TaskTracker:
 
         return len(tasks_to_cancel)
 
+    async def cancel_task(self, task_id: str) -> bool:
+        """取消本 Worker 中指定的运行任务。
+
+        Args:
+            task_id: 任务标识（如 pred:{log_id}）
+
+        Returns:
+            是否成功找到并取消该任务（不存在或非运行中返回 False）
+        """
+        tracked = self._running_tasks.get(task_id)
+        if not tracked or tracked.task.done():
+            return False
+
+        logger.info(f"取消任务: taskId={task_id}, type={tracked.task_type}")
+        tracked.task.cancel()
+        try:
+            await asyncio.wait_for(tracked.task, timeout=5.0)
+        except (asyncio.CancelledError, asyncio.TimeoutError):
+            pass
+        except Exception as e:
+            logger.warning(f"任务取消后异常: taskId={task_id}, error={e}")
+        await self.unregister(task_id)
+        return True
+
     def get_running_tasks(self) -> list[dict[str, Any]]:
         """获取本 Worker 运行中的任务列表"""
         return [
@@ -277,13 +302,15 @@ class TaskTracker:
                 data = await self._redis.hgetall(key_str)
 
                 if data:
-                    tasks.append({
-                        "task_id": task_id,
-                        "task_type": data.get("task_type", "unknown"),
-                        "worker": data.get("worker", "unknown"),
-                        "started_at": data.get("started_at", ""),
-                        "metadata": json.loads(data.get("metadata", "{}")),
-                    })
+                    tasks.append(
+                        {
+                            "task_id": task_id,
+                            "task_type": data.get("task_type", "unknown"),
+                            "worker": data.get("worker", "unknown"),
+                            "started_at": data.get("started_at", ""),
+                            "metadata": json.loads(data.get("metadata", "{}")),
+                        }
+                    )
 
             return tasks
         except Exception as e:
@@ -326,7 +353,7 @@ class TaskTracker:
 
 
 # 全局任务追踪器实例
-_task_tracker: Optional[TaskTracker] = None
+_task_tracker: TaskTracker | None = None
 
 
 def get_task_tracker() -> TaskTracker:

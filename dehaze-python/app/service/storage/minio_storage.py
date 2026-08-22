@@ -3,12 +3,13 @@ MinIO 存储服务实现
 """
 
 import logging
+from collections.abc import Iterator
 from io import BytesIO
-from typing import Iterator, Optional
+
+from minio import Minio
 
 from app.config import settings
 from app.service.storage.base import StorageService
-from minio import Minio
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,9 @@ class MinioStorageService(StorageService):
             response.close()
             response.release_conn()
 
-    def download_stream(self, bucket: str, object_name: str, chunk_size: int = 1024 * 1024) -> Iterator[bytes]:
+    def download_stream(
+        self, bucket: str, object_name: str, chunk_size: int = 1024 * 1024
+    ) -> Iterator[bytes]:
         response = self._client.get_object(bucket, object_name)
         try:
             while True:
@@ -87,7 +90,7 @@ class MinioStorageService(StorageService):
         except Exception:
             return False
 
-    def get_size(self, bucket: str, object_name: str) -> Optional[int]:
+    def get_size(self, bucket: str, object_name: str) -> int | None:
         try:
             stat = self._client.stat_object(bucket, object_name)
             return stat.size
@@ -100,6 +103,5 @@ class MinioStorageService(StorageService):
             logger.info(f"已自动创建 MinIO Bucket: {bucket}")
 
     def list_objects(self, bucket: str, prefix: str = "") -> list[str]:
-        objects = self._client.list_objects(
-            bucket, prefix=prefix, recursive=True)
+        objects = self._client.list_objects(bucket, prefix=prefix, recursive=True)
         return [obj.object_name for obj in objects if obj.object_name is not None]

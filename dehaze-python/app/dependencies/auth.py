@@ -1,8 +1,7 @@
 import json
-from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from app.core.code import ResultCode
@@ -20,9 +19,9 @@ RENEW_THRESHOLD = 24 * 3600
 class UserContext(BaseModel):
     id: int
     username: str
-    nickname: Optional[str] = None
-    dept_id: Optional[int] = None
-    data_scope: Optional[int] = None
+    nickname: str | None = None
+    dept_id: int | None = None
+    data_scope: int | None = None
     roles: list[str] = []
     permissions: list[str] = []
     is_m2m: bool = False
@@ -37,15 +36,15 @@ class UserContext(BaseModel):
 
 
 def _split_authorities(authorities: list) -> tuple[list[str], list[str]]:
-    roles = [str(a)[len("ROLE_"):] for a in authorities if str(a).startswith("ROLE_")]
+    roles = [str(a)[len("ROLE_") :] for a in authorities if str(a).startswith("ROLE_")]
     perms = [str(a) for a in authorities if not str(a).startswith("ROLE_")]
     return roles, perms
 
 
 async def get_current_user(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme),
-    redis = Depends(get_redis_client),
+    credentials: HTTPAuthorizationCredentials | None = Depends(oauth2_scheme),
+    redis=Depends(get_redis_client),
 ) -> UserContext:
     # 如果 API Key 中间件已注入用户上下文，直接返回
     m2m_context = getattr(request.state, "user_context", None)
@@ -104,8 +103,8 @@ async def get_current_user(
 
 async def get_current_user_optional(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme),
-) -> Optional[UserContext]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(oauth2_scheme),
+) -> UserContext | None:
     try:
         return await get_current_user(request, credentials)
     except HTTPException:

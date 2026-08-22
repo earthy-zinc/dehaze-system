@@ -1,12 +1,11 @@
 import logging
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import Request
 from sqlalchemy import event
-from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
-                                    create_async_engine)
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
@@ -42,9 +41,13 @@ def _after_cursor_execute(conn, cursor, statement, parameters, context, executem
 
 def _register_sql_logging() -> None:
     """注册 SQLAlchemy 事件监听器，以结构化 JSON 输出 SQL 审计日志。"""
-    event.listen(engine.sync_engine, "before_cursor_execute",
-                 lambda conn, cursor, statement, parameters, context, executemany:
-                 _sql_exec_timers.__setitem__(id(conn), time.perf_counter()))
+    event.listen(
+        engine.sync_engine,
+        "before_cursor_execute",
+        lambda conn, cursor, statement, parameters, context, executemany: (
+            _sql_exec_timers.__setitem__(id(conn), time.perf_counter())
+        ),
+    )
     event.listen(engine.sync_engine, "after_cursor_execute", _after_cursor_execute)
 
 
@@ -59,6 +62,7 @@ engine = create_async_engine(
     pool_pre_ping=True,
     pool_timeout=10,
 )
+
 _register_sql_logging()
 
 # 异步 Session 工厂

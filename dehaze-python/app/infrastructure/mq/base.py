@@ -18,10 +18,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-from typing import Any, Optional
+from typing import Any
 
 import aio_pika
 from aio_pika.abc import AbstractChannel, AbstractConnection
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -34,10 +35,10 @@ class BaseRabbitMQClient:
     _name: str = "RabbitMQ"
 
     def __init__(self) -> None:
-        self._conn: Optional[AbstractConnection] = None
-        self._channel: Optional[AbstractChannel] = None
+        self._conn: AbstractConnection | None = None
+        self._channel: AbstractChannel | None = None
         self._closed = False
-        self._reconnect_task: Optional[asyncio.Task] = None
+        self._reconnect_task: asyncio.Task | None = None
 
     @property
     def is_connected(self) -> bool:
@@ -107,16 +108,12 @@ class BaseRabbitMQClient:
 
         while not self._closed:
             if max_retries > 0 and attempt >= max_retries:
-                logger.error(
-                    f"{self._name} 重连已达最大重试次数({max_retries})，放弃重连"
-                )
+                logger.error(f"{self._name} 重连已达最大重试次数({max_retries})，放弃重连")
                 return
 
             interval = min(initial * math.pow(2, attempt), max_interval)
             attempt += 1
-            logger.debug(
-                f"{self._name} 重连等待: attempt={attempt}, interval={interval:.1f}s"
-            )
+            logger.debug(f"{self._name} 重连等待: attempt={attempt}, interval={interval:.1f}s")
             await asyncio.sleep(interval)
 
             try:
@@ -124,8 +121,7 @@ class BaseRabbitMQClient:
                 logger.debug(f"{self._name} 重连成功: attempt={attempt}")
                 return
             except Exception as e:
-                logger.warning(
-                    f"{self._name} 重连失败: attempt={attempt}, {e}")
+                logger.warning(f"{self._name} 重连失败: attempt={attempt}, {e}")
 
     # ===== 关闭 =====
 

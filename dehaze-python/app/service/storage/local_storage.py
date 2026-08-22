@@ -4,8 +4,8 @@
 
 import logging
 import os
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator, Optional
 
 from app.config import settings
 from app.service.storage.base import StorageService
@@ -60,7 +60,9 @@ class LocalStorageService(StorageService):
             raise FileNotFoundError(f"文件不存在: {object_name}")
         return file_path.read_bytes()
 
-    def download_stream(self, bucket: str, object_name: str, chunk_size: int = 1024 * 1024) -> Iterator[bytes]:
+    def download_stream(
+        self, bucket: str, object_name: str, chunk_size: int = 1024 * 1024
+    ) -> Iterator[bytes]:
         file_path = self._resolve_path(bucket, object_name)
         if not file_path.exists():
             raise FileNotFoundError(f"文件不存在: {object_name}")
@@ -80,7 +82,7 @@ class LocalStorageService(StorageService):
         file_path = self._resolve_path(bucket, object_name)
         return file_path.exists()
 
-    def get_size(self, bucket: str, object_name: str) -> Optional[int]:
+    def get_size(self, bucket: str, object_name: str) -> int | None:
         file_path = self._resolve_path(bucket, object_name)
         if file_path.exists():
             return file_path.stat().st_size

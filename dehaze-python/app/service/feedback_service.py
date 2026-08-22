@@ -1,6 +1,5 @@
 import logging
 from datetime import date, datetime
-from typing import Optional
 from urllib.parse import urlparse
 
 from redis.asyncio import Redis
@@ -17,7 +16,6 @@ from app.models.entity.sys_feedback_reply import SysFeedbackReply
 from app.models.entity.sys_rating import SysRating
 from app.models.enum.log_status import LogStatus
 from app.repository.feedback_repository import (
-    DAILY_FEEDBACK_LIMIT,
     FEEDBACK_STATUS_MAP,
     FEEDBACK_STATUS_REVERSE_MAP,
     feedback_reply_repository,
@@ -35,6 +33,7 @@ RATING_GROWTH_VALUE = 5
 RATING_DAILY_GROWTH_LIMIT = 5
 RATING_IMAGE_LIMIT = 3
 FEEDBACK_IMAGE_LIMIT = 5
+DAILY_FEEDBACK_LIMIT = 5
 LOW_RATING_THRESHOLD = 2
 
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
@@ -54,7 +53,7 @@ STATUS_REPLIED = FEEDBACK_STATUS_MAP["replied"]
 STATUS_CLOSED = FEEDBACK_STATUS_MAP["closed"]
 
 
-def _format_dt(dt: Optional[datetime]) -> Optional[str]:
+def _format_dt(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -68,7 +67,7 @@ def _get_allowed_image_url_prefixes() -> list[str]:
     return prefixes
 
 
-def _validate_image_urls(urls: Optional[list[str]], max_count: int) -> None:
+def _validate_image_urls(urls: list[str] | None, max_count: int) -> None:
     if not urls:
         return
     if len(urls) > max_count:
@@ -108,8 +107,8 @@ def _rating_to_my_vo(rating: SysRating, algorithm_name: str = "") -> dict:
 def _rating_to_page_vo(
     rating: SysRating,
     username: str = "",
-    nickname: Optional[str] = None,
-    avatar: Optional[str] = None,
+    nickname: str | None = None,
+    avatar: str | None = None,
     algorithm_name: str = "",
 ) -> dict:
     vo = _rating_to_my_vo(rating, algorithm_name)
@@ -123,8 +122,8 @@ def _rating_to_page_vo(
 def _rating_to_detail_vo(
     rating: SysRating,
     username: str = "",
-    nickname: Optional[str] = None,
-    avatar: Optional[str] = None,
+    nickname: str | None = None,
+    avatar: str | None = None,
     algorithm_name: str = "",
 ) -> dict:
     vo = _rating_to_page_vo(rating, username, nickname, avatar, algorithm_name)
@@ -132,10 +131,19 @@ def _rating_to_detail_vo(
     return vo
 
 
+def _anonymize_rating_vo(vo: dict, rating: SysRating) -> dict:
+    """匿名评价脱敏：用户端与后台均不展示用户信息（userId/username/userAvatar 置空）。"""
+    if rating.is_anonymous == 1:
+        vo["userId"] = None
+        vo["username"] = None
+        vo["userAvatar"] = None
+    return vo
+
+
 def _feedback_to_page_vo(
     feedback: SysFeedback,
     username: str = "",
-    assignee_name: Optional[str] = None,
+    assignee_name: str | None = None,
 ) -> dict:
     return {
         "id": feedback.id,
@@ -158,8 +166,8 @@ def _feedback_to_page_vo(
 def _feedback_to_detail_vo(
     feedback: SysFeedback,
     username: str = "",
-    assignee_name: Optional[str] = None,
-    replies: Optional[list] = None,
+    assignee_name: str | None = None,
+    replies: list | None = None,
     include_contact: bool = False,
 ) -> dict:
     vo = _feedback_to_page_vo(feedback, username, assignee_name)
@@ -186,7 +194,6 @@ def _reply_to_vo(reply: SysFeedbackReply, username: str = "") -> dict:
 
 
 class FeedbackService:
-
     @staticmethod
     async def create_rating(db: AsyncSession, redis: Redis, user_id: int, form: dict) -> dict:
         pred_log_id = form["predLogId"]
@@ -237,7 +244,9 @@ class FeedbackService:
         return {"id": rating.id}
 
     @staticmethod
-    async def _award_rating_growth(db: AsyncSession, redis: Redis, user_id: int, rating_id: int) -> None:
+    async def _award_rating_growth(
+        db: AsyncSession, redis: Redis, user_id: int, rating_id: int
+    ) -> None:
         today = date.today().isoformat()
         count_key = RATING_DAILY_COUNT_KEY.format(user_id=user_id, date=today)
         current_count = await redis.get(count_key)
@@ -293,7 +302,9 @@ class FeedbackService:
         )
 
     @staticmethod
-    async def update_rating(db: AsyncSession, redis: Redis, user_id: int, rating_id: int, form: dict) -> None:
+    async def update_rating(
+        db: AsyncSession, redis: Redis, user_id: int, rating_id: int, form: dict
+    ) -> None:
         data = await rating_repository.get_detail_with_user(db, rating_id)
         if not data:
             raise BusinessException(ResultCode.RATING_NOT_FOUND)
@@ -326,8 +337,7 @@ class FeedbackService:
             query["pageSize"],
         )
         list_data = [
-            _rating_to_my_vo(item["rating"], item.get("algorithm_name") or "")
-            for item in items
+            _rating_to_my_vo(item["rating"], item.get("algorithm_name") or "") for item in items
         ]
         return {"list": list_data, "total": total}
 
@@ -336,14 +346,15 @@ class FeedbackService:
         db: AsyncSession,
         user_id: int,
         pred_log_id: int,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         pred_log = await rating_repository.get_prediction_log(db, pred_log_id)
         if not pred_log:
             raise BusinessException(ResultCode.PREDICTION_LOG_NOT_FOUND)
         if pred_log.create_by != user_id:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "无权查询他人处理记录的评价")
 
-        rating = await rating_repository.get_by_pred_log_id(db, pred_log_id)
+        # 用户端查询需过滤已隐藏评价（T-FE-026），由 repository 层保证
+        rating = await rating_repository.get_visible_by_pred_log_id(db, pred_log_id)
         if not rating:
             return None
 
@@ -358,11 +369,7 @@ class FeedbackService:
             data.get("avatar"),
             data.get("algorithm_name") or "",
         )
-        if rating.is_anonymous == 1:
-            vo["userId"] = None
-            vo["username"] = None
-            vo["userAvatar"] = None
-        return vo
+        return _anonymize_rating_vo(vo, rating)
 
     @staticmethod
     async def list_paged_ratings(db: AsyncSession, query: dict) -> dict:
@@ -378,16 +385,16 @@ class FeedbackService:
             start_time=query.get("startTime"),
             end_time=query.get("endTime"),
         )
-        list_data = [
-            _rating_to_page_vo(
+        list_data = []
+        for item in items:
+            vo = _rating_to_page_vo(
                 item["rating"],
                 item.get("username") or "",
                 item.get("nickname"),
                 item.get("avatar"),
                 item.get("algorithm_name") or "",
             )
-            for item in items
-        ]
+            list_data.append(_anonymize_rating_vo(vo, item["rating"]))
         return {"list": list_data, "total": total}
 
     @staticmethod
@@ -411,8 +418,8 @@ class FeedbackService:
     async def get_rating_stats(
         db: AsyncSession,
         redis: Redis,
-        start_time: Optional[str] = None,
-        end_time: Optional[str] = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
     ) -> dict:
         cache = CacheService(redis)
         cache_key = RATING_STATS_CACHE_KEY
@@ -492,10 +499,7 @@ class FeedbackService:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND)
 
         reply_rows, _ = await feedback_reply_repository.list_by_feedback_id(db, feedback_id)
-        replies = [
-            _reply_to_vo(row["reply"], row.get("username") or "")
-            for row in reply_rows
-        ]
+        replies = [_reply_to_vo(row["reply"], row.get("username") or "") for row in reply_rows]
 
         return _feedback_to_detail_vo(
             feedback,
@@ -633,8 +637,8 @@ class FeedbackService:
     async def get_feedback_stats(
         db: AsyncSession,
         redis: Redis,
-        start_time: Optional[str] = None,
-        end_time: Optional[str] = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
     ) -> dict:
         cache = CacheService(redis)
         cache_key = FEEDBACK_STATS_CACHE_KEY

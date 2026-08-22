@@ -1,12 +1,12 @@
 import asyncio
 import logging
 import time
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+
+from redis.asyncio import ConnectionPool, Redis
 
 from app.config import settings
-from app.infrastructure.cache.redis_fallback import \
-    redis_operation_with_fallback
-from redis.asyncio import ConnectionPool, Redis
+from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +80,7 @@ async def check_redis_health() -> RedisHealthStatus:
 
     async def _ping() -> RedisHealthStatus:
         pool = await _get_redis_pool()
-        client = Redis(connection_pool=pool, encoding="utf-8",
-                       decode_responses=True)
+        client = Redis(connection_pool=pool, encoding="utf-8", decode_responses=True)
         try:
             start = time.monotonic()
             await asyncio.wait_for(client.ping(), timeout=settings.REDIS_SOCKET_CONNECT_TIMEOUT)
@@ -144,8 +143,7 @@ async def get_redis_client() -> Redis:
     global _redis_client
     if _redis_client is None:
         pool = await _get_redis_pool()
-        _redis_client = Redis(connection_pool=pool,
-                              encoding="utf-8", decode_responses=True)
+        _redis_client = Redis(connection_pool=pool, encoding="utf-8", decode_responses=True)
     return _redis_client
 
 

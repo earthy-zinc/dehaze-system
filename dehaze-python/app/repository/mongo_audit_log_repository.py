@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.config import settings
@@ -35,21 +35,37 @@ class MongoAuditLogRepository:
             "after_value": after_value,
             "ip": ip,
             "user_agent": user_agent,
-            "create_time": datetime.now(timezone.utc),
+            "create_time": datetime.now(UTC),
         }
-        result = await get_mongo_client()[settings.MONGO_DB_NAME][AuditLogDocument.COLLECTION].insert_one(doc)
+        result = await get_mongo_client()[settings.MONGO_DB_NAME][
+            AuditLogDocument.COLLECTION
+        ].insert_one(doc)
         doc["_id"] = result.inserted_id
         return doc
 
     def create_audit_async(self, **kwargs) -> None:
-        """异步写入审计日志（不阻塞业务主流程，失败时记录 warn 日志）"""
-        async def _write():
-            try:
-                await self.create_audit(**kwargs)
-            except Exception as e:
-                logger.warning("审计日志写入失败 module=%s action=%s: %s", kwargs.get("module"), kwargs.get("action"), e)
+        """异步写入审计日志（不阻塞业务主流程，失败时记录 warn 日志）。
 
-        asyncio.create_task(_write())
+        任务持有强引用（事件循环对 task 仅弱引用，不持有会被 GC 中途丢弃），
+        完成后自动移出引用集。
+        """
+        task = asyncio.create_task(self._write_audit(**kwargs))
+        _BACKGROUND_AUDIT_TASKS.add(task)
+        task.add_done_callback(_BACKGROUND_AUDIT_TASKS.discard)
+
+    async def _write_audit(self, **kwargs) -> None:
+        try:
+            await self.create_audit(**kwargs)
+        except Exception as e:
+            logger.warning(
+                "审计日志写入失败 module=%s action=%s: %s",
+                kwargs.get("module"),
+                kwargs.get("action"),
+                e,
+            )
+
+
+_BACKGROUND_AUDIT_TASKS: set[asyncio.Task] = set()
 
 
 mongo_audit_log_repository = MongoAuditLogRepository()

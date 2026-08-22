@@ -1,7 +1,8 @@
 """参数预设服务"""
-import logging
-from typing import Optional
 
+import logging
+
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
@@ -19,9 +20,24 @@ TYPE_CUSTOM = "custom"
 
 # 系统预设种子数据
 _SYSTEM_PRESET_SEEDS = [
-    {"name": "默认去雾", "algorithm_id": 13, "params": {"gamma": 1.0, "strength": "medium"}, "is_default": 1},
-    {"name": "轻度去雾", "algorithm_id": 13, "params": {"gamma": 0.8, "strength": "light"}, "is_default": 0},
-    {"name": "深度去雾", "algorithm_id": 13, "params": {"gamma": 1.5, "strength": "strong"}, "is_default": 0},
+    {
+        "name": "默认去雾",
+        "algorithm_id": 13,
+        "params": {"gamma": 1.0, "strength": "medium"},
+        "is_default": 1,
+    },
+    {
+        "name": "轻度去雾",
+        "algorithm_id": 13,
+        "params": {"gamma": 0.8, "strength": "light"},
+        "is_default": 0,
+    },
+    {
+        "name": "深度去雾",
+        "algorithm_id": 13,
+        "params": {"gamma": 1.5, "strength": "strong"},
+        "is_default": 0,
+    },
 ]
 
 
@@ -39,7 +55,6 @@ def _to_vo(entity: SysPreset) -> PresetVO:
 
 
 class PresetService:
-
     @staticmethod
     async def seed_system_presets() -> None:
         """初始化系统预设种子数据（幂等：已有数据则跳过）"""
@@ -76,7 +91,12 @@ class PresetService:
         size: int = 10,
     ) -> PageResult[PresetVO]:
         presets, total = await preset_repository.list_presets(
-            db, user_id, algorithm_id, is_system=is_system, page=page, size=size,
+            db,
+            user_id,
+            algorithm_id,
+            is_system=is_system,
+            page=page,
+            size=size,
         )
         items = [_to_vo(p) for p in presets]
         return PageResult(list=items, total=total)
@@ -91,11 +111,17 @@ class PresetService:
             user_id=user_id,
             is_default=form.isDefault or 0,
         )
-        preset = await preset_repository.create(db, preset)
+        try:
+            preset = await preset_repository.create(db, preset)
+        except IntegrityError:
+            # 唯一键 uk_user_name 冲突（同名预设）→ 业务错误 A0501，不落库为 C0300
+            raise BusinessException(ResultCode.DATA_EXISTS, "预设名称已存在") from None
         return _to_vo(preset)
 
     @staticmethod
-    async def update_preset(db: AsyncSession, preset_id: int, user_id: int, form: PresetForm) -> PresetVO:
+    async def update_preset(
+        db: AsyncSession, preset_id: int, user_id: int, form: PresetForm
+    ) -> PresetVO:
         preset = await preset_repository.get_by_id(db, preset_id)
         if not preset:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "预设不存在")

@@ -73,17 +73,20 @@ class CompareService:
 
         # 提交异步任务
         loop = asyncio.get_running_loop()
-        background_task = loop.create_task(self._generate_async(
-            task_id=task_id,
-            algorithm_id=algorithm_id,
-            origin_url=origin_url,
-            result_url=result_url,
-            user_id=user_id,
-        ))
+        background_task = loop.create_task(
+            self._generate_async(
+                task_id=task_id,
+                algorithm_id=algorithm_id,
+                origin_url=origin_url,
+                result_url=result_url,
+                user_id=user_id,
+            )
+        )
 
         # 注册到 TaskTracker，支持优雅关闭与全局任务视图
         try:
             from app.service.task_tracker import get_task_tracker
+
             await get_task_tracker().register(
                 task_id=f"compare:{task_id}",
                 task=background_task,
@@ -172,10 +175,13 @@ class CompareService:
                 metrics_html="",
             )
 
-            result_json = json.dumps({
-                "reportHtml": html,
-                "generatedAt": now_str,
-            }, ensure_ascii=False)
+            result_json = json.dumps(
+                {
+                    "reportHtml": html,
+                    "generatedAt": now_str,
+                },
+                ensure_ascii=False,
+            )
 
             async with get_db_session() as db:
                 await eval_log_repository.update_result(
@@ -222,9 +228,12 @@ class CompareService:
     <title>去雾效果对比报告</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 20px; }}
-        .container {{ max-width: 1200px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden; }}
-        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 30px; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5; color: #333; padding: 20px; }}
+        .container {{ max-width: 1200px; margin: 0 auto; background: #fff; border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff; padding: 30px; }}
         .header h1 {{ font-size: 24px; margin-bottom: 8px; }}
         .header .meta {{ font-size: 14px; opacity: 0.85; }}
         .section {{ padding: 24px 30px; border-bottom: 1px solid #eee; }}
@@ -234,7 +243,8 @@ class CompareService:
         .image-card {{ flex: 1; min-width: 280px; }}
         .image-card .label {{ font-size: 14px; color: #666; margin-bottom: 8px; font-weight: 500; }}
         .image-card img {{ width: 100%; border-radius: 6px; border: 1px solid #e0e0e0; }}
-        .info-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }}
+        .info-grid {{ display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }}
         .info-item {{ background: #f8f9ff; padding: 12px 16px; border-radius: 6px; }}
         .info-item .label {{ font-size: 12px; color: #999; margin-bottom: 4px; }}
         .info-item .value {{ font-size: 16px; font-weight: 500; }}

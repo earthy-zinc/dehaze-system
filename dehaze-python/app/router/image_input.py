@@ -11,8 +11,8 @@ DELETE /api/v1/image-input/history/{id}     → 删除单条
 注意：静态路径（/batch, /clear）必须注册在动态路径 /{id} 之前，
 否则 FastAPI 会将 /batch 匹配到 /{id} 路由，导致 int 转换失败返回 400。
 """
+
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,9 +42,9 @@ router = APIRouter(
 
 @router.get("", response_model=Result[PageResult[InputHistoryVO]], summary="分页查询历史记录")
 async def list_history(
-    status: Optional[int] = Query(default=None, description="状态筛选（1=成功，2=失败，3=处理中）"),
-    inputSource: Optional[str] = Query(default=None, description="图片来源筛选: upload/camera/sample"),
-    keywords: Optional[str] = Query(default=None, description="关键词"),
+    status: int | None = Query(default=None, description="状态筛选（1=成功，2=失败，3=处理中）"),
+    inputSource: str | None = Query(default=None, description="图片来源筛选: upload/camera/sample"),
+    keywords: str | None = Query(default=None, description="关键词"),
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
     user: UserContext = Depends(get_current_user),

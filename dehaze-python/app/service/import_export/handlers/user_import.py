@@ -1,23 +1,25 @@
 """
 用户导入处理器
 """
-from __future__ import annotations
 
-from typing import Any
+from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.entity.sys_user import SysUser
 from app.repository.user_repository import user_repository
-from app.service.import_export.models import (ImportError, ImportFieldConfig,
-                                              ImportOptions, ImportResult)
+from app.service.import_export.models import (
+    ImportError,
+    ImportFieldConfig,
+    ImportOptions,
+    ImportResult,
+)
 from app.service.import_export.registry import ImportHandler
 from app.utils.password import hash_password_async
 
 
 class UserImportHandler(ImportHandler):
-
     def get_module(self) -> str:
         return "user"
 
@@ -80,16 +82,28 @@ class UserImportHandler(ImportHandler):
                 password = str(row.get("password") or "").strip() or settings.DEFAULT_PASSWORD
                 hashed = await hash_password_async(password)
 
-                gender_str = str(row.get("gender") or "男").strip()
-                gender_value = 0 if gender_str == "女" else 1
+                gender_str = str(row.get("gender") or "").strip()
+                if gender_str and gender_str not in ("男", "女"):
+                    errors.append(
+                        ImportError(row=idx, field="gender", message="性别取值无效（应为 男/女）")
+                    )
+                    failure_count += 1
+                    continue
+                gender_value = 2 if gender_str == "女" else 1
 
                 dept_id_raw = row.get("dept_id")
-                dept_id = int(dept_id_raw) if dept_id_raw not in (None, "", "None") else (default_dept_id or None)
+                dept_id = (
+                    int(dept_id_raw)
+                    if dept_id_raw not in (None, "", "None")
+                    else (default_dept_id or None)
+                )
 
                 role_ids: list[int] = []
                 role_ids_raw = row.get("role_ids")
                 if role_ids_raw:
-                    role_ids = [int(rid.strip()) for rid in str(role_ids_raw).split(",") if rid.strip()]
+                    role_ids = [
+                        int(rid.strip()) for rid in str(role_ids_raw).split(",") if rid.strip()
+                    ]
 
                 user = SysUser(
                     username=username,

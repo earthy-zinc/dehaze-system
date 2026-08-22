@@ -4,12 +4,12 @@
 
 from typing import Any
 
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.entity.sys_dept import SysDept
 from app.repository.base import BaseRepository, escape_like
 from app.utils.tree import generate_tree_path as gen_tree_path
-from sqlalchemy import delete, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.expression import BinaryExpression
 
 
 class DeptRepository(BaseRepository[SysDept]):
@@ -64,8 +64,7 @@ class DeptRepository(BaseRepository[SysDept]):
         stmt = select(SysDept).where(SysDept.deleted == 0)
 
         if keywords:
-            stmt = stmt.where(SysDept.name.like(
-                f"%{escape_like(keywords)}%", escape="\\"))
+            stmt = stmt.where(SysDept.name.like(f"%{escape_like(keywords)}%", escape="\\"))
         if status is not None:
             stmt = stmt.where(SysDept.status == status)
 
@@ -97,9 +96,7 @@ class DeptRepository(BaseRepository[SysDept]):
     ) -> list[dict[str, Any]]:
         """获取部门下拉选项列表（树形结构）"""
         stmt = (
-            select(SysDept)
-            .where(SysDept.deleted == 0, SysDept.status == 1)
-            .order_by(SysDept.sort)
+            select(SysDept).where(SysDept.deleted == 0, SysDept.status == 1).order_by(SysDept.sort)
         )
         result = await db.execute(stmt)
         dept_list = result.scalars().all()
@@ -107,8 +104,9 @@ class DeptRepository(BaseRepository[SysDept]):
         if not dept_list:
             return []
 
-        dept_dict: dict[int, dict[str, Any]] = {dept.id: {"value": dept.id,
-                                                          "label": dept.name, "children": []} for dept in dept_list}
+        dept_dict: dict[int, dict[str, Any]] = {
+            dept.id: {"value": dept.id, "label": dept.name, "children": []} for dept in dept_list
+        }
 
         root_options: list[dict[str, Any]] = []
         for dept in dept_list:
@@ -134,25 +132,25 @@ class DeptRepository(BaseRepository[SysDept]):
         parent_tree_path = parent_dept.tree_path if parent_dept else None
         return gen_tree_path(parent_tree_path, parent_id)
 
-    async def delete_depts_with_children(
+    async def count_children_by_parents(
         self,
         db: AsyncSession,
-        dept_ids: list[int],
-    ) -> int:
-        """删除部门（包含子部门）"""
-        if not dept_ids:
-            return 0
+        parent_ids: list[int],
+    ) -> dict[int, int]:
+        """统计每个父部门下的直接子部门数量（deleted=0，避免 N+1）
 
-        # 构建批量删除条件：删除指定部门及其所有子部门
-        conditions: list[BinaryExpression] = [SysDept.id.in_(dept_ids)]
-        for dept_id in dept_ids:
-            conditions.append(SysDept.tree_path.like(f"%,{dept_id},%"))
-            conditions.append(SysDept.tree_path.like(f"{dept_id},%"))
-            conditions.append(SysDept.tree_path.like(f"%,{dept_id}"))
-
-        stmt = delete(SysDept).where(or_(*conditions))
+        Returns:
+            {parent_id: 子部门数量}
+        """
+        if not parent_ids:
+            return {}
+        stmt = (
+            select(SysDept.parent_id, func.count())
+            .where(SysDept.parent_id.in_(parent_ids), SysDept.deleted == 0)
+            .group_by(SysDept.parent_id)
+        )
         result = await db.execute(stmt)
-        return result.rowcount
+        return {int(row[0]): int(row[1]) for row in result.fetchall()}
 
 
 # 单例

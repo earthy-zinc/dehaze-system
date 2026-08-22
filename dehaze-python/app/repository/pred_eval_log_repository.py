@@ -4,12 +4,11 @@
 
 import json
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import select, func, desc, update
+from sqlalchemy import desc, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.entity.sys_log import SysPredLog, SysEvalLog
+from app.models.entity.sys_log import SysEvalLog, SysPredLog
 from app.models.enum.log_status import LogStatus
 from app.repository.base import BaseRepository
 
@@ -19,13 +18,30 @@ class PredLogRepository(BaseRepository[SysPredLog]):
 
     model = SysPredLog
 
+    async def count_by_algorithm(self, db: AsyncSession, algorithm_id: int) -> int:
+        """算法使用次数（预测日志记录数）"""
+        from sqlalchemy import func
+
+        stmt = select(func.count(SysPredLog.id)).where(
+            SysPredLog.algorithm_id == algorithm_id
+        )
+        return (await db.execute(stmt)).scalar() or 0
+
+    async def list_ids_by_file(self, db: AsyncSession, file_id: int) -> list[int]:
+        """按预测结果/原图文件反查预测日志 id（文件删除联动失效产物用）"""
+        stmt = select(SysPredLog.id).where(
+            or_(SysPredLog.pred_file_id == file_id, SysPredLog.origin_file_id == file_id)
+        )
+        result = await db.execute(stmt)
+        return [int(row) for row in result.scalars().all()]
+
     async def create_pending_log(
         self,
         db: AsyncSession,
         algorithm_id: int,
         origin_md5: str,
         origin_url: str,
-        origin_file_id: Optional[int] = None,
+        origin_file_id: int | None = None,
     ) -> SysPredLog:
         """创建 processing 状态的预测日志，返回 log_id 供异步任务更新"""
         log = SysPredLog(
@@ -47,7 +63,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         pred_md5: str,
         pred_url: str,
         time_ms: int,
-        pred_file_id: Optional[int] = None,
+        pred_file_id: int | None = None,
     ) -> None:
         """更新预测日志为 completed 并写入结果"""
         values = {
@@ -58,11 +74,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         }
         if pred_file_id is not None:
             values["pred_file_id"] = pred_file_id
-        stmt = (
-            update(SysPredLog)
-            .where(SysPredLog.id == log_id)
-            .values(**values)
-        )
+        stmt = update(SysPredLog).where(SysPredLog.id == log_id).values(**values)
         await db.execute(stmt)
         await db.commit()
 
@@ -96,8 +108,8 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         pred_md5: str,
         pred_url: str,
         time_ms: int,
-        origin_file_id: Optional[int] = None,
-        pred_file_id: Optional[int] = None,
+        origin_file_id: int | None = None,
+        pred_file_id: int | None = None,
     ) -> SysPredLog:
         """创建已完成的预测日志（缓存命中场景）"""
         log = SysPredLog(
@@ -116,7 +128,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
     async def get_paginated(
         self,
         db: AsyncSession,
-        algorithm_id: Optional[int] = None,
+        algorithm_id: int | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysPredLog], int]:
@@ -154,6 +166,14 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
 
     model = SysEvalLog
 
+    async def list_ids_by_file(self, db: AsyncSession, file_id: int) -> list[int]:
+        """按预测结果/真值图文件反查评估日志 id（文件删除联动失效产物用）"""
+        stmt = select(SysEvalLog.id).where(
+            or_(SysEvalLog.pred_file_id == file_id, SysEvalLog.gt_file_id == file_id)
+        )
+        result = await db.execute(stmt)
+        return [int(row) for row in result.scalars().all()]
+
     async def create_pending_log(
         self,
         db: AsyncSession,
@@ -162,8 +182,8 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
         pred_url: str,
         gt_md5: str,
         gt_url: str,
-        pred_file_id: Optional[int] = None,
-        gt_file_id: Optional[int] = None,
+        pred_file_id: int | None = None,
+        gt_file_id: int | None = None,
     ) -> SysEvalLog:
         """创建 processing 状态的评估日志，返回 log_id 供异步任务更新"""
         log = SysEvalLog(
@@ -220,38 +240,10 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
         await db.execute(stmt)
         await db.commit()
 
-    async def create_log(
-        self,
-        db: AsyncSession,
-        algorithm_id: int,
-        pred_md5: str,
-        pred_url: str,
-        gt_md5: str,
-        gt_url: str,
-        result: dict,
-        time_ms: int,
-        pred_file_id: Optional[int] = None,
-        gt_file_id: Optional[int] = None,
-    ) -> SysEvalLog:
-        """创建已完成的评估日志（兼容旧调用方式）"""
-        log = SysEvalLog(
-            algorithm_id=algorithm_id,
-            pred_file_id=pred_file_id,
-            pred_md5=pred_md5,
-            pred_url=pred_url,
-            gt_file_id=gt_file_id,
-            gt_md5=gt_md5,
-            gt_url=gt_url,
-            time=time_ms // 1000,
-            status=LogStatus.COMPLETED.value,
-            result=json.dumps(result) if isinstance(result, dict) else result,
-        )
-        return await self.create(db, log)
-
     async def get_paginated(
         self,
         db: AsyncSession,
-        algorithm_id: Optional[int] = None,
+        algorithm_id: int | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysEvalLog], int]:

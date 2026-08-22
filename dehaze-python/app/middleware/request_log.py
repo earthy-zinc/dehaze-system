@@ -11,15 +11,22 @@ sys_operation_log 审计表（已设计 body/resp 列）按需落库。
 已由 TraceMiddleware 注入；健康检查 / 指标 / 文档等噪声路径跳过，避免刷屏。
 """
 
-import time
 import logging
+import time
 
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # 跳过访问日志的噪声路径（与 Prometheus skip_paths 对齐）
-_SKIP_PATHS = frozenset({
-    "/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json",
-})
+_SKIP_PATHS = frozenset(
+    {
+        "/health",
+        "/ready",
+        "/metrics",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+    }
+)
 
 
 class RequestLogMiddleware(BaseHTTPMiddleware):

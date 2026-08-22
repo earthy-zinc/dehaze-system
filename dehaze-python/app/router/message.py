@@ -1,12 +1,10 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
-from app.models.schema.message import MessageSearchQuery, MessageSendRequest
+from app.models.schema.message import MessageSendRequest
 from app.service.message_service import MessageService
 
 router = APIRouter(
@@ -20,8 +18,8 @@ router = APIRouter(
 async def get_messages(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=20, ge=1, le=100),
-    type: Optional[str] = Query(default=None),
-    readStatus: Optional[int] = Query(default=None, ge=0, le=1),
+    type: str | None = Query(default=None),
+    readStatus: int | None = Query(default=None, ge=0, le=1),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -52,7 +50,7 @@ async def search_messages(
 
 @router.patch("/_read-all", summary="全部标记已读")
 async def mark_all_read(
-    type: Optional[str] = Query(default=None),
+    type: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):

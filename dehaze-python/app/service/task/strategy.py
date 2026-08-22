@@ -7,7 +7,8 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, Awaitable, Callable, List, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +23,7 @@ class TaskStrategy(abc.ABC):
     """任务策略抽象基类"""
 
     @abc.abstractmethod
-    def get_task_types(self) -> List[str]:
+    def get_task_types(self) -> list[str]:
         """返回该策略支持的所有任务类型"""
 
     @abc.abstractmethod
@@ -30,10 +31,10 @@ class TaskStrategy(abc.ABC):
         self,
         db: AsyncSession,
         sys_task: SysTask,
-        params_json: Optional[str],
+        params_json: str | None,
         progress_callback: ProgressCallback,
         cancel_checker: CancelChecker,
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """
         执行任务
 

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Body, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,9 +5,13 @@ from app.core.result import success
 from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
-from app.models.schema.order import (AutoRenewConfigForm, OrderCreateForm,
-                                      PayRequest, RefundApplyForm,
-                                      RefundAuditForm)
+from app.models.schema.order import (
+    AutoRenewConfigForm,
+    OrderCreateForm,
+    PayRequest,
+    RefundApplyForm,
+    RefundAuditForm,
+)
 from app.service.order_service import OrderService
 
 router = APIRouter(
@@ -33,7 +35,7 @@ async def create_order(
 async def list_my_orders(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    status: Optional[str] = Query(default=None),
+    status: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -46,17 +48,18 @@ async def list_my_orders(
 
 
 @router.get("/page", summary="订单分页列表")
+@require_permission("order:list")
 async def get_order_page(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    orderNo: Optional[str] = Query(default=None),
-    keywords: Optional[str] = Query(default=None),
-    status: Optional[str] = Query(default=None),
-    payMethod: Optional[str] = Query(default=None),
-    amountMin: Optional[int] = Query(default=None, ge=0),
-    amountMax: Optional[int] = Query(default=None, ge=0),
-    paidTimeStart: Optional[str] = Query(default=None),
-    paidTimeEnd: Optional[str] = Query(default=None),
+    orderNo: str | None = Query(default=None),
+    keywords: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    payMethod: str | None = Query(default=None),
+    amountMin: int | None = Query(default=None, ge=0),
+    amountMax: int | None = Query(default=None, ge=0),
+    paidTimeStart: str | None = Query(default=None),
+    paidTimeEnd: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -80,14 +83,15 @@ async def get_order_page(
 
 
 @router.get("/refunds/page", summary="退款审核列表")
+@require_permission("order:refund:list")
 async def list_refunds(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    orderNo: Optional[str] = Query(default=None),
-    keywords: Optional[str] = Query(default=None),
-    status: Optional[str] = Query(default=None),
-    applyTimeStart: Optional[str] = Query(default=None),
-    applyTimeEnd: Optional[str] = Query(default=None),
+    orderNo: str | None = Query(default=None),
+    keywords: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    applyTimeStart: str | None = Query(default=None),
+    applyTimeEnd: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -131,9 +135,10 @@ async def reject_refund(
 
 
 @router.get("/stats", summary="订单统计")
+@require_permission("order:stats")
 async def get_order_stats(
-    startTime: Optional[str] = Query(default=None),
-    endTime: Optional[str] = Query(default=None),
+    startTime: str | None = Query(default=None),
+    endTime: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):

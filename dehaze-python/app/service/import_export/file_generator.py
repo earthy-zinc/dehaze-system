@@ -1,11 +1,12 @@
 """
 导出文件生成器（Excel/CSV）
 """
+
 from __future__ import annotations
 
 import csv
 import io
-from typing import Iterable
+from collections.abc import Iterable
 
 from openpyxl import Workbook
 

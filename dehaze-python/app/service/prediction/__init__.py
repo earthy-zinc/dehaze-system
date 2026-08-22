@@ -10,8 +10,8 @@ from app.service.prediction.interceptor import (
 )
 
 __all__ = [
-    'InterceptedResult',
-    'PredictionContext',
-    'PredictionInterceptor',
-    'PredictionInterceptorChain',
+    "InterceptedResult",
+    "PredictionContext",
+    "PredictionInterceptor",
+    "PredictionInterceptorChain",
 ]

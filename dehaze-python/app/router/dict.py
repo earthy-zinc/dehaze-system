@@ -1,4 +1,6 @@
-from typing import Optional
+from fastapi import APIRouter, Body, Depends, Path, Query
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -8,22 +10,29 @@ from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.common import PageResult
-from app.models.schema.dict import (DictForm, DictFormVO, DictOptionVO,
-                                    DictPageVO, DictTypeForm, DictTypeFormVO,
-                                    DictTypePageVO)
+from app.models.schema.dict import (
+    DictForm,
+    DictFormVO,
+    DictOptionVO,
+    DictPageVO,
+    DictTypeForm,
+    DictTypeFormVO,
+    DictTypePageVO,
+)
 from app.service.dict_service import DictService, DictTypeService
-from fastapi import APIRouter, Body, Depends, Path, Query
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter(prefix="/api/v1/dict", tags=["字典管理"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/v1/dict", tags=["字典管理"], dependencies=[Depends(get_current_user)]
+)
 
 
-@router.get("/types/page", response_model=Result[PageResult[DictTypePageVO]], summary="字典类型分页列表")
+@router.get(
+    "/types/page", response_model=Result[PageResult[DictTypePageVO]], summary="字典类型分页列表"
+)
 async def get_dict_type_page(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    keywords: Optional[str] = Query(default=None, description="关键词(名称/编码)"),
+    keywords: str | None = Query(default=None, description="关键词(名称/编码)"),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -37,7 +46,9 @@ async def get_dict_type_page(
             "code": item.code,
             "status": item.status,
             "remark": item.remark,
-            "createTime": item.create_time.strftime("%Y-%m-%d %H:%M:%S") if item.create_time else None,
+            "createTime": item.create_time.strftime("%Y-%m-%d %H:%M:%S")
+            if item.create_time
+            else None,
         }
         for item in items
     ]
@@ -45,7 +56,12 @@ async def get_dict_type_page(
     return success({"list": type_list, "total": total})
 
 
-@router.get("/types/{type_id}/form", response_model=Result[DictTypeFormVO | None], summary="字典类型表单数据", dependencies=[Depends(get_current_user)])
+@router.get(
+    "/types/{type_id}/form",
+    response_model=Result[DictTypeFormVO | None],
+    summary="字典类型表单数据",
+    dependencies=[Depends(get_current_user)],
+)
 async def get_dict_type_form(
     type_id: int = Path(...),
     db: AsyncSession = Depends(get_db),
@@ -81,7 +97,12 @@ async def update_dict_type(
     return success(msg="修改成功")
 
 
-@router.delete("/types/{type_ids}", response_model=Result[None], summary="删除字典类型", description="force=true 时级联删除关联字典数据")
+@router.delete(
+    "/types/{type_ids}",
+    response_model=Result[None],
+    summary="删除字典类型",
+    description="force=true 时级联删除关联字典数据",
+)
 @require_permission("sys:dict:type:delete")
 async def delete_dict_types(
     type_ids: str = Path(...),
@@ -93,7 +114,7 @@ async def delete_dict_types(
     try:
         id_list = [int(i) for i in type_ids.split(",")]
     except ValueError:
-        raise BusinessException(ResultCode.PARAM_ERROR, "参数错误")
+        raise BusinessException(ResultCode.PARAM_ERROR, "参数错误") from None
     await DictTypeService.delete_dict_types(db, redis, id_list, force=force)
     return success(msg="删除成功")
 
@@ -102,8 +123,8 @@ async def delete_dict_types(
 async def get_dict_page(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    keywords: Optional[str] = Query(default=None, description="关键词"),
-    typeCode: Optional[str] = Query(default=None, description="字典类型编码"),
+    keywords: str | None = Query(default=None, description="关键词"),
+    typeCode: str | None = Query(default=None, description="字典类型编码"),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -122,7 +143,9 @@ async def get_dict_page(
             "defaulted": item.defaulted,
             "sort": item.sort,
             "remark": item.remark,
-            "createTime": item.create_time.strftime("%Y-%m-%d %H:%M:%S") if item.create_time else None,
+            "createTime": item.create_time.strftime("%Y-%m-%d %H:%M:%S")
+            if item.create_time
+            else None,
         }
         for item in items
     ]
@@ -130,7 +153,12 @@ async def get_dict_page(
     return success({"list": dict_list, "total": total})
 
 
-@router.get("/{dict_id}/form", response_model=Result[DictFormVO | None], summary="字典表单数据", dependencies=[Depends(get_current_user)])
+@router.get(
+    "/{dict_id}/form",
+    response_model=Result[DictFormVO | None],
+    summary="字典表单数据",
+    dependencies=[Depends(get_current_user)],
+)
 async def get_dict_form(
     dict_id: int = Path(...),
     db: AsyncSession = Depends(get_db),
@@ -167,7 +195,9 @@ async def update_dict(
     return success(msg="修改成功")
 
 
-@router.delete("/{dict_ids}", response_model=Result[None], summary="删除字典", description="多个ID以逗号分隔")
+@router.delete(
+    "/{dict_ids}", response_model=Result[None], summary="删除字典", description="多个ID以逗号分隔"
+)
 @require_permission("sys:dict:data:delete")
 async def delete_dict(
     dict_ids: str = Path(...),
@@ -178,12 +208,17 @@ async def delete_dict(
     try:
         id_list = [int(i) for i in dict_ids.split(",")]
     except ValueError:
-        raise BusinessException(ResultCode.PARAM_ERROR, "参数错误")
+        raise BusinessException(ResultCode.PARAM_ERROR, "参数错误") from None
     await DictService.delete_dict(db, redis, id_list)
     return success(msg="删除成功")
 
 
-@router.get("/{type_code}/options", response_model=Result[list[DictOptionVO]], summary="字典下拉列表", dependencies=[Depends(get_current_user)])
+@router.get(
+    "/{type_code}/options",
+    response_model=Result[list[DictOptionVO]],
+    summary="字典下拉列表",
+    dependencies=[Depends(get_current_user)],
+)
 async def list_dict_options(
     type_code: str = Path(...),
     db: AsyncSession = Depends(get_db),

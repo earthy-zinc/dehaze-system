@@ -1,6 +1,7 @@
 """
 算法导出处理器
 """
+
 from __future__ import annotations
 
 import io
@@ -8,8 +9,7 @@ import io
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import BATCH_SIZE
-from app.repository.algorithm_repository import (AlgorithmStatus,
-                                                 algorithm_repository)
+from app.repository.algorithm_repository import AlgorithmStatus, algorithm_repository
 from app.service.import_export.file_generator import write_csv, write_excel
 from app.service.import_export.models import ExportContext, ExportFieldConfig
 from app.service.import_export.registry import ExportHandler
@@ -25,9 +25,8 @@ _ALGORITHM_STATUS_LABELS = {
 
 
 class AlgorithmExportHandler(ExportHandler):
-
     def get_module(self) -> str:
-        return "algorithms"
+        return "algorithm"
 
     async def estimate_count(self, db: AsyncSession, query_params: dict) -> int:
         keywords = query_params.get("keywords")
@@ -76,7 +75,9 @@ class AlgorithmExportHandler(ExportHandler):
             ExportFieldConfig(field="size", label="大小", order=10),
             ExportFieldConfig(field="flops", label="FLOPs", order=11),
             ExportFieldConfig(field="params", label="参数量", order=12),
-            ExportFieldConfig(field="create_time", label="创建时间", order=13, date_format="%Y-%m-%d %H:%M:%S"),
+            ExportFieldConfig(
+                field="create_time", label="创建时间", order=13, date_format="%Y-%m-%d %H:%M:%S"
+            ),
         ]
 
 

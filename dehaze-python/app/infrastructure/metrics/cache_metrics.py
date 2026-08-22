@@ -5,6 +5,7 @@
 - dehaze_cache_misses_total{layer} - 缓存未命中次数（L1/L2/bloom/all）
 - dehaze_cache_loader_total{result} - 数据源加载次数（hit/miss/error）
 """
+
 from prometheus_client import Counter
 
 # 缓存命中次数（按层级统计：L1/L2）

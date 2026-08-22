@@ -1,4 +1,6 @@
-from typing import Optional
+from fastapi import APIRouter, Body, Depends, Path, Query
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success
 from app.database import get_db
@@ -7,9 +9,6 @@ from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.dept import DeptForm, DeptFormVO, DeptOptionVO, DeptVO
 from app.service.dept_service import DeptService
-from fastapi import APIRouter, Body, Depends, Path, Query
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
     prefix="/api/v1/depts",
@@ -20,8 +19,8 @@ router = APIRouter(
 
 @router.get("", response_model=Result[list[DeptVO]], summary="获取部门列表")
 async def list_depts(
-    keywords: Optional[str] = Query(default=None),
-    status: Optional[int] = Query(default=None, ge=0, le=1),
+    keywords: str | None = Query(default=None),
+    status: int | None = Query(default=None, ge=0, le=1),
     db: AsyncSession = Depends(get_db),
 ):
     depts = await DeptService.get_dept_list(db, keywords, status)
@@ -67,7 +66,9 @@ async def update_dept(
     body: DeptForm = Body(...),
     user: UserContext = Depends(get_current_user),
 ):
-    updated_id = await DeptService.update_dept(db, redis, dept_id, body.model_dump(exclude_none=True))
+    updated_id = await DeptService.update_dept(
+        db, redis, dept_id, body.model_dump(exclude_none=True)
+    )
     return success(updated_id, msg="部门更新成功")
 
 

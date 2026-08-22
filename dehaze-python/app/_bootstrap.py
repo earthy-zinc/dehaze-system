@@ -10,6 +10,7 @@
 - NVCC_PREPEND_FLAGS（允许 nvcc 使用不被官方支持的 MSVC 版本）
 - ninja.exe（缺失时自动下载）
 """
+
 import os
 import subprocess
 import sys
@@ -29,6 +30,7 @@ def _ensure_ssl_cert_file():
         except ImportError:
             pass
 
+
 def _load_msvc_env():
     """自动搜索并加载 MSVC 编译器环境（cl.exe / INCLUDE / LIB）
 
@@ -39,6 +41,7 @@ def _load_msvc_env():
         return
 
     from shutil import which
+
     if which("cl"):
         return
 
@@ -48,10 +51,20 @@ def _load_msvc_env():
 
     try:
         result = subprocess.run(
-            [str(vswhere), "-all", "-products", "*",
-             "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
-             "-sort", "-property", "installationPath"],
-            capture_output=True, text=True, timeout=10,
+            [
+                str(vswhere),
+                "-all",
+                "-products",
+                "*",
+                "-requires",
+                "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                "-sort",
+                "-property",
+                "installationPath",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         vs_paths = [p.strip() for p in result.stdout.splitlines() if p.strip()]
     except Exception:
@@ -77,7 +90,10 @@ def _load_msvc_env():
     try:
         result = subprocess.run(
             f'"{vcvars}" && set',
-            shell=True, capture_output=True, text=True, timeout=30,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
     except Exception:
         return
@@ -111,6 +127,7 @@ def _ensure_ninja():
         return
 
     from shutil import which
+
     if which("ninja"):
         return
 
@@ -148,7 +165,7 @@ def _ensure_ninja():
 def setup_environment():
     """启动前自动配置 CUDA 扩展编译环境"""
     _ensure_ssl_cert_file()
-    
+
     if sys.platform != "win32":
         _setup_torch_extensions_dir()
         return

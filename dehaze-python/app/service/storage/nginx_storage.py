@@ -7,7 +7,7 @@ nginx 静态服务存储后端实现
 """
 
 import logging
-from typing import Iterator, Optional
+from collections.abc import Iterator
 
 import requests
 
@@ -49,7 +49,9 @@ class NginxStorageService(StorageService):
         response.raise_for_status()
         return response.content
 
-    def download_stream(self, bucket: str, object_name: str, chunk_size: int = _CHUNK_SIZE) -> Iterator[bytes]:
+    def download_stream(
+        self, bucket: str, object_name: str, chunk_size: int = _CHUNK_SIZE
+    ) -> Iterator[bytes]:
         url = self._full_url(object_name)
         with requests.get(url, stream=True, timeout=60) as response:
             response.raise_for_status()
@@ -69,7 +71,7 @@ class NginxStorageService(StorageService):
         except Exception:
             return False
 
-    def get_size(self, bucket: str, object_name: str) -> Optional[int]:
+    def get_size(self, bucket: str, object_name: str) -> int | None:
         url = self._full_url(object_name)
         try:
             response = requests.head(url, timeout=10, allow_redirects=True)

@@ -2,8 +2,6 @@
 WPX 文件映射数据访问层
 """
 
-from typing import Optional
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +18,7 @@ class WpxFileRepository(BaseRepository[SysWpxFile]):
         self,
         db: AsyncSession,
         origin_md5: str,
-    ) -> Optional[SysWpxFile]:
+    ) -> SysWpxFile | None:
         """根据原始文件 MD5 查询映射记录"""
         stmt = select(SysWpxFile).where(SysWpxFile.origin_md5 == origin_md5)
         result = await db.execute(stmt)

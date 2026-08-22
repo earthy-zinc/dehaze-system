@@ -6,25 +6,25 @@
 
 import asyncio
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from algorithm.model_loader import check_model_exists
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.models.entity.sys_algorithm import SysAlgorithm, SysAlgorithmVersion
+from app.models.entity.sys_algorithm import SysAlgorithm
 from app.repository.algorithm_repository import (
-    algorithm_repository,
     AlgorithmStatus,
+    algorithm_repository,
 )
 from app.utils.datetime_utils import format_time
 from app.utils.file import convert_size
-from algorithm.model_loader import check_model_exists
 
 
 class AlgorithmService:
-    """算法服务（异步版本）"""
+    """算法服务"""
 
     @staticmethod
     def _to_vo(algorithm: SysAlgorithm) -> dict[str, Any]:
@@ -70,7 +70,9 @@ class AlgorithmService:
         return root_algorithms
 
     @staticmethod
-    async def get_algorithm_list(db: AsyncSession, keywords: str | None = None) -> list[dict[str, Any]]:
+    async def get_algorithm_list(
+        db: AsyncSession, keywords: str | None = None
+    ) -> list[dict[str, Any]]:
         """获取算法树形表格"""
         algorithms = await algorithm_repository.get_list_with_keywords(db, keywords)
         return AlgorithmService._build_algorithm_tree(algorithms)
@@ -193,9 +195,12 @@ class AlgorithmService:
 
         # 校验目标状态是合法值
         valid_statuses = {
-            AlgorithmStatus.DRAFT, AlgorithmStatus.TESTING,
-            AlgorithmStatus.PENDING_AUDIT, AlgorithmStatus.PUBLISHED,
-            AlgorithmStatus.DISABLED, AlgorithmStatus.ARCHIVED,
+            AlgorithmStatus.DRAFT,
+            AlgorithmStatus.TESTING,
+            AlgorithmStatus.PENDING_AUDIT,
+            AlgorithmStatus.PUBLISHED,
+            AlgorithmStatus.DISABLED,
+            AlgorithmStatus.ARCHIVED,
         }
         if target_status not in valid_statuses:
             raise BusinessException(f"无效的状态值: {target_status}")
@@ -208,7 +213,10 @@ class AlgorithmService:
             raise BusinessException("终态算法不允许修改状态")
 
         # 不允许直接跳转到已发布
-        if target_status == AlgorithmStatus.PUBLISHED and current_status != AlgorithmStatus.PENDING_AUDIT:
+        if (
+            target_status == AlgorithmStatus.PUBLISHED
+            and current_status != AlgorithmStatus.PENDING_AUDIT
+        ):
             raise BusinessException("算法必须经过审核才能发布")
 
         await algorithm_repository.update_status(db, algorithm_id, target_status)
@@ -221,7 +229,7 @@ class AlgorithmService:
         algorithm_id: int,
         audit_by: int,
         passed: bool,
-        remark: Optional[str] = None,
+        remark: str | None = None,
     ) -> None:
         """
         审核算法
@@ -254,10 +262,10 @@ class AlgorithmService:
         db: AsyncSession,
         algorithm_id: int,
         version: str,
-        change_log: Optional[str] = None,
-        status: Optional[int] = None,
-        config_json: Optional[str] = None,
-        model_file_id: Optional[int] = None,
+        change_log: str | None = None,
+        status: int | None = None,
+        config_json: str | None = None,
+        model_file_id: int | None = None,
         is_active: int = 0,
     ) -> int:
         """
@@ -370,7 +378,7 @@ class AlgorithmService:
             "flops": algorithm.flops,
             "params": algorithm.params,
             "status": algorithm.status,
-            "exportTime": datetime.now(timezone.utc).isoformat(),
+            "exportTime": datetime.now(UTC).isoformat(),
         }
 
         return json.dumps(export_data, ensure_ascii=False, indent=2)
@@ -394,7 +402,7 @@ class AlgorithmService:
         try:
             root = json.loads(file_bytes.decode("utf-8"))
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
-            raise BusinessException(f"导入文件解析失败: {e}")
+            raise BusinessException(f"导入文件解析失败: {e}") from None
 
         name = root.get("name")
         if not name or not str(name).strip():
@@ -487,9 +495,7 @@ class AlgorithmService:
             raise BusinessException("算法不存在")
         if days <= 0:
             days = 7
-        by_date = await algorithm_repository.get_monitor_stats_by_date(
-            db, algorithm_id, days
-        )
+        by_date = await algorithm_repository.get_monitor_stats_by_date(db, algorithm_id, days)
         today = datetime.now().date()
         result: list[dict[str, Any]] = []
         for i in range(days - 1, -1, -1):

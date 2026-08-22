@@ -56,7 +56,7 @@ def bfs_collect_ids(
     while queue:
         current_id = queue.popleft()
         for child in children_map.get(current_id, []):
-            collected.append(child.id if hasattr(child, 'id') else child)
-            queue.append(child.id if hasattr(child, 'id') else child)
+            collected.append(child.id if hasattr(child, "id") else child)
+            queue.append(child.id if hasattr(child, "id") else child)
 
     return collected

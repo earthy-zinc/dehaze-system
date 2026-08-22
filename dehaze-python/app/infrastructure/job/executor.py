@@ -2,21 +2,17 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
+
+from pyxxl import ExecutorConfig, PyxxlRunner
 
 from app.config import settings
-from pyxxl import ExecutorConfig, PyxxlRunner
 
 logger = logging.getLogger(__name__)
 
-_runner: Optional[PyxxlRunner] = None
+_runner: PyxxlRunner | None = None
 
 # pyxxl 内部 logger 名称（定义于 pyxxl.log）
 _PYXXL_LOGGERS = ("pyxxl", "pyxxl.setting", "pyxxl.executor", "pyxxl.xxl_client")
-
-
-def get_xxljob_runner() -> Optional[PyxxlRunner]:
-    return _runner
 
 
 def _attach_pyxxl_to_root() -> logging.Logger:
@@ -44,7 +40,7 @@ def _attach_pyxxl_to_root() -> logging.Logger:
     return logging.getLogger("pyxxl.executor")
 
 
-async def init_xxljob() -> Optional[PyxxlRunner]:
+async def init_xxljob() -> PyxxlRunner | None:
     global _runner
 
     if not settings.XXLJOB_ENABLED:

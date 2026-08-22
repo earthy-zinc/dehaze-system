@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,24 +15,31 @@ from app.repository.base import BaseRepository, escape_like
 FEEDBACK_STATUS_MAP = {"pending": 1, "processing": 2, "replied": 3, "closed": 4}
 FEEDBACK_STATUS_REVERSE_MAP = {v: k for k, v in FEEDBACK_STATUS_MAP.items()}
 
-POSITIVE_TAGS = ["去雾彻底", "色彩自然", "细节清晰", "处理速度快", "整体提升明显"]
-NEGATIVE_TAGS = ["残留雾气", "色彩失真", "细节丢失", "处理速度慢", "无明显改善"]
-
-DAILY_FEEDBACK_LIMIT = 5
-
 
 class RatingRepository(BaseRepository[SysRating]):
     model = SysRating
 
-    async def get_prediction_log(self, db: AsyncSession, pred_log_id: int) -> Optional[SysPredLog]:
+    async def get_prediction_log(self, db: AsyncSession, pred_log_id: int) -> SysPredLog | None:
         stmt = select(SysPredLog).where(SysPredLog.id == pred_log_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_by_pred_log_id(self, db: AsyncSession, pred_log_id: int) -> Optional[SysRating]:
+    async def get_by_pred_log_id(self, db: AsyncSession, pred_log_id: int) -> SysRating | None:
         stmt = select(SysRating).where(
             SysRating.pred_log_id == pred_log_id,
             SysRating.deleted == 0,
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_visible_by_pred_log_id(
+        self, db: AsyncSession, pred_log_id: int
+    ) -> SysRating | None:
+        """按处理记录查用户端可见评价（过滤已隐藏），供用户端查询展示用。"""
+        stmt = select(SysRating).where(
+            SysRating.pred_log_id == pred_log_id,
+            SysRating.deleted == 0,
+            SysRating.is_hidden == 0,
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
@@ -42,7 +48,7 @@ class RatingRepository(BaseRepository[SysRating]):
         self,
         db: AsyncSession,
         rating_id: int,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         stmt = (
             select(
                 SysRating,
@@ -91,10 +97,7 @@ class RatingRepository(BaseRepository[SysRating]):
         result = await db.execute(stmt)
         rows = result.all()
 
-        items = [
-            {"rating": row[0], "algorithm_name": row[1]}
-            for row in rows
-        ]
+        items = [{"rating": row[0], "algorithm_name": row[1]} for row in rows]
         return items, total
 
     async def get_admin_page(
@@ -103,13 +106,13 @@ class RatingRepository(BaseRepository[SysRating]):
         page: int,
         page_size: int,
         *,
-        keywords: Optional[str] = None,
-        algorithm_id: Optional[int] = None,
-        rating_min: Optional[int] = None,
-        rating_max: Optional[int] = None,
-        has_comment: Optional[bool] = None,
-        start_time: Optional[str] = None,
-        end_time: Optional[str] = None,
+        keywords: str | None = None,
+        algorithm_id: int | None = None,
+        rating_min: int | None = None,
+        rating_max: int | None = None,
+        has_comment: bool | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
     ) -> tuple[list[dict], int]:
         stmt = (
             select(
@@ -144,9 +147,13 @@ class RatingRepository(BaseRepository[SysRating]):
         elif has_comment is False:
             stmt = stmt.where(or_(SysRating.comment.is_(None), SysRating.comment == ""))
         if start_time:
-            stmt = stmt.where(SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            stmt = stmt.where(
+                SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
         if end_time:
-            stmt = stmt.where(SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+            stmt = stmt.where(
+                SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
 
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = (await db.execute(count_stmt)).scalar() or 0
@@ -171,14 +178,18 @@ class RatingRepository(BaseRepository[SysRating]):
     async def get_stats(
         self,
         db: AsyncSession,
-        start_time: Optional[str] = None,
-        end_time: Optional[str] = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
     ) -> dict:
         base = select(SysRating).where(SysRating.deleted == 0)
         if start_time:
-            base = base.where(SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            base = base.where(
+                SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
         if end_time:
-            base = base.where(SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+            base = base.where(
+                SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
 
         total_stmt = select(func.count()).select_from(base.subquery())
         total_ratings = int((await db.execute(total_stmt)).scalar() or 0)
@@ -187,19 +198,29 @@ class RatingRepository(BaseRepository[SysRating]):
             SysRating.deleted == 0
         )
         if start_time:
-            avg_stmt = avg_stmt.where(SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            avg_stmt = avg_stmt.where(
+                SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
         if end_time:
-            avg_stmt = avg_stmt.where(SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+            avg_stmt = avg_stmt.where(
+                SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
         avg_value = (await db.execute(avg_stmt)).scalar()
         average_rating = round(float(avg_value or 0), 2)
 
-        dist_stmt = select(SysRating.rating, func.count()).where(
-            SysRating.deleted == 0
-        ).group_by(SysRating.rating)
+        dist_stmt = (
+            select(SysRating.rating, func.count())
+            .where(SysRating.deleted == 0)
+            .group_by(SysRating.rating)
+        )
         if start_time:
-            dist_stmt = dist_stmt.where(SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            dist_stmt = dist_stmt.where(
+                SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
         if end_time:
-            dist_stmt = dist_stmt.where(SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+            dist_stmt = dist_stmt.where(
+                SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
         dist_rows = (await db.execute(dist_stmt)).all()
         rating_distribution = {i: 0 for i in range(1, 6)}
         for r, c in dist_rows:
@@ -210,13 +231,21 @@ class RatingRepository(BaseRepository[SysRating]):
             SysRating.tags.isnot(None),
         )
         if start_time:
-            tags_stmt = tags_stmt.where(SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            tags_stmt = tags_stmt.where(
+                SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
         if end_time:
-            tags_stmt = tags_stmt.where(SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+            tags_stmt = tags_stmt.where(
+                SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
         tag_rows = (await db.execute(tags_stmt)).all()
 
-        positive_counts = {t: 0 for t in POSITIVE_TAGS}
-        negative_counts = {t: 0 for t in NEGATIVE_TAGS}
+        positive_counts = {
+            t: 0 for t in ["去雾彻底", "色彩自然", "细节清晰", "处理速度快", "整体提升明显"]
+        }
+        negative_counts = {
+            t: 0 for t in ["残留雾气", "色彩失真", "细节丢失", "处理速度慢", "无明显改善"]
+        }
         for (tags_list,) in tag_rows:
             if tags_list:
                 for tag in tags_list:
@@ -249,22 +278,28 @@ class RatingRepository(BaseRepository[SysRating]):
             .group_by(SysRating.algorithm_id, SysAlgorithm.name)
         )
         if start_time:
-            algo_stmt = algo_stmt.where(SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            algo_stmt = algo_stmt.where(
+                SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
         if end_time:
-            algo_stmt = algo_stmt.where(SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+            algo_stmt = algo_stmt.where(
+                SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
         algo_rows = (await db.execute(algo_stmt)).all()
 
         algorithm_stats = []
         for row in algo_rows:
             total = int(row.total or 0)
             low = int(row.low_count or 0)
-            algorithm_stats.append({
-                "algorithmId": int(row.algorithm_id) if row.algorithm_id is not None else None,
-                "algorithmName": row.algorithm_name or "",
-                "averageRating": round(float(row.avg_rating or 0), 2),
-                "totalRatings": total,
-                "lowRatingRate": round(low * 100 / total, 2) if total > 0 else 0,
-            })
+            algorithm_stats.append(
+                {
+                    "algorithmId": int(row.algorithm_id) if row.algorithm_id is not None else None,
+                    "algorithmName": row.algorithm_name or "",
+                    "averageRating": round(float(row.avg_rating or 0), 2),
+                    "totalRatings": total,
+                    "lowRatingRate": round(low * 100 / total, 2) if total > 0 else 0,
+                }
+            )
 
         return {
             "totalRatings": total_ratings,
@@ -274,6 +309,21 @@ class RatingRepository(BaseRepository[SysRating]):
             "negativeTagRanking": negative_ranking,
             "algorithmStats": algorithm_stats,
         }
+
+    async def get_avg_rating(
+        self,
+        db: AsyncSession,
+        algorithm_id: int,
+    ) -> float:
+        """算法平均评分（未评分为 0.0）"""
+        from sqlalchemy import func
+
+        stmt = select(func.avg(SysRating.rating)).where(
+            SysRating.algorithm_id == algorithm_id,
+            SysRating.deleted == 0,
+        )
+        avg = (await db.execute(stmt)).scalar()
+        return float(avg) if avg else 0.0
 
     async def count_low_ratings_by_algorithm_24h(
         self,
@@ -310,7 +360,7 @@ class RatingRepository(BaseRepository[SysRating]):
 class FeedbackRepository(BaseRepository[SysFeedback]):
     model = SysFeedback
 
-    async def get_detail_with_users(self, db: AsyncSession, feedback_id: int) -> Optional[dict]:
+    async def get_detail_with_users(self, db: AsyncSession, feedback_id: int) -> dict | None:
         Assignee = aliased(SysUser)
         stmt = (
             select(
@@ -378,14 +428,14 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
         page: int,
         page_size: int,
         *,
-        keywords: Optional[str] = None,
-        feedback_type: Optional[str] = None,
-        status: Optional[str] = None,
-        related_module: Optional[str] = None,
-        priority: Optional[int] = None,
-        assignee_id: Optional[int] = None,
-        start_time: Optional[str] = None,
-        end_time: Optional[str] = None,
+        keywords: str | None = None,
+        feedback_type: str | None = None,
+        status: str | None = None,
+        related_module: str | None = None,
+        priority: int | None = None,
+        assignee_id: int | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
     ) -> tuple[list[dict], int]:
         Assignee = aliased(SysUser)
         stmt = (
@@ -420,9 +470,13 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
         if assignee_id is not None:
             stmt = stmt.where(SysFeedback.assignee_id == assignee_id)
         if start_time:
-            stmt = stmt.where(SysFeedback.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            stmt = stmt.where(
+                SysFeedback.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
         if end_time:
-            stmt = stmt.where(SysFeedback.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+            stmt = stmt.where(
+                SysFeedback.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
 
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = (await db.execute(count_stmt)).scalar() or 0
@@ -446,25 +500,37 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
     async def get_stats(
         self,
         db: AsyncSession,
-        start_time: Optional[str] = None,
-        end_time: Optional[str] = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
     ) -> dict:
         base_filter = [SysFeedback.deleted == 0]
         if start_time:
-            base_filter.append(SysFeedback.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            base_filter.append(
+                SysFeedback.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
         if end_time:
-            base_filter.append(SysFeedback.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+            base_filter.append(
+                SysFeedback.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
 
         total_stmt = select(func.count()).where(*base_filter)
         total_feedback = int((await db.execute(total_stmt)).scalar() or 0)
 
-        type_stmt = select(SysFeedback.feedback_type, func.count()).where(*base_filter).group_by(SysFeedback.feedback_type)
+        type_stmt = (
+            select(SysFeedback.feedback_type, func.count())
+            .where(*base_filter)
+            .group_by(SysFeedback.feedback_type)
+        )
         type_rows = (await db.execute(type_stmt)).all()
         type_distribution = {t: 0 for t in ["suggestion", "bug", "experience", "complaint"]}
         for t, c in type_rows:
             type_distribution[t] = int(c)
 
-        status_stmt = select(SysFeedback.status, func.count()).where(*base_filter).group_by(SysFeedback.status)
+        status_stmt = (
+            select(SysFeedback.status, func.count())
+            .where(*base_filter)
+            .group_by(SysFeedback.status)
+        )
         status_rows = (await db.execute(status_stmt)).all()
         status_distribution = {s: 0 for s in ["pending", "processing", "replied", "closed"]}
         for s, c in status_rows:
@@ -477,10 +543,7 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
             .group_by(SysFeedback.related_module)
         )
         module_rows = (await db.execute(module_stmt)).all()
-        module_distribution = [
-            {"module": m, "count": int(c)}
-            for m, c in module_rows
-        ]
+        module_distribution = [{"module": m, "count": int(c)} for m, c in module_rows]
 
         reply_subq = (
             select(
@@ -502,17 +565,16 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
             .where(*base_filter, SysFeedback.status.in_([3, 4]))
         )
         avg_response_seconds = (await db.execute(response_stmt)).scalar()
-        average_response_time = round(float(avg_response_seconds) / 3600, 2) if avg_response_seconds else 0
-
-        close_stmt = (
-            select(
-                func.avg(
-                    func.unix_timestamp(SysFeedback.update_time)
-                    - func.unix_timestamp(SysFeedback.create_time)
-                )
-            )
-            .where(*base_filter, SysFeedback.status == 4)
+        average_response_time = (
+            round(float(avg_response_seconds) / 3600, 2) if avg_response_seconds else 0
         )
+
+        close_stmt = select(
+            func.avg(
+                func.unix_timestamp(SysFeedback.update_time)
+                - func.unix_timestamp(SysFeedback.create_time)
+            )
+        ).where(*base_filter, SysFeedback.status == 4)
         avg_close_seconds = (await db.execute(close_stmt)).scalar()
         average_close_time = round(float(avg_close_seconds) / 3600, 2) if avg_close_seconds else 0
 
@@ -544,7 +606,9 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
 class FeedbackReplyRepository(BaseRepository[SysFeedbackReply]):
     model = SysFeedbackReply
 
-    async def list_by_feedback_id(self, db: AsyncSession, feedback_id: int) -> tuple[list[dict], int]:
+    async def list_by_feedback_id(
+        self, db: AsyncSession, feedback_id: int
+    ) -> tuple[list[dict], int]:
         stmt = (
             select(
                 SysFeedbackReply,
@@ -556,10 +620,7 @@ class FeedbackReplyRepository(BaseRepository[SysFeedbackReply]):
         )
         result = await db.execute(stmt)
         rows = result.all()
-        items = [
-            {"reply": row[0], "username": row[1]}
-            for row in rows
-        ]
+        items = [{"reply": row[0], "username": row[1]} for row in rows]
         return items, len(items)
 
 

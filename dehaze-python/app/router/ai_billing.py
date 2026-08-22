@@ -1,0 +1,214 @@
+"""AI 计费管理模块路由"""
+
+from datetime import datetime
+
+from fastapi import APIRouter, Body, Depends, Path, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
+from app.core.result import Result, success
+from app.database import get_db
+from app.decorators import require_permission
+from app.dependencies.auth import UserContext, get_current_user
+from app.models.schema.ai_billing import (
+    AdjustRequest,
+    BalanceResult,
+    BillingRecordQuery,
+    BillingRecordResult,
+    BillingStatQuery,
+    BillingStatResult,
+    BillResult,
+    CreditLogQuery,
+    CreditLogResult,
+    RefundAuditRequest,
+    RefundCreateRequest,
+    RefundResult,
+)
+from app.models.schema.common import PageResult
+from app.service.billing.balance_service import balance_service
+from app.service.billing.bill_service import BillService
+from app.service.billing.billing_record_service import BillingRecordService
+from app.service.billing.billing_stat_service import BillingStatService
+from app.service.billing.quota_service import quota_service
+from app.service.billing.recharge_service import RechargeService
+from app.service.billing.refund_service import RefundService
+
+router = APIRouter(
+    prefix="/api/v1/ai-billing",
+    tags=["AI计费管理"],
+    dependencies=[Depends(get_current_user)],
+)
+
+
+async def _build_balance(db: AsyncSession, user_id: int) -> BalanceResult:
+    """组装余额账户视图"""
+    daily_used, monthly_used = await quota_service.get_used(user_id)
+    daily_limit, monthly_limit = await quota_service.get_limits(db, user_id)
+    return BalanceResult(
+        user_id=user_id,
+        credits_balance=await balance_service.get_balance(db, user_id),
+        arrears_status=await balance_service.is_arrears(user_id),
+        daily_used=daily_used,
+        daily_limit=daily_limit,
+        monthly_used=monthly_used,
+        monthly_limit=monthly_limit,
+    )
+
+
+# ==================== 用户端接口 ====================
+
+
+@router.get("/balance", response_model=Result[BalanceResult], summary="用户余额查询")
+async def get_balance(
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    return success(await _build_balance(db, user.id))
+
+
+@router.get("/records", response_model=Result[PageResult[BillingRecordResult]], summary="计费明细查询")
+async def list_records(
+    pageNum: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+    conversationId: int | None = Query(default=None),
+    billType: str | None = Query(default=None),
+    modelId: str | None = Query(default=None),
+    dateStart: str | None = Query(default=None),
+    dateEnd: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    query = BillingRecordQuery(
+        page=pageNum,
+        size=pageSize,
+        conversation_id=conversationId,
+        bill_type=billType,
+        model_id=modelId,
+        date_start=_parse_datetime(dateStart),
+        date_end=_parse_datetime(dateEnd),
+    )
+    return success(await BillingRecordService.list_by_user(db, user.id, query))
+
+
+@router.get("/credit-logs", response_model=Result[PageResult[CreditLogResult]], summary="余额流水查询")
+async def list_credit_logs(
+    pageNum: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+    source: str | None = Query(default=None),
+    dateStart: str | None = Query(default=None),
+    dateEnd: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    query = CreditLogQuery(
+        page=pageNum,
+        size=pageSize,
+        source=source,
+        date_start=_parse_datetime(dateStart),
+        date_end=_parse_datetime(dateEnd),
+    )
+    return success(await BillingRecordService.list_credit_logs(db, user.id, query))
+
+
+@router.get("/bills/{month}", response_model=Result[BillResult], summary="月结账单查询")
+async def get_bill(
+    month: str = Path(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    return success(await BillService.get_bill(db, user.id, month))
+
+
+@router.get("/bills/{month}/download", response_model=Result[BillResult], summary="账单下载")
+async def download_bill(
+    month: str = Path(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    # 简化实现：返回账单 JSON，前端可另存为文件（保持 JSON 信封，与账单查询一致）
+    return success(await BillService.get_bill(db, user.id, month))
+
+
+@router.post("/refunds", response_model=Result[RefundResult], summary="退款申请")
+async def apply_refund(
+    body: RefundCreateRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    return success(
+        await RefundService.apply_refund(db, user.id, body.billing_id, body.amount, body.reason)
+    )
+
+
+# ==================== 管理员接口 ====================
+
+
+@router.get("/stats", response_model=Result[list[BillingStatResult]], summary="管理员计费统计")
+@require_permission("ai:billing:stat")
+async def get_stats(
+    userId: int | None = Query(default=None),
+    modelId: str | None = Query(default=None),
+    billType: str | None = Query(default=None),
+    dateStart: str | None = Query(default=None),
+    dateEnd: str | None = Query(default=None),
+    groupBy: str = Query(default="model"),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    query = BillingStatQuery(
+        group_by=groupBy,
+        model_id=modelId,
+        bill_type=billType,
+        date_start=_parse_datetime(dateStart),
+        date_end=_parse_datetime(dateEnd),
+    )
+    # user_id 额外透传（聚合维度需要）
+    return success(await BillingStatService.stats(db, query, user_id=userId))
+
+
+@router.post("/adjust", response_model=Result[BalanceResult], summary="管理员手动调整积分")
+@require_permission("ai:billing:adjust")
+async def adjust_credits(
+    body: AdjustRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    if body.amount == 0:
+        raise BusinessException(ResultCode.PARAM_ERROR, "调整积分数不能为 0")
+    await RechargeService.recharge(
+        db,
+        body.user_id,
+        body.amount,
+        source="admin_adjust",
+        reason=body.reason,
+        operator_id=user.id,
+    )
+    return success(await _build_balance(db, body.user_id))
+
+
+@router.post("/refunds/{refund_id}/audit", response_model=Result[RefundResult], summary="退款审核")
+@require_permission("ai:billing:refund")
+async def audit_refund(
+    refund_id: int = Path(...),
+    body: RefundAuditRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    return success(
+        await RefundService.audit_refund(
+            db, refund_id, body.approved, body.audit_remark, user.id
+        )
+    )
+
+
+def _parse_datetime(value: str | None) -> datetime | None:
+    """解析前端传入的日期时间字符串，非法格式返回 None"""
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    return None

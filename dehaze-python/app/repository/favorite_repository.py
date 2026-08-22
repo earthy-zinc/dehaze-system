@@ -8,10 +8,7 @@
 - 标记失效
 """
 
-from datetime import datetime
-from typing import Optional
-
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,8 +17,6 @@ from app.models.entity.sys_dataset import SysDataset
 from app.models.entity.sys_favorite import SysFavorite
 from app.models.entity.sys_log import SysPredLog
 from app.repository.base import BaseRepository, escape_like
-
-VALID_TARGET_TYPES = ["algorithm", "result", "dataset", "image", "preset"]
 
 
 class FavoriteRepository(BaseRepository[SysFavorite]):
@@ -33,16 +28,13 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         user_id: int,
         target_type: str,
         target_id: int,
-    ) -> Optional[SysFavorite]:
+    ) -> SysFavorite | None:
         """按唯一约束查询未删除的收藏记录"""
-        stmt = (
-            select(SysFavorite)
-            .where(
-                SysFavorite.user_id == user_id,
-                SysFavorite.target_type == target_type,
-                SysFavorite.target_id == target_id,
-                SysFavorite.deleted == 0,
-            )
+        stmt = select(SysFavorite).where(
+            SysFavorite.user_id == user_id,
+            SysFavorite.target_type == target_type,
+            SysFavorite.target_id == target_id,
+            SysFavorite.deleted == 0,
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
@@ -85,12 +77,9 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         user_id: int,
     ) -> int:
         """统计用户未删除的收藏数量"""
-        stmt = (
-            select(func.count())
-            .where(
-                SysFavorite.user_id == user_id,
-                SysFavorite.deleted == 0,
-            )
+        stmt = select(func.count()).where(
+            SysFavorite.user_id == user_id,
+            SysFavorite.deleted == 0,
         )
         result = await db.execute(stmt)
         return result.scalar() or 0
@@ -134,10 +123,10 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         page: int,
         page_size: int,
         *,
-        target_type: Optional[str] = None,
-        keywords: Optional[str] = None,
-        sort_by: Optional[str] = None,
-        sort_order: Optional[str] = None,
+        target_type: str | None = None,
+        keywords: str | None = None,
+        sort_by: str | None = None,
+        sort_order: str | None = None,
     ) -> tuple[list[dict], int]:
         """收藏列表分页查询
 
@@ -180,9 +169,7 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         if keywords:
             escaped = escape_like(keywords)
             like_pattern = f"%{escaped}%"
-            stmt = stmt.where(
-                SysAlgorithm.name.like(like_pattern, escape="\\")
-            )
+            stmt = stmt.where(SysAlgorithm.name.like(like_pattern, escape="\\"))
 
         # 排序
         order = sort_by or "create_time"
@@ -244,37 +231,11 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         result = await db.execute(stmt)
         return result.rowcount
 
-    async def mark_invalid(
-        self,
-        db: AsyncSession,
-        target_type: str,
-        target_ids: list[int],
-    ) -> int:
-        """标记收藏对象失效（供其他模块回调）"""
-        if not target_ids:
-            return 0
-        from app.models.base import get_audit_update_values
-
-        values = {"is_invalid": 1}
-        values.update(get_audit_update_values())
-
-        stmt = (
-            update(SysFavorite)
-            .where(
-                SysFavorite.target_type == target_type,
-                SysFavorite.target_id.in_(target_ids),
-                SysFavorite.deleted == 0,
-            )
-            .values(**values)
-        )
-        result = await db.execute(stmt)
-        return result.rowcount
-
     async def get_count_by_type(
         self,
         db: AsyncSession,
         user_id: int,
-        target_type: Optional[str] = None,
+        target_type: str | None = None,
     ) -> list[dict]:
         """收藏数量统计（按类型分组）"""
         stmt = (
@@ -298,7 +259,7 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         count_map = {row[0]: row[1] for row in rows}
 
         counts = []
-        for t in VALID_TARGET_TYPES:
+        for t in ["algorithm", "result", "dataset", "image", "preset"]:
             if target_type and target_type != t:
                 continue
             counts.append({"target_type": t, "count": count_map.get(t, 0)})

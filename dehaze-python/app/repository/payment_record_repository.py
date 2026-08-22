@@ -1,5 +1,3 @@
-from typing import Optional
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +17,7 @@ class PaymentRecordRepository(BaseRepository[SysPaymentRecord]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_by_payment_no(self, db: AsyncSession, payment_no: str) -> Optional[SysPaymentRecord]:
+    async def get_by_payment_no(self, db: AsyncSession, payment_no: str) -> SysPaymentRecord | None:
         stmt = select(SysPaymentRecord).where(SysPaymentRecord.payment_no == payment_no)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()

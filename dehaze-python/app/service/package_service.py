@@ -1,5 +1,6 @@
+import json
+import logging
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,17 +10,14 @@ from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
 from app.models.entity.sys_coupon import SysCoupon
+from app.models.entity.sys_member_benefit import SysMemberBenefit
 from app.models.entity.sys_order import SysOrder
 from app.models.entity.sys_package import SysPackage
-from app.models.entity.sys_user_coupon import SysUserCoupon
-from app.models.entity.sys_member_benefit import SysMemberBenefit
 from app.models.entity.sys_promotion import SysPromotion
 from app.repository.coupon_repository import user_coupon_repository
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.package_repository import package_repository
 from app.repository.promotion_repository import promotion_repository
-import json
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -54,13 +52,13 @@ def _validate_package_form(form: dict) -> None:
         raise BusinessException(ResultCode.PARAM_ERROR, "计费周期非法")
 
 
-def _format_dt(dt: Optional[datetime]) -> Optional[str]:
+def _format_dt(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _get_effective_benefits(benefit: Optional[SysMemberBenefit], overrides: Optional[dict]) -> dict:
+def _get_effective_benefits(benefit: SysMemberBenefit | None, overrides: dict | None) -> dict:
     if not benefit:
         return {}
     base = {
@@ -101,7 +99,7 @@ def _calc_daily_price(sale_price: int, period_days: int) -> int:
     return (2 * sale_price + period_days) // (2 * period_days)
 
 
-async def _invalidate_package_cache(package_id: Optional[int] = None) -> None:
+async def _invalidate_package_cache(package_id: int | None = None) -> None:
     keys = ["package:onsale"]
     if package_id is not None:
         keys.append(f"package:detail:{package_id}")
@@ -110,10 +108,12 @@ async def _invalidate_package_cache(package_id: Optional[int] = None) -> None:
         redis = await get_redis_client()
         await redis.delete(*keys)
 
-    await redis_operation_with_fallback(_del, default=None, operation_name="package_cache_invalidate")
+    await redis_operation_with_fallback(
+        _del, default=None, operation_name="package_cache_invalidate"
+    )
 
 
-def _build_package_detail(db_pkg: SysPackage, benefit: Optional[SysMemberBenefit]) -> dict:
+def _build_package_detail(db_pkg: SysPackage, benefit: SysMemberBenefit | None) -> dict:
     overrides = db_pkg.benefit_overrides if isinstance(db_pkg.benefit_overrides, dict) else None
     benefits = _get_effective_benefits(benefit, overrides)
     return {
@@ -133,7 +133,6 @@ def _build_package_detail(db_pkg: SysPackage, benefit: Optional[SysMemberBenefit
 
 
 class PackageService:
-
     @staticmethod
     async def list_on_sale(db: AsyncSession) -> list[dict]:
         cache_key = "package:onsale"
@@ -142,7 +141,9 @@ class PackageService:
             redis = await get_redis_client()
             return await redis.get(cache_key)
 
-        cached_raw = await redis_operation_with_fallback(_get_cache, default=None, operation_name="package_onsale_cache_get")
+        cached_raw = await redis_operation_with_fallback(
+            _get_cache, default=None, operation_name="package_onsale_cache_get"
+        )
         if cached_raw:
             try:
                 return json.loads(cached_raw)
@@ -161,8 +162,15 @@ class PackageService:
 
         async def _set_cache():
             redis = await get_redis_client()
-            await redis.setex(cache_key, PACKAGE_ONSALE_CACHE_TTL, json.dumps(result, ensure_ascii=False, default=str))
-        await redis_operation_with_fallback(_set_cache, default=None, operation_name="package_onsale_cache_set")
+            await redis.setex(
+                cache_key,
+                PACKAGE_ONSALE_CACHE_TTL,
+                json.dumps(result, ensure_ascii=False, default=str),
+            )
+
+        await redis_operation_with_fallback(
+            _set_cache, default=None, operation_name="package_onsale_cache_set"
+        )
 
         return result
 
@@ -174,7 +182,9 @@ class PackageService:
             redis = await get_redis_client()
             return await redis.get(cache_key)
 
-        cached_raw = await redis_operation_with_fallback(_get_cache, default=None, operation_name="package_detail_cache_get")
+        cached_raw = await redis_operation_with_fallback(
+            _get_cache, default=None, operation_name="package_detail_cache_get"
+        )
         if cached_raw:
             try:
                 return json.loads(cached_raw)
@@ -184,18 +194,29 @@ class PackageService:
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
             raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
+        # 用户端详情仅提供在售套餐（T-PM-004）；后台编辑走 /form 端点不受影响。
+        # 缓存路径无此问题：上下架/修改/删除均会失效 package:detail 缓存。
+        if pkg.status == 0:
+            raise BusinessException(ResultCode.PACKAGE_OFF_SHELF)
         benefit = await member_benefit_repository.get_by_level_code(db, pkg.level_code)
         detail = _build_package_detail(pkg, benefit)
 
         active_promos = await promotion_repository.list_active_by_package_id(db, package_id)
-        detail["activePromotions"] = [
-            _promotion_to_vo(item["promotion"]) for item in active_promos
-        ] if active_promos else []
+        detail["activePromotions"] = (
+            [_promotion_to_vo(item["promotion"]) for item in active_promos] if active_promos else []
+        )
 
         async def _set_cache():
             redis = await get_redis_client()
-            await redis.setex(cache_key, PACKAGE_DETAIL_CACHE_TTL, json.dumps(detail, ensure_ascii=False, default=str))
-        await redis_operation_with_fallback(_set_cache, default=None, operation_name="package_detail_cache_set")
+            await redis.setex(
+                cache_key,
+                PACKAGE_DETAIL_CACHE_TTL,
+                json.dumps(detail, ensure_ascii=False, default=str),
+            )
+
+        await redis_operation_with_fallback(
+            _set_cache, default=None, operation_name="package_detail_cache_set"
+        )
 
         return detail
 
@@ -221,7 +242,9 @@ class PackageService:
                 "id": pkg.id,
                 "name": pkg.name,
                 "levelCode": pkg.level_code,
-                "levelName": benefit_map[pkg.level_code].level_name if pkg.level_code in benefit_map else "",
+                "levelName": benefit_map[pkg.level_code].level_name
+                if pkg.level_code in benefit_map
+                else "",
                 "period": pkg.period,
                 "periodDays": pkg.period_days,
                 "originalPrice": pkg.original_price,
@@ -317,9 +340,13 @@ class PackageService:
             pkg = await package_repository.get_by_id(db, package_id)
             if not pkg:
                 raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
-            order_count_stmt = select(func.count()).select_from(SysOrder).where(
-                SysOrder.package_id == package_id,
-                SysOrder.deleted == 0,
+            order_count_stmt = (
+                select(func.count())
+                .select_from(SysOrder)
+                .where(
+                    SysOrder.package_id == package_id,
+                    SysOrder.deleted == 0,
+                )
             )
             order_count = (await db.execute(order_count_stmt)).scalar() or 0
             if order_count > 0:
@@ -331,8 +358,8 @@ class PackageService:
     async def calculate_price(
         db: AsyncSession,
         package_id: int,
-        user_coupon_id: Optional[int],
-        user_id: Optional[int] = None,
+        user_coupon_id: int | None,
+        user_id: int | None = None,
     ) -> dict:
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
@@ -390,15 +417,17 @@ class PackageService:
 
     @staticmethod
     async def get_sales_stats(db: AsyncSession) -> dict:
-        total_sales_stmt = select(func.count()).select_from(SysOrder).where(
-            SysOrder.deleted == 0,
-            SysOrder.status.in_([2, 3]),
+        total_sales_stmt = (
+            select(func.count())
+            .select_from(SysOrder)
+            .where(
+                SysOrder.deleted == 0,
+                SysOrder.status.in_([2, 3]),
+            )
         )
         total_sales = int((await db.execute(total_sales_stmt)).scalar() or 0)
 
-        revenue_stmt = select(
-            func.coalesce(func.sum(SysOrder.paid_amount), 0)
-        ).where(
+        revenue_stmt = select(func.coalesce(func.sum(SysOrder.paid_amount), 0)).where(
             SysOrder.deleted == 0,
             SysOrder.status.in_([2, 3]),
         )
@@ -440,7 +469,9 @@ class PackageService:
         level_stats = [
             {
                 "levelCode": row.package_level,
-                "levelName": benefit_map[row.package_level].level_name if row.package_level in benefit_map else "",
+                "levelName": benefit_map[row.package_level].level_name
+                if row.package_level in benefit_map
+                else "",
                 "salesCount": row.count,
                 "revenue": int(row.revenue),
             }

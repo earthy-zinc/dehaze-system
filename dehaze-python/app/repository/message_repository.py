@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_message import SysMessage
@@ -17,8 +16,8 @@ class MessageRepository(BaseRepository[SysMessage]):
         recipient_id: int,
         page: int,
         page_size: int,
-        type: Optional[str] = None,
-        read_status: Optional[int] = None,
+        type: str | None = None,
+        read_status: int | None = None,
     ) -> tuple[list[SysMessage], int]:
         stmt = select(SysMessage).where(
             SysMessage.recipient_id == recipient_id,
@@ -32,7 +31,9 @@ class MessageRepository(BaseRepository[SysMessage]):
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = (await db.execute(count_stmt)).scalar() or 0
 
-        stmt = stmt.order_by(SysMessage.read_status.asc(), SysMessage.create_time.desc(), SysMessage.id.desc())
+        stmt = stmt.order_by(
+            SysMessage.read_status.asc(), SysMessage.create_time.desc(), SysMessage.id.desc()
+        )
         stmt = stmt.offset((page - 1) * page_size).limit(page_size)
         result = await db.execute(stmt)
         items = list(result.scalars().all())
@@ -58,7 +59,9 @@ class MessageRepository(BaseRepository[SysMessage]):
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = (await db.execute(count_stmt)).scalar() or 0
 
-        stmt = stmt.order_by(SysMessage.read_status.asc(), SysMessage.create_time.desc(), SysMessage.id.desc())
+        stmt = stmt.order_by(
+            SysMessage.read_status.asc(), SysMessage.create_time.desc(), SysMessage.id.desc()
+        )
         stmt = stmt.offset((page - 1) * page_size).limit(page_size)
         result = await db.execute(stmt)
         items = list(result.scalars().all())
@@ -78,7 +81,7 @@ class MessageRepository(BaseRepository[SysMessage]):
         db: AsyncSession,
         message_id: int,
         recipient_id: int,
-    ) -> Optional[SysMessage]:
+    ) -> SysMessage | None:
         stmt = select(SysMessage).where(
             SysMessage.id == message_id,
             SysMessage.recipient_id == recipient_id,
@@ -105,7 +108,7 @@ class MessageRepository(BaseRepository[SysMessage]):
         self,
         db: AsyncSession,
         recipient_id: int,
-        type: Optional[str] = None,
+        type: str | None = None,
     ) -> int:
         stmt = (
             update(SysMessage)
@@ -138,20 +141,6 @@ class MessageRepository(BaseRepository[SysMessage]):
         result = await db.execute(stmt)
         return result.rowcount
 
-    async def find_by_biz(
-        self,
-        db: AsyncSession,
-        biz_module: str,
-        biz_id: str,
-    ) -> list[SysMessage]:
-        stmt = select(SysMessage).where(
-            SysMessage.biz_module == biz_module,
-            SysMessage.biz_id == biz_id,
-            SysMessage.deleted == 0,
-        )
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
-
     async def find_by_biz_and_recipients(
         self,
         db: AsyncSession,
@@ -176,9 +165,13 @@ class MessageRepository(BaseRepository[SysMessage]):
     async def delete_expired(self, db: AsyncSession, now: datetime, batch_size: int = 500) -> int:
         total_deleted = 0
         while True:
-            id_stmt = select(SysMessage.id).where(
-                SysMessage.expires_at < now,
-            ).limit(batch_size)
+            id_stmt = (
+                select(SysMessage.id)
+                .where(
+                    SysMessage.expires_at < now,
+                )
+                .limit(batch_size)
+            )
             id_result = await db.execute(id_stmt)
             ids = [row[0] for row in id_result.fetchall()]
             if not ids:

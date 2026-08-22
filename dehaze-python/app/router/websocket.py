@@ -1,5 +1,6 @@
-from app.service.websocket_service import WebSocketService
 from fastapi import APIRouter, Query, WebSocket
+
+from app.service.websocket_service import WebSocketService
 
 router = APIRouter(tags=["WebSocket"])
 

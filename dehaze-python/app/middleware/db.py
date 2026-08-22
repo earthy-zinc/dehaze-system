@@ -9,6 +9,7 @@
 纯 ASGI 中间件拦截 http.response.start 消息，在响应头发送给客户端之前
 完成 commit/rollback。保证客户端收到响应时数据一定已持久化。
 """
+
 import logging
 
 from app.database import async_session_factory

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Body, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,8 +5,12 @@ from app.core.result import success
 from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
-from app.models.schema.member import (BenefitForm, MemberGrowthAdjustForm,
-                                      MemberLevelAdjustForm, MemberStatusForm)
+from app.models.schema.member import (
+    BenefitForm,
+    MemberGrowthAdjustForm,
+    MemberLevelAdjustForm,
+    MemberStatusForm,
+)
 from app.service.member_service import MemberService
 
 router = APIRouter(
@@ -31,9 +33,9 @@ async def get_profile(
 async def get_growth_logs(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    changeType: Optional[str] = Query(default=None),
-    startTime: Optional[str] = Query(default=None),
-    endTime: Optional[str] = Query(default=None),
+    changeType: str | None = Query(default=None),
+    startTime: str | None = Query(default=None),
+    endTime: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -72,16 +74,17 @@ async def get_sign_in_calendar(
 
 
 @router.get("/page", summary="会员分页列表")
+@require_permission("member:list")
 async def get_member_page(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    keywords: Optional[str] = Query(default=None),
-    levelCode: Optional[str] = Query(default=None),
-    status: Optional[int] = Query(default=None, ge=0, le=1),
-    expireTimeStart: Optional[str] = Query(default=None),
-    expireTimeEnd: Optional[str] = Query(default=None),
-    growthMin: Optional[int] = Query(default=None),
-    growthMax: Optional[int] = Query(default=None),
+    keywords: str | None = Query(default=None),
+    levelCode: str | None = Query(default=None),
+    status: int | None = Query(default=None, ge=0, le=1),
+    expireTimeStart: str | None = Query(default=None),
+    expireTimeEnd: str | None = Query(default=None),
+    growthMin: int | None = Query(default=None),
+    growthMax: int | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):

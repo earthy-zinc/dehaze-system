@@ -1,5 +1,5 @@
 import logging
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
@@ -32,7 +32,7 @@ async def get_mongo_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
 
 
 async def init_mongo_indexes() -> None:
-    """创建 login_log / audit_log 索引"""
+    """创建 login_log / audit_log / ai_api_call_log 索引"""
     db = get_mongo_client()[settings.MONGO_DB_NAME]
     await db.login_log.create_index([("user_id", 1), ("create_time", -1)])
     await db.login_log.create_index([("create_time", -1)])
@@ -40,6 +40,12 @@ async def init_mongo_indexes() -> None:
     await db.audit_log.create_index([("operator_id", 1), ("create_time", -1)])
     await db.audit_log.create_index([("target_type", 1), ("target_id", 1), ("create_time", -1)])
     await db.audit_log.create_index([("module", 1), ("create_time", -1)])
+    # ai_api_call_log：复合索引支撑按 Key/用户/模型筛选对账；
+    # TTL 索引按 create_time 30 天自动过期，无需定时清理
+    await db.ai_api_call_log.create_index([("key_id", 1), ("create_time", -1)])
+    await db.ai_api_call_log.create_index([("user_id", 1), ("create_time", -1)])
+    await db.ai_api_call_log.create_index([("model", 1), ("create_time", -1)])
+    await db.ai_api_call_log.create_index([("create_time", 1)], expireAfterSeconds=30 * 24 * 3600)
     logger.info("MongoDB 索引创建完成")
 
 

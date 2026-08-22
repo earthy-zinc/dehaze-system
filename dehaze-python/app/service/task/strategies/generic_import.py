@@ -5,32 +5,32 @@
 dict_import/algorithm_import）。策略本身只做调度，具体导入逻辑由对应的
 ImportHandler 实现。
 """
+
 from __future__ import annotations
 
 import asyncio
 import io
 import json
 import logging
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
-from app.core.exceptions import BusinessException, TaskCancelledException
+from app.core.exceptions import BusinessException
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import IMPORT_TASK_TYPES
 from app.service.file_service import _minio_executor, get_minio_client
 from app.service.import_export.file_parser import parse_csv, parse_excel
 from app.service.import_export.models import ImportOptions
 from app.service.import_export.registry import import_handler_registry
+from app.service.task.strategies._common import make_cancel_cb, resolve_module
 from app.service.task.strategy import CancelChecker, ProgressCallback, TaskStrategy
 
 logger = logging.getLogger(__name__)
 
 
 class GenericImportStrategy(TaskStrategy):
-
     def get_task_types(self) -> list[str]:
         return list(IMPORT_TASK_TYPES)
 
@@ -38,15 +38,12 @@ class GenericImportStrategy(TaskStrategy):
         self,
         db: AsyncSession,
         sys_task: SysTask,
-        params_json: Optional[str],
+        params_json: str | None,
         progress_callback: ProgressCallback,
         cancel_checker: CancelChecker,
-    ) -> Optional[str]:
+    ) -> str | None:
         params = json.loads(params_json or "{}")
-        # 通用端点创建任务时 params 可能不含 module，从任务类型推导（如 user_import -> user）
-        module = params.get("module") or sys_task.task_type.rsplit("_", 1)[0]
-        if not module:
-            raise BusinessException(ResultCode.TASK_PARAM_ERROR, "缺少模块参数 module")
+        module = resolve_module(params, sys_task.task_type)
 
         object_name = params.get("fileObjectName")
         if not object_name:
@@ -68,15 +65,9 @@ class GenericImportStrategy(TaskStrategy):
 
         options = ImportOptions(mode=mode, extra=extra)
 
-        async def progress_cb(processed: int, total: int) -> None:
-            await progress_callback(processed, total)
-
-        async def cancel_cb() -> bool:
-            if await cancel_checker():
-                raise TaskCancelledException()
-            return False
-
-        result = await handler.import_batch(db, rows, options, progress_cb, cancel_cb)
+        result = await handler.import_batch(
+            db, rows, options, progress_callback, make_cancel_cb(cancel_checker)
+        )
 
         if result.errors:
             report_url = await _upload_error_report(result, sys_task.task_id, module)
@@ -101,7 +92,7 @@ async def _download_from_minio(object_name: str) -> bytes:
     return await loop.run_in_executor(_minio_executor, _sync)
 
 
-async def _upload_error_report(result, task_id: str, module: str) -> Optional[str]:
+async def _upload_error_report(result, task_id: str, module: str) -> str | None:
     if not result.errors:
         return None
     import csv
@@ -120,8 +111,10 @@ async def _upload_error_report(result, task_id: str, module: str) -> Optional[st
 
     def _sync() -> str:
         client.put_object(
-            bucket, object_name,
-            data=io.BytesIO(data), length=len(data),
+            bucket,
+            object_name,
+            data=io.BytesIO(data),
+            length=len(data),
             content_type="text/csv",
         )
         return object_name

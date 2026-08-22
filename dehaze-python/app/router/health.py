@@ -1,10 +1,11 @@
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+
 from app.config import settings
 from app.database import engine
 from app.dependencies.redis import check_redis_health
 from app.infrastructure.mq.connection import get_consumer, get_publisher
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
-from sqlalchemy import text
 
 router = APIRouter(prefix="/health", tags=["健康检查"])
 ready_router = APIRouter(tags=["健康检查"])

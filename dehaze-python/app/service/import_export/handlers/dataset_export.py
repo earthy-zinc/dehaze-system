@@ -8,12 +8,12 @@
 - itemIds: 批量导出多个数据项的文件
 - filters: 按筛选条件导出数据集内数据项
 """
+
 from __future__ import annotations
 
 import io
 import logging
 import zipfile
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +24,7 @@ from app.models.entity.sys_dataset import SysDatasetItem, SysItemFile
 from app.repository.dataset_repository import dataset_repository
 from app.repository.file_repository import file_repository
 from app.service.file_service import _minio_executor, get_minio_client
-from app.service.import_export.models import (ExportContext, ExportFieldConfig)
+from app.service.import_export.models import ExportContext, ExportFieldConfig
 from app.service.import_export.registry import ExportHandler
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,6 @@ ZIP_BUFFER_SIZE = 8192
 
 
 class DatasetExportHandler(ExportHandler):
-
     def get_module(self) -> str:
         return "dataset"
 
@@ -103,18 +102,30 @@ class DatasetExportHandler(ExportHandler):
                         break
 
                     if _should_include_type(options.include_types, item_file.type):
-                        await _add_file_to_zip(zos, item_file, file_map, options.structure, item_name, None, False)
+                        await _add_file_to_zip(
+                            zos, item_file, file_map, options.structure, item_name, None, False
+                        )
                         processed_files += 1
                         await progress_cb(processed_files, total_files)
 
                     if options.include_thumbnail:
-                        await _add_file_to_zip(zos, item_file, file_map, options.structure, item_name, THUMBNAIL_SUBFOLDER, True)
+                        await _add_file_to_zip(
+                            zos,
+                            item_file,
+                            file_map,
+                            options.structure,
+                            item_name,
+                            THUMBNAIL_SUBFOLDER,
+                            True,
+                        )
                         processed_files += 1
                         await progress_cb(processed_files, total_files)
 
         logger.debug(
             "数据集导出完成: taskId=%s, itemCount=%s, fileCount=%s",
-            ctx.task_id, len(items), processed_files,
+            ctx.task_id,
+            len(items),
+            processed_files,
         )
 
     def get_field_configs(self) -> list[ExportFieldConfig]:
@@ -155,7 +166,7 @@ async def _resolve_items(db: AsyncSession, params: dict) -> list[SysDatasetItem]
     return []
 
 
-def _should_include_type(include_types: Optional[list[str]], file_type: Optional[str]) -> bool:
+def _should_include_type(include_types: list[str] | None, file_type: str | None) -> bool:
     if not include_types:
         return True
     return file_type in include_types
@@ -167,7 +178,7 @@ async def _add_file_to_zip(
     file_map: dict,
     structure: str,
     item_name: str,
-    subfolder: Optional[str],
+    subfolder: str | None,
     is_thumbnail: bool,
 ) -> None:
     file_id = item_file.thumbnail_file_id if is_thumbnail else item_file.file_id
@@ -189,9 +200,9 @@ async def _add_file_to_zip(
 def _build_zip_entry_path(
     structure: str,
     item_name: str,
-    subfolder: Optional[str],
-    file_id: Optional[int],
-    file_name: Optional[str],
+    subfolder: str | None,
+    file_id: int | None,
+    file_name: str | None,
 ) -> str:
     extension = _get_extension(file_name or "")
     base_name = f"{file_id}{extension}"
@@ -210,13 +221,13 @@ def _get_extension(filename: str) -> str:
     return "." + filename.rsplit(".", 1)[-1].lower()
 
 
-async def _download_from_minio(object_name: str) -> Optional[bytes]:
+async def _download_from_minio(object_name: str) -> bytes | None:
     import asyncio
 
     client = get_minio_client()
     bucket = settings.MINIO_BUCKET_NAME
 
-    def _sync() -> Optional[bytes]:
+    def _sync() -> bytes | None:
         response = None
         try:
             response = client.get_object(bucket, object_name)
@@ -238,15 +249,17 @@ async def _download_from_minio(object_name: str) -> Optional[bytes]:
 
 
 class _ExportOptions:
-    def __init__(self, structure: str, include_types: Optional[list[str]], include_thumbnail: bool) -> None:
+    def __init__(
+        self, structure: str, include_types: list[str] | None, include_thumbnail: bool
+    ) -> None:
         self.structure = structure
         self.include_types = include_types
         self.include_thumbnail = include_thumbnail
 
     @staticmethod
-    def from_params(params: dict) -> "_ExportOptions":
+    def from_params(params: dict) -> _ExportOptions:
         structure = STRUCTURE_BY_ITEM
-        include_types: Optional[list[str]] = None
+        include_types: list[str] | None = None
         include_thumbnail = False
 
         options_obj = params.get("options")

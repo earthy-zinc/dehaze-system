@@ -2,7 +2,6 @@ import json
 import logging
 import random
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,27 +10,32 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
-from app.infrastructure.cache.redis_lock import acquire_lock, release_lock, try_lock_or_raise, LockAcquireError
-from app.models.base import get_current_user_id
+from app.infrastructure.cache.redis_lock import (
+    LockAcquireError,
+    acquire_lock,
+    release_lock,
+    try_lock_or_raise,
+)
 from app.models.entity.sys_auto_renew import SysAutoRenew
-from app.models.entity.sys_coupon import SysCoupon
-from app.models.entity.sys_member import SysMember
-from app.models.entity.sys_member_benefit import SysMemberBenefit
 from app.models.entity.sys_order import SysOrder
-from app.models.entity.sys_package import SysPackage
 from app.models.entity.sys_payment_record import SysPaymentRecord
 from app.models.entity.sys_refund_record import SysRefundRecord
-from app.models.entity.sys_user import SysUser
-from app.models.entity.sys_user_coupon import SysUserCoupon
 from app.repository.auto_renew_repository import auto_renew_repository
 from app.repository.coupon_repository import coupon_repository, user_coupon_repository
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_repository import member_repository
 from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
-from app.repository.order_repository import order_repository, ORDER_STATUS_MAP, ORDER_STATUS_REVERSE_MAP
+from app.repository.order_repository import (
+    ORDER_STATUS_MAP,
+    ORDER_STATUS_REVERSE_MAP,
+    order_repository,
+)
 from app.repository.package_repository import package_repository
 from app.repository.payment_record_repository import payment_record_repository
-from app.repository.refund_record_repository import refund_record_repository, REFUND_STATUS_REVERSE_MAP
+from app.repository.refund_record_repository import (
+    REFUND_STATUS_REVERSE_MAP,
+    refund_record_repository,
+)
 from app.service.payment_channel_service import payment_channel_service
 
 logger = logging.getLogger(__name__)
@@ -46,7 +50,7 @@ PAY_METHODS = {"wechat", "alipay", "balance", "combined"}
 ORDER_DETAIL_CACHE_TTL = 600
 
 
-def _format_dt(dt: Optional[datetime]) -> Optional[str]:
+def _format_dt(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -141,9 +145,11 @@ def _build_admin_order_vo(order: SysOrder, username: str) -> dict:
 
 async def _invalidate_order_detail_cache(order_no: str) -> None:
     cache_key = f"order:detail:{order_no}"
+
     async def _del():
         redis = await get_redis_client()
         await redis.delete(cache_key)
+
     await redis_operation_with_fallback(_del, default=None, operation_name="order_cache_invalidate")
 
 
@@ -168,8 +174,12 @@ async def _activate_member_benefits(db: AsyncSession, order: SysOrder) -> None:
     benefit = await member_benefit_repository.get_by_level_code(db, pkg.level_code)
     if benefit:
         overrides = pkg.benefit_overrides if isinstance(pkg.benefit_overrides, dict) else {}
-        member.monthly_dehaze_quota = overrides.get("monthlyDehazeQuota", benefit.monthly_dehaze_quota)
-        member.monthly_evaluate_quota = overrides.get("monthlyEvaluateQuota", benefit.monthly_evaluate_quota)
+        member.monthly_dehaze_quota = overrides.get(
+            "monthlyDehazeQuota", benefit.monthly_dehaze_quota
+        )
+        member.monthly_evaluate_quota = overrides.get(
+            "monthlyEvaluateQuota", benefit.monthly_evaluate_quota
+        )
 
     if member.become_member_time is None:
         member.become_member_time = now
@@ -183,7 +193,10 @@ async def _activate_member_benefits(db: AsyncSession, order: SysOrder) -> None:
         await redis.delete(f"member:benefit:{pkg.level_code}")
         await redis.delete(f"member:quota:{order.user_id}:dehaze")
         await redis.delete(f"member:quota:{order.user_id}:evaluate")
-    await redis_operation_with_fallback(_invalidate_member_cache, default=None, operation_name="member_cache_invalidate")
+
+    await redis_operation_with_fallback(
+        _invalidate_member_cache, default=None, operation_name="member_cache_invalidate"
+    )
 
 
 async def _complete_balance_payment(db: AsyncSession, order: SysOrder) -> None:
@@ -208,7 +221,9 @@ async def _complete_balance_payment(db: AsyncSession, order: SysOrder) -> None:
 
     if order.coupon_id:
         await user_coupon_repository.consume_coupon(db, order.coupon_id, order.id)
-        await coupon_repository.increment_used_qty(db, await _get_coupon_template_id(db, order.coupon_id))
+        await coupon_repository.increment_used_qty(
+            db, await _get_coupon_template_id(db, order.coupon_id)
+        )
 
     await _activate_member_benefits(db, order)
     await _invalidate_order_detail_cache(order.order_no)
@@ -221,7 +236,9 @@ async def _get_coupon_template_id(db: AsyncSession, user_coupon_id: int) -> int:
     return uc.coupon_id
 
 
-async def _process_callback_success(db: AsyncSession, order: SysOrder, channel_payment_no: str, callback_raw: dict) -> None:
+async def _process_callback_success(
+    db: AsyncSession, order: SysOrder, channel_payment_no: str, callback_raw: dict
+) -> None:
     """支付回调成功业务逻辑：写流水、更新订单状态、激活权益、清缓存"""
     now = datetime.now()
     payment = SysPaymentRecord(
@@ -243,14 +260,15 @@ async def _process_callback_success(db: AsyncSession, order: SysOrder, channel_p
 
     if order.coupon_id:
         await user_coupon_repository.consume_coupon(db, order.coupon_id, order.id)
-        await coupon_repository.increment_used_qty(db, await _get_coupon_template_id(db, order.coupon_id))
+        await coupon_repository.increment_used_qty(
+            db, await _get_coupon_template_id(db, order.coupon_id)
+        )
 
     await _activate_member_benefits(db, order)
     await _invalidate_order_detail_cache(order.order_no)
 
 
 class OrderService:
-
     @staticmethod
     async def create(db: AsyncSession, form: dict, user_id: int) -> dict:
         package_id = form["packageId"]
@@ -264,7 +282,7 @@ class OrderService:
         try:
             lock_token = await try_lock_or_raise(lock_key, ORDER_LOCK_TTL, "请勿短时间内重复下单")
         except LockAcquireError as e:
-            raise BusinessException(ResultCode.DUPLICATE_ORDER, str(e))
+            raise BusinessException(ResultCode.DUPLICATE_ORDER, str(e)) from None
 
         try:
             pkg = await package_repository.get_by_id(db, package_id)
@@ -292,7 +310,10 @@ class OrderService:
                 coupon_template = await coupon_repository.get_by_id(db, user_coupon.coupon_id)
                 if not coupon_template:
                     raise BusinessException(ResultCode.COUPON_NOT_FOUND)
-                if coupon_template.applicable_scope and package_id not in coupon_template.applicable_scope:
+                if (
+                    coupon_template.applicable_scope
+                    and package_id not in coupon_template.applicable_scope
+                ):
                     raise BusinessException(ResultCode.COUPON_NOT_APPLICABLE)
 
                 base_price = sale_price
@@ -391,7 +412,10 @@ class OrderService:
 
         pkg = await package_repository.get_by_id(db, order.package_id)
         pay_result = await payment_channel_service.unified_order(
-            pay_method, order_no, order.payable_amount, pkg.name if pkg else order.package_name,
+            pay_method,
+            order_no,
+            order.payable_amount,
+            pkg.name if pkg else order.package_name,
         )
         return {
             "orderNo": order.order_no,
@@ -402,10 +426,17 @@ class OrderService:
         }
 
     @staticmethod
-    async def handle_payment_callback(db: AsyncSession, channel: str, headers: dict, body: bytes) -> bool:
+    async def handle_payment_callback(
+        db: AsyncSession, channel: str, headers: dict, body: bytes
+    ) -> bool:
         callback = await payment_channel_service.verify_callback(channel, headers, body)
         if not callback.success:
-            logger.warning("支付回调失败 channel=%s orderNo=%s raw=%s", channel, callback.order_no, callback.raw)
+            logger.warning(
+                "支付回调失败 channel=%s orderNo=%s raw=%s",
+                channel,
+                callback.order_no,
+                callback.raw,
+            )
             return False
 
         order = await order_repository.get_by_order_no(db, callback.order_no)
@@ -418,11 +449,18 @@ class OrderService:
             return True
 
         if order.status != 1:
-            logger.warning("支付回调订单状态异常 orderNo=%s status=%s", callback.order_no, order.status)
+            logger.warning(
+                "支付回调订单状态异常 orderNo=%s status=%s", callback.order_no, order.status
+            )
             return False
 
         if callback.amount != order.payable_amount:
-            logger.error("支付回调金额不一致 orderNo=%s expected=%s actual=%s", order.order_no, order.payable_amount, callback.amount)
+            logger.error(
+                "支付回调金额不一致 orderNo=%s expected=%s actual=%s",
+                order.order_no,
+                order.payable_amount,
+                callback.amount,
+            )
             raise BusinessException(ResultCode.PAYMENT_AMOUNT_MISMATCH)
 
         lock_key = f"payment:lock:{order.order_no}"
@@ -432,7 +470,9 @@ class OrderService:
             return True
 
         try:
-            existing = await payment_record_repository.get_by_payment_no(db, callback.channel_payment_no)
+            existing = await payment_record_repository.get_by_payment_no(
+                db, callback.channel_payment_no
+            )
             if existing:
                 return True
 
@@ -477,7 +517,7 @@ class OrderService:
         )
 
     @staticmethod
-    async def get_detail(db: AsyncSession, order_no: str, user_id: Optional[int] = None) -> dict:
+    async def get_detail(db: AsyncSession, order_no: str, user_id: int | None = None) -> dict:
         cache_key = f"order:detail:{order_no}"
 
         async def _get_cache():
@@ -485,13 +525,17 @@ class OrderService:
             data = await redis.get(cache_key)
             return data
 
-        cached_raw = await redis_operation_with_fallback(_get_cache, default=None, operation_name="order_cache_get")
+        cached_raw = await redis_operation_with_fallback(
+            _get_cache, default=None, operation_name="order_cache_get"
+        )
         if cached_raw:
             try:
                 cached = json.loads(cached_raw)
             except (json.JSONDecodeError, TypeError):
                 cached = None
-            if cached and (user_id is None or cached.get("userId") == user_id or cached.get("_admin") is True):
+            if cached and (
+                user_id is None or cached.get("userId") == user_id or cached.get("_admin") is True
+            ):
                 return cached
 
         data = await order_repository.get_with_user(db, order_no)
@@ -519,8 +563,13 @@ class OrderService:
 
         async def _set_cache():
             redis = await get_redis_client()
-            await redis.setex(cache_key, ORDER_DETAIL_CACHE_TTL, json.dumps(vo, ensure_ascii=False, default=str))
-        await redis_operation_with_fallback(_set_cache, default=None, operation_name="order_cache_set")
+            await redis.setex(
+                cache_key, ORDER_DETAIL_CACHE_TTL, json.dumps(vo, ensure_ascii=False, default=str)
+            )
+
+        await redis_operation_with_fallback(
+            _set_cache, default=None, operation_name="order_cache_set"
+        )
 
         return vo
 
@@ -552,7 +601,9 @@ class OrderService:
             paid_time_end=query.get("paidTimeEnd"),
             current_user=current_user,
         )
-        list_data = [_build_admin_order_vo(item["order"], item.get("username") or "") for item in items]
+        list_data = [
+            _build_admin_order_vo(item["order"], item.get("username") or "") for item in items
+        ]
         return {"list": list_data, "total": total}
 
     @staticmethod
@@ -566,7 +617,9 @@ class OrderService:
         if order.status != 2:
             raise BusinessException(ResultCode.ORDER_STATUS_INVALID)
 
-        if order.paid_time and order.paid_time < datetime.now() - timedelta(days=REFUND_TIME_LIMIT_DAYS):
+        if order.paid_time and order.paid_time < datetime.now() - timedelta(
+            days=REFUND_TIME_LIMIT_DAYS
+        ):
             raise BusinessException(ResultCode.REFUND_TIME_EXCEEDED)
 
         existing = await refund_record_repository.get_by_order_id(db, order.id)
@@ -625,8 +678,11 @@ class OrderService:
             channel_payment_no = payments[0].payment_no if payments else ""
             try:
                 result = await payment_channel_service.refund(
-                    channel, order.order_no, channel_payment_no,
-                    refund.refund_amount, order.paid_amount,
+                    channel,
+                    order.order_no,
+                    channel_payment_no,
+                    refund.refund_amount,
+                    order.paid_amount,
                 )
                 channel_refund_no = result.channel_refund_no
                 refund_success = result.success
@@ -721,7 +777,7 @@ class OrderService:
         return {"list": list_data, "total": total}
 
     @staticmethod
-    async def get_stats(db: AsyncSession, start_time: Optional[str], end_time: Optional[str]) -> dict:
+    async def get_stats(db: AsyncSession, start_time: str | None, end_time: str | None) -> dict:
         base_stats = await order_repository.get_stats(db, start_time, end_time)
         total_orders = base_stats["total_orders"]
         total_revenue = base_stats["total_revenue"]
@@ -745,9 +801,13 @@ class OrderService:
             .group_by(SysOrder.package_id, SysOrder.package_name)
         )
         if start_time:
-            pkg_dist_stmt = pkg_dist_stmt.where(SysOrder.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            pkg_dist_stmt = pkg_dist_stmt.where(
+                SysOrder.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
         if end_time:
-            pkg_dist_stmt = pkg_dist_stmt.where(SysOrder.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+            pkg_dist_stmt = pkg_dist_stmt.where(
+                SysOrder.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
         pkg_rows = (await db.execute(pkg_dist_stmt)).all()
         package_distribution = [
             {
@@ -759,18 +819,28 @@ class OrderService:
             for row in pkg_rows
         ]
 
-        daily_stmt = select(
-            func.date(SysOrder.create_time).label("date"),
-            func.count().label("count"),
-            func.coalesce(func.sum(SysOrder.paid_amount), 0).label("revenue"),
-        ).where(
-            SysOrder.deleted == 0,
-            SysOrder.status.in_([2, 3]),
-        ).group_by(func.date(SysOrder.create_time)).order_by(func.date(SysOrder.create_time).desc()).limit(30)
+        daily_stmt = (
+            select(
+                func.date(SysOrder.create_time).label("date"),
+                func.count().label("count"),
+                func.coalesce(func.sum(SysOrder.paid_amount), 0).label("revenue"),
+            )
+            .where(
+                SysOrder.deleted == 0,
+                SysOrder.status.in_([2, 3]),
+            )
+            .group_by(func.date(SysOrder.create_time))
+            .order_by(func.date(SysOrder.create_time).desc())
+            .limit(30)
+        )
         if start_time:
-            daily_stmt = daily_stmt.where(SysOrder.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            daily_stmt = daily_stmt.where(
+                SysOrder.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
         if end_time:
-            daily_stmt = daily_stmt.where(SysOrder.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+            daily_stmt = daily_stmt.where(
+                SysOrder.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
         daily_rows = (await db.execute(daily_stmt)).all()
         daily_stats = [
             {
@@ -806,30 +876,43 @@ class OrderService:
         # 计算 next_renew_time（新增和更新分支共用）
         next_renew_time = None
         if enabled:
-            last_order_stmt = select(SysOrder).where(
-                SysOrder.user_id == user_id,
-                SysOrder.package_id == package_id,
-                SysOrder.status.in_([2, 3]),
-                SysOrder.deleted == 0,
-            ).order_by(SysOrder.id.desc()).limit(1)
+            last_order_stmt = (
+                select(SysOrder)
+                .where(
+                    SysOrder.user_id == user_id,
+                    SysOrder.package_id == package_id,
+                    SysOrder.status.in_([2, 3]),
+                    SysOrder.deleted == 0,
+                )
+                .order_by(SysOrder.id.desc())
+                .limit(1)
+            )
             last_order = (await db.execute(last_order_stmt)).scalar_one_or_none()
             if last_order and last_order.package_expire_time:
                 next_renew_time = last_order.package_expire_time
 
         # upsert：冲突时复活并更新业务字段
         await auto_renew_repository.upsert_by_user_and_package(
-            db, user_id, package_id, pay_method, status,
-            next_renew_time=next_renew_time, fail_count=0,
+            db,
+            user_id,
+            package_id,
+            pay_method,
+            status,
+            next_renew_time=next_renew_time,
+            fail_count=0,
         )
         # 关闭时设置 close_reason（upsert 不覆盖此字段）
         if not enabled:
             from sqlalchemy import update as update_stmt
+
             await db.execute(
-                update_stmt(SysAutoRenew).where(
+                update_stmt(SysAutoRenew)
+                .where(
                     SysAutoRenew.user_id == user_id,
                     SysAutoRenew.package_id == package_id,
                     SysAutoRenew.deleted == 0,
-                ).values(close_reason="用户关闭")
+                )
+                .values(close_reason="用户关闭")
             )
 
     @staticmethod
@@ -909,15 +992,21 @@ class OrderService:
                 await db.flush()
 
                 try:
-                    await MessageService.send(db, {
-                        "type": "business",
-                        "title": "自动续费失败通知",
-                        "content": f"您的套餐自动续费已连续失败 {settings.AUTO_RENEW_RETRY_MAX} 次，自动续费已关闭，请手动续费以保持会员权益。",
-                        "recipientIds": [config.user_id],
-                        "bizModule": "auto_renew",
-                        "bizId": str(config.id),
-                        "priority": 2,
-                    })
+                    await MessageService.send(
+                        db,
+                        {
+                            "type": "business",
+                            "title": "自动续费失败通知",
+                            "content": (
+                                f"您的套餐自动续费已连续失败 {settings.AUTO_RENEW_RETRY_MAX} 次，"
+                                "自动续费已关闭，请手动续费以保持会员权益。"
+                            ),
+                            "recipientIds": [config.user_id],
+                            "bizModule": "auto_renew",
+                            "bizId": str(config.id),
+                            "priority": 2,
+                        },
+                    )
                 except Exception as e:
                     logger.warning("发送自动续费失败通知失败 configId=%s: %s", config.id, e)
                 continue
@@ -957,9 +1046,14 @@ class OrderService:
                     renew_success = True
                 else:
                     pay_result = await payment_channel_service.unified_order(
-                        config.pay_method, order_no, payable_amount, pkg.name,
+                        config.pay_method,
+                        order_no,
+                        payable_amount,
+                        pkg.name,
                     )
-                    logger.info("自动续费代扣下单成功 orderNo=%s payUrl=%s", order_no, pay_result.pay_url)
+                    logger.info(
+                        "自动续费代扣下单成功 orderNo=%s payUrl=%s", order_no, pay_result.pay_url
+                    )
                     renew_success = True
             except Exception as e:
                 logger.error("自动续费扣款失败 configId=%s orderNo=%s: %s", config.id, order_no, e)
@@ -967,16 +1061,22 @@ class OrderService:
 
             if renew_success:
                 config.fail_count = 0
-                config.next_renew_time = order.package_expire_time or (now + timedelta(days=pkg.period_days))
+                config.next_renew_time = order.package_expire_time or (
+                    now + timedelta(days=pkg.period_days)
+                )
                 config.last_renew_order_id = order.id
                 success_count += 1
             else:
                 config.fail_count += 1
                 if config.fail_count < settings.AUTO_RENEW_RETRY_MAX:
-                    config.next_renew_time = now + timedelta(hours=settings.AUTO_RENEW_RETRY_INTERVAL_HOURS)
+                    config.next_renew_time = now + timedelta(
+                        hours=settings.AUTO_RENEW_RETRY_INTERVAL_HOURS
+                    )
                 else:
                     config.status = 0
-                    config.close_reason = f"连续扣款失败 {settings.AUTO_RENEW_RETRY_MAX} 次，自动关闭"
+                    config.close_reason = (
+                        f"连续扣款失败 {settings.AUTO_RENEW_RETRY_MAX} 次，自动关闭"
+                    )
                 fail_count += 1
 
             await db.flush()
@@ -1015,8 +1115,11 @@ class OrderService:
                 channel_payment_no = payments[0].payment_no if payments else ""
                 try:
                     result_obj = await payment_channel_service.refund(
-                        channel, order.order_no, channel_payment_no,
-                        refund.refund_amount, order.paid_amount,
+                        channel,
+                        order.order_no,
+                        channel_payment_no,
+                        refund.refund_amount,
+                        order.paid_amount,
                     )
                     refund_success = result_obj.success
                     error_message = result_obj.error_message
@@ -1041,6 +1144,10 @@ class OrderService:
 
             await db.flush()
 
-        logger.debug("退款失败重试完成: 总数=%s 成功=%s 最终失败=%s",
-                    len(failed_refunds), success_count, final_fail_count)
+        logger.debug(
+            "退款失败重试完成: 总数=%s 成功=%s 最终失败=%s",
+            len(failed_refunds),
+            success_count,
+            final_fail_count,
+        )
         return len(failed_refunds)

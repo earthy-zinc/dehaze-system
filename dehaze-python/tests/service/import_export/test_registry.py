@@ -1,6 +1,3 @@
-"""
-导入导出处理器注册表单元测试
-"""
 from __future__ import annotations
 
 import pytest

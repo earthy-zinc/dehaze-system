@@ -11,41 +11,44 @@
 读流程：L1 -> L2 -> (SingleFlight 聚合) -> 返回并回填
 写流程：先写 L2 -> 再写 L1（Cache-Aside Pattern）
 """
+
 import asyncio
 import json
 import logging
 import uuid
-from typing import Any, Awaitable, Callable, Optional, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
 from redis.asyncio import Redis
 
 from app.config import settings
-from app.infrastructure.cache.local_cache import (NULL_VALUE_MARKER,
-                                                  SingleFlight, TTLCache,
-                                                  is_null_value)
+from app.infrastructure.cache.local_cache import (
+    NULL_VALUE_MARKER,
+    SingleFlight,
+    TTLCache,
+    is_null_value,
+)
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
-from app.infrastructure.metrics.cache_metrics import (record_hit, record_loader,
-                                                     record_miss)
+from app.infrastructure.metrics.cache_metrics import record_hit, record_loader, record_miss
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
 CACHE_TTL_HOUR = 3600
-CACHE_TTL_DAY = 86400
 
 # 进程级单例：L1 本地缓存和 SingleFlight 跨请求共享，否则防热 key 失效
-_shared_l1: Optional[TTLCache] = None
-_shared_singleflight: Optional[SingleFlight] = None
+_shared_l1: TTLCache | None = None
+_shared_singleflight: SingleFlight | None = None
 
 # 本实例标识，用于 Pub/Sub 防自消费
 _INSTANCE_ID = str(uuid.uuid4())
 
 # Pub/Sub 监听任务
-_pubsub_task: Optional[asyncio.Task] = None
+_pubsub_task: asyncio.Task | None = None
 
 
-def _get_shared_l1() -> Optional[TTLCache]:
+def _get_shared_l1() -> TTLCache | None:
     """获取进程级共享 L1 缓存单例"""
     global _shared_l1
     if _shared_l1 is None:
@@ -57,7 +60,7 @@ def _get_shared_l1() -> Optional[TTLCache]:
     return _shared_l1
 
 
-def _get_shared_singleflight() -> Optional[SingleFlight]:
+def _get_shared_singleflight() -> SingleFlight | None:
     """获取进程级共享 SingleFlight 单例"""
     global _shared_singleflight
     if _shared_singleflight is None:
@@ -79,7 +82,9 @@ class CacheService:
         self._l1_enabled = settings.CACHE_L1_ENABLED
         self._l1 = _get_shared_l1() if self._l1_enabled else None
         # SingleFlight（进程级单例）
-        self._singleflight = _get_shared_singleflight() if settings.CACHE_SINGLEFLIGHT_ENABLED else None
+        self._singleflight = (
+            _get_shared_singleflight() if settings.CACHE_SINGLEFLIGHT_ENABLED else None
+        )
         # 空值缓存
         self._null_enabled = settings.CACHE_NULL_ENABLED
         self._null_ttl = settings.CACHE_NULL_TTL
@@ -87,8 +92,8 @@ class CacheService:
     async def get(
         self,
         key: str,
-        default: Optional[T] = None,
-    ) -> Optional[Any]:
+        default: T | None = None,
+    ) -> Any | None:
         """多级缓存读取：L1 -> L2
 
         注意：本方法不触发回源加载。如需回源加载请使用 get_with_loader。
@@ -131,10 +136,10 @@ class CacheService:
     async def get_with_loader(
         self,
         key: str,
-        loader: Callable[[], Awaitable[Optional[Any]]],
+        loader: Callable[[], Awaitable[Any | None]],
         ttl: int = CACHE_TTL_HOUR,
-        default: Optional[T] = None,
-    ) -> Optional[Any]:
+        default: T | None = None,
+    ) -> Any | None:
         """带数据加载器的多级缓存读取
 
         当 L1 和 L2 都 miss 时，使用 SingleFlight 聚合并发请求，调用 loader 加载数据。
@@ -177,7 +182,7 @@ class CacheService:
         record_miss("L2")
 
         # 3. SingleFlight 聚合回源加载
-        async def _load() -> Optional[Any]:
+        async def _load() -> Any | None:
             try:
                 result = await loader()
             except Exception as e:
@@ -247,6 +252,7 @@ class CacheService:
 
         同时发布 Pub/Sub 失效消息，通知其他实例按 pattern 清除 L1 缓存。
         """
+
         async def _delete_by_pattern() -> int:
             keys = []
             async for key in self.redis.scan_iter(match=pattern):
@@ -273,8 +279,8 @@ class CacheService:
     async def get_json(
         self,
         key: str,
-        default: Optional[T] = None,
-    ) -> Optional[Any]:
+        default: T | None = None,
+    ) -> Any | None:
         """获取 JSON 格式的缓存值"""
         value = await self.get(key)
         if value is None:
@@ -296,10 +302,10 @@ class CacheService:
     async def get_json_with_loader(
         self,
         key: str,
-        loader: Callable[[], Awaitable[Optional[Any]]],
+        loader: Callable[[], Awaitable[Any | None]],
         ttl: int = CACHE_TTL_HOUR,
-        default: Optional[T] = None,
-    ) -> Optional[Any]:
+        default: T | None = None,
+    ) -> Any | None:
         """带加载器的 JSON 缓存读取
 
         loader 返回的应该是可 JSON 序列化的 Python 对象（dict/list）。
@@ -342,7 +348,7 @@ class CacheService:
             record_miss("L2")
 
         # 2. SingleFlight 聚合回源加载
-        async def _load() -> Optional[Any]:
+        async def _load() -> Any | None:
             try:
                 result = await loader()
             except Exception as e:
@@ -365,7 +371,6 @@ class CacheService:
 
 
 class DeptCacheKeys:
-    TREE = "dept:tree"
     OPTIONS = "dept:options"
 
     @classmethod
@@ -380,14 +385,17 @@ async def _publish_invalidation(msg_type: str, key: str) -> None:
         msg_type: 消息类型，"key"（单个 key）或 "pattern"（通配符）
         key: 缓存 key 或 pattern
     """
-    payload = json.dumps({
-        "type": msg_type,
-        "key": key,
-        "senderId": _INSTANCE_ID,
-    })
+    payload = json.dumps(
+        {
+            "type": msg_type,
+            "key": key,
+            "senderId": _INSTANCE_ID,
+        }
+    )
 
     async def _publish():
         from app.dependencies.redis import get_redis_client
+
         redis = await get_redis_client()
         await redis.publish(settings.CACHE_INVALIDATION_CHANNEL, payload)
 
@@ -416,7 +424,8 @@ async def start_cache_invalidation_listener() -> None:
     _pubsub_task = asyncio.create_task(_subscription_loop())
     logger.debug(
         "缓存失效广播订阅已启动: channel=%s, instanceId=%s",
-        settings.CACHE_INVALIDATION_CHANNEL, _INSTANCE_ID,
+        settings.CACHE_INVALIDATION_CHANNEL,
+        _INSTANCE_ID,
     )
 
 
@@ -427,6 +436,7 @@ async def _subscription_loop() -> None:
     while True:
         try:
             from app.dependencies.redis import get_redis_client
+
             redis = await get_redis_client()
             pubsub = redis.pubsub()
             await pubsub.subscribe(channel)
@@ -481,7 +491,9 @@ async def _handle_invalidation_message(data: str) -> None:
 
     logger.debug(
         "收到缓存失效消息并清除本地 L1: type=%s, key=%s, from=%s",
-        msg_type, key, sender_id,
+        msg_type,
+        key,
+        sender_id,
     )
 
 

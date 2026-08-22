@@ -14,8 +14,10 @@ def preprocess_image(image_bytes: BytesIO) -> torch.Tensor:
     :param image_bytes: 输入的图像数据
     :return: 预处理后的图像张量
     """
-    image = Image.open(image_bytes).convert('RGB')  # 确保是RGB格式
-    return torchvision.transforms.ToTensor()(image).unsqueeze(0).to(Config.DEVICE)  # 转换为Tensor并添加批次维度
+    image = Image.open(image_bytes).convert("RGB")  # 确保是RGB格式
+    return (
+        torchvision.transforms.ToTensor()(image).unsqueeze(0).to(Config.DEVICE)
+    )  # 转换为Tensor并添加批次维度
 
 
 def postprocess_image(tensor: torch.Tensor) -> BytesIO:

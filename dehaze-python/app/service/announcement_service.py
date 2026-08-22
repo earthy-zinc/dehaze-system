@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +34,7 @@ STATUS_LABELS = {
 IMPORTANCE_LABELS = {1: "普通", 2: "重要"}
 
 
-def _format_dt(dt: Optional[datetime]) -> Optional[str]:
+def _format_dt(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -73,7 +73,6 @@ def _to_detail_vo(a: SysAnnouncement) -> dict[str, Any]:
 
 
 class AnnouncementService:
-
     @staticmethod
     async def create(db: AsyncSession, data: dict[str, Any], user_id: int) -> int:
         send_time = data.get("sendTime")
@@ -100,9 +99,9 @@ class AnnouncementService:
         db: AsyncSession,
         page: int,
         page_size: int,
-        title: Optional[str] = None,
-        type: Optional[str] = None,
-        status: Optional[int] = None,
+        title: str | None = None,
+        type: str | None = None,
+        status: int | None = None,
     ) -> dict[str, Any]:
         items, total = await announcement_repository.get_page(
             db, page, page_size, title, type, status
@@ -165,15 +164,18 @@ class AnnouncementService:
             raise BusinessException(ResultCode.ANNOUNCEMENT_TARGET_EMPTY, "发送范围为空")
 
         priority = 3 if announcement.importance == 2 else 2
-        await MessageService.send(db, {
-            "type": "announcement",
-            "title": announcement.title,
-            "content": announcement.content,
-            "recipientIds": target_user_ids,
-            "bizModule": "system",
-            "bizId": str(announcement.id),
-            "priority": priority,
-        })
+        await MessageService.send(
+            db,
+            {
+                "type": "announcement",
+                "title": announcement.title,
+                "content": announcement.content,
+                "recipientIds": target_user_ids,
+                "bizModule": "system",
+                "bizId": str(announcement.id),
+                "priority": priority,
+            },
+        )
 
         await announcement_repository.update_status(
             db,
@@ -197,12 +199,10 @@ class AnnouncementService:
     async def _resolve_targets(
         db: AsyncSession,
         target_scope: str,
-        target_params: Optional[dict],
+        target_params: dict | None,
     ) -> list[int]:
         if target_scope == "all":
-            stmt = select(SysUser.id).where(
-                SysUser.deleted == 0, SysUser.status == 1
-            )
+            stmt = select(SysUser.id).where(SysUser.deleted == 0, SysUser.status == 1)
             result = await db.execute(stmt)
             return [row[0] for row in result.fetchall()]
 
@@ -220,7 +220,8 @@ class AnnouncementService:
                 return []
             level_code = f"level_{level}"
             stmt = text(
-                "SELECT user_id FROM sys_member WHERE level_code = :level_code AND deleted = 0 AND status = 1"
+                "SELECT user_id FROM sys_member WHERE level_code = :level_code "
+                "AND deleted = 0 AND status = 1"
             )
             result = await db.execute(stmt, {"level_code": level_code})
             return [row[0] for row in result.fetchall()]

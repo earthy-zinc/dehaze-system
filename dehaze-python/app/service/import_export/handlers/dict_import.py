@@ -1,24 +1,30 @@
 """
 字典导入处理器
 """
+
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository.dict_repository import dict_repository
-from app.service.import_export.models import (ImportError, ImportFieldConfig,
-                                              ImportOptions, ImportResult)
+from app.service.import_export.models import (
+    ImportError,
+    ImportFieldConfig,
+    ImportOptions,
+    ImportResult,
+)
 from app.service.import_export.registry import ImportHandler
 
 
 class DictImportHandler(ImportHandler):
-
     def get_module(self) -> str:
         return "dict"
 
     def get_field_configs(self) -> list[ImportFieldConfig]:
         return [
-            ImportFieldConfig(field="type_code", label="字典类型编码", required=True, max_length=50),
+            ImportFieldConfig(
+                field="type_code", label="字典类型编码", required=True, max_length=50
+            ),
             ImportFieldConfig(field="name", label="字典名称", required=True, max_length=50),
             ImportFieldConfig(field="value", label="字典值", required=True, max_length=50),
             ImportFieldConfig(field="sort", label="排序"),
@@ -69,15 +75,18 @@ class DictImportHandler(ImportHandler):
                 if await dict_repository.get_by_type_code_and_value(db, type_code, value):
                     raise ValueError(f"同类型下字典值已存在: {type_code}/{value}")
 
-                await dict_repository.create_dict(db, {
-                    "typeCode": type_code,
-                    "name": name,
-                    "value": value,
-                    "sort": _parse_int(row, "sort", 0),
-                    "status": _parse_status(row, "status_label", 1),
-                    "defaulted": _parse_defaulted(row, "defaulted_label", 0),
-                    "remark": _get_str(row, "remark") or "",
-                })
+                await dict_repository.create_dict(
+                    db,
+                    {
+                        "typeCode": type_code,
+                        "name": name,
+                        "value": value,
+                        "sort": _parse_int(row, "sort", 0),
+                        "status": _parse_status(row, "status_label", 1),
+                        "defaulted": _parse_defaulted(row, "defaulted_label", 0),
+                        "remark": _get_str(row, "remark") or "",
+                    },
+                )
                 success_count += 1
             except Exception as e:
                 failure_count += 1

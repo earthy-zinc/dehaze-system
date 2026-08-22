@@ -6,19 +6,21 @@
 
 from typing import Any
 
-from app.core.exceptions import BusinessException
-from app.core.code import ResultCode
-from app.models.base import get_current_user_id
-from app.models.entity.sys_user import SysRole
-from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
-from app.repository.role_repository import role_repository
-from app.repository.user_repository import user_repository
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
+from app.models.base import get_current_user_id
+from app.models.entity.sys_user import SysRole
+from app.repository.menu_repository import menu_repository
+from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
+from app.repository.role_repository import role_repository
+from app.repository.user_repository import user_repository
+
 
 class RoleService:
-    """角色服务（异步版本）"""
+    """角色服务"""
 
     # 缓存常量
     ROLE_PERMS_PREFIX = "role:perms:"
@@ -117,6 +119,10 @@ class RoleService:
         if not name or not code:
             raise BusinessException(ResultCode.PARAM_ERROR, "角色名称和编码不能为空")
 
+        # 新增时 dataScope 必填（T-RM-012：数据权限未选择报"数据权限不能为空" A0400）
+        if data.get("dataScope") is None:
+            raise BusinessException(ResultCode.PARAM_ERROR, "数据权限不能为空")
+
         # 检查角色名称是否已存在（含软删记录）
         if await role_repository.check_name_exists(db, name):
             raise BusinessException(ResultCode.DATA_EXISTS, "角色名称已被历史记录占用")
@@ -188,7 +194,10 @@ class RoleService:
         # 内置角色不可修改状态和数据权限（与 Java/Go 一致）
         if role.code not in RoleService.BUILTIN_ROLE_CODES:
             update_data["status"] = data.get("status", role.status)
-            update_data["data_scope"] = data.get("dataScope", role.data_scope)
+            # dataScope 去除 schema 默认值后可为 None（未随请求提交），此时保持原值
+            data_scope = data.get("dataScope")
+            if data_scope is not None:
+                update_data["data_scope"] = data_scope
 
         # 更新角色信息（不更新 code，编码创建后不可修改）
         if role.code is None:
@@ -228,7 +237,9 @@ class RoleService:
 
             # 内置角色保护：与 Java/Go 一致，ROOT 和 ADMIN 均不可删除
             if role.code in RoleService.BUILTIN_ROLE_CODES:
-                raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, f"内置角色 '{role.code}' 不可删除")
+                raise BusinessException(
+                    ResultCode.OPERATION_NOT_ALLOW, f"内置角色 '{role.code}' 不可删除"
+                )
 
             if role.code is None:
                 raise BusinessException(ResultCode.BUSINESS_ERROR, "角色编码不能为空")
@@ -286,7 +297,9 @@ class RoleService:
 
         # 内置角色不可修改状态（与 Java/Go 一致）
         if role.code in RoleService.BUILTIN_ROLE_CODES:
-            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, f"内置角色 '{role.code}' 不可修改状态")
+            raise BusinessException(
+                ResultCode.OPERATION_NOT_ALLOW, f"内置角色 '{role.code}' 不可修改状态"
+            )
 
         await role_repository.update_by_id(db, role_id, {"status": status})
 
@@ -314,20 +327,6 @@ class RoleService:
         return await role_repository.get_role_menu_ids(db, role_id)
 
     @staticmethod
-    async def get_maximum_data_scope(db: AsyncSession, roles: list[str]) -> int | None:
-        """
-        获取最大范围的数据权限
-
-        Args:
-            db: 异步数据库会话
-            roles: 角色编码集合
-
-        Returns:
-            数据权限范围
-        """
-        return await role_repository.get_maximum_data_scope(db, roles)
-
-    @staticmethod
     async def assign_menus_to_role(
         db: AsyncSession,
         redis: Redis,
@@ -352,6 +351,12 @@ class RoleService:
 
         if role.code is None:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "角色编码不能为空")
+
+        # 校验分配的菜单（含按钮/接口节点）必须真实存在（T-RM-036：分配不存在的菜单报"菜单不存在" A0401）
+        if menu_ids:
+            exist_count = await menu_repository.count_by_ids(db, menu_ids)
+            if exist_count != len(menu_ids):
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在")
 
         # 使用 repository 替换角色菜单
         await role_repository.replace_role_menus(db, role_id, menu_ids)

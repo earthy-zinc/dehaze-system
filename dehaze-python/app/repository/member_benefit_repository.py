@@ -1,5 +1,3 @@
-from typing import Optional
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,10 +8,11 @@ from app.repository.base import BaseRepository
 class MemberBenefitRepository(BaseRepository[SysMemberBenefit]):
     model = SysMemberBenefit
 
-    async def get_by_level_code(self, db: AsyncSession, level_code: str) -> Optional[SysMemberBenefit]:
-        """根据等级编码查询会员权益（含软删记录，用于查重）"""
+    async def get_by_level_code(self, db: AsyncSession, level_code: str) -> SysMemberBenefit | None:
+        """根据等级编码查询启用的会员权益（过滤软删）"""
         stmt = select(SysMemberBenefit).where(
             SysMemberBenefit.level_code == level_code,
+            SysMemberBenefit.deleted == 0,
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()

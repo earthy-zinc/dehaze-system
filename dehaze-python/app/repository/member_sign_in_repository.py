@@ -1,7 +1,6 @@
 from datetime import date
-from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_member_sign_in import SysMemberSignIn
@@ -13,7 +12,7 @@ class MemberSignInRepository(BaseRepository[SysMemberSignIn]):
 
     async def get_by_user_and_date(
         self, db: AsyncSession, user_id: int, sign_date: date
-    ) -> Optional[SysMemberSignIn]:
+    ) -> SysMemberSignIn | None:
         stmt = select(SysMemberSignIn).where(
             SysMemberSignIn.user_id == user_id,
             SysMemberSignIn.sign_date == sign_date,
@@ -50,17 +49,6 @@ class MemberSignInRepository(BaseRepository[SysMemberSignIn]):
         result = await db.execute(stmt)
         row = result.first()
         return row[0] if row else 0
-
-    async def count_month_sign_in(
-        self, db: AsyncSession, user_id: int, start_date: date, end_date: date
-    ) -> int:
-        stmt = select(func.count()).where(
-            SysMemberSignIn.user_id == user_id,
-            SysMemberSignIn.sign_date >= start_date,
-            SysMemberSignIn.sign_date <= end_date,
-        )
-        result = await db.execute(stmt)
-        return result.scalar() or 0
 
 
 member_sign_in_repository = MemberSignInRepository()

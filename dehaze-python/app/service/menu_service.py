@@ -6,20 +6,21 @@
 
 from typing import Any
 
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.infrastructure.cache.cache import CACHE_TTL_HOUR, CacheService
 from app.models.entity.sys_menu import SysMenu
 from app.repository.menu_repository import menu_repository
 from app.utils.datetime_utils import format_time
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # 菜单类型枚举（对齐 Java MenuTypeEnum）
-MENU_TYPE_MENU = 1      # 菜单
-MENU_TYPE_CATALOG = 2   # 目录
-MENU_TYPE_EXTLINK = 3   # 外链
-MENU_TYPE_BUTTON = 4    # 按钮
+MENU_TYPE_MENU = 1  # 菜单
+MENU_TYPE_CATALOG = 2  # 目录
+MENU_TYPE_EXTLINK = 3  # 外链
+MENU_TYPE_BUTTON = 4  # 按钮
 
 # 整数 → 字符串枚举名（用于响应序列化，对齐 Java MenuTypeEnum 的 Jackson 序列化）
 MENU_TYPE_TO_NAME = {
@@ -34,10 +35,15 @@ ROUTE_CACHE_KEY = "menu:routes"
 
 
 class MenuService:
-    """菜单服务（异步版本）"""
+    """菜单服务"""
 
     @staticmethod
-    async def list_menus(db: AsyncSession, keywords: str | None = None) -> list[dict[str, Any]]:
+    async def list_menus(
+        db: AsyncSession,
+        keywords: str | None = None,
+        type: int | None = None,
+        visible: int | None = None,
+    ) -> list[dict[str, Any]]:
         """
         获取菜单列表（树形结构）
 
@@ -47,11 +53,15 @@ class MenuService:
         Args:
             db: 数据库会话
             keywords: 搜索关键字（菜单名称）
+            type: 按菜单类型筛选（T-MM-009）
+            visible: 按显示状态筛选（T-MM-010）
 
         Returns:
             菜单列表
         """
-        menus = await menu_repository.get_list(db, keyword=keywords)
+        menus = await menu_repository.get_list(
+            db, keyword=keywords, type=type, visible=visible
+        )
         if not menus:
             return []
 
@@ -172,8 +182,9 @@ class MenuService:
         """
         保存菜单（新增/修改）
 
-        对齐 Java saveMenu：不做额外业务校验，使用 saveOrUpdate 语义
-        （ID 存在则更新，不存在则新增）。
+        使用 saveOrUpdate 语义（ID 存在则更新，不存在则新增），保存前执行
+        _validate_menu_form 业务校验（T-MM-015~031：同级重名、权限唯一、
+        父级类型限制、条件必填、层级上限、循环引用等）。
 
         Args:
             db: 数据库会话
@@ -193,10 +204,14 @@ class MenuService:
             if menu is None:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在")
         is_new = menu is None
+        current_id = None if is_new else menu_id
         if is_new:
             menu = SysMenu()
             if menu_id:
                 menu.id = menu_id
+
+        # 业务校验（T-MM-015~031）
+        await MenuService._validate_menu_form(db, data, current_id)
 
         # 设置菜单属性
         menu.parent_id = data.get("parentId", 0)
@@ -230,6 +245,7 @@ class MenuService:
             merged = await menu_repository.create_menu(db, menu)
             # 新增菜单默认分配给内置角色（ROOT / ADMIN）
             from app.repository.role_repository import BUILTIN_ROLE_CODES, role_repository
+
             for code in BUILTIN_ROLE_CODES:
                 builtin_role = await role_repository.get_by_code(db, code)
                 if builtin_role:
@@ -237,10 +253,111 @@ class MenuService:
         else:
             merged = await menu_repository.update_menu(db, menu)
 
-        # 清除缓存
         await MenuService._clear_menu_cache(db, redis)
 
         return merged
+
+    @staticmethod
+    async def _validate_menu_form(
+        db: AsyncSession,
+        data: dict[str, Any],
+        current_id: int | None = None,
+    ) -> None:
+        """
+        校验菜单表单业务规则（对齐文档测试用例 T-MM-015~031）。
+
+        Args:
+            db: 数据库会话
+            data: 菜单数据（含 parentId/name/type/path/perm）
+            current_id: 当前菜单ID（修改时传入以排除自身；新增为 None）
+
+        Raises:
+            BusinessException: 任一规则校验失败
+        """
+        parent_id = data.get("parentId") or 0
+        name = data.get("name") or ""
+        menu_type = data.get("type")
+        path = data.get("path") or ""
+        perm = data.get("perm") or ""
+
+        # T-MM-030：上级菜单不能是自己
+        if current_id is not None and parent_id == current_id:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "上级菜单不能是自己")
+
+        if parent_id > 0:
+            parent = await menu_repository.get_by_id(db, parent_id)
+            if parent is None:
+                raise BusinessException(ResultCode.PARAM_ERROR, "父菜单不存在")
+
+            # T-MM-017：上级菜单不能是按钮类型
+            if parent.type == MENU_TYPE_BUTTON:
+                raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "上级菜单不能是按钮类型")
+            # T-MM-018：上级菜单不能是外链类型
+            if parent.type == MENU_TYPE_EXTLINK:
+                raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "上级菜单不能是外链类型")
+
+            # T-MM-031：循环引用检测（不能将父菜单设置为自己或自己的子菜单）
+            if current_id is not None and await MenuService._is_descendant(
+                db, current_id, parent_id
+            ):
+                raise BusinessException(
+                    ResultCode.OPERATION_NOT_ALLOW, "不能设置自己的子菜单为父菜单"
+                )
+
+            # T-MM-022：层级限制（最多5级）
+            depth = await MenuService._get_menu_depth(db, parent_id)
+            if depth >= 5:
+                raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "菜单层级不能超过5级")
+
+        # T-MM-015/027：同级菜单名称唯一
+        if await menu_repository.exists_by_name(db, parent_id, name, current_id):
+            raise BusinessException(ResultCode.DATA_EXISTS, "菜单名称已存在")
+
+        # T-MM-016：权限标识全局唯一
+        if perm and await menu_repository.exists_by_perm(db, perm, current_id):
+            raise BusinessException(ResultCode.DATA_EXISTS, "权限标识已存在")
+
+        # T-MM-019：菜单/目录类型必须有路由地址
+        if menu_type in (MENU_TYPE_MENU, MENU_TYPE_CATALOG) and not path:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "路由地址不能为空")
+        # 外链类型必须有外链地址
+        if menu_type == MENU_TYPE_EXTLINK and not path:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "外链地址不能为空")
+        # T-MM-020：按钮类型必须有权限标识
+        if menu_type == MENU_TYPE_BUTTON and not perm:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "权限标识不能为空")
+
+    @staticmethod
+    async def _get_menu_depth(db: AsyncSession, menu_id: int) -> int:
+        """获取菜单层级（根级为第1级）
+
+        tree_path 格式如 ",1,2,"：数字数量 + 1 即为该菜单所处层级。
+        """
+        if menu_id == 0:
+            return 0
+        menu = await menu_repository.get_by_id(db, menu_id)
+        if menu is None:
+            return 0
+        if not menu.tree_path:
+            return 1
+        parts = [p for p in menu.tree_path.split(",") if p]
+        return len(parts) + 1
+
+    @staticmethod
+    async def _is_descendant(db: AsyncSession, ancestor_id: int, target_id: int) -> bool:
+        """判断 target_id 是否为 ancestor_id 的后代
+
+        target 的 tree_path 中包含 ancestor_id 即视为后代。
+        """
+        if target_id == 0:
+            return False
+        if ancestor_id == target_id:
+            return True
+        target = await menu_repository.get_by_id(db, target_id)
+        if target is None or not target.tree_path:
+            return False
+        ids = [int(p) for p in target.tree_path.split(",") if p]
+        return ancestor_id in ids
 
     @staticmethod
     async def _generate_menu_tree_path(db: AsyncSession, parent_id: int) -> str:
@@ -278,12 +395,10 @@ class MenuService:
         """
         cache = CacheService(redis)
 
-        # 尝试从缓存获取
         cached = await cache.get_json(ROUTE_CACHE_KEY)
         if cached is not None:
             return cached
 
-        # 从数据库获取
         menus = await menu_repository.get_route_menus(db)
         if not menus:
             return []
@@ -295,7 +410,6 @@ class MenuService:
 
         routes = MenuService._build_routes(0, children_map)
 
-        # 写入缓存
         await cache.set_json(ROUTE_CACHE_KEY, routes, CACHE_TTL_HOUR)
 
         return routes
@@ -341,8 +455,9 @@ class MenuService:
             路由对象
         """
         # 路由name需要驼峰命名，首字母大写
-        route_name = "".join(word.capitalize()
-                             for word in menu.path.replace("-", "_").split("_") if word)
+        route_name = "".join(
+            word.capitalize() for word in menu.path.replace("-", "_").split("_") if word
+        )
 
         route: dict[str, Any] = {
             "name": route_name,
@@ -352,8 +467,7 @@ class MenuService:
         }
 
         # 构建meta信息
-        meta: dict[str, Any] = {"title": menu.name, "icon": menu.icon,
-                                "hidden": menu.visible == 0}
+        meta: dict[str, Any] = {"title": menu.name, "icon": menu.icon, "hidden": menu.visible == 0}
 
         # 【菜单】是否开启页面缓存
         if menu.type == MENU_TYPE_MENU and menu.keep_alive == 1:
@@ -395,7 +509,6 @@ class MenuService:
 
         menu.visible = visible
 
-        # 清除缓存
         await MenuService._clear_menu_cache(db, redis)
 
     @staticmethod
@@ -514,6 +627,7 @@ class MenuService:
         await cache.delete(ROUTE_CACHE_KEY)
         # 精确删除所有角色权限缓存（禁止通配符 delete_pattern）
         from app.repository.role_repository import role_repository
+
         role_codes = await role_repository.get_all_active_codes(db)
         for role_code in role_codes:
             await redis.delete(f"role:perms:{role_code}")

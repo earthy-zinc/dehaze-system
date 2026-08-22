@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,13 +9,13 @@ from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
 from app.models.entity.sys_coupon import SysCoupon
-from app.models.entity.sys_user_coupon import SysUserCoupon
 from app.models.entity.sys_member import SysMember
 from app.models.entity.sys_user import SysUser
+from app.models.entity.sys_user_coupon import SysUserCoupon
 from app.repository.coupon_repository import coupon_repository, user_coupon_repository
 
 
-def _format_dt(dt: Optional[datetime]) -> Optional[str]:
+def _format_dt(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -26,7 +25,7 @@ def _parse_dt(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
 
 
-def _calc_expire_time(coupon: SysCoupon, receive_time: datetime) -> Optional[datetime]:
+def _calc_expire_time(coupon: SysCoupon, receive_time: datetime) -> datetime | None:
     if coupon.valid_type == "fixed":
         return coupon.valid_end
     if coupon.valid_type == "relative" and coupon.valid_days:
@@ -56,7 +55,6 @@ def _coupon_to_vo(coupon: SysCoupon) -> dict:
 
 
 class CouponService:
-
     @staticmethod
     async def create(db: AsyncSession, form: dict) -> dict:
         coupon = SysCoupon(
@@ -156,7 +154,9 @@ class CouponService:
 
         for uid in user_ids:
             try:
-                existing_count = await user_coupon_repository.count_by_user_and_coupon(db, uid, coupon_id)
+                existing_count = await user_coupon_repository.count_by_user_and_coupon(
+                    db, uid, coupon_id
+                )
                 if existing_count >= coupon.per_user_limit:
                     fail_count += 1
                     continue
@@ -193,7 +193,9 @@ class CouponService:
         if coupon.total_qty != -1 and coupon.issued_qty >= coupon.total_qty:
             raise BusinessException(ResultCode.COUPON_STOCK_EMPTY)
 
-        existing_count = await user_coupon_repository.count_by_user_and_coupon(db, user_id, coupon_id)
+        existing_count = await user_coupon_repository.count_by_user_and_coupon(
+            db, user_id, coupon_id
+        )
         if existing_count >= coupon.per_user_limit:
             raise BusinessException(ResultCode.COUPON_LIMIT_EXCEEDED)
 
@@ -231,7 +233,7 @@ class CouponService:
         return {"userCouponId": user_coupon.id}
 
     @staticmethod
-    async def list_my(db: AsyncSession, user_id: int, status: Optional[int]) -> list[dict]:
+    async def list_my(db: AsyncSession, user_id: int, status: int | None) -> list[dict]:
         user_coupons = await user_coupon_repository.list_by_user(db, user_id, status)
         if not user_coupons:
             return []
@@ -244,20 +246,22 @@ class CouponService:
             coupon = coupon_map.get(uc.coupon_id)
             if not coupon:
                 continue
-            result.append({
-                "id": uc.id,
-                "couponId": uc.coupon_id,
-                "couponName": coupon.name,
-                "type": coupon.type,
-                "faceValue": coupon.face_value,
-                "threshold": coupon.threshold,
-                "status": uc.status,
-                "receiveTime": _format_dt(uc.receive_time),
-                "expireTime": _format_dt(uc.expire_time),
-                "usedTime": _format_dt(uc.used_time),
-                "usedOrderId": uc.used_order_id,
-                "applicableScope": coupon.applicable_scope,
-            })
+            result.append(
+                {
+                    "id": uc.id,
+                    "couponId": uc.coupon_id,
+                    "couponName": coupon.name,
+                    "type": coupon.type,
+                    "faceValue": coupon.face_value,
+                    "threshold": coupon.threshold,
+                    "status": uc.status,
+                    "receiveTime": _format_dt(uc.receive_time),
+                    "expireTime": _format_dt(uc.expire_time),
+                    "usedTime": _format_dt(uc.used_time),
+                    "usedOrderId": uc.used_order_id,
+                    "applicableScope": coupon.applicable_scope,
+                }
+            )
         return result
 
     @staticmethod

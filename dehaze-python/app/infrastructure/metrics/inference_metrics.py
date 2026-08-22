@@ -2,8 +2,8 @@
 
 提供 record_inference_metrics() 手动记录推理耗时、请求计数、图像尺寸等指标。
 """
+
 import logging
-from typing import Optional
 
 from prometheus_client import Counter, Histogram
 
@@ -40,8 +40,7 @@ INFERENCE_BATCH_SIZE = Histogram(
 
 def _record_inference(algorithm: str, status: str, duration: float) -> None:
     """记录推理指标（内部公共逻辑）"""
-    INFERENCE_DURATION.labels(
-        algorithm=algorithm, status=status).observe(duration)
+    INFERENCE_DURATION.labels(algorithm=algorithm, status=status).observe(duration)
     INFERENCE_REQUESTS_TOTAL.labels(algorithm=algorithm, status=status).inc()
 
 
@@ -49,7 +48,7 @@ def record_inference_metrics(
     algorithm: str,
     duration_seconds: float,
     status: str = "success",
-    image_size: Optional[int] = None,
+    image_size: int | None = None,
     batch_size: int = 1,
 ) -> None:
     """

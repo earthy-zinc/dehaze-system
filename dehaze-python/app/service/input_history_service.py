@@ -2,7 +2,8 @@
 图像输入历史记录服务
 对齐 dehaze-java SysInputHistoryServiceImpl 逻辑
 """
-from typing import Any, Optional
+
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,9 +19,9 @@ class InputHistoryService:
     async def list_history(
         db: AsyncSession,
         user_id: int,
-        status: Optional[int] = None,
-        input_source: Optional[str] = None,
-        keywords: Optional[str] = None,
+        status: int | None = None,
+        input_source: str | None = None,
+        keywords: str | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[dict[str, Any]], int]:
@@ -38,7 +39,7 @@ class InputHistoryService:
         return list_vo, total
 
     @staticmethod
-    async def get_history(db: AsyncSession, history_id: int, user_id: int) -> Optional[dict[str, Any]]:
+    async def get_history(db: AsyncSession, history_id: int, user_id: int) -> dict[str, Any] | None:
         """查询历史记录详情（仅限本人）"""
         history = await input_history_repository.get_by_id(db, history_id)
         if not history:

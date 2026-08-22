@@ -5,21 +5,48 @@
 import logging
 import os
 import sys
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
 
 from fastapi import FastAPI
 
 from app.config import settings
 from app.database import close_db, init_db
 from app.dependencies.mongo import close_mongo, init_mongo_indexes
-from app.dependencies.redis import (check_redis_health, close_redis,
-                                    get_redis_client)
+from app.dependencies.redis import check_redis_health, close_redis, get_redis_client
 
 logger = logging.getLogger(__name__)
 
 # 主 Worker 文件锁句柄（保持打开以持有锁，进程退出时自动释放）
 _main_worker_lock_file = None
+
+
+def _register_soft_delete_filter() -> None:
+    """注册全局逻辑删除过滤器。
+
+    对所有继承 SoftDeleteMixin 的实体的 ORM SELECT 查询自动追加 deleted=0 条件，
+    等价于 Java MyBatis-Plus 的全局逻辑删除。
+    需要查已删除数据时，使用 execution_options(include_deleted=True) 绕过。
+    """
+    from sqlalchemy import event
+    from sqlalchemy.orm import Session, with_loader_criteria
+
+    from app.models.base import SoftDeleteMixin
+
+    def _soft_delete_criteria(execute_state):
+        if not execute_state.is_select:
+            return
+        if execute_state.execution_options.get("include_deleted"):
+            return
+        execute_state.statement = execute_state.statement.options(
+            with_loader_criteria(
+                SoftDeleteMixin,
+                lambda cls: cls.deleted == 0,
+                include_aliases=True,
+            )
+        )
+
+    event.listen(Session, "do_orm_execute", _soft_delete_criteria)
 
 
 def _try_become_main_worker() -> bool:
@@ -52,7 +79,7 @@ def _try_become_main_worker() -> bool:
         _main_worker_lock_file.write(str(os.getpid()))
         _main_worker_lock_file.flush()
         return True
-    except (IOError, OSError):
+    except OSError:
         if _main_worker_lock_file:
             _main_worker_lock_file.close()
             _main_worker_lock_file = None
@@ -65,6 +92,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 初始化日志系统（必须最先执行，确保后续所有日志输出格式一致）
     from app.infrastructure.logging import setup_logging
+
     setup_logging(use_json_format=settings.LOG_FORMAT_JSON)
 
     logger.info("启动 %s v%s", settings.APP_NAME, settings.APP_VERSION)
@@ -77,52 +105,120 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.info("当前 Worker 为从 Worker (pid=%d)，跳过独占资源启动", os.getpid())
 
-    # 初始化数据库
     await init_db()
+
+    # 注册全局逻辑删除过滤器（等价于 Java MyBatis-Plus @TableLogic / Go GORM 软删除）
+    _register_soft_delete_filter()
 
     # 初始化系统预设种子数据
     from app.service.preset_service import preset_service
+
     await preset_service.seed_system_presets()
+
+    # 内置 Skill 播种 + 预热 SkillManager 内存索引（F-M08-006）
+    from app.database import get_db_session
+    from app.service.ai.skill_manager import skill_manager
+    from app.service.ai_skill_service import skill_manage_service
+
+    async with get_db_session() as db:
+        await skill_manage_service.ensure_builtin_skills(db)
+        await skill_manager.refresh_index(db)
+
+    # 内置本地轻量 LLM：幂等播种 local provider/Key/模型（默认模型路由目标）
+    from app.service.ai.local_llm_bootstrap import ensure_local_llm
+
+    async with get_db_session() as db:
+        await ensure_local_llm(db)
+
+    # 主 Worker 后台预下载模型文件（不阻塞启动；首次对话时 ensure_running 兜底）
+    if is_main_worker:
+        import threading
+
+        from app.service.ai.local_llm_model import (
+            ensure_embedding_model,
+            ensure_model,
+            is_downloaded,
+            is_embedding_downloaded,
+        )
+
+        def _prefetch_local_model() -> None:
+            try:
+                if not is_downloaded():
+                    logger.info("后台预下载内置本地对话模型（Qwen3-0.6B，约 378MB）")
+                ensure_model()
+                if not is_embedding_downloaded():
+                    logger.info("后台预下载内置本地向量模型（Qwen3-Embedding-0.6B，约 610MB）")
+                ensure_embedding_model()
+            except Exception as exc:  # noqa: BLE001 预下载失败不影响启动，首次调用时会重试
+                logger.warning("本地模型预下载失败（首次调用时将重试）: %s", exc)
+
+        threading.Thread(target=_prefetch_local_model, name="local-llm-prefetch", daemon=True).start()
 
     # 初始化 Redis 连接并进行健康检查
     redis = await get_redis_client()
     app.state.redis = redis
     await check_redis_health()
 
+    # 幂等补齐 AI 系统预置字典默认项（ai_reasoning_defaults / ai_guardrail_defaults 等）
+    # 必须在 ensure_default_agent 之前执行：默认 Agent 初始发布快照的 resolved_config
+    # 依赖这些 sys_dict 默认参数，缺失会导致推理配置缺键而快速失败。
+    from app.database import get_db_session
+    from app.service.dict_service import ensure_ai_dict_defaults
+
+    async with get_db_session() as db:
+        await ensure_ai_dict_defaults(db, redis)
+
+    # 确保默认 Agent 存在（agent_code='default'，不可删除）
+    from app.database import get_db_session
+    from app.service.ai_agent_service import agent_service
+
+    async with get_db_session() as db:
+        await agent_service.ensure_default_agent(db, redis)
+
     # 启动缓存失效广播订阅（多实例 L1 缓存一致性）
     from app.infrastructure.cache.cache import start_cache_invalidation_listener
+
     await start_cache_invalidation_listener()
 
     # 初始化 MongoDB 索引（login_log / audit_log）
     await init_mongo_indexes()
 
-    # 初始化任务追踪器
+    # 初始化 ES 索引（记忆向量 / 会话全文，未启用时静默跳过）
+    from app.infrastructure.es.ai_conversation_index import ensure_conversation_index
+    from app.service.ai.memory_es_service import ensure_memory_index
+
+    await ensure_memory_index()
+    await ensure_conversation_index()
+
     from app.service.task_tracker import init_task_tracker
-    task_tracker = init_task_tracker(
-        shutdown_timeout=settings.GRACEFUL_SHUTDOWN_TIMEOUT
-    )
+
+    task_tracker = init_task_tracker(shutdown_timeout=settings.GRACEFUL_SHUTDOWN_TIMEOUT)
     # 启动 Redis 背景状态同步（跨 Worker 全局视图）
     await task_tracker.start(redis)
     app.state.task_tracker = task_tracker
 
     # 初始化 WebSocket 跨 Worker 通信（Redis Pub/Sub）
     from app.service.websocket_service import init_websocket_manager
+
     await init_websocket_manager()
 
     # 检查/创建 MinIO Bucket（仅 MinIO 模式）
     from app.service.file_service import FileService
+
     await FileService.ensure_bucket_exists()
 
     # 初始化 RabbitMQ（如果启用）
     from app.infrastructure.mq.connection import init_mq
+
     publisher, consumer = await init_mq()
     app.state.mq_publisher = publisher
     app.state.mq_consumer = consumer
 
     # 初始化 XXL-Job 执行器（仅在主 Worker 启动，避免端口冲突）
-    xxljob_runner: Optional[object] = None
+    xxljob_runner: object | None = None
     if is_main_worker:
         from app.infrastructure.job.executor import init_xxljob
+
         xxljob_runner = await init_xxljob()
     else:
         if settings.XXLJOB_ENABLED:
@@ -133,6 +229,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     gpu_collector = None
     if is_main_worker:
         from app.infrastructure.metrics import collect_gpu_metrics
+
         gpu_collector = await collect_gpu_metrics(
             collect_interval=settings.PROMETHEUS_GPU_COLLECT_INTERVAL
         )
@@ -159,6 +256,7 @@ async def _graceful_shutdown(app: FastAPI) -> None:
 
     # 1. 通知任务追踪器进入关闭模式（拒绝新任务）
     from app.service.task_tracker import TaskTracker
+
     task_tracker: TaskTracker | None = getattr(app.state, "task_tracker", None)
     if task_tracker:
         await task_tracker.initiate_shutdown()
@@ -166,6 +264,7 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     # 2. 通知 WebSocket 客户端（跨 Worker 广播）
     try:
         from app.service.websocket_service import WebSocketService
+
         await WebSocketService.broadcast_shutdown_notification()
         logger.info("已通知 WebSocket 客户端")
     except Exception as e:
@@ -177,8 +276,7 @@ async def _graceful_shutdown(app: FastAPI) -> None:
         if running_count > 0:
             logger.info("等待 %s 个任务完成...", running_count)
             completed, cancelled = await task_tracker.wait_for_completion()
-            logger.info(
-                "任务等待完成: completed=%s, cancelled=%s", completed, cancelled)
+            logger.info("任务等待完成: completed=%s, cancelled=%s", completed, cancelled)
         else:
             logger.info("没有运行中的任务")
 
@@ -189,6 +287,7 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     # 3.6 关闭 WebSocket 跨 Worker 通信
     try:
         from app.service.websocket_service import close_websocket_manager
+
         await close_websocket_manager()
         logger.info("WebSocket 跨 Worker 通信已关闭")
     except Exception as e:
@@ -197,16 +296,18 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     # 4. 关闭 XXL-Job 执行器（仅在主 Worker 中启动了才需关闭）
     if getattr(app.state, "xxljob_runner", None) is not None:
         from app.infrastructure.job.executor import close_xxljob
+
         await close_xxljob()
 
     # 5. 关闭 RabbitMQ 连接
     from app.infrastructure.mq.connection import close_mq
+
     await close_mq()
 
     # 6. 停止 GPU 指标采集器（仅在主 Worker 中启动了才需停止）
     from app.infrastructure.metrics import GPUMetricsCollector
-    gpu_collector: GPUMetricsCollector | None = getattr(
-        app.state, "gpu_collector", None)
+
+    gpu_collector: GPUMetricsCollector | None = getattr(app.state, "gpu_collector", None)
     if gpu_collector:
         await gpu_collector.stop()
         logger.info("GPU 指标采集器已停止")
@@ -215,6 +316,7 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     # 7.1 停止缓存失效广播订阅
     try:
         from app.infrastructure.cache.cache import stop_cache_invalidation_listener
+
         await stop_cache_invalidation_listener()
         logger.info("缓存失效广播订阅已停止")
     except Exception as e:

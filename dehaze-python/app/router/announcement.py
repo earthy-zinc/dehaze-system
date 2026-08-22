@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,9 +19,9 @@ router = APIRouter(
 async def get_announcement_page(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    title: Optional[str] = Query(default=None),
-    type: Optional[str] = Query(default=None),
-    status: Optional[int] = Query(default=None, ge=1, le=4),
+    title: str | None = Query(default=None),
+    type: str | None = Query(default=None),
+    status: int | None = Query(default=None, ge=1, le=4),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):

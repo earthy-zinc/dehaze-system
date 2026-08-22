@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Body, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,8 +5,11 @@ from app.core.result import success
 from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
-from app.models.schema.package import (CouponBatchDistributeForm, CouponForm,
-                                        CouponQuery, PackageForm, PackageQuery)
+from app.models.schema.package import (
+    CouponBatchDistributeForm,
+    CouponForm,
+    PackageForm,
+)
 from app.service.coupon_service import CouponService
 from app.service.package_service import PackageService
 
@@ -43,12 +44,12 @@ async def add_package(
 async def get_package_page(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    name: Optional[str] = Query(default=None),
-    levelCode: Optional[str] = Query(default=None),
-    period: Optional[str] = Query(default=None),
-    status: Optional[int] = Query(default=None, ge=0, le=1),
-    startTime: Optional[str] = Query(default=None),
-    endTime: Optional[str] = Query(default=None),
+    name: str | None = Query(default=None),
+    levelCode: str | None = Query(default=None),
+    period: str | None = Query(default=None),
+    status: int | None = Query(default=None, ge=0, le=1),
+    startTime: str | None = Query(default=None),
+    endTime: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -71,7 +72,7 @@ async def get_package_page(
 @router.get("/calculate-price", summary="价格计算")
 async def calculate_price(
     packageId: int = Query(...),
-    userCouponId: Optional[int] = Query(default=None),
+    userCouponId: int | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -80,6 +81,7 @@ async def calculate_price(
 
 
 @router.get("/sales/stats", summary="销售统计")
+@require_permission("package:sales")
 async def get_sales_stats(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
@@ -90,7 +92,7 @@ async def get_sales_stats(
 
 @router.get("/coupons/my", summary="我的优惠券列表")
 async def list_my_coupons(
-    status: Optional[int] = Query(default=None, ge=1, le=4),
+    status: int | None = Query(default=None, ge=1, le=4),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -124,9 +126,9 @@ async def batch_distribute_coupon(
 async def get_coupon_page(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    name: Optional[str] = Query(default=None),
-    type: Optional[str] = Query(default=None),
-    status: Optional[int] = Query(default=None, ge=0, le=1),
+    name: str | None = Query(default=None),
+    type: str | None = Query(default=None),
+    status: int | None = Query(default=None, ge=0, le=1),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):

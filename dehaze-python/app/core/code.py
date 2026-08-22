@@ -38,6 +38,8 @@ class ResultCode(Enum):
     DATA_STATE_NOT_ALLOW = ("A0502", "数据状态不允许")
     OPERATION_NOT_ALLOW = ("A0503", "操作不允许")
     DATA_BIND_EXISTS = ("A0504", "存在关联数据，无法删除")
+    # 用户模块受保护资源（超级管理员）错误码 A050x
+    ROOT_USER_PROTECTED = ("A0505", "超级管理员不可删除")
 
     # 会员模块业务错误码 A051x
     MEMBER_NOT_FOUND = ("A0510", "会员不存在")
@@ -107,6 +109,11 @@ class ResultCode(Enum):
     EXPORT_ROWS_EXCEED_LIMIT = ("A0709", "导出行数超出限制")
     MODULE_IMPORT_NOT_SUPPORTED = ("A0710", "不支持该模块导入")
 
+    # AI 计费管理模块错误码 A068x
+    AI_REFUND_ALREADY_EXISTS = ("A0680", "退款申请已存在")
+    REFUND_AUDIT_FAILED = ("A0681", "退款审核失败")
+    QUOTA_INSUFFICIENT = ("A0682", "配额不足或欠费熔断")
+
     # 系统级错误码 B0xxx
     SYSTEM_EXECUTION_ERROR = ("B0001", "系统执行出错")
     SYSTEM_EXECUTION_TIMEOUT = ("B0100", "系统执行超时")
@@ -146,6 +153,10 @@ class ResultCode(Enum):
     FILE_MD5_INVALID = ("B0404", "MD5格式无效")
     FILE_STORAGE_ERROR = ("B0405", "文件存储失败")
     FILE_CORRUPTED = ("B0406", "文件已损坏")
+
+    # AI 对话模块错误码 A06xx
+    AI_LLM_CALL_FAILED = ("A0600", "LLM 调用失败")
+    AI_MODEL_NOT_AVAILABLE = ("A0601", "模型不可用或已禁用")
 
     CALL_THIRD_PARTY_SERVICE_ERROR = ("C0001", "调用第三方服务出错")
     MIDDLEWARE_SERVICE_ERROR = ("C0100", "中间件服务出错")

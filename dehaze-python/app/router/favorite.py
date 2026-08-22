@@ -4,8 +4,6 @@
 基础路径：/api/v1/favorites
 """
 
-from typing import Optional
-
 from fastapi import APIRouter, Body, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,10 +24,10 @@ router = APIRouter(
 async def get_page(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=20, ge=1, le=100),
-    targetType: Optional[str] = Query(default=None),
-    keywords: Optional[str] = Query(default=None),
-    sortBy: Optional[str] = Query(default="create_time"),
-    sortOrder: Optional[str] = Query(default="desc"),
+    targetType: str | None = Query(default=None),
+    keywords: str | None = Query(default=None),
+    sortBy: str | None = Query(default="create_time"),
+    sortOrder: str | None = Query(default="desc"),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -54,9 +52,7 @@ async def add(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    favorite_id = await FavoriteService.add(
-        db, user.id, body.targetType, body.targetId
-    )
+    favorite_id = await FavoriteService.add(db, user.id, body.targetType, body.targetId)
     return success(favorite_id)
 
 
@@ -84,7 +80,7 @@ async def get_status(
 
 @router.get("/count", summary="收藏数量统计")
 async def get_count(
-    targetType: Optional[str] = Query(default=None, description="按类型筛选"),
+    targetType: str | None = Query(default=None, description="按类型筛选"),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):

@@ -2,7 +2,7 @@
 任务相关枚举
 """
 
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 
 
 class TaskStatus(IntEnum):
@@ -13,21 +13,21 @@ class TaskStatus(IntEnum):
     CANCELLED = 5
 
 
-class TaskType(str, Enum):
-    DATASET_EXPORT = 'dataset_export'
-    USER_EXPORT = 'user_export'
-    ROLE_EXPORT = 'role_export'
-    DEPT_EXPORT = 'dept_export'
-    MENU_EXPORT = 'menu_export'
-    DICT_EXPORT = 'dict_export'
-    ALGORITHM_EXPORT = 'algorithm_export'
+class TaskType(StrEnum):
+    DATASET_EXPORT = "dataset_export"
+    USER_EXPORT = "user_export"
+    ROLE_EXPORT = "role_export"
+    DEPT_EXPORT = "dept_export"
+    MENU_EXPORT = "menu_export"
+    DICT_EXPORT = "dict_export"
+    ALGORITHM_EXPORT = "algorithm_export"
 
-    USER_IMPORT = 'user_import'
-    ROLE_IMPORT = 'role_import'
-    DEPT_IMPORT = 'dept_import'
-    MENU_IMPORT = 'menu_import'
-    DICT_IMPORT = 'dict_import'
-    ALGORITHM_IMPORT = 'algorithm_import'
+    USER_IMPORT = "user_import"
+    ROLE_IMPORT = "role_import"
+    DEPT_IMPORT = "dept_import"
+    MENU_IMPORT = "menu_import"
+    DICT_IMPORT = "dict_import"
+    ALGORITHM_IMPORT = "algorithm_import"
 
 
 EXPORT_TASK_TYPES = {
@@ -48,19 +48,3 @@ IMPORT_TASK_TYPES = {
     TaskType.DICT_IMPORT.value,
     TaskType.ALGORITHM_IMPORT.value,
 }
-
-
-def get_task_category(task_type: str) -> str | None:
-    if task_type in EXPORT_TASK_TYPES:
-        return 'export'
-    if task_type in IMPORT_TASK_TYPES:
-        return 'import'
-    return None
-
-
-def get_module_by_type(task_type: str) -> str | None:
-    if task_type.endswith('_import'):
-        return task_type[:-7]
-    if task_type.endswith('_export'):
-        return task_type[:-7]
-    return None

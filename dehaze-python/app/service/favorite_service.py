@@ -11,13 +11,11 @@
 """
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.models.entity.sys_favorite import SysFavorite
 from app.repository.favorite_repository import favorite_repository
 from app.repository.member_repository import member_repository
 
@@ -25,14 +23,13 @@ DEFAULT_CAPACITY = 200
 VIP_CAPACITY = 500
 
 
-def _format_dt(dt: Optional[datetime]) -> Optional[str]:
+def _format_dt(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
 class FavoriteService:
-
     @staticmethod
     async def _get_capacity(db: AsyncSession, user_id: int) -> int:
         """根据用户会员等级返回收藏容量上限"""
@@ -138,22 +135,9 @@ class FavoriteService:
     async def get_count(
         db: AsyncSession,
         user_id: int,
-        target_type: Optional[str] = None,
+        target_type: str | None = None,
     ) -> list[dict]:
         """收藏数量统计（按类型分组）"""
         counts = await favorite_repository.get_count_by_type(db, user_id, target_type)
-        return [
-            {"targetType": c["target_type"], "count": c["count"]}
-            for c in counts
-        ]
+        return [{"targetType": c["target_type"], "count": c["count"]} for c in counts]
 
-    @staticmethod
-    async def mark_invalid(
-        db: AsyncSession,
-        target_type: str,
-        target_ids: list[int],
-    ) -> None:
-        """标记收藏对象失效（供其他模块回调）"""
-        if not target_ids:
-            return
-        await favorite_repository.mark_invalid(db, target_type, target_ids)

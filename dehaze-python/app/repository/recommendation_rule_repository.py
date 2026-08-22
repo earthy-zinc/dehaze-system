@@ -1,6 +1,7 @@
 """
 推荐规则数据访问层
 """
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

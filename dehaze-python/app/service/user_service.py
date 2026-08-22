@@ -9,7 +9,10 @@ import secrets
 import string
 from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.config import settings
+from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.auth import UserContext
 from app.models.base import get_current_user_id
@@ -18,7 +21,6 @@ from app.repository.dept_repository import dept_repository
 from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.repository.user_repository import user_repository
 from app.utils.password import hash_password_async
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def validate_password_complexity(password: str) -> tuple[bool, str]:
@@ -62,8 +64,7 @@ def generate_random_password(length: int = 12) -> str:
     # 剩余字符从完整字符集中随机选择
     alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
     remaining_length = length - len(password_chars)
-    password_chars.extend(secrets.choice(alphabet)
-                          for _ in range(remaining_length))
+    password_chars.extend(secrets.choice(alphabet) for _ in range(remaining_length))
 
     # 打乱字符顺序（使用密码学安全的 SystemRandom）
     secrets.SystemRandom().shuffle(password_chars)
@@ -72,7 +73,7 @@ def generate_random_password(length: int = 12) -> str:
 
 
 class UserService:
-    """用户服务（异步版本）"""
+    """用户服务"""
 
     @staticmethod
     async def get_user_list(
@@ -221,7 +222,7 @@ class UserService:
         """
         user = await user_repository.get_by_id(db, user_id)
         if not user:
-            raise BusinessException("用户不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在")
 
         username = data.get("username")
         nickname = data.get("nickname")
@@ -232,14 +233,9 @@ class UserService:
         role_ids = data.get("roleIds", [])
         status = data.get("status")
 
-        # 用户名冲突校验（排除当前用户）
+        # 用户名字段只读，不可修改（与角色编码创建后不可修改保持一致）
         if username is not None and username != user.username:
-            exists = await user_repository.check_username_exists(
-                db, username, exclude_id=user_id
-            )
-            if exists:
-                raise BusinessException("该用户名不可用")
-            user.username = username
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "用户名不可修改")
 
         if nickname is not None:
             user.nickname = nickname
@@ -276,10 +272,10 @@ class UserService:
         """
         user = await user_repository.get_by_id(db, user_id)
         if not user:
-            raise BusinessException("用户不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在")
 
         if user.username == "root":
-            raise BusinessException("超级管理员不可禁用")
+            raise BusinessException(ResultCode.ROOT_USER_PROTECTED, "超级管理员不可禁用")
 
         user.status = status
 
@@ -307,7 +303,7 @@ class UserService:
 
         user = await user_repository.get_by_id(db, user_id)
         if not user:
-            raise BusinessException("用户不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在")
 
         hashed_password = await hash_password_async(new_password)
         user.password = hashed_password
@@ -321,27 +317,38 @@ class UserService:
         )
 
     @staticmethod
-    async def delete_users(db: AsyncSession, ids: str) -> dict[str, int]:
+    async def delete_users(
+        db: AsyncSession,
+        ids: str,
+        current_user: UserContext | None = None,
+    ) -> dict[str, int]:
         """
         删除用户（逻辑删除，支持批量）
 
         Args:
             db: 异步数据库会话
             ids: 用户ID，多个以英文逗号分隔
+            current_user: 当前登录用户（用于自删保护校验）
 
         Returns:
             删除统计 {"deleted_count": int, "protected_count": int}
 
         Raises:
-            BusinessException: 未指定要删除的用户
+            BusinessException: 未指定要删除的用户、不可删除自己或超级管理员不可删除
         """
-        user_ids = [int(id_str.strip())
-                    for id_str in ids.split(",") if id_str.strip()]
+        user_ids = [int(id_str.strip()) for id_str in ids.split(",") if id_str.strip()]
 
         if not user_ids:
             raise BusinessException("未指定要删除的用户")
 
+        # 不可删除自己
+        if current_user is not None and current_user.id in user_ids:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "不可删除自己")
+
+        # 超级管理员受保护，不可删除
         protected_ids = await user_repository.get_protected_user_ids(db, user_ids)
+        if protected_ids:
+            raise BusinessException(ResultCode.ROOT_USER_PROTECTED, "超级管理员不可删除")
 
         ids_to_delete = [uid for uid in user_ids if uid not in protected_ids]
 

@@ -2,12 +2,12 @@ import logging
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
-from app.middleware.non_null_response import NonNullJSONResponse as JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
 from app.core.code import ResultCode
 from app.core.result import _get_trace_id
+from app.middleware.non_null_response import NonNullJSONResponse as JSONResponse
 
 _logger = logging.getLogger(__name__)
 
@@ -58,9 +58,11 @@ def register_exception_handlers(app: FastAPI):
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         errors = exc.errors()
         error_details = [
-            {"field": ".".join(str(x) for x in e.get("loc", [])),
-             "message": e.get("msg", "格式错误"),
-             "code": e.get("type", "value_error")}
+            {
+                "field": ".".join(str(x) for x in e.get("loc", [])),
+                "message": e.get("msg", "格式错误"),
+                "code": e.get("type", "value_error"),
+            }
             for e in errors
         ]
         if errors:
@@ -72,7 +74,9 @@ def register_exception_handlers(app: FastAPI):
         else:
             msg = "请求参数格式错误"
 
-        _logger.warning("参数校验失败: %s", msg, extra={"code": ResultCode.PARAM_ERROR.code, "status": 400})
+        _logger.warning(
+            "参数校验失败: %s", msg, extra={"code": ResultCode.PARAM_ERROR.code, "status": 400}
+        )
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
@@ -96,7 +100,11 @@ def register_exception_handlers(app: FastAPI):
         }
         result_code = status_code_map.get(exc.status_code, ResultCode.SYSTEM_EXECUTION_ERROR)
 
-        _logger.error("HTTP 异常: %s", result_code.msg, extra={"code": result_code.code, "status": exc.status_code})
+        _logger.error(
+            "HTTP 异常: %s",
+            result_code.msg,
+            extra={"code": result_code.code, "status": exc.status_code},
+        )
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -112,7 +120,8 @@ def register_exception_handlers(app: FastAPI):
     async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
         request.state.db_should_rollback = True
         _logger.error(
-            "数据库异常: %s", exc,
+            "数据库异常: %s",
+            exc,
             extra={"code": ResultCode.DATABASE_ERROR.code, "status": 500},
             exc_info=True,
         )
@@ -132,7 +141,8 @@ def register_exception_handlers(app: FastAPI):
         """通用异常（兜底）"""
         request.state.db_should_rollback = True
         _logger.error(
-            "未处理异常: %s", exc,
+            "未处理异常: %s",
+            exc,
             extra={"code": ResultCode.SYSTEM_EXECUTION_ERROR.code, "status": 500},
             exc_info=True,
         )

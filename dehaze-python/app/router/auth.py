@@ -1,21 +1,16 @@
 import logging
 
-from app.core.code import ResultCode
-from app.core.exceptions import BusinessException
-from app.core.result import Result, success
-from app.config import settings
-from app.database import get_db
-from app.dependencies.auth import UserContext, SESSION_COOKIE, SESSION_TTL, get_current_user
-from app.dependencies.redis import get_redis
-from app.models.schema.user import (CaptchaData, CurrentUserVO, LoginData,
-                                    LoginForm, RegisterForm)
-from app.repository.login_log_repository import login_log_repository
-from app.service.auth_service import AuthService
-from app.utils.user_agent import parse_user_agent
-from fastapi import APIRouter, Depends, Request, Response, status
-from app.middleware.non_null_response import NonNullJSONResponse as JSONResponse
+from fastapi import APIRouter, Depends, Query, Request, Response
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
+from app.core.result import Result, success
+from app.database import get_db
+from app.dependencies.auth import SESSION_COOKIE, SESSION_TTL, UserContext, get_current_user
+from app.dependencies.redis import get_redis
+from app.models.schema.user import CaptchaData, CurrentUserVO, LoginData, LoginForm, RegisterForm
+from app.service.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +20,13 @@ router = APIRouter(prefix="/api/v1/auth", tags=["认证中心"])
 def _set_session_cookie(response: Response, session_id: str, remember_me: bool):
     max_age = SESSION_TTL if remember_me else None
     response.set_cookie(
-        SESSION_COOKIE, session_id, max_age=max_age, path=settings.SESSION_COOKIE_PATH,
-        httponly=True, secure=settings.SESSION_COOKIE_SECURE, samesite="lax",
+        SESSION_COOKIE,
+        session_id,
+        max_age=max_age,
+        path=settings.SESSION_COOKIE_PATH,
+        httponly=True,
+        secure=settings.SESSION_COOKIE_SECURE,
+        samesite="lax",
     )
 
 
@@ -48,29 +48,20 @@ async def login(
 ):
     client_ip = req.client.host if req.client else "unknown"
     user_agent = req.headers.get("user-agent", "")
-    browser, os_name = parse_user_agent(user_agent)
 
-    username = request.username.lower().strip()
-
-    try:
-        result = await AuthService.login(
-            db, redis, username, request.password, client_ip,
-            request.captchaKey, request.captchaCode,
-        )
-        user_data = result.get("user", {})
-        await login_log_repository.create_log(
-            db, user_data.get("id"), username, client_ip, 1,
-            "登录成功", browser, os_name
-        )
-        remember_me = request.rememberMe if request.rememberMe is not None else False
-        _set_session_cookie(response, result.get("sessionId", ""), remember_me)
-        return success(result)
-    except BusinessException as e:
-        await login_log_repository.create_log(
-            db, None, username, client_ip, 0,
-            e.message, browser, os_name
-        )
-        raise
+    result = await AuthService.login(
+        db,
+        redis,
+        request.username.lower().strip(),
+        request.password,
+        client_ip,
+        request.captchaKey,
+        request.captchaCode,
+        user_agent,
+    )
+    remember_me = request.rememberMe if request.rememberMe is not None else False
+    _set_session_cookie(response, result.get("sessionId", ""), remember_me)
+    return success(result)
 
 
 @router.post("/register", response_model=Result[LoginData], summary="用户注册")
@@ -80,8 +71,15 @@ async def register(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    result = await AuthService.register(db, redis, request.username, request.password, request.nickname,
-                                         request.captchaKey, request.captchaCode)
+    result = await AuthService.register(
+        db,
+        redis,
+        request.username,
+        request.password,
+        request.nickname,
+        request.captchaKey,
+        request.captchaCode,
+    )
     _set_session_cookie(response, result.get("sessionId", ""), False)
     return success(result)
 
@@ -116,10 +114,41 @@ async def get_captcha(
 async def get_current_user_info(
     user: UserContext = Depends(get_current_user),
 ):
-    return success({
-        "userId": user.id,
-        "username": user.username,
-        "nickname": user.nickname,
-        "roles": user.roles,
-        "perms": user.permissions if user.permissions else [],
-    })
+    return success(
+        {
+            "userId": user.id,
+            "username": user.username,
+            "nickname": user.nickname,
+            "roles": user.roles,
+            "perms": user.permissions if user.permissions else [],
+        }
+    )
+
+
+@router.get("/login-logs", summary="登录日志查询（分页）")
+async def list_login_logs(
+    pageNum: int = Query(default=1, ge=1, description="页码"),
+    pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
+    username: str | None = Query(default=None, description="按用户名筛选"),
+    ip: str | None = Query(default=None, description="按IP筛选"),
+    status: int | None = Query(default=None, description="登录状态(1:成功;0:失败)"),
+    startTime: str | None = Query(default=None, description="开始时间"),
+    endTime: str | None = Query(default=None, description="结束时间"),
+    user: UserContext = Depends(get_current_user),
+):
+    """登录日志查询。
+
+    - 管理员（is_admin）查看全量日志
+    - 普通用户仅查看本人日志（即便传入他人 username 也强制限定本人）
+    """
+    result = await AuthService.list_login_logs(
+        pageNum,
+        pageSize,
+        username=username,
+        ip=ip,
+        status=status,
+        start_time=startTime,
+        end_time=endTime,
+        user=user,
+    )
+    return success(result)

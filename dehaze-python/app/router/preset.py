@@ -1,21 +1,22 @@
 """参数预设 API 路由"""
+
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success
-from app.dependencies.auth import UserContext, get_current_user
 from app.database import get_db
+from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.common import PageResult
 from app.models.schema.preset import PresetForm, PresetVO
 from app.service.preset_service import preset_service
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/presets", tags=["参数预设"],
-                   dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/v1/presets", tags=["参数预设"], dependencies=[Depends(get_current_user)]
+)
 
 
 @router.get("", response_model=Result[PageResult[PresetVO]], summary="参数预设列表")
@@ -29,8 +30,12 @@ async def list_presets(
 ):
     """获取参数预设列表（系统预设 + 用户自定义）"""
     result = await preset_service.list_presets(
-        db, user.id, algorithmId, is_system=isSystem,
-        page=pageNum, size=pageSize,
+        db,
+        user.id,
+        algorithmId,
+        is_system=isSystem,
+        page=pageNum,
+        size=pageSize,
     )
     return success(result)
 

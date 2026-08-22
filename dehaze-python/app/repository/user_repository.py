@@ -3,8 +3,9 @@
 """
 
 from datetime import datetime, timedelta
+from decimal import Decimal
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_user import SysRole, SysUser, SysUserRole
@@ -15,6 +16,23 @@ class UserRepository(BaseRepository[SysUser]):
     """用户数据访问层"""
 
     model = SysUser
+
+    async def list_active_admin_ids(self, db: AsyncSession) -> list[int]:
+        """全部活跃管理员的用户 ID（ROOT/ADMIN 角色，去重；低分告警等定向通知用）"""
+        stmt = (
+            select(SysUser.id)
+            .join(SysUserRole, SysUser.id == SysUserRole.user_id)
+            .join(SysRole, SysUserRole.role_id == SysRole.id)
+            .where(
+                SysUser.deleted == 0,
+                SysUser.status == 1,
+                SysRole.code.in_(["ROOT", "ADMIN"]),
+                SysRole.deleted == 0,
+            )
+            .distinct()
+        )
+        result = await db.execute(stmt)
+        return [int(row) for row in result.fetchall()]
 
     async def get_by_username(
         self,
@@ -58,13 +76,9 @@ class UserRepository(BaseRepository[SysUser]):
         role_ids: list[int],
     ) -> None:
         """替换用户角色（先删后增）"""
-        await db.execute(
-            delete(SysUserRole).where(SysUserRole.user_id == user_id)
-        )
+        await db.execute(delete(SysUserRole).where(SysUserRole.user_id == user_id))
         if role_ids:
-            role_links = [
-                SysUserRole(user_id=user_id, role_id=rid) for rid in role_ids
-            ]
+            role_links = [SysUserRole(user_id=user_id, role_id=rid) for rid in role_ids]
             db.add_all(role_links)
         await db.flush()
 
@@ -76,8 +90,12 @@ class UserRepository(BaseRepository[SysUser]):
         """批量查询已存在的用户名（避免导入时 N+1，含软删行）"""
         if not usernames:
             return set()
-        stmt = select(SysUser.username).where(
-            SysUser.username.in_(usernames),
+        stmt = (
+            select(SysUser.username)
+            .where(
+                SysUser.username.in_(usernames),
+            )
+            .execution_options(include_deleted=True)
         )
         result = await db.execute(stmt)
         return {row[0] for row in result.fetchall() if row[0]}
@@ -95,6 +113,7 @@ class UserRepository(BaseRepository[SysUser]):
         )
         if exclude_id:
             stmt = stmt.where(SysUser.id != exclude_id)
+        stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return result.scalar_one_or_none() is not None
 
@@ -173,7 +192,9 @@ class UserRepository(BaseRepository[SysUser]):
         # 行级数据权限过滤（与 Java/Go 端对齐）
         if current_user is not None:
             base_query = await apply_data_scope(
-                base_query, current_user, db,
+                base_query,
+                current_user,
+                db,
                 dept_field=SysUser.dept_id,
                 creator_field=SysUser.create_by,
             )
@@ -255,6 +276,64 @@ class UserRepository(BaseRepository[SysUser]):
         result = await db.execute(stmt)
         return [row[0] for row in result.fetchall() if row[0]]
 
+    async def get_credits_balance_and_version(
+        self,
+        db: AsyncSession,
+        user_id: int,
+    ) -> tuple[Decimal, int] | None:
+        """读取用户余额与乐观锁版本号（billing 余额 CAS 前置读取）"""
+        stmt = select(SysUser.credits_balance, SysUser.credits_version).where(
+            SysUser.id == user_id, SysUser.deleted == 0
+        )
+        row = (await db.execute(stmt)).first()
+        if row is None:
+            return None
+        return Decimal(row.credits_balance), row.credits_version
+
+    async def deduct_balance_cas(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        amount: Decimal,
+        current_version: int,
+    ) -> bool:
+        """CAS 乐观锁扣减积分余额，返回是否成功"""
+        result = await db.execute(
+            update(SysUser)
+            .where(
+                SysUser.id == user_id,
+                SysUser.credits_version == current_version,
+            )
+            .values(
+                credits_balance=SysUser.credits_balance - amount,
+                credits_version=SysUser.credits_version + 1,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        return result.rowcount == 1
+
+    async def increase_balance_cas(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        amount: Decimal,
+        current_version: int,
+    ) -> bool:
+        """CAS 乐观锁增加积分余额，返回是否成功"""
+        result = await db.execute(
+            update(SysUser)
+            .where(
+                SysUser.id == user_id,
+                SysUser.credits_version == current_version,
+            )
+            .values(
+                credits_balance=SysUser.credits_balance + amount,
+                credits_version=SysUser.credits_version + 1,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        return result.rowcount == 1
+
     async def create_user(
         self,
         db: AsyncSession,
@@ -267,14 +346,11 @@ class UserRepository(BaseRepository[SysUser]):
         await db.refresh(user)
 
         if role_ids:
-            user_roles = [
-                SysUserRole(user_id=user.id, role_id=rid) for rid in role_ids
-            ]
+            user_roles = [SysUserRole(user_id=user.id, role_id=rid) for rid in role_ids]
             db.add_all(user_roles)
             await db.flush()
 
         return user
-
 
 
 # 单例

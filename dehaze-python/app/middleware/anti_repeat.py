@@ -5,6 +5,7 @@ Key 格式：anti_repeat:{user_id}:{method}:{uri}:{body_hash}
 仅对 POST/PUT/DELETE 请求生效，TTL 默认 5 秒。
 未登录请求退化为基于 client IP，Redis 不可用时降级放行。
 """
+
 import hashlib
 import json
 import logging
@@ -16,19 +17,9 @@ from app.core.code import ResultCode
 from app.dependencies.auth import SESSION_COOKIE, SESSION_PREFIX
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
+from app.middleware._shared import EXCLUDE_PATHS, send_json_response
 
 logger = logging.getLogger(__name__)
-
-_EXCLUDE_PATHS = {
-    "/health",
-    "/health/db",
-    "/health/redis",
-    "/metrics",
-    "/docs",
-    "/redoc",
-    "/openapi.json",
-    "/favicon.ico",
-}
 
 _EXCLUDE_PREFIXES = {
     "/api/v1/auth",
@@ -42,30 +33,18 @@ _EXCLUDE_PREFIXES = {
     "/api/v1/members/sign-in",
     "/api/v1/users",
     "/api/v1/tasks",
+    # TTS 重复合成命中缓存不扣费（重放语义），防重复提交反而拦截合法重放
+    "/api/v1/voice/tts",
     "/api/v1/messages",
     "/api/v1/recommendations",
     "/api/v1/favorites",
     "/api/v1/presets",
+    "/api/v1/ai",
+    "/api/v1/announcements",
+    # 套餐/优惠券域：领取有 per_user_limit(A0528)+服务内限频等业务级防重，
+    # 中间件 A0002 会遮蔽精确的业务错误码
+    "/api/v1/packages",
 }
-
-
-_WRITE_METHODS = {"POST"}
-
-
-async def _send_json_response(send: Send, status_code: int, content: dict):
-    body = json.dumps(content, ensure_ascii=False).encode("utf-8")
-    await send({
-        "type": "http.response.start",
-        "status": status_code,
-        "headers": [
-            (b"content-type", b"application/json; charset=utf-8"),
-            (b"content-length", str(len(body)).encode("latin-1")),
-        ],
-    })
-    await send({
-        "type": "http.response.body",
-        "body": body,
-    })
 
 
 def _extract_session_id(scope: Scope) -> str | None:
@@ -74,7 +53,7 @@ def _extract_session_id(scope: Scope) -> str | None:
     for cookie in cookie_header.split(";"):
         cookie = cookie.strip()
         if cookie.startswith(f"{SESSION_COOKIE}="):
-            return cookie[len(f"{SESSION_COOKIE}="):]
+            return cookie[len(f"{SESSION_COOKIE}=") :]
     session_header = headers.get(SESSION_COOKIE.lower().encode("latin-1"))
     if session_header:
         return session_header.decode("latin-1")
@@ -118,11 +97,11 @@ class AntiRepeatMiddleware:
             return await self.app(scope, receive, send)
 
         method = scope["method"]
-        if method not in _WRITE_METHODS:
+        if method != "POST":
             return await self.app(scope, receive, send)
 
         path = scope["path"]
-        if path in _EXCLUDE_PATHS:
+        if path in EXCLUDE_PATHS:
             return await self.app(scope, receive, send)
 
         if any(path.startswith(prefix) for prefix in _EXCLUDE_PREFIXES):
@@ -150,10 +129,8 @@ class AntiRepeatMiddleware:
         )
 
         if not ok:
-            logger.warning(
-                f"防重复提交拦截: user={user_id}, method={method}, path={path}"
-            )
-            await _send_json_response(
+            logger.warning(f"防重复提交拦截: user={user_id}, method={method}, path={path}")
+            await send_json_response(
                 send,
                 429,
                 {

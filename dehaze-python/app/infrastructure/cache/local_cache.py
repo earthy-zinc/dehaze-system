@@ -5,14 +5,16 @@
 - SingleFlight：基于 asyncio.Lock + dict，合并并发加载请求
 - NULL_VALUE_MARKER：空值标记，防缓存穿透
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
 from collections import OrderedDict
+from collections.abc import Awaitable, Callable
 from threading import Lock
-from typing import Any, Awaitable, Callable, Optional, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ class TTLCache:
         self._cache: OrderedDict[str, tuple[Any, float]] = OrderedDict()
         self._lock = Lock()
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """获取缓存值，未命中或已过期返回 None"""
         with self._lock:
             entry = self._cache.get(key)
@@ -50,7 +52,7 @@ class TTLCache:
             self._cache.move_to_end(key)
             return value
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """设置缓存值"""
         expire_seconds = ttl if ttl is not None and ttl > 0 else self._default_ttl
         expire_at = time.monotonic() + expire_seconds

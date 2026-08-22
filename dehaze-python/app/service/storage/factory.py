@@ -7,7 +7,6 @@
 """
 
 import logging
-from typing import Optional
 
 from app.config import settings
 from app.service.storage.base import StorageService
@@ -23,12 +22,15 @@ def _create(storage: str) -> StorageService:
     storage = storage.lower()
     if storage == "minio":
         from app.service.storage.minio_storage import MinioStorageService
+
         return MinioStorageService()
     if storage == "local":
         from app.service.storage.local_storage import LocalStorageService
+
         return LocalStorageService()
     if storage == "nginx-static":
         from app.service.storage.nginx_storage import NginxStorageService
+
         return NginxStorageService()
     raise ValueError(f"不支持的存储类型: {storage}，可选: minio, local, nginx-static")
 

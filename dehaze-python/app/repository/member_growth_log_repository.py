@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,9 +17,9 @@ class MemberGrowthLogRepository(BaseRepository[SysMemberGrowthLog]):
         page: int,
         page_size: int,
         *,
-        change_type: Optional[str] = None,
-        start_time: Optional[str] = None,
-        end_time: Optional[str] = None,
+        change_type: str | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
     ) -> tuple[list[SysMemberGrowthLog], int]:
         stmt = select(SysMemberGrowthLog).where(SysMemberGrowthLog.user_id == user_id)
 
@@ -49,9 +48,9 @@ class MemberGrowthLogRepository(BaseRepository[SysMemberGrowthLog]):
         change_type: str,
         change_value: int,
         balance: int,
-        related_id: Optional[str] = None,
-        reason: Optional[str] = None,
-        operator_id: Optional[int] = None,
+        related_id: str | None = None,
+        reason: str | None = None,
+        operator_id: int | None = None,
     ) -> SysMemberGrowthLog:
         log = SysMemberGrowthLog(
             user_id=user_id,

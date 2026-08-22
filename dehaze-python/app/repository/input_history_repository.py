@@ -2,7 +2,6 @@
 图像输入历史记录 Repository
 对齐 dehaze-java SysInputHistory 字段
 """
-from typing import Optional
 
 from sqlalchemy import delete, desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,9 +19,9 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
         self,
         db: AsyncSession,
         user_id: int,
-        status: Optional[int] = None,
-        input_source: Optional[str] = None,
-        keywords: Optional[str] = None,
+        status: int | None = None,
+        input_source: str | None = None,
+        keywords: str | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysInputHistory], int]:
@@ -36,7 +35,9 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
             stmt = stmt.where(
                 or_(
                     SysInputHistory.algorithm_name.like(f"%{escape_like(keywords)}%", escape="\\"),
-                    SysInputHistory.original_image_url.like(f"%{escape_like(keywords)}%", escape="\\"),
+                    SysInputHistory.original_image_url.like(
+                        f"%{escape_like(keywords)}%", escape="\\"
+                    ),
                 )
             )
         stmt = stmt.order_by(desc(SysInputHistory.id))

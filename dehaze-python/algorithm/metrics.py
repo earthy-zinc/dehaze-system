@@ -50,7 +50,7 @@ METRICS_CONFIG = {
         "better": "lower",
         "requires_clear": False,
         "description": "BRISQUE是一种无参考图像质量评估指标，通过分析图像的统计特征来估计质量。",
-    }
+    },
 }
 
 # 存储已初始化的模型
@@ -128,7 +128,8 @@ def calculate(haze_image: BytesIO, clear_image: BytesIO = None):
 
     # 动态计算所有指标
     result = [
-        calculate_metric(name, haze, clear) for name, metric in METRICS_CONFIG.items()
+        calculate_metric(name, haze, clear)
+        for name, metric in METRICS_CONFIG.items()
         if metric["requires_clear"] and clear is not None or not metric["requires_clear"]
     ]
     return result

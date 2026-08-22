@@ -88,9 +88,7 @@ def resolve_model_path(relative_path: str) -> str:
             return str(cache_path)
         except Exception as e:
             if settings.MODEL_FALLBACK_TO_LOCAL and cache_path.exists():
-                logger.warning(
-                    "模型权重下载失败，降级使用本地缓存: %s - %s", relative_path, e
-                )
+                logger.warning("模型权重下载失败，降级使用本地缓存: %s - %s", relative_path, e)
                 return str(cache_path)
             raise FileNotFoundError(
                 f"模型权重文件不可用: path={relative_path}, url={url}, error={e}"

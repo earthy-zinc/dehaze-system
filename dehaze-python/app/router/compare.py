@@ -13,17 +13,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success
 from app.database import get_db
-from app.dependencies.auth import get_current_user, UserContext
+from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.compare import CompareReportForm, CompareReportResultVO
 from app.service.compare_service import compare_service
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/compare", tags=["效果对比"],
-                   dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/v1/compare", tags=["效果对比"], dependencies=[Depends(get_current_user)]
+)
 
 
-@router.post("/report", response_model=Result[CompareReportResultVO], summary="生成对比报告（异步任务）")
+@router.post(
+    "/report", response_model=Result[CompareReportResultVO], summary="生成对比报告（异步任务）"
+)
 async def generate_report(
     body: CompareReportForm,
     user: UserContext = Depends(get_current_user),
@@ -37,16 +40,20 @@ async def generate_report(
         log_id=body.logId,
         user_id=user.id,
     )
-    return success(CompareReportResultVO(
-        taskId=result["taskId"],
-        status=result["status"],
-    ))
+    return success(
+        CompareReportResultVO(
+            taskId=result["taskId"],
+            status=result["status"],
+        )
+    )
 
 
 @router.get("/report/{task_id}", summary="查询对比报告状态/下载对比报告")
 async def get_or_download_report(
     task_id: int,
-    download: bool = Query(default=False, description="下载标识（true时返回HTML文件流，否则返回JSON状态）"),
+    download: bool = Query(
+        default=False, description="下载标识（true时返回HTML文件流，否则返回JSON状态）"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -57,12 +64,14 @@ async def get_or_download_report(
     """
     if not download:
         status_data = await compare_service.get_report_status(task_id)
-        return success(CompareReportResultVO(
-            taskId=status_data["taskId"],
-            status=status_data["status"],
-            downloadUrl=status_data.get("downloadUrl"),
-            errorMessage=status_data.get("errorMessage"),
-        ))
+        return success(
+            CompareReportResultVO(
+                taskId=status_data["taskId"],
+                status=status_data["status"],
+                downloadUrl=status_data.get("downloadUrl"),
+                errorMessage=status_data.get("errorMessage"),
+            )
+        )
 
     report_html = await compare_service.get_report_html(task_id)
     return HTMLResponse(

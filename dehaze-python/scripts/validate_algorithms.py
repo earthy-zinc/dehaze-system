@@ -27,10 +27,10 @@ from pathlib import Path
 _DEHAZE_PYTHON = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_DEHAZE_PYTHON))
 
-import torch
-from PIL import Image
+import torch  # noqa: E402
+from PIL import Image  # noqa: E402
 
-from algorithm.model_loader import resolve_model_path
+from algorithm.model_loader import resolve_model_path  # noqa: E402
 
 SQL_FILE = _DEHAZE_PYTHON.parent / "config" / "sql" / "data" / "sys_algorithm.sql"
 ALGORITHM_ROOT = _DEHAZE_PYTHON / "algorithm"
@@ -80,8 +80,8 @@ def parse_algorithms(sql_path: Path) -> list[AlgorithmRecord]:
                 return token[1:-1].replace("''", "'")
             return token
 
-        def field_at(idx: int) -> str:
-            return unquote(tokens[idx]) if len(tokens) > idx else ""
+        def field_at(idx: int, _tokens: list[str] = tokens) -> str:
+            return unquote(_tokens[idx]) if len(_tokens) > idx else ""
 
         try:
             algorithm_id = int(tokens[0])
@@ -91,13 +91,15 @@ def parse_algorithms(sql_path: Path) -> list[AlgorithmRecord]:
         if status != 4:
             continue
 
-        records.append(AlgorithmRecord(
-            id=algorithm_id,
-            parent_id=int(tokens[1]) if tokens[1].isdigit() else 0,
-            name=field_at(3),
-            path=field_at(5),
-            import_path=field_at(9),
-        ))
+        records.append(
+            AlgorithmRecord(
+                id=algorithm_id,
+                parent_id=int(tokens[1]) if tokens[1].isdigit() else 0,
+                name=field_at(3),
+                path=field_at(5),
+                import_path=field_at(9),
+            )
+        )
 
     # 标记分组节点：作为其他已发布节点的 parent 即为目录节点（不可执行）
     child_parent_ids = {r.parent_id for r in records if r.parent_id > 0}
@@ -149,11 +151,15 @@ def extract_checkpoint_state(ckpt: dict, model_keys: set[str]) -> dict:
 
     支持三种形态：
     - 顶层含 model/state_dict/params 等包装键时取对应子字典；
-    - 多子模型存档（如 D4 的 net_h2c/net_c2h/net_depth、FogRemoval 的 genA2B 等）时取与模型键交集最大的子字典；
+    - 多子模型存档（如 D4 的 net_h2c/net_c2h/net_depth、
+      FogRemoval 的 genA2B 等）时取与模型键交集最大的子字典；
     - 顶层即权重键（含 '.' 的 Tensor 键）时原样返回。
     """
+
     def is_weight_dict(d: dict) -> bool:
-        return bool(d) and any(isinstance(k, str) and "." in k and isinstance(v, torch.Tensor) for k, v in d.items())
+        return bool(d) and any(
+            isinstance(k, str) and "." in k and isinstance(v, torch.Tensor) for k, v in d.items()
+        )
 
     for key in ("model", "state_dict", "params"):
         value = ckpt.get(key)
@@ -201,7 +207,11 @@ def run_l1_l2(record: AlgorithmRecord) -> tuple[bool, str, list[str]]:
 
     # L2：显式声明扫描（算法目录内所有 torch.load）
     if undeclared:
-        return False, f"L2失败: {len(undeclared)} 处 torch.load 未显式声明 weights_only=False", undeclared
+        return (
+            False,
+            f"L2失败: {len(undeclared)} 处 torch.load 未显式声明 weights_only=False",
+            undeclared,
+        )
 
     return True, "通过", []
 
@@ -241,9 +251,10 @@ def run_l3(record: AlgorithmRecord) -> tuple[bool, str]:
     extra = sorted(k for k in ckpt_keys_norm if k not in model_keys_norm)
     missing = sorted(k for k in model_keys_norm if k not in ckpt_keys_norm)
     if extra or missing:
-        sample_extra = ", ".join(extra[:5])
-        sample_missing = ", ".join(missing[:5])
-        return True, f"通过（checkpoint 多余 {len(extra)} 键、模型多出 {len(missing)} 键，结构差异已容忍）"
+        return (
+            True,
+            f"通过（checkpoint 多余 {len(extra)} 键、模型多出 {len(missing)} 键，结构差异已容忍）",
+        )
 
     return True, "通过"
 
@@ -301,7 +312,10 @@ def validate_record(record: AlgorithmRecord, levels: set[str]) -> AlgorithmResul
                 # L1 已失败则 L2 无意义，跳过避免重复下载/加载
                 result.checks["L2"] = (False, detail)
             else:
-                result.checks["L2"] = (passed, detail + (f"；未声明: {', '.join(undeclared[:5])}" if undeclared else ""))
+                result.checks["L2"] = (
+                    passed,
+                    detail + (f"；未声明: {', '.join(undeclared[:5])}" if undeclared else ""),
+                )
         if "L3" in levels:
             passed, detail = run_l3(record)
             result.checks["L3"] = (passed, detail)
@@ -331,7 +345,7 @@ def summarize(results: list[AlgorithmResult], levels: set[str]) -> str:
         if r.is_group:
             conclusion = "目录"
         else:
-            enabled = [m for level, m in zip(level_order, marks) if level in levels]
+            enabled = [m for level, m in zip(level_order, marks, strict=True) if level in levels]
             conclusion = "通过" if all(m == "PASS" for m in enabled) else "待整改"
         name = r.name[:14]
         lines.append(f"{r.id:<6}{name:<16}" + "".join(f"{m:<5}" for m in marks) + conclusion)
@@ -374,10 +388,14 @@ def main() -> None:
     leaves = [r for r in results if not r.is_group]
     groups = [r for r in results if r.is_group]
     passed_count = sum(
-        1 for r in leaves
-        if r.error is None and all(r.checks.get(l, (True, ""))[0] for l in levels)
+        1
+        for r in leaves
+        if r.error is None and all(r.checks.get(lvl, (True, ""))[0] for lvl in levels)
     )
-    print(f"\n叶子算法 通过 {passed_count}/{len(leaves)}，待整改 {len(leaves) - passed_count}；目录节点 {len(groups)} 个（跳过）")
+    print(
+        f"\n叶子算法 通过 {passed_count}/{len(leaves)}，"
+        f"待整改 {len(leaves) - passed_count}；目录节点 {len(groups)} 个（跳过）"
+    )
 
     if args.output:
         out = {
@@ -396,7 +414,9 @@ def main() -> None:
                 for r in results
             ],
         }
-        Path(args.output).write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+        Path(args.output).write_text(
+            json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         print(f"\n报告已写入: {args.output}")
 
 

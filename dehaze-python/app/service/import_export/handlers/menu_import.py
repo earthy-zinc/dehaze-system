@@ -1,21 +1,25 @@
 """
 菜单导入处理器
 """
+
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_menu import SysMenu
 from app.repository.menu_repository import menu_repository
-from app.service.import_export.models import (ImportError, ImportFieldConfig,
-                                              ImportOptions, ImportResult)
+from app.service.import_export.models import (
+    ImportError,
+    ImportFieldConfig,
+    ImportOptions,
+    ImportResult,
+)
 from app.service.import_export.registry import ImportHandler
 
 _MENU_TYPE_VALUES = {"目录": 1, "菜单": 2, "外链": 3, "按钮": 4}
 
 
 class MenuImportHandler(ImportHandler):
-
     def get_module(self) -> str:
         return "menu"
 

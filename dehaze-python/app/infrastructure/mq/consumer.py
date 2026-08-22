@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 import aio_pika
-from aio_pika.abc import (AbstractChannel, AbstractIncomingMessage,
-                          AbstractQueue)
-from app.config import settings
+from aio_pika.abc import AbstractChannel, AbstractIncomingMessage, AbstractQueue
 
+from app.config import settings
 from app.infrastructure.mq.base import BaseRabbitMQClient
 
 logger = logging.getLogger(__name__)
@@ -94,9 +94,7 @@ class Consumer(BaseRabbitMQClient):
         await queue.consume(self._make_callback(queue_name, handler))
         self._queues[queue_name] = queue
 
-        logger.debug(
-            f"Consumer 已订阅死信队列: queue={queue_name}, routing_key={routing_key}"
-        )
+        logger.debug(f"Consumer 已订阅死信队列: queue={queue_name}, routing_key={routing_key}")
 
     async def _subscribe(self, queue_name: str, handler: Handler) -> None:
         """订阅单个队列，同时声明重试队列和死信队列"""
@@ -188,8 +186,7 @@ class Consumer(BaseRabbitMQClient):
             except json.JSONDecodeError:
                 # 无法解析的消息，直接丢弃
                 logger.error(
-                    f"消息反序列化失败（已丢弃）: queue={queue_name}, "
-                    f"body={message.body[:200]}"
+                    f"消息反序列化失败（已丢弃）: queue={queue_name}, body={message.body[:200]}"
                 )
                 await message.reject(requeue=False)
             except Exception as e:
@@ -202,17 +199,14 @@ class Consumer(BaseRabbitMQClient):
 
         return callback
 
-    async def _retry_or_dlx(
-        self, message: AbstractIncomingMessage, queue_name: str
-    ) -> None:
+    async def _retry_or_dlx(self, message: AbstractIncomingMessage, queue_name: str) -> None:
         """根据重试次数决定投递到重试队列还是死信队列"""
         if self._channel is None:
             logger.error("Channel not connected, cannot retry message")
             await message.reject(requeue=False)
             return
 
-        headers: dict[str, Any] = dict(
-            message.headers) if message.headers else {}
+        headers: dict[str, Any] = dict(message.headers) if message.headers else {}
         retry_count = int(headers.get("x-retry-count", 0))
         retry_delays = settings.RABBITMQ_RETRY_DELAYS
 
@@ -264,6 +258,5 @@ class Consumer(BaseRabbitMQClient):
             await message.ack()
 
             logger.warning(
-                f"消息已投递到死信队列（重试耗尽）: queue={dlx_queue}, "
-                f"totalRetries={retry_count}"
+                f"消息已投递到死信队列（重试耗尽）: queue={dlx_queue}, totalRetries={retry_count}"
             )

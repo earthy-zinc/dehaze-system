@@ -7,14 +7,14 @@
 - 病毒扫描接口
 - MinIO 上传/下载
 """
+
 from __future__ import annotations
 
 import io
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import UploadFile
 from fastapi.responses import StreamingResponse
@@ -23,24 +23,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
-from app.core.constants import (BATCH_SIZE, MAX_IMPORT_FILE_SIZE, MAX_ROWS,
-                                RESULT_FILE_EXPIRE_DAYS, SYNC_THRESHOLD)
+from app.core.constants import (
+    MAX_IMPORT_FILE_SIZE,
+    MAX_ROWS,
+    SYNC_THRESHOLD,
+)
 from app.core.exceptions import BusinessException
-from app.models.enum.task_enum import (EXPORT_TASK_TYPES, IMPORT_TASK_TYPES,
-                                       TaskType)
-from app.models.schema.task import (ExportTaskVO, ImportResultVO,
-                                    ImportTaskVO, ImportErrorVO)
+from app.models.schema.task import ExportTaskVO, ImportErrorVO, ImportResultVO, ImportTaskVO
 from app.service.import_export.file_parser import parse_csv, parse_excel
-from app.service.import_export.file_generator import write_csv, write_excel
-from app.service.import_export.registry import (ExportHandler,
-                                                ImportHandler,
-                                                export_handler_registry,
-                                                import_handler_registry)
-from app.service.import_export.template_manager import (generate_template_csv,
-                                                        generate_template_excel)
+from app.service.import_export.registry import (
+    ExportHandler,
+    export_handler_registry,
+    import_handler_registry,
+)
+from app.service.import_export.template_manager import (
+    generate_template_csv,
+    generate_template_excel,
+)
 from app.service.import_export.virus_scanner import get_virus_scanner
 from app.service.storage.factory import get_storage_service
-from app.service.task_service import TaskServiceAsync
+from app.service.task_service import create_task
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +58,6 @@ _EXCEL_MAGIC = (b"\x50\x4b\x03\x04", b"\xd0\xcf\x11\xe0")
 
 
 class ImportExportService:
-
     @staticmethod
     def get_supported_export_modules() -> list[str]:
         return list(export_handler_registry._handlers.keys())
@@ -72,8 +73,8 @@ class ImportExportService:
         module: str,
         params: dict[str, Any],
         format: str = "excel",
-        async_flag: Optional[bool] = None,
-        fields: Optional[list[str]] = None,
+        async_flag: bool | None = None,
+        fields: list[str] | None = None,
         user_id: int = 0,
     ) -> dict | StreamingResponse:
         handler = export_handler_registry.get_handler(module)
@@ -83,10 +84,14 @@ class ImportExportService:
                 ResultCode.EXPORT_ROWS_EXCEED_LIMIT,
                 f"导出行数 {count} 超出限制 {MAX_ROWS}",
             )
-        should_async = async_flag if async_flag is not None else (count > SYNC_THRESHOLD or handler.use_direct_export())
+        should_async = (
+            async_flag
+            if async_flag is not None
+            else (count > SYNC_THRESHOLD or handler.use_direct_export())
+        )
         if should_async:
             task_params = _build_export_task_params(module, params, format, fields)
-            task_data = await TaskServiceAsync.create_task(
+            task_data = await create_task(
                 db=db,
                 redis=redis,
                 task_type=_build_export_task_type(module),
@@ -107,8 +112,8 @@ class ImportExportService:
         module: str,
         file: UploadFile,
         mode: str = "all",
-        async_flag: Optional[bool] = None,
-        extra_params: Optional[dict] = None,
+        async_flag: bool | None = None,
+        extra_params: dict | None = None,
         user_id: int = 0,
     ) -> dict:
         content = await _validate_upload_file(file)
@@ -133,7 +138,7 @@ class ImportExportService:
         if should_async:
             object_name = await _upload_import_file(file.filename or "import.bin", content)
             task_params = _build_import_task_params(module, object_name, mode, extra_params)
-            task_data = await TaskServiceAsync.create_task(
+            task_data = await create_task(
                 db=db,
                 redis=redis,
                 task_type=_build_import_task_type(module),
@@ -145,6 +150,7 @@ class ImportExportService:
                 status=task_data["status"],
             ).model_dump()
         from app.service.import_export.models import ImportOptions
+
         options = ImportOptions(mode=mode, extra=extra_params or {})
         result = await handler.import_batch(db, rows, options, _noop_progress, _noop_cancel)
         return _to_result_vo(result).model_dump()
@@ -179,7 +185,7 @@ def _build_export_task_params(
     module: str,
     params: dict,
     format: str,
-    fields: Optional[list[str]],
+    fields: list[str] | None,
 ) -> dict:
     return {
         "module": module,
@@ -193,7 +199,7 @@ def _build_import_task_params(
     module: str,
     object_name: str,
     mode: str,
-    extra_params: Optional[dict],
+    extra_params: dict | None,
 ) -> dict:
     return {
         "module": module,
@@ -208,10 +214,11 @@ async def _sync_export(
     handler: ExportHandler,
     params: dict,
     format: str,
-    fields: Optional[list[str]],
+    fields: list[str] | None,
     module: str,
 ) -> StreamingResponse:
     from app.service.import_export.models import ExportContext
+
     ctx = ExportContext(
         task_id="sync",
         module=module,
@@ -239,7 +246,9 @@ async def _validate_upload_file(file: UploadFile) -> bytes:
     filename = file.filename or ""
     ext = _get_extension(filename)
     if ext not in _ALLOWED_EXTENSIONS:
-        raise BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "仅支持 .xlsx/.xls/.csv 格式")
+        raise BusinessException(
+            ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "仅支持 .xlsx/.xls/.csv 格式"
+        )
     content = await file.read()
     if len(content) > MAX_IMPORT_FILE_SIZE:
         raise BusinessException(
@@ -247,7 +256,9 @@ async def _validate_upload_file(file: UploadFile) -> bytes:
             f"文件大小超限（最大 {MAX_IMPORT_FILE_SIZE // (1024 * 1024)}MB）",
         )
     if not _check_magic(ext, content):
-        raise BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "文件内容与扩展名不匹配")
+        raise BusinessException(
+            ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "文件内容与扩展名不匹配"
+        )
     return content
 
 
@@ -278,8 +289,13 @@ async def _upload_import_file(filename: str, content: bytes) -> str:
     object_name = f"temp/imports/{uuid.uuid4().hex}{ext}"
     storage = get_storage_service()
     bucket = settings.MINIO_BUCKET_NAME
-    content_type = "text/csv" if ext == ".csv" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    content_type = (
+        "text/csv"
+        if ext == ".csv"
+        else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
     import asyncio
+
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(
         None,

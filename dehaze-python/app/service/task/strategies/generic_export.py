@@ -5,32 +5,26 @@
 dict_export/algorithm_export/dataset_export）。策略本身只做调度，具体导出逻辑
 由对应的 ExportHandler 实现。
 """
+
 from __future__ import annotations
 
 import asyncio
 import io
 import json
-import logging
-import uuid
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.code import ResultCode
-from app.core.exceptions import BusinessException, TaskCancelledException
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import EXPORT_TASK_TYPES
 from app.service.file_service import _minio_executor, get_minio_client
 from app.service.import_export.models import ExportContext
 from app.service.import_export.registry import export_handler_registry
+from app.service.task.strategies._common import make_cancel_cb, resolve_module
 from app.service.task.strategy import CancelChecker, ProgressCallback, TaskStrategy
-
-logger = logging.getLogger(__name__)
 
 
 class GenericExportStrategy(TaskStrategy):
-
     def get_task_types(self) -> list[str]:
         return list(EXPORT_TASK_TYPES)
 
@@ -38,15 +32,12 @@ class GenericExportStrategy(TaskStrategy):
         self,
         db: AsyncSession,
         sys_task: SysTask,
-        params_json: Optional[str],
+        params_json: str | None,
         progress_callback: ProgressCallback,
         cancel_checker: CancelChecker,
-    ) -> Optional[str]:
+    ) -> str | None:
         params = json.loads(params_json or "{}")
-        # 通用端点创建任务时 params 可能不含 module，从任务类型推导（如 user_export -> user）
-        module = params.get("module") or sys_task.task_type.rsplit("_", 1)[0]
-        if not module:
-            raise BusinessException(ResultCode.TASK_PARAM_ERROR, "缺少模块参数 module")
+        module = resolve_module(params, sys_task.task_type)
 
         handler = export_handler_registry.get_handler(module)
         query_params = params.get("queryParams") or {}
@@ -63,22 +54,15 @@ class GenericExportStrategy(TaskStrategy):
             total_count=total_count,
         )
 
-        async def progress_cb(processed: int, total: int) -> None:
-            await progress_callback(processed, total)
-
-        async def cancel_cb() -> bool:
-            if await cancel_checker():
-                raise TaskCancelledException()
-            return False
-
         output = io.BytesIO()
-        await handler.export(db, ctx, output, progress_cb, cancel_cb)
+        await handler.export(db, ctx, output, progress_callback, make_cancel_cb(cancel_checker))
         output.seek(0)
 
         ext = ".csv" if fmt == "csv" else ".xlsx"
         object_name = f"exports/{sys_task.task_id}/{module}_export{ext}"
         content_type = (
-            "text/csv" if fmt == "csv"
+            "text/csv"
+            if fmt == "csv"
             else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         if handler.use_direct_export():
@@ -102,9 +86,5 @@ async def _upload_to_minio(data: bytes, object_name: str, content_type: str) -> 
             content_type=content_type,
         )
 
-    try:
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(_minio_executor, _sync)
-    except Exception as e:
-        logger.warning("MinIO 上传失败: %s", e)
-        raise
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(_minio_executor, _sync)

@@ -2,11 +2,12 @@
 菜单数据访问层
 """
 
+from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.entity.sys_menu import SysMenu, SysRoleMenu
 from app.models.entity.sys_user import SysRole
 from app.repository.base import BaseRepository, escape_like
-from sqlalchemy import and_, delete, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class MenuRepository(BaseRepository[SysMenu]):
@@ -18,12 +19,21 @@ class MenuRepository(BaseRepository[SysMenu]):
         self,
         db: AsyncSession,
         keyword: str | None = None,
+        type: int | None = None,
+        visible: int | None = None,
     ) -> list[SysMenu]:
-        """获取菜单列表（按排序字段排序）"""
+        """获取菜单列表（按排序字段排序，支持关键字/类型/显示状态筛选）
+
+        type/visible 用于 T-MM-009/010 列表筛选。
+        """
         stmt = select(SysMenu).where(SysMenu.deleted == 0).order_by(SysMenu.sort)
         if keyword:
             escaped = escape_like(keyword)
             stmt = stmt.where(SysMenu.name.like(f"%{escaped}%", escape="\\"))
+        if type is not None:
+            stmt = stmt.where(SysMenu.type == type)
+        if visible is not None:
+            stmt = stmt.where(SysMenu.visible == visible)
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -89,9 +99,7 @@ class MenuRepository(BaseRepository[SysMenu]):
             return []
         conditions = [SysMenu.id.in_(menu_ids)]
         for menu_id in menu_ids:
-            conditions.append(
-                func.concat(",", SysMenu.tree_path, ",").like(f"%,{menu_id},%")
-            )
+            conditions.append(func.concat(",", SysMenu.tree_path, ",").like(f"%,{menu_id},%"))
         stmt = select(SysMenu.id).where(or_(*conditions))
         result = await db.execute(stmt)
         return list({int(row[0]) for row in result.fetchall()})
@@ -130,6 +138,46 @@ class MenuRepository(BaseRepository[SysMenu]):
         db.add(SysRoleMenu(role_id=role_id, menu_id=menu_id))
         await db.flush()
 
+    async def exists_by_name(
+        self,
+        db: AsyncSession,
+        parent_id: int,
+        name: str,
+        exclude_id: int | None = None,
+    ) -> bool:
+        """同级菜单名称是否已存在（含软删记录）
+
+        用于 T-MM-015/027 同级重名校验。exclude_id 用于修改时排除自身。
+        """
+        stmt = select(func.count()).select_from(SysMenu).where(
+            SysMenu.parent_id == parent_id,
+            SysMenu.name == name,
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(SysMenu.id != exclude_id)
+        result = await db.execute(stmt)
+        return int(result.scalar() or 0) > 0
+
+    async def exists_by_perm(
+        self,
+        db: AsyncSession,
+        perm: str,
+        exclude_id: int | None = None,
+    ) -> bool:
+        """权限标识是否已存在（含软删记录，全局唯一）
+
+        用于 T-MM-016 权限标识唯一性校验。exclude_id 用于修改时排除自身。
+        """
+        stmt = (
+            select(func.count())
+            .select_from(SysMenu)
+            .where(SysMenu.perm == perm, SysMenu.perm.isnot(None), SysMenu.perm != "")
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(SysMenu.id != exclude_id)
+        result = await db.execute(stmt)
+        return int(result.scalar() or 0) > 0
+
     async def get_role_perms(
         self,
         db: AsyncSession,
@@ -154,7 +202,6 @@ class MenuRepository(BaseRepository[SysMenu]):
         result = await db.execute(stmt)
         perms = result.scalars().all()
         return {p for p in perms if p is not None and p != ""}
-
 
 
 # 单例

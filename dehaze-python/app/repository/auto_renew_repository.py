@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -17,7 +16,7 @@ class AutoRenewRepository(BaseRepository[SysAutoRenew]):
         db: AsyncSession,
         user_id: int,
         package_id: int,
-    ) -> Optional[SysAutoRenew]:
+    ) -> SysAutoRenew | None:
         stmt = select(SysAutoRenew).where(
             SysAutoRenew.user_id == user_id,
             SysAutoRenew.package_id == package_id,
@@ -33,7 +32,7 @@ class AutoRenewRepository(BaseRepository[SysAutoRenew]):
         package_id: int,
         pay_method: str,
         status: int,
-        next_renew_time: Optional[datetime] = None,
+        next_renew_time: datetime | None = None,
         fail_count: int = 0,
     ) -> int:
         """upsert 自动续费配置：冲突时复活（重置 deleted=0, status）"""

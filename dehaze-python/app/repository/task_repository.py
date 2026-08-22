@@ -3,9 +3,8 @@
 """
 
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import get_audit_update_values
@@ -44,18 +43,14 @@ class TaskRepository(BaseRepository[SysTask]):
         db: AsyncSession,
         task_id: str,
         retry_count: int,
-        worker_id: Optional[str] = None,
+        worker_id: str | None = None,
     ) -> int:
         """更新任务重试次数和 Worker 标识"""
         values: dict = {"retry_count": retry_count}
         if worker_id is not None:
             values["worker_id"] = worker_id
         values.update(get_audit_update_values())
-        stmt = (
-            update(SysTask)
-            .where(SysTask.task_id == task_id)
-            .values(**values)
-        )
+        stmt = update(SysTask).where(SysTask.task_id == task_id).values(**values)
         result = await db.execute(stmt)
         await db.flush()
         return result.rowcount
@@ -75,11 +70,7 @@ class TaskRepository(BaseRepository[SysTask]):
             "total_files": total_files,
         }
         values.update(get_audit_update_values())
-        stmt = (
-            update(SysTask)
-            .where(SysTask.task_id == task_id)
-            .values(**values)
-        )
+        stmt = update(SysTask).where(SysTask.task_id == task_id).values(**values)
         result = await db.execute(stmt)
         await db.flush()
         return result.rowcount
@@ -88,9 +79,9 @@ class TaskRepository(BaseRepository[SysTask]):
         self,
         db: AsyncSession,
         user_id: int,
-        status: Optional[int] = None,
-        task_type: Optional[str] = None,
-        task_category: Optional[str] = None,
+        status: int | None = None,
+        task_type: str | None = None,
+        task_category: str | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysTask], int]:
@@ -102,10 +93,10 @@ class TaskRepository(BaseRepository[SysTask]):
         if task_type:
             stmt = stmt.where(SysTask.task_type == task_type)
         if task_category:
-            if task_category == 'import':
-                stmt = stmt.where(SysTask.task_type.like('%_import'))
-            elif task_category == 'export':
-                stmt = stmt.where(SysTask.task_type.like('%_export'))
+            if task_category == "import":
+                stmt = stmt.where(SysTask.task_type.like("%_import"))
+            elif task_category == "export":
+                stmt = stmt.where(SysTask.task_type.like("%_export"))
 
         stmt = stmt.order_by(SysTask.create_time.desc())
         return await self.paginate(db, stmt, page, size)
@@ -118,15 +109,103 @@ class TaskRepository(BaseRepository[SysTask]):
         """获取指定时间之前已终止（非 pending/processing）的任务 ID 列表"""
         stmt = select(SysTask.task_id).where(
             and_(
-                SysTask.status.not_in([
-                    TaskStatus.PENDING.value,
-                    TaskStatus.PROCESSING.value,
-                ]),
+                SysTask.status.not_in(
+                    [
+                        TaskStatus.PENDING.value,
+                        TaskStatus.PROCESSING.value,
+                    ]
+                ),
                 SysTask.create_time < before,
             )
         )
         result = await db.execute(stmt)
         return [row[0] for row in result.fetchall()]
+
+    async def delete_finished_before(
+        self,
+        db: AsyncSession,
+        before: datetime,
+    ) -> int:
+        """删除指定时间前已完成/已取消的任务，返回删除行数（过期任务清理用）"""
+        stmt = delete(SysTask).where(
+            and_(
+                SysTask.status.in_(
+                    [TaskStatus.COMPLETED.value, TaskStatus.CANCELLED.value]
+                ),
+                SysTask.create_time < before,
+            )
+        )
+        result = await db.execute(stmt)
+        return result.rowcount
+
+    async def delete_terminated_before(
+        self,
+        db: AsyncSession,
+        before: datetime,
+    ) -> int:
+        """删除指定时间前已终止的任务（排除 pending/processing，防止误删执行中任务）"""
+        stmt = delete(SysTask).where(
+            and_(
+                SysTask.status.not_in(
+                    [TaskStatus.PENDING.value, TaskStatus.PROCESSING.value]
+                ),
+                SysTask.create_time < before,
+            )
+        )
+        result = await db.execute(stmt)
+        return result.rowcount
+
+    async def recover_stuck_processing(
+        self,
+        db: AsyncSession,
+        threshold: datetime,
+        now: datetime,
+    ) -> int:
+        """将超过 threshold 仍 processing 的任务标记 FAILED（僵死回收）"""
+        values = {
+            "status": TaskStatus.FAILED.value,
+            "error_message": "任务超时（30分钟无进度更新），已被系统自动回收",
+            "completed_at": now,
+        }
+        values.update(get_audit_update_values())
+        stmt = (
+            update(SysTask)
+            .where(
+                and_(
+                    SysTask.status == TaskStatus.PROCESSING.value,
+                    SysTask.started_at < threshold,
+                )
+            )
+            .values(**values)
+        )
+        result = await db.execute(stmt)
+        return result.rowcount
+
+    async def recover_stuck_pending(
+        self,
+        db: AsyncSession,
+        threshold: datetime,
+        now: datetime,
+    ) -> int:
+        """将超过 threshold 仍 pending 的任务标记 FAILED（僵死回收）"""
+        values = {
+            "status": TaskStatus.FAILED.value,
+            "error_message": "任务超时（24h未启动），已被系统自动回收",
+            "completed_at": now,
+        }
+        values.update(get_audit_update_values())
+        stmt = (
+            update(SysTask)
+            .where(
+                and_(
+                    SysTask.status == TaskStatus.PENDING.value,
+                    SysTask.create_time < threshold,
+                )
+            )
+            .values(**values)
+        )
+        result = await db.execute(stmt)
+        return result.rowcount
 
 
 # 单例

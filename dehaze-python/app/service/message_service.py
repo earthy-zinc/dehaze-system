@@ -1,7 +1,7 @@
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,21 +50,27 @@ async def invalidate_unread_count_cache(*user_ids: int) -> None:
 async def _push_new_message_event(message: SysMessage) -> None:
     try:
         from app.service.websocket_service import manager as ws_manager
-        await ws_manager.send_personal(message.recipient_id, {
-            "event": "new_message",
-            "data": {
-                "id": message.id,
-                "type": message.type,
-                "title": message.title,
-                "priority": message.priority,
-                "createTime": _format_dt(message.create_time),
+
+        await ws_manager.send_personal(
+            message.recipient_id,
+            {
+                "event": "new_message",
+                "data": {
+                    "id": message.id,
+                    "type": message.type,
+                    "title": message.title,
+                    "priority": message.priority,
+                    "createTime": _format_dt(message.create_time),
+                },
             },
-        })
+        )
     except Exception as e:
-        logger.debug("WebSocket 推送新消息事件失败（不影响主流程）: messageId=%s err=%s", message.id, e)
+        logger.debug(
+            "WebSocket 推送新消息事件失败（不影响主流程）: messageId=%s err=%s", message.id, e
+        )
 
 
-def _format_dt(dt: Optional[datetime]) -> Optional[str]:
+def _format_dt(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -78,15 +84,11 @@ def _calc_expires_at(msg_type: str) -> datetime:
 def _render_template(template: str, variables: dict[str, str]) -> str:
     def replacer(m):
         return variables.get(m.group(1), "")
+
     return VAR_PATTERN.sub(replacer, template)
 
 
-def _extract_var_names(template_str: str) -> list[str]:
-    return VAR_PATTERN.findall(template_str)
-
-
 class MessageService:
-
     @staticmethod
     async def send(db: AsyncSession, data: dict[str, Any]) -> list[int]:
         biz_module = data.get("bizModule")
@@ -125,12 +127,14 @@ class MessageService:
                 raise BusinessException(ResultCode.TEMPLATE_DISABLED, "模板已禁用")
 
             variables = data.get("variables") or {}
-            required_vars = set(_extract_var_names(template.title_template or ""))
-            required_vars |= set(_extract_var_names(template.content_template or ""))
+            required_vars = set(VAR_PATTERN.findall(template.title_template or ""))
+            required_vars |= set(VAR_PATTERN.findall(template.content_template or ""))
 
             missing = required_vars - set(variables.keys())
             if missing:
-                raise BusinessException(ResultCode.TEMPLATE_VAR_MISSING, f"模板变量缺失: {','.join(missing)}")
+                raise BusinessException(
+                    ResultCode.TEMPLATE_VAR_MISSING, f"模板变量缺失: {','.join(missing)}"
+                )
 
             title = _render_template(template.title_template, variables)
             content = _render_template(template.content_template, variables)
@@ -177,8 +181,8 @@ class MessageService:
         user_id: int,
         page: int,
         page_size: int,
-        type: Optional[str] = None,
-        read_status: Optional[int] = None,
+        type: str | None = None,
+        read_status: int | None = None,
     ) -> dict[str, Any]:
         items, total = await message_repository.get_page(
             db, user_id, page, page_size, type, read_status
@@ -253,7 +257,7 @@ class MessageService:
     async def mark_all_read(
         db: AsyncSession,
         user_id: int,
-        type: Optional[str] = None,
+        type: str | None = None,
     ) -> int:
         affected = await message_repository.mark_all_read(db, user_id, type)
         await invalidate_unread_count_cache(user_id)
@@ -272,9 +276,7 @@ class MessageService:
         page: int,
         page_size: int,
     ) -> dict[str, Any]:
-        items, total = await message_repository.search(
-            db, user_id, keyword, page, page_size
-        )
+        items, total = await message_repository.search(db, user_id, keyword, page, page_size)
         list_data = [
             {
                 "id": m.id,

@@ -5,19 +5,30 @@ Prometheus 指标采集模块
 HTTP 请求指标由 starlette-exporter 中间件自动采集。
 """
 
-from app.infrastructure.metrics.cache_metrics import (CACHE_HITS_TOTAL,
-                                                     CACHE_MISSES_TOTAL,
-                                                     CACHE_LOADER_TOTAL,
-                                                     record_hit, record_miss,
-                                                     record_loader)
-from app.infrastructure.metrics.gpu_metrics import GPUMetricsCollector, \
-    collect_gpu_metrics, get_gpu_metrics_collector
+from app.infrastructure.metrics.cache_metrics import (
+    CACHE_HITS_TOTAL,
+    CACHE_LOADER_TOTAL,
+    CACHE_MISSES_TOTAL,
+    record_hit,
+    record_loader,
+    record_miss,
+)
+from app.infrastructure.metrics.gpu_metrics import (
+    GPUMetricsCollector,
+    collect_gpu_metrics,
+    get_gpu_metrics_collector,
+)
 from app.infrastructure.metrics.inference_metrics import (
-    INFERENCE_DURATION, INFERENCE_REQUESTS_TOTAL, record_inference_metrics)
-from app.infrastructure.metrics.task_metrics import (TASK_DURATION,
-                                                     TASK_TOTAL,
-                                                     TASK_QUEUE_DEPTH,
-                                                     update_task_queue_depth)
+    INFERENCE_DURATION,
+    INFERENCE_REQUESTS_TOTAL,
+    record_inference_metrics,
+)
+from app.infrastructure.metrics.task_metrics import (
+    TASK_DURATION,
+    TASK_QUEUE_DEPTH,
+    TASK_TOTAL,
+    update_task_queue_depth,
+)
 
 __all__ = [
     # GPU 指标

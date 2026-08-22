@@ -1,30 +1,28 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.models.entity.sys_message_template import SysMessageTemplate
 from app.repository.message_template_repository import message_template_repository
 
 
-def _format_dt(dt: Optional[datetime]) -> Optional[str]:
+def _format_dt(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
 class MessageTemplateService:
-
     @staticmethod
     async def get_page(
         db: AsyncSession,
         page: int,
         page_size: int,
-        name: Optional[str] = None,
-        type: Optional[str] = None,
-        status: Optional[int] = None,
+        name: str | None = None,
+        type: str | None = None,
+        status: int | None = None,
     ) -> dict[str, Any]:
         items, total = await message_template_repository.get_page(
             db, page, page_size, name, type, status

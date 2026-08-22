@@ -1,21 +1,18 @@
 """
 任务模块 Schema 模型
 """
+
 from datetime import datetime
-from typing import Optional, List
+from typing import List
 
 from pydantic import BaseModel, Field
 
 from app.models.enum.task_enum import TaskType
 
 
-class TaskIdPath(BaseModel):
-    task_id: str = Field(..., description="任务ID（UUID格式）")
-
-
 class ExportTaskCreateForm(BaseModel):
     type: TaskType = Field(..., description="任务类型")
-    params_json: Optional[str] = Field(default=None, description="任务参数（JSON 字符串）")
+    params_json: str | None = Field(default=None, description="任务参数（JSON 字符串）")
 
 
 class TaskVO(BaseModel):
@@ -25,19 +22,20 @@ class TaskVO(BaseModel):
     status: int = Field(description="任务状态(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)")
     progress: int = Field(description="执行进度(0-100)")
     totalFiles: int = Field(default=0, description="总文件数")
-    processedFiles: Optional[int] = Field(default=0, description="已处理文件数")
-    downloadUrl: Optional[str] = Field(default=None, description="下载链接")
-    error: Optional[str] = Field(default=None, description="错误信息")
-    createdAt: Optional[datetime] = Field(default=None, description="创建时间")
-    startedAt: Optional[datetime] = Field(default=None, description="开始时间")
-    completedAt: Optional[datetime] = Field(default=None, description="完成时间")
-    expiresAt: Optional[datetime] = Field(default=None, description="过期时间")
-    idempotencyKey: Optional[str] = Field(default=None, description="客户端幂等键")
+    processedFiles: int | None = Field(default=0, description="已处理文件数")
+    downloadUrl: str | None = Field(default=None, description="下载链接")
+    error: str | None = Field(default=None, description="错误信息")
+    createdAt: datetime | None = Field(default=None, description="创建时间")
+    startedAt: datetime | None = Field(default=None, description="开始时间")
+    completedAt: datetime | None = Field(default=None, description="完成时间")
+    expiresAt: datetime | None = Field(default=None, description="过期时间")
+    idempotencyKey: str | None = Field(default=None, description="客户端幂等键")
     retryCount: int = Field(default=0, description="MQ 重试次数")
-    workerId: Optional[str] = Field(default=None, description="执行 Worker 标识")
+    workerId: str | None = Field(default=None, description="执行 Worker 标识")
 
 
 class TaskPageVO(BaseModel):
+    # 字段名 list 遮蔽内建类型，必须用 typing.List
     list: List[TaskVO] = Field(description="任务列表")
     total: int = Field(description="总数")
 
@@ -55,7 +53,7 @@ class ImportTaskVO(BaseModel):
 
 class ImportErrorVO(BaseModel):
     row: int = Field(description="行号")
-    field: Optional[str] = Field(default=None, description="字段名")
+    field: str | None = Field(default=None, description="字段名")
     message: str = Field(description="错误信息")
 
 
@@ -64,5 +62,5 @@ class ImportResultVO(BaseModel):
     successCount: int = Field(description="成功数")
     failureCount: int = Field(description="失败数")
     skippedCount: int = Field(default=0, description="跳过数")
-    errors: List[ImportErrorVO] = Field(default_factory=list, description="错误明细")
-    errorReportUrl: Optional[str] = Field(default=None, description="错误报告下载链接")
+    errors: list[ImportErrorVO] = Field(default_factory=list, description="错误明细")
+    errorReportUrl: str | None = Field(default=None, description="错误报告下载链接")

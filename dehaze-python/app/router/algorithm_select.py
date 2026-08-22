@@ -3,8 +3,8 @@
 
 基础路径: /api/v1/algorithms/select
 """
+
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,8 @@ from app.models.schema.algorithm_select import (
     AlgorithmSearchVO,
     AlgorithmTreeNodeVO,
     CompareRequest,
+    RecommendRequest,
+    RecommendResultVO,
     TestRequest,
     TestResultVO,
 )
@@ -51,7 +53,7 @@ async def get_algorithm_tree(
     summary="搜索算法",
 )
 async def search_algorithms(
-    keyword: Optional[str] = Query(default=None, description="搜索关键词"),
+    keyword: str | None = Query(default=None, description="搜索关键词"),
     db: AsyncSession = Depends(get_db),
 ):
     """搜索算法（关键词/拼音/标签）"""
@@ -107,5 +109,25 @@ async def compare_algorithms(
     result = await AlgorithmSelectService.compare(
         db=db,
         algorithm_ids=body.algorithmIds,
+    )
+    return success(result)
+
+
+@router.post(
+    "/recommend",
+    response_model=Result[RecommendResultVO],
+    summary="算法推荐匹配",
+)
+async def recommend_algorithms(
+    body: RecommendRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """算法推荐匹配（F-M03-007）：基于关键词/任务类型/样例算法，返回 Top N 推荐列表。"""
+    result = await AlgorithmSelectService.recommend(
+        db,
+        keyword=body.keyword,
+        task_type=body.taskType,
+        sample_algorithm_id=body.sampleAlgorithmId,
+        top_n=body.topN,
     )
     return success(result)

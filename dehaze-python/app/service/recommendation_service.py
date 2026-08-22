@@ -1,30 +1,28 @@
 """
 推荐管理服务
 """
+
 import hashlib
-import json
-from datetime import datetime, date
-from typing import Optional
+from datetime import date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.models.entity.sys_algorithm import SysAlgorithm
 from app.models.entity.sys_recommendation import SysRecommendation
 from app.models.entity.sys_recommendation_rule import SysRecommendationRule
-from app.repository.algorithm_repository import algorithm_repository, AlgorithmStatus
+from app.models.schema.recommendation import (
+    ColorDistribution,
+    IdVO,
+    ImageFeatureAnalysisVO,
+    RecommendationReportVO,
+    RecommendationRuleVO,
+    RecommendedAlgorithmVO,
+    TrendItem,
+)
+from app.repository.algorithm_repository import AlgorithmStatus, algorithm_repository
 from app.repository.recommendation_repository import recommendation_repository
 from app.repository.recommendation_rule_repository import recommendation_rule_repository
-from app.models.schema.recommendation import (
-    ImageFeatureAnalysisVO,
-    ColorDistribution,
-    RecommendedAlgorithmVO,
-    RecommendationRuleVO,
-    RecommendationReportVO,
-    TrendItem,
-    IdVO,
-)
 
 VALID_HAZE_LEVELS = ["light", "moderate", "heavy"]
 VALID_SCENE_TYPES = ["urban", "landscape", "building", "night", "backlight", "indoor"]
@@ -44,13 +42,11 @@ SCENE_REASON_TEMPLATES = {
 }
 
 
-def _md5(text: str) -> str:
-    return hashlib.md5(text.encode("utf-8")).hexdigest()
-
-
-def _resolve_and_validate_image_url(image_url: Optional[str], image_id: Optional[int]) -> str:
+def _resolve_and_validate_image_url(image_url: str | None, image_id: int | None) -> str:
     if image_id is not None and image_id > 0:
-        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "imageId方式暂不支持，请使用imageUrl")
+        raise BusinessException(
+            ResultCode.RESOURCE_NOT_FOUND, "imageId方式暂不支持，请使用imageUrl"
+        )
     if not image_url:
         raise BusinessException(ResultCode.PARAM_ERROR, "imageId和imageUrl至少提供一个")
 
@@ -64,11 +60,10 @@ def _resolve_and_validate_image_url(image_url: Optional[str], image_id: Optional
 
 
 class RecommendationService:
-
     @staticmethod
-    async def analyze(image_id: Optional[int], image_url: Optional[str]) -> ImageFeatureAnalysisVO:
+    async def analyze(image_id: int | None, image_url: str | None) -> ImageFeatureAnalysisVO:
         url = _resolve_and_validate_image_url(image_url, image_id)
-        md5_val = _md5(url)
+        md5_val = hashlib.md5(url.encode("utf-8")).hexdigest()
         seed = abs(hash(md5_val))
 
         return ImageFeatureAnalysisVO(
@@ -91,10 +86,10 @@ class RecommendationService:
     async def get_algorithms(
         db: AsyncSession,
         user_id: int,
-        analysis_id: Optional[int],
-        image_md5: Optional[str],
+        analysis_id: int | None,
+        image_md5: str | None,
     ) -> list[RecommendedAlgorithmVO]:
-        # 获取已发布算法
+        # 全量取出（含软删）后过滤已发布
         all_algorithms = await algorithm_repository.get_all(db, with_deleted=True)
         published = [a for a in all_algorithms if a.status == AlgorithmStatus.PUBLISHED]
 
@@ -136,20 +131,26 @@ class RecommendationService:
         result: list[RecommendedAlgorithmVO] = []
         for alg in candidates:
             match_score = min(100, rule_weight_map.get(alg.id, 0))
-            result.append(RecommendedAlgorithmVO(
-                algorithmId=alg.id,
-                algorithmName=alg.name or "",
-                matchScore=match_score,
-                reason=f"{alg.name}：{reason}",
-                effectDescription=f"该算法在{scene_type}场景下表现稳定",
-            ))
+            result.append(
+                RecommendedAlgorithmVO(
+                    algorithmId=alg.id,
+                    algorithmName=alg.name or "",
+                    matchScore=match_score,
+                    reason=f"{alg.name}：{reason}",
+                    effectDescription=f"该算法在{scene_type}场景下表现稳定",
+                )
+            )
 
         result.sort(key=lambda x: x.matchScore, reverse=True)
         result = result[:TOP_N]
 
         # 无论有无结果，都写入 sys_recommendation 记录，确保 feedback 能找到记录
         top_algorithms = [
-            {"algorithmId": vo.algorithmId, "algorithmName": vo.algorithmName, "matchScore": vo.matchScore}
+            {
+                "algorithmId": vo.algorithmId,
+                "algorithmName": vo.algorithmName,
+                "matchScore": vo.matchScore,
+            }
             for vo in result
         ]
         rec = SysRecommendation(
@@ -225,8 +226,8 @@ class RecommendationService:
     @staticmethod
     async def get_report(
         db: AsyncSession,
-        start_date: Optional[str],
-        end_date: Optional[str],
+        start_date: str | None,
+        end_date: str | None,
     ) -> RecommendationReportVO:
         start = None
         end = None
@@ -246,7 +247,9 @@ class RecommendationService:
         total = await recommendation_repository.count_total(db, start, end)
         useful_count = await recommendation_repository.count_useful(db, start, end)
         feedback_total = await recommendation_repository.count_feedback_total(db, start, end)
-        adopted_distinct = await recommendation_repository.count_adopted_algorithm_distinct(db, start, end)
+        adopted_distinct = await recommendation_repository.count_adopted_algorithm_distinct(
+            db, start, end
+        )
 
         all_algorithms = await algorithm_repository.get_all(db, with_deleted=True)
         published_count = len([a for a in all_algorithms if a.status == AlgorithmStatus.PUBLISHED])

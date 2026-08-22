@@ -1,6 +1,7 @@
 """
 中间件层
 """
+
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
@@ -16,7 +17,9 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     注册所有中间件
 
     注意：Starlette 的 add_middleware 将新中间件插到链首，故**后注册的越靠外层（越先执行）**。
-    执行顺序（请求进入时）：CORS → Prometheus → RateLimit → AntiRepeat → IPBlacklist → Trace → RequestLog → DBSession → ApiKeyAuth → 业务逻辑
+    执行顺序（请求进入时）：
+    CORS → Prometheus → RateLimit → AntiRepeat → IPBlacklist → Trace → RequestLog →
+    DBSession → ApiKeyAuth → 业务逻辑
 
     Trace 必须在 RequestLog 之外执行，先注入请求上下文（trace_id/method/path），
     否则访问日志拿不到 trace_id（RequestLog 须在 Trace 之内才能读到上下文）。
@@ -28,14 +31,17 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     """
     # API Key 认证中间件（先注册使其在 DBSession 之后执行，才能读到 request.state.db）
     from app.middleware.api_key_auth import ApiKeyAuthMiddleware
+
     app.add_middleware(ApiKeyAuthMiddleware)
 
     # 数据库事务中间件（最内层，响应发送前 commit/rollback）
     from app.middleware.db import DBSessionMiddleware
+
     app.add_middleware(DBSessionMiddleware)
 
     # 请求级访问日志中间件（须在 TraceMiddleware 之内执行，才能拿到请求上下文）
     from app.middleware.request_log import RequestLogMiddleware
+
     app.add_middleware(RequestLogMiddleware)
 
     # TraceID 中间件（在访问日志之外执行，先注入 trace_id/method/path）
@@ -55,13 +61,13 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     # 与 Grafana 面板及三端监控规范对齐（starlette_exporter 默认前缀为 starlette）
     if prometheus_enabled:
         from starlette_exporter import PrometheusMiddleware
+
         app.add_middleware(
             PrometheusMiddleware,
             app_name="dehaze-python",
             prefix="http",
             group_paths=True,
-            skip_paths=["/health", "/ready",
-                        "/metrics", "/docs", "/redoc", "/openapi.json"],
+            skip_paths=["/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"],
         )
 
     # CORS 中间件（最外层，从配置读取 Origin 白名单，禁止 "*" + credentials 组合）
@@ -76,10 +82,9 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
 
 
 __all__ = [
-    'AntiRepeatMiddleware',
-    'ApiKeyAuthMiddleware',
-    'IPBlacklistMiddleware',
-    'RateLimitMiddleware',
-    'TraceMiddleware',
-    'init_middlewares',
+    "AntiRepeatMiddleware",
+    "IPBlacklistMiddleware",
+    "RateLimitMiddleware",
+    "TraceMiddleware",
+    "init_middlewares",
 ]

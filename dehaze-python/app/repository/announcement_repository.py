@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,15 +15,13 @@ class AnnouncementRepository(BaseRepository[SysAnnouncement]):
         db: AsyncSession,
         page: int,
         page_size: int,
-        title: Optional[str] = None,
-        type: Optional[str] = None,
-        status: Optional[int] = None,
+        title: str | None = None,
+        type: str | None = None,
+        status: int | None = None,
     ) -> tuple[list[SysAnnouncement], int]:
         stmt = select(SysAnnouncement).where(SysAnnouncement.deleted == 0)
         if title:
-            stmt = stmt.where(
-                SysAnnouncement.title.like(f"%{escape_like(title)}%", escape="\\")
-            )
+            stmt = stmt.where(SysAnnouncement.title.like(f"%{escape_like(title)}%", escape="\\"))
         if type:
             stmt = stmt.where(SysAnnouncement.type == type)
         if status is not None:
@@ -43,7 +40,7 @@ class AnnouncementRepository(BaseRepository[SysAnnouncement]):
         self,
         db: AsyncSession,
         announcement_id: int,
-    ) -> Optional[SysAnnouncement]:
+    ) -> SysAnnouncement | None:
         stmt = select(SysAnnouncement).where(
             SysAnnouncement.id == announcement_id,
             SysAnnouncement.deleted == 0,
@@ -68,8 +65,8 @@ class AnnouncementRepository(BaseRepository[SysAnnouncement]):
         db: AsyncSession,
         announcement_id: int,
         status: int,
-        sent_count: Optional[int] = None,
-        send_time: Optional[datetime] = None,
+        sent_count: int | None = None,
+        send_time: datetime | None = None,
     ) -> bool:
         values: dict = {"status": status}
         if sent_count is not None:

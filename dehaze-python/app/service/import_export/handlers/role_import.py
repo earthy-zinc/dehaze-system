@@ -1,19 +1,23 @@
 """
 角色导入处理器
 """
+
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_user import SysRole
 from app.repository.role_repository import role_repository
-from app.service.import_export.models import (ImportError, ImportFieldConfig,
-                                              ImportOptions, ImportResult)
+from app.service.import_export.models import (
+    ImportError,
+    ImportFieldConfig,
+    ImportOptions,
+    ImportResult,
+)
 from app.service.import_export.registry import ImportHandler
 
 
 class RoleImportHandler(ImportHandler):
-
     def get_module(self) -> str:
         return "role"
 

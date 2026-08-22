@@ -13,7 +13,6 @@ Redis key 设计：
 
 import asyncio
 import ipaddress
-import json
 import logging
 import time
 
@@ -23,20 +22,9 @@ from app.config import settings
 from app.core.code import ResultCode
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
+from app.middleware._shared import EXCLUDE_PATHS, send_json_response
 
 logger = logging.getLogger(__name__)
-
-# 不参与追踪的路径
-_EXCLUDE_PATHS = {
-    "/health",
-    "/health/db",
-    "/health/redis",
-    "/metrics",
-    "/docs",
-    "/redoc",
-    "/openapi.json",
-    "/favicon.ico",
-}
 
 
 def _is_internal_ip(ip: str) -> bool:
@@ -46,23 +34,6 @@ def _is_internal_ip(ip: str) -> bool:
     except ValueError:
         return False
     return addr.is_private or addr.is_loopback
-
-
-async def _send_json_response(send: Send, status_code: int, content: dict):
-    """直接通过 ASGI send 发送 JSON 响应（不经过应用层）"""
-    body = json.dumps(content, ensure_ascii=False).encode("utf-8")
-    await send({
-        "type": "http.response.start",
-        "status": status_code,
-        "headers": [
-            (b"content-type", b"application/json; charset=utf-8"),
-            (b"content-length", str(len(body)).encode("latin-1")),
-        ],
-    })
-    await send({
-        "type": "http.response.body",
-        "body": body,
-    })
 
 
 class IPBlacklistMiddleware:
@@ -79,7 +50,7 @@ class IPBlacklistMiddleware:
             return await self.app(scope, receive, send)
 
         path: str = scope["path"]
-        if path in _EXCLUDE_PATHS:
+        if path in EXCLUDE_PATHS:
             return await self.app(scope, receive, send)
 
         # 获取客户端 IP
@@ -93,7 +64,6 @@ class IPBlacklistMiddleware:
         if settings.DEBUG and _is_internal_ip(ip):
             return await self.app(scope, receive, send)
 
-        # 检查黑名单
         redis = await get_redis_client()
         if redis:
             blacklisted = await redis_operation_with_fallback(
@@ -103,7 +73,7 @@ class IPBlacklistMiddleware:
             )
             if blacklisted:
                 logger.warning(f"IP 被封禁拦截: ip={ip}, path={path}")
-                await _send_json_response(
+                await send_json_response(
                     send,
                     403,
                     {

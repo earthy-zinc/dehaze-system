@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Optional
 
 from prometheus_client import Counter, Gauge, Histogram
 
@@ -88,7 +87,7 @@ class TaskMetricsContext:
     def __init__(self, task_type: str):
         self.task_type = task_type
         self._status: str = "success"
-        self._start_time: Optional[float] = None
+        self._start_time: float | None = None
 
     def set_status(self, status: str) -> None:
         self._status = status

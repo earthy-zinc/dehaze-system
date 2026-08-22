@@ -22,6 +22,18 @@ XXL-Job 定时任务 Handler
 - retryFailedRefunds:     退款失败重试（每 30 分钟）
 - sendExpireReminders:    会员到期预警（每天 09:00）
 - refreshUnreadCountCache: 未读数缓存全量刷新（每小时）
+- archiveInactiveConversations: AI 会话自动归档（每天凌晨 0 点）
+- purgeDeletedConversations: AI 会话物理清理（软删超 30 天，每天凌晨 1:30）
+- aiMemoryForget:         记忆遗忘归档（每天凌晨 3 点）
+- aiMemoryReflection:     记忆反思整合（每天凌晨 4 点）
+- aiMemoryMerge:          记忆合并去重（每天凌晨 5 点）
+- purgeDeletedMemories:   记忆物理清理（软删超 30 天，每天凌晨 6 点）
+- flushProviderKeyLastUsed: 供应商 API Key 最近使用信息批量刷库（每分钟）
+- aiScheduleTrigger:      定时任务扫描触发（每分钟）
+- aiScheduleRunCleanup:   定时任务执行历史清理（保留 30 天，每天凌晨 4 点）
+- generateMonthlyBill:    月结账单生成（每月 1 日凌晨 0:30）
+- clearVipGiftExpire:     VIP 赠送积分月末清零（每月最后一天 23:59）
+- grantVipMonthlyGift:    VIP 按月赠送积分发放（每月 1 日凌晨 0 点）
 """
 
 from __future__ import annotations
@@ -30,14 +42,15 @@ import logging
 from datetime import datetime, timedelta
 
 from pyxxl import JobHandler
-from sqlalchemy import and_, delete, update
 
-from app.core.constants import (SYSTEM_USER_ID, TASK_CACHE_PREFIX,
-                                TASK_CANCEL_PREFIX, TASK_PROGRESS_PREFIX)
+from app.core.constants import (
+    SYSTEM_USER_ID,
+    TASK_CACHE_PREFIX,
+    TASK_CANCEL_PREFIX,
+    TASK_PROGRESS_PREFIX,
+)
 from app.database import get_db_session
-from app.models.base import get_audit_update_values, set_current_user_id
-from app.models.entity.sys_task import SysTask
-from app.models.enum.task_enum import TaskStatus
+from app.models.base import set_current_user_id
 from app.repository.task_repository import task_repository
 
 logger = logging.getLogger(__name__)
@@ -68,25 +81,15 @@ async def cleanup_expired_tasks() -> str:
             terminated_task_ids = await task_repository.get_terminated_task_ids(db, seven_days_ago)
 
             # 删除 7 天前已完成/已取消的任务
-            stmt_completed = delete(SysTask).where(
-                and_(
-                    SysTask.status.in_([TaskStatus.COMPLETED.value, TaskStatus.CANCELLED.value]),
-                    SysTask.create_time < seven_days_ago,
-                )
+            deleted_completed = await task_repository.delete_finished_before(
+                db, seven_days_ago
             )
-            result_completed = await db.execute(stmt_completed)
 
             # 删除 30 天前已终止的任务（排除 pending/processing，防止误删正在执行的任务）
-            stmt_old = delete(SysTask).where(
-                and_(
-                    SysTask.status.not_in([TaskStatus.PENDING.value, TaskStatus.PROCESSING.value]),
-                    SysTask.create_time < thirty_days_ago,
-                )
+            deleted_old = await task_repository.delete_terminated_before(
+                db, thirty_days_ago
             )
-            result_old = await db.execute(stmt_old)
 
-        deleted_completed = result_completed.rowcount
-        deleted_old = result_old.rowcount
         total = deleted_completed + deleted_old
 
         # 精准清理 Redis 缓存（仅删除已在 DB 中被删除的任务 Key）
@@ -124,45 +127,15 @@ async def cleanup_stuck_tasks() -> str:
 
         async with get_db_session() as db:
             # 回收 30 分钟未完成的 processing 任务（基于 started_at）
-            processing_values = {
-                "status": TaskStatus.FAILED.value,
-                "error_message": "任务超时（30分钟无进度更新），已被系统自动回收",
-                "completed_at": now,
-            }
-            processing_values.update(get_audit_update_values())
-            stmt_processing = (
-                update(SysTask)
-                .where(
-                    and_(
-                        SysTask.status == TaskStatus.PROCESSING.value,
-                        SysTask.started_at < processing_threshold,
-                    )
-                )
-                .values(**processing_values)
+            recovered_processing = await task_repository.recover_stuck_processing(
+                db, processing_threshold, now
             )
-            result_processing = await db.execute(stmt_processing)
 
             # 回收 24 小时未启动的 pending 任务
-            pending_values = {
-                "status": TaskStatus.FAILED.value,
-                "error_message": "任务超时（24h未启动），已被系统自动回收",
-                "completed_at": now,
-            }
-            pending_values.update(get_audit_update_values())
-            stmt_pending = (
-                update(SysTask)
-                .where(
-                    and_(
-                        SysTask.status == TaskStatus.PENDING.value,
-                        SysTask.create_time < pending_threshold,
-                    )
-                )
-                .values(**pending_values)
+            recovered_pending = await task_repository.recover_stuck_pending(
+                db, pending_threshold, now
             )
-            result_pending = await db.execute(stmt_pending)
 
-        recovered_processing = result_processing.rowcount
-        recovered_pending = result_pending.rowcount
         total = recovered_processing + recovered_pending
 
         msg = (
@@ -194,6 +167,7 @@ async def model_health_check() -> str:
         # 检查 GPU 可用性
         try:
             import torch
+
             if not torch.cuda.is_available():
                 issues.append("CUDA 不可用")
             else:
@@ -202,15 +176,14 @@ async def model_health_check() -> str:
                     free_mem, total_mem = torch.cuda.mem_get_info(i)
                     used_pct = (total_mem - free_mem) / total_mem * 100
                     if used_pct > 95:
-                        issues.append(
-                            f"GPU:{i} 显存使用率过高: {used_pct:.1f}%"
-                        )
+                        issues.append(f"GPU:{i} 显存使用率过高: {used_pct:.1f}%")
         except Exception as e:
             issues.append(f"GPU 检查异常: {e}")
 
         # 检查数据库连接
         try:
             from sqlalchemy import text
+
             async with get_db_session() as db:
                 await db.execute(text("SELECT 1"))
         except Exception as e:
@@ -219,6 +192,7 @@ async def model_health_check() -> str:
         # 检查 Redis 连接
         try:
             from app.dependencies.redis import check_redis_health
+
             await check_redis_health()
         except Exception as e:
             issues.append(f"Redis 检查异常: {e}")
@@ -269,7 +243,9 @@ async def _cleanup_task_redis_keys(task_ids: list[str]) -> int:
             deleted = await redis.delete(*keys_to_delete)
 
         if deleted > 0:
-            logger.debug(f"已精准清理 {deleted} 个 Redis 任务缓存 Key（涉及 {len(task_ids)} 个任务）")
+            logger.debug(
+                f"已精准清理 {deleted} 个 Redis 任务缓存 Key（涉及 {len(task_ids)} 个任务）"
+            )
 
         return deleted
 
@@ -295,11 +271,11 @@ async def cleanup_orphan_files() -> str:
     try:
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
+
         from app.config import settings
         from app.repository.file_repository import file_repository
         from app.service.storage.factory import get_storage_service
 
-        threshold_hours = settings.FILE_ORPHAN_CLEANUP_HOURS
         bucket_name = settings.MINIO_BUCKET_NAME
 
         async with get_db_session() as db:
@@ -311,11 +287,10 @@ async def cleanup_orphan_files() -> str:
         executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="file-cleanup")
         loop = asyncio.get_running_loop()
 
-        def _list_storage_objects():
-            return storage.list_objects(bucket_name, prefix="upload/")
-
         try:
-            storage_objects = await loop.run_in_executor(executor, _list_storage_objects)
+            storage_objects = await loop.run_in_executor(
+                executor, lambda: storage.list_objects(bucket_name, prefix="upload/")
+            )
         except Exception as e:
             msg = f"孤儿文件清理失败: 无法列出存储对象: {e}"
             logger.error(msg)
@@ -333,6 +308,7 @@ async def cleanup_orphan_files() -> str:
         deleted = 0
         failed = 0
         for obj_name in orphan_objects:
+
             def _delete(name=obj_name):
                 try:
                     storage.delete(bucket_name, name)
@@ -352,12 +328,7 @@ async def cleanup_orphan_files() -> str:
 
         executor.shutdown(wait=False)
 
-        msg = (
-            f"孤儿文件清理完成: "
-            f"发现={len(orphan_objects)}, "
-            f"已删除={deleted}, "
-            f"失败={failed}"
-        )
+        msg = f"孤儿文件清理完成: 发现={len(orphan_objects)}, 已删除={deleted}, 失败={failed}"
         logger.debug(msg)
         return msg
     finally:
@@ -379,6 +350,7 @@ async def cleanup_temp_files() -> str:
     try:
         import os
         import time
+
         from app.config import settings
 
         temp_dir = settings.TEMP_DIR_RESOLVED
@@ -394,7 +366,7 @@ async def cleanup_temp_files() -> str:
         deleted = 0
         failed = 0
 
-        for root, dirs, files in os.walk(temp_dir, topdown=False):
+        for root, _dirs, files in os.walk(temp_dir, topdown=False):
             for f in files:
                 filepath = os.path.join(root, f)
                 try:
@@ -439,7 +411,8 @@ async def cleanup_stuck_pred_eval_logs() -> str:
     CRON 建议: 0 * * * * ? （每 60 秒）
     """
     from app.repository.pred_eval_log_repository import (
-        pred_log_repository, eval_log_repository,
+        eval_log_repository,
+        pred_log_repository,
     )
 
     set_current_user_id(SYSTEM_USER_ID)
@@ -448,10 +421,12 @@ async def cleanup_stuck_pred_eval_logs() -> str:
 
         async with get_db_session() as db:
             pred_count = await pred_log_repository.mark_stuck_as_failed(
-                db=db, threshold=threshold,
+                db=db,
+                threshold=threshold,
             )
             eval_count = await eval_log_repository.mark_stuck_as_failed(
-                db=db, threshold=threshold,
+                db=db,
+                threshold=threshold,
             )
 
         if pred_count > 0 or eval_count > 0:
@@ -801,6 +776,492 @@ async def refresh_unread_count_cache() -> str:
         else:
             msg = "未读数缓存刷新: 无活跃用户"
             logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+# ==================== AI 记忆整理定时任务 ====================
+
+
+@xxl_handler.register(name="aiMemoryForget")
+async def ai_memory_forget() -> str:
+    """
+    记忆遗忘归档
+
+    基于 Ebbinghaus 遗忘曲线计算记忆衰减（priority = importance × exp(-Δt/half_life)），
+    归档 priority < 阈值的记忆（archived=1），归档后不再注入对话但保留记录。
+    与 Java MemoryForgetJob、Go aiMemoryForget 对齐。
+
+    CRON 建议: 0 0 3 * * ? （每天凌晨 3 点）
+    """
+    from app.config import settings
+    from app.repository.ai_memory_repository import ai_memory_repository
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            count = await ai_memory_repository.archive_forgotten(
+                db,
+                threshold=settings.AI_MEMORY_FORGET_THRESHOLD,
+                half_life_days=settings.AI_MEMORY_HALF_LIFE_DAYS,
+            )
+        msg = f"记忆遗忘归档完成: 已归档={count}"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="aiMemoryReflection")
+async def ai_memory_reflection() -> str:
+    """
+    记忆反思整合
+
+    遍历所有拥有活跃记忆的用户，回顾其近 7 天情景记忆，
+    调用 LLM 分析规律并生成更高层次的抽象洞察（source=reflection）。
+    与 Java MemoryReflectionJob、Go aiMemoryReflection 对齐。
+
+    CRON 建议: 0 0 4 * * ? （每天凌晨 4 点）
+    """
+    from app.config import settings
+    from app.repository.ai_memory_repository import ai_memory_repository
+    from app.service.ai.memory_extraction import reflect_and_consolidate
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            user_ids = await ai_memory_repository.get_active_user_ids(db)
+        total = 0
+        for user_id in user_ids:
+            try:
+                async with get_db_session() as db:
+                    total += await reflect_and_consolidate(db, user_id, settings.AI_DEFAULT_MODEL)
+            except Exception as e:
+                logger.warning("记忆反思失败 user_id=%s: %s", user_id, e)
+        msg = f"记忆反思整合完成: 处理用户={len(user_ids)}, 新增洞察={total}"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="aiMemoryMerge")
+async def ai_memory_merge() -> str:
+    """
+    记忆合并去重
+
+    遍历所有拥有活跃记忆的用户，检测同类型语义重复记忆（相似度 > 0.9），
+    调用 LLM 合并为更完整的单一条目，旧记忆软删除。
+    与 Java MemoryMergeJob、Go aiMemoryMerge 对齐。
+
+    CRON 建议: 0 0 5 * * ? （每天凌晨 5 点）
+    """
+    from app.config import settings
+    from app.repository.ai_memory_repository import ai_memory_repository
+    from app.service.ai.memory_extraction import merge_duplicates
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            user_ids = await ai_memory_repository.get_active_user_ids(db)
+        total = 0
+        for user_id in user_ids:
+            try:
+                async with get_db_session() as db:
+                    total += await merge_duplicates(db, user_id, settings.AI_DEFAULT_MODEL)
+            except Exception as e:
+                logger.warning("记忆合并失败 user_id=%s: %s", user_id, e)
+        msg = f"记忆合并去重完成: 处理用户={len(user_ids)}, 合并={total}"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="purgeDeletedMemories")
+async def purge_deleted_memories() -> str:
+    """
+    记忆物理清理（软删超过 30 天）
+
+    清理 deleted=1 且 delete_time < NOW() - 30 天的记忆（物理 DELETE），
+    与软删恢复窗口（30 天）对齐，超期记忆不再可恢复。
+    与 Java MemoryPurgeJob、Go purgeDeletedMemories 对齐。
+
+    CRON 建议: 0 0 6 * * ? （每天凌晨 6 点）
+    """
+    from app.models.entity.sys_ai_memory import MEMORY_RECOVERY_WINDOW_DAYS
+    from app.repository.ai_memory_repository import ai_memory_repository
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        before_date = datetime.now() - timedelta(days=MEMORY_RECOVERY_WINDOW_DAYS)
+        async with get_db_session() as db:
+            ids = await ai_memory_repository.list_deleted_for_purge(db, before_date)
+            if ids:
+                await ai_memory_repository.delete_by_ids(db, ids)
+        msg = f"记忆物理清理完成: 已清理={len(ids)}"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="archiveInactiveConversations")
+async def archive_inactive_conversations() -> str:
+    """
+    AI 会话自动归档
+
+    扫描 status=1(活跃) 且 last_message_at < NOW() - 30 天的会话，
+    更新 status=2(已归档)，并清除相关用户的会话列表缓存。
+    与 Java ArchiveInactiveConversationJob、Go archiveInactiveConversations 对齐。
+
+    CRON 建议: 0 0 0 * * ? （每天凌晨 0 点）
+    """
+    from app.dependencies.redis import get_redis_client
+    from app.repository.ai_conversation_repository import ai_conversation_repository
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        before_date = datetime.now() - timedelta(days=30)
+        async with get_db_session() as db:
+            archived = await ai_conversation_repository.archive_inactive(db, before_date)
+
+        user_ids = {uid for _, uid in archived}
+        if user_ids:
+            redis = await get_redis_client()
+            for uid in user_ids:
+                await redis.delete(f"ai:conv:list:{uid}")
+
+        msg = f"AI 会话自动归档完成: 已归档={len(archived)}, 涉及用户={len(user_ids)}"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="purgeDeletedConversations")
+async def purge_deleted_conversations() -> str:
+    """
+    AI 会话物理清理（软删超过 30 天）
+
+    清理 deleted=1 且 delete_time < NOW() - 30 天的会话（物理 DELETE），
+    级联物理删除其消息记录（sys_ai_message）。与软删恢复窗口（30 天）对齐。
+
+    CRON 建议: 0 30 1 * * ? （每天凌晨 1:30）
+    """
+    from app.repository.ai_conversation_repository import ai_conversation_repository
+    from app.repository.ai_message_repository import ai_message_repository
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        before_date = datetime.now() - timedelta(days=30)
+        async with get_db_session() as db:
+            conv_ids = await ai_conversation_repository.list_soft_deleted_before(db, before_date)
+            if conv_ids:
+                await ai_message_repository.delete_by_conversations(db, conv_ids)
+                await ai_conversation_repository.delete_by_ids(db, conv_ids)
+                await db.commit()
+
+        msg = f"AI 会话物理清理完成: 已清理会话={len(conv_ids)}"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+# ==================== AI 供应商管理定时任务 ====================
+
+
+@xxl_handler.register(name="flushProviderKeyLastUsed")
+async def flush_provider_key_last_used() -> str:
+    """
+    供应商 API Key 最近使用信息批量刷库
+
+    每分钟读取 Redis 缓冲（ai:provider_key:{id}:last_used），批量调用
+    batch_update_last_used 刷新 last_used_at/last_used_by，并清除已落库的缓冲。
+    与 Java ProviderKeyLastUsedFlushJob、Go flushProviderKeyLastUsed 对齐。
+
+    CRON 建议: 0 * * * * ? （每分钟）
+    """
+    from app.dependencies.redis import get_redis_client
+    from app.repository.ai_provider_key_repository import ai_provider_key_repository
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        import json as _json
+
+        redis = await get_redis_client()
+        if redis is None:
+            return "供应商Key最近使用刷库: Redis 不可用"
+
+        keys = []
+        async for key in redis.scan_iter(match="ai:provider_key:*:last_used"):
+            keys.append(key)
+
+        updates: list[tuple[int, datetime, int]] = []
+        for key in keys:
+            # key 形如 ai:provider_key:{key_id}:last_used
+            try:
+                key_id = int(key.split(":")[2])
+                raw = await redis.get(key)
+                if not raw:
+                    continue
+                data = _json.loads(raw)
+                used_at = datetime.fromisoformat(data["last_used_at"])
+                updates.append((key_id, used_at, data.get("last_used_by")))
+            except (ValueError, KeyError, TypeError):
+                logger.warning("跳过非法 last_used 缓冲: %s", key)
+
+        if not updates:
+            return "供应商Key最近使用刷库: 无待刷缓冲"
+
+        async with get_db_session() as db:
+            await ai_provider_key_repository.batch_update_last_used(db, updates)
+            await db.commit()
+
+        # 落库成功后清除缓冲
+        await redis.delete(*keys)
+        msg = f"供应商Key最近使用刷库完成: 已刷 {len(updates)} 条"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+# ==================== AI 计费管理定时任务 ====================
+
+
+@xxl_handler.register(name="generateMonthlyBill")
+async def generate_monthly_bill() -> str:
+    """
+    月结账单生成
+
+    每月 1 日扫描上月有 AI 消耗/流水记录的用户，生成上月账单并缓存到 Redis。
+    与 Java BillGeneratorTask、Go generateMonthlyBill 对齐。
+
+    CRON 建议: 0 30 0 1 * ? （每月 1 日凌晨 00:30）
+    """
+    from datetime import date
+
+    from app.repository.ai_billing_repository import ai_billing_repository
+    from app.repository.ai_credit_log_repository import ai_credit_log_repository
+    from app.service.billing.bill_service import BillService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        # 上月账期
+        today = date.today()
+        first_of_this_month = today.replace(day=1)
+        if first_of_this_month.month == 1:
+            last_month = first_of_this_month.replace(year=first_of_this_month.year - 1, month=12)
+        else:
+            last_month = first_of_this_month.replace(month=first_of_this_month.month - 1)
+        month = last_month.strftime("%Y-%m")
+        start = datetime(last_month.year, last_month.month, 1)
+        end = start + timedelta(days=32)
+        end = end.replace(day=1) - timedelta(seconds=1)
+
+        async with get_db_session() as db:
+            billing_users = await ai_billing_repository.distinct_user_ids(db, start, end)
+            log_users = await ai_credit_log_repository.distinct_user_ids_by_source(
+                db, "consume", start, end
+            )
+        user_ids = sorted(set(billing_users) | set(log_users))
+
+        generated = 0
+        for user_id in user_ids:
+            try:
+                async with get_db_session() as db:
+                    await BillService.generate_monthly_bill(db, user_id, month)
+                    generated += 1
+            except Exception as e:
+                logger.warning("月结账单生成失败 user_id=%s month=%s: %s", user_id, month, e)
+
+        msg = f"月结账单生成完成: 账期={month}, 用户数={len(user_ids)}, 成功={generated}"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+# ==================== AI 定时调度定时任务 ====================
+
+
+@xxl_handler.register(name="aiScheduleTrigger")
+async def ai_schedule_trigger() -> str:
+    """
+    定时任务扫描触发（无人值守执行）
+
+    扫描到期（enabled=1 AND status=1 AND next_trigger_time <= NOW）的 AI 定时任务，
+    逐条调用 ScheduleExecutor.scan_and_trigger 走完整执行链路（幂等防重入/并发控制/
+    配额保护/失败重试/连续失败熔断/执行历史）。与 Java AIScheduleTriggerJob、
+    Go aiScheduleTrigger 对齐。
+
+    CRON 建议: 0 * * * * ? （每分钟）
+    """
+    from app.dependencies.redis import get_redis_client
+    from app.service.ai.ai_schedule_executor import schedule_executor
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        redis = await get_redis_client()
+        if redis is None:
+            return "定时任务扫描触发: Redis 不可用"
+
+        async with get_db_session() as db:
+            summary = await schedule_executor.scan_and_trigger(db, redis)
+        msg = (
+            f"定时任务扫描触发完成: 扫描={summary['scanned']}, "
+            f"触发={summary['triggered']}, 跳过={summary['skipped']}, 失败={summary['failed']}"
+        )
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="aiScheduleRunCleanup")
+async def ai_schedule_run_cleanup() -> str:
+    """
+    定时任务执行历史清理（保留 30 天）
+
+    物理清理 create_time < NOW() - 30 天的执行历史记录（sys_ai_schedule_run），
+    含成功/失败/跳过与熔断记录一并归档删除。与 Java AIScheduleRunCleanupJob、
+    Go aiScheduleRunCleanup 对齐。
+
+    CRON 建议: 0 0 4 * * ? （每天凌晨 4 点）
+    """
+    from app.repository.ai_schedule_run_repository import ai_schedule_run_repository
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        before = datetime.now() - timedelta(days=30)
+        async with get_db_session() as db:
+            deleted = await ai_schedule_run_repository.cleanup_before(db, before)
+            await db.commit()
+
+        msg = f"定时任务执行历史清理完成: 已清理={deleted}（30 天前记录）"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="clearVipGiftExpire")
+async def clear_vip_gift_expire() -> str:
+    """
+    VIP 赠送积分月末清零
+
+    每月最后一天 23:59 统计当月 VIP 赠送（source=vip_gift）未用部分，
+    从余额中清零并记录流水（source=vip_gift_expire）。
+    与 Java VipGiftClearJob、Go clearVipGiftExpire 对齐。
+
+    CRON 建议: 0 59 23 L * ? （每月最后一天 23:59）
+    """
+    from app.repository.ai_credit_log_repository import ai_credit_log_repository
+    from app.service.billing.balance_service import balance_service
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        now = datetime.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month_end = now.replace(day=28, hour=23, minute=59, second=59, microsecond=999999)
+        month_end = (month_end + timedelta(days=4)).replace(day=1) - timedelta(seconds=1)
+
+        async with get_db_session() as db:
+            gift_users = await ai_credit_log_repository.distinct_user_ids_by_source(
+                db, "vip_gift", month_start, month_end
+            )
+
+        cleared = 0
+        for user_id in gift_users:
+            try:
+                async with get_db_session() as db:
+                    # 当月赠送总额
+                    by_source = await ai_credit_log_repository.sum_amount_by_user_and_source(
+                        db, user_id, month_start, month_end
+                    )
+                    gift_total = int(by_source.get("vip_gift", 0))
+                    balance = int(await balance_service.get_balance(db, user_id))
+                    expire_amount = min(gift_total, balance)
+                    if expire_amount <= 0:
+                        continue
+                    # 扣减（amount <= 余额不会触发欠费标记）
+                    await balance_service.deduct(db, user_id, expire_amount)
+                    balance_after = int(await balance_service.get_balance(db, user_id))
+                    await ai_credit_log_repository.create_log(
+                        db,
+                        user_id=user_id,
+                        source="vip_gift_expire",
+                        amount=-expire_amount,
+                        balance_after=balance_after,
+                        reason="VIP 赠送积分月末清零",
+                    )
+                    cleared += 1
+            except Exception as e:
+                logger.warning("VIP赠送清零失败 user_id=%s: %s", user_id, e)
+
+        msg = f"VIP赠送积分月末清零完成: 涉及用户={len(gift_users)}, 清零={cleared}"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="grantVipMonthlyGift")
+async def grant_vip_monthly_gift() -> str:
+    """
+    VIP 按月赠送积分发放
+
+    每月 1 日扫描配置了 vip_gift_credits（>0）的启用等级，
+    逐等级分页扫描活跃会员并按等级额度发放赠送积分（source=vip_gift）。
+    与后端实现 §5.3 / §9 对齐（Java/Go 对齐时任务名 grantVipMonthlyGift）。
+
+    CRON 建议: 0 0 0 1 * ? （每月 1 日凌晨 0 点）
+    """
+    from app.repository.member_benefit_repository import member_benefit_repository
+    from app.repository.member_repository import member_repository
+    from app.service.billing.recharge_service import RechargeService
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        async with get_db_session() as db:
+            benefits = await member_benefit_repository.list_all(db)
+
+        # 待发放等级：启用且配置了赠送额度
+        gift_levels = [
+            b for b in benefits if b.status == 1 and (b.vip_gift_credits or 0) > 0
+        ]
+        granted = 0
+        for benefit in gift_levels:
+            amount = int(benefit.vip_gift_credits)
+            offset = 0
+            while True:
+                async with get_db_session() as db:
+                    members = await member_repository.list_active_by_level(
+                        db, benefit.level_code, offset=offset, limit=500
+                    )
+                if not members:
+                    break
+                for member in members:
+                    try:
+                        async with get_db_session() as db:
+                            await RechargeService.grant_vip_monthly_gift(
+                                db, member.user_id, amount
+                            )
+                            granted += 1
+                    except Exception as e:
+                        logger.warning(
+                            "VIP月度赠送失败 user_id=%s level=%s: %s",
+                            member.user_id,
+                            benefit.level_code,
+                            e,
+                        )
+                offset += len(members)
+
+        msg = f"VIP月度赠送完成: 等级数={len(gift_levels)}, 发放用户数={granted}"
+        logger.debug(msg)
         return msg
     finally:
         set_current_user_id(None)

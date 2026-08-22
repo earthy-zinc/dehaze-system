@@ -1,7 +1,6 @@
 """参数预设 Repository"""
-from typing import Optional
 
-from sqlalchemy import select, or_, func
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_preset import SysPreset
@@ -15,8 +14,8 @@ class PresetRepository(BaseRepository[SysPreset]):
         self,
         db: AsyncSession,
         user_id: int,
-        algorithm_id: Optional[int] = None,
-        is_system: Optional[bool] = None,
+        algorithm_id: int | None = None,
+        is_system: bool | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysPreset], int]:
@@ -49,7 +48,9 @@ class PresetRepository(BaseRepository[SysPreset]):
         result = await db.execute(stmt)
         return list(result.scalars().all()), total
 
-    async def get_by_user_and_name(self, db: AsyncSession, user_id: int, name: str) -> Optional[SysPreset]:
+    async def get_by_user_and_name(
+        self, db: AsyncSession, user_id: int, name: str
+    ) -> SysPreset | None:
         """按用户和名称查找预设"""
         stmt = select(SysPreset).where(
             SysPreset.user_id == user_id,

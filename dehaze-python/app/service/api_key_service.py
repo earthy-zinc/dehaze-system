@@ -2,14 +2,40 @@ import hashlib
 import secrets
 from datetime import datetime
 
-from fastapi import HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
-from app.dependencies.auth import UserContext
+from app.core.exceptions import BusinessException
 from app.models.entity.api_key import SysApiKey
-from app.repository.user_repository import user_repository
+from app.repository.ai_model_repository import ai_model_repository
+from app.repository.api_key_repository import api_key_repository
+
+
+def _to_result(entity: SysApiKey, raw_key: str | None = None) -> dict:
+    return {
+        "id": entity.id,
+        "name": entity.name,
+        "apiKey": raw_key,
+        "keyPrefix": entity.key_prefix,
+        "status": entity.status,
+        "expiresAt": entity.expires_at,
+        "lastUsedAt": entity.last_used_at,
+        "createTime": entity.create_time,
+        "dailyQuota": entity.daily_quota,
+        "monthlyQuota": entity.monthly_quota,
+        "rpmLimit": entity.rpm_limit,
+        "modelWhitelist": entity.model_whitelist,
+    }
+
+
+async def _validate_whitelist(db: AsyncSession, whitelist: list[str] | None) -> None:
+    """校验白名单模型 ID 均存在于启用模型表，非法模型 ID 抛参数异常。"""
+    if not whitelist:
+        return
+    for model_id in whitelist:
+        enabled = await ai_model_repository.list_enabled_by_model_id(db, model_id)
+        if not enabled:
+            raise BusinessException(ResultCode.PARAM_ERROR, f"模型 {model_id} 不存在或未启用")
 
 
 class ApiKeyService:
@@ -19,7 +45,12 @@ class ApiKeyService:
         user_id: int,
         name: str,
         expires_at: datetime | None = None,
+        daily_quota: int | None = None,
+        monthly_quota: int | None = None,
+        rpm_limit: int | None = None,
+        model_whitelist: list[str] | None = None,
     ) -> dict:
+        await _validate_whitelist(db, model_whitelist)
         raw_key = "dhak_" + secrets.token_urlsafe(36)
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         entity = SysApiKey(
@@ -29,104 +60,26 @@ class ApiKeyService:
             key_hash=key_hash,
             status=1,
             expires_at=expires_at,
+            daily_quota=daily_quota or None,
+            monthly_quota=monthly_quota or None,
+            rpm_limit=rpm_limit or None,
+            model_whitelist=model_whitelist or None,
         )
-        db.add(entity)
-        await db.flush()
-        await db.refresh(entity)
-        return {
-            "id": entity.id,
-            "name": entity.name,
-            "apiKey": raw_key,
-            "keyPrefix": entity.key_prefix,
-            "status": entity.status,
-            "expiresAt": entity.expires_at,
-            "lastUsedAt": entity.last_used_at,
-            "createTime": entity.create_time,
-        }
+        entity = await api_key_repository.create(db, entity)
+        return _to_result(entity, raw_key=raw_key)
 
     @staticmethod
     async def list_api_keys(db: AsyncSession, user_id: int) -> list[dict]:
         # 列表只展示未吊销的 key（revoked_at IS NULL），与 Java/Go 一致
-        stmt = (
-            select(SysApiKey)
-            .where(SysApiKey.user_id == user_id, SysApiKey.revoked_at.is_(None))
-            .order_by(SysApiKey.id.desc())
-        )
-        result = await db.execute(stmt)
-        items = result.scalars().all()
-        return [
-            {
-                "id": item.id,
-                "name": item.name,
-                "keyPrefix": item.key_prefix,
-                "status": item.status,
-                "expiresAt": item.expires_at,
-                "lastUsedAt": item.last_used_at,
-                "createTime": item.create_time,
-            }
-            for item in items
-        ]
+        items = await api_key_repository.list_active_by_user(db, user_id)
+        return [_to_result(item) for item in items]
 
     @staticmethod
     async def delete_api_key(db: AsyncSession, user_id: int, key_id: int) -> bool:
         """吊销 API 密钥：设置 revoked_at，永久保留 hash 以拒绝已泄露的旧密钥。"""
-        stmt = select(SysApiKey).where(
-            SysApiKey.id == key_id, SysApiKey.user_id == user_id)
-        result = await db.execute(stmt)
-        entity = result.scalar_one_or_none()
+        entity = await api_key_repository.get_active_by_id_and_user(db, key_id, user_id)
         if not entity:
             return False
-        entity.revoked_at = datetime.now()
-        await db.flush()
+        await api_key_repository.revoke(db, entity)
         return True
 
-    @staticmethod
-    async def authenticate_by_key(db: AsyncSession, raw_key: str) -> UserContext:
-        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-        # 仅匹配未吊销的 key（revoked_at IS NULL）
-        stmt = select(SysApiKey).where(
-            SysApiKey.key_hash == key_hash,
-            SysApiKey.revoked_at.is_(None),
-        )
-        result = await db.execute(stmt)
-        api_key = result.scalar_one_or_none()
-        if not api_key or api_key.status != 1:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=ResultCode.TOKEN_INVALID.msg,
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        if api_key.expires_at is not None and api_key.expires_at <= datetime.now():
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=ResultCode.TOKEN_INVALID.msg,
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        user = await user_repository.get_by_id(db, api_key.user_id)
-        if not user or user.status != 1:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=ResultCode.ACCESS_UNAUTHORIZED.msg,
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        roles = await user_repository.get_user_role_codes(db, user.id)
-        from app.repository.role_repository import role_repository
-        from app.service.menu_service import MenuService
-        from app.dependencies.redis import get_redis_client
-        redis = await get_redis_client()
-        data_scope = await role_repository.get_maximum_data_scope(db, roles)
-        perms = await MenuService.list_role_perms(db, redis, set(roles))
-
-        api_key.last_used_at = datetime.now()
-        await db.flush()
-
-        return UserContext(
-            id=user.id,
-            username=user.username or "",
-            dept_id=user.dept_id,
-            data_scope=data_scope,
-            roles=roles,
-            permissions=list(perms),
-        )

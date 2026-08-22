@@ -5,8 +5,7 @@ import shutil
 import sys
 import threading
 from contextvars import ContextVar
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from pythonjsonlogger.json import JsonFormatter as BaseJsonFormatter
 
@@ -17,8 +16,9 @@ _request_ip_var: ContextVar[str] = ContextVar("request_ip", default="")
 _request_user_agent_var: ContextVar[str] = ContextVar("request_user_agent", default="")
 
 
-def set_request_context(trace_id: str = "", method: str = "", path: str = "",
-                        ip: str = "", user_agent: str = "") -> None:
+def set_request_context(
+    trace_id: str = "", method: str = "", path: str = "", ip: str = "", user_agent: str = ""
+) -> None:
     """请求中间件在入口设置当前请求上下文（traceId/method/path/ip/userAgent）。
 
     JsonFormatter 会把这些值自动注入到该请求期间产生的每条日志，使任意 logger
@@ -48,7 +48,8 @@ class JsonFormatter(BaseJsonFormatter):
     def add_fields(self, log_data, record, message_dict):
         super().add_fields(log_data, record, message_dict)
         from app.config import settings
-        log_data["timestamp"] = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat()
+
+        log_data["timestamp"] = datetime.fromtimestamp(record.created, tz=UTC).isoformat()
         log_data["level"] = record.levelname
         log_data["logger"] = record.name
         log_data["service"] = settings.APP_NAME
@@ -68,6 +69,7 @@ class JsonFormatter(BaseJsonFormatter):
             log_data["user_agent"] = ua
         # user_id 由认证层写入 _current_user_id（app.models.base），请求内日志自动带上
         from app.models.base import _current_user_id
+
         uid = _current_user_id.get()
         if uid is not None:
             log_data["user_id"] = uid
@@ -89,15 +91,16 @@ class DailyDirectoryFileHandler(logging.FileHandler):
     与 Go/Java 端 logs/{yyyy-MM-dd}/{级别}.log 结构对齐。
     """
 
-    def __init__(self, log_dir, filename, retention_days=30, max_bytes=0, encoding='utf-8'):
+    def __init__(self, log_dir, filename, retention_days=30, max_bytes=0, encoding="utf-8"):
         self.log_dir = log_dir
         self.filename = filename
         self.retention_days = retention_days
         self.max_bytes = max_bytes
         self.current_date = datetime.now().strftime("%Y-%m-%d")
         os.makedirs(os.path.join(self.log_dir, self.current_date), exist_ok=True)
-        super().__init__(self._path_for_date(self.current_date), mode='a',
-                         encoding=encoding, delay=True)
+        super().__init__(
+            self._path_for_date(self.current_date), mode="a", encoding=encoding, delay=True
+        )
 
     def _path_for_date(self, date_str):
         return os.path.join(self.log_dir, date_str, self.filename)
@@ -169,7 +172,7 @@ class DailyDirectoryFileHandler(logging.FileHandler):
                     continue
                 name = entry.name
                 if name.startswith(prefix) and name.endswith(".log"):
-                    num = name[len(prefix):-len(".log")]
+                    num = name[len(prefix) : -len(".log")]
                     if num.isdigit():
                         n = max(n, int(num))
         except OSError:
@@ -194,7 +197,7 @@ class DailyDirectoryFileHandler(logging.FileHandler):
                 shutil.rmtree(entry.path, ignore_errors=True)
 
 
-def setup_logging(use_json_format: Optional[bool] = None):
+def setup_logging(use_json_format: bool | None = None):
     """
     设置日志记录系统
 
@@ -241,8 +244,7 @@ def setup_logging(use_json_format: Optional[bool] = None):
         os.makedirs(log_dir, exist_ok=True)
 
         info_handler = DailyDirectoryFileHandler(
-            log_dir, "info.log", retention_days=retention_days,
-            max_bytes=log_max_bytes
+            log_dir, "info.log", retention_days=retention_days, max_bytes=log_max_bytes
         )
         if log_archive_on_startup:
             info_handler.archive_existing()
@@ -252,8 +254,7 @@ def setup_logging(use_json_format: Optional[bool] = None):
         root_logger.addHandler(info_handler)
 
         error_handler = DailyDirectoryFileHandler(
-            log_dir, "error.log", retention_days=retention_days,
-            max_bytes=log_max_bytes
+            log_dir, "error.log", retention_days=retention_days, max_bytes=log_max_bytes
         )
         if log_archive_on_startup:
             error_handler.archive_existing()
@@ -288,8 +289,7 @@ class ClientLogFormatter(logging.Formatter):
 
     def format(self, record):
         data = dict(getattr(record, "client_fields", None) or {})
-        data.setdefault("timestamp",
-                        datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat())
+        data.setdefault("timestamp", datetime.fromtimestamp(record.created, tz=UTC).isoformat())
         data.setdefault("level", record.levelname)
         data.setdefault("message", record.getMessage())
         return json.dumps(data, ensure_ascii=False)
@@ -308,9 +308,11 @@ def get_client_logger() -> logging.Logger:
         if _client_logger is not None:
             return _client_logger
         from app.config import settings
+
         os.makedirs(settings.LOG_DIR, exist_ok=True)
         handler = DailyDirectoryFileHandler(
-            settings.LOG_DIR, "client.log",
+            settings.LOG_DIR,
+            "client.log",
             retention_days=settings.LOG_RETENTION_DAYS,
             max_bytes=settings.LOG_MAX_BYTES,
         )
@@ -322,6 +324,3 @@ def get_client_logger() -> logging.Logger:
         logger.addHandler(handler)
         _client_logger = logger
         return logger
-
-
-logger = logging.getLogger(__name__)

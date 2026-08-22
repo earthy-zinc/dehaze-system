@@ -5,11 +5,13 @@
 - redis_operation_with_fallback: 优雅降级入口（集成熔断器 + 短暂重试 + fallback）
 - Prometheus 指标：熔断器状态、降级触发次数、重试次数
 """
+
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from enum import Enum
-from typing import Awaitable, Callable, Optional, TypeVar
+from typing import TypeVar
 
 from prometheus_client import Counter, Gauge
 from redis.exceptions import ConnectionError, RedisError, TimeoutError
@@ -45,10 +47,11 @@ REDIS_RETRY_TOTAL = Counter(
 
 # ── 熔断器 ──────────────────────────────────────────────────
 
+
 class CircuitState(Enum):
-    CLOSED = 0      # 正常通行
-    OPEN = 1        # 熔断，快速失败
-    HALF_OPEN = 2   # 试探恢复
+    CLOSED = 0  # 正常通行
+    OPEN = 1  # 熔断，快速失败
+    HALF_OPEN = 2  # 试探恢复
 
 
 class RedisCircuitBreaker:
@@ -121,7 +124,8 @@ class RedisCircuitBreaker:
         if old_state != new_state:
             logger.info(
                 "Redis 熔断器状态变更: %s → %s",
-                old_state.name, new_state.name,
+                old_state.name,
+                new_state.name,
             )
         if new_state == CircuitState.CLOSED:
             self._failure_count = 0
@@ -136,11 +140,12 @@ _circuit_breaker = RedisCircuitBreaker(
 
 # ── 降级入口 ──────────────────────────────────────────────
 
+
 async def _try_fallback(
-    fallback: Optional[Callable[[], Awaitable[T]]],
-    default: Optional[T],
+    fallback: Callable[[], Awaitable[T]] | None,
+    default: T | None,
     context: str,
-) -> Optional[T]:
+) -> T | None:
     """尝试执行降级操作，失败则返回默认值"""
     if fallback:
         try:
@@ -152,10 +157,10 @@ async def _try_fallback(
 
 async def redis_operation_with_fallback(
     operation: Callable[[], Awaitable[T]],
-    fallback: Optional[Callable[[], Awaitable[T]]] = None,
+    fallback: Callable[[], Awaitable[T]] | None = None,
     operation_name: str = "redis_operation",
-    default: Optional[T] = None,
-) -> Optional[T]:
+    default: T | None = None,
+) -> T | None:
     """
     执行 Redis 操作，集成熔断器 + 短暂重试 + 优雅降级
 
@@ -180,7 +185,7 @@ async def redis_operation_with_fallback(
         return await _try_fallback(fallback, default, operation_name)
 
     # 带重试的执行（仅对连接级异常重试）
-    last_exc: Optional[Exception] = None
+    last_exc: Exception | None = None
     for attempt in range(_MAX_RETRIES + 1):
         try:
             result = await operation()
@@ -192,7 +197,10 @@ async def redis_operation_with_fallback(
                 REDIS_RETRY_TOTAL.labels(operation=operation_name).inc()
                 logger.warning(
                     "Redis 连接异常，重试 [%s] attempt=%d/%d: %s",
-                    operation_name, attempt + 1, _MAX_RETRIES, e,
+                    operation_name,
+                    attempt + 1,
+                    _MAX_RETRIES,
+                    e,
                 )
                 await asyncio.sleep(_RETRY_BACKOFF)
         except RedisError as e:

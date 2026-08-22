@@ -1,30 +1,9 @@
-from datetime import datetime
-from typing import Optional
-
 from pydantic import BaseModel, Field
-
-from app.models.schema.common import BasePageQuery
-
-
-class MemberPageQuery(BasePageQuery):
-    keywords: Optional[str] = None
-    levelCode: Optional[str] = None
-    status: Optional[int] = Field(default=None, ge=0, le=1)
-    expireTimeStart: Optional[str] = None
-    expireTimeEnd: Optional[str] = None
-    growthMin: Optional[int] = None
-    growthMax: Optional[int] = None
-
-
-class GrowthLogQuery(BasePageQuery):
-    changeType: Optional[str] = None
-    startTime: Optional[str] = None
-    endTime: Optional[str] = None
 
 
 class MemberLevelAdjustForm(BaseModel):
     levelCode: str = Field(..., min_length=1, description="目标等级")
-    expireTime: Optional[str] = None
+    expireTime: str | None = None
     reason: str = Field(default="", description="调整原因")
 
 
@@ -35,104 +14,22 @@ class MemberGrowthAdjustForm(BaseModel):
 
 class MemberStatusForm(BaseModel):
     status: int = Field(..., ge=0, le=1, description="状态(1:正常;0:冻结)")
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class BenefitForm(BaseModel):
-    levelName: Optional[str] = None
-    growthMin: Optional[int] = Field(default=None, ge=0)
-    growthMax: Optional[int] = Field(default=None, ge=0)
-    monthlyDehazeQuota: Optional[int] = Field(default=None, ge=0)
-    monthlyEvaluateQuota: Optional[int] = Field(default=None, ge=0)
-    historyRetention: Optional[int] = Field(default=None, ge=0)
-    batchLimit: Optional[int] = Field(default=None, ge=0)
-    priority: Optional[int] = Field(default=None, ge=1, le=4)
-    advancedParams: Optional[int] = Field(default=None, ge=0, le=1)
-    hdExport: Optional[int] = Field(default=None, ge=0, le=1)
-    reportExport: Optional[int] = Field(default=None, ge=0, le=1)
-    batchDownload: Optional[int] = Field(default=None, ge=0, le=1)
-    sort: Optional[int] = Field(default=None, ge=0)
-    status: Optional[int] = Field(default=None, ge=0, le=1)
+    levelName: str | None = None
+    growthMin: int | None = Field(default=None, ge=0)
+    growthMax: int | None = Field(default=None, ge=0)
+    monthlyDehazeQuota: int | None = Field(default=None, ge=0)
+    monthlyEvaluateQuota: int | None = Field(default=None, ge=0)
+    historyRetention: int | None = Field(default=None, ge=0)
+    batchLimit: int | None = Field(default=None, ge=0)
+    priority: int | None = Field(default=None, ge=1, le=4)
+    advancedParams: int | None = Field(default=None, ge=0, le=1)
+    hdExport: int | None = Field(default=None, ge=0, le=1)
+    reportExport: int | None = Field(default=None, ge=0, le=1)
+    batchDownload: int | None = Field(default=None, ge=0, le=1)
+    sort: int | None = Field(default=None, ge=0)
+    status: int | None = Field(default=None, ge=0, le=1)
 
-
-class BenefitVO(BaseModel):
-    levelCode: str
-    levelName: str
-    growthMin: int
-    growthMax: int
-    monthlyDehazeQuota: int
-    monthlyEvaluateQuota: int
-    historyRetention: int
-    batchLimit: int
-    priority: int
-    advancedParams: int
-    hdExport: int
-    reportExport: int
-    batchDownload: int
-    sort: int
-    status: int
-
-
-class MemberProfileVO(BaseModel):
-    userId: int
-    username: str
-    nickname: Optional[str] = None
-    avatar: Optional[str] = None
-    levelCode: str
-    levelName: str
-    growthValue: int
-    nextLevelGrowth: Optional[int] = None
-    progressPercent: int
-    expireTime: Optional[str] = None
-    monthlyDehazeQuota: int
-    monthlyDehazeUsed: int
-    monthlyEvaluateQuota: int
-    monthlyEvaluateUsed: int
-    benefits: BenefitVO
-    status: int
-
-
-class MemberPageVO(BaseModel):
-    userId: int
-    username: str
-    nickname: Optional[str] = None
-    levelCode: str
-    levelName: str
-    growthValue: int
-    monthlyUsed: int
-    expireTime: Optional[str] = None
-    status: int
-    becomeMemberTime: Optional[str] = None
-
-
-class GrowthLogVO(BaseModel):
-    id: int
-    changeType: str
-    changeValue: int
-    balance: int
-    relatedId: Optional[str] = None
-    reason: Optional[str] = None
-    operatorId: Optional[int] = None
-    createTime: str
-
-
-class SignInResultVO(BaseModel):
-    signDate: str
-    continuousDays: int
-    growthValue: int
-    bonusGrowth: int
-
-
-class SignInCalendarVO(BaseModel):
-    signDates: list[str]
-    continuousDays: int
-    totalDays: int
-
-
-class MemberDetailVO(MemberProfileVO):
-    levelSource: str
-    totalConsumption: int
-    becomeMemberTime: Optional[str] = None
-    frozenReason: Optional[str] = None
-    frozenTime: Optional[str] = None
-    quotaResetMonth: Optional[int] = None

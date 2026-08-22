@@ -1,6 +1,7 @@
 """
 部门导出处理器
 """
+
 from __future__ import annotations
 
 import io
@@ -15,7 +16,6 @@ from app.service.import_export.registry import ExportHandler
 
 
 class DeptExportHandler(ExportHandler):
-
     def get_module(self) -> str:
         return "dept"
 
@@ -61,7 +61,9 @@ class DeptExportHandler(ExportHandler):
             ExportFieldConfig(field="parent_id", label="父部门ID", order=3),
             ExportFieldConfig(field="sort", label="排序", order=4),
             ExportFieldConfig(field="status_label", label="状态", order=5),
-            ExportFieldConfig(field="create_time", label="创建时间", order=6, date_format="%Y-%m-%d %H:%M:%S"),
+            ExportFieldConfig(
+                field="create_time", label="创建时间", order=6, date_format="%Y-%m-%d %H:%M:%S"
+            ),
         ]
 
 

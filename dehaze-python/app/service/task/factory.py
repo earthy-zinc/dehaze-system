@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -16,7 +15,7 @@ from app.service.task.strategy import TaskStrategy
 
 logger = logging.getLogger(__name__)
 
-_registry: Dict[str, TaskStrategy] = {}
+_registry: dict[str, TaskStrategy] = {}
 
 
 def register_strategy(task_type: str, strategy: TaskStrategy) -> None:

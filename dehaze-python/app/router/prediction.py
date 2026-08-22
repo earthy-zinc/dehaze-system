@@ -7,59 +7,67 @@ GET  /api/v1/prediction/quota    → 查询剩余处理次数
 GET  /api/v1/prediction/logs     → 预测日志列表
 GET  /api/v1/prediction/{taskId} → 查询预测任务状态，根据 status 返回不同字段
 """
+
 import json
 import logging
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.result import Result, success
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.dependencies.auth import get_current_user, UserContext
+from app.core.result import Result, success
 from app.database import get_db
+from app.dependencies.auth import UserContext, get_current_user
 from app.models.enum.log_status import LogStatus
 from app.models.schema.common import PageResult
-from app.repository.pred_eval_log_repository import pred_log_repository
 from app.service.prediction_service import prediction_service
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/prediction", tags=["预测"],
-                   dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/v1/prediction", tags=["预测"], dependencies=[Depends(get_current_user)]
+)
 
 
 class PredictionRequest(BaseModel):
     """预测请求"""
+
     algorithmId: int = Field(description="算法ID")
-    fileId: Optional[int] = Field(default=None, description="原始图片文件ID")
-    imageUrl: Optional[str] = Field(default=None, description="原始图片URL（与fileId二选一）")
-    params: Optional[str] = Field(default=None, description="预测参数(JSON)")
-    recommendedBy: Optional[str] = Field(default=None, description="推荐来源（来自推荐管理模块时填写）")
+    fileId: int | None = Field(default=None, description="原始图片文件ID")
+    imageUrl: str | None = Field(default=None, description="原始图片URL（与fileId二选一）")
+    params: str | None = Field(default=None, description="预测参数(JSON)")
+    recommendedBy: int | None = Field(
+        default=None, description="推荐来源：推荐记录ID（推荐管理模块返回的 recommendationId）"
+    )
 
 
 class BatchPredictionRequest(BaseModel):
     """批量预测请求"""
+
     algorithmId: int = Field(description="算法ID")
     items: list[dict] = Field(description="批量图片列表，每项含 fileId/imageUrl/params 等")
-    recommendedBy: Optional[str] = Field(default=None, description="推荐来源")
+    recommendedBy: int | None = Field(default=None, description="推荐来源：推荐记录ID")
 
 
 class PredictionResponse(BaseModel):
     """预测响应：POST 返回 logId+status；GET 根据 status 返回不同字段"""
-    logId: Optional[int] = Field(default=None, description="预测日志ID")
+
+    logId: int | None = Field(default=None, description="预测日志ID")
     status: int = Field(description="任务状态(1:处理中;2:已完成;3:失败)")
-    resultUrl: Optional[str] = Field(default=None, description="处理后的图片URL（completed 时返回）")
-    resultThumbnailUrl: Optional[str] = Field(default=None, description="缩略图URL（completed 时返回）")
+    resultUrl: str | None = Field(default=None, description="处理后的图片URL（completed 时返回）")
+    resultThumbnailUrl: str | None = Field(
+        default=None, description="缩略图URL（completed 时返回）"
+    )
     time: int = Field(default=0, description="处理时间(毫秒)")
-    errorMessage: Optional[str] = Field(default=None, description="失败错误信息（failed 时返回）")
+    errorMessage: str | None = Field(default=None, description="失败错误信息（failed 时返回）")
 
 
 class BatchPredictionResult(BaseModel):
     """批量预测响应包装"""
+
     total: int = Field(description="本次提交的图片总数")
     results: list[PredictionResponse] = Field(description="每张图的预测结果列表")
 
@@ -80,14 +88,18 @@ async def predict(
 
     image_url = body.imageUrl
     if body.fileId is None and not image_url:
-        raise BusinessException(ResultCode.PARAM_IS_NULL, "图片来源不能为空，请提供 fileId 或 imageUrl")
+        raise BusinessException(
+            ResultCode.PARAM_IS_NULL, "图片来源不能为空，请提供 fileId 或 imageUrl"
+        )
 
     params = None
     if body.params:
         try:
             params = json.loads(body.params)
         except json.JSONDecodeError:
-            raise BusinessException(ResultCode.PARAM_ERROR, f"参数格式错误: {body.params}")
+            raise BusinessException(
+                ResultCode.PARAM_ERROR, f"参数格式错误: {body.params}"
+            ) from None
 
     result = await prediction_service.predict(
         algorithm_id=body.algorithmId,
@@ -98,41 +110,76 @@ async def predict(
         skip_quota_check=user.is_m2m,
     )
 
-    return success(PredictionResponse(
-        logId=result.get("logId"),
-        status=result.get("status", LogStatus.PROCESSING.value),
-        resultUrl=result.get("resultUrl"),
-        resultThumbnailUrl=result.get("resultThumbnailUrl"),
-        time=result.get("time", 0),
-    ))
+    return success(
+        PredictionResponse(
+            logId=result.get("logId"),
+            status=result.get("status", LogStatus.PROCESSING.value),
+            resultUrl=result.get("resultUrl"),
+            resultThumbnailUrl=result.get("resultThumbnailUrl"),
+            time=result.get("time", 0),
+        )
+    )
 
 
 class PredictionLogVO(BaseModel):
     """预测日志VO"""
+
     id: int = Field(description="日志ID")
-    algorithmId: int = Field(validation_alias="algorithm_id", serialization_alias="algorithmId", description="算法ID")
-    originMd5: Optional[str] = Field(default=None, validation_alias="origin_md5", serialization_alias="originMd5", description="原图MD5")
-    originUrl: Optional[str] = Field(default=None, validation_alias="origin_url", serialization_alias="originUrl", description="原图URL")
-    predMd5: Optional[str] = Field(default=None, validation_alias="pred_md5", serialization_alias="predMd5", description="预测结果MD5")
-    predUrl: Optional[str] = Field(default=None, validation_alias="pred_url", serialization_alias="predUrl", description="预测结果URL")
-    status: Optional[int] = Field(default=None, description="任务状态(1:处理中;2:已完成;3:失败)")
-    errorMessage: Optional[str] = Field(default=None, validation_alias="error_message", serialization_alias="errorMessage", description="失败错误信息")
-    time: Optional[int] = Field(default=None, description="推理耗时(秒)")
-    createTime: Optional[datetime] = Field(default=None, validation_alias="create_time", serialization_alias="createTime", description="创建时间")
+    algorithmId: int = Field(
+        validation_alias="algorithm_id", serialization_alias="algorithmId", description="算法ID"
+    )
+    originMd5: str | None = Field(
+        default=None,
+        validation_alias="origin_md5",
+        serialization_alias="originMd5",
+        description="原图MD5",
+    )
+    originUrl: str | None = Field(
+        default=None,
+        validation_alias="origin_url",
+        serialization_alias="originUrl",
+        description="原图URL",
+    )
+    predMd5: str | None = Field(
+        default=None,
+        validation_alias="pred_md5",
+        serialization_alias="predMd5",
+        description="预测结果MD5",
+    )
+    predUrl: str | None = Field(
+        default=None,
+        validation_alias="pred_url",
+        serialization_alias="predUrl",
+        description="预测结果URL",
+    )
+    status: int | None = Field(default=None, description="任务状态(1:处理中;2:已完成;3:失败)")
+    errorMessage: str | None = Field(
+        default=None,
+        validation_alias="error_message",
+        serialization_alias="errorMessage",
+        description="失败错误信息",
+    )
+    time: int | None = Field(default=None, description="推理耗时(秒)")
+    createTime: datetime | None = Field(
+        default=None,
+        validation_alias="create_time",
+        serialization_alias="createTime",
+        description="创建时间",
+    )
 
     model_config = {"populate_by_name": True}
 
 
 @router.get("/logs", response_model=Result[PageResult[PredictionLogVO]], summary="预测日志列表")
 async def list_prediction_logs(
-    algorithmId: Optional[int] = Query(default=None, description="算法ID筛选"),
+    algorithmId: int | None = Query(default=None, description="算法ID筛选"),
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
 ):
     """分页查询预测日志"""
-    logs, total = await pred_log_repository.get_paginated(
-        db=db,
+    logs, total = await prediction_service.list_logs(
+        db,
         algorithm_id=algorithmId,
         page=pageNum,
         size=pageSize,
@@ -140,13 +187,13 @@ async def list_prediction_logs(
     return success(PageResult(list=logs, total=total))
 
 
-
-
 class QuotaResponse(BaseModel):
     """配额查询响应"""
+
     total: int = Field(description="总配额")
     used: int = Field(description="本月已使用")
     remaining: int = Field(description="本月剩余")
+    resetDate: str = Field(description="配额重置日期（月度配额为下月1日）")
 
 
 @router.get("/quota", response_model=Result[QuotaResponse], summary="查询剩余处理次数")
@@ -175,10 +222,8 @@ async def get_prediction_task(
     try:
         tid = int(task_id)
     except (ValueError, TypeError):
-        raise BusinessException(ResultCode.PARAM_ERROR, f"无效的任务ID: {task_id}")
-    log = await pred_log_repository.get_by_id(db, tid)
-    if not log:
-        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "预测任务不存在")
+        raise BusinessException(ResultCode.PARAM_ERROR, f"无效的任务ID: {task_id}") from None
+    log = await prediction_service.get_log(db, tid)
 
     resp = PredictionResponse(logId=log.id, status=log.status)
     if log.status == LogStatus.COMPLETED.value:
@@ -187,7 +232,34 @@ async def get_prediction_task(
     elif log.status == LogStatus.FAILED.value:
         resp.errorMessage = log.error_message
         resp.time = log.time or 0
+    # CANCELLED(4)：仅返回 logId + status，无结果字段
     return success(resp)
+
+
+@router.post(
+    "/{task_id}/cancel",
+    response_model=Result[PredictionResponse],
+    summary="取消预测任务",
+)
+async def cancel_prediction_task(
+    task_id: str,
+    user: UserContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    取消预测任务（幂等）。
+
+    - 仅"处理中(1)"任务可取消：终止推理、回滚已扣减配额、状态置为"已取消(4)"。
+    - 已完成(2)/已失败(3)/已取消(4)任务返回当前状态，不重复回滚配额。
+    - 任务不存在返回 A0401。
+    """
+    try:
+        tid = int(task_id)
+    except (ValueError, TypeError):
+        raise BusinessException(ResultCode.PARAM_ERROR, f"无效的任务ID: {task_id}") from None
+
+    result = await prediction_service.cancel_task(db, tid, user.id)
+    return success(PredictionResponse(logId=result["logId"], status=result["status"]))
 
 
 @router.post("/batch", response_model=Result[BatchPredictionResult], summary="批量处理")

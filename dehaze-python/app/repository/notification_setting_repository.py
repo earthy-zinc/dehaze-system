@@ -1,5 +1,4 @@
 from datetime import time
-from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -16,10 +15,8 @@ class NotificationSettingRepository(BaseRepository[SysNotificationSetting]):
         self,
         db: AsyncSession,
         user_id: int,
-    ) -> Optional[SysNotificationSetting]:
-        stmt = select(SysNotificationSetting).where(
-            SysNotificationSetting.user_id == user_id
-        )
+    ) -> SysNotificationSetting | None:
+        stmt = select(SysNotificationSetting).where(SysNotificationSetting.user_id == user_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -48,16 +45,6 @@ class NotificationSettingRepository(BaseRepository[SysNotificationSetting]):
             )
         )
         return result.scalar_one_or_none()
-
-    async def create(
-        self,
-        db: AsyncSession,
-        entity: SysNotificationSetting,
-    ) -> SysNotificationSetting:
-        db.add(entity)
-        await db.flush()
-        await db.refresh(entity)
-        return entity
 
 
 notification_setting_repository = NotificationSettingRepository()

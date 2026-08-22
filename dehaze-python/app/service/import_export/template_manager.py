@@ -1,6 +1,7 @@
 """
 导入模板生成器
 """
+
 from __future__ import annotations
 
 import csv
@@ -12,34 +13,33 @@ from app.service.import_export.registry import ImportHandler
 
 
 def generate_template_excel(handler: ImportHandler) -> bytes:
-    fields = handler.get_field_configs()
-    samples = handler.get_template_sample_data()
+    headers, sample_rows = _build_template_data(handler)
     wb = Workbook()
     ws = wb.active
     ws.title = "Sheet1"
-    headers = []
-    for f in fields:
-        prefix = "*" if f.required else ""
-        headers.append(f"{prefix}{f.label}")
     ws.append(headers)
-    for sample in samples:
-        ws.append([sample.get(f.field, "") for f in fields])
+    for row in sample_rows:
+        ws.append(row)
     output = io.BytesIO()
     wb.save(output)
     return output.getvalue()
 
 
 def generate_template_csv(handler: ImportHandler) -> bytes:
-    fields = handler.get_field_configs()
-    samples = handler.get_template_sample_data()
+    headers, sample_rows = _build_template_data(handler)
     output = io.StringIO()
     output.write("\ufeff")
     writer = csv.writer(output)
-    headers = []
-    for f in fields:
-        prefix = "*" if f.required else ""
-        headers.append(f"{prefix}{f.label}")
     writer.writerow(headers)
-    for sample in samples:
-        writer.writerow([sample.get(f.field, "") for f in fields])
+    for row in sample_rows:
+        writer.writerow(row)
     return output.getvalue().encode("utf-8")
+
+
+def _build_template_data(handler: ImportHandler) -> tuple[list[str], list[list]]:
+    fields = handler.get_field_configs()
+    headers = [("*" if f.required else "") + f.label for f in fields]
+    sample_rows = [
+        [sample.get(f.field, "") for f in fields] for sample in handler.get_template_sample_data()
+    ]
+    return headers, sample_rows

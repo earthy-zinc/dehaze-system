@@ -11,10 +11,9 @@ from sqlalchemy import Integer, Select, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.expression import ColumnElement
-from sqlalchemy.sql.sqltypes import Integer as SQLInteger
 
 if TYPE_CHECKING:
-    from sqlalchemy import Column as ColumnType
+    pass
 
 T = TypeVar("T", bound=DeclarativeBase)
 
@@ -46,11 +45,11 @@ class BaseRepository(Generic[T]):
 
     def _get_id_column(self) -> ColumnElement[Integer]:
         """获取 ID 列"""
-        return getattr(self.model, "id")
+        return self.model.id
 
     def _get_deleted_column(self) -> ColumnElement[Integer]:
         """获取 deleted 列"""
-        return getattr(self.model, "deleted")
+        return self.model.deleted
 
     async def get_by_id(
         self,
@@ -62,9 +61,8 @@ class BaseRepository(Generic[T]):
         """根据 ID 查询单条记录"""
         id_column = self._get_id_column()
         stmt = select(self.model).where(id_column == id)
-        if not with_deleted and hasattr(self.model, "deleted"):
-            deleted_column = self._get_deleted_column()
-            stmt = stmt.where(deleted_column == 0)
+        if with_deleted:
+            stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -80,9 +78,8 @@ class BaseRepository(Generic[T]):
             return []
         id_column = self._get_id_column()
         stmt = select(self.model).where(id_column.in_(ids))
-        if not with_deleted and hasattr(self.model, "deleted"):
-            deleted_column = self._get_deleted_column()
-            stmt = stmt.where(deleted_column == 0)
+        if with_deleted:
+            stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -94,9 +91,8 @@ class BaseRepository(Generic[T]):
     ) -> list[T]:
         """查询全部记录"""
         stmt = select(self.model)
-        if not with_deleted and hasattr(self.model, "deleted"):
-            deleted_column = self._get_deleted_column()
-            stmt = stmt.where(deleted_column == 0)
+        if with_deleted:
+            stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -150,7 +146,7 @@ class BaseRepository(Generic[T]):
         paged_stmt = stmt.offset((page - 1) * size).limit(size)
         result = await db.execute(paged_stmt)
         columns = list(result.keys())
-        rows = [dict(zip(columns, row)) for row in result.all()]
+        rows = [dict(zip(columns, row, strict=True)) for row in result.all()]
         return rows, total
 
     @staticmethod
@@ -225,19 +221,15 @@ class BaseRepository(Generic[T]):
         if not ids:
             return 0
         if not hasattr(self.model, "deleted"):
-            raise AttributeError(
-                f"{self.model.__name__} does not have 'deleted' field")
+            raise AttributeError(f"{self.model.__name__} does not have 'deleted' field")
         id_column = self._get_id_column()
         values: dict[str, Any] = {"deleted": 1}
         # Core update 绕过 ORM 事件，需手动填充审计字段
         if hasattr(self.model, "update_by"):
             from app.models.base import get_audit_update_values
+
             values.update(get_audit_update_values())
-        stmt = (
-            update(self.model)
-            .where(id_column.in_(ids))
-            .values(**values)
-        )
+        stmt = update(self.model).where(id_column.in_(ids)).values(**values)
         result = await db.execute(stmt)
         return result.rowcount
 
@@ -247,9 +239,6 @@ class BaseRepository(Generic[T]):
         """统计数量"""
         if stmt is None:
             base_stmt = select(self.model)
-            if hasattr(self.model, "deleted"):
-                deleted_column = self._get_deleted_column()
-                base_stmt = base_stmt.where(deleted_column == 0)
             count_stmt = select(func.count()).select_from(base_stmt.subquery())
         else:
             count_stmt = select(func.count()).select_from(stmt.subquery())

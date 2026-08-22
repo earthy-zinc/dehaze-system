@@ -39,6 +39,7 @@ class RoleRepository(BaseRepository[SysRole]):
 
         if search_fields:
             from sqlalchemy import or_
+
             conditions = []
             for field, op, val in search_fields:
                 col = getattr(SysRole, field, None)
@@ -138,13 +139,9 @@ class RoleRepository(BaseRepository[SysRole]):
         menu_ids: list[int],
     ) -> None:
         """替换角色菜单（先删后增）"""
-        await db.execute(
-            delete(SysRoleMenu).where(SysRoleMenu.role_id == role_id)
-        )
+        await db.execute(delete(SysRoleMenu).where(SysRoleMenu.role_id == role_id))
         if menu_ids:
-            role_menus = [
-                SysRoleMenu(role_id=role_id, menu_id=menu_id) for menu_id in menu_ids
-            ]
+            role_menus = [SysRoleMenu(role_id=role_id, menu_id=menu_id) for menu_id in menu_ids]
             db.add_all(role_menus)
         await db.flush()
 
@@ -189,11 +186,16 @@ class RoleRepository(BaseRepository[SysRole]):
         exclude_id: int | None = None,
     ) -> bool:
         """检查角色名称是否已存在（含软删记录，命中→报"已被历史记录占用"）"""
-        stmt = select(func.count()).select_from(SysRole).where(
-            SysRole.name == name,
+        stmt = (
+            select(func.count())
+            .select_from(SysRole)
+            .where(
+                SysRole.name == name,
+            )
         )
         if exclude_id:
             stmt = stmt.where(SysRole.id != exclude_id)
+        stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return (result.scalar() or 0) > 0
 
@@ -205,11 +207,16 @@ class RoleRepository(BaseRepository[SysRole]):
         exclude_id: int | None = None,
     ) -> bool:
         """检查角色编码是否已存在（含软删记录，命中→报"已被历史记录占用"）"""
-        stmt = select(func.count()).select_from(SysRole).where(
-            SysRole.code == code,
+        stmt = (
+            select(func.count())
+            .select_from(SysRole)
+            .where(
+                SysRole.code == code,
+            )
         )
         if exclude_id:
             stmt = stmt.where(SysRole.id != exclude_id)
+        stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return (result.scalar() or 0) > 0
 
@@ -228,18 +235,15 @@ class RoleRepository(BaseRepository[SysRole]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def delete_user_role_by_role_ids(
-        self,
-        db: AsyncSession,
-        role_ids: list[int],
-    ) -> int:
-        """批量物理删除角色的用户关联记录（软删角色时同步清理）"""
-        from app.models.entity.sys_user import SysUserRole
-        if not role_ids:
-            return 0
-        stmt = delete(SysUserRole).where(SysUserRole.role_id.in_(role_ids))
+    async def get_enabled_by_code(self, db: AsyncSession, code: str) -> SysRole | None:
+        """根据角色编码查询启用中的角色（注册默认角色等仅认启用态）"""
+        stmt = select(SysRole).where(
+            SysRole.code == code,
+            SysRole.status == 1,
+            SysRole.deleted == 0,
+        )
         result = await db.execute(stmt)
-        return result.rowcount
+        return result.scalar_one_or_none()
 
 
 # 单例

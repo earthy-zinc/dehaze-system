@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import aio_pika
 from aio_pika.abc import AbstractChannel, AbstractExchange
-from app.config import settings
 
+from app.config import settings
 from app.infrastructure.mq.base import BaseRabbitMQClient
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class Publisher(BaseRabbitMQClient):
 
     def __init__(self) -> None:
         super().__init__()
-        self._exchange: Optional[AbstractExchange] = None
+        self._exchange: AbstractExchange | None = None
         self._connected_event = asyncio.Event()
 
     async def _on_connected(self, channel: AbstractChannel) -> None:
@@ -55,7 +55,7 @@ class Publisher(BaseRabbitMQClient):
         routing_key: str,
         body: dict[str, Any],
         *,
-        headers: Optional[dict[str, Any]] = None,
+        headers: dict[str, Any] | None = None,
         timeout: float = 5.0,
     ) -> None:
         """
@@ -73,10 +73,10 @@ class Publisher(BaseRabbitMQClient):
         if not self._connected_event.is_set():
             try:
                 await asyncio.wait_for(self._connected_event.wait(), timeout=timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 raise RuntimeError(
                     f"RabbitMQ Publisher 连接不可用（等待 {timeout}s 超时）"
-                )
+                ) from None
 
         message = aio_pika.Message(
             body=json.dumps(body, default=str).encode(),

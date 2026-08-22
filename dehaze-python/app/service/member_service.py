@@ -1,5 +1,6 @@
+import json
+import logging
 from datetime import date, datetime, timedelta
-from typing import Any, Optional
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,12 +18,9 @@ from app.repository.member_growth_log_repository import member_growth_log_reposi
 from app.repository.member_repository import member_repository
 from app.repository.member_sign_in_repository import member_sign_in_repository
 from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
-import json
-import logging
 
 logger = logging.getLogger(__name__)
 
-MEMBER_LEVEL_CACHE_TTL = 1800
 MEMBER_BENEFIT_CACHE_TTL = 3600
 
 SIGN_IN_BASE_GROWTH = 3
@@ -61,13 +59,13 @@ BENEFIT_FIELD_MAP = {
 }
 
 
-def _format_dt(dt: Optional[datetime]) -> Optional[str]:
+def _format_dt(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _format_date(d: Optional[date]) -> Optional[str]:
+def _format_date(d: date | None) -> str | None:
     if d is None:
         return None
     return d.strftime("%Y-%m-%d")
@@ -97,7 +95,7 @@ def _benefit_to_vo(b) -> dict:
     }
 
 
-def _calc_progress(benefits: list, level_code: str, growth_value: int) -> tuple[int, Optional[int]]:
+def _calc_progress(benefits: list, level_code: str, growth_value: int) -> tuple[int, int | None]:
     current = next((b for b in benefits if b.level_code == level_code), None)
     if not current:
         return 0, None
@@ -108,7 +106,9 @@ def _calc_progress(benefits: list, level_code: str, growth_value: int) -> tuple[
         return 100, None
 
     if current.growth_max > current.growth_min:
-        progress = int((growth_value - current.growth_min) / (current.growth_max - current.growth_min) * 100)
+        progress = int(
+            (growth_value - current.growth_min) / (current.growth_max - current.growth_min) * 100
+        )
         progress = max(0, min(100, progress))
     else:
         progress = 100
@@ -147,7 +147,9 @@ async def _check_and_adjust_level(db: AsyncSession, member: SysMember) -> None:
         await db.flush()
 
 
-async def _invalidate_member_cache(user_id: Optional[int] = None, level_code: Optional[str] = None) -> None:
+async def _invalidate_member_cache(
+    user_id: int | None = None, level_code: str | None = None
+) -> None:
     keys = []
     if user_id is not None:
         keys.append(f"member:level:{user_id}")
@@ -163,7 +165,9 @@ async def _invalidate_member_cache(user_id: Optional[int] = None, level_code: Op
         redis = await get_redis_client()
         await redis.delete(*keys)
 
-    await redis_operation_with_fallback(_del, default=None, operation_name="member_cache_invalidate")
+    await redis_operation_with_fallback(
+        _del, default=None, operation_name="member_cache_invalidate"
+    )
 
 
 def _quota_key(user_id: int, quota_type: str) -> str:
@@ -180,7 +184,6 @@ def _quota_ttl_seconds() -> int:
 
 
 class MemberService:
-
     @staticmethod
     async def get_profile(db: AsyncSession, user_id: int) -> dict:
         await member_repository.get_or_init_member(db, user_id)
@@ -194,7 +197,9 @@ class MemberService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "权益配置不存在")
 
         benefits = await member_benefit_repository.list_all(db)
-        progress_percent, next_level_growth = _calc_progress(benefits, member.level_code, member.growth_value)
+        progress_percent, next_level_growth = _calc_progress(
+            benefits, member.level_code, member.growth_value
+        )
 
         return {
             "userId": member.user_id,
@@ -253,7 +258,9 @@ class MemberService:
             raise BusinessException(ResultCode.SIGN_IN_ALREADY)
 
         yesterday = today - timedelta(days=1)
-        yesterday_continuous = await member_sign_in_repository.get_latest_continuous_days(db, user_id, yesterday)
+        yesterday_continuous = await member_sign_in_repository.get_latest_continuous_days(
+            db, user_id, yesterday
+        )
         continuous_days = yesterday_continuous + 1 if yesterday_continuous else 1
 
         base_growth = SIGN_IN_BASE_GROWTH
@@ -353,18 +360,20 @@ class MemberService:
             benefit = benefit_map.get(member.level_code)
             level_name = benefit.level_name if benefit else ""
             monthly_used = member.monthly_dehaze_used + member.monthly_evaluate_used
-            list_data.append({
-                "userId": member.user_id,
-                "username": item.get("username") or "",
-                "nickname": item.get("nickname"),
-                "levelCode": member.level_code,
-                "levelName": level_name,
-                "growthValue": member.growth_value,
-                "monthlyUsed": monthly_used,
-                "expireTime": _format_dt(member.expire_time),
-                "status": member.status,
-                "becomeMemberTime": _format_dt(member.become_member_time),
-            })
+            list_data.append(
+                {
+                    "userId": member.user_id,
+                    "username": item.get("username") or "",
+                    "nickname": item.get("nickname"),
+                    "levelCode": member.level_code,
+                    "levelName": level_name,
+                    "growthValue": member.growth_value,
+                    "monthlyUsed": monthly_used,
+                    "expireTime": _format_dt(member.expire_time),
+                    "status": member.status,
+                    "becomeMemberTime": _format_dt(member.become_member_time),
+                }
+            )
 
         return {"list": list_data, "total": total}
 
@@ -380,7 +389,9 @@ class MemberService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "权益配置不存在")
 
         benefits = await member_benefit_repository.list_all(db)
-        progress_percent, next_level_growth = _calc_progress(benefits, member.level_code, member.growth_value)
+        progress_percent, next_level_growth = _calc_progress(
+            benefits, member.level_code, member.growth_value
+        )
 
         profile = {
             "userId": member.user_id,
@@ -537,7 +548,9 @@ class MemberService:
             redis = await get_redis_client()
             return await redis.get(cache_key)
 
-        cached_raw = await redis_operation_with_fallback(_get_cache, default=None, operation_name="member_benefit_list_cache_get")
+        cached_raw = await redis_operation_with_fallback(
+            _get_cache, default=None, operation_name="member_benefit_list_cache_get"
+        )
         if cached_raw:
             try:
                 return json.loads(cached_raw)
@@ -549,8 +562,15 @@ class MemberService:
 
         async def _set_cache():
             redis = await get_redis_client()
-            await redis.setex(cache_key, MEMBER_BENEFIT_CACHE_TTL, json.dumps(result, ensure_ascii=False, default=str))
-        await redis_operation_with_fallback(_set_cache, default=None, operation_name="member_benefit_list_cache_set")
+            await redis.setex(
+                cache_key,
+                MEMBER_BENEFIT_CACHE_TTL,
+                json.dumps(result, ensure_ascii=False, default=str),
+            )
+
+        await redis_operation_with_fallback(
+            _set_cache, default=None, operation_name="member_benefit_list_cache_set"
+        )
 
         return result
 
@@ -564,7 +584,11 @@ class MemberService:
             if camel_key in form and form[camel_key] is not None:
                 setattr(benefit, snake_key, form[camel_key])
 
-        if benefit.growth_max and benefit.growth_max > 0 and benefit.growth_min > benefit.growth_max:
+        if (
+            benefit.growth_max
+            and benefit.growth_max > 0
+            and benefit.growth_min > benefit.growth_max
+        ):
             raise BusinessException(ResultCode.BENEFIT_CONFIG_INVALID, "成长值下限不能大于上限")
 
         await db.flush()
@@ -608,7 +632,9 @@ class MemberService:
             result = await redis.eval(_QUOTA_DEDUCT_LUA, 1, cache_key)
             return result
 
-        result = await redis_operation_with_fallback(_deduct_via_redis, default=None, operation_name=f"quota_deduct:{quota_type}")
+        result = await redis_operation_with_fallback(
+            _deduct_via_redis, default=None, operation_name=f"quota_deduct:{quota_type}"
+        )
 
         if result is None:
             setattr(member, used_field, used + 1)
@@ -617,7 +643,10 @@ class MemberService:
             async def _init_cache():
                 redis = await get_redis_client()
                 await redis.setex(cache_key, ttl, max(0, remaining - 1))
-            await redis_operation_with_fallback(_init_cache, default=None, operation_name=f"quota_cache_init:{quota_type}")
+
+            await redis_operation_with_fallback(
+                _init_cache, default=None, operation_name=f"quota_cache_init:{quota_type}"
+            )
 
             mongo_audit_log_repository.create_audit_async(
                 operator_id=get_current_user_id(),
@@ -661,10 +690,14 @@ class MemberService:
             await db.flush()
 
         cache_key = _quota_key(user_id, quota_type)
+
         async def _incr():
             redis = await get_redis_client()
             await redis.incr(cache_key)
-        await redis_operation_with_fallback(_incr, default=None, operation_name=f"quota_restore:{quota_type}")
+
+        await redis_operation_with_fallback(
+            _incr, default=None, operation_name=f"quota_restore:{quota_type}"
+        )
 
     @staticmethod
     async def reset_monthly_quota(db: AsyncSession) -> int:
@@ -727,11 +760,15 @@ class MemberService:
 
             async def _invalidate_quota_cache(batch_members=members):
                 redis = await get_redis_client()
-                keys = [f"member:quota:{m.user_id}:dehaze" for m in batch_members] + \
-                       [f"member:quota:{m.user_id}:evaluate" for m in batch_members]
+                keys = [f"member:quota:{m.user_id}:dehaze" for m in batch_members] + [
+                    f"member:quota:{m.user_id}:evaluate" for m in batch_members
+                ]
                 if keys:
                     await redis.delete(*keys)
-            await redis_operation_with_fallback(_invalidate_quota_cache, default=None, operation_name="quota_reset_cache_invalidate")
+
+            await redis_operation_with_fallback(
+                _invalidate_quota_cache, default=None, operation_name="quota_reset_cache_invalidate"
+            )
 
         return total_count
 
@@ -779,22 +816,36 @@ class MemberService:
             if target_level != old_level:
                 try:
                     from app.service.message_service import MessageService
+
                     old_benefit = benefit_map.get(old_level)
                     new_benefit = benefit_map.get(target_level)
-                    await MessageService.send(db, {
-                        "type": "member",
-                        "recipientIds": [member.user_id],
-                        "bizModule": "member",
-                        "bizId": f"level_change:{member.user_id}:{int(now.timestamp())}",
-                        "templateCode": "member_downgrade_warning",
-                        "variables": {
-                            "currentLevel": old_benefit.level_name if old_benefit else old_level,
-                            "days": "0",
-                            "downgradeLevel": new_benefit.level_name if new_benefit else target_level,
+                    await MessageService.send(
+                        db,
+                        {
+                            "type": "member",
+                            "recipientIds": [member.user_id],
+                            "bizModule": "member",
+                            "bizId": f"level_change:{member.user_id}:{int(now.timestamp())}",
+                            "templateCode": "member_downgrade_warning",
+                            "variables": {
+                                "currentLevel": old_benefit.level_name
+                                if old_benefit
+                                else old_level,
+                                "days": "0",
+                                "downgradeLevel": new_benefit.level_name
+                                if new_benefit
+                                else target_level,
+                            },
                         },
-                    })
+                    )
                 except Exception as e:
-                    logger.warning(f"等级变更通知发送失败: userId={member.user_id}, old={old_level}, new={target_level}", exc_info=e)
+                    logger.warning(
+                        (
+                            f"等级变更通知发送失败: userId={member.user_id}, "
+                            f"old={old_level}, new={target_level}"
+                        ),
+                        exc_info=e,
+                    )
 
         await db.flush()
         logger.debug(f"会员过期降级处理完成: 共处理 {count} 条记录")
@@ -816,7 +867,9 @@ class MemberService:
 
         sent_count = 0
         for days, (biz_prefix, template_code) in day_template_map.items():
-            window_start = (now + timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
+            window_start = (now + timedelta(days=days)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
             window_end = window_start + timedelta(days=1)
 
             stmt = select(SysMember).where(
@@ -835,14 +888,20 @@ class MemberService:
                 try:
                     current_benefit = benefit_map.get(member.level_code)
                     variables = {
-                        "currentLevel": current_benefit.level_name if current_benefit else member.level_code,
+                        "currentLevel": current_benefit.level_name
+                        if current_benefit
+                        else member.level_code,
                         "days": str(days),
-                        "expireDate": member.expire_time.strftime("%Y-%m-%d") if member.expire_time else "",
+                        "expireDate": member.expire_time.strftime("%Y-%m-%d")
+                        if member.expire_time
+                        else "",
                     }
                     if days == 3:
                         target_level = _calculate_level(benefits, member.growth_value)
                         downgrade_benefit = benefit_map.get(target_level)
-                        variables["downgradeLevel"] = downgrade_benefit.level_name if downgrade_benefit else target_level
+                        variables["downgradeLevel"] = (
+                            downgrade_benefit.level_name if downgrade_benefit else target_level
+                        )
                         if current_benefit and downgrade_benefit:
                             variables["benefitCompare"] = (
                                 f"去雾:{current_benefit.monthly_dehaze_quota}→{downgrade_benefit.monthly_dehaze_quota}次/月，"
@@ -851,17 +910,22 @@ class MemberService:
                         else:
                             variables["benefitCompare"] = ""
 
-                    await MessageService.send(db, {
-                        "type": "member",
-                        "recipientIds": [member.user_id],
-                        "bizModule": "member",
-                        "bizId": f"{biz_prefix}:{member.user_id}:{now.strftime('%Y-%m-%d')}",
-                        "templateCode": template_code,
-                        "variables": variables,
-                    })
+                    await MessageService.send(
+                        db,
+                        {
+                            "type": "member",
+                            "recipientIds": [member.user_id],
+                            "bizModule": "member",
+                            "bizId": f"{biz_prefix}:{member.user_id}:{now.strftime('%Y-%m-%d')}",
+                            "templateCode": template_code,
+                            "variables": variables,
+                        },
+                    )
                     sent_count += 1
                 except Exception as e:
-                    logger.warning(f"到期提醒发送失败: userId={member.user_id}, days={days}", exc_info=e)
+                    logger.warning(
+                        f"到期提醒发送失败: userId={member.user_id}, days={days}", exc_info=e
+                    )
 
         logger.debug(f"会员到期预警完成: 共发送 {sent_count} 条提醒")
         return sent_count

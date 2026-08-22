@@ -1,22 +1,25 @@
 """
 算法导入处理器
 """
+
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_algorithm import SysAlgorithm
-from app.repository.algorithm_repository import (AlgorithmStatus,
-                                                 algorithm_repository)
-from app.service.import_export.models import (ImportError, ImportFieldConfig,
-                                              ImportOptions, ImportResult)
+from app.repository.algorithm_repository import AlgorithmStatus, algorithm_repository
+from app.service.import_export.models import (
+    ImportError,
+    ImportFieldConfig,
+    ImportOptions,
+    ImportResult,
+)
 from app.service.import_export.registry import ImportHandler
 
 
 class AlgorithmImportHandler(ImportHandler):
-
     def get_module(self) -> str:
-        return "algorithms"
+        return "algorithm"
 
     def get_field_configs(self) -> list[ImportFieldConfig]:
         return [
@@ -56,7 +59,6 @@ class AlgorithmImportHandler(ImportHandler):
         failure_count = 0
         total = len(rows)
 
-        all_names = [n for n in (_get_str(r, "name") for r in rows) if n]
         existing_algos = await algorithm_repository.get_list_with_keywords(db, None)
         existing_names = {a.name for a in existing_algos}
         seen: set[str] = set()

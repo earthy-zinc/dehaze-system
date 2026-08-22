@@ -1,4 +1,4 @@
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -10,10 +10,11 @@ T = TypeVar("T")
 
 class Result(BaseModel, Generic[T]):
     """统一响应结构（与 Java/Go 保持一致，排除 null 字段）"""
+
     code: str = ResultCode.SUCCESS.code
     msg: str = ResultCode.SUCCESS.msg
-    data: Optional[T] = None
-    traceId: Optional[str] = Field(default=None, serialization_alias="traceId")
+    data: T | None = None
+    traceId: str | None = Field(default=None, serialization_alias="traceId")
 
     def model_dump(self, **kwargs):
         kwargs.setdefault("exclude_none", True)
@@ -24,7 +25,7 @@ class Result(BaseModel, Generic[T]):
         return super().model_dump_json(**kwargs)
 
 
-def _get_trace_id() -> Optional[str]:
+def _get_trace_id() -> str | None:
     """从 ContextVar 获取当前 trace_id"""
     trace_id = _trace_id_var.get("")
     return trace_id if trace_id else None

@@ -3,10 +3,10 @@
 
 开发环境使用 NoOpVirusScanner（不扫描），生产环境可接入 ClamAV 等扫描器。
 """
+
 from __future__ import annotations
 
 import abc
-from typing import Optional
 
 
 class VirusScanner(abc.ABC):
@@ -27,7 +27,7 @@ class NoOpVirusScanner(VirusScanner):
         return False
 
 
-_scanner: Optional[VirusScanner] = None
+_scanner: VirusScanner | None = None
 
 
 def get_virus_scanner() -> VirusScanner:

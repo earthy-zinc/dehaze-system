@@ -1,11 +1,10 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.entity.sys_refund_record import SysRefundRecord
 from app.models.entity.sys_order import SysOrder
+from app.models.entity.sys_refund_record import SysRefundRecord
 from app.models.entity.sys_user import SysUser
 from app.repository.base import BaseRepository, escape_like
 
@@ -21,7 +20,7 @@ REFUND_STATUS_REVERSE_MAP = {v: k for k, v in REFUND_STATUS_MAP.items()}
 class RefundRecordRepository(BaseRepository[SysRefundRecord]):
     model = SysRefundRecord
 
-    async def get_by_order_id(self, db: AsyncSession, order_id: int) -> Optional[SysRefundRecord]:
+    async def get_by_order_id(self, db: AsyncSession, order_id: int) -> SysRefundRecord | None:
         stmt = select(SysRefundRecord).where(
             SysRefundRecord.order_id == order_id,
             SysRefundRecord.deleted == 0,
@@ -35,11 +34,11 @@ class RefundRecordRepository(BaseRepository[SysRefundRecord]):
         page: int,
         page_size: int,
         *,
-        order_no: Optional[str] = None,
-        keywords: Optional[str] = None,
-        status: Optional[str] = None,
-        apply_time_start: Optional[str] = None,
-        apply_time_end: Optional[str] = None,
+        order_no: str | None = None,
+        keywords: str | None = None,
+        status: str | None = None,
+        apply_time_start: str | None = None,
+        apply_time_end: str | None = None,
     ) -> tuple[list[dict], int]:
         stmt = (
             select(
@@ -66,9 +65,14 @@ class RefundRecordRepository(BaseRepository[SysRefundRecord]):
         if status and status in REFUND_STATUS_MAP:
             stmt = stmt.where(SysRefundRecord.status == REFUND_STATUS_MAP[status])
         if apply_time_start:
-            stmt = stmt.where(SysRefundRecord.apply_time >= datetime.strptime(apply_time_start, "%Y-%m-%d %H:%M:%S"))
+            stmt = stmt.where(
+                SysRefundRecord.apply_time
+                >= datetime.strptime(apply_time_start, "%Y-%m-%d %H:%M:%S")
+            )
         if apply_time_end:
-            stmt = stmt.where(SysRefundRecord.apply_time <= datetime.strptime(apply_time_end, "%Y-%m-%d %H:%M:%S"))
+            stmt = stmt.where(
+                SysRefundRecord.apply_time <= datetime.strptime(apply_time_end, "%Y-%m-%d %H:%M:%S")
+            )
 
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = (await db.execute(count_stmt)).scalar() or 0

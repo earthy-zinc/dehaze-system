@@ -6,7 +6,7 @@ URL 永远运行时拼接（baseUrl + object_name），不落库。
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterator, Optional
+from collections.abc import Iterator
 
 
 class StorageService(ABC):
@@ -42,7 +42,9 @@ class StorageService(ABC):
         """下载文件（同步方法，需在线程池中调用）"""
 
     @abstractmethod
-    def download_stream(self, bucket: str, object_name: str, chunk_size: int = 1024 * 1024) -> Iterator[bytes]:
+    def download_stream(
+        self, bucket: str, object_name: str, chunk_size: int = 1024 * 1024
+    ) -> Iterator[bytes]:
         """流式下载文件（同步生成器，需在线程池中调用）"""
 
     @abstractmethod
@@ -54,7 +56,7 @@ class StorageService(ABC):
         """检查文件是否存在"""
 
     @abstractmethod
-    def get_size(self, bucket: str, object_name: str) -> Optional[int]:
+    def get_size(self, bucket: str, object_name: str) -> int | None:
         """获取文件大小（字节），不存在返回 None"""
 
     def get_url(self, object_name: str) -> str:

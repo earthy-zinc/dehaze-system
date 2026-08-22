@@ -3,6 +3,11 @@
 
 基础路径: /api/v1/item-files
 """
+
+from fastapi import APIRouter, Body, Depends, File, Form, Path, UploadFile
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.core.result import Result, success
@@ -10,13 +15,8 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.common import BatchDeleteForm
-from app.models.schema.dataset import (BatchOperationResultVO,
-                                       ItemFileUpdateForm, ItemFileVO)
-from app.service.dataset_service import ItemFileService
-from fastapi import (APIRouter, Body, Depends, File, Form, Path,
-                     UploadFile)
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.schema.dataset import BatchOperationResultVO, ItemFileUpdateForm, ItemFileVO
+from app.service.dataset.item_file_service import ItemFileService
 
 router = APIRouter(
     prefix="/api/v1/item-files",
@@ -78,7 +78,10 @@ async def update_item_file(
     redis: Redis = Depends(get_redis),
 ):
     await ItemFileService.update_item_file(
-        db, redis, file_id, body.model_dump(exclude_none=True),
+        db,
+        redis,
+        file_id,
+        body.model_dump(exclude_none=True),
     )
     return success(msg="更新成功")
 

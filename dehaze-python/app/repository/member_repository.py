@@ -1,8 +1,6 @@
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import and_, func, or_, select
-from sqlalchemy.dialects.mysql import insert as mysql_insert
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_member import SysMember
@@ -14,14 +12,18 @@ def parse_expire_time(s: str, *, is_end: bool) -> datetime:
     fmt = "%Y-%m-%d %H:%M:%S" if " " in s else "%Y-%m-%d"
     dt = datetime.strptime(s, fmt)
     if " " not in s:
-        return dt.replace(hour=23, minute=59, second=59) if is_end else dt.replace(hour=0, minute=0, second=0)
+        return (
+            dt.replace(hour=23, minute=59, second=59)
+            if is_end
+            else dt.replace(hour=0, minute=0, second=0)
+        )
     return dt
 
 
 class MemberRepository(BaseRepository[SysMember]):
     model = SysMember
 
-    async def get_by_user_id(self, db: AsyncSession, user_id: int) -> Optional[SysMember]:
+    async def get_by_user_id(self, db: AsyncSession, user_id: int) -> SysMember | None:
         stmt = select(SysMember).where(
             SysMember.user_id == user_id,
             SysMember.deleted == 0,
@@ -34,8 +36,33 @@ class MemberRepository(BaseRepository[SysMember]):
         db: AsyncSession,
         user_id: int,
     ) -> SysMember:
-        """upsert 会员记录：冲突时复活（重置 deleted=0、降级为 level_0、清空月度配额；保留 total_consumption），返回 member"""
-        stmt = mysql_insert(SysMember).values(
+        """确保会员记录存在：已存在且未删除时直接返回（保留全部数据）；
+        软删记录复活（重置 deleted=0、降级 level_0、清空成长值与月度配额，保留
+        total_consumption）；不存在时初始化 level_0 记录"""
+        # 含软删行一起查，避免全局软删过滤器遮蔽待复活记录
+        existing = (
+            await db.execute(
+                select(SysMember)
+                .where(SysMember.user_id == user_id)
+                .execution_options(include_deleted=True)
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            if existing.deleted == 0:
+                return existing
+            existing.deleted = 0
+            existing.level_code = "level_0"
+            existing.level_source = "growth"
+            existing.growth_value = 0
+            existing.status = 1
+            existing.monthly_dehaze_quota = 0
+            existing.monthly_evaluate_quota = 0
+            existing.monthly_dehaze_used = 0
+            existing.monthly_evaluate_used = 0
+            await db.flush()
+            return existing
+
+        member = SysMember(
             user_id=user_id,
             level_code="level_0",
             level_source="growth",
@@ -47,29 +74,34 @@ class MemberRepository(BaseRepository[SysMember]):
             monthly_dehaze_used=0,
             monthly_evaluate_used=0,
         )
-        # total_consumption 不在 on_duplicate_key_update 中 → 冲突时保留原值
-        stmt = stmt.on_duplicate_key_update(
-            deleted=0,
-            level_code="level_0",
-            level_source="growth",
-            growth_value=0,
-            status=1,
-            monthly_dehaze_quota=0,
-            monthly_evaluate_quota=0,
-            monthly_dehaze_used=0,
-            monthly_evaluate_used=0,
-            update_time=func.now(),
-        )
-        await db.execute(stmt)
-        result = await db.execute(
-            select(SysMember).where(
-                SysMember.user_id == user_id,
-                SysMember.deleted == 0,
-            )
-        )
-        return result.scalar_one()
+        db.add(member)
+        await db.flush()
+        return member
 
-    async def get_with_user(self, db: AsyncSession, user_id: int) -> Optional[dict]:
+    async def list_active_by_level(
+        self,
+        db: AsyncSession,
+        level_code: str,
+        *,
+        offset: int = 0,
+        limit: int = 500,
+    ) -> list[SysMember]:
+        """分页扫描指定等级的活跃会员（未删除、未冻结），用于 VIP 月度赠送等批量任务"""
+        stmt = (
+            select(SysMember)
+            .where(
+                SysMember.level_code == level_code,
+                SysMember.deleted == 0,
+                SysMember.status == 1,
+            )
+            .order_by(SysMember.id.asc())
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_with_user(self, db: AsyncSession, user_id: int) -> dict | None:
         stmt = (
             select(
                 SysMember,
@@ -98,13 +130,13 @@ class MemberRepository(BaseRepository[SysMember]):
         page: int,
         page_size: int,
         *,
-        keywords: Optional[str] = None,
-        level_code: Optional[str] = None,
-        status: Optional[int] = None,
-        expire_time_start: Optional[str] = None,
-        expire_time_end: Optional[str] = None,
-        growth_min: Optional[int] = None,
-        growth_max: Optional[int] = None,
+        keywords: str | None = None,
+        level_code: str | None = None,
+        status: int | None = None,
+        expire_time_start: str | None = None,
+        expire_time_end: str | None = None,
+        growth_min: int | None = None,
+        growth_max: int | None = None,
     ) -> tuple[list[dict], int]:
         stmt = (
             select(

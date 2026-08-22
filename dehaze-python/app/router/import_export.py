@@ -7,21 +7,22 @@
 - POST /api/v1/{module}/_import  同步/异步导入
 - GET  /api/v1/{module}/template  下载导入模板
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.service.import_export.handlers  # noqa: F401
 from app.core.result import success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.service.import_export_service import ImportExportService
-import app.service.import_export.handlers  # noqa: F401
-from redis.asyncio import Redis
 
 router = APIRouter(prefix="/api/v1", tags=["通用导入导出接口"])
 
@@ -68,11 +69,28 @@ def _check_module_permission(user: UserContext, module: str, action: str) -> Non
     required = f"sys:{module}:{action}"
     if required not in user.permissions and "*" not in user.permissions:
         from fastapi import HTTPException, status
+
         from app.core.code import ResultCode
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=ResultCode.FORBIDDEN_OPERATION.msg,
         )
+
+
+def _ensure_module_supported(module: str, action: str) -> None:
+    """模块支持性先于权限校验：不存在的模块应报"模块不支持"而非权限错误"""
+    from app.core.code import ResultCode
+    from app.core.exceptions import BusinessException
+    from app.service.import_export_service import ImportExportService
+
+    supported = (
+        ImportExportService.get_supported_export_modules()
+        if action == "export"
+        else ImportExportService.get_supported_import_modules()
+    )
+    if module not in supported:
+        raise BusinessException(ResultCode.MODULE_IMPORT_NOT_SUPPORTED, f"模块 {module} 不支持{action}")
 
 
 @router.get("/{module}/_export", summary="导出数据（GET，简单查询条件）")
@@ -80,12 +98,13 @@ async def export_get(
     module: str,
     request: Request,
     format: str = Query(default="excel", description="文件格式: excel/csv"),
-    async_flag: Optional[bool] = Query(default=None, alias="async", description="是否强制异步"),
-    fields: Optional[str] = Query(default=None, description="导出字段，逗号分隔"),
+    async_flag: bool | None = Query(default=None, alias="async", description="是否强制异步"),
+    fields: str | None = Query(default=None, description="导出字段，逗号分隔"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
+    _ensure_module_supported(module, "export")
     _check_module_permission(user, module, "export")
     query_params = _build_query_params(request)
     field_list = _split_fields(fields)
@@ -112,6 +131,7 @@ async def export_post(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
+    _ensure_module_supported(module, "export")
     _check_module_permission(user, module, "export")
     fmt = body.get("format") or "excel"
     async_flag = body.get("async")
@@ -138,11 +158,12 @@ async def import_data(
     request: Request,
     file: UploadFile = File(..., description="Excel/CSV 文件"),
     mode: str = Form(default="all", description="导入模式: all/partial"),
-    async_flag: Optional[bool] = Form(default=None, alias="async", description="是否强制异步"),
+    async_flag: bool | None = Form(default=None, alias="async", description="是否强制异步"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
+    _ensure_module_supported(module, "import")
     _check_module_permission(user, module, "import")
     extra_params = await _build_extra_params(request)
     result = await ImportExportService.import_data(
@@ -164,11 +185,12 @@ async def download_template(
     format: str = Query(default="excel", description="文件格式: excel/csv"),
     user: UserContext = Depends(get_current_user),
 ):
+    _ensure_module_supported(module, "import")
     _check_module_permission(user, module, "import")
     return ImportExportService.download_template(module, format)
 
 
-def _split_fields(fields: Optional[str]) -> Optional[list[str]]:
+def _split_fields(fields: str | None) -> list[str] | None:
     if not fields or not fields.strip():
         return None
     return [s.strip() for s in fields.split(",") if s.strip()]

@@ -1,5 +1,5 @@
 from datetime import datetime, time
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,14 +20,10 @@ DEFAULT_PREFERENCES = {
 }
 
 
-def _format_time(t: Optional[time]) -> Optional[str]:
+def _format_time(t: time | None) -> str | None:
     if t is None:
         return None
     return t.strftime("%H:%M:%S")
-
-
-def _parse_time(value: str) -> time:
-    return datetime.strptime(value, "%H:%M:%S").time()
 
 
 def _to_vo(setting: SysNotificationSetting) -> dict[str, Any]:
@@ -40,9 +36,7 @@ def _to_vo(setting: SysNotificationSetting) -> dict[str, Any]:
     }
 
 
-def _deep_merge_preferences(
-    old: Optional[dict], new: Optional[dict]
-) -> dict[str, Any]:
+def _deep_merge_preferences(old: dict | None, new: dict | None) -> dict[str, Any]:
     result = dict(old or DEFAULT_PREFERENCES)
     if not new:
         return result
@@ -57,7 +51,6 @@ def _deep_merge_preferences(
 
 
 class NotificationSettingService:
-
     @staticmethod
     async def get_or_init(db: AsyncSession, user_id: int) -> dict[str, Any]:
         setting = await notification_setting_repository.get_by_user_id(db, user_id)
@@ -76,11 +69,9 @@ class NotificationSettingService:
         if "dndEnabled" in data:
             setting.dnd_enabled = 1 if data["dndEnabled"] else 0
         if "dndStart" in data and data["dndStart"]:
-            setting.dnd_start = _parse_time(data["dndStart"])
+            setting.dnd_start = datetime.strptime(data["dndStart"], "%H:%M:%S").time()
         if "dndEnd" in data and data["dndEnd"]:
-            setting.dnd_end = _parse_time(data["dndEnd"])
+            setting.dnd_end = datetime.strptime(data["dndEnd"], "%H:%M:%S").time()
         if "preferences" in data and data["preferences"]:
-            setting.preferences = _deep_merge_preferences(
-                setting.preferences, data["preferences"]
-            )
+            setting.preferences = _deep_merge_preferences(setting.preferences, data["preferences"])
         await db.flush()

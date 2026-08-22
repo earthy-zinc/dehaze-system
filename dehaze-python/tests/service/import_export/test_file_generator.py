@@ -1,6 +1,3 @@
-"""
-文件生成器与解析器单元测试
-"""
 from __future__ import annotations
 
 import csv
@@ -13,8 +10,7 @@ from openpyxl import load_workbook
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.service.import_export.file_generator import write_csv, write_excel
-from app.service.import_export.file_parser import (parse_csv, parse_excel,
-                                                   validate_required_fields)
+from app.service.import_export.file_parser import parse_csv, parse_excel, validate_required_fields
 from app.service.import_export.models import ExportFieldConfig, ImportFieldConfig
 
 
@@ -40,7 +36,6 @@ class TestWriteExcel:
         wb = load_workbook(output)
         ws = wb.active
         all_rows = list(ws.iter_rows(values_only=True))
-        # 表头按 order 排序：昵称, 用户名 (hidden 字段被排除)
         assert all_rows[0] == ("昵称", "用户名")
         assert all_rows[1] == ("n1", "u1")
         assert all_rows[2] == ("n2", "u2")
@@ -56,6 +51,33 @@ class TestWriteExcel:
         ws = wb.active
         all_rows = list(ws.iter_rows(values_only=True))
         assert all_rows[1] == (None,)
+
+    def test_adversarial_values_written_rawly(self):
+        fields = [
+            ExportFieldConfig(field="name", label="名称", order=1),
+            ExportFieldConfig(field="note", label="备注", order=2),
+            ExportFieldConfig(field="secret", label="密钥", order=3, hidden=True),
+        ]
+        rows = [
+            {
+                "name": "=cmd|'/c calc'!A0",
+                "note": "ＡＢＣ，１２３；（ｈａｌｆ　ａｎｇｌｅ）",
+                "secret": "should_be_hidden",
+            },
+            {"name": "x" * 640, "note": None, "secret": "s2"},
+        ]
+        output = io.BytesIO()
+        write_excel(fields, rows, output)
+
+        output.seek(0)
+        wb = load_workbook(output)
+        ws = wb.active
+        all_rows = list(ws.iter_rows(values_only=True))
+        assert all_rows[0] == ("名称", "备注")
+        assert all_rows[1][0] == "=cmd|'/c calc'!A0"
+        assert all_rows[1][1] == "ＡＢＣ，１２３；（ｈａｌｆ　ａｎｇｌｅ）"
+        assert all_rows[2][0] == "x" * 640
+        assert all_rows[2][1] is None
 
     def test_date_format_applied(self):
         fields = [
@@ -88,7 +110,6 @@ class TestWriteCsv:
         assert content.startswith("\ufeff".encode("utf-8"))
         text = content.decode("utf-8-sig")
         reader = list(csv.reader(io.StringIO(text)))
-        # 按 order 排序：昵称, 用户名
         assert reader[0] == ["昵称", "用户名"]
         assert reader[1] == ["n1", "u1"]
 
@@ -101,6 +122,26 @@ class TestWriteCsv:
         text = output.getvalue().decode("utf-8-sig")
         reader = list(csv.reader(io.StringIO(text)))
         assert reader[1] == [""]
+
+    def test_adversarial_values_written_rawly(self):
+        fields = [
+            ExportFieldConfig(field="name", label="名称", order=1),
+            ExportFieldConfig(field="note", label="备注", order=2),
+        ]
+        rows = [
+            {"name": '包含"引号"和,逗号', "note": "=cmd|'/c calc'!A0"},
+            {"name": None, "note": "ＡＢＣ，１２３；（ｈａｌｆ）"},
+        ]
+        output = io.BytesIO()
+        write_csv(fields, rows, output)
+
+        text = output.getvalue().decode("utf-8-sig")
+        reader = list(csv.reader(io.StringIO(text)))
+        assert reader[0] == ["名称", "备注"]
+        assert reader[1][0] == '包含"引号"和,逗号'
+        assert reader[1][1] == "=cmd|'/c calc'!A0"
+        assert reader[2][0] == ""
+        assert reader[2][1] == "ＡＢＣ，１２３；（ｈａｌｆ）"
 
 
 class TestParseExcel:
@@ -121,9 +162,7 @@ class TestParseExcel:
             ImportFieldConfig(field="username", label="用户名", required=True),
             ImportFieldConfig(field="nickname", label="昵称"),
         ]
-        content = self._make_excel_bytes(
-            ["用户名", "昵称"], [["zhangsan", "张三"]]
-        )
+        content = self._make_excel_bytes(["用户名", "昵称"], [["zhangsan", "张三"]])
         rows = parse_excel(content, fields)
 
         assert len(rows) == 1
@@ -132,9 +171,7 @@ class TestParseExcel:
 
     def test_parse_skips_empty_rows(self):
         fields = [ImportFieldConfig(field="username", label="用户名", required=True)]
-        content = self._make_excel_bytes(
-            ["用户名"], [["u1"], [None, None], ["u2"]]
-        )
+        content = self._make_excel_bytes(["用户名"], [["u1"], [None, None], ["u2"]])
         rows = parse_excel(content, fields)
         assert len(rows) == 2
 
@@ -150,9 +187,7 @@ class TestParseExcel:
 
     def test_parse_ignores_unknown_columns(self):
         fields = [ImportFieldConfig(field="username", label="用户名", required=True)]
-        content = self._make_excel_bytes(
-            ["用户名", "未知列"], [["u1", "x"]]
-        )
+        content = self._make_excel_bytes(["用户名", "未知列"], [["u1", "x"]])
         rows = parse_excel(content, fields)
         assert rows[0] == {"username": "u1"}
 
@@ -160,7 +195,6 @@ class TestParseExcel:
         from openpyxl import Workbook
 
         wb = Workbook()
-        ws = wb.active
         output = io.BytesIO()
         wb.save(output)
         fields = [ImportFieldConfig(field="username", label="用户名", required=True)]
@@ -175,7 +209,7 @@ class TestParseCsv:
             ImportFieldConfig(field="username", label="用户名", required=True),
             ImportFieldConfig(field="nickname", label="昵称"),
         ]
-        content = "用户名,昵称\nzhangsan,张三\n".encode("utf-8")
+        content = "用户名,昵称\nzhangsan,张三\n".encode()
         rows = parse_csv(content, fields)
 
         assert len(rows) == 1
@@ -198,14 +232,14 @@ class TestParseCsv:
         fields = [
             ImportFieldConfig(field="username", label="用户名", required=True),
         ]
-        content = "昵称\nn1\n".encode("utf-8")
+        content = "昵称\nn1\n".encode()
         with pytest.raises(BusinessException) as exc_info:
             parse_csv(content, fields)
         assert exc_info.value.code == ResultCode.IMPORT_TEMPLATE_MISMATCH
 
     def test_parse_skips_blank_rows(self):
         fields = [ImportFieldConfig(field="username", label="用户名", required=True)]
-        content = "用户名\nu1\n\nu2\n".encode("utf-8")
+        content = "用户名\nu1\n\nu2\n".encode()
         rows = parse_csv(content, fields)
         assert len(rows) == 2
 

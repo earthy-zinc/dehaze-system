@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Body, Depends, Path, Query
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +27,7 @@ router = APIRouter(
 
 # ============ 评价接口 ============
 
+
 @router.post("/ratings", summary="提交评分")
 async def create_rating(
     body: RatingCreateForm = Body(...),
@@ -36,7 +35,9 @@ async def create_rating(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.create_rating(db, redis, user.id, body.model_dump(exclude_none=True))
+    data = await FeedbackService.create_rating(
+        db, redis, user.id, body.model_dump(exclude_none=True)
+    )
     return success(data)
 
 
@@ -67,13 +68,13 @@ async def get_rating_by_prediction(
 async def list_ratings(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    keywords: Optional[str] = Query(default=None),
-    algorithmId: Optional[int] = Query(default=None),
-    ratingMin: Optional[int] = Query(default=None, ge=1, le=5),
-    ratingMax: Optional[int] = Query(default=None, ge=1, le=5),
-    hasComment: Optional[bool] = Query(default=None),
-    startTime: Optional[str] = Query(default=None),
-    endTime: Optional[str] = Query(default=None),
+    keywords: str | None = Query(default=None),
+    algorithmId: int | None = Query(default=None),
+    ratingMin: int | None = Query(default=None, ge=1, le=5),
+    ratingMax: int | None = Query(default=None, ge=1, le=5),
+    hasComment: bool | None = Query(default=None),
+    startTime: str | None = Query(default=None),
+    endTime: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -96,8 +97,8 @@ async def list_ratings(
 
 @router.get("/ratings/stats", summary="评价统计")
 async def get_rating_stats(
-    startTime: Optional[str] = Query(default=None),
-    endTime: Optional[str] = Query(default=None),
+    startTime: str | None = Query(default=None),
+    endTime: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
@@ -114,7 +115,9 @@ async def update_rating(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.update_rating(db, redis, user.id, rating_id, body.model_dump(exclude_none=True))
+    await FeedbackService.update_rating(
+        db, redis, user.id, rating_id, body.model_dump(exclude_none=True)
+    )
     return success()
 
 
@@ -143,6 +146,7 @@ async def reply_rating(
 
 # ============ 反馈接口 ============
 
+
 @router.post("", summary="提交反馈")
 async def create_feedback(
     body: FeedbackCreateForm = Body(...),
@@ -150,7 +154,9 @@ async def create_feedback(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.create_feedback(db, redis, user.id, body.model_dump(exclude_none=True))
+    data = await FeedbackService.create_feedback(
+        db, redis, user.id, body.model_dump(exclude_none=True)
+    )
     return success(data)
 
 
@@ -171,14 +177,14 @@ async def list_my_feedback(
 async def list_feedback(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
-    keywords: Optional[str] = Query(default=None),
-    feedbackType: Optional[str] = Query(default=None),
-    status: Optional[str] = Query(default=None),
-    relatedModule: Optional[str] = Query(default=None),
-    priority: Optional[int] = Query(default=None),
-    assigneeId: Optional[int] = Query(default=None),
-    startTime: Optional[str] = Query(default=None),
-    endTime: Optional[str] = Query(default=None),
+    keywords: str | None = Query(default=None),
+    feedbackType: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    relatedModule: str | None = Query(default=None),
+    priority: int | None = Query(default=None),
+    assigneeId: int | None = Query(default=None),
+    startTime: str | None = Query(default=None),
+    endTime: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -202,8 +208,8 @@ async def list_feedback(
 
 @router.get("/stats", summary="反馈统计")
 async def get_feedback_stats(
-    startTime: Optional[str] = Query(default=None),
-    endTime: Optional[str] = Query(default=None),
+    startTime: str | None = Query(default=None),
+    endTime: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
@@ -229,7 +235,9 @@ async def supplement_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.supplement_feedback(db, user.id, feedback_id, body.model_dump(exclude_none=True))
+    await FeedbackService.supplement_feedback(
+        db, user.id, feedback_id, body.model_dump(exclude_none=True)
+    )
     return success()
 
 
@@ -253,7 +261,9 @@ async def reply_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.reply_feedback(db, feedback_id, body.model_dump(exclude_none=True), user.id)
+    await FeedbackService.reply_feedback(
+        db, feedback_id, body.model_dump(exclude_none=True), user.id
+    )
     return success()
 
 

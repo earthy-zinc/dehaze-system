@@ -9,14 +9,13 @@ import asyncio
 import hashlib
 import logging
 import re
+from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from io import BytesIO
-from typing import AsyncIterator, Optional
 from urllib.parse import quote
 
 from fastapi.responses import StreamingResponse
-
 from minio import Minio
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,17 +24,15 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_file import SysFile
 from app.repository.file_repository import file_repository
-from app.service.file_events import FileCreatedEvent, FileDeletedEvent, file_event_bus
 from app.utils.file import convert_size
 
 logger = logging.getLogger(__name__)
 
 # MinIO 操作线程池（MinIO SDK 是同步的，需要在线程池中执行）
-_minio_executor = ThreadPoolExecutor(
-    max_workers=8, thread_name_prefix="minio-ops")
+_minio_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="minio-ops")
 
 # MinIO 客户端单例
-_minio_client: Optional[Minio] = None
+_minio_client: Minio | None = None
 
 # 文件名安全校验正则：禁止路径遍历、空字节、管道等特殊字符
 _UNSAFE_FILENAME_PATTERN = re.compile(r'[\\/:*?"<>|\x00-\x1f]|\.\./')
@@ -119,7 +116,6 @@ class FileService:
         # 清理文件名
         filename = sanitize_filename(filename)
 
-        # 计算 MD5
         file_md5 = hashlib.md5(content).hexdigest()
         file_size = len(content)
 
@@ -129,8 +125,7 @@ class FileService:
             return existing_file
 
         # 获取文件扩展名
-        file_extension = filename.rsplit(
-            ".", 1)[-1].lower() if "." in filename else "bin"
+        file_extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
         object_name = generate_object_name(file_md5, file_extension)
 
         # 上传到 MinIO（在线程池中执行，避免阻塞事件循环）
@@ -143,7 +138,6 @@ class FileService:
             if not minio_client.bucket_exists(bucket_name):
                 minio_client.make_bucket(bucket_name)
 
-            # 上传文件
             minio_client.put_object(
                 bucket_name,
                 object_name,
@@ -158,7 +152,8 @@ class FileService:
         except Exception as e:
             logger.error("文件上传到存储服务失败: %s", e, exc_info=True)
             raise BusinessException(
-                ResultCode.FILE_STORAGE_ERROR, f"文件存储失败: {str(e)}")
+                ResultCode.FILE_STORAGE_ERROR, f"文件存储失败: {str(e)}"
+            ) from None
 
         # 构造 SysFile 实体对象（URL 不落库，运行时拼接）
         new_file = SysFile(
@@ -183,15 +178,6 @@ class FileService:
             size_bytes=new_file.size_bytes,
         )
 
-        # 发布文件创建事件
-        file_event_bus.publish(FileCreatedEvent(
-            file_id=created_file.id,
-            filename=created_file.name,
-            object_name=created_file.object_name,
-            md5=created_file.md5,
-            size_bytes=file_size,
-        ))
-
         return created_file
 
     @staticmethod
@@ -200,7 +186,7 @@ class FileService:
         删除文件记录及物理存储
 
         DB 记录删除后，物理文件删除为 best-effort（失败仅记录日志，
-        由孤儿文件清理任务 FILE_ORPHAN_CLEANUP_HOURS 兜底）。
+        由孤儿文件清理任务兜底）。
 
         Args:
             db: 异步数据库会话
@@ -214,13 +200,16 @@ class FileService:
         if not file_info:
             raise BusinessException("不存在当前文件")
 
-        # 保存信息用于事件发布和存储删除
+        # 保存信息用于存储删除
         object_name = file_info.object_name
-        filename = file_info.name
-        md5 = file_info.md5
 
         # 删除数据库记录（事务由 get_db() 在请求边界统一提交）
         await file_repository.soft_delete_by_ids(db, [file_id])
+
+        # 联动失效：文件删除时，将直接/间接引用该文件的 AI 产物标记失效
+        from app.service.ai_artifact_service import AiArtifactService
+
+        await AiArtifactService.mark_invalid_for_file(db, file_id)
 
         # 从存储中删除文件（在线程池中异步执行，不阻塞事件循环）
         minio_client = get_minio_client()
@@ -239,31 +228,8 @@ class FileService:
         except Exception as e:
             logger.warning("物理文件删除异常 [%s]: %s", object_name, e)
 
-        # 发布文件删除事件
-        file_event_bus.publish(FileDeletedEvent(
-            file_id=file_id,
-            filename=filename,
-            object_name=object_name,
-            md5=md5,
-        ))
-
     @staticmethod
-    async def check_file_exists(db: AsyncSession, md5: str) -> bool:
-        """
-        检查文件是否已存在（根据 MD5）
-
-        Args:
-            db: 异步数据库会话
-            md5: 文件 MD5 值
-
-        Returns:
-            bool: 文件是否存在
-        """
-        file_info = await file_repository.get_by_md5(db, md5)
-        return file_info is not None
-
-    @staticmethod
-    async def get_file_by_md5(db: AsyncSession, md5: str) -> Optional[SysFile]:
+    async def get_file_by_md5(db: AsyncSession, md5: str) -> SysFile | None:
         """
         根据 MD5 获取文件记录
 
@@ -277,7 +243,7 @@ class FileService:
         return await file_repository.get_by_md5(db, md5)
 
     @staticmethod
-    async def get_file_by_id(db: AsyncSession, file_id: int) -> Optional[SysFile]:
+    async def get_file_by_id(db: AsyncSession, file_id: int) -> SysFile | None:
         """
         根据 ID 获取文件记录
 
@@ -291,7 +257,7 @@ class FileService:
         return await file_repository.get_by_id(db, file_id)
 
     @staticmethod
-    async def get_file_by_object_name(db: AsyncSession, object_name: str) -> Optional[SysFile]:
+    async def get_file_by_object_name(db: AsyncSession, object_name: str) -> SysFile | None:
         """
         根据对象名称获取文件记录
 
@@ -309,7 +275,7 @@ class FileService:
         db: AsyncSession,
         page: int,
         size: int,
-        keywords: Optional[str] = None,
+        keywords: str | None = None,
     ) -> tuple[list[SysFile], int]:
         """
         分页查询文件列表
@@ -326,7 +292,9 @@ class FileService:
         return await file_repository.get_page(db, page, size, keywords)
 
     @staticmethod
-    async def download_file_stream(object_name: str, storage: str = "minio") -> AsyncIterator[bytes]:
+    async def download_file_stream(
+        object_name: str, storage: str = "minio"
+    ) -> AsyncIterator[bytes]:
         """
         从指定存储后端流式下载文件（避免大文件 OOM）
 
@@ -372,15 +340,13 @@ class FileService:
                     break
                 if isinstance(item, Exception):
                     logger.error("文件下载失败 [%s]: %s", object_name, item)
-                    raise BusinessException(
-                        ResultCode.FILE_NOT_FOUND, "文件下载失败")
+                    raise BusinessException(ResultCode.FILE_NOT_FOUND, "文件下载失败")
                 yield item
         except BusinessException:
             raise
         except Exception as e:
             logger.error("文件下载失败 [%s]: %s", object_name, e, exc_info=True)
-            raise BusinessException(
-                ResultCode.FILE_NOT_FOUND, "文件下载失败")
+            raise BusinessException(ResultCode.FILE_NOT_FOUND, "文件下载失败") from None
 
     @staticmethod
     def stream_file_response(object_name: str, storage: str = "minio") -> StreamingResponse:
@@ -398,7 +364,7 @@ class FileService:
         ascii_filename = filename.encode("ascii", "ignore").decode("ascii") or "download"
         encoded_filename = quote(filename)
         content_disposition = (
-            f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{encoded_filename}'
+            f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
         )
         return StreamingResponse(
             FileService.download_file_stream(object_name, storage=storage),
@@ -407,7 +373,7 @@ class FileService:
         )
 
     @staticmethod
-    async def get_file_stat(object_name: str) -> Optional[int]:
+    async def get_file_stat(object_name: str) -> int | None:
         """
         获取存储中文件的大小（字节）
 

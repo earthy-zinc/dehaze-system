@@ -1,6 +1,7 @@
 """
 菜单导出处理器
 """
+
 from __future__ import annotations
 
 import io
@@ -17,7 +18,6 @@ _MENU_TYPE_LABELS = {1: "目录", 2: "菜单", 3: "外链", 4: "按钮"}
 
 
 class MenuExportHandler(ExportHandler):
-
     def get_module(self) -> str:
         return "menu"
 
@@ -67,7 +67,9 @@ class MenuExportHandler(ExportHandler):
             ExportFieldConfig(field="sort", label="排序", order=9),
             ExportFieldConfig(field="icon", label="图标", order=10),
             ExportFieldConfig(field="redirect", label="跳转路径", order=11),
-            ExportFieldConfig(field="create_time", label="创建时间", order=12, date_format="%Y-%m-%d %H:%M:%S"),
+            ExportFieldConfig(
+                field="create_time", label="创建时间", order=12, date_format="%Y-%m-%d %H:%M:%S"
+            ),
         ]
 
 

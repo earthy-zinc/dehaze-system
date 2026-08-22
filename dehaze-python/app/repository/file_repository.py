@@ -2,8 +2,6 @@
 文件数据访问层
 """
 
-from typing import Optional
-
 from sqlalchemy import func, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,9 +61,7 @@ class FileRepository(BaseRepository[SysFile]):
         # 用当前读（FOR UPDATE）确保看到 ODKU 的结果，避免 RR 隔离级别下
         # 并发场景快照读看不到刚 upsert 的行（autoflush=False 时尤为关键）
         result = await db.execute(
-            select(SysFile)
-            .where(SysFile.md5 == md5, SysFile.deleted == 0)
-            .with_for_update()
+            select(SysFile).where(SysFile.md5 == md5, SysFile.deleted == 0).with_for_update()
         )
         return result.scalar_one()
 
@@ -84,7 +80,7 @@ class FileRepository(BaseRepository[SysFile]):
         db: AsyncSession,
         page: int,
         size: int,
-        keywords: Optional[str] = None,
+        keywords: str | None = None,
     ) -> tuple[list[SysFile], int]:
         """
         分页查询文件列表

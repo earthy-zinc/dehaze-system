@@ -8,7 +8,6 @@
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Body, Depends
 from pydantic import BaseModel, Field
@@ -30,27 +29,27 @@ logger = logging.getLogger(__name__)
 class ClientLogEntry(BaseModel):
     """前端单条日志条目（见 07-日志架构设计.md §3.5.2）。"""
 
-    timestamp: Optional[str] = None
-    level: Optional[str] = None
-    message: Optional[str] = None
-    app: Optional[str] = None
-    app_version: Optional[str] = None
-    url: Optional[str] = None
-    user_agent: Optional[str] = None
-    trace_id: Optional[str] = None
-    error_type: Optional[str] = None
-    error_source: Optional[str] = None
-    error_stack: Optional[str] = None
-    method: Optional[str] = None
-    path: Optional[str] = None
-    status: Optional[int] = None
-    duration: Optional[float] = None
-    code: Optional[str] = None
-    type: Optional[str] = None
-    metric_name: Optional[str] = None
-    metric_value: Optional[float] = None
-    navigation_type: Optional[str] = None
-    resource_url: Optional[str] = None
+    timestamp: str | None = None
+    level: str | None = None
+    message: str | None = None
+    app: str | None = None
+    app_version: str | None = None
+    url: str | None = None
+    user_agent: str | None = None
+    trace_id: str | None = None
+    error_type: str | None = None
+    error_source: str | None = None
+    error_stack: str | None = None
+    method: str | None = None
+    path: str | None = None
+    status: int | None = None
+    duration: float | None = None
+    code: str | None = None
+    type: str | None = None
+    metric_name: str | None = None
+    metric_value: float | None = None
+    navigation_type: str | None = None
+    resource_url: str | None = None
 
 
 class ClientLogBatch(BaseModel):
@@ -59,17 +58,17 @@ class ClientLogBatch(BaseModel):
     logs: list[ClientLogEntry] = Field(..., min_length=1, max_length=MAX_BATCH_SIZE)
 
 
-def _truncate(value: Optional[str], max_length: int) -> Optional[str]:
+def _truncate(value: str | None, max_length: int) -> str | None:
     if value is None:
         return None
     return value if len(value) <= max_length else value[:max_length]
 
 
-def _is_error(level: Optional[str]) -> bool:
+def _is_error(level: str | None) -> bool:
     return (level or "").upper() == "ERROR"
 
 
-def _write_entry(entry: ClientLogEntry, user_id: Optional[int]) -> None:
+def _write_entry(entry: ClientLogEntry, user_id: int | None) -> None:
     trace_id = (entry.trace_id or "").strip()
 
     # 匿名仅允许上报 ERROR 且必须携带 trace_id，否则丢弃该条，避免被滥用刷日志
@@ -79,7 +78,8 @@ def _write_entry(entry: ClientLogEntry, user_id: Optional[int]) -> None:
     fields = {
         key: value
         for key, value in {
-            # 不注入前端 timestamp：ClientLogFormatter 已输出服务端接收时间的 timestamp，避免同键冲突
+            # 不注入前端 timestamp：ClientLogFormatter 已输出服务端接收时间的 timestamp，
+            # 避免同键冲突
             "app": entry.app,
             "app_version": entry.app_version,
             "url": entry.url,
@@ -122,7 +122,7 @@ def _write_entry(entry: ClientLogEntry, user_id: Optional[int]) -> None:
 @router.post("/client", summary="前端日志批量上报")
 async def collect_client_logs(
     body: ClientLogBatch = Body(...),
-    user: Optional[UserContext] = Depends(get_current_user_optional),
+    user: UserContext | None = Depends(get_current_user_optional),
 ):
     try:
         user_id = user.id if user else None

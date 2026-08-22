@@ -7,7 +7,6 @@ RabbitMQ 连接管理
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from app.config import settings
 from app.infrastructure.mq.consumer import Consumer
@@ -15,21 +14,21 @@ from app.infrastructure.mq.publisher import Publisher
 
 logger = logging.getLogger(__name__)
 
-_publisher: Optional[Publisher] = None
-_consumer: Optional[Consumer] = None
+_publisher: Publisher | None = None
+_consumer: Consumer | None = None
 
 
-def get_publisher() -> Optional[Publisher]:
+def get_publisher() -> Publisher | None:
     """获取全局 Publisher 实例（未启用 RabbitMQ 时返回 None）"""
     return _publisher
 
 
-def get_consumer() -> Optional[Consumer]:
+def get_consumer() -> Consumer | None:
     """获取全局 Consumer 实例（未启用 RabbitMQ 时返回 None）"""
     return _consumer
 
 
-async def init_mq() -> tuple[Optional[Publisher], Optional[Consumer]]:
+async def init_mq() -> tuple[Publisher | None, Consumer | None]:
     """
     初始化 RabbitMQ 连接（在 Lifespan 启动阶段调用）
 

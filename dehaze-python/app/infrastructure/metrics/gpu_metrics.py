@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from typing import Optional
 
 from prometheus_client import Gauge
 
@@ -64,13 +63,14 @@ class GPUMetricsCollector:
     def __init__(self, collect_interval: int = 5):
         self.collect_interval = collect_interval
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._pynvml_available = False
         self._device_count = 0
 
         # 尝试初始化 pynvml
         try:
             import pynvml
+
             pynvml.nvmlInit()
             self._pynvml = pynvml
             self._pynvml_available = True
@@ -132,37 +132,29 @@ class GPUMetricsCollector:
                 if isinstance(device_name, bytes):
                     device_name = device_name.decode("utf-8")
 
-                device_labels = {"device_id": str(
-                    i), "device_name": device_name}
+                device_labels = {"device_id": str(i), "device_name": device_name}
 
                 # 显存信息
                 mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-                GPU_MEMORY_USED.labels(
-                    **device_labels).set(float(mem_info.used))
-                GPU_MEMORY_TOTAL.labels(
-                    **device_labels).set(float(mem_info.total))
-                GPU_MEMORY_FREE.labels(
-                    **device_labels).set(float(mem_info.free))
+                GPU_MEMORY_USED.labels(**device_labels).set(float(mem_info.used))
+                GPU_MEMORY_TOTAL.labels(**device_labels).set(float(mem_info.total))
+                GPU_MEMORY_FREE.labels(**device_labels).set(float(mem_info.free))
 
                 # GPU 利用率
                 util_info = pynvml.nvmlDeviceGetUtilizationRates(handle)
-                GPU_UTILIZATION.labels(
-                    **device_labels).set(float(util_info.gpu))
-                GPU_MEMORY_UTILIZATION.labels(
-                    **device_labels).set(float(util_info.memory))
+                GPU_UTILIZATION.labels(**device_labels).set(float(util_info.gpu))
+                GPU_MEMORY_UTILIZATION.labels(**device_labels).set(float(util_info.memory))
 
                 # 温度
                 try:
-                    temp = pynvml.nvmlDeviceGetTemperature(
-                        handle, pynvml.NVML_TEMPERATURE_GPU)
+                    temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
                     GPU_TEMPERATURE.labels(**device_labels).set(float(temp))
                 except Exception:
                     pass  # 部分设备可能不支持
 
                 # 功耗
                 try:
-                    power = pynvml.nvmlDeviceGetPowerUsage(
-                        handle) / 1000  # mW -> W
+                    power = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000  # mW -> W
                     GPU_POWER_USAGE.labels(**device_labels).set(float(power))
                 except Exception:
                     pass  # 部分设备可能不支持
@@ -171,7 +163,7 @@ class GPUMetricsCollector:
                 logger.warning(f"GPU {i} 指标采集失败: {e}")
 
 
-_collector: Optional[GPUMetricsCollector] = None
+_collector: GPUMetricsCollector | None = None
 
 
 def get_gpu_metrics_collector(collect_interval: int = 5) -> GPUMetricsCollector:
@@ -181,7 +173,7 @@ def get_gpu_metrics_collector(collect_interval: int = 5) -> GPUMetricsCollector:
     return _collector
 
 
-async def collect_gpu_metrics(collect_interval: int = 5) -> Optional[GPUMetricsCollector]:
+async def collect_gpu_metrics(collect_interval: int = 5) -> GPUMetricsCollector | None:
     """
     启动 GPU 指标采集（仅 Prometheus 启用时）
 

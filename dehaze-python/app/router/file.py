@@ -1,6 +1,10 @@
 import logging
-from typing import Optional
+import re
 from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
@@ -11,14 +15,15 @@ from app.dependencies.auth import get_current_user
 from app.models.schema.file import FilePageVO, FileUploadResultVO, FileVO
 from app.service.file_service import FileService
 from app.service.storage.factory import get_storage_by_name
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/files",
-                   tags=["文件管理"], dependencies=[Depends(get_current_user)])
+# MD5 格式：32 位十六进制（T-FM-034/035：无效 MD5 返回 B0404"MD5格式无效"）
+_MD5_PATTERN = re.compile(r"^[0-9a-fA-F]{32}$")
+
+router = APIRouter(
+    prefix="/api/v1/files", tags=["文件管理"], dependencies=[Depends(get_current_user)]
+)
 
 
 def _validate_file(file: UploadFile) -> None:
@@ -32,7 +37,7 @@ def _validate_file(file: UploadFile) -> None:
         raise BusinessException(ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)")
 
 
-def _build_file_url(file_info) -> Optional[str]:
+def _build_file_url(file_info) -> str | None:
     """根据文件 storage 标识和 object_name 运行时拼接完整 URL"""
     if not file_info or not file_info.object_name:
         return None
@@ -48,7 +53,7 @@ def _build_file_url(file_info) -> Optional[str]:
 )
 async def upload_file(
     file: UploadFile = File(..., description="要上传的文件"),
-    modelId: Optional[int] = Form(default=None, description="模型ID"),
+    modelId: int | None = Form(default=None, description="模型ID"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[FileUploadResultVO]:
     _validate_file(file)
@@ -75,6 +80,7 @@ async def upload_file(
             name=file_info.name,
             type=file_info.type,
             size=file_info.size,
+            sizeBytes=file_info.size_bytes,
             objectName=file_info.object_name,
             storage=file_info.storage,
             url=_build_file_url(file_info),
@@ -95,6 +101,9 @@ async def check_file(
     md5: str = Query(..., description="文件MD5值"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[FileVO]:
+    # MD5 格式校验：32 位十六进制（T-FM-034/035：无效 MD5 返回 B0404"MD5格式无效"）
+    if not md5 or not _MD5_PATTERN.fullmatch(md5):
+        raise BusinessException(ResultCode.FILE_MD5_INVALID)
     file_info = await FileService.get_file_by_md5(db, md5)
     if not file_info:
         return success(data=None)
@@ -104,6 +113,7 @@ async def check_file(
             name=file_info.name,
             type=file_info.type,
             size=file_info.size,
+            sizeBytes=file_info.size_bytes,
             objectName=file_info.object_name,
             storage=file_info.storage,
             url=_build_file_url(file_info),
@@ -122,7 +132,7 @@ async def check_file(
 async def get_file_page(
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
-    keywords: Optional[str] = Query(default=None, description="搜索关键词"),
+    keywords: str | None = Query(default=None, description="搜索关键词"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[FilePageVO]:
     items, total = await FileService.get_file_page(db, pageNum, pageSize, keywords)
@@ -133,6 +143,7 @@ async def get_file_page(
             name=f.name,
             type=f.type,
             size=f.size,
+            sizeBytes=f.size_bytes,
             objectName=f.object_name,
             storage=f.storage,
             url=_build_file_url(f),
@@ -161,18 +172,15 @@ async def download_file(
     # 获取文件信息
     file_info = await FileService.get_file_by_object_name(db, object_name)
     if not file_info:
-        raise HTTPException(
-            status_code=404, detail=ResultCode.FILE_NOT_FOUND.msg)
+        raise HTTPException(status_code=404, detail=ResultCode.FILE_NOT_FOUND.msg)
 
     # 按 storage 选后端流式读取（统一无分支，不再前缀判断 / 302 跳转）
     # 构造 Content-Disposition（RFC 5987 编码中文文件名）
     filename = file_info.name
-    ascii_filename = filename.encode(
-        "ascii", "ignore").decode("ascii") or "download"
+    ascii_filename = filename.encode("ascii", "ignore").decode("ascii") or "download"
     encoded_filename = quote(filename)
     content_disposition = (
-        f"attachment; filename=\"{ascii_filename}\"; "
-        f"filename*=UTF-8''{encoded_filename}"
+        f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
     )
 
     headers = {"Content-Disposition": content_disposition}
@@ -211,7 +219,8 @@ async def get_file_info(
     file_info = await FileService.get_file_by_id(db, file_id)
 
     if not file_info:
-        return success(data=None)
+        # T-FM-044：文件不存在返回 B0401"文件不存在"（对齐文档与 Java 端行为）
+        raise BusinessException(ResultCode.FILE_NOT_FOUND, "文件不存在")
 
     return success(
         data=FileVO(
@@ -219,6 +228,7 @@ async def get_file_info(
             name=file_info.name,
             type=file_info.type,
             size=file_info.size,
+            sizeBytes=file_info.size_bytes,
             objectName=file_info.object_name,
             storage=file_info.storage,
             url=_build_file_url(file_info),

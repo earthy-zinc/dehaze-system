@@ -1,6 +1,7 @@
 """
 字典导出处理器
 """
+
 from __future__ import annotations
 
 import io
@@ -15,7 +16,6 @@ from app.service.import_export.registry import ExportHandler
 
 
 class DictExportHandler(ExportHandler):
-
     def get_module(self) -> str:
         return "dict"
 
@@ -23,7 +23,11 @@ class DictExportHandler(ExportHandler):
         keywords = query_params.get("keywords")
         type_code = query_params.get("typeCode")
         _, total = await dict_repository.get_page(
-            db, page=1, page_size=1, keywords=keywords, type_code=type_code,
+            db,
+            page=1,
+            page_size=1,
+            keywords=keywords,
+            type_code=type_code,
         )
         return int(total)
 
@@ -45,8 +49,11 @@ class DictExportHandler(ExportHandler):
         all_rows: list[dict] = []
         while True:
             items, _ = await dict_repository.get_page(
-                db, page=page, page_size=page_size,
-                keywords=keywords, type_code=type_code,
+                db,
+                page=page,
+                page_size=page_size,
+                keywords=keywords,
+                type_code=type_code,
             )
             if not items:
                 break
@@ -73,7 +80,9 @@ class DictExportHandler(ExportHandler):
             ExportFieldConfig(field="status_label", label="状态", order=6),
             ExportFieldConfig(field="defaulted_label", label="是否默认", order=7),
             ExportFieldConfig(field="remark", label="备注", order=8),
-            ExportFieldConfig(field="create_time", label="创建时间", order=9, date_format="%Y-%m-%d %H:%M:%S"),
+            ExportFieldConfig(
+                field="create_time", label="创建时间", order=9, date_format="%Y-%m-%d %H:%M:%S"
+            ),
         ]
 
 

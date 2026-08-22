@@ -1,10 +1,11 @@
 import torch
 from thop import profile
 
-from app.utils.file import convert_size
 from algorithm.config import Config
+from app.utils.file import convert_size
 
 DEVICE = Config.DEVICE
+
 
 class ModelInfo:
     def __init__(self, name, model, flops, params):
@@ -16,7 +17,6 @@ class ModelInfo:
 
 
 class ModelContainer:
-
     def __init__(self):
         self.model_infos = []
         self.test_input = torch.randn(1, 3, 256, 256).to(DEVICE)
@@ -33,6 +33,8 @@ class ModelContainer:
                 return _model
 
         net_g_flops, net_g_params = profile(model, inputs=(self.test_input,))
-        model_info = ModelInfo(model_name, model, convert_size(net_g_flops), convert_size(net_g_params))
+        model_info = ModelInfo(
+            model_name, model, convert_size(net_g_flops), convert_size(net_g_params)
+        )
         self.model_infos.append(model_info)
         return model_info

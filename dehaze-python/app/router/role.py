@@ -1,22 +1,27 @@
-from typing import Optional
+from fastapi import APIRouter, Body, Depends, Path, Query
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.code import ResultCode
-from app.core.result import Result, error, success
+from app.core.result import Result, success
 from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.common import PageResult
-from app.models.schema.role import (MenuIdsBody, RoleForm, RoleFormVO,
-                                    RoleOptionVO, RolePageQuery, RolePageVO)
+from app.models.schema.role import (
+    MenuIdsBody,
+    RoleForm,
+    RoleFormVO,
+    RoleOptionVO,
+    RolePageQuery,
+    RolePageVO,
+)
 from app.service.role_service import RoleService
 from app.utils.datetime_utils import format_time
-from fastapi import APIRouter, Body, Depends, Path, Query
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter(prefix="/api/v1/roles",
-                   tags=["角色管理"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/v1/roles", tags=["角色管理"], dependencies=[Depends(get_current_user)]
+)
 
 
 DATA_SCOPE_LABELS = {
@@ -32,7 +37,9 @@ async def get_role_page(
     query: RolePageQuery = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
-    roles, total = await RoleService.get_role_list(db, query.pageNum, query.pageSize, query.keywords)
+    roles, total = await RoleService.get_role_list(
+        db, query.pageNum, query.pageSize, query.keywords
+    )
 
     role_list = []
     for role in roles:
@@ -44,7 +51,9 @@ async def get_role_page(
                 "sort": role.sort,
                 "status": role.status,
                 "dataScope": role.data_scope,
-                "dataScopeLabel": DATA_SCOPE_LABELS.get(role.data_scope if role.data_scope is not None else 0, ""),
+                "dataScopeLabel": DATA_SCOPE_LABELS.get(
+                    role.data_scope if role.data_scope is not None else 0, ""
+                ),
                 "createTime": format_time(role.create_time),
             }
         )
@@ -74,7 +83,7 @@ async def add_role(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    role = await RoleService.create_role(db, redis, body.model_dump(exclude_none=True))
+    await RoleService.create_role(db, redis, body.model_dump(exclude_none=True))
 
     return success(msg="创建成功")
 

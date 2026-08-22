@@ -22,8 +22,13 @@ async def metrics(request: Request):
     """
     # 多进程模式：使用 MultiProcessCollector 聚合所有 Worker 的指标
     if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
-        from prometheus_client import (CONTENT_TYPE_LATEST, CollectorRegistry,
-                                       generate_latest, multiprocess)
+        from prometheus_client import (
+            CONTENT_TYPE_LATEST,
+            CollectorRegistry,
+            generate_latest,
+            multiprocess,
+        )
+
         registry = CollectorRegistry()
         multiprocess.MultiProcessCollector(registry)
         data = generate_latest(registry)

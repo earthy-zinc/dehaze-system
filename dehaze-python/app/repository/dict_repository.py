@@ -6,11 +6,11 @@
 
 from typing import Any
 
-from app.models.base import get_audit_update_values
+from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.entity.sys_dict import SysDict, SysDictType
 from app.repository.base import BaseRepository, escape_like
-from sqlalchemy import and_, delete, func, or_, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class DictRepository(BaseRepository[SysDict]):
@@ -30,10 +30,7 @@ class DictRepository(BaseRepository[SysDict]):
         stmt = select(SysDict)
 
         if keywords:
-            stmt = stmt.where(
-                SysDict.name.like(
-                    f"%{escape_like(keywords)}%", escape="\\")
-            )
+            stmt = stmt.where(SysDict.name.like(f"%{escape_like(keywords)}%", escape="\\"))
 
         if type_code:
             stmt = stmt.where(SysDict.type_code == type_code)
@@ -53,9 +50,7 @@ class DictRepository(BaseRepository[SysDict]):
 
         return list(items), total or 0
 
-    async def get_form_by_id(
-        self, db: AsyncSession, dict_id: int
-    ) -> dict[str, Any] | None:
+    async def get_form_by_id(self, db: AsyncSession, dict_id: int) -> dict[str, Any] | None:
         """获取字典表单数据"""
         stmt = select(SysDict).where(SysDict.id == dict_id)
         result = await db.execute(stmt)
@@ -88,6 +83,25 @@ class DictRepository(BaseRepository[SysDict]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_type_code_and_name(
+        self, db: AsyncSession, type_code: str, name: str
+    ) -> SysDict | None:
+        """根据类型编码和名称查询字典项（幂等种子按 name 判重用）"""
+        stmt = select(SysDict).where(
+            and_(
+                SysDict.type_code == type_code,
+                SysDict.name == name,
+            )
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def list_enabled_by_type_code(self, db: AsyncSession, type_code: str) -> list[SysDict]:
+        """列出某类型下的全部启用字典项（AI 配置默认值/健康阈值等批量读取用）"""
+        stmt = select(SysDict).where(SysDict.type_code == type_code, SysDict.status == 1)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def count_by_type_codes(self, db: AsyncSession, type_codes: list[str]) -> dict[str, int]:
         """批量统计多个类型下的字典数据数量（避免 N+1）"""
         if not type_codes:
@@ -116,23 +130,11 @@ class DictRepository(BaseRepository[SysDict]):
         result = await db.execute(stmt)
         return result.rowcount
 
-    async def get_type_codes_by_ids(
-        self, db: AsyncSession, dict_ids: list[int]
-    ) -> list[str]:
+    async def get_type_codes_by_ids(self, db: AsyncSession, dict_ids: list[int]) -> list[str]:
         """根据ID列表获取对应的类型编码列表"""
         stmt = select(SysDict.type_code).where(SysDict.id.in_(dict_ids))
         result = await db.execute(stmt)
         return [row[0] for row in result.fetchall() if row[0]]
-
-    async def update_type_code(
-        self, db: AsyncSession, old_code: str, new_code: str
-    ) -> bool:
-        """批量更新字典数据的类型编码（用于字典类型 code 变更时的级联更新）"""
-        values = {"type_code": new_code}
-        values.update(get_audit_update_values())
-        stmt = update(SysDict).where(SysDict.type_code == old_code).values(**values)
-        result = await db.execute(stmt)
-        return result.rowcount > 0
 
     async def create_dict(self, db: AsyncSession, data: dict[str, Any]) -> SysDict:
         """创建字典项"""
@@ -151,9 +153,7 @@ class DictRepository(BaseRepository[SysDict]):
         await db.refresh(dict_item)
         return dict_item
 
-    async def update_by_id(
-        self, db: AsyncSession, dict_id: int, data: dict[str, Any]
-    ) -> bool:
+    async def update_by_id(self, db: AsyncSession, dict_id: int, data: dict[str, Any]) -> bool:
         """更新字典项"""
         stmt = select(SysDict).where(SysDict.id == dict_id)
         result = await db.execute(stmt)
@@ -188,11 +188,19 @@ class DictRepository(BaseRepository[SysDict]):
         """
         根据类型编码获取字典下拉选项
 
+        业务规则（T-DM-060/062）：
+        - 仅返回启用状态（status=1）的字典项
+        - 字典类型被禁用（status=0）时，其下拉选项整体不返回
         排序规则: sort ASC, create_time DESC
         """
         stmt = (
             select(SysDict)
-            .where(SysDict.type_code == type_code, SysDict.status == 1)
+            .join(SysDictType, SysDict.type_code == SysDictType.code)
+            .where(
+                SysDict.type_code == type_code,
+                SysDict.status == 1,
+                SysDictType.status == 1,
+            )
             .order_by(SysDict.sort.asc(), SysDict.create_time.desc())
         )
         result = await db.execute(stmt)
@@ -218,10 +226,8 @@ class DictTypeRepository(BaseRepository[SysDictType]):
         if keywords:
             stmt = stmt.where(
                 or_(
-                    SysDictType.name.like(
-                        f"%{escape_like(keywords)}%", escape="\\"),
-                    SysDictType.code.like(
-                        f"%{escape_like(keywords)}%", escape="\\"),
+                    SysDictType.name.like(f"%{escape_like(keywords)}%", escape="\\"),
+                    SysDictType.code.like(f"%{escape_like(keywords)}%", escape="\\"),
                 )
             )
 
@@ -240,9 +246,7 @@ class DictTypeRepository(BaseRepository[SysDictType]):
 
         return list(items), total or 0
 
-    async def get_form_by_id(
-        self, db: AsyncSession, type_id: int
-    ) -> dict[str, Any] | None:
+    async def get_form_by_id(self, db: AsyncSession, type_id: int) -> dict[str, Any] | None:
         """获取字典类型表单数据"""
         stmt = select(SysDictType).where(SysDictType.id == type_id)
         result = await db.execute(stmt)
@@ -279,9 +283,7 @@ class DictTypeRepository(BaseRepository[SysDictType]):
         await db.refresh(dict_type)
         return dict_type
 
-    async def update_by_id(
-        self, db: AsyncSession, type_id: int, data: dict[str, Any]
-    ) -> bool:
+    async def update_by_id(self, db: AsyncSession, type_id: int, data: dict[str, Any]) -> bool:
         """更新字典类型"""
         stmt = select(SysDictType).where(SysDictType.id == type_id)
         result = await db.execute(stmt)

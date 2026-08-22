@@ -3,9 +3,8 @@
 """
 
 from datetime import datetime, timedelta
-from typing import Optional
 
-from sqlalchemy import delete, select, func, desc
+from sqlalchemy import delete, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
@@ -17,12 +16,12 @@ from app.repository.base import BaseRepository
 
 # 算法状态机常量
 class AlgorithmStatus:
-    DRAFT = 1       # 草稿
-    TESTING = 2     # 测试中
+    DRAFT = 1  # 草稿
+    TESTING = 2  # 测试中
     PENDING_AUDIT = 3  # 待审核
-    PUBLISHED = 4   # 已发布
-    DISABLED = 5    # 已停用
-    ARCHIVED = 6    # 已归档
+    PUBLISHED = 4  # 已发布
+    DISABLED = 5  # 已停用
+    ARCHIVED = 6  # 已归档
 
 
 class AlgorithmRepository(BaseRepository[SysAlgorithm]):
@@ -42,6 +41,55 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_published(
+        self,
+        db: AsyncSession,
+        keyword: str | None = None,
+        order_by_tree: bool = False,
+    ) -> list[SysAlgorithm]:
+        """已发布算法列表（算法选择树/搜索共用；keyword 匹配名称或描述）"""
+        stmt = select(SysAlgorithm).where(
+            SysAlgorithm.status == AlgorithmStatus.PUBLISHED,
+            SysAlgorithm.deleted == 0,
+        )
+        if keyword:
+            kw = f"%{keyword}%"
+            stmt = stmt.where(
+                SysAlgorithm.name.ilike(kw) | SysAlgorithm.description.ilike(kw)
+            )
+        if order_by_tree:
+            stmt = stmt.order_by(SysAlgorithm.parent_id, SysAlgorithm.id)
+        else:
+            stmt = stmt.order_by(SysAlgorithm.id)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_by_id_include_unpublished(
+        self,
+        db: AsyncSession,
+        algorithm_id: int,
+    ) -> SysAlgorithm | None:
+        """按 ID 查算法（含未发布；发布校验由调用方判断）"""
+        stmt = select(SysAlgorithm).where(
+            SysAlgorithm.id == algorithm_id,
+            SysAlgorithm.deleted == 0,
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def list_by_ids_include_unpublished(
+        self,
+        db: AsyncSession,
+        algorithm_ids: list[int],
+    ) -> list[SysAlgorithm]:
+        """按 ID 列表查算法（含未发布；算法对比等）"""
+        stmt = select(SysAlgorithm).where(
+            SysAlgorithm.id.in_(algorithm_ids),
+            SysAlgorithm.deleted == 0,
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_with_children_ids(
         self,
         db: AsyncSession,
@@ -55,11 +103,13 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
             return []
 
         from collections import defaultdict
+
         children_map: dict[int, list[SysAlgorithm]] = defaultdict(list)
         for algo in all_algorithms:
             children_map[algo.parent_id].append(algo)
 
         from app.utils.tree import bfs_collect_ids
+
         all_ids: set[int] = set()
         for algorithm_id in algorithm_ids:
             all_ids.update(bfs_collect_ids(algorithm_id, children_map))
@@ -129,7 +179,7 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         db: AsyncSession,
         algorithm_id: int,
         status: int,
-    ) -> Optional[SysAlgorithm]:
+    ) -> SysAlgorithm | None:
         """更新算法状态"""
         algorithm = await self.get_by_id(db, algorithm_id)
         if not algorithm:
@@ -147,8 +197,8 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         algorithm_id: int,
         audit_by: int,
         passed: bool,
-        remark: Optional[str] = None,
-    ) -> Optional[SysAlgorithm]:
+        remark: str | None = None,
+    ) -> SysAlgorithm | None:
         """审核算法（通过/驳回）"""
         algorithm = await self.get_by_id(db, algorithm_id)
         if not algorithm:
@@ -174,9 +224,13 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         version: str,
     ) -> bool:
         """检查版本号是否已在版本历史表中存在（由唯一约束保证）"""
-        stmt = select(func.count()).select_from(SysAlgorithmVersion).where(
-            SysAlgorithmVersion.algorithm_id == algorithm_id,
-            SysAlgorithmVersion.version == version,
+        stmt = (
+            select(func.count())
+            .select_from(SysAlgorithmVersion)
+            .where(
+                SysAlgorithmVersion.algorithm_id == algorithm_id,
+                SysAlgorithmVersion.version == version,
+            )
         )
         return ((await db.execute(stmt)).scalar() or 0) > 0
 
@@ -185,10 +239,10 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         db: AsyncSession,
         algorithm_id: int,
         version: str,
-        change_log: Optional[str] = None,
-        status: Optional[int] = None,
-        config_json: Optional[str] = None,
-        model_file_id: Optional[int] = None,
+        change_log: str | None = None,
+        status: int | None = None,
+        config_json: str | None = None,
+        model_file_id: int | None = None,
         is_active: int = 0,
     ) -> SysAlgorithmVersion:
         """新增版本记录 (对齐 Java SysAlgorithmVersion 字段)"""
@@ -224,7 +278,7 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         self,
         db: AsyncSession,
         version_id: int,
-    ) -> Optional[SysAlgorithmVersion]:
+    ) -> SysAlgorithmVersion | None:
         """根据ID获取版本记录"""
         stmt = select(SysAlgorithmVersion).where(SysAlgorithmVersion.id == version_id)
         result = await db.execute(stmt)
@@ -235,7 +289,7 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         db: AsyncSession,
         algorithm_id: int,
         version_id: int,
-    ) -> Optional[SysAlgorithm]:
+    ) -> SysAlgorithm | None:
         """回滚到指定版本"""
         version = await self.get_version_by_id(db, version_id)
         if not version or version.algorithm_id != algorithm_id:
@@ -297,7 +351,9 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         days: int,
     ) -> dict:
         """按日期分组聚合最近 days 天预测日志（date -> row）"""
-        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)
+        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(
+            days=days - 1
+        )
         stmt = (
             select(
                 func.date(SysPredLog.create_time).label("date"),
@@ -320,9 +376,7 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         algorithm_id: int,
     ) -> int:
         """获取算法今日调用次数（对齐 Java: create_time >= 今日零点）"""
-        today_start = datetime.now().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         stmt = (
             select(func.count())
             .select_from(SysPredLog)
@@ -332,7 +386,6 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
             )
         )
         return (await db.execute(stmt)).scalar() or 0
-
 
 
 # 单例

@@ -1,6 +1,7 @@
 """
 角色导出处理器
 """
+
 from __future__ import annotations
 
 import io
@@ -15,7 +16,6 @@ from app.service.import_export.registry import ExportHandler
 
 
 class RoleExportHandler(ExportHandler):
-
     def get_module(self) -> str:
         return "role"
 
@@ -29,8 +29,12 @@ class RoleExportHandler(ExportHandler):
                 ("code", "like", f"%{keywords}%"),
             ]
         _, total = await role_repository.get_list(
-            db, filters=filters, search_fields=search_fields,
-            order_by="sort", page=1, page_size=1,
+            db,
+            filters=filters,
+            search_fields=search_fields,
+            order_by="sort",
+            page=1,
+            page_size=1,
         )
         return int(total)
 
@@ -58,8 +62,12 @@ class RoleExportHandler(ExportHandler):
         all_rows: list[dict] = []
         while True:
             roles, _ = await role_repository.get_list(
-                db, filters=filters, search_fields=search_fields,
-                order_by="sort", page=page, page_size=page_size,
+                db,
+                filters=filters,
+                search_fields=search_fields,
+                order_by="sort",
+                page=page,
+                page_size=page_size,
             )
             if not roles:
                 break
@@ -84,7 +92,9 @@ class RoleExportHandler(ExportHandler):
             ExportFieldConfig(field="sort", label="排序", order=4),
             ExportFieldConfig(field="status_label", label="状态", order=5),
             ExportFieldConfig(field="data_scope_label", label="数据权限", order=6),
-            ExportFieldConfig(field="create_time", label="创建时间", order=7, date_format="%Y-%m-%d %H:%M:%S"),
+            ExportFieldConfig(
+                field="create_time", label="创建时间", order=7, date_format="%Y-%m-%d %H:%M:%S"
+            ),
         ]
 
 

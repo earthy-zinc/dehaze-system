@@ -1,27 +1,35 @@
-from typing import Optional
+from fastapi import APIRouter, Body, Depends, Path, Query
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success
 from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
-from app.models.schema.menu import (MenuForm, MenuFormVO, MenuOptionVO,
-                                    MenuVisibleBody, MenuVO, RouteVO)
+from app.models.schema.menu import (
+    MenuForm,
+    MenuFormVO,
+    MenuOptionVO,
+    MenuVisibleBody,
+    MenuVO,
+    RouteVO,
+)
 from app.service.menu_service import MenuService
-from fastapi import APIRouter, Body, Depends, Path, Query
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter(prefix="/api/v1/menus",
-                   tags=["菜单管理"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/api/v1/menus", tags=["菜单管理"], dependencies=[Depends(get_current_user)]
+)
 
 
 @router.get("", response_model=Result[list[MenuVO]], summary="获取菜单列表")
 async def list_menus(
-    keywords: Optional[str] = Query(default=None, description="关键词(菜单名称)"),
+    keywords: str | None = Query(default=None, description="关键词(菜单名称)"),
+    type: int | None = Query(default=None, ge=1, le=4, description="菜单类型(1-菜单；2-目录；3-外链；4-按钮)"),
+    visible: int | None = Query(default=None, ge=0, le=1, description="显示状态(1:显示;0:隐藏)"),
     db: AsyncSession = Depends(get_db),
 ):
-    menu_list = await MenuService.list_menus(db, keywords)
+    menu_list = await MenuService.list_menus(db, keywords, type, visible)
     return success(menu_list)
 
 
@@ -83,7 +91,12 @@ async def update_menu(
     return success(msg="保存成功")
 
 
-@router.delete("/{ids}", response_model=Result[None], summary="删除菜单", description="级联删除子菜单和角色关联，支持批量删除")
+@router.delete(
+    "/{ids}",
+    response_model=Result[None],
+    summary="删除菜单",
+    description="级联删除子菜单和角色关联，支持批量删除",
+)
 @require_permission("sys:menu:delete")
 async def delete_menu(
     ids: str = Path(..., description="菜单ID，多个以英文逗号(,)分割"),

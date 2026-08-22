@@ -1,7 +1,6 @@
 """
 推荐管理路由
 """
-from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +13,6 @@ from app.models.schema.recommendation import (
     AnalyzeForm,
     RecommendationFeedbackForm,
     RecommendationRuleForm,
-    IdVO,
 )
 from app.service.recommendation_service import RecommendationService
 
@@ -37,8 +35,8 @@ async def analyze(
 
 @router.get("/algorithms", summary="获取算法推荐")
 async def get_algorithms(
-    analysisId: Optional[int] = Query(default=None),
-    imageMd5: Optional[str] = Query(default=None),
+    analysisId: int | None = Query(default=None),
+    imageMd5: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -81,8 +79,8 @@ async def update_rule(
 @router.get("/report", summary="推荐效果报表")
 @require_permission("sys:recommendation:report")
 async def get_report(
-    startDate: Optional[str] = Query(default=None),
-    endDate: Optional[str] = Query(default=None),
+    startDate: str | None = Query(default=None),
+    endDate: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):

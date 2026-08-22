@@ -1,4 +1,5 @@
-from typing import Optional
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -7,12 +8,15 @@ from app.database import get_db
 from app.decorators.permission import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.common import PageResult
-from app.models.schema.user import (PasswordForm, UserCreateVO,
-                                    UserDeleteVO, UserForm, UserFormVO,
-                                    UserPageVO)
+from app.models.schema.user import (
+    PasswordForm,
+    UserCreateVO,
+    UserDeleteVO,
+    UserForm,
+    UserFormVO,
+    UserPageVO,
+)
 from app.service.user_service import UserService
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/users", tags=["用户管理"])
 
@@ -21,13 +25,11 @@ router = APIRouter(prefix="/api/v1/users", tags=["用户管理"])
 async def get_user_page(
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页记录数"),
-    keywords: Optional[str] = Query(
-        default=None, description="关键词(用户名/昵称/手机号)"),
-    status: Optional[int] = Query(
-        default=None, ge=0, le=1, description="用户状态(1:启用;0:禁用)"),
-    deptId: Optional[int] = Query(default=None, description="部门ID"),
-    startTime: Optional[str] = Query(default=None, description="创建时间-开始时间"),
-    endTime: Optional[str] = Query(default=None, description="创建时间-结束时间"),
+    keywords: str | None = Query(default=None, description="关键词(用户名/昵称/手机号)"),
+    status: int | None = Query(default=None, ge=0, le=1, description="用户状态(1:启用;0:禁用)"),
+    deptId: int | None = Query(default=None, description="部门ID"),
+    startTime: str | None = Query(default=None, description="创建时间-开始时间"),
+    endTime: str | None = Query(default=None, description="创建时间-结束时间"),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -55,28 +57,36 @@ async def get_user_page(
 
         create_time = u.get("create_time")
         if create_time:
-            create_time_str = create_time.strftime("%Y-%m-%d") if not isinstance(create_time, str) else create_time[:10]
+            create_time_str = (
+                create_time.strftime("%Y-%m-%d")
+                if not isinstance(create_time, str)
+                else create_time[:10]
+            )
         else:
             create_time_str = None
 
-        user_list.append({
-            "id": u["id"],
-            "username": u["username"],
-            "nickname": u["nickname"],
-            "mobile": u.get("mobile"),
-            "genderLabel": gender_label,
-            "avatar": u.get("avatar"),
-            "status": u.get("status"),
-            "email": u.get("email"),
-            "deptName": u.get("deptName"),
-            "roleNames": u.get("roleNames"),
-            "createTime": create_time_str,
-        })
+        user_list.append(
+            {
+                "id": u["id"],
+                "username": u["username"],
+                "nickname": u["nickname"],
+                "mobile": u.get("mobile"),
+                "genderLabel": gender_label,
+                "avatar": u.get("avatar"),
+                "status": u.get("status"),
+                "email": u.get("email"),
+                "deptName": u.get("deptName"),
+                "roleNames": u.get("roleNames"),
+                "createTime": create_time_str,
+            }
+        )
 
-    return success({
-        "list": user_list,
-        "total": total,
-    })
+    return success(
+        {
+            "list": user_list,
+            "total": total,
+        }
+    )
 
 
 @router.post("", summary="新增用户", response_model=Result[UserCreateVO])
@@ -87,7 +97,7 @@ async def create_user(
     user: UserContext = Depends(get_current_user),
 ):
     data = body.model_dump(exclude_none=True)
-    new_user = await UserService.create_user_with_roles(db, data)
+    await UserService.create_user_with_roles(db, data)
 
     return success(msg="一切ok")
 
@@ -140,7 +150,9 @@ async def update_password(
     user: UserContext = Depends(get_current_user),
 ):
     # 只能修改自己的密码，或者有重置密码权限才能修改他人密码
-    if user_id != user.id and not (user.is_root or "sys:user:password:reset" in user.permissions or "*" in user.permissions):
+    if user_id != user.id and not (
+        user.is_root or "sys:user:password:reset" in user.permissions or "*" in user.permissions
+    ):
         raise BusinessException(ResultCode.ACCESS_UNAUTHORIZED, "无权修改其他用户的密码")
 
     await UserService.update_password(db, user_id, body.password)
@@ -155,6 +167,6 @@ async def delete_users(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await UserService.delete_users(db, ids)
+    result = await UserService.delete_users(db, ids, current_user=user)
 
     return success(result, msg=f"成功删除 {result['deleted_count']} 个用户")

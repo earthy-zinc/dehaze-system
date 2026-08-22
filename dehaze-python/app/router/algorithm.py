@@ -1,11 +1,10 @@
-from typing import Optional
-
 from fastapi import APIRouter, Body, Depends, File, Query, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success
 from app.database import get_db
+from app.decorators.permission import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.algorithm import (
     AlgorithmAuditForm,
@@ -27,16 +26,14 @@ router = APIRouter(
 
 @router.get("", response_model=Result[list[AlgorithmVO]], summary="获取算法树形表格")
 async def list_algorithms(
-    keywords: Optional[str] = Query(default=None, description="关键词"),
+    keywords: str | None = Query(default=None, description="关键词"),
     db: AsyncSession = Depends(get_db),
 ):
     algorithms = await AlgorithmService.get_algorithm_list(db, keywords)
     return success(algorithms)
 
 
-@router.get(
-    "/options", response_model=Result[list[AlgorithmOptionVO]], summary="获取算法下拉选项"
-)
+@router.get("/options", response_model=Result[list[AlgorithmOptionVO]], summary="获取算法下拉选项")
 async def get_algorithm_options(
     db: AsyncSession = Depends(get_db),
 ):
@@ -44,9 +41,7 @@ async def get_algorithm_options(
     return success(options)
 
 
-@router.get(
-    "/list", response_model=Result[list[AlgorithmVO]], summary="获取所有算法扁平列表"
-)
+@router.get("/list", response_model=Result[list[AlgorithmVO]], summary="获取所有算法扁平列表")
 async def list_all_algorithms(
     db: AsyncSession = Depends(get_db),
 ):
@@ -54,9 +49,7 @@ async def list_all_algorithms(
     return success(algorithms)
 
 
-@router.get(
-    "/{algorithm_id}", response_model=Result[AlgorithmVO], summary="获取算法详情"
-)
+@router.get("/{algorithm_id}", response_model=Result[AlgorithmVO], summary="获取算法详情")
 async def get_algorithm(
     algorithm_id: int,
     db: AsyncSession = Depends(get_db),
@@ -65,22 +58,24 @@ async def get_algorithm(
     return success(algorithm)
 
 
-@router.post(
-    "", response_model=Result[int], summary="新增算法"
-)
+@router.post("", response_model=Result[int], summary="新增算法")
+@require_permission("sys:algorithm:add")
 async def create_algorithm(
     body: AlgorithmForm,
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
     algorithm_id = await AlgorithmService.create_algorithm(db, body.model_dump(exclude_none=True))
     return success(algorithm_id)
 
 
 @router.put("/{algorithm_id}", response_model=Result[None], summary="修改算法")
+@require_permission("sys:algorithm:edit")
 async def update_algorithm(
     algorithm_id: int,
     body: AlgorithmForm,
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
     await AlgorithmService.update_algorithm(db, algorithm_id, body.model_dump(exclude_none=True))
     return success(msg="算法更新成功")
@@ -88,11 +83,14 @@ async def update_algorithm(
 
 # ── 状态机 ──────────────────────────────────────
 
+
 @router.put("/{algorithm_id}/status", response_model=Result[None], summary="修改算法状态")
+@require_permission("sys:algorithm:edit")
 async def update_algorithm_status(
     algorithm_id: int,
     status: int = Body(..., embed=True),
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
     await AlgorithmService.update_status(db, algorithm_id, status)
     return success(msg="算法状态更新成功")
@@ -100,7 +98,9 @@ async def update_algorithm_status(
 
 # ── 审核 ──────────────────────────────────────
 
+
 @router.put("/{algorithm_id}/audit", response_model=Result[None], summary="审核算法")
+@require_permission("sys:algorithm:audit")
 async def audit_algorithm(
     algorithm_id: int,
     body: AlgorithmAuditForm,
@@ -118,6 +118,7 @@ async def audit_algorithm(
 
 
 # ── 版本控制 ──────────────────────────────────────
+
 
 @router.post("/{algorithm_id}/version", response_model=Result[int], summary="新增版本")
 async def create_version(
@@ -138,6 +139,7 @@ async def create_version(
     )
     # 失效预测缓存
     from app.service.prediction_service import prediction_service
+
     await prediction_service.invalidate_cache(algorithm_id)
     return success(algorithm_id)
 
@@ -168,12 +170,13 @@ async def rollback_version(
 
 # ── 删除 ──────────────────────────────────────
 
-@router.delete(
-    "", response_model=Result[None], summary="批量删除算法"
-)
+
+@router.delete("", response_model=Result[None], summary="批量删除算法")
+@require_permission("sys:algorithm:delete")
 async def delete_algorithms(
     ids: str = Query(..., description="算法ID，多个以逗号分隔"),
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
     algorithm_ids = [int(i) for i in ids.split(",")]
     await AlgorithmService.delete_algorithms(db, algorithm_ids)
@@ -181,9 +184,11 @@ async def delete_algorithms(
 
 
 @router.delete("/{algorithm_id}", response_model=Result[None], summary="删除单个算法")
+@require_permission("sys:algorithm:delete")
 async def delete_algorithm_single(
     algorithm_id: int,
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
     """删除单个算法（含子算法）"""
     await AlgorithmService.delete_algorithm_single(db, algorithm_id)
@@ -191,6 +196,7 @@ async def delete_algorithm_single(
 
 
 # ── 导入/导出 ──────────────────────────────────────
+
 
 @router.get("/{algorithm_id}/_export", summary="导出单个算法（配置JSON）")
 async def export_algorithm(
@@ -237,6 +243,7 @@ async def import_algorithm(
 
 
 # ── 监控 ──────────────────────────────────────
+
 
 @router.get(
     "/{algorithm_id}/monitor",

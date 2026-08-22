@@ -14,13 +14,14 @@ import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
-from app.config import settings
-from app.dependencies.redis import get_redis_client
 from fastapi import WebSocket, WebSocketDisconnect
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
+
+from app.config import settings
+from app.dependencies.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ SESSION_PREFIX = "session:"
 @dataclass
 class WebSocketConnection:
     """WebSocket 连接信息"""
+
     websocket: WebSocket
     user_id: int
     username: str = ""
@@ -53,9 +55,9 @@ class DistributedConnectionManager:
     def __init__(self):
         self._local_connections: dict[int, list[WebSocketConnection]] = {}
         self._lock = asyncio.Lock()
-        self._redis: Optional[Redis] = None
-        self._pubsub_task: Optional[asyncio.Task] = None
-        self._heartbeat_task: Optional[asyncio.Task] = None
+        self._redis: Redis | None = None
+        self._pubsub_task: asyncio.Task | None = None
+        self._heartbeat_task: asyncio.Task | None = None
         self._started = False
 
     async def start(self, redis: Redis):
@@ -127,8 +129,7 @@ class DistributedConnectionManager:
         async with self._lock:
             if user_id in self._local_connections:
                 self._local_connections[user_id] = [
-                    conn for conn in self._local_connections[user_id]
-                    if conn.websocket != websocket
+                    conn for conn in self._local_connections[user_id] if conn.websocket != websocket
                 ]
                 if not self._local_connections[user_id]:
                     del self._local_connections[user_id]
@@ -150,10 +151,13 @@ class DistributedConnectionManager:
         """向指定用户发送消息（跨 Worker）"""
         if self._redis and self._started:
             try:
-                msg = json.dumps({
-                    "target_user_id": user_id,
-                    "message": message,
-                }, ensure_ascii=False)
+                msg = json.dumps(
+                    {
+                        "target_user_id": user_id,
+                        "message": message,
+                    },
+                    ensure_ascii=False,
+                )
                 await self._redis.publish(settings.WS_REDIS_CHANNEL, msg)
                 return
             except RedisError as e:
@@ -166,10 +170,13 @@ class DistributedConnectionManager:
         """广播消息（跨 Worker）"""
         if self._redis and self._started:
             try:
-                msg = json.dumps({
-                    "exclude_user": exclude_user,
-                    "message": message,
-                }, ensure_ascii=False)
+                msg = json.dumps(
+                    {
+                        "exclude_user": exclude_user,
+                        "message": message,
+                    },
+                    ensure_ascii=False,
+                )
                 await self._redis.publish(settings.WS_REDIS_CHANNEL, msg)
                 return
             except RedisError as e:
@@ -183,9 +190,7 @@ class DistributedConnectionManager:
             try:
                 now = time.time()
                 min_score = now - settings.WS_ONLINE_TTL
-                raw = await self._redis.zrangebyscore(
-                    settings.WS_ONLINE_KEY, min_score, now
-                )
+                raw = await self._redis.zrangebyscore(settings.WS_ONLINE_KEY, min_score, now)
                 # 从本地连接补充用户名信息
                 user_name_map = {}
                 async with self._lock:
@@ -197,10 +202,12 @@ class DistributedConnectionManager:
                 for uid_str in raw:
                     try:
                         uid = int(uid_str)
-                        users.append({
-                            "user_id": uid,
-                            "username": user_name_map.get(uid, ""),
-                        })
+                        users.append(
+                            {
+                                "user_id": uid,
+                                "username": user_name_map.get(uid, ""),
+                            }
+                        )
                     except (ValueError, TypeError):
                         pass
                 return users
@@ -217,10 +224,6 @@ class DistributedConnectionManager:
                     users.append(connections[0].to_dict())
             return users
 
-    @property
-    def online_count(self) -> int:
-        """本地在线用户数"""
-        return len(self._local_connections)
 
     # ===== 内部方法 =====
 
@@ -323,9 +326,7 @@ class DistributedConnectionManager:
                     for uid in user_ids:
                         pipe.zadd(settings.WS_ONLINE_KEY, {str(uid): now})
                     # 清理过期用户
-                    pipe.zremrangebyscore(
-                        settings.WS_ONLINE_KEY, 0, now - settings.WS_ONLINE_TTL
-                    )
+                    pipe.zremrangebyscore(settings.WS_ONLINE_KEY, 0, now - settings.WS_ONLINE_TTL)
                     await pipe.execute()
             except asyncio.CancelledError:
                 break
@@ -373,11 +374,13 @@ class WebSocketService:
     async def broadcast_shutdown_notification():
         """广播服务器关闭通知（跨 Worker）"""
         try:
-            await manager.broadcast({
-                "type": "server_shutdown",
-                "message": "服务器正在关闭，请保存工作",
-                "reconnect": False,
-            })
+            await manager.broadcast(
+                {
+                    "type": "server_shutdown",
+                    "message": "服务器正在关闭，请保存工作",
+                    "reconnect": False,
+                }
+            )
             logger.info("已广播关闭通知")
         except Exception as e:
             logger.error(f"广播关闭通知失败: {e}")
@@ -388,10 +391,7 @@ class WebSocketService:
         session = await WebSocketService.verify_session(session_id)
         if not session:
             await websocket.accept()
-            await websocket.send_json({
-                "type": "error",
-                "message": "认证失败，请重新登录"
-            })
+            await websocket.send_json({"type": "error", "message": "认证失败，请重新登录"})
             await websocket.close(code=4001)
             return
 
@@ -400,10 +400,7 @@ class WebSocketService:
 
         if not user_id:
             await websocket.accept()
-            await websocket.send_json({
-                "type": "error",
-                "message": "无效的用户信息"
-            })
+            await websocket.send_json({"type": "error", "message": "无效的用户信息"})
             await websocket.close(code=4002)
             return
 
@@ -413,18 +410,23 @@ class WebSocketService:
             return
 
         try:
-            await websocket.send_json({
-                "type": "connected",
-                "message": f"用户 {username} 连接成功",
-                "user_id": user_id,
-            })
+            await websocket.send_json(
+                {
+                    "type": "connected",
+                    "message": f"用户 {username} 连接成功",
+                    "user_id": user_id,
+                }
+            )
 
             # 通知其他用户
-            await manager.broadcast({
-                "type": "user_online",
-                "user_id": user_id,
-                "username": username,
-            }, exclude_user=user_id)
+            await manager.broadcast(
+                {
+                    "type": "user_online",
+                    "user_id": user_id,
+                    "username": username,
+                },
+                exclude_user=user_id,
+            )
 
             # 持续监听消息
             while True:
@@ -437,19 +439,16 @@ class WebSocketService:
             logger.error(f"WebSocket 异常: user_id={user_id}, error={e}")
         finally:
             await manager.disconnect(websocket, user_id)
-            await manager.broadcast({
-                "type": "user_offline",
-                "user_id": user_id,
-                "username": username,
-            })
+            await manager.broadcast(
+                {
+                    "type": "user_offline",
+                    "user_id": user_id,
+                    "username": username,
+                }
+            )
 
     @staticmethod
-    async def _handle_message(
-        websocket: WebSocket,
-        user_id: int,
-        username: str,
-        data: str
-    ):
+    async def _handle_message(websocket: WebSocket, user_id: int, username: str, data: str):
         """处理 WebSocket 消息"""
         try:
             message = json.loads(data)
@@ -460,49 +459,47 @@ class WebSocketService:
 
             elif msg_type == "broadcast":
                 content = message.get("message", "")
-                await manager.broadcast({
-                    "type": "broadcast",
-                    "user_id": user_id,
-                    "username": username,
-                    "message": content,
-                })
+                await manager.broadcast(
+                    {
+                        "type": "broadcast",
+                        "user_id": user_id,
+                        "username": username,
+                        "message": content,
+                    }
+                )
 
             elif msg_type == "private":
                 target_user_id = message.get("target_user_id")
                 content = message.get("message", "")
                 if target_user_id:
-                    await manager.send_personal(target_user_id, {
-                        "type": "private_message",
-                        "sender_id": user_id,
-                        "sender_name": username,
-                        "message": content,
-                    })
+                    await manager.send_personal(
+                        target_user_id,
+                        {
+                            "type": "private_message",
+                            "sender_id": user_id,
+                            "sender_name": username,
+                            "message": content,
+                        },
+                    )
 
             elif msg_type == "get_online_users":
                 users = await manager.get_online_users()
-                await websocket.send_json({
-                    "type": "online_users",
-                    "users": users,
-                    "count": len(users),
-                })
+                await websocket.send_json(
+                    {
+                        "type": "online_users",
+                        "users": users,
+                        "count": len(users),
+                    }
+                )
 
             else:
-                await websocket.send_json({
-                    "type": "error",
-                    "message": f"未知消息类型: {msg_type}"
-                })
+                await websocket.send_json({"type": "error", "message": f"未知消息类型: {msg_type}"})
 
         except json.JSONDecodeError:
-            await websocket.send_json({
-                "type": "error",
-                "message": "无效的 JSON 格式"
-            })
+            await websocket.send_json({"type": "error", "message": "无效的 JSON 格式"})
         except Exception as e:
             logger.error(f"处理消息失败: {e}")
-            await websocket.send_json({
-                "type": "error",
-                "message": "处理消息失败"
-            })
+            await websocket.send_json({"type": "error", "message": "处理消息失败"})
 
 
 async def init_websocket_manager():

@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,9 +17,9 @@ class CouponRepository(BaseRepository[SysCoupon]):
         page: int,
         page_size: int,
         *,
-        name: Optional[str] = None,
-        type: Optional[str] = None,
-        status: Optional[int] = None,
+        name: str | None = None,
+        type: str | None = None,
+        status: int | None = None,
     ) -> tuple[list[SysCoupon], int]:
         stmt = select(SysCoupon).where(SysCoupon.deleted == 0)
 
@@ -41,21 +40,9 @@ class CouponRepository(BaseRepository[SysCoupon]):
         items = list(result.scalars().all())
         return items, total
 
-    async def increment_issued_qty(self, db: AsyncSession, coupon_id: int) -> bool:
-        stmt = (
-            update(SysCoupon)
-            .where(
-                SysCoupon.id == coupon_id,
-                SysCoupon.deleted == 0,
-                SysCoupon.status == 1,
-            )
-            .values(issued_qty=SysCoupon.issued_qty + 1)
-        )
-        result = await db.execute(stmt)
-        await db.flush()
-        return result.rowcount > 0
-
-    async def increment_issued_qty_with_limit(self, db: AsyncSession, coupon_id: int, count: int = 1) -> bool:
+    async def increment_issued_qty_with_limit(
+        self, db: AsyncSession, coupon_id: int, count: int = 1
+    ) -> bool:
         stmt = (
             update(SysCoupon)
             .where(
@@ -93,7 +80,7 @@ class UserCouponRepository(BaseRepository[SysUserCoupon]):
         self,
         db: AsyncSession,
         user_id: int,
-        status: Optional[int] = None,
+        status: int | None = None,
     ) -> list[SysUserCoupon]:
         stmt = select(SysUserCoupon).where(
             SysUserCoupon.user_id == user_id,
@@ -182,7 +169,9 @@ class UserCouponRepository(BaseRepository[SysUserCoupon]):
         )
         return (await db.execute(stmt)).scalar() or 0
 
-    async def soft_delete_unused_by_coupon_ids(self, db: AsyncSession, coupon_ids: list[int]) -> None:
+    async def soft_delete_unused_by_coupon_ids(
+        self, db: AsyncSession, coupon_ids: list[int]
+    ) -> None:
         if not coupon_ids:
             return
         stmt = (

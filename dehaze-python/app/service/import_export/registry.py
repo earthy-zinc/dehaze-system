@@ -1,23 +1,27 @@
 """
 导入导出处理器注册表与抽象接口
 """
+
 from __future__ import annotations
 
 import abc
 import io
-from typing import Optional
+from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.service.import_export.models import (ExportContext, ExportFieldConfig,
-                                              ImportFieldConfig, ImportOptions,
-                                              ImportResult)
+from app.service.import_export.models import (
+    ExportContext,
+    ExportFieldConfig,
+    ImportFieldConfig,
+    ImportOptions,
+    ImportResult,
+)
 
 
 class ExportHandler(abc.ABC):
-
     @abc.abstractmethod
     def get_module(self) -> str:
         """模块标识"""
@@ -45,7 +49,7 @@ class ExportHandler(abc.ABC):
         """是否直接导出（如 ZIP 包），不使用 Excel/CSV 文件生成器"""
         return False
 
-    def filter_fields(self, selected: Optional[list[str]]) -> list[ExportFieldConfig]:
+    def filter_fields(self, selected: list[str] | None) -> list[ExportFieldConfig]:
         all_fields = self.get_field_configs()
         if not selected:
             return [f for f in all_fields if not f.hidden]
@@ -54,7 +58,6 @@ class ExportHandler(abc.ABC):
 
 
 class ImportHandler(abc.ABC):
-
     @abc.abstractmethod
     def get_module(self) -> str:
         """模块标识"""
@@ -78,19 +81,25 @@ class ImportHandler(abc.ABC):
         return []
 
 
-class ExportHandlerRegistry:
-    def __init__(self) -> None:
-        self._handlers: dict[str, ExportHandler] = {}
+T = TypeVar("T")
 
-    def register(self, handler: ExportHandler) -> None:
+
+class _HandlerRegistry(Generic[T]):
+    """按模块名注册/查找处理器，未注册模块抛出业务异常"""
+
+    def __init__(self, kind_label: str) -> None:
+        self._kind_label = kind_label
+        self._handlers: dict[str, T] = {}
+
+    def register(self, handler: T) -> None:
         self._handlers[handler.get_module()] = handler
 
-    def get_handler(self, module: str) -> ExportHandler:
+    def get_handler(self, module: str) -> T:
         handler = self._handlers.get(module)
         if handler is None:
             raise BusinessException(
                 ResultCode.MODULE_IMPORT_NOT_SUPPORTED,
-                f"模块 {module} 不支持导出",
+                f"模块 {module} 不支持{self._kind_label}",
             )
         return handler
 
@@ -98,33 +107,15 @@ class ExportHandlerRegistry:
         return module in self._handlers
 
 
-class ImportHandlerRegistry:
+class ExportHandlerRegistry(_HandlerRegistry[ExportHandler]):
     def __init__(self) -> None:
-        self._handlers: dict[str, ImportHandler] = {}
+        super().__init__("导出")
 
-    def register(self, handler: ImportHandler) -> None:
-        self._handlers[handler.get_module()] = handler
 
-    def get_handler(self, module: str) -> ImportHandler:
-        handler = self._handlers.get(module)
-        if handler is None:
-            raise BusinessException(
-                ResultCode.MODULE_IMPORT_NOT_SUPPORTED,
-                f"模块 {module} 不支持导入",
-            )
-        return handler
-
-    def has_module(self, module: str) -> bool:
-        return module in self._handlers
+class ImportHandlerRegistry(_HandlerRegistry[ImportHandler]):
+    def __init__(self) -> None:
+        super().__init__("导入")
 
 
 export_handler_registry = ExportHandlerRegistry()
 import_handler_registry = ImportHandlerRegistry()
-
-
-def register_export_handler(handler: ExportHandler) -> None:
-    export_handler_registry.register(handler)
-
-
-def register_import_handler(handler: ImportHandler) -> None:
-    import_handler_registry.register(handler)

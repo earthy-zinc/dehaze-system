@@ -8,12 +8,8 @@ WPXNet 系列算法预查询拦截器（对齐 Java WpxNetPredictionInterceptor�
 """
 
 import logging
-from typing import Optional
-
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_factory
-from app.models.entity.sys_file import SysFile
 from app.repository.algorithm_repository import algorithm_repository
 from app.repository.file_repository import file_repository
 from app.repository.wpx_file_repository import wpx_file_repository
@@ -31,7 +27,7 @@ WPXNET_ROOT_NAME = "WPXNet"
 class WpxNetPredictionInterceptor(PredictionInterceptor):
     """WPXNet 预查询拦截器"""
 
-    async def intercept(self, context: PredictionContext) -> Optional[InterceptedResult]:
+    async def intercept(self, context: PredictionContext) -> InterceptedResult | None:
         algorithm = context.algorithm
 
         async with async_session_factory() as db:
@@ -48,7 +44,8 @@ class WpxNetPredictionInterceptor(PredictionInterceptor):
             if wpx_file is None or wpx_file.new_file_id is None:
                 logger.debug(
                     "WPXNet 命中算法但未找到映射: algorithmId=%s, originMd5=%s",
-                    algorithm.id, origin_md5,
+                    algorithm.id,
+                    origin_md5,
                 )
                 return None
 
@@ -56,16 +53,20 @@ class WpxNetPredictionInterceptor(PredictionInterceptor):
             if new_file is None:
                 logger.warning(
                     "WPXNet 映射的 new_file_id 不存在: wpxFileId=%s, newFileId=%s",
-                    wpx_file.id, wpx_file.new_file_id,
+                    wpx_file.id,
+                    wpx_file.new_file_id,
                 )
                 return None
 
             logger.debug(
                 "WPXNet 预查询命中: algorithmId=%s, originMd5=%s, resultFileId=%s",
-                algorithm.id, origin_md5, new_file.id,
+                algorithm.id,
+                origin_md5,
+                new_file.id,
             )
             # 返回 result_url：通过 storage.get_url 运行时拼接（不落库）
             from app.service.storage.factory import get_storage_by_name
+
             storage_service = get_storage_by_name(new_file.storage)
             return InterceptedResult(
                 result_url=storage_service.get_url(new_file.object_name),

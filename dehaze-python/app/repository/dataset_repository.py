@@ -6,13 +6,13 @@
 
 from typing import Any
 
-from app.models.entity.sys_dataset import (SysDataset, SysDatasetItem,
-                                           SysItemFile)
+from sqlalchemy import and_, case, delete, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.entity.sys_dataset import SysDataset, SysDatasetItem, SysItemFile
 from app.models.entity.sys_file import SysFile
 from app.repository.base import BaseRepository
 from app.utils.tree import bfs_collect_ids
-from sqlalchemy import and_, case, delete, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class DatasetRepository(BaseRepository[SysDataset]):
@@ -75,8 +75,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
         children_map, _ = await self._build_children_map(db)
         result: dict[int, list[int]] = {}
         for dataset_id in dataset_ids:
-            result[dataset_id] = bfs_collect_ids(
-                dataset_id, children_map, include_start=True)
+            result[dataset_id] = bfs_collect_ids(dataset_id, children_map, include_start=True)
         return result
 
     async def get_items_by_dataset_id(
@@ -85,8 +84,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
         dataset_id: int,
     ) -> list[SysDatasetItem]:
         """获取数据集下的所有数据项"""
-        stmt = select(SysDatasetItem).where(
-            SysDatasetItem.dataset_id == dataset_id)
+        stmt = select(SysDatasetItem).where(SysDatasetItem.dataset_id == dataset_id)
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -154,6 +152,34 @@ class DatasetRepository(BaseRepository[SysDataset]):
 
         return build_options_tree(0)
 
+    async def find_datasets_with_clear_gt(
+        self,
+        db: AsyncSession,
+        task_type: str | None = None,
+    ) -> list[SysDataset]:
+        """查询含清晰图 GT（type=clear）的数据集，用于算法评估测试集选项。
+
+        - 仅返回启用（status=1）且未删除的数据集
+        - 按 task_type 过滤时匹配数据集 type 字段
+        - 数据集自身存在 type=clear 的 item_file 即视为含 GT
+        """
+        stmt = (
+            select(SysDataset)
+            .join(SysDatasetItem, SysDatasetItem.dataset_id == SysDataset.id)
+            .join(SysItemFile, SysItemFile.item_id == SysDatasetItem.id)
+            .where(
+                SysDataset.deleted == 0,
+                SysDataset.status == 1,
+                SysItemFile.type == "clear",
+            )
+            .distinct()
+        )
+        if task_type:
+            stmt = stmt.where(SysDataset.type == task_type)
+        stmt = stmt.order_by(SysDataset.id)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_by_id(
         self,
         db: AsyncSession,
@@ -165,9 +191,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
         if with_deleted:
             stmt = select(SysDataset).where(SysDataset.id == id)
         else:
-            stmt = select(SysDataset).where(
-                and_(SysDataset.id == id, SysDataset.deleted == 0)
-            )
+            stmt = select(SysDataset).where(and_(SysDataset.id == id, SysDataset.deleted == 0))
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -177,8 +201,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
         dataset_id: int,
     ) -> int:
         """获取子数据集数量"""
-        stmt = select(func.count(SysDataset.id)).where(
-            SysDataset.parent_id == dataset_id)
+        stmt = select(func.count(SysDataset.id)).where(SysDataset.parent_id == dataset_id)
         result = await db.execute(stmt)
         return result.scalar() or 0
 
@@ -227,9 +250,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
             SysDatasetItem.dataset_id.in_(dataset_ids)
         )
         if keywords:
-            stmt = stmt.where(
-                SysDatasetItem.name.like(f"%{keywords}%")
-            )
+            stmt = stmt.where(SysDatasetItem.name.like(f"%{keywords}%"))
         result = await db.execute(stmt)
         return result.scalar() or 0
 
@@ -242,15 +263,10 @@ class DatasetRepository(BaseRepository[SysDataset]):
         keywords: str | None = None,
     ) -> list[SysDatasetItem]:
         """分页获取数据项（支持关键词过滤）"""
-        stmt = select(SysDatasetItem).where(
-            SysDatasetItem.dataset_id.in_(dataset_ids)
-        )
+        stmt = select(SysDatasetItem).where(SysDatasetItem.dataset_id.in_(dataset_ids))
         if keywords:
-            stmt = stmt.where(
-                SysDatasetItem.name.like(f"%{keywords}%")
-            )
-        stmt = stmt.order_by(SysDatasetItem.id.desc()
-                             ).offset(offset).limit(limit)
+            stmt = stmt.where(SysDatasetItem.name.like(f"%{keywords}%"))
+        stmt = stmt.order_by(SysDatasetItem.id.desc()).offset(offset).limit(limit)
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -262,8 +278,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
         """批量获取多个数据集下的所有数据项 ID（避免 N+1）"""
         if not dataset_ids:
             return []
-        stmt = select(SysDatasetItem.id).where(
-            SysDatasetItem.dataset_id.in_(dataset_ids))
+        stmt = select(SysDatasetItem.id).where(SysDatasetItem.dataset_id.in_(dataset_ids))
         result = await db.execute(stmt)
         return [row[0] for row in result.all()]
 
@@ -425,7 +440,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
         result = await db.execute(stmt)
         return result.rowcount
 
-
     async def find_root_page(
         self,
         db: AsyncSession,
@@ -470,9 +484,11 @@ class DatasetRepository(BaseRepository[SysDataset]):
         parent_id: int,
     ) -> list[SysDataset]:
         """查询指定父节点的直接子节点"""
-        stmt = select(SysDataset).where(
-            and_(SysDataset.parent_id == parent_id, SysDataset.deleted == 0)
-        ).order_by(SysDataset.id)
+        stmt = (
+            select(SysDataset)
+            .where(and_(SysDataset.parent_id == parent_id, SysDataset.deleted == 0))
+            .order_by(SysDataset.id)
+        )
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -484,9 +500,11 @@ class DatasetRepository(BaseRepository[SysDataset]):
         """批量查询多个父节点的直接子节点"""
         if not parent_ids:
             return []
-        stmt = select(SysDataset).where(
-            and_(SysDataset.parent_id.in_(parent_ids), SysDataset.deleted == 0)
-        ).order_by(SysDataset.id)
+        stmt = (
+            select(SysDataset)
+            .where(and_(SysDataset.parent_id.in_(parent_ids), SysDataset.deleted == 0))
+            .order_by(SysDataset.id)
+        )
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -588,7 +606,9 @@ class DatasetRepository(BaseRepository[SysDataset]):
         dataset_ids: list[int],
     ) -> dict[int, dict[str, int]]:
         """批量统计每个数据集的场景类型分布"""
-        return await self._count_distribution_batch(db, dataset_ids, SysItemFile.scene_type, "未分类")
+        return await self._count_distribution_batch(
+            db, dataset_ids, SysItemFile.scene_type, "未分类"
+        )
 
     async def count_haze_distribution_batch(
         self,
@@ -596,7 +616,9 @@ class DatasetRepository(BaseRepository[SysDataset]):
         dataset_ids: list[int],
     ) -> dict[int, dict[str, int]]:
         """批量统计每个数据集的雾霾程度分布"""
-        return await self._count_distribution_batch(db, dataset_ids, SysItemFile.haze_level, "未标注")
+        return await self._count_distribution_batch(
+            db, dataset_ids, SysItemFile.haze_level, "未标注"
+        )
 
     async def count_format_distribution_batch(
         self,

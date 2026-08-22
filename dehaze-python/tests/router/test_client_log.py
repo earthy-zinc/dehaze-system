@@ -1,14 +1,5 @@
-"""ClientLog 路由单元测试。
-
-验证前端日志接收的写入逻辑：匿名过滤、字段截断、级别映射、user_id 注入。
-通过替换 get_client_logger 为 mock logger，校验落盘调用参数。
-"""
-
-import logging
-
 import pytest
 
-from app.infrastructure import logging as logging_infra
 from app.router import client_log
 
 
@@ -81,17 +72,13 @@ def test_message_and_error_stack_truncated(mock_logger):
 
 
 def test_level_normalization(mock_logger):
-    """级别大小写不敏感、空白/null 默认 INFO（与 Java/Go 对齐）"""
     cases = [("error", "ERROR"), ("Warn", "WARN"), ("", "INFO"), (None, "INFO")]
     for level_input, expected_level in cases:
         client_log._write_entry(_entry(level=level_input), user_id=42)
-
-    levels = [event[0] for event in mock_logger.events]
-    assert levels == ["ERROR", "WARN", "INFO", "INFO"]
+        assert mock_logger.events[-1][0] == expected_level
 
 
 def test_mixed_anonymous_only_error_written(mock_logger):
-    """匿名多级别混合仅 ERROR 落盘"""
     client_log._write_entry(_entry(level="ERROR", trace_id="t1"), user_id=None)
     client_log._write_entry(_entry(level="INFO", trace_id="t2"), user_id=None)
     client_log._write_entry(_entry(level="WARN", trace_id="t3"), user_id=None)
@@ -101,13 +88,12 @@ def test_mixed_anonymous_only_error_written(mock_logger):
 
 
 def test_blank_string_fields_excluded(mock_logger):
-    """空白字符串字段不进入 fields（与 Java isNotBlank / Go TrimSpace 对齐）"""
     entry = _entry(
         app="react",
-        url="   ",    # 纯空白：不应进入
-        user_agent="",  # 空字符串：不应进入
+        url="   ",
+        user_agent="",
         method="POST",
-        path=None,    # None：不应进入
+        path=None,
     )
     client_log._write_entry(entry, user_id=42)
 
@@ -120,13 +106,10 @@ def test_blank_string_fields_excluded(mock_logger):
 
 
 def test_numeric_fields_nullable(mock_logger):
-    """数值字段 null 不进入，有值进入"""
     entry = _entry(status=500, duration=1203.5)
-    # metric_value 默认 None
     client_log._write_entry(entry, user_id=42)
 
     fields = mock_logger.events[0][2]
     assert fields["status"] == 500
     assert fields["duration"] == 1203.5
     assert "metric_value" not in fields
-

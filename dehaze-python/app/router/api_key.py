@@ -1,3 +1,6 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.core.result import Result, success
@@ -5,8 +8,6 @@ from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.api_key import ApiKeyCreate, ApiKeyResult
 from app.service.api_key_service import ApiKeyService
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/auth/api-keys", tags=["认证中心"])
 
@@ -18,7 +19,15 @@ async def create_api_key(
     user: UserContext = Depends(get_current_user),
 ):
     result = await ApiKeyService.create_api_key(
-        db, user.id, form.name, form.expiresAt)
+        db,
+        user.id,
+        form.name,
+        form.expiresAt,
+        daily_quota=form.dailyQuota,
+        monthly_quota=form.monthlyQuota,
+        rpm_limit=form.rpmLimit,
+        model_whitelist=form.modelWhitelist,
+    )
     return success(result)
 
 

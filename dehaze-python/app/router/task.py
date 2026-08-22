@@ -1,3 +1,7 @@
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.core.result import Result, success
@@ -5,15 +9,11 @@ from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.enum.task_enum import EXPORT_TASK_TYPES, TaskStatus
-from app.models.schema.task import \
-    ExportTaskCreateForm as ExportTaskCreateRequest
+from app.models.schema.task import ExportTaskCreateForm as ExportTaskCreateRequest
 from app.models.schema.task import TaskPageVO
 from app.models.schema.task import TaskVO as TaskData
+from app.service import task_service
 from app.service.file_service import FileService
-from app.service.task_service import TaskServiceAsync
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["任务管理"])
 
@@ -27,8 +27,7 @@ def _dict_to_task_data(task_data: dict, request: Request) -> TaskData:
         and task_data.get("result")
     ):
         download_url = (
-            f"{str(request.base_url).rstrip('/')}"
-            f"/api/v1/tasks/{task_data['task_id']}/download"
+            f"{str(request.base_url).rstrip('/')}/api/v1/tasks/{task_data['task_id']}/download"
         )
     return TaskData(
         id=task_data["id"],
@@ -54,11 +53,14 @@ def _dict_to_task_data(task_data: dict, request: Request) -> TaskData:
 async def list_tasks(
     request: Request,
     status_filter: int | None = Query(
-        default=None, alias="status", description="状态筛选(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)"),
-    task_type: str | None = Query(
-        default=None, alias="taskType", description="类型筛选"),
+        default=None,
+        alias="status",
+        description="状态筛选(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)",
+    ),
+    task_type: str | None = Query(default=None, alias="taskType", description="类型筛选"),
     task_category: str | None = Query(
-        default=None, alias="taskCategory", description="任务类别筛选(import/export)"),
+        default=None, alias="taskCategory", description="任务类别筛选(import/export)"
+    ),
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
@@ -73,7 +75,7 @@ async def list_tasks(
     - **pageNum**: 页码（从1开始）
     - **pageSize**: 每页数量（最大100）
     """
-    result_data = await TaskServiceAsync.list_tasks(
+    result_data = await task_service.list_tasks(
         db=db,
         user_id=user.id,
         status=status_filter,
@@ -98,8 +100,9 @@ async def create_export_task(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
     idempotency_key: str | None = Header(
-        default=None, alias="Idempotency-Key",
-        description="客户端幂等键，相同键返回已有任务，防止重复创建"
+        default=None,
+        alias="Idempotency-Key",
+        description="客户端幂等键，相同键返回已有任务，防止重复创建",
     ),
 ):
     """
@@ -109,7 +112,7 @@ async def create_export_task(
     - **paramsJson**: 任务参数（JSON 字符串）
     - **Idempotency-Key** (请求头): 客户端幂等键，相同键返回已有任务
     """
-    task_data = await TaskServiceAsync.create_task(
+    task_data = await task_service.create_task(
         db=db,
         redis=redis,
         task_type=form.type.value,
@@ -138,7 +141,7 @@ async def get_task_status(
 
     - **task_id**: 任务ID（UUID格式）
     """
-    task_data = await TaskServiceAsync.get_task_status(db, redis, task_id, user_id=user.id)
+    task_data = await task_service.get_task_status(db, redis, task_id, user_id=user.id)
 
     if task_data is None:
         raise BusinessException(ResultCode.TASK_NOT_FOUND, f"任务不存在: {task_id}")
@@ -161,9 +164,7 @@ async def download_export_file(
 
     - **task_id**: 任务ID（UUID格式）
     """
-    object_name = await TaskServiceAsync.get_export_object_name(
-        db, redis, task_id, user_id=user.id
-    )
+    object_name = await task_service.get_export_object_name(db, redis, task_id, user_id=user.id)
 
     if object_name is None:
         raise HTTPException(
@@ -190,7 +191,7 @@ async def cancel_task(
 
     - **task_id**: 任务ID（UUID格式）
     """
-    await TaskServiceAsync.cancel_task(db, redis, task_id, user_id=user.id)
+    await task_service.cancel_task(db, redis, task_id, user_id=user.id)
     return success(msg="取消成功")
 
 
@@ -213,7 +214,5 @@ async def retry_task(
 
     - **task_id**: 任务ID（UUID格式）
     """
-    task_data = await TaskServiceAsync.retry_task(
-        db, redis, task_id, user_id=user.id
-    )
+    task_data = await task_service.retry_task(db, redis, task_id, user_id=user.id)
     return success(_dict_to_task_data(task_data, request))

@@ -1,10 +1,10 @@
 """
 用户导出处理器
 """
+
 from __future__ import annotations
 
 import io
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +17,6 @@ from app.service.import_export.registry import ExportHandler
 
 
 class UserExportHandler(ExportHandler):
-
     def get_module(self) -> str:
         return "user"
 
@@ -25,7 +24,9 @@ class UserExportHandler(ExportHandler):
         dept_id = query_params.get("deptId")
         dept_ids = await dept_repository.get_children_ids(db, dept_id) if dept_id else None
         _, total = await user_repository.get_user_list(
-            db, page=1, page_size=1,
+            db,
+            page=1,
+            page_size=1,
             keywords=query_params.get("keywords"),
             status=query_params.get("status"),
             dept_ids=dept_ids,
@@ -52,7 +53,9 @@ class UserExportHandler(ExportHandler):
         all_rows: list[dict] = []
         while True:
             users, _ = await user_repository.get_user_list(
-                db, page=page, page_size=page_size,
+                db,
+                page=page,
+                page_size=page_size,
                 keywords=params.get("keywords"),
                 status=params.get("status"),
                 dept_ids=dept_ids,
@@ -85,20 +88,22 @@ class UserExportHandler(ExportHandler):
             ExportFieldConfig(field="status_label", label="状态", order=7),
             ExportFieldConfig(field="dept_name", label="部门", order=8),
             ExportFieldConfig(field="role_names", label="角色", order=9),
-            ExportFieldConfig(field="create_time", label="创建时间", order=10, date_format="%Y-%m-%d %H:%M:%S"),
+            ExportFieldConfig(
+                field="create_time", label="创建时间", order=10, date_format="%Y-%m-%d %H:%M:%S"
+            ),
         ]
 
 
 def _user_to_row(u: dict) -> dict:
-    gender = int(u.get("gender") or 1)
-    status = int(u.get("status") or 1)
+    gender = int(u.get("gender") or 0)
+    status = int(u.get("status") or 0)
     return {
         "id": u.get("id"),
         "username": u.get("username") or "",
         "nickname": u.get("nickname") or "",
         "email": u.get("email") or "",
         "mobile": u.get("mobile") or "",
-        "gender_label": "男" if gender == 1 else ("女" if gender == 0 else "未知"),
+        "gender_label": {1: "男", 2: "女"}.get(gender, "未知"),
         "status_label": "正常" if status == 1 else "禁用",
         "dept_name": u.get("deptName") or "",
         "role_names": u.get("roleNames") or "",
