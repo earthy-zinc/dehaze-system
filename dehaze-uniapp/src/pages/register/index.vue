@@ -254,6 +254,37 @@ onMounted(async () => {
   }
 }
 
+.agreement-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+
+  .agreement-checkbox {
+    width: 36rpx;
+    height: 36rpx;
+    border-radius: 8rpx;
+    border: 2rpx solid $color-border;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2rpx;
+    transition: all 0.2s ease;
+
+    &.checked {
+      background: $color-primary;
+      border-color: $color-primary;
+    }
+  }
+
+  .agreement-text {
+    font-size: 24rpx;
+    color: $color-text-secondary;
+    line-height: 1.6;
+  }
+}
+
 .login-row {
   display: flex;
   align-items: center;
