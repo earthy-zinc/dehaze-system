@@ -25,9 +25,9 @@ def _fake_service(called):
 @pytest.mark.parametrize(
     "endpoint,permission,service",
     [
-        (get_order_page, "order:list", "OrderService.list_paged"),
-        (list_refunds, "order:refund:list", "OrderService.list_refunds"),
-        (get_order_stats, "order:stats", "OrderService.get_stats"),
+        (get_order_page, "order:list", "order_service.list_paged"),
+        (list_refunds, "order:refund:list", "order_service.list_refunds"),
+        (get_order_stats, "order:stats", "order_service.get_stats"),
     ],
 )
 async def test_permission_required_without_perm_403(monkeypatch, endpoint, permission, service):
@@ -47,7 +47,7 @@ async def test_order_page_with_permission_reaches_service(monkeypatch):
     user = _user(permissions=["order:list"])
     called = {"hit": False}
 
-    monkeypatch.setattr("app.router.order.OrderService.list_paged", _fake_service(called))
+    monkeypatch.setattr("app.router.order.order_service.list_paged", _fake_service(called))
     await get_order_page(user=user, db=None)
     assert called["hit"] is True
 
@@ -56,6 +56,6 @@ async def test_root_bypasses_permission(monkeypatch):
     user = _user(roles=["ROOT"], permissions=[])
     called = {"hit": False}
 
-    monkeypatch.setattr("app.router.order.OrderService.list_paged", _fake_service(called))
+    monkeypatch.setattr("app.router.order.order_service.list_paged", _fake_service(called))
     await get_order_page(user=user, db=None)
     assert called["hit"] is True

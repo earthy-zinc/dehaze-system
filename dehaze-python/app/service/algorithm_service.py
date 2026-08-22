@@ -26,8 +26,7 @@ from app.utils.file import convert_size
 class AlgorithmService:
     """算法服务"""
 
-    @staticmethod
-    def _to_vo(algorithm: SysAlgorithm) -> dict[str, Any]:
+    def _to_vo(self, algorithm: SysAlgorithm) -> dict[str, Any]:
         """算法实体转 VO（统一字段映射，消除重复）"""
         return {
             "id": algorithm.id,
@@ -50,11 +49,10 @@ class AlgorithmService:
             "updateTime": format_time(algorithm.update_time),
         }
 
-    @staticmethod
-    def _build_algorithm_tree(algorithms: list[SysAlgorithm]) -> list[dict[str, Any]]:
+    def _build_algorithm_tree(self, algorithms: list[SysAlgorithm]) -> list[dict[str, Any]]:
         """构建算法树形结构"""
         algorithm_dict = {
-            algorithm.id: {**AlgorithmService._to_vo(algorithm), "children": []}
+            algorithm.id: {**self._to_vo(algorithm), "children": []}
             for algorithm in algorithms
         }
 
@@ -69,35 +67,30 @@ class AlgorithmService:
 
         return root_algorithms
 
-    @staticmethod
     async def get_algorithm_list(
-        db: AsyncSession, keywords: str | None = None
+        self, db: AsyncSession, keywords: str | None = None
     ) -> list[dict[str, Any]]:
         """获取算法树形表格"""
         algorithms = await algorithm_repository.get_list_with_keywords(db, keywords)
-        return AlgorithmService._build_algorithm_tree(algorithms)
+        return self._build_algorithm_tree(algorithms)
 
-    @staticmethod
-    async def get_algorithm_options(db: AsyncSession) -> list[dict[str, Any]]:
+    async def get_algorithm_options(self, db: AsyncSession) -> list[dict[str, Any]]:
         """获取模型下拉选项列表"""
         return await algorithm_repository.get_algorithm_options(db)
 
-    @staticmethod
-    async def list_all_algorithms(db: AsyncSession) -> list[dict[str, Any]]:
+    async def list_all_algorithms(self, db: AsyncSession) -> list[dict[str, Any]]:
         """获取所有算法扁平列表（不构建树形结构），用于前端下拉选择"""
         algorithms = await algorithm_repository.get_list_with_keywords(db, None)
-        return [AlgorithmService._to_vo(algo) for algo in algorithms]
+        return [self._to_vo(algo) for algo in algorithms]
 
-    @staticmethod
-    async def get_algorithm_by_id(db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
+    async def get_algorithm_by_id(self, db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
         """根据 ID 获取算法信息"""
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
-        return AlgorithmService._to_vo(algorithm)
+        return self._to_vo(algorithm)
 
-    @staticmethod
-    async def create_algorithm(db: AsyncSession, data: dict[str, Any]) -> int:
+    async def create_algorithm(self, db: AsyncSession, data: dict[str, Any]) -> int:
         """新增算法"""
         algorithm = SysAlgorithm(
             parent_id=data.get("parentId", 0),
@@ -120,8 +113,7 @@ class AlgorithmService:
         created = await algorithm_repository.create(db, algorithm)
         return created.id
 
-    @staticmethod
-    async def update_algorithm(db: AsyncSession, algorithm_id: int, data: dict[str, Any]) -> None:
+    async def update_algorithm(self, db: AsyncSession, algorithm_id: int, data: dict[str, Any]) -> None:
         """修改算法"""
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
 
@@ -153,13 +145,11 @@ class AlgorithmService:
 
         await algorithm_repository.update(db, algorithm, update_data)
 
-    @staticmethod
-    async def delete_algorithm_single(db: AsyncSession, algorithm_id: int) -> int:
+    async def delete_algorithm_single(self, db: AsyncSession, algorithm_id: int) -> int:
         """删除单个算法（含子算法）"""
-        return await AlgorithmService.delete_algorithms(db, [algorithm_id])
+        return await self.delete_algorithms(db, [algorithm_id])
 
-    @staticmethod
-    async def delete_algorithms(db: AsyncSession, algorithm_ids: list[int]) -> int:
+    async def delete_algorithms(self, db: AsyncSession, algorithm_ids: list[int]) -> int:
         """批量删除算法（包含子算法），对齐 Java deleteAlgorithms
 
         Java/Python/Go: 任一算法不存在时抛 RESOURCE_NOT_FOUND
@@ -176,8 +166,8 @@ class AlgorithmService:
 
     # ── 状态机 ──────────────────────────────────────
 
-    @staticmethod
     async def update_status(
+        self,
         db: AsyncSession,
         algorithm_id: int,
         target_status: int,
@@ -223,8 +213,8 @@ class AlgorithmService:
 
     # ── 审核 ──────────────────────────────────────
 
-    @staticmethod
     async def audit_algorithm(
+        self,
         db: AsyncSession,
         algorithm_id: int,
         audit_by: int,
@@ -257,8 +247,8 @@ class AlgorithmService:
 
     # ── 版本控制 ──────────────────────────────────────
 
-    @staticmethod
     async def create_version(
+        self,
         db: AsyncSession,
         algorithm_id: int,
         version: str,
@@ -311,8 +301,7 @@ class AlgorithmService:
 
         return algorithm_id
 
-    @staticmethod
-    async def list_versions(db: AsyncSession, algorithm_id: int) -> list[dict[str, Any]]:
+    async def list_versions(self, db: AsyncSession, algorithm_id: int) -> list[dict[str, Any]]:
         """查询算法版本历史"""
         versions = await algorithm_repository.list_versions(db, algorithm_id)
         return [
@@ -331,8 +320,8 @@ class AlgorithmService:
             for v in versions
         ]
 
-    @staticmethod
     async def rollback_version(
+        self,
         db: AsyncSession,
         algorithm_id: int,
         version_id: int,
@@ -352,8 +341,7 @@ class AlgorithmService:
 
     # ── 导入/导出 ──────────────────────────────────────
 
-    @staticmethod
-    async def export_algorithm(db: AsyncSession, algorithm_id: int) -> str:
+    async def export_algorithm(self, db: AsyncSession, algorithm_id: int) -> str:
         """
         导出单个算法为 JSON 字符串（对齐 Java exportAlgorithmJson）
         """
@@ -383,8 +371,7 @@ class AlgorithmService:
 
         return json.dumps(export_data, ensure_ascii=False, indent=2)
 
-    @staticmethod
-    async def validate_import_package(file_bytes: bytes, filename: str = "") -> str:
+    async def validate_import_package(self, file_bytes: bytes, filename: str = "") -> str:
         """
         校验导入包格式（对齐 Java validateImport：解析 JSON，返回校验消息字符串）
 
@@ -414,8 +401,7 @@ class AlgorithmService:
 
         return f"校验通过: 算法名称={name}, 类型={type_}"
 
-    @staticmethod
-    async def import_algorithm(db: AsyncSession, file_bytes: bytes, filename: str = "") -> int:
+    async def import_algorithm(self, db: AsyncSession, file_bytes: bytes, filename: str = "") -> int:
         """
         导入算法包（对齐 Java importAlgorithm：解析 JSON 文件）
         """
@@ -458,8 +444,7 @@ class AlgorithmService:
 
     # ── 监控 ──────────────────────────────────────
 
-    @staticmethod
-    async def get_monitor_data(db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
+    async def get_monitor_data(self, db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
         """获取算法监控数据（对齐 Java AlgorithmMonitorVO 字段）"""
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
@@ -485,9 +470,8 @@ class AlgorithmService:
             "todayCallCount": today_calls,
         }
 
-    @staticmethod
     async def get_monitor_stats_report(
-        db: AsyncSession, algorithm_id: int, days: int = 7
+        self, db: AsyncSession, algorithm_id: int, days: int = 7
     ) -> list[dict[str, Any]]:
         """获取算法监控统计报表（对齐 Java：最近 days 天每天一条，含无数据天）"""
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
@@ -515,3 +499,6 @@ class AlgorithmService:
                 }
             )
         return result
+
+
+algorithm_service = AlgorithmService()

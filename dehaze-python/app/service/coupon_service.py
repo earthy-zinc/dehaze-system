@@ -55,8 +55,7 @@ def _coupon_to_vo(coupon: SysCoupon) -> dict:
 
 
 class CouponService:
-    @staticmethod
-    async def create(db: AsyncSession, form: dict) -> dict:
+    async def create(self, db: AsyncSession, form: dict) -> dict:
         coupon = SysCoupon(
             name=form["name"],
             type=form["type"],
@@ -74,8 +73,7 @@ class CouponService:
         await coupon_repository.create(db, coupon)
         return {"id": coupon.id}
 
-    @staticmethod
-    async def update(db: AsyncSession, coupon_id: int, form: dict) -> None:
+    async def update(self, db: AsyncSession, coupon_id: int, form: dict) -> None:
         coupon = await coupon_repository.get_by_id(db, coupon_id)
         if not coupon:
             raise BusinessException(ResultCode.COUPON_NOT_FOUND)
@@ -94,8 +92,7 @@ class CouponService:
             coupon.status = form["status"]
         await db.flush()
 
-    @staticmethod
-    async def delete_by_ids(db: AsyncSession, ids: list[int]) -> None:
+    async def delete_by_ids(self, db: AsyncSession, ids: list[int]) -> None:
         for coupon_id in ids:
             coupon = await coupon_repository.get_by_id(db, coupon_id)
             if not coupon:
@@ -106,8 +103,7 @@ class CouponService:
         await user_coupon_repository.soft_delete_unused_by_coupon_ids(db, ids)
         await coupon_repository.soft_delete_by_ids(db, ids)
 
-    @staticmethod
-    async def get_page(db: AsyncSession, query: dict) -> dict:
+    async def get_page(self, db: AsyncSession, query: dict) -> dict:
         items, total = await coupon_repository.get_page(
             db,
             query["pageNum"],
@@ -119,8 +115,7 @@ class CouponService:
         list_data = [_coupon_to_vo(c) for c in items]
         return {"list": list_data, "total": total}
 
-    @staticmethod
-    async def batch_distribute(db: AsyncSession, form: dict) -> dict:
+    async def batch_distribute(self, db: AsyncSession, form: dict) -> dict:
         coupon_id = form["couponId"]
         coupon = await coupon_repository.get_by_id(db, coupon_id)
         if not coupon:
@@ -182,8 +177,7 @@ class CouponService:
 
         return {"successCount": success_count, "failCount": fail_count}
 
-    @staticmethod
-    async def receive(db: AsyncSession, coupon_id: int, user_id: int) -> dict:
+    async def receive(self, db: AsyncSession, coupon_id: int, user_id: int) -> dict:
         coupon = await coupon_repository.get_by_id(db, coupon_id)
         if not coupon:
             raise BusinessException(ResultCode.COUPON_NOT_FOUND)
@@ -232,8 +226,7 @@ class CouponService:
         await user_coupon_repository.create(db, user_coupon)
         return {"userCouponId": user_coupon.id}
 
-    @staticmethod
-    async def list_my(db: AsyncSession, user_id: int, status: int | None) -> list[dict]:
+    async def list_my(self, db: AsyncSession, user_id: int, status: int | None) -> list[dict]:
         user_coupons = await user_coupon_repository.list_by_user(db, user_id, status)
         if not user_coupons:
             return []
@@ -264,6 +257,8 @@ class CouponService:
             )
         return result
 
-    @staticmethod
-    async def expire_user_coupons(db: AsyncSession) -> int:
+    async def expire_user_coupons(self, db: AsyncSession) -> int:
         return await user_coupon_repository.expire_coupons(db)
+
+
+coupon_service = CouponService()

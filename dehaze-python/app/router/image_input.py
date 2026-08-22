@@ -27,7 +27,7 @@ from app.models.schema.input_history import (
     InputHistoryForm,
     InputHistoryVO,
 )
-from app.service.input_history_service import InputHistoryService
+from app.service.input_history_service import input_history_service
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ async def list_history(
 
     游客无法使用此接口（需登录后才能云端存储历史）
     """
-    list_vo, total = await InputHistoryService.list_history(
+    list_vo, total = await input_history_service.list_history(
         db=db,
         user_id=user.id,
         status=status,
@@ -74,7 +74,7 @@ async def create_history(
     db: AsyncSession = Depends(get_db),
 ):
     """创建历史记录（关联当前用户）"""
-    history_id = await InputHistoryService.create_history(
+    history_id = await input_history_service.create_history(
         db=db,
         data=body.model_dump(by_alias=False, exclude_none=True),
         user_id=user.id,
@@ -90,7 +90,7 @@ async def batch_delete_history(
 ):
     """批量删除历史记录（仅限本人）"""
     ids = body.get("ids", [])
-    count = await InputHistoryService.batch_delete(db, ids, user_id=user.id)
+    count = await input_history_service.batch_delete(db, ids, user_id=user.id)
     return success(count)
 
 
@@ -100,7 +100,7 @@ async def clear_history(
     db: AsyncSession = Depends(get_db),
 ):
     """清空当前用户的所有历史记录"""
-    count = await InputHistoryService.clear_history(db, user.id)
+    count = await input_history_service.clear_history(db, user.id)
     return success(count)
 
 
@@ -114,7 +114,7 @@ async def get_history(
     db: AsyncSession = Depends(get_db),
 ):
     """查询历史记录详情（仅限本人）"""
-    history = await InputHistoryService.get_history(db, history_id, user.id)
+    history = await input_history_service.get_history(db, history_id, user.id)
     if not history:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "历史记录不存在")
     return success(history)
@@ -127,5 +127,5 @@ async def delete_history(
     db: AsyncSession = Depends(get_db),
 ):
     """删除单条历史记录（仅限本人，幂等）"""
-    await InputHistoryService.delete_history(db, history_id, user_id=user.id)
+    await input_history_service.delete_history(db, history_id, user_id=user.id)
     return success(msg="删除成功")

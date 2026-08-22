@@ -6,7 +6,7 @@ from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.message import AnnouncementForm, AnnouncementUpdateForm
-from app.service.announcement_service import AnnouncementService
+from app.service.announcement_service import announcement_service
 
 router = APIRouter(
     prefix="/api/v1/announcements",
@@ -25,7 +25,7 @@ async def get_announcement_page(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await AnnouncementService.get_page(db, pageNum, pageSize, title, type, status)
+    data = await announcement_service.get_page(db, pageNum, pageSize, title, type, status)
     return success(data)
 
 
@@ -36,7 +36,7 @@ async def create_announcement(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    announcement_id = await AnnouncementService.create(db, body.model_dump(), user.id)
+    announcement_id = await announcement_service.create(db, body.model_dump(), user.id)
     return success({"id": announcement_id})
 
 
@@ -46,7 +46,7 @@ async def get_announcement_detail(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await AnnouncementService.get_detail(db, announcement_id)
+    data = await announcement_service.get_detail(db, announcement_id)
     return success(data)
 
 
@@ -58,7 +58,7 @@ async def update_announcement(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await AnnouncementService.update(db, announcement_id, body.model_dump(exclude_unset=True))
+    await announcement_service.update(db, announcement_id, body.model_dump(exclude_unset=True))
     return success()
 
 
@@ -69,7 +69,7 @@ async def delete_announcement(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await AnnouncementService.delete(db, announcement_id)
+    await announcement_service.delete(db, announcement_id)
     return success()
 
 
@@ -80,7 +80,7 @@ async def send_announcement(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    sent_count = await AnnouncementService.send(db, announcement_id)
+    sent_count = await announcement_service.send(db, announcement_id)
     return success({"sentCount": sent_count})
 
 
@@ -91,5 +91,5 @@ async def cancel_announcement(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await AnnouncementService.cancel(db, announcement_id)
+    await announcement_service.cancel(db, announcement_id)
     return success()

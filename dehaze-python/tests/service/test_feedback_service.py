@@ -7,7 +7,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.schema.feedback import FeedbackCreateForm
 from app.service import feedback_service as m
-from app.service.feedback_service import FeedbackService
+from app.service.feedback_service import feedback_service
 
 
 def _fake_rating(**overrides):
@@ -74,7 +74,7 @@ class TestGetRatingByPrediction:
         }
         monkeypatch.setattr(m, "rating_repository", _FakeRatingRepo(visible=rating, detail=detail))
 
-        result = await FeedbackService.get_rating_by_prediction(None, 10, 100)
+        result = await feedback_service.get_rating_by_prediction(None, 10, 100)
 
         assert result["userId"] == exp_user_id
         assert result["username"] == exp_username
@@ -87,7 +87,7 @@ class TestGetRatingByPrediction:
         monkeypatch.setattr(m, "rating_repository", _FakeRatingRepo(log_create_by=99))
 
         with pytest.raises(BusinessException) as exc:
-            await FeedbackService.get_rating_by_prediction(None, 10, 100)
+            await feedback_service.get_rating_by_prediction(None, 10, 100)
 
         assert exc.value.code == ResultCode.OPERATION_NOT_ALLOW
 
@@ -115,7 +115,7 @@ class TestListPagedRatingsAnonymize:
         ]
         monkeypatch.setattr(m, "rating_repository", _FakeRatingRepo(admin_page=(items, 2)))
 
-        data = await FeedbackService.list_paged_ratings(None, {"pageNum": 1, "pageSize": 10})
+        data = await feedback_service.list_paged_ratings(None, {"pageNum": 1, "pageSize": 10})
 
         anon_vo, normal_vo = data["list"]
         assert data["total"] == 2

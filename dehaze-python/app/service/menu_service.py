@@ -37,8 +37,8 @@ ROUTE_CACHE_KEY = "menu:routes"
 class MenuService:
     """菜单服务"""
 
-    @staticmethod
     async def list_menus(
+        self,
         db: AsyncSession,
         keywords: str | None = None,
         type: int | None = None,
@@ -77,11 +77,11 @@ class MenuService:
 
         tree: list[dict[str, Any]] = []
         for root_id in root_ids:
-            tree.extend(MenuService._build_menu_tree(root_id, children_map))
+            tree.extend(self._build_menu_tree(root_id, children_map))
         return tree
 
-    @staticmethod
     def _build_menu_tree(
+        self,
         parent_id: int,
         children_map: dict[int, list[SysMenu]],
     ) -> list[dict[str, Any]]:
@@ -115,7 +115,7 @@ class MenuService:
             }
 
             # 递归查找子菜单
-            children = MenuService._build_menu_tree(menu.id, children_map)
+            children = self._build_menu_tree(menu.id, children_map)
             if children:
                 menu_dict["children"] = children
 
@@ -123,8 +123,7 @@ class MenuService:
 
         return tree
 
-    @staticmethod
-    async def list_menu_options(db: AsyncSession) -> list[dict[str, Any]]:
+    async def list_menu_options(self, db: AsyncSession) -> list[dict[str, Any]]:
         """
         获取菜单下拉选项列表
 
@@ -143,10 +142,10 @@ class MenuService:
         for menu in menus:
             children_map.setdefault(menu.parent_id, []).append(menu)
 
-        return MenuService._build_menu_options(0, children_map)
+        return self._build_menu_options(0, children_map)
 
-    @staticmethod
     def _build_menu_options(
+        self,
         parent_id: int,
         children_map: dict[int, list[SysMenu]],
     ) -> list[dict[str, Any]]:
@@ -169,7 +168,7 @@ class MenuService:
             option: dict[str, Any] = {"value": menu.id, "label": menu.name}
 
             # 递归查找子菜单选项
-            children = MenuService._build_menu_options(menu.id, children_map)
+            children = self._build_menu_options(menu.id, children_map)
             if children:
                 option["children"] = children
 
@@ -177,8 +176,7 @@ class MenuService:
 
         return options
 
-    @staticmethod
-    async def save_menu(db: AsyncSession, redis: Redis, data: dict[str, Any]) -> SysMenu:
+    async def save_menu(self, db: AsyncSession, redis: Redis, data: dict[str, Any]) -> SysMenu:
         """
         保存菜单（新增/修改）
 
@@ -211,7 +209,7 @@ class MenuService:
                 menu.id = menu_id
 
         # 业务校验（T-MM-015~031）
-        await MenuService._validate_menu_form(db, data, current_id)
+        await self._validate_menu_form(db, data, current_id)
 
         # 设置菜单属性
         menu.parent_id = data.get("parentId", 0)
@@ -228,7 +226,7 @@ class MenuService:
         menu.keep_alive = data.get("keepAlive", 0)
 
         # 生成树路径
-        tree_path = await MenuService._generate_menu_tree_path(db, menu.parent_id)
+        tree_path = await self._generate_menu_tree_path(db, menu.parent_id)
         menu.tree_path = tree_path
 
         # 根据类型处理特殊字段（对齐 Java saveMenu）
@@ -253,12 +251,12 @@ class MenuService:
         else:
             merged = await menu_repository.update_menu(db, menu)
 
-        await MenuService._clear_menu_cache(db, redis)
+        await self._clear_menu_cache(db, redis)
 
         return merged
 
-    @staticmethod
     async def _validate_menu_form(
+        self,
         db: AsyncSession,
         data: dict[str, Any],
         current_id: int | None = None,
@@ -297,7 +295,7 @@ class MenuService:
                 raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "上级菜单不能是外链类型")
 
             # T-MM-031：循环引用检测（不能将父菜单设置为自己或自己的子菜单）
-            if current_id is not None and await MenuService._is_descendant(
+            if current_id is not None and await self._is_descendant(
                 db, current_id, parent_id
             ):
                 raise BusinessException(
@@ -305,7 +303,7 @@ class MenuService:
                 )
 
             # T-MM-022：层级限制（最多5级）
-            depth = await MenuService._get_menu_depth(db, parent_id)
+            depth = await self._get_menu_depth(db, parent_id)
             if depth >= 5:
                 raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "菜单层级不能超过5级")
 
@@ -327,8 +325,7 @@ class MenuService:
         if menu_type == MENU_TYPE_BUTTON and not perm:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "权限标识不能为空")
 
-    @staticmethod
-    async def _get_menu_depth(db: AsyncSession, menu_id: int) -> int:
+    async def _get_menu_depth(self, db: AsyncSession, menu_id: int) -> int:
         """获取菜单层级（根级为第1级）
 
         tree_path 格式如 ",1,2,"：数字数量 + 1 即为该菜单所处层级。
@@ -343,8 +340,7 @@ class MenuService:
         parts = [p for p in menu.tree_path.split(",") if p]
         return len(parts) + 1
 
-    @staticmethod
-    async def _is_descendant(db: AsyncSession, ancestor_id: int, target_id: int) -> bool:
+    async def _is_descendant(self, db: AsyncSession, ancestor_id: int, target_id: int) -> bool:
         """判断 target_id 是否为 ancestor_id 的后代
 
         target 的 tree_path 中包含 ancestor_id 即视为后代。
@@ -359,8 +355,7 @@ class MenuService:
         ids = [int(p) for p in target.tree_path.split(",") if p]
         return ancestor_id in ids
 
-    @staticmethod
-    async def _generate_menu_tree_path(db: AsyncSession, parent_id: int) -> str:
+    async def _generate_menu_tree_path(self, db: AsyncSession, parent_id: int) -> str:
         """
         生成菜单树路径
 
@@ -381,8 +376,7 @@ class MenuService:
         else:
             return f",{parent_id},"
 
-    @staticmethod
-    async def list_routes(db: AsyncSession, redis: Redis) -> list[dict[str, Any]]:
+    async def list_routes(self, db: AsyncSession, redis: Redis) -> list[dict[str, Any]]:
         """
         获取路由列表（带缓存）
 
@@ -408,14 +402,14 @@ class MenuService:
         for menu in menus:
             children_map.setdefault(menu.parent_id, []).append(menu)
 
-        routes = MenuService._build_routes(0, children_map)
+        routes = self._build_routes(0, children_map)
 
         await cache.set_json(ROUTE_CACHE_KEY, routes, CACHE_TTL_HOUR)
 
         return routes
 
-    @staticmethod
     def _build_routes(
+        self,
         parent_id: int,
         children_map: dict[int, list[SysMenu]],
     ) -> list[dict[str, Any]]:
@@ -432,10 +426,10 @@ class MenuService:
         routes = []
         for menu in children_map.get(parent_id, []):
             # 构建路由对象
-            route = MenuService._to_route_vo(menu)
+            route = self._to_route_vo(menu)
 
             # 递归查找子路由
-            children = MenuService._build_routes(menu.id, children_map)
+            children = self._build_routes(menu.id, children_map)
             if children:
                 route["children"] = children
 
@@ -443,8 +437,7 @@ class MenuService:
 
         return routes
 
-    @staticmethod
-    def _to_route_vo(menu: SysMenu) -> dict[str, Any]:
+    def _to_route_vo(self, menu: SysMenu) -> dict[str, Any]:
         """
         将菜单转换为路由对象
 
@@ -480,8 +473,8 @@ class MenuService:
         route["meta"] = meta
         return route
 
-    @staticmethod
     async def update_menu_visible(
+        self,
         db: AsyncSession,
         redis: Redis,
         menu_id: int,
@@ -509,10 +502,9 @@ class MenuService:
 
         menu.visible = visible
 
-        await MenuService._clear_menu_cache(db, redis)
+        await self._clear_menu_cache(db, redis)
 
-    @staticmethod
-    async def list_role_perms(db: AsyncSession, redis: Redis, roles: set[str]) -> set[str]:
+    async def list_role_perms(self, db: AsyncSession, redis: Redis, roles: set[str]) -> set[str]:
         """
         获取角色权限集合
 
@@ -546,8 +538,7 @@ class MenuService:
 
         return all_perms
 
-    @staticmethod
-    async def get_menu_form(db: AsyncSession, menu_id: int) -> dict[str, Any]:
+    async def get_menu_form(self, db: AsyncSession, menu_id: int) -> dict[str, Any]:
         """
         获取菜单表单数据
 
@@ -582,8 +573,7 @@ class MenuService:
             "keepAlive": menu.keep_alive,
         }
 
-    @staticmethod
-    async def delete_menu(db: AsyncSession, redis: Redis, menu_ids: list[int]) -> None:
+    async def delete_menu(self, db: AsyncSession, redis: Redis, menu_ids: list[int]) -> None:
         """
         批量删除菜单（级联删除子孙菜单，并清理角色-菜单关联）
 
@@ -615,10 +605,9 @@ class MenuService:
         await menu_repository.delete_menus_by_ids(db, all_menu_ids)
 
         # 3. 清除缓存
-        await MenuService._clear_menu_cache(db, redis)
+        await self._clear_menu_cache(db, redis)
 
-    @staticmethod
-    async def _clear_menu_cache(db: AsyncSession, redis: Redis) -> None:
+    async def _clear_menu_cache(self, db: AsyncSession, redis: Redis) -> None:
         """清除菜单相关缓存
 
         精确删除所有角色的权限缓存（按 roleCode 逐个删除，禁止通配符）。
@@ -637,3 +626,6 @@ async def _load_role_perms(db: AsyncSession, role_code: str) -> list[str]:
     """加载角色权限的 loader 函数（返回 list 以支持 JSON 序列化）"""
     perms = await menu_repository.get_role_perms(db, [role_code])
     return list(perms) if perms else []
+
+
+menu_service = MenuService()

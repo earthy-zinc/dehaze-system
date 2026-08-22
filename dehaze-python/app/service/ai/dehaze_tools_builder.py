@@ -31,7 +31,7 @@ from app.service.ai.web_search_client import (
     format_websearch_results,
     web_search_client,
 )
-from app.service.ai_artifact_service import AiArtifactService
+from app.service.ai_artifact_service import ai_artifact_service
 
 logger = logging.getLogger(__name__)
 
@@ -250,7 +250,7 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
         # 多模态调用的 input_tokens 归集到 ctx，随本次推理计入 Token 消耗。
         redis = await get_redis_client()
         async with get_db_session() as db:
-            text, input_tokens = await AiArtifactService.visual_read(
+            text, input_tokens = await ai_artifact_service.visual_read(
                 db, redis, ctx["user_id"], artifact_id, ctx.get("model_id")
             )
             ctx["multimodal_input_tokens"] = ctx.get("multimodal_input_tokens", 0) + input_tokens

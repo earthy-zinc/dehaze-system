@@ -35,7 +35,7 @@ async def env(monkeypatch, mock_redis):
 
 
 async def _call(env):
-    return await m.AiMessageService.send_message(
+    return await m.ai_message_service.send_message(
         object(),
         conv_id=1,
         user_id=7,
@@ -106,7 +106,7 @@ async def test_idempotency_key_isolated_by_user(env, monkeypatch):
     monkeypatch.setattr(m.ai_message_repository, "get_by_id", lambda db, mid: None)
     monkeypatch.setattr(m.sse_emitter_manager, "acquire_lock", _acquire_lock)
     with pytest.raises(BusinessException):
-        await m.AiMessageService.send_message(
+        await m.ai_message_service.send_message(
             object(),
             conv_id=1,
             user_id=8,

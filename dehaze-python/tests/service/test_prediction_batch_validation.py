@@ -2,18 +2,18 @@ import pytest
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.service.prediction_service import PredictionService
+from app.service.prediction_service import prediction_service
 from tests.stubs import NullDBSession, run_coro
 
 
 def test_batch_predict_empty_items_rejected():
     with pytest.raises(BusinessException) as ei:
-        run_coro(PredictionService().batch_predict(1, [], user_id=1, skip_quota_check=True))
+        run_coro(prediction_service.batch_predict(1, [], user_id=1, skip_quota_check=True))
     assert ei.value.code == ResultCode.PARAM_ERROR
 
 
 def test_batch_predict_exceed_limit_a0500():
-    svc = PredictionService()
+    svc = prediction_service
     items = [{"fileId": i} for i in range(1, 7)]
 
     from unittest.mock import AsyncMock, patch

@@ -10,7 +10,7 @@ from app.database import get_db
 from app.decorators.permission import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.voice import HotwordForm
-from app.service.voice.hotword_service import HotwordService
+from app.service.voice.hotword_service import hotword_service
 
 router = APIRouter(prefix="/api/v1/voice/hotwords", tags=["热词管理"])
 
@@ -26,7 +26,7 @@ async def list_user_hotwords(
     db: AsyncSession = Depends(get_db),
     ctx: UserContext = Depends(get_current_user),
 ):
-    return success(await HotwordService.list_user_hotwords(db, ctx.id))
+    return success(await hotword_service.list_user_hotwords(db, ctx.id))
 
 
 @router.post("", summary="新增用户热词")
@@ -36,7 +36,7 @@ async def add_user_hotword(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    return success(await HotwordService.add_user_hotword(db, user.id, form))
+    return success(await hotword_service.add_user_hotword(db, user.id, form))
 
 
 @router.delete("/{hotword_id}", summary="删除用户热词")
@@ -46,7 +46,7 @@ async def delete_user_hotword(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await HotwordService.delete_user_hotword(db, hotword_id, user.id)
+    await hotword_service.delete_user_hotword(db, hotword_id, user.id)
     return success()
 
 
@@ -55,7 +55,7 @@ async def list_global_hotwords(
     db: AsyncSession = Depends(get_db),
     ctx: UserContext = Depends(get_current_user),
 ):
-    return success(await HotwordService.list_global_hotwords(db))
+    return success(await hotword_service.list_global_hotwords(db))
 
 
 @router.post("/global", summary="新增全局热词（仅管理员）")
@@ -66,7 +66,7 @@ async def add_global_hotword(
     user: UserContext = Depends(get_current_user),
 ):
     _check_admin(user)
-    return success(await HotwordService.add_global_hotword(db, form))
+    return success(await hotword_service.add_global_hotword(db, form))
 
 
 @router.delete("/global/{hotword_id}", summary="删除全局热词（仅管理员）")
@@ -77,5 +77,5 @@ async def delete_global_hotword(
     user: UserContext = Depends(get_current_user),
 ):
     _check_admin(user)
-    await HotwordService.delete_global_hotword(db, hotword_id)
+    await hotword_service.delete_global_hotword(db, hotword_id)
     return success()

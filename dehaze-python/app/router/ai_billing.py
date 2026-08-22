@@ -27,12 +27,12 @@ from app.models.schema.ai_billing import (
 )
 from app.models.schema.common import PageResult
 from app.service.billing.balance_service import balance_service
-from app.service.billing.bill_service import BillService
-from app.service.billing.billing_record_service import BillingRecordService
-from app.service.billing.billing_stat_service import BillingStatService
+from app.service.billing.bill_service import bill_service
+from app.service.billing.billing_record_service import billing_record_service
+from app.service.billing.billing_stat_service import billing_stat_service
 from app.service.billing.quota_service import quota_service
-from app.service.billing.recharge_service import RechargeService
-from app.service.billing.refund_service import RefundService
+from app.service.billing.recharge_service import recharge_service
+from app.service.billing.refund_service import refund_service
 
 router = APIRouter(
     prefix="/api/v1/ai-billing",
@@ -88,7 +88,7 @@ async def list_records(
         date_start=_parse_datetime(dateStart),
         date_end=_parse_datetime(dateEnd),
     )
-    return success(await BillingRecordService.list_by_user(db, user.id, query))
+    return success(await billing_record_service.list_by_user(db, user.id, query))
 
 
 @router.get("/credit-logs", response_model=Result[PageResult[CreditLogResult]], summary="余额流水查询")
@@ -108,7 +108,7 @@ async def list_credit_logs(
         date_start=_parse_datetime(dateStart),
         date_end=_parse_datetime(dateEnd),
     )
-    return success(await BillingRecordService.list_credit_logs(db, user.id, query))
+    return success(await billing_record_service.list_credit_logs(db, user.id, query))
 
 
 @router.get("/bills/{month}", response_model=Result[BillResult], summary="月结账单查询")
@@ -117,7 +117,7 @@ async def get_bill(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    return success(await BillService.get_bill(db, user.id, month))
+    return success(await bill_service.get_bill(db, user.id, month))
 
 
 @router.get("/bills/{month}/download", response_model=Result[BillResult], summary="账单下载")
@@ -127,7 +127,7 @@ async def download_bill(
     user: UserContext = Depends(get_current_user),
 ):
     # 简化实现：返回账单 JSON，前端可另存为文件（保持 JSON 信封，与账单查询一致）
-    return success(await BillService.get_bill(db, user.id, month))
+    return success(await bill_service.get_bill(db, user.id, month))
 
 
 @router.post("/refunds", response_model=Result[RefundResult], summary="退款申请")
@@ -137,7 +137,7 @@ async def apply_refund(
     user: UserContext = Depends(get_current_user),
 ):
     return success(
-        await RefundService.apply_refund(db, user.id, body.billing_id, body.amount, body.reason)
+        await refund_service.apply_refund(db, user.id, body.billing_id, body.amount, body.reason)
     )
 
 
@@ -164,7 +164,7 @@ async def get_stats(
         date_end=_parse_datetime(dateEnd),
     )
     # user_id 额外透传（聚合维度需要）
-    return success(await BillingStatService.stats(db, query, user_id=userId))
+    return success(await billing_stat_service.stats(db, query, user_id=userId))
 
 
 @router.post("/adjust", response_model=Result[BalanceResult], summary="管理员手动调整积分")
@@ -176,7 +176,7 @@ async def adjust_credits(
 ):
     if body.amount == 0:
         raise BusinessException(ResultCode.PARAM_ERROR, "调整积分数不能为 0")
-    await RechargeService.recharge(
+    await recharge_service.recharge(
         db,
         body.user_id,
         body.amount,
@@ -196,7 +196,7 @@ async def audit_refund(
     user: UserContext = Depends(get_current_user),
 ):
     return success(
-        await RefundService.audit_refund(
+        await refund_service.audit_refund(
             db, refund_id, body.approved, body.audit_remark, user.id
         )
     )

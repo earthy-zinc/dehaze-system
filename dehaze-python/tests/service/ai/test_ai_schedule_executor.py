@@ -53,7 +53,7 @@ def _patch_create_conv(monkeypatch, conv_id=10):
     async def _create(db, user_id, form):
         return _conv(conv_id)
 
-    monkeypatch.setattr(ex.AiConversationService, "create_conversation", _create)
+    monkeypatch.setattr(ex.ai_conversation_service, "create_conversation", _create)
 
 
 @pytest.fixture
@@ -129,7 +129,7 @@ def _patch_inference_success(monkeypatch, credits=3, conv_id=10):
     async def _list(db, conv_id, page, size):
         return ([SimpleNamespace(role="assistant", status=2, credits=credits, error=None)], 1)
 
-    monkeypatch.setattr(ex.AiMessageService, "send_message", _send)
+    monkeypatch.setattr(ex.ai_message_service, "send_message", _send)
     monkeypatch.setattr(ex.ai_message_repository, "list_by_conversation", _list)
 
 
@@ -142,7 +142,7 @@ async def test_idempotent_duplicate_window_skipped(monkeypatch, mock_redis, mock
         called["send"] = True
         raise AssertionError("不应发起推理")
 
-    monkeypatch.setattr(ex.AiMessageService, "send_message", _fail)
+    monkeypatch.setattr(ex.ai_message_service, "send_message", _fail)
 
     result = await executor.trigger_once(mock_db, mock_redis, 1, 7)
     assert result["skipped"] is True
@@ -185,7 +185,7 @@ async def test_circuit_breaker_disables_after_threshold(monkeypatch, mock_redis,
     async def _fail_send(db, conv_id, user_id, form, idem):
         raise BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, "模型不可用")
 
-    monkeypatch.setattr(ex.AiMessageService, "send_message", _fail_send)
+    monkeypatch.setattr(ex.ai_message_service, "send_message", _fail_send)
 
     result = await executor.trigger_once(mock_db, mock_redis, 1, 7)
     assert result["ok"] is False
@@ -216,7 +216,7 @@ async def test_circuit_disabled_task_skipped(monkeypatch, mock_redis, mock_db, e
     async def _fail(**kw):
         called["send"] = True
 
-    monkeypatch.setattr(ex.AiMessageService, "send_message", _fail)
+    monkeypatch.setattr(ex.ai_message_service, "send_message", _fail)
 
     result = await executor.trigger_once(mock_db, mock_redis, 1, 7)
     assert result["skipped"] is True
@@ -243,7 +243,7 @@ async def test_retryable_temporary_error_retries_then_success(
             raise ex._RetryableError("网络超时")
         return FakeInternalResponse(b"")
 
-    monkeypatch.setattr(ex.AiMessageService, "send_message", _send)
+    monkeypatch.setattr(ex.ai_message_service, "send_message", _send)
 
     result = await executor.trigger_once(mock_db, mock_redis, 1, 7)
     assert result["ok"] is True
@@ -266,7 +266,7 @@ async def test_non_retryable_business_error_fails_immediately(
         attempts["n"] += 1
         raise BusinessException(ResultCode.PARAM_ERROR, "参数错误")
 
-    monkeypatch.setattr(ex.AiMessageService, "send_message", _fail_send)
+    monkeypatch.setattr(ex.ai_message_service, "send_message", _fail_send)
 
     result = await executor.trigger_once(mock_db, mock_redis, 1, 7)
     assert result["ok"] is False
@@ -284,7 +284,7 @@ async def test_quota_insufficient_skipped_and_notified(monkeypatch, mock_redis, 
     async def _fail(**kw):
         called["send"] = True
 
-    monkeypatch.setattr(ex.AiMessageService, "send_message", _fail)
+    monkeypatch.setattr(ex.ai_message_service, "send_message", _fail)
 
     result = await executor.trigger_once(mock_db, mock_redis, 1, 7)
     assert result["skipped"] is True
@@ -407,7 +407,7 @@ async def test_disabled_task_skipped_with_reason(monkeypatch, mock_redis, mock_d
     async def _fail(**kw):
         called["send"] = True
 
-    monkeypatch.setattr(ex.AiMessageService, "send_message", _fail)
+    monkeypatch.setattr(ex.ai_message_service, "send_message", _fail)
 
     result = await executor.trigger_once(mock_db, mock_redis, 1, 7, manual=False)
 

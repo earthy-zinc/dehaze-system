@@ -11,7 +11,7 @@ from app.service.ai import ai_schedule_service as m
 from app.service.ai.ai_schedule_service import (
     DEFAULT_TIMEZONE,
     MAX_SCHEDULES_PER_USER,
-    ScheduledTaskService,
+    scheduled_task_service,
 )
 from tests.stubs import StubAsyncSession, make_member
 
@@ -124,17 +124,17 @@ class TestCreate:
     async def test_reject_non_vip2(self, env):
         env.members[1] = make_member("level_1")
         with pytest.raises(BusinessException) as exc:
-            await ScheduledTaskService.create(env.db, 1, _form())
+            await scheduled_task_service.create(env.db, 1, _form())
         assert "VIP2" in str(exc.value)
 
     async def test_reject_no_member(self, env):
         with pytest.raises(BusinessException) as exc:
-            await ScheduledTaskService.create(env.db, 1, _form())
+            await scheduled_task_service.create(env.db, 1, _form())
         assert "VIP2" in str(exc.value)
 
     async def test_vip2_ok_and_compute_next_trigger(self, env):
         env.members[1] = make_member("level_2")
-        task = await ScheduledTaskService.create(env.db, 1, _form())
+        task = await scheduled_task_service.create(env.db, 1, _form())
         assert task.nextTriggerTime is not None
         assert task.id == 1
 
@@ -142,32 +142,32 @@ class TestCreate:
         env.members[1] = make_member("level_2")
         env.sched.count = MAX_SCHEDULES_PER_USER
         with pytest.raises(BusinessException) as exc:
-            await ScheduledTaskService.create(env.db, 1, _form())
+            await scheduled_task_service.create(env.db, 1, _form())
         assert "上限" in str(exc.value)
 
     async def test_reject_invalid_cron(self, env):
         env.members[1] = make_member("level_2")
         with pytest.raises(BusinessException) as exc:
-            await ScheduledTaskService.create(env.db, 1, _form(cron="not a cron"))
+            await scheduled_task_service.create(env.db, 1, _form(cron="not a cron"))
         assert "Cron" in str(exc.value)
 
 
 class TestSetEnabled:
     async def test_enable_resets_circuit_when_broken(self, env):
         env.sched.task = _task(status=2)
-        await ScheduledTaskService.set_enabled(env.db, 1, 1, 1)
+        await scheduled_task_service.set_enabled(env.db, 1, 1, 1)
         assert env.sched.calls["reset_circuit"] == [1]
         assert env.sched.calls["set_enabled"] == [(1, 1)]
         assert len(env.sched.calls["update_next_trigger"]) == 1
 
     async def test_enable_normal_does_not_reset_circuit(self, env):
         env.sched.task = _task(status=1)
-        await ScheduledTaskService.set_enabled(env.db, 1, 1, 1)
+        await scheduled_task_service.set_enabled(env.db, 1, 1, 1)
         assert env.sched.calls["reset_circuit"] == []
 
     async def test_disable_only_sets_enabled_zero(self, env):
         env.sched.task = _task(status=2)
-        await ScheduledTaskService.set_enabled(env.db, 1, 1, 0)
+        await scheduled_task_service.set_enabled(env.db, 1, 1, 0)
         assert env.sched.calls["set_enabled"] == [(1, 0)]
         assert env.sched.calls["reset_circuit"] == []
         assert env.sched.calls["update_next_trigger"] == []
@@ -175,13 +175,13 @@ class TestSetEnabled:
     async def test_ownership_denied(self, env):
         env.sched.task = _task(user_id=999)
         with pytest.raises(BusinessException):
-            await ScheduledTaskService.set_enabled(env.db, 1, 1, 1)
+            await scheduled_task_service.set_enabled(env.db, 1, 1, 1)
 
 
 class TestUpdate:
     async def test_update_recomputes_next_trigger_on_cron_change(self, env):
         env.sched.task = _task(cron="0 8 * * *")
-        await ScheduledTaskService.update(env.db, 1, 1, ScheduleUpdate(cron="0 7 * * *"))
+        await scheduled_task_service.update(env.db, 1, 1, ScheduleUpdate(cron="0 7 * * *"))
         assert env.sched.task.cron == "0 7 * * *"
         assert env.sched.task.next_trigger_time is not None
         assert env.db.refreshed
@@ -189,25 +189,25 @@ class TestUpdate:
     async def test_update_keep_next_trigger_without_cron_change(self, env):
         t = _task(cron="0 8 * * *")
         env.sched.task = t
-        await ScheduledTaskService.update(env.db, 1, 1, ScheduleUpdate(name="新名称"))
+        await scheduled_task_service.update(env.db, 1, 1, ScheduleUpdate(name="新名称"))
         assert t.name == "新名称"
         assert t.next_trigger_time is None
 
     async def test_update_reject_invalid_cron(self, env):
         env.sched.task = _task()
         with pytest.raises(BusinessException):
-            await ScheduledTaskService.update(env.db, 1, 1, ScheduleUpdate(cron="bad"))
+            await scheduled_task_service.update(env.db, 1, 1, ScheduleUpdate(cron="bad"))
 
 
 class TestPreviewNextTimes:
     async def test_preview_description_and_times(self):
-        result = await ScheduledTaskService.preview_next_times("0 9 * * *")
+        result = await scheduled_task_service.preview_next_times("0 9 * * *")
         assert "每天 09点00分" in result.description
         assert len(result.nextTimes) == 5
 
     async def test_preview_invalid_cron(self):
         with pytest.raises(BusinessException):
-            await ScheduledTaskService.preview_next_times("bad cron")
+            await scheduled_task_service.preview_next_times("bad cron")
 
 
 class TestListPage:
@@ -227,7 +227,7 @@ class TestListPage:
         env.sched.total = 1
         run = self._run_summary(status=1, credits=12.5, duration_ms=300, conversation_id=9)
         env.run.latest = {1: run}
-        result = await ScheduledTaskService.list_page(env.db, 1, SchedulePageQuery())
+        result = await scheduled_task_service.list_page(env.db, 1, SchedulePageQuery())
         assert result.total == 1
         assert result.list[0].lastRun is not None
         assert result.list[0].lastRun.status == 1
@@ -237,20 +237,20 @@ class TestListPage:
         env.sched.items = [_task()]
         env.sched.total = 1
         env.run.latest = {}
-        result = await ScheduledTaskService.list_page(env.db, 1, SchedulePageQuery())
+        result = await scheduled_task_service.list_page(env.db, 1, SchedulePageQuery())
         assert result.list[0].lastRun is None
 
 
 class TestDelete:
     async def test_soft_delete_owned(self, env):
         env.sched.task = _task()
-        await ScheduledTaskService.delete(env.db, 1, 1)
+        await scheduled_task_service.delete(env.db, 1, 1)
         assert env.sched.calls["soft_delete"] == [1]
 
     async def test_delete_denied(self, env):
         env.sched.task = _task(user_id=999)
         with pytest.raises(BusinessException):
-            await ScheduledTaskService.delete(env.db, 1, 1)
+            await scheduled_task_service.delete(env.db, 1, 1)
 
 
 class TestListHistory:
@@ -271,7 +271,7 @@ class TestListHistory:
         )
         env.run.history = [run]
         env.run.total = 1
-        result = await ScheduledTaskService.list_history(env.db, 1, 1, 1, 10)
+        result = await scheduled_task_service.list_history(env.db, 1, 1, 1, 10)
         assert result.total == 1
         assert result.list[0].skipReason == "overlap"
         assert result.list[0].errorMsg == "超时"
@@ -279,7 +279,7 @@ class TestListHistory:
     async def test_history_ownership_denied(self, env):
         env.sched.task = _task(user_id=999)
         with pytest.raises(BusinessException):
-            await ScheduledTaskService.list_history(env.db, 1, 1, 1, 10)
+            await scheduled_task_service.list_history(env.db, 1, 1, 1, 10)
 
 
 class TestIdempotentInsert:
@@ -337,7 +337,7 @@ def _freq_form(cron):
 
 
 async def test_frequency_daily_identifier_normalized(freq_env):
-    task = await ScheduledTaskService.create(freq_env.db, 1, _freq_form("daily@09:00"))
+    task = await scheduled_task_service.create(freq_env.db, 1, _freq_form("daily@09:00"))
     stored = freq_env.sched.calls["create"][0]
     assert stored.cron == "0 9 * * *"
     assert stored.next_trigger_time.hour == 9
@@ -346,40 +346,40 @@ async def test_frequency_daily_identifier_normalized(freq_env):
 
 
 async def test_frequency_weekly_weekday_alias_normalized(freq_env):
-    await ScheduledTaskService.create(freq_env.db, 1, _freq_form("weekly@mon@09:30"))
+    await scheduled_task_service.create(freq_env.db, 1, _freq_form("weekly@mon@09:30"))
     assert freq_env.sched.calls["create"][0].cron == "30 9 * * 1"
 
 
 async def test_frequency_weekly_weekday_number_normalized(freq_env):
-    await ScheduledTaskService.create(freq_env.db, 1, _freq_form("weekly@0@09:30"))
+    await scheduled_task_service.create(freq_env.db, 1, _freq_form("weekly@0@09:30"))
     assert freq_env.sched.calls["create"][0].cron == "30 9 * * 0"
 
 
 async def test_frequency_monthly_normalized(freq_env):
-    await ScheduledTaskService.create(freq_env.db, 1, _freq_form("monthly@15@23:59"))
+    await scheduled_task_service.create(freq_env.db, 1, _freq_form("monthly@15@23:59"))
     assert freq_env.sched.calls["create"][0].cron == "59 23 15 * *"
 
 
 async def test_frequency_invalid_time_raises_param_error(freq_env):
     with pytest.raises(BusinessException) as exc:
-        await ScheduledTaskService.create(freq_env.db, 1, _freq_form("daily@25:00"))
+        await scheduled_task_service.create(freq_env.db, 1, _freq_form("daily@25:00"))
     assert exc.value.code is ResultCode.PARAM_ERROR
 
 
 async def test_frequency_invalid_date_raises_param_error(freq_env):
     with pytest.raises(BusinessException) as exc:
-        await ScheduledTaskService.create(freq_env.db, 1, _freq_form("monthly@32@10:00"))
+        await scheduled_task_service.create(freq_env.db, 1, _freq_form("monthly@32@10:00"))
     assert exc.value.code is ResultCode.PARAM_ERROR
 
 
 async def test_frequency_unrecognized_format_passthrough(freq_env):
     with pytest.raises(BusinessException) as exc:
-        await ScheduledTaskService.create(freq_env.db, 1, _freq_form("custom@09:00"))
+        await scheduled_task_service.create(freq_env.db, 1, _freq_form("custom@09:00"))
     assert "Cron" in str(exc.value)
 
 
 async def test_preview_frequency_identifier_usable():
-    result = await ScheduledTaskService.preview_next_times("daily@09:00")
+    result = await scheduled_task_service.preview_next_times("daily@09:00")
     assert "每天 09点00分" in result.description
     assert len(result.nextTimes) == 5
     for t in result.nextTimes:
@@ -388,7 +388,7 @@ async def test_preview_frequency_identifier_usable():
 
 def test_next_times_computed_in_task_timezone():
     tz = "America/New_York"
-    times = ScheduledTaskService._compute_next_times("0 9 * * *", tz, 3)
+    times = scheduled_task_service._compute_next_times("0 9 * * *", tz, 3)
     assert all(t.hour == 9 and t.minute == 0 for t in times)
     utcoffset_hours = {t.utcoffset().total_seconds() / 3600 for t in times}
     assert utcoffset_hours.issubset({-4.0, -5.0})
@@ -396,10 +396,10 @@ def test_next_times_computed_in_task_timezone():
 
 def test_next_trigger_computed_in_task_timezone():
     tz = "America/New_York"
-    nxt = ScheduledTaskService._compute_next_trigger("30 9 * * *", tz)
+    nxt = scheduled_task_service._compute_next_trigger("30 9 * * *", tz)
     assert nxt.hour == 9 and nxt.minute == 30
 
 
 def test_next_times_rejects_invalid_timezone():
     with pytest.raises(BusinessException):
-        ScheduledTaskService._compute_next_times("0 9 * * *", "Bad/Zone", 3)
+        scheduled_task_service._compute_next_times("0 9 * * *", "Bad/Zone", 3)

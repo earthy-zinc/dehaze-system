@@ -14,10 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository.ai_billing_repository import ai_billing_repository
 from app.repository.ai_credit_log_repository import ai_credit_log_repository
-from app.service.billing.balance_service import BalanceService
-from app.service.billing.billing_anomaly_service import BillingAnomalyService
-from app.service.billing.estimate_service import EstimateService
-from app.service.billing.quota_service import QuotaService
+from app.service.billing.balance_service import balance_service
+from app.service.billing.billing_anomaly_service import billing_anomaly_service
+from app.service.billing.estimate_service import estimate_service
+from app.service.billing.quota_service import quota_service
 from app.service.billing.rate_provider import RateProvider
 
 logger = logging.getLogger(__name__)
@@ -28,8 +28,7 @@ class BillingService:
 
     # ── 预校验 + 预扣 ──────────────────────────────
 
-    @staticmethod
-    async def pre_charge(
+    async def pre_charge(self, 
         db: AsyncSession,
         user_id: int,
         conversation_id: int,
@@ -43,43 +42,43 @@ class BillingService:
         配额/余额/欠费任一不满足时返回中断数据（含 stop_reason）供钩子阻断推理。
         """
         # 1. 欠费熔断
-        if await BalanceService.is_arrears(user_id):
+        if await balance_service.is_arrears(user_id):
             return {
                 "final_response": "账户欠费，请充值后继续使用",
                 "stop_reason": "arrears",
             }
 
         # 2. 预估
-        estimated = await EstimateService.estimate_credits(
+        estimated = await estimate_service.estimate_credits(
             db, user_id, conversation_id, content, model_id
         )
 
         # 3. 配额校验（失败计入连续配额不足计数，达阈值告警，见后端实现 §4.7）
-        if not await QuotaService.check_quota(db, user_id, estimated):
-            await BillingAnomalyService.record_quota_fail(user_id)
+        if not await quota_service.check_quota(db, user_id, estimated):
+            await billing_anomaly_service.record_quota_fail(user_id)
             return {
                 "final_response": "今日或本月 AI 积分配额不足，请升级会员或明日再试",
                 "stop_reason": "quota_exceeded",
             }
 
         # 4. 余额校验
-        if not await BalanceService.check_balance(db, user_id, estimated):
+        if not await balance_service.check_balance(db, user_id, estimated):
             return {
                 "final_response": "积分余额不足，请充值后继续使用",
                 "stop_reason": "balance_exceeded",
             }
 
         # 5. 配额预扣（失败已整体回滚，无副作用；并发窗口内失败同样计入配额不足计数）
-        if not await QuotaService.pre_deduct(db, user_id, estimated):
-            await BillingAnomalyService.record_quota_fail(user_id)
+        if not await quota_service.pre_deduct(db, user_id, estimated):
+            await billing_anomaly_service.record_quota_fail(user_id)
             return {
                 "final_response": "今日或本月 AI 积分配额不足，请升级会员或明日再试",
                 "stop_reason": "quota_exceeded",
             }
 
         # 6. 余额预扣（失败回滚已预扣配额）
-        if not await BalanceService.pre_deduct(db, user_id, estimated):
-            await QuotaService.refund(user_id, estimated)
+        if not await balance_service.pre_deduct(db, user_id, estimated):
+            await quota_service.refund(user_id, estimated)
             return {
                 "final_response": "积分余额不足，请充值后继续使用",
                 "stop_reason": "balance_exceeded",
@@ -109,8 +108,7 @@ class BillingService:
 
     # ── 滚动预算校验 ──────────────────────────────
 
-    @staticmethod
-    async def check_budget(state: dict, step_estimated: int) -> dict | None:
+    async def check_budget(self, state: dict, step_estimated: int) -> dict | None:
         """滚动预算校验（before_model 钩子调用）。
 
         remaining_budget < 单步预估 → 返回中断数据（type=quota）。
@@ -128,8 +126,7 @@ class BillingService:
 
     # ── 实扣结算 ──────────────────────────────────
 
-    @staticmethod
-    async def settle(
+    async def settle(self, 
         db: AsyncSession,
         user_id: int,
         conversation_id: int,
@@ -166,7 +163,7 @@ class BillingService:
         credits_saved = calc["credits_saved"]
 
         # 关联预扣的 chat 计费记录（pre_charge 创建）；缺失则新建
-        billing = await BillingService._find_chat_billing(
+        billing = await self._find_chat_billing(
             db, user_id, conversation_id, message_id, bill_type
         )
         if billing is None:
@@ -190,13 +187,13 @@ class BillingService:
         difference = estimated - actual_credits
         if difference > 0:
             # 多扣：退还配额与余额
-            await QuotaService.refund(user_id, difference)
-            await BalanceService.refund(db, user_id, difference)
+            await quota_service.refund(user_id, difference)
+            await balance_service.refund(db, user_id, difference)
         elif difference < 0:
             # 少扣：额外扣减（余额不足扣至 0 并标记欠费）
             extra = -difference
-            await QuotaService.deduct(user_id, extra)
-            await BalanceService.deduct(db, user_id, extra)
+            await quota_service.deduct(user_id, extra)
+            await balance_service.deduct(db, user_id, extra)
 
         # 更新计费记录（含成本归因字段，只写非空值）
         update_data: dict = {
@@ -223,7 +220,7 @@ class BillingService:
         # 补记路径（adjustment=True）：仅更新既有记录，不新增 consume 流水、不做异常检测
         if not adjustment:
             # 写入积分流水（source=consume，balance_after 取结算后余额）
-            balance = await BalanceService.get_balance(db, user_id)
+            balance = await balance_service.get_balance(db, user_id)
             await ai_credit_log_repository.create_log(
                 db,
                 user_id=user_id,
@@ -236,8 +233,8 @@ class BillingService:
 
             # 完整异常检测（单次超高/突发峰值/空回复高耗，后端实现 §4.7；
             # 内部尽力而为，失败不阻断结算主流程）
-            daily_limit, monthly_limit = await QuotaService.get_limits(db, user_id)
-            await BillingAnomalyService.check(
+            daily_limit, monthly_limit = await quota_service.get_limits(db, user_id)
+            await billing_anomaly_service.check(
                 user_id,
                 billing,
                 monthly_limit=monthly_limit,
@@ -253,8 +250,7 @@ class BillingService:
             "actual_model": model_id if actual_model_id else None,
         }
 
-    @staticmethod
-    async def _find_chat_billing(
+    async def _find_chat_billing(self, 
         db,
         user_id: int,
         conversation_id: int,
@@ -270,3 +266,6 @@ class BillingService:
                 return r
         return None
 
+
+
+billing_service = BillingService()

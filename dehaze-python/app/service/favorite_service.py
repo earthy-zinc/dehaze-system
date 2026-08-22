@@ -30,16 +30,15 @@ def _format_dt(dt: datetime | None) -> str | None:
 
 
 class FavoriteService:
-    @staticmethod
-    async def _get_capacity(db: AsyncSession, user_id: int) -> int:
+    async def _get_capacity(self, db: AsyncSession, user_id: int) -> int:
         """根据用户会员等级返回收藏容量上限"""
         member = await member_repository.get_by_user_id(db, user_id)
         if member and member.level_code != "level_0":
             return VIP_CAPACITY
         return DEFAULT_CAPACITY
 
-    @staticmethod
     async def add(
+        self,
         db: AsyncSession,
         user_id: int,
         target_type: str,
@@ -57,7 +56,7 @@ class FavoriteService:
 
         # 容量校验
         current_count = await favorite_repository.count_user_favorites(db, user_id)
-        capacity = await FavoriteService._get_capacity(db, user_id)
+        capacity = await self._get_capacity(db, user_id)
         if current_count >= capacity:
             raise BusinessException(
                 ResultCode.BUSINESS_ERROR,
@@ -69,8 +68,8 @@ class FavoriteService:
             db, user_id, target_type, target_id
         )
 
-    @staticmethod
     async def delete_by_ids(
+        self,
         db: AsyncSession,
         user_id: int,
         ids: list[int],
@@ -80,8 +79,8 @@ class FavoriteService:
             return
         await favorite_repository.soft_delete_by_ids(db, ids, user_id)
 
-    @staticmethod
     async def get_page(
+        self,
         db: AsyncSession,
         user_id: int,
         query: dict,
@@ -114,8 +113,8 @@ class FavoriteService:
         ]
         return {"list": list_data, "total": total}
 
-    @staticmethod
     async def get_status(
+        self,
         db: AsyncSession,
         user_id: int,
         target_type: str,
@@ -131,8 +130,8 @@ class FavoriteService:
             "favorited": existing is not None,
         }
 
-    @staticmethod
     async def get_count(
+        self,
         db: AsyncSession,
         user_id: int,
         target_type: str | None = None,
@@ -140,4 +139,7 @@ class FavoriteService:
         """收藏数量统计（按类型分组）"""
         counts = await favorite_repository.get_count_by_type(db, user_id, target_type)
         return [{"targetType": c["target_type"], "count": c["count"]} for c in counts]
+
+
+favorite_service = FavoriteService()
 

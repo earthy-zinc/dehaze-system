@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_ai_schedule import SysAiSchedule
 from app.models.entity.sys_ai_schedule_run import SysAiScheduleRun
-from app.service.message_service import MessageService
+from app.service.message_service import message_service
 
 # 失败原因展示长度上限（避免超长堆栈刷屏）
 ERROR_MSG_MAX_LEN = 200
@@ -123,7 +123,7 @@ async def notify_run_result(
     else:
         title, content = _render_skip(run)
 
-    return await MessageService.send(
+    return await message_service.send(
         db,
         {
             "type": "business",

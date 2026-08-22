@@ -22,7 +22,7 @@ from app.core.result import success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
-from app.service.import_export_service import ImportExportService
+from app.service.import_export_service import import_export_service
 
 router = APIRouter(prefix="/api/v1", tags=["通用导入导出接口"])
 
@@ -82,12 +82,12 @@ def _ensure_module_supported(module: str, action: str) -> None:
     """模块支持性先于权限校验：不存在的模块应报"模块不支持"而非权限错误"""
     from app.core.code import ResultCode
     from app.core.exceptions import BusinessException
-    from app.service.import_export_service import ImportExportService
+    from app.service.import_export_service import import_export_service
 
     supported = (
-        ImportExportService.get_supported_export_modules()
+        import_export_service.get_supported_export_modules()
         if action == "export"
-        else ImportExportService.get_supported_import_modules()
+        else import_export_service.get_supported_import_modules()
     )
     if module not in supported:
         raise BusinessException(ResultCode.MODULE_IMPORT_NOT_SUPPORTED, f"模块 {module} 不支持{action}")
@@ -108,7 +108,7 @@ async def export_get(
     _check_module_permission(user, module, "export")
     query_params = _build_query_params(request)
     field_list = _split_fields(fields)
-    result = await ImportExportService.export(
+    result = await import_export_service.export(
         db=db,
         redis=redis,
         module=module,
@@ -137,7 +137,7 @@ async def export_post(
     async_flag = body.get("async")
     fields = body.get("fields")
     query_params = body.get("queryParams") or {}
-    result = await ImportExportService.export(
+    result = await import_export_service.export(
         db=db,
         redis=redis,
         module=module,
@@ -166,7 +166,7 @@ async def import_data(
     _ensure_module_supported(module, "import")
     _check_module_permission(user, module, "import")
     extra_params = await _build_extra_params(request)
-    result = await ImportExportService.import_data(
+    result = await import_export_service.import_data(
         db=db,
         redis=redis,
         module=module,
@@ -187,7 +187,7 @@ async def download_template(
 ):
     _ensure_module_supported(module, "import")
     _check_module_permission(user, module, "import")
-    return ImportExportService.download_template(module, format)
+    return import_export_service.download_template(module, format)
 
 
 def _split_fields(fields: str | None) -> list[str] | None:

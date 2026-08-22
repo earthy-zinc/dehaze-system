@@ -1,8 +1,8 @@
 """知识库检索客户端（KnowledgeBaseClient）
 
-调研结论：项目已接入平台级 AI 知识库 RAG（检索引擎 SearchService，见
+调研结论：项目已接入平台级 AI 知识库 RAG（检索引擎 search_service，见
 app/service/kb/search_service.py）。本客户端为 Agent/工具层适配：
-retrieve 调用 SearchService 真实检索，返回带来源引用的结果列表。
+retrieve 调用 search_service 真实检索，返回带来源引用的结果列表。
 
 用户上下文：Agent 工具调用方（dehaze_tools_builder._knowledge_base_search）可拿到
 ctx["user_id"] 时传入，检索该用户可见库（私有+公共）；无用户上下文（如网络搜索降级

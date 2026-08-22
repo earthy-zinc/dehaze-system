@@ -54,7 +54,7 @@ def test_check_file_valid_md5_returns_file(monkeypatch, valid_md5):
     async def _found(db, md5):
         return _file(md5=md5)
 
-    monkeypatch.setattr("app.router.file.FileService.get_file_by_md5", _found)
+    monkeypatch.setattr("app.router.file.file_service.get_file_by_md5", _found)
     resp = run_coro(check_file(md5=valid_md5, db=None))
     assert resp.code == ResultCode.SUCCESS.code
     assert resp.data is not None
@@ -65,7 +65,7 @@ def test_get_file_info_not_found_rejected(monkeypatch):
     async def _none(db, file_id):
         return None
 
-    monkeypatch.setattr("app.router.file.FileService.get_file_by_id", _none)
+    monkeypatch.setattr("app.router.file.file_service.get_file_by_id", _none)
     with pytest.raises(BusinessException) as ei:
         run_coro(get_file_info(file_id=999, db=None))
     assert ei.value.code == ResultCode.FILE_NOT_FOUND
@@ -76,7 +76,7 @@ def test_get_file_info_returns_size_bytes(monkeypatch):
     async def _found(db, file_id):
         return _file()
 
-    monkeypatch.setattr("app.router.file.FileService.get_file_by_id", _found)
+    monkeypatch.setattr("app.router.file.file_service.get_file_by_id", _found)
     resp = run_coro(get_file_info(file_id=1, db=None))
     assert resp.data.sizeBytes == 2560000
     assert resp.data.size == "2.44MB"

@@ -77,14 +77,14 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
         async with get_db_session() as db:
             from app.repository.feedback_repository import rating_repository
             from app.repository.user_repository import user_repository
-            from app.service.message_service import MessageService
+            from app.service.message_service import message_service
 
             admin_ids = await user_repository.list_active_admin_ids(db)
             if not admin_ids:
                 logger.warning("[MQ] 无管理员用户，跳过低分告警")
                 return
 
-            await MessageService.send(
+            await message_service.send(
                 db,
                 {
                     "type": "alert",
@@ -104,7 +104,7 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
                     db, algorithm_id
                 )
                 if low_count >= LOW_RATING_URGENT_COUNT:
-                    await MessageService.send(
+                    await message_service.send(
                         db,
                         {
                             "type": "critical_alert",
@@ -124,7 +124,7 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
             if stats["total"] > 0:
                 low_rate = stats["lowCount"] / stats["total"]
                 if low_rate > LOW_RATING_SEVERE_RATE:
-                    await MessageService.send(
+                    await message_service.send(
                         db,
                         {
                             "type": "critical_alert",

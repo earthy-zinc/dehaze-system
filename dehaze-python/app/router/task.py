@@ -13,7 +13,7 @@ from app.models.schema.task import ExportTaskCreateForm as ExportTaskCreateReque
 from app.models.schema.task import TaskPageVO
 from app.models.schema.task import TaskVO as TaskData
 from app.service import task_service
-from app.service.file_service import FileService
+from app.service.file_service import file_service
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["任务管理"])
 
@@ -172,7 +172,7 @@ async def download_export_file(
             detail="任务未完成、已过期或下载链接不存在",
         )
 
-    return FileService.stream_file_response(object_name, storage="minio")
+    return file_service.stream_file_response(object_name, storage="minio")
 
 
 @router.post(

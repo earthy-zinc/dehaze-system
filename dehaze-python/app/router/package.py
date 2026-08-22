@@ -10,8 +10,8 @@ from app.models.schema.package import (
     CouponForm,
     PackageForm,
 )
-from app.service.coupon_service import CouponService
-from app.service.package_service import PackageService
+from app.service.coupon_service import coupon_service
+from app.service.package_service import package_service
 
 router = APIRouter(
     prefix="/api/v1/packages",
@@ -25,7 +25,7 @@ async def list_on_sale(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await PackageService.list_on_sale(db)
+    data = await package_service.list_on_sale(db)
     return success(data)
 
 
@@ -36,7 +36,7 @@ async def add_package(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await PackageService.create(db, body.model_dump(exclude_none=True))
+    await package_service.create(db, body.model_dump(exclude_none=True))
     return success()
 
 
@@ -53,7 +53,7 @@ async def get_package_page(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await PackageService.get_page(
+    data = await package_service.get_page(
         db,
         {
             "pageNum": pageNum,
@@ -76,7 +76,7 @@ async def calculate_price(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await PackageService.calculate_price(db, packageId, userCouponId, user.id)
+    data = await package_service.calculate_price(db, packageId, userCouponId, user.id)
     return success(data)
 
 
@@ -86,7 +86,7 @@ async def get_sales_stats(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await PackageService.get_sales_stats(db)
+    data = await package_service.get_sales_stats(db)
     return success(data)
 
 
@@ -96,7 +96,7 @@ async def list_my_coupons(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await CouponService.list_my(db, user.id, status)
+    data = await coupon_service.list_my(db, user.id, status)
     return success(data)
 
 
@@ -107,7 +107,7 @@ async def add_coupon(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await CouponService.create(db, body.model_dump(exclude_none=True))
+    data = await coupon_service.create(db, body.model_dump(exclude_none=True))
     return success(data)
 
 
@@ -118,7 +118,7 @@ async def batch_distribute_coupon(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await CouponService.batch_distribute(db, body.model_dump(exclude_none=True))
+    data = await coupon_service.batch_distribute(db, body.model_dump(exclude_none=True))
     return success(data)
 
 
@@ -132,7 +132,7 @@ async def get_coupon_page(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await CouponService.get_page(
+    data = await coupon_service.get_page(
         db,
         {
             "pageNum": pageNum,
@@ -151,7 +151,7 @@ async def receive_coupon(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await CouponService.receive(db, coupon_id, user.id)
+    data = await coupon_service.receive(db, coupon_id, user.id)
     return success(data)
 
 
@@ -163,7 +163,7 @@ async def update_coupon(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await CouponService.update(db, coupon_id, body.model_dump(exclude_none=True))
+    await coupon_service.update(db, coupon_id, body.model_dump(exclude_none=True))
     return success()
 
 
@@ -175,7 +175,7 @@ async def delete_coupons(
     user: UserContext = Depends(get_current_user),
 ):
     id_list = [int(i) for i in ids.split(",") if i.strip()]
-    await CouponService.delete_by_ids(db, id_list)
+    await coupon_service.delete_by_ids(db, id_list)
     return success()
 
 
@@ -185,7 +185,7 @@ async def get_package_detail(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await PackageService.get_detail(db, package_id)
+    data = await package_service.get_detail(db, package_id)
     return success(data)
 
 
@@ -197,7 +197,7 @@ async def update_package(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await PackageService.update(db, package_id, body.model_dump(exclude_none=True))
+    await package_service.update(db, package_id, body.model_dump(exclude_none=True))
     return success()
 
 
@@ -207,7 +207,7 @@ async def get_package_form(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await PackageService.get_form(db, package_id)
+    data = await package_service.get_form(db, package_id)
     return success(data)
 
 
@@ -219,7 +219,7 @@ async def update_package_status(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await PackageService.update_status(db, package_id, status)
+    await package_service.update_status(db, package_id, status)
     return success()
 
 
@@ -231,5 +231,5 @@ async def delete_packages(
     user: UserContext = Depends(get_current_user),
 ):
     id_list = [int(i) for i in ids.split(",") if i.strip()]
-    await PackageService.delete_by_ids(db, id_list)
+    await package_service.delete_by_ids(db, id_list)
     return success()

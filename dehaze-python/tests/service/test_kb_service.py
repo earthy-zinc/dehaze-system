@@ -11,8 +11,8 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_knowledge_base import SysKnowledgeBase
 from app.models.entity.sys_knowledge_document import SysKnowledgeDocument
-from app.service.kb.document_service import DocumentService, _clean_text
-from app.service.kb.knowledge_base_service import KnowledgeBaseService
+from app.service.kb.document_service import document_service, _clean_text
+from app.service.kb.knowledge_base_service import knowledge_base_service
 from tests.stubs import MemberBenefitRepo, NullDBSession
 
 CODE_UNAUTHORIZED = ResultCode.ACCESS_UNAUTHORIZED.code
@@ -196,7 +196,7 @@ class TestKBPermissionMatrix:
         kb_repo.get_by_id.return_value = _kb(visibility="private", create_by=200)
         with patch("app.service.kb.knowledge_base_service.knowledge_base_repository", kb_repo):
             with pytest.raises(BusinessException) as excinfo:
-                await KnowledgeBaseService.update(None, None, 1, {"name": "篡改"}, _ctx(100))
+                await knowledge_base_service.update(None, None, 1, {"name": "篡改"}, _ctx(100))
             assert excinfo.value.code.code == CODE_UNAUTHORIZED
 
     async def test_delete_private_kb_of_others_raises(self):
@@ -204,7 +204,7 @@ class TestKBPermissionMatrix:
         kb_repo.get_by_id.return_value = _kb(visibility="private", create_by=200)
         with patch("app.service.kb.knowledge_base_service.knowledge_base_repository", kb_repo):
             with pytest.raises(BusinessException) as excinfo:
-                await KnowledgeBaseService.delete(None, None, 1, _ctx(100))
+                await knowledge_base_service.delete(None, None, 1, _ctx(100))
             assert excinfo.value.code.code == CODE_UNAUTHORIZED
 
     async def test_get_private_kb_detail_of_others_raises(self):
@@ -214,7 +214,7 @@ class TestKBPermissionMatrix:
         kb_repo.get_by_id.return_value = _kb(visibility="private", create_by=200)
         with patch("app.service.kb.knowledge_base_service.knowledge_base_repository", kb_repo):
             with pytest.raises(BusinessException) as excinfo:
-                await KnowledgeBaseService.get_detail(None, redis, 1, 100)
+                await knowledge_base_service.get_detail(None, redis, 1, 100)
             assert excinfo.value.code.code == CODE_UNAUTHORIZED
 
     async def test_public_kb_manageable_only_by_admin(self):
@@ -224,9 +224,9 @@ class TestKBPermissionMatrix:
         kb_repo.update = AsyncMock()
         with patch("app.service.kb.knowledge_base_service.knowledge_base_repository", kb_repo):
             with pytest.raises(BusinessException) as excinfo:
-                await KnowledgeBaseService.update(None, AsyncMock(), 1, {"name": "x"}, _ctx(100))
+                await knowledge_base_service.update(None, AsyncMock(), 1, {"name": "x"}, _ctx(100))
             assert excinfo.value.code.code == CODE_UNAUTHORIZED
-            await KnowledgeBaseService.update(None, AsyncMock(), 1, {"name": "x"}, _ctx(999, admin=True))
+            await knowledge_base_service.update(None, AsyncMock(), 1, {"name": "x"}, _ctx(999, admin=True))
             kb_repo.update.assert_awaited_once()
 
     async def test_public_kb_readable_by_anyone(self):
@@ -236,7 +236,7 @@ class TestKBPermissionMatrix:
             ensure_ascii=False,
         )
         with patch("app.service.kb.knowledge_base_service.knowledge_base_repository") as kb_repo:
-            result = await KnowledgeBaseService.get_detail(None, redis, 3, 100)
+            result = await knowledge_base_service.get_detail(None, redis, 3, 100)
             assert result["id"] == 3
             assert result["name"] == "平台公共库"
             kb_repo.get_by_id.assert_not_called()
@@ -262,20 +262,20 @@ class TestKBQuotaBoundary:
         _, patches = self._create_with_limit(current=3)
         with _enter(patches):
             with pytest.raises(BusinessException) as excinfo:
-                await KnowledgeBaseService.create(None, None, _create_data(), _ctx(100))
+                await knowledge_base_service.create(None, None, _create_data(), _ctx(100))
             assert excinfo.value.code.code == CODE_BUSINESS
             assert "升级" in excinfo.value.message
 
     async def test_normal_user_just_below_limit_succeeds(self):
         _, patches = self._create_with_limit(current=2)
         with _enter(patches):
-            kb_id = await KnowledgeBaseService.create(None, AsyncMock(), _create_data(), _ctx(100))
+            kb_id = await knowledge_base_service.create(None, AsyncMock(), _create_data(), _ctx(100))
             assert kb_id == 9
 
     async def test_vip_higher_limit_allows_more(self):
         _, patches = self._create_with_limit(current=5, level="level_2")
         with _enter(patches):
-            kb_id = await KnowledgeBaseService.create(None, AsyncMock(), _create_data(), _ctx(100))
+            kb_id = await knowledge_base_service.create(None, AsyncMock(), _create_data(), _ctx(100))
             assert kb_id == 9
 
     async def test_public_kb_not_counted_in_quota(self):
@@ -289,7 +289,7 @@ class TestKBQuotaBoundary:
             patch(f"{KS}.get_embedding_dim", return_value=1536),
         )
         with _enter(patches):
-            result = await KnowledgeBaseService.create(
+            result = await knowledge_base_service.create(
                 None, AsyncMock(), _create_data(visibility="public"), _ctx(100, admin=True)
             )
             assert result == 11
@@ -308,14 +308,14 @@ class TestDocPermissionMatrix:
         kb_repo = self._patch_kb_repo(_kb(visibility="private", create_by=200))
         with patch("app.service.kb.document_service.knowledge_base_repository", kb_repo):
             with pytest.raises(BusinessException) as excinfo:
-                await DocumentService.upload(None, None, 1, 1, None, _ctx(100))
+                await document_service.upload(None, None, 1, 1, None, _ctx(100))
             assert excinfo.value.code.code == CODE_UNAUTHORIZED
 
     async def test_list_docs_in_others_private_kb_denied(self):
         kb_repo = self._patch_kb_repo(_kb(visibility="private", create_by=200))
         with patch("app.service.kb.document_service.knowledge_base_repository", kb_repo):
             with pytest.raises(BusinessException) as excinfo:
-                await DocumentService.get_page(None, 1, None, 1, 20, _ctx(100))
+                await document_service.get_page(None, 1, None, 1, 20, _ctx(100))
             assert excinfo.value.code.code == CODE_UNAUTHORIZED
 
     async def test_delete_doc_in_others_private_kb_denied(self):
@@ -327,7 +327,7 @@ class TestDocPermissionMatrix:
             patch("app.service.kb.document_service.knowledge_document_repository", doc_repo),
         ):
             with pytest.raises(BusinessException) as excinfo:
-                await DocumentService.delete(None, None, 7, _ctx(100))
+                await document_service.delete(None, None, 7, _ctx(100))
             assert excinfo.value.code.code == CODE_UNAUTHORIZED
 
     async def test_reprocess_doc_in_others_private_kb_denied(self):
@@ -339,7 +339,7 @@ class TestDocPermissionMatrix:
             patch("app.service.kb.document_service.knowledge_document_repository", doc_repo),
         ):
             with pytest.raises(BusinessException) as excinfo:
-                await DocumentService.reprocess(None, None, 7, _ctx(100))
+                await document_service.reprocess(None, None, 7, _ctx(100))
             assert excinfo.value.code.code == CODE_UNAUTHORIZED
 
     async def test_public_kb_docs_readable_by_others(self):
@@ -350,7 +350,7 @@ class TestDocPermissionMatrix:
             patch("app.service.kb.document_service.knowledge_base_repository", kb_repo),
             patch("app.service.kb.document_service.knowledge_document_repository", doc_repo),
         ):
-            result = await DocumentService.get_page(None, 1, None, 1, 20, _ctx(100))
+            result = await document_service.get_page(None, 1, None, 1, 20, _ctx(100))
             assert "list" in result
 
 
@@ -361,7 +361,7 @@ class TestDocStatusMachine:
         doc_repo = AsyncMock()
         doc_repo.get_by_id.return_value = doc
         chunk_repo = AsyncMock()
-        svc = DocumentService()
+        svc = document_service
         return svc, kb_repo, doc_repo, chunk_repo
 
     async def test_delete_processing_doc_denied(self):
@@ -479,7 +479,7 @@ class TestDocIdempotency:
         doc_repo.count_by_kb.return_value = 0
         doc_repo.create.return_value = _doc(doc_id=8, kb_id=2)
         chunk_repo = AsyncMock()
-        svc = DocumentService()
+        svc = document_service
         return svc, kb_repo, doc_repo, chunk_repo
 
     async def test_duplicate_file_in_same_kb_denied(self):
@@ -497,7 +497,7 @@ class TestDocIdempotency:
     async def test_same_file_in_different_kb_allowed(self):
         svc, kb_repo, doc_repo, _ = self._build(existing_doc=None)
         redis = AsyncMock()
-        fs = patch("app.service.kb.document_service.FileService")
+        fs = patch("app.service.kb.document_service.file_service")
         with (
             patch("app.service.kb.document_service.knowledge_base_repository", kb_repo),
             patch("app.service.kb.document_service.knowledge_document_repository", doc_repo),
@@ -515,7 +515,7 @@ class TestDocCountQuota:
         doc_repo = AsyncMock()
         doc_repo.get_by_file_id.return_value = None
         doc_repo.count_by_kb.return_value = 500
-        svc = DocumentService()
+        svc = document_service
         with (
             patch("app.service.kb.document_service.knowledge_base_repository", kb_repo),
             patch("app.service.kb.document_service.knowledge_document_repository", doc_repo),
@@ -532,9 +532,9 @@ class TestDocCountQuota:
         doc_repo.get_by_file_id.return_value = None
         doc_repo.count_by_kb.return_value = 499
         doc_repo.create.return_value = _doc(doc_id=99)
-        svc = DocumentService()
+        svc = document_service
         redis = AsyncMock()
-        fs = patch("app.service.kb.document_service.FileService")
+        fs = patch("app.service.kb.document_service.file_service")
         with (
             patch("app.service.kb.document_service.knowledge_base_repository", kb_repo),
             patch("app.service.kb.document_service.knowledge_document_repository", doc_repo),
@@ -551,7 +551,7 @@ class TestDocPipelineFailure:
         patches, refs = _pipeline_env(chunks=big_chunks)
         with _enter(patches):
             with pytest.raises(BusinessException) as excinfo:
-                await DocumentService._process_document(1, 1, 100)
+                await document_service._process_document(1, 1, 100)
             assert excinfo.value.code.code == CODE_BUSINESS
             assert "上限" in excinfo.value.message
         refs["kb_repo"].update_stats_cas.assert_not_called()
@@ -568,7 +568,7 @@ class TestDocPipelineFailure:
         patches, refs = _pipeline_env(embed_side_effect=_raise)
         with _enter(patches):
             with pytest.raises(RuntimeError):
-                await DocumentService._process_document(1, 1, 100)
+                await document_service._process_document(1, 1, 100)
         assert call_count["n"] == 1 + settings.KB_ASYNC_MAX_RETRY
         refs["kb_repo"].update_stats_cas.assert_not_called()
 
@@ -578,14 +578,14 @@ class TestDocPipelineFailure:
         patches, refs = _pipeline_env(es_return=False)
         with _enter(patches):
             with pytest.raises(RuntimeError):
-                await DocumentService._process_document(1, 1, 100)
+                await document_service._process_document(1, 1, 100)
         assert refs["bulk_mock"].call_count == 1 + settings.KB_ASYNC_MAX_RETRY
         refs["kb_repo"].update_stats_cas.assert_not_called()
 
     async def test_success_path_cleans_dirty_text_writes_chunks_and_stats(self):
         patches, refs = _pipeline_env(content=_DIRTY_DOC)
         with _enter(patches):
-            await DocumentService._process_document(1, 1, 100)
+            await document_service._process_document(1, 1, 100)
         doc = refs["doc"]
         assert doc.processing_status == "completed"
         assert doc.chunk_count == 2
@@ -602,6 +602,6 @@ class TestKBCasRetry:
     async def test_cas_conflict_then_success(self):
         patches, refs = _pipeline_env(stats_cas_side_effect=[False, False, True])
         with _enter(patches):
-            await DocumentService._process_document(1, 1, 100)
+            await document_service._process_document(1, 1, 100)
         assert refs["kb_repo"].update_stats_cas.call_count == 3
         assert refs["doc"].processing_status == "completed"

@@ -14,7 +14,7 @@ from app.models.schema.ai_conversation import (
     AiModelUpdate,
 )
 from app.models.schema.common import PageResult
-from app.service.ai_model_service import AiModelService
+from app.service.ai_model_service import ai_model_service
 
 router = APIRouter(prefix="/api/v1/ai/models", tags=["AI对话"])
 
@@ -26,7 +26,7 @@ async def list_models(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiModelService.list_models(db, query.pageNum, query.pageSize, query.keyword)
+    result = await ai_model_service.list_models(db, query.pageNum, query.pageSize, query.keyword)
     return success(result)
 
 
@@ -36,7 +36,7 @@ async def list_enabled_models(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiModelService.list_enabled_models(db, redis, user.id)
+    result = await ai_model_service.list_enabled_models(db, redis, user.id)
     return success(result)
 
 
@@ -48,7 +48,7 @@ async def create_model(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiModelService.create_model(db, redis, form)
+    result = await ai_model_service.create_model(db, redis, form)
     return success(result)
 
 
@@ -61,7 +61,7 @@ async def update_model(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiModelService.update_model(db, redis, model_id, form)
+    result = await ai_model_service.update_model(db, redis, model_id, form)
     return success(result)
 
 
@@ -73,5 +73,5 @@ async def delete_model(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await AiModelService.delete_model(db, redis, model_id)
+    await ai_model_service.delete_model(db, redis, model_id)
     return success(msg="一切ok")

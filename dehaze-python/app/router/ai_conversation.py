@@ -20,8 +20,8 @@ from app.models.schema.ai_conversation import (
     MessageSend,
 )
 from app.models.schema.common import PageResult
-from app.service.ai_conversation_service import AiConversationService
-from app.service.ai_message_service import AiMessageService
+from app.service.ai_conversation_service import ai_conversation_service
+from app.service.ai_message_service import ai_message_service
 
 router = APIRouter(prefix="/api/v1/ai", tags=["AI对话"])
 
@@ -32,7 +32,7 @@ async def create_conversation(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.create_conversation(db, user.id, form)
+    result = await ai_conversation_service.create_conversation(db, user.id, form)
     return success(result)
 
 
@@ -44,7 +44,7 @@ async def list_conversations(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.list_conversations(
+    result = await ai_conversation_service.list_conversations(
         db, user.id, query.pageNum, query.pageSize, query.keyword, query.status
     )
     return success(result)
@@ -60,7 +60,7 @@ async def list_trash_conversations(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.list_trash(db, user.id, query.pageNum, query.pageSize)
+    result = await ai_conversation_service.list_trash(db, user.id, query.pageNum, query.pageSize)
     return success(result)
 
 
@@ -70,7 +70,7 @@ async def batch_operate_conversations(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    count = await AiConversationService.batch_operate(
+    count = await ai_conversation_service.batch_operate(
         db, user.id, form.action, form.ids, form.confirm
     )
     return success(count)
@@ -84,7 +84,7 @@ async def get_conversation(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.get_conversation(db, conv_id, user.id)
+    result = await ai_conversation_service.get_conversation(db, conv_id, user.id)
     return success(result)
 
 
@@ -97,7 +97,7 @@ async def update_conversation(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.update_conversation(db, conv_id, user.id, form)
+    result = await ai_conversation_service.update_conversation(db, conv_id, user.id, form)
     return success(result)
 
 
@@ -107,7 +107,7 @@ async def delete_conversation(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await AiConversationService.delete_conversation(db, conv_id, user.id)
+    await ai_conversation_service.delete_conversation(db, conv_id, user.id)
     return success(msg="一切ok")
 
 
@@ -121,7 +121,7 @@ async def restore_conversation(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.restore_conversation(db, conv_id, user.id)
+    result = await ai_conversation_service.restore_conversation(db, conv_id, user.id)
     return success(result)
 
 
@@ -133,7 +133,7 @@ async def pin_conversation(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.pin_conversation(db, conv_id, user.id)
+    result = await ai_conversation_service.pin_conversation(db, conv_id, user.id)
     return success(result)
 
 
@@ -145,7 +145,7 @@ async def unpin_conversation(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.unpin_conversation(db, conv_id, user.id)
+    result = await ai_conversation_service.unpin_conversation(db, conv_id, user.id)
     return success(result)
 
 
@@ -159,7 +159,7 @@ async def read_conversation(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.mark_read(db, conv_id, user.id)
+    result = await ai_conversation_service.mark_read(db, conv_id, user.id)
     return success(result)
 
 
@@ -170,7 +170,7 @@ async def export_conversation(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    return await AiConversationService.export_conversation(db, conv_id, user.id, query.format)
+    return await ai_conversation_service.export_conversation(db, conv_id, user.id, query.format)
 
 
 @router.post("/conversations/{conv_id}/messages", summary="发送消息（SSE流式）")
@@ -184,7 +184,7 @@ async def send_message(
         alias="Idempotency-Key", description="幂等键（UUID，客户端生成）"
     ),
 ):
-    return await AiMessageService.send_message(db, conv_id, user.id, form, idempotency_key)
+    return await ai_message_service.send_message(db, conv_id, user.id, form, idempotency_key)
 
 
 @router.get(
@@ -198,7 +198,7 @@ async def list_messages(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.list_messages(
+    result = await ai_conversation_service.list_messages(
         db, conv_id, user.id, query.pageNum, query.pageSize
     )
     return success(result)
@@ -213,7 +213,7 @@ async def reconnect(
     user: UserContext = Depends(get_current_user),
 ):
     # 校验会话归属，防止越权访问他人流
-    await AiConversationService.get_conversation(db, conv_id, user.id)
+    await ai_conversation_service.get_conversation(db, conv_id, user.id)
     last_event_id = int(request.headers.get("Last-Event-ID", "0"))
     return StreamingResponse(
         sse_emitter_manager.reconnect(stream_session_id, last_event_id),
@@ -228,7 +228,7 @@ async def get_message(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.get_message(db, msg_id, user.id)
+    result = await ai_conversation_service.get_message(db, msg_id, user.id)
     return success(result)
 
 
@@ -238,7 +238,7 @@ async def regenerate_message(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    return await AiConversationService.regenerate_message(db, msg_id, user.id)
+    return await ai_conversation_service.regenerate_message(db, msg_id, user.id)
 
 
 @router.post("/messages/{msg_id}/resume", summary="恢复中断的推理（SSE续流）")
@@ -248,7 +248,7 @@ async def resume_message(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    return await AiConversationService.resume_message(db, msg_id, user.id, form)
+    return await ai_conversation_service.resume_message(db, msg_id, user.id, form)
 
 
 @router.delete(
@@ -259,7 +259,7 @@ async def delete_message(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await AiConversationService.delete_message(db, msg_id, user.id)
+    await ai_conversation_service.delete_message(db, msg_id, user.id)
     return success(msg="一切ok")
 
 
@@ -270,7 +270,7 @@ async def edit_message(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    return await AiMessageService.edit_message(db, user.id, msg_id, form)
+    return await ai_message_service.edit_message(db, user.id, msg_id, form)
 
 
 @router.get(
@@ -284,7 +284,7 @@ async def get_branches(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.get_branches(db, conv_id, user.id, msg_id)
+    result = await ai_conversation_service.get_branches(db, conv_id, user.id, msg_id)
     return success(result)
 
 
@@ -299,7 +299,7 @@ async def switch_branch(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.switch_branch(db, conv_id, user.id, msg_id)
+    result = await ai_conversation_service.switch_branch(db, conv_id, user.id, msg_id)
     return success(result)
 
 
@@ -311,5 +311,5 @@ async def stop_message(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiConversationService.stop_message(db, msg_id, user.id)
+    result = await ai_conversation_service.stop_message(db, msg_id, user.id)
     return success(result)

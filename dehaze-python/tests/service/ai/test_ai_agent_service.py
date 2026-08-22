@@ -4,7 +4,7 @@ import pytest
 
 from app.core.exceptions import BusinessException
 from app.service import ai_agent_service as m
-from app.service.ai_agent_service import DEFAULT_AGENT_CODE, AgentService
+from app.service.ai_agent_service import DEFAULT_AGENT_CODE, agent_service
 
 
 def _agent(code="dehaze_helper", agent_id=1):
@@ -55,7 +55,7 @@ class TestDeleteAgent:
 
         monkeypatch.setattr(m.ai_agent_repository, "get_by_id", get_by_id)
         with pytest.raises(BusinessException) as exc:
-            await AgentService.delete_agent(object(), redis, 1)
+            await agent_service.delete_agent(object(), redis, 1)
         assert "默认 Agent" in str(exc.value)
         assert calls["soft_delete"] == []
 
@@ -67,7 +67,7 @@ class TestDeleteAgent:
 
         monkeypatch.setattr(m.ai_agent_repository, "count_conversation_references", count_conv)
         with pytest.raises(BusinessException) as exc:
-            await AgentService.delete_agent(object(), redis, 1)
+            await agent_service.delete_agent(object(), redis, 1)
         assert "会话" in str(exc.value) and "3" in str(exc.value)
         assert calls["soft_delete"] == []
 
@@ -79,13 +79,13 @@ class TestDeleteAgent:
 
         monkeypatch.setattr(m.ai_agent_repository, "count_subagent_references", count_sub)
         with pytest.raises(BusinessException) as exc:
-            await AgentService.delete_agent(object(), redis, 1)
+            await agent_service.delete_agent(object(), redis, 1)
         assert "子 Agent" in str(exc.value)
         assert calls["soft_delete"] == []
 
     async def test_delete_without_references_soft_deletes(self, env):
         redis, calls = env
-        await AgentService.delete_agent(object(), redis, 1)
+        await agent_service.delete_agent(object(), redis, 1)
         assert calls["soft_delete"] == [1]
 
     async def test_delete_nonexistent_raises(self, env, monkeypatch):
@@ -96,5 +96,5 @@ class TestDeleteAgent:
 
         monkeypatch.setattr(m.ai_agent_repository, "get_by_id", get_by_id)
         with pytest.raises(BusinessException):
-            await AgentService.delete_agent(object(), redis, 99)
+            await agent_service.delete_agent(object(), redis, 99)
         assert calls["soft_delete"] == []

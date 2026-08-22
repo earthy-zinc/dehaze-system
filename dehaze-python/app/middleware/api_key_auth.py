@@ -122,7 +122,7 @@ class ApiKeyAuthMiddleware(BaseHTTPMiddleware):
         from app.dependencies.redis import get_redis_client
         from app.repository.role_repository import role_repository
         from app.repository.user_repository import user_repository
-        from app.service.menu_service import MenuService
+        from app.service.menu_service import menu_service
 
         user = await user_repository.get_by_id(db, api_key.user_id)
         if not user or user.status != 1:
@@ -141,7 +141,7 @@ class ApiKeyAuthMiddleware(BaseHTTPMiddleware):
         # Redis 不可用时降级为最小权限：data_scope=1（仅本人）、perms 为空集，
         # 与 perms 的降级方向保持一致，避免 Redis 故障期间获得最大数据权限
         data_scope = await role_repository.get_maximum_data_scope(db, roles) if redis else 1
-        perms = await MenuService.list_role_perms(db, redis, set(roles)) if redis else set()
+        perms = await menu_service.list_role_perms(db, redis, set(roles)) if redis else set()
 
         # 更新最后使用时间
         api_key.last_used_at = datetime.now()

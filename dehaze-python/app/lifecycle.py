@@ -203,9 +203,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_websocket_manager()
 
     # 检查/创建 MinIO Bucket（仅 MinIO 模式）
-    from app.service.file_service import FileService
+    from app.service.file_service import file_service
 
-    await FileService.ensure_bucket_exists()
+    await file_service.ensure_bucket_exists()
 
     # 初始化 RabbitMQ（如果启用）
     from app.infrastructure.mq.connection import init_mq
@@ -263,9 +263,9 @@ async def _graceful_shutdown(app: FastAPI) -> None:
 
     # 2. 通知 WebSocket 客户端（跨 Worker 广播）
     try:
-        from app.service.websocket_service import WebSocketService
+        from app.service.websocket_service import websocket_service
 
-        await WebSocketService.broadcast_shutdown_notification()
+        await websocket_service.broadcast_shutdown_notification()
         logger.info("已通知 WebSocket 客户端")
     except Exception as e:
         logger.warning("通知 WebSocket 客户端失败: %s", e)

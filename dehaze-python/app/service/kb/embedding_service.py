@@ -19,7 +19,7 @@ from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.repository.ai_provider_repository import ai_provider_repository
 from app.service.ai.local_llm_manager import ensure_running
-from app.service.ai_provider_key_service import AiProviderKeyService
+from app.service.ai_provider_key_service import ai_provider_key_service
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ async def _get_embedding_api_key(provider_code: str) -> str:
                 f"Embedding 供应商 {provider_code} 不存在或已禁用",
             )
         redis = await get_redis_client()
-        api_key = await AiProviderKeyService.select_key(db, redis, provider.id)
+        api_key = await ai_provider_key_service.select_key(db, redis, provider.id)
         if not api_key:
             raise BusinessException(
                 ResultCode.AI_MODEL_NOT_AVAILABLE,

@@ -6,7 +6,7 @@ import pytest
 
 from app.core.exceptions import BusinessException
 from app.service import ai_conversation_service as m
-from app.service.ai_conversation_service import AiConversationService
+from app.service.ai_conversation_service import ai_conversation_service
 from tests.stubs import StubAsyncSession
 
 
@@ -181,7 +181,7 @@ class TestBatchOperate:
             updated.append((ids, st))
 
         _patch(monkeypatch, update_status=upd)
-        count = await AiConversationService.batch_operate(db, 1, "archive", [1, 2])
+        count = await ai_conversation_service.batch_operate(db, 1, "archive", [1, 2])
         assert count == 2
         assert updated == [([1], 2), ([2], 2)]
 
@@ -189,7 +189,7 @@ class TestBatchOperate:
         db = StubAsyncSession()
         _patch(monkeypatch)
         with pytest.raises(BusinessException):
-            await AiConversationService.batch_operate(db, 1, "delete", [1], confirm=False)
+            await ai_conversation_service.batch_operate(db, 1, "delete", [1], confirm=False)
 
     async def test_batch_rollback_on_failure(self, monkeypatch):
         db = StubAsyncSession()
@@ -205,7 +205,7 @@ class TestBatchOperate:
 
         _patch(monkeypatch, get_owned=get_owned, update_status=upd)
         with pytest.raises(BusinessException) as exc:
-            await AiConversationService.batch_operate(db, 1, "archive", [1, 2])
+            await ai_conversation_service.batch_operate(db, 1, "archive", [1, 2])
         assert "会话不存在" in str(exc.value)
         assert calls == [([1], 2)]
         assert db.rolled_back == 1
@@ -223,7 +223,7 @@ class TestBatchOperate:
 
         _patch(monkeypatch, get_owned=get_owned, update_status=upd)
         with pytest.raises(BusinessException):
-            await AiConversationService.batch_operate(db, 1, "restore", [1, 2])
+            await ai_conversation_service.batch_operate(db, 1, "restore", [1, 2])
         assert db.rolled_back == 1
 
 
@@ -236,14 +236,14 @@ class TestPinLimit:
 
         _patch(monkeypatch, count_pinned=count_pinned)
         with pytest.raises(BusinessException) as exc:
-            await AiConversationService.pin_conversation(db, 1, 1)
+            await ai_conversation_service.pin_conversation(db, 1, 1)
         assert exc.value.code.code == "A0501"
 
     async def test_pin_sets_pinned_at(self, monkeypatch):
         db = StubAsyncSession()
         state = {}
         _patch(monkeypatch, set_pinned=_set_pin(state))
-        result = await AiConversationService.pin_conversation(db, 1, 1)
+        result = await ai_conversation_service.pin_conversation(db, 1, 1)
         assert state["pinned"] == 1
         assert state["at"] is not None
         assert result.pinned == 1
@@ -252,7 +252,7 @@ class TestPinLimit:
         db = StubAsyncSession()
         state = {}
         _patch(monkeypatch, set_pinned=_set_pin(state))
-        result = await AiConversationService.unpin_conversation(db, 1, 1)
+        result = await ai_conversation_service.unpin_conversation(db, 1, 1)
         assert state["pinned"] == 0
         assert state["at"] is None
         assert result.pinned == 0
@@ -270,7 +270,7 @@ class TestRestoreWindow:
             return _conv(id=cid)
 
         _patch(monkeypatch, restore=restore, get_in_trash=in_trash)
-        result = await AiConversationService.restore_conversation(db, 1, 1)
+        result = await ai_conversation_service.restore_conversation(db, 1, 1)
         assert restored == [[1]]
         assert result.id == 1
 
@@ -282,7 +282,7 @@ class TestRestoreWindow:
 
         _patch(monkeypatch, get_in_trash=in_trash)
         with pytest.raises(BusinessException) as exc:
-            await AiConversationService.restore_conversation(db, 1, 1)
+            await ai_conversation_service.restore_conversation(db, 1, 1)
         assert "恢复窗口" in str(exc.value)
 
     async def test_trash_passes_window(self, monkeypatch):
@@ -294,7 +294,7 @@ class TestRestoreWindow:
             return [_conv(id=1)], 1
 
         _patch(monkeypatch, paginate_trash=paginate)
-        await AiConversationService.list_trash(db, 1, 1, 10)
+        await ai_conversation_service.list_trash(db, 1, 1, 10)
         assert (datetime.now() - captured["win"]).days >= 29
 
 
@@ -311,7 +311,7 @@ class TestReadAndUnread:
             return 10
 
         _patch(monkeypatch, mark_read=mark, get_last_msg=last_msg)
-        await AiConversationService.mark_read(db, 1, 1)
+        await ai_conversation_service.mark_read(db, 1, 1)
         assert state == {"cid": 1, "mid": 10}
 
     async def test_unread_count_computed(self, monkeypatch):
@@ -321,12 +321,12 @@ class TestReadAndUnread:
             return 5
 
         _patch(monkeypatch, count_after=count_after)
-        result = await AiConversationService._to_result(db, _conv(id=1, last_read_message_id=3))
+        result = await ai_conversation_service._to_result(db, _conv(id=1, last_read_message_id=3))
         assert result.unread_count == 5
 
     async def test_unread_count_defaults_to_message_count(self):
         db = StubAsyncSession()
-        result = await AiConversationService._to_result(
+        result = await ai_conversation_service._to_result(
             db, _conv(id=1, last_read_message_id=None, message_count=7)
         )
         assert result.unread_count == 7
@@ -336,7 +336,7 @@ class TestExport:
     async def test_export_markdown_filters_non_dialogue(self, monkeypatch):
         db = StubAsyncSession()
         _patch(monkeypatch, get_chain=_export_chain)
-        resp = await AiConversationService.export_conversation(db, 1, 1, "markdown")
+        resp = await ai_conversation_service.export_conversation(db, 1, 1, "markdown")
         body = "".join([chunk async for chunk in resp.body_iterator])
         assert "# 测试会话" in body
         assert "## 用户" in body
@@ -350,7 +350,7 @@ class TestExport:
     async def test_export_json_keeps_dialogue_messages_only(self, monkeypatch):
         db = StubAsyncSession()
         _patch(monkeypatch, get_chain=_export_chain)
-        resp = await AiConversationService.export_conversation(db, 1, 1, "json")
+        resp = await ai_conversation_service.export_conversation(db, 1, 1, "json")
         body = "".join([chunk async for chunk in resp.body_iterator])
         data = json.loads(body)
         assert data["conversation"]["title"] == "测试会话"
@@ -372,7 +372,7 @@ class TestESList:
             return [1, 2], 2
 
         _patch(monkeypatch, search=search)
-        result = await AiConversationService.list_conversations(db, 1, 2, 5, keyword="雾", status=1)
+        result = await ai_conversation_service.list_conversations(db, 1, 2, 5, keyword="雾", status=1)
         assert captured == {"status": 1, "page": 2, "size": 5}
         assert result.total == 2
         assert len(result.list) == 2
@@ -386,7 +386,7 @@ class TestESList:
             return [], 0
 
         _patch(monkeypatch, search=search)
-        await AiConversationService.list_conversations(db, 1, 1, 10, keyword="x")
+        await ai_conversation_service.list_conversations(db, 1, 1, 10, keyword="x")
         assert captured["status"] == 1
 
     async def test_es_sort_pinned_first_then_time(self):
@@ -396,7 +396,7 @@ class TestESList:
             _conv(id=2, pinned=1, pinned_at=now - timedelta(hours=2), last_message_at=None),
             _conv(id=3, pinned=1, pinned_at=now, last_message_at=None),
         ]
-        result = AiConversationService._sort_conversations(convs)
+        result = ai_conversation_service._sort_conversations(convs)
         assert [c.id for c in result] == [3, 2, 1]
 
     async def test_keyword_es_empty_returns_empty_page(self, monkeypatch):
@@ -404,7 +404,7 @@ class TestESList:
         db = StubAsyncSession()
         called = {}
         _patch(monkeypatch, search=_es_empty, paginate_user_conversations=_paginate_capturing(called))
-        result = await AiConversationService.list_conversations(db, 1, 1, 10, keyword="雾", status=2)
+        result = await ai_conversation_service.list_conversations(db, 1, 1, 10, keyword="雾", status=2)
         assert result.list == [] and result.total == 0
         assert "status" not in called
 
@@ -417,12 +417,12 @@ class TestESList:
             return [1], 1
 
         _patch(monkeypatch, search=search)
-        await AiConversationService.list_conversations(db, 1, 1, 10, keyword="雾", status=0)
+        await ai_conversation_service.list_conversations(db, 1, 1, 10, keyword="雾", status=0)
         assert es_status["status"] is None
 
     async def test_status_all_without_keyword_passes_none_to_mysql(self, monkeypatch):
         db = StubAsyncSession()
         captured = {}
         _patch(monkeypatch, paginate_user_conversations=_paginate_capturing(captured))
-        await AiConversationService.list_conversations(db, 1, 1, 10, status=0)
+        await ai_conversation_service.list_conversations(db, 1, 1, 10, status=0)
         assert captured["status"] is None

@@ -4,7 +4,7 @@ import pytest
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.service.ai.reasoning_service import ReasoningService
+from app.service.ai.reasoning_service import reasoning_service
 from tests.stubs import NullDBSession, RecorderEmitter, StubInterruptHandler, fake_redis
 
 
@@ -46,14 +46,14 @@ class _ConvRepo:
 def _patch_resume_deps(monkeypatch, interrupt, graph=None, confirmation=None):
     monkeypatch.setattr("app.service.ai.reasoning_service.get_db_session", NullDBSession)
 
-    async def _load_anchor(self, db, conv):
+    async def _load_anchor(db, conv):
         return (1, 1)
 
-    async def _build_graph(self, db, redis, a, v, model_id=None):
+    async def _build_graph(db, redis, a, v, model_id=None):
         return graph or _Graph()
 
-    monkeypatch.setattr(ReasoningService, "_load_agent_anchor", _load_anchor)
-    monkeypatch.setattr(ReasoningService, "_build_graph", _build_graph)
+    monkeypatch.setattr(reasoning_service, "_load_agent_anchor", _load_anchor)
+    monkeypatch.setattr(reasoning_service, "_build_graph", _build_graph)
 
     async def _get_redis():
         return await fake_redis()
@@ -73,11 +73,11 @@ def _patch_resume_deps(monkeypatch, interrupt, graph=None, confirmation=None):
 
     finalized = {}
 
-    async def _finalize(self, msg_id, result, model_id, used_memory_ids=None):
+    async def _finalize(msg_id, result, model_id, used_memory_ids=None):
         finalized["hit"] = True
         return 0
 
-    monkeypatch.setattr(ReasoningService, "_finalize_message", _finalize)
+    monkeypatch.setattr(reasoning_service, "_finalize_message", _finalize)
 
     conf = {}
 
@@ -91,7 +91,7 @@ def _patch_resume_deps(monkeypatch, interrupt, graph=None, confirmation=None):
             "app.service.ai.algorithm_recommend_service.handle_user_confirmation", _handle
         )
 
-    service = ReasoningService()
+    service = reasoning_service
     return service, ih, emitter, finalized, conf
 
 

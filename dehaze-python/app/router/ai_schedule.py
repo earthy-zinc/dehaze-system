@@ -27,7 +27,7 @@ from app.models.schema.ai_schedule import (
 )
 from app.models.schema.common import BasePageQuery, PageResult
 from app.service.ai.ai_schedule_executor import schedule_executor
-from app.service.ai.ai_schedule_service import ScheduledTaskService
+from app.service.ai.ai_schedule_service import scheduled_task_service
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ async def create_schedule(
     user: UserContext = Depends(get_current_user),
 ):
     """创建定时任务，保存后返回下次触发时间预览。"""
-    result = await ScheduledTaskService.create(db, user.id, form)
+    result = await scheduled_task_service.create(db, user.id, form)
     return success(result)
 
 
@@ -65,7 +65,7 @@ async def list_schedules(
     user: UserContext = Depends(get_current_user),
 ):
     """任务列表：分页、按下次触发时间排序、含最近执行结果摘要。"""
-    result = await ScheduledTaskService.list_page(db, user.id, query)
+    result = await scheduled_task_service.list_page(db, user.id, query)
     return success(result)
 
 
@@ -78,7 +78,7 @@ async def preview_next_times(
     user: UserContext = Depends(get_current_user),
 ):
     """Cron 表达式解释：人类可读描述 + 接下来 N 次触发时间。"""
-    result = await ScheduledTaskService.preview_next_times(cron, count)
+    result = await scheduled_task_service.preview_next_times(cron, count)
     return success(result)
 
 
@@ -89,7 +89,7 @@ async def get_schedule(
     user: UserContext = Depends(get_current_user),
 ):
     """任务详情：触发规则/输入输出配置/下次触发时间/熔断状态。"""
-    result = await ScheduledTaskService.get_detail(db, user.id, schedule_id)
+    result = await scheduled_task_service.get_detail(db, user.id, schedule_id)
     return success(result)
 
 
@@ -101,7 +101,7 @@ async def update_schedule(
     user: UserContext = Depends(get_current_user),
 ):
     """更新任务（触发规则/输入来源/输出目标），变更后重算下次触发时间。"""
-    result = await ScheduledTaskService.update(db, user.id, schedule_id, form)
+    result = await scheduled_task_service.update(db, user.id, schedule_id, form)
     return success(result)
 
 
@@ -113,7 +113,7 @@ async def set_schedule_status(
     user: UserContext = Depends(get_current_user),
 ):
     """启停任务（{enabled: bool}）；熔断停用后可重新启用（core 层重置连续失败计数）。"""
-    await ScheduledTaskService.set_enabled(db, user.id, schedule_id, form.enabled)
+    await scheduled_task_service.set_enabled(db, user.id, schedule_id, form.enabled)
     return success(msg="一切ok")
 
 
@@ -124,7 +124,7 @@ async def delete_schedule(
     user: UserContext = Depends(get_current_user),
 ):
     """删除任务（软删除）。"""
-    await ScheduledTaskService.delete(db, user.id, schedule_id)
+    await scheduled_task_service.delete(db, user.id, schedule_id)
     return success(msg="一切ok")
 
 
@@ -142,7 +142,7 @@ async def run_schedule(
     {accepted: true}，具体执行结果由后台任务写入执行历史并通知用户。
     """
     # 先校验任务归属，越权或不存在立即失败
-    await ScheduledTaskService.get_detail(db, user.id, schedule_id)
+    await scheduled_task_service.get_detail(db, user.id, schedule_id)
 
     async def _trigger_once() -> None:
         try:
@@ -171,7 +171,7 @@ async def list_run_history(
     user: UserContext = Depends(get_current_user),
 ):
     """执行历史分页（结果/消耗积分/耗时/失败原因/跳过原因）。"""
-    result = await ScheduledTaskService.list_history(
+    result = await scheduled_task_service.list_history(
         db, user.id, schedule_id, query.pageNum, query.pageSize
     )
     return success(result)

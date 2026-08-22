@@ -42,10 +42,9 @@ DEFAULT_TIMEZONE = "Asia/Shanghai"
 
 
 class ScheduledTaskService:
-    @staticmethod
-    async def create(db: AsyncSession, user_id: int, form: ScheduleCreate) -> ScheduleDetail:
+    async def create(self, db: AsyncSession, user_id: int, form: ScheduleCreate) -> ScheduleDetail:
         """创建定时任务：校验 VIP2+、单用户上限 20、Cron 合法性，并计算下次触发时间。"""
-        await ScheduledTaskService._ensure_vip2(db, user_id)
+        await self._ensure_vip2(db, user_id)
 
         count = await ai_schedule_repository.count_by_user(db, user_id)
         if count >= MAX_SCHEDULES_PER_USER:
@@ -54,9 +53,9 @@ class ScheduledTaskService:
             )
 
         timezone = form.timezone or DEFAULT_TIMEZONE
-        cron = ScheduledTaskService._normalize_cron(form.cron)
-        ScheduledTaskService._parse_cron(cron)
-        next_trigger = ScheduledTaskService._compute_next_trigger(cron, timezone)
+        cron = self._normalize_cron(form.cron)
+        self._parse_cron(cron)
+        next_trigger = self._compute_next_trigger(cron, timezone)
 
         task = SysAiSchedule(
             user_id=user_id,
@@ -71,20 +70,19 @@ class ScheduledTaskService:
             next_trigger_time=next_trigger,
         )
         await ai_schedule_repository.create(db, task)
-        return ScheduledTaskService._to_detail(task)
+        return self._to_detail(task)
 
-    @staticmethod
     async def update(
-        db: AsyncSession, user_id: int, schedule_id: int, form: ScheduleUpdate
+        self, db: AsyncSession, user_id: int, schedule_id: int, form: ScheduleUpdate
     ) -> ScheduleDetail:
         """更新任务：可更新名称/Cron/时区/输入输出/启停，变更后重算下次触发时间。"""
-        task = await ScheduledTaskService._get_owned(db, user_id, schedule_id)
+        task = await self._get_owned(db, user_id, schedule_id)
 
         if form.name is not None:
             task.name = form.name.strip()
         if form.cron is not None:
-            cron = ScheduledTaskService._normalize_cron(form.cron)
-            ScheduledTaskService._parse_cron(cron)
+            cron = self._normalize_cron(form.cron)
+            self._parse_cron(cron)
             task.cron = cron
         if form.timezone is not None:
             task.timezone = form.timezone
@@ -96,21 +94,20 @@ class ScheduledTaskService:
             task.enabled = form.enabled
 
         if form.cron is not None or form.timezone is not None or form.enabled == 1:
-            task.next_trigger_time = ScheduledTaskService._compute_next_trigger(
+            task.next_trigger_time = self._compute_next_trigger(
                 task.cron, task.timezone
             )
 
         await db.flush()
         await db.refresh(task)
-        return ScheduledTaskService._to_detail(task)
+        return self._to_detail(task)
 
-    @staticmethod
-    async def get_detail(db: AsyncSession, user_id: int, schedule_id: int) -> ScheduleDetail:
-        task = await ScheduledTaskService._get_owned(db, user_id, schedule_id)
-        return ScheduledTaskService._to_detail(task)
+    async def get_detail(self, db: AsyncSession, user_id: int, schedule_id: int) -> ScheduleDetail:
+        task = await self._get_owned(db, user_id, schedule_id)
+        return self._to_detail(task)
 
-    @staticmethod
     async def list_page(
+        self,
         db: AsyncSession,
         user_id: int,
         query: SchedulePageQuery,
@@ -138,51 +135,48 @@ class ScheduledTaskService:
 
         rows = [
             ScheduleListItem(
-                **ScheduledTaskService._to_detail(t).model_dump(by_alias=True),
-                lastRun=ScheduledTaskService._to_run_summary(latest_map.get(t.id)),
+                **self._to_detail(t).model_dump(by_alias=True),
+                lastRun=self._to_run_summary(latest_map.get(t.id)),
             )
             for t in items
         ]
         return PageResult[ScheduleListItem](list=rows, total=total)
 
-    @staticmethod
-    async def set_enabled(db: AsyncSession, user_id: int, schedule_id: int, enabled: int) -> None:
+    async def set_enabled(self, db: AsyncSession, user_id: int, schedule_id: int, enabled: int) -> None:
         """启停任务。
 
         - 启用(true)：若当前熔断停用(status=2)则同时 reset_circuit（清零计数+status=1）；
           并重算下次触发时间。
         - 停用(false)：仅置 enabled=0，保留熔断状态与下次触发时间。
         """
-        task = await ScheduledTaskService._get_owned(db, user_id, schedule_id)
+        task = await self._get_owned(db, user_id, schedule_id)
         if enabled == 1:
             if task.status == 2:
                 await ai_schedule_repository.reset_circuit(db, schedule_id)
             await ai_schedule_repository.update_next_trigger(
                 db,
                 schedule_id,
-                ScheduledTaskService._compute_next_trigger(task.cron, task.timezone),
+                self._compute_next_trigger(task.cron, task.timezone),
             )
         await ai_schedule_repository.set_enabled(db, schedule_id, enabled)
 
-    @staticmethod
-    async def delete(db: AsyncSession, user_id: int, schedule_id: int) -> None:
+    async def delete(self, db: AsyncSession, user_id: int, schedule_id: int) -> None:
         """删除任务（软删除，删除后不可恢复）。"""
-        await ScheduledTaskService._get_owned(db, user_id, schedule_id)
+        await self._get_owned(db, user_id, schedule_id)
         await ai_schedule_repository.soft_delete(db, schedule_id)
 
-    @staticmethod
     async def preview_next_times(
-        cron: str, count: int = 5, timezone: str = DEFAULT_TIMEZONE
+        self, cron: str, count: int = 5, timezone: str = DEFAULT_TIMEZONE
     ) -> NextTimesPreview:
         """Cron 解释与接下来 N 次触发时间预览。非法 Cron 抛参数异常。"""
-        cron = ScheduledTaskService._normalize_cron(cron)
-        ScheduledTaskService._parse_cron(cron)
-        description = ScheduledTaskService._describe_cron(cron)
-        next_times = ScheduledTaskService._compute_next_times(cron, timezone, count)
+        cron = self._normalize_cron(cron)
+        self._parse_cron(cron)
+        description = self._describe_cron(cron)
+        next_times = self._compute_next_times(cron, timezone, count)
         return NextTimesPreview(description=description, nextTimes=next_times)
 
-    @staticmethod
     async def list_history(
+        self,
         db: AsyncSession,
         user_id: int,
         schedule_id: int,
@@ -190,17 +184,16 @@ class ScheduledTaskService:
         size: int,
     ) -> PageResult[RunHistoryItem]:
         """执行历史分页（先做归属校验，再按时间倒序分页）。"""
-        await ScheduledTaskService._get_owned(db, user_id, schedule_id)
+        await self._get_owned(db, user_id, schedule_id)
         items, total = await ai_schedule_run_repository.page_by_schedule(
             db, schedule_id, page, size
         )
-        rows = [ScheduledTaskService._to_run_history(run) for run in items]
+        rows = [self._to_run_history(run) for run in items]
         return PageResult[RunHistoryItem](list=rows, total=total)
 
     # ── 内部工具 ──────────────────────────────────────────
 
-    @staticmethod
-    async def _ensure_vip2(db: AsyncSession, user_id: int) -> None:
+    async def _ensure_vip2(self, db: AsyncSession, user_id: int) -> None:
         """校验用户为 VIP2 及以上（无会员记录视为 level_0，不允许创建定时任务）。"""
         member = await member_repository.get_by_user_id(db, user_id)
         level = _LEVEL_MAP.get(member.level_code, 0) if member else 0
@@ -209,16 +202,14 @@ class ScheduledTaskService:
                 ResultCode.OPERATION_NOT_ALLOW, "定时调度功能需 VIP2 及以上会员，请升级会员后使用"
             )
 
-    @staticmethod
-    async def _get_owned(db: AsyncSession, user_id: int, schedule_id: int) -> SysAiSchedule:
+    async def _get_owned(self, db: AsyncSession, user_id: int, schedule_id: int) -> SysAiSchedule:
         """取归属用户且未删除的任务，越权或不存在抛异常。"""
         task = await ai_schedule_repository.get_by_id(db, schedule_id)
         if not task or task.user_id != user_id:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "定时任务不存在")
         return task
 
-    @staticmethod
-    def _parse_cron(cron: str) -> None:
+    def _parse_cron(self, cron: str) -> None:
         """校验 5 位 Cron 表达式合法性（分钟 小时 日 月 星期）。"""
         try:
             croniter(cron)
@@ -228,8 +219,7 @@ class ScheduledTaskService:
     # 常用频率标识的星期别名（对齐 cron 语义：0 与 7 均为周日，1=周一 … 6=周六）
     _WEEKDAY_ALIAS = {"mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6, "sun": 0}
 
-    @staticmethod
-    def _normalize_cron(raw: str) -> str:
+    def _normalize_cron(self, raw: str) -> str:
         """归一化触发规则为标准 5 位 Cron 表达式。
 
         支持两种输入（对齐 API 契约 §2.8.4：Cron 表达式或常用频率标识）：
@@ -266,7 +256,7 @@ class ScheduledTaskService:
             return f"{minute} {hour} * * *"
         day = parts[1].strip().lower()
         if parts[0] == "weekly":
-            weekday = ScheduledTaskService._WEEKDAY_ALIAS.get(day)
+            weekday = self._WEEKDAY_ALIAS.get(day)
             if weekday is None:
                 try:
                     weekday = int(day) % 7
@@ -282,29 +272,25 @@ class ScheduledTaskService:
             raise BusinessException(ResultCode.PARAM_ERROR, f"触发规则日期超出范围: {raw}")
         return f"{minute} {hour} {dom} * *"
 
-    @staticmethod
-    def _compute_next_trigger(cron: str, timezone: str) -> datetime:
+    def _compute_next_trigger(self, cron: str, timezone: str) -> datetime:
         """计算下一次触发时间（按任务时区，返回该时区的本地时间用于落库排序）。"""
-        tz = ScheduledTaskService._resolve_tz(timezone)
+        tz = self._resolve_tz(timezone)
         it = croniter(cron, datetime.now(tz), ret_type=datetime)
         return it.get_next().replace(tzinfo=None)
 
-    @staticmethod
-    def _compute_next_times(cron: str, timezone: str, count: int) -> list[datetime]:
+    def _compute_next_times(self, cron: str, timezone: str, count: int) -> list[datetime]:
         """返回接下来 N 次触发时间（带时区的 ISO 时间）。"""
-        tz = ScheduledTaskService._resolve_tz(timezone)
+        tz = self._resolve_tz(timezone)
         it = croniter(cron, datetime.now(tz), ret_type=datetime)
         return [it.get_next() for _ in range(count)]
 
-    @staticmethod
-    def _resolve_tz(timezone: str) -> ZoneInfo:
+    def _resolve_tz(self, timezone: str) -> ZoneInfo:
         try:
             return ZoneInfo(timezone)
         except ZoneInfoNotFoundError as exc:
             raise BusinessException(ResultCode.PARAM_ERROR, f"任务时区非法: {timezone}") from exc
 
-    @staticmethod
-    def _describe_cron(cron: str) -> str:
+    def _describe_cron(self, cron: str) -> str:
         """Cron 的人类可读描述（自研简版映射）。
 
         覆盖：每小时/每天/每周几/每月几号/每月的H点M分；无法归类时返回原始表达式。
@@ -332,12 +318,12 @@ class ScheduledTaskService:
             if hour == "*" and day == "*" and month == "*" and weekday == "*":
                 if minute == "0":
                     return "每小时整点"
-                return f"每小时 {ScheduledTaskService._fmt_minute(minute)}分"
+                return f"每小时 {self._fmt_minute(minute)}分"
             # 每天 H 点 M 分
             if hour != "*" and day == "*" and month == "*" and weekday == "*":
                 return (
-                    f"每天 {ScheduledTaskService._fmt_hour(hour)}点"
-                    f"{ScheduledTaskService._fmt_minute(minute)}分"
+                    f"每天 {self._fmt_hour(hour)}点"
+                    f"{self._fmt_minute(minute)}分"
                 )
             # 每周几
             if day == "*" and month == "*" and weekday != "*":
@@ -345,20 +331,20 @@ class ScheduledTaskService:
                     f"周{weekday_num[w]}" for w in weekday.split(",") if w in weekday_num
                 )
                 time_part = (
-                    f"{ScheduledTaskService._fmt_hour(hour)}点"
-                    f"{ScheduledTaskService._fmt_minute(minute)}分"
+                    f"{self._fmt_hour(hour)}点"
+                    f"{self._fmt_minute(minute)}分"
                     if hour != "*"
-                    else f"每小时{ScheduledTaskService._fmt_minute(minute)}分"
+                    else f"每小时{self._fmt_minute(minute)}分"
                 )
                 return f"每周{days} {time_part}"
             # 每月几号
             if month == "*" and weekday == "*" and day != "*":
                 days = "、".join(f"{d}号" for d in day.split(","))
                 time_part = (
-                    f"{ScheduledTaskService._fmt_hour(hour)}点"
-                    f"{ScheduledTaskService._fmt_minute(minute)}分"
+                    f"{self._fmt_hour(hour)}点"
+                    f"{self._fmt_minute(minute)}分"
                     if hour != "*"
-                    else f"每小时{ScheduledTaskService._fmt_minute(minute)}分"
+                    else f"每小时{self._fmt_minute(minute)}分"
                 )
                 return f"每月{days} {time_part}"
             # 每月的第几天（指定月份）
@@ -366,23 +352,20 @@ class ScheduledTaskService:
                 months = "、".join(f"{m}月" for m in month.split(","))
                 days = "、".join(f"{d}号" for d in day.split(","))
                 return (
-                    f"每年{months}{days} {ScheduledTaskService._fmt_hour(hour)}点"
-                    f"{ScheduledTaskService._fmt_minute(minute)}分"
+                    f"每年{months}{days} {self._fmt_hour(hour)}点"
+                    f"{self._fmt_minute(minute)}分"
                 )
         except Exception:
             pass
         return f"Cron({cron})"
 
-    @staticmethod
-    def _fmt_hour(hour: str) -> str:
+    def _fmt_hour(self, hour: str) -> str:
         return hour.zfill(2)
 
-    @staticmethod
-    def _fmt_minute(minute: str) -> str:
+    def _fmt_minute(self, minute: str) -> str:
         return "00" if minute == "*" else minute.zfill(2)
 
-    @staticmethod
-    def _to_detail(task: SysAiSchedule) -> ScheduleDetail:
+    def _to_detail(self, task: SysAiSchedule) -> ScheduleDetail:
         return ScheduleDetail(
             id=task.id,
             userId=task.user_id,
@@ -398,8 +381,7 @@ class ScheduledTaskService:
             createTime=task.create_time,
         )
 
-    @staticmethod
-    def _to_run_summary(run: SysAiScheduleRun | None) -> RunSummary | None:
+    def _to_run_summary(self, run: SysAiScheduleRun | None) -> RunSummary | None:
         if run is None:
             return None
         return RunSummary(
@@ -412,8 +394,7 @@ class ScheduledTaskService:
             createTime=run.create_time,
         )
 
-    @staticmethod
-    def _to_run_history(run: SysAiScheduleRun) -> RunHistoryItem:
+    def _to_run_history(self, run: SysAiScheduleRun) -> RunHistoryItem:
         return RunHistoryItem(
             id=run.id,
             scheduleId=run.schedule_id,
@@ -427,3 +408,7 @@ class ScheduledTaskService:
             windowStart=run.window_start,
             createTime=run.create_time,
         )
+
+
+# 定时调度服务单例
+scheduled_task_service = ScheduledTaskService()

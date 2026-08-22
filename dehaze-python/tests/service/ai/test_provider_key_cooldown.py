@@ -3,7 +3,7 @@ from app.service.ai_provider_key_service import (
     KEY_FAIL_STREAK_PREFIX,
     KEY_LAST_USED_PREFIX,
     KEY_UNAVAILABLE_PREFIX,
-    AiProviderKeyService,
+    ai_provider_key_service,
     _cooldown_seconds,
 )
 
@@ -32,37 +32,37 @@ class TestCooldownEscalation:
 
     async def test_cooldown_escalation_via_redis(self, mock_redis):
         key_id = 7
-        await AiProviderKeyService.mark_call_failed(mock_redis, key_id, "429")
+        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "429")
         assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 300
         assert int(await mock_redis.get(KEY_FAIL_STREAK_PREFIX.format(key_id))) == 1
 
-        await AiProviderKeyService.mark_call_failed(mock_redis, key_id, "429")
+        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "429")
         assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 300
 
-        await AiProviderKeyService.mark_call_failed(mock_redis, key_id, "429")
+        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "429")
         assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 900
 
-        await AiProviderKeyService.mark_call_failed(mock_redis, key_id, "500")
+        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "500")
         assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 900
 
-        await AiProviderKeyService.mark_call_failed(mock_redis, key_id, "401")
+        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "401")
         assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 1800
 
     async def test_success_resets_fail_streak(self, mock_redis):
         key_id = 8
         for _ in range(4):
-            await AiProviderKeyService.mark_call_failed(mock_redis, key_id, "429")
+            await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "429")
         assert int(await mock_redis.get(KEY_FAIL_STREAK_PREFIX.format(key_id))) == 4
 
-        await AiProviderKeyService.mark_call_success(mock_redis, key_id, used_by=100)
+        await ai_provider_key_service.mark_call_success(mock_redis, key_id, used_by=100)
         assert await mock_redis.get(KEY_FAIL_STREAK_PREFIX.format(key_id)) is None
         assert await mock_redis.get(KEY_LAST_USED_PREFIX.format(key_id)) is not None
 
     async def test_success_does_not_clear_cooldown_marker(self, mock_redis):
         key_id = 9
-        await AiProviderKeyService.mark_call_failed(mock_redis, key_id, "429")
+        await ai_provider_key_service.mark_call_failed(mock_redis, key_id, "429")
         assert await mock_redis.exists(KEY_UNAVAILABLE_PREFIX.format(key_id))
-        await AiProviderKeyService.mark_call_success(mock_redis, key_id, used_by=1)
+        await ai_provider_key_service.mark_call_success(mock_redis, key_id, used_by=1)
         assert await mock_redis.exists(KEY_UNAVAILABLE_PREFIX.format(key_id))
 
 
@@ -95,7 +95,7 @@ class TestListUsableKeys:
         today = datetime.now().strftime("%Y%m%d")
         await mock_redis.set(KEY_DAILY_PREFIX.format(6, today), 5)
 
-        usable = await AiProviderKeyService.list_usable_keys(None, mock_redis, 1)
+        usable = await ai_provider_key_service.list_usable_keys(None, mock_redis, 1)
         ids = [k.id for k in usable]
         assert 5 not in ids and 6 not in ids
         assert ids == [3, 2, 4, 1]
@@ -127,7 +127,7 @@ class TestListUsableKeys:
 
         picked = []
         for _ in range(30):
-            key = await AiProviderKeyService.select_key(None, mock_redis, 1)
+            key = await ai_provider_key_service.select_key(None, mock_redis, 1)
             assert key is not None
             picked.append(key)
         assert "cipher-1" not in picked

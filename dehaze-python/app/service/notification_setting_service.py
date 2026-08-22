@@ -51,15 +51,13 @@ def _deep_merge_preferences(old: dict | None, new: dict | None) -> dict[str, Any
 
 
 class NotificationSettingService:
-    @staticmethod
-    async def get_or_init(db: AsyncSession, user_id: int) -> dict[str, Any]:
+    async def get_or_init(self, db: AsyncSession, user_id: int) -> dict[str, Any]:
         setting = await notification_setting_repository.get_by_user_id(db, user_id)
         if not setting:
             setting = await notification_setting_repository.upsert_by_user_id(db, user_id)
         return _to_vo(setting)
 
-    @staticmethod
-    async def update(db: AsyncSession, user_id: int, data: dict[str, Any]) -> None:
+    async def update(self, db: AsyncSession, user_id: int, data: dict[str, Any]) -> None:
         setting = await notification_setting_repository.get_by_user_id(db, user_id)
         if not setting:
             setting = await notification_setting_repository.upsert_by_user_id(db, user_id)
@@ -75,3 +73,7 @@ class NotificationSettingService:
         if "preferences" in data and data["preferences"]:
             setting.preferences = _deep_merge_preferences(setting.preferences, data["preferences"])
         await db.flush()
+
+
+# 单例
+notification_setting_service = NotificationSettingService()

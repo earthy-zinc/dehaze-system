@@ -23,9 +23,9 @@ def _patch_precharge(monkeypatch, estimate=10, prededuct=True):
         return prededuct
 
     monkeypatch.setattr(
-        "app.service.ai.quota_recall.EstimateService.estimate_step_credits", _estimate
+        "app.service.ai.quota_recall.estimate_service.estimate_step_credits", _estimate
     )
-    monkeypatch.setattr("app.service.ai.quota_recall.QuotaService.pre_deduct", _prededuct)
+    monkeypatch.setattr("app.service.ai.quota_recall.quota_service.pre_deduct", _prededuct)
 
 
 async def test_precharge_batch_deducts_budget(monkeypatch):

@@ -23,8 +23,8 @@ from app.repository.ai_message_repository import ai_message_repository
 from app.repository.ai_model_repository import ai_model_repository
 from app.service.ai.interrupt_handler import interrupt_handler
 from app.service.ai.reasoning_service import reasoning_service
-from app.service.ai_conversation_service import AiConversationService
-from app.service.ai_model_service import AiModelService
+from app.service.ai_conversation_service import ai_conversation_service
+from app.service.ai_model_service import ai_model_service
 
 logger = logging.getLogger(__name__)
 
@@ -152,8 +152,8 @@ async def _idempotent_response(db: AsyncSession, existing: str) -> JSONResponse:
 
 
 class AiMessageService:
-    @staticmethod
     async def send_message(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
@@ -191,7 +191,7 @@ class AiMessageService:
         model_entity = await ai_model_repository.get_by_model_id(db, model)
         if not model_entity or model_entity.status != 1:
             raise BusinessException(ResultCode.AI_MODEL_NOT_AVAILABLE, "模型不可用或已禁用")
-        await AiModelService.validate_model_caps(
+        await ai_model_service.validate_model_caps(
             model_entity,
             has_attachments=_has_attachments(form.content),
             need_tools=await _needs_tool_call(db, conv),
@@ -238,7 +238,7 @@ class AiMessageService:
             and prev_title == "新对话"
             and prev_title_source != "manual"
         ):
-            asyncio.create_task(AiConversationService._auto_generate_title(conv_id, form.content))
+            asyncio.create_task(ai_conversation_service._auto_generate_title(conv_id, form.content))
 
         # 上下文由 reasoning_service.run 内部组装，此处不再预热（避免 build_context 二次执行）
         return StreamingResponse(
@@ -254,8 +254,8 @@ class AiMessageService:
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )
 
-    @staticmethod
     async def edit_message(
+        self,
         db: AsyncSession,
         user_id: int,
         msg_id: int,
@@ -334,3 +334,6 @@ class AiMessageService:
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )
+
+
+ai_message_service = AiMessageService()

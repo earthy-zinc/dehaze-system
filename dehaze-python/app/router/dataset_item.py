@@ -24,8 +24,8 @@ from app.models.schema.dataset import (
     DatasetItemUpdateForm,
     DatasetItemVO,
 )
-from app.service.dataset.dataset_item_service import DatasetItemService
-from app.service.dataset.dataset_service import DatasetService
+from app.service.dataset.dataset_item_service import dataset_item_service
+from app.service.dataset.dataset_service import dataset_service
 
 router = APIRouter(
     prefix="/api/v1/dataset-items",
@@ -44,7 +44,7 @@ async def list_dataset_items(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    result = await DatasetService.get_image_items(
+    result = await dataset_service.get_image_items(
         db,
         redis,
         datasetId,
@@ -61,7 +61,7 @@ async def get_dataset_item(
     item_id: int = Path(..., description="数据项ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    detail = await DatasetItemService.get_item_detail(db, item_id)
+    detail = await dataset_item_service.get_item_detail(db, item_id)
     if not detail:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在")
     return success(detail)
@@ -75,7 +75,7 @@ async def create_dataset_item(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DatasetItemService.create_dataset_item(
+    result = await dataset_item_service.create_dataset_item(
         db,
         redis,
         body.model_dump(exclude_none=True),
@@ -123,7 +123,7 @@ async def upload_dataset_item_with_images(
             }
         )
 
-    detail = await DatasetItemService.upload_dataset_item_with_images(
+    detail = await dataset_item_service.upload_dataset_item_with_images(
         db=db,
         redis=redis,
         dataset_id=datasetId,
@@ -162,7 +162,7 @@ async def batch_create_dataset_items_with_images(
             }
         )
 
-    result = await DatasetItemService.batch_create_dataset_items_with_images(
+    result = await dataset_item_service.batch_create_dataset_items_with_images(
         db=db,
         redis=redis,
         dataset_id=datasetId,
@@ -181,7 +181,7 @@ async def update_dataset_item(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DatasetItemService.update_dataset_item(
+    result = await dataset_item_service.update_dataset_item(
         db,
         redis,
         item_id,
@@ -198,7 +198,7 @@ async def batch_delete_dataset_items(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DatasetItemService.batch_delete_items(db, redis, body.ids)
+    result = await dataset_item_service.batch_delete_items(db, redis, body.ids)
     return success(result, "删除成功")
 
 
@@ -210,5 +210,5 @@ async def delete_dataset_item(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await DatasetItemService.delete_dataset_item(db, redis, item_id)
+    await dataset_item_service.delete_dataset_item(db, redis, item_id)
     return success(msg="删除成功")

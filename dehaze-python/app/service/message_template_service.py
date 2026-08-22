@@ -15,8 +15,7 @@ def _format_dt(dt: datetime | None) -> str | None:
 
 
 class MessageTemplateService:
-    @staticmethod
-    async def get_page(
+    async def get_page(self, 
         db: AsyncSession,
         page: int,
         page_size: int,
@@ -42,8 +41,7 @@ class MessageTemplateService:
         ]
         return {"list": list_data, "total": total, "pageNum": page, "pageSize": page_size}
 
-    @staticmethod
-    async def get_detail(db: AsyncSession, template_id: int) -> dict[str, Any]:
+    async def get_detail(self, db: AsyncSession, template_id: int) -> dict[str, Any]:
         template = await message_template_repository.get_by_id(db, template_id)
         if not template:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模板不存在")
@@ -62,8 +60,7 @@ class MessageTemplateService:
             "updateTime": _format_dt(template.update_time),
         }
 
-    @staticmethod
-    async def update(db: AsyncSession, template_id: int, data: dict[str, Any]) -> None:
+    async def update(self, db: AsyncSession, template_id: int, data: dict[str, Any]) -> None:
         template = await message_template_repository.get_by_id(db, template_id)
         if not template:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模板不存在")
@@ -81,3 +78,7 @@ class MessageTemplateService:
         if "status" in data:
             template.status = data["status"]
         await db.flush()
+
+
+# 单例
+message_template_service = MessageTemplateService()

@@ -37,8 +37,8 @@ _IMAGE_REF_TYPES = {"sys_file", "sys_pred_log", "sys_eval_log"}
 
 class AiArtifactService:
 
-    @staticmethod
     async def list_by_conversation(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
@@ -61,8 +61,8 @@ class AiArtifactService:
             total=total
         )
 
-    @staticmethod
     async def list_by_message(
+        self,
         db: AsyncSession,
         msg_id: int,
         user_id: int,
@@ -77,8 +77,8 @@ class AiArtifactService:
 
         return [ArtifactResult.model_validate(a) for a in artifacts]
 
-    @staticmethod
     async def register_artifact(
+        self,
         db: AsyncSession,
         conv_id: int,
         msg_id: int,
@@ -99,8 +99,7 @@ class AiArtifactService:
         artifact = await ai_artifact_repository.create(db, artifact)
         return ArtifactResult.model_validate(artifact)
 
-    @staticmethod
-    async def mark_invalid_for_file(db: AsyncSession, file_id: int) -> None:
+    async def mark_invalid_for_file(self, db: AsyncSession, file_id: int) -> None:
         """文件删除时联动失效产物：直接引用 sys_file，及经预测/评估日志间接引用。"""
         await ai_artifact_repository.mark_invalid(db, "sys_file", file_id)
 
@@ -112,8 +111,8 @@ class AiArtifactService:
         for log_id in eval_ids:
             await ai_artifact_repository.mark_invalid(db, "sys_eval_log", log_id)
 
-    @staticmethod
     async def list_by_ref(
+        self,
         db: AsyncSession,
         ref_type: str,
         ref_id: int,
@@ -121,10 +120,10 @@ class AiArtifactService:
     ) -> list[ArtifactResult]:
         """按业务引用反查产物列表（校验会话归属）"""
         artifacts = await ai_artifact_repository.list_by_ref(db, ref_type, ref_id)
-        return await AiArtifactService._filter_owned(db, artifacts, user_id)
+        return await self._filter_owned(db, artifacts, user_id)
 
-    @staticmethod
     async def get_detail(
+        self,
         db: AsyncSession,
         artifact_id: int,
         user_id: int,
@@ -140,11 +139,11 @@ class AiArtifactService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "产物所属会话不存在")
         return {
             "artifact": ArtifactResult.model_validate(artifact),
-            "imageUrl": await AiArtifactService._resolve_image_url(db, artifact),
+            "imageUrl": await self._resolve_image_url(db, artifact),
         }
 
-    @staticmethod
     async def _filter_owned(
+        self,
         db: AsyncSession,
         artifacts: list[SysAiArtifact],
         user_id: int,
@@ -159,8 +158,8 @@ class AiArtifactService:
                 result.append(ArtifactResult.model_validate(a))
         return result
 
-    @staticmethod
     async def get_message_artifact_refs(
+        self,
         db: AsyncSession,
         message_ids: list[int],
     ) -> dict[int, list[dict]]:
@@ -180,16 +179,15 @@ class AiArtifactService:
             )
         return grouped
 
-    @staticmethod
-    async def _get_visual_limit(db: AsyncSession, user_id: int) -> int:
+    async def _get_visual_limit(self, db: AsyncSession, user_id: int) -> int:
         """读取用户等级对应的多模态视觉读取日限额。"""
         member = await member_repository.get_by_user_id(db, user_id)
         level_code = member.level_code if member else "level_0"
         benefit = await member_benefit_repository.get_by_level_code(db, level_code)
         return benefit.multimodal_limit if benefit and benefit.multimodal_limit else 0
 
-    @staticmethod
     async def check_visual_quota(
+        self,
         db: AsyncSession,
         redis: Redis,
         user_id: int,
@@ -200,17 +198,16 @@ class AiArtifactService:
             (used, limit)：当日已用次数、日限额。并发安全判定由
             _consume_visual_quota（INCR 原子）承担。
         """
-        limit = await AiArtifactService._get_visual_limit(db, user_id)
-        key = AiArtifactService._visual_quota_key(user_id)
+        limit = await self._get_visual_limit(db, user_id)
+        key = self._visual_quota_key(user_id)
         used = int(await redis.get(key) or 0)
         return used, limit
 
-    @staticmethod
-    def _visual_quota_key(user_id: int) -> str:
+    def _visual_quota_key(self, user_id: int) -> str:
         return f"{_VISUAL_QUOTA_KEY_PREFIX}:{user_id}:{datetime.now().strftime('%Y%m%d')}"
 
-    @staticmethod
     async def _consume_visual_quota(
+        self,
         redis: Redis,
         user_id: int,
         limit: int,
@@ -222,7 +219,7 @@ class AiArtifactService:
         拒绝），避免并发间隙绕过日上限。首次 INCR（new_count==1）设置 TTL 至
         次日零点，午夜过期自动重置。
         """
-        key = AiArtifactService._visual_quota_key(user_id)
+        key = self._visual_quota_key(user_id)
         new_count = int(await redis.incr(key))
         if new_count == 1:
             now = datetime.now()
@@ -234,8 +231,7 @@ class AiArtifactService:
             return False
         return True
 
-    @staticmethod
-    async def _resolve_image_url(db: AsyncSession, artifact: SysAiArtifact) -> str | None:
+    async def _resolve_image_url(self, db: AsyncSession, artifact: SysAiArtifact) -> str | None:
         """经 artifact 的 ref 链路解析出图片运行时 URL（URL 不落库，按需拼接）。"""
         file_id = None
         if artifact.ref_type == "sys_file":
@@ -253,8 +249,7 @@ class AiArtifactService:
             return None
         return get_storage_by_name(file_info.storage).get_url(file_info.object_name)
 
-    @staticmethod
-    async def _pick_multimodal_model(db: AsyncSession, model_id: str | None) -> str | None:
+    async def _pick_multimodal_model(self, db: AsyncSession, model_id: str | None) -> str | None:
         """选择多模态模型：优先当前会话模型，否则取任一启用多模态模型。"""
         if model_id:
             current = await ai_model_repository.get_by_model_id(db, model_id)
@@ -266,8 +261,8 @@ class AiArtifactService:
                 return model.model_id
         return None
 
-    @staticmethod
     async def visual_read(
+        self,
         db: AsyncSession,
         redis: Redis,
         user_id: int,
@@ -289,18 +284,18 @@ class AiArtifactService:
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "产物所属会话不存在")
 
-        image_url = await AiArtifactService._resolve_image_url(db, artifact)
+        image_url = await self._resolve_image_url(db, artifact)
         if not image_url:
             # 图片引用缺失（如预测文件尚未生成）时也走降级文本
             return _VISUAL_QUOTA_EXCEEDED + str(artifact.summary or ""), 0
 
-        multimodal_model_id = await AiArtifactService._pick_multimodal_model(db, model_id)
+        multimodal_model_id = await self._pick_multimodal_model(db, model_id)
         if not multimodal_model_id:
             return _VISUAL_QUOTA_EXCEEDED + str(artifact.summary or ""), 0
 
         # 原子消费额度（INCR 先行）：超限该次拒绝且已回退计数；并发不可绕过
-        limit = await AiArtifactService._get_visual_limit(db, user_id)
-        if not await AiArtifactService._consume_visual_quota(redis, user_id, limit):
+        limit = await self._get_visual_limit(db, user_id)
+        if not await self._consume_visual_quota(redis, user_id, limit):
             return _VISUAL_QUOTA_EXCEEDED + str(artifact.summary or ""), 0
 
         messages = [
@@ -327,3 +322,6 @@ class AiArtifactService:
             return _VISUAL_QUOTA_EXCEEDED + str(artifact.summary or ""), 0
         input_tokens = usage.get("input_tokens") or usage.get("prompt_tokens") or 0
         return text, int(input_tokens)
+
+
+ai_artifact_service = AiArtifactService()

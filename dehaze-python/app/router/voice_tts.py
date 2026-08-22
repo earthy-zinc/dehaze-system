@@ -16,7 +16,7 @@ from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.voice_tts import VOICE_CATALOG, TtsForm
-from app.service.voice.tts_service import TtsService
+from app.service.voice.tts_service import tts_service
 
 router = APIRouter(
     prefix="/api/v1/voice/tts",
@@ -32,7 +32,7 @@ async def synthesize_tts(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await TtsService.synthesize(
+    result = await tts_service.synthesize(
         db,
         redis,
         user.id,
@@ -60,7 +60,7 @@ async def download_cached_audio(
     user: UserContext = Depends(get_current_user),
 ):
     """按 cacheKey 下载缓存音频，仅本人可访问（他人 cacheKey 在本用户缓存中不存在 → 404）。"""
-    audio = await TtsService.load_cached_audio(db, redis, user.id, cache_key)
+    audio = await tts_service.load_cached_audio(db, redis, user.id, cache_key)
     if audio is None:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "音频缓存不存在或已过期")
     audio_bytes, format_ = audio

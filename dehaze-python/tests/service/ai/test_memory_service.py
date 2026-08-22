@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 
 from app.core.exceptions import BusinessException
-from app.service.ai_memory_service import AiMemoryService
+from app.service.ai_memory_service import ai_memory_service
 from tests.stubs import make_orm_mem
 
 
@@ -17,7 +17,7 @@ class TestBatchClear:
             "app.service.ai_memory_service.ai_memory_repository.batch_clear", fake_batch_clear
         )
         with pytest.raises(BusinessException):
-            await AiMemoryService.batch_clear(object(), 1, confirm=False)
+            await ai_memory_service.batch_clear(object(), 1, confirm=False)
 
     @pytest.mark.parametrize(
         "kwargs,count,expected",
@@ -49,7 +49,7 @@ class TestBatchClear:
         monkeypatch.setattr(
             "app.service.ai_memory_service.ai_memory_repository.batch_clear", fake_batch_clear
         )
-        result = await AiMemoryService.batch_clear(object(), 1, confirm=True, **kwargs)
+        result = await ai_memory_service.batch_clear(object(), 1, confirm=True, **kwargs)
         assert result == count
         assert captured == expected
 
@@ -77,7 +77,7 @@ class TestDeleteSyncEs:
         )
         monkeypatch.setattr("app.service.ai_memory_service.delete_memory_doc", fake_delete_doc)
 
-        await AiMemoryService.delete_memory(object(), 10, 1)
+        await ai_memory_service.delete_memory(object(), 10, 1)
         assert deleted_es == [10]
 
 
@@ -92,7 +92,7 @@ class TestListAndExport:
         monkeypatch.setattr(
             "app.service.ai_memory_service.ai_memory_repository.list_by_user", fake_list
         )
-        result = await AiMemoryService.list_memories(object(), 1, 1, 10, source="feedback")
+        result = await ai_memory_service.list_memories(object(), 1, 1, 10, source="feedback")
         assert result.total == 0
         assert captured["source"] == "feedback"
 
@@ -109,7 +109,7 @@ class TestListAndExport:
             "app.service.ai_memory_service.ai_memory_repository.get_active_by_user", fake_active
         )
 
-        content_type, content = await AiMemoryService.export_memories(object(), 1, "json")
+        content_type, content = await ai_memory_service.export_memories(object(), 1, "json")
         assert "json" in content_type
         data = json.loads(content)
         assert data["user_id"] == 1
@@ -127,7 +127,7 @@ class TestListAndExport:
             "app.service.ai_memory_service.ai_memory_repository.get_active_by_user", fake_active
         )
 
-        content_type, content = await AiMemoryService.export_memories(object(), 1, "markdown")
+        content_type, content = await ai_memory_service.export_memories(object(), 1, "markdown")
         assert "text/markdown" in content_type
         assert "# 长期记忆导出" in content
         assert "semantic" in content

@@ -15,7 +15,7 @@ from app.models.schema.common import PageResult
 from app.repository.ai_model_repository import ai_model_repository
 from app.repository.member_repository import member_repository
 from app.service.ai.provider_health_service import provider_health_service
-from app.service.message_service import MessageService
+from app.service.message_service import message_service
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +162,7 @@ async def _notify_model_replacement(
             "请及时更换其他可用模型。"
         )
     try:
-        await MessageService.send(
+        await message_service.send(
             db,
             {
                 "type": "business",
@@ -179,8 +179,8 @@ async def _notify_model_replacement(
 
 
 class AiModelService:
-    @staticmethod
     async def list_models(
+        self,
         db: AsyncSession,
         page: int,
         size: int,
@@ -189,8 +189,8 @@ class AiModelService:
         models, total = await ai_model_repository.paginate_models(db, page, size, keyword)
         return PageResult(list=[AiModelResult.model_validate(m) for m in models], total=total)
 
-    @staticmethod
     async def list_enabled_models(
+        self,
         db: AsyncSession,
         redis: Redis,
         user_id: int,
@@ -221,8 +221,8 @@ class AiModelService:
             if item.get("vip_level", 0) <= user_level
         ]
 
-    @staticmethod
     async def validate_model_caps(
+        self,
         model: SysAiModel,
         has_attachments: bool,
         need_tools: bool,
@@ -239,8 +239,8 @@ class AiModelService:
         if need_tools and not model.supports_tool_call:
             raise BusinessException(ResultCode.AI_MODEL_NOT_AVAILABLE, "当前模型不支持工具调用")
 
-    @staticmethod
     async def get_call_routes(
+        self,
         db: AsyncSession,
         model_id: str,
         required_caps: set[str],
@@ -285,8 +285,7 @@ class AiModelService:
 
         return routes
 
-    @staticmethod
-    async def create_model(db: AsyncSession, redis: Redis, form) -> AiModelResult:
+    async def create_model(self, db: AsyncSession, redis: Redis, form) -> AiModelResult:
         existing = await ai_model_repository.get_by_model_and_provider(
             db, form.model_id, form.provider_id
         )
@@ -319,8 +318,7 @@ class AiModelService:
         await _clear_model_cache(redis)
         return AiModelResult.model_validate(model)
 
-    @staticmethod
-    async def update_model(db: AsyncSession, redis: Redis, model_id: str, form) -> AiModelResult:
+    async def update_model(self, db: AsyncSession, redis: Redis, model_id: str, form) -> AiModelResult:
         model = await ai_model_repository.get_by_model_id(db, model_id)
         if not model:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模型不存在")
@@ -340,8 +338,7 @@ class AiModelService:
         await _clear_model_cache(redis)
         return AiModelResult.model_validate(model)
 
-    @staticmethod
-    async def delete_model(db: AsyncSession, redis: Redis, model_id: str) -> None:
+    async def delete_model(self, db: AsyncSession, redis: Redis, model_id: str) -> None:
         model = await ai_model_repository.get_by_model_id(db, model_id)
         if not model:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模型不存在")
@@ -353,3 +350,6 @@ class AiModelService:
             )
         await ai_model_repository.soft_delete_by_ids(db, [model.id])
         await _clear_model_cache(redis)
+
+
+ai_model_service = AiModelService()

@@ -16,7 +16,7 @@ from app.models.schema.role import (
     RolePageQuery,
     RolePageVO,
 )
-from app.service.role_service import RoleService
+from app.service.role_service import role_service
 from app.utils.datetime_utils import format_time
 
 router = APIRouter(
@@ -37,7 +37,7 @@ async def get_role_page(
     query: RolePageQuery = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
-    roles, total = await RoleService.get_role_list(
+    roles, total = await role_service.get_role_list(
         db, query.pageNum, query.pageSize, query.keywords
     )
 
@@ -71,7 +71,7 @@ async def list_role_options(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    options = await RoleService.get_role_options(db, is_root=user.is_root)
+    options = await role_service.get_role_options(db, is_root=user.is_root)
     return success(options)
 
 
@@ -83,7 +83,7 @@ async def add_role(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await RoleService.create_role(db, redis, body.model_dump(exclude_none=True))
+    await role_service.create_role(db, redis, body.model_dump(exclude_none=True))
 
     return success(msg="创建成功")
 
@@ -93,7 +93,7 @@ async def get_role_form(
     role_id: int = Path(..., description="角色ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    role = await RoleService.get_role_by_id(db, role_id)
+    role = await role_service.get_role_by_id(db, role_id)
 
     if not role:
         return success(None)
@@ -119,7 +119,7 @@ async def update_role(
     body: RoleForm = Body(...),
     user: UserContext = Depends(get_current_user),
 ):
-    await RoleService.update_role(db, redis, role_id, body.model_dump(exclude_none=True))
+    await role_service.update_role(db, redis, role_id, body.model_dump(exclude_none=True))
 
     return success(msg="更新成功")
 
@@ -132,7 +132,7 @@ async def delete_roles(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await RoleService.delete_roles(db, redis, ids)
+    await role_service.delete_roles(db, redis, ids)
 
     return success(msg="删除成功")
 
@@ -146,7 +146,7 @@ async def update_role_status(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await RoleService.update_role_status(db, redis, role_id, status)
+    await role_service.update_role_status(db, redis, role_id, status)
 
     return success(msg="更新成功")
 
@@ -156,12 +156,12 @@ async def get_role_menu_ids(
     role_id: int = Path(..., description="角色ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    role = await RoleService.get_role_by_id(db, role_id)
+    role = await role_service.get_role_by_id(db, role_id)
 
     if not role:
         return success([])
 
-    menu_ids = await RoleService.get_role_menu_ids(db, role_id)
+    menu_ids = await role_service.get_role_menu_ids(db, role_id)
     return success(menu_ids)
 
 
@@ -176,6 +176,6 @@ async def assign_menus_to_role(
 ):
     # RootModel 使用 .root 访问实际的列表数据
     menu_ids: list[int] = body.root
-    await RoleService.assign_menus_to_role(db, redis, role_id, menu_ids)
+    await role_service.assign_menus_to_role(db, redis, role_id, menu_ids)
 
     return success(msg="分配成功")

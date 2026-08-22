@@ -39,8 +39,8 @@ async def _validate_whitelist(db: AsyncSession, whitelist: list[str] | None) -> 
 
 
 class ApiKeyService:
-    @staticmethod
     async def create_api_key(
+        self,
         db: AsyncSession,
         user_id: int,
         name: str,
@@ -68,18 +68,19 @@ class ApiKeyService:
         entity = await api_key_repository.create(db, entity)
         return _to_result(entity, raw_key=raw_key)
 
-    @staticmethod
-    async def list_api_keys(db: AsyncSession, user_id: int) -> list[dict]:
+    async def list_api_keys(self, db: AsyncSession, user_id: int) -> list[dict]:
         # 列表只展示未吊销的 key（revoked_at IS NULL），与 Java/Go 一致
         items = await api_key_repository.list_active_by_user(db, user_id)
         return [_to_result(item) for item in items]
 
-    @staticmethod
-    async def delete_api_key(db: AsyncSession, user_id: int, key_id: int) -> bool:
+    async def delete_api_key(self, db: AsyncSession, user_id: int, key_id: int) -> bool:
         """吊销 API 密钥：设置 revoked_at，永久保留 hash 以拒绝已泄露的旧密钥。"""
         entity = await api_key_repository.get_active_by_id_and_user(db, key_id, user_id)
         if not entity:
             return False
         await api_key_repository.revoke(db, entity)
         return True
+
+
+api_key_service = ApiKeyService()
 

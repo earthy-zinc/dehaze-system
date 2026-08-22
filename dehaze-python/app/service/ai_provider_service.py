@@ -25,8 +25,8 @@ async def _clear_provider_cache(redis: Redis) -> None:
 
 
 class AiProviderService:
-    @staticmethod
     async def list_providers(
+        self,
         db: AsyncSession,
         redis: Redis,
         page: int,
@@ -44,8 +44,7 @@ class AiProviderService:
             items.append(item)
         return PageResult(list=items, total=total)
 
-    @staticmethod
-    async def list_enabled(db: AsyncSession, redis: Redis) -> list[ProviderResult]:
+    async def list_enabled(self, db: AsyncSession, redis: Redis) -> list[ProviderResult]:
         cache = CacheService(redis)
         cached = await cache.get_json(PROVIDER_LIST_CACHE_KEY)
         if cached is None:
@@ -56,8 +55,8 @@ class AiProviderService:
             await cache.set_json(PROVIDER_LIST_CACHE_KEY, cached, PROVIDER_LIST_CACHE_TTL)
         return [ProviderResult.model_validate(item) for item in cached]
 
-    @staticmethod
     async def create_provider(
+        self,
         db: AsyncSession,
         redis: Redis,
         form: ProviderCreate,
@@ -88,8 +87,8 @@ class AiProviderService:
         await set_health_check_enabled(redis, provider.id, provider.health_check_enabled == 1)
         return ProviderResult.model_validate(provider)
 
-    @staticmethod
     async def update_provider(
+        self,
         db: AsyncSession,
         redis: Redis,
         provider_id: int,
@@ -107,8 +106,8 @@ class AiProviderService:
         await set_health_check_enabled(redis, provider.id, provider.health_check_enabled == 1)
         return ProviderResult.model_validate(provider)
 
-    @staticmethod
     async def delete_provider(
+        self,
         db: AsyncSession,
         redis: Redis,
         provider_id: int,
@@ -125,3 +124,6 @@ class AiProviderService:
         await ai_provider_repository.soft_delete_by_ids(db, [provider_id])
         await _clear_provider_cache(redis)
         await clear_provider_health(redis, provider_id)
+
+
+ai_provider_service = AiProviderService()

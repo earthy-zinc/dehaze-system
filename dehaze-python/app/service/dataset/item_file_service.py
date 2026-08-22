@@ -10,15 +10,14 @@ from app.core.exceptions import BusinessException
 from app.models.entity.sys_dataset import SysItemFile
 from app.repository.dataset_repository import dataset_repository
 from app.service.dataset._shared import _build_file_vo
-from app.service.dataset.dataset_service import DatasetService
-from app.service.file_service import FileService
+from app.service.dataset.dataset_service import dataset_service
+from app.service.file_service import file_service
 
 
 class ItemFileService:
     """图片文件服务"""
 
-    @staticmethod
-    async def get_item_file_detail(db: AsyncSession, file_id: int) -> dict[str, Any] | None:
+    async def get_item_file_detail(self, db: AsyncSession, file_id: int) -> dict[str, Any] | None:
         result = await dataset_repository.get_item_file_with_file(db, file_id)
         if not result:
             return None
@@ -26,8 +25,7 @@ class ItemFileService:
         item_file, file_obj = result
         return _build_file_vo(item_file, file_obj)
 
-    @staticmethod
-    async def upload_item_file(
+    async def upload_item_file(self, 
         db: AsyncSession,
         redis: Redis,
         item_id: int,
@@ -49,7 +47,7 @@ class ItemFileService:
         if not file.filename:
             raise BusinessException(ResultCode.PARAM_ERROR, "文件名不能为空")
 
-        file_info = await FileService.upload_file(
+        file_info = await file_service.upload_file(
             db=db,
             filename=file.filename,
             content=content,
@@ -68,12 +66,11 @@ class ItemFileService:
         await db.flush()
         await db.refresh(item_file)
 
-        await DatasetService._evict_all_cache(redis)
+        await dataset_service._evict_all_cache(redis)
 
         return _build_file_vo(item_file, file_info)
 
-    @staticmethod
-    async def update_item_file(db: AsyncSession, redis: Redis, file_id: int, data: dict[str, Any]):
+    async def update_item_file(self, db: AsyncSession, redis: Redis, file_id: int, data: dict[str, Any]):
         item_file = await dataset_repository.get_item_file_by_id(db, file_id)
         if not item_file:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片文件不存在")
@@ -89,10 +86,9 @@ class ItemFileService:
 
         item = await dataset_repository.get_item_by_id(db, item_file.item_id)
         if item:
-            await DatasetService._evict_all_cache(redis)
+            await dataset_service._evict_all_cache(redis)
 
-    @staticmethod
-    async def delete_item_file(db: AsyncSession, redis: Redis, file_id: int):
+    async def delete_item_file(self, db: AsyncSession, redis: Redis, file_id: int):
         item_file = await dataset_repository.get_item_file_by_id(db, file_id)
         if not item_file:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片文件不存在")
@@ -105,10 +101,9 @@ class ItemFileService:
         await dataset_repository.delete_item_file_by_id(db, file_id)
 
         if dataset_id:
-            await DatasetService._evict_all_cache(redis)
+            await dataset_service._evict_all_cache(redis)
 
-    @staticmethod
-    async def batch_delete_item_files(db: AsyncSession, redis: Redis, file_ids: list[int]):
+    async def batch_delete_item_files(self, db: AsyncSession, redis: Redis, file_ids: list[int]):
         if not file_ids:
             raise BusinessException(ResultCode.PARAM_ERROR, "未指定要删除的图片")
 
@@ -144,7 +139,7 @@ class ItemFileService:
             await dataset_repository.delete_item_files_by_ids(db, success_ids)
 
         if affected_dataset_ids:
-            await DatasetService._evict_all_cache(redis)
+            await dataset_service._evict_all_cache(redis)
 
         return {
             "successCount": len(success_ids),
@@ -154,3 +149,6 @@ class ItemFileService:
             "failureDetails": failure_details,
         }
 
+
+
+item_file_service = ItemFileService()

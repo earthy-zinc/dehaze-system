@@ -13,7 +13,7 @@ from app.models.schema.ai_memory import (
     MemoryUpdate,
 )
 from app.models.schema.common import PageResult
-from app.service.ai_memory_service import AiMemoryService
+from app.service.ai_memory_service import ai_memory_service
 
 router = APIRouter(prefix="/api/v1/ai/memories", tags=["AI对话"])
 
@@ -24,7 +24,7 @@ async def list_memories(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiMemoryService.list_memories(
+    result = await ai_memory_service.list_memories(
         db, user.id, query.pageNum, query.pageSize, query.memoryType, query.source
     )
     return success(result)
@@ -38,7 +38,7 @@ async def list_archived(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiMemoryService.list_archived(
+    result = await ai_memory_service.list_archived(
         db, user.id, query.pageNum, query.pageSize, query.memoryType
     )
     return success(result)
@@ -50,7 +50,7 @@ async def create_memory(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiMemoryService.create_memory(db, user.id, form)
+    result = await ai_memory_service.create_memory(db, user.id, form)
     return success(result)
 
 
@@ -61,7 +61,7 @@ async def update_memory(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiMemoryService.update_memory(db, memory_id, user.id, form)
+    result = await ai_memory_service.update_memory(db, memory_id, user.id, form)
     return success(result)
 
 
@@ -71,7 +71,7 @@ async def delete_memory(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await AiMemoryService.delete_memory(db, memory_id, user.id)
+    await ai_memory_service.delete_memory(db, memory_id, user.id)
     return success(msg="一切ok")
 
 
@@ -82,7 +82,7 @@ async def search_memories(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiMemoryService.search_memories(db, user.id, keyword, limit)
+    result = await ai_memory_service.search_memories(db, user.id, keyword, limit)
     return success(result)
 
 
@@ -93,7 +93,7 @@ async def clear_memories(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    count = await AiMemoryService.batch_clear(
+    count = await ai_memory_service.batch_clear(
         db, user.id, confirm, query.memoryType, query.start, query.end
     )
     return success(count, msg=f"已清空 {count} 条记忆（30 天内可恢复）")
@@ -106,7 +106,7 @@ async def restore_memories(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    count = await AiMemoryService.restore_deleted(
+    count = await ai_memory_service.restore_deleted(
         db, user.id, confirm, query.memoryType, query.start, query.end
     )
     return success(count, msg=f"已恢复 {count} 条记忆")
@@ -118,7 +118,7 @@ async def export_memories(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    content_type, content = await AiMemoryService.export_memories(db, user.id, fmt)
+    content_type, content = await ai_memory_service.export_memories(db, user.id, fmt)
     filename = f"memories.{'md' if fmt == 'markdown' else 'json'}"
     return StreamingResponse(
         iter([content]),

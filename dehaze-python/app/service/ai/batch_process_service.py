@@ -11,7 +11,7 @@ import logging
 from app.config import settings
 from app.database import get_db_session
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
-from app.service.ai_artifact_service import AiArtifactService
+from app.service.ai_artifact_service import ai_artifact_service
 from app.service.prediction_service import prediction_service
 
 logger = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ async def _process_single(
         pred_log_id = pred_result.get("logId")
 
         async with get_db_session() as db:
-            artifact = await AiArtifactService.register_artifact(
+            artifact = await ai_artifact_service.register_artifact(
                 db,
                 conv_id,
                 msg_id,

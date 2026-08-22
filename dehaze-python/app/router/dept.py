@@ -8,7 +8,7 @@ from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.dept import DeptForm, DeptFormVO, DeptOptionVO, DeptVO
-from app.service.dept_service import DeptService
+from app.service.dept_service import dept_service
 
 router = APIRouter(
     prefix="/api/v1/depts",
@@ -23,7 +23,7 @@ async def list_depts(
     status: int | None = Query(default=None, ge=0, le=1),
     db: AsyncSession = Depends(get_db),
 ):
-    depts = await DeptService.get_dept_list(db, keywords, status)
+    depts = await dept_service.get_dept_list(db, keywords, status)
     return success(depts)
 
 
@@ -32,7 +32,7 @@ async def list_dept_options(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    options = await DeptService.get_dept_options(db, redis)
+    options = await dept_service.get_dept_options(db, redis)
     return success(options)
 
 
@@ -41,7 +41,7 @@ async def get_dept_form(
     dept_id: int = Path(...),
     db: AsyncSession = Depends(get_db),
 ):
-    dept_form = await DeptService.get_dept_form(db, dept_id)
+    dept_form = await dept_service.get_dept_form(db, dept_id)
     return success(dept_form)
 
 
@@ -53,7 +53,7 @@ async def create_dept(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    dept_id = await DeptService.create_dept(db, redis, body.model_dump(exclude_none=True))
+    dept_id = await dept_service.create_dept(db, redis, body.model_dump(exclude_none=True))
     return success(dept_id, msg="部门创建成功")
 
 
@@ -66,7 +66,7 @@ async def update_dept(
     body: DeptForm = Body(...),
     user: UserContext = Depends(get_current_user),
 ):
-    updated_id = await DeptService.update_dept(
+    updated_id = await dept_service.update_dept(
         db, redis, dept_id, body.model_dump(exclude_none=True)
     )
     return success(updated_id, msg="部门更新成功")
@@ -81,5 +81,5 @@ async def delete_depts(
     user: UserContext = Depends(get_current_user),
 ):
     dept_ids = [int(i) for i in ids.split(",")]
-    await DeptService.delete_depts(db, redis, dept_ids)
+    await dept_service.delete_depts(db, redis, dept_ids)
     return success(msg="部门删除成功")

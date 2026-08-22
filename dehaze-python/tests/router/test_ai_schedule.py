@@ -69,7 +69,7 @@ async def test_create_passes_form_and_returns_detail(ai_client, monkeypatch):
         captured["input_type"] = form.input["type"]
         return _detail()
 
-    monkeypatch.setattr(ai_schedule.ScheduledTaskService, "create", staticmethod(fake_create))
+    monkeypatch.setattr(ai_schedule.scheduled_task_service, "create", fake_create)
 
     resp = await ai_client.post(
         "/api/v1/ai/scheduled-tasks",
@@ -96,7 +96,7 @@ async def test_list_returns_page_result(ai_client, monkeypatch):
     async def fake_list_page(db, user_id, query):
         return PageResult(list=[item], total=1)
 
-    monkeypatch.setattr(ai_schedule.ScheduledTaskService, "list_page", staticmethod(fake_list_page))
+    monkeypatch.setattr(ai_schedule.scheduled_task_service, "list_page", fake_list_page)
 
     resp = await ai_client.get("/api/v1/ai/scheduled-tasks?pageNum=1&pageSize=10")
 
@@ -112,9 +112,7 @@ async def test_get_detail_returns_detail(ai_client, monkeypatch):
         assert schedule_id == 9
         return _detail(id=9)
 
-    monkeypatch.setattr(
-        ai_schedule.ScheduledTaskService, "get_detail", staticmethod(fake_get_detail)
-    )
+    monkeypatch.setattr(ai_schedule.scheduled_task_service, "get_detail", fake_get_detail)
 
     resp = await ai_client.get("/api/v1/ai/scheduled-tasks/9")
     assert resp.status_code == 200
@@ -129,7 +127,7 @@ async def test_update_passes_fields(ai_client, monkeypatch):
         captured["new_name"] = form.name
         return _detail(name=form.name)
 
-    monkeypatch.setattr(ai_schedule.ScheduledTaskService, "update", staticmethod(fake_update))
+    monkeypatch.setattr(ai_schedule.scheduled_task_service, "update", fake_update)
 
     resp = await ai_client.put("/api/v1/ai/scheduled-tasks/9", json={"name": "新名称"})
 
@@ -146,9 +144,7 @@ async def test_set_status_passes_enabled(ai_client, monkeypatch):
         captured["schedule_id"] = schedule_id
         captured["enabled"] = enabled
 
-    monkeypatch.setattr(
-        ai_schedule.ScheduledTaskService, "set_enabled", staticmethod(fake_set_enabled)
-    )
+    monkeypatch.setattr(ai_schedule.scheduled_task_service, "set_enabled", fake_set_enabled)
 
     resp = await ai_client.patch("/api/v1/ai/scheduled-tasks/9/status", json={"enabled": False})
 
@@ -163,7 +159,7 @@ async def test_delete_calls_service(ai_client, monkeypatch):
     async def fake_delete(db, user_id, schedule_id):
         captured["schedule_id"] = schedule_id
 
-    monkeypatch.setattr(ai_schedule.ScheduledTaskService, "delete", staticmethod(fake_delete))
+    monkeypatch.setattr(ai_schedule.scheduled_task_service, "delete", fake_delete)
 
     resp = await ai_client.delete("/api/v1/ai/scheduled-tasks/9")
     assert resp.status_code == 200
@@ -174,9 +170,7 @@ async def test_next_times_preview(ai_client, monkeypatch):
     async def fake_preview(cron, count):
         return NextTimesPreview(description="每天 09点00分", nextTimes=[])
 
-    monkeypatch.setattr(
-        ai_schedule.ScheduledTaskService, "preview_next_times", staticmethod(fake_preview)
-    )
+    monkeypatch.setattr(ai_schedule.scheduled_task_service, "preview_next_times", fake_preview)
 
     resp = await ai_client.get("/api/v1/ai/scheduled-tasks/next-times?cron=0%209%20*%20*%20*")
     assert resp.status_code == 200
@@ -201,9 +195,7 @@ async def test_history_returns_page(ai_client, monkeypatch):
         captured["schedule_id"] = schedule_id
         return PageResult(list=[run], total=1)
 
-    monkeypatch.setattr(
-        ai_schedule.ScheduledTaskService, "list_history", staticmethod(fake_list_history)
-    )
+    monkeypatch.setattr(ai_schedule.scheduled_task_service, "list_history", fake_list_history)
 
     resp = await ai_client.get("/api/v1/ai/scheduled-tasks/9/history?pageNum=1&pageSize=10")
 
@@ -229,9 +221,7 @@ async def test_run_returns_accepted_and_triggers_in_background(ai_client, monkey
     async def fake_db_session():
         yield object()
 
-    monkeypatch.setattr(
-        ai_schedule.ScheduledTaskService, "get_detail", staticmethod(fake_get_detail)
-    )
+    monkeypatch.setattr(ai_schedule.scheduled_task_service, "get_detail", fake_get_detail)
     monkeypatch.setattr(ai_schedule.schedule_executor, "trigger_once", fake_trigger_once)
     monkeypatch.setattr(ai_schedule, "get_db_session", fake_db_session)
     monkeypatch.setattr(

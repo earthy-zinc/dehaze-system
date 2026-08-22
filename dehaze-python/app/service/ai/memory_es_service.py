@@ -33,7 +33,7 @@ from app.infrastructure.es.ai_memory_index import (
 )
 from app.repository.ai_provider_repository import ai_provider_repository
 from app.repository.dict_repository import dict_repository
-from app.service.ai_provider_key_service import AiProviderKeyService
+from app.service.ai_provider_key_service import ai_provider_key_service
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ async def _get_embedding_api_key() -> str:
         if not provider or provider.status != 1:
             return ""
         redis = await get_redis_client()
-        return await AiProviderKeyService.select_key(db, redis, provider.id) or ""
+        return await ai_provider_key_service.select_key(db, redis, provider.id) or ""
 
 
 async def get_embedding(text: str) -> list[float]:

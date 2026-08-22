@@ -60,8 +60,7 @@ def _resolve_and_validate_image_url(image_url: str | None, image_id: int | None)
 
 
 class RecommendationService:
-    @staticmethod
-    async def analyze(image_id: int | None, image_url: str | None) -> ImageFeatureAnalysisVO:
+    async def analyze(self, image_id: int | None, image_url: str | None) -> ImageFeatureAnalysisVO:
         url = _resolve_and_validate_image_url(image_url, image_id)
         md5_val = hashlib.md5(url.encode("utf-8")).hexdigest()
         seed = abs(hash(md5_val))
@@ -82,8 +81,8 @@ class RecommendationService:
             noiseLevel=VALID_NOISE_LEVELS[seed % len(VALID_NOISE_LEVELS)],
         )
 
-    @staticmethod
     async def get_algorithms(
+        self,
         db: AsyncSession,
         user_id: int,
         analysis_id: int | None,
@@ -170,8 +169,7 @@ class RecommendationService:
 
         return result
 
-    @staticmethod
-    async def submit_feedback(db: AsyncSession, recommendation_id: int, useful: bool) -> IdVO:
+    async def submit_feedback(self, db: AsyncSession, recommendation_id: int, useful: bool) -> IdVO:
         rec = await recommendation_repository.get_by_id(db, recommendation_id)
         if not rec:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)
@@ -179,8 +177,7 @@ class RecommendationService:
         await db.flush()
         return IdVO(id=rec.id)
 
-    @staticmethod
-    async def get_rules(db: AsyncSession) -> list[RecommendationRuleVO]:
+    async def get_rules(self, db: AsyncSession) -> list[RecommendationRuleVO]:
         rules = await recommendation_rule_repository.get_all_rules(db)
         return [
             RecommendationRuleVO(
@@ -194,8 +191,7 @@ class RecommendationService:
             for r in rules
         ]
 
-    @staticmethod
-    async def update_rule(db: AsyncSession, rule_id: int, form: dict) -> IdVO:
+    async def update_rule(self, db: AsyncSession, rule_id: int, form: dict) -> IdVO:
         if rule_id == 0:
             # 新增
             rule = SysRecommendationRule(
@@ -223,8 +219,8 @@ class RecommendationService:
         await db.flush()
         return IdVO(id=rule.id)
 
-    @staticmethod
     async def get_report(
+        self,
         db: AsyncSession,
         start_date: str | None,
         end_date: str | None,
@@ -267,3 +263,6 @@ class RecommendationService:
             coldStartSuccessRate=0.0,
             trend=trend,
         )
+
+
+recommendation_service = RecommendationService()

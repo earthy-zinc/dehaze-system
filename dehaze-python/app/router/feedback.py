@@ -16,7 +16,7 @@ from app.models.schema.feedback import (
     RatingCreateForm,
     RatingReplyForm,
 )
-from app.service.feedback_service import FeedbackService
+from app.service.feedback_service import feedback_service
 
 router = APIRouter(
     prefix="/api/v1/feedback",
@@ -35,7 +35,7 @@ async def create_rating(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.create_rating(
+    data = await feedback_service.create_rating(
         db, redis, user.id, body.model_dump(exclude_none=True)
     )
     return success(data)
@@ -48,7 +48,7 @@ async def list_my_ratings(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.list_my_ratings(
+    data = await feedback_service.list_my_ratings(
         db, user.id, {"pageNum": pageNum, "pageSize": pageSize}
     )
     return success(data)
@@ -60,7 +60,7 @@ async def get_rating_by_prediction(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.get_rating_by_prediction(db, user.id, prediction_log_id)
+    data = await feedback_service.get_rating_by_prediction(db, user.id, prediction_log_id)
     return success(data)
 
 
@@ -78,7 +78,7 @@ async def list_ratings(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.list_paged_ratings(
+    data = await feedback_service.list_paged_ratings(
         db,
         {
             "pageNum": pageNum,
@@ -103,7 +103,7 @@ async def get_rating_stats(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.get_rating_stats(db, redis, startTime, endTime)
+    data = await feedback_service.get_rating_stats(db, redis, startTime, endTime)
     return success(data)
 
 
@@ -115,7 +115,7 @@ async def update_rating(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.update_rating(
+    await feedback_service.update_rating(
         db, redis, user.id, rating_id, body.model_dump(exclude_none=True)
     )
     return success()
@@ -128,7 +128,7 @@ async def hide_rating(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.hide_rating(db, rating_id)
+    await feedback_service.hide_rating(db, rating_id)
     return success()
 
 
@@ -140,7 +140,7 @@ async def reply_rating(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.reply_rating(db, rating_id, body.content, user.id)
+    await feedback_service.reply_rating(db, rating_id, body.content, user.id)
     return success()
 
 
@@ -154,7 +154,7 @@ async def create_feedback(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.create_feedback(
+    data = await feedback_service.create_feedback(
         db, redis, user.id, body.model_dump(exclude_none=True)
     )
     return success(data)
@@ -167,7 +167,7 @@ async def list_my_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.list_my_feedback(
+    data = await feedback_service.list_my_feedback(
         db, user.id, {"pageNum": pageNum, "pageSize": pageSize}
     )
     return success(data)
@@ -188,7 +188,7 @@ async def list_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.list_paged_feedback(
+    data = await feedback_service.list_paged_feedback(
         db,
         {
             "pageNum": pageNum,
@@ -214,7 +214,7 @@ async def get_feedback_stats(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.get_feedback_stats(db, redis, startTime, endTime)
+    data = await feedback_service.get_feedback_stats(db, redis, startTime, endTime)
     return success(data)
 
 
@@ -224,7 +224,7 @@ async def get_feedback_detail(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FeedbackService.get_feedback_detail(db, feedback_id, user.id, user.is_admin)
+    data = await feedback_service.get_feedback_detail(db, feedback_id, user.id, user.is_admin)
     return success(data)
 
 
@@ -235,7 +235,7 @@ async def supplement_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.supplement_feedback(
+    await feedback_service.supplement_feedback(
         db, user.id, feedback_id, body.model_dump(exclude_none=True)
     )
     return success()
@@ -249,7 +249,7 @@ async def assign_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.assign_feedback(db, feedback_id, body.assigneeId, user.id)
+    await feedback_service.assign_feedback(db, feedback_id, body.assigneeId, user.id)
     return success()
 
 
@@ -261,7 +261,7 @@ async def reply_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.reply_feedback(
+    await feedback_service.reply_feedback(
         db, feedback_id, body.model_dump(exclude_none=True), user.id
     )
     return success()
@@ -275,7 +275,7 @@ async def close_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.close_feedback(db, feedback_id, body.closeReason, user.id)
+    await feedback_service.close_feedback(db, feedback_id, body.closeReason, user.id)
     return success()
 
 
@@ -287,5 +287,5 @@ async def update_feedback_tags(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await FeedbackService.update_feedback_tags(db, feedback_id, tags)
+    await feedback_service.update_feedback_tags(db, feedback_id, tags)
     return success()

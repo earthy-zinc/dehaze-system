@@ -7,7 +7,7 @@ from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.api_key import ApiKeyCreate, ApiKeyResult
-from app.service.api_key_service import ApiKeyService
+from app.service.api_key_service import api_key_service
 
 router = APIRouter(prefix="/api/v1/auth/api-keys", tags=["认证中心"])
 
@@ -18,7 +18,7 @@ async def create_api_key(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await ApiKeyService.create_api_key(
+    result = await api_key_service.create_api_key(
         db,
         user.id,
         form.name,
@@ -36,7 +36,7 @@ async def list_api_keys(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await ApiKeyService.list_api_keys(db, user.id)
+    result = await api_key_service.list_api_keys(db, user.id)
     return success(result)
 
 
@@ -46,7 +46,7 @@ async def delete_api_key(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    deleted = await ApiKeyService.delete_api_key(db, user.id, key_id)
+    deleted = await api_key_service.delete_api_key(db, user.id, key_id)
     if not deleted:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "API Key 不存在")
     return success(msg="一切ok")

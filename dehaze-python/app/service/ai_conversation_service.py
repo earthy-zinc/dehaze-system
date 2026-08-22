@@ -80,9 +80,8 @@ async def _resume_stream(
 
 
 class AiConversationService:
-    @staticmethod
     async def _resolve_agent_anchor(
-        db: AsyncSession, agent_code: str | None
+        self, db: AsyncSession, agent_code: str | None
     ) -> tuple[str, int | None]:
         """解析会话锚定的 (agent_code, agent_version)。
 
@@ -99,9 +98,8 @@ class AiConversationService:
         published = await ai_agent_version_repository.get_latest_published(db, agent.id)
         return code, published.version_no if published else None
 
-    @staticmethod
-    async def create_conversation(db: AsyncSession, user_id: int, form) -> ConversationResult:
-        agent_code, agent_version = await AiConversationService._resolve_agent_anchor(
+    async def create_conversation(self, db: AsyncSession, user_id: int, form) -> ConversationResult:
+        agent_code, agent_version = await self._resolve_agent_anchor(
             db, form.agentCode
         )
         # 场景提示词：显式传入 systemPrompt 优先；否则按 scene 写默认模板。
@@ -122,8 +120,8 @@ class AiConversationService:
         conv = await ai_conversation_repository.create(db, conv)
         return ConversationResult.model_validate(conv)
 
-    @staticmethod
     async def list_conversations(
+        self,
         db: AsyncSession,
         user_id: int,
         page: int,
@@ -142,19 +140,18 @@ class AiConversationService:
                 user_id, keyword, status=status_filter, page=page, size=size
             )
             convs = await ai_conversation_repository.get_by_ids(db, user_id, conv_ids)
-            convs = AiConversationService._sort_conversations(convs)
+            convs = self._sort_conversations(convs)
             return PageResult(
-                list=[await AiConversationService._to_result(db, c) for c in convs], total=total
+                list=[await self._to_result(db, c) for c in convs], total=total
             )
         convs, total = await ai_conversation_repository.paginate_user_conversations(
             db, user_id, page, size, status=status_filter
         )
         return PageResult(
-            list=[await AiConversationService._to_result(db, c) for c in convs], total=total
+            list=[await self._to_result(db, c) for c in convs], total=total
         )
 
-    @staticmethod
-    def _sort_conversations(convs: list[SysAiConversation]) -> list[SysAiConversation]:
+    def _sort_conversations(self, convs: list[SysAiConversation]) -> list[SysAiConversation]:
         """置顶（pinned_at 倒序）优先，其余按最后消息时间倒序"""
         return sorted(
             convs,
@@ -166,8 +163,7 @@ class AiConversationService:
             ),
         )
 
-    @staticmethod
-    async def _to_result(db: AsyncSession, conv: SysAiConversation) -> ConversationResult:
+    async def _to_result(self, db: AsyncSession, conv: SysAiConversation) -> ConversationResult:
         """构建会话结果，补充未读数"""
         result = ConversationResult.model_validate(conv)
         if conv.last_read_message_id:
@@ -178,16 +174,14 @@ class AiConversationService:
             result.unread_count = conv.message_count or 0
         return result
 
-    @staticmethod
-    async def get_conversation(db: AsyncSession, conv_id: int, user_id: int) -> ConversationResult:
+    async def get_conversation(self, db: AsyncSession, conv_id: int, user_id: int) -> ConversationResult:
         conv = await ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
         return ConversationResult.model_validate(conv)
 
-    @staticmethod
     async def update_conversation(
-        db: AsyncSession, conv_id: int, user_id: int, form
+        self, db: AsyncSession, conv_id: int, user_id: int, form
     ) -> ConversationResult:
         conv = await ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
@@ -208,13 +202,13 @@ class AiConversationService:
         if "pinned" in data:
             if data["pinned"]:
                 if conv.pinned != 1:
-                    await AiConversationService._ensure_pin_limit(db, user_id)
+                    await self._ensure_pin_limit(db, user_id)
                 conv.pinned_at = datetime.now()
             else:
                 conv.pinned_at = None
         if "agentCode" in data:
             # 切换 Agent：重新锚定版本（下一条消息生效）
-            agent_code, agent_version = await AiConversationService._resolve_agent_anchor(
+            agent_code, agent_version = await self._resolve_agent_anchor(
                 db, data.get("agentCode")
             )
             conv.agent_code = agent_code
@@ -226,17 +220,15 @@ class AiConversationService:
         # 会话状态/标题变化触发 ES 文档幂等更新
         if "status" in data or "title" in data or "pinned" in data:
             await sync_conversation_to_es(conv.id)
-        return await AiConversationService._to_result(db, conv)
+        return await self._to_result(db, conv)
 
-    @staticmethod
-    async def _ensure_pin_limit(db: AsyncSession, user_id: int) -> None:
+    async def _ensure_pin_limit(self, db: AsyncSession, user_id: int) -> None:
         """校验当前用户置顶数量上限"""
         count = await ai_conversation_repository.count_active_pinned(db, user_id)
         if count >= PINNED_CONVERSATION_LIMIT:
             raise BusinessException(ResultCode.DATA_EXISTS, "置顶会话已达上限")
 
-    @staticmethod
-    async def _auto_generate_title(conversation_id: int, first_user_content: str) -> None:
+    async def _auto_generate_title(self, conversation_id: int, first_user_content: str) -> None:
         """异步用 LLM 生成标题，失败降级截取前 20 字"""
         title = ""
         try:
@@ -264,8 +256,7 @@ class AiConversationService:
                 db, conversation_id, title, title_source="auto"
             )
 
-    @staticmethod
-    async def delete_conversation(db: AsyncSession, conv_id: int, user_id: int) -> None:
+    async def delete_conversation(self, db: AsyncSession, conv_id: int, user_id: int) -> None:
         conv = await ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
@@ -273,8 +264,8 @@ class AiConversationService:
         # 软删同步 ES（deleted=1），全文检索默认过滤已删会话
         await sync_conversation_to_es(conv.id)
 
-    @staticmethod
     async def list_messages(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
@@ -287,8 +278,7 @@ class AiConversationService:
         msgs, total = await ai_message_repository.list_by_conversation(db, conv_id, page, size)
         return PageResult(list=[MessageResult.model_validate(m) for m in msgs], total=total)
 
-    @staticmethod
-    async def get_message(db: AsyncSession, msg_id: int, user_id: int) -> dict:
+    async def get_message(self, db: AsyncSession, msg_id: int, user_id: int) -> dict:
         msg = await ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
@@ -299,8 +289,8 @@ class AiConversationService:
         ]
         return result
 
-    @staticmethod
     async def get_branches(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
@@ -316,8 +306,8 @@ class AiConversationService:
         children = await ai_message_repository.get_children(db, conv_id, msg_id)
         return [MessageResult.model_validate(m) for m in children]
 
-    @staticmethod
     async def switch_branch(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
@@ -334,8 +324,7 @@ class AiConversationService:
         conv.current_branch_message_id = msg_id
         return ConversationResult.model_validate(conv)
 
-    @staticmethod
-    async def regenerate_message(db: AsyncSession, msg_id: int, user_id: int) -> StreamingResponse:
+    async def regenerate_message(self, db: AsyncSession, msg_id: int, user_id: int) -> StreamingResponse:
         """重新生成助手回复：基于原 assistant 的父 user 消息新建兄弟分支并触发推理（SSE 流式）"""
         msg = await ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg:
@@ -395,8 +384,7 @@ class AiConversationService:
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )
 
-    @staticmethod
-    async def stop_message(db: AsyncSession, msg_id: int, user_id: int) -> MessageResult:
+    async def stop_message(self, db: AsyncSession, msg_id: int, user_id: int) -> MessageResult:
         msg = await ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
@@ -409,8 +397,8 @@ class AiConversationService:
         msg.status = 4
         return MessageResult.model_validate(msg)
 
-    @staticmethod
     async def resume_message(
+        self,
         db: AsyncSession,
         msg_id: int,
         user_id: int,
@@ -453,8 +441,7 @@ class AiConversationService:
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )
 
-    @staticmethod
-    async def delete_message(db: AsyncSession, msg_id: int, user_id: int) -> None:
+    async def delete_message(self, db: AsyncSession, msg_id: int, user_id: int) -> None:
         """删除助手消息（软删除）；仅 assistant 消息可删，删除后不参与上下文"""
         msg = await ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg:
@@ -465,8 +452,8 @@ class AiConversationService:
 
     # ==================== 会话生命周期扩展 ====================
 
-    @staticmethod
     async def _get_owned_active(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
@@ -477,8 +464,8 @@ class AiConversationService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
         return conv
 
-    @staticmethod
     async def batch_operate(
+        self,
         db: AsyncSession,
         user_id: int,
         action: str,
@@ -492,7 +479,7 @@ class AiConversationService:
         try:
             count = 0
             for conv_id in ids:
-                conv = await AiConversationService._get_owned_active(db, conv_id, user_id)
+                conv = await self._get_owned_active(db, conv_id, user_id)
                 if action == "archive":
                     if conv.status != 1:
                         raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "仅活跃会话可归档")
@@ -516,8 +503,8 @@ class AiConversationService:
             await db.rollback()
             raise
 
-    @staticmethod
     async def restore_conversation(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
@@ -531,10 +518,10 @@ class AiConversationService:
         conv.deleted = 0
         conv.delete_time = None
         await sync_conversation_to_es(conv.id)
-        return await AiConversationService._to_result(db, conv)
+        return await self._to_result(db, conv)
 
-    @staticmethod
     async def list_trash(
+        self,
         db: AsyncSession,
         user_id: int,
         page: int,
@@ -546,60 +533,60 @@ class AiConversationService:
             db, user_id, page, size, window_start
         )
         return PageResult(
-            list=[await AiConversationService._to_result(db, c) for c in convs], total=total
+            list=[await self._to_result(db, c) for c in convs], total=total
         )
 
-    @staticmethod
     async def pin_conversation(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
     ) -> ConversationResult:
         """置顶会话（上限校验）"""
-        conv = await AiConversationService._get_owned_active(db, conv_id, user_id)
+        conv = await self._get_owned_active(db, conv_id, user_id)
         if conv.pinned != 1:
-            await AiConversationService._ensure_pin_limit(db, user_id)
+            await self._ensure_pin_limit(db, user_id)
         await ai_conversation_repository.set_pinned(db, conv_id, 1, datetime.now())
         conv.pinned = 1
         conv.pinned_at = datetime.now()
-        return await AiConversationService._to_result(db, conv)
+        return await self._to_result(db, conv)
 
-    @staticmethod
     async def unpin_conversation(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
     ) -> ConversationResult:
         """取消置顶"""
-        conv = await AiConversationService._get_owned_active(db, conv_id, user_id)
+        conv = await self._get_owned_active(db, conv_id, user_id)
         await ai_conversation_repository.set_pinned(db, conv_id, 0, None)
         conv.pinned = 0
         conv.pinned_at = None
-        return await AiConversationService._to_result(db, conv)
+        return await self._to_result(db, conv)
 
-    @staticmethod
     async def mark_read(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
     ) -> ConversationResult:
         """标记已读：last_read_message_id 置为会话最后一条消息 ID"""
-        conv = await AiConversationService._get_owned_active(db, conv_id, user_id)
+        conv = await self._get_owned_active(db, conv_id, user_id)
         last_msg_id = await ai_message_repository.get_last_message_id(db, conv_id)
         if last_msg_id is not None:
             await ai_conversation_repository.mark_read(db, conv_id, last_msg_id)
             conv.last_read_message_id = last_msg_id
-        return await AiConversationService._to_result(db, conv)
+        return await self._to_result(db, conv)
 
-    @staticmethod
     async def export_conversation(
+        self,
         db: AsyncSession,
         conv_id: int,
         user_id: int,
         fmt: str = "markdown",
     ) -> StreamingResponse:
         """导出会话：沿当前激活分支回溯全部消息，过滤推理/工具调用，仅导 user/assistant content。"""
-        conv = await AiConversationService._get_owned_active(db, conv_id, user_id)
+        conv = await self._get_owned_active(db, conv_id, user_id)
         tail_msg_id = conv.current_branch_message_id
         messages: list[SysAiMessage] = []
         if tail_msg_id:
@@ -653,3 +640,6 @@ class AiConversationService:
             media_type=media_type,
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
+
+
+ai_conversation_service = AiConversationService()

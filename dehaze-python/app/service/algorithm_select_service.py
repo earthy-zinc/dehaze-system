@@ -21,8 +21,7 @@ logger = logging.getLogger(__name__)
 class AlgorithmSelectService:
     """算法选择服务"""
 
-    @staticmethod
-    async def get_algorithm_tree(db: AsyncSession) -> list[dict[str, Any]]:
+    async def get_algorithm_tree(self, db: AsyncSession) -> list[dict[str, Any]]:
         """获取算法选择树（仅已发布状态）"""
         algorithms = await algorithm_repository.list_published(db, order_by_tree=True)
 
@@ -77,10 +76,9 @@ class AlgorithmSelectService:
 
         return clean_children(tree)
 
-    @staticmethod
-    async def get_algorithm_detail(db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
+    async def get_algorithm_detail(self, db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
         """获取算法详情（含评分、使用次数）"""
-        algo = await AlgorithmSelectService._require_published(db, algorithm_id)
+        algo = await self._require_published(db, algorithm_id)
 
         # 计算平均评分
         avg_rating = await rating_repository.get_avg_rating(db, algorithm_id)
@@ -101,8 +99,8 @@ class AlgorithmSelectService:
             "usageCount": usage_count,
         }
 
-    @staticmethod
     async def test_algorithm(
+        self,
         db: AsyncSession,
         algorithm_id: int,
         image_url: str,
@@ -110,7 +108,7 @@ class AlgorithmSelectService:
     ) -> dict[str, Any]:
         """上传图片测试算法效果（同步等待结果，超时返回 B0100）"""
         # 校验算法存在且已发布
-        await AlgorithmSelectService._require_published(db, algorithm_id)
+        await self._require_published(db, algorithm_id)
 
         # 校验图片格式（仅允许常见图片格式）
         image_url_lower = image_url.lower()
@@ -155,8 +153,8 @@ class AlgorithmSelectService:
             "processTime": pred_result.get("time", 0),
         }
 
-    @staticmethod
     async def search_algorithms(
+        self,
         db: AsyncSession,
         keyword: str | None = None,
     ) -> list[dict[str, Any]]:
@@ -178,8 +176,8 @@ class AlgorithmSelectService:
 
         return search_results
 
-    @staticmethod
     async def compare(
+        self,
         db: AsyncSession,
         algorithm_ids: list[int],
     ) -> list[dict[str, Any]]:
@@ -216,8 +214,8 @@ class AlgorithmSelectService:
 
         return result_list
 
-    @staticmethod
     async def recommend(
+        self,
         db: AsyncSession,
         *,
         keyword: str | None = None,
@@ -240,7 +238,7 @@ class AlgorithmSelectService:
 
         sample_algo: SysAlgorithm | None = None
         if sample_algorithm_id is not None:
-            sample_algo = await AlgorithmSelectService._require_published(
+            sample_algo = await self._require_published(
                 db, sample_algorithm_id
             )
 
@@ -311,8 +309,7 @@ class AlgorithmSelectService:
 
         return {"total": len(items), "items": items}
 
-    @staticmethod
-    async def _require_published(db: AsyncSession, algorithm_id: int) -> SysAlgorithm:
+    async def _require_published(self, db: AsyncSession, algorithm_id: int) -> SysAlgorithm:
         """取算法并要求已发布，不存在/未发布抛 A0401（详情与测试共用）"""
         algo = await algorithm_repository.get_by_id_include_unpublished(db, algorithm_id)
         if not algo:
@@ -320,3 +317,7 @@ class AlgorithmSelectService:
         if algo.status != AlgorithmStatus.PUBLISHED:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法未发布")
         return algo
+
+
+# 算法选择服务单例
+algorithm_select_service = AlgorithmSelectService()

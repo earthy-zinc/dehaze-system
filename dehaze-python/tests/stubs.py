@@ -340,7 +340,7 @@ def install_reasoning_chain_mocks(
     interrupt_tid=None,
 ):
     from app.service.ai.deep_agent_builder import DeepAgentBuilder
-    from app.service.ai.reasoning_service import ReasoningService
+    from app.service.ai.reasoning_service import reasoning_service
 
     recorder = {
         "ctx_calls": 0,
@@ -370,13 +370,13 @@ def install_reasoning_chain_mocks(
         mems = injected_list if injected_list is not None else [{"memory_id": 99, "source": "preference"}]
         return [], "", mems
 
-    async def _load_agent_anchor(self, db, conv):
+    async def _load_agent_anchor(db, conv):
         return "agent_a", "1"
 
-    async def _load_snapshot(self, db, redis, agent_id, version_no):
+    async def _load_snapshot(db, redis, agent_id, version_no):
         return snapshot if snapshot is not None else {"reasoning_mode": "react", "config": {}}
 
-    async def _build_graph(self, db, redis, agent_id, version_no, model_id=None):
+    async def _build_graph(db, redis, agent_id, version_no, model_id=None):
         return graph_obj
 
     async def _resolve(snapshot, messages, model_id):
@@ -385,14 +385,14 @@ def install_reasoning_chain_mocks(
     async def _get_redis():
         return await fake_redis()
 
-    async def _finalize(self, msg_id, result, model_id, used_memory_ids=None):
+    async def _finalize(msg_id, result, model_id, used_memory_ids=None):
         recorder["finalized"].append((msg_id, result, model_id, used_memory_ids))
         return 0
 
-    async def _push_end(self, stream_session_id, result, credits=0):
+    async def _push_end(stream_session_id, result, credits=0):
         recorder["pushed_end"].append(credits)
 
-    def _suggest(self, conv_id, msg_id, result, user_id, stream_session_id):
+    def _suggest(conv_id, msg_id, result, user_id, stream_session_id):
         recorder["suggested"] += 1
 
     def _step_summaries(msg_id, model_id):
@@ -434,13 +434,13 @@ def install_reasoning_chain_mocks(
         handler = StubInterruptHandler(interrupt)
     monkeypatch.setattr("app.service.ai.reasoning_service.interrupt_handler", handler)
     monkeypatch.setattr("app.service.ai.reasoning_service.sse_emitter_manager", _Emitter())
-    monkeypatch.setattr(ReasoningService, "_load_agent_anchor", _load_agent_anchor)
-    monkeypatch.setattr(ReasoningService, "_load_snapshot", _load_snapshot)
-    monkeypatch.setattr(ReasoningService, "_build_graph", _build_graph)
+    monkeypatch.setattr(reasoning_service, "_load_agent_anchor", _load_agent_anchor)
+    monkeypatch.setattr(reasoning_service, "_load_snapshot", _load_snapshot)
+    monkeypatch.setattr(reasoning_service, "_build_graph", _build_graph)
     monkeypatch.setattr(DeepAgentBuilder, "resolve_reasoning_mode", _resolve)
-    monkeypatch.setattr(ReasoningService, "_finalize_message", _finalize)
-    monkeypatch.setattr(ReasoningService, "_push_end", _push_end)
-    monkeypatch.setattr(ReasoningService, "_trigger_suggestions", _suggest)
+    monkeypatch.setattr(reasoning_service, "_finalize_message", _finalize)
+    monkeypatch.setattr(reasoning_service, "_push_end", _push_end)
+    monkeypatch.setattr(reasoning_service, "_trigger_suggestions", _suggest)
     monkeypatch.setattr("app.service.ai.reasoning_service.schedule_step_summaries", _step_summaries)
     monkeypatch.setattr("app.service.ai.reasoning_service._schedule_conversation_sync", _sync)
-    return ReasoningService(), recorder
+    return reasoning_service, recorder

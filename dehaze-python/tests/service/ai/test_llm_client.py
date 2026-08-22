@@ -104,9 +104,9 @@ class _Services:
 
 
 def _patch_cross_services(get_call_routes, usable_keys=None):
-    from app.service.ai.provider_health_service import ProviderHealthService
-    from app.service.ai_model_service import AiModelService
-    from app.service.ai_provider_key_service import AiProviderKeyService
+    from app.service.ai.provider_health_service import provider_health_service
+    from app.service.ai_model_service import ai_model_service
+    from app.service.ai_provider_key_service import ai_provider_key_service
 
     mocks = {
         "get_call_routes": AsyncMock(return_value=get_call_routes),
@@ -118,18 +118,18 @@ def _patch_cross_services(get_call_routes, usable_keys=None):
     }
     patches = {
         "get_call_routes": patch.object(
-            AiModelService, "get_call_routes", new=mocks["get_call_routes"]
+            ai_model_service, "get_call_routes", new=mocks["get_call_routes"]
         ),
         "mark_call_failed": patch.object(
-            AiProviderKeyService, "mark_call_failed", new=mocks["mark_call_failed"]
+            ai_provider_key_service, "mark_call_failed", new=mocks["mark_call_failed"]
         ),
         "mark_call_success": patch.object(
-            AiProviderKeyService, "mark_call_success", new=mocks["mark_call_success"]
+            ai_provider_key_service, "mark_call_success", new=mocks["mark_call_success"]
         ),
-        "get_status": patch.object(ProviderHealthService, "get_status", new=mocks["get_status"]),
-        "record_call": patch.object(ProviderHealthService, "record_call", new=mocks["record_call"]),
+        "get_status": patch.object(provider_health_service, "get_status", new=mocks["get_status"]),
+        "record_call": patch.object(provider_health_service, "record_call", new=mocks["record_call"]),
         "list_usable_keys": patch.object(
-            AiProviderKeyService, "list_usable_keys", new=mocks["list_usable_keys"]
+            ai_provider_key_service, "list_usable_keys", new=mocks["list_usable_keys"]
         ),
     }
     for p in patches.values():

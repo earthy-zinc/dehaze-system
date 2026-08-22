@@ -18,7 +18,7 @@ from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.voice_asr import StreamAsrSessionForm
-from app.service.voice.asr_service import AsrService
+from app.service.voice.asr_service import asr_service
 
 router = APIRouter(
     prefix="/api/v1/voice/asr",
@@ -42,7 +42,7 @@ async def create_stream_session(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    session_id = await AsrService.create_stream_session(redis, db, user.id, body.model)
+    session_id = await asr_service.create_stream_session(redis, db, user.id, body.model)
     return success({"sessionId": session_id, "wsUrl": _build_ws_url(request, session_id)})
 
 
@@ -52,7 +52,7 @@ async def get_asr_result(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AsrService.get_result(redis, session_id, user.id)
+    result = await asr_service.get_result(redis, session_id, user.id)
     return success(result)
 
 
@@ -65,5 +65,5 @@ async def offline_asr(
     user: UserContext = Depends(get_current_user),
 ):
     audio = await file.read()
-    result = await AsrService.offline_asr(redis, db, user.id, audio, model)
+    result = await asr_service.offline_asr(redis, db, user.id, audio, model)
     return success(result)

@@ -12,7 +12,7 @@ from app.models.schema.order import (
     RefundApplyForm,
     RefundAuditForm,
 )
-from app.service.order_service import OrderService
+from app.service.order_service import order_service
 
 router = APIRouter(
     prefix="/api/v1/orders",
@@ -27,7 +27,7 @@ async def create_order(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await OrderService.create(db, body.model_dump(exclude_none=True), user.id)
+    data = await order_service.create(db, body.model_dump(exclude_none=True), user.id)
     return success(data)
 
 
@@ -39,7 +39,7 @@ async def list_my_orders(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await OrderService.list_my(
+    data = await order_service.list_my(
         db,
         user.id,
         {"pageNum": pageNum, "pageSize": pageSize, "status": status},
@@ -63,7 +63,7 @@ async def get_order_page(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await OrderService.list_paged(
+    data = await order_service.list_paged(
         db,
         {
             "pageNum": pageNum,
@@ -95,7 +95,7 @@ async def list_refunds(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await OrderService.list_refunds(
+    data = await order_service.list_refunds(
         db,
         {
             "pageNum": pageNum,
@@ -118,7 +118,7 @@ async def approve_refund(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await OrderService.approve_refund(db, refund_id, body.model_dump(), user.id)
+    await order_service.approve_refund(db, refund_id, body.model_dump(), user.id)
     return success()
 
 
@@ -130,7 +130,7 @@ async def reject_refund(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await OrderService.reject_refund(db, refund_id, body.model_dump(), user.id)
+    await order_service.reject_refund(db, refund_id, body.model_dump(), user.id)
     return success()
 
 
@@ -142,7 +142,7 @@ async def get_order_stats(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await OrderService.get_stats(db, startTime, endTime)
+    data = await order_service.get_stats(db, startTime, endTime)
     return success(data)
 
 
@@ -152,7 +152,7 @@ async def update_auto_renew_config(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await OrderService.update_auto_renew_config(db, body.model_dump(), user.id)
+    await order_service.update_auto_renew_config(db, body.model_dump(), user.id)
     return success()
 
 
@@ -162,7 +162,7 @@ async def get_auto_renew_config(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await OrderService.get_auto_renew_config(db, packageId, user.id)
+    data = await order_service.get_auto_renew_config(db, packageId, user.id)
     return success(data)
 
 
@@ -172,7 +172,7 @@ async def get_order_detail(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await OrderService.get_detail(db, order_no, user.id if not user.is_admin else None)
+    data = await order_service.get_detail(db, order_no, user.id if not user.is_admin else None)
     return success(data)
 
 
@@ -183,7 +183,7 @@ async def cancel_order(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await OrderService.cancel(db, order_no, reason, user.id)
+    await order_service.cancel(db, order_no, reason, user.id)
     return success()
 
 
@@ -194,7 +194,7 @@ async def pay_order(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await OrderService.pay(db, order_no, body.model_dump(), user.id)
+    data = await order_service.pay(db, order_no, body.model_dump(), user.id)
     return success(data)
 
 
@@ -205,5 +205,5 @@ async def apply_refund(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await OrderService.apply_refund(db, order_no, body.model_dump(), user.id)
+    await order_service.apply_refund(db, order_no, body.model_dump(), user.id)
     return success()

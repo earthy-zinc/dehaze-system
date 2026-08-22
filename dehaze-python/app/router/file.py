@@ -13,7 +13,7 @@ from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.schema.file import FilePageVO, FileUploadResultVO, FileVO
-from app.service.file_service import FileService
+from app.service.file_service import file_service
 from app.service.storage.factory import get_storage_by_name
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ async def upload_file(
         raise BusinessException(ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)")
 
     # 上传文件
-    file_info = await FileService.upload_file(
+    file_info = await file_service.upload_file(
         db=db,
         filename=file.filename,
         content=content,
@@ -104,7 +104,7 @@ async def check_file(
     # MD5 格式校验：32 位十六进制（T-FM-034/035：无效 MD5 返回 B0404"MD5格式无效"）
     if not md5 or not _MD5_PATTERN.fullmatch(md5):
         raise BusinessException(ResultCode.FILE_MD5_INVALID)
-    file_info = await FileService.get_file_by_md5(db, md5)
+    file_info = await file_service.get_file_by_md5(db, md5)
     if not file_info:
         return success(data=None)
     return success(
@@ -135,7 +135,7 @@ async def get_file_page(
     keywords: str | None = Query(default=None, description="搜索关键词"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[FilePageVO]:
-    items, total = await FileService.get_file_page(db, pageNum, pageSize, keywords)
+    items, total = await file_service.get_file_page(db, pageNum, pageSize, keywords)
 
     file_list = [
         FileVO(
@@ -170,7 +170,7 @@ async def download_file(
         raise HTTPException(status_code=400, detail="无效的文件路径")
 
     # 获取文件信息
-    file_info = await FileService.get_file_by_object_name(db, object_name)
+    file_info = await file_service.get_file_by_object_name(db, object_name)
     if not file_info:
         raise HTTPException(status_code=404, detail=ResultCode.FILE_NOT_FOUND.msg)
 
@@ -186,7 +186,7 @@ async def download_file(
     headers = {"Content-Disposition": content_disposition}
 
     return StreamingResponse(
-        FileService.download_file_stream(object_name, storage=file_info.storage),
+        file_service.download_file_stream(object_name, storage=file_info.storage),
         media_type="application/octet-stream",
         headers=headers,
     )
@@ -202,7 +202,7 @@ async def delete_file(
     fileId: int = Query(..., description="文件ID"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[None]:
-    await FileService.delete_file_with_storage(db, fileId)
+    await file_service.delete_file_with_storage(db, fileId)
     return success(msg="文件删除成功")
 
 
@@ -216,7 +216,7 @@ async def get_file_info(
     file_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> Result[FileVO]:
-    file_info = await FileService.get_file_by_id(db, file_id)
+    file_info = await file_service.get_file_by_id(db, file_id)
 
     if not file_info:
         # T-FM-044：文件不存在返回 B0401"文件不存在"（对齐文档与 Java 端行为）

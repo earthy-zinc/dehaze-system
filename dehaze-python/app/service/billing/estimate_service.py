@@ -19,8 +19,7 @@ CTX_AVG_TTL = 600  # 10 分钟
 class EstimateService:
     """积分预估（单例）"""
 
-    @staticmethod
-    async def estimate_credits(
+    async def estimate_credits(self, 
         db,
         user_id: int,
         conversation_id: int,
@@ -34,7 +33,7 @@ class EstimateService:
         output_rate = rates["output_rate"]
 
         # 历史上下文 Token：Redis 均值 × 0.8
-        ctx_avg = await EstimateService._read_ctx_avg(redis, conversation_id)
+        ctx_avg = await self._read_ctx_avg(redis, conversation_id)
         context_tokens = ctx_avg * 0.8
 
         # 当前消息 Token × 保守系数
@@ -53,11 +52,10 @@ class EstimateService:
 
         estimated = int(input_estimate * input_rate + output_estimate * output_rate)
 
-        await EstimateService._update_ctx_avg(redis, conversation_id, ctx_avg, int(input_estimate))
+        await self._update_ctx_avg(redis, conversation_id, ctx_avg, int(input_estimate))
         return estimated
 
-    @staticmethod
-    async def estimate_step_credits(
+    async def estimate_step_credits(self, 
         db,
         model_id: str,
         messages: list[dict],
@@ -68,8 +66,7 @@ class EstimateService:
         output_estimate = rates["max_output_tokens"] * settings.AI_BILLING_ESTIMATE_OUTPUT_FACTOR
         return int(ctx_tokens * rates["input_rate"] + output_estimate * rates["output_rate"])
 
-    @staticmethod
-    async def _read_ctx_avg(redis, conversation_id: int) -> int:
+    async def _read_ctx_avg(self, redis, conversation_id: int) -> int:
         """读取会话历史上下文 Token 均值，Redis 不可用或缺省时返回 0"""
         if not redis:
             return 0
@@ -80,8 +77,7 @@ class EstimateService:
             # 上下文均值读取失败/损坏按无历史处理（尽力而为估算）
             return 0
 
-    @staticmethod
-    async def _update_ctx_avg(
+    async def _update_ctx_avg(self, 
         redis,
         conversation_id: int,
         old_avg: int,
@@ -102,3 +98,6 @@ class EstimateService:
             # 上下文均值写入失败不影响本次预估（尽力而为）
             pass
 
+
+
+estimate_service = EstimateService()

@@ -30,7 +30,7 @@ from app.service.ai.a2a_protocol import (
 )
 from app.service.ai.a2a_server import a2a_server
 from app.service.ai.deep_agent_builder import DeepAgentBuilder
-from app.service.ai_agent_service import AgentService
+from app.service.ai_agent_service import agent_service
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,7 @@ async def _stream_message(
 
     try:
         await a2a_server._get_exposed_agent(db, agent_id)
-        snapshot = await AgentService().get_published_snapshot(db, redis, agent_id, None)
+        snapshot = await agent_service.get_published_snapshot(db, redis, agent_id, None)
         if not snapshot:
             raise BusinessException("Agent 无已发布版本")
 

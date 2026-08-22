@@ -166,7 +166,7 @@ async def test_resolve_conversation_creates_new(monkeypatch):
         created["title"] = form.title
         return SimpleNamespace(id=100)
 
-    monkeypatch.setattr(m.AiConversationService, "create_conversation", _create)
+    monkeypatch.setattr(m.ai_conversation_service, "create_conversation", _create)
     first_user_msg = "请分析华东区与华南区季度销售数据，并结合库存周转率给出下季度备货建议。" * 2
     conv_id = await m.CompatibleApiService._resolve_conversation(
         None, 7, None, "claude-3-5", "全局系统提示", first_user_msg
@@ -187,7 +187,7 @@ async def test_resolve_conversation_reuses_existing(monkeypatch):
 
     monkeypatch.setattr(m.ai_conversation_repository, "get_by_id_and_user", _get)
     monkeypatch.setattr(
-        m.AiConversationService, "create_conversation", lambda *a, **k: created.append(a)
+        m.ai_conversation_service, "create_conversation", lambda *a, **k: created.append(a)
     )
     conv_id = await m.CompatibleApiService._resolve_conversation(None, 7, "42", "gpt-4", None, "hi")
     assert conv_id == 42
@@ -216,7 +216,7 @@ def _db(monkeypatch, api_key):
 
 
 async def test_model_not_available_maps_403_openai(monkeypatch):
-    monkeypatch.setattr(m.CompatibleGovernanceService, "precheck", _pass)
+    monkeypatch.setattr(m.compatible_governance_service, "precheck", _pass)
 
     async def _handler(body, audit, api_key):
         raise BusinessException(ResultCode.AI_MODEL_NOT_AVAILABLE, "模型不可用")
@@ -243,7 +243,7 @@ async def test_list_models_openai_whitelist_chain(monkeypatch):
         vip_user_id["uid"] = user_id
         return [model_a, SimpleNamespace(model_id="claude-3", create_time=None, provider_id=2)]
 
-    monkeypatch.setattr(m.AiModelService, "list_enabled_models", _vip_list)
+    monkeypatch.setattr(m.ai_model_service, "list_enabled_models", _vip_list)
     result = await m.CompatibleApiService.list_models_openai(object(), object(), 9, api_key)
     assert [d["id"] for d in result["data"]] == ["gpt-4"]
     assert vip_user_id["uid"] == 9

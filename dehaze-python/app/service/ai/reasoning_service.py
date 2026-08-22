@@ -85,9 +85,9 @@ class ReasoningService:
 
     async def _load_snapshot(self, db, redis, agent_id: int, version_no: int | None) -> dict:
         """按锚定版本加载已发布快照（不含 checkpointer，供范式路由等只读用途）。"""
-        from app.service.ai_agent_service import AgentService
+        from app.service.ai_agent_service import agent_service
 
-        return await AgentService().get_published_snapshot(db, redis, agent_id, version_no)
+        return await agent_service.get_published_snapshot(db, redis, agent_id, version_no)
 
     async def _build_graph(
         self, db, redis, agent_id: int, version_no: int | None, model_id: str | None = None
@@ -101,9 +101,9 @@ class ReasoningService:
         if key in self._graphs:
             return self._graphs[key]
 
-        from app.service.ai_agent_service import AgentService
+        from app.service.ai_agent_service import agent_service
 
-        snapshot = await AgentService().get_published_snapshot(db, redis, agent_id, version_no)
+        snapshot = await agent_service.get_published_snapshot(db, redis, agent_id, version_no)
         if model_id:
             # 会话模型覆盖 Agent 默认模型：snapshot 仅"模型"字段被覆盖，
             # 其余（提示词/工具/护栏）仍随 Agent 版本快照保持不可变。
@@ -112,7 +112,7 @@ class ReasoningService:
         if snapshot.get("is_team"):
             rels = snapshot.get("subagents") or []
             member_snapshots = [
-                await AgentService().get_published_snapshot(db, redis, rel.get("agent_id"))
+                await agent_service.get_published_snapshot(db, redis, rel.get("agent_id"))
                 for rel in rels
                 if not rel.get("endpoint_id")
             ]

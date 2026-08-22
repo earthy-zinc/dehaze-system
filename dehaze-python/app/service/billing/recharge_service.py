@@ -11,8 +11,7 @@ from app.service.billing.balance_service import balance_service
 class RechargeService:
     """充值与赠送"""
 
-    @staticmethod
-    async def recharge(
+    async def recharge(self, 
         db: AsyncSession,
         user_id: int,
         amount: int,
@@ -36,10 +35,9 @@ class RechargeService:
             operator_id=operator_id,
         )
 
-    @staticmethod
-    async def grant_trial_credits(db: AsyncSession, user_id: int) -> Decimal:
+    async def grant_trial_credits(self, db: AsyncSession, user_id: int) -> Decimal:
         """新用户注册赠送试用积分"""
-        return await RechargeService.recharge(
+        return await self.recharge(
             db,
             user_id,
             settings.AI_BILLING_TRIAL_CREDITS,
@@ -47,17 +45,19 @@ class RechargeService:
             reason="新用户注册试用赠送",
         )
 
-    @staticmethod
-    async def grant_vip_monthly_gift(
+    async def grant_vip_monthly_gift(self, 
         db: AsyncSession,
         user_id: int,
         amount: int,
     ) -> Decimal:
         """VIP 按月赠送积分"""
-        return await RechargeService.recharge(
+        return await self.recharge(
             db,
             user_id,
             amount,
             source="vip_gift",
             reason="VIP 按月赠送",
         )
+
+
+recharge_service = RechargeService()

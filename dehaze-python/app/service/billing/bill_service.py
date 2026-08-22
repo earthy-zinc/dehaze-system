@@ -46,8 +46,7 @@ def _is_empty_bill(bill: BillResult, month: str) -> bool:
 class BillService:
     """月结账单"""
 
-    @staticmethod
-    async def generate_monthly_bill(db: AsyncSession, user_id: int, month: str) -> BillResult:
+    async def generate_monthly_bill(self, db: AsyncSession, user_id: int, month: str) -> BillResult:
         """生成月结账单并缓存到 Redis（幂等，可重新生成）"""
         redis = await get_redis_client()
         month_start, month_end = _month_bounds(month)
@@ -92,8 +91,7 @@ class BillService:
         )
         return bill
 
-    @staticmethod
-    async def get_bill(db: AsyncSession, user_id: int, month: str) -> BillResult:
+    async def get_bill(self, db: AsyncSession, user_id: int, month: str) -> BillResult:
         """查询月结账单（Redis 优先，未命中重新生成）
 
         非当前月份且该月无任何消费/充值/退款记录时视为账单不存在。
@@ -109,10 +107,13 @@ class BillService:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "账单不存在")
             return bill
 
-        bill = await BillService.generate_monthly_bill(db, user_id, month)
+        bill = await self.generate_monthly_bill(db, user_id, month)
         # 非当前月份且无任何消费/充值/退款记录：视为账单不存在。
         # 空账期不入缓存，否则后续查询命中全 0 缓存会错误地返回成功而非 A0401。
         if _is_empty_bill(bill, month):
             await cache.delete(cache_key)
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "账单不存在")
         return bill
+
+
+bill_service = BillService()

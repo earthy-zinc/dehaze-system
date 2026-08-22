@@ -30,8 +30,7 @@ _ARREARS_KEY = "ai:arrears:{user_id}"
 class BalanceService:
     """余额账户管理：Redis 原子 + MySQL 乐观锁 CAS"""
 
-    @staticmethod
-    async def _increase_cas(db: AsyncSession, user_id: int, amount: Decimal) -> None:
+    async def _increase_cas(self, db: AsyncSession, user_id: int, amount: Decimal) -> None:
         """余额增加落库：credits_balance += amount，乐观锁 CAS 失败重试 3 次"""
         for _ in range(_CAS_RETRY):
             current = await user_repository.get_credits_balance_and_version(db, user_id)
@@ -42,8 +41,7 @@ class BalanceService:
                 return
         raise RuntimeError(f"余额增加落库失败（CAS 重试耗尽）: user_id={user_id}")
 
-    @staticmethod
-    async def _deduct_cas(db: AsyncSession, user_id: int, amount: Decimal) -> None:
+    async def _deduct_cas(self, db: AsyncSession, user_id: int, amount: Decimal) -> None:
         """余额扣减落库：credits_balance -= amount，乐观锁 CAS 失败重试 3 次"""
         for _ in range(_CAS_RETRY):
             current = await user_repository.get_credits_balance_and_version(db, user_id)
@@ -54,8 +52,7 @@ class BalanceService:
                 return
         raise RuntimeError(f"余额扣减落库失败（CAS 重试耗尽）: user_id={user_id}")
 
-    @staticmethod
-    async def get_balance(db: AsyncSession, user_id: int) -> Decimal:
+    async def get_balance(self, db: AsyncSession, user_id: int) -> Decimal:
         """查询余额：Redis 优先，未命中查 MySQL 并回填"""
         redis = await get_redis_client()
         val = await redis.get(_BALANCE_KEY.format(user_id=user_id))
@@ -66,14 +63,12 @@ class BalanceService:
         await redis.setex(_BALANCE_KEY.format(user_id=user_id), _BALANCE_TTL, str(balance))
         return balance
 
-    @staticmethod
-    async def check_balance(db: AsyncSession, user_id: int, estimated_credits: int) -> bool:
+    async def check_balance(self, db: AsyncSession, user_id: int, estimated_credits: int) -> bool:
         """余额校验：余额 >= 预估积分"""
-        balance = await BalanceService.get_balance(db, user_id)
+        balance = await self.get_balance(db, user_id)
         return balance >= Decimal(estimated_credits)
 
-    @staticmethod
-    async def pre_deduct(db: AsyncSession, user_id: int, credits: int) -> bool:
+    async def pre_deduct(self, db: AsyncSession, user_id: int, credits: int) -> bool:
         """余额预扣：Redis DECRBY，返回负数则回滚 INCRBY
 
         Returns:
@@ -81,22 +76,20 @@ class BalanceService:
         """
         redis = await get_redis_client()
         # 确保 Redis 已缓存余额（TTL 过期后首次预扣需要从 MySQL 回填）
-        await BalanceService.get_balance(db, user_id)
+        await self.get_balance(db, user_id)
         balance = await redis.decrby(_BALANCE_KEY.format(user_id=user_id), credits)
         if balance < 0:
             await redis.incrby(_BALANCE_KEY.format(user_id=user_id), credits)
             return False
         return True
 
-    @staticmethod
-    async def refund(db: AsyncSession, user_id: int, credits: int) -> None:
+    async def refund(self, db: AsyncSession, user_id: int, credits: int) -> None:
         """退还余额（预扣与实际差额，多扣场景）"""
         redis = await get_redis_client()
         await redis.incrby(_BALANCE_KEY.format(user_id=user_id), credits)
-        await BalanceService._increase_cas(db, user_id, Decimal(credits))
+        await self._increase_cas(db, user_id, Decimal(credits))
 
-    @staticmethod
-    async def deduct(db: AsyncSession, user_id: int, credits: int) -> None:
+    async def deduct(self, db: AsyncSession, user_id: int, credits: int) -> None:
         """实扣减（少扣场景额外扣减），余额不足扣至 0 并标记欠费"""
         redis = await get_redis_client()
         balance = await redis.decrby(_BALANCE_KEY.format(user_id=user_id), credits)
@@ -105,12 +98,11 @@ class BalanceService:
             overdrawn = -balance
             await redis.set(_BALANCE_KEY.format(user_id=user_id), 0)
             await redis.set(_ARREARS_KEY.format(user_id=user_id), 1)
-            await BalanceService._deduct_cas(db, user_id, Decimal(credits - overdrawn))
+            await self._deduct_cas(db, user_id, Decimal(credits - overdrawn))
         else:
-            await BalanceService._deduct_cas(db, user_id, Decimal(credits))
+            await self._deduct_cas(db, user_id, Decimal(credits))
 
-    @staticmethod
-    async def increase(
+    async def increase(self, 
         db: AsyncSession,
         user_id: int,
         amount: int,
@@ -132,11 +124,11 @@ class BalanceService:
 
         redis = await get_redis_client()
         await redis.incrby(_BALANCE_KEY.format(user_id=user_id), amount_int)
-        await BalanceService._increase_cas(db, user_id, amount_dec)
+        await self._increase_cas(db, user_id, amount_dec)
         await redis.delete(_ARREARS_KEY.format(user_id=user_id))
         from app.repository.ai_credit_log_repository import ai_credit_log_repository
 
-        balance = await BalanceService.get_balance(db, user_id)
+        balance = await self.get_balance(db, user_id)
         await ai_credit_log_repository.create_log(
             db,
             user_id=user_id,
@@ -149,8 +141,7 @@ class BalanceService:
         )
         return balance
 
-    @staticmethod
-    async def is_arrears(user_id: int) -> bool:
+    async def is_arrears(self, user_id: int) -> bool:
         """检查欠费状态：Redis GET ai:arrears:{user_id}"""
         redis = await get_redis_client()
         return await redis.get(_ARREARS_KEY.format(user_id=user_id)) is not None

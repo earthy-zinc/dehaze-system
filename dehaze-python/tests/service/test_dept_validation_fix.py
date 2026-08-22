@@ -3,7 +3,7 @@ import pytest
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.service import dept_service as ds
-from app.service.dept_service import DeptService
+from app.service.dept_service import dept_service
 
 
 def _dept(**overrides):
@@ -70,7 +70,7 @@ def dept_env(monkeypatch):
     monkeypatch.setattr(ds.dept_repository, "get_by_ids", _get_ids)
     monkeypatch.setattr(ds.dept_repository, "soft_delete_by_ids", _soft)
     monkeypatch.setattr(ds.user_repository, "count_users_by_depts", _users)
-    monkeypatch.setattr(DeptService, "_clear_cache", _noop_clear)
+    monkeypatch.setattr(dept_service, "_clear_cache", _noop_clear)
     return stub
 
 
@@ -78,7 +78,7 @@ async def test_create_dept_exceeds_5_levels_rejected(dept_env):
     dept_env.get_by_id = _dept(id=9, name="父", tree_path="0,1,2,3,4")
     dept_env.tree_path = "0,1,2,3,4,9"
     with pytest.raises(BusinessException) as ei:
-        await DeptService.create_dept(_FakeDB(), None, {"name": "子", "parentId": 9})
+        await dept_service.create_dept(_FakeDB(), None, {"name": "子", "parentId": 9})
     assert ei.value.code == ResultCode.DATA_BIND_EXISTS
     assert "部门层级不能超过5级" in ei.value.message
 
@@ -86,7 +86,7 @@ async def test_create_dept_exceeds_5_levels_rejected(dept_env):
 async def test_create_dept_at_5_level_ok(dept_env):
     dept_env.get_by_id = _dept(id=9, name="父", tree_path="0,1,2,3")
     dept_env.tree_path = "0,1,2,3,9"
-    created_id = await DeptService.create_dept(_FakeDB(), None, {"name": "子", "parentId": 9})
+    created_id = await dept_service.create_dept(_FakeDB(), None, {"name": "子", "parentId": 9})
     assert created_id is not None
 
 
@@ -97,7 +97,7 @@ async def test_update_dept_exceeds_5_levels_rejected(dept_env):
     }
     dept_env.tree_path = "0,2,3,4,5,20"
     with pytest.raises(BusinessException) as ei:
-        await DeptService.update_dept(None, None, 1, {"parentId": 20})
+        await dept_service.update_dept(None, None, 1, {"parentId": 20})
     assert ei.value.code == ResultCode.DATA_BIND_EXISTS
     assert "部门层级不能超过5级" in ei.value.message
 
@@ -107,7 +107,7 @@ async def test_delete_dept_with_children_rejected(dept_env):
     dept_env.child_counts = {2: 1}
     dept_env.soft_delete_rows = 0
     with pytest.raises(BusinessException) as ei:
-        await DeptService.delete_depts(None, None, [2])
+        await dept_service.delete_depts(None, None, [2])
     assert ei.value.code == ResultCode.DATA_STATE_NOT_ALLOW
     assert "该部门下存在子部门，请先删除子部门" in ei.value.message
 
@@ -118,7 +118,7 @@ async def test_delete_dept_with_users_rejected(dept_env):
     dept_env.user_counts = {2: 3}
     dept_env.soft_delete_rows = 0
     with pytest.raises(BusinessException) as ei:
-        await DeptService.delete_depts(None, None, [2])
+        await dept_service.delete_depts(None, None, [2])
     assert ei.value.code == ResultCode.DATA_STATE_NOT_ALLOW
     assert "该部门下存在用户，无法删除" in ei.value.message
 
@@ -128,6 +128,6 @@ async def test_delete_dept_no_children_no_users_ok(dept_env):
     dept_env.child_counts = {}
     dept_env.user_counts = {}
     dept_env.soft_delete_rows = 1
-    result = await DeptService.delete_depts(None, None, [2])
+    result = await dept_service.delete_depts(None, None, [2])
     assert result is None
     assert dept_env.soft_delete_rows == 1

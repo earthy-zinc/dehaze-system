@@ -28,8 +28,8 @@ class RoleService:
     # 内置不可删除的角色编码（与 Java/Go 一致）
     BUILTIN_ROLE_CODES = {"ROOT", "ADMIN"}
 
-    @staticmethod
     async def get_role_list(
+        self,
         db: AsyncSession,
         page: int,
         page_size: int,
@@ -65,8 +65,7 @@ class RoleService:
             page_size=page_size,
         )
 
-    @staticmethod
-    async def get_role_options(db: AsyncSession, *, is_root: bool = False) -> list[dict[str, Any]]:
+    async def get_role_options(self, db: AsyncSession, *, is_root: bool = False) -> list[dict[str, Any]]:
         """
         获取角色下拉选项列表
 
@@ -79,8 +78,7 @@ class RoleService:
         """
         return await role_repository.get_role_options(db, is_root=is_root)
 
-    @staticmethod
-    async def get_role_by_id(db: AsyncSession, role_id: int) -> SysRole | None:
+    async def get_role_by_id(self, db: AsyncSession, role_id: int) -> SysRole | None:
         """
         根据ID获取角色信息
 
@@ -93,8 +91,8 @@ class RoleService:
         """
         return await role_repository.get_by_id(db, role_id)
 
-    @staticmethod
     async def create_role(
+        self,
         db: AsyncSession,
         redis: Redis,
         data: dict[str, Any],
@@ -143,8 +141,8 @@ class RoleService:
 
         return created
 
-    @staticmethod
     async def update_role(
+        self,
         db: AsyncSession,
         redis: Redis,
         role_id: int,
@@ -162,7 +160,7 @@ class RoleService:
         Raises:
             BusinessException: 角色不存在、名称为空或名称已存在
         """
-        role = await RoleService.get_role_by_id(db, role_id)
+        role = await self.get_role_by_id(db, role_id)
         if not role:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在")
 
@@ -192,7 +190,7 @@ class RoleService:
         }
 
         # 内置角色不可修改状态和数据权限（与 Java/Go 一致）
-        if role.code not in RoleService.BUILTIN_ROLE_CODES:
+        if role.code not in self.BUILTIN_ROLE_CODES:
             update_data["status"] = data.get("status", role.status)
             # dataScope 去除 schema 默认值后可为 None（未随请求提交），此时保持原值
             data_scope = data.get("dataScope")
@@ -205,10 +203,10 @@ class RoleService:
         await role_repository.update_by_id(db, role_id, update_data)
 
         # 清除角色权限缓存
-        await RoleService._clear_role_perms_cache(redis, role.code)
+        await self._clear_role_perms_cache(redis, role.code)
 
-    @staticmethod
     async def delete_roles(
+        self,
         db: AsyncSession,
         redis: Redis,
         ids: str,
@@ -236,7 +234,7 @@ class RoleService:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"角色ID {role_id} 不存在")
 
             # 内置角色保护：与 Java/Go 一致，ROOT 和 ADMIN 均不可删除
-            if role.code in RoleService.BUILTIN_ROLE_CODES:
+            if role.code in self.BUILTIN_ROLE_CODES:
                 raise BusinessException(
                     ResultCode.OPERATION_NOT_ALLOW, f"内置角色 '{role.code}' 不可删除"
                 )
@@ -259,7 +257,7 @@ class RoleService:
         # 批量清除角色权限缓存
         for role_id in role_ids:
             role = roles_map[role_id]
-            await RoleService._clear_role_perms_cache(redis, role.code)
+            await self._clear_role_perms_cache(redis, role.code)
 
         mongo_audit_log_repository.create_audit_async(
             operator_id=get_current_user_id(),
@@ -269,8 +267,8 @@ class RoleService:
             module="role",
         )
 
-    @staticmethod
     async def update_role_status(
+        self,
         db: AsyncSession,
         redis: Redis,
         role_id: int,
@@ -291,12 +289,12 @@ class RoleService:
         if status not in [0, 1]:
             raise BusinessException(ResultCode.PARAM_ERROR, "状态值只能为0或1")
 
-        role = await RoleService.get_role_by_id(db, role_id)
+        role = await self.get_role_by_id(db, role_id)
         if not role:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在")
 
         # 内置角色不可修改状态（与 Java/Go 一致）
-        if role.code in RoleService.BUILTIN_ROLE_CODES:
+        if role.code in self.BUILTIN_ROLE_CODES:
             raise BusinessException(
                 ResultCode.OPERATION_NOT_ALLOW, f"内置角色 '{role.code}' 不可修改状态"
             )
@@ -312,8 +310,7 @@ class RoleService:
             after_value=status,
         )
 
-    @staticmethod
-    async def get_role_menu_ids(db: AsyncSession, role_id: int) -> list[int]:
+    async def get_role_menu_ids(self, db: AsyncSession, role_id: int) -> list[int]:
         """
         获取角色的菜单ID集合
 
@@ -326,8 +323,8 @@ class RoleService:
         """
         return await role_repository.get_role_menu_ids(db, role_id)
 
-    @staticmethod
     async def assign_menus_to_role(
+        self,
         db: AsyncSession,
         redis: Redis,
         role_id: int,
@@ -345,7 +342,7 @@ class RoleService:
         Raises:
             BusinessException: 角色不存在
         """
-        role = await RoleService.get_role_by_id(db, role_id)
+        role = await self.get_role_by_id(db, role_id)
         if not role:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在")
 
@@ -362,7 +359,7 @@ class RoleService:
         await role_repository.replace_role_menus(db, role_id, menu_ids)
 
         # 清除角色权限缓存
-        await RoleService._clear_role_perms_cache(redis, role.code)
+        await self._clear_role_perms_cache(redis, role.code)
 
         mongo_audit_log_repository.create_audit_async(
             operator_id=get_current_user_id(),
@@ -373,8 +370,7 @@ class RoleService:
             after_value=menu_ids,
         )
 
-    @staticmethod
-    async def _clear_role_perms_cache(redis: Redis, role_code: str):
+    async def _clear_role_perms_cache(self, redis: Redis, role_code: str):
         """
         清除角色权限缓存
 
@@ -382,5 +378,8 @@ class RoleService:
             redis: Redis 异步客户端
             role_code: 角色编码
         """
-        cache_key = f"{RoleService.ROLE_PERMS_PREFIX}{role_code}"
+        cache_key = f"{self.ROLE_PERMS_PREFIX}{role_code}"
         await redis.delete(cache_key)
+
+
+role_service = RoleService()

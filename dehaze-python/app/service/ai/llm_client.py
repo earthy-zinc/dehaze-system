@@ -38,8 +38,8 @@ from app.models.base import get_current_user_id
 from app.repository.ai_model_repository import ai_model_repository
 from app.repository.ai_provider_repository import ai_provider_repository
 from app.service.ai.provider_health_service import provider_health_service
-from app.service.ai_model_service import AiModelService
-from app.service.ai_provider_key_service import AiProviderKeyService
+from app.service.ai_model_service import ai_model_service
+from app.service.ai_provider_key_service import ai_provider_key_service
 
 logger = logging.getLogger(__name__)
 
@@ -418,7 +418,7 @@ class LlmClient:
             user_id = get_current_user_id()
         except LookupError:
             user_id = None
-        await AiProviderKeyService.mark_call_success(redis, key_id, user_id)
+        await ai_provider_key_service.mark_call_success(redis, key_id, user_id)
         await provider_health_service.record_call(redis, provider_id, True, None, latency_ms)
         if on_route_result is not None:
             on_route_result(
@@ -453,7 +453,7 @@ class LlmClient:
         标记 Key 失败后直接抛出业务异常，不重试整个请求。
         """
         started = time.perf_counter()
-        keys = await AiProviderKeyService.list_usable_keys(db, redis, provider.id)
+        keys = await ai_provider_key_service.list_usable_keys(db, redis, provider.id)
         if not keys:
             raise _RouteFailed("no_key", "该供应商无可用 API Key")
 
@@ -500,7 +500,7 @@ class LlmClient:
                 latency_ms = int((time.perf_counter() - started) * 1000)
                 is_local = provider.provider_code == "local"
                 if not is_local:
-                    await AiProviderKeyService.mark_call_failed(redis, key_id, error_code)
+                    await ai_provider_key_service.mark_call_failed(redis, key_id, error_code)
                     await provider_health_service.record_call(
                         redis, provider.id, False, error_code, latency_ms
                     )
@@ -558,7 +558,7 @@ class LlmClient:
         if tools is not None:
             required_caps.add("tool_call")
 
-        routes = await AiModelService.get_call_routes(db, model_id, required_caps)
+        routes = await ai_model_service.get_call_routes(db, model_id, required_caps)
         if not routes:
             raise BusinessException(ResultCode.AI_MODEL_NOT_AVAILABLE, "模型不可用或已禁用")
 

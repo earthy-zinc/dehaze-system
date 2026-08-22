@@ -91,8 +91,7 @@ def sanitize_filename(filename: str) -> str:
 class FileService:
     """文件服务类（异步版本）"""
 
-    @staticmethod
-    async def upload_file(
+    async def upload_file(self, 
         db: AsyncSession,
         filename: str,
         content: bytes,
@@ -180,8 +179,7 @@ class FileService:
 
         return created_file
 
-    @staticmethod
-    async def delete_file_with_storage(db: AsyncSession, file_id: int) -> None:
+    async def delete_file_with_storage(self, db: AsyncSession, file_id: int) -> None:
         """
         删除文件记录及物理存储
 
@@ -207,9 +205,9 @@ class FileService:
         await file_repository.soft_delete_by_ids(db, [file_id])
 
         # 联动失效：文件删除时，将直接/间接引用该文件的 AI 产物标记失效
-        from app.service.ai_artifact_service import AiArtifactService
+        from app.service.ai_artifact_service import ai_artifact_service
 
-        await AiArtifactService.mark_invalid_for_file(db, file_id)
+        await ai_artifact_service.mark_invalid_for_file(db, file_id)
 
         # 从存储中删除文件（在线程池中异步执行，不阻塞事件循环）
         minio_client = get_minio_client()
@@ -228,8 +226,7 @@ class FileService:
         except Exception as e:
             logger.warning("物理文件删除异常 [%s]: %s", object_name, e)
 
-    @staticmethod
-    async def get_file_by_md5(db: AsyncSession, md5: str) -> SysFile | None:
+    async def get_file_by_md5(self, db: AsyncSession, md5: str) -> SysFile | None:
         """
         根据 MD5 获取文件记录
 
@@ -242,8 +239,7 @@ class FileService:
         """
         return await file_repository.get_by_md5(db, md5)
 
-    @staticmethod
-    async def get_file_by_id(db: AsyncSession, file_id: int) -> SysFile | None:
+    async def get_file_by_id(self, db: AsyncSession, file_id: int) -> SysFile | None:
         """
         根据 ID 获取文件记录
 
@@ -256,8 +252,7 @@ class FileService:
         """
         return await file_repository.get_by_id(db, file_id)
 
-    @staticmethod
-    async def get_file_by_object_name(db: AsyncSession, object_name: str) -> SysFile | None:
+    async def get_file_by_object_name(self, db: AsyncSession, object_name: str) -> SysFile | None:
         """
         根据对象名称获取文件记录
 
@@ -270,8 +265,7 @@ class FileService:
         """
         return await file_repository.get_by_object_name(db, object_name)
 
-    @staticmethod
-    async def get_file_page(
+    async def get_file_page(self, 
         db: AsyncSession,
         page: int,
         size: int,
@@ -291,8 +285,7 @@ class FileService:
         """
         return await file_repository.get_page(db, page, size, keywords)
 
-    @staticmethod
-    async def download_file_stream(
+    async def download_file_stream(self, 
         object_name: str, storage: str = "minio"
     ) -> AsyncIterator[bytes]:
         """
@@ -348,8 +341,7 @@ class FileService:
             logger.error("文件下载失败 [%s]: %s", object_name, e, exc_info=True)
             raise BusinessException(ResultCode.FILE_NOT_FOUND, "文件下载失败") from None
 
-    @staticmethod
-    def stream_file_response(object_name: str, storage: str = "minio") -> StreamingResponse:
+    def stream_file_response(self, object_name: str, storage: str = "minio") -> StreamingResponse:
         """
         从指定存储后端流式返回文件内容（带下载用 Content-Disposition 头）
 
@@ -367,13 +359,12 @@ class FileService:
             f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
         )
         return StreamingResponse(
-            FileService.download_file_stream(object_name, storage=storage),
+            self.download_file_stream(object_name, storage=storage),
             media_type="application/octet-stream",
             headers={"Content-Disposition": content_disposition},
         )
 
-    @staticmethod
-    async def get_file_stat(object_name: str) -> int | None:
+    async def get_file_stat(self, object_name: str) -> int | None:
         """
         获取存储中文件的大小（字节）
 
@@ -396,8 +387,7 @@ class FileService:
         except Exception:
             return None
 
-    @staticmethod
-    async def ensure_bucket_exists() -> None:
+    async def ensure_bucket_exists(self, ) -> None:
         """启动时确保 MinIO Bucket 存在（仅 MinIO 模式）"""
         if settings.FILE_STORAGE_TYPE != "minio":
             logger.info("非 MinIO 模式，跳过 Bucket 检查")
@@ -418,3 +408,7 @@ class FileService:
             await loop.run_in_executor(_minio_executor, _sync_check)
         except Exception as e:
             logger.warning("检查/创建 MinIO Bucket 失败: %s", e)
+
+
+# 单例
+file_service = FileService()

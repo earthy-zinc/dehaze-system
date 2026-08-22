@@ -21,8 +21,8 @@ from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.service.ai.agent_state import AgentState
 from app.service.ai.memory_extraction import extract_memories, save_extracted_memories
 from app.service.ai.tool_recovery import classify_tool_error
-from app.service.billing.billing_service import BillingService
-from app.service.billing.estimate_service import EstimateService
+from app.service.billing.billing_service import billing_service
+from app.service.billing.estimate_service import estimate_service
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ async def _billing_pre_charge_hook(state: AgentState) -> dict | None:
         return None
 
     async with get_db_session() as db:
-        result = await BillingService.pre_charge(
+        result = await billing_service.pre_charge(
             db,
             user_id,
             conversation_id,
@@ -132,10 +132,10 @@ async def _billing_budget_hook(state: AgentState) -> dict | None:
     if not state.get("billing_context"):
         return None
     async with get_db_session() as db:
-        step_estimated = await EstimateService.estimate_step_credits(
+        step_estimated = await estimate_service.estimate_step_credits(
             db, state.get("model_id", ""), state.get("messages") or []
         )
-        return await BillingService.check_budget(state, step_estimated)
+        return await billing_service.check_budget(state, step_estimated)
 
 
 async def _billing_settle_hook(state: AgentState) -> dict | None:
@@ -152,7 +152,7 @@ async def _billing_settle_hook(state: AgentState) -> dict | None:
     call_meta = state.get("call_meta") or {}
     actual_model_id = call_meta.get("model_id")
     async with get_db_session() as db:
-        await BillingService.settle(
+        await billing_service.settle(
             db,
             bc["user_id"],
             bc["conversation_id"],
@@ -223,10 +223,10 @@ async def _title_update_hook(state: AgentState) -> dict | None:
 
     async def _run() -> None:
         # 延迟导入避免 agent_hooks → ai_conversation_service → deep_agent_builder 循环依赖
-        from app.service.ai_conversation_service import AiConversationService
+        from app.service.ai_conversation_service import ai_conversation_service
 
         try:
-            await AiConversationService._auto_generate_title(conversation_id, context_text)
+            await ai_conversation_service._auto_generate_title(conversation_id, context_text)
         except Exception:
             logger.warning("会话标题更新失败 conv_id=%s", conversation_id, exc_info=True)
 

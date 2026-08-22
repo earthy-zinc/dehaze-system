@@ -1,4 +1,4 @@
-from app.service.auth_service import AuthService
+from app.service.auth_service import auth_service
 
 
 class _User:
@@ -49,7 +49,7 @@ def _patch(monkeypatch, docs=None, total=0):
 
 async def test_admin_sees_all_and_no_user_filter(monkeypatch):
     repo = _patch(monkeypatch, docs=[_make_doc()], total=1)
-    result = await AuthService.list_login_logs(1, 10, user=_User(admin=True))
+    result = await auth_service.list_login_logs(1, 10, user=_User(admin=True))
     assert result["total"] == 1
     assert result["list"][0]["username"] == "admin"
     assert result["list"][0]["loginTime"] == "2025-01-01 12:00:00"
@@ -59,7 +59,7 @@ async def test_admin_sees_all_and_no_user_filter(monkeypatch):
 
 async def test_normal_user_forced_to_own_logs(monkeypatch):
     repo = _patch(monkeypatch, docs=[_make_doc(username="normal")], total=1)
-    result = await AuthService.list_login_logs(
+    result = await auth_service.list_login_logs(
         1, 10, username="admin", user=_User(admin=False)
     )
     assert result["total"] == 1
@@ -70,7 +70,7 @@ async def test_normal_user_forced_to_own_logs(monkeypatch):
 
 async def test_empty_result(monkeypatch):
     repo = _patch(monkeypatch)
-    result = await AuthService.list_login_logs(
+    result = await auth_service.list_login_logs(
         1, 10, username="nobody", user=_User(admin=True)
     )
     assert result["total"] == 0
@@ -79,7 +79,7 @@ async def test_empty_result(monkeypatch):
 
 async def test_time_parse_iso_and_space_formats(monkeypatch):
     repo = _patch(monkeypatch)
-    await AuthService.list_login_logs(
+    await auth_service.list_login_logs(
         1,
         10,
         start_time="2025-01-01 00:00:00",

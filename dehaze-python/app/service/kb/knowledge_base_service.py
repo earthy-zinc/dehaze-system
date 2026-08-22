@@ -85,8 +85,7 @@ async def _invalidate_cache(redis: Redis, user_id: int, kb_id: int) -> None:
 class KnowledgeBaseService:
     """知识库服务（异步版本）"""
 
-    @staticmethod
-    async def create(db: AsyncSession, redis: Redis, data: dict, user) -> int:
+    async def create(self, db: AsyncSession, redis: Redis, data: dict, user) -> int:
         """创建知识库。
 
         Args:
@@ -110,7 +109,7 @@ class KnowledgeBaseService:
                     ResultCode.ACCESS_UNAUTHORIZED, "创建公共知识库需要管理员权限"
                 )
         else:
-            limit = await KnowledgeBaseService._resolve_private_kb_limit(db, user.id)
+            limit = await self._resolve_private_kb_limit(db, user.id)
             current = await knowledge_base_repository.count_private_by_owner(db, user.id)
             if current >= limit:
                 raise BusinessException(
@@ -155,8 +154,7 @@ class KnowledgeBaseService:
         await redis.delete(f"kb:list:{user.id}")
         return created.id
 
-    @staticmethod
-    async def _resolve_private_kb_limit(db: AsyncSession, user_id: int) -> int:
+    async def _resolve_private_kb_limit(self, db: AsyncSession, user_id: int) -> int:
         """按会员等级解析可建私有库数量（会员权益无对应字段时按等级映射常量）。"""
         member = await member_repository.get_by_user_id(db, user_id)
         if not member:
@@ -165,8 +163,7 @@ class KnowledgeBaseService:
             member.level_code, _PRIVATE_KB_LIMIT_BY_LEVEL["level_0"]
         )
 
-    @staticmethod
-    async def update(db: AsyncSession, redis: Redis, kb_id: int, data: dict, user) -> None:
+    async def update(self, db: AsyncSession, redis: Redis, kb_id: int, data: dict, user) -> None:
         """编辑知识库（仅可编辑项；分块策略/embedding 模型不可改）。"""
         kb = await knowledge_base_repository.get_by_id(db, kb_id)
         if not kb:
@@ -199,8 +196,7 @@ class KnowledgeBaseService:
 
         await _invalidate_cache(redis, user.id, kb_id)
 
-    @staticmethod
-    async def delete(db: AsyncSession, redis: Redis, kb_id: int, user) -> None:
+    async def delete(self, db: AsyncSession, redis: Redis, kb_id: int, user) -> None:
         """删除知识库：软删库+文档、删 ES 索引、保留分块记录。"""
         kb = await knowledge_base_repository.get_by_id(db, kb_id)
         if not kb:
@@ -216,8 +212,7 @@ class KnowledgeBaseService:
         await delete_kb_index(kb_id)
         await _invalidate_cache(redis, user.id, kb_id)
 
-    @staticmethod
-    async def get_detail(db: AsyncSession, redis: Redis, kb_id: int, user_id: int) -> dict:
+    async def get_detail(self, db: AsyncSession, redis: Redis, kb_id: int, user_id: int) -> dict:
         """知识库详情（含统计），私有库仅 owner 可见；走 30min 缓存。"""
         cached = await redis.get(f"kb:detail:{kb_id}")
         if cached:
@@ -238,8 +233,7 @@ class KnowledgeBaseService:
         )
         return result
 
-    @staticmethod
-    async def get_page(
+    async def get_page(self, 
         db: AsyncSession,
         redis: Redis,
         user_id: int,
@@ -271,3 +265,6 @@ class KnowledgeBaseService:
         if cacheable:
             await redis.set(cache_key, json.dumps(result, ensure_ascii=False), ex=_KB_LIST_TTL)
         return result
+
+
+knowledge_base_service = KnowledgeBaseService()

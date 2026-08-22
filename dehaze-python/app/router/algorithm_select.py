@@ -23,7 +23,7 @@ from app.models.schema.algorithm_select import (
     TestRequest,
     TestResultVO,
 )
-from app.service.algorithm_select_service import AlgorithmSelectService
+from app.service.algorithm_select_service import algorithm_select_service
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ async def get_algorithm_tree(
     db: AsyncSession = Depends(get_db),
 ):
     """获取算法选择树（仅返回已发布状态的算法）"""
-    tree = await AlgorithmSelectService.get_algorithm_tree(db)
+    tree = await algorithm_select_service.get_algorithm_tree(db)
     return success(tree)
 
 
@@ -57,7 +57,7 @@ async def search_algorithms(
     db: AsyncSession = Depends(get_db),
 ):
     """搜索算法（关键词/拼音/标签）"""
-    results = await AlgorithmSelectService.search_algorithms(db, keyword=keyword)
+    results = await algorithm_select_service.search_algorithms(db, keyword=keyword)
     return success(results)
 
 
@@ -71,7 +71,7 @@ async def get_algorithm_detail(
     db: AsyncSession = Depends(get_db),
 ):
     """获取算法详情（含样例效果图、评分、使用次数）"""
-    detail = await AlgorithmSelectService.get_algorithm_detail(db, algorithm_id)
+    detail = await algorithm_select_service.get_algorithm_detail(db, algorithm_id)
     return success(detail)
 
 
@@ -87,7 +87,7 @@ async def test_algorithm(
     db: AsyncSession = Depends(get_db),
 ):
     """上传自定义图片测试算法效果"""
-    result = await AlgorithmSelectService.test_algorithm(
+    result = await algorithm_select_service.test_algorithm(
         db=db,
         algorithm_id=algorithm_id,
         image_url=body.imageUrl,
@@ -106,7 +106,7 @@ async def compare_algorithms(
     db: AsyncSession = Depends(get_db),
 ):
     """算法对比（最多3个算法）"""
-    result = await AlgorithmSelectService.compare(
+    result = await algorithm_select_service.compare(
         db=db,
         algorithm_ids=body.algorithmIds,
     )
@@ -123,7 +123,7 @@ async def recommend_algorithms(
     db: AsyncSession = Depends(get_db),
 ):
     """算法推荐匹配（F-M03-007）：基于关键词/任务类型/样例算法，返回 Top N 推荐列表。"""
-    result = await AlgorithmSelectService.recommend(
+    result = await algorithm_select_service.recommend(
         db,
         keyword=body.keyword,
         task_type=body.taskType,

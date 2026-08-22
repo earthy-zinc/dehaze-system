@@ -98,8 +98,7 @@ async def _apply_quota(user_id: int, credits: int, script: str) -> None:
 class QuotaService:
     """配额管理：日/月限额，Redis 原子操作预扣/实扣/退还"""
 
-    @staticmethod
-    async def get_limits(db: AsyncSession, user_id: int) -> tuple[int, int]:
+    async def get_limits(self, db: AsyncSession, user_id: int) -> tuple[int, int]:
         """查询用户日/月限额（从 sys_member_benefit 按 VIP 等级查询）
 
         仅读取启用（status=1）的权益配置，停用/未配置等级按无限额处理。
@@ -115,8 +114,7 @@ class QuotaService:
             return 0, 0
         return benefit.ai_credits_daily or 0, benefit.ai_credits_monthly or 0
 
-    @staticmethod
-    async def get_used(user_id: int) -> tuple[int, int]:
+    async def get_used(self, user_id: int) -> tuple[int, int]:
         """查询日/月已用配额，Redis 不存在时返回 0"""
         redis = await get_redis_client()
         daily_key, monthly_key, _, _ = _quota_keys_and_ttl(user_id)
@@ -124,8 +122,7 @@ class QuotaService:
         monthly_val = await redis.get(monthly_key)
         return int(daily_val or 0), int(monthly_val or 0)
 
-    @staticmethod
-    async def check_quota(
+    async def check_quota(self, 
         db: AsyncSession,
         user_id: int,
         estimated_credits: int,
@@ -137,14 +134,13 @@ class QuotaService:
         Returns:
             True 表示配额充足；False 表示超限
         """
-        daily_used, monthly_used = await QuotaService.get_used(user_id)
-        daily_limit, monthly_limit = await QuotaService.get_limits(db, user_id)
+        daily_used, monthly_used = await self.get_used(user_id)
+        daily_limit, monthly_limit = await self.get_limits(db, user_id)
         daily_ok = daily_limit == 0 or daily_used + estimated_credits <= daily_limit
         monthly_ok = monthly_limit == 0 or monthly_used + estimated_credits <= monthly_limit
         return daily_ok and monthly_ok
 
-    @staticmethod
-    async def pre_deduct(
+    async def pre_deduct(self, 
         db: AsyncSession,
         user_id: int,
         credits: int,
@@ -155,7 +151,7 @@ class QuotaService:
             True 表示预扣成功；False 表示配额不足（已整体回滚，无副作用）
         """
         redis = await get_redis_client()
-        daily_limit, monthly_limit = await QuotaService.get_limits(db, user_id)
+        daily_limit, monthly_limit = await self.get_limits(db, user_id)
         daily_key, monthly_key, daily_ttl, monthly_ttl = _quota_keys_and_ttl(user_id)
         ok = await redis.eval(
             _PRE_DEDUCT_LUA,
@@ -170,13 +166,11 @@ class QuotaService:
         )
         return bool(ok)
 
-    @staticmethod
-    async def refund(user_id: int, credits: int) -> None:
+    async def refund(self, user_id: int, credits: int) -> None:
         """退还配额（预扣与实际差额，多扣场景）"""
         await _apply_quota(user_id, credits, _REFUND_LUA)
 
-    @staticmethod
-    async def deduct(user_id: int, credits: int) -> None:
+    async def deduct(self, user_id: int, credits: int) -> None:
         """实扣减（少扣场景额外扣减，不回滚，超限扣至负数）"""
         await _apply_quota(user_id, credits, _DEDUCT_LUA)
 

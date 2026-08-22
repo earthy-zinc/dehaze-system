@@ -14,7 +14,7 @@ from app.models.schema.common import PageResult
 from app.repository.ai_agent_repository import ai_agent_repository
 from app.repository.ai_agent_version_repository import ai_agent_version_repository
 from app.service.ai import agent_config_resolver
-from app.service.ai_eval_service import EvalService
+from app.service.ai_eval_service import eval_service
 
 # 版本快照缓存 Key / TTL（后端实现 §4.3）
 _AGENT_PUBLISHED_KEY = "ai:agent:{agent_id}:published"
@@ -112,7 +112,7 @@ class AgentVersionService:
         if not agent:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "Agent 不存在")
 
-        gate = await EvalService.run_regression(db, redis, agent_id, trigger_type="publish")
+        gate = await eval_service.run_regression(db, redis, agent_id, trigger_type="publish")
         if not gate.get("passed", False):
             failed = gate.get("failed_samples") or []
             raise BusinessException(

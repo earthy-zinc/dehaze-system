@@ -815,11 +815,11 @@ class MemberService:
 
             if target_level != old_level:
                 try:
-                    from app.service.message_service import MessageService
+                    from app.service.message_service import message_service
 
                     old_benefit = benefit_map.get(old_level)
                     new_benefit = benefit_map.get(target_level)
-                    await MessageService.send(
+                    await message_service.send(
                         db,
                         {
                             "type": "member",
@@ -853,7 +853,7 @@ class MemberService:
 
     @staticmethod
     async def send_expire_reminders(db: AsyncSession) -> int:
-        from app.service.message_service import MessageService
+        from app.service.message_service import message_service
 
         now = datetime.now()
         benefits = await member_benefit_repository.list_ordered_by_growth_min(db)
@@ -910,7 +910,7 @@ class MemberService:
                         else:
                             variables["benefitCompare"] = ""
 
-                    await MessageService.send(
+                    await message_service.send(
                         db,
                         {
                             "type": "member",

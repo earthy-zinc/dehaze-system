@@ -230,8 +230,7 @@ def _cache_key(
 class SearchService:
     """知识库检索引擎服务（异步）"""
 
-    @staticmethod
-    async def search(
+    async def search(self, 
         db: AsyncSession,
         redis: Redis,
         user_id: int,
@@ -266,12 +265,11 @@ class SearchService:
         if not kbs:
             return {"query": query, "knowledgeBaseIds": [], "results": []}
 
-        return await SearchService._run_search_with_cache(
+        return await self._run_search_with_cache(
             redis, kbs, query, top_k, filters, enable_mmr
         )
 
-    @staticmethod
-    async def search_internal(
+    async def search_internal(self, 
         knowledge_base_id: int | None,
         query: str,
         options: dict | None = None,
@@ -302,12 +300,11 @@ class SearchService:
             if not kbs:
                 return {"query": query, "knowledgeBaseIds": [], "results": []}
 
-            return await SearchService._run_search_with_cache(
+            return await self._run_search_with_cache(
                 redis, kbs, query, top_k, filters, enable_mmr
             )
 
-    @staticmethod
-    async def _run_search_with_cache(
+    async def _run_search_with_cache(self, 
         redis: Redis,
         kbs: list[SysKnowledgeBase],
         query: str,
@@ -331,7 +328,7 @@ class SearchService:
         if cached:
             return json.loads(cached)
 
-        result, degraded = await SearchService._retrieve_with_timeout(
+        result, degraded = await self._retrieve_with_timeout(
             kbs, query, filter_clauses, top_k, enable_mmr
         )
         payload = _result_payload(query, kb_ids, result)
@@ -339,8 +336,7 @@ class SearchService:
             await redis.set(key, json.dumps(payload, ensure_ascii=False), ex=_SEARCH_CACHE_TTL)
         return payload
 
-    @staticmethod
-    async def _retrieve_with_timeout(
+    async def _retrieve_with_timeout(self, 
         kbs: list[SysKnowledgeBase],
         query: str,
         filter_clauses: list[dict],

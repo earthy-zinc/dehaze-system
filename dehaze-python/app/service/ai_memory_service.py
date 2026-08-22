@@ -16,8 +16,8 @@ from app.repository.ai_memory_repository import ai_memory_repository
 
 
 class AiMemoryService:
-    @staticmethod
     async def list_memories(
+        self,
         db: AsyncSession,
         user_id: int,
         page: int,
@@ -30,8 +30,8 @@ class AiMemoryService:
         )
         return PageResult(list=[MemoryResult.model_validate(m) for m in memories], total=total)
 
-    @staticmethod
     async def list_archived(
+        self,
         db: AsyncSession,
         user_id: int,
         page: int,
@@ -44,8 +44,7 @@ class AiMemoryService:
         )
         return PageResult(list=[MemoryResult.model_validate(m) for m in memories], total=total)
 
-    @staticmethod
-    async def create_memory(db: AsyncSession, user_id: int, form: MemoryCreate) -> MemoryResult:
+    async def create_memory(self, db: AsyncSession, user_id: int, form: MemoryCreate) -> MemoryResult:
         memory = SysAiMemory(
             user_id=user_id,
             memory_type=form.memoryType,
@@ -59,9 +58,8 @@ class AiMemoryService:
         memory = await ai_memory_repository.create(db, memory)
         return MemoryResult.model_validate(memory)
 
-    @staticmethod
     async def update_memory(
-        db: AsyncSession, memory_id: int, user_id: int, form: MemoryUpdate
+        self, db: AsyncSession, memory_id: int, user_id: int, form: MemoryUpdate
     ) -> MemoryResult:
         memory = await ai_memory_repository.get_by_id_and_user(db, memory_id, user_id)
         if not memory:
@@ -73,8 +71,7 @@ class AiMemoryService:
         await db.refresh(memory)
         return MemoryResult.model_validate(memory)
 
-    @staticmethod
-    async def delete_memory(db: AsyncSession, memory_id: int, user_id: int) -> None:
+    async def delete_memory(self, db: AsyncSession, memory_id: int, user_id: int) -> None:
         memory = await ai_memory_repository.get_by_id_and_user(db, memory_id, user_id)
         if not memory:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "记忆不存在")
@@ -82,9 +79,8 @@ class AiMemoryService:
         # 同步清除 ES 向量索引，避免残留
         await delete_memory_doc(memory.id)
 
-    @staticmethod
     async def search_memories(
-        db: AsyncSession, user_id: int, keyword: str, limit: int = 5
+        self, db: AsyncSession, user_id: int, keyword: str, limit: int = 5
     ) -> list[MemoryResult]:
         memories = await ai_memory_repository.search_by_keyword(db, user_id, keyword, limit)
         # 先完成 ORM 实体序列化，再执行 touch（touch 的 UPDATE 会使实体属性过期，
@@ -94,15 +90,14 @@ class AiMemoryService:
             await ai_memory_repository.touch(db, m.id)
         return results
 
-    @staticmethod
     async def get_active_memories(
-        db: AsyncSession, user_id: int, limit: int = 10
+        self, db: AsyncSession, user_id: int, limit: int = 10
     ) -> list[MemoryResult]:
         memories = await ai_memory_repository.get_active_by_user(db, user_id, limit)
         return [MemoryResult.model_validate(m) for m in memories]
 
-    @staticmethod
     async def batch_clear(
+        self,
         db: AsyncSession,
         user_id: int,
         confirm: bool,
@@ -119,8 +114,8 @@ class AiMemoryService:
             raise BusinessException(ResultCode.PARAM_ERROR, "批量清空记忆为不可逆操作，需二次确认")
         return await ai_memory_repository.batch_clear(db, user_id, memory_type, start, end)
 
-    @staticmethod
     async def restore_deleted(
+        self,
         db: AsyncSession,
         user_id: int,
         confirm: bool,
@@ -139,8 +134,8 @@ class AiMemoryService:
         ids = [m.id for m in memories]
         return await ai_memory_repository.restore_deleted(db, ids)
 
-    @staticmethod
     async def export_memories(
+        self,
         db: AsyncSession,
         user_id: int,
         fmt: str,
@@ -185,3 +180,6 @@ class AiMemoryService:
             ensure_ascii=False,
             indent=2,
         )
+
+
+ai_memory_service = AiMemoryService()

@@ -37,7 +37,7 @@ async def _run(monkeypatch, behavior, provider, key="sk-test"):
         return key
 
     monkeypatch.setattr(conn_svc.ai_provider_repository, "get_by_id", _get_by_id)
-    monkeypatch.setattr(conn_svc.AiProviderKeyService, "select_key", _select_key)
+    monkeypatch.setattr(conn_svc.ai_provider_key_service, "select_key", _select_key)
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _FakeAsyncClient(behavior))
     return await conn_svc.test_connection(db=None, redis=None, provider_id=provider.id)
 
@@ -105,7 +105,7 @@ async def test_anthropic_probe_headers(monkeypatch):
         return "sk-ant-test"
 
     monkeypatch.setattr(conn_svc.ai_provider_repository, "get_by_id", _get_by_id)
-    monkeypatch.setattr(conn_svc.AiProviderKeyService, "select_key", _select_key)
+    monkeypatch.setattr(conn_svc.ai_provider_key_service, "select_key", _select_key)
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _Client())
 
     await conn_svc.test_connection(db=None, redis=None, provider_id=1)

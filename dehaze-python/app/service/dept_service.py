@@ -35,8 +35,7 @@ _XSS_PATTERN = re.compile(
 class DeptService:
     """部门服务"""
 
-    @staticmethod
-    def _build_dept_tree(dept_list: list[SysDept]) -> list[dict[str, Any]]:
+    def _build_dept_tree(self, dept_list: list[SysDept]) -> list[dict[str, Any]]:
         """构建部门树形结构"""
         if not dept_list:
             return []
@@ -70,18 +69,18 @@ class DeptService:
 
         return root_depts
 
-    @staticmethod
     async def get_dept_list(
+        self,
         db: AsyncSession,
         keywords: str | None = None,
         status: int | None = None,
     ) -> list[dict[str, Any]]:
         """获取部门列表（树形结构）"""
         dept_list = await dept_repository.get_dept_list(db, keywords=keywords, status=status)
-        return DeptService._build_dept_tree(dept_list)
+        return self._build_dept_tree(dept_list)
 
-    @staticmethod
     async def get_dept_options(
+        self,
         db: AsyncSession,
         redis: Redis,
     ) -> list[dict[str, Any]]:
@@ -101,28 +100,24 @@ class DeptService:
 
         return options
 
-    @staticmethod
-    async def get_dept_form(db: AsyncSession, dept_id: int) -> dict[str, Any] | None:
+    async def get_dept_form(self, db: AsyncSession, dept_id: int) -> dict[str, Any] | None:
         """获取部门表单数据"""
         return await dept_repository.get_dept_form(db, dept_id)
 
-    @staticmethod
-    async def _calculate_depth(tree_path: str) -> int:
+    async def _calculate_depth(self, tree_path: str) -> int:
         """计算部门层级深度"""
         if not tree_path or tree_path == "0":
             return 1
         # tree_path 格式: "0,1,2,3"
         return len(tree_path.split(","))
 
-    @staticmethod
-    async def _assert_max_dept_depth(tree_path: str) -> None:
+    async def _assert_max_dept_depth(self, tree_path: str) -> None:
         """校验部门层级不超过 5 级（T-DPT-014/018a：超出报 A0504"部门层级不能超过5级"）"""
-        depth = await DeptService._calculate_depth(tree_path)
+        depth = await self._calculate_depth(tree_path)
         if depth > MAX_DEPT_LEVEL:
             raise BusinessException(ResultCode.DATA_BIND_EXISTS, "部门层级不能超过5级")
 
-    @staticmethod
-    def _validate_name_safety(name: str) -> None:
+    def _validate_name_safety(self, name: str) -> None:
         """
         校验部门名称安全性，拦截 XSS 攻击
 
@@ -138,8 +133,8 @@ class DeptService:
         if name and _XSS_PATTERN.search(name):
             raise BusinessException(ResultCode.PARAM_ERROR, "部门名称包含不安全的字符")
 
-    @staticmethod
     async def create_dept(
+        self,
         db: AsyncSession,
         redis: Redis,
         data: dict[str, Any],
@@ -165,7 +160,7 @@ class DeptService:
             raise BusinessException("部门名称不能为空")
 
         # XSS 防护：校验部门名称安全性
-        DeptService._validate_name_safety(name)
+        self._validate_name_safety(name)
 
         # 1. 校验部门名称是否存在（全局，匹配 Java）
         if await dept_repository.check_name_exists(db, name):
@@ -181,7 +176,7 @@ class DeptService:
         tree_path = await dept_repository.generate_tree_path(db, parent_id)
 
         # 4. 校验部门层级不超过 5 级（T-DPT-014）
-        await DeptService._assert_max_dept_depth(tree_path)
+        await self._assert_max_dept_depth(tree_path)
 
         dept = SysDept(
             name=name,
@@ -196,12 +191,12 @@ class DeptService:
         await db.refresh(dept)
 
         # 清除缓存
-        await DeptService._clear_cache(redis)
+        await self._clear_cache(redis)
 
         return dept.id
 
-    @staticmethod
     async def update_dept(
+        self,
         db: AsyncSession,
         redis: Redis,
         dept_id: int,
@@ -230,7 +225,7 @@ class DeptService:
         name = data.get("name")
         if name:
             # XSS 防护：校验部门名称安全性
-            DeptService._validate_name_safety(name)
+            self._validate_name_safety(name)
             if await dept_repository.check_name_exists(db, name, exclude_id=dept_id):
                 raise BusinessException("部门名称已存在")
 
@@ -254,7 +249,7 @@ class DeptService:
             # 更新 tree_path 和 parent_id
             new_tree_path = await dept_repository.generate_tree_path(db, new_parent_id)
             # 移动后层级校验（T-DPT-018a：移动至超深层级报 A0504"部门层级不能超过5级"）
-            await DeptService._assert_max_dept_depth(new_tree_path)
+            await self._assert_max_dept_depth(new_tree_path)
             dept.tree_path = new_tree_path
             dept.parent_id = new_parent_id
 
@@ -267,12 +262,12 @@ class DeptService:
             dept.sort = data["sort"]
 
         # 清除缓存
-        await DeptService._clear_cache(redis)
+        await self._clear_cache(redis)
 
         return dept.id
 
-    @staticmethod
     async def delete_depts(
+        self,
         db: AsyncSession,
         redis: Redis,
         dept_ids: list[int],
@@ -325,11 +320,13 @@ class DeptService:
             raise BusinessException("部门删除失败")
 
         # 清除缓存
-        await DeptService._clear_cache(redis)
+        await self._clear_cache(redis)
 
-    @staticmethod
-    async def _clear_cache(redis: Redis) -> None:
+    async def _clear_cache(self, redis: Redis) -> None:
         """清除部门相关缓存"""
         cache = CacheService(redis)
         for pattern in DeptCacheKeys.all_patterns():
             await cache.delete_pattern(pattern)
+
+
+dept_service = DeptService()

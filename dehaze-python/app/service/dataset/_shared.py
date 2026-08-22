@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 def _build_file_vo(item_file, file_obj) -> dict[str, Any]:
     """构建图片文件 VO（统一字段命名，对齐 SDK ImageUrlVO）。
     url/thumbnailUrl 运行时拼接（baseUrl + object_name），不落库。
-    用于 ItemFileService 和 DatasetItemService 的所有文件响应。"""
+    用于 item_file_service 和 dataset_item_service 的所有文件响应。"""
     from app.service.storage.factory import get_storage_by_name
 
     # 从文件名提取格式（扩展名），统一返回小写

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, WebSocket
 
-from app.service.websocket_service import WebSocketService
+from app.service.websocket_service import websocket_service
 
 router = APIRouter(tags=["WebSocket"])
 
@@ -30,4 +30,4 @@ async def websocket_endpoint(
     - online_users: 在线用户列表
     - error: 错误消息
     """
-    await WebSocketService.handle_connection(websocket, sessionId)
+    await websocket_service.handle_connection(websocket, sessionId)

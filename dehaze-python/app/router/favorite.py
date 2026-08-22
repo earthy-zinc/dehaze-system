@@ -11,7 +11,7 @@ from app.core.result import success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.favorite import FavoriteCreateForm
-from app.service.favorite_service import FavoriteService
+from app.service.favorite_service import favorite_service
 
 router = APIRouter(
     prefix="/api/v1/favorites",
@@ -31,7 +31,7 @@ async def get_page(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FavoriteService.get_page(
+    data = await favorite_service.get_page(
         db,
         user.id,
         {
@@ -52,7 +52,7 @@ async def add(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    favorite_id = await FavoriteService.add(db, user.id, body.targetType, body.targetId)
+    favorite_id = await favorite_service.add(db, user.id, body.targetType, body.targetId)
     return success(favorite_id)
 
 
@@ -63,7 +63,7 @@ async def delete_by_ids(
     user: UserContext = Depends(get_current_user),
 ):
     id_list = [int(x) for x in ids.split(",") if x.strip().isdigit()]
-    await FavoriteService.delete_by_ids(db, user.id, id_list)
+    await favorite_service.delete_by_ids(db, user.id, id_list)
     return success()
 
 
@@ -74,7 +74,7 @@ async def get_status(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FavoriteService.get_status(db, user.id, targetType, target_id)
+    data = await favorite_service.get_status(db, user.id, targetType, target_id)
     return success(data)
 
 
@@ -84,5 +84,5 @@ async def get_count(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await FavoriteService.get_count(db, user.id, targetType)
+    data = await favorite_service.get_count(db, user.id, targetType)
     return success(data)

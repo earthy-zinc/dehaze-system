@@ -58,7 +58,7 @@ class _GovStub:
 
 def _patch_gov(monkeypatch):
     _GovStub.calls = []
-    monkeypatch.setattr(m, "CompatibleGovernanceService", _GovStub)
+    monkeypatch.setattr(m, "compatible_governance_service", _GovStub)
 
 
 def _patch_record(monkeypatch):
@@ -279,7 +279,7 @@ async def test_list_models_openai_filters_whitelist(monkeypatch):
         called["user_id"] = user_id
         return [model_a, model_b]
 
-    monkeypatch.setattr(m.AiModelService, "list_enabled_models", _vip_list)
+    monkeypatch.setattr(m.ai_model_service, "list_enabled_models", _vip_list)
     result = await m.CompatibleApiService.list_models_openai(_db(monkeypatch), object(), 7, api_key)
     ids = [d["id"] for d in result["data"]]
     assert ids == ["gpt-4"]
@@ -294,7 +294,7 @@ async def test_list_models_openai_no_whitelist_passthrough(monkeypatch):
     async def _vip_list(db, redis, user_id):
         return [model_a, model_b]
 
-    monkeypatch.setattr(m.AiModelService, "list_enabled_models", _vip_list)
+    monkeypatch.setattr(m.ai_model_service, "list_enabled_models", _vip_list)
     result = await m.CompatibleApiService.list_models_openai(_db(monkeypatch), object(), 7, api_key)
     assert len(result["data"]) == 2
 
@@ -309,7 +309,7 @@ async def test_list_models_claude_filters_whitelist(monkeypatch):
     async def _vip_list(db, redis, user_id):
         return [model_a, model_b]
 
-    monkeypatch.setattr(m.AiModelService, "list_enabled_models", _vip_list)
+    monkeypatch.setattr(m.ai_model_service, "list_enabled_models", _vip_list)
     result = await m.CompatibleApiService.list_models_claude(_db(monkeypatch), object(), 7, api_key)
     assert [d["id"] for d in result["data"]] == ["claude-3"]
 

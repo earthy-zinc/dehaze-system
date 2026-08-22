@@ -9,8 +9,7 @@ from app.repository.ai_billing_repository import ai_billing_repository
 class BillingStatService:
     """按 user/model/billType/day 维度统计"""
 
-    @staticmethod
-    async def stats(
+    async def stats(self, 
         db: AsyncSession, query: BillingStatQuery, user_id: int | None = None
     ) -> list[BillingStatResult]:
         rows = await ai_billing_repository.stats_by_dimension(
@@ -40,3 +39,6 @@ class BillingStatService:
                 )
             )
         return results
+
+
+billing_stat_service = BillingStatService()

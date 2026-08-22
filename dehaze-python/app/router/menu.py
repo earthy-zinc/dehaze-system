@@ -15,7 +15,7 @@ from app.models.schema.menu import (
     MenuVO,
     RouteVO,
 )
-from app.service.menu_service import MenuService
+from app.service.menu_service import menu_service
 
 router = APIRouter(
     prefix="/api/v1/menus", tags=["菜单管理"], dependencies=[Depends(get_current_user)]
@@ -29,7 +29,7 @@ async def list_menus(
     visible: int | None = Query(default=None, ge=0, le=1, description="显示状态(1:显示;0:隐藏)"),
     db: AsyncSession = Depends(get_db),
 ):
-    menu_list = await MenuService.list_menus(db, keywords, type, visible)
+    menu_list = await menu_service.list_menus(db, keywords, type, visible)
     return success(menu_list)
 
 
@@ -37,7 +37,7 @@ async def list_menus(
 async def list_menu_options(
     db: AsyncSession = Depends(get_db),
 ):
-    options = await MenuService.list_menu_options(db)
+    options = await menu_service.list_menu_options(db)
     return success(options)
 
 
@@ -51,7 +51,7 @@ async def list_routes(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    route_list = await MenuService.list_routes(db, redis)
+    route_list = await menu_service.list_routes(db, redis)
     return success(route_list)
 
 
@@ -60,7 +60,7 @@ async def get_menu_form(
     menu_id: int = Path(..., description="菜单ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    menu_form = await MenuService.get_menu_form(db, menu_id)
+    menu_form = await menu_service.get_menu_form(db, menu_id)
     return success(menu_form)
 
 
@@ -72,7 +72,7 @@ async def add_menu(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await MenuService.save_menu(db, redis, body.model_dump(exclude_none=True))
+    await menu_service.save_menu(db, redis, body.model_dump(exclude_none=True))
     return success(msg="保存成功")
 
 
@@ -87,7 +87,7 @@ async def update_menu(
 ):
     data = body.model_dump(exclude_none=True)
     data["id"] = menu_id
-    await MenuService.save_menu(db, redis, data)
+    await menu_service.save_menu(db, redis, data)
     return success(msg="保存成功")
 
 
@@ -105,7 +105,7 @@ async def delete_menu(
     user: UserContext = Depends(get_current_user),
 ):
     menu_ids = [int(i) for i in ids.split(",")]
-    await MenuService.delete_menu(db, redis, menu_ids)
+    await menu_service.delete_menu(db, redis, menu_ids)
     return success(msg="删除成功")
 
 
@@ -118,5 +118,5 @@ async def update_menu_visible(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await MenuService.update_menu_visible(db, redis, menu_id, body.visible)
+    await menu_service.update_menu_visible(db, redis, menu_id, body.visible)
     return success(msg="更新成功")

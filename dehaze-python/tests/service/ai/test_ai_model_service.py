@@ -96,7 +96,7 @@ class TestDedupIncludeDeleted:
             vip_level=0,
         )
         with pytest.raises(BusinessException) as exc:
-            await m.AiModelService.create_model(None, object(), form)
+            await m.ai_model_service.create_model(None, object(), form)
         assert "已被历史记录占用" in str(exc.value)
 
 
@@ -120,7 +120,7 @@ class TestGetCallRoutes:
 
         _patch([cur_a, cur_b], [fb])
 
-        routes = await m.AiModelService.get_call_routes(None, "gpt-4o", set())
+        routes = await m.ai_model_service.get_call_routes(None, "gpt-4o", set())
         assert [r["model_pk"] for r in routes] == [1, 2, 3]
 
     async def test_capability_filter_skips_unsupported(self, monkeypatch):
@@ -141,7 +141,7 @@ class TestGetCallRoutes:
 
         _patch([_model(pk=1, model_id="gpt-4o", provider_id=1, fallback_pk=3)], [fb_tool, fb_no_tool])
 
-        routes = await m.AiModelService.get_call_routes(None, "gpt-4o", {"tool_call"})
+        routes = await m.ai_model_service.get_call_routes(None, "gpt-4o", {"tool_call"})
         assert [r["model_pk"] for r in routes] == [1, 3]
 
     async def test_cycle_guard(self, monkeypatch):
@@ -162,7 +162,7 @@ class TestGetCallRoutes:
 
         _patch([a], [b])
 
-        routes = await m.AiModelService.get_call_routes(None, "a", set())
+        routes = await m.ai_model_service.get_call_routes(None, "a", set())
         assert [r["model_pk"] for r in routes] == [1, 2]
 
     async def test_depth_limit_caps_chain(self, monkeypatch):
@@ -185,7 +185,7 @@ class TestGetCallRoutes:
 
         _patch([chain[1]], [])
 
-        routes = await m.AiModelService.get_call_routes(None, "m1", set())
+        routes = await m.ai_model_service.get_call_routes(None, "m1", set())
         assert len(routes) == 6
 
 
@@ -193,7 +193,7 @@ class TestValidateModelCaps:
     async def test_multimodal_required_raises_a0601(self):
         model = _model(multimodal=0)
         with pytest.raises(BusinessException) as exc:
-            await m.AiModelService.validate_model_caps(
+            await m.ai_model_service.validate_model_caps(
                 model, has_attachments=True, need_tools=False
             )
         assert exc.value.code == ResultCode.AI_MODEL_NOT_AVAILABLE
@@ -201,14 +201,14 @@ class TestValidateModelCaps:
     async def test_tool_call_required_raises_a0601(self):
         model = _model(tool_call=0)
         with pytest.raises(BusinessException) as exc:
-            await m.AiModelService.validate_model_caps(
+            await m.ai_model_service.validate_model_caps(
                 model, has_attachments=False, need_tools=True
             )
         assert exc.value.code == ResultCode.AI_MODEL_NOT_AVAILABLE
 
     async def test_passes_when_caps_satisfied(self):
         model = _model(multimodal=1, tool_call=1)
-        result = await m.AiModelService.validate_model_caps(
+        result = await m.ai_model_service.validate_model_caps(
             model, has_attachments=True, need_tools=True
         )
         assert result is None
@@ -241,7 +241,7 @@ class TestListEnabledModels:
         monkeypatch.setattr(m.CacheService, "get_json", get_json)
         monkeypatch.setattr(m.CacheService, "set_json", set_json)
 
-        items = await m.AiModelService.list_enabled_models(None, object(), 1)
+        items = await m.ai_model_service.list_enabled_models(None, object(), 1)
         flags = {item.model_id: item.is_fallback_target for item in items}
         assert flags["gpt-4o-mini"] is True
         assert flags["gpt-4o"] is False

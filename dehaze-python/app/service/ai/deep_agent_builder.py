@@ -41,7 +41,7 @@ from app.service.ai.mcp_namespace_prefilter import McpNamespacePrefilterMiddlewa
 from app.service.ai.paradigm_middleware import ParadigmMiddleware
 from app.service.ai.prompt_composer import compose_system_prompt
 from app.service.ai.tool_failure_guard import ToolFailureGuardMiddleware
-from app.service.ai_agent_service import AgentService
+from app.service.ai_agent_service import agent_service
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +232,7 @@ async def _build_subagents(
             )
             continue
         try:
-            sub_snapshot = await AgentService().get_published_snapshot(
+            sub_snapshot = await agent_service.get_published_snapshot(
                 db, redis, rel.get("agent_id")
             )
         except BusinessException as e:

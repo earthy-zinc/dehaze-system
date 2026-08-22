@@ -19,7 +19,7 @@ from app.models.schema.dict import (
     DictTypeFormVO,
     DictTypePageVO,
 )
-from app.service.dict_service import DictService, DictTypeService
+from app.service.dict_service import dict_service, dict_type_service
 
 router = APIRouter(
     prefix="/api/v1/dict", tags=["字典管理"], dependencies=[Depends(get_current_user)]
@@ -37,7 +37,7 @@ async def get_dict_type_page(
     user: UserContext = Depends(get_current_user),
 ):
     """获取字典类型分页列表"""
-    items, total = await DictTypeService.get_dict_type_page(db, pageNum, pageSize, keywords)
+    items, total = await dict_type_service.get_dict_type_page(db, pageNum, pageSize, keywords)
 
     type_list = [
         {
@@ -67,7 +67,7 @@ async def get_dict_type_form(
     db: AsyncSession = Depends(get_db),
 ):
     """获取字典类型表单数据"""
-    dict_type_data = await DictTypeService.get_dict_type_form(db, type_id)
+    dict_type_data = await dict_type_service.get_dict_type_form(db, type_id)
     if not dict_type_data:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在")
     return success(dict_type_data)
@@ -80,7 +80,7 @@ async def create_dict_type(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await DictTypeService.create_dict_type(db, body.model_dump(exclude_none=True))
+    await dict_type_service.create_dict_type(db, body.model_dump(exclude_none=True))
     return success(msg="新增成功")
 
 
@@ -93,7 +93,7 @@ async def update_dict_type(
     user: UserContext = Depends(get_current_user),
     body: DictTypeForm = Body(...),
 ):
-    await DictTypeService.update_dict_type(db, redis, type_id, body.model_dump(exclude_none=True))
+    await dict_type_service.update_dict_type(db, redis, type_id, body.model_dump(exclude_none=True))
     return success(msg="修改成功")
 
 
@@ -115,7 +115,7 @@ async def delete_dict_types(
         id_list = [int(i) for i in type_ids.split(",")]
     except ValueError:
         raise BusinessException(ResultCode.PARAM_ERROR, "参数错误") from None
-    await DictTypeService.delete_dict_types(db, redis, id_list, force=force)
+    await dict_type_service.delete_dict_types(db, redis, id_list, force=force)
     return success(msg="删除成功")
 
 
@@ -131,7 +131,7 @@ async def get_dict_page(
     """获取字典分页列表"""
     if not typeCode:
         raise BusinessException(ResultCode.PARAM_IS_NULL, "字典类型编码不能为空")
-    items, total = await DictService.get_dict_page(db, pageNum, pageSize, keywords, typeCode)
+    items, total = await dict_service.get_dict_page(db, pageNum, pageSize, keywords, typeCode)
 
     dict_list = [
         {
@@ -164,7 +164,7 @@ async def get_dict_form(
     db: AsyncSession = Depends(get_db),
 ):
     """获取字典表单数据"""
-    dict_data = await DictService.get_dict_form(db, dict_id)
+    dict_data = await dict_service.get_dict_form(db, dict_id)
     if not dict_data:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典数据项不存在")
     return success(dict_data)
@@ -178,7 +178,7 @@ async def create_dict(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await DictService.create_dict(db, redis, body.model_dump(exclude_none=True))
+    await dict_service.create_dict(db, redis, body.model_dump(exclude_none=True))
     return success(msg="新增成功")
 
 
@@ -191,7 +191,7 @@ async def update_dict(
     user: UserContext = Depends(get_current_user),
     body: DictForm = Body(...),
 ):
-    await DictService.update_dict(db, redis, dict_id, body.model_dump(exclude_none=True))
+    await dict_service.update_dict(db, redis, dict_id, body.model_dump(exclude_none=True))
     return success(msg="修改成功")
 
 
@@ -209,7 +209,7 @@ async def delete_dict(
         id_list = [int(i) for i in dict_ids.split(",")]
     except ValueError:
         raise BusinessException(ResultCode.PARAM_ERROR, "参数错误") from None
-    await DictService.delete_dict(db, redis, id_list)
+    await dict_service.delete_dict(db, redis, id_list)
     return success(msg="删除成功")
 
 
@@ -224,5 +224,5 @@ async def list_dict_options(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    options = await DictService.list_dict_options(db, redis, type_code)
+    options = await dict_service.list_dict_options(db, redis, type_code)
     return success(options)

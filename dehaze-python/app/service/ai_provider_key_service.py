@@ -60,14 +60,13 @@ async def _get_key_or_raise(
 
 
 class AiProviderKeyService:
-    @staticmethod
-    async def list_keys(db: AsyncSession, provider_id: int) -> list[ProviderKeyResult]:
+    async def list_keys(self, db: AsyncSession, provider_id: int) -> list[ProviderKeyResult]:
         await _get_provider_or_raise(db, provider_id)
         keys = await ai_provider_key_repository.list_by_provider(db, provider_id)
         return [ProviderKeyResult.model_validate(k) for k in keys]
 
-    @staticmethod
     async def create_key(
+        self,
         db: AsyncSession,
         provider_id: int,
         form: ProviderKeyCreate,
@@ -91,8 +90,8 @@ class AiProviderKeyService:
         key = await ai_provider_key_repository.create(db, key)
         return ProviderKeyResult.model_validate(key)
 
-    @staticmethod
     async def update_key(
+        self,
         db: AsyncSession,
         provider_id: int,
         key_id: int,
@@ -106,8 +105,8 @@ class AiProviderKeyService:
         await db.refresh(key)
         return ProviderKeyResult.model_validate(key)
 
-    @staticmethod
     async def delete_key(
+        self,
         db: AsyncSession,
         provider_id: int,
         key_id: int,
@@ -122,8 +121,8 @@ class AiProviderKeyService:
                 )
         await ai_provider_key_repository.delete_by_ids(db, [key_id])
 
-    @staticmethod
     async def list_usable_keys(
+        self,
         db: AsyncSession,
         redis: Redis,
         provider_id: int,
@@ -149,14 +148,14 @@ class AiProviderKeyService:
         usable.sort(key=lambda k: (k.priority, -k.weight))
         return usable
 
-    @staticmethod
     async def select_key(
+        self,
         db: AsyncSession,
         redis: Redis,
         provider_id: int,
     ) -> str | None:
         """Key 选取策略：priority 优先 -> 同优先级 weight 加权随机 -> 解密返回明文"""
-        candidates = await AiProviderKeyService.list_usable_keys(db, redis, provider_id)
+        candidates = await self.list_usable_keys(db, redis, provider_id)
         if not candidates:
             return None
 
@@ -181,8 +180,7 @@ class AiProviderKeyService:
         )
         return decrypt(selected.key_cipher)
 
-    @staticmethod
-    async def mark_call_failed(redis: Redis, key_id: int, error_code: str | None = None) -> None:
+    async def mark_call_failed(self, redis: Redis, key_id: int, error_code: str | None = None) -> None:
         """Key 调用失败：连续失败计数 + 按失败次数升级冷却时长。
 
         冷却升级：第 1 次 5 分钟、连续 ≥3 次 15 分钟、≥5 次 30 分钟（上限）；
@@ -197,8 +195,7 @@ class AiProviderKeyService:
             cooldown = _cooldown_seconds(streak)
         await redis.set(KEY_UNAVAILABLE_PREFIX.format(key_id), 1, ex=cooldown)
 
-    @staticmethod
-    async def mark_call_success(redis: Redis, key_id: int, used_by: int | None = None) -> None:
+    async def mark_call_success(self, redis: Redis, key_id: int, used_by: int | None = None) -> None:
         """Key 调用成功：清零连续失败计数 + 日计数 INCR + 缓冲最后使用信息（定时刷库）。
 
         日计数（当日 TTL，次日自然过期）与 list_usable_keys 的日额度过滤同源。
@@ -221,3 +218,6 @@ class AiProviderKeyService:
                 hour=0, minute=0, second=0, microsecond=0
             )
             await redis.expire(daily, int((midnight - datetime.now()).total_seconds()))
+
+
+ai_provider_key_service = AiProviderKeyService()

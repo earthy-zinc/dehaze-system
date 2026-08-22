@@ -17,7 +17,7 @@ from app.service.import_export.registry import (
     ExportHandlerRegistry,
     ImportHandlerRegistry,
 )
-from app.service.import_export_service import ImportExportService
+from app.service.import_export_service import import_export_service
 
 
 def _make_upload_file(filename: str, content: bytes, content_type: str = "text/csv") -> UploadFile:
@@ -87,7 +87,7 @@ class TestExport:
             _export_registry_with(handler),
         ):
             with pytest.raises(BusinessException) as exc_info:
-                await ImportExportService.export(db=None, redis=None, module="user", params={})
+                await import_export_service.export(db=None, redis=None, module="user", params={})
             assert exc_info.value.code == ResultCode.EXPORT_ROWS_EXCEED_LIMIT
 
     async def test_export_sync_returns_streaming_response(self):
@@ -96,7 +96,7 @@ class TestExport:
             "app.service.import_export_service.export_handler_registry",
             _export_registry_with(handler),
         ):
-            result = await ImportExportService.export(
+            result = await import_export_service.export(
                 db=None, redis=None, module="user", params={}, format="excel"
             )
             assert isinstance(result, StreamingResponse)
@@ -109,7 +109,7 @@ class TestExport:
             "app.service.import_export_service.export_handler_registry",
             _export_registry_with(handler),
         ):
-            result = await ImportExportService.export(
+            result = await import_export_service.export(
                 db=None, redis=None, module="user", params={}, format="csv"
             )
             assert isinstance(result, StreamingResponse)
@@ -126,7 +126,7 @@ class TestExport:
             patch("app.service.import_export_service.create_task", autospec=True) as create_task,
         ):
             create_task.return_value = task_data
-            result = await ImportExportService.export(
+            result = await import_export_service.export(
                 db=None, redis=None, module="user", params={"keywords": "张"}, user_id=1
             )
             assert result == {
@@ -154,7 +154,7 @@ class TestExport:
             ),
             patch("app.service.import_export_service.create_task", autospec=True) as create_task,
         ):
-            result = await ImportExportService.export(
+            result = await import_export_service.export(
                 db=None, redis=None, module="user", params={}, async_flag=False
             )
             assert isinstance(result, StreamingResponse)
@@ -165,21 +165,21 @@ class TestImportData:
     async def test_import_unsupported_file_type_raises(self):
         file = _make_upload_file("test.txt", b"hello", "text/plain")
         with pytest.raises(BusinessException) as exc_info:
-            await ImportExportService.import_data(db=None, redis=None, module="user", file=file)
+            await import_export_service.import_data(db=None, redis=None, module="user", file=file)
         assert exc_info.value.code == ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH
 
     async def test_import_file_too_large_raises(self):
         large_content = b"0" * (MAX_IMPORT_FILE_SIZE + 1)
         file = _make_upload_file("test.xlsx", large_content, "application/octet-stream")
         with pytest.raises(BusinessException) as exc_info:
-            await ImportExportService.import_data(db=None, redis=None, module="user", file=file)
+            await import_export_service.import_data(db=None, redis=None, module="user", file=file)
         assert exc_info.value.code == ResultCode.USER_UPLOAD_FILE_SIZE_EXCEEDS
 
     async def test_import_csv_magic_mismatch_raises(self):
         content = b"\xff\xfe\x00\x01invalid"
         file = _make_upload_file("test.csv", content, "text/csv")
         with pytest.raises(BusinessException) as exc_info:
-            await ImportExportService.import_data(db=None, redis=None, module="user", file=file)
+            await import_export_service.import_data(db=None, redis=None, module="user", file=file)
         assert exc_info.value.code == ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH
 
     async def test_import_empty_rows_raises(self):
@@ -191,7 +191,7 @@ class TestImportData:
             content = _valid_csv_bytes([["用户名"]])
             file = _make_upload_file("test.csv", content, "text/csv")
             with pytest.raises(BusinessException) as exc_info:
-                await ImportExportService.import_data(
+                await import_export_service.import_data(
                     db=None, redis=None, module="user", file=file
                 )
             assert exc_info.value.code == ResultCode.IMPORT_FILE_EMPTY
@@ -205,7 +205,7 @@ class TestImportData:
         ):
             content = _valid_csv_bytes([["用户名"], ["u1"], ["u2"]])
             file = _make_upload_file("test.csv", content, "text/csv")
-            ret = await ImportExportService.import_data(
+            ret = await import_export_service.import_data(
                 db=None, redis=None, module="user", file=file, mode="all"
             )
             assert ret == {
@@ -231,7 +231,7 @@ class TestImportData:
         ):
             content = _valid_csv_bytes([["用户名"], ["u1"], ["u2"]])
             file = _make_upload_file("test.csv", content, "text/csv")
-            ret = await ImportExportService.import_data(
+            ret = await import_export_service.import_data(
                 db=None, redis=None, module="user", file=file, mode="partial"
             )
             assert ret["failureCount"] == 1
@@ -255,7 +255,7 @@ class TestImportData:
             ),
         ):
             create_task.return_value = task_data
-            ret = await ImportExportService.import_data(
+            ret = await import_export_service.import_data(
                 db=None, redis=None, module="user", file=file, user_id=1
             )
             assert ret == {"taskId": "task-import-001", "status": TaskStatus.PENDING.value}
@@ -280,5 +280,5 @@ class TestImportData:
             _import_registry_with(handler),
         ):
             with pytest.raises(BusinessException) as exc_info:
-                await ImportExportService.import_data(db=None, redis=None, module="user", file=file)
+                await import_export_service.import_data(db=None, redis=None, module="user", file=file)
             assert exc_info.value.code == ResultCode.IMPORT_ROWS_EXCEED_LIMIT

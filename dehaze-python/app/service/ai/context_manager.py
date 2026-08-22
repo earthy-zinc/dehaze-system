@@ -12,7 +12,7 @@ from app.repository.ai_message_repository import ai_message_repository
 from app.service.ai.llm_client import llm_client
 from app.service.ai.memory_injection import inject_memories
 from app.service.ai.prompt_composer import compose_system_prompt
-from app.service.ai_artifact_service import AiArtifactService
+from app.service.ai_artifact_service import ai_artifact_service
 
 logger = logging.getLogger(__name__)
 
@@ -67,14 +67,14 @@ class ContextManager:
             return None
         from app.dependencies.redis import get_redis_client
         from app.repository.ai_agent_repository import ai_agent_repository
-        from app.service.ai_agent_service import AgentService
+        from app.service.ai_agent_service import agent_service
 
         agent = await ai_agent_repository.get_by_code(db, conv.agent_code)
         if not agent or agent.deleted:
             return None
         try:
             redis = await get_redis_client()
-            return await AgentService().get_published_snapshot(
+            return await agent_service.get_published_snapshot(
                 db, redis, agent.id, conv.agent_version
             )
         except Exception as e:  # 快照加载失败不阻断上下文组装
@@ -110,7 +110,7 @@ class ContextManager:
         if not ids:
             return
         try:
-            refs = await AiArtifactService.get_message_artifact_refs(db, ids)
+            refs = await ai_artifact_service.get_message_artifact_refs(db, ids)
         except Exception as e:  # 产物引用不可用时不影响上下文组装
             logger.warning("加载消息产物引用失败: %s", e)
             return

@@ -107,10 +107,10 @@ async def test_direct_skips_graph_build(monkeypatch):
     async def _build_ctx(db, conv, model):
         return ([{"role": "user", "content": "你好"}], "sys", [])
 
-    async def _load_anchor(self, db, conv):
+    async def _load_anchor(db, conv):
         return (1, 1)
 
-    async def _load_snap(self, db, redis, a, v):
+    async def _load_snap(db, redis, a, v):
         return _snapshot("direct")
 
     async def _resolve(snapshot, messages, model_id):
@@ -119,12 +119,12 @@ async def test_direct_skips_graph_build(monkeypatch):
     state = {"direct_called": False, "graph_called": False}
 
     async def _run_direct(
-        self, conv_id, user_id, msg_id, model_id, stream_session_id, messages, system_prompt
+        conv_id, user_id, msg_id, model_id, stream_session_id, messages, system_prompt
     ):
         state["direct_called"] = True
         return {"final_response": "hi", "stop_reason": "stop", "usage": {}}
 
-    def _build_graph(self, db, redis, agent_id, version_no, model_id=None):
+    def _build_graph(db, redis, agent_id, version_no, model_id=None):
         state["graph_called"] = True
         raise AssertionError("direct 路径不应构建图")
 
@@ -132,11 +132,11 @@ async def test_direct_skips_graph_build(monkeypatch):
     monkeypatch.setattr(reasoning_service.ai_conversation_repository, "get_by_id_and_user", _get_conv)
     monkeypatch.setattr(reasoning_service.summary_service, "maybe_compress", _compress)
     monkeypatch.setattr(reasoning_service.context_manager, "build_context", _build_ctx)
-    monkeypatch.setattr(reasoning_service.ReasoningService, "_load_agent_anchor", _load_anchor)
-    monkeypatch.setattr(reasoning_service.ReasoningService, "_load_snapshot", _load_snap)
+    monkeypatch.setattr(reasoning_service.reasoning_service, "_load_agent_anchor", _load_anchor)
+    monkeypatch.setattr(reasoning_service.reasoning_service, "_load_snapshot", _load_snap)
     monkeypatch.setattr(DeepAgentBuilder, "resolve_reasoning_mode", _resolve)
-    monkeypatch.setattr(reasoning_service.ReasoningService, "_run_direct", _run_direct)
-    monkeypatch.setattr(reasoning_service.ReasoningService, "_build_graph", _build_graph)
+    monkeypatch.setattr(reasoning_service.reasoning_service, "_run_direct", _run_direct)
+    monkeypatch.setattr(reasoning_service.reasoning_service, "_build_graph", _build_graph)
 
     result = await reasoning_service.reasoning_service.run(
         conv_id=1, user_id=2, msg_id=3, model_id="gpt-4o-mini", stream_session_id="s1"

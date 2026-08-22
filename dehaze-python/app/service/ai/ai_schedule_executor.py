@@ -46,8 +46,8 @@ from app.repository.ai_message_repository import ai_message_repository
 from app.repository.ai_schedule_repository import ai_schedule_repository
 from app.repository.ai_schedule_run_repository import ai_schedule_run_repository
 from app.service.ai.ai_schedule_notify import notify_run_result
-from app.service.ai_conversation_service import AiConversationService
-from app.service.ai_message_service import AiMessageService
+from app.service.ai_conversation_service import ai_conversation_service
+from app.service.ai_message_service import ai_message_service
 from app.service.billing.quota_service import quota_service
 
 logger = logging.getLogger(__name__)
@@ -390,7 +390,7 @@ class ScheduleExecutor:
         content: str,
     ) -> int:
         """创建任务专属会话（标题含任务名，便于结果跳转）。"""
-        conv = await AiConversationService.create_conversation(
+        conv = await ai_conversation_service.create_conversation(
             db,
             schedule.user_id,
             ConversationCreate(
@@ -418,7 +418,7 @@ class ScheduleExecutor:
             (会话 ID, 本次执行消耗积分)
         """
         try:
-            response = await AiMessageService.send_message(
+            response = await ai_message_service.send_message(
                 db,
                 conversation_id,
                 user_id,

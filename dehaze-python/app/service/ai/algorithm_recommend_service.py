@@ -4,8 +4,8 @@ import logging
 
 from app.database import get_db_session
 from app.service.ai.interrupt_handler import interrupt_handler
-from app.service.ai_artifact_service import AiArtifactService
-from app.service.recommendation_service import RecommendationService
+from app.service.ai_artifact_service import ai_artifact_service
+from app.service.recommendation_service import recommendation_service
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +28,10 @@ async def recommend_algorithm(
     """
     async with get_db_session() as db:
         # 1. 图像特征分析
-        analysis = await RecommendationService.analyze(None, image_url)
+        analysis = await recommendation_service.analyze(None, image_url)
 
         # 2. 推荐算法（内部创建 sys_recommendation 记录）
-        algorithms = await RecommendationService.get_algorithms(
+        algorithms = await recommendation_service.get_algorithms(
             db,
             user_id,
             None,
@@ -63,7 +63,7 @@ async def recommend_algorithm(
                 for a in alternatives
             ],
         }
-        artifact = await AiArtifactService.register_artifact(
+        artifact = await ai_artifact_service.register_artifact(
             db,
             conv_id,
             msg_id,
@@ -123,6 +123,6 @@ async def handle_user_confirmation(
     recommendation_id = recommendation.get("recommendationId")
     if recommendation_id:
         async with get_db_session() as db:
-            await RecommendationService.submit_feedback(db, recommendation_id, True)
+            await recommendation_service.submit_feedback(db, recommendation_id, True)
 
     return {"status": "accepted", "algorithmId": algorithm_id}

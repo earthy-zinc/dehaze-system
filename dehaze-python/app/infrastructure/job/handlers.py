@@ -475,13 +475,13 @@ async def send_scheduled_announcements() -> str:
     发送定时公告
 
     扫描 status=2(待发送) AND send_time <= NOW() 的公告，
-    逐条调用 AnnouncementService.send 完成投递。
+    逐条调用 announcement_service.send 完成投递。
     与 Java AnnouncementScheduleJob、Go sendScheduledAnnouncements 对齐。
 
     CRON 建议: 0 * * * * ? （每分钟）
     """
     from app.repository.announcement_repository import announcement_repository
-    from app.service.announcement_service import AnnouncementService
+    from app.service.announcement_service import announcement_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
@@ -495,7 +495,7 @@ async def send_scheduled_announcements() -> str:
         for announcement in pending:
             try:
                 async with get_db_session() as db:
-                    await AnnouncementService.send(db, announcement.id)
+                    await announcement_service.send(db, announcement.id)
                     sent_total += 1
             except Exception as e:
                 failed += 1
@@ -526,12 +526,12 @@ async def expire_orders() -> str:
 
     CRON 建议: 0 0/5 * * * ? （每 5 分钟）
     """
-    from app.service.order_service import OrderService
+    from app.service.order_service import order_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            count = await OrderService.expire_orders(db)
+            count = await order_service.expire_orders(db)
 
         if count > 0:
             msg = f"订单超时取消: 已取消={count}"
@@ -555,12 +555,12 @@ async def complete_expired_orders() -> str:
 
     CRON 建议: 0 0 3 * * ? （每天凌晨 3 点）
     """
-    from app.service.order_service import OrderService
+    from app.service.order_service import order_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            count = await OrderService.complete_expired_orders(db)
+            count = await order_service.complete_expired_orders(db)
 
         if count > 0:
             msg = f"订单到期归档: 已归档={count}"
@@ -584,12 +584,12 @@ async def expire_user_coupons() -> str:
 
     CRON 建议: 0 0 4 * * ? （每天凌晨 4 点）
     """
-    from app.service.coupon_service import CouponService
+    from app.service.coupon_service import coupon_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            count = await CouponService.expire_user_coupons(db)
+            count = await coupon_service.expire_user_coupons(db)
 
         if count > 0:
             msg = f"用户优惠券过期处理: 已过期={count}"
@@ -616,12 +616,12 @@ async def auto_renew_task() -> str:
 
     CRON 建议: 0 0 8 * * ? （每天凌晨 8 点）
     """
-    from app.service.order_service import OrderService
+    from app.service.order_service import order_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            success_count = await OrderService.execute_renewal(db)
+            success_count = await order_service.execute_renewal(db)
 
         if success_count > 0:
             msg = f"自动续费扣款完成: 成功={success_count}"
@@ -704,12 +704,12 @@ async def retry_failed_refunds() -> str:
 
     CRON 建议: 0 0/30 * * * ? （每 30 分钟）
     """
-    from app.service.order_service import OrderService
+    from app.service.order_service import order_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            count = await OrderService.retry_failed_refunds(db)
+            count = await order_service.retry_failed_refunds(db)
 
         if count > 0:
             msg = f"退款失败重试完成: 已处理={count}"
@@ -763,12 +763,12 @@ async def refresh_unread_count_cache() -> str:
 
     CRON 建议: 0 0 * * * ? （每小时整点）
     """
-    from app.service.message_service import MessageService
+    from app.service.message_service import message_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            count = await MessageService.refresh_unread_count_cache(db)
+            count = await message_service.refresh_unread_count_cache(db)
 
         if count > 0:
             msg = f"未读数缓存刷新完成: 已刷新={count}"
@@ -1046,7 +1046,7 @@ async def generate_monthly_bill() -> str:
 
     from app.repository.ai_billing_repository import ai_billing_repository
     from app.repository.ai_credit_log_repository import ai_credit_log_repository
-    from app.service.billing.bill_service import BillService
+    from app.service.billing.bill_service import bill_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
@@ -1073,7 +1073,7 @@ async def generate_monthly_bill() -> str:
         for user_id in user_ids:
             try:
                 async with get_db_session() as db:
-                    await BillService.generate_monthly_bill(db, user_id, month)
+                    await bill_service.generate_monthly_bill(db, user_id, month)
                     generated += 1
             except Exception as e:
                 logger.warning("月结账单生成失败 user_id=%s month=%s: %s", user_id, month, e)
@@ -1222,7 +1222,7 @@ async def grant_vip_monthly_gift() -> str:
     """
     from app.repository.member_benefit_repository import member_benefit_repository
     from app.repository.member_repository import member_repository
-    from app.service.billing.recharge_service import RechargeService
+    from app.service.billing.recharge_service import recharge_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
@@ -1247,7 +1247,7 @@ async def grant_vip_monthly_gift() -> str:
                 for member in members:
                     try:
                         async with get_db_session() as db:
-                            await RechargeService.grant_vip_monthly_gift(
+                            await recharge_service.grant_vip_monthly_gift(
                                 db, member.user_id, amount
                             )
                             granted += 1

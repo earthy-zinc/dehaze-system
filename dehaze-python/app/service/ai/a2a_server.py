@@ -38,7 +38,7 @@ from app.service.ai.a2a_protocol import (
     parse_part,
 )
 from app.service.ai.deep_agent_builder import DeepAgentBuilder
-from app.service.ai_agent_service import AgentService
+from app.service.ai_agent_service import agent_service
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class A2AServer:
     ) -> dict[str, Any]:
         """由已发布版本动态生成 Agent Card。"""
         agent = await self._get_exposed_agent(db, agent_id)
-        snapshot = await AgentService().get_published_snapshot(db, redis, agent_id, None)
+        snapshot = await agent_service.get_published_snapshot(db, redis, agent_id, None)
         version_no = snapshot.get("version_no", "0.0.0") if snapshot else "0.0.0"
         name = agent.name or agent.agent_code
         skills = [{"name": agent.agent_code, "description": agent.description}]
@@ -123,7 +123,7 @@ class A2AServer:
         messages = [Message.model_validate(m) for m in params.get("messages", [])]
 
         agent = await self._get_exposed_agent(db, agent_id)
-        snapshot = await AgentService().get_published_snapshot(db, redis, agent_id, None)
+        snapshot = await agent_service.get_published_snapshot(db, redis, agent_id, None)
         if not snapshot:
             raise ValueError("Agent 无已发布版本")
 

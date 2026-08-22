@@ -27,8 +27,7 @@ LOGIN_FAIL_IP_PREFIX = "login:fail:ip:"
 
 
 class AuthService:
-    @staticmethod
-    async def login(
+    async def login(self, 
         db: AsyncSession,
         redis: Redis,
         username: str,
@@ -44,7 +43,7 @@ class AuthService:
 
         browser, os_name = parse_user_agent(user_agent)
         try:
-            result = await AuthService._authenticate(
+            result = await self._authenticate(
                 db, redis, username, password, client_ip, captcha_key, captcha_code
             )
         except BusinessException as e:
@@ -58,8 +57,7 @@ class AuthService:
         )
         return result
 
-    @staticmethod
-    async def _authenticate(
+    async def _authenticate(self, 
         db: AsyncSession,
         redis: Redis,
         username: str,
@@ -88,29 +86,29 @@ class AuthService:
             )
 
         # 验证码校验（下沉到 service 层，失败计入锁定计数）
-        captcha_ok, captcha_expired = await AuthService.verify_captcha_status(
+        captcha_ok, captcha_expired = await self.verify_captcha_status(
             redis, captcha_key, captcha_code
         )
         if not captcha_ok:
             # 验证码失败计入锁定计数（T-AM-054），但错误码区分为 A0213/A0214
             code = ResultCode.VERIFY_CODE_TIMEOUT if captcha_expired else ResultCode.VERIFY_CODE_ERROR
             msg = "验证码已过期" if captcha_expired else "验证码错误"
-            await AuthService._fail_login(
+            await self._fail_login(
                 redis, fail_key, ip_fail_key, code=code, msg=msg,
             )
 
         user = await user_repository.get_by_username(db, username)
 
         if not user:
-            await AuthService._fail_login(redis, fail_key, ip_fail_key)
+            await self._fail_login(redis, fail_key, ip_fail_key)
             raise BusinessException(ResultCode.USERNAME_OR_PASSWORD_ERROR, "用户名或密码错误")
 
         if user.password is None:
-            await AuthService._fail_login(redis, fail_key, ip_fail_key)
+            await self._fail_login(redis, fail_key, ip_fail_key)
             raise BusinessException(ResultCode.USER_LOGIN_ERROR, "用户信息不完整")
         is_valid = await check_password_async(password, user.password)
         if not is_valid:
-            await AuthService._fail_login(redis, fail_key, ip_fail_key)
+            await self._fail_login(redis, fail_key, ip_fail_key)
 
         if user.status != 1:
             raise BusinessException(ResultCode.USER_ACCOUNT_LOCKED, "用户已被禁用")
@@ -118,10 +116,10 @@ class AuthService:
         roles = await user_repository.get_user_role_codes(db, user.id)
 
         from app.repository.role_repository import role_repository
-        from app.service.menu_service import MenuService
+        from app.service.menu_service import menu_service
 
         data_scope = await role_repository.get_maximum_data_scope(db, roles)
-        perms = await MenuService.list_role_perms(db, redis, set(roles))
+        perms = await menu_service.list_role_perms(db, redis, set(roles))
 
         if user.username is None:
             raise BusinessException(ResultCode.USER_LOGIN_ERROR, "用户信息不完整")
@@ -132,7 +130,7 @@ class AuthService:
         session_id = str(uuid.uuid4())
 
         if settings.USE_MULTI_POINT:
-            await AuthService._handle_multi_point_session(redis, session_id, user.username)
+            await self._handle_multi_point_session(redis, session_id, user.username)
 
         authorities = [f"ROLE_{r}" for r in roles] + list(perms)
 
@@ -158,8 +156,7 @@ class AuthService:
             },
         }
 
-    @staticmethod
-    async def _fail_login(
+    async def _fail_login(self, 
         redis: Redis,
         fail_key: str,
         ip_fail_key: str = None,
@@ -191,8 +188,7 @@ class AuthService:
             msg or f"用户名或密码错误，剩余{remaining}次尝试机会",
         )
 
-    @staticmethod
-    async def _handle_multi_point_session(redis: Redis, new_session_id: str, username: str) -> None:
+    async def _handle_multi_point_session(self, redis: Redis, new_session_id: str, username: str) -> None:
         """多点登录控制：删除同一用户名下的旧 Session，仅保留最新。"""
         user_session_key = f"{SESSION_USER_PREFIX}{username}"
         old_session_id = await redis.get(user_session_key)
@@ -204,8 +200,7 @@ class AuthService:
                 await redis.delete(f"{SESSION_PREFIX}{old_session_id_str}")
         await redis.setex(user_session_key, SESSION_TTL, new_session_id)
 
-    @staticmethod
-    async def register(
+    async def register(self, 
         db: AsyncSession,
         redis: Redis,
         username: str,
@@ -257,9 +252,9 @@ class AuthService:
         await member_repository.get_or_init_member(db, user.id)
 
         # 新用户注册赠送试用积分（AI 计费 F-MB-002 §2.2.3），同一事务保证余额与流水一致
-        from app.service.billing.recharge_service import RechargeService
+        from app.service.billing.recharge_service import recharge_service
 
-        await RechargeService.grant_trial_credits(db, user.id)
+        await recharge_service.grant_trial_credits(db, user.id)
 
         data_scope = guest_role.data_scope if guest_role else 0
 
@@ -286,8 +281,7 @@ class AuthService:
             "user": {"id": user.id, "username": user.username, "nickname": user.nickname},
         }
 
-    @staticmethod
-    async def list_login_logs(
+    async def list_login_logs(self, 
         page_num: int,
         page_size: int,
         *,
@@ -354,14 +348,13 @@ class AuthService:
             )
         return {"list": items, "total": total}
 
-    @staticmethod
-    async def get_captcha(redis: Redis) -> dict:
+    async def get_captcha(self, redis: Redis) -> dict:
         captcha_text = "".join(
             secrets.choice(string.ascii_uppercase + string.digits)
             for _ in range(settings.CAPTCHA_LENGTH)
         )
 
-        img_str = await asyncio.to_thread(AuthService._generate_captcha_image, captcha_text)
+        img_str = await asyncio.to_thread(self._generate_captcha_image, captcha_text)
 
         captcha_key = str(uuid.uuid4())
 
@@ -374,8 +367,7 @@ class AuthService:
             "captchaBase64": f"data:image/jpeg;base64,{img_str}",
         }
 
-    @staticmethod
-    def _generate_captcha_image(captcha_text: str) -> str:
+    def _generate_captcha_image(self, captcha_text: str) -> str:
         image = Image.new(
             "RGB",
             (settings.CAPTCHA_WIDTH, settings.CAPTCHA_HEIGHT),
@@ -401,8 +393,7 @@ class AuthService:
         image.save(buffered, format="JPEG")
         return base64.b64encode(buffered.getvalue()).decode()
 
-    @staticmethod
-    async def verify_captcha(redis: Redis, captcha_key: str, captcha_code: str) -> bool:
+    async def verify_captcha(self, redis: Redis, captcha_key: str, captcha_code: str) -> bool:
         stored_captcha = await redis.get(f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}")
 
         if not stored_captcha:
@@ -418,8 +409,7 @@ class AuthService:
 
         return result
 
-    @staticmethod
-    async def verify_captcha_status(
+    async def verify_captcha_status(self, 
         redis: Redis, captcha_key: str, captcha_code: str
     ) -> tuple[bool, bool]:
         """校验验证码，返回 (是否通过, 是否已过期)。
@@ -440,3 +430,7 @@ class AuthService:
 
         await redis.delete(f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}")
         return True, False
+
+
+# 单例
+auth_service = AuthService()

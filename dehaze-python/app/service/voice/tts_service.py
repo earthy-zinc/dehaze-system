@@ -31,9 +31,9 @@ from app.infrastructure.voice import piper_tts_engine
 from app.infrastructure.voice.piper_tts_engine import LocalTtsError
 from app.models.entity.sys_file import SysFile
 from app.models.schema.voice_tts import FORMAT_VALUES, SAMPLE_RATE_VALUES, VOICE_CATALOG
-from app.service.file_service import FileService
+from app.service.file_service import file_service
 from app.service.storage.factory import get_storage_by_name
-from app.service.voice.voice_billing_service import VoiceBillingService
+from app.service.voice.voice_billing_service import voice_billing_service
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +76,7 @@ class TtsService:
 
     # ==================== 合成 ====================
 
-    @staticmethod
-    async def synthesize(
+    async def synthesize(self, 
         db: AsyncSession,
         redis: Redis,
         user_id: int,
@@ -92,16 +91,16 @@ class TtsService:
         返回 {"audioUrl", "format"} 契约字段。
         """
         voice = voice or settings.VOICE_TTS_VOICE_ID
-        TtsService._validate_params(text, voice, format_, sample_rate)
+        self._validate_params(text, voice, format_, sample_rate)
 
         cache_key = _cache_key(text, voice, speed)
-        cache_hit = await TtsService._get_cached(redis, user_id, cache_key)
+        cache_hit = await self._get_cached(redis, user_id, cache_key)
         if cache_hit:
             return cache_hit
 
         # 余额预校验（预估 = 字符数 × 单价）
         estimated = math.ceil(len(text) * settings.VOICE_TTS_CREDITS_PER_CHAR)
-        await VoiceBillingService.ensure_balance(db, user_id, estimated)
+        await voice_billing_service.ensure_balance(db, user_id, estimated)
 
         # 本地 Piper 引擎合成
         try:
@@ -113,14 +112,13 @@ class TtsService:
             raise BusinessException(ResultCode.BUSINESS_ERROR, f"语音合成失败: {exc}") from exc
 
         # 加密存储 + 写缓存索引
-        audio_url = await TtsService._store_and_cache(
+        audio_url = await self._store_and_cache(
             db, redis, user_id, cache_key, audio, format_
         )
-        await VoiceBillingService.charge_tts(db, user_id, len(text))
+        await voice_billing_service.charge_tts(db, user_id, len(text))
         return {"audioUrl": audio_url, "format": format_}
 
-    @staticmethod
-    def _validate_params(text: str, voice: str, format_: str, sample_rate: int) -> None:
+    def _validate_params(self, text: str, voice: str, format_: str, sample_rate: int) -> None:
         """参数校验：空文本/超长/音色/格式/采样率非法 → A0400。"""
         if not text or not text.strip():
             raise BusinessException(ResultCode.PARAM_ERROR, "待合成文本不能为空")
@@ -138,8 +136,7 @@ class TtsService:
 
     # ==================== 缓存 ====================
 
-    @staticmethod
-    async def _get_cached(
+    async def _get_cached(self, 
         redis: Redis, user_id: int, cache_key: str
     ) -> dict[str, str] | None:
         """命中缓存返回 audioUrl + format，否则 None。"""
@@ -153,8 +150,7 @@ class TtsService:
         audio_url = f"/api/v1/voice/tts/audio/{cache_key}"
         return {"audioUrl": audio_url, "format": meta.get("format", "mp3")}
 
-    @staticmethod
-    async def _store_and_cache(
+    async def _store_and_cache(self, 
         db: AsyncSession,
         redis: Redis,
         user_id: int,
@@ -163,7 +159,7 @@ class TtsService:
         format_: str,
     ) -> str:
         """加密存储音频 + 写入缓存索引（含 LRU 淘汰），返回 audioUrl。"""
-        sys_file = await FileService.upload_file(
+        sys_file = await file_service.upload_file(
             db,
             filename=f"tts_{cache_key[:8]}.{format_}",
             content=encrypt_audio(audio),
@@ -193,8 +189,7 @@ class TtsService:
 
     # ==================== 缓存音频下载 ====================
 
-    @staticmethod
-    async def load_cached_audio(
+    async def load_cached_audio(self, 
         db: AsyncSession, redis: Redis, user_id: int, cache_key: str
     ) -> tuple[bytes, str] | None:
         """按 cacheKey 读取并解密缓存音频（校验归属：仅本人缓存可访问）。
@@ -209,7 +204,7 @@ class TtsService:
         except json.JSONDecodeError:
             return None
 
-        file_info: SysFile | None = await FileService.get_file_by_id(db, meta.get("fileId"))
+        file_info: SysFile | None = await file_service.get_file_by_id(db, meta.get("fileId"))
         if not file_info:
             return None
 
@@ -229,3 +224,6 @@ async def _read_object_bytes(storage: Any, bucket: str, object_name: str) -> byt
     """在工作线程中读取存储对象完整字节（存储 SDK 为同步调用）。"""
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_storage_executor, storage.download, bucket, object_name)
+
+
+tts_service = TtsService()

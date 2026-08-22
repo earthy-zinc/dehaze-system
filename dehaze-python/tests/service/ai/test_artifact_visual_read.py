@@ -7,7 +7,7 @@ import app.service.ai_artifact_service as mod
 import app.service.file_service as fs
 from app.core.exceptions import BusinessException
 from app.repository.ai_artifact_repository import ai_artifact_repository
-from app.service.ai_artifact_service import AiArtifactService
+from app.service.ai_artifact_service import ai_artifact_service
 from tests.stubs import LLMChunk, MemberBenefitRepo, make_benefit, make_member
 
 
@@ -59,13 +59,13 @@ def _patch_visual_io(
     async def _pick(db, model_id):
         return model_id or "vlm-1"
 
-    monkeypatch.setattr(AiArtifactService, "_resolve_image_url", staticmethod(_resolve))
-    monkeypatch.setattr(AiArtifactService, "_pick_multimodal_model", staticmethod(_pick))
+    monkeypatch.setattr(ai_artifact_service, "_resolve_image_url", staticmethod(_resolve))
+    monkeypatch.setattr(ai_artifact_service, "_pick_multimodal_model", staticmethod(_pick))
 
 
 def _freeze_quota_key(monkeypatch, user_id=1):
     key = f"ai:multimodal:{user_id}:20260101"
-    monkeypatch.setattr(AiArtifactService, "_visual_quota_key", staticmethod(lambda uid: key))
+    monkeypatch.setattr(ai_artifact_service, "_visual_quota_key", staticmethod(lambda uid: key))
     return key
 
 
@@ -73,7 +73,7 @@ async def test_quota_limit_per_level(monkeypatch, mock_redis):
     benefits = {"level_0": 5, "level_1": 10, "level_2": 20, "level_3": 50}
     for level, limit in benefits.items():
         _patch_quota(monkeypatch, level_code=level, limit=limit)
-        used, actual = await AiArtifactService.check_visual_quota(None, mock_redis, 1)
+        used, actual = await ai_artifact_service.check_visual_quota(None, mock_redis, 1)
         assert actual == limit
         assert used == 0
 
@@ -82,12 +82,12 @@ async def test_quota_consumption_rejects_at_limit(monkeypatch, mock_redis):
     _patch_quota(monkeypatch, level_code="level_0", limit=5)
     key = _freeze_quota_key(monkeypatch)
     await mock_redis.set(key, "5")
-    ok = await AiArtifactService._consume_visual_quota(mock_redis, 1, limit=5)
+    ok = await ai_artifact_service._consume_visual_quota(mock_redis, 1, limit=5)
     assert ok is False
     assert int(await mock_redis.get(key)) == 5
 
     await mock_redis.set(key, "4")
-    ok = await AiArtifactService._consume_visual_quota(mock_redis, 1, limit=5)
+    ok = await ai_artifact_service._consume_visual_quota(mock_redis, 1, limit=5)
     assert ok is True
     assert int(await mock_redis.get(key)) == 5
 
@@ -96,17 +96,17 @@ async def test_quota_count_accumulates_across_calls(monkeypatch, mock_redis):
     _patch_quota(monkeypatch, level_code="level_3", limit=50)
     key = _freeze_quota_key(monkeypatch)
     oks = [
-        await AiArtifactService._consume_visual_quota(mock_redis, 1, limit=50) for _ in range(3)
+        await ai_artifact_service._consume_visual_quota(mock_redis, 1, limit=50) for _ in range(3)
     ]
     assert oks == [True, True, True]
-    used, limit = await AiArtifactService.check_visual_quota(None, mock_redis, 1)
+    used, limit = await ai_artifact_service.check_visual_quota(None, mock_redis, 1)
     assert used == 3
     assert limit == 50
 
 
 async def test_quota_consumption_sets_midnight_ttl(mock_redis):
-    key = AiArtifactService._visual_quota_key(7)
-    ok = await AiArtifactService._consume_visual_quota(mock_redis, 7, limit=50)
+    key = ai_artifact_service._visual_quota_key(7)
+    ok = await ai_artifact_service._consume_visual_quota(mock_redis, 7, limit=50)
     assert ok is True
     assert int(await mock_redis.get(key)) == 1
     assert await mock_redis.ttl(key) > 0
@@ -116,7 +116,7 @@ async def test_quota_concurrent_cannot_bypass(monkeypatch, mock_redis):
     key = _freeze_quota_key(monkeypatch)
 
     async def _consume():
-        return await AiArtifactService._consume_visual_quota(mock_redis, 1, limit=2)
+        return await ai_artifact_service._consume_visual_quota(mock_redis, 1, limit=2)
 
     results = await asyncio.gather(*[_consume() for _ in range(5)])
     assert results.count(True) == 2
@@ -126,7 +126,7 @@ async def test_quota_concurrent_cannot_bypass(monkeypatch, mock_redis):
 
 async def test_quota_missing_member_defaults_to_level0(monkeypatch, mock_redis):
     _patch_quota(monkeypatch, level_code="level_0", limit=5, member_exists=False)
-    used, limit = await AiArtifactService.check_visual_quota(None, mock_redis, 99)
+    used, limit = await ai_artifact_service.check_visual_quota(None, mock_redis, 99)
     assert used == 0
     assert limit == 5
 
@@ -147,7 +147,7 @@ async def test_visual_read_success(monkeypatch, mock_redis):
 
     monkeypatch.setattr(mod.llm_client, "stream_chat", _fake_stream_chat)
 
-    text, input_tokens = await AiArtifactService.visual_read(None, mock_redis, 1, artifact_id=5)
+    text, input_tokens = await ai_artifact_service.visual_read(None, mock_redis, 1, artifact_id=5)
     assert text == "图像清晰"
     assert input_tokens == 1200
     keys = [k async for k in mock_redis.scan_iter(match="ai:multimodal:1:*")]
@@ -168,7 +168,7 @@ async def test_visual_read_quota_exceeded_returns_degraded(monkeypatch, mock_red
 
     monkeypatch.setattr(mod.llm_client, "stream_chat", _fake_stream_chat)
 
-    text, input_tokens = await AiArtifactService.visual_read(None, mock_redis, 1, artifact_id=5)
+    text, input_tokens = await ai_artifact_service.visual_read(None, mock_redis, 1, artifact_id=5)
     assert text.startswith("视觉读取已达今日上限，基于指标判断：")
     assert "31.2" in text
     assert input_tokens == 0
@@ -183,7 +183,7 @@ async def test_visual_read_invalid_artifact_raises(monkeypatch, mock_redis):
     monkeypatch.setattr(mod, "ai_artifact_repository", _ArtifactRepo())
 
     with pytest.raises(BusinessException, match="产物不存在或已失效"):
-        await AiArtifactService.visual_read(None, mock_redis, 1, artifact_id=99)
+        await ai_artifact_service.visual_read(None, mock_redis, 1, artifact_id=99)
 
 
 async def test_mark_invalid_for_file_direct_and_indirect(monkeypatch):
@@ -205,7 +205,7 @@ async def test_mark_invalid_for_file_direct_and_indirect(monkeypatch):
     monkeypatch.setattr(mod, "pred_log_repository", _PredRepo())
     monkeypatch.setattr(mod, "eval_log_repository", _EvalRepo())
 
-    await AiArtifactService.mark_invalid_for_file(None, file_id=10)
+    await ai_artifact_service.mark_invalid_for_file(None, file_id=10)
     assert marked == [
         ("sys_file", 10),
         ("sys_pred_log", 11),
@@ -227,7 +227,7 @@ async def test_get_message_artifact_refs_grouped(monkeypatch):
 
     monkeypatch.setattr(mod, "ai_artifact_repository", _ArtifactRepo())
 
-    result = await AiArtifactService.get_message_artifact_refs(None, [10, 11, 12])
+    result = await ai_artifact_service.get_message_artifact_refs(None, [10, 11, 12])
     assert set(result.keys()) == {10, 11}
     assert result[10] == [
         {"id": 1, "type": "image_result", "summary": {"algorithm": "RIDCP"}},
@@ -270,7 +270,7 @@ async def test_get_detail_ownership_check(monkeypatch):
     monkeypatch.setattr(mod, "ai_conversation_repository", _ConvRepo())
 
     with pytest.raises(BusinessException, match="产物所属会话不存在"):
-        await AiArtifactService.get_detail(None, artifact_id=1, user_id=999)
+        await ai_artifact_service.get_detail(None, artifact_id=1, user_id=999)
 
 
 async def test_list_by_ref_filters_owned(monkeypatch):
@@ -290,7 +290,7 @@ async def test_list_by_ref_filters_owned(monkeypatch):
     monkeypatch.setattr(mod, "ai_artifact_repository", _ArtifactRepo())
     monkeypatch.setattr(mod, "ai_conversation_repository", _ConvRepo())
 
-    result = await AiArtifactService.list_by_ref(None, "sys_file", 10, user_id=5)
+    result = await ai_artifact_service.list_by_ref(None, "sys_file", 10, user_id=5)
     assert len(result) == 1
     assert result[0].id == 1
 
@@ -308,7 +308,7 @@ async def test_metric_report_registration(monkeypatch):
     monkeypatch.setattr(mod, "ai_artifact_repository", _ArtifactRepo())
 
     metrics = {"psnr": 32.1, "ssim": 0.91}
-    result = await AiArtifactService.register_artifact(
+    result = await ai_artifact_service.register_artifact(
         None,
         conv_id=1,
         msg_id=2,
@@ -355,7 +355,7 @@ async def test_file_service_delete_hooks_invalid_for_file(monkeypatch):
     async def _fake_invalidate(db, file_id):
         called["file_id"] = file_id
 
-    monkeypatch.setattr(AiArtifactService, "mark_invalid_for_file", staticmethod(_fake_invalidate))
+    monkeypatch.setattr(ai_artifact_service, "mark_invalid_for_file", staticmethod(_fake_invalidate))
 
     class _Minio:
         def remove_object(self, bucket, name):
@@ -363,5 +363,5 @@ async def test_file_service_delete_hooks_invalid_for_file(monkeypatch):
 
     monkeypatch.setattr(fs, "get_minio_client", lambda: _Minio())
 
-    await fs.FileService.delete_file_with_storage(None, file_id=10)
+    await fs.file_service.delete_file_with_storage(None, file_id=10)
     assert called.get("file_id") == 10

@@ -269,8 +269,7 @@ async def _process_callback_success(
 
 
 class OrderService:
-    @staticmethod
-    async def create(db: AsyncSession, form: dict, user_id: int) -> dict:
+    async def create(self, db: AsyncSession, form: dict, user_id: int) -> dict:
         package_id = form["packageId"]
         coupon_id = form.get("couponId")
         pay_method = form["payMethod"]
@@ -376,8 +375,7 @@ class OrderService:
         finally:
             await release_lock(lock_key, lock_token)
 
-    @staticmethod
-    async def pay(db: AsyncSession, order_no: str, form: dict, user_id: int) -> dict:
+    async def pay(self, db: AsyncSession, order_no: str, form: dict, user_id: int) -> dict:
         order = await order_repository.get_by_order_no(db, order_no)
         if not order:
             raise BusinessException(ResultCode.ORDER_NOT_FOUND)
@@ -425,8 +423,7 @@ class OrderService:
             "paid": False,
         }
 
-    @staticmethod
-    async def handle_payment_callback(
+    async def handle_payment_callback(self, 
         db: AsyncSession, channel: str, headers: dict, body: bytes
     ) -> bool:
         callback = await payment_channel_service.verify_callback(channel, headers, body)
@@ -482,8 +479,7 @@ class OrderService:
         finally:
             await release_lock(lock_key, lock_token)
 
-    @staticmethod
-    async def cancel(db: AsyncSession, order_no: str, reason: str, user_id: int) -> None:
+    async def cancel(self, db: AsyncSession, order_no: str, reason: str, user_id: int) -> None:
         order = await order_repository.get_by_order_no(db, order_no)
         if not order:
             raise BusinessException(ResultCode.ORDER_NOT_FOUND)
@@ -516,8 +512,7 @@ class OrderService:
             after_value={"reason": reason},
         )
 
-    @staticmethod
-    async def get_detail(db: AsyncSession, order_no: str, user_id: int | None = None) -> dict:
+    async def get_detail(self, db: AsyncSession, order_no: str, user_id: int | None = None) -> dict:
         cache_key = f"order:detail:{order_no}"
 
         async def _get_cache():
@@ -573,8 +568,7 @@ class OrderService:
 
         return vo
 
-    @staticmethod
-    async def list_my(db: AsyncSession, user_id: int, query: dict) -> dict:
+    async def list_my(self, db: AsyncSession, user_id: int, query: dict) -> dict:
         items, total = await order_repository.get_my_page(
             db,
             user_id,
@@ -585,8 +579,7 @@ class OrderService:
         list_data = [_build_my_order_vo(o) for o in items]
         return {"list": list_data, "total": total}
 
-    @staticmethod
-    async def list_paged(db: AsyncSession, query: dict, current_user=None) -> dict:
+    async def list_paged(self, db: AsyncSession, query: dict, current_user=None) -> dict:
         items, total = await order_repository.get_page(
             db,
             query["pageNum"],
@@ -606,8 +599,7 @@ class OrderService:
         ]
         return {"list": list_data, "total": total}
 
-    @staticmethod
-    async def apply_refund(db: AsyncSession, order_no: str, form: dict, user_id: int) -> None:
+    async def apply_refund(self, db: AsyncSession, order_no: str, form: dict, user_id: int) -> None:
         order = await order_repository.get_by_order_no(db, order_no)
         if not order:
             raise BusinessException(ResultCode.ORDER_NOT_FOUND)
@@ -655,8 +647,7 @@ class OrderService:
             after_value=form.dict() if hasattr(form, "dict") else form,
         )
 
-    @staticmethod
-    async def approve_refund(db: AsyncSession, refund_id: int, form: dict, auditor_id: int) -> None:
+    async def approve_refund(self, db: AsyncSession, refund_id: int, form: dict, auditor_id: int) -> None:
         refund = await refund_record_repository.get_by_id(db, refund_id)
         if not refund:
             raise BusinessException(ResultCode.REFUND_NOT_FOUND)
@@ -723,8 +714,7 @@ class OrderService:
             after_value=form.dict() if hasattr(form, "dict") else form,
         )
 
-    @staticmethod
-    async def reject_refund(db: AsyncSession, refund_id: int, form: dict, auditor_id: int) -> None:
+    async def reject_refund(self, db: AsyncSession, refund_id: int, form: dict, auditor_id: int) -> None:
         refund = await refund_record_repository.get_by_id(db, refund_id)
         if not refund:
             raise BusinessException(ResultCode.REFUND_NOT_FOUND)
@@ -758,8 +748,7 @@ class OrderService:
             after_value=form.dict() if hasattr(form, "dict") else form,
         )
 
-    @staticmethod
-    async def list_refunds(db: AsyncSession, query: dict) -> dict:
+    async def list_refunds(self, db: AsyncSession, query: dict) -> dict:
         items, total = await refund_record_repository.get_page(
             db,
             query["pageNum"],
@@ -776,8 +765,7 @@ class OrderService:
         ]
         return {"list": list_data, "total": total}
 
-    @staticmethod
-    async def get_stats(db: AsyncSession, start_time: str | None, end_time: str | None) -> dict:
+    async def get_stats(self, db: AsyncSession, start_time: str | None, end_time: str | None) -> dict:
         base_stats = await order_repository.get_stats(db, start_time, end_time)
         total_orders = base_stats["total_orders"]
         total_revenue = base_stats["total_revenue"]
@@ -862,8 +850,7 @@ class OrderService:
             "dailyStats": daily_stats,
         }
 
-    @staticmethod
-    async def update_auto_renew_config(db: AsyncSession, form: dict, user_id: int) -> None:
+    async def update_auto_renew_config(self, db: AsyncSession, form: dict, user_id: int) -> None:
         package_id = form["packageId"]
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
@@ -915,8 +902,7 @@ class OrderService:
                 .values(close_reason="用户关闭")
             )
 
-    @staticmethod
-    async def get_auto_renew_config(db: AsyncSession, package_id: int, user_id: int) -> dict:
+    async def get_auto_renew_config(self, db: AsyncSession, package_id: int, user_id: int) -> dict:
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
             raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
@@ -944,8 +930,7 @@ class OrderService:
             "closeReason": config.close_reason,
         }
 
-    @staticmethod
-    async def expire_orders(db: AsyncSession) -> int:
+    async def expire_orders(self, db: AsyncSession) -> int:
         orders = await order_repository.list_expired_pending(db)
         count = 0
         for order in orders:
@@ -964,8 +949,7 @@ class OrderService:
             await db.flush()
         return count
 
-    @staticmethod
-    async def complete_expired_orders(db: AsyncSession) -> int:
+    async def complete_expired_orders(self, db: AsyncSession) -> int:
         orders = await order_repository.list_completed_expiring(db)
         count = 0
         for order in orders:
@@ -976,10 +960,9 @@ class OrderService:
             await db.flush()
         return count
 
-    @staticmethod
-    async def execute_renewal(db: AsyncSession) -> int:
+    async def execute_renewal(self, db: AsyncSession) -> int:
         from app.config import settings
-        from app.service.message_service import MessageService
+        from app.service.message_service import message_service
 
         due_configs = await auto_renew_repository.list_due(db)
         success_count = 0
@@ -992,7 +975,7 @@ class OrderService:
                 await db.flush()
 
                 try:
-                    await MessageService.send(
+                    await message_service.send(
                         db,
                         {
                             "type": "business",
@@ -1083,8 +1066,7 @@ class OrderService:
 
         return success_count
 
-    @staticmethod
-    async def retry_failed_refunds(db: AsyncSession) -> int:
+    async def retry_failed_refunds(self, db: AsyncSession) -> int:
         max_retry_count = 3
         stmt = select(SysRefundRecord).where(
             SysRefundRecord.deleted == 0,
@@ -1151,3 +1133,6 @@ class OrderService:
             final_fail_count,
         )
         return len(failed_refunds)
+
+
+order_service = OrderService()

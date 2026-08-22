@@ -14,7 +14,7 @@ from app.models.schema.recommendation import (
     RecommendationFeedbackForm,
     RecommendationRuleForm,
 )
-from app.service.recommendation_service import RecommendationService
+from app.service.recommendation_service import recommendation_service
 
 router = APIRouter(
     prefix="/api/v1/recommendations",
@@ -29,7 +29,7 @@ async def analyze(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await RecommendationService.analyze(body.imageId, body.imageUrl)
+    data = await recommendation_service.analyze(body.imageId, body.imageUrl)
     return success(data.model_dump())
 
 
@@ -40,7 +40,7 @@ async def get_algorithms(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await RecommendationService.get_algorithms(db, user.id, analysisId, imageMd5)
+    data = await recommendation_service.get_algorithms(db, user.id, analysisId, imageMd5)
     return success([item.model_dump() for item in data])
 
 
@@ -50,7 +50,7 @@ async def submit_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await RecommendationService.submit_feedback(db, body.recommendationId, body.useful)
+    data = await recommendation_service.submit_feedback(db, body.recommendationId, body.useful)
     return success(data.model_dump())
 
 
@@ -60,7 +60,7 @@ async def get_rules(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await RecommendationService.get_rules(db)
+    data = await recommendation_service.get_rules(db)
     return success([item.model_dump() for item in data])
 
 
@@ -72,7 +72,7 @@ async def update_rule(
     user: UserContext = Depends(get_current_user),
 ):
     rule_id = body.id if body.id else 0
-    data = await RecommendationService.update_rule(db, rule_id, body.model_dump())
+    data = await recommendation_service.update_rule(db, rule_id, body.model_dump())
     return success(data.id)
 
 
@@ -84,5 +84,5 @@ async def get_report(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await RecommendationService.get_report(db, startDate, endDate)
+    data = await recommendation_service.get_report(db, startDate, endDate)
     return success(data.model_dump())

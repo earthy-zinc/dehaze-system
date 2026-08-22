@@ -82,8 +82,8 @@ def _build_preference_content(tags: list[str] | None, comment: str | None) -> st
 
 
 class AiFeedbackService:
-    @staticmethod
     async def submit_feedback(
+        self,
         db: AsyncSession,
         message_id: int,
         user_id: int,
@@ -122,8 +122,8 @@ class AiFeedbackService:
             _spawn_feedback_memory_extraction(user_id, form.tags, form.comment)
         return FeedbackResult.model_validate(feedback)
 
-    @staticmethod
     async def get_feedback(
+        self,
         db: AsyncSession,
         message_id: int,
         user_id: int,
@@ -135,8 +135,8 @@ class AiFeedbackService:
             return None
         return FeedbackResult.model_validate(feedback)
 
-    @staticmethod
     async def revoke_feedback(
+        self,
         db: AsyncSession,
         message_id: int,
         user_id: int,
@@ -147,3 +147,6 @@ class AiFeedbackService:
         if not feedback:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND, "反馈不存在")
         await ai_message_feedback_repository.soft_delete(db, message_id, user_id)
+
+
+ai_feedback_service = AiFeedbackService()

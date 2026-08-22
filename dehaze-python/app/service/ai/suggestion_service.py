@@ -24,7 +24,7 @@ from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.ai_message_repository import ai_message_repository
 from app.service.ai.credits_service import calculate_credits
 from app.service.ai.llm_client import llm_client
-from app.service.billing.billing_service import BillingService
+from app.service.billing.billing_service import billing_service
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +158,7 @@ class SuggestionService:
             # 补充结算：与回复同一条计费记录（settle 按 message_id 定位并差额退补）。
             # adjustment=True：仅退补差额、更新记录，不新增 consume 流水、不做异常检测
             try:
-                await BillingService.settle(
+                await billing_service.settle(
                     db,
                     user_id,
                     conversation_id,

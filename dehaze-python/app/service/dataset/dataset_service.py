@@ -65,19 +65,17 @@ class DatasetService:
 
     ROOT_NODE_ID = 0
 
-    @staticmethod
-    def _validate_name_safety(name: str) -> None:
+    def _validate_name_safety(self, name: str) -> None:
         """校验数据集名称安全性，拦截 XSS 攻击"""
         if name and _XSS_PATTERN.search(name):
             raise BusinessException(ResultCode.PARAM_ERROR, "数据集名称包含不安全的字符")
 
-    @staticmethod
-    async def _evict_all_cache(redis: Redis):
+    async def _evict_all_cache(self, redis: Redis):
         keys = [
-            DatasetService.CACHE_ALL_KEY,
-            DatasetService.CACHE_STATSMAP_KEY,
-            DatasetService.CACHE_TREE_KEY,
-            DatasetService.CACHE_OPTIONS_KEY,
+            self.CACHE_ALL_KEY,
+            self.CACHE_STATSMAP_KEY,
+            self.CACHE_TREE_KEY,
+            self.CACHE_OPTIONS_KEY,
         ]
         for key in keys:
             try:
@@ -85,10 +83,9 @@ class DatasetService:
             except Exception as e:
                 logger.warning(f"清除缓存失败 {key}: {e}")
 
-    @staticmethod
-    async def get_all_datasets(db: AsyncSession, redis: Redis) -> list[SysDataset]:
+    async def get_all_datasets(self, db: AsyncSession, redis: Redis) -> list[SysDataset]:
         try:
-            cached = await redis.get(DatasetService.CACHE_ALL_KEY)
+            cached = await redis.get(self.CACHE_ALL_KEY)
             if cached:
                 data = json.loads(cached)
                 result = []
@@ -123,8 +120,8 @@ class DatasetService:
                     }
                 )
             await redis.setex(
-                DatasetService.CACHE_ALL_KEY,
-                DatasetService.CACHE_ALL_TTL,
+                self.CACHE_ALL_KEY,
+                self.CACHE_ALL_TTL,
                 json.dumps(serializable, ensure_ascii=False, default=str),
             )
         except Exception as e:
@@ -132,10 +129,9 @@ class DatasetService:
 
         return datasets
 
-    @staticmethod
-    async def get_all_dataset_stats(db: AsyncSession, redis: Redis) -> dict[int, dict[str, Any]]:
+    async def get_all_dataset_stats(self, db: AsyncSession, redis: Redis) -> dict[int, dict[str, Any]]:
         try:
-            cached = await redis.get(DatasetService.CACHE_STATSMAP_KEY)
+            cached = await redis.get(self.CACHE_STATSMAP_KEY)
             if cached:
                 return json.loads(cached)
         except Exception as e:
@@ -144,7 +140,7 @@ class DatasetService:
         start_time = time.time()
         logger.debug("开始计算所有数据集统计信息...")
 
-        all_datasets = await DatasetService.get_all_datasets(db, redis)
+        all_datasets = await self.get_all_datasets(db, redis)
 
         stats_map: dict[int, dict[str, Any]] = {}
         for ds in all_datasets:
@@ -236,8 +232,8 @@ class DatasetService:
         try:
             str_key_map = {str(k): v for k, v in stats_map.items()}
             await redis.setex(
-                DatasetService.CACHE_STATSMAP_KEY,
-                DatasetService.CACHE_STATS_TTL,
+                self.CACHE_STATSMAP_KEY,
+                self.CACHE_STATS_TTL,
                 json.dumps(str_key_map, ensure_ascii=False),
             )
         except Exception as e:
@@ -245,8 +241,7 @@ class DatasetService:
 
         return stats_map
 
-    @staticmethod
-    def _entity_to_vo(
+    def _entity_to_vo(self, 
         entity: SysDataset,
         stats: dict[str, Any] | None,
         has_children: bool,
@@ -271,8 +266,7 @@ class DatasetService:
             vo["total"] = stats.get("fileCount", 0)
         return vo
 
-    @staticmethod
-    async def get_page(
+    async def get_page(self, 
         db: AsyncSession,
         redis: Redis,
         page_num: int = 1,
@@ -307,13 +301,13 @@ class DatasetService:
         all_parent_ids = root_ids + child_ids
         has_children_map = await dataset_repository.count_has_children(db, all_parent_ids)
 
-        stats_map = await DatasetService.get_all_dataset_stats(db, redis)
+        stats_map = await self.get_all_dataset_stats(db, redis)
 
         vo_list = []
         for root in root_datasets:
             root_id = int(root.id)
             root_stats = stats_map.get(root_id, _create_empty_stats())
-            root_vo = DatasetService._entity_to_vo(
+            root_vo = self._entity_to_vo(
                 root, root_stats, has_children_map.get(root_id, False)
             )
 
@@ -323,7 +317,7 @@ class DatasetService:
                 cid = int(child.id)
                 c_stats = stats_map.get(cid, _create_empty_stats())
                 child_vos.append(
-                    DatasetService._entity_to_vo(child, c_stats, has_children_map.get(cid, False))
+                    self._entity_to_vo(child, c_stats, has_children_map.get(cid, False))
                 )
             root_vo["children"] = child_vos
             vo_list.append(root_vo)
@@ -335,8 +329,7 @@ class DatasetService:
             "pageSize": page_size,
         }
 
-    @staticmethod
-    async def get_children(
+    async def get_children(self, 
         db: AsyncSession,
         redis: Redis,
         parent_id: int,
@@ -350,13 +343,13 @@ class DatasetService:
 
         child_ids = [int(c.id) for c in children]
         has_children_map = await dataset_repository.count_has_children(db, child_ids)
-        stats_map = await DatasetService.get_all_dataset_stats(db, redis)
+        stats_map = await self.get_all_dataset_stats(db, redis)
 
         result = []
         for child in children:
             cid = int(child.id)
             c_stats = stats_map.get(cid, _create_empty_stats())
-            child_vo = DatasetService._entity_to_vo(
+            child_vo = self._entity_to_vo(
                 child, c_stats, has_children_map.get(cid, False)
             )
             child_vo["children"] = []
@@ -364,10 +357,9 @@ class DatasetService:
 
         return result
 
-    @staticmethod
-    async def get_dataset_options(db: AsyncSession, redis: Redis) -> list[dict[str, Any]]:
+    async def get_dataset_options(self, db: AsyncSession, redis: Redis) -> list[dict[str, Any]]:
         try:
-            cached = await redis.get(DatasetService.CACHE_OPTIONS_KEY)
+            cached = await redis.get(self.CACHE_OPTIONS_KEY)
             if cached:
                 return json.loads(cached)
         except Exception as e:
@@ -377,8 +369,8 @@ class DatasetService:
 
         try:
             await redis.setex(
-                DatasetService.CACHE_OPTIONS_KEY,
-                DatasetService.CACHE_TREE_TTL,
+                self.CACHE_OPTIONS_KEY,
+                self.CACHE_TREE_TTL,
                 json.dumps(options, ensure_ascii=False),
             )
         except Exception as e:
@@ -386,8 +378,7 @@ class DatasetService:
 
         return options
 
-    @staticmethod
-    async def get_evaluation_options(
+    async def get_evaluation_options(self, 
         db: AsyncSession,
         task_type: str | None = None,
     ) -> list[dict[str, Any]]:
@@ -402,8 +393,7 @@ class DatasetService:
             for ds in datasets
         ]
 
-    @staticmethod
-    async def get_dataset_by_id(
+    async def get_dataset_by_id(self, 
         db: AsyncSession,
         redis: Redis,
         dataset_id: int,
@@ -412,7 +402,7 @@ class DatasetService:
         if not dataset:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
 
-        stats_map = await DatasetService.get_all_dataset_stats(db, redis)
+        stats_map = await self.get_all_dataset_stats(db, redis)
         statistics = stats_map.get(int(dataset_id), _create_empty_stats())
 
         return {
@@ -430,8 +420,7 @@ class DatasetService:
             "statistics": statistics,
         }
 
-    @staticmethod
-    async def create_dataset(
+    async def create_dataset(self, 
         db: AsyncSession,
         redis: Redis,
         data: dict[str, Any],
@@ -439,7 +428,7 @@ class DatasetService:
         parent_id = data.get("parentId", 0)
         name = data.get("name", "")
 
-        DatasetService._validate_name_safety(name)
+        self._validate_name_safety(name)
 
         if parent_id != 0:
             parent = await dataset_repository.get_by_id(db, parent_id)
@@ -465,12 +454,11 @@ class DatasetService:
         await db.flush()
         await db.refresh(dataset)
 
-        await DatasetService._evict_all_cache(redis)
+        await self._evict_all_cache(redis)
 
         return dataset.id
 
-    @staticmethod
-    async def update_dataset(
+    async def update_dataset(self, 
         db: AsyncSession,
         redis: Redis,
         dataset_id: int,
@@ -489,13 +477,13 @@ class DatasetService:
                 if not new_parent:
                     raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "新父数据集不存在")
 
-            if await DatasetService._would_create_cycle(db, dataset_id, new_parent_id):
+            if await self._would_create_cycle(db, dataset_id, new_parent_id):
                 raise BusinessException(ResultCode.PARAM_ERROR, "不能将数据集移动到其子节点下")
 
             dataset.parent_id = new_parent_id
 
         if "name" in data and data["name"] != dataset.name:
-            DatasetService._validate_name_safety(data["name"])
+            self._validate_name_safety(data["name"])
             check_parent = new_parent_id if new_parent_id is not None else old_parent_id
             exists = await dataset_repository.check_name_exists(
                 db,
@@ -517,19 +505,17 @@ class DatasetService:
         if "status" in data:
             dataset.status = data["status"]
 
-        await DatasetService._evict_all_cache(redis)
+        await self._evict_all_cache(redis)
 
-        return await DatasetService.get_dataset_by_id(db, redis, dataset_id)
+        return await self.get_dataset_by_id(db, redis, dataset_id)
 
-    @staticmethod
-    async def _would_create_cycle(db: AsyncSession, dataset_id: int, new_parent_id: int) -> bool:
+    async def _would_create_cycle(self, db: AsyncSession, dataset_id: int, new_parent_id: int) -> bool:
         if new_parent_id == 0:
             return False
         descendants = await dataset_repository.get_all_descendant_ids(db, dataset_id)
         return new_parent_id in descendants
 
-    @staticmethod
-    async def delete_dataset(
+    async def delete_dataset(self, 
         db: AsyncSession,
         redis: Redis,
         dataset_id: int,
@@ -538,10 +524,9 @@ class DatasetService:
         dataset = await dataset_repository.get_by_id(db, dataset_id)
         if not dataset:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
-        await DatasetService.delete_datasets(db, redis, [dataset_id])
+        await self.delete_datasets(db, redis, [dataset_id])
 
-    @staticmethod
-    async def delete_datasets(
+    async def delete_datasets(self, 
         db: AsyncSession,
         redis: Redis,
         dataset_ids: list[int],
@@ -637,7 +622,7 @@ class DatasetService:
                         }
                     )
 
-        await DatasetService._evict_all_cache(redis)
+        await self._evict_all_cache(redis)
 
         mongo_audit_log_repository.create_audit_async(
             operator_id=get_current_user_id(),
@@ -654,8 +639,7 @@ class DatasetService:
             "results": results,
         }
 
-    @staticmethod
-    async def get_image_items(
+    async def get_image_items(self, 
         db: AsyncSession,
         redis: Redis,
         dataset_id: int | None,
@@ -733,3 +717,6 @@ class DatasetService:
         }
 
 
+
+
+dataset_service = DatasetService()

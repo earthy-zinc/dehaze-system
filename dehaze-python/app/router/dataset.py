@@ -15,7 +15,7 @@ from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.common import BatchDeleteForm
 from app.models.schema.dataset import DatasetAddForm, DatasetUpdateForm
-from app.service.dataset.dataset_service import DatasetService
+from app.service.dataset.dataset_service import dataset_service
 
 router = APIRouter(
     prefix="/api/v1/datasets",
@@ -34,7 +34,7 @@ async def list_datasets(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    result = await DatasetService.get_page(db, redis, pageNum, pageSize, keyword, type, status)
+    result = await dataset_service.get_page(db, redis, pageNum, pageSize, keyword, type, status)
     return success(result)
 
 
@@ -44,7 +44,7 @@ async def list_children(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    children = await DatasetService.get_children(db, redis, parent_id)
+    children = await dataset_service.get_children(db, redis, parent_id)
     return success(children)
 
 
@@ -53,7 +53,7 @@ async def list_dataset_options(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    options = await DatasetService.get_dataset_options(db, redis)
+    options = await dataset_service.get_dataset_options(db, redis)
     return success(options)
 
 
@@ -66,7 +66,7 @@ async def list_evaluation_options(
 
     注意：必须声明在 /{dataset_id} 之前，避免被路径参数路由吞掉。
     """
-    options = await DatasetService.get_evaluation_options(db, task_type=taskType)
+    options = await dataset_service.get_evaluation_options(db, task_type=taskType)
     return success(options)
 
 
@@ -76,7 +76,7 @@ async def get_dataset(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    dataset = await DatasetService.get_dataset_by_id(db, redis, dataset_id)
+    dataset = await dataset_service.get_dataset_by_id(db, redis, dataset_id)
     return success(dataset)
 
 
@@ -88,7 +88,7 @@ async def create_dataset(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DatasetService.create_dataset(db, redis, body.model_dump(exclude_none=True))
+    result = await dataset_service.create_dataset(db, redis, body.model_dump(exclude_none=True))
     return success(result)
 
 
@@ -101,7 +101,7 @@ async def update_dataset(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DatasetService.update_dataset(
+    result = await dataset_service.update_dataset(
         db, redis, dataset_id, body.model_dump(exclude_none=True)
     )
     return success(result)
@@ -115,7 +115,7 @@ async def batch_delete_datasets(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DatasetService.delete_datasets(db, redis, body.ids)
+    result = await dataset_service.delete_datasets(db, redis, body.ids)
     return success(result)
 
 
@@ -127,5 +127,5 @@ async def delete_dataset(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await DatasetService.delete_dataset(db, redis, dataset_id)
+    await dataset_service.delete_dataset(db, redis, dataset_id)
     return success()

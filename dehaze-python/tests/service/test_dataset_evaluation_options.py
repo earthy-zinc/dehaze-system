@@ -1,5 +1,5 @@
 from app.repository.dataset_repository import dataset_repository
-from app.service.dataset.dataset_service import DatasetService
+from app.service.dataset.dataset_service import dataset_service
 
 
 def _make_repo(datasets):
@@ -29,7 +29,7 @@ async def test_returns_label_value_flat_list(monkeypatch):
     monkeypatch.setattr(
         dataset_repository, "find_datasets_with_clear_gt", repo.find_datasets_with_clear_gt
     )
-    result = await DatasetService.get_evaluation_options(None)
+    result = await dataset_service.get_evaluation_options(None)
     assert result == [
         {"value": 1, "label": "去雾测试集"},
         {"value": 2, "label": "去雨测试集"},
@@ -42,7 +42,7 @@ async def test_task_type_passed_to_repository(monkeypatch):
     monkeypatch.setattr(
         dataset_repository, "find_datasets_with_clear_gt", repo.find_datasets_with_clear_gt
     )
-    result = await DatasetService.get_evaluation_options(None, task_type="dehaze")
+    result = await dataset_service.get_evaluation_options(None, task_type="dehaze")
     assert len(result) == 1
     assert repo.calls == ["dehaze"]
 
@@ -52,5 +52,5 @@ async def test_empty_result_returns_empty_list(monkeypatch):
     monkeypatch.setattr(
         dataset_repository, "find_datasets_with_clear_gt", repo.find_datasets_with_clear_gt
     )
-    result = await DatasetService.get_evaluation_options(None, task_type="denoise")
+    result = await dataset_service.get_evaluation_options(None, task_type="denoise")
     assert result == []

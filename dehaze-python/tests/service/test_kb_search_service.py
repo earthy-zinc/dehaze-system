@@ -8,7 +8,7 @@ import pytest
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_knowledge_base import SysKnowledgeBase
-from app.service.kb.search_service import SearchService, _mmr_rerank
+from app.service.kb.search_service import search_service, _mmr_rerank
 
 CODE_UNAUTHORIZED = ResultCode.ACCESS_UNAUTHORIZED.code
 CODE_NOT_FOUND = ResultCode.RESOURCE_NOT_FOUND.code
@@ -95,7 +95,7 @@ class TestSearchVisibility:
         kb_repo.get_many.return_value = [_kb(kb_id=1, visibility="private", create_by=200)]
         with patch(f"{_SI}.knowledge_base_repository", kb_repo):
             with pytest.raises(BusinessException) as excinfo:
-                await SearchService.search(
+                await search_service.search(
                     None, mock_redis, 100, "量子纠缠科普", knowledge_base_ids=[1]
                 )
             assert excinfo.value.code.code == CODE_UNAUTHORIZED
@@ -112,7 +112,7 @@ class TestSearchVisibility:
                 _vec_patch(_es_doc(doc_id=1, chunk_id=1, content=content, relevance=0.9)),
             ]
         ):
-            result = await SearchService.search(
+            result = await search_service.search(
                 None, mock_redis, 100, "量子纠缠", knowledge_base_ids=[1]
             )
         assert len(result["results"]) == 1
@@ -124,7 +124,7 @@ class TestSearchVisibility:
         kb_repo.get_many.return_value = []
         with patch(f"{_SI}.knowledge_base_repository", kb_repo):
             with pytest.raises(BusinessException) as excinfo:
-                await SearchService.search(
+                await search_service.search(
                     None, mock_redis, 100, "缺失知识库", knowledge_base_ids=[999]
                 )
             assert excinfo.value.code.code == CODE_NOT_FOUND
@@ -133,13 +133,13 @@ class TestSearchVisibility:
         kb_repo = AsyncMock()
         kb_repo.list_visible_by_user.return_value = []
         with patch(f"{_SI}.knowledge_base_repository", kb_repo):
-            result = await SearchService.search(None, mock_redis, 100, "无可见库检索")
+            result = await search_service.search(None, mock_redis, 100, "无可见库检索")
         assert result["results"] == []
         assert result["knowledgeBaseIds"] == []
 
     async def test_empty_ids_array_raises_param_error(self, mock_redis):
         with pytest.raises(BusinessException) as excinfo:
-            await SearchService.search(None, mock_redis, 100, "空数组", knowledge_base_ids=[])
+            await search_service.search(None, mock_redis, 100, "空数组", knowledge_base_ids=[])
         assert excinfo.value.code.code == ResultCode.PARAM_ERROR.code
 
 
@@ -157,7 +157,7 @@ class TestSearchThreshold:
                 ),
             ]
         ):
-            result = await SearchService.search(
+            result = await search_service.search(
                 None, mock_redis, 100, "阈值过滤", knowledge_base_ids=[1]
             )
         assert result["results"] == []
@@ -175,7 +175,7 @@ class TestSearchThreshold:
                 ),
             ]
         ):
-            result = await SearchService.search(
+            result = await search_service.search(
                 None, mock_redis, 100, "阈值过滤", knowledge_base_ids=[1]
             )
         assert len(result["results"]) == 1
@@ -201,7 +201,7 @@ class TestSearchRerank:
         rerank_mock = AsyncMock(return_value=[{"index": 1}, {"index": 0}])
         patches.append(patch(f"{_SI}.rerank", rerank_mock))
         with _enter(patches):
-            result = await SearchService.search(
+            result = await search_service.search(
                 None, mock_redis, 100, "检索重排", knowledge_base_ids=[1], top_k=2
             )
         contents = [r["content"] for r in result["results"]]
@@ -216,7 +216,7 @@ class TestSearchRerank:
         rerank_mock = AsyncMock(side_effect=RuntimeError("rerank 宕机"))
         patches.append(patch(f"{_SI}.rerank", rerank_mock))
         with _enter(patches):
-            result = await SearchService.search(
+            result = await search_service.search(
                 None, mock_redis, 100, "检索重排", knowledge_base_ids=[1], top_k=2
             )
         contents = [r["content"] for r in result["results"]]
@@ -241,7 +241,7 @@ class TestSearchTimeout:
                 _vec_patch(),
             ]
         ):
-            result = await SearchService.search(
+            result = await search_service.search(
                 None, mock_redis, 100, "超时降级", knowledge_base_ids=[1]
             )
         assert result["results"] == []
@@ -261,7 +261,7 @@ class TestSearchDegraded:
                 patch(f"{_SI}.kb_chunk_index.vector_search", es_err),
             ]
         ):
-            result = await SearchService.search(
+            result = await search_service.search(
                 None, mock_redis, 100, "ES 异常检索", knowledge_base_ids=[1]
             )
         assert result["results"] == []
@@ -282,10 +282,10 @@ class TestSearchCache:
                 _vec_patch(_es_doc(doc_id=1, chunk_id=1, content=content, relevance=0.9)),
             ]
         ):
-            first = await SearchService.search(
+            first = await search_service.search(
                 None, mock_redis, 100, "缓存验证", knowledge_base_ids=[1]
             )
-            second = await SearchService.search(
+            second = await search_service.search(
                 None, mock_redis, 100, "缓存验证", knowledge_base_ids=[1]
             )
         assert embed_mock.call_count == 1
@@ -304,10 +304,10 @@ class TestSearchCache:
                 _vec_patch(_es_doc(doc_id=1, chunk_id=1, content="缓存键随参数变化", relevance=0.9)),
             ]
         ):
-            await SearchService.search(
+            await search_service.search(
                 None, mock_redis, 100, "缓存失效", knowledge_base_ids=[1], top_k=3
             )
-            await SearchService.search(
+            await search_service.search(
                 None, mock_redis, 100, "缓存失效", knowledge_base_ids=[1], top_k=7
             )
         assert embed_mock.call_count == 2

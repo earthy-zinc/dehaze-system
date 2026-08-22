@@ -16,7 +16,7 @@ from app.models.schema.user import (
     UserFormVO,
     UserPageVO,
 )
-from app.service.user_service import UserService
+from app.service.user_service import user_service
 
 router = APIRouter(prefix="/api/v1/users", tags=["用户管理"])
 
@@ -33,7 +33,7 @@ async def get_user_page(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    users, total = await UserService.get_user_list(
+    users, total = await user_service.get_user_list(
         db,
         page=pageNum,
         page_size=pageSize,
@@ -97,7 +97,7 @@ async def create_user(
     user: UserContext = Depends(get_current_user),
 ):
     data = body.model_dump(exclude_none=True)
-    await UserService.create_user_with_roles(db, data)
+    await user_service.create_user_with_roles(db, data)
 
     return success(msg="一切ok")
 
@@ -108,7 +108,7 @@ async def get_user_form(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    user_data = await UserService.get_user_form_data(db, user_id)
+    user_data = await user_service.get_user_form_data(db, user_id)
 
     if not user_data:
         return success(None)
@@ -125,7 +125,7 @@ async def update_user(
     user: UserContext = Depends(get_current_user),
 ):
     data = body.model_dump(exclude_none=True)
-    await UserService.update_user_with_roles(db, user_id, data)
+    await user_service.update_user_with_roles(db, user_id, data)
 
     return success(msg="一切ok")
 
@@ -137,7 +137,7 @@ async def update_user_status(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await UserService.update_user_status(db, user_id, status)
+    await user_service.update_user_status(db, user_id, status)
 
     return success(msg="一切ok")
 
@@ -155,7 +155,7 @@ async def update_password(
     ):
         raise BusinessException(ResultCode.ACCESS_UNAUTHORIZED, "无权修改其他用户的密码")
 
-    await UserService.update_password(db, user_id, body.password)
+    await user_service.update_password(db, user_id, body.password)
 
     return success(msg="修改成功")
 
@@ -167,6 +167,6 @@ async def delete_users(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await UserService.delete_users(db, ids, current_user=user)
+    result = await user_service.delete_users(db, ids, current_user=user)
 
     return success(result, msg=f"成功删除 {result['deleted_count']} 个用户")

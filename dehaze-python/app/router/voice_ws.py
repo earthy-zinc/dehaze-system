@@ -6,12 +6,12 @@
 - 上行：二进制 PCM 音频块（16kHz/16bit/mono）直传 FunASR；文本 "EOS" 结束
 - 下行：JSON {"text": 增量, "isFinal": bool}
 
-协议编排与资源回收由 AsrService.handle_stream_websocket 负责。
+协议编排与资源回收由 asr_service.handle_stream_websocket 负责。
 """
 
 from fastapi import APIRouter, Query, WebSocket
 
-from app.service.voice.asr_service import AsrService
+from app.service.voice.asr_service import asr_service
 
 router = APIRouter(tags=["语音交互-ASR"])
 
@@ -21,4 +21,4 @@ async def ws_asr_endpoint(
     websocket: WebSocket,
     sessionId: str = Query(..., description="语音会话ID（stream-session 创建）"),
 ):
-    await AsrService.handle_stream_websocket(websocket, sessionId)
+    await asr_service.handle_stream_websocket(websocket, sessionId)

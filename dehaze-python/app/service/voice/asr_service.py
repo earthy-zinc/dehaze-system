@@ -28,8 +28,8 @@ from app.core.exceptions import BusinessException
 from app.database import get_db_session
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.voice.funasr_client import FunASRClientError, funasr_client
-from app.service.voice.hotword_service import HotwordService
-from app.service.voice.voice_billing_service import VoiceBillingService
+from app.service.voice.hotword_service import hotword_service
+from app.service.voice.voice_billing_service import voice_billing_service
 
 logger = logging.getLogger(__name__)
 
@@ -51,29 +51,25 @@ class AsrService:
 
     # ==================== 会话状态与并发（Redis） ====================
 
-    @staticmethod
-    def _session_key(session_id: str) -> str:
+    def _session_key(self, session_id: str) -> str:
         return _SESSION_KEY.format(session_id=session_id)
 
-    @staticmethod
-    async def _load_session(redis: Redis, session_id: str) -> dict[str, Any] | None:
-        raw = await redis.get(AsrService._session_key(session_id))
+    async def _load_session(self, redis: Redis, session_id: str) -> dict[str, Any] | None:
+        raw = await redis.get(self._session_key(session_id))
         if not raw:
             return None
         return json.loads(raw)
 
-    @staticmethod
-    async def _save_session(
+    async def _save_session(self, 
         redis: Redis, session_id: str, data: dict[str, Any], *, ttl: int | None = _SESSION_TTL
     ) -> None:
         await redis.set(
-            AsrService._session_key(session_id),
+            self._session_key(session_id),
             json.dumps(data, ensure_ascii=False),
             ex=ttl,
         )
 
-    @staticmethod
-    async def _check_concurrency(redis: Redis) -> None:
+    async def _check_concurrency(self, redis: Redis) -> None:
         """校验并发会话数不超过上限（有序集合按时间戳剪枝后计数）"""
         now = time.time()
         # 剪枝过期成员（保留窗口 = 会话 TTL），防止死会话长期占用并发名额
@@ -84,8 +80,7 @@ class AsrService:
 
     # ==================== 创建流式会话 ====================
 
-    @staticmethod
-    async def create_stream_session(
+    async def create_stream_session(self, 
         redis: Redis, db: AsyncSession, user_id: int, model: str | None
     ) -> str:
         """创建流式 ASR 会话：并发校验、计费预校验、注册热词，返回 sessionId
@@ -93,15 +88,15 @@ class AsrService:
         连接 FunASR 延迟到 WebSocket 建立时（stream-session 仅创建会话元数据），
         wsUrl 由路由层基于请求地址构建。
         """
-        await AsrService._check_concurrency(redis)
+        await self._check_concurrency(redis)
         # 计费预校验（预估按 10 秒起步），不足直接拒绝
-        await VoiceBillingService.ensure_balance(
+        await voice_billing_service.ensure_balance(
             db, user_id, math.ceil(_ESTIMATE_SECONDS * settings.VOICE_ASR_CREDITS_PER_SECOND)
         )
 
         session_id = uuid.uuid4().hex
         now = time.time()
-        await AsrService._save_session(
+        await self._save_session(
             redis,
             session_id,
             {
@@ -118,15 +113,14 @@ class AsrService:
         await redis.zremrangebyscore(_CONCURRENT_KEY, 0, now - _SESSION_TTL)
 
         # 注册热词（合并全局+用户级），失败仅告警不阻断会话创建
-        await AsrService._register_hotwords(db, user_id)
+        await self._register_hotwords(db, user_id)
 
         return session_id
 
-    @staticmethod
-    async def _register_hotwords(db: AsyncSession, user_id: int) -> None:
+    async def _register_hotwords(self, db: AsyncSession, user_id: int) -> None:
         """合并全局+用户级热词注册到 FunASR；调用失败仅告警。"""
         try:
-            words = await HotwordService.get_effective_words(db, user_id)
+            words = await hotword_service.get_effective_words(db, user_id)
             if words:
                 await funasr_client.register_hotwords(words)
         except Exception as e:  # 热词注册失败不阻断会话
@@ -134,10 +128,9 @@ class AsrService:
 
     # ==================== 查询结果 ====================
 
-    @staticmethod
-    async def get_result(redis: Redis, session_id: str, user_id: int) -> dict[str, str]:
+    async def get_result(self, redis: Redis, session_id: str, user_id: int) -> dict[str, str]:
         """查询流式 ASR 会话最终识别结果（校验会话归属，避免跨用户访问）"""
-        session = await AsrService._load_session(redis, session_id)
+        session = await self._load_session(redis, session_id)
         if not session:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "ASR 会话不存在")
         if int(session["user_id"]) != user_id:
@@ -150,18 +143,17 @@ class AsrService:
 
     # ==================== 离线 ASR ====================
 
-    @staticmethod
-    async def offline_asr(
+    async def offline_asr(self, 
         redis: Redis, db: AsyncSession, user_id: int, audio: bytes, model: str | None
     ) -> dict[str, str]:
         """离线识别完整音频（multipart 直传），处理完即弃不落盘，完成时按秒实扣。"""
-        AsrService._validate_audio(audio)
+        self._validate_audio(audio)
         # 计费预校验（预估按 10 秒起步）
-        await VoiceBillingService.ensure_balance(
+        await voice_billing_service.ensure_balance(
             db, user_id, math.ceil(_ESTIMATE_SECONDS * settings.VOICE_ASR_CREDITS_PER_SECOND)
         )
         # 注册热词（离线识别也应用领域热词），失败仅告警
-        await AsrService._register_hotwords(db, user_id)
+        await self._register_hotwords(db, user_id)
 
         try:
             text = await funasr_client.offline(audio, model=model)
@@ -170,10 +162,10 @@ class AsrService:
 
         # 按音频时长（秒）实扣，音频字节数折算为秒向上取整
         audio_seconds = math.ceil(len(audio) / _BYTES_PER_SECOND)
-        await AsrService._charge(db, user_id, audio_seconds)
+        await self._charge(db, user_id, audio_seconds)
 
         session_id = uuid.uuid4().hex
-        await AsrService._save_session(
+        await self._save_session(
             redis,
             session_id,
             {
@@ -186,8 +178,7 @@ class AsrService:
         )
         return {"sessionId": session_id, "text": text}
 
-    @staticmethod
-    def _validate_audio(audio: bytes) -> None:
+    def _validate_audio(self, audio: bytes) -> None:
         """校验离线音频：仅接受 WAV（RIFF 魔数）/PCM；空文件或超限抛参数错误。"""
         if not audio:
             raise BusinessException(ResultCode.PARAM_ERROR, "音频文件为空")
@@ -199,8 +190,7 @@ class AsrService:
 
     # ==================== 流式 WebSocket 会话 ====================
 
-    @staticmethod
-    async def handle_stream_websocket(websocket: WebSocket, session_id: str) -> None:
+    async def handle_stream_websocket(self, websocket: WebSocket, session_id: str) -> None:
         """流式 ASR WebSocket 会话编排：鉴权、双向代理、超时/时长控制、计费与状态落库。
 
         协议（前端 ↔ 业务后端）：
@@ -211,12 +201,12 @@ class AsrService:
             redis = await get_redis_client()
         except Exception as e:  # noqa: BLE001
             logger.error("获取 Redis 失败: %s", e)
-            await AsrService._reject(websocket, "服务不可用，请稍后重试")
+            await self._reject(websocket, "服务不可用，请稍后重试")
             return
 
-        session = await AsrService._load_session(redis, session_id)
+        session = await self._load_session(redis, session_id)
         if not session:
-            await AsrService._reject(websocket, "ASR 会话不存在或已过期")
+            await self._reject(websocket, "ASR 会话不存在或已过期")
             return
 
         user_id = int(session["user_id"])
@@ -227,12 +217,12 @@ class AsrService:
             funasr = await funasr_client.stream_session(model=model)
         except FunASRClientError as e:
             logger.error("连接 FunASR 失败 session=%s error=%s", session_id, e)
-            await AsrService._fail_session(redis, session_id)
-            await AsrService._reject(websocket, "识别服务不可用，请稍后重试")
+            await self._fail_session(redis, session_id)
+            await self._reject(websocket, "识别服务不可用，请稍后重试")
             return
 
         try:
-            await AsrService._run_stream(websocket, redis, session_id, user_id, funasr)
+            await self._run_stream(websocket, redis, session_id, user_id, funasr)
         except WebSocketDisconnect:
             logger.info("客户端断开流式 ASR 会话 session=%s", session_id)
         except asyncio.CancelledError:
@@ -240,13 +230,12 @@ class AsrService:
             raise
         except Exception as e:  # noqa: BLE001 - 异常需兜底回收资源并标记失败
             logger.error("流式 ASR 会话异常 session=%s error=%s", session_id, e, exc_info=True)
-            await AsrService._fail_session(redis, session_id)
+            await self._fail_session(redis, session_id)
         finally:
             await redis.zrem(_CONCURRENT_KEY, session_id)
             logger.info("流式 ASR 会话结束 session=%s", session_id)
 
-    @staticmethod
-    async def _reject(websocket: WebSocket, message: str) -> None:
+    async def _reject(self, websocket: WebSocket, message: str) -> None:
         """鉴权失败/会话无效：accept 后发 error 并以 4001 关闭。"""
         try:
             await websocket.accept()
@@ -255,8 +244,7 @@ class AsrService:
         except Exception as e:  # noqa: BLE001
             logger.warning("拒绝 WebSocket 连接异常: %s", e)
 
-    @staticmethod
-    async def _run_stream(
+    async def _run_stream(self, 
         websocket: WebSocket,
         redis: Redis,
         session_id: str,
@@ -339,35 +327,35 @@ class AsrService:
 
         final_text = final_holder.get("text", "")
         audio_seconds = math.ceil(total_bytes / _BYTES_PER_SECOND)
-        await AsrService._complete_session(redis, session_id, user_id, final_text, audio_seconds)
+        await self._complete_session(redis, session_id, user_id, final_text, audio_seconds)
 
-    @staticmethod
-    async def _complete_session(
+    async def _complete_session(self, 
         redis: Redis, session_id: str, user_id: int, text: str, audio_seconds: int
     ) -> None:
         """会话正常结束：落库状态（completed）+ 按秒实扣。"""
-        session = await AsrService._load_session(redis, session_id) or {}
+        session = await self._load_session(redis, session_id) or {}
         session["status"] = "completed"
         session["text"] = text
-        await AsrService._save_session(redis, session_id, session)
+        await self._save_session(redis, session_id, session)
         if audio_seconds > 0:
-            await AsrService._charge(None, user_id, audio_seconds)
+            await self._charge(None, user_id, audio_seconds)
 
-    @staticmethod
-    async def _fail_session(redis: Redis, session_id: str) -> None:
+    async def _fail_session(self, redis: Redis, session_id: str) -> None:
         """会话失败：更新状态为 failed。"""
-        session = await AsrService._load_session(redis, session_id) or {}
+        session = await self._load_session(redis, session_id) or {}
         session["status"] = "failed"
-        await AsrService._save_session(redis, session_id, session)
+        await self._save_session(redis, session_id, session)
 
-    @staticmethod
-    async def _charge(db: AsyncSession | None, user_id: int, audio_seconds: int) -> None:
+    async def _charge(self, db: AsyncSession | None, user_id: int, audio_seconds: int) -> None:
         """按音频时长实扣（WebSocket 场景 db=None 用 get_db_session 手动事务）。"""
         try:
             if db is None:
                 async with get_db_session() as s:
-                    await VoiceBillingService.charge_asr(s, user_id, audio_seconds)
+                    await voice_billing_service.charge_asr(s, user_id, audio_seconds)
             else:
-                await VoiceBillingService.charge_asr(db, user_id, audio_seconds)
+                await voice_billing_service.charge_asr(db, user_id, audio_seconds)
         except Exception as e:  # noqa: BLE001 - 计费失败不影响识别结果返回
             logger.error("ASR 计费失败 user_id=%s seconds=%s error=%s", user_id, audio_seconds, e)
+
+
+asr_service = AsrService()

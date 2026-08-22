@@ -194,8 +194,7 @@ def _reply_to_vo(reply: SysFeedbackReply, username: str = "") -> dict:
 
 
 class FeedbackService:
-    @staticmethod
-    async def create_rating(db: AsyncSession, redis: Redis, user_id: int, form: dict) -> dict:
+    async def create_rating(self, db: AsyncSession, redis: Redis, user_id: int, form: dict) -> dict:
         pred_log_id = form["predLogId"]
         pred_log = await rating_repository.get_prediction_log(db, pred_log_id)
         if not pred_log:
@@ -230,7 +229,7 @@ class FeedbackService:
         )
 
         await rating_repository.create(db, rating)
-        await FeedbackService._award_rating_growth(db, redis, user_id, rating.id)
+        await self._award_rating_growth(db, redis, user_id, rating.id)
 
         cache = CacheService(redis)
         await cache.delete(RATING_STATS_CACHE_KEY)
@@ -239,13 +238,12 @@ class FeedbackService:
         )
 
         if rating.rating <= LOW_RATING_THRESHOLD:
-            await FeedbackService._publish_low_rating_alert(rating)
+            await self._publish_low_rating_alert(rating)
 
         return {"id": rating.id}
 
-    @staticmethod
     async def _award_rating_growth(
-        db: AsyncSession, redis: Redis, user_id: int, rating_id: int
+        self, db: AsyncSession, redis: Redis, user_id: int, rating_id: int
     ) -> None:
         today = date.today().isoformat()
         count_key = RATING_DAILY_COUNT_KEY.format(user_id=user_id, date=today)
@@ -282,8 +280,7 @@ class FeedbackService:
         await redis.incr(count_key)
         await redis.expire(count_key, DAILY_COUNT_TTL)
 
-    @staticmethod
-    async def _publish_low_rating_alert(rating: SysRating) -> None:
+    async def _publish_low_rating_alert(self, rating: SysRating) -> None:
         publisher = get_publisher()
         if publisher is None:
             logger.warning("RabbitMQ 未启用，跳过低分告警消息发布")
@@ -301,9 +298,8 @@ class FeedbackService:
             },
         )
 
-    @staticmethod
     async def update_rating(
-        db: AsyncSession, redis: Redis, user_id: int, rating_id: int, form: dict
+        self, db: AsyncSession, redis: Redis, user_id: int, rating_id: int, form: dict
     ) -> None:
         data = await rating_repository.get_detail_with_user(db, rating_id)
         if not data:
@@ -328,8 +324,7 @@ class FeedbackService:
             RATING_STATS_ALGORITHM_CACHE_KEY.format(algorithm_id=rating.algorithm_id)
         )
 
-    @staticmethod
-    async def list_my_ratings(db: AsyncSession, user_id: int, query: dict) -> dict:
+    async def list_my_ratings(self, db: AsyncSession, user_id: int, query: dict) -> dict:
         items, total = await rating_repository.get_my_page(
             db,
             user_id,
@@ -341,8 +336,8 @@ class FeedbackService:
         ]
         return {"list": list_data, "total": total}
 
-    @staticmethod
     async def get_rating_by_prediction(
+        self,
         db: AsyncSession,
         user_id: int,
         pred_log_id: int,
@@ -371,8 +366,7 @@ class FeedbackService:
         )
         return _anonymize_rating_vo(vo, rating)
 
-    @staticmethod
-    async def list_paged_ratings(db: AsyncSession, query: dict) -> dict:
+    async def list_paged_ratings(self, db: AsyncSession, query: dict) -> dict:
         items, total = await rating_repository.get_admin_page(
             db,
             query["pageNum"],
@@ -397,16 +391,14 @@ class FeedbackService:
             list_data.append(_anonymize_rating_vo(vo, item["rating"]))
         return {"list": list_data, "total": total}
 
-    @staticmethod
-    async def hide_rating(db: AsyncSession, rating_id: int) -> None:
+    async def hide_rating(self, db: AsyncSession, rating_id: int) -> None:
         rating = await rating_repository.get_by_id(db, rating_id)
         if not rating:
             raise BusinessException(ResultCode.RATING_NOT_FOUND)
         rating.is_hidden = 1
         await db.flush()
 
-    @staticmethod
-    async def reply_rating(db: AsyncSession, rating_id: int, content: str, admin_id: int) -> None:
+    async def reply_rating(self, db: AsyncSession, rating_id: int, content: str, admin_id: int) -> None:
         rating = await rating_repository.get_by_id(db, rating_id)
         if not rating:
             raise BusinessException(ResultCode.RATING_NOT_FOUND)
@@ -414,8 +406,8 @@ class FeedbackService:
         rating.reply_time = datetime.now()
         await db.flush()
 
-    @staticmethod
     async def get_rating_stats(
+        self,
         db: AsyncSession,
         redis: Redis,
         start_time: str | None = None,
@@ -434,8 +426,7 @@ class FeedbackService:
             await cache.set_json(cache_key, stats, STATS_CACHE_TTL)
         return stats
 
-    @staticmethod
-    async def create_feedback(db: AsyncSession, redis: Redis, user_id: int, form: dict) -> dict:
+    async def create_feedback(self, db: AsyncSession, redis: Redis, user_id: int, form: dict) -> dict:
         _validate_image_urls(form.get("images"), FEEDBACK_IMAGE_LIMIT)
 
         today = date.today().isoformat()
@@ -465,8 +456,7 @@ class FeedbackService:
 
         return {"id": feedback.id}
 
-    @staticmethod
-    async def list_my_feedback(db: AsyncSession, user_id: int, query: dict) -> dict:
+    async def list_my_feedback(self, db: AsyncSession, user_id: int, query: dict) -> dict:
         items, total = await feedback_repository.get_my_page(
             db,
             user_id,
@@ -483,8 +473,8 @@ class FeedbackService:
         ]
         return {"list": list_data, "total": total}
 
-    @staticmethod
     async def get_feedback_detail(
+        self,
         db: AsyncSession,
         feedback_id: int,
         user_id: int,
@@ -509,8 +499,8 @@ class FeedbackService:
             include_contact=is_admin,
         )
 
-    @staticmethod
     async def supplement_feedback(
+        self,
         db: AsyncSession,
         user_id: int,
         feedback_id: int,
@@ -538,8 +528,7 @@ class FeedbackService:
             feedback.status = STATUS_PROCESSING
             await db.flush()
 
-    @staticmethod
-    async def list_paged_feedback(db: AsyncSession, query: dict) -> dict:
+    async def list_paged_feedback(self, db: AsyncSession, query: dict) -> dict:
         items, total = await feedback_repository.get_admin_page(
             db,
             query["pageNum"],
@@ -563,8 +552,8 @@ class FeedbackService:
         ]
         return {"list": list_data, "total": total}
 
-    @staticmethod
     async def assign_feedback(
+        self,
         db: AsyncSession,
         feedback_id: int,
         assignee_id: int,
@@ -582,8 +571,8 @@ class FeedbackService:
             feedback.status = STATUS_PROCESSING
         await db.flush()
 
-    @staticmethod
     async def reply_feedback(
+        self,
         db: AsyncSession,
         feedback_id: int,
         form: dict,
@@ -608,8 +597,8 @@ class FeedbackService:
         feedback.status = STATUS_REPLIED
         await db.flush()
 
-    @staticmethod
     async def close_feedback(
+        self,
         db: AsyncSession,
         feedback_id: int,
         close_reason: str,
@@ -625,16 +614,15 @@ class FeedbackService:
         feedback.close_reason = close_reason
         await db.flush()
 
-    @staticmethod
-    async def update_feedback_tags(db: AsyncSession, feedback_id: int, tags: list) -> None:
+    async def update_feedback_tags(self, db: AsyncSession, feedback_id: int, tags: list) -> None:
         feedback = await feedback_repository.get_by_id(db, feedback_id)
         if not feedback:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND)
         feedback.tags = tags if tags else []
         await db.flush()
 
-    @staticmethod
     async def get_feedback_stats(
+        self,
         db: AsyncSession,
         redis: Redis,
         start_time: str | None = None,
@@ -652,3 +640,6 @@ class FeedbackService:
         if not start_time and not end_time:
             await cache.set_json(cache_key, stats, STATS_CACHE_TTL)
         return stats
+
+
+feedback_service = FeedbackService()

@@ -24,8 +24,7 @@ _SHANGHAI_TZ = timezone(timedelta(hours=8))
 class BillingAnomalyService:
     """异常检测与告警"""
 
-    @staticmethod
-    async def check(
+    async def check(self, 
         user_id: int,
         billing_record: SysAiBilling,
         *,
@@ -49,8 +48,7 @@ class BillingAnomalyService:
         except Exception as e:  # 异常检测失败不阻断主流程
             logger.warning("异常检测执行失败 user_id=%s: %s", user_id, e)
 
-    @staticmethod
-    async def record_quota_fail(user_id: int) -> None:
+    async def record_quota_fail(self, user_id: int) -> None:
         """记录一次配额不足，达到阈值触发告警"""
         try:
             redis = await get_redis_client()
@@ -131,3 +129,6 @@ async def _alert(redis, user_id: int, rule_type: str, message: str) -> None:
     await redis.incr(key)
     await redis.expire(key, 24 * 3600)
     logger.warning("AI计费异常[%s] user_id=%s: %s", rule_type, user_id, message)
+
+
+billing_anomaly_service = BillingAnomalyService()

@@ -6,7 +6,7 @@ from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.message import MessageTemplateForm
-from app.service.message_template_service import MessageTemplateService
+from app.service.message_template_service import message_template_service
 
 router = APIRouter(
     prefix="/api/v1/message-templates",
@@ -25,7 +25,7 @@ async def get_template_page(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MessageTemplateService.get_page(db, pageNum, pageSize, name, type, status)
+    data = await message_template_service.get_page(db, pageNum, pageSize, name, type, status)
     return success(data)
 
 
@@ -35,7 +35,7 @@ async def get_template_detail(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MessageTemplateService.get_detail(db, template_id)
+    data = await message_template_service.get_detail(db, template_id)
     return success(data)
 
 
@@ -47,7 +47,7 @@ async def update_template(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await MessageTemplateService.update(
+    await message_template_service.update(
         db, template_id, body.model_dump(exclude_none=True) if body else {}
     )
     return success()

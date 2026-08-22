@@ -28,7 +28,7 @@ from app.repository.ai_agent_eval_repository import (
     ai_agent_eval_sample_repository,
 )
 from app.service.ai.eval_runner import eval_runner
-from app.service.ai_agent_service import AgentService
+from app.service.ai_agent_service import agent_service
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,7 @@ class EvalService:
             return {"passed": True, "score_summary": {}, "failed_samples": [], "run_id": None}
 
         # 已发布快照：整批样本基于同一配置评测
-        snapshot = await AgentService().get_published_snapshot(db, redis, agent_id, None)
+        snapshot = await agent_service.get_published_snapshot(db, redis, agent_id, None)
 
         run = SysAiAgentEvalRun(
             agent_id=agent_id,

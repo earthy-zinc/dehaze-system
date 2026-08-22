@@ -117,8 +117,8 @@ async def ensure_ai_dict_defaults(db: AsyncSession, redis: Redis) -> None:
 class DictService:
     """字典服务"""
 
-    @staticmethod
     async def get_dict_page(
+        self,
         db: AsyncSession,
         page: int,
         page_size: int,
@@ -128,13 +128,11 @@ class DictService:
         """获取字典分页列表"""
         return await dict_repository.get_page(db, page, page_size, keywords, type_code)
 
-    @staticmethod
-    async def get_dict_form(db: AsyncSession, dict_id: int) -> dict[str, Any] | None:
+    async def get_dict_form(self, db: AsyncSession, dict_id: int) -> dict[str, Any] | None:
         """获取字典表单数据"""
         return await dict_repository.get_form_by_id(db, dict_id)
 
-    @staticmethod
-    async def create_dict(db: AsyncSession, redis: Redis, data: dict[str, Any]) -> SysDict:
+    async def create_dict(self, db: AsyncSession, redis: Redis, data: dict[str, Any]) -> SysDict:
         """
         创建字典项
 
@@ -167,9 +165,8 @@ class DictService:
 
         return result
 
-    @staticmethod
     async def update_dict(
-        db: AsyncSession, redis: Redis, dict_id: int, data: dict[str, Any]
+        self, db: AsyncSession, redis: Redis, dict_id: int, data: dict[str, Any]
     ) -> bool:
         """
         更新字典项
@@ -205,8 +202,7 @@ class DictService:
 
         return result
 
-    @staticmethod
-    async def delete_dict(db: AsyncSession, redis: Redis, dict_ids: list[int]) -> bool:
+    async def delete_dict(self, db: AsyncSession, redis: Redis, dict_ids: list[int]) -> bool:
         """
         删除字典项
 
@@ -232,9 +228,8 @@ class DictService:
 
         return result > 0
 
-    @staticmethod
     async def list_dict_options(
-        db: AsyncSession, redis: Redis, type_code: str
+        self, db: AsyncSession, redis: Redis, type_code: str
     ) -> list[dict[str, Any]]:
         """
         获取字典下拉列表
@@ -261,8 +256,8 @@ class DictService:
 class DictTypeService:
     """字典类型服务（异步版本）"""
 
-    @staticmethod
     async def get_dict_type_page(
+        self,
         db: AsyncSession,
         page: int,
         page_size: int,
@@ -271,13 +266,11 @@ class DictTypeService:
         """获取字典类型分页列表"""
         return await dict_type_repository.get_page(db, page, page_size, keywords)
 
-    @staticmethod
-    async def get_dict_type_form(db: AsyncSession, type_id: int) -> dict[str, Any] | None:
+    async def get_dict_type_form(self, db: AsyncSession, type_id: int) -> dict[str, Any] | None:
         """获取字典类型表单数据"""
         return await dict_type_repository.get_form_by_id(db, type_id)
 
-    @staticmethod
-    async def create_dict_type(db: AsyncSession, data: dict[str, Any]) -> SysDictType:
+    async def create_dict_type(self, db: AsyncSession, data: dict[str, Any]) -> SysDictType:
         """
         创建字典类型
 
@@ -297,9 +290,8 @@ class DictTypeService:
         result = await dict_type_repository.create_type(db, data)
         return result
 
-    @staticmethod
     async def update_dict_type(
-        db: AsyncSession, redis: Redis, type_id: int, data: dict[str, Any]
+        self, db: AsyncSession, redis: Redis, type_id: int, data: dict[str, Any]
     ) -> bool:
         """
         更新字典类型
@@ -329,9 +321,8 @@ class DictTypeService:
 
         return result
 
-    @staticmethod
     async def delete_dict_types(
-        db: AsyncSession, redis: Redis, type_ids: list[int], force: bool = False
+        self, db: AsyncSession, redis: Redis, type_ids: list[int], force: bool = False
     ) -> bool:
         """
         删除字典类型
@@ -371,3 +362,7 @@ class DictTypeService:
 
         result = await dict_type_repository.delete_by_ids(db, type_ids)
         return result > 0
+
+
+dict_service = DictService()
+dict_type_service = DictTypeService()

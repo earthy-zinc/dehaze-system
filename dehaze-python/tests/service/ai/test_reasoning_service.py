@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.service.ai.reasoning_service import ReasoningService
+from app.service.ai.reasoning_service import reasoning_service
 from tests.stubs import RecorderEmitter
 
 
@@ -14,7 +14,7 @@ async def _db_session():
 
 
 async def test_fail_pushes_error_then_message_end(monkeypatch):
-    service = ReasoningService()
+    service = reasoning_service
     emitter = RecorderEmitter()
     monkeypatch.setattr("app.service.ai.reasoning_service.sse_emitter_manager", emitter)
 
@@ -46,7 +46,7 @@ async def test_trigger_suggestions_skips_on_cancel(monkeypatch):
         return ["追问一"]
 
     _patch_suggestion_service(monkeypatch, _generate)
-    ReasoningService()._trigger_suggestions(
+    reasoning_service._trigger_suggestions(
         1, 2, {"final_response": "x", "stop_reason": "canceled"}, 1, "s1"
     )
     await asyncio.sleep(0.05)
@@ -61,7 +61,7 @@ async def test_trigger_suggestions_calls_generate(monkeypatch):
         return ["追问一"]
 
     _patch_suggestion_service(monkeypatch, _generate)
-    ReasoningService()._trigger_suggestions(
+    reasoning_service._trigger_suggestions(
         1, 2, {"final_response": "回答", "stop_reason": "stop"}, 1, "s1"
     )
     await asyncio.sleep(0.05)

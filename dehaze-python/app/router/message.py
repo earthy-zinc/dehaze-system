@@ -5,7 +5,7 @@ from app.core.result import success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.message import MessageSendRequest
-from app.service.message_service import MessageService
+from app.service.message_service import message_service
 
 router = APIRouter(
     prefix="/api/v1/messages",
@@ -23,7 +23,7 @@ async def get_messages(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MessageService.get_page(db, user.id, pageNum, pageSize, type, readStatus)
+    data = await message_service.get_page(db, user.id, pageNum, pageSize, type, readStatus)
     return success(data)
 
 
@@ -32,7 +32,7 @@ async def get_unread_count(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    count = await MessageService.get_unread_count(db, user.id)
+    count = await message_service.get_unread_count(db, user.id)
     return success({"count": count})
 
 
@@ -44,7 +44,7 @@ async def search_messages(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MessageService.search(db, user.id, keyword, pageNum, pageSize)
+    data = await message_service.search(db, user.id, keyword, pageNum, pageSize)
     return success(data)
 
 
@@ -54,7 +54,7 @@ async def mark_all_read(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    affected = await MessageService.mark_all_read(db, user.id, type)
+    affected = await message_service.mark_all_read(db, user.id, type)
     return success({"affectedCount": affected})
 
 
@@ -64,7 +64,7 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    message_ids = await MessageService.send(db, body.model_dump())
+    message_ids = await message_service.send(db, body.model_dump())
     return success({"messageIds": message_ids})
 
 
@@ -74,7 +74,7 @@ async def get_message_detail(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MessageService.get_detail(db, user.id, message_id)
+    data = await message_service.get_detail(db, user.id, message_id)
     return success(data)
 
 
@@ -84,7 +84,7 @@ async def mark_read(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await MessageService.mark_read(db, user.id, message_id)
+    await message_service.mark_read(db, user.id, message_id)
     return success()
 
 
@@ -98,5 +98,5 @@ async def delete_messages(
         id_list = [int(i) for i in ids.split(",")]
     except ValueError:
         id_list = []
-    await MessageService.delete_by_ids(db, user.id, id_list)
+    await message_service.delete_by_ids(db, user.id, id_list)
     return success()

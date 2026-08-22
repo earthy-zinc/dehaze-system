@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.service.ai.suggestion_service import SuggestionService
+from app.service.ai.suggestion_service import suggestion_service
 from tests.stubs import RecorderEmitter
 
 
@@ -21,7 +21,7 @@ def _conv(suggest=True):
 
 
 def _patch_service(monkeypatch, *, conv, msg, gen_result):
-    service = SuggestionService()
+    service = suggestion_service
     emitter = RecorderEmitter()
 
     class _ConvRepo:
@@ -44,7 +44,7 @@ def _patch_service(monkeypatch, *, conv, msg, gen_result):
     monkeypatch.setattr("app.service.ai.suggestion_service.ai_conversation_repository", _ConvRepo())
     monkeypatch.setattr("app.service.ai.suggestion_service.ai_message_repository", _MsgRepo())
     monkeypatch.setattr(
-        "app.service.ai.suggestion_service.BillingService",
+        "app.service.ai.suggestion_service.billing_service",
         type("B", (), {"settle": staticmethod(_settle)})(),
     )
     monkeypatch.setattr("app.service.ai.suggestion_service.calculate_credits", _calc)
@@ -102,7 +102,7 @@ async def test_empty_reply_skips(monkeypatch):
 
 
 async def test_parse_questions_json_array():
-    svc = SuggestionService()
+    svc = suggestion_service
     assert await svc._parse_questions('["追问一", "追问二"]') == ["追问一", "追问二"]
     assert await svc._parse_questions('说明如下\n["追问"]\n结束') == ["追问"]
     assert await svc._parse_questions("不是数组") is None

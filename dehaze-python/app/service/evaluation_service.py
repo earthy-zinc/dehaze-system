@@ -239,9 +239,9 @@ class EvaluationService:
                     time_ms=elapsed_ms,
                 )
                 if conv_id is not None and msg_id is not None:
-                    from app.service.ai_artifact_service import AiArtifactService
+                    from app.service.ai_artifact_service import ai_artifact_service
 
-                    await AiArtifactService.register_artifact(
+                    await ai_artifact_service.register_artifact(
                         db,
                         conv_id=conv_id,
                         msg_id=msg_id,

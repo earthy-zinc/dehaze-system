@@ -16,7 +16,7 @@ from app.dependencies.auth import get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.common import BatchDeleteForm
 from app.models.schema.dataset import BatchOperationResultVO, ItemFileUpdateForm, ItemFileVO
-from app.service.dataset.item_file_service import ItemFileService
+from app.service.dataset.item_file_service import item_file_service
 
 router = APIRouter(
     prefix="/api/v1/item-files",
@@ -36,7 +36,7 @@ async def upload_item_file(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    result = await ItemFileService.upload_item_file(
+    result = await item_file_service.upload_item_file(
         db=db,
         redis=redis,
         item_id=itemId,
@@ -55,7 +55,7 @@ async def batch_delete_item_files(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    result = await ItemFileService.batch_delete_item_files(db, redis, body.ids)
+    result = await item_file_service.batch_delete_item_files(db, redis, body.ids)
     return success(result, "删除成功")
 
 
@@ -64,7 +64,7 @@ async def get_item_file(
     file_id: int = Path(..., description="图片文件关联ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    detail = await ItemFileService.get_item_file_detail(db, file_id)
+    detail = await item_file_service.get_item_file_detail(db, file_id)
     if not detail:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片文件不存在")
     return success(detail)
@@ -77,7 +77,7 @@ async def update_item_file(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    await ItemFileService.update_item_file(
+    await item_file_service.update_item_file(
         db,
         redis,
         file_id,
@@ -92,5 +92,5 @@ async def delete_item_file(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    await ItemFileService.delete_item_file(db, redis, file_id)
+    await item_file_service.delete_item_file(db, redis, file_id)
     return success(msg="删除成功")

@@ -6,7 +6,7 @@ from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.ai_artifact import ArtifactPageQuery, ArtifactResult
 from app.models.schema.common import PageResult
-from app.service.ai_artifact_service import AiArtifactService
+from app.service.ai_artifact_service import ai_artifact_service
 
 router = APIRouter(prefix="/api/v1/ai", tags=["AI对话"])
 
@@ -22,7 +22,7 @@ async def list_conversation_artifacts(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiArtifactService.list_by_conversation(
+    result = await ai_artifact_service.list_by_conversation(
         db, conv_id, user.id, query.pageNum, query.pageSize
     )
     return success(result)
@@ -38,7 +38,7 @@ async def list_message_artifacts(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiArtifactService.list_by_message(db, msg_id, user.id)
+    result = await ai_artifact_service.list_by_message(db, msg_id, user.id)
     return success(result)
 
 
@@ -53,7 +53,7 @@ async def list_artifacts_by_ref(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiArtifactService.list_by_ref(db, refType, refId, user.id)
+    result = await ai_artifact_service.list_by_ref(db, refType, refId, user.id)
     return success(result)
 
 
@@ -67,5 +67,5 @@ async def get_artifact_detail(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiArtifactService.get_detail(db, artifact_id, user.id)
+    result = await ai_artifact_service.get_detail(db, artifact_id, user.id)
     return success(result)

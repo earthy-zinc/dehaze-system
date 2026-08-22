@@ -13,8 +13,7 @@ from app.service.billing.balance_service import balance_service
 class RefundService:
     """退款补偿：申请 → 审核 → 余额回补"""
 
-    @staticmethod
-    async def apply_refund(
+    async def apply_refund(self, 
         db: AsyncSession,
         user_id: int,
         billing_id: int,
@@ -45,8 +44,7 @@ class RefundService:
         )
         return RefundResult.model_validate(refund)
 
-    @staticmethod
-    async def audit_refund(
+    async def audit_refund(self, 
         db: AsyncSession,
         refund_id: int,
         approved: bool,
@@ -82,3 +80,6 @@ class RefundService:
         await db.flush()
         await db.refresh(refund)
         return RefundResult.model_validate(refund)
+
+
+refund_service = RefundService()

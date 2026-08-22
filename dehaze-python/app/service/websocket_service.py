@@ -352,8 +352,7 @@ manager = DistributedConnectionManager()
 class WebSocketService:
     """WebSocket 服务类（异步版本）"""
 
-    @staticmethod
-    async def verify_session(session_id: str) -> dict[str, Any] | None:
+    async def verify_session(self, session_id: str) -> dict[str, Any] | None:
         """验证 Session"""
         if not session_id:
             return None
@@ -370,8 +369,7 @@ class WebSocketService:
             logger.warning(f"Session 验证失败: {e}")
             return None
 
-    @staticmethod
-    async def broadcast_shutdown_notification():
+    async def broadcast_shutdown_notification(self):
         """广播服务器关闭通知（跨 Worker）"""
         try:
             await manager.broadcast(
@@ -385,10 +383,9 @@ class WebSocketService:
         except Exception as e:
             logger.error(f"广播关闭通知失败: {e}")
 
-    @staticmethod
-    async def handle_connection(websocket: WebSocket, session_id: str):
+    async def handle_connection(self, websocket: WebSocket, session_id: str):
         """处理 WebSocket 连接"""
-        session = await WebSocketService.verify_session(session_id)
+        session = await self.verify_session(session_id)
         if not session:
             await websocket.accept()
             await websocket.send_json({"type": "error", "message": "认证失败，请重新登录"})
@@ -431,7 +428,7 @@ class WebSocketService:
             # 持续监听消息
             while True:
                 data = await websocket.receive_text()
-                await WebSocketService._handle_message(websocket, user_id, username, data)
+                await self._handle_message(websocket, user_id, username, data)
 
         except WebSocketDisconnect:
             logger.debug(f"用户断开连接: user_id={user_id}")
@@ -447,8 +444,7 @@ class WebSocketService:
                 }
             )
 
-    @staticmethod
-    async def _handle_message(websocket: WebSocket, user_id: int, username: str, data: str):
+    async def _handle_message(self, websocket: WebSocket, user_id: int, username: str, data: str):
         """处理 WebSocket 消息"""
         try:
             message = json.loads(data)
@@ -514,3 +510,7 @@ async def init_websocket_manager():
 async def close_websocket_manager():
     """关闭 WebSocket 管理器（在 lifespan 中调用）"""
     await manager.stop()
+
+
+# WebSocket 服务单例
+websocket_service = WebSocketService()

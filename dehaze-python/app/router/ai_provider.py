@@ -19,8 +19,8 @@ from app.models.schema.ai_provider import (
 from app.models.schema.common import BasePageQuery, PageResult
 from app.service.ai.provider_connectivity_service import test_connection
 from app.service.ai.provider_health_service import provider_health_service
-from app.service.ai_provider_key_service import AiProviderKeyService
-from app.service.ai_provider_service import AiProviderService
+from app.service.ai_provider_key_service import ai_provider_key_service
+from app.service.ai_provider_service import ai_provider_service
 
 router = APIRouter(prefix="/api/v1/ai", tags=["AI对话"])
 
@@ -56,7 +56,7 @@ async def list_providers(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiProviderService.list_providers(
+    result = await ai_provider_service.list_providers(
         db, redis, query.pageNum, query.pageSize, query.keyword
     )
     return success(result)
@@ -70,7 +70,7 @@ async def list_enabled_providers(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiProviderService.list_enabled(db, redis)
+    result = await ai_provider_service.list_enabled(db, redis)
     return success(result)
 
 
@@ -83,7 +83,7 @@ async def create_provider(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiProviderService.create_provider(db, redis, form)
+    result = await ai_provider_service.create_provider(db, redis, form)
     # 保存后异步触发连通性测试（结果仅提示不阻断保存流程）
     background_tasks.add_task(_run_connection_test, result.id)
     return success(result)
@@ -98,7 +98,7 @@ async def update_provider(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiProviderService.update_provider(db, redis, provider_id, form)
+    result = await ai_provider_service.update_provider(db, redis, provider_id, form)
     return success(result)
 
 
@@ -110,7 +110,7 @@ async def delete_provider(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await AiProviderService.delete_provider(db, redis, provider_id)
+    await ai_provider_service.delete_provider(db, redis, provider_id)
     return success(msg="一切ok")
 
 
@@ -125,7 +125,7 @@ async def list_keys(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiProviderKeyService.list_keys(db, provider_id)
+    result = await ai_provider_key_service.list_keys(db, provider_id)
     return success(result)
 
 
@@ -139,7 +139,7 @@ async def create_key(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiProviderKeyService.create_key(db, provider_id, form)
+    result = await ai_provider_key_service.create_key(db, provider_id, form)
     return success(result)
 
 
@@ -156,7 +156,7 @@ async def update_key(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await AiProviderKeyService.update_key(db, provider_id, key_id, form)
+    result = await ai_provider_key_service.update_key(db, provider_id, key_id, form)
     return success(result)
 
 
@@ -170,7 +170,7 @@ async def delete_key(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await AiProviderKeyService.delete_key(db, provider_id, key_id)
+    await ai_provider_key_service.delete_key(db, provider_id, key_id)
     return success(msg="一切ok")
 
 

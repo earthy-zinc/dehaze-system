@@ -178,11 +178,11 @@ class DehazeHooksMiddleware(AgentMiddleware):
         data: dict = {"upgrade_tip": tip}
         try:
             from app.database import get_db_session
-            from app.service.billing.quota_service import QuotaService
+            from app.service.billing.quota_service import quota_service
 
             async with get_db_session() as db:
-                used_daily, used_monthly = await QuotaService.get_used(self.ctx["user_id"])
-                daily_limit, monthly_limit = await QuotaService.get_limits(db, self.ctx["user_id"])
+                used_daily, used_monthly = await quota_service.get_used(self.ctx["user_id"])
+                daily_limit, monthly_limit = await quota_service.get_limits(db, self.ctx["user_id"])
             data.update(
                 {
                     "used_daily": used_daily,

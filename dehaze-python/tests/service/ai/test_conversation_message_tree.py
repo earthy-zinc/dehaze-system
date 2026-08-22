@@ -73,7 +73,7 @@ class TestRegenerate:
         monkeypatch.setattr(svc.interrupt_handler, "get_interrupt", async_ret(None))
         monkeypatch.setattr("app.service.ai_message_service._stream_generator", fake_stream)
 
-        resp = await svc.AiConversationService.regenerate_message(object(), 2, 1)
+        resp = await svc.ai_conversation_service.regenerate_message(object(), 2, 1)
         assert created["msg"].role == "assistant"
         assert created["msg"].parent_message_id == 1
         assert created["msg"].id == 3
@@ -89,7 +89,7 @@ class TestRegenerate:
             svc.ai_message_repository, "get_by_id_and_user", async_ret(deleted_asst)
         )
         with pytest.raises(BusinessException):
-            await svc.AiConversationService.regenerate_message(object(), 2, 1)
+            await svc.ai_conversation_service.regenerate_message(object(), 2, 1)
 
     async def test_shared_reasoning_trigger(self, monkeypatch, mock_redis):
         run_calls = {}
@@ -211,7 +211,7 @@ class TestResumeStop:
         monkeypatch.setattr(svc.sse_emitter_manager, "stop_stream", async_ret(None))
 
         form = MessageResume(confirm=True, params={"algorithmId": 7})
-        resp = await svc.AiConversationService.resume_message(object(), 5, 1, form)
+        resp = await svc.ai_conversation_service.resume_message(object(), 5, 1, form)
         async for _ in resp.body_iterator:
             pass
         assert resp.media_type == "text/event-stream"
@@ -225,7 +225,7 @@ class TestResumeStop:
         )
         monkeypatch.setattr(svc.interrupt_handler, "get_interrupt", async_ret(None))
         with pytest.raises(BusinessException):
-            await svc.AiConversationService.resume_message(
+            await svc.ai_conversation_service.resume_message(
                 object(), 5, 1, MessageResume(confirm=False)
             )
 
@@ -240,7 +240,7 @@ class TestResumeStop:
             svc.ai_message_repository, "get_by_id_and_user", async_ret(msg)
         )
         monkeypatch.setattr(svc.reasoning_service, "stop", fake_stop)
-        result = await svc.AiConversationService.stop_message(object(), 5, 1)
+        result = await svc.ai_conversation_service.stop_message(object(), 5, 1)
         assert stop_calls == [(10, 5, "s1")]
         assert result.status == 4
 
@@ -264,7 +264,7 @@ class TestBranches:
         monkeypatch.setattr(svc.ai_message_repository, "get_by_id_and_user", async_ret(msg))
         monkeypatch.setattr(svc.ai_message_repository, "get_children", get_children)
 
-        result = await svc.AiConversationService.get_branches(object(), 10, 1, 1)
+        result = await svc.ai_conversation_service.get_branches(object(), 10, 1, 1)
         assert [m.id for m in result] == [2, 3]
 
     async def test_get_branches_rejects_cross_conv_message(self, monkeypatch):
@@ -275,7 +275,7 @@ class TestBranches:
         )
         monkeypatch.setattr(svc.ai_message_repository, "get_by_id_and_user", async_ret(msg))
         with pytest.raises(BusinessException):
-            await svc.AiConversationService.get_branches(object(), 10, 1, 99)
+            await svc.ai_conversation_service.get_branches(object(), 10, 1, 99)
 
     async def test_switch_branch_updates_pointer(self, monkeypatch):
         conv = make_conv(
@@ -315,7 +315,7 @@ class TestBranches:
         monkeypatch.setattr(svc.ai_message_repository, "get_by_id_and_user", async_ret(target))
         monkeypatch.setattr(svc.ai_conversation_repository, "update_current_branch", update_branch)
 
-        result = await svc.AiConversationService.switch_branch(object(), 10, 1, 4)
+        result = await svc.ai_conversation_service.switch_branch(object(), 10, 1, 4)
         assert updated == {"cid": 10, "mid": 4}
         assert result.current_branch_message_id == 4
 
@@ -332,7 +332,7 @@ class TestDeleteMessage:
             svc.ai_message_repository, "get_by_id_and_user", async_ret(msg)
         )
         monkeypatch.setattr(svc.ai_message_repository, "soft_delete_by_ids", soft_delete)
-        await svc.AiConversationService.delete_message(object(), 5, 1)
+        await svc.ai_conversation_service.delete_message(object(), 5, 1)
         assert deleted == [5]
 
     async def test_delete_rejects_user_message(self, monkeypatch):
@@ -341,7 +341,7 @@ class TestDeleteMessage:
             svc.ai_message_repository, "get_by_id_and_user", async_ret(msg)
         )
         with pytest.raises(BusinessException):
-            await svc.AiConversationService.delete_message(object(), 5, 1)
+            await svc.ai_conversation_service.delete_message(object(), 5, 1)
 
 
 class TestSuspendLock:
@@ -390,7 +390,7 @@ class TestSuspendLock:
 
         form = SimpleNamespace(content="hi")
         with pytest.raises(BusinessException) as ei:
-            await msg_svc.AiMessageService.send_message(object(), 10, 1, form, "k")
+            await msg_svc.ai_message_service.send_message(object(), 10, 1, form, "k")
         assert "中断确认" in str(ei.value.message)
 
     async def test_send_allowed_when_no_suspend(self, monkeypatch, mock_redis):
@@ -421,7 +421,7 @@ class TestSuspendLock:
 
         form = SimpleNamespace(content="hi")
         with pytest.raises(BusinessException):
-            await msg_svc.AiMessageService.send_message(object(), 10, 1, form, "k")
+            await msg_svc.ai_message_service.send_message(object(), 10, 1, form, "k")
         assert lock_called == [10]
 
     async def test_regenerate_rejected_when_suspended(self, monkeypatch):
@@ -436,5 +436,5 @@ class TestSuspendLock:
         )
 
         with pytest.raises(BusinessException) as ei:
-            await svc.AiConversationService.regenerate_message(object(), 2, 1)
+            await svc.ai_conversation_service.regenerate_message(object(), 2, 1)
         assert "中断确认" in str(ei.value.message)

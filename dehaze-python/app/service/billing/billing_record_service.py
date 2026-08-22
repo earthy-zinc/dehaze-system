@@ -18,8 +18,7 @@ from app.repository.ai_credit_log_repository import ai_credit_log_repository
 class BillingRecordService:
     """计费记录 CRUD 与查询"""
 
-    @staticmethod
-    async def list_by_user(
+    async def list_by_user(self, 
         db: AsyncSession,
         user_id: int,
         query: BillingRecordQuery,
@@ -40,8 +39,7 @@ class BillingRecordService:
             total=total,
         )
 
-    @staticmethod
-    async def get_by_id(
+    async def get_by_id(self, 
         db: AsyncSession,
         user_id: int,
         billing_id: int,
@@ -52,8 +50,7 @@ class BillingRecordService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "计费记录不存在")
         return BillingRecordResult.model_validate(record)
 
-    @staticmethod
-    async def list_credit_logs(
+    async def list_credit_logs(self, 
         db: AsyncSession,
         user_id: int,
         query: CreditLogQuery,
@@ -71,3 +68,6 @@ class BillingRecordService:
             list=[CreditLogResult.model_validate(log) for log in logs],
             total=total,
         )
+
+
+billing_record_service = BillingRecordService()

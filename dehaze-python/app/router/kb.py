@@ -28,8 +28,8 @@ from app.models.schema.knowledge_base import (
     RetrieveTestForm,
     SearchForm,
 )
-from app.service.kb.document_service import DocumentService
-from app.service.kb.knowledge_base_service import KnowledgeBaseService
+from app.service.kb.document_service import document_service
+from app.service.kb.knowledge_base_service import knowledge_base_service
 from app.service.kb.search_service import search_service
 
 
@@ -65,7 +65,7 @@ async def create_knowledge_base(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    kb_id = await KnowledgeBaseService.create(db, redis, body.model_dump(), user)
+    kb_id = await knowledge_base_service.create(db, redis, body.model_dump(), user)
     return success({"id": kb_id})
 
 
@@ -76,7 +76,7 @@ async def list_knowledge_bases(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await KnowledgeBaseService.get_page(
+    result = await knowledge_base_service.get_page(
         db, redis, user.id, query.keyword, query.pageNum, query.pageSize
     )
     return success(result)
@@ -89,7 +89,7 @@ async def get_knowledge_base(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await KnowledgeBaseService.get_detail(db, redis, kb_id, user.id)
+    result = await knowledge_base_service.get_detail(db, redis, kb_id, user.id)
     return success(result)
 
 
@@ -102,9 +102,9 @@ async def update_knowledge_base(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await KnowledgeBaseService.update(db, redis, kb_id, body.model_dump(exclude_none=True), user)
+    await knowledge_base_service.update(db, redis, kb_id, body.model_dump(exclude_none=True), user)
     # 返回更新后的完整知识库 VO（含配置与统计），对齐 SDK KnowledgeBaseVO 契约
-    result = await KnowledgeBaseService.get_detail(db, redis, kb_id, user.id)
+    result = await knowledge_base_service.get_detail(db, redis, kb_id, user.id)
     return success(result)
 
 
@@ -116,7 +116,7 @@ async def delete_knowledge_base(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await KnowledgeBaseService.delete(db, redis, kb_id, user)
+    await knowledge_base_service.delete(db, redis, kb_id, user)
     return success()
 
 
@@ -133,9 +133,9 @@ async def upload_document(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    info = await DocumentService.upload(db, redis, kb_id, body.fileId, body.title, user)
+    info = await document_service.upload(db, redis, kb_id, body.fileId, body.title, user)
     background_tasks.add_task(
-        DocumentService._process_document_guarded,
+        document_service._process_document_guarded,
         info["document_id"],
         info["kb_id"],
         info["owner_id"],
@@ -153,12 +153,12 @@ async def batch_upload_documents(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    results = await DocumentService.batch_upload(db, redis, kb_id, body.fileIds, user)
+    results = await document_service.batch_upload(db, redis, kb_id, body.fileIds, user)
     response = []
     for item in results:
         if item.get("success"):
             background_tasks.add_task(
-                DocumentService._process_document_guarded,
+                document_service._process_document_guarded,
                 item["document_id"],
                 item["kb_id"],
                 item["owner_id"],
@@ -193,9 +193,9 @@ async def import_url_document(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    info = await DocumentService.import_url(db, redis, kb_id, body.url, body.title, user)
+    info = await document_service.import_url(db, redis, kb_id, body.url, body.title, user)
     background_tasks.add_task(
-        DocumentService._process_document_guarded,
+        document_service._process_document_guarded,
         info["document_id"],
         info["kb_id"],
         info["owner_id"],
@@ -213,9 +213,9 @@ async def create_text_document(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    info = await DocumentService.create_text(db, redis, kb_id, body.title, body.content, user)
+    info = await document_service.create_text(db, redis, kb_id, body.title, body.content, user)
     background_tasks.add_task(
-        DocumentService._process_document_guarded,
+        document_service._process_document_guarded,
         info["document_id"],
         info["kb_id"],
         info["owner_id"],
@@ -230,7 +230,7 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DocumentService.get_page(
+    result = await document_service.get_page(
         db, kb_id, query.processingStatus, query.pageNum, query.pageSize, user
     )
     return success(result)
@@ -242,7 +242,7 @@ async def get_document(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DocumentService.get_detail(db, document_id, user)
+    result = await document_service.get_detail(db, document_id, user)
     return success(result)
 
 
@@ -256,11 +256,11 @@ async def update_document(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    info = await DocumentService.update_document(
+    info = await document_service.update_document(
         db, redis, document_id, body.fileId, body.content, user
     )
     background_tasks.add_task(
-        DocumentService._process_document_guarded,
+        document_service._process_document_guarded,
         info["document_id"],
         info["kb_id"],
         info["owner_id"],
@@ -282,7 +282,7 @@ async def delete_document(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await DocumentService.delete(db, redis, document_id, user)
+    await document_service.delete(db, redis, document_id, user)
     return success()
 
 
@@ -295,9 +295,9 @@ async def reprocess_document(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    info = await DocumentService.reprocess(db, redis, document_id, user)
+    info = await document_service.reprocess(db, redis, document_id, user)
     background_tasks.add_task(
-        DocumentService._process_document_guarded,
+        document_service._process_document_guarded,
         info["document_id"],
         info["kb_id"],
         info["owner_id"],
@@ -314,7 +314,7 @@ async def preview_chunks(
     body: ChunkPreviewForm = Body(...),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DocumentService.preview_chunks(
+    result = await document_service.preview_chunks(
         body.fileId, body.chunking_strategy, body.chunk_size, body.chunk_overlap
     )
     return success(result)
@@ -328,7 +328,7 @@ async def list_document_chunks(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DocumentService.list_chunks(db, document_id, pageNum, pageSize, user)
+    result = await document_service.list_chunks(db, document_id, pageNum, pageSize, user)
     return success(result)
 
 

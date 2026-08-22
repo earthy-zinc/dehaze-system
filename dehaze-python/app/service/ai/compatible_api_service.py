@@ -25,12 +25,12 @@ from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.api_key_repository import api_key_repository
 from app.service.ai.compatible_audit import record_call
 from app.service.ai.compatible_governance import (
-    CompatibleGovernanceService,
+    compatible_governance_service,
     GovernanceError,
 )
-from app.service.ai_conversation_service import AiConversationService
-from app.service.ai_message_service import AiMessageService
-from app.service.ai_model_service import AiModelService
+from app.service.ai_conversation_service import ai_conversation_service
+from app.service.ai_message_service import ai_message_service
+from app.service.ai_model_service import ai_model_service
 
 logger = logging.getLogger(__name__)
 
@@ -591,7 +591,7 @@ class CompatibleApiService:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
             return conv.id
         title = first_user_content[:50] if first_user_content else "新对话"
-        conv = await AiConversationService.create_conversation(
+        conv = await ai_conversation_service.create_conversation(
             db, user_id, ConversationCreate(title=title, model=model, systemPrompt=system_prompt)
         )
         return conv.id
@@ -612,7 +612,7 @@ class CompatibleApiService:
             convs = await ai_conversation_repository.get_by_ids(db, user_id, [conv_id])
             if convs and convs[0].model:
                 used_model = convs[0].model
-        await CompatibleGovernanceService.check_model_allowed(db, api_key, used_model)
+        await compatible_governance_service.check_model_allowed(db, api_key, used_model)
 
     @staticmethod
     async def handle_openai_chat(
@@ -642,7 +642,7 @@ class CompatibleApiService:
         if audit is not None:
             audit["conversation_id"] = conv_id
         await CompatibleApiService._enforce_model_whitelist(db, user_id, api_key, model, conv_id)
-        internal_response = await AiMessageService.send_message(
+        internal_response = await ai_message_service.send_message(
             db, conv_id, user_id, MessageSend(content=user_content, model=model), str(uuid4())
         )
         message_id = "chatcmpl-" + uuid4().hex
@@ -682,7 +682,7 @@ class CompatibleApiService:
         if audit is not None:
             audit["conversation_id"] = conv_id
         await CompatibleApiService._enforce_model_whitelist(db, user_id, api_key, model, conv_id)
-        internal_response = await AiMessageService.send_message(
+        internal_response = await ai_message_service.send_message(
             db, conv_id, user_id, MessageSend(content=user_content, model=model), str(uuid4())
         )
         message_id = "msg_" + uuid4().hex
@@ -703,8 +703,8 @@ class CompatibleApiService:
         与内部 API 一致的用户 VIP 过滤（AiModelService.list_enabled_models，
         含缓存），再叠加 Key 白名单过滤（§2.3 模型白名单）。
         """
-        models = await CompatibleGovernanceService.filter_models(
-            db, api_key, await AiModelService.list_enabled_models(db, redis, user_id)
+        models = await compatible_governance_service.filter_models(
+            db, api_key, await ai_model_service.list_enabled_models(db, redis, user_id)
         )
         return {
             "object": "list",
@@ -726,8 +726,8 @@ class CompatibleApiService:
         与内部 API 一致的用户 VIP 过滤（AiModelService.list_enabled_models，
         含缓存），再叠加 Key 白名单过滤（§2.3 模型白名单）。
         """
-        models = await CompatibleGovernanceService.filter_models(
-            db, api_key, await AiModelService.list_enabled_models(db, redis, user_id)
+        models = await compatible_governance_service.filter_models(
+            db, api_key, await ai_model_service.list_enabled_models(db, redis, user_id)
         )
         data = [
             {
@@ -793,7 +793,7 @@ async def _run_compatible_call(
         # Key 级治理预检：仅 API Key 认证路径；model=None 时白名单留待会话默认模型二次校验
         if api_key is not None:
             redis = await get_redis_client()
-            await CompatibleGovernanceService.precheck(redis, api_key, audit["model"], endpoint)
+            await compatible_governance_service.precheck(redis, api_key, audit["model"], endpoint)
         return await handler(body, audit, api_key)
     except GovernanceError as e:
         _record_audit(audit, status_code=e.status_code, error_msg=e.message)
@@ -852,7 +852,7 @@ async def _run_models_call(
     try:
         redis = await get_redis_client()
         if api_key is not None:
-            await CompatibleGovernanceService.precheck(redis, api_key, None, "models")
+            await compatible_governance_service.precheck(redis, api_key, None, "models")
         data = await handler(db, redis, user.id, api_key)
         _record_audit(audit, status_code=200)
         return JSONResponse(status_code=200, content=data)

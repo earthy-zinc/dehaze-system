@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from langchain_core.messages import AIMessage, SystemMessage
 
 from app.service.ai import memory_injection as injection
-from app.service.ai.reasoning_service import ReasoningService
+from app.service.ai.reasoning_service import reasoning_service
 from tests.stubs import (
     MemberBenefitRepo,
     NullDBSession,
@@ -97,20 +97,20 @@ class TestMultimodalAccumulation:
 
         key = "ai:multimodal:1:20260101"
         monkeypatch.setattr(
-            mod.AiArtifactService, "_visual_quota_key", staticmethod(lambda uid: key)
+            mod.ai_artifact_service, "_visual_quota_key", staticmethod(lambda uid: key)
         )
         for _ in range(3):
-            ok = await mod.AiArtifactService._consume_visual_quota(mock_redis, 1, limit=10)
+            ok = await mod.ai_artifact_service._consume_visual_quota(mock_redis, 1, limit=10)
             assert ok is True
 
-        used, limit = await mod.AiArtifactService.check_visual_quota(None, mock_redis, 1)
+        used, limit = await mod.ai_artifact_service.check_visual_quota(None, mock_redis, 1)
         assert used == 3
         assert limit == 10
 
 
 class TestSummaryNoReSummarize:
     async def test_watermark_advances_without_recompressing_old(self, monkeypatch):
-        from app.service.ai.summary_service import SummaryService
+        from app.service.ai.summary_service import summary_service
 
         all_rows = [
             SimpleNamespace(id=i, role="user" if i % 2 else "assistant", content=f"c{i}")
@@ -125,12 +125,12 @@ class TestSummaryNoReSummarize:
             _list_for_summary,
         )
 
-        first = await SummaryService._load_messages_to_summarize(
+        first = await summary_service._load_messages_to_summarize(
             None, SimpleNamespace(id=1, summary_upto_message_id=0)
         )
         assert first[0]["id"] == 1 and first[-1]["id"] == 40
 
-        second = await SummaryService._load_messages_to_summarize(
+        second = await summary_service._load_messages_to_summarize(
             None, SimpleNamespace(id=1, summary_upto_message_id=40)
         )
         assert second == []
@@ -166,7 +166,7 @@ class TestUsedMemoryIdsE2E:
             "stop_reason": "stop",
             "usage": {"input_tokens": 5, "output_tokens": 3, "cached_input_tokens": 0},
         }
-        await ReasoningService()._finalize_message(1, result, "gpt", used_memory_ids=[1, 2])
+        await reasoning_service._finalize_message(1, result, "gpt", used_memory_ids=[1, 2])
         assert msg.used_memory_ids == [1, 2]
 
 
@@ -183,7 +183,7 @@ class TestScenePromptOnConversationCreate:
         )
 
     async def _create_and_capture(self, monkeypatch, form):
-        from app.service.ai_conversation_service import AiConversationService
+        from app.service.ai_conversation_service import ai_conversation_service
 
         captured = {}
 
@@ -200,11 +200,11 @@ class TestScenePromptOnConversationCreate:
                 captured["title"] = conv.title
                 return conv
 
-        monkeypatch.setattr(AiConversationService, "_resolve_agent_anchor", staticmethod(_resolve))
+        monkeypatch.setattr(ai_conversation_service, "_resolve_agent_anchor", staticmethod(_resolve))
         monkeypatch.setattr(
             "app.service.ai_conversation_service.ai_conversation_repository", _Repo()
         )
-        result = await AiConversationService.create_conversation(object(), 1, form)
+        result = await ai_conversation_service.create_conversation(object(), 1, form)
         return result, captured
 
     async def test_create_conversation_writes_scene_prompt(self, monkeypatch):

@@ -55,15 +55,15 @@ def _install_settle_stubs(monkeypatch, captured, rate=None):
     monkeypatch.setattr(m, "RateProvider", SimpleNamespace(calculate=_calculate))
     monkeypatch.setattr(
         m,
-        "QuotaService",
+        "quota_service",
         SimpleNamespace(refund=_refund_quota, deduct=_deduct_quota, get_limits=_get_limits),
     )
     monkeypatch.setattr(
         m,
-        "BalanceService",
+        "balance_service",
         SimpleNamespace(refund=_refund_balance, deduct=_deduct_balance, get_balance=_get_balance),
     )
-    monkeypatch.setattr(m, "BillingAnomalyService", SimpleNamespace(check=_check_anomaly))
+    monkeypatch.setattr(m, "billing_anomaly_service", SimpleNamespace(check=_check_anomaly))
 
 
 class TestSettleAttribution:
@@ -71,7 +71,7 @@ class TestSettleAttribution:
         captured = {}
         _install_settle_stubs(monkeypatch, captured)
 
-        await m.BillingService.settle(
+        await m.billing_service.settle(
             None,
             user_id=1,
             conversation_id=2,
@@ -102,7 +102,7 @@ class TestSettleAttribution:
         captured = {}
         _install_settle_stubs(monkeypatch, captured)
 
-        await m.BillingService.settle(
+        await m.billing_service.settle(
             None,
             user_id=1,
             conversation_id=2,
@@ -120,7 +120,7 @@ class TestSettleAttribution:
         captured = {}
         _install_settle_stubs(monkeypatch, captured)
 
-        await m.BillingService.settle(
+        await m.billing_service.settle(
             None,
             user_id=1,
             conversation_id=2,
@@ -139,7 +139,7 @@ class TestSettleAttribution:
         captured = {}
         _install_settle_stubs(monkeypatch, captured, rate={"credits": 60, "credits_saved": 5})
 
-        await m.BillingService.settle(
+        await m.billing_service.settle(
             None,
             user_id=1,
             conversation_id=2,

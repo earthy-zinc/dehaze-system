@@ -10,7 +10,7 @@ from app.database import get_db
 from app.dependencies.auth import SESSION_COOKIE, SESSION_TTL, UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.user import CaptchaData, CurrentUserVO, LoginData, LoginForm, RegisterForm
-from app.service.auth_service import AuthService
+from app.service.auth_service import auth_service
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ async def login(
     client_ip = req.client.host if req.client else "unknown"
     user_agent = req.headers.get("user-agent", "")
 
-    result = await AuthService.login(
+    result = await auth_service.login(
         db,
         redis,
         request.username.lower().strip(),
@@ -71,7 +71,7 @@ async def register(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    result = await AuthService.register(
+    result = await auth_service.register(
         db,
         redis,
         request.username,
@@ -106,7 +106,7 @@ async def logout(
 async def get_captcha(
     redis: Redis = Depends(get_redis),
 ):
-    result = await AuthService.get_captcha(redis)
+    result = await auth_service.get_captcha(redis)
     return success(result)
 
 
@@ -141,7 +141,7 @@ async def list_login_logs(
     - 管理员（is_admin）查看全量日志
     - 普通用户仅查看本人日志（即便传入他人 username 也强制限定本人）
     """
-    result = await AuthService.list_login_logs(
+    result = await auth_service.list_login_logs(
         pageNum,
         pageSize,
         username=username,

@@ -18,7 +18,7 @@
 ```python
 @pytest.mark.asyncio
 async def test_login(db_session: AsyncSession):
-    result = await AuthService.login(db_session, "user", "pass")
+    result = await auth_service.login(db_session, "user", "pass")
     assert result is not None
 ```
 
@@ -134,7 +134,7 @@ pytest -m requires_db
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.service.auth_service import AuthService
+from app.service.auth_service import auth_service
 
 
 @pytest.mark.unit
@@ -145,7 +145,7 @@ class TestAuthServiceLogin:
     @pytest.mark.asyncio
     async def test_login_success(self, db_session: AsyncSession, sample_user: dict):
         """测试登录成功"""
-        result = await AuthService.login(
+        result = await auth_service.login(
             db=db_session,
             username=sample_user["username"],
             password=sample_user["password"],
@@ -268,7 +268,7 @@ async def test_create_user():
 # 正确：使用 mock_redis fixture
 @pytest.mark.asyncio
 async def test_captcha(mock_redis: MockRedis):
-    result = await AuthService.get_captcha(mock_redis)
+    result = await auth_service.get_captcha(mock_redis)
     assert "captchaKey" in result
 ```
 

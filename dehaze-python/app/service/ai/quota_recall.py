@@ -11,8 +11,8 @@ import logging
 
 from app.database import get_db_session
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
-from app.service.billing.estimate_service import EstimateService
-from app.service.billing.quota_service import QuotaService
+from app.service.billing.estimate_service import estimate_service
+from app.service.billing.quota_service import quota_service
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class QuotaRecall:
             return True
         try:
             async with get_db_session() as db:
-                per_subtask = await EstimateService.estimate_step_credits(
+                per_subtask = await estimate_service.estimate_step_credits(
                     db,
                     ctx.get("model_id") or "",
                     ctx.get("messages") or [],
@@ -47,7 +47,7 @@ class QuotaRecall:
                 return False
             # 预扣：配额侧扣减 + 预算池扣减
             async with get_db_session() as db:
-                if not await QuotaService.pre_deduct(db, bc["user_id"], total):
+                if not await quota_service.pre_deduct(db, bc["user_id"], total):
                     return False
             bc["remaining_budget"] = remaining - total
             bc.setdefault("precharged_batch", 0)

@@ -133,8 +133,7 @@ def _build_package_detail(db_pkg: SysPackage, benefit: SysMemberBenefit | None) 
 
 
 class PackageService:
-    @staticmethod
-    async def list_on_sale(db: AsyncSession) -> list[dict]:
+    async def list_on_sale(self, db: AsyncSession) -> list[dict]:
         cache_key = "package:onsale"
 
         async def _get_cache():
@@ -174,8 +173,7 @@ class PackageService:
 
         return result
 
-    @staticmethod
-    async def get_detail(db: AsyncSession, package_id: int) -> dict:
+    async def get_detail(self, db: AsyncSession, package_id: int) -> dict:
         cache_key = f"package:detail:{package_id}"
 
         async def _get_cache():
@@ -220,8 +218,7 @@ class PackageService:
 
         return detail
 
-    @staticmethod
-    async def get_page(db: AsyncSession, query: dict) -> dict:
+    async def get_page(self, db: AsyncSession, query: dict) -> dict:
         items, total = await package_repository.get_page(
             db,
             query["pageNum"],
@@ -258,8 +255,7 @@ class PackageService:
         ]
         return {"list": list_data, "total": total}
 
-    @staticmethod
-    async def get_form(db: AsyncSession, package_id: int) -> dict:
+    async def get_form(self, db: AsyncSession, package_id: int) -> dict:
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
             raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
@@ -277,8 +273,7 @@ class PackageService:
             "status": pkg.status,
         }
 
-    @staticmethod
-    async def create(db: AsyncSession, form: dict) -> None:
+    async def create(self, db: AsyncSession, form: dict) -> None:
         _validate_package_form(form)
         existing = await package_repository.get_by_name(db, form["name"])
         if existing:
@@ -298,8 +293,7 @@ class PackageService:
         await package_repository.create(db, pkg)
         await _invalidate_package_cache()
 
-    @staticmethod
-    async def update(db: AsyncSession, package_id: int, form: dict) -> None:
+    async def update(self, db: AsyncSession, package_id: int, form: dict) -> None:
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
             raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
@@ -321,8 +315,7 @@ class PackageService:
         await db.flush()
         await _invalidate_package_cache(package_id)
 
-    @staticmethod
-    async def update_status(db: AsyncSession, package_id: int, status: int) -> None:
+    async def update_status(self, db: AsyncSession, package_id: int, status: int) -> None:
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
             raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
@@ -334,8 +327,7 @@ class PackageService:
         await db.flush()
         await _invalidate_package_cache(package_id)
 
-    @staticmethod
-    async def delete_by_ids(db: AsyncSession, ids: list[int]) -> None:
+    async def delete_by_ids(self, db: AsyncSession, ids: list[int]) -> None:
         for package_id in ids:
             pkg = await package_repository.get_by_id(db, package_id)
             if not pkg:
@@ -354,8 +346,8 @@ class PackageService:
         await package_repository.soft_delete_by_ids(db, ids)
         await _invalidate_package_cache()
 
-    @staticmethod
     async def calculate_price(
+        self,
         db: AsyncSession,
         package_id: int,
         user_coupon_id: int | None,
@@ -415,8 +407,7 @@ class PackageService:
             "payableAmount": payable_amount,
         }
 
-    @staticmethod
-    async def get_sales_stats(db: AsyncSession) -> dict:
+    async def get_sales_stats(self, db: AsyncSession) -> dict:
         total_sales_stmt = (
             select(func.count())
             .select_from(SysOrder)
@@ -528,3 +519,6 @@ class PackageService:
                 "usageRate": usage_rate,
             },
         }
+
+
+package_service = PackageService()

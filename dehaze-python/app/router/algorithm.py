@@ -15,7 +15,7 @@ from app.models.schema.algorithm import (
     AlgorithmVersionVO,
     AlgorithmVO,
 )
-from app.service.algorithm_service import AlgorithmService
+from app.service.algorithm_service import algorithm_service
 
 router = APIRouter(
     prefix="/api/v1/algorithms",
@@ -29,7 +29,7 @@ async def list_algorithms(
     keywords: str | None = Query(default=None, description="关键词"),
     db: AsyncSession = Depends(get_db),
 ):
-    algorithms = await AlgorithmService.get_algorithm_list(db, keywords)
+    algorithms = await algorithm_service.get_algorithm_list(db, keywords)
     return success(algorithms)
 
 
@@ -37,7 +37,7 @@ async def list_algorithms(
 async def get_algorithm_options(
     db: AsyncSession = Depends(get_db),
 ):
-    options = await AlgorithmService.get_algorithm_options(db)
+    options = await algorithm_service.get_algorithm_options(db)
     return success(options)
 
 
@@ -45,7 +45,7 @@ async def get_algorithm_options(
 async def list_all_algorithms(
     db: AsyncSession = Depends(get_db),
 ):
-    algorithms = await AlgorithmService.list_all_algorithms(db)
+    algorithms = await algorithm_service.list_all_algorithms(db)
     return success(algorithms)
 
 
@@ -54,7 +54,7 @@ async def get_algorithm(
     algorithm_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    algorithm = await AlgorithmService.get_algorithm_by_id(db, algorithm_id)
+    algorithm = await algorithm_service.get_algorithm_by_id(db, algorithm_id)
     return success(algorithm)
 
 
@@ -65,7 +65,7 @@ async def create_algorithm(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    algorithm_id = await AlgorithmService.create_algorithm(db, body.model_dump(exclude_none=True))
+    algorithm_id = await algorithm_service.create_algorithm(db, body.model_dump(exclude_none=True))
     return success(algorithm_id)
 
 
@@ -77,7 +77,7 @@ async def update_algorithm(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await AlgorithmService.update_algorithm(db, algorithm_id, body.model_dump(exclude_none=True))
+    await algorithm_service.update_algorithm(db, algorithm_id, body.model_dump(exclude_none=True))
     return success(msg="算法更新成功")
 
 
@@ -92,7 +92,7 @@ async def update_algorithm_status(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await AlgorithmService.update_status(db, algorithm_id, status)
+    await algorithm_service.update_status(db, algorithm_id, status)
     return success(msg="算法状态更新成功")
 
 
@@ -107,7 +107,7 @@ async def audit_algorithm(
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await AlgorithmService.audit_algorithm(
+    await algorithm_service.audit_algorithm(
         db=db,
         algorithm_id=algorithm_id,
         audit_by=user.id,
@@ -127,7 +127,7 @@ async def create_version(
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    algorithm_id = await AlgorithmService.create_version(
+    algorithm_id = await algorithm_service.create_version(
         db=db,
         algorithm_id=algorithm_id,
         version=body.version,
@@ -154,7 +154,7 @@ async def list_versions(
     db: AsyncSession = Depends(get_db),
 ):
     """查询算法版本历史"""
-    versions = await AlgorithmService.list_versions(db, algorithm_id)
+    versions = await algorithm_service.list_versions(db, algorithm_id)
     return success(versions)
 
 
@@ -164,7 +164,7 @@ async def rollback_version(
     versionId: int = Query(..., description="目标版本ID"),
     db: AsyncSession = Depends(get_db),
 ):
-    await AlgorithmService.rollback_version(db, algorithm_id, versionId)
+    await algorithm_service.rollback_version(db, algorithm_id, versionId)
     return success(msg="版本回滚成功")
 
 
@@ -179,7 +179,7 @@ async def delete_algorithms(
     user: UserContext = Depends(get_current_user),
 ):
     algorithm_ids = [int(i) for i in ids.split(",")]
-    await AlgorithmService.delete_algorithms(db, algorithm_ids)
+    await algorithm_service.delete_algorithms(db, algorithm_ids)
     return success(msg="算法删除成功")
 
 
@@ -191,7 +191,7 @@ async def delete_algorithm_single(
     user: UserContext = Depends(get_current_user),
 ):
     """删除单个算法（含子算法）"""
-    await AlgorithmService.delete_algorithm_single(db, algorithm_id)
+    await algorithm_service.delete_algorithm_single(db, algorithm_id)
     return success(msg="算法删除成功")
 
 
@@ -204,7 +204,7 @@ async def export_algorithm(
     db: AsyncSession = Depends(get_db),
 ):
     """导出单个算法为 JSON 文件（对齐 Java exportAlgorithmJson）"""
-    json_str = await AlgorithmService.export_algorithm(db, algorithm_id)
+    json_str = await algorithm_service.export_algorithm(db, algorithm_id)
     filename = f"algorithm_{algorithm_id}.json"
     return Response(
         content=json_str.encode("utf-8"),
@@ -223,7 +223,7 @@ async def validate_import_package(
 ):
     """校验算法导入包格式，不写入数据库（对齐 Java validateImport）"""
     file_bytes = await file.read()
-    message = await AlgorithmService.validate_import_package(file_bytes, file.filename or "")
+    message = await algorithm_service.validate_import_package(file_bytes, file.filename or "")
     return success(message)
 
 
@@ -238,7 +238,7 @@ async def import_algorithm(
 ):
     """导入算法（对齐 Java importAlgorithm）"""
     file_bytes = await file.read()
-    await AlgorithmService.import_algorithm(db, file_bytes, file.filename or "")
+    await algorithm_service.import_algorithm(db, file_bytes, file.filename or "")
     return success(msg="算法导入成功")
 
 
@@ -255,7 +255,7 @@ async def get_monitor_data(
     db: AsyncSession = Depends(get_db),
 ):
     """获取算法实时监控数据（调用次数、平均耗时、成功率等）"""
-    data = await AlgorithmService.get_monitor_data(db, algorithm_id)
+    data = await algorithm_service.get_monitor_data(db, algorithm_id)
     return success(data)
 
 
@@ -269,5 +269,5 @@ async def get_monitor_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """获取算法监控统计报表（最近 days 天每天一条，含无数据天）"""
-    data = await AlgorithmService.get_monitor_stats_report(db, algorithm_id, days)
+    data = await algorithm_service.get_monitor_stats_report(db, algorithm_id, days)
     return success(data)

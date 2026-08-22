@@ -7,8 +7,8 @@ from app.models.schema.algorithm_select import CompareRequest
 from app.models.schema.dict import DictForm
 from app.service.dict_service import (
     SYSTEM_PRESET_DICT_TYPE_CODES,
-    DictService,
-    DictTypeService,
+    dict_service,
+    dict_type_service,
 )
 from tests.stubs import run_coro
 
@@ -50,7 +50,7 @@ class TestDictTypeCodeReadonly:
         m.dict_type_repository = FakeRepo()
         try:
             with pytest.raises(BusinessException) as ei:
-                run_coro(DictTypeService.update_dict_type(None, None, 1, {"code": "new_code"}))
+                run_coro(dict_type_service.update_dict_type(None, None, 1, {"code": "new_code"}))
             assert ei.value.code == ResultCode.OPERATION_NOT_ALLOW
         finally:
             m.dict_type_repository = orig
@@ -80,7 +80,7 @@ class TestDictPresetProtection:
         m.dict_type_repository = FakeRepo()
         try:
             with pytest.raises(BusinessException) as ei:
-                run_coro(DictTypeService.delete_dict_types(None, None, [1], force=True))
+                run_coro(dict_type_service.delete_dict_types(None, None, [1], force=True))
             assert ei.value.code == ResultCode.OPERATION_NOT_ALLOW
         finally:
             m.dict_type_repository = orig

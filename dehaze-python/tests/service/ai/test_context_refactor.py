@@ -3,8 +3,8 @@ from types import SimpleNamespace
 from app.service.ai.context_manager import ContextManager
 from app.service.ai.prompt_composer import STABLE_SYSTEM_PROMPT, compose_system_prompt
 from app.service.ai.scene_templates import SCENE_VALUES, get_scene_prompt
-from app.service.ai.reasoning_service import ReasoningService
-from app.service.ai.summary_service import SummaryService, _PRIOR_SUMMARY_MAX_LEN
+from app.service.ai.reasoning_service import reasoning_service
+from app.service.ai.summary_service import summary_service, _PRIOR_SUMMARY_MAX_LEN
 from tests.stubs import NullDBSession, make_conv, repo_returns
 
 
@@ -70,11 +70,11 @@ def _install_summary_mocks(monkeypatch, prior_summary, load_messages, recompress
     )
     monkeypatch.setattr(ContextManager, "build_context", _build_context)
     monkeypatch.setattr("app.service.ai.summary_service.estimate_context_tokens", _estimate)
-    monkeypatch.setattr(SummaryService, "_load_messages_to_summarize", staticmethod(load_messages))
-    monkeypatch.setattr(SummaryService, "_generate_summary", staticmethod(_gen_summary))
-    monkeypatch.setattr(SummaryService, "_extract_episodic_memory", staticmethod(_no_memory_extract))
+    monkeypatch.setattr(summary_service, "_load_messages_to_summarize", staticmethod(load_messages))
+    monkeypatch.setattr(summary_service, "_generate_summary", staticmethod(_gen_summary))
+    monkeypatch.setattr(summary_service, "_extract_episodic_memory", staticmethod(_no_memory_extract))
     if recompress is not None:
-        monkeypatch.setattr(SummaryService, "_recompress_prior_summary", staticmethod(recompress))
+        monkeypatch.setattr(summary_service, "_recompress_prior_summary", staticmethod(recompress))
     return conv
 
 
@@ -93,7 +93,7 @@ def _install_build_context_mocks(monkeypatch, chain_msgs, memory, artifact_refs=
     monkeypatch.setattr("app.service.ai.context_manager.inject_memories", memory)
     if artifact_refs is not None:
         monkeypatch.setattr(
-            "app.service.ai.context_manager.AiArtifactService.get_message_artifact_refs",
+            "app.service.ai.context_manager.ai_artifact_service.get_message_artifact_refs",
             staticmethod(artifact_refs),
         )
 
@@ -194,7 +194,7 @@ async def test_summary_watermark_selects_only_after_watermark(monkeypatch):
         "app.service.ai.summary_service.ai_message_repository.list_for_summary",
         _list_for_summary,
     )
-    selected = await SummaryService._load_messages_to_summarize(None, conv)
+    selected = await summary_service._load_messages_to_summarize(None, conv)
     assert selected
     assert selected[0]["id"] == 11
     assert selected[-1]["id"] == 20
@@ -206,7 +206,7 @@ async def test_maybe_compress_appends_summary_and_advances_watermark(monkeypatch
         return [{"id": 15, "role": "user", "content": "待压缩的近期消息"}]
 
     conv = _install_summary_mocks(monkeypatch, "旧摘要", _load_messages)
-    await SummaryService().maybe_compress(NullDBSession(), conv, "gpt")
+    await summary_service.maybe_compress(NullDBSession(), conv, "gpt")
     assert conv.summary == "前序摘要：旧摘要\n近期摘要：新摘要"
     assert conv.summary_upto_message_id == 15
 
@@ -221,7 +221,7 @@ async def test_maybe_compress_recompresses_oversized_prior_summary(monkeypatch):
     conv = _install_summary_mocks(
         monkeypatch, "旧" * (_PRIOR_SUMMARY_MAX_LEN + 1), _load_messages, _recompress
     )
-    await SummaryService().maybe_compress(NullDBSession(), conv, "gpt")
+    await summary_service.maybe_compress(NullDBSession(), conv, "gpt")
     assert conv.summary == "前序摘要：再压缩后的前序摘要\n近期摘要：新摘要"
 
 
@@ -295,7 +295,7 @@ async def test_finalize_message_writes_used_memory_ids(monkeypatch):
         "stop_reason": "stop",
         "usage": {"input_tokens": 10, "output_tokens": 5, "cached_input_tokens": 2},
     }
-    await ReasoningService()._finalize_message(1, result, "gpt", used_memory_ids=[7, 8, 9])
+    await reasoning_service._finalize_message(1, result, "gpt", used_memory_ids=[7, 8, 9])
     assert msg.used_memory_ids == [7, 8, 9]
     assert msg.status == 2
     assert msg.credits == 9
@@ -305,5 +305,5 @@ async def test_finalize_message_skips_empty_used_memory_ids(monkeypatch):
     msg = _install_finalize_mocks(monkeypatch, _finalize_msg(used_memory_ids="keep"), 0)
 
     result = {"final_response": "ok", "stop_reason": "stop", "usage": {}}
-    await ReasoningService()._finalize_message(1, result, "gpt", used_memory_ids=[])
+    await reasoning_service._finalize_message(1, result, "gpt", used_memory_ids=[])
     assert msg.used_memory_ids == "keep"

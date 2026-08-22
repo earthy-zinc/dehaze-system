@@ -89,8 +89,7 @@ def _render_template(template: str, variables: dict[str, str]) -> str:
 
 
 class MessageService:
-    @staticmethod
-    async def send(db: AsyncSession, data: dict[str, Any]) -> list[int]:
+    async def send(self, db: AsyncSession, data: dict[str, Any]) -> list[int]:
         biz_module = data.get("bizModule")
         biz_id = data.get("bizId")
 
@@ -175,8 +174,7 @@ class MessageService:
         message_ids.extend(m.id for m in messages)
         return message_ids
 
-    @staticmethod
-    async def get_page(
+    async def get_page(self, 
         db: AsyncSession,
         user_id: int,
         page: int,
@@ -204,8 +202,7 @@ class MessageService:
         ]
         return {"list": list_data, "total": total, "pageNum": page, "pageSize": page_size}
 
-    @staticmethod
-    async def get_unread_count(db: AsyncSession, user_id: int) -> int:
+    async def get_unread_count(self, db: AsyncSession, user_id: int) -> int:
         cache_key = f"{UNREAD_COUNT_CACHE_PREFIX}{user_id}"
         try:
             redis = await get_redis_client()
@@ -223,8 +220,7 @@ class MessageService:
             logger.warning("写入未读数缓存失败: user_id=%s err=%s", user_id, e)
         return count
 
-    @staticmethod
-    async def get_detail(db: AsyncSession, user_id: int, message_id: int) -> dict[str, Any]:
+    async def get_detail(self, db: AsyncSession, user_id: int, message_id: int) -> dict[str, Any]:
         msg = await message_repository.get_by_id_and_recipient(db, message_id, user_id)
         if not msg:
             raise BusinessException(ResultCode.MESSAGE_NOT_FOUND, "消息不存在")
@@ -244,8 +240,7 @@ class MessageService:
             "createTime": _format_dt(msg.create_time),
         }
 
-    @staticmethod
-    async def mark_read(db: AsyncSession, user_id: int, message_id: int) -> None:
+    async def mark_read(self, db: AsyncSession, user_id: int, message_id: int) -> None:
         msg = await message_repository.get_by_id_and_recipient(db, message_id, user_id)
         if not msg:
             raise BusinessException(ResultCode.MESSAGE_NOT_FOUND, "消息不存在")
@@ -253,8 +248,7 @@ class MessageService:
             await message_repository.mark_read(db, message_id, user_id)
             await invalidate_unread_count_cache(user_id)
 
-    @staticmethod
-    async def mark_all_read(
+    async def mark_all_read(self, 
         db: AsyncSession,
         user_id: int,
         type: str | None = None,
@@ -263,13 +257,11 @@ class MessageService:
         await invalidate_unread_count_cache(user_id)
         return affected
 
-    @staticmethod
-    async def delete_by_ids(db: AsyncSession, user_id: int, ids: list[int]) -> None:
+    async def delete_by_ids(self, db: AsyncSession, user_id: int, ids: list[int]) -> None:
         await message_repository.soft_delete_by_ids_and_recipient(db, ids, user_id)
         await invalidate_unread_count_cache(user_id)
 
-    @staticmethod
-    async def search(
+    async def search(self, 
         db: AsyncSession,
         user_id: int,
         keyword: str,
@@ -294,8 +286,7 @@ class MessageService:
         ]
         return {"list": list_data, "total": total, "pageNum": page, "pageSize": page_size}
 
-    @staticmethod
-    async def refresh_unread_count_cache(db: AsyncSession) -> int:
+    async def refresh_unread_count_cache(self, db: AsyncSession) -> int:
         stmt = select(SysUser.id).where(
             SysUser.deleted == 0,
             SysUser.status == 1,
@@ -327,3 +318,7 @@ class MessageService:
 
         logger.debug("未读数缓存刷新完成: 共刷新 %s 个用户", refreshed)
         return refreshed
+
+
+# 单例
+message_service = MessageService()

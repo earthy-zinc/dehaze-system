@@ -16,8 +16,8 @@ from app.models.entity.sys_dataset import SysDatasetItem, SysItemFile
 from app.repository.dataset_repository import dataset_repository
 from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.service.dataset._shared import _build_file_vo
-from app.service.dataset.dataset_service import DatasetService
-from app.service.file_service import FileService
+from app.service.dataset.dataset_service import dataset_service
+from app.service.file_service import file_service
 from app.utils.datetime_utils import format_time
 
 
@@ -91,8 +91,7 @@ def _extract_haze_level(filename: str) -> str:
 class DatasetItemService:
     """数据集项服务（异步版本）"""
 
-    @staticmethod
-    async def create_dataset_item(
+    async def create_dataset_item(self, 
         db: AsyncSession,
         redis: Redis,
         data: dict[str, Any],
@@ -119,7 +118,7 @@ class DatasetItemService:
         await db.flush()
         await db.refresh(dataset_item)
 
-        await DatasetService._evict_all_cache(redis)
+        await dataset_service._evict_all_cache(redis)
 
         return {
             "id": dataset_item.id,
@@ -127,8 +126,7 @@ class DatasetItemService:
             "name": dataset_item.name,
         }
 
-    @staticmethod
-    async def get_item_detail(db: AsyncSession, item_id: int) -> dict[str, Any]:
+    async def get_item_detail(self, db: AsyncSession, item_id: int) -> dict[str, Any]:
         item, item_files = await dataset_repository.get_item_with_files(db, item_id)
         if not item:
             return {}
@@ -167,8 +165,7 @@ class DatasetItemService:
             "hazyImages": hazy_images,
         }
 
-    @staticmethod
-    async def update_dataset_item(
+    async def update_dataset_item(self, 
         db: AsyncSession,
         redis: Redis,
         item_id: int,
@@ -181,7 +178,7 @@ class DatasetItemService:
         if "name" in data:
             item.name = data["name"]
 
-        await DatasetService._evict_all_cache(redis)
+        await dataset_service._evict_all_cache(redis)
 
         return {
             "id": item.id,
@@ -189,8 +186,7 @@ class DatasetItemService:
             "name": item.name,
         }
 
-    @staticmethod
-    async def delete_dataset_item(
+    async def delete_dataset_item(self, 
         db: AsyncSession,
         redis: Redis,
         item_id: int,
@@ -202,10 +198,9 @@ class DatasetItemService:
         await dataset_repository.delete_item_files_by_item_id(db, item_id)
         await dataset_repository.delete_item_by_id(db, item_id)
 
-        await DatasetService._evict_all_cache(redis)
+        await dataset_service._evict_all_cache(redis)
 
-    @staticmethod
-    async def batch_delete_items(
+    async def batch_delete_items(self, 
         db: AsyncSession,
         redis: Redis,
         item_ids: list[int],
@@ -235,7 +230,7 @@ class DatasetItemService:
             await dataset_repository.delete_item_files_by_item_ids(db, success_ids)
             await dataset_repository.delete_items_by_ids(db, success_ids)
 
-        await DatasetService._evict_all_cache(redis)
+        await dataset_service._evict_all_cache(redis)
 
         mongo_audit_log_repository.create_audit_async(
             operator_id=get_current_user_id(),
@@ -253,8 +248,7 @@ class DatasetItemService:
             "failureDetails": failure_details,
         }
 
-    @staticmethod
-    async def upload_dataset_item_with_images(
+    async def upload_dataset_item_with_images(self, 
         db: AsyncSession,
         redis: Redis,
         dataset_id: int,
@@ -309,7 +303,7 @@ class DatasetItemService:
 
         # 清晰图（可选）
         if clear_file_content is not None:
-            clear_sys_file = await FileService.upload_file(
+            clear_sys_file = await file_service.upload_file(
                 db,
                 clear_filename,
                 clear_file_content,
@@ -327,7 +321,7 @@ class DatasetItemService:
         # 有雾图（可选，haze_level 支持多种规范：light/medium/heavy、beta=X、A=X,beta=Y 等）
         for hfd in hazy_files_data or []:
             haze_level = hfd.get("hazeLevel", "")
-            hazy_sys_file = await FileService.upload_file(
+            hazy_sys_file = await file_service.upload_file(
                 db,
                 hfd["filename"],
                 hfd["content"],
@@ -344,12 +338,11 @@ class DatasetItemService:
 
         await db.flush()
 
-        await DatasetService._evict_all_cache(redis)
+        await dataset_service._evict_all_cache(redis)
 
-        return await DatasetItemService.get_item_detail(db, item.id)
+        return await self.get_item_detail(db, item.id)
 
-    @staticmethod
-    async def batch_create_dataset_items_with_images(
+    async def batch_create_dataset_items_with_images(self, 
         db: AsyncSession,
         redis: Redis,
         dataset_id: int,
@@ -416,7 +409,7 @@ class DatasetItemService:
 
             try:
                 clear_fd = files["clear"][0] if files["clear"] else None
-                details = await DatasetItemService.upload_dataset_item_with_images(
+                details = await self.upload_dataset_item_with_images(
                     db=db,
                     redis=redis,
                     dataset_id=dataset_id,
@@ -453,3 +446,6 @@ class DatasetItemService:
         }
 
 
+
+
+dataset_item_service = DatasetItemService()
