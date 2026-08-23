@@ -110,9 +110,14 @@ test = [
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
     "pytest-xdist>=3.5.0",
+    "pytest-mock>=3.14.0",
     "faker>=22.0.0",
     "httpx>=0.28.1",
+    "respx>=0.22.0",  # httpx 传输层拦截，mock 外部 HTTP 依赖
     "aiosqlite>=0.20.0",  # SQLite 异步驱动（测试用）
+    "mongomock>=4.1.2",  # MongoDB 内存模拟
+    "mongomock-motor>=0.0.26",  # mongomock 的 motor 兼容层（AsyncMongoMockClient）
+    "freezegun>=1.5.0",  # 时间冻结
 ]
 # 本地 LLM 服务（local_llm_server，可选降级方案：需手动下载 GGUF 模型，见 scripts/download_local_llm.py）
 local-llm = [
