@@ -34,12 +34,10 @@
 ### 2.3 剩余收尾（低成本）
 
 1. **部门列表未接入**：`dept_repository.get_dept_list` / `get_dept_options_tree` 无 `apply_data_scope`，而 Java（`SysDeptMapper.selectList`）与 Go 均过滤部门列表——三端对齐缺口，复用现有工具函数即可
-2. **降级注释语义错误**：`api_key_auth.py` 降级处注释写 "data_scope=1（仅本人）"，实际 `1`=部门及子部门、仅本人为 `3`，需随 §4 一并修正注释
 
 ### 2.4 验收标准
 
 - `dept_repository` 两个部门查询接入 `apply_data_scope`，与 Java/Go 过滤范围一致
-- 注释与取值语义一致，无错位
 
 ## 3. asyncio 后台任务纳入 TaskTracker：核心已注册，剩余 A2A 推理
 
