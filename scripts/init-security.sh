@@ -1,9 +1,9 @@
 #!/bin/bash
 # 安全初始化脚本：ES 系统用户密码 + Alertmanager Basic Auth 凭证
-# 适用场景：首次部署 / 重置 ES 数据卷 / 修改 DEHAZE_PASSWORD 后
+# 适用场景：首次部署 / 重置 ES 数据卷 / 修改 ES_PASSWORD / ALERTMANAGER_PASSWORD 后
 #
 # 前置条件：
-#   1. .env 中已配置 DEHAZE_PASSWORD
+#   1. .env 中已配置 ES_PASSWORD 与 ALERTMANAGER_PASSWORD
 #   2. ES 容器已启动（docker compose up -d elasticsearch）
 #
 # 执行：bash scripts/init-security.sh
@@ -14,14 +14,14 @@ cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
 source .env
 
-if [ -z "${DEHAZE_PASSWORD:-}" ]; then
-  echo "ERROR: .env 中未配置 DEHAZE_PASSWORD"
+if [ -z "${ES_PASSWORD:-}" ] || [ -z "${ALERTMANAGER_PASSWORD:-}" ]; then
+  echo "ERROR: .env 中未配置 ES_PASSWORD / ALERTMANAGER_PASSWORD"
   exit 1
 fi
 
 ES_URL="http://localhost:9200"
 ES_USER="elastic"
-ES_PASS="$DEHAZE_PASSWORD"
+ES_PASS="$ES_PASSWORD"
 
 # ---------- 1. 等待 ES 就绪 ----------
 echo "等待 Elasticsearch 就绪..."
@@ -72,13 +72,13 @@ done
 # ---------- 4. 生成 Alertmanager Basic Auth 凭证 ----------
 echo ""
 echo "生成 Alertmanager Basic Auth 凭证..."
-HASH=$(docker run --rm httpd:alpine htpasswd -nbB admin "$DEHAZE_PASSWORD" | sed 's/^admin://')
+HASH=$(docker run --rm httpd:alpine htpasswd -nbB admin "$ALERTMANAGER_PASSWORD" | sed 's/^admin://')
 
 cat > config/alertmanager/web.yml <<EOF
 basic_auth_users:
   admin: "$HASH"
 EOF
-echo "  OK: config/alertmanager/web.yml 已生成（账号 admin / 密码 \$DEHAZE_PASSWORD）"
+echo "  OK: config/alertmanager/web.yml 已生成（账号 admin / 密码 \$ALERTMANAGER_PASSWORD）"
 
 # ---------- 5. 提示后续操作 ----------
 cat <<EOF
@@ -92,7 +92,7 @@ cat <<EOF
   Alertmanager:
     admin            (Basic Auth，Prometheus 推送告警 / 访问 Web UI)
 
-如修改了 DEHAZE_PASSWORD，重新执行本脚本后重启相关服务：
+如修改了 ES_PASSWORD / ALERTMANAGER_PASSWORD，重新执行本脚本后重启相关服务：
   docker compose restart elasticsearch
   bash scripts/init-security.sh
   docker compose up -d kibana logstash alertmanager prometheus
