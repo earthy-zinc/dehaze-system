@@ -9,7 +9,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.annotation.AuditLog;
-import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.DateUtils;
@@ -30,6 +29,7 @@ import com.pei.dehaze.service.SysRoleService;
 import com.pei.dehaze.service.SysUserRoleService;
 import com.pei.dehaze.service.SysUserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -61,6 +61,12 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private final SysRoleService roleService;
 
     private final PermissionService permissionService;
+
+    /**
+     * 新用户默认密码（由各 profile 的 system.default-password 注入，源为根 .env 的 DEFAULT_PASSWORD）
+     */
+    @Value("${system.default-password}")
+    private String defaultPassword;
 
     /**
      * 获取用户分页列表
@@ -117,8 +123,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 实体转换 form->entity
         SysUser entity = userConverter.form2Entity(userForm);
 
-        // 设置默认加密密码
-        String defaultEncryptPwd = passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD);
+        // 设置默认加密密码（来自环境变量注入，不随代码硬编码）
+        String defaultEncryptPwd = passwordEncoder.encode(defaultPassword);
         entity.setPassword(defaultEncryptPwd);
 
         // 新增用户

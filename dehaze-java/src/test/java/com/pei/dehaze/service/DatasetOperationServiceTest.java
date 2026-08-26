@@ -50,6 +50,9 @@ class DatasetOperationServiceTest {
     @Mock
     private ImageProcessingService imageProcessingService;
 
+    @Mock
+    private FavoriteService favoriteService;
+
     @InjectMocks
     private DatasetOperationServiceImpl datasetOperationService;
 
@@ -130,10 +133,7 @@ class DatasetOperationServiceTest {
         SysDataset ds2 = new SysDataset(); ds2.setId(2L);
 
         when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(ds1, ds2));
-        when(sysDatasetService.getDatasetAndDescendantIds(1L)).thenReturn(Arrays.asList(1L));
-        when(sysDatasetService.getDatasetAndDescendantIds(2L)).thenReturn(Arrays.asList(2L));
-        when(sysDatasetService.getLeafDatasetId(1L)).thenReturn(Arrays.asList(1L));
-        when(sysDatasetService.getLeafDatasetId(2L)).thenReturn(Arrays.asList(2L));
+        when(sysDatasetService.getAllDatasets()).thenReturn(Arrays.asList(ds1, ds2));
         when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
@@ -154,11 +154,11 @@ class DatasetOperationServiceTest {
         // Given
         List<Long> datasetIds = Arrays.asList(1L);
 
+        SysDataset child2 = new SysDataset(); child2.setId(2L); child2.setParentId(1L);
+        SysDataset child3 = new SysDataset(); child3.setId(3L); child3.setParentId(1L);
+
         when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(sampleDataset));
-        when(sysDatasetService.getDatasetAndDescendantIds(1L))
-                .thenReturn(Arrays.asList(1L, 2L, 3L));
-        when(sysDatasetService.getLeafDatasetId(1L))
-                .thenReturn(Arrays.asList(2L, 3L));
+        when(sysDatasetService.getAllDatasets()).thenReturn(Arrays.asList(sampleDataset, child2, child3));
         when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
@@ -202,10 +202,7 @@ class DatasetOperationServiceTest {
 
         // listByIds 只返回存在的数据集（不含 999L），999L 会触发 "数据集不存在"
         when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(ds1, ds2));
-        when(sysDatasetService.getDatasetAndDescendantIds(1L)).thenReturn(Arrays.asList(1L));
-        when(sysDatasetService.getLeafDatasetId(1L)).thenReturn(Arrays.asList(1L));
-        when(sysDatasetService.getDatasetAndDescendantIds(2L)).thenReturn(Arrays.asList(2L));
-        when(sysDatasetService.getLeafDatasetId(2L)).thenReturn(Arrays.asList(2L));
+        when(sysDatasetService.getAllDatasets()).thenReturn(Arrays.asList(ds1, ds2));
         when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
@@ -232,8 +229,7 @@ class DatasetOperationServiceTest {
         SysDataset ds2 = new SysDataset(); ds2.setId(2L);
 
         when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(ds1, ds2));
-        when(sysDatasetService.getDatasetAndDescendantIds(anyLong())).thenReturn(Arrays.asList(1L));
-        when(sysDatasetService.getLeafDatasetId(anyLong())).thenReturn(Arrays.asList(1L));
+        when(sysDatasetService.getAllDatasets()).thenReturn(Arrays.asList(ds1, ds2));
         when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 

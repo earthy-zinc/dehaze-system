@@ -5,7 +5,6 @@ import cn.hutool.core.lang.Validator;
 import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.base.IBaseEnum;
-import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.GenderEnum;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.model.entity.SysRole;
@@ -21,6 +20,7 @@ import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +49,12 @@ public class UserImportHandler implements ImportHandler {
     private final SysRoleService roleService;
     private final SysUserRoleService userRoleService;
     private final PasswordEncoder passwordEncoder;
+
+    /**
+     * 新用户默认密码（由各 profile 的 system.default-password 注入，源为根 .env 的 DEFAULT_PASSWORD）
+     */
+    @Value("${system.default-password}")
+    private String defaultPassword;
 
     @Override
     public String getModule() {
@@ -84,7 +90,7 @@ public class UserImportHandler implements ImportHandler {
     public ImportResult importBatch(List<Map<String, Object>> rows, ImportOptions options, ProgressCallback callback) {
         boolean partial = options.isPartialMode();
         Long deptId = extractLong(options.getExtraParams(), "deptId");
-        String defaultPassword = passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD);
+        String defaultEncryptPwd = passwordEncoder.encode(defaultPassword);
 
         List<ImportResult.ImportError> errors = new ArrayList<>();
         int successCount = 0;
@@ -105,7 +111,7 @@ public class UserImportHandler implements ImportHandler {
                     throw new IllegalArgumentException(validationError);
                 }
 
-                SysUser entity = buildEntity(row, deptId, defaultPassword, roleCodeMap);
+                SysUser entity = buildEntity(row, deptId, defaultEncryptPwd, roleCodeMap);
                 boolean saved = userService.save(entity);
                 if (!saved) {
                     throw new IllegalStateException("保存失败");

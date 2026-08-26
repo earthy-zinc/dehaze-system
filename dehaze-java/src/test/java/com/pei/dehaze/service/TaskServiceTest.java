@@ -7,21 +7,27 @@ import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.form.ExportTaskCreateForm;
 import com.pei.dehaze.model.vo.TaskVO;
+import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.impl.TaskServiceImpl;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -72,6 +78,9 @@ class TaskServiceTest {
 
     private ExportTaskCreateForm mockForm;
 
+    /** 任务归属校验（SecurityUtils.getUserId vs sys_task.create_by）依赖登录上下文 */
+    private static final Long TEST_USER_ID = 1L;
+
     @BeforeEach
     void setUp() {
         mockForm = new ExportTaskCreateForm();
@@ -108,6 +117,32 @@ class TaskServiceTest {
 
         // Mock updateById方法
         org.mockito.Mockito.doReturn(true).when(taskService).updateById(any(SysTask.class));
+
+        // Mock update(Wrapper)，避免纯 Mockito 环境下触发 MyBatis-Plus 真实持久化
+        org.mockito.Mockito.doReturn(true).when(taskService).update(any());
+
+        // 注册 SysTask 的 TableInfo，使 MyBatis-Plus lambda 解析（LambdaUpdateWrapper）在纯 Mockito 环境可用
+        javax.sql.DataSource mockDataSource = org.mockito.Mockito.mock(javax.sql.DataSource.class);
+        org.apache.ibatis.mapping.Environment environment = new org.apache.ibatis.mapping.Environment(
+                "default", new org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory(), mockDataSource);
+        com.baomidou.mybatisplus.core.MybatisConfiguration configuration =
+                new com.baomidou.mybatisplus.core.MybatisConfiguration(environment);
+        org.apache.ibatis.builder.MapperBuilderAssistant assistant =
+                new org.apache.ibatis.builder.MapperBuilderAssistant(configuration, "");
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(assistant, SysTask.class);
+
+        // 设置登录上下文，满足任务归属校验（getUserId 通过 SecurityContextHolder 读取）
+        SysUserDetails userDetails = new SysUserDetails();
+        userDetails.setUserId(TEST_USER_ID);
+        userDetails.setEnabled(true);
+        userDetails.setAuthorities(Collections.emptySet());
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     // ==================== 创建导出任务测试 ====================
@@ -213,6 +248,7 @@ class TaskServiceTest {
         sysTask.setTaskId(taskId);
         sysTask.setStatus(TaskConstants.STATUS_PENDING);
         sysTask.setProgress(0);
+        sysTask.setCreateBy(TEST_USER_ID);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
@@ -244,6 +280,7 @@ class TaskServiceTest {
         sysTask.setProgress(50);
         sysTask.setTotalFiles(100);
         sysTask.setProcessedFiles(50);
+        sysTask.setCreateBy(TEST_USER_ID);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
@@ -274,6 +311,7 @@ class TaskServiceTest {
         sysTask.setTaskId(taskId);
         sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
         sysTask.setProgress(100);
+        sysTask.setCreateBy(TEST_USER_ID);
         // JSON 编码后的 objectName（合法 JSON 字符串）
         sysTask.setResult("\"exports/test.zip\"");
 
@@ -306,6 +344,7 @@ class TaskServiceTest {
         sysTask.setTaskId(taskId);
         sysTask.setStatus(TaskConstants.STATUS_FAILED);
         sysTask.setErrorMessage("导出失败：文件不存在");
+        sysTask.setCreateBy(TEST_USER_ID);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
@@ -338,6 +377,7 @@ class TaskServiceTest {
         sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
         sysTask.setResult("\"exports/test.zip\"");
         sysTask.setExpiresAt(LocalDateTime.now().plusHours(1));
+        sysTask.setCreateBy(TEST_USER_ID);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
@@ -364,6 +404,7 @@ class TaskServiceTest {
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);
         sysTask.setStatus(TaskConstants.STATUS_PENDING);
+        sysTask.setCreateBy(TEST_USER_ID);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
@@ -391,6 +432,7 @@ class TaskServiceTest {
         sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
         sysTask.setResult("\"exports/test.zip\"");
         sysTask.setExpiresAt(LocalDateTime.now().minusHours(1));
+        sysTask.setCreateBy(TEST_USER_ID);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
@@ -419,6 +461,7 @@ class TaskServiceTest {
         sysTask.setId(1L);
         sysTask.setTaskId(taskId);
         sysTask.setStatus(TaskConstants.STATUS_PENDING);
+        sysTask.setCreateBy(TEST_USER_ID);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
         doNothing().when(valueOperations).set(anyString(), any(), anyLong(), any());
@@ -446,6 +489,7 @@ class TaskServiceTest {
         sysTask.setId(2L);
         sysTask.setTaskId(taskId);
         sysTask.setStatus(TaskConstants.STATUS_PROCESSING);
+        sysTask.setCreateBy(TEST_USER_ID);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
         doNothing().when(valueOperations).set(anyString(), any(), anyLong(), any());
@@ -473,6 +517,7 @@ class TaskServiceTest {
         sysTask.setId(3L);
         sysTask.setTaskId(taskId);
         sysTask.setStatus(TaskConstants.STATUS_COMPLETED);
+        sysTask.setCreateBy(TEST_USER_ID);
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 

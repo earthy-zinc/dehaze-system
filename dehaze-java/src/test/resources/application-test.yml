@@ -5,9 +5,11 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DEHAZE_HOST}:3306/dehaze_test?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true
-    username: root
-    password: ${DEHAZE_PASSWORD}
+    # createDatabaseIfNotExist：首次连接自动创建 dehaze_test（MySQL 8 默认 utf8mb4/utf8mb4_0900_ai_ci），
+    # 之后由 sql.init 全量重建 schema/种子数据（脚本 DROP TABLE IF EXISTS，幂等）
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/dehaze_test?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true&createDatabaseIfNotExist=true
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
     druid:
       # 初始连接数（建议保持与最小空闲一致）
       initial-size: 5
@@ -34,15 +36,18 @@ spring:
   sql:
     init:
       mode: always
-      schema-locations: classpath:db/init.sql,classpath:db/schema/*.sql
+      # 仅加载 sys_*.sql：xxl_job.sql 是调度中心库引导脚本（DROP DATABASE xxl_job + USE），
+      # 混入会切走初始化连接的当前库并误删共享实例上的 xxl_job 库（与 Python conftest 的 sys_*.sql 对齐）
+      schema-locations: classpath:db/schema/sys_*.sql
       data-locations: classpath:db/data/*.sql
       encoding: UTF-8
   data:
     redis:
-      database: 0
-      host: ${DEHAZE_HOST}
-      port: 6379
-      password: ${DEHAZE_PASSWORD}
+      # 逻辑库 15 与开发后端的 db 0 隔离，测试写入的缓存键不污染开发环境
+      database: 15
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
       timeout: 10s
       lettuce:
         pool:
@@ -55,7 +60,8 @@ spring:
           # 连接池中的最小空闲连接 默认0
           min-idle: 0
     mongodb:
-      uri: mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:27017/dehaze?authSource=admin
+      # 独立测试库，与开发后端的 dehaze 库隔离
+      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/dehaze_test?authSource=admin
   cache:
     type: none
   servlet:
@@ -83,6 +89,18 @@ security:
 
 system:
   use-multi-point: false
+  # 新用户默认密码（由根 .env 的 DEFAULT_PASSWORD 注入，与开发/生产 profile 保持一致）
+  default-password: ${DEFAULT_PASSWORD}
+
+# 测试不触达 MQ 与调度中心：条件装配开关显式关闭（缺省亦为关闭，显式声明表明意图）。
+# 严禁在测试 profile 开启 rabbitmq.enabled——监听容器会真实消费共享开发实例的队列
+rabbitmq:
+  enabled: false
+xxl:
+  job:
+    enabled: false
+kafka:
+  enabled: false
 
 coupon:
   receive-rate-limit: 10000

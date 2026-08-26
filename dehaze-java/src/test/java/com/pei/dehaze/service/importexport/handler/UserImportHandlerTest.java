@@ -1,7 +1,6 @@
 package com.pei.dehaze.service.importexport.handler;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.GenderEnum;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.model.entity.SysRole;
@@ -25,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -66,7 +66,9 @@ class UserImportHandlerTest {
     @BeforeEach
     void setUp() {
         callback = new NoopCallback();
-        when(passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD)).thenReturn("encoded-pwd");
+        // 纯 Mockito 环境不加载 Spring 上下文，手动注入 @Value 字段（值与 .env 的 DEFAULT_PASSWORD 一致）
+        ReflectionTestUtils.setField(handler, "defaultPassword", "Dehaze2026");
+        when(passwordEncoder.encode("Dehaze2026")).thenReturn("encoded-pwd");
         when(userService.count(any(LambdaQueryWrapper.class))).thenReturn(0L);
         when(userService.save(any(SysUser.class))).thenAnswer(inv -> {
             SysUser u = inv.getArgument(0);

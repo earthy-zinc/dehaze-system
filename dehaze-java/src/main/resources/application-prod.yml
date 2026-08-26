@@ -14,15 +14,15 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DEHAZE_HOST}:3306/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true
-    username: root
-    password: ${DEHAZE_PASSWORD}
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
   data:
     redis:
-      database: 0
-      host: ${DEHAZE_HOST}
-      port: 6379
-      password: ${DEHAZE_PASSWORD}
+      database: ${REDIS_DATABASE:0}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
       timeout: 10s
       lettuce:
         pool:
@@ -35,7 +35,7 @@ spring:
           # 连接池中的最小空闲连接 默认0
           min-idle: 0
     mongodb:
-      uri: mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:27017/dehaze?authSource=admin
+      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/dehaze?authSource=admin
   cache:
     enabled: true
     # 缓存类型 redis、none(不使用缓存)
@@ -90,6 +90,8 @@ security:
 system:
   # 多点登录控制：生产环境启用踢旧 Session，防止账号共享
   use-multi-point: true
+  # 新用户默认密码（由根 .env 的 DEFAULT_PASSWORD 注入，与 Go/Python 端保持一致）
+  default-password: ${DEFAULT_PASSWORD}
 
 
 # 监控配置 (生产环境仅暴露必要端点)
@@ -120,17 +122,17 @@ file:
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
-    endpoint: http://${DEHAZE_HOST}:9110
+    endpoint: http://${MINIO_HOST}:${MINIO_PORT}
     # 访问凭据
-    access-key: admin
+    access-key: ${MINIO_ACCESS_KEY}
     # 凭据密钥
-    secret-key: ${DEHAZE_PASSWORD}
+    secret-key: ${MINIO_SECRET_KEY}
     # 存储桶名称
-    bucket-name: dehaze
+    bucket-name: ${MINIO_BUCKET}
   # nginx-static 后端（文件由外部 nginx 静态托管，Java 仅登记与拼 URL，不参与上传/下载 IO）
   nginx-static:
     # nginx 对外访问 baseUrl（必须带 scheme + host）
-    baseUrl: http://${DEHAZE_HOST}:8081
+    baseUrl: http://${NGINX_STATIC_HOST}:8081
 
 # springdoc配置 (生产环境禁用 API 文档)
 springdoc:
@@ -142,7 +144,7 @@ springdoc:
 # 模型权重文件存储配置（复用 nginx-dataset 静态服务 /models 路径）
 algorithm:
   model:
-    baseUrl: http://${DEHAZE_HOST}:9000/models
+    baseUrl: http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}/models
     connect-timeout: 5000
     read-timeout: 10000
 
@@ -157,8 +159,8 @@ xxl:
     enabled: true
     admin:
       # 多个地址使用,分割
-      addresses: http://${DEHAZE_HOST}:14980/xxl-job-admin
-    accessToken: ${DEHAZE_PASSWORD}
+      addresses: http://${XXLJOB_HOST}:${XXLJOB_PORT}/xxl-job-admin
+    accessToken: ${XXLJOB_ACCESS_TOKEN}
     executor:
       appname: xxl-job-executor-${spring.application.name}
       address:

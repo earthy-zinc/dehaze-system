@@ -6,14 +6,19 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.vo.TaskVO;
+import com.pei.dehaze.security.model.SysUserDetails;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,9 +40,23 @@ class TaskServiceIT {
 
     private String testTaskId;
 
+    /** 任务归属校验（SecurityUtils.getUserId vs sys_task.create_by）依赖登录上下文 */
+    private static final Long TEST_USER_ID = 1L;
+
     @BeforeEach
     void setUp() {
         testTaskId = UUID.randomUUID().toString();
+        SysUserDetails userDetails = new SysUserDetails();
+        userDetails.setUserId(TEST_USER_ID);
+        userDetails.setEnabled(true);
+        userDetails.setAuthorities(Collections.emptySet());
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     /**
@@ -94,6 +113,7 @@ class TaskServiceIT {
         task.setProgress(50);
         task.setTotalFiles(100);
         task.setProcessedFiles(50);
+        task.setCreateBy(TEST_USER_ID);
         task.setCreateTime(LocalDateTime.now());
         taskMapper.insert(task);
 
@@ -156,6 +176,7 @@ class TaskServiceIT {
         task.setTotalFiles(100);
         task.setProcessedFiles(100);
         task.setResult("\"exports/file.zip\"");
+        task.setCreateBy(TEST_USER_ID);
         task.setCreateTime(LocalDateTime.now());
         task.setStartedAt(LocalDateTime.now().minusMinutes(5));
         task.setCompletedAt(LocalDateTime.now());
@@ -189,6 +210,7 @@ class TaskServiceIT {
         task.setTotalFiles(100);
         task.setProcessedFiles(60);
         task.setErrorMessage("文件处理失败：磁盘空间不足");
+        task.setCreateBy(TEST_USER_ID);
         task.setCreateTime(LocalDateTime.now());
         task.setStartedAt(LocalDateTime.now().minusMinutes(3));
         taskMapper.insert(task);
@@ -222,6 +244,7 @@ class TaskServiceIT {
         task.setProcessedFiles(30);
         task.setCreateTime(LocalDateTime.now());
         task.setStartedAt(LocalDateTime.now().minusMinutes(1));
+        task.setCreateBy(TEST_USER_ID);
         taskMapper.insert(task);
 
         // 取消任务

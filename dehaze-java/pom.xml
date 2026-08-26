@@ -23,7 +23,6 @@
         <hutool.version>5.8.40</hutool.version>
 
         <mysql.version>9.5.0</mysql.version>
-        <h2.version>2.2.224</h2.version>
         <druid.version>1.2.16</druid.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
 
@@ -52,9 +51,6 @@
 
         <!-- 图片压缩 -->
         <thumbnailator.version>0.4.20</thumbnailator.version>
-
-        <!-- TestContainers -->
-        <testcontainers.version>1.19.3</testcontainers.version>
 
         <!-- Spring Dotenv -->
         <spring-dotenv.version>5.1.0</spring-dotenv.version>
@@ -173,38 +169,6 @@
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <version>${mysql.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <version>${h2.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- TestContainers -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-testcontainers</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
-            <version>${testcontainers.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>mysql</artifactId>
-            <version>${testcontainers.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>${testcontainers.version}</version>
-            <scope>test</scope>
         </dependency>
 
         <dependency>

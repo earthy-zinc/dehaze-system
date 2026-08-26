@@ -131,8 +131,6 @@ class SysDatasetServiceTest {
 
         when(datasetConverter.form2Entity(form)).thenReturn(sampleDataset);
         doReturn(true).when(datasetService).save(any());
-        // 为 calculateStatistics 中的 getLeafDatasetId 调用提供 mock
-        doReturn(Arrays.asList(sampleDataset)).when(datasetService).getAllDatasets();
         when(datasetConverter.entity2Vo(any(), any())).thenReturn(sampleDatasetVO);
         lenient().when(datasetMapper.countDatasetStatsSingle(anyList())).thenReturn(createStatsMap(0, 0, 0, 0));
         lenient().when(datasetMapper.countItemsByDatasetIds(anyList())).thenReturn(0L);

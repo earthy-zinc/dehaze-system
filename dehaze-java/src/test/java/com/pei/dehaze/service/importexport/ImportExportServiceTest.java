@@ -236,14 +236,23 @@ class ImportExportServiceTest {
     }
 
     @Test
-    @DisplayName("直接导出模式(useDirectExport=true) - 调用 handler.export 而非 fileGenerator")
+    @DisplayName("直接导出模式(useDirectExport=true) - 走异步任务创建而非表格文件生成器")
     void testExport_DirectExport() throws Exception {
         when(exportHandler.estimateCount(anyMap())).thenReturn(10L);
         when(exportHandler.useDirectExport()).thenReturn(true);
+        TaskVO taskVO = new TaskVO();
+        taskVO.setTaskId("task-direct-001");
+        taskVO.setStatus(TaskConstants.STATUS_PENDING);
+        when(taskService.createTask(any(ExportTaskCreateForm.class), isNull())).thenReturn(taskVO);
 
-        importExportService.export("user", Map.of(), "excel", null, null, response);
+        Object result = importExportService.export("user", Map.of(), "excel", null, null, response);
 
-        verify(exportHandler, atLeastOnce()).export(any(ExportContext.class), any(ProgressCallback.class));
+        assertInstanceOf(ExportTaskVO.class, result);
+        ExportTaskVO vo = (ExportTaskVO) result;
+        assertEquals("task-direct-001", vo.getTaskId());
+        assertEquals(TaskConstants.STATUS_PENDING, vo.getStatus());
+        verify(taskService).createTask(any(ExportTaskCreateForm.class), isNull());
+        verify(exportHandler, never()).export(any(ExportContext.class), any(ProgressCallback.class));
         verify(fileGenerator, never()).writeExcel(any(), anyList(), any());
     }
 

@@ -75,7 +75,7 @@ class SysItemFileServiceIT {
         testFile.setName("test_image.jpg");
         testFile.setType("jpg");
         testFile.setObjectName("test_object_name");
-        testFile.setStorage("minio");
+        testFile.setStorage("local");
         testFile.setSize("1024000");
         testFile.setMd5("test_md5_hash");
         sysFileService.save(testFile);
@@ -86,7 +86,7 @@ class SysItemFileServiceIT {
         testThumbnail.setName("test_image_thumbnail.jpg");
         testThumbnail.setType("jpg");
         testThumbnail.setObjectName("test_thumbnail_object_name");
-        testThumbnail.setStorage("minio");
+        testThumbnail.setStorage("local");
         testThumbnail.setSize("512000");
         testThumbnail.setMd5("test_thumbnail_md5_hash");
         sysFileService.save(testThumbnail);
@@ -177,7 +177,7 @@ class SysItemFileServiceIT {
         newTestFile.setName("new_hazy.jpg");
         newTestFile.setType("jpg");
         newTestFile.setObjectName("new_hazy_object");
-        newTestFile.setStorage("minio");
+        newTestFile.setStorage("local");
         newTestFile.setSize("2048000");
         newTestFile.setMd5("new_md5_hash");
         sysFileService.save(newTestFile);
@@ -187,7 +187,7 @@ class SysItemFileServiceIT {
         newThumbnail.setName("new_hazy_thumbnail.jpg");
         newThumbnail.setType("jpg");
         newThumbnail.setObjectName("new_hazy_thumbnail_object");
-        newThumbnail.setStorage("minio");
+        newThumbnail.setStorage("local");
         newThumbnail.setSize("1024000");
         newThumbnail.setMd5("new_thumbnail_md5_hash");
         sysFileService.save(newThumbnail);
@@ -372,7 +372,7 @@ class SysItemFileServiceIT {
         testFile2.setName("test_image_2.jpg");
         testFile2.setType("jpg");
         testFile2.setObjectName("test_object_name_2");
-        testFile2.setStorage("minio");
+        testFile2.setStorage("local");
         testFile2.setSize("2048000");
         testFile2.setMd5("test_md5_hash_2");
         sysFileService.save(testFile2);
@@ -382,7 +382,7 @@ class SysItemFileServiceIT {
         testThumbnail2.setName("test_image_2_thumbnail.jpg");
         testThumbnail2.setType("jpg");
         testThumbnail2.setObjectName("test_thumbnail_object_name_2");
-        testThumbnail2.setStorage("minio");
+        testThumbnail2.setStorage("local");
         testThumbnail2.setSize("1024000");
         testThumbnail2.setMd5("test_thumbnail_md5_hash_2");
         sysFileService.save(testThumbnail2);
@@ -436,7 +436,7 @@ class SysItemFileServiceIT {
         testFile2.setName("test_image_3.jpg");
         testFile2.setType("jpg");
         testFile2.setObjectName("test_object_name_3");
-        testFile2.setStorage("minio");
+        testFile2.setStorage("local");
         testFile2.setSize("2048000");
         testFile2.setMd5("test_md5_hash_3");
         sysFileService.save(testFile2);
@@ -446,7 +446,7 @@ class SysItemFileServiceIT {
         testThumbnail2.setName("test_image_3_thumbnail.jpg");
         testThumbnail2.setType("jpg");
         testThumbnail2.setObjectName("test_thumbnail_object_name_3");
-        testThumbnail2.setStorage("minio");
+        testThumbnail2.setStorage("local");
         testThumbnail2.setSize("1024000");
         testThumbnail2.setMd5("test_thumbnail_md5_hash_3");
         sysFileService.save(testThumbnail2);

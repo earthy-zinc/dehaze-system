@@ -14,11 +14,6 @@ public class SystemConstants {
     public static final Long ROOT_NODE_ID = 0L;
 
     /**
-     * 系统默认密码
-     */
-    public static final String DEFAULT_PASSWORD = "Dehaze2026";
-
-    /**
      * 超级管理员角色编码
      */
     public static final String ROOT_ROLE_CODE = "ROOT";
