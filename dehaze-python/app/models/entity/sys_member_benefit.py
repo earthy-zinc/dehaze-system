@@ -23,6 +23,24 @@ class SysMemberBenefit(BaseModel, SoftDeleteMixin):
     monthly_dehaze_quota: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="月度去雾次数配额"
     )
+    monthly_derain_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="月度去雨次数配额"
+    )
+    monthly_desnow_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="月度去雪次数配额"
+    )
+    monthly_lowlight_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="月度低光增强次数配额"
+    )
+    monthly_super_resolution_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="月度超分辨率次数配额"
+    )
+    monthly_denoise_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="月度去噪次数配额"
+    )
+    monthly_inpaint_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="月度图像修复次数配额"
+    )
     monthly_evaluate_quota: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="月度评估次数配额"
     )

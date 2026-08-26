@@ -7,12 +7,16 @@ from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.order import (
     AutoRenewConfigForm,
+    BalanceRefundForm,
     OrderCreateForm,
     PayRequest,
     RefundApplyForm,
     RefundAuditForm,
 )
-from app.service.order_service import order_service
+from app.service.order.auto_renew_service import auto_renew_service
+from app.service.order.order_service import order_service
+from app.service.order.payment_service import payment_service
+from app.service.order.refund_service import refund_service
 
 router = APIRouter(
     prefix="/api/v1/orders",
@@ -28,6 +32,29 @@ async def create_order(
     user: UserContext = Depends(get_current_user),
 ):
     data = await order_service.create(db, body.model_dump(exclude_none=True), user.id)
+    return success(data)
+
+
+@router.get("/balance", summary="查询余额账户")
+async def get_balance(
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    from app.service.order.balance_account_service import balance_account_service
+
+    data = await balance_account_service.get_balance(db, user.id)
+    return success(data)
+
+
+@router.post("/balance-refund", summary="提交余额退款申请")
+async def apply_balance_refund(
+    body: BalanceRefundForm = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    data = await refund_service.apply_balance_refund(
+        db, user.id, body.model_dump(exclude_none=True)
+    )
     return success(data)
 
 
@@ -55,6 +82,7 @@ async def get_order_page(
     orderNo: str | None = Query(default=None),
     keywords: str | None = Query(default=None),
     status: str | None = Query(default=None),
+    packageType: str | None = Query(default=None),
     payMethod: str | None = Query(default=None),
     amountMin: int | None = Query(default=None, ge=0),
     amountMax: int | None = Query(default=None, ge=0),
@@ -71,6 +99,7 @@ async def get_order_page(
             "orderNo": orderNo,
             "keywords": keywords,
             "status": status,
+            "packageType": packageType,
             "payMethod": payMethod,
             "amountMin": amountMin,
             "amountMax": amountMax,
@@ -90,12 +119,13 @@ async def list_refunds(
     orderNo: str | None = Query(default=None),
     keywords: str | None = Query(default=None),
     status: str | None = Query(default=None),
+    reasonType: str | None = Query(default=None),
     applyTimeStart: str | None = Query(default=None),
     applyTimeEnd: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await order_service.list_refunds(
+    data = await refund_service.list_refunds(
         db,
         {
             "pageNum": pageNum,
@@ -103,6 +133,7 @@ async def list_refunds(
             "orderNo": orderNo,
             "keywords": keywords,
             "status": status,
+            "reasonType": reasonType,
             "applyTimeStart": applyTimeStart,
             "applyTimeEnd": applyTimeEnd,
         },
@@ -118,7 +149,7 @@ async def approve_refund(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await order_service.approve_refund(db, refund_id, body.model_dump(), user.id)
+    await refund_service.approve_refund(db, refund_id, body.model_dump(), user.id)
     return success()
 
 
@@ -130,7 +161,7 @@ async def reject_refund(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await order_service.reject_refund(db, refund_id, body.model_dump(), user.id)
+    await refund_service.reject_refund(db, refund_id, body.model_dump(), user.id)
     return success()
 
 
@@ -152,7 +183,7 @@ async def update_auto_renew_config(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await order_service.update_auto_renew_config(db, body.model_dump(), user.id)
+    await auto_renew_service.update_config(db, body.model_dump(), user.id)
     return success()
 
 
@@ -162,7 +193,7 @@ async def get_auto_renew_config(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await order_service.get_auto_renew_config(db, packageId, user.id)
+    data = await auto_renew_service.get_config(db, packageId, user.id)
     return success(data)
 
 
@@ -194,7 +225,7 @@ async def pay_order(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await order_service.pay(db, order_no, body.model_dump(), user.id)
+    data = await payment_service.pay(db, order_no, body.model_dump(), user.id)
     return success(data)
 
 
@@ -205,5 +236,5 @@ async def apply_refund(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await order_service.apply_refund(db, order_no, body.model_dump(), user.id)
+    await refund_service.apply_refund(db, order_no, body.model_dump(), user.id)
     return success()

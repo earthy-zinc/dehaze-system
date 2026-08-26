@@ -6,6 +6,21 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import BaseModel, SoftDeleteMixin
 
+# 权益配额覆盖的 8 类任务类型（图像处理 7 类 + 评估 1 类）
+QUOTA_TASK_TYPES = [
+    "dehaze",
+    "derain",
+    "desnow",
+    "lowlight",
+    "super_resolution",
+    "denoise",
+    "inpaint",
+    "evaluate",
+]
+
+# 图像处理 7 类（不含评估），用于前端权益概览按服务类目合并
+IMAGE_TASK_TYPES = [t for t in QUOTA_TASK_TYPES if t != "evaluate"]
+
 
 class SysMember(BaseModel, SoftDeleteMixin):
     __tablename__ = "sys_member"
@@ -38,6 +53,42 @@ class SysMember(BaseModel, SoftDeleteMixin):
     )
     monthly_dehaze_used: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="本月已用去雾次数"
+    )
+    monthly_derain_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月去雨配额"
+    )
+    monthly_derain_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月已用去雨次数"
+    )
+    monthly_desnow_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月去雪配额"
+    )
+    monthly_desnow_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月已用去雪次数"
+    )
+    monthly_lowlight_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月低光增强配额"
+    )
+    monthly_lowlight_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月已用低光增强次数"
+    )
+    monthly_super_resolution_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月超分辨率配额"
+    )
+    monthly_super_resolution_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月已用超分辨率次数"
+    )
+    monthly_denoise_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月去噪配额"
+    )
+    monthly_denoise_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月已用去噪次数"
+    )
+    monthly_inpaint_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月图像修复配额"
+    )
+    monthly_inpaint_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="本月已用图像修复次数"
     )
     monthly_evaluate_quota: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="本月评估配额"

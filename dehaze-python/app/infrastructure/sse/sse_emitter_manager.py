@@ -31,14 +31,10 @@ from app.dependencies.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
 
-# Redis key 前缀
 _STREAM_CACHE_PREFIX = "ai:stream:"
 _STREAM_LOCK_PREFIX = "ai:streaming:"
-# token 缓存 TTL（秒）
 _STREAM_CACHE_TTL = 300
-# 并发锁 TTL（秒）
 _STREAM_LOCK_TTL = 120
-# 流结束哨兵
 _STREAM_END = None
 
 

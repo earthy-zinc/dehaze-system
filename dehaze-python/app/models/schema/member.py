@@ -23,6 +23,10 @@ class BenefitForm(BaseModel):
     growthMax: int | None = Field(default=None, ge=0)
     monthlyDehazeQuota: int | None = Field(default=None, ge=0)
     monthlyEvaluateQuota: int | None = Field(default=None, ge=0)
+    aiCreditsDaily: int | None = Field(default=None, ge=0)
+    aiCreditsMonthly: int | None = Field(default=None, ge=0)
+    multimodalLimit: int | None = Field(default=None, ge=0)
+    vipGiftCredits: int | None = Field(default=None, ge=0)
     historyRetention: int | None = Field(default=None, ge=0)
     batchLimit: int | None = Field(default=None, ge=0)
     priority: int | None = Field(default=None, ge=1, le=4)
@@ -32,4 +36,3 @@ class BenefitForm(BaseModel):
     batchDownload: int | None = Field(default=None, ge=0, le=1)
     sort: int | None = Field(default=None, ge=0)
     status: int | None = Field(default=None, ge=0, le=1)
-

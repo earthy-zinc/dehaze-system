@@ -95,5 +95,4 @@ class FunASRClient:
         funasr_engine.register_hotwords(words)
 
 
-# 全局单例
 funasr_client = FunASRClient()

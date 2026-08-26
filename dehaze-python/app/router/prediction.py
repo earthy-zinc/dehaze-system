@@ -24,7 +24,7 @@ from app.dependencies.auth import UserContext, get_current_user
 from app.models.enum.log_status import LogStatus
 from app.models.schema.common import PageResult
 from app.models.schema.prediction import BatchPredictionItem
-from app.service.prediction_service import prediction_service
+from app.service.prediction.prediction_service import prediction_service
 
 logger = logging.getLogger(__name__)
 

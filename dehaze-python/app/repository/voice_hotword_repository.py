@@ -51,6 +51,4 @@ class VoiceHotwordRepository(BaseRepository[SysVoiceHotword]):
         result = await db.execute(stmt)
         return result.rowcount > 0
 
-
-# 模块级单例
 voice_hotword_repository = VoiceHotwordRepository()

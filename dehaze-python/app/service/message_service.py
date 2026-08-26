@@ -320,5 +320,4 @@ class MessageService:
         return refreshed
 
 
-# 单例
 message_service = MessageService()

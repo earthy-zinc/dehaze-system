@@ -27,8 +27,8 @@ from app.repository.ai_agent_eval_repository import (
     ai_agent_eval_run_repository,
     ai_agent_eval_sample_repository,
 )
-from app.service.ai.eval_runner import eval_runner
-from app.service.ai_agent_service import agent_service
+from app.repository.ai_agent_version_repository import ai_agent_version_repository
+from app.service.ai.service.eval_runner import eval_runner
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,10 @@ class EvalService:
             return {"passed": True, "score_summary": {}, "failed_samples": [], "run_id": None}
 
         # 已发布快照：整批样本基于同一配置评测
-        snapshot = await agent_service.get_published_snapshot(db, redis, agent_id, None)
+        version = await ai_agent_version_repository.get_published_snapshot(db, agent_id, None)
+        if version is None:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "该 Agent 暂无已发布版本")
+        snapshot = ai_agent_version_repository.resolve_snapshot(version.snapshot or {})
 
         run = SysAiAgentEvalRun(
             agent_id=agent_id,

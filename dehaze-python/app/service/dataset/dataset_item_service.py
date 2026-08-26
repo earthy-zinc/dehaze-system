@@ -301,7 +301,6 @@ class DatasetItemService:
         await db.flush()
         await db.refresh(item)
 
-        # 清晰图（可选）
         if clear_file_content is not None:
             clear_sys_file = await file_service.upload_file(
                 db,

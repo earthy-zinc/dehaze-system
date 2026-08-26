@@ -8,7 +8,7 @@ import logging
 from datetime import UTC, datetime
 
 from app.config import settings
-from app.dependencies.mongo import get_mongo_client
+from app.dependencies import mongo
 from app.models.entity.mongo_log import AiApiCallLogDocument
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class MongoAiCallLogRepository:
 
     @property
     def _collection(self):
-        return get_mongo_client()[settings.MONGO_DB_NAME][AiApiCallLogDocument.COLLECTION]
+        return mongo.get_mongo_client()[settings.MONGODB_DATABASE][AiApiCallLogDocument.COLLECTION]
 
     async def insert(self, doc: dict) -> str:
         """插入一条调用审计记录，返回 _id 字符串"""

@@ -37,7 +37,6 @@ async def readiness_check():
     components = {}
     all_healthy = True
 
-    # DB check
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
@@ -46,7 +45,6 @@ async def readiness_check():
         components["db"] = "DOWN"
         all_healthy = False
 
-    # Redis check
     try:
         health_status = await check_redis_health()
         if health_status.healthy:

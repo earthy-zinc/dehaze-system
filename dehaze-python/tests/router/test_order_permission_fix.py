@@ -2,6 +2,8 @@ import pytest
 from fastapi import HTTPException
 
 from app.dependencies.auth import UserContext
+
+pytestmark = pytest.mark.api
 from app.router.order import get_order_page, get_order_stats, list_refunds
 
 
@@ -26,7 +28,7 @@ def _fake_service(called):
     "endpoint,permission,service",
     [
         (get_order_page, "order:list", "order_service.list_paged"),
-        (list_refunds, "order:refund:list", "order_service.list_refunds"),
+        (list_refunds, "order:refund:list", "refund_service.list_refunds"),
         (get_order_stats, "order:stats", "order_service.get_stats"),
     ],
 )

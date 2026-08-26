@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -7,7 +8,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.service import auth_service as m
 from app.service.auth_service import auth_service
-from tests.stubs import async_ret, fake_redis
+from tests.stubs.factories import fake_redis
 
 
 def _patch_auth_success(monkeypatch):
@@ -15,13 +16,13 @@ def _patch_auth_success(monkeypatch):
         id=1, username="admin", nickname="管理员", password="hashed",
         dept_id=None, status=1,
     )
-    monkeypatch.setattr(m.user_repository, "get_by_username", async_ret(user))
-    monkeypatch.setattr(m.user_repository, "get_user_role_codes", async_ret([]))
-    monkeypatch.setattr(m, "check_password_async", async_ret(True))
+    monkeypatch.setattr(m.user_repository, "get_by_username", AsyncMock(return_value=user))
+    monkeypatch.setattr(m.user_repository, "get_user_role_codes", AsyncMock(return_value=[]))
+    monkeypatch.setattr(m, "check_password_async", AsyncMock(return_value=True))
     from app.repository.role_repository import role_repository
     from app.service.menu_service import menu_service
-    monkeypatch.setattr(role_repository, "get_maximum_data_scope", async_ret(0))
-    monkeypatch.setattr(menu_service, "list_role_perms", async_ret(set()))
+    monkeypatch.setattr(role_repository, "get_maximum_data_scope", AsyncMock(return_value=0))
+    monkeypatch.setattr(menu_service, "list_role_perms", AsyncMock(return_value=set()))
 
 
 class TestVerifyCaptchaStatus:

@@ -51,7 +51,6 @@ def _register_sql_logging() -> None:
     event.listen(engine.sync_engine, "after_cursor_execute", _after_cursor_execute)
 
 
-# 异步引擎
 # pool_pre_ping: 连接借出前先 ping 一次，避免 MySQL 重启或空闲断开后报错
 # pool_timeout: 从池中获取连接的最大等待秒数，避免无限阻塞
 engine = create_async_engine(
@@ -65,7 +64,6 @@ engine = create_async_engine(
 
 _register_sql_logging()
 
-# 异步 Session 工厂
 async_session_factory = async_sessionmaker(
     engine,
     class_=AsyncSession,

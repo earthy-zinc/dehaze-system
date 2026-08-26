@@ -23,9 +23,10 @@ from app.core.exceptions import BusinessException
 from app.models.entity.sys_dataset import SysDatasetItem, SysItemFile
 from app.repository.dataset_repository import dataset_repository
 from app.repository.file_repository import file_repository
-from app.infrastructure.storage.minio_client import get_minio_client, minio_executor
 from app.service.import_export.models import ExportContext, ExportFieldConfig
 from app.service.import_export.registry import ExportHandler
+from app.service.storage.executor import storage_executor
+from app.service.storage.factory import get_storage_by_name
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +191,9 @@ async def _add_file_to_zip(
         return
 
     entry_path = _build_zip_entry_path(structure, item_name, subfolder, item_file.id, file_obj.name)
-    content = await _download_from_minio(file_obj.object_name)
+    content = await _download_from_minio(
+        file_obj.object_name, getattr(file_obj, "storage", None)
+    )
     if content is None:
         logger.warning("从存储下载文件失败，跳过: objectName=%s", file_obj.object_name)
         return
@@ -221,30 +224,26 @@ def _get_extension(filename: str) -> str:
     return "." + filename.rsplit(".", 1)[-1].lower()
 
 
-async def _download_from_minio(object_name: str) -> bytes | None:
+async def _download_from_minio(
+    object_name: str, storage_name: str | None = None
+) -> bytes | None:
     import asyncio
 
-    client = get_minio_client()
-    bucket = settings.MINIO_BUCKET_NAME
+    storage = get_storage_by_name(storage_name or settings.FILE_STORAGE_TYPE)
+    bucket = settings.MINIO_BUCKET
 
     def _sync() -> bytes | None:
-        response = None
         try:
-            response = client.get_object(bucket, object_name)
-            return response.read()
+            return storage.download(bucket, object_name)
         except Exception as e:
-            logger.error("MinIO 下载失败: objectName=%s, error=%s", object_name, e)
+            logger.error("存储下载失败: objectName=%s, error=%s", object_name, e)
             return None
-        finally:
-            if response is not None:
-                response.close()
-                response.release_conn()
 
     try:
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(minio_executor, _sync)
+        return await loop.run_in_executor(storage_executor, _sync)
     except Exception as e:
-        logger.error("MinIO 下载执行失败: objectName=%s, error=%s", object_name, e)
+        logger.error("存储下载执行失败: objectName=%s, error=%s", object_name, e)
         return None
 
 

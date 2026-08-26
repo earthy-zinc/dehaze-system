@@ -3,16 +3,18 @@ import json
 import pytest
 from fastapi import Request
 
+pytestmark = pytest.mark.api
+
 from app.dependencies.auth import get_current_user
-from app.service.ai.a2a_server import a2a_server
+from app.infrastructure.a2a.a2a_server import a2a_server
 
 
 @pytest.fixture
 def a2a_client_env(monkeypatch):
     card = {
-        "name": "去雾助手", 
-        "version": "1", 
-        "url": "https://x/a2a", 
+        "name": "去雾助手",
+        "version": "1",
+        "url": "https://x/a2a",
         "capabilities": {}
     }
 
@@ -28,11 +30,11 @@ async def test_agent_card_reachable_via_m2m_context(a2a_client_env):
     from app.router.a2a import agent_card
 
     req = Request({
-        "type": "http", 
-        "method": "GET", 
-        "path": "/", 
-        "query_string": b"", 
-        "headers": [], 
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "query_string": b"",
+        "headers": [],
         "server": ("test", 80)
     })
     resp = await agent_card(1, req, db=None, redis=None)

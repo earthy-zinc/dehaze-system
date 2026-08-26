@@ -12,7 +12,7 @@ from app.models.enum.task_enum import EXPORT_TASK_TYPES, TaskStatus
 from app.models.schema.task import ExportTaskCreateForm as ExportTaskCreateRequest
 from app.models.schema.task import TaskPageVO
 from app.models.schema.task import TaskVO as TaskData
-from app.service import task_service
+from app.service.task import task_service
 from app.service.file_service import file_service
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["任务管理"])

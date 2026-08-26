@@ -7,8 +7,10 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.dependencies.auth import UserContext
 from app.models.entity.sys_dept import SysDept
 from app.repository.base import BaseRepository, escape_like
+from app.repository.data_scope import apply_data_scope
 from app.utils.tree import generate_tree_path as gen_tree_path
 
 
@@ -59,14 +61,27 @@ class DeptRepository(BaseRepository[SysDept]):
         db: AsyncSession,
         keywords: str | None = None,
         status: int | None = None,
+        current_user: UserContext | None = None,
     ) -> list[SysDept]:
-        """获取部门列表"""
+        """获取部门列表（按 current_user 行级数据权限过滤）"""
         stmt = select(SysDept).where(SysDept.deleted == 0)
 
         if keywords:
             stmt = stmt.where(SysDept.name.like(f"%{escape_like(keywords)}%", escape="\\"))
         if status is not None:
             stmt = stmt.where(SysDept.status == status)
+
+        if current_user is not None:
+            # 部门表自身即数据权限主体：dept_field 用主键 id（对齐 Java @DataPermission(deptIdColumnName="id")、Go sys_dept.DeptField="id"）
+            from app.repository.data_scope import apply_data_scope
+
+            stmt = await apply_data_scope(
+                stmt,
+                current_user,
+                db,
+                dept_field=SysDept.id,
+                creator_field=SysDept.create_by,
+            )
 
         stmt = stmt.order_by(SysDept.sort, SysDept.create_time.desc())
         result = await db.execute(stmt)
@@ -93,11 +108,27 @@ class DeptRepository(BaseRepository[SysDept]):
     async def get_dept_options_tree(
         self,
         db: AsyncSession,
+        current_user: UserContext | None = None,
     ) -> list[dict[str, Any]]:
-        """获取部门下拉选项列表（树形结构）"""
-        stmt = (
-            select(SysDept).where(SysDept.deleted == 0, SysDept.status == 1).order_by(SysDept.sort)
-        )
+        """获取部门下拉选项列表（树形结构，按 current_user 行级数据权限过滤）"""
+        stmt = select(SysDept).where(SysDept.deleted == 0, SysDept.status == 1)
+
+        if current_user is not None:
+            children_ids = (
+                await self.get_children_ids(db, current_user.dept_id)
+                if current_user.data_scope == 1 and current_user.dept_id is not None
+                else None
+            )
+            stmt = await apply_data_scope(
+                stmt,
+                current_user,
+                db,
+                dept_field=SysDept.id,
+                creator_field=SysDept.create_by,
+                children_ids=children_ids,
+            )
+
+        stmt = stmt.order_by(SysDept.sort)
         result = await db.execute(stmt)
         dept_list = result.scalars().all()
 
@@ -152,6 +183,4 @@ class DeptRepository(BaseRepository[SysDept]):
         result = await db.execute(stmt)
         return {int(row[0]): int(row[1]) for row in result.fetchall()}
 
-
-# 单例
 dept_repository = DeptRepository()

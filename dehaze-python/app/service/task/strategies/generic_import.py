@@ -21,10 +21,11 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import IMPORT_TASK_TYPES
-from app.infrastructure.storage.minio_client import get_minio_client, minio_executor
 from app.service.import_export.file_parser import parse_csv, parse_excel
 from app.service.import_export.models import ImportOptions
 from app.service.import_export.registry import import_handler_registry
+from app.service.storage.executor import storage_executor
+from app.service.storage.factory import get_storage_service
 from app.service.task.strategies._common import make_cancel_cb, resolve_module
 from app.service.task.strategy import CancelChecker, ProgressCallback, TaskStrategy
 
@@ -78,19 +79,14 @@ class GenericImportStrategy(TaskStrategy):
 
 
 async def _download_from_minio(object_name: str) -> bytes:
-    client = get_minio_client()
-    bucket = settings.MINIO_BUCKET_NAME
+    storage = get_storage_service()
+    bucket = settings.MINIO_BUCKET
 
     def _sync() -> bytes:
-        response = client.get_object(bucket, object_name)
-        try:
-            return response.read()
-        finally:
-            response.close()
-            response.release_conn()
+        return storage.download(bucket, object_name)
 
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(minio_executor, _sync)
+    return await loop.run_in_executor(storage_executor, _sync)
 
 
 async def _upload_error_report(result, task_id: str, module: str) -> str | None:
@@ -107,22 +103,16 @@ async def _upload_error_report(result, task_id: str, module: str) -> str | None:
     data = output.getvalue().encode("utf-8")
 
     object_name = f"exports/{task_id}/{module}_import_errors.csv"
-    client = get_minio_client()
-    bucket = settings.MINIO_BUCKET_NAME
+    storage = get_storage_service()
+    bucket = settings.MINIO_BUCKET
 
     def _sync() -> str:
-        client.put_object(
-            bucket,
-            object_name,
-            data=io.BytesIO(data),
-            length=len(data),
-            content_type="text/csv",
-        )
+        storage.upload(bucket, object_name, data, "text/csv")
         return object_name
 
     try:
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(minio_executor, _sync)
+        return await loop.run_in_executor(storage_executor, _sync)
     except Exception as e:
         logger.warning("错误报告上传失败: %s", e)
         return None

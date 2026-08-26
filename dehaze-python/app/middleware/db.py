@@ -13,6 +13,7 @@
 import logging
 
 from app.database import async_session_factory
+from app.service.ai.service.conversation_search_service import sync_conversation_to_es
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,9 @@ logger = logging.getLogger(__name__)
 class DBSessionMiddleware:
     """数据库会话 & 事务管理中间件（纯 ASGI，无 BaseHTTPMiddleware 限制）"""
 
-    def __init__(self, app):
+    def __init__(self, app, sync_conversation_to_es=sync_conversation_to_es):
         self.app = app
+        self._sync_conv_to_es = sync_conversation_to_es
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
@@ -44,6 +46,7 @@ class DBSessionMiddleware:
                         await session.rollback()
                     else:
                         await session.commit()
+                        await self._sync_conversations_to_es(session)
                 except Exception as e:
                     # commit 失败时回滚，避免悬挂事务
                     logger.error("事务提交失败，已回滚: %s", e)
@@ -59,3 +62,19 @@ class DBSessionMiddleware:
             raise
         finally:
             await session.close()
+
+    async def _sync_conversations_to_es(self, session) -> None:
+        """执行事务内登记的会话 ES 同步（见 conversation_search_service.defer_conversation_sync）。
+
+        必须在 commit 之后执行：读模型只反映已提交数据；单个同步失败仅记
+        warning 不影响响应（与推理链路后台同步的错误语义一致）。
+        """
+        conv_ids = session.info.get("es_sync_conv_ids")
+        if not conv_ids:
+            return
+
+        for conv_id in conv_ids:
+            try:
+                await self._sync_conv_to_es(conv_id)
+            except Exception:
+                logger.warning("Conversation ES sync failed, conv_id=%s", conv_id, exc_info=True)

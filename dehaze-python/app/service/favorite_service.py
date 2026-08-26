@@ -50,11 +50,9 @@ class FavoriteService:
         2. 容量校验
         3. 单条 upsert（冲突时复活 deleted=0, is_invalid=0）
         """
-        # 对象存在性校验
         if not await favorite_repository.target_exists(db, target_type, target_id):
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "收藏目标不存在")
 
-        # 容量校验
         current_count = await favorite_repository.count_user_favorites(db, user_id)
         capacity = await self._get_capacity(db, user_id)
         if current_count >= capacity:

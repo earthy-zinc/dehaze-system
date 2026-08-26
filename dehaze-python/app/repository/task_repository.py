@@ -207,6 +207,4 @@ class TaskRepository(BaseRepository[SysTask]):
         result = await db.execute(stmt)
         return result.rowcount
 
-
-# 单例
 task_repository = TaskRepository()

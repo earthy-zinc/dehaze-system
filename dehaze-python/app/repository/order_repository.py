@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.entity.sys_order import SysOrder
 from app.models.entity.sys_user import SysUser
 from app.repository.base import BaseRepository, escape_like
+from app.repository.dept_repository import dept_repository
 
 ORDER_STATUS_MAP = {
     "pending": 1,
@@ -79,6 +80,7 @@ class OrderRepository(BaseRepository[SysOrder]):
         order_no: str | None = None,
         keywords: str | None = None,
         status: str | None = None,
+        package_type: str | None = None,
         pay_method: str | None = None,
         amount_min: int | None = None,
         amount_max: int | None = None,
@@ -99,12 +101,18 @@ class OrderRepository(BaseRepository[SysOrder]):
         if current_user is not None:
             from app.repository.data_scope import apply_data_scope
 
+            children_ids = (
+                await dept_repository.get_children_ids(db, current_user.dept_id)
+                if current_user.data_scope == 1 and current_user.dept_id is not None
+                else None
+            )
             stmt = await apply_data_scope(
                 stmt,
                 current_user,
                 db,
                 dept_field=SysUser.dept_id,
                 creator_field=SysOrder.user_id,
+                children_ids=children_ids,
             )
 
         if order_no:
@@ -120,6 +128,8 @@ class OrderRepository(BaseRepository[SysOrder]):
             )
         if status and status in ORDER_STATUS_MAP:
             stmt = stmt.where(SysOrder.status == ORDER_STATUS_MAP[status])
+        if package_type:
+            stmt = stmt.where(SysOrder.package_type == package_type)
         if pay_method:
             stmt = stmt.where(SysOrder.pay_method == pay_method)
         if amount_min is not None:
@@ -151,6 +161,15 @@ class OrderRepository(BaseRepository[SysOrder]):
             for row in rows
         ]
         return items, total
+
+    async def has_paid_order(self, db: AsyncSession, user_id: int) -> bool:
+        """用户是否存在已支付订单（status: 2 已支付 / 3 已完成），用于新用户专享可用性判断"""
+        stmt = select(func.count()).select_from(SysOrder).where(
+            SysOrder.user_id == user_id,
+            SysOrder.deleted == 0,
+            SysOrder.status.in_([2, 3]),
+        )
+        return ((await db.execute(stmt)).scalar() or 0) > 0
 
     async def list_expired_pending(self, db: AsyncSession) -> list[SysOrder]:
         stmt = select(SysOrder).where(

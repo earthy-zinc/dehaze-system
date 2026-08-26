@@ -43,7 +43,6 @@ class AlgorithmSelectService:
                 "children": [],
             }
 
-        # 构建树
         tree: list[dict] = []
         for algo in algorithms:
             node = node_map[algo.id]
@@ -52,39 +51,33 @@ class AlgorithmSelectService:
             if parent_id == 0 or parent_id not in node_map:
                 # 顶层节点（分类节点或直接挂在根下的算法）
                 if algo.id not in parent_ids:
-                    # 是叶子算法节点（不在任何节点作为父节点）
                     node["isLeaf"] = True
                 else:
                     node["isLeaf"] = False
                 tree.append(node)
             else:
-                # 挂到父节点下
                 parent_node = node_map[parent_id]
                 parent_node["isLeaf"] = False
                 parent_node["children"].append(node)
 
-        # 清理空 children
         def clean_children(nodes):
             for n in nodes:
                 if n["children"]:
                     clean_children(n["children"])
                 else:
                     n.pop("children", None)
-                # 移除临时字段
                 n.pop("parentId", None)
             return nodes
 
         return clean_children(tree)
 
     async def get_algorithm_detail(self, db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
-        """获取算法详情（含评分、使用次数）"""
+        """获取算法详情（含评分、使用次数、最近成功预测样例图）"""
         algo = await self._require_published(db, algorithm_id)
 
-        # 计算平均评分
         avg_rating = await rating_repository.get_avg_rating(db, algorithm_id)
-
-        # 计算使用次数
         usage_count = await pred_log_repository.count_by_algorithm(db, algorithm_id)
+        sample_images = await pred_log_repository.list_recent_pred_urls(db, algorithm_id)
 
         return {
             "id": algo.id,
@@ -97,6 +90,7 @@ class AlgorithmSelectService:
             "size": algo.size,
             "avgRating": round(avg_rating, 1),
             "usageCount": usage_count,
+            "sampleImages": sample_images,
         }
 
     async def test_algorithm(
@@ -107,10 +101,8 @@ class AlgorithmSelectService:
         user_id: int | None = None,
     ) -> dict[str, Any]:
         """上传图片测试算法效果（同步等待结果，超时返回 B0100）"""
-        # 校验算法存在且已发布
         await self._require_published(db, algorithm_id)
 
-        # 校验图片格式（仅允许常见图片格式）
         image_url_lower = image_url.lower()
         allowed_extensions = (".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".tif")
         if not any(
@@ -130,8 +122,7 @@ class AlgorithmSelectService:
                     ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "文件格式不支持"
                 )
 
-        # 调用预测服务
-        from app.service.prediction_service import prediction_service
+        from app.service.prediction.prediction_service import prediction_service
 
         try:
             pred_result = await asyncio.wait_for(
@@ -319,5 +310,4 @@ class AlgorithmSelectService:
         return algo
 
 
-# 算法选择服务单例
 algorithm_select_service = AlgorithmSelectService()

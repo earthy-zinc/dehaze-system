@@ -26,6 +26,9 @@ from app.utils.file import convert_size
 class AlgorithmService:
     """算法服务"""
 
+    def __init__(self, algorithm_repository=algorithm_repository):
+        self.algorithm_repository = algorithm_repository
+
     def _to_vo(self, algorithm: SysAlgorithm) -> dict[str, Any]:
         """算法实体转 VO（统一字段映射，消除重复）"""
         return {
@@ -71,21 +74,21 @@ class AlgorithmService:
         self, db: AsyncSession, keywords: str | None = None
     ) -> list[dict[str, Any]]:
         """获取算法树形表格"""
-        algorithms = await algorithm_repository.get_list_with_keywords(db, keywords)
+        algorithms = await self.algorithm_repository.get_list_with_keywords(db, keywords)
         return self._build_algorithm_tree(algorithms)
 
     async def get_algorithm_options(self, db: AsyncSession) -> list[dict[str, Any]]:
         """获取模型下拉选项列表"""
-        return await algorithm_repository.get_algorithm_options(db)
+        return await self.algorithm_repository.get_algorithm_options(db)
 
     async def list_all_algorithms(self, db: AsyncSession) -> list[dict[str, Any]]:
         """获取所有算法扁平列表（不构建树形结构），用于前端下拉选择"""
-        algorithms = await algorithm_repository.get_list_with_keywords(db, None)
+        algorithms = await self.algorithm_repository.get_list_with_keywords(db, None)
         return [self._to_vo(algo) for algo in algorithms]
 
     async def get_algorithm_by_id(self, db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
         """根据 ID 获取算法信息"""
-        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+        algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
         return self._to_vo(algorithm)
@@ -110,12 +113,12 @@ class AlgorithmService:
             if size_bytes is not None:
                 algorithm.size = convert_size(size_bytes)
 
-        created = await algorithm_repository.create(db, algorithm)
+        created = await self.algorithm_repository.create(db, algorithm)
         return created.id
 
     async def update_algorithm(self, db: AsyncSession, algorithm_id: int, data: dict[str, Any]) -> None:
         """修改算法"""
-        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+        algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
 
         if not algorithm:
             raise BusinessException("算法不存在")
@@ -143,7 +146,7 @@ class AlgorithmService:
         if "status" in data:
             update_data["status"] = data["status"]
 
-        await algorithm_repository.update(db, algorithm, update_data)
+        await self.algorithm_repository.update(db, algorithm, update_data)
 
     async def delete_algorithm_single(self, db: AsyncSession, algorithm_id: int) -> int:
         """删除单个算法（含子算法）"""
@@ -152,16 +155,20 @@ class AlgorithmService:
     async def delete_algorithms(self, db: AsyncSession, algorithm_ids: list[int]) -> int:
         """批量删除算法（包含子算法），对齐 Java deleteAlgorithms
 
-        Java/Python/Go: 任一算法不存在时抛 RESOURCE_NOT_FOUND
+        Java/Python/Go: 任一算法不存在时抛 RESOURCE_NOT_FOUND；
+        已发布算法不允许删除（A0502，需先停用再删，级联子算法一并校验）
         """
-        all_algorithms = await algorithm_repository.get_list_with_keywords(db)
+        all_algorithms = await self.algorithm_repository.get_list_with_keywords(db)
         existing_ids = {a.id for a in all_algorithms}
         for algorithm_id in algorithm_ids:
             if algorithm_id not in existing_ids:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
 
-        ids_to_delete = await algorithm_repository.get_with_children_ids(db, algorithm_ids)
-        count = await algorithm_repository.delete_by_ids(db, ids_to_delete)
+        ids_to_delete = await self.algorithm_repository.get_with_children_ids(db, algorithm_ids)
+        deleting_ids = set(ids_to_delete)
+        if any(a.status == AlgorithmStatus.PUBLISHED and a.id in deleting_ids for a in all_algorithms):
+            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "已发布算法不允许删除，请先停用")
+        count = await self.algorithm_repository.delete_by_ids(db, ids_to_delete)
         return count
 
     # ── 状态机 ──────────────────────────────────────
@@ -179,7 +186,7 @@ class AlgorithmService:
         - 终态(已发布4/已停用5)不允许变更，已归档(6)除外
         - 不允许直接跳转到已发布(4)，必须从待审核(3)流转
         """
-        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+        algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
             raise BusinessException("算法不存在")
 
@@ -209,7 +216,7 @@ class AlgorithmService:
         ):
             raise BusinessException("算法必须经过审核才能发布")
 
-        await algorithm_repository.update_status(db, algorithm_id, target_status)
+        await self.algorithm_repository.update_status(db, algorithm_id, target_status)
 
     # ── 审核 ──────────────────────────────────────
 
@@ -227,7 +234,7 @@ class AlgorithmService:
         - passed=True: 通过，状态变为已发布
         - passed=False: 驳回，必须填 remark，状态回到测试中
         """
-        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+        algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
             raise BusinessException("算法不存在")
 
@@ -237,7 +244,7 @@ class AlgorithmService:
         if not passed and not remark:
             raise BusinessException("驳回时必须填写原因")
 
-        await algorithm_repository.audit(
+        await self.algorithm_repository.audit(
             db=db,
             algorithm_id=algorithm_id,
             audit_by=audit_by,
@@ -267,16 +274,15 @@ class AlgorithmService:
 
         注: 预测缓存失效由调用方（router）负责
         """
-        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+        algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
             raise BusinessException("算法不存在")
 
-        if await algorithm_repository.check_version_exists(db, algorithm_id, version):
+        if await self.algorithm_repository.check_version_exists(db, algorithm_id, version):
             raise BusinessException(f"版本号 {version} 已存在")
 
-        # 归档当前版本到历史表
-        if not await algorithm_repository.check_version_exists(db, algorithm_id, algorithm.version):
-            await algorithm_repository.create_version(
+        if not await self.algorithm_repository.check_version_exists(db, algorithm_id, algorithm.version):
+            await self.algorithm_repository.create_version(
                 db=db,
                 algorithm_id=algorithm_id,
                 version=algorithm.version,
@@ -284,11 +290,9 @@ class AlgorithmService:
                 status=algorithm.status,
             )
 
-        # 更新算法主表 version
-        await algorithm_repository.update(db, algorithm, {"version": version})
+        await self.algorithm_repository.update(db, algorithm, {"version": version})
 
-        # 记录新版本到历史表
-        await algorithm_repository.create_version(
+        await self.algorithm_repository.create_version(
             db=db,
             algorithm_id=algorithm_id,
             version=version,
@@ -303,7 +307,7 @@ class AlgorithmService:
 
     async def list_versions(self, db: AsyncSession, algorithm_id: int) -> list[dict[str, Any]]:
         """查询算法版本历史"""
-        versions = await algorithm_repository.list_versions(db, algorithm_id)
+        versions = await self.algorithm_repository.list_versions(db, algorithm_id)
         return [
             {
                 "id": v.id,
@@ -327,7 +331,7 @@ class AlgorithmService:
         version_id: int,
     ) -> None:
         """回滚到指定版本"""
-        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+        algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
             raise BusinessException("算法不存在")
 
@@ -335,7 +339,7 @@ class AlgorithmService:
         if algorithm.status not in (AlgorithmStatus.DISABLED, AlgorithmStatus.PUBLISHED):
             raise BusinessException("仅已停用/已发布状态的算法可回滚")
 
-        result = await algorithm_repository.rollback_to_version(db, algorithm_id, version_id)
+        result = await self.algorithm_repository.rollback_to_version(db, algorithm_id, version_id)
         if not result:
             raise BusinessException("版本不存在或不属于该算法")
 
@@ -345,14 +349,13 @@ class AlgorithmService:
         """
         导出单个算法为 JSON 字符串（对齐 Java exportAlgorithmJson）
         """
-        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+        algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
             raise BusinessException("算法不存在")
 
-        # 获取父算法名称
         parent_name = ""
         if algorithm.parent_id and algorithm.parent_id > 0:
-            parent = await algorithm_repository.get_by_id(db, algorithm.parent_id)
+            parent = await self.algorithm_repository.get_by_id(db, algorithm.parent_id)
             parent_name = parent.name if parent else ""
 
         export_data = {
@@ -423,7 +426,7 @@ class AlgorithmService:
         version = root.get("version", "0.0.1")
 
         # 名称唯一性校验
-        existing = await algorithm_repository.get_list_with_keywords(db, name)
+        existing = await self.algorithm_repository.get_list_with_keywords(db, name)
         for algo in existing:
             if algo.name == name:
                 raise BusinessException(f"算法名称 '{name}' 已存在")
@@ -439,20 +442,20 @@ class AlgorithmService:
             version=version,
         )
 
-        created = await algorithm_repository.create(db, algorithm)
+        created = await self.algorithm_repository.create(db, algorithm)
         return created.id
 
     # ── 监控 ──────────────────────────────────────
 
     async def get_monitor_data(self, db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
         """获取算法监控数据（对齐 Java AlgorithmMonitorVO 字段）"""
-        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+        algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
             raise BusinessException("算法不存在")
 
         stats, today_calls = await asyncio.gather(
-            algorithm_repository.get_monitor_stats(db, algorithm_id),
-            algorithm_repository.get_today_call_count(db, algorithm_id),
+            self.algorithm_repository.get_monitor_stats(db, algorithm_id),
+            self.algorithm_repository.get_today_call_count(db, algorithm_id),
         )
 
         total_calls = stats["totalCalls"]
@@ -474,12 +477,12 @@ class AlgorithmService:
         self, db: AsyncSession, algorithm_id: int, days: int = 7
     ) -> list[dict[str, Any]]:
         """获取算法监控统计报表（对齐 Java：最近 days 天每天一条，含无数据天）"""
-        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+        algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
             raise BusinessException("算法不存在")
         if days <= 0:
             days = 7
-        by_date = await algorithm_repository.get_monitor_stats_by_date(db, algorithm_id, days)
+        by_date = await self.algorithm_repository.get_monitor_stats_by_date(db, algorithm_id, days)
         today = datetime.now().date()
         result: list[dict[str, Any]] = []
         for i in range(days - 1, -1, -1):

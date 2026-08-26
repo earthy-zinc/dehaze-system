@@ -15,19 +15,10 @@ MENU_TYPE_NAME_TO_VALUE = {
 }
 
 
-# ==================== 查询参数模型 ====================
-
-
 class MenuVisibleBody(BaseModel):
     """菜单显示状态请求体"""
 
     visible: int = Field(..., ge=0, le=1, description="显示状态(1:显示;0:隐藏)")
-
-
-# ==================== 路径参数模型 ====================
-
-
-# ==================== 请求体模型 ====================
 
 
 class MenuForm(BaseModel):
@@ -60,9 +51,6 @@ class MenuForm(BaseModel):
         if isinstance(v, str) and v in MENU_TYPE_NAME_TO_VALUE:
             return MENU_TYPE_NAME_TO_VALUE[v]
         return v
-
-
-# ==================== 响应模型 ====================
 
 
 class MenuVO(BaseModel):

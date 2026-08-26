@@ -5,6 +5,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.database import get_db
+
+pytestmark = pytest.mark.api
 from app.dependencies.auth import get_current_user
 from app.main import app as fastapi_app
 from app.models.schema.ai_schedule import (
@@ -15,7 +17,7 @@ from app.models.schema.ai_schedule import (
 )
 from app.models.schema.common import PageResult
 from app.router import ai_schedule
-from tests.stubs import make_user_context
+from tests.stubs.factories import make_user_context
 
 
 def _detail(**overrides) -> ScheduleDetail:

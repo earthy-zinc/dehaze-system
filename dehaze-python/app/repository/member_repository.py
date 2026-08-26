@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.entity.sys_member import SysMember
+from app.models.entity.sys_member import QUOTA_TASK_TYPES, SysMember
 from app.models.entity.sys_user import SysUser
 from app.repository.base import BaseRepository, escape_like
 
@@ -55,10 +55,9 @@ class MemberRepository(BaseRepository[SysMember]):
             existing.level_source = "growth"
             existing.growth_value = 0
             existing.status = 1
-            existing.monthly_dehaze_quota = 0
-            existing.monthly_evaluate_quota = 0
-            existing.monthly_dehaze_used = 0
-            existing.monthly_evaluate_used = 0
+            for task_type in QUOTA_TASK_TYPES:
+                setattr(existing, f"monthly_{task_type}_quota", 0)
+                setattr(existing, f"monthly_{task_type}_used", 0)
             await db.flush()
             return existing
 
@@ -69,14 +68,49 @@ class MemberRepository(BaseRepository[SysMember]):
             growth_value=0,
             total_consumption=0,
             status=1,
-            monthly_dehaze_quota=0,
-            monthly_evaluate_quota=0,
-            monthly_dehaze_used=0,
-            monthly_evaluate_used=0,
+            **{f"monthly_{t}_quota": 0 for t in QUOTA_TASK_TYPES},
+            **{f"monthly_{t}_used": 0 for t in QUOTA_TASK_TYPES},
         )
         db.add(member)
         await db.flush()
         return member
+
+    async def increase_used_conditional(
+        self, db: AsyncSession, user_id: int, quota_type: str, quota: int
+    ) -> bool:
+        """条件更新当月已用 +1（已用 < 生效配额才允许），防止并发超扣。
+
+        Args:
+            quota: 该任务的生效配额（已合并会员卡覆盖与等级权益）
+
+        Returns:
+            True 表示更新成功；False 表示配额已用尽（条件不满足）
+        """
+        from sqlalchemy import update
+
+        used_field = f"monthly_{quota_type}_used"
+        stmt = (
+            update(SysMember)
+            .where(
+                SysMember.user_id == user_id,
+                SysMember.deleted == 0,
+                getattr(SysMember, used_field) < quota,
+            )
+            .values(**{used_field: getattr(SysMember, used_field) + 1})
+        )
+        result = await db.execute(stmt)
+        return result.rowcount > 0
+
+    async def extend_expire_days(self, db: AsyncSession, user_id: int, days: int) -> None:
+        """会员卡到期时间顺延（解冻补回用）：expire_time += days"""
+        from sqlalchemy import update
+
+        stmt = (
+            update(SysMember)
+            .where(SysMember.user_id == user_id, SysMember.deleted == 0)
+            .values(expire_time=SysMember.expire_time + timedelta(days=days))
+        )
+        await db.execute(stmt)
 
     async def list_active_by_level(
         self,

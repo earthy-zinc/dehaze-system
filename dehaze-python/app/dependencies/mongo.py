@@ -22,18 +22,18 @@ def get_mongo_client() -> AsyncIOMotorClient:
     global _mongo_client
     if _mongo_client is None:
         _mongo_client = AsyncIOMotorClient(settings.MONGO_URI)
-        logger.info("创建 MongoDB 客户端: db=%s", settings.MONGO_DB_NAME)
+        logger.info("创建 MongoDB 客户端: db=%s", settings.MONGODB_DATABASE)
     return _mongo_client
 
 
 async def get_mongo_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
     """FastAPI 依赖注入：获取 MongoDB database"""
-    yield get_mongo_client()[settings.MONGO_DB_NAME]
+    yield get_mongo_client()[settings.MONGODB_DATABASE]
 
 
 async def init_mongo_indexes() -> None:
     """创建 login_log / audit_log / ai_api_call_log 索引"""
-    db = get_mongo_client()[settings.MONGO_DB_NAME]
+    db = get_mongo_client()[settings.MONGODB_DATABASE]
     await db.login_log.create_index([("user_id", 1), ("create_time", -1)])
     await db.login_log.create_index([("create_time", -1)])
     await db.login_log.create_index([("status", 1)])

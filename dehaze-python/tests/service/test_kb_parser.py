@@ -247,6 +247,7 @@ class TestPdf:
         assert "page" in first and "order" in first
         assert first["order"] == 0
 
+    @pytest.mark.slow
     def test_ocr_only_strategy_extracts_text(self):
         data = _make_pdf("扫描页")
         doc = parse_document(data, "file.pdf", strategy="ocr_only")

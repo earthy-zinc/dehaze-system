@@ -6,14 +6,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.models.schema.common import validate_no_xss
 
-# ==================== 查询参数模型 ====================
-
-
-# ==================== 路径参数模型 ====================
-
-
-# ==================== 请求体模型 ====================
-
 
 class LoginForm(BaseModel):
     """登录表单"""
@@ -66,9 +58,6 @@ class PasswordForm(BaseModel):
     """密码表单"""
 
     password: str = Field(..., min_length=1, description="密码")
-
-
-# ==================== 响应模型 ====================
 
 
 class LoginData(BaseModel):

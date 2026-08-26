@@ -10,7 +10,7 @@ from app.models.entity.sys_ai_provider import SysAiProvider
 from app.models.schema.ai_provider import ProviderCreate, ProviderResult, ProviderUpdate
 from app.models.schema.common import PageResult
 from app.repository.ai_provider_repository import ai_provider_repository
-from app.infrastructure.llm.provider_health_service import (
+from app.infrastructure.provider.provider_health_service import (
     clear_provider_health,
     set_health_check_enabled,
 )
@@ -33,7 +33,7 @@ class AiProviderService:
         size: int,
         keyword: str | None = None,
     ) -> PageResult[ProviderResult]:
-        from app.infrastructure.llm.provider_health_service import provider_health_service
+        from app.infrastructure.provider.provider_health_service import provider_health_service
 
         providers, total = await ai_provider_repository.paginate_providers(db, page, size, keyword)
         items = []
@@ -79,6 +79,9 @@ class AiProviderService:
             default_headers=form.default_headers,
             sort_order=form.sort_order,
             health_check_enabled=form.health_check_enabled,
+            user_identity_forward=(
+                form.user_identity_forward.model_dump() if form.user_identity_forward else None
+            ),
             remark=form.remark,
             status=form.status,
         )
@@ -98,6 +101,7 @@ class AiProviderService:
         if not provider:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "供应商不存在")
         data = form.model_dump(exclude_unset=True)
+        # model_dump 会递归把嵌套 user_identity_forward 序列化为 dict，可直接落 JSON 列
         for key, value in data.items():
             setattr(provider, key, value)
         await db.flush()

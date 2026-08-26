@@ -1,4 +1,6 @@
-from sqlalchemy import BigInteger, Integer, String
+from decimal import Decimal
+
+from sqlalchemy import BigInteger, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import AppendOnlyModel
@@ -64,4 +66,7 @@ class SysAiBilling(AppendOnlyModel):
     )
     pre_deduct: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="预扣积分数"
+    )
+    cost: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 4), nullable=True, comment="本次调用估算成本(成本线异步回填,元;未配置成本价为0)"
     )

@@ -9,16 +9,18 @@ from pydantic import BaseModel, Field
 
 from app.models.schema.common import BasePageQuery, OrmResult
 
-# ── 模型管理 ──────────────────────────────────────────
+
+AiModelType = Literal["chat", "embedding", "rerank"]
 
 
 class AiModelCreate(OrmResult):
     provider_id: int = Field(..., description="关联供应商ID")
     model_id: str = Field(..., min_length=1, max_length=64, description="模型标识")
+    model_type: AiModelType = Field(default="chat", description="模型类型(chat:对话;embedding:向量;rerank:重排)")
+    dimension: int | None = Field(
+        default=None, gt=0, description="embedding向量维度(model_type=embedding时必填)"
+    )
     display_name: str = Field(..., min_length=1, max_length=128, description="显示名称")
-    input_rate: float = Field(default=1.0, ge=0, description="输入Token计费比例")
-    output_rate: float = Field(default=1.0, ge=0, description="输出Token计费比例")
-    cached_rate: float = Field(default=1.0, ge=0, description="缓存命中Token计费比例")
     max_context_tokens: int = Field(default=4096, ge=1, description="最大上下文Token数")
     max_output_tokens: int = Field(default=4096, ge=1, description="最大输出Token数")
     supports_multimodal: bool = Field(default=False, description="是否支持多模态")
@@ -26,8 +28,11 @@ class AiModelCreate(OrmResult):
     supports_streaming: bool = Field(default=True, description="是否支持流式输出")
     supports_prompt_cache: bool = Field(default=False, description="是否支持Prompt缓存")
     supports_structured_output: bool = Field(default=False, description="是否支持结构化输出")
-    fallback_model_pk: int | None = Field(
-        default=None, description="降级模型主键(关联sys_ai_model.id)"
+    extra_request_params: dict[str, Any] | None = Field(
+        default=None, description="厂商私有请求参数(如enable_thinking/reasoning_effort)"
+    )
+    fallback_model_id: int | None = Field(
+        default=None, description="降级模型ID(关联sys_ai_model.id)"
     )
     prompt_cache_prefix_len: int = Field(default=0, ge=0, description="Prompt缓存稳定前缀长度")
     status: int = Field(default=1, description="状态(1:启用;0:禁用)")
@@ -38,12 +43,15 @@ class AiModelCreate(OrmResult):
 
 class AiModelUpdate(OrmResult):
     provider_id: int | None = Field(default=None, description="关联供应商ID")
+    model_type: AiModelType | None = Field(
+        default=None, description="模型类型(创建后不可改;仅展示用途)"
+    )
+    dimension: int | None = Field(
+        default=None, gt=0, description="embedding向量维度(创建后不可改;仅展示用途)"
+    )
     display_name: str | None = Field(
         default=None, min_length=1, max_length=128, description="显示名称"
     )
-    input_rate: float | None = Field(default=None, ge=0, description="输入Token计费比例")
-    output_rate: float | None = Field(default=None, ge=0, description="输出Token计费比例")
-    cached_rate: float | None = Field(default=None, ge=0, description="缓存命中Token计费比例")
     max_context_tokens: int | None = Field(default=None, ge=1, description="最大上下文Token数")
     max_output_tokens: int | None = Field(default=None, ge=1, description="最大输出Token数")
     supports_multimodal: bool | None = Field(default=None, description="是否支持多模态")
@@ -51,8 +59,11 @@ class AiModelUpdate(OrmResult):
     supports_streaming: bool | None = Field(default=None, description="是否支持流式输出")
     supports_prompt_cache: bool | None = Field(default=None, description="是否支持Prompt缓存")
     supports_structured_output: bool | None = Field(default=None, description="是否支持结构化输出")
-    fallback_model_pk: int | None = Field(
-        default=None, description="降级模型主键(关联sys_ai_model.id)"
+    extra_request_params: dict[str, Any] | None = Field(
+        default=None, description="厂商私有请求参数(如enable_thinking/reasoning_effort)"
+    )
+    fallback_model_id: int | None = Field(
+        default=None, description="降级模型ID(关联sys_ai_model.id)"
     )
     prompt_cache_prefix_len: int | None = Field(
         default=None, ge=0, description="Prompt缓存稳定前缀长度"
@@ -65,10 +76,9 @@ class AiModelResult(OrmResult):
     id: int = Field(description="主键")
     provider_id: int = Field(description="关联供应商ID")
     model_id: str = Field(description="模型标识")
+    model_type: AiModelType = Field(description="模型类型(chat:对话;embedding:向量;rerank:重排)")
+    dimension: int | None = Field(default=None, description="embedding向量维度")
     display_name: str = Field(description="显示名称")
-    input_rate: float = Field(description="输入Token计费比例")
-    output_rate: float = Field(description="输出Token计费比例")
-    cached_rate: float = Field(description="缓存命中Token计费比例")
     max_context_tokens: int = Field(description="最大上下文Token数")
     max_output_tokens: int = Field(description="最大输出Token数")
     supports_multimodal: int = Field(description="是否支持多模态")
@@ -76,8 +86,11 @@ class AiModelResult(OrmResult):
     supports_streaming: int = Field(description="是否支持流式输出")
     supports_prompt_cache: int = Field(description="是否支持Prompt缓存")
     supports_structured_output: int = Field(description="是否支持结构化输出")
-    fallback_model_pk: int | None = Field(
-        default=None, description="降级模型主键(关联sys_ai_model.id)"
+    extra_request_params: dict[str, Any] | None = Field(
+        default=None, description="厂商私有请求参数(如enable_thinking/reasoning_effort)"
+    )
+    fallback_model_id: int | None = Field(
+        default=None, description="降级模型ID(关联sys_ai_model.id)"
     )
     prompt_cache_prefix_len: int = Field(description="Prompt缓存稳定前缀长度")
     status: int = Field(description="状态(1:启用;0:禁用)")
@@ -93,9 +106,9 @@ class AiModelResult(OrmResult):
 
 class AiModelPageQuery(BasePageQuery):
     keyword: str | None = Field(default=None, description="关键字(按显示名称/模型标识模糊搜索)")
-
-
-# ── 会话管理 ──────────────────────────────────────────
+    model_type: AiModelType | None = Field(
+        default=None, validation_alias="modelType", description="按模型类型筛选(chat/embedding/rerank)"
+    )
 
 
 class ConversationCreate(BaseModel):
@@ -128,6 +141,7 @@ class ConversationUpdate(BaseModel):
 
 class ConversationResult(OrmResult):
     id: int = Field(description="主键")
+    user_id: int = Field(description="用户ID(管理端审计视角返回，与用户视角同源)")
     title: str = Field(description="会话标题")
     model: str | None = Field(default=None, description="会话使用的模型标识")
     agent_code: str | None = Field(default=None, description="会话使用的Agent编码")
@@ -162,6 +176,10 @@ class ConversationPageQuery(BasePageQuery):
     status: int | None = Field(
         default=None, description="会话状态范围过滤(0:全部;1:活跃,默认;2:已归档)"
     )
+    view: str | None = Field(
+        default=None,
+        description="视角(admin:管理端会话审计,返回全量用户会话,需ai:conversation:audit;默认当前用户)",
+    )
 
 
 class ConversationBatchAction(BaseModel):
@@ -172,9 +190,6 @@ class ConversationBatchAction(BaseModel):
 
 class ConversationExportQuery(BaseModel):
     format: Literal["markdown", "json"] = Field(default="markdown", description="导出格式")
-
-
-# ── 消息管理 ──────────────────────────────────────────
 
 
 class MessageSend(BaseModel):
@@ -229,9 +244,6 @@ class MessageResult(OrmResult):
 
 class MessagePageQuery(BasePageQuery):
     pass
-
-
-# ── 推理步骤 ──────────────────────────────────────────
 
 
 class AgentThoughtResult(OrmResult):

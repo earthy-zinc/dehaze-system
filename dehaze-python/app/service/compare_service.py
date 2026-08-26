@@ -17,7 +17,7 @@ from app.models.base import set_current_user_id
 from app.models.entity.sys_log import SysEvalLog
 from app.models.enum.log_status import LogStatus
 from app.repository.pred_eval_log_repository import eval_log_repository, pred_log_repository
-from app.service.prediction_service import prediction_service
+from app.service.prediction.prediction_service import prediction_service
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,6 @@ class CompareService:
         origin_url = pred_log.origin_url
         result_url = pred_log.pred_url
 
-        # 校验算法存在
         await prediction_service.get_algorithm(algorithm_id)
 
         set_current_user_id(user_id)
@@ -71,7 +70,6 @@ class CompareService:
         finally:
             set_current_user_id(None)
 
-        # 提交异步任务
         loop = asyncio.get_running_loop()
         background_task = loop.create_task(
             self._generate_async(
@@ -157,7 +155,6 @@ class CompareService:
         """异步生成 HTML 报告"""
         set_current_user_id(user_id)
         try:
-            # 获取算法名称
             algorithm_name = "未知算法"
             try:
                 algo = await prediction_service.get_algorithm(algorithm_id)

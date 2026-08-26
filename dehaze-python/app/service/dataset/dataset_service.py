@@ -55,6 +55,14 @@ def _merge_stats(parent: dict[str, Any], child: dict[str, Any]):
 class DatasetService:
     """数据集服务（异步版本，性能优化版）"""
 
+    def __init__(
+        self,
+        dataset_repository=dataset_repository,
+        mongo_audit_log_repository=mongo_audit_log_repository,
+    ):
+        self.dataset_repository = dataset_repository
+        self.mongo_audit_log_repository = mongo_audit_log_repository
+
     CACHE_ALL_KEY = "dataset:all"
     CACHE_STATSMAP_KEY = "dataset:statsMap:all"
     CACHE_TREE_KEY = "dataset:tree"
@@ -100,7 +108,7 @@ class DatasetService:
         except Exception as e:
             logger.warning(f"读取数据集缓存失败: {e}")
 
-        datasets = await dataset_repository.find_all(db)
+        datasets = await self.dataset_repository.find_all(db)
 
         try:
             serializable = []
@@ -164,12 +172,12 @@ class DatasetService:
         if leaf_ids:
             logger.debug(f"发现叶子数据集 {len(leaf_ids)} 个")
 
-            item_counts = await dataset_repository.count_items_per_dataset(db, leaf_ids)
+            item_counts = await self.dataset_repository.count_items_per_dataset(db, leaf_ids)
             for ds_id, cnt in item_counts.items():
                 if ds_id in stats_map:
                     stats_map[ds_id]["itemCount"] = cnt
 
-            stats_results = await dataset_repository.count_dataset_stats_batch(db, leaf_ids)
+            stats_results = await self.dataset_repository.count_dataset_stats_batch(db, leaf_ids)
             for ds_id, st in stats_results.items():
                 if ds_id in stats_map:
                     stats_map[ds_id]["fileCount"] = st["fileCount"]
@@ -177,17 +185,17 @@ class DatasetService:
                     stats_map[ds_id]["annotatedCount"] = st["annotatedCount"]
                     stats_map[ds_id]["unannotatedCount"] = st["unannotatedCount"]
 
-            scene_results = await dataset_repository.count_scene_distribution_batch(db, leaf_ids)
+            scene_results = await self.dataset_repository.count_scene_distribution_batch(db, leaf_ids)
             for ds_id, dist in scene_results.items():
                 if ds_id in stats_map:
                     stats_map[ds_id]["sceneDistribution"] = dist
 
-            haze_results = await dataset_repository.count_haze_distribution_batch(db, leaf_ids)
+            haze_results = await self.dataset_repository.count_haze_distribution_batch(db, leaf_ids)
             for ds_id, dist in haze_results.items():
                 if ds_id in stats_map:
                     stats_map[ds_id]["hazeDistribution"] = dist
 
-            format_results = await dataset_repository.count_format_distribution_batch(db, leaf_ids)
+            format_results = await self.dataset_repository.count_format_distribution_batch(db, leaf_ids)
             for ds_id, dist in format_results.items():
                 if ds_id in stats_map:
                     stats_map[ds_id]["formatDistribution"] = dist
@@ -275,7 +283,7 @@ class DatasetService:
         type: str | None = None,
         status: int | None = None,
     ) -> dict[str, Any]:
-        root_datasets, total = await dataset_repository.find_root_page(
+        root_datasets, total = await self.dataset_repository.find_root_page(
             db,
             page_num,
             page_size,
@@ -288,7 +296,7 @@ class DatasetService:
 
         root_ids = [int(d.id) for d in root_datasets]
 
-        direct_children = await dataset_repository.find_by_parent_ids(db, root_ids)
+        direct_children = await self.dataset_repository.find_by_parent_ids(db, root_ids)
         direct_children_map: dict[int, list[SysDataset]] = {}
         child_ids: list[int] = []
         for c in direct_children:
@@ -299,7 +307,7 @@ class DatasetService:
             child_ids.append(int(c.id))
 
         all_parent_ids = root_ids + child_ids
-        has_children_map = await dataset_repository.count_has_children(db, all_parent_ids)
+        has_children_map = await self.dataset_repository.count_has_children(db, all_parent_ids)
 
         stats_map = await self.get_all_dataset_stats(db, redis)
 
@@ -337,12 +345,12 @@ class DatasetService:
         if parent_id <= 0:
             return []
 
-        children = await dataset_repository.find_by_parent_id(db, parent_id)
+        children = await self.dataset_repository.find_by_parent_id(db, parent_id)
         if not children:
             return []
 
         child_ids = [int(c.id) for c in children]
-        has_children_map = await dataset_repository.count_has_children(db, child_ids)
+        has_children_map = await self.dataset_repository.count_has_children(db, child_ids)
         stats_map = await self.get_all_dataset_stats(db, redis)
 
         result = []
@@ -365,7 +373,7 @@ class DatasetService:
         except Exception as e:
             logger.warning(f"读取选项缓存失败: {e}")
 
-        options = await dataset_repository.get_dataset_options(db)
+        options = await self.dataset_repository.get_dataset_options(db)
 
         try:
             await redis.setex(
@@ -387,7 +395,7 @@ class DatasetService:
         仅返回含清晰图 GT（type=clear）且启用的数据集，按 taskType 过滤（T-DS-046~048）。
         返回扁平 label-value 列表。
         """
-        datasets = await dataset_repository.find_datasets_with_clear_gt(db, task_type)
+        datasets = await self.dataset_repository.find_datasets_with_clear_gt(db, task_type)
         return [
             {"value": int(ds.id), "label": ds.name}
             for ds in datasets
@@ -398,7 +406,7 @@ class DatasetService:
         redis: Redis,
         dataset_id: int,
     ) -> dict[str, Any] | None:
-        dataset = await dataset_repository.get_by_id(db, dataset_id)
+        dataset = await self.dataset_repository.get_by_id(db, dataset_id)
         if not dataset:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
 
@@ -431,12 +439,12 @@ class DatasetService:
         self._validate_name_safety(name)
 
         if parent_id != 0:
-            parent = await dataset_repository.get_by_id(db, parent_id)
+            parent = await self.dataset_repository.get_by_id(db, parent_id)
             if not parent:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "父数据集不存在")
 
         if name:
-            exists = await dataset_repository.check_name_exists(db, parent_id, name)
+            exists = await self.dataset_repository.check_name_exists(db, parent_id, name)
             if exists:
                 raise BusinessException(ResultCode.PARAM_ERROR, "同一层级下数据集名称已存在")
 
@@ -464,7 +472,7 @@ class DatasetService:
         dataset_id: int,
         data: dict[str, Any],
     ) -> dict[str, Any]:
-        dataset = await dataset_repository.get_by_id(db, dataset_id)
+        dataset = await self.dataset_repository.get_by_id(db, dataset_id)
         if not dataset:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
 
@@ -473,7 +481,7 @@ class DatasetService:
 
         if new_parent_id is not None and new_parent_id != old_parent_id:
             if new_parent_id != 0:
-                new_parent = await dataset_repository.get_by_id(db, new_parent_id)
+                new_parent = await self.dataset_repository.get_by_id(db, new_parent_id)
                 if not new_parent:
                     raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "新父数据集不存在")
 
@@ -485,7 +493,7 @@ class DatasetService:
         if "name" in data and data["name"] != dataset.name:
             self._validate_name_safety(data["name"])
             check_parent = new_parent_id if new_parent_id is not None else old_parent_id
-            exists = await dataset_repository.check_name_exists(
+            exists = await self.dataset_repository.check_name_exists(
                 db,
                 check_parent,
                 data["name"],
@@ -512,7 +520,7 @@ class DatasetService:
     async def _would_create_cycle(self, db: AsyncSession, dataset_id: int, new_parent_id: int) -> bool:
         if new_parent_id == 0:
             return False
-        descendants = await dataset_repository.get_all_descendant_ids(db, dataset_id)
+        descendants = await self.dataset_repository.get_all_descendant_ids(db, dataset_id)
         return new_parent_id in descendants
 
     async def delete_dataset(self, 
@@ -521,7 +529,7 @@ class DatasetService:
         dataset_id: int,
     ) -> None:
         """删除单个数据集（匹配 Java deleteDataset 行为：不存在时抛异常，成功返回 void）"""
-        dataset = await dataset_repository.get_by_id(db, dataset_id)
+        dataset = await self.dataset_repository.get_by_id(db, dataset_id)
         if not dataset:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
         await self.delete_datasets(db, redis, [dataset_id])
@@ -540,7 +548,7 @@ class DatasetService:
         results = []
 
         # 1. 批量预查询数据集存在性（1 次 IN 查询，替代 N 次 get_by_id）
-        existing_datasets = await dataset_repository.get_by_ids(db, dataset_ids, with_deleted=True)
+        existing_datasets = await self.dataset_repository.get_by_ids(db, dataset_ids, with_deleted=True)
         existing_map = {int(d.id): d for d in existing_datasets}
 
         # 分类存在/不存在
@@ -563,7 +571,7 @@ class DatasetService:
             try:
                 # 2. 批量获取所有后代 ID（1 次全表查询 + 内存 BFS，
                 #    替代 N 次 _get_dataset_and_descendant_ids）
-                descendants_map = await dataset_repository.get_all_descendant_ids_batch(
+                descendants_map = await self.dataset_repository.get_all_descendant_ids_batch(
                     db, valid_dataset_ids
                 )
 
@@ -574,7 +582,7 @@ class DatasetService:
                 unique_ids_to_delete = list(all_ids_set)
 
                 # 4. 批量查询所有待删除数据集，构建 children_map 用于识别叶子节点
-                all_datasets = await dataset_repository.get_datasets_by_ids(
+                all_datasets = await self.dataset_repository.get_datasets_by_ids(
                     db, unique_ids_to_delete
                 )
                 children_map: dict[int, list[SysDataset]] = {}
@@ -593,15 +601,15 @@ class DatasetService:
                 # （1 次查 item_ids + 1 次删 files + 1 次删 items，
                 #   替代 N 次 delete_items_by_dataset）
                 if all_leaf_ids:
-                    all_item_ids = await dataset_repository.get_item_ids_by_dataset_ids(
+                    all_item_ids = await self.dataset_repository.get_item_ids_by_dataset_ids(
                         db, all_leaf_ids
                     )
                     if all_item_ids:
-                        await dataset_repository.delete_item_files_by_item_ids(db, all_item_ids)
-                        await dataset_repository.delete_items_by_ids(db, all_item_ids)
+                        await self.dataset_repository.delete_item_files_by_item_ids(db, all_item_ids)
+                        await self.dataset_repository.delete_items_by_ids(db, all_item_ids)
 
                 # 7. 批量删除所有数据集（1 次物理删除，替代 N 次 delete_by_ids）
-                await dataset_repository.delete_by_ids(db, unique_ids_to_delete)
+                await self.dataset_repository.delete_by_ids(db, unique_ids_to_delete)
 
                 # 8. 记录成功结果
                 for dataset_id in valid_dataset_ids:
@@ -624,7 +632,7 @@ class DatasetService:
 
         await self._evict_all_cache(redis)
 
-        mongo_audit_log_repository.create_audit_async(
+        self.mongo_audit_log_repository.create_audit_async(
             operator_id=get_current_user_id(),
             target_type="dataset",
             target_id=dataset_ids,
@@ -649,12 +657,12 @@ class DatasetService:
         scene_type: str | None = None,
     ) -> dict[str, Any]:
         if dataset_id:
-            leaf_ids = await dataset_repository.get_leaf_ids(db, dataset_id)
+            leaf_ids = await self.dataset_repository.get_leaf_ids(db, dataset_id)
         else:
             leaf_ids = []
-        total = await dataset_repository.get_items_count(db, leaf_ids, keywords)
+        total = await self.dataset_repository.get_items_count(db, leaf_ids, keywords)
         offset = (page_num - 1) * page_size
-        items = await dataset_repository.get_items_paginated(
+        items = await self.dataset_repository.get_items_paginated(
             db, leaf_ids, offset, page_size, keywords
         )
 
@@ -662,7 +670,7 @@ class DatasetService:
             return {"list": [], "total": total, "pageNum": page_num, "pageSize": page_size}
 
         item_ids = [int(item.id) for item in items]
-        items_map, files_map = await dataset_repository.get_items_with_files_batch(db, item_ids)
+        items_map, files_map = await self.dataset_repository.get_items_with_files_batch(db, item_ids)
 
         records = []
         for item in items:

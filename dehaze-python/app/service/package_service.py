@@ -45,11 +45,31 @@ PERIOD_NAMES = {
 VALID_PERIODS = {"monthly", "quarterly", "yearly"}
 
 
-def _validate_package_form(form: dict) -> None:
+VALID_PACKAGE_TYPES = {"vip", "credit"}
+
+PACKAGE_TYPE_NAMES = {
+    "vip": "会员卡",
+    "credit": "积分卡",
+}
+
+
+def _validate_package_form(form: dict, package_type: str) -> None:
+    if package_type not in VALID_PACKAGE_TYPES:
+        raise BusinessException(ResultCode.PARAM_ERROR, "商品类型非法")
     if form.get("salePrice", 0) > form.get("originalPrice", 0):
         raise BusinessException(ResultCode.PARAM_ERROR, "促销价不能高于原价")
-    if form.get("period") not in VALID_PERIODS:
-        raise BusinessException(ResultCode.PARAM_ERROR, "计费周期非法")
+    if package_type == "vip":
+        if not form.get("levelCode"):
+            raise BusinessException(ResultCode.PARAM_ERROR, "会员卡必须设置等级/周期/有效期")
+        if not form.get("period"):
+            raise BusinessException(ResultCode.PARAM_ERROR, "会员卡必须设置等级/周期/有效期")
+        if form.get("periodDays") is None:
+            raise BusinessException(ResultCode.PARAM_ERROR, "会员卡必须设置等级/周期/有效期")
+        if form.get("period") not in VALID_PERIODS:
+            raise BusinessException(ResultCode.PARAM_ERROR, "计费周期非法")
+    elif package_type == "credit":
+        if not form.get("creditAmount") or form["creditAmount"] <= 0:
+            raise BusinessException(ResultCode.PARAM_ERROR, "积分卡可得积分必须大于0")
 
 
 def _format_dt(dt: datetime | None) -> str | None:
@@ -93,14 +113,14 @@ def _promotion_to_vo(promotion: SysPromotion) -> dict:
     }
 
 
-def _calc_daily_price(sale_price: int, period_days: int) -> int:
-    if period_days <= 0:
+def _calc_daily_price(sale_price: int, period_days: int | None) -> int:
+    if not period_days or period_days <= 0:
         return 0
     return (2 * sale_price + period_days) // (2 * period_days)
 
 
 async def _invalidate_package_cache(package_id: int | None = None) -> None:
-    keys = ["package:onsale"]
+    keys = ["package:onsale:all", "package:onsale:vip", "package:onsale:credit"]
     if package_id is not None:
         keys.append(f"package:detail:{package_id}")
 
@@ -119,6 +139,7 @@ def _build_package_detail(db_pkg: SysPackage, benefit: SysMemberBenefit | None) 
     return {
         "id": db_pkg.id,
         "name": db_pkg.name,
+        "packageType": db_pkg.package_type,
         "levelCode": db_pkg.level_code,
         "levelName": benefit.level_name if benefit else "",
         "period": db_pkg.period,
@@ -126,15 +147,41 @@ def _build_package_detail(db_pkg: SysPackage, benefit: SysMemberBenefit | None) 
         "originalPrice": db_pkg.original_price,
         "salePrice": db_pkg.sale_price,
         "dailyPrice": _calc_daily_price(db_pkg.sale_price, db_pkg.period_days),
+        "creditAmount": db_pkg.credit_amount,
+        "creditUnitPrice": _calc_credit_unit_price(db_pkg.sale_price, db_pkg.credit_amount),
         "description": db_pkg.description,
         "benefits": benefits,
         "salesCount": db_pkg.sales_count,
     }
 
 
+def _calc_credit_unit_price(sale_price: int, credit_amount: int | None) -> int:
+    if not credit_amount or credit_amount <= 0:
+        return 0
+    return sale_price // credit_amount
+
+
+def _build_package_list_vo(db_pkg: SysPackage, level_name: str = "") -> dict:
+    return {
+        "id": db_pkg.id,
+        "name": db_pkg.name,
+        "packageType": db_pkg.package_type,
+        "levelCode": db_pkg.level_code,
+        "levelName": level_name,
+        "period": db_pkg.period,
+        "periodDays": db_pkg.period_days,
+        "originalPrice": db_pkg.original_price,
+        "salePrice": db_pkg.sale_price,
+        "dailyPrice": _calc_daily_price(db_pkg.sale_price, db_pkg.period_days),
+        "creditAmount": db_pkg.credit_amount,
+        "creditUnitPrice": _calc_credit_unit_price(db_pkg.sale_price, db_pkg.credit_amount),
+        "salesCount": db_pkg.sales_count,
+    }
+
+
 class PackageService:
-    async def list_on_sale(self, db: AsyncSession) -> list[dict]:
-        cache_key = "package:onsale"
+    async def list_on_sale(self, db: AsyncSession, package_type: str | None = None) -> list[dict]:
+        cache_key = f"package:onsale:{package_type or 'all'}"
 
         async def _get_cache():
             redis = await get_redis_client()
@@ -149,7 +196,7 @@ class PackageService:
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        packages = await package_repository.list_on_sale(db)
+        packages = await package_repository.list_on_sale(db, package_type)
         if not packages:
             return []
         benefits = await member_benefit_repository.list_all(db)
@@ -224,6 +271,7 @@ class PackageService:
             query["pageNum"],
             query["pageSize"],
             name=query.get("name"),
+            package_type=query.get("packageType"),
             level_code=query.get("levelCode"),
             period=query.get("period"),
             status=query.get("status"),
@@ -236,18 +284,7 @@ class PackageService:
         benefit_map = {b.level_code: b for b in benefits}
         list_data = [
             {
-                "id": pkg.id,
-                "name": pkg.name,
-                "levelCode": pkg.level_code,
-                "levelName": benefit_map[pkg.level_code].level_name
-                if pkg.level_code in benefit_map
-                else "",
-                "period": pkg.period,
-                "periodDays": pkg.period_days,
-                "originalPrice": pkg.original_price,
-                "salePrice": pkg.sale_price,
-                "dailyPrice": _calc_daily_price(pkg.sale_price, pkg.period_days),
-                "salesCount": pkg.sales_count,
+                **_build_package_list_vo(pkg),
                 "status": pkg.status,
                 "createTime": _format_dt(pkg.create_time),
             }
@@ -262,9 +299,11 @@ class PackageService:
         return {
             "id": pkg.id,
             "name": pkg.name,
+            "packageType": pkg.package_type,
             "levelCode": pkg.level_code,
             "period": pkg.period,
             "periodDays": pkg.period_days,
+            "creditAmount": pkg.credit_amount,
             "originalPrice": pkg.original_price,
             "salePrice": pkg.sale_price,
             "description": pkg.description,
@@ -274,21 +313,37 @@ class PackageService:
         }
 
     async def create(self, db: AsyncSession, form: dict) -> None:
-        _validate_package_form(form)
         existing = await package_repository.get_by_name(db, form["name"])
         if existing:
             raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已被历史记录占用")
+        package_type = form.get("packageType", "vip")
+        _validate_package_form(form, package_type)
+
+        if package_type == "credit":
+            credit_amount = form.get("creditAmount")
+            level_code = None
+            period = None
+            period_days = None
+        else:
+            credit_amount = None
+            level_code = form.get("levelCode")
+            period = form.get("period")
+            period_days = form.get("periodDays")
+
         pkg = SysPackage(
             name=form["name"],
-            level_code=form["levelCode"],
-            period=form["period"],
-            period_days=form["periodDays"],
+            package_type=package_type,
+            level_code=level_code,
+            period=period,
+            period_days=period_days,
+            credit_amount=credit_amount,
             original_price=form["originalPrice"],
             sale_price=form["salePrice"],
             description=form.get("description"),
             benefit_overrides=form.get("benefitOverrides"),
             sort=form.get("sort", 0),
             status=form.get("status", 0),
+            sales_count=0,
         )
         await package_repository.create(db, pkg)
         await _invalidate_package_cache()
@@ -297,15 +352,23 @@ class PackageService:
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
             raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
-        _validate_package_form(form)
+        # 商品类型创建后锁定，以库中记录为准，请求携带的 packageType 被忽略
+        package_type = pkg.package_type
+        _validate_package_form(form, package_type)
         if pkg.name != form["name"]:
             dup = await package_repository.get_by_name(db, form["name"])
             if dup and dup.id != package_id:
                 raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已被历史记录占用")
         pkg.name = form["name"]
-        pkg.level_code = form["levelCode"]
-        pkg.period = form["period"]
-        pkg.period_days = form["periodDays"]
+        if package_type == "credit":
+            pkg.credit_amount = form.get("creditAmount")
+            pkg.level_code = None
+            pkg.period = None
+            pkg.period_days = None
+        else:
+            pkg.level_code = form["levelCode"]
+            pkg.period = form["period"]
+            pkg.period_days = form["periodDays"]
         pkg.original_price = form["originalPrice"]
         pkg.sale_price = form["salePrice"]
         pkg.description = form.get("description")
@@ -365,8 +428,31 @@ class PackageService:
             pp = item["promotion_package"]
             if pp.discount_type == "percent":
                 discount_amount = max(discount_amount, sale_price * pp.discount_value // 100)
-            else:
+            elif pp.discount_type == "fixed":
                 discount_amount = max(discount_amount, pp.discount_value)
+            elif pp.discount_type == "full_reduction":
+                rules = item["promotion"].activity_rules
+                if isinstance(rules, dict):
+                    tiers = rules.get("tiers") or []
+                    matched = [t for t in tiers if sale_price >= int(t.get("threshold", 0))]
+                    if matched:
+                        discount_amount = max(
+                            discount_amount,
+                            max(int(t.get("faceValue", 0)) for t in matched),
+                        )
+
+        promo_new_user_only = any(
+            item["promotion"].new_user_only == 1 for item in active_promos
+        )
+        if promo_new_user_only and user_id is not None:
+            paid_stmt = select(func.count()).select_from(SysOrder).where(
+                SysOrder.user_id == user_id,
+                SysOrder.status.in_([2, 3]),
+                SysOrder.deleted == 0,
+            )
+            has_paid = int((await db.execute(paid_stmt)).scalar() or 0) > 0
+            if has_paid:
+                raise BusinessException(ResultCode.BUSINESS_ERROR, "该套餐仅限新用户购买")
 
         coupon_amount = 0
         if user_coupon_id:
@@ -385,7 +471,15 @@ class PackageService:
                 raise BusinessException(ResultCode.COUPON_NOT_FOUND)
 
             if coupon.applicable_scope:
-                if package_id not in coupon.applicable_scope:
+                applicable = False
+                for scope in coupon.applicable_scope:
+                    if isinstance(scope, int) and scope == package_id:
+                        applicable = True
+                        break
+                    if isinstance(scope, str) and scope == pkg.package_type:
+                        applicable = True
+                        break
+                if not applicable:
                     raise BusinessException(ResultCode.COUPON_NOT_APPLICABLE)
 
             base_price = sale_price - discount_amount
@@ -469,6 +563,26 @@ class PackageService:
             for row in level_rows
         ]
 
+        type_stats_stmt = (
+            select(
+                SysOrder.package_type,
+                func.count().label("count"),
+                func.coalesce(func.sum(SysOrder.paid_amount), 0).label("revenue"),
+            )
+            .where(SysOrder.deleted == 0, SysOrder.status.in_([2, 3]))
+            .group_by(SysOrder.package_type)
+        )
+        type_rows = (await db.execute(type_stats_stmt)).all()
+        type_stats = [
+            {
+                "packageType": row.package_type,
+                "packageTypeName": PACKAGE_TYPE_NAMES.get(row.package_type, row.package_type),
+                "salesCount": int(row.count),
+                "revenue": int(row.revenue),
+            }
+            for row in type_rows
+        ]
+
         period_stats_stmt = (
             select(
                 SysPackage.period,
@@ -512,6 +626,7 @@ class PackageService:
             "totalRevenue": total_revenue,
             "packageStats": package_stats,
             "levelStats": level_stats,
+            "typeStats": type_stats,
             "periodStats": period_stats,
             "couponStats": {
                 "totalIssued": total_issued,

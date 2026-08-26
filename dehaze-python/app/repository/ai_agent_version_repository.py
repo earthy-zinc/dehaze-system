@@ -56,5 +56,26 @@ class AiAgentVersionRepository(BaseRepository[SysAiAgentVersion]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_published_snapshot(
+        self, db: AsyncSession, agent_id: int, version_no: int | None = None
+    ) -> SysAiAgentVersion | None:
+        """查询已发布版本（未指定版本号取当前已发布版本），供运行面/构建器直接消费。
+
+        返回版本行；调用方经 resolve_snapshot 取得运行面生效配置快照。
+        """
+        if version_no is None:
+            return await self.get_latest_published(db, agent_id)
+        return await self.get_by_agent_and_version(db, agent_id, version_no)
+
+    @staticmethod
+    def resolve_snapshot(snapshot: dict) -> dict:
+        """将快照中冻结的 resolved_config 应用到 config 字段，返回运行面生效配置字典。"""
+        resolved = snapshot.get("resolved_config")
+        if resolved is None:
+            return dict(snapshot)
+        result = dict(snapshot)
+        result["config"] = resolved
+        return result
+
 
 ai_agent_version_repository = AiAgentVersionRepository()

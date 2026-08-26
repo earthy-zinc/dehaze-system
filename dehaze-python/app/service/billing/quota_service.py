@@ -98,6 +98,14 @@ async def _apply_quota(user_id: int, credits: int, script: str) -> None:
 class QuotaService:
     """配额管理：日/月限额，Redis 原子操作预扣/实扣/退还"""
 
+    def __init__(
+        self,
+        member_repository=member_repository,
+        member_benefit_repository=member_benefit_repository,
+    ):
+        self.member_repository = member_repository
+        self.member_benefit_repository = member_benefit_repository
+
     async def get_limits(self, db: AsyncSession, user_id: int) -> tuple[int, int]:
         """查询用户日/月限额（从 sys_member_benefit 按 VIP 等级查询）
 
@@ -106,10 +114,10 @@ class QuotaService:
         Returns:
             (日限额, 月限额)，无会员、权益未配置或已停用时返回 (0, 0)
         """
-        member = await member_repository.get_by_user_id(db, user_id)
+        member = await self.member_repository.get_by_user_id(db, user_id)
         if member is None:
             return 0, 0
-        benefit = await member_benefit_repository.get_by_level_code(db, member.level_code)
+        benefit = await self.member_benefit_repository.get_by_level_code(db, member.level_code)
         if benefit is None or benefit.status != 1:
             return 0, 0
         return benefit.ai_credits_daily or 0, benefit.ai_credits_monthly or 0

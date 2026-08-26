@@ -56,6 +56,10 @@ def _coupon_to_vo(coupon: SysCoupon) -> dict:
 
 class CouponService:
     async def create(self, db: AsyncSession, form: dict) -> dict:
+        if form["type"] == "full_reduction" and form.get("threshold") is None:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "满减券必须设置使用门槛")
+        if form["validType"] == "fixed" and (not form.get("validStart") or not form.get("validEnd")):
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "固定有效期必须设置起止时间")
         coupon = SysCoupon(
             name=form["name"],
             type=form["type"],
@@ -77,6 +81,10 @@ class CouponService:
         coupon = await coupon_repository.get_by_id(db, coupon_id)
         if not coupon:
             raise BusinessException(ResultCode.COUPON_NOT_FOUND)
+        if form["type"] == "full_reduction" and form.get("threshold") is None:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "满减券必须设置使用门槛")
+        if form["validType"] == "fixed" and (not form.get("validStart") or not form.get("validEnd")):
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "固定有效期必须设置起止时间")
         coupon.name = form["name"]
         coupon.type = form["type"]
         coupon.face_value = form["faceValue"]
@@ -183,6 +191,13 @@ class CouponService:
             raise BusinessException(ResultCode.COUPON_NOT_FOUND)
         if coupon.status != 1:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "优惠券已禁用")
+
+        if coupon.type == "trial":
+            trial_count = await user_coupon_repository.count_by_user_and_coupon(
+                db, user_id, coupon_id
+            )
+            if trial_count > 0:
+                raise BusinessException(ResultCode.BUSINESS_ERROR, "体验券每人限领 1 次")
 
         if coupon.total_qty != -1 and coupon.issued_qty >= coupon.total_qty:
             raise BusinessException(ResultCode.COUPON_STOCK_EMPTY)

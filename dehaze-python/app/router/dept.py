@@ -22,8 +22,9 @@ async def list_depts(
     keywords: str | None = Query(default=None),
     status: int | None = Query(default=None, ge=0, le=1),
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
-    depts = await dept_service.get_dept_list(db, keywords, status)
+    depts = await dept_service.get_dept_list(db, keywords, status, current_user=user)
     return success(depts)
 
 
@@ -31,8 +32,9 @@ async def list_depts(
 async def list_dept_options(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
-    options = await dept_service.get_dept_options(db, redis)
+    options = await dept_service.get_dept_options(db, redis, current_user=user)
     return success(options)
 
 

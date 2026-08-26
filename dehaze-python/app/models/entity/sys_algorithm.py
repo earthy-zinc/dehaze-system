@@ -38,7 +38,6 @@ class SysAlgorithm(BaseModel, SoftDeleteMixin):
     flops: Mapped[str | None] = mapped_column(String(255), comment="模型浮点运算次数")
     import_path: Mapped[str | None] = mapped_column(String(255), comment="模型代码导入路径")
     description: Mapped[str | None] = mapped_column(String(2048), comment="针对该模型的详细描述")
-    # 状态机：1=草稿 2=测试中 3=待审核 4=已发布 5=已停用 6=已归档
     status: Mapped[int] = mapped_column(
         mysql_types.TINYINT,
         default=1,

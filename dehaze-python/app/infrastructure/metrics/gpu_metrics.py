@@ -67,7 +67,6 @@ class GPUMetricsCollector:
         self._pynvml_available = False
         self._device_count = 0
 
-        # 尝试初始化 pynvml
         try:
             import pynvml
 
@@ -102,7 +101,6 @@ class GPUMetricsCollector:
                 pass
             self._task = None
 
-        # 清理 pynvml
         if self._pynvml and self._pynvml_available:
             try:
                 self._pynvml.nvmlShutdown()
@@ -134,25 +132,21 @@ class GPUMetricsCollector:
 
                 device_labels = {"device_id": str(i), "device_name": device_name}
 
-                # 显存信息
                 mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
                 GPU_MEMORY_USED.labels(**device_labels).set(float(mem_info.used))
                 GPU_MEMORY_TOTAL.labels(**device_labels).set(float(mem_info.total))
                 GPU_MEMORY_FREE.labels(**device_labels).set(float(mem_info.free))
 
-                # GPU 利用率
                 util_info = pynvml.nvmlDeviceGetUtilizationRates(handle)
                 GPU_UTILIZATION.labels(**device_labels).set(float(util_info.gpu))
                 GPU_MEMORY_UTILIZATION.labels(**device_labels).set(float(util_info.memory))
 
-                # 温度
                 try:
                     temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
                     GPU_TEMPERATURE.labels(**device_labels).set(float(temp))
                 except Exception:
                     pass  # 部分设备可能不支持
 
-                # 功耗
                 try:
                     power = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000  # mW -> W
                     GPU_POWER_USAGE.labels(**device_labels).set(float(power))

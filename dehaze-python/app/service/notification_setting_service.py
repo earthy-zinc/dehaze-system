@@ -75,5 +75,4 @@ class NotificationSettingService:
         await db.flush()
 
 
-# 单例
 notification_setting_service = NotificationSettingService()

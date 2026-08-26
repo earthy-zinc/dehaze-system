@@ -58,6 +58,7 @@ class AiProviderKeyService:
             priority=form.priority,
             weight=form.weight,
             daily_quota=form.daily_quota,
+            rpm_limit=form.rpm_limit,
             expires_at=form.expires_at,
         )
         key = await ai_provider_key_repository.create(db, key)

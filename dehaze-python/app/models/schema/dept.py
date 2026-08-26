@@ -6,14 +6,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.models.schema.common import validate_no_xss
 
-# ==================== 查询参数模型 ====================
-
-
-# ==================== 路径参数模型 ====================
-
-
-# ==================== 请求体模型 ====================
-
 
 class DeptForm(BaseModel):
     """部门表单"""
@@ -25,9 +17,6 @@ class DeptForm(BaseModel):
     status: int | None = Field(default=1, ge=0, le=1, description="状态(1-启用；0-禁用)")
 
     name_no_xss_validator = field_validator("name")(validate_no_xss)
-
-
-# ==================== 响应模型 ====================
 
 
 class DeptVO(BaseModel):

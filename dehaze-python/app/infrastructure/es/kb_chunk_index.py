@@ -134,6 +134,30 @@ async def delete_doc_chunks(kb_id: int, document_id: int) -> bool:
         return False
 
 
+async def get_index_stats(kb_id: int) -> dict:
+    """查询知识库索引大小与文档数（管理端索引状态）。
+
+    经 indices.stats 的 store/documents 指标取真实存储占用（含副本）与分块文档数；
+    索引不存在（知识库创建后未写入分块时索引可能不存在）返回零值，不报错。
+    """
+    client = await es_client.get_client()
+    if client is None:
+        return {"index_size": 0, "index_doc_count": 0}
+    index = kb_index_name(kb_id)
+    try:
+        resp = await client.indices.stats(index=index, metric="store,docs")
+        indices = (resp.get("indices") or {}).get(index) or {}
+        store = indices.get("total") or {}
+        docs = indices.get("total") or {}
+        return {
+            "index_size": int(store.get("store", {}).get("size_in_bytes", 0) or 0),
+            "index_doc_count": int(docs.get("docs", {}).get("count", 0) or 0),
+        }
+    except Exception as e:  # noqa: BLE001 - 索引不存在或查询失败按空索引处理
+        logger.warning("ES 索引统计 %s 失败: %s", index, e)
+        return {"index_size": 0, "index_doc_count": 0}
+
+
 def build_filters(
     *,
     doc_type: str | None = None,

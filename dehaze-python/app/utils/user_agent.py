@@ -18,7 +18,6 @@ def parse_user_agent(user_agent: str) -> tuple[str, str]:
     if not user_agent:
         return "Unknown", "Unknown"
 
-    # 解析浏览器
     browser = "Unknown"
     browser_patterns = [
         (r"Edge/(\d+)", "Edge"),
@@ -36,7 +35,6 @@ def parse_user_agent(user_agent: str) -> tuple[str, str]:
             browser = f"{name} {match.group(1)}"
             break
 
-    # 解析操作系统
     os_name = "Unknown"
     os_patterns = [
         (r"Windows NT (\d+\.\d+)", "Windows"),

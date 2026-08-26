@@ -387,6 +387,4 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         )
         return (await db.execute(stmt)).scalar() or 0
 
-
-# 单例
 algorithm_repository = AlgorithmRepository()

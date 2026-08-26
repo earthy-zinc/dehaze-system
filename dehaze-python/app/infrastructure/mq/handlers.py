@@ -13,7 +13,6 @@ from typing import Any
 from app.core.constants import SYSTEM_USER_ID
 from app.database import get_db_session
 from app.models.base import set_current_user_id
-from app.service import task_service
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +24,9 @@ async def handle_export_task(body: dict[str, Any], headers: dict[str, Any]) -> N
     """
     导出任务消费者 handler
 
-    解析导出任务消息，交由 task_service.consume_export_message 执行。
+    解析导出任务消息，交由 task_consumer.consume_export_message 执行。
     """
-    await task_service.consume_export_message(body, headers)
+    await task_consumer.consume_export_message(body, headers)
     logger.debug(f"[MQ] 导出任务 handler 处理完成: taskId={body.get('task_id')}")
 
 
@@ -35,9 +34,12 @@ async def handle_dlq_message(body: dict[str, Any], headers: dict[str, Any]) -> N
     """
     死信队列消费者 handler
 
-    解析死信消息，交由 task_service.consume_dlq_message 执行。
+    解析死信消息，交由 task_consumer.consume_dlq_message 执行。
     """
-    await task_service.consume_dlq_message(body, headers)
+    # 函数内延迟导入：基础设施层 handler 不反向依赖 service 层，消息到达时才解析
+    from app.service.task import task_consumer
+
+    await task_consumer.consume_dlq_message(body, headers)
     logger.warning(f"[MQ] 死信 handler 处理完成: taskId={body.get('task_id')}")
 
 

@@ -10,14 +10,17 @@ from redis.exceptions import RedisError
 
 from app.config import settings
 from app.dependencies.redis import get_redis_client
-from app.service.billing.rate_provider import RateProvider
+from app.service.billing.rate_provider import rate_provider
 
 CTX_AVG_KEY = "ai:ctx:avg:{conversation_id}"
 CTX_AVG_TTL = 600  # 10 分钟
 
 
 class EstimateService:
-    """积分预估（单例）"""
+    """积分预估（rate_provider 构造注入，默认模块单例）"""
+
+    def __init__(self, rate_provider=rate_provider):
+        self.rate_provider = rate_provider
 
     async def estimate_credits(self, 
         db,
@@ -28,7 +31,7 @@ class EstimateService:
     ) -> int:
         """预估本次对话积分消耗并更新历史上下文均值，返回预估积分。"""
         redis = await get_redis_client()
-        rates = await RateProvider.get_rates(db, model_id)
+        rates = await self.rate_provider.get_rates(db, model_id)
         input_rate = rates["input_rate"]
         output_rate = rates["output_rate"]
 
@@ -61,7 +64,7 @@ class EstimateService:
         messages: list[dict],
     ) -> int:
         """预估多步推理中单步的积分消耗（滚动预算校验用）"""
-        rates = await RateProvider.get_rates(db, model_id)
+        rates = await self.rate_provider.get_rates(db, model_id)
         ctx_tokens = sum(len(msg.get("content") or "") // 4 for msg in messages)
         output_estimate = rates["max_output_tokens"] * settings.AI_BILLING_ESTIMATE_OUTPUT_FACTOR
         return int(ctx_tokens * rates["input_rate"] + output_estimate * rates["output_rate"])

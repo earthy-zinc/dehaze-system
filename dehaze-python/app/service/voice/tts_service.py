@@ -74,6 +74,16 @@ def decrypt_audio(blob: bytes) -> bytes:
 class TtsService:
     """TTS 合成与缓存管理"""
 
+    def __init__(
+        self,
+        file_service=file_service,
+        voice_billing_service=voice_billing_service,
+        piper_tts_engine=piper_tts_engine,
+    ):
+        self.file_service = file_service
+        self.voice_billing_service = voice_billing_service
+        self.piper_tts_engine = piper_tts_engine
+
     # ==================== 合成 ====================
 
     async def synthesize(self, 
@@ -100,12 +110,12 @@ class TtsService:
 
         # 余额预校验（预估 = 字符数 × 单价）
         estimated = math.ceil(len(text) * settings.VOICE_TTS_CREDITS_PER_CHAR)
-        await voice_billing_service.ensure_balance(db, user_id, estimated)
+        await self.voice_billing_service.ensure_balance(db, user_id, estimated)
 
         # 本地 Piper 引擎合成
         try:
-            audio = await piper_tts_engine.run_in_executor(
-                piper_tts_engine.synthesize, text, voice, speed, format_, sample_rate
+            audio = await self.piper_tts_engine.run_in_executor(
+                self.piper_tts_engine.synthesize, text, voice, speed, format_, sample_rate
             )
         except LocalTtsError as exc:
             logger.error("本地 TTS 合成失败 user_id=%s: %s", user_id, exc)
@@ -115,7 +125,7 @@ class TtsService:
         audio_url = await self._store_and_cache(
             db, redis, user_id, cache_key, audio, format_
         )
-        await voice_billing_service.charge_tts(db, user_id, len(text))
+        await self.voice_billing_service.charge_tts(db, user_id, len(text))
         return {"audioUrl": audio_url, "format": format_}
 
     def _validate_params(self, text: str, voice: str, format_: str, sample_rate: int) -> None:
@@ -204,13 +214,13 @@ class TtsService:
         except json.JSONDecodeError:
             return None
 
-        file_info: SysFile | None = await file_service.get_file_by_id(db, meta.get("fileId"))
+        file_info: SysFile | None = await self.file_service.get_file_by_id(db, meta.get("fileId"))
         if not file_info:
             return None
 
         storage = get_storage_by_name(file_info.storage)
         encrypted = await _read_object_bytes(
-            storage, settings.MINIO_BUCKET_NAME, file_info.object_name
+            storage, settings.MINIO_BUCKET, file_info.object_name
         )
         try:
             audio = decrypt_audio(encrypted)

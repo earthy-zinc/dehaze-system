@@ -4,8 +4,6 @@
 
 from pydantic import BaseModel, Field
 
-# ========== 图像特征分析 ==========
-
 
 class ColorDistribution(BaseModel):
     temperature: float = Field(..., description="色温(K)")
@@ -32,9 +30,6 @@ class AnalyzeForm(BaseModel):
     imageUrl: str | None = Field(default=None, description="图片URL(imageId/imageUrl二选一)")
 
 
-# ========== 算法推荐 ==========
-
-
 class RecommendedAlgorithmVO(BaseModel):
     recommendationId: int | None = Field(default=None, description="推荐记录ID（用于提交反馈）")
     algorithmId: int = Field(..., description="算法ID")
@@ -48,15 +43,9 @@ class RecommendedAlgorithmVO(BaseModel):
     effectDescription: str = Field(..., description="预期效果描述")
 
 
-# ========== 推荐反馈 ==========
-
-
 class RecommendationFeedbackForm(BaseModel):
     recommendationId: int = Field(..., description="推荐记录ID")
     useful: bool = Field(..., description="是否有用")
-
-
-# ========== 规则管理 ==========
 
 
 class RecommendationRuleVO(BaseModel):
@@ -75,9 +64,6 @@ class RecommendationRuleForm(BaseModel):
     algorithmIds: list[int] = Field(..., description="候选算法ID列表")
     weight: int = Field(..., ge=0, le=100, description="规则权重(0-100)")
     enabled: bool = Field(default=True, description="是否启用")
-
-
-# ========== 效果报表 ==========
 
 
 class TrendItem(BaseModel):

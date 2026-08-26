@@ -7,6 +7,8 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.middleware.anti_repeat import AntiRepeatMiddleware
+from app.middleware.api_key_auth import ApiKeyAuthMiddleware
+from app.middleware.db import DBSessionMiddleware
 from app.middleware.ip_blacklist import IPBlacklistMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.trace import TraceMiddleware
@@ -29,15 +31,31 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
         debug: 是否为调试模式（影响 CORS 配置）
         prometheus_enabled: 是否启用 Prometheus 指标采集
     """
-    # API Key 认证中间件（先注册使其在 DBSession 之后执行，才能读到 request.state.db）
-    from app.middleware.api_key_auth import ApiKeyAuthMiddleware
+    # 注入依赖在此处（而非模块顶层）解析：middleware 包被 app.core.exceptions
+    # 初始化早期加载（core.exceptions → non_null_response → middleware.__init__），
+    # 模块顶层 import service 依赖（menu_service 反向依赖 core.exceptions）会形成循环导入。
+    # 装配期（init_middlewares 调用时）core.exceptions 早已完成初始化，故此处延迟解析安全。
+    # 注：menu_service 由 ApiKeyAuthMiddleware 内部按需延迟解析（同循环约束），不在此传入。
+    from app.dependencies.redis import get_redis_client
+    from app.repository.role_repository import role_repository
+    from app.repository.user_repository import user_repository
+    from app.service.ai.service.compatible_audit import record_call
+    from app.service.ai.service.conversation_search_service import sync_conversation_to_es
 
-    app.add_middleware(ApiKeyAuthMiddleware)
+    # API Key 认证中间件（先注册使其在 DBSession 之后执行，才能读到 request.state.db）
+    app.add_middleware(
+        ApiKeyAuthMiddleware,
+        record_call=record_call,
+        get_redis_client=get_redis_client,
+        user_repository=user_repository,
+        role_repository=role_repository,
+    )
 
     # 数据库事务中间件（最内层，响应发送前 commit/rollback）
-    from app.middleware.db import DBSessionMiddleware
-
-    app.add_middleware(DBSessionMiddleware)
+    app.add_middleware(
+        DBSessionMiddleware,
+        sync_conversation_to_es=sync_conversation_to_es,
+    )
 
     # 请求级访问日志中间件（须在 TraceMiddleware 之内执行，才能拿到请求上下文）
     from app.middleware.request_log import RequestLogMiddleware

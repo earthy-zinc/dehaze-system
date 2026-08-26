@@ -35,7 +35,6 @@ class DictRepository(BaseRepository[SysDict]):
         if type_code:
             stmt = stmt.where(SysDict.type_code == type_code)
 
-        # 查询总数
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total_result = await db.execute(count_stmt)
         total = total_result.scalar()
@@ -43,7 +42,6 @@ class DictRepository(BaseRepository[SysDict]):
         # 排序: sort ASC, create_time DESC, id ASC (id 作为 tiebreaker 保证分页确定性)
         stmt = stmt.order_by(SysDict.sort.asc(), SysDict.create_time.desc(), SysDict.id.asc())
 
-        # 分页查询
         stmt = stmt.offset((page - 1) * page_size).limit(page_size)
         result = await db.execute(stmt)
         items = result.scalars().all()
@@ -231,7 +229,6 @@ class DictTypeRepository(BaseRepository[SysDictType]):
                 )
             )
 
-        # 查询总数
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total_result = await db.execute(count_stmt)
         total = total_result.scalar()
@@ -239,7 +236,6 @@ class DictTypeRepository(BaseRepository[SysDictType]):
         # 排序: create_time DESC, id ASC (id 作为 tiebreaker 保证分页确定性)
         stmt = stmt.order_by(SysDictType.create_time.desc(), SysDictType.id.asc())
 
-        # 分页查询
         stmt = stmt.offset((page - 1) * page_size).limit(page_size)
         result = await db.execute(stmt)
         items = result.scalars().all()
@@ -312,7 +308,5 @@ class DictTypeRepository(BaseRepository[SysDictType]):
         result = await db.execute(stmt)
         return result.scalar() or 0
 
-
-# 单例
 dict_repository = DictRepository()
 dict_type_repository = DictTypeRepository()

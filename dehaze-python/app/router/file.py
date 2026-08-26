@@ -58,15 +58,12 @@ async def upload_file(
 ) -> Result[FileUploadResultVO]:
     _validate_file(file)
 
-    # 读取文件内容
     content = await file.read()
 
-    # 校验实际文件大小
     if len(content) > settings.MAX_UPLOAD_SIZE:
         max_mb = settings.MAX_UPLOAD_SIZE // 1024 // 1024
         raise BusinessException(ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)")
 
-    # 上传文件
     file_info = await file_service.upload_file(
         db=db,
         filename=file.filename,

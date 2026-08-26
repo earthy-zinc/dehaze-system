@@ -8,6 +8,7 @@ from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
+from app.infrastructure.provider.provider_health_service import provider_health_service
 from app.models.schema.ai_provider import (
     ProviderCreate,
     ProviderKeyCreate,
@@ -17,8 +18,7 @@ from app.models.schema.ai_provider import (
     ProviderUpdate,
 )
 from app.models.schema.common import BasePageQuery, PageResult
-from app.service.ai.provider_connectivity_service import test_connection
-from app.infrastructure.llm.provider_health_service import provider_health_service
+from app.service.ai.service.provider_connectivity_service import test_connection
 from app.service.ai_provider_key_service import ai_provider_key_service
 from app.service.ai_provider_service import ai_provider_service
 

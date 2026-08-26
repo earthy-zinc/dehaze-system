@@ -13,6 +13,14 @@ from app.service.billing.balance_service import balance_service
 class RefundService:
     """退款补偿：申请 → 审核 → 余额回补"""
 
+    def __init__(
+        self,
+        ai_billing_repository=ai_billing_repository,
+        ai_refund_repository=ai_refund_repository,
+    ):
+        self.ai_billing_repository = ai_billing_repository
+        self.ai_refund_repository = ai_refund_repository
+
     async def apply_refund(self, 
         db: AsyncSession,
         user_id: int,
@@ -27,13 +35,13 @@ class RefundService:
         """
         if amount <= 0:
             raise BusinessException(ResultCode.PARAM_ERROR, "退款积分数必须大于 0")
-        record = await ai_billing_repository.get_by_id(db, billing_id)
+        record = await self.ai_billing_repository.get_by_id(db, billing_id)
         if not record or record.user_id != user_id:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "计费记录不存在")
-        existing = await ai_refund_repository.get_pending_by_billing_id(db, billing_id)
+        existing = await self.ai_refund_repository.get_pending_by_billing_id(db, billing_id)
         if existing:
             raise BusinessException(ResultCode.AI_REFUND_ALREADY_EXISTS)
-        refund = await ai_refund_repository.create_refund(
+        refund = await self.ai_refund_repository.create_refund(
             db,
             user_id=user_id,
             billing_id=billing_id,
@@ -55,7 +63,7 @@ class RefundService:
         approved=True: 余额回补（source=refund, related_id=billing_id），不重置日/月限额已用计数
         approved=False: 标记拒绝
         """
-        refund = await ai_refund_repository.get_by_id(db, refund_id)
+        refund = await self.ai_refund_repository.get_by_id(db, refund_id)
         if not refund:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "退款申请不存在")
         if refund.status != 1:  # 非待审核

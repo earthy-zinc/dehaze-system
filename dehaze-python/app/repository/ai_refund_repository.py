@@ -49,5 +49,24 @@ class AiRefundRepository(BaseRepository[SysAiRefund]):
         stmt = stmt.order_by(SysAiRefund.create_time.desc(), SysAiRefund.id.desc())
         return await self.paginate(db, stmt, page, size)
 
+    async def latest_status_by_billing_ids(
+        self,
+        db: AsyncSession,
+        billing_ids: list[int],
+    ) -> dict[int, int]:
+        """批量查询计费记录的最新退款状态（0:无;1:待审核;2:已通过;3:已驳回）"""
+        if not billing_ids:
+            return {}
+        stmt = (
+            select(SysAiRefund.billing_id, SysAiRefund.status)
+            .where(SysAiRefund.billing_id.in_(billing_ids))
+            .order_by(SysAiRefund.id.asc())
+        )
+        result = await db.execute(stmt)
+        status_map: dict[int, int] = {}
+        for billing_id, status in result.all():
+            status_map[billing_id] = status
+        return status_map
+
 
 ai_refund_repository = AiRefundRepository()

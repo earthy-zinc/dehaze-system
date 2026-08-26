@@ -101,7 +101,6 @@ class DistributedConnectionManager:
                     self._local_connections[user_id] = []
                 self._local_connections[user_id].append(conn)
 
-            # 更新 Redis 在线状态
             await self._update_online_status(user_id)
 
             logger.debug(f"WebSocket 连接成功: user_id={user_id}, username={username}")
@@ -345,7 +344,6 @@ class DistributedConnectionManager:
                 logger.warning(f"更新 Redis 在线状态失败: user_id={user_id}, error={e}")
 
 
-# 全局连接管理器
 manager = DistributedConnectionManager()
 
 
@@ -512,5 +510,4 @@ async def close_websocket_manager():
     await manager.stop()
 
 
-# WebSocket 服务单例
 websocket_service = WebSocketService()

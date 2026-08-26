@@ -51,9 +51,14 @@ class AuthService:
                 db, None, username, client_ip, 0, e.message, browser, os_name
             )
             raise
-        user_id = (result.get("user") or {}).get("id")
+        user = result.get("user")
+        if not user:
+            # 登录成功但响应缺失用户结构属内部异常，不得静默记为匿名，显式暴露
+            raise BusinessException(
+                ResultCode.SYSTEM_EXECUTION_ERROR, "登录成功但用户信息缺失"
+            )
         await login_log_repository.create_log(
-            db, user_id, username, client_ip, 1, "登录成功", browser, os_name
+            db, user.get("id"), username, client_ip, 1, "登录成功", browser, os_name
         )
         return result
 
@@ -66,7 +71,6 @@ class AuthService:
         captcha_key: str,
         captcha_code: str,
     ) -> dict:
-        # IP 纬度锁定检查
         ip_fail_key = f"{LOGIN_FAIL_IP_PREFIX}{client_ip}"
         ip_fail_count_str = await redis.get(ip_fail_key)
         ip_fail_count = int(ip_fail_count_str) if ip_fail_count_str else 0
@@ -168,7 +172,6 @@ class AuthService:
         默认以 A0210（用户名或密码错误）抛出；验证码类失败可传入
         code=A0213/A0214，使计数递增的同时返回对应错误码（T-AM-054 验证码错误计入失败计数）。
         """
-        # 递增 IP 纬度计数
         if ip_fail_key:
             ip_count = await redis.incr(ip_fail_key)
             if ip_count == 1:
@@ -432,5 +435,4 @@ class AuthService:
         return True, False
 
 
-# 单例
 auth_service = AuthService()

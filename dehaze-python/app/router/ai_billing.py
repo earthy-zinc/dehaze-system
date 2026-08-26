@@ -13,11 +13,14 @@ from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.ai_billing import (
     AdjustRequest,
+    AnomalyRecordQuery,
+    AnomalyRecordResult,
     BalanceResult,
     BillingRecordQuery,
     BillingRecordResult,
     BillingStatQuery,
     BillingStatResult,
+    BillingSummaryResult,
     BillResult,
     CreditLogQuery,
     CreditLogResult,
@@ -25,11 +28,22 @@ from app.models.schema.ai_billing import (
     RefundCreateRequest,
     RefundResult,
 )
+from app.models.schema.ai_billing_cost import (
+    CostStatResult,
+    ModelCostCreateRequest,
+    ModelCostQuery,
+    ModelCostResult,
+    ModelCostUpdateRequest,
+    ReconcileImportRequest,
+)
 from app.models.schema.common import PageResult
 from app.service.billing.balance_service import balance_service
 from app.service.billing.bill_service import bill_service
+from app.service.billing.billing_anomaly_service import billing_anomaly_service
 from app.service.billing.billing_record_service import billing_record_service
 from app.service.billing.billing_stat_service import billing_stat_service
+from app.service.billing.cost_service import cost_service
+from app.service.billing.cost_stat_service import cost_stat_service
 from app.service.billing.quota_service import quota_service
 from app.service.billing.recharge_service import recharge_service
 from app.service.billing.refund_service import refund_service
@@ -65,6 +79,15 @@ async def get_balance(
     user: UserContext = Depends(get_current_user),
 ):
     return success(await _build_balance(db, user.id))
+
+
+@router.get("/summary", response_model=Result[BillingSummaryResult], summary="消耗汇总查询")
+async def get_summary(
+    dimension: str = Query(default="day"),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    return success(await billing_stat_service.summary(db, user.id, dimension))
 
 
 @router.get("/records", response_model=Result[PageResult[BillingRecordResult]], summary="计费明细查询")
@@ -200,6 +223,111 @@ async def audit_refund(
             db, refund_id, body.approved, body.audit_remark, user.id
         )
     )
+
+
+@router.get("/anomalies", response_model=Result[PageResult[AnomalyRecordResult]], summary="异常计费记录查询")
+@require_permission("ai:billing:stat")
+async def list_anomalies(
+    pageNum: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+    userId: int | None = Query(default=None),
+    anomalyType: str | None = Query(default=None),
+    status: int | None = Query(default=None),
+    dateStart: str | None = Query(default=None),
+    dateEnd: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    query = AnomalyRecordQuery(
+        user_id=userId,
+        anomaly_type=anomalyType,
+        status=status,
+        date_start=_parse_datetime(dateStart),
+        date_end=_parse_datetime(dateEnd),
+        page=pageNum,
+        size=pageSize,
+    )
+    return success(await billing_anomaly_service.list_anomalies(db, query))
+
+
+@router.get("/costs", response_model=Result[PageResult[ModelCostResult]], summary="成本单价列表")
+@require_permission("ai:billing:cost")
+async def list_costs(
+    keyword: str | None = Query(default=None),
+    modelId: str | None = Query(default=None),
+    providerId: int | None = Query(default=None),
+    pageNum: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    query = ModelCostQuery(
+        keyword=keyword,
+        model_id=modelId,
+        provider_id=providerId,
+        page=pageNum,
+        size=pageSize,
+    )
+    return success(await cost_service.list_costs(db, query))
+
+
+@router.post("/costs", response_model=Result[ModelCostResult], summary="新增成本单价")
+@require_permission("ai:billing:cost")
+async def create_cost(
+    body: ModelCostCreateRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    return success(await cost_service.create_cost(db, body))
+
+
+@router.put("/costs/{cost_id}", response_model=Result[ModelCostResult], summary="更新成本单价")
+@require_permission("ai:billing:cost")
+async def update_cost(
+    cost_id: int = Path(...),
+    body: ModelCostUpdateRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    data = body.model_dump(exclude_unset=True, exclude_none=True)
+    return success(await cost_service.update_cost(db, cost_id, data))
+
+
+@router.delete("/costs/{cost_id}", response_model=Result[None], summary="删除成本单价")
+@require_permission("ai:billing:cost")
+async def delete_cost(
+    cost_id: int = Path(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    await cost_service.delete_cost(db, cost_id)
+    return success(None)
+
+
+@router.get("/cost-stats", response_model=Result[list[CostStatResult]], summary="成本-利润统计")
+@require_permission("ai:billing:cost")
+async def get_cost_stats(
+    startTime: str | None = Query(default=None),
+    endTime: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    return success(
+        await cost_stat_service.cost_stats(
+            db, _parse_datetime(startTime), _parse_datetime(endTime)
+        )
+    )
+
+
+@router.post("/reconcile/import", response_model=Result[dict], summary="供应商账单导入")
+@require_permission("ai:billing:cost")
+async def import_reconcile(
+    body: ReconcileImportRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    imported = cost_service.import_reconcile(body.content)
+    return success({"imported": imported})
 
 
 def _parse_datetime(value: str | None) -> datetime | None:

@@ -47,6 +47,14 @@ class SysAiProvider(BaseModel, SoftDeleteMixin):
     health_check_enabled: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, default=1, comment="健康检查开关(1:开启,参与熔断判定;0:关闭)"
     )
+    user_identity_forward: Mapped[Any | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment=(
+            "用户身份透传配置(JSON,抽象覆盖DeepSeek user_id/OpenAI user/Anthropic "
+            "metadata.user_id;NULL=不启用):enabled/field/prefix/max_len"
+        ),
+    )
     remark: Mapped[str | None] = mapped_column(
         String(512), nullable=True, comment="运维备注(账号归属/合同号/商务信息)"
     )

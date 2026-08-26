@@ -24,7 +24,7 @@ from app.repository.feedback_repository import (
 )
 from app.repository.member_growth_log_repository import member_growth_log_repository
 from app.repository.member_repository import member_repository
-from app.service.member_service import _check_and_adjust_level, _invalidate_member_cache
+from app.service.member import member_service
 
 logger = logging.getLogger(__name__)
 
@@ -194,9 +194,25 @@ def _reply_to_vo(reply: SysFeedbackReply, username: str = "") -> dict:
 
 
 class FeedbackService:
+    def __init__(
+        self,
+        rating_repository=rating_repository,
+        feedback_repository=feedback_repository,
+        feedback_reply_repository=feedback_reply_repository,
+        member_repository=member_repository,
+        member_growth_log_repository=member_growth_log_repository,
+        member_service=member_service,
+    ):
+        self.rating_repository = rating_repository
+        self.feedback_repository = feedback_repository
+        self.feedback_reply_repository = feedback_reply_repository
+        self.member_repository = member_repository
+        self.member_growth_log_repository = member_growth_log_repository
+        self.member_service = member_service
+
     async def create_rating(self, db: AsyncSession, redis: Redis, user_id: int, form: dict) -> dict:
         pred_log_id = form["predLogId"]
-        pred_log = await rating_repository.get_prediction_log(db, pred_log_id)
+        pred_log = await self.rating_repository.get_prediction_log(db, pred_log_id)
         if not pred_log:
             raise BusinessException(ResultCode.PREDICTION_LOG_NOT_FOUND)
 
@@ -206,7 +222,7 @@ class FeedbackService:
         if pred_log.create_by != user_id:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "无权评价他人的处理记录")
 
-        existing = await rating_repository.get_by_pred_log_id(db, pred_log_id)
+        existing = await self.rating_repository.get_by_pred_log_id(db, pred_log_id)
         if existing:
             raise BusinessException(ResultCode.RATING_ALREADY_EXISTS)
 
@@ -228,7 +244,7 @@ class FeedbackService:
             is_anonymous=form.get("isAnonymous", 0),
         )
 
-        await rating_repository.create(db, rating)
+        await self.rating_repository.create(db, rating)
         await self._award_rating_growth(db, redis, user_id, rating.id)
 
         cache = CacheService(redis)
@@ -251,7 +267,7 @@ class FeedbackService:
         if current_count is not None and int(current_count) >= RATING_DAILY_GROWTH_LIMIT:
             return
 
-        member = await member_repository.get_by_user_id(db, user_id)
+        member = await self.member_repository.get_by_user_id(db, user_id)
         if not member:
             return
 
@@ -259,7 +275,7 @@ class FeedbackService:
         member.growth_value = old_growth + RATING_GROWTH_VALUE
         await db.flush()
 
-        await member_growth_log_repository.create_log(
+        await self.member_growth_log_repository.create_log(
             db,
             user_id=user_id,
             change_type="rating",
@@ -271,11 +287,13 @@ class FeedbackService:
         )
 
         old_level = member.level_code
-        await _check_and_adjust_level(db, member)
-        await _invalidate_member_cache(user_id=user_id)
+        await self.member_service._check_and_adjust_level(
+            db, member, self.member_service.member_benefit_repository
+        )
+        await self.member_service._invalidate_member_cache(user_id=user_id)
         if member.level_code != old_level:
-            await _invalidate_member_cache(level_code=old_level)
-            await _invalidate_member_cache(level_code=member.level_code)
+            await self.member_service._invalidate_member_cache(level_code=old_level)
+            await self.member_service._invalidate_member_cache(level_code=member.level_code)
 
         await redis.incr(count_key)
         await redis.expire(count_key, DAILY_COUNT_TTL)
@@ -301,7 +319,7 @@ class FeedbackService:
     async def update_rating(
         self, db: AsyncSession, redis: Redis, user_id: int, rating_id: int, form: dict
     ) -> None:
-        data = await rating_repository.get_detail_with_user(db, rating_id)
+        data = await self.rating_repository.get_detail_with_user(db, rating_id)
         if not data:
             raise BusinessException(ResultCode.RATING_NOT_FOUND)
 
@@ -325,7 +343,7 @@ class FeedbackService:
         )
 
     async def list_my_ratings(self, db: AsyncSession, user_id: int, query: dict) -> dict:
-        items, total = await rating_repository.get_my_page(
+        items, total = await self.rating_repository.get_my_page(
             db,
             user_id,
             query["pageNum"],
@@ -342,18 +360,18 @@ class FeedbackService:
         user_id: int,
         pred_log_id: int,
     ) -> dict | None:
-        pred_log = await rating_repository.get_prediction_log(db, pred_log_id)
+        pred_log = await self.rating_repository.get_prediction_log(db, pred_log_id)
         if not pred_log:
             raise BusinessException(ResultCode.PREDICTION_LOG_NOT_FOUND)
         if pred_log.create_by != user_id:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "无权查询他人处理记录的评价")
 
         # 用户端查询需过滤已隐藏评价（T-FE-026），由 repository 层保证
-        rating = await rating_repository.get_visible_by_pred_log_id(db, pred_log_id)
+        rating = await self.rating_repository.get_visible_by_pred_log_id(db, pred_log_id)
         if not rating:
             return None
 
-        data = await rating_repository.get_detail_with_user(db, rating.id)
+        data = await self.rating_repository.get_detail_with_user(db, rating.id)
         if not data:
             return None
 
@@ -367,7 +385,7 @@ class FeedbackService:
         return _anonymize_rating_vo(vo, rating)
 
     async def list_paged_ratings(self, db: AsyncSession, query: dict) -> dict:
-        items, total = await rating_repository.get_admin_page(
+        items, total = await self.rating_repository.get_admin_page(
             db,
             query["pageNum"],
             query["pageSize"],
@@ -392,14 +410,14 @@ class FeedbackService:
         return {"list": list_data, "total": total}
 
     async def hide_rating(self, db: AsyncSession, rating_id: int) -> None:
-        rating = await rating_repository.get_by_id(db, rating_id)
+        rating = await self.rating_repository.get_by_id(db, rating_id)
         if not rating:
             raise BusinessException(ResultCode.RATING_NOT_FOUND)
         rating.is_hidden = 1
         await db.flush()
 
     async def reply_rating(self, db: AsyncSession, rating_id: int, content: str, admin_id: int) -> None:
-        rating = await rating_repository.get_by_id(db, rating_id)
+        rating = await self.rating_repository.get_by_id(db, rating_id)
         if not rating:
             raise BusinessException(ResultCode.RATING_NOT_FOUND)
         rating.admin_reply = content
@@ -420,7 +438,7 @@ class FeedbackService:
             if cached is not None:
                 return cached
 
-        stats = await rating_repository.get_stats(db, start_time, end_time)
+        stats = await self.rating_repository.get_stats(db, start_time, end_time)
 
         if not start_time and not end_time:
             await cache.set_json(cache_key, stats, STATS_CACHE_TTL)
@@ -446,7 +464,7 @@ class FeedbackService:
             status=STATUS_PENDING,
             priority=1,
         )
-        await feedback_repository.create(db, feedback)
+        await self.feedback_repository.create(db, feedback)
 
         await redis.incr(count_key)
         await redis.expire(count_key, DAILY_COUNT_TTL)
@@ -457,7 +475,7 @@ class FeedbackService:
         return {"id": feedback.id}
 
     async def list_my_feedback(self, db: AsyncSession, user_id: int, query: dict) -> dict:
-        items, total = await feedback_repository.get_my_page(
+        items, total = await self.feedback_repository.get_my_page(
             db,
             user_id,
             query["pageNum"],
@@ -480,7 +498,7 @@ class FeedbackService:
         user_id: int,
         is_admin: bool,
     ) -> dict:
-        data = await feedback_repository.get_detail_with_users(db, feedback_id)
+        data = await self.feedback_repository.get_detail_with_users(db, feedback_id)
         if not data:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND)
 
@@ -488,7 +506,7 @@ class FeedbackService:
         if not is_admin and feedback.user_id != user_id:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND)
 
-        reply_rows, _ = await feedback_reply_repository.list_by_feedback_id(db, feedback_id)
+        reply_rows, _ = await self.feedback_reply_repository.list_by_feedback_id(db, feedback_id)
         replies = [_reply_to_vo(row["reply"], row.get("username") or "") for row in reply_rows]
 
         return _feedback_to_detail_vo(
@@ -506,7 +524,7 @@ class FeedbackService:
         feedback_id: int,
         form: dict,
     ) -> None:
-        feedback = await feedback_repository.get_by_id(db, feedback_id)
+        feedback = await self.feedback_repository.get_by_id(db, feedback_id)
         if not feedback:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND)
         if feedback.user_id != user_id:
@@ -522,14 +540,14 @@ class FeedbackService:
             reply_type="supplement",
             attachments=form.get("attachments"),
         )
-        await feedback_reply_repository.create(db, reply)
+        await self.feedback_reply_repository.create(db, reply)
 
         if feedback.status == STATUS_REPLIED:
             feedback.status = STATUS_PROCESSING
             await db.flush()
 
     async def list_paged_feedback(self, db: AsyncSession, query: dict) -> dict:
-        items, total = await feedback_repository.get_admin_page(
+        items, total = await self.feedback_repository.get_admin_page(
             db,
             query["pageNum"],
             query["pageSize"],
@@ -559,7 +577,7 @@ class FeedbackService:
         assignee_id: int,
         admin_id: int,
     ) -> None:
-        feedback = await feedback_repository.get_by_id(db, feedback_id)
+        feedback = await self.feedback_repository.get_by_id(db, feedback_id)
         if not feedback:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND)
         if feedback.status == STATUS_CLOSED:
@@ -578,7 +596,7 @@ class FeedbackService:
         form: dict,
         admin_id: int,
     ) -> None:
-        feedback = await feedback_repository.get_by_id(db, feedback_id)
+        feedback = await self.feedback_repository.get_by_id(db, feedback_id)
         if not feedback:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND)
         if feedback.status == STATUS_CLOSED:
@@ -592,7 +610,7 @@ class FeedbackService:
             reply_type=form.get("replyType"),
             attachments=form.get("attachments"),
         )
-        await feedback_reply_repository.create(db, reply)
+        await self.feedback_reply_repository.create(db, reply)
 
         feedback.status = STATUS_REPLIED
         await db.flush()
@@ -604,7 +622,7 @@ class FeedbackService:
         close_reason: str,
         admin_id: int,
     ) -> None:
-        feedback = await feedback_repository.get_by_id(db, feedback_id)
+        feedback = await self.feedback_repository.get_by_id(db, feedback_id)
         if not feedback:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND)
         if feedback.status == STATUS_CLOSED:
@@ -615,7 +633,7 @@ class FeedbackService:
         await db.flush()
 
     async def update_feedback_tags(self, db: AsyncSession, feedback_id: int, tags: list) -> None:
-        feedback = await feedback_repository.get_by_id(db, feedback_id)
+        feedback = await self.feedback_repository.get_by_id(db, feedback_id)
         if not feedback:
             raise BusinessException(ResultCode.FEEDBACK_NOT_FOUND)
         feedback.tags = tags if tags else []
@@ -635,7 +653,7 @@ class FeedbackService:
             if cached is not None:
                 return cached
 
-        stats = await feedback_repository.get_stats(db, start_time, end_time)
+        stats = await self.feedback_repository.get_stats(db, start_time, end_time)
 
         if not start_time and not end_time:
             await cache.set_json(cache_key, stats, STATS_CACHE_TTL)

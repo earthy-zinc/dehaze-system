@@ -40,7 +40,6 @@ class DeptService:
         if not dept_list:
             return []
 
-        # 构建部门字典
         dept_dict = {
             dept.id: {
                 "id": dept.id,
@@ -57,7 +56,6 @@ class DeptService:
             for dept in dept_list
         }
 
-        # 构建父子关系
         root_depts = []
         for dept in dept_dict.values():
             if dept["parentId"] == 0:
@@ -74,29 +72,42 @@ class DeptService:
         db: AsyncSession,
         keywords: str | None = None,
         status: int | None = None,
+        current_user=None,
     ) -> list[dict[str, Any]]:
-        """获取部门列表（树形结构）"""
-        dept_list = await dept_repository.get_dept_list(db, keywords=keywords, status=status)
+        """获取部门列表（树形结构，按 current_user 行级数据权限过滤）"""
+        dept_list = await dept_repository.get_dept_list(
+            db, keywords=keywords, status=status, current_user=current_user
+        )
         return self._build_dept_tree(dept_list)
 
     async def get_dept_options(
         self,
         db: AsyncSession,
         redis: Redis,
+        current_user=None,
     ) -> list[dict[str, Any]]:
-        """获取部门下拉选项（树形结构，带缓存）"""
+        """获取部门下拉选项（树形结构，带缓存）
+
+        缓存仅对全量视图（ROOT / 全部数据权限）生效；行级过滤结果因人而异，不读写缓存。
+        """
+        # ROOT 或 data_scope 为空/0 时无行级过滤，全量结果可共享缓存
+        cacheable = (
+            current_user is None
+            or current_user.is_root
+            or current_user.data_scope is None
+            or current_user.data_scope == 0
+        )
         cache = CacheService(redis)
 
-        # 尝试从缓存获取
-        cached = await cache.get_json(DeptCacheKeys.OPTIONS)
-        if cached is not None:
-            return cached
+        if cacheable:
+            cached = await cache.get_json(DeptCacheKeys.OPTIONS)
+            if cached is not None:
+                return cached
 
-        # 从数据库获取
-        options = await dept_repository.get_dept_options_tree(db)
+        options = await dept_repository.get_dept_options_tree(db, current_user=current_user)
 
-        # 写入缓存
-        await cache.set_json(DeptCacheKeys.OPTIONS, options, CACHE_TTL_HOUR)
+        if cacheable:
+            await cache.set_json(DeptCacheKeys.OPTIONS, options, CACHE_TTL_HOUR)
 
         return options
 
@@ -159,23 +170,18 @@ class DeptService:
         if not name:
             raise BusinessException("部门名称不能为空")
 
-        # XSS 防护：校验部门名称安全性
         self._validate_name_safety(name)
 
-        # 1. 校验部门名称是否存在（全局，匹配 Java）
         if await dept_repository.check_name_exists(db, name):
             raise BusinessException("部门名称已存在")
 
-        # 2. 校验父部门是否存在（根部门除外，匹配 Java）
         if parent_id != 0:
             parent_dept = await dept_repository.get_by_id(db, parent_id)
             if not parent_dept:
                 raise BusinessException("父部门不存在")
 
-        # 3. 生成 tree_path
         tree_path = await dept_repository.generate_tree_path(db, parent_id)
 
-        # 4. 校验部门层级不超过 5 级（T-DPT-014）
         await self._assert_max_dept_depth(tree_path)
 
         dept = SysDept(
@@ -190,7 +196,6 @@ class DeptService:
         await db.flush()
         await db.refresh(dept)
 
-        # 清除缓存
         await self._clear_cache(redis)
 
         return dept.id
@@ -224,7 +229,6 @@ class DeptService:
         # 1. 校验部门名称是否存在（全局，匹配 Java）
         name = data.get("name")
         if name:
-            # XSS 防护：校验部门名称安全性
             self._validate_name_safety(name)
             if await dept_repository.check_name_exists(db, name, exclude_id=dept_id):
                 raise BusinessException("部门名称已存在")
@@ -232,7 +236,6 @@ class DeptService:
         # 2. 循环引用校验：不能将部门移动到自身或其子部门下（匹配 Java）
         if "parentId" in data:
             new_parent_id = data["parentId"]
-            # 不能将部门设置为自己的上级部门
             if new_parent_id == dept_id:
                 raise BusinessException("不能将部门设置为自己的上级部门")
 
@@ -246,14 +249,12 @@ class DeptService:
                     if f",{dept_id}," in tree_path_with_commas:
                         raise BusinessException("不能将部门移动到其子部门下，存在循环引用")
 
-            # 更新 tree_path 和 parent_id
             new_tree_path = await dept_repository.generate_tree_path(db, new_parent_id)
             # 移动后层级校验（T-DPT-018a：移动至超深层级报 A0504"部门层级不能超过5级"）
             await self._assert_max_dept_depth(new_tree_path)
             dept.tree_path = new_tree_path
             dept.parent_id = new_parent_id
 
-        # 3. 更新其他字段
         if "name" in data:
             dept.name = data["name"]
         if "status" in data:
@@ -261,7 +262,6 @@ class DeptService:
         if "sort" in data:
             dept.sort = data["sort"]
 
-        # 清除缓存
         await self._clear_cache(redis)
 
         return dept.id
@@ -319,7 +319,6 @@ class DeptService:
         if deleted_count == 0:
             raise BusinessException("部门删除失败")
 
-        # 清除缓存
         await self._clear_cache(redis)
 
     async def _clear_cache(self, redis: Redis) -> None:

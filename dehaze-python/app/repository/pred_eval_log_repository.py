@@ -27,6 +27,22 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         )
         return (await db.execute(stmt)).scalar() or 0
 
+    async def list_recent_pred_urls(
+        self, db: AsyncSession, algorithm_id: int, limit: int = 3
+    ) -> list[str]:
+        """算法最近成功预测的结果图 URL（算法选择详情样例图）"""
+        stmt = (
+            select(SysPredLog.pred_url)
+            .where(
+                SysPredLog.algorithm_id == algorithm_id,
+                SysPredLog.status == LogStatus.COMPLETED.value,
+            )
+            .order_by(desc(SysPredLog.id))
+            .limit(limit)
+        )
+        result = await db.execute(stmt)
+        return [url for url in result.scalars().all() if url]
+
     async def list_ids_by_file(self, db: AsyncSession, file_id: int) -> list[int]:
         """按预测结果/原图文件反查预测日志 id（文件删除联动失效产物用）"""
         stmt = select(SysPredLog.id).where(

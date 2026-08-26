@@ -1,3 +1,8 @@
+import pytest
+
+pytestmark = pytest.mark.api
+
+
 def test_idempotency_key_header_required_in_schema(app):
     schema = app.openapi()
     path = "/api/v1/ai/conversations/{conv_id}/messages"

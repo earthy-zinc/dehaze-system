@@ -75,6 +75,7 @@ class ResultCode(Enum):
     PAYMENT_AMOUNT_MISMATCH = ("A0538", "支付金额与订单金额不一致")
     DUPLICATE_ORDER = ("A0539", "短时间内重复下单")
     REFUND_ALREADY_EXISTS = ("A053A", "该订单已存在退款申请")
+    BALANCE_INSUFFICIENT = ("A053B", "余额不足")
 
     # 反馈评价模块业务错误码 A054x
     RATING_ALREADY_EXISTS = ("A0540", "该处理记录已评价")

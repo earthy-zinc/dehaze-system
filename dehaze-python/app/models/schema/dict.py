@@ -6,14 +6,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.models.schema.common import validate_no_xss
 
-# ==================== 查询参数模型 ====================
-
-
-# ==================== 路径参数模型 ====================
-
-
-# ==================== 请求体模型 ====================
-
 
 class DictForm(BaseModel):
     """字典表单"""
@@ -42,9 +34,6 @@ class DictTypeForm(BaseModel):
     remark: str | None = Field(default=None, max_length=255, description="备注")
 
     name_code_no_xss_validator = field_validator("name", "code")(validate_no_xss)
-
-
-# ==================== 响应模型 ====================
 
 
 class DictPageVO(BaseModel):

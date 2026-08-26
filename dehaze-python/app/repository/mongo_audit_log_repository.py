@@ -37,7 +37,7 @@ class MongoAuditLogRepository:
             "user_agent": user_agent,
             "create_time": datetime.now(UTC),
         }
-        result = await get_mongo_client()[settings.MONGO_DB_NAME][
+        result = await get_mongo_client()[settings.MONGODB_DATABASE][
             AuditLogDocument.COLLECTION
         ].insert_one(doc)
         doc["_id"] = result.inserted_id

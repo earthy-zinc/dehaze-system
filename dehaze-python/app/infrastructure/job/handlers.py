@@ -276,7 +276,7 @@ async def cleanup_orphan_files() -> str:
         from app.repository.file_repository import file_repository
         from app.service.storage.factory import get_storage_service
 
-        bucket_name = settings.MINIO_BUCKET_NAME
+        bucket_name = settings.MINIO_BUCKET
 
         async with get_db_session() as db:
             # 获取数据库中所有文件的 object_name
@@ -526,7 +526,7 @@ async def expire_orders() -> str:
 
     CRON 建议: 0 0/5 * * * ? （每 5 分钟）
     """
-    from app.service.order_service import order_service
+    from app.service.order.order_service import order_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
@@ -555,7 +555,7 @@ async def complete_expired_orders() -> str:
 
     CRON 建议: 0 0 3 * * ? （每天凌晨 3 点）
     """
-    from app.service.order_service import order_service
+    from app.service.order.order_service import order_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
@@ -616,12 +616,12 @@ async def auto_renew_task() -> str:
 
     CRON 建议: 0 0 8 * * ? （每天凌晨 8 点）
     """
-    from app.service.order_service import order_service
+    from app.service.order.auto_renew_service import auto_renew_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            success_count = await order_service.execute_renewal(db)
+            success_count = await auto_renew_service.execute_renewal(db)
 
         if success_count > 0:
             msg = f"自动续费扣款完成: 成功={success_count}"
@@ -646,12 +646,12 @@ async def reset_monthly_quota() -> str:
 
     CRON 建议: 0 0 0 1 * ? （每月 1 日凌晨 0 点）
     """
-    from app.service.member_service import MemberService
+    from app.service.member.quota_service import member_quota_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            count = await MemberService.reset_monthly_quota(db)
+            count = await member_quota_service.reset_monthly_quota(db)
 
         if count > 0:
             msg = f"会员月度配额重置完成: 已重置={count}"
@@ -675,12 +675,12 @@ async def process_expired_members() -> str:
 
     CRON 建议: 0 0 2 * * ? （每天凌晨 2 点）
     """
-    from app.service.member_service import MemberService
+    from app.service.member.expiry_service import member_expiry_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            count = await MemberService.process_expired_members(db)
+            count = await member_expiry_service.process_expired_members(db)
 
         if count > 0:
             msg = f"会员过期降级处理完成: 已处理={count}"
@@ -704,12 +704,12 @@ async def retry_failed_refunds() -> str:
 
     CRON 建议: 0 0/30 * * * ? （每 30 分钟）
     """
-    from app.service.order_service import order_service
+    from app.service.order.refund_service import refund_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            count = await order_service.retry_failed_refunds(db)
+            count = await refund_service.retry_failed_refunds(db)
 
         if count > 0:
             msg = f"退款失败重试完成: 已处理={count}"
@@ -735,12 +735,12 @@ async def send_expire_reminders() -> str:
 
     CRON 建议: 0 0 9 * * ? （每天 09:00）
     """
-    from app.service.member_service import MemberService
+    from app.service.member.expiry_service import member_expiry_service
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
         async with get_db_session() as db:
-            count = await MemberService.send_expire_reminders(db)
+            count = await member_expiry_service.send_expire_reminders(db)
 
         if count > 0:
             msg = f"会员到期预警完成: 已发送={count}"
@@ -826,7 +826,7 @@ async def ai_memory_reflection() -> str:
     """
     from app.config import settings
     from app.repository.ai_memory_repository import ai_memory_repository
-    from app.service.ai.memory_extraction import reflect_and_consolidate
+    from app.service.ai.service.memory_extraction import reflect_and_consolidate
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
@@ -859,7 +859,7 @@ async def ai_memory_merge() -> str:
     """
     from app.config import settings
     from app.repository.ai_memory_repository import ai_memory_repository
-    from app.service.ai.memory_extraction import merge_duplicates
+    from app.service.ai.service.memory_extraction import merge_duplicates
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
@@ -1101,7 +1101,7 @@ async def ai_schedule_trigger() -> str:
     CRON 建议: 0 * * * * ? （每分钟）
     """
     from app.dependencies.redis import get_redis_client
-    from app.service.ai.ai_schedule_executor import schedule_executor
+    from app.service.ai.service.ai_schedule_executor import schedule_executor
 
     set_current_user_id(SYSTEM_USER_ID)
     try:

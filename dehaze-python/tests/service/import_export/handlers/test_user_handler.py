@@ -4,12 +4,14 @@ from contextlib import contextmanager
 from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from openpyxl import load_workbook
 
 from app.service.import_export.handlers.user_export import UserExportHandler, _user_to_row
+
+pytestmark = pytest.mark.requires_db
 from app.service.import_export.handlers.user_import import UserImportHandler
 from app.service.import_export.models import ExportContext, ImportOptions
-from tests.stubs import NullDBSession
 
 HASHED_PASSWORD = "$2b$12$abcdefghijklmnopqrstuvwxYz0123456789ABCDEFG"
 
@@ -58,11 +60,11 @@ class TestUserExportHandler:
         create_time_field = next(f for f in fields if f.field == "create_time")
         assert create_time_field.date_format == "%Y-%m-%d %H:%M:%S"
 
-    async def test_estimate_count_without_dept_id(self):
+    async def test_estimate_count_without_dept_id(self, db):
         handler = UserExportHandler()
         with _export_repos() as (user_repo, dept_repo):
             user_repo.get_user_list = AsyncMock(return_value=([], 42))
-            count = await handler.estimate_count(NullDBSession(), {"keywords": "张"})
+            count = await handler.estimate_count(db, {"keywords": "张"})
             assert count == 42
             dept_repo.get_children_ids.assert_not_called()
             user_repo.get_user_list.assert_awaited_once()
@@ -71,17 +73,17 @@ class TestUserExportHandler:
             assert call_kwargs["page"] == 1
             assert call_kwargs["page_size"] == 1
 
-    async def test_estimate_count_with_dept_id(self):
+    async def test_estimate_count_with_dept_id(self, db):
         handler = UserExportHandler()
         with _export_repos() as (user_repo, dept_repo):
             dept_repo.get_children_ids = AsyncMock(return_value=[1, 2, 3])
             user_repo.get_user_list = AsyncMock(return_value=([], 100))
-            count = await handler.estimate_count(NullDBSession(), {"deptId": 1})
+            count = await handler.estimate_count(db, {"deptId": 1})
             assert count == 100
             dept_repo.get_children_ids.assert_awaited_once()
             assert user_repo.get_user_list.call_args.kwargs["dept_ids"] == [1, 2, 3]
 
-    async def test_export_writes_excel_with_rows(self):
+    async def test_export_writes_excel_with_rows(self, db):
         handler = UserExportHandler()
         users = [
             {
@@ -119,7 +121,7 @@ class TestUserExportHandler:
                 query_params={},
                 total_count=2,
             )
-            await handler.export(NullDBSession(), ctx, output, *_callbacks())
+            await handler.export(db, ctx, output, *_callbacks())
             output.seek(0)
             ws = load_workbook(output).active
             rows = list(ws.iter_rows(values_only=True))
@@ -139,7 +141,7 @@ class TestUserExportHandler:
             assert rows[2][8] is None
             assert rows[2][9] is None
 
-    async def test_export_csv_format(self):
+    async def test_export_csv_format(self, db):
         handler = UserExportHandler()
         users = [
             {
@@ -161,7 +163,7 @@ class TestUserExportHandler:
             ctx = ExportContext(
                 task_id="t1", module="user", format="csv", query_params={}, total_count=1
             )
-            await handler.export(NullDBSession(), ctx, output, *_callbacks())
+            await handler.export(db, ctx, output, *_callbacks())
             content = output.getvalue()
             assert content.startswith("\ufeff".encode("utf-8"))
             reader = list(csv.reader(io.StringIO(content.decode("utf-8-sig"))))
@@ -180,7 +182,7 @@ class TestUserExportHandler:
             assert reader[1][1] == '=HYPERLINK("http://evil","点我")'
             assert reader[1][2] == "张,三（全角，逗号）"
 
-    async def test_export_selected_fields_only(self):
+    async def test_export_selected_fields_only(self, db):
         handler = UserExportHandler()
         users = [
             {
@@ -201,14 +203,14 @@ class TestUserExportHandler:
                 total_count=1,
                 selected_fields=["email", "username"],
             )
-            await handler.export(NullDBSession(), ctx, output, *_callbacks())
+            await handler.export(db, ctx, output, *_callbacks())
             output.seek(0)
             ws = load_workbook(output).active
             rows = list(ws.iter_rows(values_only=True))
             assert rows[0] == ("用户名", "邮箱")
             assert rows[1] == ("zhangsan", "zhangsan@example.com")
 
-    async def test_export_stops_on_cancel(self):
+    async def test_export_stops_on_cancel(self, db):
         handler = UserExportHandler()
         users = [
             {
@@ -226,7 +228,7 @@ class TestUserExportHandler:
             ctx = ExportContext(
                 task_id="t1", module="user", format="excel", query_params={}, total_count=1
             )
-            await handler.export(NullDBSession(), ctx, output, progress_cb, cancel_cb)
+            await handler.export(db, ctx, output, progress_cb, cancel_cb)
             assert user_repo.get_user_list.await_count == 1
             cancel_cb.assert_awaited_once()
 
@@ -254,7 +256,7 @@ class TestUserImportHandler:
         assert sample["nickname"] == "张三"
         assert sample["mobile"] == "13800138000"
 
-    async def test_import_batch_success(self):
+    async def test_import_batch_success(self, db):
         handler = UserImportHandler()
         rows = [
             {
@@ -267,7 +269,7 @@ class TestUserImportHandler:
         ]
         with _import_repos() as user_repo:
             result = await handler.import_batch(
-                NullDBSession(),
+                db,
                 rows,
                 ImportOptions(mode="all"),
                 *_callbacks(),
@@ -281,7 +283,7 @@ class TestUserImportHandler:
             assert created_user.nickname == "张三（研发）"
             assert created_user.password == HASHED_PASSWORD
 
-    async def test_import_batch_duplicate_username_skipped(self):
+    async def test_import_batch_duplicate_username_skipped(self, db):
         handler = UserImportHandler()
         rows = [
             {"username": "zhangsan", "nickname": "张三", "mobile": "13800138000"},
@@ -289,7 +291,7 @@ class TestUserImportHandler:
         ]
         with _import_repos(existing_usernames={"zhangsan"}) as user_repo:
             result = await handler.import_batch(
-                NullDBSession(),
+                db,
                 rows,
                 ImportOptions(mode="partial"),
                 *_callbacks(),
@@ -301,12 +303,12 @@ class TestUserImportHandler:
             assert result.errors[0].row == 2
             user_repo.create_user.assert_awaited_once()
 
-    async def test_import_batch_blank_username_recorded_as_error(self):
+    async def test_import_batch_blank_username_recorded_as_error(self, db):
         handler = UserImportHandler()
         rows = [{"username": "   ", "nickname": "张三"}]
         with _import_repos() as user_repo:
             result = await handler.import_batch(
-                NullDBSession(),
+                db,
                 rows,
                 ImportOptions(mode="partial"),
                 *_callbacks(),
@@ -315,7 +317,7 @@ class TestUserImportHandler:
             assert "为空" in result.errors[0].message
             user_repo.create_user.assert_not_called()
 
-    async def test_import_batch_duplicate_in_batch_skipped(self):
+    async def test_import_batch_duplicate_in_batch_skipped(self, db):
         handler = UserImportHandler()
         rows = [
             {"username": "zhangsan", "nickname": "张三", "mobile": "13800138000"},
@@ -323,7 +325,7 @@ class TestUserImportHandler:
         ]
         with _import_repos() as user_repo:
             result = await handler.import_batch(
-                NullDBSession(),
+                db,
                 rows,
                 ImportOptions(mode="partial"),
                 *_callbacks(),
@@ -332,12 +334,12 @@ class TestUserImportHandler:
             assert result.failure_count == 1
             assert result.errors[0].row == 3
 
-    async def test_import_batch_default_dept_id_from_options(self):
+    async def test_import_batch_default_dept_id_from_options(self, db):
         handler = UserImportHandler()
         rows = [{"username": "zhangsan", "nickname": "张三", "mobile": "13800138000"}]
         with _import_repos() as user_repo:
             await handler.import_batch(
-                NullDBSession(),
+                db,
                 rows,
                 ImportOptions(mode="all", extra={"deptId": 100}),
                 *_callbacks(),
@@ -345,12 +347,12 @@ class TestUserImportHandler:
             created_user = user_repo.create_user.call_args.args[1]
             assert created_user.dept_id == 100
 
-    async def test_import_batch_create_exception_recorded(self):
+    async def test_import_batch_create_exception_recorded(self, db):
         handler = UserImportHandler()
         rows = [{"username": "zhangsan", "nickname": "张三", "mobile": "13800138000"}]
         with _import_repos(create_side_effect=RuntimeError("DB 错误")) as user_repo:
             result = await handler.import_batch(
-                NullDBSession(),
+                db,
                 rows,
                 ImportOptions(mode="partial"),
                 *_callbacks(),
@@ -358,12 +360,12 @@ class TestUserImportHandler:
             assert result.failure_count == 1
             assert "DB 错误" in result.errors[0].message
 
-    async def test_import_batch_gender_female(self):
+    async def test_import_batch_gender_female(self, db):
         handler = UserImportHandler()
         rows = [{"username": "zhangsan", "nickname": "张三", "gender": "女", "mobile": "13800138000"}]
         with _import_repos() as user_repo:
             await handler.import_batch(
-                NullDBSession(),
+                db,
                 rows,
                 ImportOptions(mode="all"),
                 *_callbacks(),
@@ -371,12 +373,12 @@ class TestUserImportHandler:
             created_user = user_repo.create_user.call_args.args[1]
             assert created_user.gender == 2
 
-    async def test_import_batch_invalid_gender_rejected(self):
+    async def test_import_batch_invalid_gender_rejected(self, db):
         handler = UserImportHandler()
         rows = [{"username": "zhangsan", "nickname": "张三", "gender": "未知"}]
         with _import_repos() as user_repo:
             result = await handler.import_batch(
-                NullDBSession(),
+                db,
                 rows,
                 ImportOptions(mode="all"),
                 *_callbacks(),
@@ -386,7 +388,7 @@ class TestUserImportHandler:
             assert "性别取值无效" in result.errors[0].message
             user_repo.create_user.assert_not_called()
 
-    async def test_import_batch_role_ids_parsed(self):
+    async def test_import_batch_role_ids_parsed(self, db):
         handler = UserImportHandler()
         rows = [
             {
@@ -398,7 +400,7 @@ class TestUserImportHandler:
         ]
         with _import_repos() as user_repo:
             await handler.import_batch(
-                NullDBSession(),
+                db,
                 rows,
                 ImportOptions(mode="all"),
                 *_callbacks(),
@@ -406,7 +408,7 @@ class TestUserImportHandler:
             role_ids = user_repo.create_user.call_args.args[2]
             assert role_ids == [1, 2, 3]
 
-    async def test_import_batch_fullwidth_role_ids_recorded_as_error(self):
+    async def test_import_batch_fullwidth_role_ids_recorded_as_error(self, db):
         handler = UserImportHandler()
         rows = [
             {
@@ -418,7 +420,7 @@ class TestUserImportHandler:
         ]
         with _import_repos() as user_repo:
             result = await handler.import_batch(
-                NullDBSession(),
+                db,
                 rows,
                 ImportOptions(mode="partial"),
                 *_callbacks(),

@@ -14,7 +14,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from app.core.code import ResultCode
+from app.dependencies.redis import get_redis_client
 from app.models.base import set_current_user_id
+from app.models.entity.api_key import SysApiKey
+from app.repository.role_repository import role_repository
+from app.repository.user_repository import user_repository
+from app.service.ai.service.compatible_audit import record_call
 
 # 兼容 API 端点路径（OpenAI/Claude 双协议）：401 审计仅记录这些路径的拒绝，
 # 避免非兼容端点的 M2M 调用拒绝污染 ai_api_call_log
@@ -30,19 +35,27 @@ _COMPAT_ENDPOINTS = frozenset(
 class ApiKeyAuthMiddleware(BaseHTTPMiddleware):
     """API Key 认证中间件，独立于 Session 认证"""
 
-    @staticmethod
-    def _audit_401(request: Request, token: str, error_msg: str) -> None:
-        """兼容端点 401 拒绝审计（key_id=None，prefix 取前 8 字符，不存完整 Key）。
+    def __init__(
+        self,
+        app,
+        record_call=record_call,
+        get_redis_client=get_redis_client,
+        user_repository=user_repository,
+        role_repository=role_repository,
+    ):
+        super().__init__(app)
+        self._record_call = record_call
+        self._get_redis_client = get_redis_client
+        self._user_repository = user_repository
+        self._role_repository = role_repository
 
-        record_call 采用函数内局部导入：middleware 加载早于 service 层，
-        模块级导入会在应用启动期反向拉起 service 依赖链。
-        """
+    def _audit_401(self, request: Request, token: str, error_msg: str) -> None:
+        """兼容端点 401 拒绝审计（key_id=None，prefix 取前 8 字符，不存完整 Key）。"""
         path = request.url.path
         if path not in _COMPAT_ENDPOINTS:
             return
-        from app.service.ai.compatible_audit import record_call
 
-        record_call(
+        self._record_call(
             user_id=None,
             key_id=None,
             key_prefix=token[:8],
@@ -72,12 +85,9 @@ class ApiKeyAuthMiddleware(BaseHTTPMiddleware):
         if not token:
             return await call_next(request)
 
-        # 校验 API Key
         key_hash = hashlib.sha256(token.encode()).hexdigest()
 
         from sqlalchemy import select
-
-        from app.models.entity.api_key import SysApiKey
 
         db = getattr(request.state, "db", None)
         if db is None:
@@ -118,13 +128,7 @@ class ApiKeyAuthMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-        # 构建用户上下文
-        from app.dependencies.redis import get_redis_client
-        from app.repository.role_repository import role_repository
-        from app.repository.user_repository import user_repository
-        from app.service.menu_service import menu_service
-
-        user = await user_repository.get_by_id(db, api_key.user_id)
+        user = await self._user_repository.get_by_id(db, api_key.user_id)
         if not user or user.status != 1:
             self._audit_401(request, token, "API Key 所属用户无效或已禁用")
             return JSONResponse(
@@ -136,18 +140,21 @@ class ApiKeyAuthMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-        roles = await user_repository.get_user_role_codes(db, user.id)
-        redis = await get_redis_client()
-        # Redis 不可用时降级为最小权限：data_scope=1（仅本人）、perms 为空集，
-        # 与 perms 的降级方向保持一致，避免 Redis 故障期间获得最大数据权限
-        data_scope = await role_repository.get_maximum_data_scope(db, roles) if redis else 1
+        roles = await self._user_repository.get_user_role_codes(db, user.id)
+        redis = await self._get_redis_client()
+        # Redis 不可用时降级为最小权限：data_scope=3（仅本人）、perms 为空集，
+        # 与 perms 的降级方向保持一致，避免 Redis 故障期间获得更大数据权限
+        data_scope = await self._role_repository.get_maximum_data_scope(db, roles) if redis else 3
+        # menu_service 延迟导入：其模块顶反向依赖 app.core.exceptions，而 middleware
+        # 包在 core.exceptions 初始化早期被加载，模块顶层导入会形成循环导入。其余依赖
+        # 已构造注入（见 __init__），仅此项因循环约束保留延迟解析。
+        from app.service.menu_service import menu_service
+
         perms = await menu_service.list_role_perms(db, redis, set(roles)) if redis else set()
 
-        # 更新最后使用时间
         api_key.last_used_at = datetime.now()
         await db.flush()
 
-        # 注入用户上下文到 request.state
         request.state.user_context = {
             "id": user.id,
             "username": user.username or "",

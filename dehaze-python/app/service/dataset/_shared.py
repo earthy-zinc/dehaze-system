@@ -12,7 +12,6 @@ def _build_file_vo(item_file, file_obj) -> dict[str, Any]:
     用于 item_file_service 和 dataset_item_service 的所有文件响应。"""
     from app.service.storage.factory import get_storage_by_name
 
-    # 从文件名提取格式（扩展名），统一返回小写
     file_format = None
     if file_obj and file_obj.name and "." in file_obj.name:
         file_format = file_obj.name.rsplit(".", 1)[-1].lower()

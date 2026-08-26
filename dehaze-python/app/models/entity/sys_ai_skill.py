@@ -2,7 +2,7 @@
 
 对应表 sys_ai_skill：承载 Skill 元数据与 Markdown 指令全文。
 skill_name 与 sys_ai_agent_skill.skill_name 保持外键语义（不加物理外键，对齐项目惯例）；
-status 标识启停（1=启用，2=禁用），禁用后不出现在 SkillManager 索引中。
+status 标识启停（0=禁用，1=启用，对齐 SDK SkillVO.status），禁用后不出现在 SkillManager 索引中。
 配置类表使用逻辑删除（SoftDeleteMixin），删除前须校验被 Agent 关联。
 """
 
@@ -29,15 +29,21 @@ class SysAiSkill(BaseModel, SoftDeleteMixin):
     description: Mapped[str] = mapped_column(
         String(500), nullable=False, comment="Skill描述(供LLM渐进式加载索引使用)"
     )
-    content: Mapped[str | None] = mapped_column(
+    instruction: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="Markdown指令全文(skill_load时完整注入)"
     )
     status: Mapped[int] = mapped_column(
-        SmallInteger, nullable=False, default=1, comment="启停状态(1:启用;2:禁用)"
+        SmallInteger, nullable=False, default=1, comment="启停状态(0:禁用;1:启用)"
     )
     source: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
         default="admin",
         comment="来源(builtin:内置播种;admin:管理员创建)",
+    )
+    market_shared: Mapped[int] = mapped_column(
+        SmallInteger,
+        nullable=False,
+        default=0,
+        comment="是否共享至Skill市场(0:否;1:是)",
     )

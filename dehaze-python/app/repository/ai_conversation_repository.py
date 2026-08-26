@@ -32,6 +32,48 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         )
         return await self.paginate(db, stmt, page, size)
 
+    async def paginate_all_conversations(
+        self,
+        db: AsyncSession,
+        page: int,
+        size: int,
+        status: int | None = None,
+    ) -> tuple[list[SysAiConversation], int]:
+        """管理端审计视角：全量用户会话分页（不过滤 user_id）"""
+        stmt = select(SysAiConversation).where(SysAiConversation.deleted == 0)
+        if status is not None:
+            stmt = stmt.where(SysAiConversation.status == status)
+        stmt = stmt.order_by(
+            SysAiConversation.pinned.desc(),
+            SysAiConversation.pinned_at.desc(),
+            SysAiConversation.last_message_at.desc(),
+            SysAiConversation.id.desc(),
+        )
+        return await self.paginate(db, stmt, page, size)
+
+    async def paginate_all_with_keyword(
+        self,
+        db: AsyncSession,
+        page: int,
+        size: int,
+        keyword: str,
+        status: int | None = None,
+    ) -> tuple[list[SysAiConversation], int]:
+        """管理端审计视角：全量会话按标题关键词过滤（DB like，审计范围不引 ES 全量检索）"""
+        stmt = select(SysAiConversation).where(
+            SysAiConversation.deleted == 0,
+            SysAiConversation.title.like(f"%{keyword}%"),
+        )
+        if status is not None:
+            stmt = stmt.where(SysAiConversation.status == status)
+        stmt = stmt.order_by(
+            SysAiConversation.pinned.desc(),
+            SysAiConversation.pinned_at.desc(),
+            SysAiConversation.last_message_at.desc(),
+            SysAiConversation.id.desc(),
+        )
+        return await self.paginate(db, stmt, page, size)
+
     async def paginate_trash(
         self,
         db: AsyncSession,

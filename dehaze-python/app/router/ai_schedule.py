@@ -26,8 +26,8 @@ from app.models.schema.ai_schedule import (
     ScheduleUpdate,
 )
 from app.models.schema.common import BasePageQuery, PageResult
-from app.service.ai.ai_schedule_executor import schedule_executor
-from app.service.ai.ai_schedule_service import scheduled_task_service
+from app.service.ai.service.ai_schedule_executor import schedule_executor
+from app.service.ai.service.ai_schedule_service import scheduled_task_service
 
 logger = logging.getLogger(__name__)
 

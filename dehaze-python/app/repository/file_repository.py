@@ -95,7 +95,6 @@ class FileRepository(BaseRepository[SysFile]):
         """
         stmt = select(SysFile).order_by(SysFile.create_time.desc())
 
-        # 关键词模糊搜索（匹配文件名）
         stmt = self.apply_keyword_filter(
             stmt,
             [SysFile.name],
@@ -113,6 +112,4 @@ class FileRepository(BaseRepository[SysFile]):
         result = await db.execute(stmt)
         return [row[0] for row in result.all()]
 
-
-# 单例
 file_repository = FileRepository()

@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
 from app.core.result import Result, success
 from app.database import get_db
+from app.decorators.permission import _match_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.models.schema.ai_conversation import (
@@ -26,6 +28,15 @@ from app.service.ai_message_service import ai_message_service
 router = APIRouter(prefix="/api/v1/ai", tags=["AI对话"])
 
 
+def _require_conversation_audit(user: UserContext) -> None:
+    """管理端会话审计（view=admin）权限：ROOT 放行，否则需 ai:conversation:audit"""
+    if not user.is_root and not _match_permission(user.permissions, "ai:conversation:audit"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ResultCode.FORBIDDEN_OPERATION.msg,
+        )
+
+
 @router.post("/conversations", response_model=Result[ConversationResult], summary="创建会话")
 async def create_conversation(
     form: ConversationCreate,
@@ -44,9 +55,16 @@ async def list_conversations(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await ai_conversation_service.list_conversations(
-        db, user.id, query.pageNum, query.pageSize, query.keyword, query.status
-    )
+    if query.view == "admin":
+        # 管理端会话审计视角（后端实现-会话与消息.md §7）：ROOT 放行，普通用户 403（A0301）
+        _require_conversation_audit(user)
+        result = await ai_conversation_service.list_conversations(
+            db, user.id, query.pageNum, query.pageSize, query.keyword, query.status, view="admin"
+        )
+    else:
+        result = await ai_conversation_service.list_conversations(
+            db, user.id, query.pageNum, query.pageSize, query.keyword, query.status
+        )
     return success(result)
 
 

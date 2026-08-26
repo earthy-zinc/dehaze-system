@@ -92,10 +92,8 @@ class RecommendationService:
         all_algorithms = await algorithm_repository.get_all(db, with_deleted=True)
         published = [a for a in all_algorithms if a.status == AlgorithmStatus.PUBLISHED]
 
-        # 获取启用规则
         rules = await recommendation_rule_repository.get_enabled_rules(db)
 
-        # 确定场景类型
         scene_type = "urban"
         if analysis_id and analysis_id > 0:
             rec = await recommendation_repository.get_by_id(db, analysis_id)
@@ -111,7 +109,6 @@ class RecommendationService:
                 if isinstance(st, str) and st in VALID_SCENE_TYPES:
                     scene_type = st
 
-        # 规则匹配
         matched_rules = [r for r in rules if r.scene_type == scene_type] if rules else []
         candidate_ids: set[int] = set()
         rule_weight_map: dict[int, int] = {}
@@ -122,10 +119,8 @@ class RecommendationService:
                 if r.weight > current:
                     rule_weight_map[aid] = r.weight
 
-        # 筛选已发布算法中的候选
         candidates = [a for a in published if a.id in candidate_ids] if published else []
 
-        # 构建推荐结果
         reason = SCENE_REASON_TEMPLATES.get(scene_type, "综合表现优秀")
         result: list[RecommendedAlgorithmVO] = []
         for alg in candidates:
@@ -163,7 +158,6 @@ class RecommendationService:
         await db.flush()
         await db.refresh(rec)
 
-        # 回填 recommendationId 到 VO
         for vo in result:
             vo.recommendationId = rec.id
 
@@ -193,7 +187,6 @@ class RecommendationService:
 
     async def update_rule(self, db: AsyncSession, rule_id: int, form: dict) -> IdVO:
         if rule_id == 0:
-            # 新增
             rule = SysRecommendationRule(
                 rule_name=form["ruleName"],
                 scene_type=form["sceneType"],
@@ -206,7 +199,6 @@ class RecommendationService:
             await db.refresh(rule)
             return IdVO(id=rule.id)
 
-        # 更新
         rule = await recommendation_rule_repository.get_by_id(db, rule_id)
         if not rule:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)

@@ -8,14 +8,12 @@
 
 from prometheus_client import Counter
 
-# 缓存命中次数（按层级统计：L1/L2）
 CACHE_HITS_TOTAL = Counter(
     "dehaze_cache_hits_total",
     "Total number of cache hits by layer (L1/L2)",
     ["layer"],
 )
 
-# 缓存未命中次数
 CACHE_MISSES_TOTAL = Counter(
     "dehaze_cache_misses_total",
     "Total number of cache misses by layer (L1/L2)",

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from app.core.result import success
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.common import PageResult
-from app.service.ai.compatible_audit import list_calls as list_audit_calls
+from app.service.ai.service.compatible_audit import list_calls as list_audit_calls
 
 router = APIRouter(
     prefix="/api/v1/ai/compat",

@@ -344,7 +344,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
         item_id: int,
     ) -> tuple[SysDatasetItem | None, list[tuple[SysItemFile, SysFile]]]:
         """获取数据项及其关联文件"""
-        # 获取数据项
         stmt = select(SysDatasetItem).where(SysDatasetItem.id == item_id)
         result = await db.execute(stmt)
         item = result.scalar_one_or_none()
@@ -352,7 +351,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
         if not item:
             return None, []
 
-        # 获取关联文件
         stmt = (
             select(SysItemFile, SysFile)
             .select_from(SysItemFile)
@@ -714,6 +712,4 @@ class DatasetRepository(BaseRepository[SysDataset]):
 
         return items_map, files_map
 
-
-# 单例
 dataset_repository = DatasetRepository()

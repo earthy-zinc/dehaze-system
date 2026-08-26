@@ -6,14 +6,6 @@ import re
 
 from pydantic import BaseModel, Field, field_validator
 
-# ==================== 查询参数模型 ====================
-
-
-# ==================== 路径参数模型 ====================
-
-
-# ==================== 请求体模型 ====================
-
 
 class AlgorithmForm(BaseModel):
     """算法表单 (对齐 Java AlgorithmForm)"""
@@ -60,9 +52,6 @@ class AlgorithmVersionForm(BaseModel):
         if not re.match(r"^v\d+\.\d+\.\d+$", v):
             raise ValueError("版本号格式必须为 vX.Y.Z")
         return v
-
-
-# ==================== 响应模型 ====================
 
 
 class AlgorithmVO(BaseModel):
@@ -189,6 +178,5 @@ class AlgorithmMonitorVO(BaseModel):
     todayCallCount: int = Field(default=0, description="今日调用次数")
 
 
-# 解决自引用
 AlgorithmVO.model_rebuild()
 AlgorithmOptionVO.model_rebuild()

@@ -11,7 +11,9 @@ from app.models.schema.member import (
     MemberLevelAdjustForm,
     MemberStatusForm,
 )
-from app.service.member_service import MemberService
+from app.service.member.benefit_service import member_benefit_service
+from app.service.member.growth_service import member_growth_service
+from app.service.member.member_service import member_service
 
 router = APIRouter(
     prefix="/api/v1/members",
@@ -25,7 +27,7 @@ async def get_profile(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MemberService.get_profile(db, user.id)
+    data = await member_service.get_profile(db, user.id)
     return success(data)
 
 
@@ -39,7 +41,7 @@ async def get_growth_logs(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MemberService.list_growth_logs(
+    data = await member_growth_service.list_growth_logs(
         db,
         user.id,
         {
@@ -58,7 +60,7 @@ async def sign_in(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MemberService.sign_in(db, user.id)
+    data = await member_growth_service.sign_in(db, user.id)
     return success(data)
 
 
@@ -69,7 +71,7 @@ async def get_sign_in_calendar(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MemberService.get_sign_in_calendar(db, user.id, year, month)
+    data = await member_growth_service.get_sign_in_calendar(db, user.id, year, month)
     return success(data)
 
 
@@ -88,7 +90,7 @@ async def get_member_page(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MemberService.list_paged_members(
+    data = await member_service.list_paged_members(
         db,
         {
             "pageNum": pageNum,
@@ -110,7 +112,7 @@ async def list_benefits(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MemberService.list_benefits(db)
+    data = await member_benefit_service.list_benefits(db)
     return success(data)
 
 
@@ -122,8 +124,26 @@ async def update_benefit(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await MemberService.update_benefit(db, level_code, body.model_dump(exclude_none=True))
+    await member_benefit_service.update_benefit(db, level_code, body.model_dump(exclude_none=True))
     return success()
+
+
+@router.get("/benefit-summary", summary="当前用户权益概览")
+async def get_benefit_summary(
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    data = await member_service.get_benefit_summary(db, user.id)
+    return success(data)
+
+
+@router.get("/trial-status", summary="当前用户试用引导状态")
+async def get_trial_status(
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    data = await member_service.get_trial_status(db, user.id)
+    return success(data)
 
 
 @router.get("/{user_id}", summary="会员详情")
@@ -132,7 +152,7 @@ async def get_member_detail(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await MemberService.get_member_detail(db, user_id)
+    data = await member_service.get_member_detail(db, user_id)
     return success(data)
 
 
@@ -144,7 +164,7 @@ async def adjust_level(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await MemberService.adjust_level(db, user_id, body.model_dump(), user.id)
+    await member_service.adjust_level(db, user_id, body.model_dump(), user.id)
     return success()
 
 
@@ -156,7 +176,7 @@ async def adjust_growth(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await MemberService.adjust_growth(db, user_id, body.model_dump(), user.id)
+    await member_service.adjust_growth(db, user_id, body.model_dump(), user.id)
     return success()
 
 
@@ -168,5 +188,5 @@ async def update_status(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await MemberService.update_status(db, user_id, body.model_dump())
+    await member_service.update_status(db, user_id, body.model_dump())
     return success()

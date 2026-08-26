@@ -28,18 +28,30 @@ logger = logging.getLogger(__name__)
 class VoiceBillingService:
     """语音能力计费：ASR 按秒、TTS 按字符"""
 
+    def __init__(
+        self,
+        ai_billing_repository=ai_billing_repository,
+        ai_credit_log_repository=ai_credit_log_repository,
+        balance_service=balance_service,
+        quota_service=quota_service,
+    ):
+        self.ai_billing_repository = ai_billing_repository
+        self.ai_credit_log_repository = ai_credit_log_repository
+        self.balance_service = balance_service
+        self.quota_service = quota_service
+
     async def ensure_balance(self, db: AsyncSession, user_id: int, estimated_credits: int) -> None:
         """调用前余额预校验，欠费/配额/余额任一不满足即抛业务异常
 
         estimated_credits 为本次调用的预估积分（按上限时长/文本长度估算）。
         """
-        if await balance_service.is_arrears(user_id):
+        if await self.balance_service.is_arrears(user_id):
             raise BusinessException(ResultCode.QUOTA_INSUFFICIENT, "账户欠费，请充值后继续使用")
-        if not await quota_service.check_quota(db, user_id, estimated_credits):
+        if not await self.quota_service.check_quota(db, user_id, estimated_credits):
             raise BusinessException(
                 ResultCode.QUOTA_INSUFFICIENT, "今日或本月 AI 积分配额不足，请升级会员或明日再试"
             )
-        if not await balance_service.check_balance(db, user_id, estimated_credits):
+        if not await self.balance_service.check_balance(db, user_id, estimated_credits):
             raise BusinessException(ResultCode.QUOTA_INSUFFICIENT, "积分余额不足，请充值后继续使用")
 
     async def charge_asr(self, db: AsyncSession, user_id: int, audio_seconds: float) -> int:
@@ -96,8 +108,8 @@ class VoiceBillingService:
         )
 
         if credits > 0:
-            balance = await balance_service.get_balance(db, user_id)
-            await ai_credit_log_repository.create_log(
+            balance = await self.balance_service.get_balance(db, user_id)
+            await self.ai_credit_log_repository.create_log(
                 db,
                 user_id=user_id,
                 source="consume",

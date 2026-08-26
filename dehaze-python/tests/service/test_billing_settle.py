@@ -21,7 +21,7 @@ def _install_settle_stubs(monkeypatch, captured, rate=None):
     async def _create_log(db, **kwargs):
         captured["log_kwargs"].append(kwargs)
 
-    async def _calculate(db, model, it, ot, ct):
+    async def _calculate(db, model, provider_id, it, ot, ct):
         captured["calc_model"] = model
         return rate if rate is not None else {"credits": 50, "credits_saved": 10}
 
@@ -43,16 +43,16 @@ def _install_settle_stubs(monkeypatch, captured, rate=None):
     async def _get_balance(db, uid):
         return 900
 
-    async def _check_anomaly(uid, record, monthly_limit=0, daily_limit=0):
+    async def _check_anomaly(db, uid, record, monthly_limit=0, daily_limit=0):
         captured["anomaly"] += 1
 
-    monkeypatch.setattr(
-        m,
-        "ai_billing_repository",
-        SimpleNamespace(list_by_message=_list_by_message, update=_update),
+    repo = SimpleNamespace(list_by_message=_list_by_message, update=_update)
+    svc = m.BillingService(
+        ai_billing_repository=repo,
+        ai_credit_log_repository=SimpleNamespace(create_log=_create_log),
     )
-    monkeypatch.setattr(m, "ai_credit_log_repository", SimpleNamespace(create_log=_create_log))
-    monkeypatch.setattr(m, "RateProvider", SimpleNamespace(calculate=_calculate))
+    # 服务引用仍为方法体内模块级查找，故 patch 模块对象 m
+    monkeypatch.setattr(m, "rate_provider", SimpleNamespace(calculate=_calculate))
     monkeypatch.setattr(
         m,
         "quota_service",
@@ -64,14 +64,17 @@ def _install_settle_stubs(monkeypatch, captured, rate=None):
         SimpleNamespace(refund=_refund_balance, deduct=_deduct_balance, get_balance=_get_balance),
     )
     monkeypatch.setattr(m, "billing_anomaly_service", SimpleNamespace(check=_check_anomaly))
+    # 对话完成事件默认拦截（接线测试单独覆盖验证发布调用），避免后台任务污染
+    monkeypatch.setattr(m, "_publish_chat_completed", lambda uid: None)
+    return svc
 
 
 class TestSettleAttribution:
     async def test_settle_writes_attribution_fields(self, monkeypatch):
         captured = {}
-        _install_settle_stubs(monkeypatch, captured)
+        svc = _install_settle_stubs(monkeypatch, captured)
 
-        await m.billing_service.settle(
+        await svc.settle(
             None,
             user_id=1,
             conversation_id=2,
@@ -100,9 +103,9 @@ class TestSettleAttribution:
 
     async def test_settle_omits_none_attribution(self, monkeypatch):
         captured = {}
-        _install_settle_stubs(monkeypatch, captured)
+        svc = _install_settle_stubs(monkeypatch, captured)
 
-        await m.billing_service.settle(
+        await svc.settle(
             None,
             user_id=1,
             conversation_id=2,
@@ -118,9 +121,9 @@ class TestSettleAttribution:
 
     async def test_settle_degraded_writes_actual_model(self, monkeypatch):
         captured = {}
-        _install_settle_stubs(monkeypatch, captured)
+        svc = _install_settle_stubs(monkeypatch, captured)
 
-        await m.billing_service.settle(
+        await svc.settle(
             None,
             user_id=1,
             conversation_id=2,
@@ -137,9 +140,9 @@ class TestSettleAttribution:
 
     async def test_settle_adjustment_skips_log_and_anomaly(self, monkeypatch):
         captured = {}
-        _install_settle_stubs(monkeypatch, captured, rate={"credits": 60, "credits_saved": 5})
+        svc = _install_settle_stubs(monkeypatch, captured, rate={"credits": 60, "credits_saved": 5})
 
-        await m.billing_service.settle(
+        await svc.settle(
             None,
             user_id=1,
             conversation_id=2,
@@ -153,3 +156,44 @@ class TestSettleAttribution:
         assert captured["log_kwargs"] == []
         assert captured["anomaly"] == 0
         assert captured["update"]["credits"] == 60
+
+
+class TestSettleChatCompletedEvent:
+    """ai.chat.completed 事件发布接线：对话完成结算发布一次，补记不发布"""
+
+    async def test_settle_publishes_chat_completed_once(self, monkeypatch):
+        captured = {}
+        svc = _install_settle_stubs(monkeypatch, captured)
+        published: list[int] = []
+        monkeypatch.setattr(m, "_publish_chat_completed", lambda uid: published.append(uid))
+
+        await svc.settle(
+            None,
+            user_id=1,
+            conversation_id=2,
+            message_id=3,
+            model_id="gpt-4o",
+            actual_model_id=None,
+            usage={"input_tokens": 10, "output_tokens": 5},
+        )
+
+        assert published == [1]
+
+    async def test_settle_adjustment_skips_publish(self, monkeypatch):
+        captured = {}
+        svc = _install_settle_stubs(monkeypatch, captured, rate={"credits": 60, "credits_saved": 5})
+        published: list[int] = []
+        monkeypatch.setattr(m, "_publish_chat_completed", lambda uid: published.append(uid))
+
+        await svc.settle(
+            None,
+            user_id=1,
+            conversation_id=2,
+            message_id=3,
+            model_id="gpt-4o",
+            actual_model_id=None,
+            usage={"input_tokens": 120, "output_tokens": 60},
+            adjustment=True,
+        )
+
+        assert published == []

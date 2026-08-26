@@ -36,13 +36,16 @@ def _to_results(items: list[SysVoiceHotword]) -> list[HotwordResult]:
 class HotwordService:
     """热词管理服务"""
 
+    def __init__(self, voice_hotword_repository=voice_hotword_repository):
+        self.voice_hotword_repository = voice_hotword_repository
+
     async def get_effective_words(self, db: AsyncSession, user_id: int) -> list[str]:
         """合并全局 + 当前用户热词并去重，供 ASR 会话注册到 FunASR。
 
         顺序：全局热词在前，用户热词追加在后，重复内容以先出现者为准。
         """
-        global_words = await voice_hotword_repository.list_by_scope(db, "global", None)
-        user_words = await voice_hotword_repository.list_by_scope(db, "user", user_id)
+        global_words = await self.voice_hotword_repository.list_by_scope(db, "global", None)
+        user_words = await self.voice_hotword_repository.list_by_scope(db, "user", user_id)
         seen: set[str] = set()
         effective: list[str] = []
         for word in [*global_words, *user_words]:
@@ -53,32 +56,32 @@ class HotwordService:
 
     async def list_user_hotwords(self, db: AsyncSession, user_id: int) -> list[HotwordResult]:
         """查询当前用户的用户级热词"""
-        items = await voice_hotword_repository.list_by_scope(db, "user", user_id)
+        items = await self.voice_hotword_repository.list_by_scope(db, "user", user_id)
         return _to_results(items)
 
     async def add_user_hotword(self, 
         db: AsyncSession, user_id: int, form: HotwordForm
     ) -> HotwordResult:
         """新增用户热词（含数量上限校验、XSS 转义存储）"""
-        count = await voice_hotword_repository.count_user_hotwords(db, user_id)
+        count = await self.voice_hotword_repository.count_user_hotwords(db, user_id)
         if count >= _MAX_USER_HOTWORDS:
             msg = f"个人热词已达上限 {_MAX_USER_HOTWORDS} 个"
             raise BusinessException(ResultCode.BUSINESS_ERROR, msg)
         word = _sanitize_word(form.word)
         entity = SysVoiceHotword(scope="user", user_id=user_id, word=word, create_by=user_id)
-        created = await voice_hotword_repository.create(db, entity)
+        created = await self.voice_hotword_repository.create(db, entity)
         return HotwordResult(id=created.id, word=created.word, create_time=created.create_time)
 
     async def delete_user_hotword(self, db: AsyncSession, hotword_id: int, user_id: int) -> None:
         """删除用户热词；不存在或非本人 → A0401"""
-        entity = await voice_hotword_repository.get_by_id(db, hotword_id)
+        entity = await self.voice_hotword_repository.get_by_id(db, hotword_id)
         if entity is None or entity.user_id != user_id:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "热词不存在")
-        await voice_hotword_repository.soft_delete(db, hotword_id)
+        await self.voice_hotword_repository.soft_delete(db, hotword_id)
 
     async def list_global_hotwords(self, db: AsyncSession) -> list[HotwordResult]:
         """查询全局热词（登录即可查）"""
-        items = await voice_hotword_repository.list_by_scope(db, "global", None)
+        items = await self.voice_hotword_repository.list_by_scope(db, "global", None)
         return _to_results(items)
 
     async def add_global_hotword(self, 
@@ -92,10 +95,10 @@ class HotwordService:
 
     async def delete_global_hotword(self, db: AsyncSession, hotword_id: int) -> None:
         """删除全局热词；不存在或非全局热词 → A0401"""
-        entity = await voice_hotword_repository.get_by_id(db, hotword_id)
+        entity = await self.voice_hotword_repository.get_by_id(db, hotword_id)
         if entity is None or entity.scope != "global":
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "热词不存在")
-        await voice_hotword_repository.soft_delete(db, hotword_id)
+        await self.voice_hotword_repository.soft_delete(db, hotword_id)
 
 
 hotword_service = HotwordService()

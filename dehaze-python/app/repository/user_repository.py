@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_user import SysRole, SysUser, SysUserRole
 from app.repository.base import BaseRepository
+from app.repository.dept_repository import dept_repository
 
 
 class UserRepository(BaseRepository[SysUser]):
@@ -148,7 +149,6 @@ class UserRepository(BaseRepository[SysUser]):
             (用户列表字典, 总数)
         """
         from app.models.entity.sys_dept import SysDept
-        from app.repository.data_scope import apply_data_scope
 
         base_query = (
             select(
@@ -181,25 +181,29 @@ class UserRepository(BaseRepository[SysUser]):
                 )
             )
 
-        # 状态筛选
         if status is not None:
             base_query = base_query.where(SysUser.status == status)
 
-        # 部门筛选
         if dept_ids:
             base_query = base_query.where(SysUser.dept_id.in_(dept_ids))
 
-        # 行级数据权限过滤
         if current_user is not None:
+            from app.repository.data_scope import apply_data_scope
+
+            children_ids = (
+                await dept_repository.get_children_ids(db, current_user.dept_id)
+                if current_user.data_scope == 1 and current_user.dept_id is not None
+                else None
+            )
             base_query = await apply_data_scope(
                 base_query,
                 current_user,
                 db,
                 dept_field=SysUser.dept_id,
                 creator_field=SysUser.create_by,
+                children_ids=children_ids,
             )
 
-        # 创建时间范围
         if create_time_start:
             start_dt = datetime.strptime(create_time_start, "%Y-%m-%d")
             base_query = base_query.where(SysUser.create_time >= start_dt)
@@ -352,6 +356,4 @@ class UserRepository(BaseRepository[SysUser]):
 
         return user
 
-
-# 单例
 user_repository = UserRepository()

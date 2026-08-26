@@ -2,8 +2,6 @@
 
 from pydantic import BaseModel, Field
 
-# ==================== 表单参数模型 ====================
-
 
 class BatchPredictionItem(BaseModel):
     """批量预测单项（fileId 与 imageUrl 至少提供一个）"""

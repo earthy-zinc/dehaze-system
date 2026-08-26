@@ -171,7 +171,6 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
             like_pattern = f"%{escaped}%"
             stmt = stmt.where(SysAlgorithm.name.like(like_pattern, escape="\\"))
 
-        # 排序
         order = sort_by or "create_time"
         is_desc = sort_order != "asc"
         if order == "create_time":
@@ -187,7 +186,6 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         else:
             stmt = stmt.order_by(col.asc(), SysFavorite.id.asc())
 
-        # 分页
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = (await db.execute(count_stmt)).scalar() or 0
 

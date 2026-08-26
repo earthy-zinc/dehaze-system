@@ -171,6 +171,47 @@ class AiBillingRepository(BaseRepository[SysAiBilling]):
             for r in rows
         ]
 
+    async def sum_credits_by_user_group_by_period(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        start: datetime,
+        end: datetime,
+        period: str,
+    ) -> list[dict[str, Any]]:
+        """按日/月聚合用户消耗趋势（summary 数据源）"""
+        fmt = "%Y-%m-%d" if period == "day" else "%Y-%m"
+        date_col = func.date_format(SysAiBilling.create_time, fmt)
+        stmt = (
+            select(
+                date_col,
+                func.sum(SysAiBilling.credits),
+                func.sum(SysAiBilling.input_tokens),
+                func.sum(SysAiBilling.output_tokens),
+                func.sum(SysAiBilling.credits_saved),
+                func.sum(SysAiBilling.cached_input_tokens),
+            )
+            .where(
+                SysAiBilling.user_id == user_id,
+                SysAiBilling.create_time >= start,
+                SysAiBilling.create_time <= end,
+            )
+            .group_by(date_col)
+            .order_by(date_col)
+        )
+        rows = (await db.execute(stmt)).all()
+        return [
+            {
+                "date": r[0],
+                "credits": int(r[1] or 0),
+                "input_tokens": int(r[2] or 0),
+                "output_tokens": int(r[3] or 0),
+                "credits_saved": int(r[4] or 0),
+                "cached_input_tokens": int(r[5] or 0),
+            }
+            for r in rows
+        ]
+
     async def stats_by_dimension(
         self,
         db: AsyncSession,

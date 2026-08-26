@@ -14,20 +14,14 @@ from pydantic.alias_generators import to_camel
 
 from app.models.schema.common import BasePageQuery, OrmResult
 
-# ── 枚举常量 ──────────────────────────────────────────
-
 
 # 分块策略(fixed:固定长度;semantic:语义切分;recursive:递归切分;qa:问答对;table:表格感知)
 CHUNKING_STRATEGY_VALUES = ("fixed", "semantic", "recursive", "qa", "table")
-# 支持的分块策略字面量
 ChunkingStrategy = Literal["fixed", "semantic", "recursive", "qa", "table"]
 # 检索策略(vector:纯向量;keyword:纯关键词;hybrid:混合检索)
 SearchStrategy = Literal["vector", "keyword", "hybrid"]
 # 支持的 Embedding 模型标识(与 embedding_client._KNOWN_DIMS 对齐)
 EMBEDDING_MODEL_VALUES = ("text-embedding-3-small", "text-embedding-3-large", "bge-m3")
-
-
-# ── 知识库管理（F-KB-001） ────────────────────────────
 
 
 class KnowledgeBaseCreateForm(BaseModel):
@@ -101,6 +95,9 @@ class KnowledgeBaseUpdateForm(BaseModel):
 
 class KnowledgeBasePageQuery(BasePageQuery):
     keyword: str | None = Field(default=None, description="关键字(按知识库名称模糊搜索)")
+    view: Literal["admin"] | None = Field(
+        default=None, description="管理端视角(admin:返回全部知识库含私有库,仅管理员)"
+    )
 
 
 class KnowledgeBaseVO(OrmResult):
@@ -128,9 +125,6 @@ class KnowledgeBaseVO(OrmResult):
     create_by: int | None = Field(default=None, description="创建人ID")
     create_time: datetime | None = Field(default=None, description="创建时间")
     update_time: datetime | None = Field(default=None, description="更新时间")
-
-
-# ── 文档管理（F-KB-002） ────────────────────────────
 
 
 class DocumentUploadForm(BaseModel):
@@ -184,9 +178,6 @@ class KnowledgeDocumentVO(OrmResult):
     update_time: datetime | None = Field(default=None, description="更新时间")
 
 
-# ── 分块管理（F-KB-003） ────────────────────────────
-
-
 class ChunkPreviewForm(BaseModel):
     """分块预览表单（snake_case 字段，alias 兼容前端 camelCase 提交）"""
 
@@ -214,7 +205,13 @@ class KnowledgeChunkVO(OrmResult):
     create_time: datetime | None = Field(default=None, description="创建时间")
 
 
-# ── 检索（F-KB-004） ────────────────────────────────
+class LowQualityChunkVO(OrmResult):
+    """低质量片段视图对象（被点踩片段，thumbsDownCount 按片段点踩次数聚合）"""
+
+    chunk_id: int = Field(description="分块ID")
+    content: str = Field(description="分块文本内容")
+    document_id: int = Field(description="所属文档ID")
+    thumbs_down_count: int = Field(description="被点踩次数")
 
 
 class SearchFilters(BaseModel):
@@ -243,3 +240,45 @@ class RetrieveTestForm(BaseModel):
     query: str = Field(..., min_length=1, description="查询文本")
     topK: int | None = Field(default=None, ge=1, le=50, description="返回Top-K数量")
     enableMMR: bool = Field(default=False, description="是否启用MMR多样性去重")
+
+
+class TestSetCreateForm(BaseModel):
+    """创建召回测试集表单（snake_case 字段，alias 兼容前端 camelCase 提交）"""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    question: str = Field(..., min_length=1, max_length=1000, description="测试问题")
+    expected_chunk_ids: list[int] = Field(
+        ..., min_length=1, description="期望命中分块ID列表(必须召回)"
+    )
+
+
+class TestSetVO(OrmResult):
+    """召回测试集视图对象（model_validate(实体) 构造，序列化输出 camelCase）"""
+
+    id: int = Field(description="主键")
+    knowledge_base_id: int = Field(description="知识库ID")
+    question: str = Field(description="测试问题")
+    expected_chunk_ids: list[int] = Field(description="期望命中分块ID列表")
+    create_time: datetime | None = Field(default=None, description="创建时间")
+
+
+class TestSetRunForm(BaseModel):
+    """执行召回测试集表单（可选，缺省用知识库默认 Top-K）"""
+
+    topK: int = Field(default=5, ge=1, le=50, description="检索Top-K数")
+
+
+class RecallTestResultVO(BaseModel):
+    """召回测试集执行结果：Recall@K 与命中率（0-1）"""
+
+    test_set_id: int = Field(description="测试集ID")
+    recall_at_k: float = Field(description="Recall@K：期望命中分块出现在Top-K结果中的比例(0-1)")
+    hit_rate: float = Field(description="命中率：至少命中一条期望分块的用例占比(0-1)")
+    total_cases: int = Field(description="测试问题总数")
+    hit_cases: int = Field(description="至少命中一条期望分块的用例数")
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )

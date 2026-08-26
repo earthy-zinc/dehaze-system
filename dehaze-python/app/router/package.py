@@ -22,10 +22,11 @@ router = APIRouter(
 
 @router.get("", summary="在售套餐列表")
 async def list_on_sale(
+    packageType: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await package_service.list_on_sale(db)
+    data = await package_service.list_on_sale(db, packageType)
     return success(data)
 
 
@@ -45,6 +46,7 @@ async def get_package_page(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
     name: str | None = Query(default=None),
+    packageType: str | None = Query(default=None),
     levelCode: str | None = Query(default=None),
     period: str | None = Query(default=None),
     status: int | None = Query(default=None, ge=0, le=1),
@@ -59,6 +61,7 @@ async def get_package_page(
             "pageNum": pageNum,
             "pageSize": pageSize,
             "name": name,
+            "packageType": packageType,
             "levelCode": levelCode,
             "period": period,
             "status": status,

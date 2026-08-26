@@ -11,14 +11,13 @@ from app.database import async_session_factory
 from app.models.entity.sys_preset import SysPreset
 from app.models.schema.common import PageResult
 from app.models.schema.preset import PresetForm, PresetVO
-from app.repository.preset_repository import preset_repository
+from app.repository.preset_repository import PresetRepository, preset_repository
 
 logger = logging.getLogger(__name__)
 
 TYPE_SYSTEM = "system"
 TYPE_CUSTOM = "custom"
 
-# 系统预设种子数据
 _SYSTEM_PRESET_SEEDS = [
     {
         "name": "默认去雾",
@@ -55,12 +54,14 @@ def _to_vo(entity: SysPreset) -> PresetVO:
 
 
 class PresetService:
-    @staticmethod
-    async def seed_system_presets() -> None:
+    def __init__(self, repo: PresetRepository = preset_repository):
+        self.repo = repo
+
+    async def seed_system_presets(self) -> None:
         """初始化系统预设种子数据（幂等：已有数据则跳过）"""
         try:
             async with async_session_factory() as db:
-                count = await preset_repository.count_system_presets(db)
+                count = await self.repo.count_system_presets(db)
                 if count > 0:
                     logger.debug("系统预设已存在 (%d 条)，跳过种子初始化", count)
                     return
@@ -81,8 +82,8 @@ class PresetService:
         except Exception as e:
             logger.warning("系统预设种子初始化失败（非致命）: %s", e)
 
-    @staticmethod
     async def list_presets(
+        self,
         db: AsyncSession,
         user_id: int,
         algorithm_id: int | None = None,
@@ -90,7 +91,7 @@ class PresetService:
         page: int = 1,
         size: int = 10,
     ) -> PageResult[PresetVO]:
-        presets, total = await preset_repository.list_presets(
+        presets, total = await self.repo.list_presets(
             db,
             user_id,
             algorithm_id,
@@ -101,8 +102,7 @@ class PresetService:
         items = [_to_vo(p) for p in presets]
         return PageResult(list=items, total=total)
 
-    @staticmethod
-    async def create_preset(db: AsyncSession, user_id: int, form: PresetForm) -> PresetVO:
+    async def create_preset(self, db: AsyncSession, user_id: int, form: PresetForm) -> PresetVO:
         preset = SysPreset(
             name=form.name,
             type=TYPE_CUSTOM,
@@ -112,17 +112,16 @@ class PresetService:
             is_default=form.isDefault or 0,
         )
         try:
-            preset = await preset_repository.create(db, preset)
+            preset = await self.repo.create(db, preset)
         except IntegrityError:
             # 唯一键 uk_user_name 冲突（同名预设）→ 业务错误 A0501，不落库为 C0300
             raise BusinessException(ResultCode.DATA_EXISTS, "预设名称已存在") from None
         return _to_vo(preset)
 
-    @staticmethod
     async def update_preset(
-        db: AsyncSession, preset_id: int, user_id: int, form: PresetForm
+        self, db: AsyncSession, preset_id: int, user_id: int, form: PresetForm
     ) -> PresetVO:
-        preset = await preset_repository.get_by_id(db, preset_id)
+        preset = await self.repo.get_by_id(db, preset_id)
         if not preset:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "预设不存在")
         if preset.type == TYPE_SYSTEM:
@@ -139,9 +138,8 @@ class PresetService:
         await db.refresh(preset)
         return _to_vo(preset)
 
-    @staticmethod
-    async def delete_preset(db: AsyncSession, preset_id: int, user_id: int) -> None:
-        preset = await preset_repository.get_by_id(db, preset_id)
+    async def delete_preset(self, db: AsyncSession, preset_id: int, user_id: int) -> None:
+        preset = await self.repo.get_by_id(db, preset_id)
         if not preset:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "预设不存在")
         if preset.type == TYPE_SYSTEM:

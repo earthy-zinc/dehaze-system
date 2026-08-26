@@ -15,7 +15,6 @@ def convert_size(size_bytes) -> str:
 
 
 def calculate_bytes_md5(bytes_io: BytesIO) -> str:
-    # 重置 BytesIO 对象的指针到开头
     bytes_io.seek(0)
 
     hash_md5 = hashlib.md5()
@@ -25,7 +24,6 @@ def calculate_bytes_md5(bytes_io: BytesIO) -> str:
             break
         hash_md5.update(chunk)
 
-    # 重置 BytesIO 对象的指针到开头
     bytes_io.seek(0)
     return hash_md5.hexdigest()
 

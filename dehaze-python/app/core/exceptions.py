@@ -91,7 +91,6 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
         request.state.db_should_rollback = True
-        # 根据 HTTP 状态码映射到对应的 ResultCode
         status_code_map = {
             status.HTTP_401_UNAUTHORIZED: ResultCode.TOKEN_INVALID,
             status.HTTP_403_FORBIDDEN: ResultCode.ACCESS_UNAUTHORIZED,

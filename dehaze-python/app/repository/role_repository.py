@@ -245,6 +245,4 @@ class RoleRepository(BaseRepository[SysRole]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-
-# 单例
 role_repository = RoleRepository()

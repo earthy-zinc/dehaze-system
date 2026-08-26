@@ -17,6 +17,7 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies.redis import get_redis_client
+from app.repository.ai_credit_log_repository import ai_credit_log_repository
 from app.repository.user_repository import user_repository
 
 logger = logging.getLogger(__name__)
@@ -30,25 +31,33 @@ _ARREARS_KEY = "ai:arrears:{user_id}"
 class BalanceService:
     """余额账户管理：Redis 原子 + MySQL 乐观锁 CAS"""
 
+    def __init__(
+        self,
+        user_repository=user_repository,
+        ai_credit_log_repository=ai_credit_log_repository,
+    ):
+        self.user_repository = user_repository
+        self.ai_credit_log_repository = ai_credit_log_repository
+
     async def _increase_cas(self, db: AsyncSession, user_id: int, amount: Decimal) -> None:
         """余额增加落库：credits_balance += amount，乐观锁 CAS 失败重试 3 次"""
         for _ in range(_CAS_RETRY):
-            current = await user_repository.get_credits_balance_and_version(db, user_id)
+            current = await self.user_repository.get_credits_balance_and_version(db, user_id)
             if current is None:
                 return
             _, version = current
-            if await user_repository.increase_balance_cas(db, user_id, amount, version):
+            if await self.user_repository.increase_balance_cas(db, user_id, amount, version):
                 return
         raise RuntimeError(f"余额增加落库失败（CAS 重试耗尽）: user_id={user_id}")
 
     async def _deduct_cas(self, db: AsyncSession, user_id: int, amount: Decimal) -> None:
         """余额扣减落库：credits_balance -= amount，乐观锁 CAS 失败重试 3 次"""
         for _ in range(_CAS_RETRY):
-            current = await user_repository.get_credits_balance_and_version(db, user_id)
+            current = await self.user_repository.get_credits_balance_and_version(db, user_id)
             if current is None:
                 return
             _, version = current
-            if await user_repository.deduct_balance_cas(db, user_id, amount, version):
+            if await self.user_repository.deduct_balance_cas(db, user_id, amount, version):
                 return
         raise RuntimeError(f"余额扣减落库失败（CAS 重试耗尽）: user_id={user_id}")
 
@@ -58,7 +67,7 @@ class BalanceService:
         val = await redis.get(_BALANCE_KEY.format(user_id=user_id))
         if val is not None:
             return Decimal(val)
-        current = await user_repository.get_credits_balance_and_version(db, user_id)
+        current = await self.user_repository.get_credits_balance_and_version(db, user_id)
         balance = current[0] if current else Decimal(0)
         await redis.setex(_BALANCE_KEY.format(user_id=user_id), _BALANCE_TTL, str(balance))
         return balance
@@ -126,10 +135,9 @@ class BalanceService:
         await redis.incrby(_BALANCE_KEY.format(user_id=user_id), amount_int)
         await self._increase_cas(db, user_id, amount_dec)
         await redis.delete(_ARREARS_KEY.format(user_id=user_id))
-        from app.repository.ai_credit_log_repository import ai_credit_log_repository
 
         balance = await self.get_balance(db, user_id)
-        await ai_credit_log_repository.create_log(
+        await self.ai_credit_log_repository.create_log(
             db,
             user_id=user_id,
             source=source,

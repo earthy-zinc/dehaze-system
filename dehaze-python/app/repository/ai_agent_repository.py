@@ -67,6 +67,20 @@ class AiAgentRepository(BaseRepository[SysAiAgent]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_exposed(self, db: AsyncSession) -> list[SysAiAgent]:
+        """可对外 A2A 服务的 Agent 列表：启用、非子 Agent、且 is_exposed=1。"""
+        stmt = (
+            select(SysAiAgent)
+            .where(
+                SysAiAgent.status == 1,
+                SysAiAgent.is_subagent == 0,
+                SysAiAgent.is_exposed == 1,
+            )
+            .order_by(SysAiAgent.sort_order.asc(), SysAiAgent.id.asc())
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def count_subagent_references(self, db: AsyncSession, agent_id: int) -> int:
         """统计该 Agent 被其他 Agent 作为子 Agent 引用的次数（删除校验）。"""
         stmt = (

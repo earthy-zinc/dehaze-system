@@ -99,7 +99,6 @@ async def check_redis_health() -> RedisHealthStatus:
         operation_name="health_check",
     )
 
-    # 内部处理日志输出
     if result is not None and result.healthy:
         logger.info(f"Redis 连接正常: 延迟={result.latency_ms:.2f}ms")
     else:

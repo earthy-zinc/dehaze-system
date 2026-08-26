@@ -203,6 +203,4 @@ class MenuRepository(BaseRepository[SysMenu]):
         perms = result.scalars().all()
         return {p for p in perms if p is not None and p != ""}
 
-
-# 单例
 menu_repository = MenuRepository()

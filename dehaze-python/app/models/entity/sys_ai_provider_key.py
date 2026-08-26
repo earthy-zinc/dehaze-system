@@ -43,6 +43,9 @@ class SysAiProviderKey(BaseModel):
     daily_quota: Mapped[int | None] = mapped_column(
         Integer, nullable=True, comment="日调用上限(供应商侧限额,可选)"
     )
+    rpm_limit: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, default=0, comment="分钟调用频率上限(0=不限,可选)"
+    )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="过期时间")
     last_used_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, comment="最后使用时间"

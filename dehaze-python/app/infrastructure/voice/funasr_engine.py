@@ -140,6 +140,27 @@ def _hotword_param() -> str:
         return " ".join(sorted(_hotwords))
 
 
+def engine_status() -> dict[str, Any]:
+    """查询引擎状态（不抛异常）。
+
+    返回：engine_status("online"/"offline")、stream_model_loaded、
+    offline_model_loaded，基于模型是否已加载到进程内单例判定。
+    """
+    if not _models:
+        return {
+            "engine_status": "offline",
+            "stream_model_loaded": False,
+            "offline_model_loaded": False,
+        }
+    return {
+        "engine_status": "online",
+        "stream_model_loaded": resolve_model_id(None, settings.VOICE_ASR_STREAM_MODEL)
+        in _models,
+        "offline_model_loaded": resolve_model_id(None, settings.VOICE_ASR_OFFLINE_MODEL)
+        in _models,
+    }
+
+
 def transcribe(audio: bytes, model: str | None, default_logical: str) -> str:
     """完整音频转写（阻塞调用，须经线程池执行）
 

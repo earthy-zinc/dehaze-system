@@ -37,6 +37,7 @@ class RefundRecordRepository(BaseRepository[SysRefundRecord]):
         order_no: str | None = None,
         keywords: str | None = None,
         status: str | None = None,
+        reason_type: str | None = None,
         apply_time_start: str | None = None,
         apply_time_end: str | None = None,
     ) -> tuple[list[dict], int]:
@@ -64,6 +65,8 @@ class RefundRecordRepository(BaseRepository[SysRefundRecord]):
             )
         if status and status in REFUND_STATUS_MAP:
             stmt = stmt.where(SysRefundRecord.status == REFUND_STATUS_MAP[status])
+        if reason_type:
+            stmt = stmt.where(SysRefundRecord.reason_type == reason_type)
         if apply_time_start:
             stmt = stmt.where(
                 SysRefundRecord.apply_time

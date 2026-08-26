@@ -20,7 +20,7 @@ from app.core.exceptions import BusinessException
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis_client
-from app.infrastructure.llm.a2a_protocol import (
+from app.infrastructure.a2a.a2a_protocol import (
     Artifact,
     JsonRpcError,
     JsonRpcRequest,
@@ -28,13 +28,17 @@ from app.infrastructure.llm.a2a_protocol import (
     Message,
     parse_part,
 )
-from app.service.ai.a2a_server import a2a_server
-from app.service.ai.deep_agent_builder import DeepAgentBuilder
+from app.infrastructure.a2a.a2a_server import a2a_server
+from app.service.ai.builders.deep_agent_builder import DeepAgentBuilder
 from app.service.ai_agent_service import agent_service
 
 logger = logging.getLogger(__name__)
 
+# Agent 挂载路径路由（保留，兼容按路径定位单 Agent 的既有调用）
 router = APIRouter(prefix="/api/v1/ai/agents/{agent_id}/a2a", tags=["AI对话-A2A协议"])
+
+# A2A 标准全局入口（POST /a2a、GET /.well-known/agent.json），Agent 由请求体定位
+global_router = APIRouter(prefix="", tags=["AI对话-A2A协议"])
 
 # JSON-RPC 错误码
 _ERR_PARSE = -32700
@@ -63,6 +67,13 @@ async def a2a_entry(
     redis=Depends(get_redis_client),
     user: UserContext = Depends(get_current_user),
 ):
+    return await _handle_a2a_request(request, agent_id, db, redis)
+
+
+async def _handle_a2a_request(
+    request: Request, agent_id: int, db: AsyncSession, redis
+):
+    """A2A JSON-RPC 请求处理核心（挂载路径与全局入口共用，避免重复逻辑）。"""
     try:
         raw = await request.json()
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -107,6 +118,56 @@ async def a2a_entry(
                 id=rpc.id, error=JsonRpcError(code=_ERR_INTERNAL, message="Internal error")
             ).model_dump(exclude_none=True),
         )
+
+
+@global_router.get("/.well-known/agent.json", summary="全局 Agent Card 发现")
+async def global_agent_card(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis_client),
+    user: UserContext = Depends(get_current_user),
+):
+    """全局发现端点：返回平台默认（首个可对外服务）Agent 的 Card。"""
+    base_url = str(request.base_url).rstrip("/")
+    agent_id = await a2a_server.resolve_default_exposed_agent(db)
+    card = await a2a_server.build_agent_card(db, redis, agent_id, base_url)
+    return JSONResponse(content=card)
+
+
+@global_router.post("/a2a", summary="全局 A2A JSON-RPC 入口")
+async def global_a2a_entry(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis_client),
+    user: UserContext = Depends(get_current_user),
+):
+    """A2A 标准入口：从 JSON-RPC params 中 agentId/agentCode 定位目标 Agent 后转发。"""
+    try:
+        raw = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse(
+            status_code=400,
+            content=JsonRpcError(code=_ERR_PARSE, message="Invalid JSON").model_dump(),
+        )
+    if not isinstance(raw, dict):
+        return JSONResponse(
+            status_code=400,
+            content=JsonRpcError(code=_ERR_INVALID_REQUEST, message="Invalid JSON-RPC request").model_dump(),
+        )
+    params = raw.get("params") or {}
+    try:
+        agent_id = await a2a_server.resolve_agent(
+            db, params.get("agentId"), params.get("agentCode")
+        )
+    except ValueError as e:
+        return JSONResponse(
+            status_code=404,
+            content=JsonRpcResponse(
+                id=raw.get("id"),
+                error=JsonRpcError(code=_ERR_INTERNAL, message=str(e)),
+            ).model_dump(exclude_none=True),
+        )
+    return await _handle_a2a_request(request, agent_id, db, redis)
 
 
 async def _stream_message(

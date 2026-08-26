@@ -18,10 +18,18 @@ class SysOrder(BaseModel, SoftDeleteMixin):
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="用户ID")
     package_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="套餐ID")
     package_name: Mapped[str] = mapped_column(String(32), nullable=False, comment="套餐名称")
-    package_level: Mapped[str] = mapped_column(
-        String(16), nullable=False, comment="套餐对应会员等级"
+    package_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="vip", comment="商品类型(vip:会员卡;credit:积分卡)"
     )
-    period_days: Mapped[int] = mapped_column(Integer, nullable=False, comment="有效期天数")
+    package_level: Mapped[str | None] = mapped_column(
+        String(16), nullable=True, comment="套餐对应会员等级(积分卡为NULL)"
+    )
+    credit_amount: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, comment="可得积分数量(积分卡订单;会员卡为NULL)"
+    )
+    period_days: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, comment="有效期天数(积分卡为NULL)"
+    )
     original_price: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="原价(分)")
     discount_amount: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, comment="促销折扣金额(分)"
@@ -33,6 +41,9 @@ class SysOrder(BaseModel, SoftDeleteMixin):
         BigInteger, nullable=False, default=0, comment="优惠券抵扣金额(分)"
     )
     payable_amount: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="应付金额(分)")
+    balance_amount: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, comment="余额支付部分金额(分,组合支付时>0)"
+    )
     paid_amount: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, comment="实付金额(分)"
     )

@@ -2,6 +2,8 @@ import pytest
 
 from app.router import client_log
 
+pytestmark = pytest.mark.api
+
 
 class _MockClientLogger:
     def __init__(self):

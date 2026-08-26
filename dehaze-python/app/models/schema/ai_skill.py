@@ -5,6 +5,7 @@
 """
 
 from datetime import datetime
+from typing import Any, Literal
 
 from pydantic import Field, field_validator
 
@@ -21,11 +22,11 @@ DANGEROUS_PATTERN = (
 
 
 class SkillCreate(OrmResult):
-    """创建 Skill 请求体"""
+    """创建 Skill 请求体（SDK SkillForm：字段 instruction，另有 scene/scriptContent/templateId 可忽略）"""
 
     name: str = Field(..., min_length=1, max_length=128, description="Skill名称(唯一)")
     description: str = Field(..., min_length=1, max_length=500, description="Skill描述")
-    content: str = Field(..., min_length=1, description="Markdown指令全文")
+    instruction: str = Field(..., min_length=1, description="Markdown指令全文")
 
     @field_validator("name")
     @classmethod
@@ -45,7 +46,7 @@ class SkillUpdate(OrmResult):
     description: str | None = Field(
         default=None, min_length=1, max_length=500, description="Skill描述"
     )
-    content: str | None = Field(default=None, min_length=1, description="Markdown指令全文")
+    instruction: str | None = Field(default=None, min_length=1, description="Markdown指令全文")
 
     @field_validator("name")
     @classmethod
@@ -63,34 +64,59 @@ class SkillUpdate(OrmResult):
 
 
 class SkillStatusForm(OrmResult):
-    """启停 Skill 请求体"""
+    """启停 Skill 请求体（SDK switchSkillStatus 传 {status: 0|1}）"""
 
-    enabled: bool = Field(..., description="目标启停状态(true:启用;false:禁用)")
+    status: Literal[0, 1] = Field(..., description="目标启停状态(0:禁用;1:启用)")
 
 
 class SkillResult(OrmResult):
-    """Skill 详情（管理员全部字段）"""
+    """Skill 详情（管理员全部字段，instruction 映射实体 instruction）"""
 
     id: int = Field(description="主键")
     name: str = Field(description="Skill名称")
     description: str = Field(description="Skill描述")
-    content: str | None = Field(default=None, description="Markdown指令全文")
-    status: int = Field(description="启停状态(1:启用;2:禁用)")
+    instruction: str | None = Field(default=None, description="Markdown指令全文")
+    status: int = Field(description="启停状态(0:禁用;1:启用)")
     source: str = Field(description="来源(builtin/admin)")
+    agentCount: int = Field(default=0, description="被Agent关联数")
+    marketShared: int = Field(default=0, description="是否共享至Skill市场(0:否;1:是)")
     createTime: datetime | None = Field(default=None, description="创建时间")
     updateTime: datetime | None = Field(default=None, description="更新时间")
 
 
 class SkillListItem(OrmResult):
-    """Skill 列表项（不含全文，渐进式加载不注入 content）"""
+    """Skill 列表项（不含全文，渐进式加载不注入 instruction）"""
 
     id: int = Field(description="主键")
     name: str = Field(description="Skill名称")
     description: str = Field(description="Skill描述")
-    status: int = Field(description="启停状态(1:启用;2:禁用)")
+    status: int = Field(description="启停状态(0:禁用;1:启用)")
     source: str = Field(description="来源(builtin/admin)")
+    marketShared: int = Field(default=0, description="是否共享至Skill市场(0:否;1:是)")
     createTime: datetime | None = Field(default=None, description="创建时间")
     updateTime: datetime | None = Field(default=None, description="更新时间")
+
+
+class SkillTestForm(OrmResult):
+    """试运行 Skill 请求体（测试数据不入库不推送）"""
+
+    inputData: Any | None = Field(default=None, description="测试输入数据")
+
+
+class SkillShareForm(OrmResult):
+    """共享 Skill 至市场请求体"""
+
+    skillId: int = Field(..., description="Skill主键")
+
+
+class SkillMarketVO(OrmResult):
+    """Skill 市场目录项"""
+
+    skillId: int = Field(description="Skill主键")
+    name: str = Field(description="Skill名称")
+    description: str = Field(description="Skill描述")
+    enabled: bool = Field(description="是否已启用")
+    agentCount: int = Field(default=0, description="已关联Agent数")
 
 
 class SkillPageQuery(BasePageQuery):

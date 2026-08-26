@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.infrastructure.llm.llm_client import llm_client
+from app.infrastructure.llm.call.llm_client import llm_client
 from app.models.entity.sys_ai_artifact import SysAiArtifact
 from app.models.schema.ai_artifact import ArtifactResult
 from app.models.schema.common import PageResult
@@ -36,6 +36,17 @@ _IMAGE_REF_TYPES = {"sys_file", "sys_pred_log", "sys_eval_log"}
 
 
 class AiArtifactService:
+    def __init__(
+        self,
+        member_repository=member_repository,
+        member_benefit_repository=member_benefit_repository,
+        ai_artifact_repository=ai_artifact_repository,
+        ai_conversation_repository=ai_conversation_repository,
+    ):
+        self.member_repository = member_repository
+        self.member_benefit_repository = member_benefit_repository
+        self.ai_artifact_repository = ai_artifact_repository
+        self.ai_conversation_repository = ai_conversation_repository
 
     async def list_by_conversation(
         self,
@@ -46,13 +57,13 @@ class AiArtifactService:
         size: int,
     ) -> PageResult[ArtifactResult]:
         """查询会话产物列表（校验会话归属）"""
-        conv = await ai_conversation_repository.get_by_id_and_user(
+        conv = await self.ai_conversation_repository.get_by_id_and_user(
             db, conv_id, user_id
         )
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
 
-        artifacts, total = await ai_artifact_repository.list_by_conversation(
+        artifacts, total = await self.ai_artifact_repository.list_by_conversation(
             db, conv_id, page, size
         )
 
@@ -73,7 +84,7 @@ class AiArtifactService:
         if not msg:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
 
-        artifacts = await ai_artifact_repository.list_by_message(db, msg_id)
+        artifacts = await self.ai_artifact_repository.list_by_message(db, msg_id)
 
         return [ArtifactResult.model_validate(a) for a in artifacts]
 
@@ -96,20 +107,20 @@ class AiArtifactService:
             ref_id=ref_id,
             summary=summary,
         )
-        artifact = await ai_artifact_repository.create(db, artifact)
+        artifact = await self.ai_artifact_repository.create(db, artifact)
         return ArtifactResult.model_validate(artifact)
 
     async def mark_invalid_for_file(self, db: AsyncSession, file_id: int) -> None:
         """文件删除时联动失效产物：直接引用 sys_file，及经预测/评估日志间接引用。"""
-        await ai_artifact_repository.mark_invalid(db, "sys_file", file_id)
+        await self.ai_artifact_repository.mark_invalid(db, "sys_file", file_id)
 
         pred_ids = await pred_log_repository.list_ids_by_file(db, file_id)
         for log_id in pred_ids:
-            await ai_artifact_repository.mark_invalid(db, "sys_pred_log", log_id)
+            await self.ai_artifact_repository.mark_invalid(db, "sys_pred_log", log_id)
 
         eval_ids = await eval_log_repository.list_ids_by_file(db, file_id)
         for log_id in eval_ids:
-            await ai_artifact_repository.mark_invalid(db, "sys_eval_log", log_id)
+            await self.ai_artifact_repository.mark_invalid(db, "sys_eval_log", log_id)
 
     async def list_by_ref(
         self,
@@ -119,7 +130,7 @@ class AiArtifactService:
         user_id: int,
     ) -> list[ArtifactResult]:
         """按业务引用反查产物列表（校验会话归属）"""
-        artifacts = await ai_artifact_repository.list_by_ref(db, ref_type, ref_id)
+        artifacts = await self.ai_artifact_repository.list_by_ref(db, ref_type, ref_id)
         return await self._filter_owned(db, artifacts, user_id)
 
     async def get_detail(
@@ -129,10 +140,10 @@ class AiArtifactService:
         user_id: int,
     ) -> dict:
         """产物详情：记录 + 按需解析图片运行时 URL（供前端展示）。"""
-        artifact = await ai_artifact_repository.get_by_id(db, artifact_id)
+        artifact = await self.ai_artifact_repository.get_by_id(db, artifact_id)
         if not artifact or artifact.is_invalid:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "产物不存在或已失效")
-        conv = await ai_conversation_repository.get_by_id_and_user(
+        conv = await self.ai_conversation_repository.get_by_id_and_user(
             db, artifact.conversation_id, user_id
         )
         if not conv:
@@ -151,7 +162,7 @@ class AiArtifactService:
         """过滤当前用户所属会话的产物"""
         result = []
         for a in artifacts:
-            conv = await ai_conversation_repository.get_by_id_and_user(
+            conv = await self.ai_conversation_repository.get_by_id_and_user(
                 db, a.conversation_id, user_id
             )
             if conv:
@@ -171,7 +182,7 @@ class AiArtifactService:
         Returns:
             {message_id: [{id, type, summary}]}，仅包含 is_invalid=0 的产物。
         """
-        artifacts = await ai_artifact_repository.list_by_message_ids(db, message_ids)
+        artifacts = await self.ai_artifact_repository.list_by_message_ids(db, message_ids)
         grouped: dict[int, list[dict]] = {}
         for a in artifacts:
             grouped.setdefault(a.message_id, []).append(
@@ -181,9 +192,9 @@ class AiArtifactService:
 
     async def _get_visual_limit(self, db: AsyncSession, user_id: int) -> int:
         """读取用户等级对应的多模态视觉读取日限额。"""
-        member = await member_repository.get_by_user_id(db, user_id)
+        member = await self.member_repository.get_by_user_id(db, user_id)
         level_code = member.level_code if member else "level_0"
-        benefit = await member_benefit_repository.get_by_level_code(db, level_code)
+        benefit = await self.member_benefit_repository.get_by_level_code(db, level_code)
         return benefit.multimodal_limit if benefit and benefit.multimodal_limit else 0
 
     async def check_visual_quota(
@@ -275,10 +286,10 @@ class AiArtifactService:
         返回 (视觉理解结果文本, 多模态 input_tokens)。input_tokens 由工具壳
         归集到推理 ctx，随本次推理一并计入 Token 消耗。
         """
-        artifact = await ai_artifact_repository.get_by_id(db, artifact_id)
+        artifact = await self.ai_artifact_repository.get_by_id(db, artifact_id)
         if not artifact or artifact.is_invalid:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "产物不存在或已失效")
-        conv = await ai_conversation_repository.get_by_id_and_user(
+        conv = await self.ai_conversation_repository.get_by_id_and_user(
             db, artifact.conversation_id, user_id
         )
         if not conv:

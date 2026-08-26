@@ -26,7 +26,6 @@ from sqlalchemy import Select, false
 from sqlalchemy.orm import InstrumentedAttribute
 
 from app.dependencies.auth import UserContext
-from app.repository.dept_repository import dept_repository
 
 
 async def apply_data_scope(
@@ -36,16 +35,19 @@ async def apply_data_scope(
     *,
     dept_field: InstrumentedAttribute[Any] | None = None,
     creator_field: InstrumentedAttribute[Any] | None = None,
+    children_ids: list[int] | None = None,
 ) -> Select:
     """
-    按用户 data_scope 为查询追加行级过滤条件
+    按用户 data_scope 为查询追加行级过滤条件（纯函数，不依赖 dept_repository）
 
     Args:
         stmt: 原始查询语句
         user: 当前用户上下文
-        db: 异步数据库会话（用于查询部门子树）
+        db: 异步数据库会话（保留以兼容签名，当前未直接使用）
         dept_field: 部门字段表达式（如 SysUser.dept_id），无部门字段的表传 None
         creator_field: 创建人字段表达式（如 SysOrder.create_by），用于"本人"过滤
+        children_ids: data_scope=1（部门及子部门）时由调用方注入的部门子树 ID 列表；
+            避免本模块反向依赖 dept_repository 形成循环引用
 
     Returns:
         附加条件后的查询语句；ROOT 或 data_scope=0 时原样返回
@@ -80,8 +82,9 @@ async def apply_data_scope(
             raise ValueError("data_scope=1（部门及子部门）需要提供 dept_field")
         if user.dept_id is None:
             return stmt.where(false())
-        dept_ids = await dept_repository.get_children_ids(db, user.dept_id)
-        return stmt.where(dept_field.in_(dept_ids))
+        if not children_ids:
+            return stmt.where(false())
+        return stmt.where(dept_field.in_(children_ids))
 
     # 未知 data_scope 取值，保守返回空集
     return stmt.where(false())

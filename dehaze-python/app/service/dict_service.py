@@ -21,9 +21,7 @@ from app.repository.dict_repository import dict_repository, dict_type_repository
 
 logger = logging.getLogger(__name__)
 
-# 缓存 Key 前缀
 DICT_OPTIONS_CACHE_PREFIX = "dict:options:"
-# 缓存过期时间（秒）
 DICT_OPTIONS_CACHE_TTL = CACHE_TTL_HOUR
 
 # 系统预置字典类型编码（T-DM-025：预置类型不可删除），与 config/sql/data/sys_dict_type.sql 种子一致
@@ -109,7 +107,7 @@ async def ensure_ai_dict_defaults(db: AsyncSession, redis: Redis) -> None:
         # （uk_type_value 唯一键冲突）。丢弃本批插入即可——库中已存在等价数据。
         await db.rollback()
     # 失效配置默认值缓存，避免补齐后仍命中旧的空缓存
-    from app.service.ai.agent_config_resolver import invalidate_defaults
+    from app.service.ai.strategies.agent_config_resolver import invalidate_defaults
 
     await invalidate_defaults(redis)
 
@@ -149,12 +147,10 @@ class DictService:
         if not value:
             raise BusinessException("字典值不能为空")
 
-        # 检查类型编码是否存在
         dict_type = await dict_type_repository.get_by_code(db, type_code)
         if not dict_type:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在")
 
-        # 检查同一类型下键值唯一性
         existing = await dict_repository.get_by_type_code_and_value(db, type_code, value)
         if existing:
             raise BusinessException(ResultCode.DATA_EXISTS, "该类型下字典值已存在")
@@ -177,7 +173,6 @@ class DictService:
         3. 如果修改了 value，检查唯一性
         4. 更新成功后清除相关缓存
         """
-        # 获取原字典数据
         old_dict = await dict_repository.get_by_id(db, dict_id)
         if not old_dict:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典不存在")
@@ -186,7 +181,6 @@ class DictService:
         data.pop("typeCode", None)
         new_value = data.get("value", old_dict.value)
 
-        # 如果修改了 value，检查唯一性（同类型下，排除自身）
         if new_value != old_dict.value:
             existing = await dict_repository.get_by_type_code_and_value(
                 db, old_dict.type_code, new_value
@@ -210,20 +204,17 @@ class DictService:
         1. 校验字典数据项是否存在
         2. 删除成功后清除相关缓存
         """
-        # 校验字典数据项是否存在
         exist_count = await dict_repository.count_by_ids(db, dict_ids)
         if exist_count == 0:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)
 
-        # 获取要删除的字典的 type_code 列表
         type_codes = await dict_repository.get_type_codes_by_ids(db, dict_ids)
 
         result = await dict_repository.delete_by_ids(db, dict_ids)
 
-        # 清除相关缓存
         cache = CacheService(redis)
         for type_code in type_codes:
-            if type_code:  # 确保 type_code 不为 None
+            if type_code:
                 await cache.delete(f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}")
 
         return result > 0
@@ -282,7 +273,6 @@ class DictTypeService:
         if not code:
             raise BusinessException("字典类型编码不能为空")
 
-        # 检查编码唯一性
         existing = await dict_type_repository.get_by_code(db, code)
         if existing:
             raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已被历史记录占用")
@@ -300,7 +290,6 @@ class DictTypeService:
         1. 检查字典类型是否存在
         2. code 只读，不可修改（T-DM-015：编码创建后不可变）
         """
-        # 获取原类型
         old_type = await dict_type_repository.get_by_id(db, type_id)
         if not old_type:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在")
@@ -311,11 +300,9 @@ class DictTypeService:
         if new_code is not None and new_code != old_type.code:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "字典类型编码不可修改")
 
-        # 更新字典类型（code 保持不变）
         data.pop("code", None)
         result = await dict_type_repository.update_by_id(db, type_id, data)
 
-        # 清除该类型下拉缓存
         if result and old_type.code:
             await CacheService(redis).delete(f"{DICT_OPTIONS_CACHE_PREFIX}{old_type.code}")
 
@@ -332,7 +319,6 @@ class DictTypeService:
         2. force=False 时检查是否存在关联的字典数据，存在则禁止删除
         3. force=True 时级联删除关联的字典数据
         """
-        # 校验字典类型是否存在
         exist_count = await dict_type_repository.count_by_ids(db, type_ids)
         if exist_count == 0:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)

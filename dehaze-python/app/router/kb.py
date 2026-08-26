@@ -9,9 +9,12 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, Path, Query
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi import HTTPException, status
+
+from app.core.code import ResultCode
 from app.core.result import success
 from app.database import get_db
-from app.decorators.permission import require_permission
+from app.decorators.permission import _match_permission, require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.knowledge_base import (
@@ -27,10 +30,14 @@ from app.models.schema.knowledge_base import (
     KnowledgeDocumentPageQuery,
     RetrieveTestForm,
     SearchForm,
+    TestSetCreateForm,
+    TestSetRunForm,
 )
 from app.service.kb.document_service import document_service
 from app.service.kb.knowledge_base_service import knowledge_base_service
+from app.service.kb.low_quality_service import low_quality_service
 from app.service.kb.search_service import search_service
+from app.service.kb.test_set_service import test_set_service
 
 
 def _filters_to_dict(f) -> dict | None:
@@ -52,6 +59,19 @@ router = APIRouter(
     tags=["AI知识库"],
     dependencies=[Depends(get_current_user)],
 )
+
+
+def _require_kb_audit(user: UserContext) -> None:
+    """管理端知识库审计（kb:audit）：ROOT 放行，否则需该权限（普通用户 A0301）。
+
+    普通用户持有 kb:manage（用户端管理自己的库），管理端审计接口须独立权限区分；
+    抛 403 与 require_permission 的 HTTPException 行为保持一致。
+    """
+    if not user.is_root and not _match_permission(user.permissions, "kb:audit"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ResultCode.FORBIDDEN_OPERATION.msg,
+        )
 
 
 # ==================== 知识库管理（F-KB-001） ====================
@@ -76,8 +96,11 @@ async def list_knowledge_bases(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
+    # view=admin 管理端视角：仅 kb:audit 可看全量含私有库
+    if query.view == "admin":
+        _require_kb_audit(user)
     result = await knowledge_base_service.get_page(
-        db, redis, user.id, query.keyword, query.pageNum, query.pageSize
+        db, redis, user.id, query.keyword, query.pageNum, query.pageSize, query.view
     )
     return success(result)
 
@@ -118,6 +141,24 @@ async def delete_knowledge_base(
 ):
     await knowledge_base_service.delete(db, redis, kb_id, user)
     return success()
+
+
+@router.get("/{kb_id}/index-stats", summary="知识库索引状态")
+@require_permission("kb:audit")
+async def get_kb_index_stats(
+    kb_id: int = Path(..., description="知识库ID"),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    """知识库索引状态（ES 索引大小/分块文档数/阈值告警，管理端索引状态区）。"""
+    stats = await knowledge_base_service.get_index_stats(db, kb_id)
+    return success(
+        {
+            "indexSize": stats["index_size"],
+            "indexDocCount": stats["index_doc_count"],
+            "thresholdWarning": stats["threshold_warning"],
+        }
+    )
 
 
 # ==================== 文档管理（F-KB-002） ====================
@@ -375,4 +416,68 @@ async def retrieve_test(
         top_k=body.topK,
         enable_mmr=body.enableMMR,
     )
+    return success(result)
+
+
+# ==================== 召回测试集与低质量片段（F-KB-004） ====================
+
+
+@router.post("/{kb_id}/retrieve/test-sets", summary="创建召回测试集")
+@require_permission("kb:audit")
+async def create_test_set(
+    kb_id: int = Path(..., description="知识库ID"),
+    body: TestSetCreateForm = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    """创建召回测试集（问题 + 期望命中段落，作为评估基线）。"""
+    vo = await test_set_service.create_test_set(
+        db, kb_id, body.question, body.expected_chunk_ids
+    )
+    return success(vo)
+
+
+@router.get("/{kb_id}/retrieve/test-sets", summary="召回测试集列表")
+@require_permission("kb:audit")
+async def list_test_sets(
+    kb_id: int = Path(..., description="知识库ID"),
+    pageNum: int = Query(default=1, ge=1, description="页码"),
+    pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    """召回测试集分页列表（{list,total}，测试集随评估基线积累需分页）。"""
+    result = await test_set_service.list_test_sets(db, kb_id, pageNum, pageSize)
+    return success(result)
+
+
+@router.post("/{kb_id}/retrieve/test-sets/{test_set_id}/run", summary="执行召回测试集")
+@require_permission("kb:audit")
+async def run_test_set(
+    kb_id: int = Path(..., description="知识库ID"),
+    test_set_id: int = Path(..., description="测试集ID"),
+    body: TestSetRunForm | None = Body(default=None),
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
+):
+    """执行召回测试集，返回 Recall@K 与命中率。"""
+    top_k = body.topK if body else 5
+    vo = await test_set_service.run_test_set(
+        db, redis, user.id, kb_id, test_set_id, top_k
+    )
+    return success(vo)
+
+
+@router.get("/{kb_id}/chunks/low-quality", summary="低质量片段列表")
+@require_permission("kb:audit")
+async def list_low_quality_chunks(
+    kb_id: int = Path(..., description="知识库ID"),
+    pageNum: int = Query(default=1, ge=1, description="页码"),
+    pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    """被点踩片段列表（反馈闭环反哺检索优化）。"""
+    result = await low_quality_service.list_low_quality_chunks(db, kb_id, pageNum, pageSize)
     return success(result)

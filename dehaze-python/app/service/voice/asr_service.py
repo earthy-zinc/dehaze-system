@@ -49,6 +49,16 @@ _ESTIMATE_SECONDS = 10
 class AsrService:
     """ASR 编排服务"""
 
+    def __init__(
+        self,
+        hotword_service=hotword_service,
+        voice_billing_service=voice_billing_service,
+        funasr_client=funasr_client,
+    ):
+        self.hotword_service = hotword_service
+        self.voice_billing_service = voice_billing_service
+        self.funasr_client = funasr_client
+
     # ==================== 会话状态与并发（Redis） ====================
 
     def _session_key(self, session_id: str) -> str:
@@ -90,7 +100,7 @@ class AsrService:
         """
         await self._check_concurrency(redis)
         # 计费预校验（预估按 10 秒起步），不足直接拒绝
-        await voice_billing_service.ensure_balance(
+        await self.voice_billing_service.ensure_balance(
             db, user_id, math.ceil(_ESTIMATE_SECONDS * settings.VOICE_ASR_CREDITS_PER_SECOND)
         )
 
@@ -120,9 +130,9 @@ class AsrService:
     async def _register_hotwords(self, db: AsyncSession, user_id: int) -> None:
         """合并全局+用户级热词注册到 FunASR；调用失败仅告警。"""
         try:
-            words = await hotword_service.get_effective_words(db, user_id)
+            words = await self.hotword_service.get_effective_words(db, user_id)
             if words:
-                await funasr_client.register_hotwords(words)
+                await self.funasr_client.register_hotwords(words)
         except Exception as e:  # 热词注册失败不阻断会话
             logger.warning("注册热词失败(不影响会话) user_id=%s error=%s", user_id, e)
 
@@ -149,14 +159,14 @@ class AsrService:
         """离线识别完整音频（multipart 直传），处理完即弃不落盘，完成时按秒实扣。"""
         self._validate_audio(audio)
         # 计费预校验（预估按 10 秒起步）
-        await voice_billing_service.ensure_balance(
+        await self.voice_billing_service.ensure_balance(
             db, user_id, math.ceil(_ESTIMATE_SECONDS * settings.VOICE_ASR_CREDITS_PER_SECOND)
         )
         # 注册热词（离线识别也应用领域热词），失败仅告警
         await self._register_hotwords(db, user_id)
 
         try:
-            text = await funasr_client.offline(audio, model=model)
+            text = await self.funasr_client.offline(audio, model=model)
         except FunASRClientError as e:
             raise BusinessException(ResultCode.BUSINESS_ERROR, f"离线识别失败: {e}") from e
 
@@ -351,9 +361,9 @@ class AsrService:
         try:
             if db is None:
                 async with get_db_session() as s:
-                    await voice_billing_service.charge_asr(s, user_id, audio_seconds)
+                    await self.voice_billing_service.charge_asr(s, user_id, audio_seconds)
             else:
-                await voice_billing_service.charge_asr(db, user_id, audio_seconds)
+                await self.voice_billing_service.charge_asr(db, user_id, audio_seconds)
         except Exception as e:  # noqa: BLE001 - 计费失败不影响识别结果返回
             logger.error("ASR 计费失败 user_id=%s seconds=%s error=%s", user_id, audio_seconds, e)
 

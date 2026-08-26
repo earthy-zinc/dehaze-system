@@ -53,14 +53,12 @@ class IPBlacklistMiddleware:
         if path in EXCLUDE_PATHS:
             return await self.app(scope, receive, send)
 
-        # 获取客户端 IP
         client = scope.get("client")
         if not client:
             return await self.app(scope, receive, send)
 
         ip = client[0]
 
-        # 开发环境跳过内网 IP
         if settings.DEBUG and _is_internal_ip(ip):
             return await self.app(scope, receive, send)
 
@@ -84,7 +82,6 @@ class IPBlacklistMiddleware:
                 )
                 return
 
-        # 追踪响应状态码
         response_status = 0
 
         async def send_wrapper(message: Message):
@@ -96,7 +93,6 @@ class IPBlacklistMiddleware:
         try:
             await self.app(scope, receive, send_wrapper)
         finally:
-            # 异常请求追踪（4xx/5xx）
             if response_status >= 400 and redis:
                 asyncio.create_task(_track_ip_error(ip, response_status, redis))
 
@@ -122,7 +118,6 @@ async def _track_ip_error(ip: str, status: int, redis):
                 settings.IP_BLACKLIST_DURATION,
                 str(int(now)),
             )
-            # 清空错误记录
             await redis.delete(key)
             logger.warning(
                 f"IP 自动封禁: ip={ip}, errors={error_count}, "
@@ -135,8 +130,7 @@ async def _track_ip_error(ip: str, status: int, redis):
 class IPBlacklistService:
     """IP 黑名单管理服务（供管理端 API 调用）"""
 
-    @staticmethod
-    async def add(ip: str, duration: int | None = None) -> bool:
+    async def add(self, ip: str, duration: int | None = None) -> bool:
         """手动添加 IP 到黑名单"""
         redis = await get_redis_client()
         if not redis:
@@ -146,8 +140,7 @@ class IPBlacklistService:
         logger.info(f"IP 手动封禁: ip={ip}, duration={ttl}s")
         return True
 
-    @staticmethod
-    async def remove(ip: str) -> bool:
+    async def remove(self, ip: str) -> bool:
         """从黑名单移除 IP"""
         redis = await get_redis_client()
         if not redis:
@@ -157,16 +150,14 @@ class IPBlacklistService:
         logger.info(f"IP 解封: ip={ip}")
         return True
 
-    @staticmethod
-    async def is_blocked(ip: str) -> bool:
+    async def is_blocked(self, ip: str) -> bool:
         """检查 IP 是否被封禁"""
         redis = await get_redis_client()
         if not redis:
             return False
         return bool(await redis.exists(f"ip:blacklist:{ip}"))
 
-    @staticmethod
-    async def get_error_count(ip: str) -> int:
+    async def get_error_count(self, ip: str) -> int:
         """获取 IP 当前窗口内的异常请求次数"""
         redis = await get_redis_client()
         if not redis:
@@ -175,3 +166,6 @@ class IPBlacklistService:
         key = f"ip:errors:{ip}"
         await redis.zremrangebyscore(key, 0, now - settings.IP_BLACKLIST_TRACKING_WINDOW)
         return await redis.zcard(key)
+
+
+ip_blacklist_service = IPBlacklistService()

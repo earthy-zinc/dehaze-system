@@ -7,24 +7,59 @@
 - record_tool_llm / record_kb_inject：工具推理与知识库注入的独立计费记录
 """
 
+import asyncio
 import logging
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
+from app.database import get_db_session
 from app.repository.ai_billing_repository import ai_billing_repository
 from app.repository.ai_credit_log_repository import ai_credit_log_repository
 from app.service.billing.balance_service import balance_service
 from app.service.billing.billing_anomaly_service import billing_anomaly_service
+from app.service.billing.cost_service import cost_service
 from app.service.billing.estimate_service import estimate_service
 from app.service.billing.quota_service import quota_service
-from app.service.billing.rate_provider import RateProvider
+from app.service.billing.rate_provider import rate_provider
+from app.service.member.growth_service import member_growth_service
 
 logger = logging.getLogger(__name__)
+
+# 异步后台任务引用，防止被垃圾回收
+_pending_tasks: set[asyncio.Task] = set()
+
+
+def _publish_chat_completed(user_id: int) -> None:
+    """发布 ai.chat.completed 事件（fire-and-forget）：会员模块消费后写 AI 使用激励成长值。
+
+    一次对话完成仅发布一次（多步推理/子智能体的多次 LLM 调用不重复），
+    消费失败仅记 warning，不影响计费主流程。
+    """
+
+    async def _run() -> None:
+        try:
+            async with get_db_session() as db:
+                await member_growth_service.add_ai_consume_growth(db, user_id)
+        except Exception:
+            logger.warning("ai.chat.completed 消费失败（AI 使用激励） user_id=%s", user_id, exc_info=True)
+
+    task = asyncio.create_task(_run())
+    _pending_tasks.add(task)
+    task.add_done_callback(_pending_tasks.discard)
 
 
 class BillingService:
     """计费总入口：计量 → 预扣 → 实扣 → 记录"""
+
+    def __init__(
+        self,
+        ai_billing_repository=ai_billing_repository,
+        ai_credit_log_repository=ai_credit_log_repository,
+    ):
+        self.ai_billing_repository = ai_billing_repository
+        self.ai_credit_log_repository = ai_credit_log_repository
 
     # ── 预校验 + 预扣 ──────────────────────────────
 
@@ -55,7 +90,7 @@ class BillingService:
 
         # 3. 配额校验（失败计入连续配额不足计数，达阈值告警，见后端实现 §4.7）
         if not await quota_service.check_quota(db, user_id, estimated):
-            await billing_anomaly_service.record_quota_fail(user_id)
+            await billing_anomaly_service.record_quota_fail(db, user_id)
             return {
                 "final_response": "今日或本月 AI 积分配额不足，请升级会员或明日再试",
                 "stop_reason": "quota_exceeded",
@@ -70,7 +105,7 @@ class BillingService:
 
         # 5. 配额预扣（失败已整体回滚，无副作用；并发窗口内失败同样计入配额不足计数）
         if not await quota_service.pre_deduct(db, user_id, estimated):
-            await billing_anomaly_service.record_quota_fail(user_id)
+            await billing_anomaly_service.record_quota_fail(db, user_id)
             return {
                 "final_response": "今日或本月 AI 积分配额不足，请升级会员或明日再试",
                 "stop_reason": "quota_exceeded",
@@ -85,7 +120,7 @@ class BillingService:
             }
 
         # 7. 创建计费记录（预扣值，其余字段待实扣结算更新）
-        billing = await ai_billing_repository.create_billing(
+        billing = await self.ai_billing_repository.create_billing(
             db,
             user_id=user_id,
             conversation_id=conversation_id,
@@ -154,10 +189,10 @@ class BillingService:
         output_tokens = usage.get("output_tokens") or usage.get("completion_tokens") or 0
         cached_tokens = usage.get("cached_input_tokens", 0)
 
-        # 降级计费：按实际模型换算
+        # 降级计费：按实际模型换算（价格来源 sys_ai_model_price，见 AI模型管理 §2.12）
         settle_model = actual_model_id or model_id
-        calc = await RateProvider.calculate(
-            db, settle_model, input_tokens, output_tokens, cached_tokens
+        calc = await rate_provider.calculate(
+            db, settle_model, provider_id, input_tokens, output_tokens, cached_tokens
         )
         actual_credits = calc["credits"]
         credits_saved = calc["credits_saved"]
@@ -167,7 +202,7 @@ class BillingService:
             db, user_id, conversation_id, message_id, bill_type
         )
         if billing is None:
-            billing = await ai_billing_repository.create_billing(
+            billing = await self.ai_billing_repository.create_billing(
                 db,
                 user_id=user_id,
                 conversation_id=conversation_id,
@@ -215,13 +250,13 @@ class BillingService:
             update_data["error_code"] = error_code
         if latency_ms is not None:
             update_data["latency_ms"] = latency_ms
-        await ai_billing_repository.update(db, billing, update_data)
+        await self.ai_billing_repository.update(db, billing, update_data)
 
         # 补记路径（adjustment=True）：仅更新既有记录，不新增 consume 流水、不做异常检测
         if not adjustment:
             # 写入积分流水（source=consume，balance_after 取结算后余额）
             balance = await balance_service.get_balance(db, user_id)
-            await ai_credit_log_repository.create_log(
+            await self.ai_credit_log_repository.create_log(
                 db,
                 user_id=user_id,
                 source="consume",
@@ -235,11 +270,22 @@ class BillingService:
             # 内部尽力而为，失败不阻断结算主流程）
             daily_limit, monthly_limit = await quota_service.get_limits(db, user_id)
             await billing_anomaly_service.check(
+                db,
                 user_id,
                 billing,
                 monthly_limit=monthly_limit,
                 daily_limit=daily_limit,
             )
+
+            # 成本核算回填（成本线异步，失败不阻断结算主链路；db 为 None 的直连测试场景跳过）
+            try:
+                if db is not None and settings.AI_BILLING_COST_CALC_ENABLE:
+                    await cost_service.backfill_cost(db, billing.id)
+            except Exception:
+                logger.warning("成本核算回填失败 billing_id=%s", billing.id)
+
+            # 发布对话完成事件：AI 使用激励成长值（一次对话一次，fire-and-forget）
+            _publish_chat_completed(user_id)
 
         return {
             "billing_id": billing.id,
@@ -260,7 +306,7 @@ class BillingService:
         """查找该消息对应 bill_type 的计费记录（优先 pre_charge 创建的预扣记录）"""
         if not message_id:
             return None
-        records = await ai_billing_repository.list_by_message(db, message_id)
+        records = await self.ai_billing_repository.list_by_message(db, message_id)
         for r in records:
             if r.bill_type == bill_type and r.user_id == user_id:
                 return r

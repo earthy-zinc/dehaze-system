@@ -17,8 +17,8 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.repository.ai_provider_repository import ai_provider_repository
-from app.infrastructure.llm.local_llm_manager import ensure_running
-from app.infrastructure.llm.provider_key_selector import provider_key_selector
+from app.infrastructure.llm.local.local_llm_manager import ensure_running
+from app.infrastructure.provider.provider_key_selector import provider_key_selector
 
 logger = logging.getLogger(__name__)
 

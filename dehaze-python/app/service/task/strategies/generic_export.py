@@ -17,9 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import EXPORT_TASK_TYPES
-from app.infrastructure.storage.minio_client import get_minio_client, minio_executor
 from app.service.import_export.models import ExportContext
 from app.service.import_export.registry import export_handler_registry
+from app.service.storage.executor import storage_executor
+from app.service.storage.factory import get_storage_service
 from app.service.task.strategies._common import make_cancel_cb, resolve_module
 from app.service.task.strategy import CancelChecker, ProgressCallback, TaskStrategy
 
@@ -74,17 +75,11 @@ class GenericExportStrategy(TaskStrategy):
 
 
 async def _upload_to_minio(data: bytes, object_name: str, content_type: str) -> None:
-    client = get_minio_client()
-    bucket = settings.MINIO_BUCKET_NAME
+    storage = get_storage_service()
+    bucket = settings.MINIO_BUCKET
 
     def _sync() -> None:
-        client.put_object(
-            bucket,
-            object_name,
-            data=io.BytesIO(data),
-            length=len(data),
-            content_type=content_type,
-        )
+        storage.upload(bucket, object_name, data, content_type)
 
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(minio_executor, _sync)
+    await loop.run_in_executor(storage_executor, _sync)

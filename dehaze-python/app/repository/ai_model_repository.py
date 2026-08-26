@@ -35,12 +35,11 @@ class AiModelRepository(BaseRepository[SysAiModel]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_enabled(self, db: AsyncSession) -> list[SysAiModel]:
-        stmt = (
-            select(SysAiModel)
-            .where(SysAiModel.status == 1)
-            .order_by(SysAiModel.provider_id, SysAiModel.display_name)
-        )
+    async def list_enabled(self, db: AsyncSession, model_type: str | None = None) -> list[SysAiModel]:
+        stmt = select(SysAiModel).where(SysAiModel.status == 1)
+        if model_type:
+            stmt = stmt.where(SysAiModel.model_type == model_type)
+        stmt = stmt.order_by(SysAiModel.provider_id, SysAiModel.display_name)
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -80,7 +79,7 @@ class AiModelRepository(BaseRepository[SysAiModel]):
             select(func.count())
             .select_from(SysAiModel)
             .where(
-                SysAiModel.fallback_model_pk == model_pk,
+                SysAiModel.fallback_model_id == model_pk,
                 SysAiModel.status == 1,
                 SysAiModel.deleted == 0,
             )
@@ -124,6 +123,7 @@ class AiModelRepository(BaseRepository[SysAiModel]):
         page: int,
         size: int,
         keyword: str | None = None,
+        model_type: str | None = None,
     ) -> tuple[list[SysAiModel], int]:
         stmt = select(SysAiModel)
         if keyword:
@@ -133,6 +133,8 @@ class AiModelRepository(BaseRepository[SysAiModel]):
                 (SysAiModel.display_name.like(pattern, escape="\\"))
                 | (SysAiModel.model_id.like(pattern, escape="\\"))
             )
+        if model_type:
+            stmt = stmt.where(SysAiModel.model_type == model_type)
         stmt = stmt.order_by(SysAiModel.id.desc())
         return await self.paginate(db, stmt, page, size)
 

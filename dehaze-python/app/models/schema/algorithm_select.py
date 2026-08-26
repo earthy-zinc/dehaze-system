@@ -29,6 +29,7 @@ class AlgorithmDetailVO(BaseModel):
     size: str | None = Field(default=None, description="模型大小")
     avgRating: float = Field(default=0, description="平均评分(0-5)")
     usageCount: int = Field(default=0, description="使用次数")
+    sampleImages: list[str] = Field(default_factory=list, description="最近成功预测结果图（最多3张）")
 
 
 class TestRequest(BaseModel):

@@ -26,21 +26,11 @@ async def test_root_user_skips_filter(monkeypatch):
     user = _make_user(data_scope=0, roles=["ROOT"])
     stmt = select(SysUser).where(SysUser.deleted == 0)
 
-    called = False
-
-    async def _no_call(*args, **kwargs):
-        nonlocal called
-        called = True
-        return []
-
-    monkeypatch.setattr("app.repository.data_scope.dept_repository.get_children_ids", _no_call)
-
     result = await apply_data_scope(
         stmt, user, db=None, dept_field=SysUser.dept_id, creator_field=SysUser.create_by
     )
 
     assert result is stmt
-    assert not called
 
 
 async def test_data_scope_0_all_data():
@@ -80,19 +70,17 @@ async def test_data_scope_2_dept():
     assert "10" in sql
 
 
-async def test_data_scope_1_dept_tree(monkeypatch):
+async def test_data_scope_1_dept_tree():
     user = _make_user(data_scope=1, dept_id=10)
     stmt = select(SysUser).where(SysUser.deleted == 0)
 
-    async def _mock_children(db, dept_id):
-        return [10, 11, 12]
-
-    monkeypatch.setattr(
-        "app.repository.data_scope.dept_repository.get_children_ids", _mock_children
-    )
-
     result = await apply_data_scope(
-        stmt, user, db=object(), dept_field=SysUser.dept_id, creator_field=SysUser.create_by
+        stmt,
+        user,
+        db=None,
+        dept_field=SysUser.dept_id,
+        creator_field=SysUser.create_by,
+        children_ids=[10, 11, 12],
     )
     sql = await _compile_where_params(result)
 
@@ -100,6 +88,23 @@ async def test_data_scope_1_dept_tree(monkeypatch):
     assert "10" in sql
     assert "11" in sql
     assert "12" in sql
+
+
+async def test_data_scope_1_without_children_ids_returns_empty():
+    user = _make_user(data_scope=1, dept_id=10)
+    stmt = select(SysUser).where(SysUser.deleted == 0)
+
+    result = await apply_data_scope(
+        stmt,
+        user,
+        db=None,
+        dept_field=SysUser.dept_id,
+        creator_field=SysUser.create_by,
+        children_ids=None,
+    )
+    sql = await _compile_where_params(result)
+
+    assert "false" in sql.lower() or "0 = 1" in sql.lower() or "0 = false" in sql.lower()
 
 
 async def test_data_scope_3_without_creator_field_raises():

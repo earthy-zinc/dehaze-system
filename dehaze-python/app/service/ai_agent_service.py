@@ -21,6 +21,8 @@ from app.models.schema.common import PageResult
 from app.repository.ai_agent_repository import ai_agent_repository
 from app.repository.ai_agent_version_repository import ai_agent_version_repository
 from app.repository.ai_skill_repository import ai_skill_repository
+from app.service.ai_agent_version_service import agent_version_service
+from app.service.ai.builders.deep_agent_builder import DeepAgentBuilder
 
 # 默认 Agent 编码（后端实现 §2.1 / §2.11.12，系统预置且不可删除）
 DEFAULT_AGENT_CODE = "default"
@@ -54,20 +56,21 @@ async def _clear_agent_caches(redis: Redis, agent: SysAiAgent) -> None:
     await cache.delete(_AGENT_ENABLED_LIST_KEY)
 
 
-async def _get_agent_or_404(db: AsyncSession, agent_id: int) -> SysAiAgent:
-    agent = await ai_agent_repository.get_by_id(db, agent_id)
+async def _get_agent_or_404(repository, db: AsyncSession, agent_id: int) -> SysAiAgent:
+    """Agent 不存在抛 A0404（统一 404 码）。"""
+    agent = await repository.get_by_id(db, agent_id)
     if not agent:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "Agent 不存在")
     return agent
 
 
-async def _load_subagent_items(db: AsyncSession, parent_agent_id: int) -> list[SubAgentItem]:
+async def _load_subagent_items(repository, db: AsyncSession, parent_agent_id: int) -> list[SubAgentItem]:
     """加载子 Agent 关联详情（含名称/编码/描述，供 AgentDetail 展示）。"""
-    links = await ai_agent_repository.list_subagents(db, parent_agent_id)
+    links = await repository.list_subagents(db, parent_agent_id)
     if not links:
         return []
     sub_ids = [link.subagent_agent_id for link in links]
-    sub_agents = {a.id: a for a in await ai_agent_repository.get_by_ids(db, sub_ids)}
+    sub_agents = {a.id: a for a in await repository.get_by_ids(db, sub_ids)}
     items: list[SubAgentItem] = []
     for link in links:
         sub = sub_agents.get(link.subagent_agent_id)
@@ -85,15 +88,26 @@ async def _load_subagent_items(db: AsyncSession, parent_agent_id: int) -> list[S
 
 
 class AgentService:
-    @staticmethod
-    async def ensure_default_agent(db: AsyncSession, redis: Redis) -> None:
+    def __init__(
+        self,
+        ai_agent_repository=ai_agent_repository,
+        ai_agent_version_repository=ai_agent_version_repository,
+        ai_skill_repository=ai_skill_repository,
+        agent_version_service=agent_version_service,
+    ):
+        self.ai_agent_repository = ai_agent_repository
+        self.ai_agent_version_repository = ai_agent_version_repository
+        self.ai_skill_repository = ai_skill_repository
+        self.agent_version_service = agent_version_service
+
+    async def ensure_default_agent(self, db: AsyncSession, redis: Redis) -> None:
         """应用启动时确保默认 Agent（agent_code='default'）存在且有已发布版本（§2.11.12）。
 
         默认 Agent 是未指定 Agent 时的会话兜底，运行面（ReasoningService._load_snapshot）
         按已发布版本快照组装推理图；若只建主表记录而无已发布版本，任何默认会话推理都会
         因"该 Agent 暂无已发布版本"失败。故此处同时保证至少存在一条已发布版本（幂等）。
         """
-        existing = await ai_agent_repository.get_by_code(db, DEFAULT_AGENT_CODE)
+        existing = await self.ai_agent_repository.get_by_code(db, DEFAULT_AGENT_CODE)
         if not existing or existing.deleted:
             default = SysAiAgent(
                 agent_code=DEFAULT_AGENT_CODE,
@@ -107,7 +121,7 @@ class AgentService:
                 is_exposed=0,
                 status=1,
             )
-            await ai_agent_repository.create(db, default)
+            await self.ai_agent_repository.create(db, default)
             await db.flush()
             await db.refresh(default)
             existing = default
@@ -116,17 +130,15 @@ class AgentService:
         # 若已发布版本的生效 config 缺推理默认键（如历史快照在 sys_dict 默认补齐前生成，
         # resolved_config 为空导致 deep_agent_builder 缺 max_steps_* 快速失败），则按当前
         # 可编辑态重新发布新版本，保证运行面拿到完整默认配置（幂等自愈）。
-        published = await ai_agent_version_repository.get_latest_published(db, existing.id)
+        published = await self.ai_agent_version_repository.get_latest_published(db, existing.id)
         need_publish = published is None
         if published is not None:
             snapshot_cfg = (published.snapshot or {}).get("resolved_config") or {}
             if "max_steps_react" not in snapshot_cfg:
                 need_publish = True
         if need_publish:
-            from app.service.ai_agent_version_service import agent_version_service
-
-            snapshot = await agent_version_service._build_snapshot(db, redis, existing)
-            version_no = await ai_agent_version_repository.next_version_no(db, existing.id)
+            snapshot = await self.agent_version_service._build_snapshot(db, redis, existing)
+            version_no = await self.ai_agent_version_repository.next_version_no(db, existing.id)
             db.add(
                 SysAiAgentVersion(
                     agent_id=existing.id,
@@ -140,11 +152,10 @@ class AgentService:
             await db.flush()
         await _clear_agent_caches(redis, existing)
 
-    @staticmethod
-    async def _build_detail(db: AsyncSession, agent: SysAiAgent) -> AgentDetail:
-        skills = await ai_agent_repository.list_skill_names(db, agent.id)
-        mcp = await ai_agent_repository.list_mcp_namespaces(db, agent.id)
-        subagents = await _load_subagent_items(db, agent.id)
+    async def _build_detail(self, db: AsyncSession, agent: SysAiAgent) -> AgentDetail:
+        skills = await self.ai_agent_repository.list_skill_names(db, agent.id)
+        mcp = await self.ai_agent_repository.list_mcp_namespaces(db, agent.id)
+        subagents = await _load_subagent_items(self.ai_agent_repository, db, agent.id)
         return AgentDetail.model_validate(
             {
                 "id": agent.id,
@@ -168,8 +179,8 @@ class AgentService:
             }
         )
 
-    @staticmethod
     async def list_agents(
+        self,
         db: AsyncSession,
         redis: Redis,
         page: int,
@@ -177,45 +188,47 @@ class AgentService:
         keyword: str | None = None,
         status: int | None = None,
     ) -> PageResult[AgentListItem]:
-        agents, total = await ai_agent_repository.paginate_agents(db, page, size, keyword, status)
+        agents, total = await self.ai_agent_repository.paginate_agents(
+            db, page, size, keyword, status
+        )
         return PageResult(list=[AgentListItem.model_validate(a) for a in agents], total=total)
 
-    @staticmethod
-    async def list_enabled(db: AsyncSession, redis: Redis) -> list[AgentListItem]:
+    async def list_enabled(self, db: AsyncSession, redis: Redis) -> list[AgentListItem]:
         """可选 Agent 列表（status=1 且非子 Agent，缓存 ai:agent:list:enabled）。"""
         cache = CacheService(redis)
         cached = await cache.get_json(_AGENT_ENABLED_LIST_KEY)
         if cached is None:
-            agents = await ai_agent_repository.list_enabled(db)
+            agents = await self.ai_agent_repository.list_enabled(db)
             cached = [AgentListItem.model_validate(a).model_dump(mode="json") for a in agents]
             await cache.set_json(_AGENT_ENABLED_LIST_KEY, cached, _AGENT_ENABLED_LIST_TTL)
         return [AgentListItem.model_validate(item) for item in cached]
 
-    @staticmethod
-    async def get_detail(db: AsyncSession, redis: Redis, agent_id: int) -> AgentDetail:
-        agent = await _get_agent_or_404(db, agent_id)
-        return await AgentService._build_detail(db, agent)
+    async def get_detail(self, db: AsyncSession, redis: Redis, agent_id: int) -> AgentDetail:
+        agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
+        return await self._build_detail(db, agent)
 
-    @staticmethod
-    async def get_by_code(db: AsyncSession, redis: Redis, agent_code: str) -> AgentDetail | None:
+    async def get_by_code(
+        self, db: AsyncSession, redis: Redis, agent_code: str
+    ) -> AgentDetail | None:
         """按编码查询 Agent 详情（缓存 ai:agent:{agent_code}，30 分钟）。"""
         cache = CacheService(redis)
         key = _AGENT_DETAIL_KEY.format(agent_code=agent_code)
         cached = await cache.get_json(key)
         if cached is not None:
             return AgentDetail.model_validate(cached)
-        agent = await ai_agent_repository.get_by_code(db, agent_code)
+        agent = await self.ai_agent_repository.get_by_code(db, agent_code)
         if not agent:
             return None
-        detail = await AgentService._build_detail(db, agent)
+        detail = await self._build_detail(db, agent)
         # mode="json" 将 datetime 等类型转为 JSON 兼容值，避免 json.dumps 序列化失败
         await cache.set_json(key, detail.model_dump(mode="json"), _AGENT_DETAIL_TTL)
         return detail
 
-    @staticmethod
-    async def create_agent(db: AsyncSession, redis: Redis, form: AgentCreate) -> AgentDetail:
+    async def create_agent(
+        self, db: AsyncSession, redis: Redis, form: AgentCreate
+    ) -> AgentDetail:
         # agent_code 唯一性校验绕过软删查全表（类别②，删除后不可复用）
-        existing = await ai_agent_repository.get_by_code(db, form.agent_code)
+        existing = await self.ai_agent_repository.get_by_code(db, form.agent_code)
         if existing:
             if existing.deleted:
                 raise BusinessException(
@@ -237,15 +250,14 @@ class AgentService:
             sort_order=form.sort_order,
             status=form.status,
         )
-        await ai_agent_repository.create(db, agent)
+        await self.ai_agent_repository.create(db, agent)
         await CacheService(redis).delete(_AGENT_ENABLED_LIST_KEY)
-        return await AgentService._build_detail(db, agent)
+        return await self._build_detail(db, agent)
 
-    @staticmethod
     async def update_agent(
-        db: AsyncSession, redis: Redis, agent_id: int, form: AgentUpdate
+        self, db: AsyncSession, redis: Redis, agent_id: int, form: AgentUpdate
     ) -> AgentDetail:
-        agent = await _get_agent_or_404(db, agent_id)
+        agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
         data = form.model_dump(exclude_unset=True)
         if "config" in data and data["config"] is not None:
             data["config"] = data["config"].model_dump(exclude_none=True)
@@ -257,21 +269,21 @@ class AgentService:
                 setattr(agent, key, value)
         await db.flush()
         await _clear_agent_caches(redis, agent)
-        return await AgentService._build_detail(db, agent)
+        return await self._build_detail(db, agent)
 
-    @staticmethod
-    async def set_status(db: AsyncSession, redis: Redis, agent_id: int, status: int) -> None:
-        agent = await _get_agent_or_404(db, agent_id)
+    async def set_status(
+        self, db: AsyncSession, redis: Redis, agent_id: int, status: int
+    ) -> None:
+        agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
         agent.status = status
         await db.flush()
         await _clear_agent_caches(redis, agent)
 
-    @staticmethod
-    async def delete_agent(db: AsyncSession, redis: Redis, agent_id: int) -> None:
-        agent = await _get_agent_or_404(db, agent_id)
+    async def delete_agent(self, db: AsyncSession, redis: Redis, agent_id: int) -> None:
+        agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
         if agent.agent_code == DEFAULT_AGENT_CODE:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "默认 Agent 不可删除")
-        conversation_refs = await ai_agent_repository.count_conversation_references(
+        conversation_refs = await self.ai_agent_repository.count_conversation_references(
             db, agent.agent_code
         )
         if conversation_refs > 0:
@@ -279,22 +291,21 @@ class AgentService:
                 ResultCode.DATA_BIND_EXISTS,
                 f"存在 {conversation_refs} 个会话正在使用该 Agent，请先解绑",
             )
-        subagent_refs = await ai_agent_repository.count_subagent_references(db, agent_id)
+        subagent_refs = await self.ai_agent_repository.count_subagent_references(db, agent_id)
         if subagent_refs > 0:
             raise BusinessException(
                 ResultCode.DATA_BIND_EXISTS,
                 f"该 Agent 被 {subagent_refs} 个 Agent 作为子 Agent 引用，请先解绑",
             )
-        await ai_agent_repository.soft_delete_by_ids(db, [agent_id])
+        await self.ai_agent_repository.soft_delete_by_ids(db, [agent_id])
         await _clear_agent_caches(redis, agent)
 
-    @staticmethod
     async def copy_agent(
-        db: AsyncSession, redis: Redis, agent_id: int, new_code: str
+        self, db: AsyncSession, redis: Redis, agent_id: int, new_code: str
     ) -> AgentDetail:
         """复制 Agent（基本信息 + 配置，不复制关联关系，编码需重新指定）。"""
-        source = await _get_agent_or_404(db, agent_id)
-        existing = await ai_agent_repository.get_by_code(db, new_code)
+        source = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
+        existing = await self.ai_agent_repository.get_by_code(db, new_code)
         if existing:
             raise BusinessException(ResultCode.DATA_EXISTS, "Agent 编码已存在")
         copy = SysAiAgent(
@@ -312,75 +323,74 @@ class AgentService:
             sort_order=source.sort_order,
             status=1,
         )
-        await ai_agent_repository.create(db, copy)
+        await self.ai_agent_repository.create(db, copy)
         await CacheService(redis).delete(_AGENT_ENABLED_LIST_KEY)
-        return await AgentService._build_detail(db, copy)
+        return await self._build_detail(db, copy)
 
     # ── 关联管理（覆盖式更新）────────────────────────────
 
-    @staticmethod
     async def set_skills(
-        db: AsyncSession, redis: Redis, agent_id: int, skill_names: list[str]
+        self, db: AsyncSession, redis: Redis, agent_id: int, skill_names: list[str]
     ) -> None:
-        agent = await _get_agent_or_404(db, agent_id)
+        agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
         # 引用完整性：关联的 Skill 必须存在于 sys_ai_skill（未删）
         if skill_names:
-            existing = set(await ai_skill_repository.list_names_existing(db, skill_names))
+            existing = set(
+                await self.ai_skill_repository.list_names_existing(db, skill_names)
+            )
             missing = sorted(set(skill_names) - existing)
             if missing:
                 raise BusinessException(
                     ResultCode.DATA_NOT_FOUND,
                     f"以下 Skill 不存在: {', '.join(missing[:5])}",
                 )
-        await ai_agent_repository.replace_skills(db, agent_id, skill_names)
+        await self.ai_agent_repository.replace_skills(db, agent_id, skill_names)
         await db.flush()
         await CacheService(redis).delete(_AGENT_SKILLS_KEY.format(agent_id=agent_id))
         await _clear_agent_caches(redis, agent)
 
-    @staticmethod
     async def set_mcp(
-        db: AsyncSession, redis: Redis, agent_id: int, mcp_namespaces: list[str]
+        self, db: AsyncSession, redis: Redis, agent_id: int, mcp_namespaces: list[str]
     ) -> None:
-        agent = await _get_agent_or_404(db, agent_id)
-        await ai_agent_repository.replace_mcp_namespaces(db, agent_id, mcp_namespaces)
+        agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
+        await self.ai_agent_repository.replace_mcp_namespaces(db, agent_id, mcp_namespaces)
         await db.flush()
         await CacheService(redis).delete(_AGENT_MCP_KEY.format(agent_id=agent_id))
         await _clear_agent_caches(redis, agent)
 
-    @staticmethod
     async def set_subagents(
-        db: AsyncSession, redis: Redis, agent_id: int, form: AgentSubAgentsForm
+        self, db: AsyncSession, redis: Redis, agent_id: int, form: AgentSubAgentsForm
     ) -> None:
-        agent = await _get_agent_or_404(db, agent_id)
+        agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
         items = [
             {"agent_id": s.agent_id, "endpoint_id": s.endpoint_id, "priority": s.priority}
             for s in form.subagents
         ]
-        await ai_agent_repository.replace_subagents(db, agent_id, items)
+        await self.ai_agent_repository.replace_subagents(db, agent_id, items)
         await db.flush()
         await CacheService(redis).delete(_AGENT_SUBAGENTS_KEY.format(agent_id=agent_id))
         await _clear_agent_caches(redis, agent)
 
     # ── 版本快照读取（契约）──────────────────────────────
 
-    @staticmethod
     async def get_version_detail(
+        self,
         db: AsyncSession,
         redis: Redis,
         agent_id: int,
         version_no: int,
     ) -> tuple[SysAiAgentVersion, dict]:
         """取版本元数据与发布快照，版本不存在抛 A0401（版本详情端点用）"""
-        version = await ai_agent_version_repository.get_by_agent_and_version(
+        version = await self.ai_agent_version_repository.get_by_agent_and_version(
             db, agent_id, version_no
         )
         if not version:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "版本快照不存在")
-        snapshot = await AgentService.get_published_snapshot(db, redis, agent_id, version_no)
+        snapshot = await self.get_published_snapshot(db, redis, agent_id, version_no)
         return version, snapshot
 
-    @staticmethod
     async def get_published_snapshot(
+        self,
         db: AsyncSession,
         redis: Redis,
         agent_id: int,
@@ -402,7 +412,9 @@ class AgentService:
             if cached_no is not None:
                 version_no = int(cached_no)
             else:
-                published = await ai_agent_version_repository.get_latest_published(db, agent_id)
+                published = await self.ai_agent_version_repository.get_latest_published(
+                    db, agent_id
+                )
                 if not published:
                     raise BusinessException(
                         ResultCode.RESOURCE_NOT_FOUND, "该 Agent 暂无已发布版本"
@@ -414,45 +426,33 @@ class AgentService:
             )
             cached_snapshot = await cache.get_json(version_key)
             if cached_snapshot is not None:
-                return AgentService._apply_resolved_config(cached_snapshot)
-            version = await ai_agent_version_repository.get_by_agent_and_version(
+                return self.ai_agent_version_repository.resolve_snapshot(cached_snapshot)
+            version = await self.ai_agent_version_repository.get_by_agent_and_version(
                 db, agent_id, version_no
             )
             if not version:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "版本快照不存在")
             snapshot = version.snapshot or {}
             await cache.set_json(version_key, snapshot, _AGENT_VERSION_SNAPSHOT_TTL)
-            return AgentService._apply_resolved_config(snapshot)
+            return self.ai_agent_version_repository.resolve_snapshot(snapshot)
 
-        version_key = _AGENT_VERSION_SNAPSHOT_KEY.format(agent_id=agent_id, version_no=version_no)
+        version_key = _AGENT_VERSION_SNAPSHOT_KEY.format(
+            agent_id=agent_id, version_no=version_no
+        )
         cached = await cache.get_json(version_key)
         if cached is not None:
-            return AgentService._apply_resolved_config(cached)
-        version = await ai_agent_version_repository.get_by_agent_and_version(
+            return self.ai_agent_version_repository.resolve_snapshot(cached)
+        version = await self.ai_agent_version_repository.get_by_agent_and_version(
             db, agent_id, version_no
         )
         if not version:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "版本快照不存在")
         snapshot = version.snapshot or {}
         await cache.set_json(version_key, snapshot, _AGENT_VERSION_SNAPSHOT_TTL)
-        return AgentService._apply_resolved_config(snapshot)
+        return self.ai_agent_version_repository.resolve_snapshot(snapshot)
 
-    @staticmethod
-    def _apply_resolved_config(snapshot: dict) -> dict:
-        """将快照中冻结的 resolved_config 替换到返回的 config 字段（契约字段不变）。"""
-        resolved = snapshot.get("resolved_config")
-        if resolved is None:
-            return dict(snapshot)
-        result = dict(snapshot)
-        result["config"] = resolved
-        return result
-
-    @staticmethod
     async def test_agent(
-        db: AsyncSession,
-        redis: Redis,
-        agent_id: int,
-        message: str,
+        self, db: AsyncSession, redis: Redis, agent_id: int, message: str
     ) -> dict:
         """测试预览：构建独立会话运行当前已发布版本，返回 final_response + usage。
 
@@ -460,9 +460,7 @@ class AgentService:
         """
         import uuid
 
-        from app.service.ai.deep_agent_builder import DeepAgentBuilder
-
-        snapshot = await AgentService.get_published_snapshot(db, redis, agent_id)
+        snapshot = await self.get_published_snapshot(db, redis, agent_id)
         graph = await DeepAgentBuilder().build_from_snapshot(db, redis, snapshot)
 
         config = snapshot["config"]

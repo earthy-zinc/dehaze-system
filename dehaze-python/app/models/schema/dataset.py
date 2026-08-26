@@ -10,9 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.models.schema.common import validate_no_xss
 
-# ============================================================
 # 数据集 (Dataset)
-# ============================================================
 
 
 class DatasetAddForm(BaseModel):
@@ -41,9 +39,7 @@ class DatasetUpdateForm(BaseModel):
     name_no_xss_validator = field_validator("name")(validate_no_xss)
 
 
-# ============================================================
 # 数据项 (DatasetItem)
-# ============================================================
 
 
 class DatasetItemCreateForm(BaseModel):
@@ -105,9 +101,7 @@ class DatasetItemPageVO(BaseModel):
     pageSize: int = Field(description="每页数量")
 
 
-# ============================================================
 # 图片文件 (ItemFile)
-# ============================================================
 
 
 class ItemFileUpdateForm(BaseModel):
@@ -119,9 +113,7 @@ class ItemFileUpdateForm(BaseModel):
     description: str | None = Field(default=None, max_length=255, description="描述")
 
 
-# ============================================================
 # 数据集项上传（配对上传 + 批量上传）
-# ============================================================
 
 
 class BatchUploadSuccessItemVO(BaseModel):

@@ -37,6 +37,16 @@ class AiSkillRepository(BaseRepository[SysAiSkill]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_market_shared(self, db: AsyncSession) -> list[SysAiSkill]:
+        """查询已共享至市场的 Skill（market_shared=1，按 id 升序）。"""
+        stmt = (
+            select(SysAiSkill)
+            .where(SysAiSkill.market_shared == 1)
+            .order_by(SysAiSkill.id.asc())
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def page(
         self,
         db: AsyncSession,

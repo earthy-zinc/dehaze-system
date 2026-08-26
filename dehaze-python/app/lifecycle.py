@@ -110,14 +110,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 注册全局逻辑删除过滤器（等价于 Java MyBatis-Plus @TableLogic / Go GORM 软删除）
     _register_soft_delete_filter()
 
-    # 初始化系统预设种子数据
     from app.service.preset_service import preset_service
 
     await preset_service.seed_system_presets()
 
     # 内置 Skill 播种 + 预热 SkillManager 内存索引
     from app.database import get_db_session
-    from app.service.ai.skill_manager import skill_manager
+    from app.service.ai.service.skill_manager import skill_manager
     from app.service.ai_skill_service import skill_manage_service
 
     async with get_db_session() as db:
@@ -125,7 +124,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await skill_manager.refresh_index(db)
 
     # 内置本地模型：幂等播种 local provider/Key/LLM+Embedding 模型（默认模型路由目标）
-    from app.infrastructure.llm.model_seeder import ensure_local_models
+    from app.infrastructure.llm.local.model_seeder import ensure_local_models
 
     async with get_db_session() as db:
         await ensure_local_models(db)
@@ -134,7 +133,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if is_main_worker:
         import threading
 
-        from app.infrastructure.llm.local_llm_model import (
+        from app.infrastructure.llm.local.local_llm_model import (
             ensure_embedding_model,
             ensure_model,
             is_downloaded,
@@ -154,7 +153,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         threading.Thread(target=_prefetch_local_model, name="local-llm-prefetch", daemon=True).start()
 
-    # 初始化 Redis 连接并进行健康检查
     redis = await get_redis_client()
     app.state.redis = redis
     await check_redis_health()
@@ -180,12 +178,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await start_cache_invalidation_listener()
 
-    # 初始化 MongoDB 索引（login_log / audit_log）
     await init_mongo_indexes()
 
     # 初始化 ES 索引（记忆向量 / 会话全文，未启用时静默跳过）
     from app.infrastructure.es.ai_conversation_index import ensure_conversation_index
-    from app.service.ai.memory_es_service import ensure_memory_index
+    from app.service.ai.service.memory_es_service import ensure_memory_index
 
     await ensure_memory_index()
     await ensure_conversation_index()
@@ -202,12 +199,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await init_websocket_manager()
 
-    # 检查/创建 MinIO Bucket（仅 MinIO 模式）
     from app.service.file_service import file_service
 
     await file_service.ensure_bucket_exists()
 
-    # 初始化 RabbitMQ（如果启用）
     from app.infrastructure.mq.connection import init_mq
 
     publisher, consumer = await init_mq()
@@ -335,7 +330,7 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     logger.info("数据库连接已关闭")
 
     # 10. 回收本地 LLM 子进程（对话与 embedding 推理同进程；TTS 为库内推理无子进程）
-    from app.infrastructure.llm.local_llm_manager import shutdown as shutdown_local_llm
+    from app.infrastructure.llm.local.local_llm_manager import shutdown as shutdown_local_llm
 
     shutdown_local_llm()
 

@@ -22,8 +22,9 @@ class LocalStorageService(StorageService):
     适用于开发环境或无 MinIO 的部署场景。
     """
 
-    def __init__(self):
-        self._base_path = Path(settings.LOCAL_STORAGE_PATH)
+    def __init__(self, base_dir: str | None = None):
+        # base_dir 允许测试注入 tmp_path 做真实文件读写，生产默认取配置目录
+        self._base_path = Path(base_dir) if base_dir else Path(settings.LOCAL_STORAGE_PATH)
 
     @property
     def name(self) -> str:

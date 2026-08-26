@@ -247,3 +247,20 @@ def run_in_executor(func, *args):
     """将阻塞的引擎调用提交到推理线程池，返回 awaitable"""
     loop = asyncio.get_running_loop()
     return loop.run_in_executor(_executor, func, *args)
+
+
+def engine_status() -> dict[str, Any]:
+    """查询引擎状态（不抛异常）。
+
+    返回：engine_status("online"/"offline")、voice_model_loaded，
+    基于默认音色模型是否加载到进程内单例判定。
+    """
+    if not _models:
+        return {
+            "engine_status": "offline",
+            "voice_model_loaded": False,
+        }
+    return {
+        "engine_status": "online",
+        "voice_model_loaded": settings.VOICE_TTS_VOICE_ID in _models,
+    }

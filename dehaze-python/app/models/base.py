@@ -7,6 +7,7 @@ AppendOnlyModel 仅自动填充 create_time（日志/流水/历史表基类）�
 
 from contextvars import ContextVar
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import BigInteger, DateTime, event
 from sqlalchemy.dialects import mysql as mysql_types
@@ -16,6 +17,15 @@ from app.core.constants import SYSTEM_USER_ID
 from app.database import Base
 
 _current_user_id: ContextVar[int | None] = ContextVar("current_user_id", default=None)
+
+# 服务端统一 Asia/Shanghai（API 规范 §6.2，方案B固化）：写入与比对显式使用该时区，
+# 不依赖部署系统时区；naive datetime 存储/返回，语义即 Asia/Shanghai
+_SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
+
+
+def _shanghai_now() -> datetime:
+    """当前 Asia/Shanghai 时间（naive，与 MySQL DATETIME 无时区语义对齐）"""
+    return datetime.now(_SHANGHAI_TZ).replace(tzinfo=None)
 
 
 def set_current_user_id(user_id: int | None) -> None:
@@ -91,10 +101,10 @@ def set_audit_fields(session, context, instances):
 
     BaseModel 填充 create_time/update_time/create_by/update_by；
     AppendOnlyModel（日志/流水表）仅填充 create_time。
-    使用本地时间（与 Java LocalDateTime.now() / Go time.Now() 保持一致），
-    避免 UTC 与本地时间混用导致按 create_time DESC 排序时新记录被排到旧记录之后。
+    使用 Asia/Shanghai 时间（与 Java LocalDateTime.now() / Go time.Now() 语义一致），
+    避免不同部署系统时区导致写入与展示错位。
     """
-    now = datetime.now()
+    now = _shanghai_now()
     for obj in session.new:
         if isinstance(obj, BaseModel):
             if obj.create_time is None:
@@ -133,5 +143,5 @@ def get_audit_update_values() -> dict:
         user_id = SYSTEM_USER_ID
     return {
         "update_by": user_id,
-        "update_time": datetime.now(),
+        "update_time": _shanghai_now(),
     }

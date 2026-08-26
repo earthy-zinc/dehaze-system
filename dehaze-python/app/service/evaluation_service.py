@@ -20,7 +20,8 @@ from app.database import get_db_session
 from app.models.entity.sys_log import SysEvalLog
 from app.models.enum.log_status import LogStatus
 from app.repository.pred_eval_log_repository import eval_log_repository
-from app.service.prediction_service import prediction_service
+from app.service.prediction.image_source import fetch_image
+from app.service.prediction.prediction_service import prediction_service
 from app.utils.file import calculate_bytes_md5
 
 logger = logging.getLogger(__name__)
@@ -75,19 +76,19 @@ class EvaluationService:
         logger.debug("评估请求: algorithmId=%s", algorithm_id)
 
         from app.database import get_db_session
-        from app.service.member_service import MemberService
+        from app.service.member.quota_service import member_quota_service
 
         if user_id is not None and not skip_quota_check:
             async with get_db_session() as db:
-                await MemberService.check_and_deduct_quota(db, user_id, "evaluate")
+                await member_quota_service.check_and_deduct_quota(db, user_id, "evaluate")
 
         # 1. 校验算法存在
         await prediction_service.get_algorithm(algorithm_id)
 
         # 2. 并行下载预测图和参考图
         pred_bytes, gt_bytes = await asyncio.gather(
-            prediction_service.download_image(pred_url),
-            prediction_service.download_image(gt_url),
+            fetch_image(pred_url),
+            fetch_image(gt_url),
         )
 
         # 3. 计算图片 MD5（CPU 密集型，移至线程池）
@@ -271,9 +272,9 @@ class EvaluationService:
                         time_ms=elapsed_ms,
                     )
                     if user_id is not None:
-                        from app.service.member_service import MemberService
+                        from app.service.member.quota_service import member_quota_service
 
-                        await MemberService.restore_quota(db, user_id, "evaluate")
+                        await member_quota_service.restore_quota(db, user_id, "evaluate")
             except Exception as update_err:
                 logger.error(
                     "更新评估日志失败状态失败: logId=%s, error=%s",

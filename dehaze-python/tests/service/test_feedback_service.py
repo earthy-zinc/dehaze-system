@@ -72,7 +72,7 @@ class TestGetRatingByPrediction:
             "avatar": "http://x/a.png",
             "algorithm_name": "去雾算法",
         }
-        monkeypatch.setattr(m, "rating_repository", _FakeRatingRepo(visible=rating, detail=detail))
+        monkeypatch.setattr(feedback_service, "rating_repository", _FakeRatingRepo(visible=rating, detail=detail))
 
         result = await feedback_service.get_rating_by_prediction(None, 10, 100)
 
@@ -84,7 +84,7 @@ class TestGetRatingByPrediction:
         assert result["rating"] == 4
 
     async def test_other_user_rating_rejected(self, monkeypatch):
-        monkeypatch.setattr(m, "rating_repository", _FakeRatingRepo(log_create_by=99))
+        monkeypatch.setattr(feedback_service, "rating_repository", _FakeRatingRepo(log_create_by=99))
 
         with pytest.raises(BusinessException) as exc:
             await feedback_service.get_rating_by_prediction(None, 10, 100)
@@ -113,7 +113,7 @@ class TestListPagedRatingsAnonymize:
                 "algorithm_name": "algo",
             },
         ]
-        monkeypatch.setattr(m, "rating_repository", _FakeRatingRepo(admin_page=(items, 2)))
+        monkeypatch.setattr(feedback_service, "rating_repository", _FakeRatingRepo(admin_page=(items, 2)))
 
         data = await feedback_service.list_paged_ratings(None, {"pageNum": 1, "pageSize": 10})
 

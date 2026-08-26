@@ -138,7 +138,7 @@ async def create_version(
         is_active=body.isActive or 0,
     )
     # 失效预测缓存
-    from app.service.prediction_service import prediction_service
+    from app.service.prediction.prediction_service import prediction_service
 
     await prediction_service.invalidate_cache(algorithm_id)
     return success(algorithm_id)

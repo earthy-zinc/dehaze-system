@@ -14,7 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.infrastructure.es.kb_chunk_index import delete_kb_index, ensure_kb_index
+from app.infrastructure.es.kb_chunk_index import (
+    delete_kb_index,
+    ensure_kb_index,
+    get_index_stats,
+)
 from app.models.entity.sys_knowledge_base import SysKnowledgeBase
 from app.models.schema.knowledge_base import (
     CHUNKING_STRATEGY_VALUES,
@@ -233,16 +237,23 @@ class KnowledgeBaseService:
         )
         return result
 
-    async def get_page(self, 
+    async def get_page(
+        self,
         db: AsyncSession,
         redis: Redis,
         user_id: int,
         keyword: str | None,
         page: int,
         size: int,
+        view: str | None = None,
     ) -> dict:
-        """知识库列表（paginate_visible 已按可见性过滤）；走 10min 缓存。"""
-        cache_key = f"kb:list:{user_id}"
+        """知识库列表；走 10min 缓存。
+
+        view=admin 为管理端只读监控视角：返回全部知识库（含私有库，不过滤可见性），
+        权限校验由路由层完成；普通视角 paginate_visible 按可见性过滤。
+        """
+        admin = view == "admin"
+        cache_key = "kb:list:admin" if admin else f"kb:list:{user_id}"
         # 仅默认分页(无关键词/第一页/默认 size)读写缓存，避免不同 size 互相污染
         cacheable = not keyword and page == 1 and size == _DEFAULT_PAGE_SIZE
         if cacheable:
@@ -250,9 +261,14 @@ class KnowledgeBaseService:
             if cached:
                 return json.loads(cached)
 
-        items, total = await knowledge_base_repository.paginate_visible(
-            db, user_id, keyword, page, size
-        )
+        if admin:
+            items, total = await knowledge_base_repository.paginate_all(
+                db, keyword, page, size
+            )
+        else:
+            items, total = await knowledge_base_repository.paginate_visible(
+                db, user_id, keyword, page, size
+            )
         from app.models.schema.knowledge_base import KnowledgeBaseVO
 
         result = {
@@ -265,6 +281,25 @@ class KnowledgeBaseService:
         if cacheable:
             await redis.set(cache_key, json.dumps(result, ensure_ascii=False), ex=_KB_LIST_TTL)
         return result
+
+    async def get_index_stats(self, db: AsyncSession, kb_id: int) -> dict:
+        """知识库索引状态：ES 索引大小/分块文档数/是否达阈值告警。
+
+        索引不存在（尚未写入分块）返回 0/False；权限校验由路由层完成。
+        """
+        kb = await knowledge_base_repository.get_by_id(db, kb_id)
+        if not kb:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
+
+        from app.config import settings
+
+        stats = await get_index_stats(kb_id)
+        index_size = stats["index_size"]
+        return {
+            "index_size": index_size,
+            "index_doc_count": stats["index_doc_count"],
+            "threshold_warning": index_size >= settings.KB_INDEX_WARNING_THRESHOLD,
+        }
 
 
 knowledge_base_service = KnowledgeBaseService()

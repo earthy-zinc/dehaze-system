@@ -3,8 +3,8 @@ from typing import Any
 
 from bson import ObjectId
 
+from app.dependencies import mongo
 from app.config import settings
-from app.dependencies.mongo import get_mongo_client
 from app.models.entity.mongo_log import LoginLogDocument
 
 
@@ -34,7 +34,7 @@ class LoginLogRepository:
             "message": message,
             "create_time": datetime.now(UTC),
         }
-        result = await get_mongo_client()[settings.MONGO_DB_NAME][
+        result = await mongo.get_mongo_client()[settings.MONGODB_DATABASE][
             LoginLogDocument.COLLECTION
         ].insert_one(doc)
         doc["_id"] = result.inserted_id
@@ -59,7 +59,7 @@ class LoginLogRepository:
         - start_time/end_time 限定 create_time 范围
         - user_ids 限定用户范围（普通用户仅查询本人日志时使用）
         """
-        collection = get_mongo_client()[settings.MONGO_DB_NAME][LoginLogDocument.COLLECTION]
+        collection = mongo.get_mongo_client()[settings.MONGODB_DATABASE][LoginLogDocument.COLLECTION]
 
         query: dict[str, Any] = {}
         if username:

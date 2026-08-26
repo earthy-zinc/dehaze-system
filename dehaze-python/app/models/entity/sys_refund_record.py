@@ -18,9 +18,15 @@ class SysRefundRecord(BaseModel, SoftDeleteMixin):
     order_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="订单ID")
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="用户ID")
     refund_amount: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="退款金额(分)")
+    reason_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, comment="售后原因类型(after_sale/force_majeure/merchant/other)"
+    )
     reason: Mapped[str] = mapped_column(String(256), nullable=False, comment="退款原因")
-    used_quota: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, comment="申请时已用权益次数"
+    used_days: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, comment="会员卡:申请时已使用天数(按天折算依据)"
+    )
+    used_credits: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, comment="积分卡:申请时已消耗积分(按用量折算依据)"
     )
     status: Mapped[int] = mapped_column(
         mysql_types.TINYINT,

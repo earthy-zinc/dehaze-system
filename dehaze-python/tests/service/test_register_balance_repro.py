@@ -2,7 +2,6 @@ from decimal import Decimal
 
 from app.models.entity.sys_user import SysUser
 from app.repository.user_repository import user_repository
-from tests.stubs import run_coro
 
 
 class RecordingSession:
@@ -26,15 +25,15 @@ def _exec_opts(stmt) -> dict:
     return getattr(stmt, "_execution_options", {}) or {}
 
 
-def test_increase_balance_cas_disables_evaluate_sync():
+async def test_increase_balance_cas_disables_evaluate_sync():
     session = RecordingSession()
-    assert run_coro(user_repository.increase_balance_cas(session, 1, Decimal("100"), 0)) is True
+    assert await user_repository.increase_balance_cas(session, 1, Decimal("100"), 0) is True
     assert _exec_opts(session.last_stmt).get("synchronize_session") is False
 
 
-def test_deduct_balance_cas_disables_evaluate_sync():
+async def test_deduct_balance_cas_disables_evaluate_sync():
     session = RecordingSession()
-    assert run_coro(user_repository.deduct_balance_cas(session, 1, Decimal("50"), 0)) is True
+    assert await user_repository.deduct_balance_cas(session, 1, Decimal("50"), 0) is True
     assert _exec_opts(session.last_stmt).get("synchronize_session") is False
 
 

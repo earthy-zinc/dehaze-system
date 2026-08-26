@@ -11,8 +11,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.models.schema.common import BasePageQuery, OrmResult
 
-# ── 推理参数 / 护栏配置（sys_ai_agent.config JSON）────────────────
-
 
 class GuardrailRule(BaseModel):
     """护栏规则（内置规则仅暴露开关与参数，不支持动态新增规则类型）"""
@@ -65,9 +63,6 @@ class AgentConfig(BaseModel):
     )
     temperature: float | None = Field(default=None, description="LLM 温度参数")
     guardrails: GuardrailConfig | None = Field(default=None, description="护栏规则开关与参数")
-
-
-# ── Agent 主表请求/响应 ──────────────────────────────────────────
 
 
 class AgentCreate(OrmResult):
@@ -150,9 +145,6 @@ class AgentPageQuery(BasePageQuery):
     status: int | None = Field(default=None, ge=0, le=1, description="状态过滤")
 
 
-# ── 关联设置 ─────────────────────────────────────────────────────
-
-
 class AgentSkillsForm(BaseModel):
     skills: list[str] = Field(default_factory=list, description="Skill 名称列表(覆盖式更新)")
 
@@ -175,9 +167,6 @@ class AgentSubAgentsForm(BaseModel):
     )
 
 
-# ── 启停 / 复制 / 测试 ───────────────────────────────────────────
-
-
 class AgentStatusForm(BaseModel):
     status: int = Field(..., ge=0, le=1, description="目标状态(1:启用;0:禁用)")
 
@@ -189,9 +178,6 @@ class AgentCopyForm(BaseModel):
 class AgentTestForm(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000, description="测试消息")
     conversation_config: AgentConfig | None = Field(default=None, description="会话级配置覆盖")
-
-
-# ── 版本管理 ─────────────────────────────────────────────────────
 
 
 class AgentPublishForm(BaseModel):
@@ -210,9 +196,6 @@ class AgentVersionResult(OrmResult):
 
 class AgentVersionDetail(AgentVersionResult):
     snapshot: dict[str, Any] = Field(default_factory=dict, description="配置快照")
-
-
-# ── 评测集 / 样本 / 运行 ─────────────────────────────────────────
 
 
 class EvalDatasetCreate(BaseModel):
@@ -288,9 +271,6 @@ class EvalRunCreate(BaseModel):
     trigger_type: str = Field(
         default="manual", pattern=r"^(manual|publish)$", description="触发方式"
     )
-
-
-# ── 外部端点 ─────────────────────────────────────────────────────
 
 
 class EndpointCreate(BaseModel):

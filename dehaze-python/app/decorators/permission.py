@@ -19,7 +19,6 @@ def _match_permission(user_permissions: list[str], required_permission: str) -> 
     Returns:
         是否具有权限
     """
-    # 超级管理员权限
     if "*" in user_permissions or "*:*" in user_permissions:
         return True
 

@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -30,16 +30,12 @@ class Settings(BaseSettings):
     SERVER_PORT: int = Field(default=8991, gt=0, le=65535)
     SERVER_WORKERS: int = Field(default=4, gt=0)
 
-    # ===== 基础设施统一凭证 =====
-    # 统一主机地址，DB/Redis/MongoDB/MinIO/RabbitMQ/XXL-Job 地址均从此派生
-    DEHAZE_HOST: str = Field(default="127.0.0.1")
-    # 统一密码，复用为 DB/Redis/MongoDB/MinIO/RabbitMQ/XXL-Job 凭证
-    DEHAZE_PASSWORD: str = Field(default="")
-
-    # ===== 数据库 =====
-    DB_PORT: int = Field(default=3306, gt=0, le=65535)
-    DB_NAME: str = "dehaze"
-    DB_USER: str = "root"
+    # ===== MySQL =====
+    MYSQL_HOST: str = Field(default="127.0.0.1")
+    MYSQL_PORT: int = Field(default=3306, gt=0, le=65535)
+    MYSQL_DATABASE: str = "dehaze"
+    MYSQL_USERNAME: str = "root"
+    MYSQL_PASSWORD: str = Field(default="")
     DATABASE_POOL_SIZE: int = Field(default=10, gt=0)
     DATABASE_MAX_OVERFLOW: int = Field(default=20, ge=0)
     DATABASE_POOL_RECYCLE: int = Field(default=3600, gt=0)
@@ -49,14 +45,18 @@ class Settings(BaseSettings):
     SQL_SLOW_THRESHOLD_MS: int = Field(default=500, gt=0)
 
     @property
-    def DB_HOST(self) -> str:
-        return self.DEHAZE_HOST
-
-    @property
     def DATABASE_URL(self) -> str:
-        return f"mysql+aiomysql://{self.DB_USER}:{self.DEHAZE_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
+        # 时区固化 Asia/Shanghai：连接后 SET time_zone='+08:00'（aiomysql init_command），
+        # 不依赖服务器 SYSTEM 时区，保证 NOW()/CURRENT_TIMESTAMP/date_format 与应用写入时间一致
+        return (
+            f"mysql+aiomysql://{self.MYSQL_USERNAME}:{self.MYSQL_PASSWORD}"
+            f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
+            "?charset=utf8mb4&init_command=SET%20time_zone%20%3D%20%27%2B08%3A00%27"
+        )
 
     # ===== Redis =====
+    REDIS_HOST: str = Field(default="127.0.0.1")
+    REDIS_PASSWORD: str = Field(default="")
     REDIS_PORT: int = Field(default=6379, gt=0, le=65535)
     REDIS_DB: int = Field(default=0, ge=0)
     REDIS_MAX_CONNECTIONS: int = Field(default=100, gt=0)
@@ -66,26 +66,29 @@ class Settings(BaseSettings):
     REDIS_HEALTH_CHECK_INTERVAL: int = Field(default=30, gt=0)
 
     @property
-    def REDIS_HOST(self) -> str:
-        return self.DEHAZE_HOST
-
-    @property
     def REDIS_URL(self) -> str:
         return (
-            f"redis://:{self.DEHAZE_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+            f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         )
 
     # ===== MongoDB（审计日志） =====
-    MONGO_DB_NAME: str = "dehaze"
+    MONGODB_HOST: str = Field(default="127.0.0.1")
+    MONGODB_PORT: int = Field(default=27017, gt=0, le=65535)
+    MONGODB_DATABASE: str = "dehaze"
+    MONGODB_USERNAME: str = "root"
+    MONGODB_PASSWORD: str = Field(default="")
 
     @property
     def MONGO_URI(self) -> str:
-        return f"mongodb://root:{self.DEHAZE_PASSWORD}@{self.DEHAZE_HOST}:27017/{self.MONGO_DB_NAME}?authSource=admin"
+        return f"mongodb://{self.MONGODB_USERNAME}:{self.MONGODB_PASSWORD}@{self.MONGODB_HOST}:{self.MONGODB_PORT}/{self.MONGODB_DATABASE}?authSource=admin"
 
     # ===== 文件与模型存储 =====
+    MINIO_HOST: str = Field(default="127.0.0.1")
+    MINIO_PORT: int = Field(default=9110, gt=0, le=65535)
     MINIO_ACCESS_KEY: str = "admin"
+    MINIO_SECRET_KEY: str = Field(default="")
     MINIO_SECURE: bool = False
-    MINIO_BUCKET_NAME: str = "dehaze"
+    MINIO_BUCKET: str = "dehaze"
     MAX_UPLOAD_SIZE: int = Field(default=100 * 1024 * 1024, gt=0)
     # 上传/删除文件使用的默认存储后端（minio/local/nginx-static）
     FILE_STORAGE_TYPE: Literal["minio", "local", "nginx-static"] = "minio"
@@ -99,15 +102,15 @@ class Settings(BaseSettings):
     @property
     def MINIO_ENDPOINT(self) -> str:
         """MinIO 服务端点（host:port，不含 scheme，供 MinIO SDK 使用）"""
-        return f"{self.DEHAZE_HOST}:9110"
+        return f"{self.MINIO_HOST}:{self.MINIO_PORT}"
 
-    @property
-    def MINIO_SECRET_KEY(self) -> str:
-        return self.DEHAZE_PASSWORD
+    # Nginx 静态文件服务（datasets 数据集 / models 算法权重托管）
+    NGINX_STATIC_HOST: str = Field(default="127.0.0.1")
+    NGINX_STATIC_PORT: int = Field(default=9000, gt=0, le=65535)
 
     @property
     def MODEL_BASE_URL(self) -> str:
-        return f"http://{self.DEHAZE_HOST}:9000/models"
+        return f"http://{self.NGINX_STATIC_HOST}:{self.NGINX_STATIC_PORT}/models"
 
     # ===== 存储后端 baseUrl（运行时拼接 URL 用，必须是完整 URL，禁止相对路径）=====
     @property
@@ -120,9 +123,9 @@ class Settings(BaseSettings):
           object_name 自带资源前缀（datasets/...、models/...）
         """
         return {
-            "minio": f"http://{self.MINIO_ENDPOINT}/{self.MINIO_BUCKET_NAME}",
-            "local": f"http://{self.DEHAZE_HOST}:8989/api/v1/files/download",
-            "nginx-static": f"http://{self.DEHAZE_HOST}:9000",
+            "minio": f"http://{self.MINIO_ENDPOINT}/{self.MINIO_BUCKET}",
+            "local": "http://127.0.0.1:8989/api/v1/files/download",
+            "nginx-static": f"http://{self.NGINX_STATIC_HOST}:{self.NGINX_STATIC_PORT}",
         }
 
     @property
@@ -133,9 +136,11 @@ class Settings(BaseSettings):
         return self.TEMP_DIR if self.TEMP_DIR else tempfile.gettempdir()
 
     # ===== RabbitMQ =====
-    RABBITMQ_ENABLED: bool = False
+    RABBITMQ_ENABLED: bool = True
+    RABBITMQ_HOST: str = Field(default="127.0.0.1")
     RABBITMQ_PORT: int = Field(default=5672, gt=0, le=65535)
-    RABBITMQ_USER: str = "guest"
+    RABBITMQ_USERNAME: str = "guest"
+    RABBITMQ_PASSWORD: str = Field(default="")
     RABBITMQ_EXCHANGE: str = "dehaze.tasks"
     RABBITMQ_EXCHANGE_TYPE: str = "direct"
     RABBITMQ_RECONNECT_MAX_RETRIES: int = Field(default=0, ge=0)  # 0 表示无限重试
@@ -145,31 +150,23 @@ class Settings(BaseSettings):
     RABBITMQ_RETRY_DELAYS: list[int] = [5000, 30000, 300000]  # 分级重试延迟（ms）: 5s/30s/5min
 
     @property
-    def RABBITMQ_HOST(self) -> str:
-        return self.DEHAZE_HOST
-
-    @property
-    def RABBITMQ_PASSWORD(self) -> str:
-        """未设置 DEHAZE_PASSWORD 时返回开发默认值 guest"""
-        return self.DEHAZE_PASSWORD or "guest"
-
-    @property
     def RABBITMQ_URL(self) -> str:
-        return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/%2F"
+        return f"amqp://{self.RABBITMQ_USERNAME}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/%2F"
 
     # ===== XXL-Job 定时任务 =====
     XXLJOB_ENABLED: bool = False
+    XXLJOB_HOST: str = Field(default="127.0.0.1")
+    XXLJOB_PORT: int = Field(default=14980, gt=0, le=65535)
+    XXLJOB_ACCESS_TOKEN: str = Field(default="")
     XXLJOB_EXECUTOR_APP_NAME: str = "xxl-job-executor-dehaze-python"
     XXLJOB_EXECUTOR_HOST: str = "0.0.0.0"
     XXLJOB_EXECUTOR_PORT: int = Field(default=9998, gt=0, le=65535)
     XXLJOB_TASK_LOG_DIR: str = "logs/xxljob-tasks"
     XXLJOB_PID_FILE: str = "logs/pyxxl.pid"
-    # 留空则复用 DEHAZE_PASSWORD（由 model_validator 处理）
-    XXLJOB_ACCESS_TOKEN: str = ""
 
     @property
     def XXLJOB_ADMIN_URL(self) -> str:
-        return f"http://{self.DEHAZE_HOST}:14980/xxl-job-admin/api/"
+        return f"http://{self.XXLJOB_HOST}:{self.XXLJOB_PORT}/xxl-job-admin/api/"
 
     # ===== 日志 =====
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
@@ -291,8 +288,8 @@ class Settings(BaseSettings):
     CACHE_INVALIDATION_CHANNEL: str = "cache:invalidation"
 
     # ===== 业务配置 =====
-    # 新用户默认密码，留空则复用 DEHAZE_PASSWORD（由 model_validator 处理）
-    DEFAULT_PASSWORD: str = ""
+    # 新用户初始密码（三端统一，由根目录 .env 显式提供）
+    DEFAULT_PASSWORD: str = Field(default="")
 
     # 支付渠道 — 微信
     PAYMENT_WECHAT_ENABLED: bool = False
@@ -380,6 +377,10 @@ class Settings(BaseSettings):
     AI_BILLING_ANOMALY_BURST_WINDOW_MINUTES: int = 5
     # 异常检测：连续配额不足告警阈值（次/24h）
     AI_BILLING_ANOMALY_CONSECUTIVE_QUOTA_FAIL: int = 10
+    # 会员卡收入归属 AI 的分摊比例（0~1）：仅用于 AI 参考毛利核算，不影响整体毛利官方口径
+    AI_BILLING_MEMBERSHIP_AI_RATIO: float = 0.3
+    # 成本核算开关（关闭后不执行异步成本回填）
+    AI_BILLING_COST_CALC_ENABLE: bool = True
     # 月结账单 Redis 缓存 TTL（秒，90 天）
     AI_BILLING_BILL_CACHE_TTL: int = 90 * 24 * 3600
 
@@ -410,7 +411,7 @@ class Settings(BaseSettings):
     ES_URL: str = "http://localhost:9200"
     ES_API_KEY: str = ""  # 可选；与用户名密码二选一
     ES_USERNAME: str = "elastic"  # docker-compose 启用 xpack security，elastic 超级用户
-    ES_PASSWORD: str = ""  # 留空则复用 DEHAZE_PASSWORD（由 model_validator 处理）
+    ES_PASSWORD: str = Field(default="")
 
     # ===== AI 知识库 =====
     # 分块默认/边界
@@ -436,6 +437,9 @@ class Settings(BaseSettings):
     # 索引与异步处理
     KB_INDEX_BATCH_SIZE: int = Field(default=100, gt=0, description="ES 批量索引条数")
     KB_ASYNC_MAX_RETRY: int = Field(default=3, ge=0, description="异步处理最大重试次数")
+    KB_INDEX_WARNING_THRESHOLD: int = Field(
+        default=1 * 1024 * 1024 * 1024, gt=0, description="索引大小阈值告警(字节)，默认 1GB"
+    )
 
     # ===== 语音交互 =====
     # FunASR 引擎进程内运行（CPU 推理：流式 SenseVoice-Small / 离线 SeACo-Paraformer-Large）
@@ -466,17 +470,6 @@ class Settings(BaseSettings):
     VOICE_ASR_CREDITS_PER_SECOND: float = Field(default=1.0, gt=0)
     VOICE_TTS_CREDITS_PER_CHAR: float = Field(default=0.01, gt=0)
 
-    @model_validator(mode="after")
-    def _apply_derived_credentials(self):
-        """加载 .env 后统一复用凭证"""
-        if not self.DEFAULT_PASSWORD:
-            self.DEFAULT_PASSWORD = self.DEHAZE_PASSWORD
-        if not self.XXLJOB_ACCESS_TOKEN:
-            self.XXLJOB_ACCESS_TOKEN = self.DEHAZE_PASSWORD
-        if not self.ES_PASSWORD:
-            self.ES_PASSWORD = self.DEHAZE_PASSWORD
-        return self
-
 
 class DevelopmentSettings(Settings):
     """开发环境配置"""
@@ -488,7 +481,7 @@ class DevelopmentSettings(Settings):
     SESSION_COOKIE_PATH: str = "/"
     XXLJOB_ENABLED: bool = True
     RABBITMQ_ENABLED: bool = True
-    RABBITMQ_USER: str = "root"
+    RABBITMQ_USERNAME: str = "root"
     LOG_ARCHIVE_ON_STARTUP: bool = True
     # 开发环境调高限流上限，避免集成测试并行执行时触发限流
     RATE_LIMIT_MAX_REQUESTS: int = 10000
@@ -499,7 +492,12 @@ class TestingSettings(Settings):
     """测试环境配置"""
 
     DEBUG: bool = True
-    DB_NAME: str = "dehaze_test"
+    MYSQL_DATABASE: str = "dehaze_test"
+    # Redis 指向无人监听端口，作为第三层兜底（前两层：conftest 的 mock_redis
+    # autouse fixture 中心 patch + 动态扫描顶层直接引用的模块；此端口仅防函数
+    # 别名导入等前两层覆盖不到的路径）。勿改用端口 0：redis-py 把 0 当默认
+    # 6379，实测会连上真实 Redis
+    REDIS_PORT: int = 6390
     RATE_LIMIT_MAX_REQUESTS: int = 10000
     COUPON_RECEIVE_RATE_LIMIT: int = 10000
 
@@ -509,15 +507,15 @@ class ProductionSettings(Settings):
 
     XXLJOB_ENABLED: bool = True
     RABBITMQ_ENABLED: bool = True
-    RABBITMQ_USER: str = "root"
+    RABBITMQ_USERNAME: str = "root"
     SQL_LOG_LEVEL: Literal["INFO", "WARNING", "ERROR"] = "WARNING"
     LOG_FORMAT_JSON: bool = True
     PROMETHEUS_MULTIPROC_DIR: str = "/tmp/prometheus_multiproc"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        if not self.DEHAZE_PASSWORD:
-            raise ValueError("生产环境必须设置 DEHAZE_PASSWORD 环境变量")
+        if not self.MYSQL_PASSWORD:
+            raise ValueError("生产环境必须设置 MYSQL_PASSWORD 环境变量")
         # 禁止使用 localhost 白名单
         localhost_origins = any("localhost" in o or "127.0.0.1" in o for o in self.CORS_ORIGINS)
         if localhost_origins:

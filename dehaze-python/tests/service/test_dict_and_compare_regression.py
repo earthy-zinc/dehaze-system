@@ -10,7 +10,6 @@ from app.service.dict_service import (
     dict_service,
     dict_type_service,
 )
-from tests.stubs import run_coro
 
 
 class TestCompareRequestMin:
@@ -30,7 +29,7 @@ class TestCompareRequestMin:
 
 
 class TestDictTypeCodeReadonly:
-    def test_update_dict_type_code_change_rejected(self):
+    async def test_update_dict_type_code_change_rejected(self):
         class FakeRepo:
             @staticmethod
             async def get_by_id(db, type_id):
@@ -50,7 +49,7 @@ class TestDictTypeCodeReadonly:
         m.dict_type_repository = FakeRepo()
         try:
             with pytest.raises(BusinessException) as ei:
-                run_coro(dict_type_service.update_dict_type(None, None, 1, {"code": "new_code"}))
+                await dict_type_service.update_dict_type(None, None, 1, {"code": "new_code"})
             assert ei.value.code == ResultCode.OPERATION_NOT_ALLOW
         finally:
             m.dict_type_repository = orig
@@ -60,7 +59,7 @@ class TestDictPresetProtection:
     def test_preset_code_set_nonempty(self):
         assert SYSTEM_PRESET_DICT_TYPE_CODES
 
-    def test_delete_preset_type_rejected(self):
+    async def test_delete_preset_type_rejected(self):
         class FakeRepo:
             @staticmethod
             async def count_by_ids(db, type_ids):
@@ -80,7 +79,7 @@ class TestDictPresetProtection:
         m.dict_type_repository = FakeRepo()
         try:
             with pytest.raises(BusinessException) as ei:
-                run_coro(dict_type_service.delete_dict_types(None, None, [1], force=True))
+                await dict_type_service.delete_dict_types(None, None, [1], force=True)
             assert ei.value.code == ResultCode.OPERATION_NOT_ALLOW
         finally:
             m.dict_type_repository = orig

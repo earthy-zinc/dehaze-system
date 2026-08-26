@@ -6,19 +6,11 @@ from pydantic import BaseModel, Field, RootModel, field_validator
 
 from app.models.schema.common import BasePageQuery, validate_no_xss
 
-# ==================== 查询参数模型 ====================
-
 
 class RolePageQuery(BasePageQuery):
     """角色分页查询参数"""
 
     keywords: str | None = Field(default=None, description="关键词(角色名称/角色编码)")
-
-
-# ==================== 路径参数模型 ====================
-
-
-# ==================== 请求体模型 ====================
 
 
 class RoleForm(BaseModel):
@@ -43,9 +35,6 @@ class MenuIdsBody(RootModel[list[int]]):
     """菜单ID列表请求体 - 使用 RootModel 包装列表"""
 
     root: list[int] = Field(..., description="菜单ID列表")
-
-
-# ==================== 响应模型 ====================
 
 
 class RolePageVO(BaseModel):

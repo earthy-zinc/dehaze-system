@@ -14,7 +14,7 @@ from app.models.schema.ai_conversation import AiModelResult
 from app.models.schema.common import PageResult
 from app.repository.ai_model_repository import ai_model_repository
 from app.repository.member_repository import member_repository
-from app.infrastructure.llm.provider_health_service import provider_health_service
+from app.infrastructure.provider.provider_health_service import provider_health_service
 from app.service.message_service import message_service
 
 logger = logging.getLogger(__name__)
@@ -83,17 +83,20 @@ def _speed_tier_of(snapshot: dict) -> str:
 
 
 async def _resolve_fallback(
+    repository,
     db: AsyncSession,
     model: SysAiModel,
 ) -> SysAiModel | None:
-    """取 fallback_model_pk 指向的启用替换模型，无配置或不可用时返回 None"""
-    if not model.fallback_model_pk:
+    """取 fallback_model_id 指向的启用替换模型，无配置或不可用时返回 None"""
+    if not model.fallback_model_id:
         return None
-    rows = await ai_model_repository.list_enabled_by_pks(db, [model.fallback_model_pk])
+    rows = await repository.list_enabled_by_pks(db, [model.fallback_model_id])
     return rows[0] if rows else None
 
 
 async def _notify_model_replacement(
+    repository,
+    message_service,
     db: AsyncSession,
     model: SysAiModel,
     fallback: SysAiModel | None,
@@ -102,7 +105,7 @@ async def _notify_model_replacement(
 
     fallback 为 None 时提示管理员配置替换模型；取不到时静默跳过（无活跃用户）。
     """
-    user_ids = await ai_model_repository.list_active_conversation_users(db, model.model_id)
+    user_ids = await repository.list_active_conversation_users(db, model.model_id)
     if not user_ids:
         return
     if fallback:
@@ -135,14 +138,30 @@ async def _notify_model_replacement(
 
 
 class AiModelService:
+    
+    def __init__(
+        self,
+        ai_model_repository=ai_model_repository,
+        member_repository=member_repository,
+        provider_health_service=provider_health_service,
+        message_service=message_service,
+    ):
+        self.ai_model_repository = ai_model_repository
+        self.member_repository = member_repository
+        self.provider_health_service = provider_health_service
+        self.message_service = message_service
+
     async def list_models(
         self,
         db: AsyncSession,
         page: int,
         size: int,
         keyword: str | None = None,
+        model_type: str | None = None,
     ) -> PageResult[AiModelResult]:
-        models, total = await ai_model_repository.paginate_models(db, page, size, keyword)
+        models, total = await self.ai_model_repository.paginate_models(
+            db, page, size, keyword, model_type
+        )
         return PageResult(list=[AiModelResult.model_validate(m) for m in models], total=total)
 
     async def list_enabled_models(
@@ -150,14 +169,17 @@ class AiModelService:
         db: AsyncSession,
         redis: Redis,
         user_id: int,
+        model_type: str | None = None,
     ) -> list[AiModelResult]:
         cache = CacheService(redis)
         cached = await cache.get_json(MODEL_LIST_CACHE_KEY)
         if cached is None:
-            models = await ai_model_repository.list_enabled(db)
+            # 缓存保存全部启用模型快照（不按类型过滤），类型筛选在读缓存后内存过滤，
+            # 避免不同 model_type 请求互相污染共享缓存
+            models = await self.ai_model_repository.list_enabled(db)
             # 降级标识：被其他启用模型作为 fallback 目标
             fallback_target_pks = {
-                m.fallback_model_pk for m in models if m.fallback_model_pk is not None
+                m.fallback_model_id for m in models if m.fallback_model_id is not None
             }
             cached = [
                 {
@@ -171,11 +193,14 @@ class AiModelService:
             ]
             await cache.set_json(MODEL_LIST_CACHE_KEY, cached, MODEL_LIST_CACHE_TTL)
         user_level = await _get_user_level(db, redis, user_id)
-        return [
+        items = [
             AiModelResult.model_validate(item)
             for item in cached
             if item.get("vip_level", 0) <= user_level
         ]
+        if model_type:
+            items = [m for m in items if m.model_type == model_type]
+        return items
 
     async def validate_model_caps(
         self,
@@ -196,7 +221,11 @@ class AiModelService:
             raise BusinessException(ResultCode.AI_MODEL_NOT_AVAILABLE, "当前模型不支持工具调用")
 
     async def create_model(self, db: AsyncSession, redis: Redis, form) -> AiModelResult:
-        existing = await ai_model_repository.get_by_model_and_provider(
+        if form.model_type == "embedding" and form.dimension is None:
+            raise BusinessException(
+                ResultCode.PARAM_ERROR, "embedding 模型必须填写向量维度 dimension"
+            )
+        existing = await self.ai_model_repository.get_by_model_and_provider(
             db, form.model_id, form.provider_id
         )
         if existing:
@@ -208,10 +237,9 @@ class AiModelService:
         model = SysAiModel(
             provider_id=form.provider_id,
             model_id=form.model_id,
+            model_type=form.model_type,
+            dimension=form.dimension,
             display_name=form.display_name,
-            input_rate=form.input_rate,
-            output_rate=form.output_rate,
-            cached_rate=form.cached_rate,
             max_context_tokens=form.max_context_tokens,
             max_output_tokens=form.max_output_tokens,
             supports_multimodal=int(form.supports_multimodal),
@@ -219,20 +247,27 @@ class AiModelService:
             supports_streaming=int(form.supports_streaming),
             supports_prompt_cache=int(form.supports_prompt_cache),
             supports_structured_output=int(form.supports_structured_output),
-            fallback_model_pk=form.fallback_model_pk,
+            extra_request_params=form.extra_request_params,
+            fallback_model_id=form.fallback_model_id,
             prompt_cache_prefix_len=form.prompt_cache_prefix_len,
             status=form.status,
             vip_level=form.vip_level,
         )
-        model = await ai_model_repository.create(db, model)
+        model = await self.ai_model_repository.create(db, model)
         await _clear_model_cache(redis)
         return AiModelResult.model_validate(model)
 
     async def update_model(self, db: AsyncSession, redis: Redis, model_id: str, form) -> AiModelResult:
-        model = await ai_model_repository.get_by_model_id(db, model_id)
+        model = await self.ai_model_repository.get_by_model_id(db, model_id)
         if not model:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模型不存在")
         data = form.model_dump(exclude_unset=True)
+        immutable = {"model_type", "dimension"} & data.keys()
+        if immutable:
+            raise BusinessException(
+                ResultCode.DATA_STATE_NOT_ALLOW,
+                f"模型类型与向量维度创建后不可修改: {sorted(immutable)}",
+            )
         old_status = model.status
         for key, value in data.items():
             if key in _BOOL_FIELDS:
@@ -243,22 +278,24 @@ class AiModelService:
         await db.flush()
         await db.refresh(model)
         if disabling and not model.deleted:
-            fallback = await _resolve_fallback(db, model)
-            await _notify_model_replacement(db, model, fallback)
+            fallback = await _resolve_fallback(self.ai_model_repository, db, model)
+            await _notify_model_replacement(
+                self.ai_model_repository, self.message_service, db, model, fallback
+            )
         await _clear_model_cache(redis)
         return AiModelResult.model_validate(model)
 
     async def delete_model(self, db: AsyncSession, redis: Redis, model_id: str) -> None:
-        model = await ai_model_repository.get_by_model_id(db, model_id)
+        model = await self.ai_model_repository.get_by_model_id(db, model_id)
         if not model:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模型不存在")
-        active = await ai_model_repository.count_active_conversations(db, model_id)
+        active = await self.ai_model_repository.count_active_conversations(db, model_id)
         if active > 0:
             raise BusinessException(
                 ResultCode.DATA_BIND_EXISTS,
                 "存在活跃会话正在使用该模型，请先禁用（status=0）",
             )
-        await ai_model_repository.soft_delete_by_ids(db, [model.id])
+        await self.ai_model_repository.soft_delete_by_ids(db, [model.id])
         await _clear_model_cache(redis)
 
 

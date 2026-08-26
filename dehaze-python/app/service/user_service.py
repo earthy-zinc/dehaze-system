@@ -17,9 +17,12 @@ from app.core.exceptions import BusinessException
 from app.dependencies.auth import UserContext
 from app.models.base import get_current_user_id
 from app.models.entity.sys_user import SysUser
-from app.repository.dept_repository import dept_repository
-from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
-from app.repository.user_repository import user_repository
+from app.repository.dept_repository import DeptRepository, dept_repository
+from app.repository.mongo_audit_log_repository import (
+    MongoAuditLogRepository,
+    mongo_audit_log_repository,
+)
+from app.repository.user_repository import UserRepository, user_repository
 from app.utils.password import hash_password_async
 
 
@@ -75,8 +78,18 @@ def generate_random_password(length: int = 12) -> str:
 class UserService:
     """用户服务"""
 
-    @staticmethod
+    def __init__(
+        self,
+        repo: UserRepository = user_repository,
+        dept_repo: DeptRepository = dept_repository,
+        audit_repo: MongoAuditLogRepository = mongo_audit_log_repository,
+    ):
+        self.repo = repo
+        self.dept_repo = dept_repo
+        self.audit_repo = audit_repo
+
     async def get_user_list(
+        self,
         db: AsyncSession,
         page: int,
         page_size: int,
@@ -106,9 +119,9 @@ class UserService:
         """
         dept_ids = None
         if dept_id:
-            dept_ids = await dept_repository.get_children_ids(db, dept_id)
+            dept_ids = await self.dept_repo.get_children_ids(db, dept_id)
 
-        return await user_repository.get_user_list(
+        return await self.repo.get_user_list(
             db,
             page=page,
             page_size=page_size,
@@ -120,8 +133,7 @@ class UserService:
             current_user=current_user,
         )
 
-    @staticmethod
-    async def get_user_form_data(db: AsyncSession, user_id: int) -> dict[str, Any] | None:
+    async def get_user_form_data(self, db: AsyncSession, user_id: int) -> dict[str, Any] | None:
         """
         获取用户表单数据
 
@@ -132,11 +144,11 @@ class UserService:
         Returns:
             用户表单数据
         """
-        user = await user_repository.get_by_id(db, user_id)
+        user = await self.repo.get_by_id(db, user_id)
         if not user:
             return None
 
-        role_ids = await user_repository.get_user_role_ids(db, user_id)
+        role_ids = await self.repo.get_user_role_ids(db, user_id)
 
         return {
             "id": user.id,
@@ -151,8 +163,8 @@ class UserService:
             "roleIds": role_ids,
         }
 
-    @staticmethod
     async def create_user_with_roles(
+        self,
         db: AsyncSession,
         data: dict[str, Any],
     ) -> SysUser:
@@ -181,11 +193,10 @@ class UserService:
         if not username:
             raise BusinessException("用户名不能为空")
 
-        existing_user = await user_repository.get_by_username_include_deleted(db, username)
+        existing_user = await self.repo.get_by_username_include_deleted(db, username)
         if existing_user:
             raise BusinessException("该用户名不可用")
 
-        # 使用配置的默认密码
         plain_password = settings.DEFAULT_PASSWORD
         hashed_password = await hash_password_async(plain_password)
 
@@ -200,11 +211,11 @@ class UserService:
             status=status,
         )
 
-        user = await user_repository.create_user(db, user, role_ids)
+        user = await self.repo.create_user(db, user, role_ids)
         return user
 
-    @staticmethod
     async def update_user_with_roles(
+        self,
         db: AsyncSession,
         user_id: int,
         data: dict[str, Any],
@@ -220,7 +231,7 @@ class UserService:
         Raises:
             BusinessException: 用户不存在或用户名已存在
         """
-        user = await user_repository.get_by_id(db, user_id)
+        user = await self.repo.get_by_id(db, user_id)
         if not user:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在")
 
@@ -251,10 +262,10 @@ class UserService:
             user.status = status
 
         await db.flush()
-        await user_repository.replace_user_roles(db, user_id, role_ids)
+        await self.repo.replace_user_roles(db, user_id, role_ids)
 
-    @staticmethod
     async def update_user_status(
+        self,
         db: AsyncSession,
         user_id: int,
         status: int,
@@ -270,7 +281,7 @@ class UserService:
         Raises:
             BusinessException: 用户不存在或为超级管理员
         """
-        user = await user_repository.get_by_id(db, user_id)
+        user = await self.repo.get_by_id(db, user_id)
         if not user:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在")
 
@@ -279,8 +290,8 @@ class UserService:
 
         user.status = status
 
-    @staticmethod
     async def update_password(
+        self,
         db: AsyncSession,
         user_id: int,
         new_password: str,
@@ -296,19 +307,18 @@ class UserService:
         Raises:
             BusinessException: 用户不存在或密码复杂度不符合要求
         """
-        # 验证密码复杂度
         is_valid, error_msg = validate_password_complexity(new_password)
         if not is_valid:
             raise BusinessException(error_msg)
 
-        user = await user_repository.get_by_id(db, user_id)
+        user = await self.repo.get_by_id(db, user_id)
         if not user:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在")
 
         hashed_password = await hash_password_async(new_password)
         user.password = hashed_password
 
-        mongo_audit_log_repository.create_audit_async(
+        self.audit_repo.create_audit_async(
             operator_id=get_current_user_id(),
             target_type="user",
             target_id=user_id,
@@ -316,8 +326,8 @@ class UserService:
             module="user",
         )
 
-    @staticmethod
     async def delete_users(
+        self,
         db: AsyncSession,
         ids: str,
         current_user: UserContext | None = None,
@@ -346,16 +356,16 @@ class UserService:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "不可删除自己")
 
         # 超级管理员受保护，不可删除
-        protected_ids = await user_repository.get_protected_user_ids(db, user_ids)
+        protected_ids = await self.repo.get_protected_user_ids(db, user_ids)
         if protected_ids:
             raise BusinessException(ResultCode.ROOT_USER_PROTECTED, "超级管理员不可删除")
 
         ids_to_delete = [uid for uid in user_ids if uid not in protected_ids]
 
         if ids_to_delete:
-            await user_repository.soft_delete_by_ids(db, ids_to_delete)
+            await self.repo.soft_delete_by_ids(db, ids_to_delete)
 
-        mongo_audit_log_repository.create_audit_async(
+        self.audit_repo.create_audit_async(
             operator_id=get_current_user_id(),
             target_type="user",
             target_id=ids,
@@ -366,5 +376,4 @@ class UserService:
         return {"deleted_count": len(ids_to_delete), "protected_count": len(protected_ids)}
 
 
-# 单例
 user_service = UserService()

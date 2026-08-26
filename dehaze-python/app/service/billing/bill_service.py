@@ -46,20 +46,28 @@ def _is_empty_bill(bill: BillResult, month: str) -> bool:
 class BillService:
     """月结账单"""
 
+    def __init__(
+        self,
+        ai_billing_repository=ai_billing_repository,
+        ai_credit_log_repository=ai_credit_log_repository,
+    ):
+        self.ai_billing_repository = ai_billing_repository
+        self.ai_credit_log_repository = ai_credit_log_repository
+
     async def generate_monthly_bill(self, db: AsyncSession, user_id: int, month: str) -> BillResult:
         """生成月结账单并缓存到 Redis（幂等，可重新生成）"""
         redis = await get_redis_client()
         month_start, month_end = _month_bounds(month)
 
         # 1. 汇总消耗：按 bill_type 分组
-        by_type = await ai_billing_repository.sum_credits_by_user_group_by_bill_type(
+        by_type = await self.ai_billing_repository.sum_credits_by_user_group_by_bill_type(
             db, user_id, month_start, month_end
         )
         item_summary = {row["bill_type"]: row["credits"] for row in by_type}
         total_consume = sum(item_summary.values())
 
         # 2. 汇总充值/退款：按 source 分组
-        by_source = await ai_credit_log_repository.sum_amount_by_user_and_source(
+        by_source = await self.ai_credit_log_repository.sum_amount_by_user_and_source(
             db, user_id, month_start, month_end
         )
         recharge_amounts = [amount for src, amount in by_source.items() if src in _RECHARGE_SOURCES]
@@ -67,10 +75,10 @@ class BillService:
         total_refund = int(by_source.get("refund", Decimal(0)))
 
         # 3. 余额变动：月初（上月末）→ 月末
-        balance_start = await ai_credit_log_repository.get_balance_at_or_before(
+        balance_start = await self.ai_credit_log_repository.get_balance_at_or_before(
             db, user_id, month_start - timedelta(seconds=1)
         )
-        balance_end = await ai_credit_log_repository.get_balance_at_or_before(
+        balance_end = await self.ai_credit_log_repository.get_balance_at_or_before(
             db, user_id, month_end
         )
 

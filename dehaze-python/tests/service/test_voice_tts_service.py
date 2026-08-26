@@ -31,13 +31,6 @@ from app.service.voice.tts_service import (
     encrypt_audio,
 )
 
-_SAMPLE_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "models",
-    "piper",
-)
-_MODEL_READY = os.path.exists(os.path.join(_SAMPLE_DIR, "zh_CN-huayan-medium.onnx"))
-
 # 对抗性脏语料：全角/半角标点混杂、emoji、零宽字符、CRLF、连续空行
 _DIRTY_CORPUS = [
     "处理完成；done.第二段！third？mixed，标点。",
@@ -135,7 +128,6 @@ def synthesized_default() -> bytes:
     return piper_tts_engine.synthesize("图像去雾处理完成，请查看结果。", "huayan", 1.0, "wav", 16000)
 
 
-@pytest.mark.skipif(not _MODEL_READY, reason="TTS 模型未就绪（首次运行会自动下载，本机应存在）")
 class TestEngineSynthesis:
     def test_wav_format_invariants(self, synthesized_default: bytes):
         assert synthesized_default[:4] == b"RIFF"
@@ -231,7 +223,6 @@ def _install_service_stubs(monkeypatch: pytest.MonkeyPatch, synth_calls: list[st
     monkeypatch.setattr(m.voice_billing_service, "charge_tts", staticmethod(_charge_tts))
 
 
-@pytest.mark.skipif(not _MODEL_READY, reason="TTS 模型未就绪（首次运行会自动下载，本机应存在）")
 async def test_synthesize_caches_second_call(redis: FakeAsyncRedis, monkeypatch):
     calls: list[str] = []
     _install_service_stubs(monkeypatch, calls)
@@ -258,7 +249,6 @@ async def test_synthesize_caches_second_call(redis: FakeAsyncRedis, monkeypatch)
     assert calls == ["check", "store", "charge"]
 
 
-@pytest.mark.skipif(not _MODEL_READY, reason="TTS 模型未就绪（首次运行会自动下载，本机应存在）")
 async def test_synthesize_default_voice_applied(redis: FakeAsyncRedis, monkeypatch):
     calls: list[str] = []
     _install_service_stubs(monkeypatch, calls)
@@ -267,7 +257,6 @@ async def test_synthesize_default_voice_applied(redis: FakeAsyncRedis, monkeypat
     assert result["format"] == "mp3"
 
 
-@pytest.mark.skipif(not _MODEL_READY, reason="TTS 模型未就绪（首次运行会自动下载，本机应存在）")
 async def test_synthesize_engine_error_wrapped(redis: FakeAsyncRedis, monkeypatch):
     calls: list[str] = []
     _install_service_stubs(monkeypatch, calls)

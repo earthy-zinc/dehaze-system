@@ -42,7 +42,7 @@ from app.service.import_export.template_manager import (
 )
 from app.service.import_export.virus_scanner import get_virus_scanner
 from app.service.storage.factory import get_storage_service
-from app.service.task_service import create_task
+from app.service.task.task_service import create_task
 
 logger = logging.getLogger(__name__)
 
@@ -58,16 +58,17 @@ _EXCEL_MAGIC = (b"\x50\x4b\x03\x04", b"\xd0\xcf\x11\xe0")
 
 
 class ImportExportService:
-    @staticmethod
-    def get_supported_export_modules() -> list[str]:
+    def __init__(self):
+        pass
+
+    def get_supported_export_modules(self) -> list[str]:
         return list(export_handler_registry._handlers.keys())
 
-    @staticmethod
-    def get_supported_import_modules() -> list[str]:
+    def get_supported_import_modules(self) -> list[str]:
         return list(import_handler_registry._handlers.keys())
 
-    @staticmethod
     async def export(
+        self,
         db: AsyncSession,
         redis: Redis,
         module: str,
@@ -105,8 +106,8 @@ class ImportExportService:
             ).model_dump()
         return await _sync_export(db, handler, params, format, fields, module)
 
-    @staticmethod
     async def import_data(
+        self,
         db: AsyncSession,
         redis: Redis,
         module: str,
@@ -155,8 +156,7 @@ class ImportExportService:
         result = await handler.import_batch(db, rows, options, _noop_progress, _noop_cancel)
         return _to_result_vo(result).model_dump()
 
-    @staticmethod
-    def download_template(module: str, format: str = "excel") -> StreamingResponse:
+    def download_template(self, module: str, format: str = "excel") -> StreamingResponse:
         handler = import_handler_registry.get_handler(module)
         if format == "csv":
             content = generate_template_csv(handler)
@@ -288,7 +288,7 @@ async def _upload_import_file(filename: str, content: bytes) -> str:
     ext = _get_extension(filename)
     object_name = f"temp/imports/{uuid.uuid4().hex}{ext}"
     storage = get_storage_service()
-    bucket = settings.MINIO_BUCKET_NAME
+    bucket = settings.MINIO_BUCKET
     content_type = (
         "text/csv"
         if ext == ".csv"

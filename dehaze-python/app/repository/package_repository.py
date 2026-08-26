@@ -18,12 +18,33 @@ class PackageRepository(BaseRepository[SysPackage]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_on_sale(self, db: AsyncSession) -> list[SysPackage]:
+    async def get_by_level_code(
+        self, db: AsyncSession, level_code: str
+    ) -> SysPackage | None:
+        """按关联等级查询套餐（取排序最前的一条），用于读取会员卡权益覆盖项"""
+        stmt = (
+            select(SysPackage)
+            .where(
+                SysPackage.deleted == 0,
+                SysPackage.status == 1,
+                SysPackage.package_type == "vip",
+                SysPackage.level_code == level_code,
+            )
+            .order_by(SysPackage.sort.asc(), SysPackage.id.asc())
+        )
+        result = await db.execute(stmt)
+        return result.scalars().first()
+
+    async def list_on_sale(
+        self, db: AsyncSession, package_type: str | None = None
+    ) -> list[SysPackage]:
         stmt = (
             select(SysPackage)
             .where(SysPackage.deleted == 0, SysPackage.status == 1)
             .order_by(SysPackage.sort.asc(), SysPackage.id.asc())
         )
+        if package_type:
+            stmt = stmt.where(SysPackage.package_type == package_type)
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -34,6 +55,7 @@ class PackageRepository(BaseRepository[SysPackage]):
         page_size: int,
         *,
         name: str | None = None,
+        package_type: str | None = None,
         level_code: str | None = None,
         period: str | None = None,
         status: int | None = None,
@@ -45,6 +67,8 @@ class PackageRepository(BaseRepository[SysPackage]):
         if name:
             escaped = escape_like(name)
             stmt = stmt.where(SysPackage.name.like(f"%{escaped}%", escape="\\"))
+        if package_type:
+            stmt = stmt.where(SysPackage.package_type == package_type)
         if level_code:
             stmt = stmt.where(SysPackage.level_code == level_code)
         if period:

@@ -1,4 +1,6 @@
-from sqlalchemy import BigInteger, Integer, Numeric, SmallInteger, String
+from typing import Any
+
+from sqlalchemy import JSON, BigInteger, Integer, Numeric, SmallInteger, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import BaseModel, SoftDeleteMixin
@@ -17,19 +19,13 @@ class SysAiModel(BaseModel, SoftDeleteMixin):
     model_id: Mapped[str] = mapped_column(
         String(64), nullable=False, comment="模型标识(如gpt-4o;claude-3-5-sonnet;deepseek-chat)"
     )
+    model_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="chat", comment="模型类型(chat:对话;embedding:向量;rerank:重排)"
+    )
+    dimension: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, comment="embedding向量维度(model_type=embedding时必填;创建后不可改)"
+    )
     display_name: Mapped[str] = mapped_column(String(128), nullable=False, comment="显示名称")
-    input_rate: Mapped[float] = mapped_column(
-        Numeric(10, 4),
-        nullable=False,
-        default=1.0000,
-        comment="输入Token计费比例(以输入单价为基准1.0)",
-    )
-    output_rate: Mapped[float] = mapped_column(
-        Numeric(10, 4), nullable=False, default=1.0000, comment="输出Token计费比例"
-    )
-    cached_rate: Mapped[float] = mapped_column(
-        Numeric(10, 4), nullable=False, default=1.0000, comment="缓存命中Token计费比例(折扣价)"
-    )
     max_context_tokens: Mapped[int] = mapped_column(
         Integer, nullable=False, default=4096, comment="最大上下文Token数"
     )
@@ -51,8 +47,13 @@ class SysAiModel(BaseModel, SoftDeleteMixin):
     supports_structured_output: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, default=0, comment="是否支持结构化输出(0:否;1:是)"
     )
-    fallback_model_pk: Mapped[int | None] = mapped_column(
-        BigInteger, nullable=True, comment="降级模型主键(关联sys_ai_model.id)"
+    extra_request_params: Mapped[Any | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="厂商私有请求参数(如阿里云enable_thinking/reasoning_effort)，随请求体透传，核心键不可覆盖",
+    )
+    fallback_model_id: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, comment="降级模型ID(关联sys_ai_model.id)"
     )
     prompt_cache_prefix_len: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="Prompt缓存稳定前缀长度"

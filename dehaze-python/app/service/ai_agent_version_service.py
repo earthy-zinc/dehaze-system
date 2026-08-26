@@ -13,7 +13,7 @@ from app.models.schema.ai_agent import AgentVersionResult
 from app.models.schema.common import PageResult
 from app.repository.ai_agent_repository import ai_agent_repository
 from app.repository.ai_agent_version_repository import ai_agent_version_repository
-from app.service.ai import agent_config_resolver
+from app.service.ai.strategies import agent_config_resolver
 from app.service.ai_eval_service import eval_service
 
 # 版本快照缓存 Key / TTL（后端实现 §4.3）
@@ -22,14 +22,21 @@ _AGENT_PUBLISHED_TTL = 1800
 
 
 class AgentVersionService:
-    @staticmethod
-    async def _build_snapshot(db: AsyncSession, redis: Redis, agent) -> dict:
+    def __init__(
+        self,
+        ai_agent_repository=ai_agent_repository,
+        ai_agent_version_repository=ai_agent_version_repository,
+    ):
+        self.ai_agent_repository = ai_agent_repository
+        self.ai_agent_version_repository = ai_agent_version_repository
+
+    async def _build_snapshot(self, db: AsyncSession, redis: Redis, agent) -> dict:
         """序列化主表可编辑态为版本快照（对齐后端实现 §2.4 / 契约）。"""
-        skills = await ai_agent_repository.list_skill_names(db, agent.id)
-        mcp = await ai_agent_repository.list_mcp_namespaces(db, agent.id)
+        skills = await self.ai_agent_repository.list_skill_names(db, agent.id)
+        mcp = await self.ai_agent_repository.list_mcp_namespaces(db, agent.id)
         subagents = [
             {"agent_id": s.subagent_agent_id, "priority": s.priority, "endpoint_id": s.endpoint_id}
-            for s in await ai_agent_repository.list_subagents(db, agent.id)
+            for s in await self.ai_agent_repository.list_subagents(db, agent.id)
         ]
         # resolved_config：系统默认 ← Agent 配置 两级合并（不含会话级），冻结"继承默认"语义，
         # 保证已发布版本行为可复现，不受后续 sys_dict 变更影响。
@@ -51,8 +58,8 @@ class AgentVersionService:
             "subagents": subagents,
         }
 
-    @staticmethod
     async def _write_draft(
+        self,
         db: AsyncSession,
         redis: Redis,
         agent,
@@ -61,8 +68,8 @@ class AgentVersionService:
         status: int = 1,
     ) -> SysAiAgentVersion:
         """写入一条版本记录（草稿/已发布），返回新版本实体。"""
-        snapshot = await AgentVersionService._build_snapshot(db, redis, agent)
-        version_no = await ai_agent_version_repository.next_version_no(db, agent.id)
+        snapshot = await self._build_snapshot(db, redis, agent)
+        version_no = await self.ai_agent_version_repository.next_version_no(db, agent.id)
         version = SysAiAgentVersion(
             agent_id=agent.id,
             version_no=version_no,
@@ -76,8 +83,8 @@ class AgentVersionService:
         await db.refresh(version)
         return version
 
-    @staticmethod
     async def save_draft(
+        self,
         db: AsyncSession,
         redis: Redis,
         agent_id: int,
@@ -85,16 +92,16 @@ class AgentVersionService:
         change_note: str | None = None,
     ) -> AgentVersionResult:
         """保存草稿快照（更新 Agent 后调用，生成 status=1 草稿版本）。"""
-        agent = await ai_agent_repository.get_by_id(db, agent_id)
+        agent = await self.ai_agent_repository.get_by_id(db, agent_id)
         if not agent:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "Agent 不存在")
-        version = await AgentVersionService._write_draft(
+        version = await self._write_draft(
             db, redis, agent, operator_id, change_note, status=1
         )
         return AgentVersionResult.model_validate(version)
 
-    @staticmethod
     async def publish(
+        self,
         db: AsyncSession,
         redis: Redis,
         agent_id: int,
@@ -108,7 +115,7 @@ class AgentVersionService:
            缓存，返回 version_no；
         3) 门禁失败：抛业务异常（含失败样本明细）。
         """
-        agent = await ai_agent_repository.get_by_id(db, agent_id)
+        agent = await self.ai_agent_repository.get_by_id(db, agent_id)
         if not agent:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "Agent 不存在")
 
@@ -121,15 +128,15 @@ class AgentVersionService:
             )
 
         # 门禁通过：旧已发布版本置历史，写入新已发布版本
-        await ai_agent_version_repository.demote_published(db, agent_id)
-        version = await AgentVersionService._write_draft(
+        await self.ai_agent_version_repository.demote_published(db, agent_id)
+        version = await self._write_draft(
             db, redis, agent, operator_id, change_note, status=2
         )
         await CacheService(redis).delete(_AGENT_PUBLISHED_KEY.format(agent_id=agent_id))
         return version.version_no
 
-    @staticmethod
     async def rollback(
+        self,
         db: AsyncSession,
         redis: Redis,
         agent_id: int,
@@ -140,10 +147,10 @@ class AgentVersionService:
 
         新版本 change_note 记录"回滚自 v{version_no}"。
         """
-        agent = await ai_agent_repository.get_by_id(db, agent_id)
+        agent = await self.ai_agent_repository.get_by_id(db, agent_id)
         if not agent:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "Agent 不存在")
-        target = await ai_agent_version_repository.get_by_agent_and_version(
+        target = await self.ai_agent_version_repository.get_by_agent_and_version(
             db, agent_id, version_no
         )
         if not target:
@@ -162,11 +169,11 @@ class AgentVersionService:
         agent.is_team = snapshot.get("is_team", agent.is_team)
         agent.is_exposed = snapshot.get("is_exposed", agent.is_exposed)
         # 关联关系覆盖式恢复
-        await ai_agent_repository.replace_skills(db, agent_id, snapshot.get("skills", []) or [])
-        await ai_agent_repository.replace_mcp_namespaces(
+        await self.ai_agent_repository.replace_skills(db, agent_id, snapshot.get("skills", []) or [])
+        await self.ai_agent_repository.replace_mcp_namespaces(
             db, agent_id, snapshot.get("mcp_namespaces", []) or []
         )
-        await ai_agent_repository.replace_subagents(
+        await self.ai_agent_repository.replace_subagents(
             db,
             agent_id,
             [
@@ -181,15 +188,15 @@ class AgentVersionService:
         await db.flush()
 
         # 写新已发布版本，历史不覆盖
-        await ai_agent_version_repository.demote_published(db, agent_id)
-        version = await AgentVersionService._write_draft(
+        await self.ai_agent_version_repository.demote_published(db, agent_id)
+        version = await self._write_draft(
             db, redis, agent, operator_id, f"回滚自 v{version_no}", status=2
         )
         await CacheService(redis).delete(_AGENT_PUBLISHED_KEY.format(agent_id=agent_id))
         return version.version_no
 
-    @staticmethod
     async def list_versions(
+        self,
         db: AsyncSession,
         redis: Redis,
         agent_id: int,
@@ -197,15 +204,15 @@ class AgentVersionService:
         size: int,
     ) -> PageResult[AgentVersionResult]:
         """版本历史列表（分页，按版本号倒序）。"""
-        versions = await ai_agent_version_repository.list_versions(db, agent_id)
+        versions = await self.ai_agent_version_repository.list_versions(db, agent_id)
         total = len(versions)
         items = [
             AgentVersionResult.model_validate(v) for v in versions[(page - 1) * size : page * size]
         ]
         return PageResult(list=items, total=total)
 
-    @staticmethod
     async def diff_versions(
+        self,
         db: AsyncSession,
         redis: Redis,
         agent_id: int,
@@ -219,7 +226,7 @@ class AgentVersionService:
         """
 
         async def _load(version_no: int) -> dict:
-            version = await ai_agent_version_repository.get_by_agent_and_version(
+            version = await self.ai_agent_version_repository.get_by_agent_and_version(
                 db, agent_id, version_no
             )
             if not version:

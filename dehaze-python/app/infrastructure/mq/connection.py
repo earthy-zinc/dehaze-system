@@ -41,7 +41,6 @@ async def init_mq() -> tuple[Publisher | None, Consumer | None]:
         logger.info("RabbitMQ 未启用，跳过初始化")
         return None, None
 
-    # 初始化 Publisher
     _publisher = Publisher()
     try:
         await _publisher.connect()
@@ -49,7 +48,6 @@ async def init_mq() -> tuple[Publisher | None, Consumer | None]:
         logger.error(f"RabbitMQ Publisher 初始化失败（服务继续启动）: {e}")
         _publisher = None
 
-    # 初始化 Consumer
     _consumer = Consumer()
     try:
         await _consumer.connect()
@@ -57,7 +55,6 @@ async def init_mq() -> tuple[Publisher | None, Consumer | None]:
         logger.error(f"RabbitMQ Consumer 初始化失败（服务继续启动）: {e}")
         _consumer = None
 
-    # 注册消费者 handler
     if _consumer is not None:
         await _register_handlers(_consumer)
 

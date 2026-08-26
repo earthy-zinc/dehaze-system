@@ -65,6 +65,22 @@ class KnowledgeBaseRepository(BaseRepository[SysKnowledgeBase]):
         stmt = stmt.order_by(SysKnowledgeBase.create_time.desc())
         return await self.paginate(db, stmt, page, size)
 
+    async def paginate_all(
+        self,
+        db: AsyncSession,
+        keyword: str | None,
+        page: int,
+        size: int,
+    ) -> tuple[list[SysKnowledgeBase], int]:
+        """分页查询全部知识库（含私有库，管理端 view=admin 只读监控用，不过滤可见性）"""
+        stmt = select(SysKnowledgeBase).where(SysKnowledgeBase.deleted == 0)
+        if keyword:
+            stmt = stmt.where(
+                SysKnowledgeBase.name.like(f"%{escape_like(keyword)}%", escape="\\")
+            )
+        stmt = stmt.order_by(SysKnowledgeBase.create_time.desc())
+        return await self.paginate(db, stmt, page, size)
+
     async def list_visible_by_user(self, db: AsyncSession, user_id: int) -> list[SysKnowledgeBase]:
         """查询当前用户全部可见知识库（私有库仅本人 + 公共库全员），用于缺省多库检索。"""
         stmt = (

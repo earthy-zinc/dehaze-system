@@ -6,7 +6,6 @@ from app.lifecycle import lifespan
 from app.middleware import init_middlewares
 from app.middleware.non_null_response import NonNullJSONResponse
 from app.router import init_routes
-from app.router.voice_ws import router as voice_ws_router
 from app.router.websocket import router as ws_router
 
 app = FastAPI(
@@ -20,18 +19,14 @@ app = FastAPI(
     default_response_class=NonNullJSONResponse,
 )
 
-# 注册全局异常处理器
 register_exception_handlers(app)
 
-# 注册中间件
 init_middlewares(app, debug=settings.DEBUG, prometheus_enabled=settings.PROMETHEUS_ENABLED)
 
-# 注册路由
 init_routes(app, prometheus_enabled=settings.PROMETHEUS_ENABLED)
 
-# 注册 WebSocket 路由（消息通知 + 流式 ASR）
+# 注册 WebSocket 路由（消息通知；流式 ASR 已并入语音模块 voice router）
 app.include_router(ws_router)
-app.include_router(voice_ws_router)
 
 
 if __name__ == "__main__":

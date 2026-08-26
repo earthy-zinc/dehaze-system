@@ -46,6 +46,8 @@ logger = logging.getLogger(__name__)
 # 单库文档数/分块数上限（架构文档 §8，需求规格 §2.1.3）
 KB_MAX_DOCUMENTS = 500
 KB_MAX_CHUNKS = 10000
+# 自定义文本字符数上限（防极端输入撑爆单库，正常文档远不及此阈值）
+KB_MAX_TEXT_CHARS = 1_000_000
 
 # 解析为 CPU/IO 密集操作，在线程池中运行避免阻塞事件循环
 _parse_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="kb-parse")
@@ -86,6 +88,22 @@ class DocumentService:
     接线异步流水线。服务内部不自行 create_task，避免请求事务未提交导致的竞态。
     """
 
+    def __init__(
+        self,
+        knowledge_base_repository=knowledge_base_repository,
+        knowledge_document_repository=knowledge_document_repository,
+        knowledge_chunk_repository=knowledge_chunk_repository,
+        file_service=file_service,
+        chunking_engine=chunking_engine,
+        embedding_client=embedding_client,
+    ):
+        self.knowledge_base_repository = knowledge_base_repository
+        self.knowledge_document_repository = knowledge_document_repository
+        self.knowledge_chunk_repository = knowledge_chunk_repository
+        self.file_service = file_service
+        self.chunking_engine = chunking_engine
+        self.embedding_client = embedding_client
+
     # ==================== 创建 ====================
 
     async def upload(self, 
@@ -95,19 +113,19 @@ class DocumentService:
         kb = await self._validate_kb(db, kb_id, user)
 
         # file_id 幂等去重：同库同文件已存在则拒绝重复创建
-        existing = await knowledge_document_repository.get_by_file_id(db, kb_id, file_id)
+        existing = await self.knowledge_document_repository.get_by_file_id(db, kb_id, file_id)
         if existing:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "该文件已存在于知识库中")
 
         # 单库文档数配额
-        doc_count = await knowledge_document_repository.count_by_kb(db, kb_id)
+        doc_count = await self.knowledge_document_repository.count_by_kb(db, kb_id)
         if doc_count >= KB_MAX_DOCUMENTS:
             raise BusinessException(
                 ResultCode.BUSINESS_ERROR, f"单库文档数已达上限({KB_MAX_DOCUMENTS})"
             )
 
         # 文件必须存在，且上传时即校验文件格式白名单
-        file_info = await file_service.get_file_by_id(db, file_id)
+        file_info = await self.file_service.get_file_by_id(db, file_id)
         if not file_info:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文件不存在")
         _validate_file_type(file_info.name)
@@ -120,7 +138,7 @@ class DocumentService:
             parsing_strategy="auto",
             processing_status="pending",
         )
-        created = await knowledge_document_repository.create(db, document)
+        created = await self.knowledge_document_repository.create(db, document)
 
         owner_id = kb.create_by or user.id
         await redis.delete(f"kb:list:{owner_id}", f"kb:config:{kb_id}")
@@ -162,7 +180,7 @@ class DocumentService:
         if not cleaned.strip():
             raise BusinessException(ResultCode.BUSINESS_ERROR, "网页无有效正文内容")
 
-        doc_count = await knowledge_document_repository.count_by_kb(db, kb_id)
+        doc_count = await self.knowledge_document_repository.count_by_kb(db, kb_id)
         if doc_count >= KB_MAX_DOCUMENTS:
             raise BusinessException(
                 ResultCode.BUSINESS_ERROR, f"单库文档数已达上限({KB_MAX_DOCUMENTS})"
@@ -176,7 +194,7 @@ class DocumentService:
             processing_status="pending",
             content=cleaned,
         )
-        created = await knowledge_document_repository.create(db, document)
+        created = await self.knowledge_document_repository.create(db, document)
 
         owner_id = kb.create_by or user.id
         await redis.delete(f"kb:list:{owner_id}", f"kb:config:{kb_id}")
@@ -188,11 +206,16 @@ class DocumentService:
         """自定义文本创建文档：content 直接入库，异步任务跳过解析。"""
         kb = await self._validate_kb(db, kb_id, user)
 
-        doc_count = await knowledge_document_repository.count_by_kb(db, kb_id)
+        doc_count = await self.knowledge_document_repository.count_by_kb(db, kb_id)
         if doc_count >= KB_MAX_DOCUMENTS:
             raise BusinessException(
                 ResultCode.BUSINESS_ERROR, f"单库文档数已达上限({KB_MAX_DOCUMENTS})"
             )
+
+        if not content or not content.strip():
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "内容不能为空")
+        if len(content) > KB_MAX_TEXT_CHARS:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "内容长度超过上限")
 
         document = SysKnowledgeDocument(
             knowledge_base_id=kb_id,
@@ -202,7 +225,7 @@ class DocumentService:
             processing_status="pending",
             content=content,
         )
-        created = await knowledge_document_repository.create(db, document)
+        created = await self.knowledge_document_repository.create(db, document)
 
         owner_id = kb.create_by or user.id
         await redis.delete(f"kb:list:{owner_id}", f"kb:config:{kb_id}")
@@ -210,7 +233,7 @@ class DocumentService:
 
     async def _validate_kb(self, db: AsyncSession, kb_id: int, user) -> SysKnowledgeBase:
         """校验知识库存在且启用、并校验文档管理权限。"""
-        kb = await knowledge_base_repository.get_by_id(db, kb_id)
+        kb = await self.knowledge_base_repository.get_by_id(db, kb_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
         if kb.status == 0:
@@ -224,13 +247,13 @@ class DocumentService:
         db: AsyncSession, kb_id: int, processing_status: str | None, page: int, size: int, user
     ) -> dict:
         """文档列表（校验知识库可见性）。"""
-        kb = await knowledge_base_repository.get_by_id(db, kb_id)
+        kb = await self.knowledge_base_repository.get_by_id(db, kb_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
         if kb.visibility == "private" and kb.create_by != user.id:
             raise BusinessException(ResultCode.ACCESS_UNAUTHORIZED, "无权查看他人私有知识库")
 
-        items, total = await knowledge_document_repository.paginate_by_kb(
+        items, total = await self.knowledge_document_repository.paginate_by_kb(
             db, kb_id, processing_status, page, size
         )
         from app.models.schema.knowledge_base import KnowledgeDocumentVO
@@ -248,7 +271,7 @@ class DocumentService:
 
     async def get_detail(self, db: AsyncSession, document_id: int, user) -> dict:
         """文档详情（含解析后 content）。"""
-        doc = await knowledge_document_repository.get_by_id(db, document_id)
+        doc = await self.knowledge_document_repository.get_by_id(db, document_id)
         if not doc:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文档不存在")
         await self._check_doc_readable(db, doc, user)
@@ -259,7 +282,7 @@ class DocumentService:
 
     async def _check_doc_readable(self, db: AsyncSession, doc: SysKnowledgeDocument, user) -> None:
         """文档可见性：所属私有库仅 owner 可读。"""
-        kb = await knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
+        kb = await self.knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
         if kb.visibility == "private" and kb.create_by != user.id:
@@ -269,10 +292,10 @@ class DocumentService:
 
     async def delete(self, db: AsyncSession, redis: Redis, document_id: int, user) -> None:
         """删除文档：软删文档 + ES 清除分块 + 统计 CAS 递减。处理中文档拒绝删除。"""
-        doc = await knowledge_document_repository.get_by_id(db, document_id)
+        doc = await self.knowledge_document_repository.get_by_id(db, document_id)
         if not doc:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文档不存在")
-        kb = await knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
+        kb = await self.knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
         await _check_manage_permission(db, kb, user)
@@ -280,10 +303,10 @@ class DocumentService:
         if doc.processing_status in _PROTECTED_STATUSES:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "文档处理中，暂不能删除")
 
-        chunk_count = await knowledge_chunk_repository.count_by_document(db, document_id)
+        chunk_count = await self.knowledge_chunk_repository.count_by_document(db, document_id)
         token_total = await self._sum_document_tokens(db, document_id)
 
-        await knowledge_document_repository.soft_delete_by_ids(db, [document_id])
+        await self.knowledge_document_repository.soft_delete_by_ids(db, [document_id])
         await delete_doc_chunks(kb.id, document_id)
 
         # 统计 CAS 递减（document_count-1, chunk_count-N, total_tokens-N）
@@ -292,10 +315,10 @@ class DocumentService:
 
     async def reprocess(self, db: AsyncSession, redis: Redis, document_id: int, user) -> dict:
         """重新处理文档：仅 failed 允许；先删旧分块(MySQL+ES)，重置 pending，返回调度信息。"""
-        doc = await knowledge_document_repository.get_by_id(db, document_id)
+        doc = await self.knowledge_document_repository.get_by_id(db, document_id)
         if not doc:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文档不存在")
-        kb = await knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
+        kb = await self.knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
         await _check_manage_permission(db, kb, user)
@@ -304,7 +327,7 @@ class DocumentService:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "仅处理失败的文档允许重新处理")
 
         # 删除旧分块记录与 ES 分块
-        await knowledge_chunk_repository.delete_by_document(db, document_id)
+        await self.knowledge_chunk_repository.delete_by_document(db, document_id)
         await delete_doc_chunks(kb.id, document_id)
 
         doc.processing_status = "pending"
@@ -324,10 +347,10 @@ class DocumentService:
         user,
     ) -> dict:
         """文档版本更新：重新上传 file_id 或更新文本 → version+1，清除旧分块，重建索引。"""
-        doc = await knowledge_document_repository.get_by_id(db, document_id)
+        doc = await self.knowledge_document_repository.get_by_id(db, document_id)
         if not doc:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文档不存在")
-        kb = await knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
+        kb = await self.knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
         await _check_manage_permission(db, kb, user)
@@ -338,12 +361,12 @@ class DocumentService:
         new_file_id = doc.file_id
         if file_id is not None:
             # 同库同文件已存在（且不是本文档自身）→ 拒绝
-            duplicate = await knowledge_document_repository.get_by_file_id(
+            duplicate = await self.knowledge_document_repository.get_by_file_id(
                 db, kb.id, file_id
             )
             if duplicate and duplicate.id != document_id:
                 raise BusinessException(ResultCode.BUSINESS_ERROR, "该文件已存在于知识库中")
-            file_info = await file_service.get_file_by_id(db, file_id)
+            file_info = await self.file_service.get_file_by_id(db, file_id)
             if not file_info:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文件不存在")
             _validate_file_type(file_info.name)
@@ -353,7 +376,7 @@ class DocumentService:
             raise BusinessException(ResultCode.PARAM_ERROR, "需提供新文件或更新文本")
 
         # 清除旧分块（MySQL + ES）
-        await knowledge_chunk_repository.delete_by_document(db, document_id)
+        await self.knowledge_chunk_repository.delete_by_document(db, document_id)
         await delete_doc_chunks(kb.id, document_id)
 
         # version+1 并重置状态；纯文本更新且未换文件时，file_id 置空保持语义一致
@@ -380,7 +403,7 @@ class DocumentService:
 
     async def list_chunks(self, db: AsyncSession, document_id: int, page: int, size: int, user) -> dict:
         """文档分块列表。"""
-        doc = await knowledge_document_repository.get_by_id(db, document_id)
+        doc = await self.knowledge_document_repository.get_by_id(db, document_id)
         if not doc:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文档不存在")
         await self._check_doc_readable(db, doc, user)
@@ -416,7 +439,7 @@ class DocumentService:
             filename,
             "auto",
         )
-        chunks = chunking_engine.chunk_text(
+        chunks = self.chunking_engine.chunk_text(
             parsed.content, chunking_strategy, chunk_size, chunk_overlap
         )
         return [
@@ -438,7 +461,7 @@ class DocumentService:
             logger.exception("文档 %s 处理异常", document_id)
             try:
                 async with get_db_session() as db:
-                    doc = await knowledge_document_repository.get_by_id(db, document_id)
+                    doc = await self.knowledge_document_repository.get_by_id(db, document_id)
                     if doc and doc.processing_status != "completed":
                         doc.processing_status = "failed"
                         doc.error = f"文档处理失败: {e}"
@@ -459,10 +482,10 @@ class DocumentService:
         set_current_user_id(owner_id)
 
         async with get_db_session() as db:
-            doc = await knowledge_document_repository.get_by_id(db, document_id)
+            doc = await self.knowledge_document_repository.get_by_id(db, document_id)
             if not doc:
                 return
-            kb = await knowledge_base_repository.get_by_id(db, kb_id)
+            kb = await self.knowledge_base_repository.get_by_id(db, kb_id)
             if not kb:
                 return
             # Step 1: 状态 → processing
@@ -491,7 +514,7 @@ class DocumentService:
 
         # Step 5-6: 分块 + 写 MySQL + 向量化（重试封装）
         retry = settings.KB_ASYNC_MAX_RETRY
-        chunks = chunking_engine.chunk_text(
+        chunks = self.chunking_engine.chunk_text(
             cleaned, kb.chunking_strategy, kb.chunk_size, kb.chunk_overlap
         )
         if len(chunks) > KB_MAX_CHUNKS:
@@ -505,7 +528,7 @@ class DocumentService:
 
         # 分块写 MySQL（含 chunk_index 元数据）
         async with get_db_session() as db:
-            await knowledge_chunk_repository.delete_by_document(db, document_id)
+            await self.knowledge_chunk_repository.delete_by_document(db, document_id)
             chunk_entities = []
             for c in chunks:
                 metadata = dict(c.metadata)
@@ -520,10 +543,10 @@ class DocumentService:
                     )
                 )
             if chunk_entities:
-                await knowledge_chunk_repository.create_all(db, chunk_entities)
+                await self.knowledge_chunk_repository.create_all(db, chunk_entities)
 
             # 更新文档 content / 统计，并捕获标题/版本供 ES 文档使用
-            doc = await knowledge_document_repository.get_by_id(db, document_id)
+            doc = await self.knowledge_document_repository.get_by_id(db, document_id)
             if not doc:
                 return
             doc.content = cleaned
@@ -537,7 +560,7 @@ class DocumentService:
         while retry >= 0:
             try:
                 texts = [c.content for c in chunks]
-                vectors = await embedding_client.embed_texts(
+                vectors = await self.embedding_client.embed_texts(
                     kb.embedding_provider, kb.embedding_model, texts, settings.KB_INDEX_BATCH_SIZE
                 )
                 es_docs = []
@@ -570,7 +593,7 @@ class DocumentService:
 
         # Step 8: CAS 更新知识库统计 + 文档 completed
         async with get_db_session() as db:
-            doc = await knowledge_document_repository.get_by_id(db, document_id)
+            doc = await self.knowledge_document_repository.get_by_id(db, document_id)
             if not doc:
                 return
             doc.processing_status = "completed"
@@ -589,7 +612,7 @@ class DocumentService:
     async def _download_file(self, file_id: int) -> tuple[bytes, str]:
         """通过 file_id → sys_file → 存储读取文件字节，返回 (bytes, 文件名)。"""
         async with get_db_session() as db:
-            file_info = await file_service.get_file_by_id(db, file_id)
+            file_info = await self.file_service.get_file_by_id(db, file_id)
             if not file_info:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文件不存在")
             object_name = file_info.object_name
@@ -597,7 +620,7 @@ class DocumentService:
             storage = file_info.storage or settings.FILE_STORAGE_TYPE
 
         storage_service = get_storage_by_name(storage)
-        bucket = settings.MINIO_BUCKET_NAME
+        bucket = settings.MINIO_BUCKET
         loop = asyncio.get_running_loop()
         try:
             data = await loop.run_in_executor(
@@ -620,7 +643,7 @@ class DocumentService:
     ) -> None:
         """CAS 更新知识库统计，冲突时重试（CAS 返回 False 表示并发覆盖，重读后重试）。"""
         for _ in range(3):
-            if await knowledge_base_repository.update_stats_cas(
+            if await self.knowledge_base_repository.update_stats_cas(
                 db, kb_id, document_delta, chunk_delta, token_delta
             ):
                 return
@@ -631,6 +654,7 @@ class DocumentService:
 def _clean_text(text: str) -> str:
     """文本清洗：去除 HTML 标签/多余空白/不可见字符（含 BOM/零宽字符），统一换行。"""
     text = re.sub(r"<[^>]+>", "", text or "")
+    text = text.replace("\xa0", " ")
     text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\u200b\u200c\u200d\u2060\ufeff]", "", text)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"[ \t]+", " ", text)

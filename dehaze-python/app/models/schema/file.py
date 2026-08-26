@@ -9,14 +9,6 @@ from typing import List
 
 from pydantic import BaseModel, Field
 
-# ==================== 查询参数模型 ====================
-
-
-# ==================== 表单参数模型 ====================
-
-
-# ==================== 响应模型 ====================
-
 
 class FileUploadResultVO(BaseModel):
     """文件上传结果VO"""

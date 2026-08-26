@@ -18,9 +18,11 @@ class BenefitOverrides(BaseModel):
 class PackageForm(BaseModel):
     id: int | None = None
     name: str = Field(..., min_length=2, max_length=32, description="套餐名称")
-    levelCode: str = Field(..., description="会员等级")
-    period: Literal["monthly", "quarterly", "yearly"] = Field(..., description="计费周期")
-    periodDays: int = Field(..., ge=1, le=365, description="有效期天数")
+    packageType: Literal["vip", "credit"] = Field(default="vip", description="商品类型")
+    creditAmount: int | None = Field(default=None, ge=1, description="可得积分(积分卡必填)")
+    levelCode: str | None = None
+    period: Literal["monthly", "quarterly", "yearly"] | None = None
+    periodDays: int | None = Field(default=None, ge=1, le=365, description="有效期天数(积分卡为NULL)")
     originalPrice: int = Field(..., ge=1, description="原价(分)")
     salePrice: int = Field(..., ge=1, description="促销价(分)")
     description: str | None = Field(default=None, max_length=256, description="套餐描述")

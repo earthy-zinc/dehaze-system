@@ -22,6 +22,42 @@ class SysMemberQuota(BaseModel, SoftDeleteMixin):
     dehaze_used: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="当月已用去雾次数"
     )
+    derain_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月去雨配额"
+    )
+    derain_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月已用去雨次数"
+    )
+    desnow_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月去雪配额"
+    )
+    desnow_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月已用去雪次数"
+    )
+    lowlight_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月低光增强配额"
+    )
+    lowlight_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月已用低光增强次数"
+    )
+    super_resolution_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月超分辨率配额"
+    )
+    super_resolution_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月已用超分辨率次数"
+    )
+    denoise_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月去噪配额"
+    )
+    denoise_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月已用去噪次数"
+    )
+    inpaint_quota: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月图像修复配额"
+    )
+    inpaint_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="当月已用图像修复次数"
+    )
     evaluate_quota: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="当月评估配额"
     )
