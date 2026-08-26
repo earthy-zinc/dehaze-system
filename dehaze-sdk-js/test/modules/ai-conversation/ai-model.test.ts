@@ -105,15 +105,15 @@ describe("AI 模型管理 - AiConversationAPI (T-MF-001~012)", () => {
       await cleanupModel(modelId);
     });
 
-    test("T-MF-004 正向：更新 displayName/费率", async () => {
+    test("T-MF-004 正向：更新 displayName/上下文上限（费率已剥离至价格版本，见 AI模型管理 §2.12）", async () => {
       await login(USERS.ADMIN.username);
+      const displayName = `更新模型_${Date.now()}`;
       const updated = await AiConversationAPI.updateModel(modelId, {
-        displayName: `更新模型_${Date.now()}`,
-        inputRate: 2,
-        outputRate: 6,
+        displayName,
+        maxContextTokens: 8192,
       });
-      expect(updated.inputRate).toBe(2);
-      expect(updated.outputRate).toBe(6);
+      expect(updated.displayName).toBe(displayName);
+      expect(updated.maxContextTokens).toBe(8192);
     });
 
     test("T-MF-005/058 边界：更新不存在的模型 → A0401", async () => {
@@ -182,3 +182,32 @@ async function bindConversation(modelId: string): Promise<number> {
 async function cleanupModel(modelId: string): Promise<void> {
   await AiConversationAPI.deleteModel(modelId).catch(() => {});
 }
+
+/**
+ * 模型类型与维度扩展（AI模型管理 §2.2 model_type/dimension）。
+ *
+ * 后端尚未实现 model_type/dimension 字段：测试先行契约，字段缺失时正向用例失败暴露，
+ * 待后端实现后统一验证。
+ */
+describe("模型类型与维度扩展（modelType/dimension）", () => {
+  test("正向：创建 embedding 模型含 modelType/dimension", async () => {
+    await login(USERS.ADMIN.username);
+    const form = createAiModelForm({ modelType: "embedding", dimension: 1024 });
+    const result = await AiConversationAPI.createModel(form);
+    expect(result.modelType).toBe("embedding");
+    expect(result.dimension).toBe(1024);
+    await cleanupModel(result.modelId);
+  });
+
+  test("正向：按 modelType 筛选模型列表", async () => {
+    await login(USERS.ADMIN.username);
+    const result = await AiConversationAPI.getModels(createAiModelQuery({ modelType: "chat" }));
+    expect(Array.isArray(result.list)).toBe(true);
+  });
+
+  test("正向：getEnabledModels 按 modelType 筛选", async () => {
+    await login(USERS.ADMIN.username);
+    const enabled = await AiConversationAPI.getEnabledModels("chat");
+    expect(Array.isArray(enabled)).toBe(true);
+  });
+});

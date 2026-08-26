@@ -543,10 +543,7 @@ describe("消息通知模块接口测试", () => {
 
     test("正向测试：模板详情", async () => {
       const page = await MessageTemplateAPI.getPage({ pageNum: 1, pageSize: 1 });
-      if (page.list.length === 0) {
-        console.warn("无消息模板数据，跳过模板详情验证");
-        return;
-      }
+      expect(page.list.length, "无消息模板数据").toBeGreaterThan(0);
 
       const detail = await MessageTemplateAPI.getDetail(page.list[0]!.id);
       expect(detail.code).toBeDefined();
@@ -556,10 +553,7 @@ describe("消息通知模块接口测试", () => {
 
     test("正向测试：编辑模板", async () => {
       const page = await MessageTemplateAPI.getPage({ pageNum: 1, pageSize: 1 });
-      if (page.list.length === 0) {
-        console.warn("无消息模板数据，跳过模板编辑测试");
-        return;
-      }
+      expect(page.list.length, "无消息模板数据").toBeGreaterThan(0);
 
       const template = page.list[0]!;
       const originalName = template.name;

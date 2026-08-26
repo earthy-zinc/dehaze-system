@@ -9,6 +9,9 @@ export type PackagePeriod = "monthly" | "quarterly" | "yearly";
 /** 套餐状态(1:在售;0:下架) */
 export type PackageStatus = 0 | 1;
 
+/** 商品类型(vip:会员卡;credit:积分卡;创建后不可修改) */
+export type PackageType = "vip" | "credit";
+
 /** 优惠券类型 */
 export type CouponType = "full_reduction" | "discount" | "no_threshold" | "trial";
 
@@ -21,6 +24,7 @@ export type UserCouponStatus = 1 | 2 | 3 | 4;
 /** 套餐查询参数 */
 export interface PackageQuery extends PageQuery {
   name?: string;
+  packageType?: PackageType;
   levelCode?: PackageLevelCode;
   period?: PackagePeriod;
   status?: PackageStatus;
@@ -45,6 +49,8 @@ export interface BenefitOverrides {
 export interface PackageForm {
   id?: number;
   name: string;
+  packageType: PackageType;
+  creditAmount?: number;
   levelCode: PackageLevelCode;
   period: PackagePeriod;
   periodDays: number;
@@ -60,6 +66,8 @@ export interface PackageForm {
 export interface PackagePageVO {
   id: number;
   name: string;
+  packageType: PackageType;
+  creditAmount?: number;
   levelCode: PackageLevelCode;
   levelName: string;
   period: PackagePeriod;
@@ -76,6 +84,8 @@ export interface PackagePageVO {
 export interface PackageDetailVO {
   id: number;
   name: string;
+  packageType: PackageType;
+  creditAmount?: number;
   levelCode: PackageLevelCode;
   levelName: string;
   period: PackagePeriod;
@@ -121,7 +131,6 @@ export interface PromotionForm {
   startTime: string;
   endTime: string;
   activityRules?: Record<string, any>;
-  applicableScope?: number[];
   newUserOnly?: number;
   status?: PromotionStatus;
 }
@@ -216,6 +225,12 @@ export interface CouponBatchDistributeForm {
 export interface SalesStatsVO {
   totalSales: number;
   totalRevenue: number;
+  typeStats: Array<{
+    packageType: PackageType;
+    packageTypeName: string;
+    salesCount: number;
+    revenue: number;
+  }>;
   packageStats: Array<{
     packageId: number;
     packageName: string;

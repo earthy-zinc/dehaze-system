@@ -9,11 +9,21 @@ export type PayMethod = "wechat" | "alipay" | "balance" | "combined";
 /** 退款状态(refunding:退款中;refunded:退款成功;refund_failed:退款失败) */
 export type RefundStatus = "refunding" | "refunded" | "refund_failed";
 
+/** 商品类型(vip:会员卡;credit:积分卡) */
+export type OrderPackageType = "vip" | "credit";
+
 /** 订单创建表单 */
 export interface OrderCreateForm {
   packageId: number;
   couponId?: number;
   payMethod: PayMethod;
+  balanceAmount?: number;
+}
+
+/** 余额退款表单 */
+export interface BalanceRefundForm {
+  orderId: number;
+  amount: number;
 }
 
 /** 订单查询参数（用户端） */
@@ -51,6 +61,7 @@ export interface PayResult {
 export interface RefundApplyForm {
   reason: string;
   customReason?: string;
+  reasonType?: string;
 }
 
 /** 退款审核表单 */
@@ -93,6 +104,8 @@ export interface MyOrderVO {
   orderNo: string;
   packageName: string;
   packageLevel: string;
+  packageType: OrderPackageType;
+  creditAmount?: number;
   payableAmount: number;
   paidAmount: number;
   payMethod?: PayMethod;
@@ -132,7 +145,8 @@ export interface RefundRecordVO {
   username: string;
   refundAmount: number;
   reason: string;
-  usedQuota: number;
+  usedDays?: number;
+  usedCredits?: number;
   status: RefundStatus;
   channel?: PayMethod;
   channelRefundNo?: string;

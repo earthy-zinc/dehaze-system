@@ -9,6 +9,8 @@ import type {
   ProviderPageQuery,
   ProviderUpdateForm,
   ProviderVO,
+  UsageStatQuery,
+  UsageStatsVO,
 } from "./model";
 
 /**
@@ -116,6 +118,17 @@ class AiProviderAPI {
     return request({
       url: `/api/v1/ai/providers/${providerId}/circuit/close`,
       method: "post",
+    });
+  }
+
+  // ==================== 运营统计 ====================
+
+  /** 运营统计（供应商健康看板/模型用量分布/降级与故障统计，管理员，需 ai:model:manage） */
+  static getUsageStats(query?: UsageStatQuery) {
+    return request<UsageStatsVO>({
+      url: "/api/v1/ai/usage/stats",
+      method: "get",
+      params: query,
     });
   }
 }

@@ -1,8 +1,8 @@
 import { AnalyzeRequest, RecommendationFeedback, RecommendationRule } from "../../index";
-import { DEHAZE_HOST } from "#/config/constant";
+import { NGINX_STATIC_HOST, NGINX_STATIC_PORT } from "#/config/constant";
 import { uniqueName } from "./common";
 
-const DATASET_BASE_URL = `http://${DEHAZE_HOST}:9000/datasets`;
+const DATASET_BASE_URL = `http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}/datasets`;
 
 /**
  * 创建图像分析请求

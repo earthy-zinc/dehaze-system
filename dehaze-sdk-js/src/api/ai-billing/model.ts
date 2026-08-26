@@ -72,6 +72,8 @@ export interface BillingRecordVO {
   quotaConsumed: number;
   /** 预扣积分 */
   preDeduct: number;
+  /** 误扣申诉状态：0-无，1-待审核，2-已通过，3-已驳回 */
+  refundStatus?: 0 | 1 | 2 | 3;
   createTime: string;
 }
 
@@ -186,4 +188,157 @@ export interface CreditAdjustForm {
   /** 调整金额（正为增加，负为扣减） */
   amount: number;
   reason: string;
+}
+
+// ==================== 消耗汇总（用户端） ====================
+
+/** 消耗趋势点（日/月维度） */
+export interface BillingTrendPointVO {
+  date: string;
+  credits: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** 模型消耗分布项 */
+export interface BillingModelDistVO {
+  model: string;
+  credits: number;
+  tokens: number;
+}
+
+/** 缓存节省汇总 */
+export interface BillingSavingsVO {
+  cachedInputTokens: number;
+  creditsSaved: number;
+}
+
+/** 当前时段消耗汇总（GET /ai-billing/summary，含日/月趋势、模型分布、节省汇总） */
+export interface BillingSummaryVO {
+  /** 当前时段总消耗积分 */
+  totalCredits: number;
+  /** 当前时段输入Token总数 */
+  inputTokens: number;
+  /** 当前时段输出Token总数 */
+  outputTokens: number;
+  /** 日/月消耗趋势 */
+  trend?: BillingTrendPointVO[];
+  /** 模型分布 */
+  modelDistribution?: BillingModelDistVO[];
+  /** 缓存节省汇总 */
+  savings?: BillingSavingsVO;
+}
+
+// ==================== 异常监控（管理端） ====================
+
+/** 异常计费记录查询参数（需 ai:billing:stat） */
+export interface AnomalyRecordQuery extends PageQuery {
+  /** 异常类型：anomalous-异常计费 / manual-人工调整 / auto_compensated-自动补偿 */
+  anomalyType?: string;
+  dateStart?: string;
+  dateEnd?: string;
+}
+
+/** 异常计费记录 */
+export interface AnomalyRecordVO {
+  id: number;
+  userId: number;
+  username?: string;
+  billingId?: number;
+  anomalyType: string;
+  /** 双口径：理论成本与实收积分 */
+  costCredits?: number;
+  credits?: number;
+  reason?: string;
+  /** 处理状态：pending/compensated/ignored */
+  status?: string;
+  createTime: string;
+}
+
+// ==================== 成本管理（管理端） ====================
+
+/** 模型成本配置查询参数（按模型/供应商/版本） */
+export interface ModelCostQuery extends PageQuery {
+  keyword?: string;
+  modelId?: string;
+  providerId?: number;
+}
+
+/** 成本单价档位明细（token 类型 × 上下文分段 × 时段，元/百万 token） */
+export interface ModelCostDetailForm {
+  /** token 类型：input/cached/output */
+  tokenType: "input" | "cached" | "output";
+  /** 时段：peak-高峰 / idle-空闲 */
+  timeSlot: "peak" | "idle";
+  /** 上下文分段下限（0 表示不限制） */
+  minTokens?: number;
+  /** 上下文分段上限（NULL 表示不限制） */
+  maxTokens?: number;
+  /** 单位价格（元/百万 token） */
+  unitPrice: number;
+}
+
+/** 模型成本配置表单（价格版本主表 + 档位明细，与用户售价表结构对称） */
+export interface ModelCostForm {
+  modelId: string;
+  /** 供应商 ID */
+  providerId?: number;
+  /** 币种（默认 CNY） */
+  currency?: string;
+  /** 生效时间 */
+  effectiveFrom?: string;
+  /** 失效时间 */
+  effectiveTo?: string;
+  /** 状态：1-启用，0-停用 */
+  status?: 0 | 1;
+  /** 档位明细 */
+  details?: ModelCostDetailForm[];
+}
+
+/** 模型成本配置（价格版本） */
+export interface ModelCostVO extends ModelCostForm {
+  id: number;
+  /** 价格版本号（同模型同供应商内递增） */
+  priceVersion: number;
+  createTime?: string;
+  updateTime?: string;
+}
+
+/** 成本统计查询参数 */
+export interface CostStatQuery {
+  startTime?: string;
+  endTime?: string;
+  modelId?: string;
+  providerId?: number;
+}
+
+/**
+ * 成本-利润统计项（按模型/供应商/时间，收入/成本/毛利双口径）。
+ * 整体毛利为官方口径；AI 参考毛利为辅助口径。
+ */
+export interface CostStatVO {
+  /** 统计维度值（model/provider/时间） */
+  dimension?: string;
+  /** 收入（订单实收） */
+  revenue: number;
+  /** 成本（模型调用估算成本 Σ sys_ai_billing.cost） */
+  cost: number;
+  /** 毛利（收入 − 成本） */
+  profit: number;
+  /** 毛利率 */
+  profitRate: number;
+  /** 口径：overall-整体官方 / ai-参考毛利 */
+  metric: "overall" | "ai";
+}
+
+// ==================== 对账 ====================
+
+/** 对账数据导入表单 */
+export interface ImportReconcileForm {
+  /** 对账数据内容 */
+  content: string;
+  /** 对账周期起 */
+  startTime: string;
+  /** 对账周期止 */
+  endTime: string;
 }

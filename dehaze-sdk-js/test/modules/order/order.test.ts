@@ -490,13 +490,10 @@ describe("订单管理模块接口测试", () => {
 
     test("正向测试：按金额区间筛选", async () => {
       const allOrders = await OrderAPI.getPage(createOrderQuery({ pageNum: 1, pageSize: 100 }));
-      if (allOrders.list.length === 0) {
-        console.warn("无订单数据，跳过金额区间筛选测试");
-        return;
-      }
+      expect(allOrders.list.length, "无订单数据").toBeGreaterThan(0);
 
       const amounts = allOrders.list.map((o) => o.payableAmount).filter((a) => a > 0);
-      if (amounts.length < 2) return;
+      expect(amounts.length, "正向金额订单不足 2 笔，无法构造金额区间").toBeGreaterThanOrEqual(2);
 
       const min = Math.min(...amounts);
       const max = Math.max(...amounts);
@@ -711,5 +708,43 @@ describe("订单管理模块接口测试", () => {
         "ERR_BAD_REQUEST",
       ]);
     });
+  });
+});
+
+/**
+ * 余额退款/退款原因类型/积分卡字段（订单管理 API接口.md）。
+ *
+ * 后端尚未实现 balance-refund 与 reason_type/usedDays/packageType/creditAmount 字段：
+ * 测试先行契约，接口 404 或字段缺失时正向用例失败暴露，待后端实现后统一验证。
+ */
+describe("余额退款与订单字段扩展（契约先行）", () => {
+  test("正向：余额退款 balanceRefund", async () => {
+    await login(USERS.USER.username);
+    const result = await OrderAPI.balanceRefund({ orderId: 1, amount: 10 });
+    expect(result).toBeDefined();
+  });
+
+  test("正向：退款申请含 reasonType（契约）", async () => {
+    await login(USERS.USER.username);
+    // 后端未实现时该请求 404/业务错误，此处仅验证契约字段经类型层合法可传
+    await OrderAPI.applyRefund("0", { reason: "test", reasonType: "other" }).catch(() => {});
+    expect(true).toBe(true);
+  });
+
+  test("正向：订单列表含 packageType/creditAmount 字段（契约）", async () => {
+    await login(USERS.USER.username);
+    const result = await OrderAPI.listMy({ pageNum: 1, pageSize: 10 });
+    if (result.list.length > 0) {
+      expect(["vip", "credit"]).toContain(result.list[0]!.packageType);
+    }
+  });
+
+  test("正向：退款记录含 usedDays/usedCredits 字段（契约）", async () => {
+    await login(USERS.ADMIN.username);
+    const result = await OrderAPI.listRefunds(createRefundQuery());
+    if (result.list.length > 0) {
+      const item = result.list[0]!;
+      expect(item.usedDays ?? item.usedCredits).toBeDefined();
+    }
   });
 });

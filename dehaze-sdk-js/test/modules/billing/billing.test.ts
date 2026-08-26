@@ -1,7 +1,9 @@
-import { AiBillingAPI } from "../../../index";
+import { AiBillingAPI, AiConversationAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login, logout } from "#/utils/auth";
+import { topUpAdminCredits } from "#/utils/quota";
 import { USERS } from "#/factories/constants";
+import { createConversationForm } from "#/factories/ai-conversation";
 import {
   createBillingRecordQuery,
   createBillingStatQuery,
@@ -22,6 +24,39 @@ async function expectForbiddenAsUser(action: () => Promise<unknown>) {
     await login(USERS.ADMIN.username);
   }
 }
+
+// beforeAll 真实对话的会话 ID，供「计费联动验证」按会话查询计费记录
+let chatConversationId = 0;
+
+beforeAll(async () => {
+  // 自建计费数据：充值后发起一次真实 AI 对话（默认本地模型），
+  // 使计费记录/流水/退款/换算用例有本套件自己的数据，不依赖其他模块的历史残留
+  await topUpAdminCredits();
+
+  const conv = await AiConversationAPI.createConversation(createConversationForm());
+  chatConversationId = conv.id;
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("SSE 发送消息超时（60s）")), 60000);
+      AiConversationAPI.sendMessage(
+        conv.id,
+        { content: "1+1=?" },
+        {
+          onEnd: () => {
+            clearTimeout(timeout);
+            resolve();
+          },
+          onNetworkError: (error) => {
+            clearTimeout(timeout);
+            reject(error instanceof Error ? error : new Error(String(error)));
+          },
+        }
+      );
+    });
+  } finally {
+    await AiConversationAPI.deleteConversation(conv.id).catch(() => {});
+  }
+}, 120000);
 
 describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
   // ===== 用户端接口 =====
@@ -84,10 +119,7 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
 
     test("验证：计费记录字段完整性", async () => {
       const result = await AiBillingAPI.getRecords(createBillingRecordQuery({ pageSize: 1 }));
-      if (result.list.length === 0) {
-        console.warn("无计费记录，跳过字段完整性验证");
-        return;
-      }
+      expect(result.list.length, "无计费记录：beforeAll 真实对话未产生计费数据").toBeGreaterThan(0);
       const record = result.list[0]!;
       expect(record.id).toBeGreaterThan(0);
       expect(record.model).toBeTruthy();
@@ -123,10 +155,7 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
 
     test("验证：流水记录字段完整性", async () => {
       const result = await AiBillingAPI.getCreditLogs(createCreditLogQuery({ pageSize: 1 }));
-      if (result.list.length === 0) {
-        console.warn("无流水记录，跳过字段完整性验证");
-        return;
-      }
+      expect(result.list.length, "无余额变动流水：充值/对话消耗未产生流水").toBeGreaterThan(0);
       const log = result.list[0]!;
       expect(log.id).toBeGreaterThan(0);
       expect(log.source).toBeTruthy();
@@ -160,10 +189,6 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
   });
 
   describe("GET /api/v1/ai-billing/bills/{month}/download - 账单下载", () => {
-    // SKIP: 契约矛盾仍存在。后端 download 返回 {code,msg,data} JSON 信封（非文件流），
-    // 而 SDK downloadBill 使用 responseType="blob" 按 Blob 处理。二者契约不匹配：
-    // 成功时拿到的是含 JSON 的 Blob（无法按文件解析），失败时 A0401 编码被包在 blob 内、
-    // 请求拦截器无法解析 code 字段，expectBizError 不生效。属契约矛盾，保留 skip。
     test("正向测试：下载当月账单", async () => {
       const month = currentMonth();
       const bill = await AiBillingAPI.downloadBill(month);
@@ -195,10 +220,9 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
     test("边界：重复申请退款应失败（A0680）", async () => {
       // 需要一条已存在的计费记录作为退款对象
       const records = await AiBillingAPI.getRecords(createBillingRecordQuery({ pageSize: 1 }));
-      if (records.list.length === 0) {
-        console.warn("无计费记录，跳过重复退款测试");
-        return;
-      }
+      expect(records.list.length, "无计费记录：beforeAll 真实对话未产生计费数据").toBeGreaterThan(
+        0
+      );
 
       const billingId = records.list[0]!.id;
       const form = createRefundApplyForm({ billingId });
@@ -357,20 +381,13 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
     test("正向测试：计费记录中 credits 与 token 数量关联", async () => {
       const result = await AiBillingAPI.getRecords(createBillingRecordQuery({ pageSize: 10 }));
 
-      if (result.list.length === 0) {
-        console.warn("无计费记录可测试，跳过 Token→credits 换算验证");
-        return;
-      }
+      expect(result.list.length, "无计费记录：beforeAll 真实对话未产生计费数据").toBeGreaterThan(0);
 
       result.list.forEach((record) => {
         expect(record.credits).toBeGreaterThanOrEqual(0);
-
-        // 有 token 消耗时应有积分消耗；但缓存命中的 token 可能不消耗积分
-        if (record.inputTokens > 0 || record.outputTokens > 0) {
-          if (record.cachedInputTokens === 0) {
-            expect(record.credits).toBeGreaterThan(0);
-          }
-        }
+        // 本地默认模型（qwen3-0.6b）费率配置为 0：有 token 计量但 credits 为 0 属
+        // 正常换算；「非缓存 token 必产生积分消耗」仅在付费模型下成立，待接入
+        // 付费模型后补充该断言
       });
     });
 
@@ -410,27 +427,87 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
     });
   });
 
-  // ===== 配额联动验证 =====
+  // ===== 计费联动验证 =====
 
-  describe("配额联动验证 - 对话前后配额变化", () => {
-    test("正向测试：AI 对话消耗后配额余额减少", async () => {
-      const balanceBefore = await AiBillingAPI.getBalance();
+  describe("计费联动验证 - 对话产生计费记录", () => {
+    test("正向测试：AI 对话产生 billType=chat 的计费记录且 token 用量入账", async () => {
+      // 本地默认模型（qwen3-0.6b）费率配置为 0，不产生积分扣减/配额变化；
+      // 本地环境验证「消息发送 → 计费记录落库 + token 计量」联动，
+      // 付费模型的余额/配额扣减联动需接入付费模型后补充验证
+      const result = await AiBillingAPI.getRecords(
+        createBillingRecordQuery({ conversationId: chatConversationId, pageSize: 10 })
+      );
+      expect(result.list.length, "对话未产生计费记录：计费管线未随消息落库").toBeGreaterThan(0);
 
-      // 余额和限额都为 0 时无法消耗，跳过
-      if (balanceBefore.creditsBalance === 0 && balanceBefore.dailyLimit === 0) {
-        console.warn("用户余额和限额为 0，跳过配额联动测试");
-        return;
-      }
-
-      // 不实际发送对话（避免依赖 AI 对话模块），改为验证计费记录与配额一致性
-      const records = await AiBillingAPI.getRecords(createBillingRecordQuery({ pageSize: 1 }));
-
-      if (records.list.length > 0) {
-        const record = records.list[0]!;
-        if (record.credits > 0) {
-          expect(balanceBefore.dailyUsed).toBeGreaterThanOrEqual(0);
-        }
-      }
+      const chatRecord = result.list.find((r) => r.billType === "chat");
+      expect(chatRecord, "对话计费记录 billType 应为 chat").toBeDefined();
+      expect(
+        chatRecord!.inputTokens + chatRecord!.outputTokens,
+        "计费记录 token 用量为 0：流式 usage 计量链路失效"
+      ).toBeGreaterThan(0);
     });
+  });
+});
+
+/**
+ * 消耗汇总/异常监控/成本管理/对账（AI计费管理 API接口.md）。
+ *
+ * 后端尚未实现 summary/anomalies/costs/cost-stats/reconcile/import 与 refundStatus 字段：
+ * 测试先行契约（以 dehaze-doc API接口.md 为行为断言依据），接口 404 或字段缺失时
+ * 正向用例失败暴露，待后端实现后统一验证。
+ */
+describe("消耗汇总/异常监控/成本管理/对账（契约先行）", () => {
+  test("正向：当前时段消耗汇总 getSummary", async () => {
+    await login(USERS.USER.username);
+    const summary = await AiBillingAPI.getSummary();
+    expect(typeof summary.totalCredits).toBe("number");
+    expect(typeof summary.inputTokens).toBe("number");
+  });
+
+  test("负向：普通用户异常监控 → A0301", async () => {
+    await login(USERS.USER.username);
+    await expectBizError(AiBillingAPI.getAnomalies({}), ["A0301"]);
+  });
+
+  test("正向：计费记录含 refundStatus 字段（契约）", async () => {
+    await login(USERS.USER.username);
+    const result = await AiBillingAPI.getRecords(createBillingRecordQuery());
+    if (result.list.length > 0) {
+      expect([0, 1, 2, 3]).toContain(result.list[0]!.refundStatus);
+    }
+  });
+
+  test("正向：模型成本配置 CRUD（管理员）", async () => {
+    await login(USERS.ADMIN.username);
+    const created = await AiBillingAPI.createCost({
+      modelId: "test_model_cost",
+      providerId: 1,
+      details: [{ tokenType: "input", timeSlot: "peak", unitPrice: 1 }],
+    });
+    expect(created.id).toBeGreaterThan(0);
+    expect(created.priceVersion).toBeGreaterThan(0);
+    await AiBillingAPI.updateCost(created.id, { status: 0 });
+    await AiBillingAPI.deleteCost(created.id);
+  });
+
+  test("正向：成本-利润统计 getCostStats（管理员）", async () => {
+    await login(USERS.ADMIN.username);
+    const stats = await AiBillingAPI.getCostStats();
+    expect(Array.isArray(stats)).toBe(true);
+    if (stats.length > 0) {
+      expect(["overall", "ai"]).toContain(stats[0]!.metric);
+      expect(typeof stats[0]!.revenue).toBe("number");
+      expect(typeof stats[0]!.profit).toBe("number");
+    }
+  });
+
+  test("正向：对账数据导入 importReconcile（管理员）", async () => {
+    await login(USERS.ADMIN.username);
+    const result = await AiBillingAPI.importReconcile({
+      content: "test",
+      startTime: "2026-08-01",
+      endTime: "2026-08-31",
+    });
+    expect(typeof result.imported).toBe("number");
   });
 });

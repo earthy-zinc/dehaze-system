@@ -7,6 +7,7 @@ const yuan = (v: number) => Math.round(v * 100);
 export function createPackageForm(overrides: Partial<PackageForm> = {}): PackageForm {
   return {
     name: uniqueName("测试套餐"),
+    packageType: "vip",
     levelCode: "level_1",
     period: "monthly",
     periodDays: 30,

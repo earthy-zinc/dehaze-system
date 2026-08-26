@@ -9,6 +9,7 @@ import type {
   KnowledgeBaseQuery,
   KnowledgeBaseSearchForm,
   RetrieveTestForm,
+  TestSetCreateForm,
 } from "../../src/api/ai-knowledge-base/model";
 
 /** 知识库创建表单工厂（扁平字段，对齐后端 KnowledgeBaseCreateForm） */
@@ -79,5 +80,11 @@ export const createRetrieveTestForm = (
 ): RetrieveTestForm => ({
   query: "去雾算法",
   topK: 5,
+  ...overrides,
+});
+
+export const createTestSetForm = (overrides?: Partial<TestSetCreateForm>): TestSetCreateForm => ({
+  question: "RIDCP 算法适用于什么场景？",
+  expectedChunkIds: [1],
   ...overrides,
 });

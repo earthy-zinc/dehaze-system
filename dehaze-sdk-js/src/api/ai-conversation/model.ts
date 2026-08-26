@@ -60,6 +60,8 @@ export interface ConversationCreateForm {
 export interface ConversationQuery extends PageQuery {
   keyword?: string;
   status?: ConversationStatus;
+  /** 管理端审计视角：admin 返回全量用户会话（需 ai:conversation:audit），省略为本人会话 */
+  view?: "admin";
 }
 
 /** 会话更新表单（PATCH 部分更新；归档用 status: 2） */
@@ -103,6 +105,12 @@ export interface ConversationVO {
   /** 会话摘要（自动压缩生成） */
   summary?: string;
   lastMessageAt?: string;
+  /** 会话所属用户 ID（管理端审计视角展示） */
+  userId?: number;
+  /** 会话用户名（管理端审计视角展示） */
+  userName?: string;
+  /** Token 与积分消耗汇总（管理端审计视角展示） */
+  tokenCredits?: number;
   createTime: string;
   updateTime?: string;
 }
@@ -359,15 +367,19 @@ export interface MemoryQuery extends PageQuery {
 
 // ==================== 模型管理 ====================
 
+/** 模型类型：chat-对话、embedding-向量、rerank-重排 */
+export type AiModelType = "chat" | "embedding" | "rerank";
+
 /** 模型创建/更新表单（管理员；能力字段平铺） */
 export interface AiModelForm {
   /** 关联供应商 ID（必填） */
   providerId: number;
   modelId: string;
+  /** 模型类型（chat/embedding/rerank，创建后不可改） */
+  modelType?: AiModelType;
+  /** embedding 向量维度（model_type=embedding 时必填，创建后不可改） */
+  dimension?: number;
   displayName: string;
-  inputRate: number;
-  outputRate: number;
-  cachedRate: number;
   maxContextTokens: number;
   maxOutputTokens: number;
   supportsMultimodal: boolean;
@@ -375,8 +387,8 @@ export interface AiModelForm {
   supportsStreaming: boolean;
   supportsPromptCache: boolean;
   supportsStructuredOutput: boolean;
-  /** 降级模型主键（关联 sys_ai_model.id） */
-  fallbackModelPk?: number;
+  /** 降级模型 ID（关联 sys_ai_model.id） */
+  fallbackModelId?: number;
   promptCachePrefixLen?: number;
   /** 状态（1-启用；0-禁用） */
   status?: 0 | 1;
@@ -387,6 +399,8 @@ export interface AiModelForm {
 /** 模型分页查询参数 */
 export interface AiModelQuery extends PageQuery {
   keyword?: string;
+  /** 按模型类型筛选（chat/embedding/rerank） */
+  modelType?: AiModelType;
 }
 
 /** 模型视图对象 */
@@ -396,10 +410,11 @@ export interface AiModelVO {
   providerId: number;
   /** 模型业务标识 */
   modelId: string;
+  /** 模型类型（chat/embedding/rerank） */
+  modelType?: AiModelType;
+  /** embedding 向量维度 */
+  dimension?: number;
   displayName: string;
-  inputRate: number;
-  outputRate: number;
-  cachedRate: number;
   maxContextTokens: number;
   maxOutputTokens: number;
   /** 能力标识（0/1） */
@@ -408,8 +423,8 @@ export interface AiModelVO {
   supportsStreaming: number;
   supportsPromptCache: number;
   supportsStructuredOutput: number;
-  /** 降级模型主键 */
-  fallbackModelPk?: number;
+  /** 降级模型 ID */
+  fallbackModelId?: number;
   promptCachePrefixLen: number;
   /** 状态（1-启用；0-禁用） */
   status: number;
@@ -523,4 +538,18 @@ export interface ClaudeMessageForm {
   top_p?: number;
   stop_sequences?: string[];
   conversation_id?: string;
+}
+
+// ==================== 兼容调用审计（管理员） ====================
+
+/** 兼容调用审计查询参数（需 ai:conversation:audit） */
+export interface CompatCallQuery extends PageQuery {
+  /** 按 API Key ID 筛选 */
+  keyId?: number;
+  /** 按模型筛选 */
+  model?: string;
+  /** 开始时间 */
+  startTime?: string;
+  /** 结束时间 */
+  endTime?: string;
 }

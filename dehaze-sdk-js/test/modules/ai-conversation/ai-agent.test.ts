@@ -161,7 +161,7 @@ describe("AI 智能体管理 - AiAgentAPI (T-MF-090~101,142~146)", () => {
       const createdSkill = (await service.post("/api/v1/ai/skills", {
         name: skillName,
         description: "测试技能",
-        content: "这是一个测试技能的指令说明。",
+        instruction: "这是一个测试技能的指令说明。",
       })) as any;
       expect(createdSkill.id).toBeGreaterThan(0);
       createdSkillName = skillName;

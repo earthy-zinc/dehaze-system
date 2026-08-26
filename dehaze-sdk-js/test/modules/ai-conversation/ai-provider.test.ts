@@ -193,3 +193,46 @@ async function cleanupProviderKeys(provId: number, name?: string) {
     await AiProviderAPI.deleteKey(provId, k.id).catch(() => {});
   }
 }
+
+/**
+ * 供应商/Key 新增字段与运营统计（AI模型管理 §2.1/§2.3）。
+ *
+ * 后端尚未实现 user_identity_forward / rpm_limit / usage-stats：测试先行契约，
+ * 接口 404 或字段缺失时正向用例失败暴露，待后端实现后统一验证。
+ */
+describe("供应商字段扩展与运营统计（rpmLimit/userIdentityForward/usage-stats）", () => {
+  test("正向：创建供应商含 userIdentityForward 配置", async () => {
+    await login(USERS.ADMIN.username);
+    const form = createProviderForm({
+      userIdentityForward: { enabled: true, field: "user_id", prefix: "dh_", maxLen: 64 },
+    });
+    const result = await AiProviderAPI.createProvider(form);
+    expect(result.id).toBeGreaterThan(0);
+    expect(result.userIdentityForward?.enabled).toBe(true);
+    expect(result.userIdentityForward?.field).toBe("user_id");
+    await AiProviderAPI.deleteProvider(result.id).catch(() => {});
+  });
+
+  test("正向：创建 API Key 含 rpmLimit", async () => {
+    await login(USERS.ADMIN.username);
+    const provider = await AiProviderAPI.createProvider(createProviderForm());
+    const key = await AiProviderAPI.createKey(provider.id, createProviderKeyForm({ rpmLimit: 60 }));
+    expect(key.rpmLimit).toBe(60);
+    await cleanupProviderKeys(provider.id, key.name);
+    await AiProviderAPI.deleteProvider(provider.id).catch(() => {});
+  });
+
+  test("正向：运营统计 getUsageStats（管理员）", async () => {
+    await login(USERS.ADMIN.username);
+    const stats = await AiProviderAPI.getUsageStats({ granularity: "day" });
+    expect(Array.isArray(stats.providerHealth)).toBe(true);
+    expect(Array.isArray(stats.modelUsage)).toBe(true);
+    expect(Array.isArray(stats.degradeFault.downgradeFrequency)).toBe(true);
+    expect(typeof stats.degradeFault.keyFailoverCount).toBe("number");
+  });
+
+  test("负向：普通用户运营统计 → A0301", async () => {
+    await login(USERS.USER.username);
+    await expectBizError(AiProviderAPI.getUsageStats({}), ["A0301"]);
+  });
+});

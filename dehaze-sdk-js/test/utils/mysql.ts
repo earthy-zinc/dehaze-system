@@ -1,16 +1,22 @@
 import mysql from "mysql2/promise";
-import { DEHAZE_HOST, DEHAZE_PASSWORD } from "#/config/constant";
+import {
+  MYSQL_HOST,
+  MYSQL_PORT,
+  MYSQL_USERNAME,
+  MYSQL_PASSWORD,
+  MYSQL_DATABASE,
+} from "#/config/constant";
 
 let pool: mysql.Pool | null = null;
 
 function getPool(): mysql.Pool {
   if (!pool) {
     pool = mysql.createPool({
-      host: DEHAZE_HOST,
-      port: 3306,
-      user: "root",
-      password: DEHAZE_PASSWORD,
-      database: "dehaze",
+      host: MYSQL_HOST,
+      port: MYSQL_PORT,
+      user: MYSQL_USERNAME,
+      password: MYSQL_PASSWORD,
+      database: MYSQL_DATABASE,
       waitForConnections: true,
       connectionLimit: 5,
     });

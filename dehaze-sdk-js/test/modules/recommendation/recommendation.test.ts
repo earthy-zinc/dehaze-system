@@ -4,6 +4,7 @@ import { login } from "#/utils/auth";
 import { createAnalyzeRequest, createFeedback, createRule } from "#/factories/recommendation";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 import { USERS } from "#/factories/constants";
+import { NGINX_STATIC_HOST, NGINX_STATIC_PORT } from "#/config/constant";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -54,7 +55,7 @@ describe("推荐管理接口测试", () => {
 
     test("正向测试：分析自然风景图片", async () => {
       const request = createAnalyzeRequest({
-        imageUrl: `http://${process.env.DEHAZE_HOST || "127.0.0.1"}:9000/datasets/NH-HAZE-2023/hazy/02.JPG`,
+        imageUrl: `http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}/datasets/NH-HAZE-2023/hazy/02.JPG`,
       });
       const analysis = await RecommendationAPI.analyze(request);
 
@@ -64,7 +65,7 @@ describe("推荐管理接口测试", () => {
 
     test("正向测试：分析夜景图片", async () => {
       const request = createAnalyzeRequest({
-        imageUrl: `http://${process.env.DEHAZE_HOST || "127.0.0.1"}:9000/datasets/NH-HAZE-2023/hazy/03.JPG`,
+        imageUrl: `http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}/datasets/NH-HAZE-2023/hazy/03.JPG`,
       });
       const analysis = await RecommendationAPI.analyze(request);
 
@@ -84,7 +85,7 @@ describe("推荐管理接口测试", () => {
 
     test("边界测试：非图片文件应抛出业务错误 A0701", async () => {
       const request = createAnalyzeRequest({
-        imageUrl: `http://${process.env.DEHAZE_HOST || "127.0.0.1"}:9000/datasets/test.txt`,
+        imageUrl: `http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}/datasets/test.txt`,
       });
 
       await expectBizError(RecommendationAPI.analyze(request), [
@@ -332,10 +333,7 @@ describe("推荐管理接口测试", () => {
 
     test("正向测试：更新规则权重", async () => {
       const rules = await RecommendationAPI.getRules();
-      if (rules.length === 0) {
-        console.warn("无预置规则可更新，跳过用例");
-        return;
-      }
+      expect(rules.length, "无预置推荐规则").toBeGreaterThan(0);
 
       const originalRule = rules[0]!;
       const updateData = createRule({
@@ -381,10 +379,7 @@ describe("推荐管理接口测试", () => {
 
     test("边界测试：权重总和校验（期望 A0500）", async () => {
       const rules = await RecommendationAPI.getRules();
-      if (rules.length === 0) {
-        console.warn("无预置规则可测试权重总和，跳过用例");
-        return;
-      }
+      expect(rules.length, "无预置推荐规则").toBeGreaterThan(0);
 
       const originalRule = rules[0]!;
       const updateData = createRule({
@@ -412,10 +407,7 @@ describe("推荐管理接口测试", () => {
 
     test("正向测试：禁用规则后该规则不参与匹配", async () => {
       const rules = await RecommendationAPI.getRules();
-      if (rules.length === 0) {
-        console.warn("无规则数据，跳过禁用规则测试");
-        return;
-      }
+      expect(rules.length, "无预置推荐规则").toBeGreaterThan(0);
 
       const originalRule = rules[0]!;
       const originalEnabled = originalRule.enabled;

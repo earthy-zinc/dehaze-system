@@ -181,16 +181,18 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
 
     test("正向测试：按关键字搜索会话 [T-CV-003]", async () => {
       const conv = await createTestConversation();
-      const newTitle = `search_test_${Date.now()}`;
+      // 搜索契约为全文检索（multi_match 分词匹配）：标题需用空格分隔关键字，
+      // 下划线连接的长串在 standard 分词器下是单个 token，按其前缀搜索无法命中
+      const newTitle = `sdksearch ${Date.now()}`;
       await AiConversationAPI.updateConversation(
         conv.id,
         createConversationUpdateForm({ title: newTitle })
       );
 
       const result = await AiConversationAPI.getConversations(
-        createConversationQuery({ keyword: "search_test" })
+        createConversationQuery({ keyword: "sdksearch" })
       );
-      expect(result.list.length).toBeGreaterThan(0);
+      expect(result.list.some((c) => c.id === conv.id)).toBe(true);
     });
 
     test("正向测试：按状态筛选（活跃）", async () => {
@@ -202,22 +204,22 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
 
     test("验证：会话列表按置顶+最后消息时间倒序", async () => {
       // 置顶会话 B 并验证其排在未置顶会话 A 之前；keyword 限定到本次创建的两个会话，
-      // 避免历史测试数据把新会话挤出第一页
-      const marker = `sort_test_${Date.now()}`;
+      // 避免历史测试数据把新会话挤出第一页（全文检索按分词匹配，marker 用空格分隔）
+      const marker = `sdksort ${Date.now()}`;
       const convA = await createTestConversation();
       const convB = await createTestConversation();
       await AiConversationAPI.updateConversation(
         convA.id,
-        createConversationUpdateForm({ title: `${marker}_A` })
+        createConversationUpdateForm({ title: `${marker} A` })
       );
       await AiConversationAPI.updateConversation(
         convB.id,
-        createConversationUpdateForm({ title: `${marker}_B` })
+        createConversationUpdateForm({ title: `${marker} B` })
       );
       await AiConversationAPI.pinConversation(convB.id);
 
       const result = await AiConversationAPI.getConversations(
-        createConversationQuery({ keyword: marker, pageSize: 20 })
+        createConversationQuery({ keyword: "sdksort", pageSize: 20 })
       );
       const idxA = result.list.findIndex((c) => c.id === convA.id);
       const idxB = result.list.findIndex((c) => c.id === convB.id);
@@ -935,5 +937,66 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
       // 简单问答不保证触发工具调用，因此不强制断言 thought 数量
       expect(Array.isArray(thoughtStatuses)).toBe(true);
     }, 65000);
+  });
+});
+
+/**
+ * 管理端会话审计与批量操作（F-M08-001 §2.1.9 / API接口.md §2.1）。
+ *
+ * 后端尚未实现 view=admin / batch / trash / export / compat-calls 路由：
+ * 测试先行契约（以 dehaze-doc API接口.md 为行为断言依据），接口 404 时正向用例失败暴露，
+ * 待后端实现后统一验证。数据前缀沿用测试会话，普通用户 403（A0301）。
+ */
+describe("管理端会话审计与批量操作 - AiConversationAPI (T-CV-110~117)", () => {
+  test("T-CV-110 正向：会话审计列表（view=admin）返回全量用户会话", async () => {
+    await login(USERS.ADMIN.username);
+    const result = await AiConversationAPI.getConversations(
+      createConversationQuery({ view: "admin" })
+    );
+    expect(Array.isArray(result.list)).toBe(true);
+    if (result.list.length > 0) {
+      const item = result.list[0]!;
+      expect(item.userId).toBeDefined();
+      expect(typeof item.messageCount).toBe("number");
+    }
+  });
+
+  test("T-CV-115 负向：普通用户 view=admin → A0301", async () => {
+    await login(USERS.USER.username);
+    await expectBizError(AiConversationAPI.getConversations({ view: "admin" }), ["A0301"]);
+  });
+
+  test("正向：批量归档会话（action=archive）", async () => {
+    await login(USERS.ADMIN.username);
+    const conv = await AiConversationAPI.createConversation(createConversationForm());
+    const count = await AiConversationAPI.batchConversations({ action: "archive", ids: [conv.id] });
+    expect(typeof count).toBe("number");
+  });
+
+  test("正向：批量删除会话需 confirm=true", async () => {
+    await login(USERS.ADMIN.username);
+    const conv = await AiConversationAPI.createConversation(createConversationForm());
+    await AiConversationAPI.batchConversations({ action: "delete", ids: [conv.id], confirm: true });
+  });
+
+  test("正向：回收站会话列表", async () => {
+    await login(USERS.ADMIN.username);
+    const result = await AiConversationAPI.getTrashConversations(createConversationQuery());
+    expect(Array.isArray(result.list)).toBe(true);
+    expect(typeof result.total).toBe("number");
+  });
+
+  test("正向：导出会话（Blob）", async () => {
+    await login(USERS.ADMIN.username);
+    const conv = await AiConversationAPI.createConversation(createConversationForm());
+    const blob = await AiConversationAPI.exportConversation(conv.id, "json");
+    expect(blob).toBeDefined();
+  });
+
+  test("T-CV-002 正向：兼容调用审计列表（当前登录用户）", async () => {
+    await login(USERS.USER.username);
+    const result = await AiConversationAPI.getCompatCalls({ pageNum: 1, pageSize: 10 });
+    expect(Array.isArray(result.list)).toBe(true);
+    expect(typeof result.total).toBe("number");
   });
 });

@@ -15,7 +15,8 @@ export type GrowthChangeType =
   | "sign_in_bonus"
   | "consume"
   | "refund_deduct"
-  | "admin_adjust";
+  | "admin_adjust"
+  | "ai_consume";
 
 /** 会员状态(1:正常;0:冻结) */
 export type MemberStatus = 0 | 1;
@@ -64,6 +65,10 @@ export interface BenefitForm {
   growthMax?: number;
   monthlyDehazeQuota?: number;
   monthlyEvaluateQuota?: number;
+  aiCreditsDaily?: number;
+  aiCreditsMonthly?: number;
+  multimodalLimit?: number;
+  vipGiftCredits?: number;
   historyRetention?: number;
   batchLimit?: number;
   priority?: number;
@@ -83,6 +88,10 @@ export interface BenefitVO {
   growthMax: number;
   monthlyDehazeQuota: number;
   monthlyEvaluateQuota: number;
+  aiCreditsDaily: number;
+  aiCreditsMonthly: number;
+  multimodalLimit: number;
+  vipGiftCredits: number;
   historyRetention: number;
   batchLimit: number;
   priority: number;
@@ -163,4 +172,46 @@ export interface MemberDetailVO extends MemberProfileVO {
   frozenReason?: string;
   frozenTime?: string;
   quotaResetMonth?: number;
+}
+
+/** 权益概览-图像任务类型 */
+export type BenefitTaskType =
+  "dehaze" | "derain" | "desnow" | "lowlight" | "super_resolution" | "denoise" | "inpaint";
+
+/** 权益概览-图像任务明细 */
+export interface BenefitTaskDetailVO {
+  taskType: BenefitTaskType;
+  quota: number;
+  used: number;
+  remaining: number;
+}
+
+/** 权益概览-服务类目聚合 */
+export interface BenefitCategoryVO {
+  remaining: number;
+  details?: BenefitTaskDetailVO[];
+}
+
+/** 权益概览VO（当前用户会员权益汇总） */
+export interface BenefitSummaryVO {
+  imageCategory: BenefitCategoryVO;
+  evaluateCategory: BenefitCategoryVO;
+  aiCategory: {
+    creditsBalance: number;
+    todayUsed: number;
+    dailyLimit: number;
+    monthlyLimit: number;
+  };
+}
+
+/** 试用开通状态VO */
+export interface TrialStatusVO {
+  showTrialEntry: boolean;
+  trialDays: number;
+  trialCredits: number;
+  voucherActivated: boolean;
+  voucherExpireTime?: string;
+  aiTrialCreditsBalance: number;
+  newUserExclusiveAvailable: boolean;
+  paidMembership: boolean;
 }

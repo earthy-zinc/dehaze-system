@@ -11,6 +11,7 @@ import {
   createKbQuery,
   createRetrieveTestForm,
   createSearchForm,
+  createTestSetForm,
   createTextDocForm,
 } from "#/factories/knowledge-base";
 
@@ -26,6 +27,9 @@ import {
 // - 文档上传/批量/分块预览需要真实 fileId，顶层 beforeAll 先上传 txt 测试文件。
 // - 知识库私有库配额（admin level_1=10）限制同时存在的私有库数量，各 describe 在
 //   afterAll 及时删除自己创建的库，避免运行中累计超过配额导致创建失败。
+//
+// 管理端接口（view=admin / index-stats / retrieve/test-sets / chunks/low-quality）：
+// 后端尚未实现，按测试先行策略以 API接口.md 为契约保留完整用例，待后端落地后统一验证。
 // ============================================================================
 
 const testFileIds: number[] = [];
@@ -90,15 +94,11 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
     return result.id;
   }
 
-  // 顶层前置：登录 + 上传测试文件 + 探测外网可达性（ES 不可用属环境故障，用例直接失败）
+  // 顶层前置：登录 + 上传测试文件 + 探测外网可达性（ES/文件服务不可用属环境故障，直接失败）
   beforeAll(async () => {
     await login(USERS.ADMIN.username);
-    try {
-      testFileIds.push((await FileAPI.upload(makeTxtFile("kb_test_a"))).id);
-      testFileIds.push((await FileAPI.upload(makeTxtFile("kb_test_b"))).id);
-    } catch (e) {
-      console.warn("上传测试文件失败，文档上传类用例将受影响:", e);
-    }
+    testFileIds.push((await FileAPI.upload(makeTxtFile("kb_test_a"))).id);
+    testFileIds.push((await FileAPI.upload(makeTxtFile("kb_test_b"))).id);
   });
 
   afterAll(async () => {
@@ -413,11 +413,8 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：通过 fileId 上传文档", async (ctx) => {
-      if (testFileIds.length === 0) {
-        ctx.skip("顶层测试文件上传失败，无法通过 fileId 上传文档");
-        return;
-      }
+    test("正向测试：通过 fileId 上传文档", async () => {
+      expect(testFileIds.length, "顶层测试文件上传失败").toBeGreaterThan(0);
       const result = await AiKnowledgeBaseAPI.uploadDocument(
         testKbId,
         createDocUploadForm({ fileId: testFileIds[0]! })
@@ -459,11 +456,8 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
     afterAll(() => deleteKbs(localKbIds));
 
-    test("正向测试：批量上传 2 个文档", async (ctx) => {
-      if (testFileIds.length < 2) {
-        ctx.skip("顶层测试文件上传失败，无法批量上传文档");
-        return;
-      }
+    test("正向测试：批量上传 2 个文档", async () => {
+      expect(testFileIds.length, "顶层测试文件上传失败").toBeGreaterThanOrEqual(2);
       const result = await AiKnowledgeBaseAPI.batchUploadDocuments(
         testKbId,
         createBatchUploadForm(testFileIds.slice(0, 2))
@@ -668,11 +662,8 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
   });
 
   describe("POST /api/v1/kb/documents/chunks/preview - 分块预览", () => {
-    test("正向测试：预览文档分块效果", async (ctx) => {
-      if (testFileIds.length === 0) {
-        ctx.skip("顶层测试文件上传失败，无法预览分块效果");
-        return;
-      }
+    test("正向测试：预览文档分块效果", async () => {
+      expect(testFileIds.length, "顶层测试文件上传失败").toBeGreaterThan(0);
       const chunks = await AiKnowledgeBaseAPI.previewChunks({
         fileId: testFileIds[0]!,
         chunkingStrategy: "fixed",
@@ -859,6 +850,197 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
       await asUser(async () => {
         await expectBizError(AiKnowledgeBaseAPI.getDocumentDetail(doc.id), [
+          "A0301",
+          "A0401",
+          "A0400",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
+      });
+    });
+  });
+
+  // ===== 管理端接口 =====
+
+  describe("GET /api/v1/kb?view=admin - 管理端知识库列表", () => {
+    const localKbIds: number[] = [];
+
+    afterAll(() => deleteKbs(localKbIds));
+
+    test("正向测试：管理员 view=admin 返回全部知识库（含私有库）", async () => {
+      const created = await AiKnowledgeBaseAPI.create(createKbForm({ visibility: "private" }));
+      createdKbIds.push(created.id);
+      localKbIds.push(created.id);
+
+      const result = await AiKnowledgeBaseAPI.getList(createKbQuery({ view: "admin" }));
+      expect(Array.isArray(result.list)).toBe(true);
+      expect(result.list.some((kb) => kb.id === created.id)).toBe(true);
+    });
+
+    test("安全：普通用户 view=admin 应 403", async () => {
+      await asUser(async () => {
+        await expectBizError(AiKnowledgeBaseAPI.getList(createKbQuery({ view: "admin" })), [
+          "A0301",
+          "A0400",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
+      });
+    });
+  });
+
+  describe("GET /api/v1/kb/{id}/index-stats - 知识库索引状态", () => {
+    let testKbId = 0;
+    const localKbIds: number[] = [];
+
+    beforeAll(async () => {
+      testKbId = await createKb(localKbIds);
+    });
+
+    afterAll(() => deleteKbs(localKbIds));
+
+    test("正向测试：返回索引状态含大小/文档数/阈值告警", async () => {
+      const stats = await AiKnowledgeBaseAPI.getIndexStats(testKbId);
+      expect(typeof stats.indexSize).toBe("number");
+      expect(typeof stats.indexDocCount).toBe("number");
+      expect(typeof stats.thresholdWarning).toBe("boolean");
+      // 新知识库未达 1GB 阈值，告警应为 false
+      expect(stats.thresholdWarning).toBe(false);
+    });
+
+    test("边界：查询不存在知识库的索引状态应失败", async () => {
+      await expectBizError(AiKnowledgeBaseAPI.getIndexStats(99999999), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("安全：普通用户查询索引状态应 403", async () => {
+      await asUser(async () => {
+        await expectBizError(AiKnowledgeBaseAPI.getIndexStats(testKbId), [
+          "A0301",
+          "A0401",
+          "A0400",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
+      });
+    });
+  });
+
+  describe("GET/POST /api/v1/kb/{id}/retrieve/test-sets - 召回测试集", () => {
+    let testKbId = 0;
+    const localKbIds: number[] = [];
+
+    beforeAll(async () => {
+      testKbId = await createKb(localKbIds);
+    });
+
+    afterAll(() => deleteKbs(localKbIds));
+
+    test("正向测试：创建召回测试集（问题 + 期望命中段落）", async () => {
+      const result = await AiKnowledgeBaseAPI.createTestSet(
+        testKbId,
+        createTestSetForm({ question: "RIDCP 是什么算法？", expectedChunkIds: [1, 2] })
+      );
+      expect(result.id).toBeGreaterThan(0);
+      expect(result.question).toBe("RIDCP 是什么算法？");
+      expect(Array.isArray(result.expectedChunkIds)).toBe(true);
+    });
+
+    test("正向测试：查询召回测试集列表（分页）", async () => {
+      const created = await AiKnowledgeBaseAPI.createTestSet(
+        testKbId,
+        createTestSetForm({ question: `列表查询_${Date.now()}` })
+      );
+      const result = await AiKnowledgeBaseAPI.getTestSets(testKbId, {
+        pageNum: 1,
+        pageSize: 10,
+      });
+      expect(Array.isArray(result.list)).toBe(true);
+      expect(result.list.some((item) => item.id === created.id)).toBe(true);
+    });
+
+    test("参数校验：空问题创建测试集应失败", async () => {
+      await expectBizError(
+        AiKnowledgeBaseAPI.createTestSet(testKbId, createTestSetForm({ question: "" })),
+        ["A0400", "A0500", "B0001", "ERR_BAD_REQUEST"]
+      );
+    });
+
+    test("正向测试：执行召回测试集返回 Recall@K 与命中率", async () => {
+      const created = await AiKnowledgeBaseAPI.createTestSet(testKbId, createTestSetForm());
+      const result = await AiKnowledgeBaseAPI.runTestSet(testKbId, created.id);
+      expect(result.testSetId).toBe(created.id);
+      expect(typeof result.recallAtK).toBe("number");
+      expect(result.recallAtK).toBeGreaterThanOrEqual(0);
+      expect(result.recallAtK).toBeLessThanOrEqual(1);
+      expect(typeof result.hitRate).toBe("number");
+      expect(result.hitRate).toBeGreaterThanOrEqual(0);
+      expect(result.hitRate).toBeLessThanOrEqual(1);
+      expect(result.totalCases).toBeGreaterThan(0);
+      expect(result.hitCases).toBeGreaterThanOrEqual(0);
+    });
+
+    test("边界：执行不存在的测试集应失败", async () => {
+      await expectBizError(AiKnowledgeBaseAPI.runTestSet(testKbId, 99999999), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("安全：普通用户访问测试集应 403", async () => {
+      await asUser(async () => {
+        await expectBizError(AiKnowledgeBaseAPI.getTestSets(testKbId), [
+          "A0301",
+          "A0401",
+          "A0400",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
+      });
+    });
+  });
+
+  describe("GET /api/v1/kb/{id}/chunks/low-quality - 低质量片段", () => {
+    let testKbId = 0;
+    const localKbIds: number[] = [];
+
+    beforeAll(async () => {
+      testKbId = await createKb(localKbIds);
+    });
+
+    afterAll(() => deleteKbs(localKbIds));
+
+    test("正向测试：查询低质量片段列表（被点踩片段）", async () => {
+      const result = await AiKnowledgeBaseAPI.getLowQualityChunks(testKbId, {
+        pageNum: 1,
+        pageSize: 10,
+      });
+      expect(Array.isArray(result.list)).toBe(true);
+      if (result.list.length > 0) {
+        const item = result.list[0]!;
+        expect(item.chunkId).toBeGreaterThan(0);
+        expect(item.content).toBeTruthy();
+        expect(item.documentId).toBeGreaterThan(0);
+        expect(typeof item.thumbsDownCount).toBe("number");
+      }
+    });
+
+    test("边界：查询不存在知识库的低质量片段应失败", async () => {
+      await expectBizError(
+        AiKnowledgeBaseAPI.getLowQualityChunks(99999999, { pageNum: 1, pageSize: 10 }),
+        ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"]
+      );
+    });
+
+    test("安全：普通用户查询低质量片段应 403", async () => {
+      await asUser(async () => {
+        await expectBizError(AiKnowledgeBaseAPI.getLowQualityChunks(testKbId), [
           "A0301",
           "A0401",
           "A0400",

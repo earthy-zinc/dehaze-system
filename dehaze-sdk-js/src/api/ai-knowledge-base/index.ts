@@ -9,13 +9,19 @@ import {
   DocumentTextForm,
   DocumentUploadForm,
   DocumentVO,
+  IndexStatsVO,
   KnowledgeBaseCreateForm,
   KnowledgeBaseQuery,
   KnowledgeBaseSearchForm,
   KnowledgeBaseUpdateForm,
   KnowledgeBaseVO,
+  LowQualityChunkQuery,
+  LowQualityChunkVO,
+  RecallTestResultVO,
   RetrieveTestForm,
   SearchResultVO,
+  TestSetCreateForm,
+  TestSetVO,
 } from "./model";
 
 /**
@@ -190,6 +196,54 @@ class AiKnowledgeBaseAPI {
       url: `/api/v1/kb/${knowledgeBaseId}/retrieve/test`,
       method: "post",
       data,
+    });
+  }
+
+  // ==================== 管理端 ====================
+
+  /** 知识库索引状态（ES 索引大小/文档数/阈值告警） */
+  static getIndexStats(knowledgeBaseId: number) {
+    return request<IndexStatsVO>({
+      url: `/api/v1/kb/${knowledgeBaseId}/index-stats`,
+      method: "get",
+    });
+  }
+
+  /** 召回测试集分页列表（评估基线随 kb 积累，返回分页 {list,total}） */
+  static getTestSets(
+    knowledgeBaseId: number,
+    query?: { pageNum?: number; pageSize?: number }
+  ) {
+    return request<PageResult<TestSetVO[]>>({
+      url: `/api/v1/kb/${knowledgeBaseId}/retrieve/test-sets`,
+      method: "get",
+      params: query,
+    });
+  }
+
+  /** 创建召回测试集（问题 + 期望命中段落） */
+  static createTestSet(knowledgeBaseId: number, data: TestSetCreateForm) {
+    return request<TestSetVO>({
+      url: `/api/v1/kb/${knowledgeBaseId}/retrieve/test-sets`,
+      method: "post",
+      data,
+    });
+  }
+
+  /** 执行召回测试集（返回 Recall@K 与命中率） */
+  static runTestSet(knowledgeBaseId: number, testSetId: number) {
+    return request<RecallTestResultVO>({
+      url: `/api/v1/kb/${knowledgeBaseId}/retrieve/test-sets/${testSetId}/run`,
+      method: "post",
+    });
+  }
+
+  /** 低质量片段列表（被点踩片段，反馈闭环反哺检索优化） */
+  static getLowQualityChunks(knowledgeBaseId: number, query?: LowQualityChunkQuery) {
+    return request<PageResult<LowQualityChunkVO[]>>({
+      url: `/api/v1/kb/${knowledgeBaseId}/chunks/low-quality`,
+      method: "get",
+      params: query,
     });
   }
 }

@@ -5,9 +5,9 @@ import {
   PredictionForm,
   PresetForm,
 } from "../../index";
-import { DEHAZE_HOST } from "#/config/constant";
+import { NGINX_STATIC_HOST, NGINX_STATIC_PORT } from "#/config/constant";
 
-const DATASET_BASE_URL = `http://${DEHAZE_HOST}:9000/datasets`;
+const DATASET_BASE_URL = `http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}/datasets`;
 
 export function createPredictionForm(overrides: Partial<PredictionForm> = {}): PredictionForm {
   return {

@@ -7,7 +7,9 @@ import { generateTraceId } from "@/logger";
 import type {
   AiModelForm,
   AiModelQuery,
+  AiModelType,
   AiModelVO,
+  CompatCallQuery,
   ArtifactVO,
   ClaudeMessageForm,
   ConversationCreateForm,
@@ -237,6 +239,42 @@ class AiConversationAPI {
     return request<ConversationVO>({
       url: `/api/v1/ai/conversations/${id}/restore`,
       method: "post",
+    });
+  }
+
+  /**
+   * 批量操作会话（归档/恢复/删除）。
+   *
+   * action=delete 时需 `confirm=true` 二次确认，删除后进回收站。
+   */
+  static batchConversations(data: {
+    action: "archive" | "restore" | "delete";
+    ids: number[];
+    confirm?: boolean;
+  }) {
+    return request<number>({
+      url: "/api/v1/ai/conversations/batch",
+      method: "post",
+      data,
+    });
+  }
+
+  /** 回收站会话列表（分页，含已删除会话） */
+  static getTrashConversations(query?: ConversationQuery) {
+    return request<PageResult<ConversationVO[]>>({
+      url: "/api/v1/ai/conversations/trash",
+      method: "get",
+      params: query,
+    });
+  }
+
+  /** 导出会话记录（format=markdown|json，默认 markdown；推理过程默认不导出），返回 Blob 下载 */
+  static exportConversation(id: number, format: "json" | "markdown" = "markdown") {
+    return request<Blob>({
+      url: `/api/v1/ai/conversations/${id}/export`,
+      method: "get",
+      params: { format },
+      responseType: "blob",
     });
   }
 
@@ -587,11 +625,21 @@ class AiConversationAPI {
     });
   }
 
-  /** 启用模型列表（用户端，含 VIP 过滤） */
-  static getEnabledModels() {
+  /** 启用模型列表（用户端，含 VIP 过滤；可按模型类型筛选 chat/embedding/rerank） */
+  static getEnabledModels(modelType?: AiModelType) {
     return request<AiModelVO[]>({
       url: "/api/v1/ai/models/enabled",
       method: "get",
+      params: modelType ? { modelType } : undefined,
+    });
+  }
+
+  /** 兼容调用审计查询（当前登录用户，create_time 倒序分页） */
+  static getCompatCalls(query?: CompatCallQuery) {
+    return request<PageResult<Record<string, unknown>[]>>({
+      url: "/api/v1/ai/compat/calls",
+      method: "get",
+      params: query,
     });
   }
 

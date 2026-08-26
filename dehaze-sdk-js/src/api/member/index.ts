@@ -2,6 +2,7 @@ import { PageResult } from "@/types";
 import request from "@/utils/request";
 import {
   BenefitForm,
+  BenefitSummaryVO,
   BenefitVO,
   GrowthLogQuery,
   GrowthLogVO,
@@ -14,6 +15,7 @@ import {
   MemberStatusForm,
   SignInCalendarVO,
   SignInResultVO,
+  TrialStatusVO,
 } from "./model";
 
 class MemberAPI {
@@ -92,6 +94,22 @@ class MemberAPI {
       url: "/api/v1/members/" + userId + "/status",
       method: "put",
       data,
+    });
+  }
+
+  /** 当前用户会员权益汇总（含 AI 功能限额明细） */
+  static getBenefitSummary() {
+    return request<BenefitSummaryVO>({
+      url: "/api/v1/members/benefit-summary",
+      method: "get",
+    });
+  }
+
+  /** 当前用户试用开通状态 */
+  static getTrialStatus() {
+    return request<TrialStatusVO>({
+      url: "/api/v1/members/trial-status",
+      method: "get",
     });
   }
 

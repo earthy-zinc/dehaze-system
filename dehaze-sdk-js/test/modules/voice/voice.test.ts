@@ -1,7 +1,7 @@
-import { AiBillingAPI, VoiceAPI, service } from "../../../index";
+import { VoiceAPI, service } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login, logout } from "#/utils/auth";
-import { getRedis } from "#/utils/redis";
+import { topUpAdminCredits } from "#/utils/quota";
 import { USERS } from "#/factories/constants";
 import { createHotwordForm, createStreamAsrSessionForm, createTtsForm } from "#/factories/voice";
 
@@ -9,121 +9,24 @@ import { createHotwordForm, createStreamAsrSessionForm, createTtsForm } from "#/
  * 语音交互模块接口测试。
  *
  * 环境依赖说明（按需求/实现文档判定，非断言缺陷）：
- * - FunASR 语音识别引擎（进程内懒加载，需 funasr 依赖 + 模型可加载）：影响「WebSocket 流式 ASR
- *   连接 / EOS 识别结果 / 离线实际识别」。不可用时按环境依赖条件跳过。
+ * - FunASR 语音识别引擎（进程内懒加载，需 funasr 依赖 + 模型可加载）：引擎不可用属环境故障，
+ *   用例直接失败暴露问题（冷加载较慢，连接用例自带等待窗口），不做条件跳过。
  * - TTS 为本地 Piper 引擎（进程内懒加载，模型自动下载），无外部依赖，实际合成用例直接执行。
  * - 语音能力计费需用户有 AI 积分余额（A0682 余额不足）。测试 beforeAll 通过 ai-billing/adjust 为
  *   admin 充值积分，使 ASR 会话创建 / TTS 参数校验等可跑通。
+ * - GET /api/v1/voice/service/status（服务状态监控，权限 voice:service:monitor）：后端未实现，
+ *   测试先行契约（以 dehaze-doc API接口.md 为契约）。用例保留并按契约断言字段结构，
+ *   接口 404 时正向用例失败暴露，不做条件跳过、不放宽断言；待后端实现后统一验证。
  */
 
-// 环境探测标志
-let asrEngineAvailable = false; // FunASR 引擎可用
-let hotwordReady = false; // 后端热词路由已修复（重启后为 true）
-
-/** 为 admin 充值 AI 积分，避免 ASR/TTS 因余额不足（A0682）被拒 */
-async function topUpAdminBalance() {
-  await login(USERS.ADMIN.username);
-  try {
-    await AiBillingAPI.adjustCredits({
-      userId: USERS.ADMIN.id,
-      amount: 100000,
-      reason: "语音模块测试积分充值",
-    });
-  } catch {
-    // 历史遗留的 `ai:balance:{uid}` 缓存可能是 "0.00" 等非整数字符串，导致 Redis INCRBY 抛
-    // ResponseError，清空该缓存后由 MySQL 重新回填整数值。
-    const redis = getRedis();
-    await redis.del(`ai:balance:${USERS.ADMIN.id}`, `ai:arrears:${USERS.ADMIN.id}`);
-    await AiBillingAPI.adjustCredits({
-      userId: USERS.ADMIN.id,
-      amount: 100000,
-      reason: "语音模块测试积分充值",
-    });
-  }
-}
+beforeAll(async () => {
+  await topUpAdminCredits();
+});
 
 /** 下载缓存音频并返回字节（响应拦截器对 arraybuffer 非 JSON 响应返回 Blob） */
 async function fetchAudioBytes(audioUrl: string): Promise<Uint8Array> {
   const blob = (await service.get(audioUrl, { responseType: "arraybuffer" })) as Blob;
   return new Uint8Array(await blob.arrayBuffer());
-}
-
-/** 探测 FunASR 引擎是否可用：能建流式会话并建立 WebSocket 且不被服务端拒绝 */
-async function probeAsrEngine(): Promise<boolean> {
-  await login(USERS.ADMIN.username);
-  return new Promise<boolean>((resolve) => {
-    let settled = false;
-    let handle: any = null;
-    const finish = (ok: boolean) => {
-      if (settled) return;
-      settled = true;
-      resolve(ok);
-    };
-    // 仅经 startStreamAsr 创建一次会话并连接 WS（避免重复创建触发防重复提交）
-    VoiceAPI.startStreamAsr(
-      { model: "sensevoice" },
-      {
-        onMessage: () => {},
-        onOpen: () => {
-          // 能建立连接即视为引擎可用；随后发送 EOS 结束，避免占用并发名额
-          try {
-            if (handle) handle.stop();
-          } catch {
-            /* ignore */
-          }
-          finish(true);
-        },
-        onClose: () => finish(true),
-        onError: () => finish(false),
-      }
-    )
-      .then((h) => {
-        handle = h;
-      })
-      .catch(() => finish(false));
-    // 兜底：若 60s 内无任何回调，视为不可用（FunASR 模型冷加载需 10~30s）
-    setTimeout(() => finish(false), 60000);
-  });
-}
-
-beforeAll(async () => {
-  await topUpAdminBalance();
-  hotwordReady = await probeHotwordReady();
-  // FunASR 探测较重（可能触发模型加载），单独在 WS 套件内惰性探测。
-});
-
-/** 探测后端热词路由是否可用（缺陷是否已修复并重启生效） */
-async function probeHotwordReady(): Promise<boolean> {
-  await login(USERS.ADMIN.username);
-  try {
-    const r = await VoiceAPI.addHotword({ word: "__voice_probe__" });
-    try {
-      await VoiceAPI.deleteHotword(r.id);
-    } catch {
-      /* 清理失败忽略 */
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** 后端热词路由未就绪时条件跳过热词用例 */
-function hotwordReadyOrSkip(ctx: any): boolean {
-  if (!hotwordReady) {
-    ctx.skip("后端热词路由缺陷已修复待重启生效，跳过热词用例");
-    return false;
-  }
-  return true;
-}
-
-/** FunASR 引擎不可用时条件跳过流式 ASR 用例 */
-function asrReadyOrSkip(ctx: any, reason: string): boolean {
-  if (!asrEngineAvailable) {
-    ctx.skip(reason);
-    return false;
-  }
-  return true;
 }
 
 describe("语音交互模块接口测试 - VoiceAPI", () => {
@@ -289,22 +192,19 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
       }
     });
 
-    test("正向测试：新增用户热词", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("正向测试：新增用户热词", async () => {
       const result = await VoiceAPI.addHotword(createHotwordForm());
       expect(result.id).toBeGreaterThan(0);
       expect(result.word).toBeTruthy();
       createdHotwordIds.push(result.id);
     });
 
-    test("正向测试：查询用户热词列表", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("正向测试：查询用户热词列表", async () => {
       const hotwords = await VoiceAPI.getHotwords();
       expect(Array.isArray(hotwords)).toBe(true);
     });
 
-    test("正向测试：删除用户热词", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("正向测试：删除用户热词", async () => {
       const created = await VoiceAPI.addHotword(createHotwordForm());
       await VoiceAPI.deleteHotword(created.id);
 
@@ -313,8 +213,7 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
       expect(found).toBeUndefined();
     });
 
-    test("参数校验：空热词应失败", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("参数校验：空热词应失败", async () => {
       await expectBizError(VoiceAPI.addHotword({ word: "" }), [
         "A0400",
         "B0001",
@@ -322,8 +221,7 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
       ]);
     });
 
-    test("边界：删除不存在的热词应失败", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("边界：删除不存在的热词应失败", async () => {
       await expectBizError(VoiceAPI.deleteHotword(99999999), [
         "A0401",
         "A0400",
@@ -332,8 +230,7 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
       ]);
     });
 
-    test("安全：热词含 XSS 内容被转义存储", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("安全：热词含 XSS 内容被转义存储", async () => {
       const result = await VoiceAPI.addHotword(
         createHotwordForm({ word: "<script>alert(1)</script>" })
       );
@@ -366,21 +263,18 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
       }
     });
 
-    test("正向测试：管理员新增全局热词", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("正向测试：管理员新增全局热词", async () => {
       const result = await VoiceAPI.addGlobalHotword(createHotwordForm());
       expect(result.id).toBeGreaterThan(0);
       createdGlobalIds.push(result.id);
     });
 
-    test("正向测试：查询全局热词列表", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("正向测试：查询全局热词列表", async () => {
       const hotwords = await VoiceAPI.getGlobalHotwords();
       expect(Array.isArray(hotwords)).toBe(true);
     });
 
-    test("正向测试：管理员删除全局热词", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("正向测试：管理员删除全局热词", async () => {
       const created = await VoiceAPI.addGlobalHotword(createHotwordForm());
       await VoiceAPI.deleteGlobalHotword(created.id);
 
@@ -389,8 +283,7 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
       expect(found).toBeUndefined();
     });
 
-    test("边界：普通用户管理全局热词应失败", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("边界：普通用户管理全局热词应失败", async () => {
       await login(USERS.USER.username);
       try {
         await expectBizError(VoiceAPI.addGlobalHotword(createHotwordForm()), [
@@ -416,8 +309,7 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
   // ===== 数据隔离 =====
 
   describe("数据隔离 - 用户级热词生效范围", () => {
-    test("验证：用户 A 的热词对用户 B 不可见", async (ctx) => {
-      if (!hotwordReadyOrSkip(ctx)) return;
+    test("验证：用户 A 的热词对用户 B 不可见", async () => {
       await login(USERS.ADMIN.username);
       const adminHotword = await VoiceAPI.addHotword(createHotwordForm());
       try {
@@ -439,20 +331,20 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
   // ===== WebSocket 流式 ASR 测试 =====
 
   describe("startStreamAsr - WebSocket 流式 ASR", () => {
-    beforeAll(async () => {
-      // 防重复提交窗口为 5 秒：前面用例已 POST 过相同 body（{model:"sensevoice"}），
-      // 等待窗口过期后再探测，避免探测请求被 A0002 误判为引擎不可用
+    beforeEach(async () => {
+      // 防重复提交窗口为 5 秒：本套件各用例 POST 相同 body（stream-session），
+      // 逐用例等待窗口过期，否则创建请求会被 A0002 拒绝
       await new Promise((resolve) => setTimeout(resolve, 5500));
-      asrEngineAvailable = await probeAsrEngine();
-    }, 90000);
+    });
 
-    test("正向测试：创建流式 ASR 会话并建立 WebSocket 连接", async (ctx) => {
-      if (!asrReadyOrSkip(ctx, "FunASR 语音识别引擎未部署/模型不可加载，跳过流式 ASR 连接测试")) {
-        return;
-      }
+    test("正向测试：创建流式 ASR 会话并建立 WebSocket 连接", async () => {
       let connected = false;
       let closed = false;
       let errored = false;
+      let signal: () => void = () => {};
+      const anyEvent = new Promise<void>((resolve) => {
+        signal = resolve;
+      });
 
       const asrSession = await VoiceAPI.startStreamAsr(createStreamAsrSessionForm(), {
         onMessage: () => {},
@@ -460,29 +352,33 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
           connected = true;
           // 连接建立后立即发送 EOS 结束，避免占用并发名额
           asrSession.stop();
+          signal();
         },
         onClose: () => {
           closed = true;
+          signal();
         },
         onError: () => {
           errored = true;
+          signal();
         },
       });
 
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, 5000);
-      });
+      // 后端 FunASR 冷加载（含 modelscope 元数据检查）需 5~30s：等待任一事件而非固定 sleep；
+      // 30s 仍无任何事件 = 引擎故障，断言失败暴露问题
+      await Promise.race([anyEvent, new Promise((resolve) => setTimeout(resolve, 30000))]);
 
       expect(asrSession).toBeDefined();
       expect(connected || closed || errored).toBe(true);
-    }, 15000);
+    }, 45000);
 
-    test("正向测试：发送 EOS 后收到最终识别结果", async (ctx) => {
-      if (!asrReadyOrSkip(ctx, "FunASR 语音识别引擎未部署/模型不可加载，跳过流式 ASR 识别测试")) {
-        return;
-      }
+    test("正向测试：发送 EOS 后收到最终识别结果", async () => {
       let receivedMessage = false;
       let wsError: Error | null = null;
+      let signal: () => void = () => {};
+      const finished = new Promise<void>((resolve) => {
+        signal = resolve;
+      });
 
       const asrSession = await VoiceAPI.startStreamAsr(createStreamAsrSessionForm(), {
         onOpen: () => {
@@ -498,23 +394,27 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
           if (msg.isFinal !== undefined) {
             expect(typeof msg.isFinal).toBe("boolean");
           }
+          if (msg.isFinal) {
+            signal();
+          }
         },
-        onClose: () => {},
+        onClose: () => {
+          signal();
+        },
         onError: (error) => {
           wsError = error instanceof Error ? error : new Error(String(error));
+          signal();
         },
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      // 等最终识别结果或连接关闭（引擎故障经 onError 到达），30s 兜底
+      await Promise.race([finished, new Promise((resolve) => setTimeout(resolve, 30000))]);
 
       expect(wsError).toBeNull();
       expect(receivedMessage).toBe(true);
-    }, 15000);
+    }, 45000);
 
-    test("边界：主动关闭连接不触发重连", async (ctx) => {
-      if (!asrReadyOrSkip(ctx, "FunASR 语音识别引擎未部署/模型不可加载，跳过流式 ASR 重连测试")) {
-        return;
-      }
+    test("边界：主动关闭连接不触发重连", async () => {
       const asrSession = await VoiceAPI.startStreamAsr(createStreamAsrSessionForm(), {
         onMessage: () => {},
         onOpen: () => {
@@ -558,6 +458,38 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
         "A0500",
         "ERR_BAD_REQUEST",
       ]);
+    });
+  });
+
+  // ===== 服务状态监控（管理端）=====
+
+  describe("GET /api/v1/voice/service/status - 服务状态监控", () => {
+    test("正向测试：管理员查询 ASR/TTS 引擎服务状态", async () => {
+      await login(USERS.ADMIN.username);
+      const result = await VoiceAPI.getServiceStatus();
+      // ASR 引擎状态
+      expect(["online", "offline"]).toContain(result.asr.engineStatus);
+      expect(typeof result.asr.concurrentSessions).toBe("number");
+      expect(typeof result.asr.maxConcurrentSessions).toBe("number");
+      expect(typeof result.asr.streamModelLoaded).toBe("boolean");
+      expect(typeof result.asr.offlineModelLoaded).toBe("boolean");
+      // TTS 引擎状态
+      expect(["online", "offline"]).toContain(result.tts.engineStatus);
+      expect(typeof result.tts.voiceModelLoaded).toBe("boolean");
+    });
+
+    test("边界：普通用户无权限查询服务状态（403 / A0301）", async () => {
+      await login(USERS.USER.username);
+      try {
+        await expectBizError(VoiceAPI.getServiceStatus(), [
+          "A0301",
+          "A0400",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
+      } finally {
+        await login(USERS.ADMIN.username);
+      }
     });
   });
 });

@@ -90,10 +90,10 @@ describe("推荐跨模块集成测试", () => {
       expect(typeof analysis.hazeConfidence).toBe("number");
 
       const recommendations = await getRecommendations(analysis.imageMd5!);
-      if (recommendations.length === 0) {
-        // 后端无推荐数据时跳过后续断言（不视为失败）
-        return;
-      }
+      expect(
+        recommendations.length,
+        "分析后无推荐结果：推荐规则未命中或推荐服务异常"
+      ).toBeGreaterThan(0);
 
       const top = recommendations[0]!;
       expect(top.algorithmId).toBeDefined();
@@ -126,10 +126,10 @@ describe("推荐跨模块集成测试", () => {
       expect(analysis.sceneType).toBeDefined();
 
       const recommendations = await getRecommendations(analysis.imageMd5!);
-      if (recommendations.length === 0) {
-        // 后端无推荐数据时跳过后续断言
-        return;
-      }
+      expect(
+        recommendations.length,
+        "分析后无推荐结果：推荐规则未命中或推荐服务异常"
+      ).toBeGreaterThan(0);
 
       // 不采纳推荐，改用固定可用算法 13
       const predResult = await ModelAPI.predictAndWait(

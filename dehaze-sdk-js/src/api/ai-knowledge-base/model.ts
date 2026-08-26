@@ -100,6 +100,78 @@ export interface KnowledgeBaseVO {
 /** 知识库列表查询参数 */
 export interface KnowledgeBaseQuery extends PageQuery {
   keyword?: string;
+  /** 管理端视角：返回全部知识库含私有库（仅 kb:manage 可用，普通用户 403） */
+  view?: "admin";
+}
+
+// ==================== 管理端 ====================
+
+/** 知识库索引状态（管理端索引状态区） */
+export interface IndexStatsVO {
+  /** ES 索引大小（字节） */
+  indexSize: number;
+  /** 索引文档数 */
+  indexDocCount: number;
+  /** 是否触发索引大小阈值告警（默认 1GB） */
+  thresholdWarning: boolean;
+}
+
+/** 召回测试集（问题 + 期望命中段落） */
+export interface TestSetVO {
+  id: number;
+  knowledgeBaseId: number;
+  /** 测试问题 */
+  question: string;
+  /** 期望命中分块 ID 列表（must_include） */
+  expectedChunkIds: number[];
+  createTime?: string;
+}
+
+/** 召回测试集创建表单 */
+export interface TestSetCreateForm {
+  /** 测试问题 */
+  question: string;
+  /** 期望命中分块 ID 列表（must_include） */
+  expectedChunkIds: number[];
+}
+
+/** 召回测试集执行结果（Recall@K 与命中率） */
+export interface RecallTestResultVO {
+  testSetId: number;
+  /** Recall@K：期望命中分块出现在 Top-K 结果中的比例（0-1） */
+  recallAtK: number;
+  /** 命中率（0-1） */
+  hitRate: number;
+  /** 测试问题总数 */
+  totalCases: number;
+  /** 命中问题数 */
+  hitCases: number;
+}
+
+/** 低质量片段（被点踩片段，用于反馈闭环） */
+export interface LowQualityChunkVO {
+  /** 分块 ID */
+  chunkId: number;
+  /** 分块内容 */
+  content: string;
+  /** 来源文档 ID */
+  documentId: number;
+  /** 来源文档标题 */
+  documentTitle?: string;
+  /** 分块序号 */
+  chunkIndex?: number;
+  /** 被点踩次数 */
+  thumbsDownCount: number;
+  /** 分块元数据 */
+  metadata?: Record<string, unknown>;
+}
+
+/** 低质量片段查询参数（类型筛选 + 分页） */
+export interface LowQualityChunkQuery extends PageQuery {
+  /** 按片段类型筛选 */
+  feedbackType?: string;
+  /** 关键字搜索 */
+  keyword?: string;
 }
 
 // ==================== 文档 ====================

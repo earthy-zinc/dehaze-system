@@ -22,6 +22,7 @@ export function createOrderQuery(overrides: Partial<OrderQuery> = {}): OrderQuer
 export function createRefundApplyForm(overrides: Partial<RefundApplyForm> = {}): RefundApplyForm {
   return {
     reason: "test_refund",
+    reasonType: "after_sale",
     ...overrides,
   };
 }

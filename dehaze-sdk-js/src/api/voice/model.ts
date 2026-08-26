@@ -109,3 +109,33 @@ export interface VoiceVO {
   /** 音色语言/风格标签 */
   tags?: string[];
 }
+
+/** ASR 引擎运行状态（服务监控） */
+export interface AsrEngineStatusVO {
+  /** 引擎在线状态（online=在线 / offline=离线） */
+  engineStatus: "online" | "offline";
+  /** 当前并发会话数 */
+  concurrentSessions: number;
+  /** 最大并发会话数 */
+  maxConcurrentSessions: number;
+  /** 流式模型加载状态 */
+  streamModelLoaded: boolean;
+  /** 离线模型加载状态 */
+  offlineModelLoaded: boolean;
+}
+
+/** TTS 引擎运行状态（服务监控） */
+export interface TtsEngineStatusVO {
+  /** 引擎在线状态（online=在线 / offline=离线） */
+  engineStatus: "online" | "offline";
+  /** 当前音色模型加载状态 */
+  voiceModelLoaded: boolean;
+}
+
+/** 语音服务状态（管理端服务监控，GET /api/v1/voice/service/status） */
+export interface ServiceStatusVO {
+  /** ASR 引擎状态 */
+  asr: AsrEngineStatusVO;
+  /** TTS 引擎状态 */
+  tts: TtsEngineStatusVO;
+}

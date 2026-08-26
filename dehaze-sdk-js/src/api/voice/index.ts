@@ -8,6 +8,7 @@ import {
   HotwordVO,
   OfflineAsrForm,
   OfflineAsrResultVO,
+  ServiceStatusVO,
   StreamAsrSessionForm,
   StreamAsrSessionVO,
   TtsForm,
@@ -129,6 +130,16 @@ class VoiceAPI {
   static getVoices() {
     return request<VoiceVO[]>({
       url: "/api/v1/voice/tts/voices",
+      method: "get",
+    });
+  }
+
+  // ===== 服务状态监控（管理端）=====
+
+  /** 查询 ASR/TTS 引擎服务状态（需 voice:service:monitor 权限，管理员） */
+  static getServiceStatus() {
+    return request<ServiceStatusVO>({
+      url: "/api/v1/voice/service/status",
       method: "get",
     });
   }

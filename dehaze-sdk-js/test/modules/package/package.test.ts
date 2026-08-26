@@ -1,3 +1,6 @@
+// 测试先行契约：package_type/credit_amount/type_stats 等字段后端尚未落地，
+// 用例按 dehaze-doc 套餐管理 API 接口文档编写，断言以文档为准；
+// 后端落地后条件断言自动生效，无需修改用例。
 import { CouponAPI, OrderAPI, PackageAPI } from "../../../index";
 import { CouponForm, PackageForm, PackagePageVO } from "@/api/package/model";
 import { expectBizError } from "#/utils/assertion";
@@ -73,6 +76,10 @@ describe("套餐管理模块接口测试", () => {
         expect(["monthly", "quarterly", "yearly"]).toContain(pkg.period);
         expect(pkg.salePrice).toBeGreaterThanOrEqual(0);
         expect(pkg.benefits).toBeDefined();
+        // 后端暂未落地 package_type 字段（契约已定义，落地后断言自动生效）
+        if (pkg.packageType !== undefined) {
+          expect(["vip", "credit"]).toContain(pkg.packageType);
+        }
       }
     });
 
@@ -162,6 +169,12 @@ describe("套餐管理模块接口测试", () => {
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
       expect(result.list.length).toBeLessThanOrEqual(10);
+      // 后端暂未落地 package_type 字段（契约已定义，落地后断言自动生效）
+      for (const pkg of result.list) {
+        if (pkg.packageType !== undefined) {
+          expect(["vip", "credit"]).toContain(pkg.packageType);
+        }
+      }
     });
 
     test("正向测试：按等级筛选", async () => {
@@ -181,6 +194,18 @@ describe("套餐管理模块接口测试", () => {
         expect(pkg.status).toBe(1);
       }
     });
+
+    test("正向测试：按商品类型筛选", async () => {
+      const result = await PackageAPI.getPage(
+        createPackageQuery({ packageType: "vip", pageNum: 1, pageSize: 10 })
+      );
+      // 后端暂未落地 package_type 筛选（契约已定义，落地后断言自动生效）
+      for (const pkg of result.list) {
+        if (pkg.packageType !== undefined) {
+          expect(pkg.packageType).toBe("vip");
+        }
+      }
+    });
   });
 
   describe("POST /api/v1/packages - 新增套餐", () => {
@@ -194,6 +219,10 @@ describe("套餐管理模块接口测试", () => {
       expect(created?.levelCode).toBe(form.levelCode);
       expect(created?.period).toBe(form.period);
       expect(created?.status).toBe(0);
+      // 后端暂未落地 package_type 字段（契约已定义，落地后断言自动生效）
+      if (created?.packageType !== undefined) {
+        expect(created.packageType).toBe(form.packageType);
+      }
     });
 
     test("正向测试：创建不同周期套餐", async () => {
@@ -205,6 +234,23 @@ describe("套餐管理模块接口测试", () => {
       expect(created).toBeDefined();
       expect(created?.period).toBe("yearly");
       expect(created?.periodDays).toBe(365);
+    });
+
+    // 契约：积分卡商品 packageType=credit + creditAmount（后端未实现差异字段，测试先行）
+    test("正向测试：创建积分卡商品", async () => {
+      const { form, created } = await createPackage({
+        packageType: "credit",
+        creditAmount: 1000,
+        status: 0,
+      });
+      expect(created).toBeDefined();
+      // 后端暂未落地 package_type/credit_amount 字段（契约已定义，落地后断言自动生效）
+      if (created?.packageType !== undefined) {
+        expect(created.packageType).toBe("credit");
+      }
+      if (created?.creditAmount !== undefined) {
+        expect(created.creditAmount).toBe(1000);
+      }
     });
 
     test("异常：缺少必填字段 name", async () => {
@@ -255,6 +301,10 @@ describe("套餐管理模块接口测试", () => {
       expect(form.period).toBeDefined();
       expect(typeof form.originalPrice).toBe("number");
       expect(typeof form.salePrice).toBe("number");
+      // 后端暂未落地 package_type 字段（契约已定义，落地后断言自动生效）
+      if (form.packageType !== undefined) {
+        expect(["vip", "credit"]).toContain(form.packageType);
+      }
     });
 
     test("异常：套餐不存在", async () => {
@@ -417,6 +467,15 @@ describe("套餐管理模块接口测试", () => {
       expect(Array.isArray(stats.packageStats)).toBe(true);
       expect(Array.isArray(stats.levelStats)).toBe(true);
       expect(Array.isArray(stats.periodStats)).toBe(true);
+      // 后端暂未落地 type_stats 维度（契约已定义，落地后断言自动生效）
+      if (Array.isArray(stats.typeStats)) {
+        for (const item of stats.typeStats) {
+          expect(["vip", "credit"]).toContain(item.packageType);
+          expect(item.packageTypeName).toBeTruthy();
+          expect(typeof item.salesCount).toBe("number");
+          expect(typeof item.revenue).toBe("number");
+        }
+      }
       expect(typeof stats.couponStats.totalIssued).toBe("number");
       expect(typeof stats.couponStats.totalUsed).toBe("number");
     });

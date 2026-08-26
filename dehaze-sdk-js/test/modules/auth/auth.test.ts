@@ -17,7 +17,7 @@ import { login, logout } from "#/utils/auth";
 import { getRedis, disconnectRedis } from "#/utils/redis";
 import { uniqueName } from "#/factories/common";
 import { USERS, ROLES } from "#/factories/constants";
-import { DEHAZE_PASSWORD } from "#/config/constant";
+import { ADMIN_PASSWORD } from "#/config/constant";
 
 /**
  * 从 Redis 读取验证码
@@ -63,7 +63,7 @@ describe("POST /api/v1/auth/login - 用户登录", () => {
     const { key, code } = await captchaPair();
     const result = await AuthAPI.login({
       username: USERS.ADMIN.username,
-      password: DEHAZE_PASSWORD,
+      password: ADMIN_PASSWORD,
       captchaKey: key,
       captchaCode: code,
     });
@@ -76,7 +76,7 @@ describe("POST /api/v1/auth/login - 用户登录", () => {
     await expectBizError(
       AuthAPI.login({
         username: "notexist_user_xyz",
-        password: DEHAZE_PASSWORD,
+        password: ADMIN_PASSWORD,
         captchaKey: key,
         captchaCode: code,
       }),
@@ -103,7 +103,7 @@ describe("POST /api/v1/auth/login - 用户登录", () => {
     await expectBizError(
       AuthAPI.login({
         username: USERS.ADMIN.username,
-        password: DEHAZE_PASSWORD,
+        password: ADMIN_PASSWORD,
         captchaKey: captcha.captchaKey,
         captchaCode: "0000",
       }),
@@ -115,7 +115,7 @@ describe("POST /api/v1/auth/login - 用户登录", () => {
     await expectBizError(
       AuthAPI.login({
         username: USERS.ADMIN.username,
-        password: DEHAZE_PASSWORD,
+        password: ADMIN_PASSWORD,
         captchaKey: "nonexistent_captcha_key",
         captchaCode: "1234",
       }),
@@ -128,7 +128,7 @@ describe("POST /api/v1/auth/login - 用户登录", () => {
     await expectBizError(
       AuthAPI.login({
         username: "",
-        password: DEHAZE_PASSWORD,
+        password: ADMIN_PASSWORD,
         captchaKey: key,
         captchaCode: code,
       }),
@@ -170,7 +170,7 @@ describe("POST /api/v1/auth/register - 用户注册", () => {
     const username = uniqueName("testreg");
     const result = await AuthAPI.register({
       username,
-      password: DEHAZE_PASSWORD,
+      password: ADMIN_PASSWORD,
       nickname: "测试注册用户",
       captchaKey: key,
       captchaCode: code,
@@ -197,7 +197,7 @@ describe("POST /api/v1/auth/register - 用户注册", () => {
     await expectBizError(
       AuthAPI.register({
         username: USERS.ADMIN.username,
-        password: DEHAZE_PASSWORD,
+        password: ADMIN_PASSWORD,
         nickname: "重复用户",
         captchaKey: key,
         captchaCode: code,
@@ -211,7 +211,7 @@ describe("POST /api/v1/auth/register - 用户注册", () => {
     await expectBizError(
       AuthAPI.register({
         username: uniqueName("testcaptcha"),
-        password: DEHAZE_PASSWORD,
+        password: ADMIN_PASSWORD,
         nickname: "验证码测试",
         captchaKey: captcha.captchaKey,
         captchaCode: "0000",
@@ -225,7 +225,7 @@ describe("POST /api/v1/auth/register - 用户注册", () => {
     await expectBizError(
       AuthAPI.register({
         username: "",
-        password: DEHAZE_PASSWORD,
+        password: ADMIN_PASSWORD,
         nickname: "测试",
         captchaKey: key,
         captchaCode: code,

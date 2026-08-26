@@ -3,6 +3,7 @@ import request from "@/utils/request";
 import {
   AutoRenewConfigForm,
   AutoRenewConfigVO,
+  BalanceRefundForm,
   MyOrderQuery,
   MyOrderVO,
   OrderCreateForm,
@@ -67,6 +68,15 @@ class OrderAPI {
   static applyRefund(orderNo: string, data: RefundApplyForm) {
     return request({
       url: `/api/v1/orders/${orderNo}/refund`,
+      method: "post",
+      data,
+    });
+  }
+
+  /** 用户端：余额退款 */
+  static balanceRefund(data: BalanceRefundForm) {
+    return request({
+      url: "/api/v1/orders/balance-refund",
       method: "post",
       data,
     });

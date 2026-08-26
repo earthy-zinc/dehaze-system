@@ -3,8 +3,10 @@ import AiAgentAPI from "./src/api/ai-agent";
 import AiBillingAPI from "./src/api/ai-billing";
 import AiConversationAPI from "./src/api/ai-conversation";
 import AiKnowledgeBaseAPI from "./src/api/ai-knowledge-base";
+import AiMCPAPI from "./src/api/ai-mcp";
 import AiProviderAPI from "./src/api/ai-provider";
 import AiScheduleAPI from "./src/api/ai-schedule";
+import AiSkillAPI from "./src/api/ai-skill";
 import AlgorithmAPI from "./src/api/algorithm";
 import ApiKeyAPI from "./src/api/api-key";
 import AuthAPI from "./src/api/auth";
@@ -38,8 +40,10 @@ export * from "./src/api/ai-agent/model";
 export * from "./src/api/ai-billing/model";
 export * from "./src/api/ai-conversation/model";
 export * from "./src/api/ai-knowledge-base/model";
+export * from "./src/api/ai-mcp/model";
 export * from "./src/api/ai-provider/model";
 export * from "./src/api/ai-schedule/model";
+export * from "./src/api/ai-skill/model";
 export * from "./src/api/algorithm/model";
 export * from "./src/api/api-key/model";
 export * from "./src/api/auth/model";
@@ -93,8 +97,10 @@ export {
   AiBillingAPI,
   AiConversationAPI,
   AiKnowledgeBaseAPI,
+  AiMCPAPI,
   AiProviderAPI,
   AiScheduleAPI,
+  AiSkillAPI,
   AlgorithmAPI,
   ApiKeyAPI,
   AnnouncementAPI,

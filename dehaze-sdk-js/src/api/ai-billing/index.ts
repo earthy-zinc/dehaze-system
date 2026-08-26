@@ -1,6 +1,8 @@
 import { PageResult } from "@/types";
 import request from "@/utils/request";
 import {
+  AnomalyRecordQuery,
+  AnomalyRecordVO,
   BalanceVO,
   BillVO,
   BillingRecordQuery,
@@ -10,9 +12,16 @@ import {
   BillingRefundApplyForm,
   BillingRefundAuditForm,
   BillingRefundVO,
+  BillingSummaryVO,
+  CostStatQuery,
+  CostStatVO,
   CreditAdjustForm,
   CreditLogQuery,
   CreditLogVO,
+  ImportReconcileForm,
+  ModelCostForm,
+  ModelCostQuery,
+  ModelCostVO,
 } from "./model";
 
 /**
@@ -28,6 +37,14 @@ class AiBillingAPI {
   static getBalance() {
     return request<BalanceVO>({
       url: "/api/v1/ai-billing/balance",
+      method: "get",
+    });
+  }
+
+  /** 当前时段消耗汇总（Token 使用量/积分费用） */
+  static getSummary() {
+    return request<BillingSummaryVO>({
+      url: "/api/v1/ai-billing/summary",
       method: "get",
     });
   }
@@ -104,6 +121,74 @@ class AiBillingAPI {
   static auditRefund(refundId: number, data: BillingRefundAuditForm) {
     return request<BillingRefundVO>({
       url: `/api/v1/ai-billing/refunds/${refundId}/audit`,
+      method: "post",
+      data,
+    });
+  }
+
+  // ==================== 异常监控（管理端） ====================
+
+  /** 异常计费监控列表（需 ai:billing:stat） */
+  static getAnomalies(query?: AnomalyRecordQuery) {
+    return request<PageResult<AnomalyRecordVO[]>>({
+      url: "/api/v1/ai-billing/anomalies",
+      method: "get",
+      params: query,
+    });
+  }
+
+  // ==================== 成本管理（管理端） ====================
+
+  /** 模型成本配置列表 */
+  static getCosts(query?: ModelCostQuery) {
+    return request<PageResult<ModelCostVO[]>>({
+      url: "/api/v1/ai-billing/costs",
+      method: "get",
+      params: query,
+    });
+  }
+
+  /** 新增模型成本配置 */
+  static createCost(data: ModelCostForm) {
+    return request<ModelCostVO>({
+      url: "/api/v1/ai-billing/costs",
+      method: "post",
+      data,
+    });
+  }
+
+  /** 更新模型成本配置 */
+  static updateCost(id: number, data: Partial<ModelCostForm>) {
+    return request<ModelCostVO>({
+      url: `/api/v1/ai-billing/costs/${id}`,
+      method: "put",
+      data,
+    });
+  }
+
+  /** 删除模型成本配置 */
+  static deleteCost(id: number) {
+    return request({
+      url: `/api/v1/ai-billing/costs/${id}`,
+      method: "delete",
+    });
+  }
+
+  /** 成本统计（按成本类型聚合） */
+  static getCostStats(query?: CostStatQuery) {
+    return request<CostStatVO[]>({
+      url: "/api/v1/ai-billing/cost-stats",
+      method: "get",
+      params: query,
+    });
+  }
+
+  // ==================== 对账 ====================
+
+  /** 对账数据导入（POST /ai-billing/reconcile/import） */
+  static importReconcile(data: ImportReconcileForm) {
+    return request<{ imported: number }>({
+      url: "/api/v1/ai-billing/reconcile/import",
       method: "post",
       data,
     });

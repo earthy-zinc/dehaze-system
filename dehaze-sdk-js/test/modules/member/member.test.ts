@@ -82,10 +82,7 @@ describe("会员管理模块接口测试", () => {
 
     test("验证：成长值流水记录完整性", async () => {
       const result = await MemberAPI.getGrowthLogs({ pageNum: 1, pageSize: 10 });
-      if (result.list.length === 0) {
-        console.warn("无成长值流水数据，跳过流水记录完整性测试");
-        return;
-      }
+      expect(result.list.length, "无成长值流水：beforeAll 自愈调整未产生流水").toBeGreaterThan(0);
 
       const log = result.list[0]!;
       expect(log.id).toBeGreaterThan(0);
@@ -635,5 +632,29 @@ describe("会员管理模块接口测试", () => {
     } catch (e) {
       console.warn(`清理失败:`, e);
     }
+  });
+});
+
+/**
+ * 会员权益概览与试用引导（会员管理 API接口.md /api/v1/members/benefit-summary、trial-status）。
+ *
+ * 后端尚未实现 benefit-summary / trial-status 路由：测试先行契约，
+ * 接口 404 时正向用例失败暴露，待后端实现后统一验证。
+ */
+describe("会员权益概览与试用引导（契约先行）", () => {
+  test("正向：权益概览 benefit-summary（含 AI 类目）", async () => {
+    await login(USERS.USER.username);
+    const summary = await MemberAPI.getBenefitSummary();
+    expect(typeof summary.imageCategory.remaining).toBe("number");
+    expect(typeof summary.evaluateCategory.remaining).toBe("number");
+    expect(typeof summary.aiCategory.creditsBalance).toBe("number");
+    expect(typeof summary.aiCategory.dailyLimit).toBe("number");
+  });
+
+  test("正向：试用引导状态 trial-status", async () => {
+    await login(USERS.USER.username);
+    const status = await MemberAPI.getTrialStatus();
+    expect(typeof status.showTrialEntry).toBe("boolean");
+    expect(typeof status.newUserExclusiveAvailable).toBe("boolean");
   });
 });

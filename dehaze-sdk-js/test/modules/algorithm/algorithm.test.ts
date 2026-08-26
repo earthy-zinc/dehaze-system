@@ -4,18 +4,14 @@ import { createAlgorithmForm, createAlgorithmQuery } from "#/factories/algorithm
 import { USERS } from "#/factories/constants";
 import { login } from "#/utils/auth";
 
-// 后端选择树字段为 isLeaf；SDK 类型 AlgorithmSelectNodeVO 已声明 isLeaf，
-// 但「查找叶子」处沿用历史运行时的 leaf 字段，此处做一次类型收窄以保留运行语义。
-type SelectNodeWithLeaf = AlgorithmSelectNodeVO & { leaf?: boolean };
-
-/** 取选择树中第一个叶子节点（leaf 字段缺失时返回 undefined，调用方负责跳过） */
+/** 取选择树中第一个叶子节点（无叶子时返回 undefined，调用方断言非空） */
 function findFirstLeaf(tree: AlgorithmSelectNodeVO[]): AlgorithmSelectNodeVO | undefined {
-  return (tree as SelectNodeWithLeaf[]).find((n) => n.leaf);
+  return tree.find((n) => n.isLeaf);
 }
 
 /** 取选择树中全部叶子节点 */
 function findLeaves(tree: AlgorithmSelectNodeVO[]): AlgorithmSelectNodeVO[] {
-  return (tree as SelectNodeWithLeaf[]).filter((n) => n.leaf);
+  return tree.filter((n) => n.isLeaf);
 }
 
 /** 创建父/子/孙三级算法，返回各层 id */
@@ -447,10 +443,7 @@ describe("算法管理接口测试", () => {
       const tree = await AlgorithmAPI.tree();
       const leaves = findLeaves(tree);
 
-      if (leaves.length < 2) {
-        console.warn("已发布叶子算法不足 2 个，跳过对比正向测试");
-        return;
-      }
+      expect(leaves.length, "已发布叶子算法不足 2 个").toBeGreaterThanOrEqual(2);
 
       const result = await AlgorithmAPI.compare({
         algorithmIds: [leaves[0]!.id, leaves[1]!.id],
@@ -521,14 +514,10 @@ describe("算法管理接口测试", () => {
     test("正向测试：从选择树取叶子节点获取详情", async () => {
       const tree = await AlgorithmAPI.tree();
       const firstLeaf = findFirstLeaf(tree);
+      expect(firstLeaf, "无已发布算法").toBeDefined();
 
-      if (!firstLeaf) {
-        console.warn("无已发布算法，跳过详情正向测试");
-        return;
-      }
-
-      const detail = await AlgorithmAPI.getSelectDetail(firstLeaf.id);
-      expect(detail.id).toBe(firstLeaf.id);
+      const detail = await AlgorithmAPI.getSelectDetail(firstLeaf!.id);
+      expect(detail.id).toBe(firstLeaf!.id);
       expect(detail.name).toBeTruthy();
       expect(detail.type).toBeTruthy();
       expect(Array.isArray(detail.sampleImages)).toBe(true);
@@ -601,24 +590,18 @@ describe("算法管理接口测试", () => {
     test("正向测试：获取算法监控数据", async () => {
       const tree = await AlgorithmAPI.tree();
       const firstLeaf = findFirstLeaf(tree);
-      if (!firstLeaf) {
-        console.warn("无已发布算法，跳过监控数据验证");
-        return;
-      }
+      expect(firstLeaf, "无已发布算法").toBeDefined();
 
-      const monitor = await AlgorithmAPI.getMonitorData(firstLeaf.id);
+      const monitor = await AlgorithmAPI.getMonitorData(firstLeaf!.id);
       expect(monitor).toBeDefined();
     });
 
     test("正向测试：获取算法统计报表", async () => {
       const tree = await AlgorithmAPI.tree();
       const firstLeaf = findFirstLeaf(tree);
-      if (!firstLeaf) {
-        console.warn("无已发布算法，跳过统计报表验证");
-        return;
-      }
+      expect(firstLeaf, "无已发布算法").toBeDefined();
 
-      const stats = await AlgorithmAPI.getMonitorStats(firstLeaf.id, 7);
+      const stats = await AlgorithmAPI.getMonitorStats(firstLeaf!.id, 7);
       expect(Array.isArray(stats)).toBe(true);
     });
   });
@@ -670,13 +653,9 @@ describe("算法管理接口测试", () => {
     test("正向测试：按关键词搜索返回匹配的叶子算法", async () => {
       const tree = await AlgorithmAPI.tree();
       const firstLeaf = findFirstLeaf(tree);
+      expect(firstLeaf, "无已发布算法").toBeDefined();
 
-      if (!firstLeaf) {
-        console.warn("无已发布算法，跳过搜索正向测试");
-        return;
-      }
-
-      const keyword = firstLeaf.name.substring(0, 2);
+      const keyword = firstLeaf!.name.substring(0, 2);
       const result = await AlgorithmAPI.search(keyword);
 
       expect(Array.isArray(result)).toBe(true);
