@@ -40,23 +40,44 @@ def _connect_admin(database: str | None = None) -> pymysql.Connection:
     )
 
 
-def _exec_sql_file(conn: pymysql.Connection, sql_path: Path) -> int:
-    """执行单个 SQL 文件，返回执行语句数。
-
-    SQL 文件中每条语句以 ; 结尾。简化处理：按 ; 分割，跳过空语句和注释。
-    """
-    content = sql_path.read_text(encoding="utf-8")
-    # 去除 -- 行注释
-    lines = []
-    for line in content.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("--"):
-            continue
-        lines.append(line)
+def _split_statements(content: str) -> list[str]:
+    """按 ; 切分 SQL 语句，跳过 -- 行注释与单引号字符串内的分号（如 COMMENT '…a;b…'）。"""
+    lines = [line for line in content.splitlines() if not line.strip().startswith("--")]
     content = "\n".join(lines)
 
-    # 按 ; 分割语句（不处理字符串内的 ;，因为 schema/data 文件没有这种情况）
-    statements = [s.strip() for s in content.split(";") if s.strip()]
+    statements: list[str] = []
+    buf: list[str] = []
+    in_string = False
+    i = 0
+    n = len(content)
+    while i < n:
+        ch = content[i]
+        if ch == "'":
+            buf.append(ch)
+            if in_string and i + 1 < n and content[i + 1] == "'":
+                buf.append(content[i + 1])  # MySQL 用 '' 转义字符串内的单引号
+                i += 1
+            else:
+                in_string = not in_string
+        elif ch == ";" and not in_string:
+            stmt = "".join(buf).strip()
+            if stmt:
+                statements.append(stmt)
+            buf = []
+        else:
+            buf.append(ch)
+        i += 1
+
+    tail = "".join(buf).strip()
+    if tail:
+        statements.append(tail)
+    return statements
+
+
+def _exec_sql_file(conn: pymysql.Connection, sql_path: Path) -> int:
+    """执行单个 SQL 文件，返回执行语句数。"""
+    content = sql_path.read_text(encoding="utf-8")
+    statements = _split_statements(content)
     with conn.cursor() as cur:
         for stmt in statements:
             cur.execute(stmt)
