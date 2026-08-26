@@ -22,13 +22,13 @@ PYTHON=/Users/earthywu/Projects/dehaze-system/dehaze-python/.venv/bin/python
 
 三端后端通过本机映射端口访问（Java:8989 / Go:8990 / Python:8991），开箱即用。
 
-**Redis（6379）和 MySQL（3306）默认指向 `DEHAZE_HOST`，远程端口可能不开放**。需要直连时（如查未读消息数、清理缓存、重建数据库），自行做端口转发：
+**Redis（6379）和 MySQL（3306）默认指向 `MYSQL_HOST` / `REDIS_HOST`（`127.0.0.1`），远程端口可能不开放**。需要直连时（如查未读消息数、清理缓存、重建数据库），自行做端口转发：
 
 ```bash
-ssh -L 6379:127.0.0.1:6379 -L 3306:127.0.0.1:3306 <user>@<DEHAZE_HOST>
+ssh -L 6379:127.0.0.1:6379 -L 3306:127.0.0.1:3306 <user>@<MYSQL_HOST>
 ```
 
-转发完成后，dehaze-test 会通过 `DEHAZE_HOST`（被 ssh 转发到 127.0.0.1）直连 Redis/MySQL。
+转发完成后，dehaze-test 会通过 `MYSQL_HOST` / `REDIS_HOST`（被 ssh 转发到 127.0.0.1）直连 Redis/MySQL。
 
 ## 目录
 
@@ -89,8 +89,9 @@ print("DB 未读数:", mysql.query_one(
 
 从项目根 `.env` 读取：
 
-- `DEHAZE_HOST`：基础设施地址（MySQL/Redis/MongoDB 等）
-- `DEHAZE_PASSWORD`：所有基础设施统一密码
+- `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_USERNAME` / `MYSQL_PASSWORD` / `MYSQL_DATABASE`：MySQL 直连配置
+- `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_DATABASE`：Redis 直连配置
+- `ADMIN_PASSWORD`：登录种子账号 admin 的密码（基础设施密码统一）
 
 三端后端固定映射到本机端口（与 `dehaze-sdk-js/test/config/constant.ts` 一致）：
 

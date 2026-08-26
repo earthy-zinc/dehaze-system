@@ -1,7 +1,7 @@
 """调试工具库：三端后端、Redis、MySQL 连接配置。
 
 对齐 dehaze-sdk-js/test/config/constant.ts，统一从项目根 .env 读取
-DEHAZE_HOST / DEHAZE_PASSWORD，避免硬编码。
+按基础设施分区变量（MYSQL_*/REDIS_*/NGINX_STATIC_*/ADMIN_PASSWORD），避免硬编码。
 
 - BACKENDS：三端后端 base_url（debug 用本机映射端口，与 sdk-js/test 一致）
 - REDIS / MYSQL：直连远程基础设施（不依赖本地 docker）
@@ -24,8 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if load_dotenv is not None:
     load_dotenv(PROJECT_ROOT / ".env")
 
-DEHAZE_HOST = "127.0.0.1"
-DEHAZE_PASSWORD = "Dehaze2026"
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "Dehaze2026")
 
 # SQL 资源目录（rebuild_mysql 用）
 SQL_SCHEMA_DIR = PROJECT_ROOT / "config" / "sql" / "schema"
@@ -47,8 +46,8 @@ BACKENDS: dict[str, BackendConfig] = {
 
 DEFAULT_BACKEND = "java"
 DEFAULT_USERNAME = "admin"
-# 与项目根 .env 的 DEHAZE_PASSWORD 一致（所有基础设施 + 用户密码统一）
-DEFAULT_PASSWORD = os.environ.get("DEHAZE_PASSWORD", "Dehaze2026")
+# 与项目根 .env 的 ADMIN_PASSWORD 一致（登录种子账号 admin 的凭证声明）
+DEFAULT_PASSWORD = ADMIN_PASSWORD
 
 # 三端统一使用 "00000" 作为成功码（对齐 dehaze-sdk-js/src/enums/ResultEnum.ts）
 SUCCESS_CODE = "00000"
@@ -63,16 +62,16 @@ def get_backend(name: str | None = None) -> BackendConfig:
 
 
 # Redis / MySQL 直连配置（与 dehaze-sdk-js/test/utils/{redis,mysql}.ts 对齐）
-REDIS_HOST = DEHAZE_HOST
-REDIS_PORT = 6379
-REDIS_PASSWORD = DEHAZE_PASSWORD
-REDIS_DB = 0
+REDIS_HOST = os.environ.get("REDIS_HOST", "127.0.0.1")
+REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
+REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "Dehaze2026")
+REDIS_DB = int(os.environ.get("REDIS_DATABASE", "0"))
 
-MYSQL_HOST = DEHAZE_HOST
-MYSQL_PORT = 3306
-MYSQL_USER = "root"
-MYSQL_PASSWORD = DEHAZE_PASSWORD
-MYSQL_DATABASE = "dehaze"
+MYSQL_HOST = os.environ.get("MYSQL_HOST", "127.0.0.1")
+MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
+MYSQL_USER = os.environ.get("MYSQL_USERNAME", "root")
+MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "Dehaze2026")
+MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "dehaze")
 MYSQL_DATABASE_TEST = "dehaze_test"
 
 # 端口 → 后端名映射（对齐 sdk-js/test/config/constant.ts）

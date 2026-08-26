@@ -4,10 +4,12 @@
     python scripts/db_query.py "SELECT COUNT(*) FROM sys_message"
     python scripts/db_query.py --database dehaze_test "SHOW TABLES"
     python scripts/db_query.py  # 进入交互模式
+    python scripts/db_query.py "SELECT ..." --json   # 输出原始 JSON（程序化取值用，不含边框/空行）
 """
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -48,7 +50,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="SQL 查询工具")
     parser.add_argument("sql", nargs="?", help="SQL 语句（不提供则进入交互模式）")
     parser.add_argument("--database", "-d", default=None, help="数据库（默认 dehaze）")
+    parser.add_argument("--json", action="store_true", help="输出原始 JSON（程序化取值用）")
     args = parser.parse_args()
+
+    if args.json:
+        if not args.sql:
+            parser.error("--json 需要提供 SQL 语句（交互模式不支持）")
+        sql_stripped = args.sql.strip().rstrip(";").strip()
+        if sql_stripped.upper().startswith(("SELECT", "SHOW", "DESC")):
+            result = {"rows": mysql.query(sql_stripped, database=args.database)}
+        else:
+            result = {"affected": mysql.execute(sql_stripped, database=args.database)}
+        # default=str 兜底 datetime/Decimal 等不可直接序列化的类型
+        print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+        return
 
     db_info = args.database or config.MYSQL_DATABASE
     print(f"-- dehaze-test SQL shell (database: {db_info})")
