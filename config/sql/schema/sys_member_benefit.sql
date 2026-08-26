@@ -6,8 +6,8 @@
 -- 会员等级权益配置表，定义四个等级（普通/VIP1/VIP2/SVIP）的默认权益。
 -- level_code 唯一索引保证每个等级一条配置。
 -- growth_min/growth_max 定义成长值区间，用于自动升降级判断。
--- 权益项覆盖次数配额（去雾/评估/历史保留/批量上限）、AI 对话积分配额（日/月）、多模态视觉读取频次、
--- 处理优先级、功能解锁开关。
+-- 权益项覆盖 8 类任务月度配额（dehaze/derain/desnow/lowlight/super_resolution/denoise/inpaint/evaluate）、
+-- AI 对话积分配额（日/月）、多模态视觉读取频次、处理优先级、功能解锁开关。
 -- 功能解锁项使用 tinyint(0/1) 而非布尔，与系统其他表风格一致。
 -- 套餐购买时从此表读取等级权益，套餐可自定义覆盖（见 sys_package.benefit_overrides）。
 -- ------------------------------------------------------------
@@ -20,8 +20,14 @@ CREATE TABLE `sys_member_benefit`
     `growth_min`             bigint                                                         NOT NULL DEFAULT 0 COMMENT '成长值下限',
     `growth_max`             bigint                                                         NOT NULL DEFAULT 0 COMMENT '成长值上限（0表示无上限）',
     `monthly_dehaze_quota`   int                                                            NOT NULL DEFAULT 0 COMMENT '月度去雾次数配额',
+    `monthly_derain_quota`   int                                                            NOT NULL DEFAULT 0 COMMENT '月度去雨次数配额',
+    `monthly_desnow_quota`   int                                                            NOT NULL DEFAULT 0 COMMENT '月度去雪次数配额',
+    `monthly_lowlight_quota` int                                                            NOT NULL DEFAULT 0 COMMENT '月度低光增强次数配额',
+    `monthly_super_resolution_quota` int                                                   NOT NULL DEFAULT 0 COMMENT '月度超分辨率次数配额',
+    `monthly_denoise_quota`  int                                                            NOT NULL DEFAULT 0 COMMENT '月度去噪次数配额',
+    `monthly_inpaint_quota`  int                                                            NOT NULL DEFAULT 0 COMMENT '月度图像修复次数配额',
     `monthly_evaluate_quota` int                                                            NOT NULL DEFAULT 0 COMMENT '月度评估次数配额',
-    `history_retention`     int                                                            NOT NULL DEFAULT 0 COMMENT '历史记录保留条数',
+    `history_retention`      int                                                            NOT NULL DEFAULT 0 COMMENT '历史记录保留条数',
     `batch_limit`            int                                                            NOT NULL DEFAULT 0 COMMENT '批量处理上限（张）',
     `priority`               tinyint                                                        NOT NULL DEFAULT 1 COMMENT '处理优先级(1:普通;2:优先;3:高优先;4:最高)',
     `advanced_params`        tinyint                                                        NOT NULL DEFAULT 0 COMMENT '高级参数调节(0:关闭;1:开启)',

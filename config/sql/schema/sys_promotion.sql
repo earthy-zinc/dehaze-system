@@ -6,7 +6,8 @@
 -- 促销活动表，支持限时折扣、新用户专享、节日促销、满减活动四种类型。
 -- start_time/end_time 控制活动有效期，定时任务到点自动开始/结束。
 -- activity_rules 使用 JSON 存储活动规则（如满减门槛、折扣比例），避免硬编码字段。
--- applicable_scope 为 JSON，存储适用套餐ID列表，NULL 表示全部套餐适用。
+-- 活动与商品的关联及折扣参数统一由 sys_promotion_package 关联表承载（价格计算遍历该表取最大折扣），
+--   sys_promotion 不再冗余存适用范围（避免双源不一致）。
 -- new_user_only 标识新用户专享活动，配合 sys_member.become_member_time 判断。
 -- status 字段控制启用/禁用，与时间范围共同决定活动是否生效。
 -- ------------------------------------------------------------
@@ -20,7 +21,6 @@ CREATE TABLE `sys_promotion`
     `start_time`        datetime                                                       NOT NULL COMMENT '活动开始时间',
     `end_time`          datetime                                                       NOT NULL COMMENT '活动结束时间',
     `activity_rules`    json                                                           NULL DEFAULT NULL COMMENT '活动规则（JSON，如满减门槛、折扣比例）',
-    `applicable_scope`  json                                                           NULL DEFAULT NULL COMMENT '适用套餐ID列表（JSON数组，NULL表示全部）',
     `new_user_only`     tinyint                                                        NOT NULL DEFAULT 0 COMMENT '是否新用户专享(0:否;1:是)',
     `status`            tinyint                                                        NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
     `deleted`           tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',

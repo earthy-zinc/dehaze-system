@@ -12,10 +12,6 @@
       <excludeFolder url="file://$MODULE_DIR$/dehaze-front-vue/out" />
       <excludeFolder url="file://$MODULE_DIR$/dehaze-front-vue/test-results" />
       <excludeFolder url="file://$MODULE_DIR$/dehaze-front-vue/test_result" />
-      <excludeFolder url="file://$MODULE_DIR$/dehaze_harmory/.hvigor" />
-      <excludeFolder url="file://$MODULE_DIR$/dehaze_harmory/oh_modules" />
-      <excludeFolder url="file://$MODULE_DIR$/logs" />
-      <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/.dart_tool" />
       <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/.pub" />
       <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/build" />
@@ -136,6 +132,8 @@
       <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/linux/flutter/ephemeral" />
       <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/macos/Flutter/ephemeral" />
       <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/windows/flutter/ephemeral" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze-python/.venv" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.10 (DehazeSystem)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

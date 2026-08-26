@@ -12,7 +12,7 @@ alerting:
     - static_configs:
         - targets: [ 'alertmanager:9093' ]
       # Alertmanager 已启用 Basic Auth，账号 admin / 密码由 prometheus 容器启动时
-      # 从 __ALERTMANAGER_PASSWORD__ 占位符替换为 ${DEHAZE_PASSWORD}（prometheus.yml 不支持环境变量）
+      # 从 __ALERTMANAGER_PASSWORD__ 占位符替换为 ${ALERTMANAGER_PASSWORD}（prometheus.yml 不支持环境变量）
       basic_auth:
         username: admin
         password: __ALERTMANAGER_PASSWORD__

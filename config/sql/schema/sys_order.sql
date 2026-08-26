@@ -3,14 +3,15 @@
 -- 模块: 商业化模块-订单管理
 -- ============================================================
 -- 设计思路:
--- 订单主表，记录完整交易链路。
+-- 订单主表，记录平台所有商品(会员卡/积分卡)的完整交易链路。
 -- order_no 唯一索引，格式为 DH + yyyyMMddHHmmss + 6位随机数，前端展示用。
--- 套餐信息冗余存储（package_name/package_level/period_days），防止套餐改名影响历史订单。
+-- package_type 标识商品类型：vip 会员卡（履约会员身份权益）；credit 积分卡（履约积分到账，支付即完成）。
+-- 商品信息冗余存储（package_name/package_type/package_level/credit_amount/period_days），防止商品改名影响历史订单。
 -- 金额字段统一 bigint 存分，避免浮点精度问题。
 -- status 使用 6 状态机（待支付/已支付/已完成/已取消/退款中/已退款），配合定时任务驱动状态流转。
 -- expire_time 为支付超时时间（创建时间+30min），定时任务每5分钟扫描自动取消。
 -- coupon_id 关联 sys_user_coupon.id，下单时锁定，支付成功后核销，取消时释放。
--- is_auto_renew 标识自动续费生成的订单，与 sys_auto_renew 关联。
+-- is_auto_renew 标识自动续费生成的订单（仅会员卡），与 sys_auto_renew 关联。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_order`;
 CREATE TABLE `sys_order`
@@ -18,15 +19,18 @@ CREATE TABLE `sys_order`
     `id`                  bigint                                                         NOT NULL AUTO_INCREMENT COMMENT '主键',
     `order_no`            varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '订单号(DH+时间戳+6位随机数)',
     `user_id`             bigint                                                         NOT NULL COMMENT '用户ID',
-    `package_id`          bigint                                                         NOT NULL COMMENT '套餐ID',
-    `package_name`        varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '套餐名称（冗余）',
-    `package_level`      varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '套餐对应会员等级',
-    `period_days`        int                                                            NOT NULL COMMENT '有效期天数',
+    `package_id`          bigint                                                         NOT NULL COMMENT '商品(套餐)ID',
+    `package_name`        varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '商品(套餐)名称（冗余）',
+    `package_type`        varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL DEFAULT 'vip' COMMENT '商品类型(vip:会员卡;credit:积分卡)',
+    `package_level`      varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '商品对应会员等级(积分卡为NULL)',
+    `credit_amount`      bigint                                                         NULL DEFAULT NULL COMMENT '可得积分数量(积分卡订单;会员卡为NULL)',
+    `period_days`        int                                                            NULL DEFAULT NULL COMMENT '有效期天数(积分卡为NULL)',
     `original_price`     bigint                                                         NOT NULL COMMENT '原价（单位：分）',
     `discount_amount`    bigint                                                         NOT NULL DEFAULT 0 COMMENT '促销折扣金额（单位：分）',
     `coupon_id`          bigint                                                         NULL DEFAULT NULL COMMENT '用户优惠券实例ID',
     `coupon_amount`      bigint                                                         NOT NULL DEFAULT 0 COMMENT '优惠券抵扣金额（单位：分）',
     `payable_amount`     bigint                                                         NOT NULL COMMENT '应付金额（单位：分）',
+    `balance_amount`     bigint                                                         NOT NULL DEFAULT 0 COMMENT '余额支付部分金额（单位：分，组合支付时>0）',
     `paid_amount`        bigint                                                         NOT NULL DEFAULT 0 COMMENT '实付金额（单位：分）',
     `pay_method`         varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '支付方式(wechat:微信;alipay:支付宝;balance:平台余额;combined:组合)',
     `status`             tinyint                                                        NOT NULL DEFAULT 1 COMMENT '订单状态(1:待支付;2:已支付;3:已完成;4:已取消;5:退款中;6:已退款)',
@@ -45,6 +49,7 @@ CREATE TABLE `sys_order`
     UNIQUE INDEX `uk_order_no` (`order_no`) USING BTREE,
     INDEX `idx_user_id_status` (`user_id`, `status`) USING BTREE,
     INDEX `idx_status` (`status`) USING BTREE,
+    INDEX `idx_package_type_create_time` (`package_type`, `create_time`) USING BTREE,
     INDEX `idx_expire_time` (`expire_time`) USING BTREE,
     INDEX `idx_package_expire_time` (`package_expire_time`) USING BTREE,
     INDEX `idx_coupon_id` (`coupon_id`) USING BTREE,

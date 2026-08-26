@@ -27,6 +27,7 @@ CREATE TABLE `sys_ai_provider`
     `default_headers` json                                                            NULL COMMENT '默认请求头(JSON,如{"anthropic-version":"2023-06-01"});auth_type=custom时,需含{"auth_header":"头名"}',
     `sort_order`      int                                                             NOT NULL DEFAULT 0 COMMENT '排序序号(数字越小越靠前)',
     `health_check_enabled` tinyint                                                    NOT NULL DEFAULT 1 COMMENT '健康检查开关(1:开启,参与熔断判定;0:关闭)',
+    `user_identity_forward`   json                                                      NULL DEFAULT NULL COMMENT '用户身份透传配置(JSON,按供应商能力配置,如DeepSeek/OpenAI/Anthropic;NULL=不启用):{"enabled":true,"field":"user_id","prefix":"u_","max_len":512} - enabled:是否向供应商请求透传平台用户标识; field:注入字段名或嵌套路径(OpenAI兼容:user|user_id;Anthropic:metadata.user_id); prefix:透传值脱敏前缀(值=prefix+sha256(userId)截断,满足供应商字符限制); max_len:透传值最大长度(如DeepSeek 512)',
     `remark`          varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci    NULL DEFAULT NULL COMMENT '运维备注(账号归属/合同号/商务信息)',
     `status`          tinyint                                                         NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
     `deleted`         tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',

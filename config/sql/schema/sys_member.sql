@@ -8,7 +8,9 @@
 -- growth_value 记录成长值，expire_time 为套餐到期时间（NULL 表示由成长值维持等级）。
 -- 累计消费 total_consumption 用于运营分析，按支付金额累计（单位：分）。
 -- status 字段控制会员冻结状态（1:正常;0:冻结），冻结时权益暂停但不影响等级。
--- 当月配额字段（monthly_dehaze_quota/used、monthly_evaluate_quota/used）由定时任务每月1日重置，避免单独建配额表。
+-- 当月配额字段（monthly_{taskType}_quota/used，覆盖 8 类任务：dehaze/derain/desnow/lowlight/
+--   super_resolution/denoise/inpaint/evaluate）由定时任务每月1日重置，避免单独建配额表；
+--   与 sys_member_benefit 权益配置 8 类配额列对齐（任务类型为封闭枚举，宽表读性能最优）。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_member`;
 CREATE TABLE `sys_member`
@@ -23,8 +25,20 @@ CREATE TABLE `sys_member`
     `become_member_time`     datetime                                                       NULL DEFAULT NULL COMMENT '首次成为会员时间',
     `monthly_dehaze_quota`   int                                                            NOT NULL DEFAULT 0 COMMENT '本月去雾配额',
     `monthly_dehaze_used`    int                                                            NOT NULL DEFAULT 0 COMMENT '本月已用去雾次数',
+    `monthly_derain_quota`   int                                                            NOT NULL DEFAULT 0 COMMENT '本月去雨配额',
+    `monthly_derain_used`    int                                                            NOT NULL DEFAULT 0 COMMENT '本月已用去雨次数',
+    `monthly_desnow_quota`   int                                                            NOT NULL DEFAULT 0 COMMENT '本月去雪配额',
+    `monthly_desnow_used`    int                                                            NOT NULL DEFAULT 0 COMMENT '本月已用去雪次数',
+    `monthly_lowlight_quota` int                                                            NOT NULL DEFAULT 0 COMMENT '本月低光增强配额',
+    `monthly_lowlight_used`  int                                                            NOT NULL DEFAULT 0 COMMENT '本月已用低光增强次数',
+    `monthly_super_resolution_quota` int                                                   NOT NULL DEFAULT 0 COMMENT '本月超分辨率配额',
+    `monthly_super_resolution_used`  int                                                   NOT NULL DEFAULT 0 COMMENT '本月已用超分辨率次数',
+    `monthly_denoise_quota`  int                                                            NOT NULL DEFAULT 0 COMMENT '本月去噪配额',
+    `monthly_denoise_used`   int                                                            NOT NULL DEFAULT 0 COMMENT '本月已用去噪次数',
+    `monthly_inpaint_quota`  int                                                            NOT NULL DEFAULT 0 COMMENT '本月图像修复配额',
+    `monthly_inpaint_used`   int                                                            NOT NULL DEFAULT 0 COMMENT '本月已用图像修复次数',
     `monthly_evaluate_quota` int                                                            NOT NULL DEFAULT 0 COMMENT '本月评估配额',
-    `monthly_evaluate_used` int                                                            NOT NULL DEFAULT 0 COMMENT '本月已用评估次数',
+    `monthly_evaluate_used`  int                                                            NOT NULL DEFAULT 0 COMMENT '本月已用评估次数',
     `quota_reset_month`      int                                                            NULL DEFAULT NULL COMMENT '配额所属月份（格式yyyyMM）',
     `status`                 tinyint                                                        NOT NULL DEFAULT 1 COMMENT '状态(1:正常;0:冻结)',
     `frozen_reason`          varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '冻结原因',

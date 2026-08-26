@@ -37,6 +37,7 @@ CREATE TABLE `sys_ai_billing`
     `tool_credits`         int      NULL DEFAULT NULL COMMENT '工具调用额外LLM Token积分(tool_llm类型记录)',
     `quota_consumed`       int      NOT NULL DEFAULT 0 COMMENT '实际扣减配额(credits-预扣退还差额)',
     `pre_deduct`           int      NOT NULL DEFAULT 0 COMMENT '预扣积分数',
+    `cost`                 decimal(12, 4) NULL DEFAULT NULL COMMENT '本次调用估算成本(按调用时刻成本单价核算,元;成本线异步回填,未配置成本价为0)',
     `create_time`          datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_user_create_time` (`user_id`, `create_time`) USING BTREE,

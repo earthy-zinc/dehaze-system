@@ -4,7 +4,7 @@
 -- ============================================================
 -- 设计思路:
 -- 成长值流水表，记录每次成长值变动明细。
--- change_type 标识变动来源（去雾/评估/评价/签到/消费/退款扣减/管理员调整/连续签到奖励）。
+-- change_type 标识变动来源（图像处理/评估/评价/签到/AI对话/消费/退款扣减/管理员调整/连续签到奖励）。
 -- change_value 允许正负，balance 记录变动后余额便于核对。
 -- related_id 关联业务ID（订单号/任务ID/签到记录ID），便于溯源。
 -- operator_id 仅在管理员调整时记录，其他行为为用户自身操作。
@@ -16,7 +16,7 @@ CREATE TABLE `sys_member_growth_log`
 (
     `id`            bigint                                                         NOT NULL AUTO_INCREMENT COMMENT '主键',
     `user_id`       bigint                                                         NOT NULL COMMENT '用户ID',
-    `change_type`   varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '变动类型(dehaze:去雾;evaluate:评估;rating:评价;sign_in:签到;sign_in_bonus:连续签到奖励;consume:消费;refund_deduct:退款扣减;admin_adjust:管理员调整)',
+    `change_type`   varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '变动类型(process:图像处理;evaluate:评估;rating:评价;sign_in:签到;sign_in_bonus:连续签到奖励;consume:消费;ai_consume:AI对话激励;refund_deduct:退款扣减;admin_adjust:管理员调整)',
     `change_value`  int                                                            NOT NULL COMMENT '变动值（正数增加/负数扣减）',
     `balance`       bigint                                                         NOT NULL COMMENT '变动后成长值余额',
     `related_id`    varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '关联业务ID（订单号/任务ID/签到记录ID）',
