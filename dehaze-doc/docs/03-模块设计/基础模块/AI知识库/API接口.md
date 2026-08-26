@@ -13,11 +13,12 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/kb` | POST | 创建知识库 | `kb:manage` | F-KB-001 |
-| `/api/v1/kb` | GET | 知识库列表 | - | F-KB-001 |
+| `/api/v1/kb` | POST | 创建知识库（`embedding_model` 从 [AI模型管理模块](../AI模型管理/API接口.md) 注册表选择，`model_type=embedding` 且启用） | `kb:manage` | F-KB-001 |
+| `/api/v1/kb` | GET | 知识库列表（默认按可见性过滤；`view=admin` 管理端视角返回全部知识库含私有库只读监控，需 `kb:manage`） | - | F-KB-001 |
 | `/api/v1/kb/{id}` | GET | 知识库详情（含配置、统计信息） | - | F-KB-001 |
 | `/api/v1/kb/{id}` | PUT | 编辑知识库（名称/描述/检索策略） | `kb:manage` | F-KB-001 |
 | `/api/v1/kb/{id}` | DELETE | 删除知识库 | `kb:manage` | F-KB-001 |
+| `/api/v1/kb/{id}/index-stats` | GET | 知识库索引状态（ES 索引大小/索引文档数/阈值告警状态，管理端索引状态区） | `kb:audit` | F-KB-001/003 |
 
 ### 2.2 文档管理
 
@@ -45,10 +46,10 @@
 |------|------|---------|---------|-----------|
 | `/api/v1/kb/search` | POST | 知识库检索（支持多知识库、元数据过滤、Rerank） | - | F-KB-004 |
 | `/api/v1/kb/{id}/retrieve/test` | POST | 检索测试（知识库管理页面的调试工具） | `kb:manage` | F-KB-004 |
-| `/api/v1/kb/{id}/retrieve/test-sets` | POST | 创建召回测试集（问题 + 期望命中段落） | `kb:manage` | F-KB-004 |
-| `/api/v1/kb/{id}/retrieve/test-sets` | GET | 召回测试集列表 | `kb:manage` | F-KB-004 |
-| `/api/v1/kb/{id}/retrieve/test-sets/{testSetId}/run` | POST | 执行召回测试集（返回 Recall@K 与命中率） | `kb:manage` | F-KB-004 |
-| `/api/v1/kb/{id}/chunks/low-quality` | GET | 低质量片段列表（被点踩片段，用于反馈闭环） | `kb:manage` | F-KB-004 |
+| `/api/v1/kb/{id}/retrieve/test-sets` | POST | 创建召回测试集（问题 + 期望命中段落） | `kb:audit` | F-KB-004 |
+| `/api/v1/kb/{id}/retrieve/test-sets` | GET | 召回测试集列表 | `kb:audit` | F-KB-004 |
+| `/api/v1/kb/{id}/retrieve/test-sets/{testSetId}/run` | POST | 执行召回测试集（返回 Recall@K 与命中率） | `kb:audit` | F-KB-004 |
+| `/api/v1/kb/{id}/chunks/low-quality` | GET | 低质量片段列表（被点踩片段，用于反馈闭环） | `kb:audit` | F-KB-004 |
 
 ### 2.5 MCP Tool 暴露
 
@@ -63,7 +64,8 @@
 | 权限标识 | 说明 |
 |---------|------|
 | - | 查询类接口（列表/详情/分块/检索）无需特殊权限，但按可见性过滤：私有库仅创建者可见，公共库全员只读 |
-| `kb:manage` | 知识库管理（创建、编辑、删除、检索测试）。登录用户可管理自有私有库（受 VIP 配额限制）；公共库仅管理员可管理 |
+| `kb:manage` | 知识库管理（创建、编辑、删除、检索测试）。登录用户可管理自有私有库（受 VIP 配额限制）；公共库仅管理员可管理；`view=admin` 管理端列表接口仅管理员可用 |
+| `kb:audit` | 管理端审计（索引状态、召回测试集管理/执行、低质量片段列表）。普通用户持有 `kb:manage` 也无法访问，需 `kb:audit` 权限（ROOT 角色放行） |
 | `kb:document:manage` | 文档管理（上传、删除、重新处理、分块预览），权限规则同 `kb:manage` |
 
 ## 4. 业务错误码

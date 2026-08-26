@@ -280,8 +280,17 @@ Cookie: X-Session-Id=<sessionId>
 
 ### 6.2 时区
 
-- 服务端统一使用 **Asia/Shanghai (UTC+8)** 时区
-- 前端展示时根据用户时区进行转换
+服务端统一使用 **Asia/Shanghai (UTC+8)** 时区，三端 + 数据库 + 连接层显式固化，不依赖部署系统时区（方案B）：
+- **Python**：数据库连接 `init_command=SET time_zone='+08:00'`（`app/config.py` DATABASE_URL）；审计时间写入显式 Asia/Shanghai（`app/models/base.py` `_shanghai_now()`）
+- **Go**：MySQL DSN `loc=Asia/Shanghai`（`pkg/database/config.go`），DATETIME 读回按该时区解释
+- **Java**：JDBC `serverTimezone=Asia/Shanghai` + Jackson `time-zone: GMT+8`（`application-*.yml`）
+- **数据库服务器**：部署要求 MySQL `default-time-zone='+08:00'`（当前实例 `SYSTEM`=CST，等价）
+
+时间字段以 **naive datetime**（无时区标记，`yyyy-MM-dd HH:mm:ss`）存储与返回，语义即 Asia/Shanghai。
+
+**前端解析约定**：收到的时间字符串一律按 Asia/Shanghai 解析（`yyyy-MM-dd HH:mm:ss`），如需用户本地时区展示由前端自行换算，**不得按浏览器本地时区直接解析 naive 字符串**（否则非 UTC+8 用户显示错 8 小时）。
+
+**部署要求**：服务容器/进程 `TZ=Asia/Shanghai`（Java 进程建议 `-Duser.timezone=Asia/Shanghai`），保证 `datetime.now()` / `time.Now()` / `LocalDateTime.now()` 本地时间语义一致。日志时间戳（ISO8601 UTC）为运维时间线，与业务时间字段分离，不参与业务计算。
 
 ---
 

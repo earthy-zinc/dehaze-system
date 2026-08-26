@@ -2,10 +2,10 @@
 
 ## 1. 文档概述
 
-本文档定义 **订单管理** 模块的 HTTP API 规范，是该模块 API 契约的**唯一权威来源**。
+本文档定义 **订单管理** 模块的 HTTP API 规范，是该模块 API 契约的唯一权威来源。本模块为平台**统一交易中枢**，接口对会员卡 / 积分卡商品统一生效（商品类型差异仅体现于履约与退款，属后端实现内部逻辑）。
 
 - **基础路径**：`/api/v1/orders`
-- **公共约定**：参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md)
+- **公共约定**：参见 [04-API规范.md](../../../02-系统架构/04-API规范.md)
 - **需求规格**：[需求规格.md](./需求规格.md)
 
 ## 2. 接口清单
@@ -14,14 +14,16 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/orders` | POST | 创建订单（校验套餐/价格/锁定优惠券） | - | F-OM-002 |
+| `/api/v1/orders` | POST | 创建订单（会员卡 / 积分卡，校验商品/价格/锁定优惠券） | - | F-OM-002 |
 | `/api/v1/orders/my` | GET | 我的订单列表（按状态筛选） | - | F-OM-013 |
-| `/api/v1/orders/{orderNo}` | GET | 订单详情（含支付流水、退款记录） | - | F-OM-014 |
-| `/api/v1/orders/{orderNo}/cancel` | PUT | 取消订单（仅待支付，需取消原因） | - | F-OM-002 |
+| `/api/v1/orders/{orderNo}` | GET | 订单详情（含支付流水、售后记录） | - | F-OM-014 |
+| `/api/v1/orders/{orderNo}/cancel` | PUT | 取消订单（仅待支付） | - | F-OM-002 |
 | `/api/v1/orders/{orderNo}/pay` | POST | 发起支付（微信/支付宝返回支付参数；余额直接生效） | - | F-OM-003 |
-| `/api/v1/orders/{orderNo}/refund` | POST | 申请退款（reason + customReason） | - | F-OM-006 |
-| `/api/v1/orders/auto-renew/config` | PUT | 开启/关闭自动续费（upsert 配置） | - | F-OM-005 |
+| `/api/v1/orders/{orderNo}/refund` | POST | 提交售后申请（原因类型必选，主观原因不支持随意退款） | - | F-OM-006/F-OM-007 |
+| `/api/v1/orders/auto-renew/config` | PUT | 开启/关闭自动续费（仅会员卡） | - | F-OM-005 |
 | `/api/v1/orders/auto-renew/config` | GET | 查询自动续费配置 | - | F-OM-005 |
+| `/api/v1/orders/balance` | GET | 查询余额账户（可用/冻结余额） | - | F-OM-015/F-OM-017 |
+| `/api/v1/orders/balance-refund` | POST | 提交余额退款申请（充值余额退回，不触发订单履约回退） | - | F-OM-015 |
 
 ### 2.2 支付回调接口
 
@@ -34,12 +36,12 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/orders/page` | GET | 订单分页列表 | order:list | F-OM-009 |
+| `/api/v1/orders/page` | GET | 订单分页列表（含商品类型筛选） | order:list | F-OM-009 |
 | `/api/v1/orders/{orderNo}` | GET | 订单详情 | - | F-OM-010 |
-| `/api/v1/orders/refunds/page` | GET | 退款审核列表 | order:refund:list | F-OM-011 |
-| `/api/v1/orders/refunds/{refundId}/approve` | PUT | 退款审核通过 | order:refund:approve | F-OM-007 |
-| `/api/v1/orders/refunds/{refundId}/reject` | PUT | 退款审核驳回 | order:refund:approve | F-OM-007 |
-| `/api/v1/orders/stats` | GET | 订单统计（总额/状态/支付方式/套餐/每日趋势） | order:stats | F-OM-012 |
+| `/api/v1/orders/refunds/page` | GET | 售后审核列表（含原因类型筛选） | order:refund:list | F-OM-011 |
+| `/api/v1/orders/refunds/{refundId}/approve` | PUT | 售后审核通过 | order:refund:approve | F-OM-008 |
+| `/api/v1/orders/refunds/{refundId}/reject` | PUT | 售后审核驳回 | order:refund:approve | F-OM-008 |
+| `/api/v1/orders/stats` | GET | 订单统计（总额/状态/支付方式/商品类型/每日趋势） | order:stats | F-OM-012 |
 
 ## 3. 权限标识汇总
 
@@ -47,25 +49,25 @@
 |---------|------|
 | order:list | 订单分页列表 |
 | order:stats | 订单统计 |
-| order:refund:list | 退款审核列表 |
-| order:refund:approve | 退款审核通过/驳回 |
+| order:refund:list | 售后审核列表 |
+| order:refund:approve | 售后审核通过/驳回 |
 
-> 用户端接口（创建/我的订单/详情/取消/支付/退款/自动续费配置）均为登录态访问，仅可操作本人订单；后台管理接口（订单分页/退款列表/统计）需对应 order:list / order:refund:list / order:stats 权限，订单详情后台接口登录态可访问。
+> 用户端接口（创建/我的订单/详情/取消/支付/售后申请/自动续费配置）均为登录态访问，仅可操作本人订单；后台管理接口（订单分页/售后审核列表/统计）需对应 order:list / order:refund:list / order:stats 权限，订单详情后台接口登录态可访问。
 
 ## 4. 业务错误码
 
 | 错误码 | 说明 | 触发场景 |
 |--------|------|---------|
 | A0530 | 订单不存在 | 查询/操作时订单不存在或非本人订单 |
-| A0531 | 订单状态不允许此操作 | 非待支付订单发起支付/取消；非已支付订单申请退款等 |
+| A0531 | 订单状态不允许此操作 | 非待支付订单发起支付/取消；非已支付/已完成订单提交售后申请等 |
 | A0532 | 订单已超时 | 超过 30 分钟未支付后发起支付 |
 | A0533 | 订单已支付 | 重复支付请求 |
-| A0534 | 超过退款时限 | 支付成功超过 7 天申请退款 |
-| A0535 | 权益使用超限 | 已用次数超过总配额 50% |
-| A0536 | 该套餐不支持退款 | 限时特价套餐退款 |
-| A053A | 该订单已存在退款申请 | 重复申请退款 |
+| A053A | 该订单已存在售后申请 | 重复提交售后申请 |
 | A0538 | 支付金额与订单金额不一致 | 回调金额校验失败 |
-| A0539 | 短时间内重复下单 | 同一用户同一套餐 5 秒内重复下单 |
+| A0539 | 短时间内重复下单 | 同一用户同一商品 5 秒内重复下单 |
+| A0536 | 该套餐不支持退款 | 套餐未开放退款 |
+| A0537 | 退款记录不存在 | 退款审核时记录不存在 |
+| A053B | 余额不足 | 余额支付/组合支付时可用余额不足 |
 | A0525 | 优惠券已被使用 | 下单锁定优惠券时状态非未使用 |
-| A0400 | 参数错误 | 不支持的支付方式/渠道 |
+| A0400 | 参数错误 | 不支持的支付方式/售后原因类型 |
 | C0001 | 调用第三方服务出错 | 渠道统一下单/代扣失败 |

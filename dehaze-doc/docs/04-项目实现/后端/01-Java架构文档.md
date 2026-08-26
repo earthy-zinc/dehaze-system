@@ -141,11 +141,12 @@ dehaze-java/
 │   │       └── excel-templates/        # Excel 导入模板
 │   └── test/
 │       ├── java/com/pei/dehaze/
-│       │   ├── base/                   # 测试基类
-│       │   ├── controller/             # Controller 测试
-│       │   ├── service/                # Service 测试
-│       │   └── generator/              # 代码生成器
-│       └── resources/                  # 测试配置（H2/TestContainers/SQL/模板）
+│       │   ├── common/                 # 通用工具测试
+│       │   ├── config/                 # 测试配置（TestConfig）
+│       │   ├── generator/              # 代码生成器
+│       │   ├── listener/               # 监听器测试
+│       │   └── service/                # Service 单元/集成测试
+│       └── resources/                  # 测试配置（MySQL 测试库 SQL/模板，测试规范见 src/test/README.md）
 ```
 
 ## 三、核心模块
@@ -397,7 +398,7 @@ flowchart LR
 | 连接池 | Druid 1.2.16 | 监控、防 SQL 注入、连接管理 |
 | 关系数据库 | MySQL | 业务数据（生产环境） |
 | 文档数据库 | MongoDB | 登录日志（LoginLog）、审计日志（AuditLog），启动时由 MongoConfig 自动建索引 |
-| 测试数据库 | H2 / TestContainers(MySQL) | 单元测试 / 集成测试 |
+| 测试数据库 | MySQL（`dehaze_test`，与开发同实例） | 集成测试走真实方言，schema/种子数据同源于 `config/sql`（2026-08-23 废弃 H2/TestContainers 方案） |
 
 MyBatis-Plus 插件链：
 
@@ -443,7 +444,7 @@ flowchart LR
 | 环境 | Profile | 特性差异 |
 |------|---------|----------|
 | 开发 | dev | 慢SQL日志(>1s)、Swagger 启用、DevTools 热重载 |
-| 测试 | test | H2 内存数据库 / TestContainers、缓存禁用 |
+| 测试 | test | 真实 MySQL 测试库 `dehaze_test`（`createDatabaseIfNotExist` 自动建库 + `config/sql` 全量重建）、缓存禁用 |
 | 生产 | prod | Swagger 禁用、连接池优化、日志输出到文件 |
 
 敏感信息通过环境变量注入，YAML 中使用 `${ENV_VAR}` 占位符。条件化装配通过 `@ConditionalOnProperty` 控制 XXL-Job、Redis Cache 等组件按需加载。

@@ -39,12 +39,19 @@
 | `/api/v1/voice/hotwords/global` | POST | 新增全局热词（管理员） | `voice:hotword:edit` | F-VS-004 |
 | `/api/v1/voice/hotwords/global/{id}` | DELETE | 删除全局热词（管理员） | `voice:hotword:edit` | F-VS-004 |
 
+### 2.4 服务状态接口
+
+| 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
+|------|------|---------|---------|-----------|
+| `/api/v1/voice/service/status` | GET | 查询 ASR/TTS 服务运行状态（引擎在线状态/并发会话数/模型加载状态，管理端服务监控） | `voice:service:monitor` | F-VS-001/002 |
+
 ## 3. 权限标识汇总
 
 | 权限标识 | 说明 |
 |---------|------|
 | - | 语音交互模块基础能力（ASR/TTS/热词查询），登录用户均可使用 |
 | `voice:hotword:edit` | 热词新增/删除（用户级仅本人，全局需管理员） |
+| `voice:service:monitor` | 语音服务状态监控（管理端，仅管理员） |
 
 ## 4. 业务错误码
 

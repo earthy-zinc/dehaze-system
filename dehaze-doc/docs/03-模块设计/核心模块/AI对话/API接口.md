@@ -44,6 +44,8 @@ AI 对话 API 采用**双轨并行**设计：
 | `/api/v1/ai/conversations/{id}/export` | GET | 导出会话记录（查询参数 `format=markdown\|json`，默认 markdown；推理过程默认不导出，流式写出） | - | F-M08-001 |
 
 > **新会话引导**：示例问题为平台预设静态内容，由前端本地提供，无需接口请求，不消耗 Token。
+>
+> **管理端会话审计**：会话/消息接口支持管理员视角（`ai:conversation:audit`）：`GET /conversations` 携带 `view=admin` 返回全量用户会话（含用户、模型、消息数、Token 与积分消耗、状态标注）；会话详情/消息列表/消息详情接口管理员可访问任意用户数据，用于审计、故障排查与 AI 链路追踪（页面设计见 [需求规格.md](./需求规格.md) §3.3.1）。审计视角只读，不提供会话内容操作。
 
 ### 2.2 消息接口
 
@@ -129,35 +131,9 @@ sequenceDiagram
 | `/api/v1/ai/memories/restore` | POST | 恢复软删记忆（参数同 clear） | - | F-M08-003 |
 | `/api/v1/ai/memories/export` | GET | 导出全部记忆（`fmt=json\|markdown`，返回文件流） | - | F-M08-003 |
 
-### 2.4 模型供应商管理接口（AiProviderAPI）
+### 2.4 模型与供应商管理接口
 
-> 供应商与 API Key 相关为管理员接口，需 `ai:model:manage` 权限（后端 `require_permission` 拦截，越权返回 403）；`/providers/enabled` 列表无需特殊权限。**供应商列表为分页结构**（`PageResult`）。
-
-| 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
-|------|------|---------|---------|-----------|
-| `/api/v1/ai/providers` | GET | 供应商分页列表（管理员，含健康状态：健康/可疑/熔断） | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/providers/enabled` | GET | 启用供应商列表（普通用户只读，不含敏感信息） | - | F-M08-007 |
-| `/api/v1/ai/providers` | POST | 新增供应商（保存后异步触发连通性测试，结果仅提示不阻断） | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/providers/{id}` | PUT | 更新供应商 | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/providers/{id}` | DELETE | 删除供应商（软删除） | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/providers/{id}/test-connection` | POST | 连通性测试（发送最小探测请求验证地址与凭据，不产生计费） | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/providers/{id}/circuit/close` | POST | 手动解除供应商熔断状态 | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/providers/{id}/keys` | GET | 供应商下的 API Key 列表（仅返回前缀、状态、优先级、权重、限额、最近使用时间，不返回明文） | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/providers/{id}/keys` | POST | 新增 API Key（请求体携带明文，服务端加密存储） | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/providers/{id}/keys/{keyId}` | PUT | 更新 API Key（优先级、权重、状态、日额度/频率限额） | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/providers/{id}/keys/{keyId}` | DELETE | 删除 API Key（物理删除，校验至少保留一个启用 Key） | `ai:model:manage` | F-M08-007 |
-
-### 2.5 模型管理接口
-
-> 模型管理分双端：**管理端分页列表** `/api/v1/ai/models`（需 `ai:model:manage` 权限，本轮已补 `@require_permission` 注解）+ **用户端启用列表** `/api/v1/ai/models/enabled`（无需特殊权限，按 VIP 过滤）。update/delete 以 **`model_id` 字符串** 为路径参数（非自增主键）。`AiModelForm` 中 `providerId` 为**数字必填**，能力字段平铺（`supportsMultimodal`/`supportsToolCall`/`supportsStreaming`/`supportsPromptCache`/`supportsStructuredOutput`）。
-
-| 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
-|------|------|---------|---------|-----------|
-| `/api/v1/ai/models` | GET | 模型分页列表（管理端；含能力标识、积分单价、上下文长度、速度档位、模型标签、降级标识） | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/models/enabled` | GET | 启用模型列表（用户端，含 VIP 过滤） | - | F-M08-007 |
-| `/api/v1/ai/models` | POST | 新增模型配置（管理员） | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/models/{model_id}` | PUT | 更新模型配置（管理员；`model_id` 字符串为路径参数） | `ai:model:manage` | F-M08-007 |
-| `/api/v1/ai/models/{model_id}` | DELETE | 删除模型配置（管理员，软删除，model_id 不可复用） | `ai:model:manage` | F-M08-007 |
+> 模型供应商（含 API Key）与模型注册表管理接口已随模型管理功能域抽离至 [AI模型管理模块](../../基础模块/AI模型管理/API接口.md)（§2.1 供应商、§2.2 模型管理，含 `model_type`/`dimension`）；AI 对话侧消费 `/api/v1/ai/models/enabled`（会话内模型选择，按 `model_type=chat` 过滤）。
 
 ### 2.6 消息反馈接口
 
@@ -267,6 +243,7 @@ sequenceDiagram
 
 **A2A 约定**：
 
+- 全局入口 `POST /a2a` 的 JSON-RPC `params` 携带 `agentId` 或 `agentCode` 定位目标 Agent（dehaze 扩展）；`/.well-known/agent.json` 返回平台**首个可对外服务** Agent 的 Card。另保留按路径定位单 Agent 的挂载路径 `/api/v1/ai/agents/{agent_id}/a2a`（含 `/a2a/.well-known/agent.json`），两套入口共用同一核心处理。
 - 子 Agent 关联中的 `endpoint_id` 区分本地 / 远程：`NULL` 为本地子 Agent（走进程内 `task` 工具），非 `NULL` 为远程 A2A 子 Agent（走 A2A 客户端）；关联设置复用 `PUT /api/v1/ai/agents/{id}/subagents`。
 - 外部调用不旁路护栏 / 评测 / 计费；远程子 Agent 的 Token 消耗不计入 dehaze 主会话配额，仅记录调用状态与耗时。
 
@@ -389,13 +366,55 @@ sequenceDiagram
 | `errorMsg` | string \| null | 失败原因（非 2xx 时记录） |
 | `createTime` | datetime | 调用时间 |
 
+### 2.13 MCP Server 管理接口
+
+> 外部 MCP Server 的通用接入与管理（需求规格-能力扩展 §2.6.13，页面设计见 [需求规格.md](./需求规格.md) §3.3.3）。任何符合 MCP 规范的外部服务均可注册接入，工具分组为命名空间供 Agent 关联（最小权限）；系统内部 MCP 能力网关（元工具）作为内置工具来源保留，不通过本组接口管理（沿用现有 MCP 网关配置）。凭据加密存储，不落明文、不暴露给 LLM。
+
+| 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
+|------|------|---------|---------|-----------|
+| `/api/v1/ai/mcp/servers` | GET | MCP Server 列表（含启用状态/健康状态/工具数） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers` | POST | 注册外部 MCP Server（名称/描述/传输协议/端点/鉴权方式），注册后自动拉取工具清单 | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}` | GET | Server 详情（含工具清单、命名空间） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}` | PUT | 更新 Server 配置 | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}` | DELETE | 删除 Server（软删除；校验是否被 Agent 关联，有则提示先解绑） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}/status` | PATCH | 启停 Server（`{status: 0\|1}`） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}/health` | GET | Server 健康探测（连通性/延迟） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}/tools` | GET | Server 工具清单（工具名/描述/参数 schema 概要） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}/namespaces` | GET | 命名空间列表（工具分组） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}/namespaces` | PUT | 配置命名空间（工具分组覆盖式更新） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}/credentials` | PUT | 配置外部服务凭据（加密存储，仅录入/更新，不回显明文） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/market` | GET | MCP 市场目录（内置常用 Server 预设，含已接入状态） | - | F-M08-006 |
+| `/api/v1/ai/mcp/market/{presetId}/install` | POST | 从市场一键接入预设 Server（返回注册结果） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/calls` | GET | 外部 MCP 工具调用审计（分页，谁/何时/调用什么/结果/耗时） | `ai:mcp:manage` | F-M08-006 |
+
+### 2.14 SKILL 管理接口
+
+> Skill（工作流指令包）的管理与市场分发（需求规格-能力扩展 §2.6.11/§2.6.14，页面设计见 [需求规格.md](./需求规格.md) §3.3.4）。列表接口普通用户仅返回启用项；管理操作需 `ai:skill:manage`。
+
+| 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
+|------|------|---------|---------|-----------|
+| `/api/v1/ai/skills` | GET | Skill 列表（管理员全量含停用/被关联数；普通用户仅启用项） | - | F-M08-006 |
+| `/api/v1/ai/skills` | POST | 创建 Skill（Markdown 指令 + 可选脚本/模板，指令内容校验） | `ai:skill:manage` | F-M08-006 |
+| `/api/v1/ai/skills/{id}` | GET | Skill 详情（含指令内容、启用状态、被 Agent 关联数） | - | F-M08-006 |
+| `/api/v1/ai/skills/{id}` | PUT | 更新 Skill（更新后新会话生效，进行中会话沿用旧版本） | `ai:skill:manage` | F-M08-006 |
+| `/api/v1/ai/skills/{id}` | DELETE | 删除 Skill（软删除；校验是否被 Agent 关联，有则提示先解绑） | `ai:skill:manage` | F-M08-006 |
+| `/api/v1/ai/skills/{id}/status` | PATCH | 启停 Skill（`{status: 0\|1}`） | `ai:skill:manage` | F-M08-006 |
+| `/api/v1/ai/skills/{id}/test` | POST | 试运行 Skill（输入测试数据预览指令执行效果，不入库不推送） | `ai:skill:manage` | F-M08-006 |
+| `/api/v1/ai/skills/market` | GET | SKILL 市场目录（预设/共享 Skill，含启用状态与已关联 Agent 数） | - | F-M08-006 |
+| `/api/v1/ai/skills/market` | POST | 将自建 Skill 共享至市场（需先启用） | `ai:skill:manage` | F-M08-006 |
+
+**SKILL 市场约定**：`sys_ai_skill.market_shared`（0/1）标记是否共享至市场，市场目录只返回 `market_shared=1` 的 Skill（含 `enabled` 与 `agentCount`）；`POST /market` 传 `{skillId}`，需该 Skill 已启用（否则 `A0400`），重复共享幂等返回当前状态。试运行 `POST /{id}/test` 传 `{inputData}`，仅构造测试会话返回指令 + 输入预览，不入库不推送、不触发真实 LLM 推理。
+
 ## 3. 权限标识汇总
 
 | 权限标识 | 说明 |
 |---------|------|
 | - | AI 对话基础功能无特殊权限标识，登录用户即可操作；VIP 配额通过会员等级控制 |
 | `ai:agent:manage` | 智能体配置管理（新增/修改/删除 Agent 及关联关系、启停、复制、发布/回滚、评测、A2A 端点），仅管理员；普通用户越权调用管理端接口返回 403（`A0301`） |
-| `ai:model:manage` | 模型与供应商配置管理（新增/修改/删除模型、供应商、API Key），仅管理员；越权返回 403（`A0301`） |
+| `ai:conversation:audit` | 会话审计（管理端全量会话/消息查看、AI 链路追踪），仅管理员；越权返回 403（`A0301`） |
+| `ai:mcp:manage` | MCP Server 管理（注册/启停/命名空间/凭据/健康/调用审计、市场接入），仅管理员；越权返回 403（`A0301`） |
+| `ai:skill:manage` | Skill 管理（创建/更新/启停/删除/试运行/市场共享），仅管理员；越权返回 403（`A0301`） |
+| `ai:model:manage` | 模型与供应商配置管理，属 [AI模型管理模块](../../基础模块/AI模型管理/API接口.md) 权限；仅管理员，越权返回 403（`A0301`） |
 
 ## 4. 业务错误码
 

@@ -131,18 +131,30 @@ dehaze-python/
 │   ├── decorators/                    # 横切关注点装饰器（permission/rate_limit/repeat_submit）
 │   ├── middleware/                    # ASGI 中间件（trace/operation_log/ip_blacklist/non_null_response）
 │   ├── infrastructure/               # 基础设施层（连接单例 + AI 技术资源客户端）
-│   │   ├── llm/                      #   LLM：model_client(协议工厂)/openai_compat_client/anthropic_client/model_registry(路由)/provider_key_selector(Key 轮换)/model_seeder(播种)/local_llm_manager(本地子进程)
-│   │   ├── embedding/                #   Embedding：embedding_client（端点由 sys_ai_provider.api_base_url 配置化派生）
+│   │   ├── llm/                      #   LLM：client/(协议工厂+openai_compat/anthropic+langchain适配)、call/(韧性调用 llm_client)、local/(本地模型子进程+播种)
+│   │   ├── provider/                 #   跨模态供应商能力：model_registry(路由)/provider_key_selector(Key 轮换)/provider_health_service(健康熔断)，LLM/Embedding/TTS 共用
+│   │   ├── a2a/                      #   A2A 协议层：a2a_protocol/a2a_client/a2a_server/a2a_task_mapper，对应 router/a2a.py
+│   │   ├── clients/                  #   外部服务客户端：mcp_gateway_client(JSON-RPC)/web_search_client(HTTP)
+│   │   ├── sandbox/                  #   子进程执行沙箱：code_sandbox
+│   │   ├── embedding/                #   Embedding：embedding_client（端点由 sys_ai_provider.api_base_url 配置化派生，Key 走 provider/）
 │   │   ├── voice/                    #   语音引擎：funasr_client/funasr_engine(ASR)、piper_tts_engine(TTS，进程内推理)
-│   │   └── ...                       #   storage/es/mq/redis/mongo 等外部连接单例
+│   │   └── ...                       #   cache(含 checkpoint_manager)/sse(含 sse_event_converter)/storage/es/mq/redis/mongo 等
 │   ├── models/                        # 数据模型（entity/schema/enum）
 │   ├── repository/                    # Repository 层（BaseRepository 泛型基类）
 │   ├── router/                        # 路由层（30+ 个业务 APIRouter + health/metrics + WebSocket）
-│   ├── service/                       # 服务层（prediction/task_tracker/file/storage/import_export/member/order 等）
+│   ├── service/                       # 服务层（顶层平铺单职责服务 + 按域拆分子包）
+│   │   ├── ai/                        #   AI 对话服务，按职责分四个子包（协议/客户端实现已下沉 infrastructure）
+│   │   │   ├── service/               #     业务编排层：推理主链路（reasoning_service）+ 领域服务（21 个模块）
+│   │   │   ├── builders/              #     图/工具/上下文构建（deep_agent_builder/team_builder 等 5 个）
+│   │   │   ├── middleware/            #     推理链横切：hooks/护栏/工具恢复/中断点管理（10 个）
+│   │   │   └── strategies/            #     策略/规则/模板（complexity/quota_recall/prompt 等 5 个）
+│   │   ├── order/                     #   订单域：order_service(核心+共享工具)/payment/refund/auto_renew 四子域
+│   │   ├── member/                    #   会员域：member_service(档案+共享工具)/growth/benefit/quota/expiry 五子域
+│   │   ├── prediction/                #   预测域：prediction_service(编排)/cache/image_source/inference_executor/result_storage/interceptor 链
+│   │   └── task/                      #   任务域：task_service(生命周期)/task_state(状态维护)/task_executor(执行)/task_consumer(MQ 消费)/strategy+factory(策略)
 │   └── utils/                         # 工具层（password/file/datetime/tree 等）
 ├── algorithm/                         # 去雾算法模块（30 种算法，平铺结构）
 ├── config.py                          # 算法模块配置
-├── migrations/                        # Alembic 数据库迁移
 ├── tests/                             # 测试
 ├── pyproject.toml                     # 项目依赖（uv 管理）
 ├── Dockerfile                         # GPU 推理容器化
@@ -188,7 +200,7 @@ flowchart LR
 
 **推理线程池**：PyTorch 推理为 CPU/GPU 密集型同步操作，通过 `ThreadPoolExecutor` 在事件循环外执行以避免阻塞。并发数由 `INFERENCE_THREAD_POOL_SIZE` 配置项控制（默认 2），可按 GPU 显存/卡数调整（单卡 24GB 建议 1-2），无需改代码即可适配不同部署环境。
 
-**后台任务追踪**：预测（`prediction_service`）、评估（`evaluation_service`）、对比（`compare_service`）三个核心推理服务在提交 `asyncio.create_task` 后台任务后，均注册到 `TaskTracker`（`task_id` 形如 `pred:{log_id}` / `eval:{log_id}` / `compare:{task_id}`），与导出/下载任务统一纳入优雅关闭与全局任务视图。注册失败不影响主流程（降级为日志告警），与 `task_service` 行为一致。`TaskTracker.initiate_shutdown()` 在 30s 超时窗口内等待这些推理任务完成，避免 Worker 崩溃或重启时结果文件半写入。
+**后台任务追踪**：预测（`prediction_service`）、评估（`evaluation_service`）、对比（`compare_service`）、A2A 推理（`infrastructure/a2a/a2a_server`）四个推理服务在提交 `asyncio.create_task` 后台任务后，均注册到 `TaskTracker`（`task_id` 形如 `pred:{log_id}` / `eval:{log_id}` / `compare:{task_id}`，A2A 直接复用其全局唯一 taskId），与导出/下载任务统一纳入优雅关闭与全局任务视图。注册失败不影响主流程（降级为日志告警），与 `task_service` 行为一致。`TaskTracker.initiate_shutdown()` 在 30s 超时窗口内等待这些推理任务完成，避免 Worker 崩溃或重启时结果文件半写入。
 
 ### 3.3 预测流程插件化（拦截器链）
 
@@ -311,47 +323,65 @@ LLM / Embedding / TTS / ASR 等模型能力统一作为**基础设施**管理，
 ```mermaid
 flowchart TB
     subgraph Service["service/（业务编排，决策）"]
-        LLM["llm_client（对话编排/降级）"]
+        RS["推理链路（reasoning_service 等）"]
         KB["知识库/记忆（embedding、rerank 调用）"]
         Voice["语音交互（ASR/TTS 调用）"]
+        A2A["A2A 推理编排"]
     end
     subgraph Infra["infrastructure/（技术资源对话）"]
-        MR["model_registry<br/>sys_ai_provider/sys_ai_model 路由"]
-        KS["provider_key_selector<br/>Key 轮换/冷却/日额度(Redis)"]
-        MC["model_client 工厂<br/>openai_compat/anthropic"]
+        subgraph Provider["provider/（跨模态供应商能力）"]
+            MR["model_registry<br/>sys_ai_provider/sys_ai_model 路由"]
+            KS["provider_key_selector<br/>Key 轮换/冷却/日额度(Redis)"]
+            PH["provider_health_service<br/>健康/熔断"]
+        end
+        subgraph LLM["llm/（LLM 专属）"]
+            LC["call/llm_client<br/>候选路由序列+逐 Key 重试"]
+            MC["client/ 协议适配<br/>openai_compat/anthropic/langchain"]
+            LM["local/ 本地模型<br/>子进程+播种"]
+        end
         EC["embedding_client<br/>api_base_url 派生端点"]
+        AE["a2a/（协议层：server/client/mapper）"]
         VE["voice/（FunASR、Piper 进程内引擎）"]
-        MS["model_seeder<br/>本地模型幂等播种"]
     end
     subgraph Store["sys_ai_provider / sys_ai_model / sys_ai_provider_key"]
     end
-    LLM --> MC
-    LLM --> MR --> Store
-    LLM --> KS --> Store
+    RS --> LC --> MC
+    LC --> MR --> Store
+    LC --> KS --> Store
+    LC --> PH --> Store
     KB --> EC --> Store
-    KB --> MR --> Store
+    KB --> KS
     Voice --> VE
-    MS --> Store
+    A2A --> AE
+    LM --> Store
 ```
 
 **关键组件与职责**：
 
 | 组件 | 位置 | 职责 |
 |------|------|------|
-| 统一模型客户端接口 | `infrastructure/llm/model_client.py` | `LlmStreamChunk`、鉴权头、`create_chat_client(protocol_type)` 按 `sys_ai_provider.protocol_type`（openai_compat / anthropic）工厂分发，屏蔽协议差异 |
-| OpenAI 兼容客户端 | `infrastructure/llm/openai_compat_client.py` | SSE 流式、tool_call 聚合、reasoning_content 思考流 |
-| Anthropic 客户端 | `infrastructure/llm/anthropic_client.py` | tool_use 三段式聚合、Prompt Caching、thinking 流 |
-| 模型路由注册表 | `infrastructure/llm/model_registry.py` | `get_call_routes` 按 `sys_ai_model` 能力与状态解析降级链候选路由（能力不足时剔除并短路），路由决策完全由数据库配置驱动 |
-| Key 选择器 | `infrastructure/llm/provider_key_selector.py` | 从 `sys_ai_provider_key` 按 优先级/权重/冷却/连续失败/日额度 选取 Key（Redis 状态），调用后回写成功/失败 |
-| 本地模型播种器 | `infrastructure/llm/model_seeder.py` | 幂等播种 local provider / 占位 Key / 内置模型（qwen3-0.6b 对话 + qwen3-embedding-0.6b 向量登记），启动时由 `lifecycle.py` 调用 |
-| Embedding 客户端 | `infrastructure/embedding/embedding_client.py` | 向量化/维度查询；端点由 provider 的 `api_base_url` **配置化派生**（`api_base_url + /embeddings`，cohere 特判 `/v1/embed`），新增 OpenAI 兼容供应商零代码 |
-| 本地 LLM 子进程 | `infrastructure/llm/local_llm_manager.py` 等 | llama-cpp-python 子进程生命周期（拉起/健康检查/回收），对话与 Embedding 共用 `/v1` 端点 |
+| 统一模型客户端接口 | `infrastructure/llm/client/model_client.py` | `LlmStreamChunk`、鉴权头、`create_chat_client(protocol_type)` 按 `sys_ai_provider.protocol_type`（openai_compat / anthropic）工厂分发，屏蔽协议差异 |
+| OpenAI 兼容客户端 | `infrastructure/llm/client/openai_compat_client.py` | SSE 流式、tool_call 聚合、reasoning_content 思考流 |
+| Anthropic 客户端 | `infrastructure/llm/client/anthropic_client.py` | tool_use 三段式聚合、Prompt Caching、thinking 流 |
+| langchain 模型适配 | `infrastructure/llm/client/dehaze_chat_model.py` | langchain `BaseChatModel` 适配（deepagents/langgraph 图使用的对话模型） |
+| 韧性调用编排 | `infrastructure/llm/call/llm_client.py` | 统一对外入口：候选路由序列 + 逐 Key 重试 + 降级链调度，屏蔽供应商/Key 失败细节 |
+| 模型路由注册表 | `infrastructure/provider/model_registry.py` | `get_call_routes` 按 `sys_ai_model` 能力与状态解析降级链候选路由（能力不足时剔除并短路），路由决策完全由数据库配置驱动 |
+| Key 选择器 | `infrastructure/provider/provider_key_selector.py` | 从 `sys_ai_provider_key` 按 优先级/权重/冷却/连续失败/日额度 选取 Key（Redis 状态），调用后回写成功/失败 |
+| 供应商健康服务 | `infrastructure/provider/provider_health_service.py` | 供应商/Key 维度健康统计与熔断；`model_registry`/`provider_key_selector` 为 LLM/Embedding/TTS 跨模态共用的供应商能力，故上提至独立子包 |
+| 本地模型播种器 | `infrastructure/llm/local/model_seeder.py` | 幂等播种 local provider / 占位 Key / 内置模型（qwen3-0.6b 对话 + qwen3-embedding-0.6b 向量登记），启动时由 `lifecycle.py` 调用 |
+| Embedding 客户端 | `infrastructure/embedding/embedding_client.py` | 向量化/维度查询；端点由 provider 的 `api_base_url` **配置化派生**（`api_base_url + /embeddings`，cohere 特判 `/v1/embed`），新增 OpenAI 兼容供应商零代码；Key 选择走 `provider/provider_key_selector` |
+| 本地 LLM 子进程 | `infrastructure/llm/local/local_llm_manager.py` 等 | llama-cpp-python 子进程生命周期（拉起/健康检查/回收，`python -m app.infrastructure.llm.local.local_llm_server`），对话与 Embedding 共用 `/v1` 端点 |
+| A2A 协议层 | `infrastructure/a2a/` | `a2a_protocol`（协议对象）+ `a2a_client`（客户端）+ `a2a_server`（服务端）+ `a2a_task_mapper`（协议对象 ↔ dehaze 对象映射），对应 `router/a2a.py` |
+| 外部服务客户端 | `infrastructure/clients/` | `mcp_gateway_client`（MCP 网关 JSON-RPC）、`web_search_client`（Web 搜索 HTTP） |
+| 代码执行沙箱 | `infrastructure/sandbox/code_sandbox.py` | 子进程隔离执行用户代码，结果回传 |
+| 检查点管理器 | `infrastructure/cache/checkpoint_manager.py` | langgraph RedisSaver 适配（推理图状态持久化/恢复） |
+| SSE 事件转换器 | `infrastructure/sse/sse_event_converter.py` | 内部推理事件 → OpenAI/Anthropic SSE 协议格式转换 |
 | 语音引擎 | `infrastructure/voice/` | FunASR（ASR）与 Piper（TTS）进程内推理，由 `config.py` 的 `VOICE_*` 配置驱动（引擎音色无供应商路由语义，不进入模型注册表） |
 
 **配置化路由与播种边界**：
 
 - 第三方供应商（qwen/openai/anthropic 等）：管理接口写入 `sys_ai_provider`/`sys_ai_model`/`sys_ai_provider_key`，运行时直接生效，**切换/升级/新增供应商无需改代码**
-- 本地模型：`model_seeder.ensure_local_models` 启动时幂等播种 local provider 与占位 Key、内置 LLM（qwen3-0.6b，状态启用）与内置 Embedding（qwen3-embedding-0.6b，状态停用仅登记目录，避免进入对话模型列表）
+- 本地模型：`model_seeder.ensure_local_models` 启动时幂等播种 local provider 与占位 Key、内置 LLM（qwen3-0.6b，`model_type=chat` 状态启用）与内置 Embedding（qwen3-embedding-0.6b，`model_type=embedding`，供知识库创建向导选择；对话模型列表按 `model_type=chat` 过滤自然排除）
 - Embedding/Rerank 端点统一由 `sys_ai_provider.api_base_url` 派生（OpenAI 兼容 `/embeddings`、`/rerank`），与对话客户端共用同一供应商配置，不再维护独立的硬编码端点表
 
 ## 四、配置管理
@@ -370,7 +400,7 @@ flowchart TB
 | 测试 | `TestingSettings` | DEBUG=True，独立测试数据库 `dehaze_test` |
 | 生产 | `ProductionSettings` | 强制校验密码非空、CORS 禁止 localhost，JSON 日志 |
 
-敏感信息通过 `DEHAZE_HOST` 和 `DEHAZE_PASSWORD` 统一管理，派生地址和连接串通过 `@property` 自动拼接。
+敏感信息按基础设施分区独立配置（`MYSQL_*`、`REDIS_*`、`ES_*` 等，见根目录 `.env`），连接串通过 `@property` 自动拼接。
 
 ## 五、安全认证
 
@@ -414,15 +444,15 @@ flowchart TB
 - `dept_field` 指向业务表的部门字段（如 `SysUser.dept_id`）；无部门字段的表（如订单、反馈）通过 JOIN `sys_user` 取 `dept_id` 实现"本部门"过滤，"本人"过滤使用 `creator_field`（如 `SysOrder.user_id`）
 - 未知 `data_scope` 取值保守返回空集（`WHERE false()`）
 
-**已接入的查询清单**：用户分页（`user_repository.get_page`）、订单分页（`order_repository.get_page`）。新增业务查询如涉及多租户可见性，须按同样方式接入 `apply_data_scope`。
+**已接入的查询清单**：用户分页（`user_repository.get_page`）、订单分页（`order_repository.get_page`）、部门列表与下拉选项（`dept_repository.get_dept_list` / `get_dept_options_tree`，`dept_field` 传主键 `SysDept.id`，对齐 Java `@DataPermission(deptIdColumnName="id")` 与 Go `sys_dept.DeptField="id"`）。部门下拉选项缓存仅对全量视图（ROOT / 全部数据权限）生效，行级过滤结果因人而异、不读写缓存。新增业务查询如涉及多租户可见性，须按同样方式接入 `apply_data_scope`。
 
 ## 六、数据访问层
 
 | 组件 | 选型 | 说明 |
 |------|------|------|
 | ORM | SQLAlchemy 2.0 + 异步模式 | 声明式模型、AsyncSession |
-| 数据库驱动 | aiomysql（异步）+ PyMySQL（同步） | 异步为主，同步用于 Alembic 迁移 |
-| 数据库迁移 | Alembic (纯 CLI) | 版本化 Schema 管理 |
+| 数据库驱动 | aiomysql（异步）+ PyMySQL（同步） | 异步为主，同步用于测试库重建（config/sql 脚本导入） |
+| Schema 管理 | config/sql 全量脚本 | 三端共享的 schema 事实来源；测试库由 tests/conftest 每次全量重建 |
 | 文档数据库 | Motor（MongoDB 异步） | 登录审计、业务操作审计（白名单驱动） |
 | 对象存储 | MinIO Python SDK | 文件/图像存储 |
 
@@ -501,7 +531,7 @@ Redis 弹性机制：
 | `cleanupOrphanFiles` | 清理 MinIO 中无数据库记录关联的孤儿文件 | Python 专属 |
 | `cleanupTempFiles` | 清理临时目录中过期的临时文件 | Python 专属 |
 
-> 共 17 个 handler（14 个三端共有 + 3 个 Python 专属运维任务）。Java 独有的 `processDelayedPush`（DND 免打扰延迟推送）Python 端未实现，属独立架构差异（见 [Java 改造计划 §2.1](../../05-改造计划/Java后端架构改造计划.md)）。
+> 共 17 个 handler（14 个三端共有 + 3 个 Python 专属运维任务）。Java 独有的 `processDelayedPush`（DND 免打扰延迟推送）Python 端未实现，属独立架构差异（Java 端绑定 `MessagePushDispatcher` + `PushChannel` 的 DND 延迟推送架构，Go/Python 仅简单 WebSocket 推送）。
 
 ```mermaid
 flowchart LR
