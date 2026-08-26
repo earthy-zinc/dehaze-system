@@ -167,15 +167,48 @@ func (r *MemberRepository) Update(ctx context.Context, userID int64, updates map
 		Updates(updates).Error
 }
 
-func (r *MemberRepository) IncrementQuotaUsed(ctx context.Context, userID int64, quotaType string, delta int) error {
-	column := "monthly_dehaze_used"
+// quotaColumns 映射配额类型到已用量/总配额列名（dehaze/evaluate 两套月度配额）。
+func quotaColumns(quotaType string) (usedColumn, quotaColumn string) {
 	if quotaType == "evaluate" {
-		column = "monthly_evaluate_used"
+		return "monthly_evaluate_used", "monthly_evaluate_quota"
 	}
-	return r.db.WithContext(ctx).
+	return "monthly_dehaze_used", "monthly_dehaze_quota"
+}
+
+func (r *MemberRepository) IncrementQuotaUsed(ctx context.Context, userID int64, quotaType string, delta int) error {
+	usedColumn, _ := quotaColumns(quotaType)
+	q := r.db.WithContext(ctx).
 		Model(&model.SysMember{}).
-		Where("user_id = ? AND deleted = 0", userID).
-		Update(column, gorm.Expr(column+" + ?", delta)).Error
+		Where("user_id = ? AND deleted = 0", userID)
+	// 减方向（回补）带下限保护：used 已为 0 时 no-op（更新 0 行不报错），
+	// 防止重复回补把 used 减为负、凭空制造可扣减额度；加方向（扣减）不受约束。
+	if delta < 0 {
+		q = q.Where(usedColumn + " > 0")
+	}
+	return q.Update(usedColumn, gorm.Expr(usedColumn+" + ?", delta)).Error
+}
+
+// DeductQuotaIfAvailable 行级条件扣减：仅当已用量低于配额时原子 +1。
+// 返回扣减后的权威已用量与是否实际扣减；余额已尽（affected rows = 0）返回 deducted=false。
+// 应用层预校验读到的是快照值，高并发下可能过期，权威判定以本方法为准。
+func (r *MemberRepository) DeductQuotaIfAvailable(ctx context.Context, userID int64, quotaType string) (newUsed int, deducted bool, err error) {
+	usedColumn, quotaColumn := quotaColumns(quotaType)
+	res := r.db.WithContext(ctx).
+		Model(&model.SysMember{}).
+		Where("user_id = ? AND deleted = 0 AND "+usedColumn+" < "+quotaColumn, userID).
+		Update(usedColumn, gorm.Expr(usedColumn+" + 1"))
+	if res.Error != nil {
+		return 0, false, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return 0, false, nil
+	}
+	// MySQL 无 RETURNING，回读权威新值供缓存对齐使用。
+	var used int
+	if err := r.db.WithContext(ctx).Model(&model.SysMember{}).Where("user_id = ? AND deleted = 0", userID).Pluck(usedColumn, &used).Error; err != nil {
+		return 0, false, err
+	}
+	return used, true, nil
 }
 
 func (r *MemberRepository) ResetMonthlyQuota(ctx context.Context, userID int64, dehazeQuota, evaluateQuota, quotaMonth int) error {

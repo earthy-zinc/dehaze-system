@@ -111,7 +111,8 @@ func GetDatabaseConfig() *Config {
 			Slaves:            []MySQLInstanceConfig{},
 			Charset:           "utf8mb4",
 			ParseTime:         true,
-			Loc:               "Local",
+			// 时区固化 Asia/Shanghai：DATETIME 读回按该时区解释，与三端写入语义一致（API 规范 §6.2）
+			Loc:               "Asia/Shanghai",
 			Engine:            dbCfg.Engine,
 			DefaultStringSize: dbCfg.DefaultStringSize,
 		},

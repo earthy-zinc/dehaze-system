@@ -12,7 +12,8 @@ zap:
 
 # system configuration
 system:
-  port: 8990
+  # 测试专用端口：与开发实例端口（8990）错开，集成测试起真实 server 时避免端口冲突
+  port: 8998
   use-multi-point: false
   # IP限制次数 一个小时100000次（测试环境调大，避免集成测试触发限流）
   ip-limit-count: 100000
@@ -37,17 +38,17 @@ db:
   driver: mysql
   type: mysql
   mysql:
-    host: ${DEHAZE_HOST}
-    port: 3306
+    host: ${MYSQL_HOST}
+    port: ${MYSQL_PORT}
     database: dehaze_test
-    username: root
-    password: ${DEHAZE_PASSWORD}
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
     config: "charset=utf8mb4&parseTime=True&loc=Local"
     charset: utf8mb4
     parse-time: true
     loc: Local
   postgres:
-    host: ${DEHAZE_HOST}
+    host: 127.0.0.1 # postgres 未启用（driver: mysql），地址硬编码占位
     port: 5432
     database: dehaze
     username: postgres
@@ -71,7 +72,7 @@ session:
 
 
 mongo:
-  uri: "mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:27017/dehaze_test?authSource=admin"
+  uri: "mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/dehaze_test?authSource=admin"
   database: "dehaze_test"
 
 cache:
@@ -79,8 +80,8 @@ cache:
   type: redis
   redis:
     enabled: true
-    addr: ${DEHAZE_HOST}:6379
-    password: "${DEHAZE_PASSWORD}"
+    addr: ${REDIS_HOST}:${REDIS_PORT}
+    password: "${REDIS_PASSWORD}"
     # Redis db 隔离规范（推荐配置，不强制分库以避免破坏现有 Session）：
     #   db=0 业务缓存
     #   db=1 Session + 分布式锁（需后续迁移）

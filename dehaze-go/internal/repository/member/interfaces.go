@@ -21,6 +21,7 @@ type IMemberRepository interface {
 	UpdateGrowth(ctx context.Context, userID int64, growthValue int64) error
 	Update(ctx context.Context, userID int64, updates map[string]interface{}) error
 	IncrementQuotaUsed(ctx context.Context, userID int64, quotaType string, delta int) error
+	DeductQuotaIfAvailable(ctx context.Context, userID int64, quotaType string) (newUsed int, deducted bool, err error)
 	ResetMonthlyQuota(ctx context.Context, userID int64, dehazeQuota, evaluateQuota, quotaMonth int) error
 	CreateQuotaArchive(ctx context.Context, quota *model.SysMemberQuota) error
 	Transaction(ctx context.Context, fn func(repo IMemberRepository) error) error

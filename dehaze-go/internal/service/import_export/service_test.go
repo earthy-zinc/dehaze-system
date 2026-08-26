@@ -11,24 +11,30 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
+	"github.com/earthyzinc/dehaze-go/internal/service/mocks"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/storage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 )
 
 type configurableExportHandler struct {
-	module  string
-	count   int64
-	direct  bool
-	provide [][]interface{}
+	module      string
+	count       int64
+	direct      bool
+	provide     [][]interface{}
+	exportCalls int
 }
 
 func (h *configurableExportHandler) GetModule() string { return h.module }
 func (h *configurableExportHandler) EstimateCount(map[string]interface{}) int64 {
 	return h.count
 }
-func (h *configurableExportHandler) Export(*ExportContext, ProgressCallback) error { return nil }
+func (h *configurableExportHandler) Export(*ExportContext, ProgressCallback) error {
+	h.exportCalls++
+	return nil
+}
 func (h *configurableExportHandler) GetFieldConfigs() []ExportFieldConfig {
 	return []ExportFieldConfig{
 		{Field: "username", Label: "用户名", Order: 1},
@@ -77,47 +83,45 @@ func (h *configurableImportHandler) GetTemplateSampleData() []map[string]interfa
 	return []map[string]interface{}{{"username": "zhangsan"}}
 }
 
-type mockTaskService struct {
-	createTaskFn      func(ctx context.Context, taskType string, params interface{}, userID int64, idempotencyKey string) (*model.SysTask, error)
-	updateStatusFn    func(ctx context.Context, taskID string, status model.TaskStatus, errorMessage string) error
-	createCalls       int
-	lastTaskType      string
-	lastParams        interface{}
+// taskServiceRecorder 包装生成的 MockTaskService，用 Run 回调等价记录原手写 mock 的行为计数，保持既有测试断言语义。
+type taskServiceRecorder struct {
+	mock             *mocks.MockTaskService
+	createCalls      int
+	lastTaskType     string
+	lastParams       interface{}
 	updateResultCalls int
 	updateStatusCalls int
 	lastStatus        model.TaskStatus
 	lastErrorMessage  string
 }
 
-func (m *mockTaskService) CreateTask(ctx context.Context, taskType string, params interface{}, userID int64, idempotencyKey string) (*model.SysTask, error) {
-	m.createCalls++
-	m.lastTaskType = taskType
-	m.lastParams = params
-	if m.createTaskFn != nil {
-		return m.createTaskFn(ctx, taskType, params, userID, idempotencyKey)
-	}
-	return &model.SysTask{TaskID: "task-001", Status: model.TaskStatusPending}, nil
+func newTaskServiceRecorder(t *testing.T) *taskServiceRecorder {
+	t.Helper()
+	m := mocks.NewMockTaskService(t)
+	r := &taskServiceRecorder{mock: m}
+	// 各方法设为 Maybe：同步路径测试不触发任务相关调用，避免 AssertExpectations 因未调用而失败。
+	// Maybe 必须置于链式末端（base mock.Call 方法），否则会丢失类型化 Run 接收器。
+	m.EXPECT().CreateTask(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(_ context.Context, taskType string, params interface{}, _ int64, _ string) {
+			r.createCalls++
+			r.lastTaskType = taskType
+			r.lastParams = params
+		}).Return(&model.SysTask{TaskID: "task-001", Status: model.TaskStatusPending}, nil).Maybe()
+	m.EXPECT().UpdateTaskStatus(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(_ context.Context, _ string, status model.TaskStatus, errorMessage string) {
+			r.updateStatusCalls++
+			r.lastStatus = status
+			r.lastErrorMessage = errorMessage
+		}).Return(nil).Maybe()
+	m.EXPECT().UpdateTaskResult(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(_ context.Context, _ string, _ string, _ time.Time) {
+			r.updateResultCalls++
+		}).Return(nil).Maybe()
+	m.EXPECT().GetTaskStatus(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+	m.EXPECT().UpdateTaskProgress(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	m.EXPECT().IsCancelled(mock.Anything, mock.Anything).Return(false).Maybe()
+	return r
 }
-func (m *mockTaskService) GetTaskStatus(ctx context.Context, taskID string) (*model.SysTask, error) {
-	return nil, nil
-}
-func (m *mockTaskService) UpdateTaskProgress(ctx context.Context, taskID string, progress, current, total int) error {
-	return nil
-}
-func (m *mockTaskService) UpdateTaskStatus(ctx context.Context, taskID string, status model.TaskStatus, errorMessage string) error {
-	m.updateStatusCalls++
-	m.lastStatus = status
-	m.lastErrorMessage = errorMessage
-	if m.updateStatusFn != nil {
-		return m.updateStatusFn(ctx, taskID, status, errorMessage)
-	}
-	return nil
-}
-func (m *mockTaskService) UpdateTaskResult(ctx context.Context, taskID string, result string, expiresAt time.Time) error {
-	m.updateResultCalls++
-	return nil
-}
-func (m *mockTaskService) IsCancelled(ctx context.Context, taskID string) bool { return false }
 
 type mockStorage struct {
 	uploadFn       func(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) error
@@ -154,16 +158,16 @@ func (m *mockStorage) GetURL(ctx context.Context, objectName string) (string, er
 
 var _ storage.StorageService = (*mockStorage)(nil)
 
-func newTestService(t *testing.T, exportHandlers []ExportHandler, importHandlers []ImportHandler) (*ImportExportService, *mockTaskService, *mockStorage) {
+func newTestService(t *testing.T, exportHandlers []ExportHandler, importHandlers []ImportHandler) (*ImportExportService, *taskServiceRecorder, *mockStorage) {
 	exportReg := NewExportHandlerRegistry(exportHandlers)
 	importReg := NewImportHandlerRegistry(importHandlers)
 	gen := NewFileGenerator()
 	tmplMgr := NewTemplateManager(gen)
-	taskSvc := &mockTaskService{}
+	taskRec := newTaskServiceRecorder(t)
 	storageSvc := &mockStorage{}
 	logger := zap.NewNop()
-	svc := NewImportExportService(exportReg, importReg, gen, tmplMgr, storageSvc, taskSvc, NoOpVirusScanner{}, logger)
-	return svc, taskSvc, storageSvc
+	svc := NewImportExportService(exportReg, importReg, gen, tmplMgr, storageSvc, taskRec.mock, NoOpVirusScanner{}, logger)
+	return svc, taskRec, storageSvc
 }
 
 type autoResetFile struct {
@@ -342,15 +346,32 @@ func TestExport_CsvFormat(t *testing.T) {
 	assert.True(t, strings.HasPrefix(buf.String(), "\ufeff"))
 }
 
-func TestExport_DirectExport_CallsHandlerExport(t *testing.T) {
+func TestExport_DirectExport_DefaultsToAsync(t *testing.T) {
 	handler := &configurableExportHandler{module: "user", count: 10, direct: true}
-	svc, _, _ := newTestService(t, []ExportHandler{handler}, nil)
+	svc, taskSvc, _ := newTestService(t, []ExportHandler{handler}, nil)
 
-	buf := &bytes.Buffer{}
-	_, err := svc.Export(context.Background(), &ExportParams{
-		Module: "user", Query: map[string]interface{}{}, Format: "excel",
-	}, buf)
+	result, err := svc.Export(context.Background(), &ExportParams{
+		Module: "user", Query: map[string]interface{}{}, Format: "excel", UserID: 1,
+	}, &bytes.Buffer{})
 	assert.NoError(t, err)
+	taskRes, ok := result.(ExportTaskResult)
+	assert.True(t, ok)
+	assert.Equal(t, "task-001", taskRes.TaskID)
+	assert.Equal(t, 1, taskSvc.createCalls)
+	assert.Equal(t, 0, handler.exportCalls)
+}
+
+func TestExport_DirectExport_ForceSync_CallsHandlerExport(t *testing.T) {
+	handler := &configurableExportHandler{module: "user", count: 10, direct: true}
+	svc, taskSvc, _ := newTestService(t, []ExportHandler{handler}, nil)
+
+	asyncFalse := false
+	_, err := svc.Export(context.Background(), &ExportParams{
+		Module: "user", Query: map[string]interface{}{}, Format: "excel", Async: &asyncFalse,
+	}, &bytes.Buffer{})
+	assert.NoError(t, err)
+	assert.Equal(t, 0, taskSvc.createCalls)
+	assert.Equal(t, 1, handler.exportCalls)
 }
 
 func TestExport_SelectedFields_FiltersFieldConfigs(t *testing.T) {

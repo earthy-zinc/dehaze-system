@@ -1,77 +1,26 @@
 package handlers
 
 import (
-	"context"
 	"testing"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
-	"github.com/earthyzinc/dehaze-go/internal/model/bo"
-	"github.com/earthyzinc/dehaze-go/internal/model/query"
-	"github.com/earthyzinc/dehaze-go/internal/model/read"
-	"github.com/earthyzinc/dehaze-go/internal/repository/dept"
+	reposmocks "github.com/earthyzinc/dehaze-go/internal/repository/mocks"
 	"github.com/earthyzinc/dehaze-go/internal/service/import_export"
-	"github.com/glebarez/sqlite"
+	"github.com/earthyzinc/dehaze-go/internal/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
-type mockDeptRepo struct {
-	namesToIDs map[string]int64
-	err        error
-	called     int
-	lastNames  []string
-}
-
-func (m *mockDeptRepo) FindByID(ctx context.Context, id int64) (*model.SysDept, error) {
-	return nil, nil
-}
-func (m *mockDeptRepo) FindAll(ctx context.Context, q *query.DeptQuery) ([]model.SysDept, error) {
-	return nil, nil
-}
-func (m *mockDeptRepo) FindByParentID(ctx context.Context, parentID int64) ([]model.SysDept, error) {
-	return nil, nil
-}
-func (m *mockDeptRepo) FindIDByName(ctx context.Context, name string) (int64, error) {
-	return 0, nil
-}
-func (m *mockDeptRepo) Create(ctx context.Context, d *model.SysDept) error { return nil }
-func (m *mockDeptRepo) Update(ctx context.Context, d *model.SysDept) error { return nil }
-func (m *mockDeptRepo) Delete(ctx context.Context, ids []int64) error      { return nil }
-func (m *mockDeptRepo) HasChildren(ctx context.Context, id int64) (bool, error) {
-	return false, nil
-}
-func (m *mockDeptRepo) HasUsers(ctx context.Context, deptID int64) (bool, error) {
-	return false, nil
-}
-func (m *mockDeptRepo) HasUsersInBatch(ctx context.Context, deptIDs []int64) (map[int64]bool, error) {
-	return nil, nil
-}
-func (m *mockDeptRepo) FindIDsByNames(ctx context.Context, names []string) (map[string]int64, error) {
-	m.called++
-	m.lastNames = names
-	if m.err != nil {
-		return nil, m.err
-	}
-	return m.namesToIDs, nil
-}
-func (m *mockDeptRepo) GetOptions(ctx context.Context) ([]read.Option, error) { return nil, nil }
-func (m *mockDeptRepo) GetFormData(ctx context.Context, deptID int64) (*bo.DeptFormBO, error) {
-	return nil, nil
-}
-func (m *mockDeptRepo) GetSubDeptIDs(ctx context.Context, deptID int64) ([]int64, error) {
-	return nil, nil
-}
-
-var _ dept.IDeptRepository = (*mockDeptRepo)(nil)
-
-func newTestDB(t *testing.T) *gorm.DB {
+// resetSysTables 清空被测业务表，规避 config/sql 种子数据对计数/全表断言的干扰。
+// 测试在独立事务内执行，回滚后种子数据自动恢复，不污染其它用例。
+func resetSysTables(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	assert.NoError(t, err)
-	err = db.AutoMigrate(&model.SysUser{}, &model.SysDept{})
-	assert.NoError(t, err)
-	return db
+	for _, table := range []string{"sys_user", "sys_dept"} {
+		require.NoError(t, db.Exec("DELETE FROM "+table).Error)
+	}
 }
 
 func newUser(username, nickname string, gender, status int8, deptID int64, deleted int8, now time.Time) model.SysUser {
@@ -103,7 +52,8 @@ func TestUserExportHandler_GetFieldConfigs(t *testing.T) {
 }
 
 func TestUserExportHandler_EstimateCount(t *testing.T) {
-	db := newTestDB(t)
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
 	now := time.Now()
 	users := []model.SysUser{
 		newUser("u1", "n1", 1, 1, 0, 0, now),
@@ -120,7 +70,8 @@ func TestUserExportHandler_EstimateCount(t *testing.T) {
 }
 
 func TestUserExportHandler_EstimateCount_WithKeywords(t *testing.T) {
-	db := newTestDB(t)
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
 	now := time.Now()
 	users := []model.SysUser{
 		newUser("zhangsan", "张三", 1, 1, 0, 0, now),
@@ -140,7 +91,8 @@ func TestUserExportHandler_EstimateCount_WithKeywords(t *testing.T) {
 }
 
 func TestUserExportHandler_GetDataProvider_MapsRows(t *testing.T) {
-	db := newTestDB(t)
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
 	now := time.Now()
 	dept1 := model.SysDept{Name: "研发部", Deleted: 0, BaseModel: model.BaseModel{CreatedAt: now, UpdatedAt: now}}
 	assert.NoError(t, db.Create(&dept1).Error)
@@ -170,7 +122,8 @@ func TestUserExportHandler_GetDataProvider_MapsRows(t *testing.T) {
 }
 
 func TestUserExportHandler_GetDataProvider_StatusDisabled(t *testing.T) {
-	db := newTestDB(t)
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
 	now := time.Now()
 	user := newUser("u1", "n1", 2, 0, 0, 0, now)
 	assert.NoError(t, db.Create(&user).Error)
@@ -186,7 +139,8 @@ func TestUserExportHandler_GetDataProvider_StatusDisabled(t *testing.T) {
 }
 
 func TestUserExportHandler_GetDataProvider_FiltersByStatus(t *testing.T) {
-	db := newTestDB(t)
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
 	now := time.Now()
 	users := []model.SysUser{
 		newUser("u1", "n1", 1, 1, 0, 0, now),
@@ -208,7 +162,8 @@ func TestUserExportHandler_GetDataProvider_FiltersByStatus(t *testing.T) {
 }
 
 func TestUserExportHandler_GetDataProvider_FiltersByDeptId(t *testing.T) {
-	db := newTestDB(t)
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
 	now := time.Now()
 	dept1 := model.SysDept{Name: "研发部", Deleted: 0, BaseModel: model.BaseModel{CreatedAt: now, UpdatedAt: now}}
 	dept2 := model.SysDept{Name: "测试部", Deleted: 0, BaseModel: model.BaseModel{CreatedAt: now, UpdatedAt: now}}
@@ -235,7 +190,8 @@ func TestUserExportHandler_GetDataProvider_FiltersByDeptId(t *testing.T) {
 }
 
 func TestUserExportHandler_GetDataProvider_EmptyPage(t *testing.T) {
-	db := newTestDB(t)
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
 	handler := NewUserExportHandler(db)
 	ctx := &import_export.ExportContext{QueryParams: map[string]interface{}{}}
 	provider := handler.GetDataProvider(ctx)
@@ -268,8 +224,11 @@ func TestUserImportHandler_GetTemplateSampleData(t *testing.T) {
 }
 
 func TestUserImportHandler_ImportBatch_Success(t *testing.T) {
-	db := newTestDB(t)
-	deptRepo := &mockDeptRepo{namesToIDs: map[string]int64{"研发部": 100}}
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
+	deptRepo := reposmocks.NewMockIDeptRepository(t)
+	deptRepo.EXPECT().FindIDsByNames(mock.Anything, []string{"研发部"}).
+		Return(map[string]int64{"研发部": 100}, nil).Once()
 	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
@@ -282,8 +241,6 @@ func TestUserImportHandler_ImportBatch_Success(t *testing.T) {
 	assert.Equal(t, 2, result.SuccessCount)
 	assert.Equal(t, 0, result.FailureCount)
 	assert.Empty(t, result.Errors)
-	assert.Equal(t, 1, deptRepo.called)
-	assert.ElementsMatch(t, []string{"研发部"}, deptRepo.lastNames)
 
 	var saved []model.SysUser
 	db.Order("username ASC").Find(&saved)
@@ -300,8 +257,9 @@ func TestUserImportHandler_ImportBatch_Success(t *testing.T) {
 }
 
 func TestUserImportHandler_ImportBatch_MissingRequiredFields(t *testing.T) {
-	db := newTestDB(t)
-	deptRepo := &mockDeptRepo{}
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
+	deptRepo := reposmocks.NewMockIDeptRepository(t)
 	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
@@ -325,12 +283,13 @@ func TestUserImportHandler_ImportBatch_MissingRequiredFields(t *testing.T) {
 }
 
 func TestUserImportHandler_ImportBatch_DuplicateUsername(t *testing.T) {
-	db := newTestDB(t)
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
 	now := time.Now()
 	existing := newUser("dup", "existing", 1, 1, 0, 0, now)
 	assert.NoError(t, db.Create(&existing).Error)
 
-	deptRepo := &mockDeptRepo{}
+	deptRepo := reposmocks.NewMockIDeptRepository(t)
 	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
@@ -353,8 +312,9 @@ func TestUserImportHandler_ImportBatch_DuplicateUsername(t *testing.T) {
 }
 
 func TestUserImportHandler_ImportBatch_StatusParsing(t *testing.T) {
-	db := newTestDB(t)
-	deptRepo := &mockDeptRepo{}
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
+	deptRepo := reposmocks.NewMockIDeptRepository(t)
 	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
@@ -376,8 +336,9 @@ func TestUserImportHandler_ImportBatch_StatusParsing(t *testing.T) {
 }
 
 func TestUserImportHandler_ImportBatch_GenderParsing(t *testing.T) {
-	db := newTestDB(t)
-	deptRepo := &mockDeptRepo{}
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
+	deptRepo := reposmocks.NewMockIDeptRepository(t)
 	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
@@ -404,8 +365,12 @@ func TestUserImportHandler_ImportBatch_GenderParsing(t *testing.T) {
 }
 
 func TestUserImportHandler_ImportBatch_DeptNameResolution(t *testing.T) {
-	db := newTestDB(t)
-	deptRepo := &mockDeptRepo{namesToIDs: map[string]int64{"研发部": 100, "测试部": 200}}
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
+	// deptNameList 由 map 迭代生成、顺序不定，故不匹配具体参数顺序
+	deptRepo := reposmocks.NewMockIDeptRepository(t)
+	deptRepo.EXPECT().FindIDsByNames(mock.Anything, mock.Anything).
+		Return(map[string]int64{"研发部": 100, "测试部": 200}, nil).Once()
 	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
@@ -427,8 +392,9 @@ func TestUserImportHandler_ImportBatch_DeptNameResolution(t *testing.T) {
 }
 
 func TestUserImportHandler_ImportBatch_CallbackCancelled(t *testing.T) {
-	db := newTestDB(t)
-	deptRepo := &mockDeptRepo{}
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
+	deptRepo := reposmocks.NewMockIDeptRepository(t)
 	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{
@@ -449,8 +415,11 @@ func TestUserImportHandler_ImportBatch_CallbackCancelled(t *testing.T) {
 }
 
 func TestUserImportHandler_ImportBatch_DeptRepoError_FallsBackToZero(t *testing.T) {
-	db := newTestDB(t)
-	deptRepo := &mockDeptRepo{err: assert.AnError}
+	db := testutil.NewTestDB(t)
+	resetSysTables(t, db)
+	deptRepo := reposmocks.NewMockIDeptRepository(t)
+	deptRepo.EXPECT().FindIDsByNames(mock.Anything, mock.Anything).
+		Return(nil, assert.AnError).Once()
 	handler := NewUserImportHandler(db, deptRepo, "testPassword123")
 
 	rows := []map[string]interface{}{

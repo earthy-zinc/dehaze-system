@@ -100,7 +100,8 @@ func (s *ImportExportService) Export(ctx context.Context, p *ExportParams, w io.
 
 	shouldAsync := p.Async != nil && *p.Async
 	if p.Async == nil {
-		shouldAsync = count > int64(SyncThreshold)
+		// direct 导出（如数据集 ZIP）缺省走异步任务，显式 async=false 才同步流式写出（与 Java/Python 端一致）
+		shouldAsync = count > int64(SyncThreshold) || handler.UseDirectExport()
 	}
 
 	if shouldAsync {

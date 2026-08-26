@@ -852,11 +852,24 @@ func (s *MemberService) CheckAndDeductQuota(ctx context.Context, userID int64, q
 		}
 	}
 
+	// DB 同步路径：应用层预校验仅作快速失败，权威扣减依赖行级条件更新
+	// （used < quota 原子判定），高并发下预校验读到的快照可能过期，超扣在此被拦截。
 	if used >= quota {
 		return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
 	}
-	if err := s.memberRepo.IncrementQuotaUsed(ctx, userID, string(quotaType), 1); err != nil {
+	newUsed, deducted, err := s.memberRepo.DeductQuotaIfAvailable(ctx, userID, string(quotaType))
+	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "扣减配额失败", err)
+	}
+	if !deducted {
+		return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
+	}
+	if s.cache != nil {
+		// DB 权威扣减成功后，缓存计数器写入 DB 精确剩余值，避免 Delete 造成缓存击穿/重建风暴；
+		// 缓存写失败仅告警，账目以 DB 为准。
+		if err := s.cache.Set(ctx, MemberQuotaKey(userID, quotaType), int64(quota-newUsed), quotaCounterCacheTTL); err != nil {
+			logger.Warn("DB 扣减后缓存计数器对齐失败", zap.Int64("userID", userID), zap.String("quotaType", string(quotaType)), zap.Error(err))
+		}
 	}
 	if s.auditLogSvc != nil {
 		s.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "member", userID, "quota_deduct", "member", nil, map[string]interface{}{"quotaType": string(quotaType), "amount": 1}, database.GetIP(ctx), database.GetUserAgent(ctx))

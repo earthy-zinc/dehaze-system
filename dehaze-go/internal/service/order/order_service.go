@@ -1080,16 +1080,12 @@ func (s *OrderService) HandlePaymentCallback(ctx context.Context, channel, order
 		CallbackTime:    &now,
 		CallbackContent: rawContent,
 	}
-	if !success {
-		payment.Status = 3
-	}
-
-	if err := s.paymentRepo.Create(ctx, payment); err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "创建支付记录失败", err)
-	}
-
 	if success {
 		err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			txPaymentRepo := orderrepo.NewPaymentRecordRepository(tx)
+			if err := txPaymentRepo.Create(ctx, payment); err != nil {
+				return err
+			}
 			txOrderRepo := orderrepo.NewOrderRepository(tx)
 			txMemberRepo := memberrepo.NewMemberRepository(tx)
 			txUserCouponRepo := pkgsalerepo.NewUserCouponRepository(tx)
@@ -1135,6 +1131,12 @@ func (s *OrderService) HandlePaymentCallback(ctx context.Context, channel, order
 		}
 		_ = s.packageRepo.IncrementSalesCount(ctx, o.PackageID, 1)
 		s.invalidateMemberCacheAfterPayment(ctx, o.UserID, o.PackageLevel)
+	} else {
+		// 支付失败回调：流水记录一次失败尝试，无事务中段失败回滚语义，独立落库
+		payment.Status = 3
+		if err := s.paymentRepo.Create(ctx, payment); err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "创建支付记录失败", err)
+		}
 	}
 
 	s.invalidateOrderDetailCache(ctx, orderNo)

@@ -38,8 +38,8 @@ system:
   coupon-receive-rate-window: 60
   #  路由全局前缀
   router-prefix: ""
-  # 新用户初始密码（由 .env 的 DEHAZE_PASSWORD 展开）
-  default-password: "${DEHAZE_PASSWORD}"
+  # 新用户初始密码（由 .env 的 DEFAULT_PASSWORD 展开）
+  default-password: "${DEFAULT_PASSWORD}"
 
 # CORS 跨域配置
 # 注意：生产部署前请移除以下 localhost 开发条目，
@@ -151,17 +151,17 @@ db:
   driver: mysql
   type: mysql
   mysql:
-    host: ${DEHAZE_HOST}
-    port: 3306
-    database: dehaze
-    username: root
-    password: ${DEHAZE_PASSWORD}
+    host: ${MYSQL_HOST}
+    port: ${MYSQL_PORT}
+    database: ${MYSQL_DATABASE}
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
     config: "charset=utf8mb4&parseTime=True&loc=Local"
     charset: utf8mb4
     parse-time: true
     loc: Local
   postgres:
-    host: ${DEHAZE_HOST}
+    host: 127.0.0.1 # postgres 未启用（driver: mysql），地址硬编码占位
     port: 5432
     database: dehaze
     username: postgres
@@ -181,8 +181,8 @@ cache:
   type: multi
   redis:
     enabled: true
-    addr: ${DEHAZE_HOST}:6379
-    password: ${DEHAZE_PASSWORD}
+    addr: ${REDIS_HOST}:${REDIS_PORT}
+    password: ${REDIS_PASSWORD}
     # Redis db 隔离规范（推荐配置，不强制分库以避免破坏现有 Session）：
     #   db=0 业务缓存（当前使用）
     #   db=1 Session + 分布式锁（需后续迁移）
@@ -248,13 +248,13 @@ algorithm:
 
 rabbitmq:
   enabled: true
-  url: "amqp://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:5672/%2F"
+  url: "amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/%2F"
   exchange: "dehaze.tasks"
   exchangeType: "direct"
   routingKeyPrefix: "task"
 
 mongo:
-  uri: "mongodb://root:${DEHAZE_PASSWORD}@${DEHAZE_HOST}:27017/dehaze?authSource=admin"
+  uri: "mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/dehaze?authSource=admin"
   database: "dehaze"
 
 file:
@@ -262,10 +262,10 @@ file:
   maxSize: 104857600 # 单文件最大大小（字节），默认100MB
   storage:
     minio:
-      endpoint: "${DEHAZE_HOST}:9110"
-      accessKey: "admin"
-      secretKey: "${DEHAZE_PASSWORD}"
-      bucketName: "dehaze"
+      endpoint: "${MINIO_HOST}:${MINIO_PORT}"
+      accessKey: "${MINIO_ACCESS_KEY}"
+      secretKey: "${MINIO_SECRET_KEY}"
+      bucketName: "${MINIO_BUCKET}"
       baseUrl: "http://127.0.0.1:8990/api/v1/files/download" # MinIO 文件访问基础 URL（完整地址，运行时拼接用，不落库）
     local:
       uploadPath: "./data/upload"
@@ -283,8 +283,8 @@ kafka:
 # XXL-Job 定时任务配置
 xxljob:
   enabled: true
-  server-addr: "http://${DEHAZE_HOST}:14980/xxl-job-admin"
-  access-token: "${DEHAZE_PASSWORD}"
+  server-addr: "http://${XXLJOB_HOST}:${XXLJOB_PORT}/xxl-job-admin"
+  access-token: "${XXLJOB_ACCESS_TOKEN}"
   executor-port: "9997"
   registry-key: "xxl-job-executor-dehaze-go"
 
