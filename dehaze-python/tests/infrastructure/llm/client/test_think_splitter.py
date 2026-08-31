@@ -46,9 +46,9 @@ def test_partial_prefix_at_stream_end_flushed():
     assert _agg(["正文<thi"]) == [("text", "正文<thi")]
 
 
-def test_unclosed_think_treated_as_thinking():
-    """think 未闭合（流被截断）时全部内容按思考段处理"""
-    assert _agg(["<think>只输出了一半"]) == [("thinking", "只输出了一半")]
+def test_unclosed_think_treated_as_text():
+    """think 未闭合（小模型对 /no_think 不遵从的常见形态）时内容降级为正文，避免空回复"""
+    assert _agg(["<think>只输出了一半"]) == [("text", "只输出了一半")]
 
 
 def test_multiple_think_blocks():
@@ -64,6 +64,14 @@ def test_multiple_think_blocks():
 def test_think_open_split_exactly():
     """标签恰好整块到达的边界场景"""
     assert _agg(["<think>", "思考", "</think>", "正文"]) == [
+        ("thinking", "思考"),
+        ("text", "正文"),
+    ]
+
+
+def test_think_content_delivered_on_close():
+    """思考内容缓冲至闭合标签到达时一次性下发，不逐块提前输出"""
+    assert _agg(["<think>思", "考</think>正文"]) == [
         ("thinking", "思考"),
         ("text", "正文"),
     ]

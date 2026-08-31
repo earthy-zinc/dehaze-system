@@ -15,6 +15,10 @@ class _ThinkSplitter:
     部分 OpenAI 兼容模型（如 deepseek 推理系列）不走 reasoning_content 字段，
     而是把思考以 <think>...</think> 内嵌在 content 中，且标签可能被流式
     分块拆开，必须缓冲拼接后切分：思考段转 thinking_delta，正文转 text_delta。
+
+    思考段采用缓冲式：进入 <think> 后内容暂存、等 </think> 到达时一次性下发
+    thinking_delta（保证思考区完整展示）；若流结束仍未闭合（小模型对 /no_think
+    不遵从的常见形态），flush 将滞留内容降级为 text_delta，避免正文被吞成空回复。
     """
 
     def __init__(self) -> None:
@@ -32,25 +36,38 @@ class _ThinkSplitter:
     def feed(self, text: str) -> Iterator[tuple[str, str]]:
         self._buf += text
         while True:
-            tag = _THINK_CLOSE if self._in_think else _THINK_OPEN
-            idx = self._buf.find(tag)
+            if self._in_think:
+                # 思考态：缓冲等待闭合标签，内容不实时下发
+                idx = self._buf.find(_THINK_CLOSE)
+                if idx >= 0:
+                    seg, self._buf = self._buf[:idx], self._buf[idx + len(_THINK_CLOSE) :]
+                    if seg:
+                        yield ("thinking", seg)
+                    self._in_think = False
+                    continue
+                return
+            # 正文态：实时下发；找到 <think> 则转入思考态
+            idx = self._buf.find(_THINK_OPEN)
             if idx >= 0:
-                seg, self._buf = self._buf[:idx], self._buf[idx + len(tag) :]
+                seg, self._buf = self._buf[:idx], self._buf[idx + len(_THINK_OPEN) :]
                 if seg:
-                    yield ("thinking" if self._in_think else "text"), seg
-                self._in_think = not self._in_think
+                    yield ("text", seg)
+                self._in_think = True
                 continue
-            cut = len(self._buf) - self._partial_suffix_len(self._buf, tag)
+            cut = len(self._buf) - self._partial_suffix_len(self._buf, _THINK_OPEN)
             if cut > 0:
                 seg, self._buf = self._buf[:cut], self._buf[cut:]
-                yield ("thinking" if self._in_think else "text"), seg
+                yield ("text", seg)
             return
 
     def flush(self) -> Iterator[tuple[str, str]]:
-        """流结束时输出缓冲残留（正文含字面量 '<' 时尾部前缀会滞留在此）"""
+        """流结束时输出缓冲残留。
+
+        思考态残留（<think> 未闭合）降级为正文输出，保证模型输出内容不丢失。
+        """
         if self._buf:
             seg, self._buf = self._buf, ""
-            yield ("thinking" if self._in_think else "text"), seg
+            yield ("text", seg)
 
 
 class OpenAiCompatClient:

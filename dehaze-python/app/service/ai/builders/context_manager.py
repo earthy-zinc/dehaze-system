@@ -8,8 +8,8 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.repository.ai_message_repository import ai_message_repository
 from app.infrastructure.llm.call.llm_client import llm_client
+from app.repository.ai_message_repository import ai_message_repository
 from app.service.ai.service.memory_injection import inject_memories
 from app.service.ai.strategies.prompt_composer import compose_system_prompt
 from app.service.ai_artifact_service import ai_artifact_service
@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 _RECENT_MESSAGE_LIMIT = 20
 # 产物引用行中 summary 字段的最大展示长度
 _ARTIFACT_SUMMARY_MAX_LEN = 200
+# 工具调用结果折叠进上下文的单条截断长度（防超大工具输出撑爆上下文）
+_TOOL_RESULT_MAX_LEN = 1000
 
 
 class ContextManager:
@@ -86,7 +88,8 @@ class ContextManager:
         """查询最近 N 轮消息（沿 current_branch_message_id 的分支链回溯）。
 
         过滤 deleted=1，只取 user/assistant 且 content 非空，按时间正序。
-        保留 message_id 以支撑产物引用关联。
+        工具调用结果（role=tool）折叠为文本追加到前一条 assistant 消息，
+        使后续轮次模型能看到历史工具调用结果；保留 message_id 以支撑产物引用关联。
         """
         msgs = await ai_message_repository.get_chain_by_id(
             db,
@@ -94,11 +97,22 @@ class ContextManager:
             conv.current_branch_message_id,
             limit=_RECENT_MESSAGE_LIMIT,
         )
-        return [
-            {"id": m.id, "role": m.role, "content": m.content}
-            for m in msgs
-            if m.role in ("user", "assistant") and m.content
-        ]
+        result: list[dict] = []
+        for m in msgs:
+            if m.role == "tool" and m.content:
+                # 工具结果折叠进前一条 assistant 消息（无对应 assistant 时忽略，
+                # 避免孤立 tool 文本破坏 user/assistant 交替结构）
+                if result and result[-1]["role"] == "assistant":
+                    tool_text = m.content
+                    if len(tool_text) > _TOOL_RESULT_MAX_LEN:
+                        tool_text = tool_text[:_TOOL_RESULT_MAX_LEN] + "…"
+                    result[-1]["content"] = (
+                        f"{result[-1]['content']}\n[工具调用结果] {tool_text}"
+                    )
+                continue
+            if m.role in ("user", "assistant") and m.content:
+                result.append({"id": m.id, "role": m.role, "content": m.content})
+        return result
 
     @staticmethod
     async def _attach_artifact_refs(db: AsyncSession, messages: list[dict]) -> None:

@@ -470,4 +470,7 @@ class TestVipLevelFilter:
 
             monkeypatch.setattr(m, "_get_user_level", _get_level)
             items = await m.ai_model_service.list_enabled_models(db, mock_redis, 1)
-            assert {item.model_id for item in items} == expected
+            model_ids = {item.model_id for item in items}
+            # 种子数据含 vip_level=0 的模型，仅断言自建模型按等级过滤，不假设列表全集
+            assert expected.issubset(model_ids)
+            assert model_ids.isdisjoint({"vip1", "vip2"} - expected)

@@ -20,6 +20,7 @@ from app.models.entity.sys_ai_conversation import SysAiConversation
 from app.models.entity.sys_ai_message import SysAiMessage
 from app.models.schema.ai_conversation import (
     AgentThoughtResult,
+    AiLlmCallResult,
     ConversationResult,
     MessageResult,
     MessageResume,
@@ -29,13 +30,16 @@ from app.repository.ai_agent_repository import ai_agent_repository
 from app.repository.ai_agent_thought_repository import ai_agent_thought_repository
 from app.repository.ai_agent_version_repository import ai_agent_version_repository
 from app.repository.ai_conversation_repository import ai_conversation_repository
+from app.repository.ai_llm_call_repository import ai_llm_call_repository
 from app.repository.ai_message_repository import ai_message_repository
+from app.repository.ai_trace_repository import ai_trace_repository
+from app.repository.user_repository import user_repository
 from app.service.ai import message_streaming
+from app.service.ai.middleware.interrupt_handler import interrupt_handler
 from app.service.ai.service.conversation_search_service import (
     defer_conversation_sync,
     search_conversations,
 )
-from app.service.ai.middleware.interrupt_handler import interrupt_handler
 from app.service.ai.service.reasoning_service import reasoning_service
 from app.service.ai.strategies.scene_templates import SCENE_VALUES, get_scene_prompt
 
@@ -64,6 +68,7 @@ class AiConversationService:
         interrupt_handler=interrupt_handler,
         ai_agent_repository=ai_agent_repository,
         ai_agent_version_repository=ai_agent_version_repository,
+        user_repository=user_repository,
         get_redis_client=get_redis_client,
     ):
         self.ai_conversation_repository = ai_conversation_repository
@@ -75,6 +80,7 @@ class AiConversationService:
         self.interrupt_handler = interrupt_handler
         self.ai_agent_repository = ai_agent_repository
         self.ai_agent_version_repository = ai_agent_version_repository
+        self.user_repository = user_repository
         self.get_redis_client = get_redis_client
 
     async def _run_resume(
@@ -140,6 +146,7 @@ class AiConversationService:
             agent_version=agent_version,
             system_prompt=system_prompt,
             model_config=form.modelConfig,
+            suggestions_enabled=int(form.suggestionsEnabled),
             api_key_id=form.apiKeyId,
             status=1,
         )
@@ -169,9 +176,9 @@ class AiConversationService:
                 convs, total = await self.ai_conversation_repository.paginate_all_conversations(
                     db, page, size, status=audit_status
                 )
-            return PageResult(
-                list=[await self._to_result(db, c) for c in convs], total=total
-            )
+            results = [await self._to_result(db, c) for c in convs]
+            await self._attach_audit_fields(db, results)
+            return PageResult(list=results, total=total)
         # 三态范围过滤：默认(缺省/None)仅活跃(1)，0=全部(不过滤)，1=活跃，2=归档。
         # 将 0 归一为 None（repo/ES 均以 None 表示不按状态过滤）。
         if status is None:
@@ -184,9 +191,9 @@ class AiConversationService:
             )
             convs = await self.ai_conversation_repository.get_by_ids(db, user_id, conv_ids)
             convs = self._sort_conversations(convs)
-            return PageResult(
-                list=[await self._to_result(db, c) for c in convs], total=total
-            )
+            results = [await self._to_result(db, c) for c in convs]
+            await self._attach_matched_messages(db, results, keyword)
+            return PageResult(list=results, total=total)
         convs, total = await self.ai_conversation_repository.paginate_user_conversations(
             db, user_id, page, size, status=status_filter
         )
@@ -217,7 +224,67 @@ class AiConversationService:
             result.unread_count = conv.message_count or 0
         return result
 
-    async def get_conversation(self, db: AsyncSession, conv_id: int, user_id: int) -> ConversationResult:
+    async def _attach_audit_fields(
+        self, db: AsyncSession, results: list[ConversationResult]
+    ) -> None:
+        """审计视角补充用户名、消耗汇总与异常标注（批量查询，避免逐会话 N+1）"""
+        if not results:
+            return
+        conv_ids = [r.id for r in results]
+        names = await self.user_repository.get_display_names(db, {r.user_id for r in results})
+        consumption = await self.ai_conversation_repository.sum_consumption_by_conversation(
+            db, conv_ids
+        )
+        anomaly_status = await self.ai_message_repository.list_anomaly_status_by_conversations(
+            db, conv_ids
+        )
+        quota_conv_ids = (
+            await self.ai_conversation_repository.list_quota_anomaly_conversation_ids(db, conv_ids)
+        )
+        risky_tool_conv_ids = await ai_trace_repository.list_risky_tool_conversation_ids(
+            db, conv_ids
+        )
+        for result in results:
+            result.user_name = names.get(result.user_id)
+            stat = consumption.get(result.id) or {}
+            result.token_consumed = stat.get("token", 0)
+            result.credits_consumed = stat.get("credits", 0)
+            statuses = anomaly_status.get(result.id, set())
+            if 3 in statuses:
+                result.anomaly_type, result.anomaly_label = "failed", "存在失败消息"
+            elif result.id in quota_conv_ids:
+                result.anomaly_type, result.anomaly_label = "quota", "配额不足中断"
+            elif result.id in risky_tool_conv_ids:
+                result.anomaly_type, result.anomaly_label = "risky_tool", "存在高风险工具调用"
+            elif 4 in statuses:
+                result.anomaly_type, result.anomaly_label = "canceled", "存在已取消消息"
+
+    async def _attach_matched_messages(
+        self, db: AsyncSession, results: list[ConversationResult], keyword: str
+    ) -> None:
+        """回填搜索命中消息内容的消息ID（标题已命中无需定位，跳过）"""
+        if not results or not keyword:
+            return
+        conv_ids = [r.id for r in results if keyword not in (r.title or "")]
+        if not conv_ids:
+            return
+        matched = await self.ai_message_repository.find_latest_ids_by_keyword(
+            db, conv_ids, keyword
+        )
+        for result in results:
+            result.matched_message_id = matched.get(result.id)
+
+    async def get_conversation(
+        self, db: AsyncSession, conv_id: int, user_id: int, admin: bool = False
+    ) -> ConversationResult:
+        """会话详情。admin=True 为管理端审计视角：不限归属用户并补充审计字段"""
+        if admin:
+            conv = await self.ai_conversation_repository.get_by_id(db, conv_id)
+            if not conv:
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
+            result = await self._to_result(db, conv)
+            await self._attach_audit_fields(db, [result])
+            return result
         conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
@@ -235,6 +302,7 @@ class AiConversationService:
             "model": "model",
             "systemPrompt": "system_prompt",
             "modelConfig": "model_config",
+            "suggestionsEnabled": "suggestions_enabled",
             "pinned": "pinned",
             "status": "status",
         }
@@ -313,15 +381,42 @@ class AiConversationService:
         user_id: int,
         page: int,
         size: int,
+        admin: bool = False,
     ) -> PageResult[MessageResult]:
-        conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
+        """会话消息列表（admin=True 为管理端审计视角，路由层已校验 ai:conversation:audit）。
+
+        分页取**最新一页**（倒序：pageNum=1 为最近消息，会话超过一页时默认加载最新内容，
+        前端展示时反转回时间正序）；assistant 消息批量附带推理步骤（思考链，position 正序）。
+        """
+        if admin:
+            conv = await self.ai_conversation_repository.get_by_id(db, conv_id)
+        else:
+            conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
-        msgs, total = await self.ai_message_repository.list_by_conversation(db, conv_id, page, size)
-        return PageResult(list=[MessageResult.model_validate(m) for m in msgs], total=total)
+        msgs, total = await self.ai_message_repository.list_by_conversation(
+            db, conv_id, page, size, order="desc"
+        )
+        assistant_ids = [m.id for m in msgs if m.role == "assistant"]
+        thoughts_map = await ai_agent_thought_repository.list_by_messages(db, assistant_ids)
+        results = []
+        for m in msgs:
+            r = MessageResult.model_validate(m)
+            r.thoughts = [
+                AgentThoughtResult.model_validate(t)
+                for t in thoughts_map.get(m.id, [])
+            ]
+            results.append(r)
+        return PageResult(list=results, total=total)
 
-    async def get_message(self, db: AsyncSession, msg_id: int, user_id: int) -> dict:
-        msg = await self.ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
+    async def get_message(
+        self, db: AsyncSession, msg_id: int, user_id: int, admin: bool = False
+    ) -> dict:
+        """消息详情（含推理步骤与过程链）。admin=True 为管理端审计视角：不限归属用户"""
+        if admin:
+            msg = await self.ai_message_repository.get_by_id(db, msg_id)
+        else:
+            msg = await self.ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
         result = MessageResult.model_validate(msg).model_dump(by_alias=True)
@@ -329,6 +424,19 @@ class AiConversationService:
         result["thoughts"] = [
             AgentThoughtResult.model_validate(t).model_dump(by_alias=True) for t in thoughts
         ]
+        # 可观测性：附带过程链与 LLM 调用明细（无过程链则为空，列表接口不返回）
+        trace = await ai_trace_repository.get_latest_by_message_id(db, msg_id)
+        if trace:
+            result["traceId"] = trace.trace_id
+            result["contextSnapshot"] = trace.context_snapshot
+            calls = await ai_llm_call_repository.list_by_trace(db, trace.trace_id)
+            result["llmCalls"] = [
+                AiLlmCallResult.model_validate(c).model_dump(by_alias=True) for c in calls
+            ]
+        else:
+            result["traceId"] = None
+            result["contextSnapshot"] = None
+            result["llmCalls"] = []
         return result
 
     async def get_branches(
@@ -408,6 +516,8 @@ class AiConversationService:
         await self.ai_conversation_repository.update_last_message(
             db, msg.conversation_id, new_msg.id, datetime.now()
         )
+        # 显式提交：推理后台任务用独立 session 读取上下文，须先提交本事务
+        await db.commit()
 
         # regenerate 为显式操作，无需幂等；复用 send 的 SSE 触发链路（上下文由 reasoning 重建）
         idem_key = f"ai:msg:idempotent:{user_id}:{uuid4()}"
@@ -416,6 +526,7 @@ class AiConversationService:
                 sse_emitter_manager=self.sse_emitter_manager,
                 reasoning_service=self.reasoning_service,
                 get_redis_client=self.get_redis_client,
+                db=db,
                 conv_id=msg.conversation_id,
                 user_id=user_id,
                 model=model,

@@ -47,8 +47,7 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import { isExternal } from "@/utils/index";
-import path from "path-browserify";
+import { isExternal, resolveRoutePath } from "@/utils/index";
 import { RouteRecordRaw } from "vue-router";
 
 const props = defineProps({
@@ -127,9 +126,7 @@ function resolvePath(routePath: string) {
     return props.basePath;
   }
 
-  // 完整路径(/system/user) = 父级路径(/system) + 路由路径(user)
-  const fullPath = path.resolve(props.basePath, routePath);
-  return fullPath;
+  return resolveRoutePath(props.basePath, routePath);
 }
 </script>
 

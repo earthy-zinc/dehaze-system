@@ -21,6 +21,7 @@ from langchain.agents.middleware.types import (
 from langchain_core.messages import AIMessage, ToolMessage
 
 from app.service.ai.middleware.dehaze_hooks_middleware import DehazeAgentState
+from app.service.ai.service import trace_collector
 from app.utils.pii import mask_pii
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,10 @@ class GuardrailMiddleware(AgentMiddleware):
 
     def _log_hit(self, rule: str, detail: str) -> None:
         logger.warning("Guardrail hit rule=%s detail=%s", rule, detail)
+        # 可观测性：护栏命中写入过程链上下文事件（旁路：无采集器时静默跳过）
+        collector = trace_collector.current()
+        if collector is not None:
+            collector.record_event(event="guardrail", rule=rule, detail=detail)
 
     async def abefore_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
         messages = state.get("messages") or []
@@ -133,4 +138,8 @@ class GuardrailMiddleware(AgentMiddleware):
                     masked = True
             if masked:
                 break
+        if masked:
+            collector = trace_collector.current()
+            if collector is not None:
+                collector.record_event(event="guardrail", rule="pii_mask", detail="masked")
         return None

@@ -30,6 +30,8 @@ from app.models.schema.ai_mcp import (
     McpServerStatusForm,
     McpServerUpdate,
     McpToolResult,
+    McpToolTestForm,
+    McpToolTestResult,
 )
 from app.models.schema.common import PageResult
 from app.service.ai_mcp.ai_mcp_server_service import ai_mcp_server_service
@@ -131,6 +133,19 @@ async def get_tools(
     user: UserContext = Depends(get_current_user),
 ):
     return success(await mcp_manage_service.get_tools(db, server_id))
+
+
+@router.post("/servers/{server_id}/tools/test", response_model=Result[McpToolTestResult], summary="试调用 MCP 工具")
+@require_permission(_MANAGE_PERMISSION)
+async def test_tool(
+    server_id: int,
+    form: McpToolTestForm,
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    return success(
+        await mcp_manage_service.test_tool(db, server_id, form.tool_name, form.arguments)
+    )
 
 
 @router.get("/servers/{server_id}/namespaces", response_model=Result[list[McpNamespaceItem]], summary="命名空间列表")

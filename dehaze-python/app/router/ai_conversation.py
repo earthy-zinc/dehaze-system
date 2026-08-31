@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -99,10 +99,17 @@ async def batch_operate_conversations(
 )
 async def get_conversation(
     conv_id: int,
+    view: str | None = Query(
+        default=None,
+        description="视角(admin:管理端会话审计,读取任意用户会话并带审计字段,需ai:conversation:audit;默认当前用户)",
+    ),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await ai_conversation_service.get_conversation(db, conv_id, user.id)
+    admin = view == "admin"
+    if admin:
+        _require_conversation_audit(user)
+    result = await ai_conversation_service.get_conversation(db, conv_id, user.id, admin=admin)
     return success(result)
 
 
@@ -213,11 +220,18 @@ async def send_message(
 async def list_messages(
     conv_id: int,
     query: MessagePageQuery = Depends(),
+    view: str | None = Query(
+        default=None,
+        description="视角(admin:管理端会话审计,读取任意用户会话消息,需ai:conversation:audit;默认当前用户)",
+    ),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
+    admin = view == "admin"
+    if admin:
+        _require_conversation_audit(user)
     result = await ai_conversation_service.list_messages(
-        db, conv_id, user.id, query.pageNum, query.pageSize
+        db, conv_id, user.id, query.pageNum, query.pageSize, admin=admin
     )
     return success(result)
 
@@ -243,10 +257,17 @@ async def reconnect(
 @router.get("/messages/{msg_id}", summary="消息详情（含推理步骤）")
 async def get_message(
     msg_id: int,
+    view: str | None = Query(
+        default=None,
+        description="视角(admin:管理端会话审计,读取任意用户消息,需ai:conversation:audit;默认当前用户)",
+    ),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await ai_conversation_service.get_message(db, msg_id, user.id)
+    admin = view == "admin"
+    if admin:
+        _require_conversation_audit(user)
+    result = await ai_conversation_service.get_message(db, msg_id, user.id, admin=admin)
     return success(result)
 
 

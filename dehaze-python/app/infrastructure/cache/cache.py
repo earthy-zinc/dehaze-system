@@ -89,6 +89,20 @@ class CacheService:
         self._null_enabled = settings.CACHE_NULL_ENABLED
         self._null_ttl = settings.CACHE_NULL_TTL
 
+    async def _l1_backfill_ttl(self, key: str) -> int:
+        """L2 回填 L1 时使用 L2 剩余 TTL，保持两级缓存生命周期一致。
+
+        若不继承剩余 TTL，L1 会以默认 TTL 续命，L2 已过期后 L1 仍返回旧值，
+        造成"改了数据必须重启后端"类脏读。TTL 不可得（无过期/查询失败）时
+        用 L1 默认 TTL（settings.CACHE_L1_TTL）兜底。
+        """
+        ttl = await redis_operation_with_fallback(
+            operation=lambda: self.redis.ttl(key),
+            default=-1,
+            operation_name=f"cache_ttl:{key}",
+        )
+        return ttl if ttl > 0 else settings.CACHE_L1_TTL
+
     async def get(
         self,
         key: str,
@@ -127,7 +141,7 @@ class CacheService:
             record_hit("L2")
             # 回填 L1
             if self._l1 is not None:
-                self._l1.set(key, redis_val)
+                self._l1.set(key, redis_val, ttl=await self._l1_backfill_ttl(key))
             return redis_val
 
         record_miss("L2")
@@ -176,7 +190,7 @@ class CacheService:
                 return default
             record_hit("L2")
             if self._l1 is not None:
-                self._l1.set(key, redis_val)
+                self._l1.set(key, redis_val, ttl=await self._l1_backfill_ttl(key))
             return redis_val
 
         record_miss("L2")
@@ -340,7 +354,7 @@ class CacheService:
                 result = json.loads(redis_val)
                 record_hit("L2")
                 if self._l1 is not None:
-                    self._l1.set(key, redis_val)
+                    self._l1.set(key, redis_val, ttl=await self._l1_backfill_ttl(key))
                 return result
             except (json.JSONDecodeError, TypeError):
                 record_miss("L2")

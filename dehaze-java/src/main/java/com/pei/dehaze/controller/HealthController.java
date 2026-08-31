@@ -1,9 +1,13 @@
 package com.pei.dehaze.controller;
 
+import com.pei.dehaze.service.impl.file.MinioFileService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +35,14 @@ public class HealthController {
     private final DataSource dataSource;
     private final RedisTemplate<String, Object> redisTemplate;
     private final RabbitTemplate rabbitTemplate;
+    private final MongoTemplate mongoTemplate;
+
+    /**
+     * MinIO 仅当配置了 file.minio.endpoint 时启用（MinioFileService 条件装配），
+     * 未配置时该字段为 null，健康检查跳过 MinIO。
+     */
+    @Autowired(required = false)
+    private MinioFileService minioFileService;
 
     /**
      * Liveness 探针 - 进程存活检查
@@ -78,6 +90,26 @@ public class HealthController {
             log.warn("RabbitMQ health check failed", e);
             components.put("rabbitmq", "DOWN");
             allHealthy = false;
+        }
+
+        // MongoDB check（必选基础设施）
+        try {
+            mongoTemplate.executeCommand(new Document("ping", 1));
+            components.put("mongodb", "UP");
+        } catch (Exception e) {
+            log.warn("MongoDB health check failed", e);
+            components.put("mongodb", "DOWN");
+            allHealthy = false;
+        }
+
+        // MinIO check（仅当配置了 file.minio.endpoint 时）
+        if (minioFileService != null) {
+            if (minioFileService.ping()) {
+                components.put("minio", "UP");
+            } else {
+                components.put("minio", "DOWN");
+                allHealthy = false;
+            }
         }
 
         Map<String, Object> body = new LinkedHashMap<>();

@@ -1,19 +1,35 @@
 import { PageQuery } from "@/types";
 
+/** SKILL 目录内资源文件清单项（内容存对象存储，按需加载） */
+export interface SkillFileVO {
+  /** 相对 SKILL 根目录的文件路径（如 reference/REFERENCE.md） */
+  path: string;
+  /** 文件大小（字节） */
+  fileSize: number;
+  /** 文件类型（MIME/扩展名） */
+  fileType?: string;
+}
+
 /** Skill 视图对象 */
 export interface SkillVO {
   id: number;
-  /** Skill 名称（唯一） */
+  /** Skill 名称（唯一，遵循 Agent Skills 规范命名） */
   name: string;
   description?: string;
   /** 适用场景 */
   scene?: string;
-  /** Markdown 指令内容 */
+  /** SKILL.md 指令正文（frontmatter 之外的内容） */
   instruction: string;
-  /** 可选脚本/模板内容 */
-  scriptContent?: string;
-  /** 可选模板 ID */
-  templateId?: number;
+  /** SKILL.md frontmatter license（许可证） */
+  license?: string;
+  /** SKILL.md frontmatter compatibility（环境要求） */
+  compatibility?: string;
+  /** SKILL.md frontmatter metadata（任意键值，如版本/作者） */
+  metadata?: Record<string, string>;
+  /** SKILL.md frontmatter allowed-tools（预批准工具列表） */
+  allowedTools?: string;
+  /** SKILL 目录内资源文件清单（reference/script/assets，内容存对象存储） */
+  files?: SkillFileVO[];
   /** 状态：1-启用，0-禁用 */
   status: 0 | 1;
   /** 被 Agent 关联数 */

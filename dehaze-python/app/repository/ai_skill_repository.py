@@ -86,5 +86,19 @@ class AiSkillRepository(BaseRepository[SysAiSkill]):
         )
         return (await db.execute(stmt)).scalar() or 0
 
+    async def count_agent_references_by_names(
+        self, db: AsyncSession, skill_names: list[str]
+    ) -> dict[str, int]:
+        """批量统计各 Skill 被 Agent 关联数（列表页聚合，{skill_name: count}）。"""
+        if not skill_names:
+            return {}
+        stmt = (
+            select(SysAiAgentSkill.skill_name, func.count())
+            .where(SysAiAgentSkill.skill_name.in_(skill_names))
+            .group_by(SysAiAgentSkill.skill_name)
+        )
+        rows = (await db.execute(stmt)).all()
+        return {skill_name: count for skill_name, count in rows}
+
 
 ai_skill_repository = AiSkillRepository()

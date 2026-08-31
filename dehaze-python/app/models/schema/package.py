@@ -37,13 +37,15 @@ class CouponForm(BaseModel):
     type: str = Field(..., description="类型")
     faceValue: int = Field(..., ge=0, description="面值")
     threshold: int | None = Field(default=None, ge=0, description="使用门槛(分)")
-    validType: str = Field(..., description="有效期类型")
+    validType: Literal["fixed", "relative"] = Field(..., description="有效期类型")
     validStart: str | None = None
     validEnd: str | None = None
     validDays: int | None = Field(default=None, ge=1, description="领取后有效天数")
     totalQty: int = Field(..., ge=0, description="发放总量")
     perUserLimit: int = Field(..., ge=1, description="每人限领数量")
-    applicableScope: list[int] | None = None
+    applicableScope: list[int | str] | None = Field(
+        default=None, description="适用商品(商品ID或商品类型vip/credit，NULL全部适用)"
+    )
     status: int | None = Field(default=1, ge=0, le=1)
 
 

@@ -16,7 +16,7 @@
 | `/api/v1/roles` | POST | 新增角色 | `sys:role:add` | F-RM-002 |
 | `/api/v1/roles/{roleId}/form` | GET | 获取角色表单数据 | - | F-RM-003 |
 | `/api/v1/roles/{id}` | PUT | 修改角色 | `sys:role:edit` | F-RM-003 |
-| `/api/v1/roles/{ids}` | DELETE | 删除角色；ids 为必填非空路径参数，空列表由 SDK 前置校验拦截（服务端对空路径返回 405） | `sys:role:delete` | F-RM-004 |
+| `/api/v1/roles/{ids}` | DELETE | 删除角色；ids 为必填非空路径参数 | `sys:role:delete` | F-RM-004 |
 | `/api/v1/roles/{roleId}/status` | PUT | 修改角色状态 | `sys:role:edit` | F-RM-005 |
 | `/api/v1/roles/{roleId}/menuIds` | GET | 获取角色菜单 ID 集合 | - | F-RM-006 |
 | `/api/v1/roles/{roleId}/menus` | PUT | 分配菜单权限 | `sys:role:edit` | F-RM-006 |

@@ -105,9 +105,9 @@ const flowSteps = [
   padding: 80px 0 96px;
   background: linear-gradient(
     to bottom,
-    rgba(239, 246, 255, 0.5) 0%,
+    rgb(239 246 255 / 50%) 0%,
     var(--el-bg-color) 40%,
-    rgba(239, 246, 255, 0.5) 100%
+    rgb(239 246 255 / 50%) 100%
   );
 
   html.dark & {
@@ -117,8 +117,8 @@ const flowSteps = [
 
 .feature-container {
   max-width: 1280px;
-  margin: 0 auto;
   padding: 0 24px;
+  margin: 0 auto;
 }
 
 .section-head {
@@ -132,7 +132,6 @@ const flowSteps = [
   font-weight: 600;
   line-height: 1.25;
   background: linear-gradient(135deg, #3b82f6, #6366f1);
-  -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -157,26 +156,23 @@ const flowSteps = [
 
   // 蓝色渐变描边
   &::before {
-    content: "";
     position: absolute;
     inset: 0;
     padding: 1.5px;
+    pointer-events: none;
+    content: "";
     background: linear-gradient(
       135deg,
-      rgba(59, 130, 246, 0.55),
-      rgba(99, 102, 241, 0.35),
-      rgba(6, 182, 212, 0.25)
+      rgb(59 130 246 / 55%),
+      rgb(99 102 241 / 35%),
+      rgb(6 182 212 / 25%)
     );
     border-radius: inherit;
-    -webkit-mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
     mask:
       linear-gradient(#fff 0 0) content-box,
       linear-gradient(#fff 0 0);
+    mask-composite: xor;
     mask-composite: exclude;
-    pointer-events: none;
   }
 
   &:hover {
@@ -200,8 +196,8 @@ const flowSteps = [
   }
 
   &__desc {
-    margin-bottom: 16px;
     padding-left: 60px;
+    margin-bottom: 16px;
     font-size: 14px;
     line-height: 1.5;
     color: var(--el-text-color-secondary);
@@ -244,8 +240,8 @@ const flowSteps = [
 }
 
 .flow-panel {
-  margin-top: 48px;
   padding: 28px 36px;
+  margin-top: 48px;
   background-color: var(--el-bg-color-overlay);
   border: 1px solid var(--el-border-color-light);
   border-radius: 16px;

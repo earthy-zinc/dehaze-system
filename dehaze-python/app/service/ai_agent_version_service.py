@@ -14,6 +14,7 @@ from app.models.schema.common import PageResult
 from app.repository.ai_agent_repository import ai_agent_repository
 from app.repository.ai_agent_version_repository import ai_agent_version_repository
 from app.service.ai.strategies import agent_config_resolver
+from app.service.ai_eval_center_service import eval_center_service
 from app.service.ai_eval_service import eval_service
 
 # 版本快照缓存 Key / TTL（后端实现 §4.3）
@@ -107,17 +108,30 @@ class AgentVersionService:
         agent_id: int,
         operator_id: int,
         change_note: str = "",
+        force: bool = False,
     ) -> int:
         """发布 Agent：通过回归集门禁后，序列化可编辑态为新已发布版本。
 
-        1) 调用 EvalService.run_regression（trigger_type='publish'）做发布门禁；
-        2) 门禁通过：旧 published 置历史，写新 version_no 已发布版本，失效 published
-           缓存，返回 version_no；
-        3) 门禁失败：抛业务异常（含失败样本明细）。
+        1) 判分漂移门禁：judge 一致性状态为 drifted 时阻断（force 豁免，
+           豁免记入 change_note 可追溯）；漂移仅暂停门禁判定，不绕过回归结果；
+        2) 调用 EvalService.run_regression（trigger_type='publish'）做回归门禁；
+        3) 门禁通过：旧 published 置历史，写新 version_no 已发布版本，失效
+           published 缓存，返回 version_no；
+        4) 门禁失败：抛业务异常（含失败样本明细）。
         """
         agent = await self.ai_agent_repository.get_by_id(db, agent_id)
         if not agent:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "Agent 不存在")
+
+        judge = await eval_center_service.judge_status(db)
+        drift_exempted = False
+        if judge.get("consistency_state") == "drifted":
+            if not force:
+                raise BusinessException(
+                    ResultCode.OPERATION_NOT_ALLOW,
+                    "判分模型漂移，发布门禁暂停，请联系管理员校准判分模型后再发布",
+                )
+            drift_exempted = True
 
         gate = await eval_service.run_regression(db, redis, agent_id, trigger_type="publish")
         if not gate.get("passed", False):
@@ -128,6 +142,8 @@ class AgentVersionService:
             )
 
         # 门禁通过：旧已发布版本置历史，写入新已发布版本
+        if drift_exempted:
+            change_note = f"[漂移豁免]{change_note}"
         await self.ai_agent_version_repository.demote_published(db, agent_id)
         version = await self._write_draft(
             db, redis, agent, operator_id, change_note, status=2

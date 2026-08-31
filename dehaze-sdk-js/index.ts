@@ -2,8 +2,11 @@
 import AiAgentAPI from "./src/api/ai-agent";
 import AiBillingAPI from "./src/api/ai-billing";
 import AiConversationAPI from "./src/api/ai-conversation";
+import AiEvalAPI from "./src/api/ai-eval";
 import AiKnowledgeBaseAPI from "./src/api/ai-knowledge-base";
 import AiMCPAPI from "./src/api/ai-mcp";
+import AiModelAPI from "./src/api/ai-model";
+import AiObservabilityAPI from "./src/api/ai-observability";
 import AiProviderAPI from "./src/api/ai-provider";
 import AiScheduleAPI from "./src/api/ai-schedule";
 import AiSkillAPI from "./src/api/ai-skill";
@@ -39,8 +42,11 @@ export type { AsrStreamSession } from "./src/api/voice";
 export * from "./src/api/ai-agent/model";
 export * from "./src/api/ai-billing/model";
 export * from "./src/api/ai-conversation/model";
+export * from "./src/api/ai-eval/model";
 export * from "./src/api/ai-knowledge-base/model";
 export * from "./src/api/ai-mcp/model";
+export * from "./src/api/ai-model/model";
+export * from "./src/api/ai-observability/model";
 export * from "./src/api/ai-provider/model";
 export * from "./src/api/ai-schedule/model";
 export * from "./src/api/ai-skill/model";
@@ -96,8 +102,11 @@ export {
   AiAgentAPI,
   AiBillingAPI,
   AiConversationAPI,
+  AiEvalAPI,
   AiKnowledgeBaseAPI,
   AiMCPAPI,
+  AiModelAPI,
+  AiObservabilityAPI,
   AiProviderAPI,
   AiScheduleAPI,
   AiSkillAPI,

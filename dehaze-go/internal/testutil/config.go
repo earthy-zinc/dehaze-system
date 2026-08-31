@@ -69,8 +69,19 @@ func LoadTestConfig(t *testing.T) *config.AppConfig {
 	return testConfig
 }
 
-// goRepoRoot 定位 dehaze-go 根目录：testutil 位于 internal/testutil，上两级即根。
+// goRepoRoot 定位 dehaze-go 根目录：以 go.mod 为标记向上查找（go.mod 随 Go 模块必然
+// 存在），不依赖文件在树中的相对层数，目录重构也不会漂移。
 func goRepoRoot() string {
 	_, file, _, _ := runtime.Caller(0)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	dir := filepath.Dir(file)
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			panic(fmt.Sprintf("testutil: 从 %s 向上未找到 go.mod，无法定位 dehaze-go 根", dir))
+		}
+		dir = parent
+	}
 }

@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MemberAPI } from 'dehaze-sdk-js';
-import type { MemberProfileVO } from 'dehaze-sdk-js';
+import type { MemberProfileVO, BenefitSummaryVO } from 'dehaze-sdk-js';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 
@@ -32,6 +32,7 @@ const LEVEL_COLORS: Record<string, string[]> = {
 const PersonalMemberScreen: React.FC = () => {
   const navigation = useNavigation();
   const [member, setMember] = useState<MemberProfileVO | null>(null);
+  const [summary, setSummary] = useState<BenefitSummaryVO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,8 +40,12 @@ const PersonalMemberScreen: React.FC = () => {
   const loadMember = useCallback(async () => {
     try {
       setError(null);
-      const profile = await MemberAPI.getProfile();
+      const [profile, benefitSummary] = await Promise.all([
+        MemberAPI.getProfile(),
+        MemberAPI.getBenefitSummary(),
+      ]);
       setMember(profile);
+      setSummary(benefitSummary);
     } catch {
       setMember(null);
       setError('获取会员信息失败，请重试');
@@ -145,12 +150,12 @@ const PersonalMemberScreen: React.FC = () => {
         <Text style={styles.sectionTitle}>本月用量</Text>
         <View style={styles.usageRow}>
           <View style={styles.usageItem}>
-            <Text style={styles.usageValue}>{member?.monthlyDehazeUsed ?? 0}/{member?.monthlyDehazeQuota ?? 0}</Text>
-            <Text style={styles.usageLabel}>去雾</Text>
+            <Text style={styles.usageValue}>{summary?.imageCategory?.remaining ?? 0}</Text>
+            <Text style={styles.usageLabel}>图像处理剩余</Text>
           </View>
           <View style={styles.usageItem}>
-            <Text style={styles.usageValue}>{member?.monthlyEvaluateUsed ?? 0}/{member?.monthlyEvaluateQuota ?? 0}</Text>
-            <Text style={styles.usageLabel}>评估</Text>
+            <Text style={styles.usageValue}>{summary?.evaluateCategory?.remaining ?? 0}</Text>
+            <Text style={styles.usageLabel}>评估剩余</Text>
           </View>
         </View>
       </View>

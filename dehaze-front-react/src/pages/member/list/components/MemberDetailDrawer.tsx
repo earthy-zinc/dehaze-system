@@ -200,11 +200,14 @@ const MemberDetailDrawerImpl = forwardRef<
                   <Descriptions.Item label="累计消费">
                     {detail.totalConsumption}
                   </Descriptions.Item>
-                  <Descriptions.Item label="本月去雾已用">
-                    {detail.monthlyDehazeUsed} / {detail.monthlyDehazeQuota}
+                  <Descriptions.Item label="本月已用次数">
+                    {detail.monthlyUsed}
                   </Descriptions.Item>
-                  <Descriptions.Item label="本月评估已用">
-                    {detail.monthlyEvaluateUsed} / {detail.monthlyEvaluateQuota}
+                  <Descriptions.Item label="月度去雾配额">
+                    {detail.benefits?.monthlyDehazeQuota}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="月度评估配额">
+                    {detail.benefits?.monthlyEvaluateQuota}
                   </Descriptions.Item>
                   {detail.frozenReason && (
                     <Descriptions.Item label="冻结原因" span={2}>

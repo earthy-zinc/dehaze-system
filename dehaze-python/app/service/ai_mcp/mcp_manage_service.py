@@ -9,6 +9,7 @@ sys_ai_mcp_tool（覆盖式重建），远端不可达时落空工具、不阻�
 """
 
 import logging
+import time
 from typing import Any
 
 from redis.asyncio import Redis
@@ -23,50 +24,19 @@ from app.models.schema.ai_mcp import (
     McpCallQuery,
     McpCallResult,
     McpMarketPreset,
-    McpNamespaceItem,
-    McpNamespaceUpdate,
     McpServerResult,
     McpToolResult,
+    McpToolTestResult,
 )
 from app.models.schema.common import PageResult
 from app.repository.ai_mcp_call_repository import ai_mcp_call_repository
 from app.repository.ai_mcp_server_repository import ai_mcp_server_repository
 from app.repository.ai_mcp_tool_repository import ai_mcp_tool_repository
+from app.service.ai_mcp.mcp_connection import apply_ssrf_guard, call_remote_tool
+from app.service.ai_mcp.mcp_presets import MARKET_PRESETS as _MARKET_PRESETS
 from app.service.ai_mcp.mcp_tool_fetcher import McpToolFetcher, mcp_tool_fetcher
 
 logger = logging.getLogger(__name__)
-
-# 市场预设目录（内置静态配置，installed 由同名 Server 推导，不落表）。
-# endpoint 为各外部服务的官方接入端点，安装后可再调整。
-_MARKET_PRESETS: list[dict[str, Any]] = [
-    {
-        "preset_id": "github",
-        "name": "GitHub",
-        "description": "GitHub 仓库/Issue/PR/代码管理",
-        "capability_tags": ["github", "repo", "issue", "code"],
-        "protocol_type": "streamable-http",
-        "endpoint": "https://api.githubcopilot.com/mcp/",
-        "auth_type": "oauth2",
-    },
-    {
-        "preset_id": "mysql",
-        "name": "MySQL",
-        "description": "MySQL 数据库查询与运维",
-        "capability_tags": ["database", "mysql", "sql"],
-        "protocol_type": "streamable-http",
-        "endpoint": "http://127.0.0.1:8083/mcp",
-        "auth_type": "api_key",
-    },
-    {
-        "preset_id": "search",
-        "name": "网络搜索",
-        "description": "联网搜索与网页摘要获取",
-        "capability_tags": ["search", "web", "browser"],
-        "protocol_type": "streamable-http",
-        "endpoint": "http://127.0.0.1:8084/mcp",
-        "auth_type": "api_key",
-    },
-]
 
 
 class McpManageService:
@@ -106,6 +76,59 @@ class McpManageService:
         await ai_mcp_server_repository.update(db, server, {"tool_count": len(tools)})
         rows = await ai_mcp_tool_repository.list_by_server(db, server.id)
         return [self._to_tool(t) for t in rows]
+
+    # ── 工具试调用 ──────────────────────────────────────────
+
+    async def test_tool(
+        self,
+        db: AsyncSession,
+        server_id: int,
+        tool_name: str,
+        arguments: dict[str, Any] | None = None,
+    ) -> McpToolTestResult:
+        """试调用外部 MCP Server 工具（管理员验证连通性/参数，不走 LLM）。
+
+        连接复用 call_remote_tool（凭据鉴权头 + SSRF 守卫），结果与失败均落
+        调用审计；失败不抛异常，结果结构透出错误信息供前端展示。
+        """
+        server = await self._get_server_or_404(db, server_id)
+        allowed, reason = await apply_ssrf_guard(server)
+        if not allowed:
+            raise BusinessException(ResultCode.PARAM_ERROR, reason)
+        started = time.monotonic()
+        try:
+            text = await call_remote_tool(server, tool_name, arguments or {})
+            result = "success"
+            error = None
+        except Exception as exc:  # noqa: BLE001 试调用失败透出错误，不抛
+            logger.warning(
+                "MCP 工具试调用失败: server=%s tool=%s err=%s",
+                server.name,
+                tool_name,
+                exc,
+            )
+            text = f"工具调用失败: {exc}"
+            result = "failure"
+            error = str(exc)
+        latency_ms = int((time.monotonic() - started) * 1000)
+        await self.record_call(
+            db,
+            user_id=None,
+            server_id=server.id,
+            server_name=server.name,
+            tool_name=tool_name,
+            result=result,
+            latency_ms=latency_ms,
+            request={"arguments": arguments or {}},
+            response=text[:2000],
+        )
+        await db.flush()
+        return McpToolTestResult(
+            success=(result == "success"),
+            result=text[:8000] if result == "success" else None,
+            error=error,
+            latency_ms=latency_ms,
+        )
 
     # ── 市场 ──────────────────────────────────────────────
 

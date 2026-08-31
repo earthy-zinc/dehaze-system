@@ -196,9 +196,11 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
 
     app.include_router(ai_mcp_router)
 
+    from app.router.ai_agent_eval import center_router as ai_eval_center_router
     from app.router.ai_agent_eval import router as ai_agent_eval_router
 
     app.include_router(ai_agent_eval_router)
+    app.include_router(ai_eval_center_router)
 
     # A2A 协议路由（服务端对外暴露：Agent 挂载路径 + 全局标准入口）
     from app.router.a2a import global_router as a2a_global_router
@@ -224,6 +226,11 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
 
     app.include_router(ai_compat_call_router)
 
+    # AI 可观测性查询路由（F-M08-013）
+    from app.router.ai_observability import router as ai_observability_router
+
+    app.include_router(ai_observability_router)
+
     from app.router.kb import router as kb_router
 
     app.include_router(kb_router)
@@ -232,3 +239,13 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     from app.router.voice import router as voice_router
 
     app.include_router(voice_router)
+
+    # 语音引擎注册表管理路由（Provider/Key/Model，voice:engine:manage）
+    from app.router.voice_admin import router as voice_admin_router
+
+    app.include_router(voice_admin_router)
+
+    # 管理端缓存统一失效入口（ROOT/ADMIN）
+    from app.router.cache import router as cache_router
+
+    app.include_router(cache_router)

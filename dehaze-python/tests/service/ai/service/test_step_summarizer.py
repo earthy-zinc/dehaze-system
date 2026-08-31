@@ -29,7 +29,8 @@ def _repo(thoughts, updated):
     return _Repo()
 
 
-async def test_generate_summaries_batch(mock_redis):
+# 挂 db fixture：bypass_span 结算落库经同源事务回滚，避免向测试库提交旁路 trace 污染统计
+async def test_generate_summaries_batch(db, mock_redis):
     with patch(
         "app.service.ai.service.step_summarizer.llm_client.stream_chat",
         side_effect=_llm_stream(
@@ -40,25 +41,29 @@ async def test_generate_summaries_batch(mock_redis):
             {"thought": "先分析", "tool": "image_analysis", "observation": "雾图"},
             {"thought": "再处理", "tool": "dehaze", "observation": "完成"},
         ]
-        summaries = await _generate_summaries(None, "model-x", steps)
+        summaries = await _generate_summaries(None, "model-x", steps, conversation_id=1, message_id=1)
     assert summaries == ["步骤1：分析图像", "步骤2：执行去雾"]
 
 
-async def test_generate_summaries_non_json_returns_none(mock_redis):
+async def test_generate_summaries_non_json_returns_none(db, mock_redis):
     with patch(
         "app.service.ai.service.step_summarizer.llm_client.stream_chat",
         side_effect=_llm_stream(LLMChunk("text_delta", "抱歉，我无法概括"), LLMChunk("done")),
     ):
-        result = await _generate_summaries(None, "model-x", [{"thought": "t", "tool": None}])
+        result = await _generate_summaries(
+            None, "model-x", [{"thought": "t", "tool": None}], conversation_id=1, message_id=1
+        )
     assert result is None
 
 
-async def test_generate_summaries_json_block(mock_redis):
+async def test_generate_summaries_json_block(db, mock_redis):
     with patch(
         "app.service.ai.service.step_summarizer.llm_client.stream_chat",
         side_effect=_llm_stream(LLMChunk("text_delta", '```json\n["概括"]\n```'), LLMChunk("done")),
     ):
-        result = await _generate_summaries(None, "model-x", [{"thought": "t", "tool": None}])
+        result = await _generate_summaries(
+            None, "model-x", [{"thought": "t", "tool": None}], conversation_id=1, message_id=1
+        )
     assert result == ["概括"]
 
 
@@ -76,7 +81,7 @@ async def test_summarize_steps_updates_thoughts(db, mock_redis):
             side_effect=_llm_stream(LLMChunk("text_delta", json.dumps(["s1", "s2"])), LLMChunk("done")),
         ),
     ):
-        await summarize_steps(1, "model-x")
+        await summarize_steps(1, 1, "model-x")
     assert sorted(u[1] for u in updated) == ["s1", "s2"]
 
 
@@ -91,7 +96,7 @@ async def test_summarize_steps_llm_failure_silent(db, mock_redis):
             AsyncMock(side_effect=RuntimeError("llm down")),
         ),
     ):
-        await summarize_steps(1, "model-x")
+        await summarize_steps(1, 1, "model-x")
     assert updated == []
 
 
@@ -103,5 +108,5 @@ async def test_summarize_steps_no_thoughts_no_call(db, mock_redis):
         ),
         patch("app.service.ai.service.step_summarizer.llm_client.stream_chat") as stream,
     ):
-        await summarize_steps(1, "model-x")
+        await summarize_steps(1, 1, "model-x")
     stream.assert_not_called()

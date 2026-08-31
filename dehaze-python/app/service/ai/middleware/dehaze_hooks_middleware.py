@@ -23,6 +23,7 @@ from langgraph.types import interrupt
 
 from app.service.ai.middleware.agent_hooks import agent_hooks
 from app.service.ai.middleware.interrupt_handler import interrupt_handler
+from app.service.ai.service import trace_collector
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +230,8 @@ class DehazeHooksMiddleware(AgentMiddleware):
 
         # 步数计数（步数上限/Token 预算判定由 before_model 钩子单一信息源负责）
         self.ctx["step_count"] = self.ctx.get("step_count", 0) + 1
+        # 可观测性：同步推理步骤序号，LLM 调用明细经 step_position 关联推理步骤
+        trace_collector.set_step_position(self.ctx["step_count"])
 
         # before_model 钩子框架（步数限制、Token 预算、滚动预算校验等）
         hook_state = self._compat_state(request.state)

@@ -118,6 +118,11 @@ def env(monkeypatch):
 
     monkeypatch.setattr(m.eval_service, "run_regression", staticmethod(fake_gate))
 
+    async def fake_judge(db):
+        return {"consistency_state": "normal", "drift_paused": False}
+
+    monkeypatch.setattr(m.eval_center_service, "judge_status", staticmethod(fake_judge))
+
     svc = AgentVersionService(
         ai_agent_repository=agent_repo,
         ai_agent_version_repository=version_repo,
@@ -160,6 +165,52 @@ class TestVersionFlow:
         with pytest.raises(BusinessException) as exc:
             await svc.publish(db, redis, 1, 1, "x")
         assert "门禁" in str(exc.value) or "发布门禁" in str(exc.value)
+
+    async def _drift_judge(self, monkeypatch):
+        async def drifted(db):
+            return {"consistency_state": "drifted", "drift_paused": True}
+
+        monkeypatch.setattr(m.eval_center_service, "judge_status", staticmethod(drifted))
+
+    async def test_publish_drifted_blocks(self, env, monkeypatch):
+        db, redis, calls, svc = env
+        await self._drift_judge(monkeypatch)
+        with pytest.raises(BusinessException) as exc:
+            await svc.publish(db, redis, 1, 1, "x")
+        assert "漂移" in str(exc.value)
+        assert calls["demote"] == 0
+
+    async def test_publish_drifted_force_exempts_and_records_note(self, env, monkeypatch):
+        db, redis, calls, svc = env
+        await self._drift_judge(monkeypatch)
+        await svc.publish(db, redis, 1, 1, "紧急修复", force=True)
+        version = db.entities[-1]
+        assert version.status == 2
+        assert version.change_note == "[漂移豁免]紧急修复"
+
+    async def test_publish_drifted_force_still_blocked_by_regression(self, env, monkeypatch):
+        db, redis, calls, svc = env
+        await self._drift_judge(monkeypatch)
+
+        async def fail_gate(db, redis, agent_id, trigger_type="publish"):
+            return {"passed": False, "failed_samples": [{"sample_id": 1}], "run_id": None}
+
+        monkeypatch.setattr(m.eval_service, "run_regression", staticmethod(fail_gate))
+        with pytest.raises(BusinessException) as exc:
+            await svc.publish(db, redis, 1, 1, "x", force=True)
+        assert "门禁" in str(exc.value)
+        assert calls["demote"] == 0
+
+    async def test_publish_insufficient_data_allows(self, env, monkeypatch):
+        db, redis, calls, svc = env
+
+        async def insufficient(db):
+            return {"consistency_state": "insufficient_data", "drift_paused": False}
+
+        monkeypatch.setattr(m.eval_center_service, "judge_status", staticmethod(insufficient))
+        vno = await svc.publish(db, redis, 1, 1, "x")
+        assert vno == 3
+        assert calls["demote"] == 1
 
     async def test_rollback_restores_and_creates_new_published(self, env, monkeypatch):
         db, redis, calls, svc = env

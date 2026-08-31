@@ -65,6 +65,8 @@ export interface AgentCreateForm {
   isExposed?: boolean;
   /** 文件系统权限规则 */
   permissions?: Array<Record<string, unknown>> | null;
+  /** 分类标签 */
+  tags?: string[];
   /** 排序序号 */
   sortOrder?: number;
   /** 状态：1-启用，0-禁用 */
@@ -83,6 +85,8 @@ export interface AgentUpdateForm {
   isTeam?: boolean;
   isExposed?: boolean;
   permissions?: Array<Record<string, unknown>> | null;
+  /** 分类标签 */
+  tags?: string[];
   sortOrder?: number;
 }
 
@@ -100,9 +104,17 @@ export interface AgentListItem {
   isSubagent: EnabledStatus;
   isTeam: EnabledStatus;
   isExposed: EnabledStatus;
+  /** 分类标签 */
+  tags?: string[];
   status: EnabledStatus;
   sortOrder: number;
   createTime?: string | null;
+  /** 关联 Skill 数 */
+  skillCount?: number;
+  /** 关联 MCP 命名空间数 */
+  mcpCount?: number;
+  /** 关联子 Agent 数 */
+  subAgentCount?: number;
 }
 
 /** 子 Agent 项（详情内嵌） */
@@ -136,6 +148,8 @@ export interface AgentPageQuery extends PageQuery {
   keyword?: string;
   /** 状态过滤 */
   status?: EnabledStatus;
+  /** 类型筛选：agent-普通 Agent，subagent-子 Agent，team-Team 团队，省略为全部 */
+  type?: "agent" | "subagent" | "team";
 }
 
 // ==================== 关联设置（覆盖式） ====================

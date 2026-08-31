@@ -11,6 +11,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_order import SysOrder
 from app.repository.order_repository import order_repository
+from app.repository.payment_record_repository import PaymentRecordRepository
 from app.service.order.payment_service import PaymentService
 
 pytestmark = pytest.mark.requires_db
@@ -62,7 +63,9 @@ def _build_service(**kw):
         order_repository=order_repository,
         package_repository=SimpleNamespace(get_by_id=AsyncMock(return_value=None)),
         payment_record_repository=SimpleNamespace(
-            create=AsyncMock(), get_by_payment_no=AsyncMock(return_value=None)
+            create=AsyncMock(),
+            get_by_payment_no=AsyncMock(return_value=None),
+            get_pending_by_order_id=AsyncMock(return_value=None),
         ),
         payment_channel_service=SimpleNamespace(
             unified_order=AsyncMock(return_value=_pay_result()),

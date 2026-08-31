@@ -1,6 +1,6 @@
 """Agent 配置三级合并解析器
 
-配置优先级（低→高）：sys_dict 系统默认（ai_reasoning_defaults / ai_guardrail_defaults）
+配置优先级（低→高）：系统默认（代码常量 REASONING_DEFAULTS / sys_dict: ai_guardrail_defaults）
 ← Agent 配置（sys_ai_agent.config JSON）← 会话级覆盖（sys_ai_conversation.config）。
 高优先级配置项覆盖低优先级同名项，未覆盖的继承低优先级默认值。
 """
@@ -13,14 +13,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.cache.cache import CacheService
 from app.repository.dict_repository import dict_repository
 
-# 系统默认配置缓存（sys_dict 变更低频，10 分钟失效）
-_DEFAULTS_CACHE_KEY = "ai:config:defaults"
-_DEFAULTS_CACHE_TTL = 600
-
-# 推理参数系统默认字典类型（值存于 sys_dict.name→value）
-REASONING_DEFAULTS_DICT = "ai_reasoning_defaults"
-# 护栏系统默认字典类型
+# 护栏系统默认字典类型：安全合规开关有运维调整场景，存 sys_dict；
+# 推理参数无管理员运行时修改场景，用代码常量（REASONING_DEFAULTS）
 GUARDRAIL_DEFAULTS_DICT = "ai_guardrail_defaults"
+# 护栏默认配置缓存（sys_dict 变更低频，10 分钟失效）
+_GUARDRAIL_DEFAULTS_CACHE_KEY = "ai:config:guardrail_defaults"
+_GUARDRAIL_DEFAULTS_CACHE_TTL = 600
+
+# 推理参数系统默认值（代码常量）：参数随算法演进由版本调整，个性化需求
+# 由 Agent 级/会话级配置逐级覆盖，不设全局字典默认层
+REASONING_DEFAULTS: dict[str, Any] = {
+    "max_steps_react": 20,
+    "max_steps_plan": 30,
+    "max_steps_reflexion": 15,
+    "max_iterations_reflexion": 3,
+    "reflexion_threshold": 0.8,
+    "max_parallel": 5,
+    "tool_timeout": 60,
+    "token_budget": 500000,
+    "retry_max": 2,
+}
 
 
 async def _load_dict_values(db: AsyncSession, type_code: str) -> dict[str, Any]:
@@ -95,26 +107,24 @@ def _nest_dotted(flat: dict[str, Any]) -> dict[str, Any]:
     return nested
 
 
-async def load_defaults(db: AsyncSession, redis: Redis) -> dict[str, Any]:
-    """加载并缓存系统默认配置（ai:config:defaults，10 分钟）。
+async def load_guardrail_defaults(db: AsyncSession, redis: Redis) -> dict[str, Any]:
+    """加载并缓存护栏系统默认配置（ai:config:guardrail_defaults，10 分钟）。
 
-    返回结构：{"reasoning": {...扁平推理参数...}, "guardrails": {...嵌套护栏规则...}}。
+    返回嵌套结构 {规则名: {参数}}，与 GuardrailMiddleware 及
+    Agent 级 config.guardrails 的消费口径一致。
     """
     cache = CacheService(redis)
-    cached = await cache.get_json(_DEFAULTS_CACHE_KEY)
+    cached = await cache.get_json(_GUARDRAIL_DEFAULTS_CACHE_KEY)
     if cached is not None:
         return cached
-    defaults = {
-        "reasoning": await _load_dict_values(db, REASONING_DEFAULTS_DICT),
-        "guardrails": _nest_dotted(await _load_dict_values(db, GUARDRAIL_DEFAULTS_DICT)),
-    }
-    await cache.set_json(_DEFAULTS_CACHE_KEY, defaults, _DEFAULTS_CACHE_TTL)
-    return defaults
+    guardrails = _nest_dotted(await _load_dict_values(db, GUARDRAIL_DEFAULTS_DICT))
+    await cache.set_json(_GUARDRAIL_DEFAULTS_CACHE_KEY, guardrails, _GUARDRAIL_DEFAULTS_CACHE_TTL)
+    return guardrails
 
 
-async def invalidate_defaults(redis: Redis) -> None:
-    """sys_dict 更新时失效系统默认配置缓存。"""
-    await CacheService(redis).delete(_DEFAULTS_CACHE_KEY)
+async def invalidate_guardrail_defaults(redis: Redis) -> None:
+    """ai_guardrail_defaults 字典更新时失效护栏默认配置缓存。"""
+    await CacheService(redis).delete(_GUARDRAIL_DEFAULTS_CACHE_KEY)
 
 
 async def resolve(
@@ -133,19 +143,17 @@ async def resolve(
         扁平配置 dict：推理参数平铺于顶层，护栏汇总于 guardrails 子对象。
         与消费方读取口径一致（如 config.get("max_steps")、config.get("guardrails")）。
     """
-    defaults = await load_defaults(db, redis)
-
     agent_cfg = agent_config or {}
     conv_cfg = conversation_config or {}
 
     # 推理参数各层剥离护栏子对象，避免 guardrails 泄漏进推理参数合并
     reasoning = _merge_config(
-        defaults["reasoning"],
+        REASONING_DEFAULTS,
         {k: v for k, v in agent_cfg.items() if k != "guardrails"},
         {k: v for k, v in conv_cfg.items() if k != "guardrails"},
     )
     guardrails = _merge_guardrails(
-        defaults["guardrails"],
+        await load_guardrail_defaults(db, redis),
         (agent_cfg.get("guardrails") if isinstance(agent_cfg.get("guardrails"), dict) else None),
         (conv_cfg.get("guardrails") if isinstance(conv_cfg.get("guardrails"), dict) else None),
     )

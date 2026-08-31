@@ -35,7 +35,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.config import settings
-from app.infrastructure.llm.local.local_llm_model import embedding_model_path, model_path
+from app.infrastructure.llm.local.local_llm_model import (
+    MODEL_FILE,
+    embedding_model_path,
+    model_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -160,9 +164,13 @@ _STOP_TOKENS = ("<|im_end|>", "<|im_start|>")
 
 
 def _clean_content(text: str) -> str:
-    """剥离 Qwen3 可能漏出的思考块与模板残留"""
-    if "</think>" in text:
-        text = text.split("</think>", 1)[1]
+    """剥离 Qwen3 可能漏出的模板残留。
+
+    思考块 <think>...</think> 语义由上层 OpenAI 兼容客户端（openai_compat 的
+    _ThinkSplitter）跨流式分块识别并转为思考流（前端思考区渲染），本函数**不处理**
+    思考标签：流式逐 chunk 调用时标签可能被拆到多个 chunk、思考内容的 chunk 不含
+    闭合标签，若在此剥离会把思考内容误当正文输出（历史 bug：消息正文残留思考）。
+    """
     for tok in _STOP_TOKENS:
         text = text.split(tok)[0]
     return text.lstrip()
@@ -185,6 +193,22 @@ def health() -> dict:
             logger.warning("健康探测触发模型加载失败: %s", exc)
             loaded = False
     return {"status": "ok", "model": "qwen3-0.6b", "loaded": loaded}
+
+
+@app.get("/v1/models")
+async def list_models():
+    """OpenAI 兼容模型列表：供应商连通性测试/模型发现使用。"""
+    return {
+        "object": "list",
+        "data": [
+            {
+                "id": MODEL_FILE,
+                "object": "model",
+                "created": 0,
+                "owned_by": "local",
+            }
+        ],
+    }
 
 
 class EmbeddingRequest(BaseModel):

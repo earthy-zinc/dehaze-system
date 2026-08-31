@@ -252,6 +252,8 @@ class EvaluationService:
                         summary=metrics,
                     )
 
+            await self._award_evaluate_growth(user_id, log_id)
+
         except Exception as e:
             elapsed_ms = int((time.time() - start_time) * 1000)
             error_msg = str(e)
@@ -283,6 +285,22 @@ class EvaluationService:
                 )
         finally:
             set_current_user_id(None)
+
+    async def _award_evaluate_growth(self, user_id: int | None, log_id: int) -> None:
+        """效果评估完成激励成长值（每日上限由会员模块控制），失败不阻断评估主流程。"""
+        if user_id is None:
+            return
+        try:
+            from app.service.member.growth_service import member_growth_service
+
+            async with get_db_session() as db:
+                await member_growth_service.add_behavior_growth(
+                    db, user_id, "evaluate", related_id=str(log_id)
+                )
+        except Exception:
+            logger.warning(
+                "效果评估成长值激励失败: userId=%s, logId=%s", user_id, log_id, exc_info=True
+            )
 
 
 evaluation_service = EvaluationService()

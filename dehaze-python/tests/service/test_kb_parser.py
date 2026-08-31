@@ -63,15 +63,13 @@ def _make_pptx(slides_data: list[dict]) -> bytes:
     return buf.getvalue()
 
 
-_CJK_FONT = "/usr/share/fonts/google-noto-cjk/NotoSansCJKsc-Regular.otf"
-
-
 def _make_pdf(text: str) -> bytes:
     import pymupdf
 
     doc = pymupdf.open()
     page = doc.new_page()
-    page.insert_text((72, 72), text, fontname="NotoSansCJKsc", fontfile=_CJK_FONT)
+    # 内置 CJK 字体（china-s 简体宋体），避免依赖系统安装的中文字体路径（跨平台）
+    page.insert_text((72, 72), text, fontname="china-s")
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
@@ -84,7 +82,7 @@ def _make_pdf_blocks(text_blocks: list[str]) -> bytes:
     page = doc.new_page()
     y = 50
     for i, text in enumerate(text_blocks):
-        page.insert_text((72, y), f"{i}: {text}", fontname="NotoSansCJKsc", fontfile=_CJK_FONT)
+        page.insert_text((72, y), f"{i}: {text}", fontname="china-s")
         y += 30
     buf = io.BytesIO()
     doc.save(buf)

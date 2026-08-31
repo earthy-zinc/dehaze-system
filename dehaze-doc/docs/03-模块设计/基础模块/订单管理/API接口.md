@@ -2,11 +2,9 @@
 
 ## 1. 文档概述
 
-本文档定义 **订单管理** 模块的 HTTP API 规范，是该模块 API 契约的唯一权威来源。本模块为平台**统一交易中枢**，接口对会员卡 / 积分卡商品统一生效（商品类型差异仅体现于履约与退款，属后端实现内部逻辑）。
+本文档定义 **订单管理** 模块的 HTTP API 规范，是该模块 API 契约的唯一权威来源。本模块为平台**统一交易中枢**，接口对会员卡 / 积分卡商品统一生效。
 
 - **基础路径**：`/api/v1/orders`
-- **公共约定**：参见 [04-API规范.md](../../../02-系统架构/04-API规范.md)
-- **需求规格**：[需求规格.md](./需求规格.md)
 
 ## 2. 接口清单
 
@@ -41,6 +39,7 @@
 | `/api/v1/orders/refunds/page` | GET | 售后审核列表（含原因类型筛选） | order:refund:list | F-OM-011 |
 | `/api/v1/orders/refunds/{refundId}/approve` | PUT | 售后审核通过 | order:refund:approve | F-OM-008 |
 | `/api/v1/orders/refunds/{refundId}/reject` | PUT | 售后审核驳回 | order:refund:approve | F-OM-008 |
+| `/api/v1/orders/balance-refunds/{refundId}/audit` | PUT | 余额退款审核（校验余额/冻结后原路退回并扣减可用余额） | order:refund:approve | F-OM-015 |
 | `/api/v1/orders/stats` | GET | 订单统计（总额/状态/支付方式/商品类型/每日趋势） | order:stats | F-OM-012 |
 
 ## 3. 权限标识汇总

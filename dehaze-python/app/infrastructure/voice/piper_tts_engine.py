@@ -37,16 +37,28 @@ _executor = ThreadPoolExecutor(
     max_workers=settings.VOICE_TTS_INFERENCE_THREADS, thread_name_prefix="piper-tts"
 )
 
-# 音色 → piper-voices 模型文件名（zh_CN-huayan-medium，CC-BY-4.0）
-_VOICE_MODEL_FILES = {"huayan": "zh_CN-huayan-medium.onnx"}
-# 模型文件字节数（远端实际大小，下载完整性校验用）
-_VOICE_MODEL_SIZES = {"huayan": 63201294}
+# 音色模型配置：onnx 文件名、远端大小、下载 URL 模板
+class _VoiceConfig:
+    __slots__ = ("onnx", "size", "url_templates")
 
-# 下载镜像（hf-mirror 优先，回退 huggingface.co）
-_DOWNLOAD_URLS = [
-    "https://hf-mirror.com/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/{filename}",
-    "https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/{filename}",
-]
+    def __init__(self, onnx: str, size: int | None = None, url_templates: list[str] | None = None):
+        self.onnx = onnx
+        self.size = size
+        self.url_templates = url_templates or []
+
+# 音色注册表 {音色: VoiceConfig}，由 LocalTtsProvider 从 sys_voice_model 解析后注入
+_voice_configs: dict[str, _VoiceConfig] = {}
+
+
+def configure_voices(configs: dict[str, dict]) -> None:
+    """注入音色注册表（{音色: {"onnx","size","urls"}}，替换式更新），元信息由 sys_voice_model 决定"""
+    _voice_configs.clear()
+    for voice, cfg in configs.items():
+        _voice_configs[voice] = _VoiceConfig(
+            onnx=cfg.get("onnx"),
+            size=cfg.get("size"),
+            url_templates=cfg.get("urls"),
+        )
 
 _CHUNK = 1024 * 1024
 
@@ -64,7 +76,7 @@ def _model_path(voice: str) -> str:
     configured = settings.VOICE_TTS_MODEL_PATH.strip()
     if configured:
         return configured
-    return os.path.join(settings.MODEL_CACHE_DIR, "piper", _VOICE_MODEL_FILES[voice])
+    return os.path.join(settings.MODEL_CACHE_DIR, "piper", _voice_configs[voice].onnx)
 
 
 def _file_ready(path: str, expected_size: int | None) -> bool:
@@ -101,20 +113,20 @@ def _download_file(url: str, path: str, expected_size: int | None) -> None:
 
 def _ensure_downloaded(voice: str) -> str:
     """确保音色模型文件（onnx + json 配置）就绪，跨进程互斥下载"""
+    cfg = _voice_configs[voice]
     onnx_path = _model_path(voice)
     json_path = onnx_path + ".json"
-    if _file_ready(onnx_path, _VOICE_MODEL_SIZES.get(voice)) and _file_ready(json_path, None):
+    if _file_ready(onnx_path, cfg.size) and _file_ready(json_path, None):
         return onnx_path
     os.makedirs(os.path.dirname(onnx_path), exist_ok=True)
     lock_file = open(onnx_path + ".lock", "w") if fcntl else None  # Windows：无锁直下
     try:
         if lock_file:
             fcntl.flock(lock_file, fcntl.LOCK_EX)
-        if not _file_ready(onnx_path, _VOICE_MODEL_SIZES.get(voice)):
-            _download_with_fallback(_VOICE_MODEL_FILES[voice], onnx_path,
-                                    _VOICE_MODEL_SIZES.get(voice))
+        if not _file_ready(onnx_path, cfg.size):
+            _download_with_fallback(cfg.onnx, onnx_path, cfg.size, cfg.url_templates)
         if not _file_ready(json_path, None):
-            _download_with_fallback(_VOICE_MODEL_FILES[voice] + ".json", json_path, None)
+            _download_with_fallback(cfg.onnx + ".json", json_path, None, cfg.url_templates)
         return onnx_path
     finally:
         if lock_file:
@@ -122,9 +134,13 @@ def _ensure_downloaded(voice: str) -> str:
             lock_file.close()
 
 
-def _download_with_fallback(filename: str, path: str, expected_size: int | None) -> None:
+def _download_with_fallback(
+    filename: str, path: str, expected_size: int | None, url_templates: list[str]
+) -> None:
+    if not url_templates:
+        raise LocalTtsError(f"TTS 模型 {filename} 未配置下载地址，请手动放置于 models/piper/ 目录")
     last_error: Exception | None = None
-    for url_tpl in _DOWNLOAD_URLS:
+    for url_tpl in url_templates:
         try:
             _download_file(url_tpl.format(filename=filename), path, expected_size)
             logger.info("TTS 模型文件就绪：%s（%dMB）", path, os.path.getsize(path) // 1048576)
@@ -134,7 +150,7 @@ def _download_with_fallback(filename: str, path: str, expected_size: int | None)
             logger.warning("TTS 模型下载失败（%s）：%s，尝试下一个镜像", url_tpl, exc)
     raise LocalTtsError(
         f"TTS 模型自动下载失败（{filename}）：{last_error}。"
-        "请检查网络可达 hf-mirror.com / huggingface.co，或手动下载放置于 models/piper/ 目录"
+        "请检查网络可达 hf-mirror.com / hugginggingface.co，或手动下载放置于 models/piper/ 目录"
     ) from last_error
 
 
@@ -213,8 +229,8 @@ def synthesize(
     - speed 为播放倍速（0.5~2.0），映射 Piper length_scale = 1/speed
     - format_ 为 mp3/wav/pcm；输出采样率重采样至 sample_rate
     """
-    if voice not in _VOICE_MODEL_FILES:
-        raise LocalTtsError(f"不支持的音色: {voice}（可选: {'/'.join(_VOICE_MODEL_FILES)}）")
+    if voice not in _voice_configs:
+        raise LocalTtsError(f"不支持的音色: {voice}（可选: {'/'.join(_voice_configs) or '未配置'}）")
     model = _load_model(voice)
 
     try:
@@ -260,7 +276,8 @@ def engine_status() -> dict[str, Any]:
             "engine_status": "offline",
             "voice_model_loaded": False,
         }
+    default_voice = next(iter(_voice_configs), None)
     return {
         "engine_status": "online",
-        "voice_model_loaded": settings.VOICE_TTS_VOICE_ID in _models,
+        "voice_model_loaded": default_voice in _models,
     }

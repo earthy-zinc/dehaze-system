@@ -3,7 +3,13 @@ import { AiSkillAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import { USERS } from "#/factories/constants";
-import { createSkillForm, createSkillQuery, createSkillTestForm } from "#/factories/ai-skill";
+import {
+  buildSkillZip,
+  createSkillForm,
+  createSkillQuery,
+  createSkillTestForm,
+  createSkillZipFile,
+} from "#/factories/ai-skill";
 
 /**
  * SKILL 管理（F-M08-006 §2.6.11/§2.6.14，管理操作需 ai:skill:manage）。
@@ -80,6 +86,42 @@ describe("SKILL 管理 - AiSkillAPI (T-MF-086~089)", () => {
       const shared = await AiSkillAPI.shareToMarket(created.id);
       expect(shared.id).toBe(created.id);
       expect(shared.marketShared).toBe(1);
+    });
+  });
+
+  describe("SKILL zip 上传（Agent Skills 规范）", () => {
+    test("T-MF-092 正向：zip 上传解析 frontmatter 与文件清单", async () => {
+      await login(USERS.ADMIN.username);
+      const created = await AiSkillAPI.uploadSkill(createSkillZipFile());
+      expect(created.id).toBeGreaterThan(0);
+      expect(created.name).toMatch(/^skillzip[a-z0-9]+$/);
+      expect(created.license).toBe("Apache-2.0");
+      expect(created.metadata).toEqual({ version: "1.0" });
+      expect(created.description).toContain("提取 PDF");
+      expect(Array.isArray(created.files)).toBe(true);
+      const paths = (created.files ?? []).map((f) => f.path);
+      expect(paths).toContain("script/extract.py");
+      expect(paths).toContain("reference/REFERENCE.md");
+      const py = created.files?.find((f) => f.path === "script/extract.py");
+      expect(py?.fileSize).toBeGreaterThan(0);
+      expect(py?.fileType).toBe("text/x-python");
+      await AiSkillAPI.deleteSkill(created.id);
+    });
+
+    test("T-MF-093 正向：读取 SKILL 资源文件内容（对象存储）", async () => {
+      await login(USERS.ADMIN.username);
+      const created = await AiSkillAPI.uploadSkill(createSkillZipFile());
+      const blob = await AiSkillAPI.getSkillFile(created.id, "reference/REFERENCE.md");
+      expect(blob).toBeInstanceOf(Blob);
+      expect(await blob.text()).toContain("参考文档");
+      await AiSkillAPI.deleteSkill(created.id);
+    });
+
+    test("T-MF-094 正向：zip 校验失败返回业务错误（缺 SKILL.md）", async () => {
+      await login(USERS.ADMIN.username);
+      const badZip = buildSkillZip({ "readme-only/README.md": "# 无 SKILL.md" });
+      const file = new File([badZip], "bad.zip", { type: "application/zip" });
+      await expectBizError(AiSkillAPI.uploadSkill(file), ["A0400"]);
     });
   });
 });

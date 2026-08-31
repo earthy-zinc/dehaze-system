@@ -31,6 +31,54 @@ from app.service.voice.tts_service import (
     encrypt_audio,
 )
 
+# 注册表化后引擎依赖注入的音色注册表；测试初始化内置默认音色（与 voice_engine_seeder 一致）
+piper_tts_engine.configure_voices(
+    {
+        "huayan": {
+            "onnx": "zh_CN-huayan-medium.onnx",
+            "size": 63201294,
+            "urls": [
+                "https://hf-mirror.com/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/{filename}",
+                "https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/{filename}",
+            ],
+        }
+    }
+)
+
+
+class FakeTtsProvider:
+    """TTS Provider 桩：可预设合成字节或抛异常。"""
+
+    def __init__(self, audio=b"fake-audio", error=None):
+        self._audio = audio
+        self._error = error
+
+    async def synthesize(self, text, voice_id, speed, format_, sample_rate):
+        if self._error is not None:
+            raise self._error
+        return self._audio
+
+    async def engine_status(self):
+        return {}
+
+
+class FakeEngineRegistry:
+    """注册表桩：get_tts_provider 返回预设的 Provider。"""
+
+    def __init__(self, provider):
+        self._provider = provider
+
+    async def get_tts_provider(self):
+        return self._provider
+
+
+def _make_svc(provider=None):
+    """构造注入 fake Provider 的 TtsService（file_service/voice_billing_service 走模块单例）。"""
+    return tts_service.__class__(
+        engine_registry=FakeEngineRegistry(provider or FakeTtsProvider())
+    )
+
+
 # 对抗性脏语料：全角/半角标点混杂、emoji、零宽字符、CRLF、连续空行
 _DIRTY_CORPUS = [
     "处理完成；done.第二段！third？mixed，标点。",
@@ -226,8 +274,9 @@ def _install_service_stubs(monkeypatch: pytest.MonkeyPatch, synth_calls: list[st
 async def test_synthesize_caches_second_call(redis: FakeAsyncRedis, monkeypatch):
     calls: list[str] = []
     _install_service_stubs(monkeypatch, calls)
+    svc = _make_svc()
 
-    first = await tts_service.synthesize(
+    first = await svc.synthesize(
         None, redis, 1, "缓存命中测试", "huayan", 1.0, "wav", 16000
     )
     assert first["audioUrl"].startswith("/api/v1/voice/tts/audio/")
@@ -235,14 +284,14 @@ async def test_synthesize_caches_second_call(redis: FakeAsyncRedis, monkeypatch)
     assert calls == ["check", "store", "charge"]
 
     calls.clear()
-    second = await tts_service.synthesize(
+    second = await svc.synthesize(
         None, redis, 1, "缓存命中测试", "huayan", 1.0, "wav", 16000
     )
     assert second["audioUrl"] == first["audioUrl"]  # 命中缓存
     assert calls == []  # 不再合成、不重复扣费
 
     # 语速不同 → 缓存 Key 不同 → 重新合成
-    third = await tts_service.synthesize(
+    third = await svc.synthesize(
         None, redis, 1, "缓存命中测试", "huayan", 0.8, "wav", 16000
     )
     assert third["audioUrl"] != first["audioUrl"]
@@ -252,25 +301,23 @@ async def test_synthesize_caches_second_call(redis: FakeAsyncRedis, monkeypatch)
 async def test_synthesize_default_voice_applied(redis: FakeAsyncRedis, monkeypatch):
     calls: list[str] = []
     _install_service_stubs(monkeypatch, calls)
+    svc = _make_svc()
     # voice=None → 使用默认音色配置
-    result = await tts_service.synthesize(None, redis, 1, "默认音色", None, 1.0, "mp3", 16000)
+    result = await svc.synthesize(None, redis, 1, "默认音色", None, 1.0, "mp3", 16000)
     assert result["format"] == "mp3"
 
 
 async def test_synthesize_engine_error_wrapped(redis: FakeAsyncRedis, monkeypatch):
     calls: list[str] = []
     _install_service_stubs(monkeypatch, calls)
-
-    def _boom(*args, **kwargs):
-        raise LocalTtsError("引擎故障模拟")
-
-    # 引擎提交入口在服务层经 run_in_executor 调用（线程池内同步执行），桩引擎 synthesize 函数
-    monkeypatch.setattr(m.piper_tts_engine, "synthesize", _boom)
+    # Provider 合成抛错 → 服务层包装为业务异常，不存储不扣费
+    svc = _make_svc(provider=FakeTtsProvider(error=LocalTtsError("引擎故障模拟")))
     with pytest.raises(BusinessException):
-        await tts_service.synthesize(None, redis, 1, "触发故障", "huayan", 1.0, "wav", 16000)
+        await svc.synthesize(None, redis, 1, "触发故障", "huayan", 1.0, "wav", 16000)
     assert calls == ["check"]  # 失败不存储不扣费
 
 
 async def test_synthesize_rejects_unknown_voice_without_synth(redis: FakeAsyncRedis):
+    svc = _make_svc()
     with pytest.raises(BusinessException):
-        await tts_service.synthesize(None, redis, 1, "文本", "aixia", 1.0, "wav", 16000)
+        await svc.synthesize(None, redis, 1, "文本", "aixia", 1.0, "wav", 16000)

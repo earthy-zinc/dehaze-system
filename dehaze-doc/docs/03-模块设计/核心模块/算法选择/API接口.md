@@ -19,7 +19,7 @@
 | `/api/v1/algorithms/select/{id}/test` | POST | 上传自定义图片测试算法效果 | - | F-M03-004 |
 | `/api/v1/algorithms/select/search` | GET | 搜索算法（关键词/拼音/标签） | - | F-M03-003 |
 | `/api/v1/algorithms/select/compare` | POST | 算法对比（数量需在 2-3 个之间） | - | F-M03-006 |
-| `/api/v1/algorithms/select/recommend` | POST | 算法推荐匹配（基于关键词/任务类型/样例算法，供 AI 对话 MCP 调用）【已实现】 | - | F-M03-007 |
+| `/api/v1/algorithms/select/recommend` | POST | 算法推荐匹配（基于关键词/任务类型/样例算法，供 AI 对话 MCP 调用） | - | F-M03-007 |
 
 ## 3. 权限标识汇总
 

@@ -13,7 +13,9 @@
 """
 
 import asyncio
+import json
 import logging
+import traceback
 from typing import Any
 
 from langgraph.types import Command
@@ -24,9 +26,11 @@ from app.database import get_db_session
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.ai_message_repository import ai_message_repository
+from app.repository.ai_trace_repository import ai_trace_repository
 from app.infrastructure.cache.checkpoint_manager import checkpoint_manager
 from app.service.ai.builders.context_manager import context_manager
 from app.service.ai.service.conversation_search_service import sync_conversation_to_es
+from app.service.ai.service import trace_collector
 from app.service.ai.service.credits_service import calculate_credits
 from app.service.ai.builders.deep_agent_builder import DeepAgentBuilder
 from app.service.ai.middleware.interrupt_handler import interrupt_handler
@@ -275,6 +279,21 @@ class ReasoningService:
                 messages, system_prompt, injected_list = await context_manager.build_context(
                     db, conv, model_id
                 )
+            # 可观测性：开启过程链采集并记录上下文构成快照（§2.2）
+            trace_collector.start(
+                conversation_id=conv_id,
+                message_id=msg_id,
+                user_id=user_id,
+                agent_code=getattr(conv, "agent_code", None),
+                model_id=model_id,
+            )
+            if conv:
+                trace_collector.current().record_context(
+                    system_prompt=system_prompt,
+                    messages=messages,
+                    injected_memories=injected_list,
+                    summary=getattr(conv, "summary", None),
+                )
             agent_id, version_no = await self._load_agent_anchor(db, conv)
             redis = await get_redis_client()
             snapshot = await self._load_snapshot(db, redis, agent_id, version_no)
@@ -332,6 +351,9 @@ class ReasoningService:
             final_state = await graph.aget_state(config)
         except Exception as e:
             logger.error("Agent 推理失败: %s", e, exc_info=True)
+            await trace_collector.finalize_unsettled(
+                status=trace_collector.TRACE_STATUS_FAILED, error_type=trace_collector.error_type_of(e)
+            )
             await self._fail(msg_id, stream_session_id, e)
             raise
 
@@ -341,6 +363,12 @@ class ReasoningService:
         interrupt_data = await interrupt_handler.get_interrupt(self._thread_id(conv_id, msg_id))
         if interrupt_data:
             await sse_emitter_manager.release_lock(conv_id)
+            # 本轮以中断态收尾（resume 由新请求 trace_id 记独立过程链），
+            # error_type 记录中断类型（quota/confirm/async_wait），供审计侧直接检索
+            await trace_collector.finalize_unsettled(
+                status=trace_collector.TRACE_STATUS_INTERRUPTED,
+                error_type=(interrupt_data or {}).get("type"),
+            )
 
         result = self._state_result(final_state)
         # async_wait 挂起：回复尚未完成，前端凭 interrupt.data.task_id 轮询消息接口等
@@ -352,7 +380,7 @@ class ReasoningService:
         else:
             credits = await self._finalize_message(msg_id, result, model_id, used_memory_ids)
             # 异步生成步骤摘要（两级展示一级），不阻塞主回复
-            schedule_step_summaries(msg_id, model_id)
+            schedule_step_summaries(conv_id, msg_id, model_id)
             self._trigger_suggestions(conv_id, msg_id, result, user_id, stream_session_id)
         await converter.finish()  # 文本/思考内容块收尾（message.end 前）
         await self._push_end(stream_session_id, result, credits)
@@ -379,7 +407,7 @@ class ReasoningService:
         推理后 settle 实扣结算。direct 无检查点可恢复，配额阻断为终态提示
         （用户升级后重新提问），不提供图路径的 quota 中断挂起/resume 语义。
         """
-        from langchain_core.messages import HumanMessage, SystemMessage
+        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
         from app.infrastructure.llm.client.dehaze_chat_model import DehazeChatModel
 
@@ -391,9 +419,33 @@ class ReasoningService:
                 "stream_session_id": stream_session_id,
             }
         )
+        # 可观测性：direct 范式无图钩子，采集与结算在本方法内完成
+        trace_collector.start(
+            conversation_id=conv_id,
+            message_id=msg_id,
+            user_id=user_id,
+            agent_code=None,
+            model_id=model_id,
+        )
+        trace_collector.current().record_context(
+            system_prompt=system_prompt, messages=messages, injected_memories=[], summary=None
+        )
         lm_messages: list = []
         if system_prompt:
             lm_messages.append(SystemMessage(content=system_prompt))
+        # 完整对话历史按序传入（user/assistant/system），direct 范式不能只传最后一句，
+        # 否则模型看不到上文，无法回答"我说了什么/复述我的回答"等依赖历史的问题
+        for m in messages:
+            role = m.get("role")
+            content = m.get("content")
+            if not content:
+                continue
+            if role == "user":
+                lm_messages.append(HumanMessage(content=content))
+            elif role == "assistant":
+                lm_messages.append(AIMessage(content=content))
+            elif role == "system":
+                lm_messages.append(SystemMessage(content=content))
         last_human = next(
             (
                 m.get("content")
@@ -402,7 +454,32 @@ class ReasoningService:
             ),
             "",
         )
-        lm_messages.append(HumanMessage(content=last_human))
+
+        # 上下文预算保护：完整历史可能超出模型窗口，按预算从最早消息裁剪
+        # （保留 index0 的 system_prompt 与最近对话；count_tokens 为本地字符估算）
+        from app.infrastructure.llm.call.llm_client import llm_client
+        from app.repository.ai_model_repository import ai_model_repository
+
+        async with get_db_session() as db:
+            model_entity = await ai_model_repository.get_by_model_id(db, model_id)
+        budget = None
+        if model_entity:
+            output_reserve = model_entity.max_output_tokens or 1024
+            budget = max(model_entity.max_context_tokens - output_reserve - 200, 512)
+        if budget:
+            total = 0
+            for m in lm_messages:
+                total += await llm_client.count_tokens(m.content)
+            while total > budget and len(lm_messages) > 2:
+                # 优先裁剪最早的非 system 对话消息（保留 system_prompt/摘要/记忆与最近对话）
+                idx = next(
+                    (i for i, m in enumerate(lm_messages) if not isinstance(m, SystemMessage)),
+                    None,
+                )
+                if idx is None or idx == 0:
+                    break
+                dropped = lm_messages.pop(idx)
+                total -= await llm_client.count_tokens(dropped.content)
 
         async with get_db_session() as db:
             billing_ctx = await billing_service.pre_charge(
@@ -415,6 +492,10 @@ class ReasoningService:
                 "stop_reason": billing_ctx["stop_reason"],
                 "usage": {},
             }
+            await trace_collector.finalize_unsettled(
+                status=trace_collector.TRACE_STATUS_FAILED,
+                error_type=(billing_ctx.get("stop_reason") or "precharge_blocked")[:32],
+            )
             credits = await self._finalize_message(msg_id, result, model_id)
             await converter.finish()
             await self._push_end(stream_session_id, result, credits)
@@ -435,6 +516,11 @@ class ReasoningService:
             usage = dict(model._last_usage or {})
         except Exception as e:
             logger.error("direct 推理失败: %s", e, exc_info=True)
+            await trace_collector.finalize_unsettled(
+                status=trace_collector.TRACE_STATUS_FAILED,
+                error_type=trace_collector.error_type_of(e),
+                error_detail={"message": str(e)[:500], "stack": traceback.format_exc()[:4000]},
+            )
             await self._fail(msg_id, stream_session_id, e)
             raise
 
@@ -455,6 +541,7 @@ class ReasoningService:
             await billing_service.settle(
                 db, user_id, conv_id, msg_id, model_id, None, usage
             )
+        await trace_collector.finalize_success(usage=result.get("usage"), step_count=1)
         await self._push_end(stream_session_id, result, credits)
         _schedule_conversation_sync(conv_id)
         return result
@@ -465,27 +552,37 @@ class ReasoningService:
         interrupt = await interrupt_handler.get_interrupt(thread_id)
         if not interrupt:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "未找到中断点，无法恢复")
-        # 按中断类型构造恢复载荷：
-        # - confirm：用户确认/拒绝算法推荐，resume_data 为 {confirmed, algorithmId}
-        # - async_wait：异步任务结果，resume_data 为 {async_task: summary}，注入工具中断点
-        # - quota：用户升级 VIP 后直接从中断点继续（预算 hook 重查配额），resume=True
-        if interrupt.get("type") == "confirm":
-            from app.service.ai.service.algorithm_recommend_service import handle_user_confirmation
-
-            await handle_user_confirmation(
-                conv_id,
-                msg_id,
-                user_id,
-                resume_data.get("confirmed", False),
-                resume_data.get("algorithmId"),
-            )
-        elif interrupt.get("type") == "quota":
-            resume_data = True
+        # 可观测性：resume 续流以新请求 trace_id 独立成链，此处开启采集器；
+        # 中断恢复决策摘要先取原值（quota 分支会覆盖 resume_data）
+        decision_summary = json.dumps(resume_data, ensure_ascii=False, default=str)[:500]
+        trace_collector.start(
+            conversation_id=conv_id,
+            message_id=msg_id,
+            user_id=user_id,
+            agent_code=None,
+            model_id=None,
+        )
         stream_session_id = (interrupt.get("data") or {}).get("stream_session_id", "")
         config = {"configurable": {"thread_id": thread_id}}
         from app.dependencies.redis import get_redis_client
 
         try:
+            # 按中断类型构造恢复载荷：
+            # - confirm：用户确认/拒绝算法推荐，resume_data 为 {confirmed, algorithmId}
+            # - async_wait：异步任务结果，resume_data 为 {async_task: summary}，注入工具中断点
+            # - quota：用户升级 VIP 后直接从中断点继续（预算 hook 重查配额），resume=True
+            if interrupt.get("type") == "confirm":
+                from app.service.ai.service.algorithm_recommend_service import handle_user_confirmation
+
+                await handle_user_confirmation(
+                    conv_id,
+                    msg_id,
+                    user_id,
+                    resume_data.get("confirmed", False),
+                    resume_data.get("algorithmId"),
+                )
+            elif interrupt.get("type") == "quota":
+                resume_data = True
             async with get_db_session() as db:
                 conv = await ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
                 agent_id, version_no = await self._load_agent_anchor(db, conv)
@@ -495,6 +592,19 @@ class ReasoningService:
                 msg0 = await ai_message_repository.get_by_id(db, msg_id)
                 resume_model = msg0.model if msg0 else ""
                 graph = await self._build_graph(db, redis, agent_id, version_no, resume_model)
+                interrupted_trace = await ai_trace_repository.get_latest_by_message_and_status(
+                    db, msg_id, trace_collector.TRACE_STATUS_INTERRUPTED
+                )
+            # 可观测性：补全采集器归属（start 时会话/模型尚未加载），记录中断恢复决策
+            collector = trace_collector.current()
+            collector.agent_code = getattr(conv, "agent_code", None)
+            collector.model_id = resume_model or None
+            collector.record_event(
+                event="resume",
+                interrupt_type=interrupt.get("type"),
+                decision=decision_summary,
+                from_trace_id=interrupted_trace.trace_id if interrupted_trace else None,
+            )
             # 恢复推理并推送 SSE 事件（thought/进度/文本增量续流）
             converter = SseEventConverter(
                 {
@@ -515,6 +625,11 @@ class ReasoningService:
             final_state = await graph.aget_state(config)
         except Exception as e:
             logger.error("Agent 推理恢复失败: %s", e, exc_info=True)
+            await trace_collector.finalize_unsettled(
+                status=trace_collector.TRACE_STATUS_FAILED,
+                error_type=trace_collector.error_type_of(e),
+                error_detail={"message": str(e)[:500], "stack": traceback.format_exc()[:4000]},
+            )
             await self._fail(msg_id, stream_session_id, e)
             raise
         await interrupt_handler.clear_interrupt(thread_id)
@@ -526,6 +641,10 @@ class ReasoningService:
         # （_state_result 已校验 state.values 非空）
         used_memory_ids = final_state.values.get("used_memory_ids") or None
         credits = await self._finalize_message(msg_id, result, model_id, used_memory_ids)
+        # 可观测性：resume 无 after_agent 兜底时的成功收尾（幂等，钩子已结算则跳过）
+        await trace_collector.finalize_success(
+            usage=result.get("usage"), step_count=final_state.values.get("step_count", 0)
+        )
         if stream_session_id:
             await self._push_end(stream_session_id, result, credits)
         _schedule_conversation_sync(conv_id)

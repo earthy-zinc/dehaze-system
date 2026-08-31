@@ -18,7 +18,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+from app.config import PYTHON_PROJECT_ROOT as _PROJECT_ROOT
 
 
 def _ensure_ssl_cert_file():

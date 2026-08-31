@@ -210,10 +210,7 @@ class AiKnowledgeBaseAPI {
   }
 
   /** 召回测试集分页列表（评估基线随 kb 积累，返回分页 {list,total}） */
-  static getTestSets(
-    knowledgeBaseId: number,
-    query?: { pageNum?: number; pageSize?: number }
-  ) {
+  static getTestSets(knowledgeBaseId: number, query?: { pageNum?: number; pageSize?: number }) {
     return request<PageResult<TestSetVO[]>>({
       url: `/api/v1/kb/${knowledgeBaseId}/retrieve/test-sets`,
       method: "get",

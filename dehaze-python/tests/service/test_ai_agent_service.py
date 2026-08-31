@@ -41,7 +41,7 @@ def env(monkeypatch):
         count_conversation_references=count_conv,
         count_subagent_references=count_sub,
         soft_delete_by_ids=soft_delete,
-        paginate_agents=lambda d, p, s, kw=None, st=None: ([], 0),
+        paginate_agents=lambda d, p, s, kw=None, st=None, at=None: ([], 0),
         list_enabled=lambda d: [],
         list_skill_names=lambda d, aid: [],
         list_mcp_namespaces=lambda d, aid: [],

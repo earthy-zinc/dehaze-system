@@ -25,6 +25,12 @@ class SysAiAgentThought(AppendOnlyModel):
     position: Mapped[int] = mapped_column(
         Integer, nullable=False, comment="步骤序号(从1开始，同一消息内排序)"
     )
+    agent_code: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, comment="此步骤来源Agent编码(空表示主Agent)"
+    )
+    is_subagent: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, default=0, comment="是否为子Agent的推理步骤(0:否;1:是)"
+    )
     thought: Mapped[str | None] = mapped_column(Text, nullable=True, comment="LLM思考内容")
     tool: Mapped[str | None] = mapped_column(
         String(128), nullable=True, comment="工具名称(MCP tool标识)"

@@ -6,7 +6,6 @@
 
 - **基础路径**：`/api/v1/auth`
 - **认证方式**：Session Cookie（`X-Session-Id`）
-- **公共约定**：参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md)
 
 ## 2. 接口清单
 
@@ -22,7 +21,7 @@
 | `/api/v1/auth/api-keys/{id}` | DELETE | 删除/吊销 API Key | - | F-AM-008 |
 | `/api/v1/auth/login-logs` | GET | 登录日志查询（分页/按用户名/IP/状态/时间筛选，管理员全量、普通用户仅本人） | `sys:auth:log:list` | F-AM-010 |
 | `/api/v1/auth/sessions` | GET | 在线会话列表（按用户名精确查询，管理员） | `sys:auth:session:list` | F-AM-011 |
-| `/api/v1/auth/sessions/{sessionId}` | DELETE | 踢出指定会话（立即删除 Redis Session，被踢端下次请求返回 401） | `sys:auth:session:kick` | F-AM-011 |
+| `/api/v1/auth/sessions/{sessionId}` | DELETE | 踢出指定会话 | `sys:auth:session:kick` | F-AM-011 |
 
 ## 3. 权限标识汇总
 
@@ -32,7 +31,7 @@
 | `sys:auth:session:list` | 在线会话列表查询（管理员） |
 | `sys:auth:session:kick` | 踢出在线会话（管理员；超级管理员不可被踢出） |
 
-> **权限标识说明**：接口清单中 `-` 表示无需特定权限标识。登录、注册、获取验证码为公开访问；注销、获取权限信息、API Key 管理为登录用户可访问；登录日志查询/导出需登录态，管理员查看全量、普通用户仅查看本人。
+> **权限标识说明**：接口清单中 `-` 表示无需特定权限标识。
 
 ## 4. 业务错误码
 
@@ -45,4 +44,7 @@
 | `A0213` | 验证码已过期 | 验证码超时 |
 | `A0214` | 验证码错误 | 验证码校验失败 |
 | `A0230` | 会话无效或已过期 | Session 失效或过期 |
+| `A0301` | 访问未授权 | API Key 无效、已吊销或已过期 |
+| `A0400` | 用户请求参数错误 | 创建 API Key 时缺少 `name` 等必填参数 |
+| `A0401` | 请求资源不存在 | 删除的 API Key ID 不存在或不属于当前用户 |
 | `A0501` | 数据已存在 | 用户名已被注册 |

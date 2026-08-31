@@ -15,6 +15,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	fbrepo "github.com/earthyzinc/dehaze-go/internal/repository/feedback"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
+	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
 	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
@@ -23,13 +24,14 @@ import (
 )
 
 const (
+	// memberGrowthRulesDictType 会员成长值规则字典类型（sys_dict: member_growth_rules）
+	memberGrowthRulesDictType = "member_growth_rules"
+
 	ratingTimeLimitDays = 30
 	ratingMaxImages    = 3
 	ratingMaxCommentLen = 500
 	timeFormat          = "2006-01-02 15:04:05"
 
-	ratingGrowthValue      = 5
-	ratingDailyGrowthLimit  = 5
 	ratingStatsCacheTTL     = 10 * time.Minute
 	ratingDailyCounterTTL   = 25 * time.Hour
 	dateFormat              = "2006-01-02"
@@ -56,6 +58,7 @@ type RatingService struct {
 	cache        types.ICache
 	alertSvc     ILowRatingAlertService
 	logger       *zap.Logger
+	dictSvc      dictservice.IDictService
 }
 
 func NewRatingService(
@@ -66,6 +69,7 @@ func NewRatingService(
 	cache types.ICache,
 	alertSvc ILowRatingAlertService,
 	logger *zap.Logger,
+	dictSvc dictservice.IDictService,
 ) *RatingService {
 	return &RatingService{
 		db:          db,
@@ -75,6 +79,7 @@ func NewRatingService(
 		cache:       cache,
 		alertSvc:    alertSvc,
 		logger:      logger,
+		dictSvc:     dictSvc,
 	}
 }
 
@@ -359,16 +364,20 @@ func (s *RatingService) awardGrowthForRating(ctx context.Context, userID, rating
 	today := time.Now().Format(dateFormat)
 	counterKey := fmt.Sprintf("rating:daily:%d:%s", userID, today)
 
+	// 营销激励参数来自字典（缺键回退默认值）
+	dailyLimit := dictservice.GetIntValue(ctx, s.dictSvc, memberGrowthRulesDictType, "rating_growth_daily_limit", 5)
+	growthValue := dictservice.GetIntValue(ctx, s.dictSvc, memberGrowthRulesDictType, "rating_growth_value", 5)
+
 	if s.cache != nil {
 		countStr, err := s.cache.Get(ctx, counterKey)
 		if err == nil && countStr != "" {
-			if count, parseErr := strconv.ParseInt(countStr, 10, 64); parseErr == nil && count >= int64(ratingDailyGrowthLimit) {
+			if count, parseErr := strconv.ParseInt(countStr, 10, 64); parseErr == nil && count >= dailyLimit {
 				return nil
 			}
 		}
 	}
 
-	if err := s.memberSvc.AwardGrowth(ctx, userID, "rating", ratingGrowthValue, "评价奖励", fmt.Sprintf("%d", ratingID)); err != nil {
+	if err := s.memberSvc.AwardGrowth(ctx, userID, "rating", int(growthValue), "评价奖励", fmt.Sprintf("%d", ratingID)); err != nil {
 		return err
 	}
 

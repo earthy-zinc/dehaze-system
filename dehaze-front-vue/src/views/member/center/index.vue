@@ -79,22 +79,16 @@
       <el-row :gutter="20">
         <el-col :sm="6" :xs="12">
           <div class="benefit-item">
-            <div class="benefit-label">本月去雾剩余</div>
-            <div class="benefit-value">{{ dehazeRemaining }}</div>
-            <div class="benefit-sub">
-              总额 {{ profile.monthlyDehazeQuota }} / 已用
-              {{ profile.monthlyDehazeUsed }}
-            </div>
+            <div class="benefit-label">图像处理剩余</div>
+            <div class="benefit-value">{{ imageRemaining }}</div>
+            <div class="benefit-sub">7 类图像任务取最低剩余</div>
           </div>
         </el-col>
         <el-col :sm="6" :xs="12">
           <div class="benefit-item">
-            <div class="benefit-label">本月评估剩余</div>
+            <div class="benefit-label">评估剩余</div>
             <div class="benefit-value">{{ evaluateRemaining }}</div>
-            <div class="benefit-sub">
-              总额 {{ profile.monthlyEvaluateQuota }} / 已用
-              {{ profile.monthlyEvaluateUsed }}
-            </div>
+            <div class="benefit-sub">本月剩余评估次数</div>
           </div>
         </el-col>
         <el-col :sm="6" :xs="12">
@@ -229,6 +223,7 @@
 import {
   MemberAPI,
   MemberProfileVO,
+  BenefitSummaryVO,
   SignInCalendarVO,
   MemberLevelCode,
 } from "dehaze-sdk-js";
@@ -243,6 +238,7 @@ const router = useRouter();
 
 const loading = ref(false);
 const profile = ref<MemberProfileVO>();
+const summary = ref<BenefitSummaryVO>();
 const calendar = ref<SignInCalendarVO>();
 const calendarDate = ref(new Date());
 const signInLoading = ref(false);
@@ -282,21 +278,13 @@ const growthToNext = computed(() => {
   return Math.max(0, profile.value.nextLevelGrowth - profile.value.growthValue);
 });
 
-const dehazeRemaining = computed(() => {
-  if (!profile.value) return 0;
-  return Math.max(
-    0,
-    profile.value.monthlyDehazeQuota - profile.value.monthlyDehazeUsed
-  );
-});
+const imageRemaining = computed(
+  () => summary.value?.imageCategory?.remaining ?? 0
+);
 
-const evaluateRemaining = computed(() => {
-  if (!profile.value) return 0;
-  return Math.max(
-    0,
-    profile.value.monthlyEvaluateQuota - profile.value.monthlyEvaluateUsed
-  );
-});
+const evaluateRemaining = computed(
+  () => summary.value?.evaluateCategory?.remaining ?? 0
+);
 
 const hasAnyUnlockedFeature = computed(() => {
   if (!profile.value?.benefits) return false;
@@ -329,9 +317,10 @@ function isToday(day: string) {
 
 function loadProfile() {
   loading.value = true;
-  MemberAPI.getProfile()
-    .then((data) => {
-      profile.value = data;
+  Promise.all([MemberAPI.getProfile(), MemberAPI.getBenefitSummary()])
+    .then(([profileData, summaryData]) => {
+      profile.value = profileData;
+      summary.value = summaryData;
     })
     .finally(() => {
       loading.value = false;

@@ -267,6 +267,8 @@ class PredictionService:
         finally:
             set_current_user_id(None)
 
+        await self._award_process_growth(user_id, log_id)
+
         result = {
             "logId": log_id,
             "status": LogStatus.COMPLETED.value,
@@ -374,6 +376,8 @@ class PredictionService:
                 elapsed_ms,
             )
 
+            await self._award_process_growth(user_id, log_id)
+
         except Exception as e:
             elapsed_ms = int((time.time() - start_time) * 1000)
             error_msg = str(e)
@@ -412,6 +416,22 @@ class PredictionService:
                     await callback(log_id)
                 except Exception:
                     logger.warning("预测完成回调执行失败: logId=%s", log_id, exc_info=True)
+
+    async def _award_process_growth(self, user_id: int | None, log_id: int) -> None:
+        """图像处理完成激励成长值（每日上限由会员模块控制），失败不阻断处理主流程。"""
+        if user_id is None:
+            return
+        try:
+            from app.service.member.growth_service import member_growth_service
+
+            async with get_db_session() as db:
+                await member_growth_service.add_behavior_growth(
+                    db, user_id, "process", related_id=str(log_id)
+                )
+        except Exception:
+            logger.warning(
+                "图像处理成长值激励失败: userId=%s, logId=%s", user_id, log_id, exc_info=True
+            )
 
     async def invalidate_cache(self, algorithm_id: int) -> int:
         """版本更新时失效该算法的所有预测缓存"""

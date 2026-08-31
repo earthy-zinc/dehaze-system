@@ -54,6 +54,8 @@ export interface ConversationCreateForm {
   agentCode?: string;
   /** 会话场景（general/image_dispatch/multi_step/algorithm_recommend/scheduled_task） */
   scene?: string;
+  /** 类似问题推荐开关（关闭后回复完成不推送 suggestions 事件） */
+  suggestionsEnabled?: boolean;
 }
 
 /** 会话列表查询参数 */
@@ -76,6 +78,8 @@ export interface ConversationUpdateForm {
   systemPrompt?: string;
   /** 切换 Agent 编码（下一条消息生效） */
   agentCode?: string;
+  /** 类似问题推荐开关（关闭后回复完成不推送 suggestions 事件） */
+  suggestionsEnabled?: boolean;
 }
 
 /** 会话视图对象 */
@@ -91,6 +95,8 @@ export interface ConversationVO {
   agentVersion?: number;
   modelConfig?: ModelConfig;
   systemPrompt?: string;
+  /** 类似问题推荐开关（0-关，1-开） */
+  suggestionsEnabled?: number;
   apiKeyId?: number;
   status: ConversationStatus;
   messageCount: number;
@@ -109,8 +115,16 @@ export interface ConversationVO {
   userId?: number;
   /** 会话用户名（管理端审计视角展示） */
   userName?: string;
-  /** Token 与积分消耗汇总（管理端审计视角展示） */
-  tokenCredits?: number;
+  /** 累计消耗 Token 数（input + output，管理端审计视角展示，无计费记录为 0） */
+  tokenConsumed?: number;
+  /** 累计消耗积分数（管理端审计视角展示，无计费记录为 0） */
+  creditsConsumed?: number;
+  /** 会话异常类型：failed-存在失败消息，quota-配额不足中断，canceled-存在已取消消息 */
+  anomalyType?: string;
+  /** 会话异常展示标签（中文，前端无需硬编码映射） */
+  anomalyLabel?: string;
+  /** 搜索命中消息内容时的命中消息 ID（标题命中时不返回） */
+  matchedMessageId?: number;
   createTime: string;
   updateTime?: string;
 }
@@ -135,6 +149,83 @@ export interface MessageResumeForm {
     reorder?: string[];
     add?: { description?: string; depends_on?: string[] };
   };
+}
+
+/** 上下文构成项（快照内 JSON 键为后端原样 snake_case，不做 camelCase 转换） */
+export interface AiMessageContextItem {
+  type: string;
+  tokens: number;
+  count?: number;
+  counts?: Record<string, number>;
+  source?: string;
+}
+
+/** 上下文压缩/截断事件（键为后端原样 snake_case） */
+export interface AiMessageContextEvent {
+  event: string;
+  tokens?: number;
+  before_tokens?: number;
+  after_tokens?: number;
+}
+
+/** 上下文构成快照：回复时"AI 看到了什么" */
+export interface AiMessageContextSnapshot {
+  items?: AiMessageContextItem[];
+  events?: AiMessageContextEvent[];
+}
+
+/**
+ * LLM 调用明细（消息详情附带，按 seq 正序回放）。
+ *
+ * 对应后端 `AiLlmCallResult`；`toolCall` / `inputSnapshot` / `outputSnapshot` 为
+ * 自由结构 JSON，且其内部键同样保持 snake_case。
+ */
+export interface AiMessageLlmCall {
+  id: number;
+  traceId: string;
+  seq: number;
+  /** 关联推理步骤序号 */
+  stepPosition?: number;
+  model?: string;
+  /** 调用状态：1-成功，2-失败，3-超时 */
+  status: number;
+  errorType?: string;
+  durationMs: number;
+  firstTokenMs?: number;
+  promptTokens: number;
+  completionTokens: number;
+  cachedTokens: number;
+  toolCall?: unknown;
+  inputSnapshot?: unknown;
+  outputSnapshot?: unknown;
+  createTime?: string;
+}
+
+/**
+ * 推理步骤（消息详情附带，按 position 正序）。
+ *
+ * 对应后端 `AgentThoughtResult`，与流式 `thought` 事件（`ThoughtEvent`）字段不同：
+ * 此处为落库记录，额外带 id/messageId/conversationId/createTime。
+ */
+export interface AiMessageThought {
+  id: number;
+  messageId: number;
+  conversationId: number;
+  /** 步骤序号 */
+  position: number;
+  thought?: string;
+  /** 工具名称 */
+  tool?: string;
+  toolInput?: unknown;
+  /** 工具返回摘要 */
+  observation?: string;
+  /** 步骤状态：1-成功，2-失败，3-跳过 */
+  status: number;
+  /** 工具调用耗时（毫秒） */
+  latencyMs: number;
+  /** 失败原因（status=2 时填充） */
+  error?: string;
+  createTime?: string;
 }
 
 /** AI 对话消息视图对象 */
@@ -164,6 +255,14 @@ export interface AiMessageVO {
   /** 关联异步任务 ID */
   taskId?: string;
   createTime: string;
+  /** 过程链 ID（仅消息详情返回，无过程链时为 null） */
+  traceId?: string;
+  /** 上下文构成快照（仅消息详情返回，无过程链时为 null） */
+  contextSnapshot?: AiMessageContextSnapshot;
+  /** LLM 调用明细（仅消息详情返回，无过程链时为空数组） */
+  llmCalls?: AiMessageLlmCall[];
+  /** 推理步骤/思考链（消息列表与详情返回，按 position 正序；无思考时为空数组） */
+  thoughts?: AiMessageThought[];
 }
 
 /** 编辑用户消息表单 */
@@ -363,78 +462,6 @@ export interface MemoryQuery extends PageQuery {
   start?: string;
   /** 清空/恢复的时间范围止（按创建时间） */
   end?: string;
-}
-
-// ==================== 模型管理 ====================
-
-/** 模型类型：chat-对话、embedding-向量、rerank-重排 */
-export type AiModelType = "chat" | "embedding" | "rerank";
-
-/** 模型创建/更新表单（管理员；能力字段平铺） */
-export interface AiModelForm {
-  /** 关联供应商 ID（必填） */
-  providerId: number;
-  modelId: string;
-  /** 模型类型（chat/embedding/rerank，创建后不可改） */
-  modelType?: AiModelType;
-  /** embedding 向量维度（model_type=embedding 时必填，创建后不可改） */
-  dimension?: number;
-  displayName: string;
-  maxContextTokens: number;
-  maxOutputTokens: number;
-  supportsMultimodal: boolean;
-  supportsToolCall: boolean;
-  supportsStreaming: boolean;
-  supportsPromptCache: boolean;
-  supportsStructuredOutput: boolean;
-  /** 降级模型 ID（关联 sys_ai_model.id） */
-  fallbackModelId?: number;
-  promptCachePrefixLen?: number;
-  /** 状态（1-启用；0-禁用） */
-  status?: 0 | 1;
-  /** 最低可用 VIP 等级（0-所有；1-VIP1 及以上；2-VIP2 及以上） */
-  vipLevel?: number;
-}
-
-/** 模型分页查询参数 */
-export interface AiModelQuery extends PageQuery {
-  keyword?: string;
-  /** 按模型类型筛选（chat/embedding/rerank） */
-  modelType?: AiModelType;
-}
-
-/** 模型视图对象 */
-export interface AiModelVO {
-  id: number;
-  /** 关联供应商 ID */
-  providerId: number;
-  /** 模型业务标识 */
-  modelId: string;
-  /** 模型类型（chat/embedding/rerank） */
-  modelType?: AiModelType;
-  /** embedding 向量维度 */
-  dimension?: number;
-  displayName: string;
-  maxContextTokens: number;
-  maxOutputTokens: number;
-  /** 能力标识（0/1） */
-  supportsMultimodal: number;
-  supportsToolCall: number;
-  supportsStreaming: number;
-  supportsPromptCache: number;
-  supportsStructuredOutput: number;
-  /** 降级模型 ID */
-  fallbackModelId?: number;
-  promptCachePrefixLen: number;
-  /** 状态（1-启用；0-禁用） */
-  status: number;
-  /** 最低可用 VIP 等级 */
-  vipLevel: number;
-  /** 速度档位（fast/medium/slow/unknown） */
-  speedTier?: string;
-  /** 是否作为其他启用模型的降级目标 */
-  isFallbackTarget?: boolean;
-  createTime?: string;
 }
 
 // ==================== 消息反馈 ====================

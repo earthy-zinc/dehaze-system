@@ -129,6 +129,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with get_db_session() as db:
         await ensure_local_models(db)
 
+    # 内置本地语音引擎：幂等播种 local asr/tts provider 与默认模型/音色（语音引擎注册表）
+    try:
+        from app.infrastructure.voice.seeder import ensure_local_engines
+
+        async with get_db_session() as db:
+            await ensure_local_engines(db)
+    except Exception as exc:  # noqa: BLE001 播种失败仅告警，不影响服务启动
+        logger.warning("内置本地语音引擎播种失败（不影响启动）: %s", exc)
+
     # 主 Worker 后台预下载模型文件（不阻塞启动；首次对话时 ensure_running 兜底）
     if is_main_worker:
         import threading
@@ -157,14 +166,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.redis = redis
     await check_redis_health()
 
-    # 幂等补齐 AI 系统预置字典默认项（ai_reasoning_defaults / ai_guardrail_defaults 等）
+    # 幂等补齐系统预置字典默认项（ai_guardrail_defaults / ai_provider_health / ai_embedding
+    # / member_growth_rules / favorite_capacity）
     # 必须在 ensure_default_agent 之前执行：默认 Agent 初始发布快照的 resolved_config
     # 依赖这些 sys_dict 默认参数，缺失会导致推理配置缺键而快速失败。
     from app.database import get_db_session
-    from app.service.dict_service import ensure_ai_dict_defaults
+    from app.service.dict_service import ensure_system_dict_defaults
 
     async with get_db_session() as db:
-        await ensure_ai_dict_defaults(db, redis)
+        await ensure_system_dict_defaults(db, redis)
 
     # 确保默认 Agent 存在（agent_code='default'，不可删除）
     from app.database import get_db_session

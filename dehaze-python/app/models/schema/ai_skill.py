@@ -26,6 +26,7 @@ class SkillCreate(OrmResult):
 
     name: str = Field(..., min_length=1, max_length=128, description="Skill名称(唯一)")
     description: str = Field(..., min_length=1, max_length=500, description="Skill描述")
+    scene: str = Field(default="", max_length=255, description="适用场景")
     instruction: str = Field(..., min_length=1, description="Markdown指令全文")
 
     @field_validator("name")
@@ -46,6 +47,7 @@ class SkillUpdate(OrmResult):
     description: str | None = Field(
         default=None, min_length=1, max_length=500, description="Skill描述"
     )
+    scene: str | None = Field(default=None, max_length=255, description="适用场景")
     instruction: str | None = Field(default=None, min_length=1, description="Markdown指令全文")
 
     @field_validator("name")
@@ -69,13 +71,27 @@ class SkillStatusForm(OrmResult):
     status: Literal[0, 1] = Field(..., description="目标启停状态(0:禁用;1:启用)")
 
 
+class SkillFileVO(OrmResult):
+    """SKILL 目录内资源文件清单项（内容存对象存储，仅返回清单供展示/按需加载）"""
+
+    path: str = Field(description="相对SKILL根目录的文件路径")
+    fileSize: int = Field(default=0, description="文件大小(字节)")
+    fileType: str | None = Field(default=None, description="文件类型(MIME/扩展名)")
+
+
 class SkillResult(OrmResult):
     """Skill 详情（管理员全部字段，instruction 映射实体 instruction）"""
 
     id: int = Field(description="主键")
     name: str = Field(description="Skill名称")
     description: str = Field(description="Skill描述")
-    instruction: str | None = Field(default=None, description="Markdown指令全文")
+    scene: str = Field(default="", description="适用场景")
+    instruction: str | None = Field(default=None, description="SKILL.md指令正文")
+    license: str | None = Field(default=None, description="SKILL.md frontmatter license")
+    compatibility: str | None = Field(default=None, description="SKILL.md frontmatter compatibility")
+    metadata: dict | None = Field(default=None, description="SKILL.md frontmatter metadata")
+    allowedTools: str | None = Field(default=None, description="SKILL.md frontmatter allowed-tools")
+    files: list[SkillFileVO] = Field(default_factory=list, description="SKILL目录内资源文件清单")
     status: int = Field(description="启停状态(0:禁用;1:启用)")
     source: str = Field(description="来源(builtin/admin)")
     agentCount: int = Field(default=0, description="被Agent关联数")
@@ -90,9 +106,11 @@ class SkillListItem(OrmResult):
     id: int = Field(description="主键")
     name: str = Field(description="Skill名称")
     description: str = Field(description="Skill描述")
+    scene: str = Field(default="", description="适用场景")
     status: int = Field(description="启停状态(0:禁用;1:启用)")
     source: str = Field(description="来源(builtin/admin)")
     marketShared: int = Field(default=0, description="是否共享至Skill市场(0:否;1:是)")
+    agentCount: int = Field(default=0, description="被Agent关联数")
     createTime: datetime | None = Field(default=None, description="创建时间")
     updateTime: datetime | None = Field(default=None, description="更新时间")
 

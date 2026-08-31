@@ -9,12 +9,27 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
+def _find_python_project_root(start: Path) -> Path:
+    """向上查找 Python 项目根：以 pyproject.toml 为标记（Python 包必然存在），
+    不依赖文件相对层数，目录重构不会漂移。"""
+    for p in (start, *start.parents):
+        if (p / "pyproject.toml").exists():
+            return p
+    raise RuntimeError(f"从 {start} 向上未找到 pyproject.toml，无法定位 Python 项目根")
+
+
+# dehaze-python 根（pyproject.toml 标记定位）
+PYTHON_PROJECT_ROOT = _find_python_project_root(Path(__file__).resolve().parent)
+# 仓库根（dehaze-system）= dehaze-python 的上级；.env、models、config/sql 位于此处。
+# 集中为单一常量，其余路径（env_file、模型缓存等）以此为准，避免多处按 __file__ 重复推算
+PROJECT_ROOT = PYTHON_PROJECT_ROOT.parent
+
+
 class Settings(BaseSettings):
     """应用配置（多环境，通过 APP_ENV 切换）"""
 
     model_config = SettingsConfigDict(
-        # 项目根目录（config.py 位于 app/，向上三级），.env 文件位于此处
-        env_file=str(Path(__file__).resolve().parent.parent.parent / ".env"),
+        env_file=str(PROJECT_ROOT / ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -95,7 +110,7 @@ class Settings(BaseSettings):
     LOCAL_STORAGE_PATH: str = "/data/files"
     FILE_TEMP_CLEANUP_HOURS: int = Field(default=24, gt=0)
     # 统一模型文件目录（算法权重缓存 / LLM / embedding / TTS 模型均存放于此）
-    MODEL_CACHE_DIR: str = str(Path(__file__).resolve().parent.parent.parent / "models")
+    MODEL_CACHE_DIR: str = str(PROJECT_ROOT / "models")
     MODEL_FALLBACK_TO_LOCAL: bool = True
     TEMP_DIR: str = ""
 
@@ -328,11 +343,13 @@ class Settings(BaseSettings):
     AI_DEFAULT_MODEL: str = "qwen3-0.6b"
     # 内置本地模型服务（llama-cpp-python 子进程，OpenAI 兼容；LLM 对话 + Embedding 共用，
     # 端点由 local provider 的 api_base_url 派生：/v1/chat/completions 与 /v1/embeddings）
+    # 纯云端 LLM 部署不依赖本地子进程时可置 False，/ready 不再检查 local_llm
+    LOCAL_LLM_ENABLED: bool = True
     LOCAL_LLM_HOST: str = "127.0.0.1"
     LOCAL_LLM_PORT: int = 8992
     LOCAL_LLM_MODEL_PATH: str = ""  # 空 = 默认 models/Qwen3-0.6B-Q4_K_M.gguf（对话）
     LOCAL_LLM_EMBEDDING_MODEL_PATH: str = ""  # 空 = 默认 models/Qwen3-Embedding-0.6B-Q8_0.gguf（向量）
-    LOCAL_LLM_CTX_SIZE: int = 8192
+    LOCAL_LLM_CTX_SIZE: int = 16384
     LOCAL_LLM_THREADS: int = 0  # 0 = 自动（物理核数）
     LOCAL_LLM_NGPU_LAYERS: int | None = None  # None = 自动（CUDA 构建全量卸载 -1，纯 CPU 构建 0）
     # 速度档位 P95 延迟阈值（毫秒）：P95 < fast 为快；< medium 为中；其余为慢
@@ -342,9 +359,6 @@ class Settings(BaseSettings):
     AI_PROVIDER_KEY_ENCRYPTION_KEY: str = ""
     # MCP 能力网关
     MCP_GATEWAY_URL: str = "http://127.0.0.1:8082/mcp"
-    # 推理参数（引擎已切换 deepagents，旧 ReAct/Plan/Reflexion 分步参数废弃）
-    AI_REASONING_TOOL_TIMEOUT: int = 60
-    AI_REASONING_RETRY_MAX: int = 2
     # 能力扩展（F-M08-006）约束
     # 虚拟文件系统工作区容量上限（字节，默认 100MB）
     AI_VFS_MAX_BYTES: int = Field(default=100 * 1024 * 1024, gt=0)

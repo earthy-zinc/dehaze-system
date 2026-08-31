@@ -3,6 +3,8 @@ from datetime import datetime
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.entity.sys_ai_billing import SysAiBilling
+from app.models.entity.sys_ai_billing_anomaly import SysAiBillingAnomaly
 from app.models.entity.sys_ai_conversation import SysAiConversation
 from app.repository.base import BaseRepository
 
@@ -287,6 +289,52 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
             .values(title=title, title_source=title_source)
         )
         await db.execute(stmt)
+
+    async def sum_consumption_by_conversation(
+        self,
+        db: AsyncSession,
+        conv_ids: list[int],
+    ) -> dict[int, dict[str, int]]:
+        """按会话聚合计费消耗：{conv_id: {"token": 输入+输出Token, "credits": 积分}}
+
+        只读消费 sys_ai_billing（跨模块只读查询，不改动计费模块）：与计费明细同源，
+        覆盖 tool_llm/kb_inject 等无消息对应的计费项。
+        """
+        if not conv_ids:
+            return {}
+        stmt = (
+            select(
+                SysAiBilling.conversation_id,
+                func.coalesce(func.sum(SysAiBilling.input_tokens + SysAiBilling.output_tokens), 0),
+                func.coalesce(func.sum(SysAiBilling.credits), 0),
+            )
+            .where(SysAiBilling.conversation_id.in_(conv_ids))
+            .group_by(SysAiBilling.conversation_id)
+        )
+        rows = (await db.execute(stmt)).all()
+        return {
+            row[0]: {"token": int(row[1]), "credits": int(row[2])} for row in rows if row[0]
+        }
+
+    async def list_quota_anomaly_conversation_ids(
+        self,
+        db: AsyncSession,
+        conv_ids: list[int],
+    ) -> set[int]:
+        """存在"连续配额不足"异常的会话ID（审计视角异常标注的配额数据源）"""
+        if not conv_ids:
+            return set()
+        stmt = (
+            select(SysAiBilling.conversation_id)
+            .join(SysAiBillingAnomaly, SysAiBillingAnomaly.billing_id == SysAiBilling.id)
+            .where(
+                SysAiBilling.conversation_id.in_(conv_ids),
+                SysAiBillingAnomaly.anomaly_type == "consecutive_quota_fail",
+            )
+            .distinct()
+        )
+        rows = (await db.execute(stmt)).all()
+        return {row[0] for row in rows if row[0]}
 
     async def archive_inactive(
         self,

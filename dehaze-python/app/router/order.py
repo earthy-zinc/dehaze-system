@@ -7,15 +7,18 @@ from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.order import (
     AutoRenewConfigForm,
+    BalanceRefundAuditForm,
     BalanceRefundForm,
     OrderCreateForm,
     PayRequest,
+    RechargeCreateForm,
     RefundApplyForm,
     RefundAuditForm,
 )
 from app.service.order.auto_renew_service import auto_renew_service
 from app.service.order.order_service import order_service
 from app.service.order.payment_service import payment_service
+from app.service.order.recharge_service import recharge_service
 from app.service.order.refund_service import refund_service
 
 router = APIRouter(
@@ -55,6 +58,30 @@ async def apply_balance_refund(
     data = await refund_service.apply_balance_refund(
         db, user.id, body.model_dump(exclude_none=True)
     )
+    return success(data)
+
+
+@router.put("/balance-refunds/{refund_id}/audit", summary="余额退款审核")
+@require_permission("order:refund:approve")
+async def audit_balance_refund(
+    refund_id: int = Path(...),
+    body: BalanceRefundAuditForm = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    await refund_service.approve_balance_refund(
+        db, refund_id, body.model_dump(exclude_none=True), user.id
+    )
+    return success()
+
+
+@router.post("/recharge", summary="创建余额充值订单")
+async def create_recharge(
+    body: RechargeCreateForm = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    data = await recharge_service.create_recharge(db, body.model_dump(), user.id)
     return success(data)
 
 

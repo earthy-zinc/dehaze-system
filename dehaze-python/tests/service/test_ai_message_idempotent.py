@@ -143,5 +143,5 @@ async def test_failure_clears_key_for_retry():
         sse_emitter_manager=SimpleNamespace(stop_stream=_noop_stop),
     )
 
-    await svc._run_reasoning(1, 7, "gpt", 1, "s1", "k")
+    await svc._run_reasoning(object(), 1, 7, "gpt", 1, "s1", "k")
     assert deleted == ["k"]

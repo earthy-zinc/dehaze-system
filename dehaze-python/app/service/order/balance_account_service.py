@@ -101,6 +101,24 @@ class BalanceAccountService:
                 return
         raise BusinessException(ResultCode.BUSINESS_ERROR, "余额扣减失败，请重试")
 
+    async def recharge(self, db: AsyncSession, user_id: int, amount: int) -> None:
+        """充值入账：可用余额增加，流水 change_type=recharge。"""
+        self._validate_amount(amount)
+        for _ in range(_CAS_RETRY):
+            account = await self.balance_account_repository.get_or_create(db, user_id)
+            if await self.balance_account_repository.refund(
+                db, user_id, amount, account.version
+            ):
+                await self.balance_log_repository.create_log(
+                    db,
+                    user_id=user_id,
+                    change_type="recharge",
+                    amount=amount,
+                    balance_after=account.balance + amount,
+                )
+                return
+        raise BusinessException(ResultCode.BUSINESS_ERROR, "充值入账失败，请重试")
+
     async def refund(self, db: AsyncSession, user_id: int, amount: int) -> None:
         """退款回充可用余额。"""
         self._validate_amount(amount)

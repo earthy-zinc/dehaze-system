@@ -4,7 +4,7 @@
 （设计文档 §4.7 对齐 ChatGPT 回复末尾的"相关问题"交互）。
 
 行为约定：
-- 会话设置 model_config.suggest_questions 关闭时跳过（默认开启）
+- 会话级开关 sys_ai_conversation.suggestions_enabled 关闭时跳过（默认开启）
 - 异步触发，失败/超时记 warning 日志后跳过，不阻塞主回复的 message.end
 - 生成成功：推荐问题 Token 计入该条回复消耗（与回复同一条计费记录，不单独计费）
 """
@@ -23,6 +23,7 @@ from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.ai_message_repository import ai_message_repository
 from app.service.ai.service.credits_service import calculate_credits
+from app.service.ai.service import trace_collector
 from app.service.billing.billing_service import billing_service
 
 logger = logging.getLogger(__name__)
@@ -47,8 +48,8 @@ class SuggestionService:
 
     @staticmethod
     async def _is_enabled(conv) -> bool:
-        """会话设置开关：model_config.suggest_questions，默认开启。"""
-        return bool((conv.model_config or {}).get("suggest_questions", True))
+        """会话级开关：sys_ai_conversation.suggestions_enabled，默认开启。"""
+        return bool(conv.suggestions_enabled)
 
     @staticmethod
     async def _parse_questions(content: str) -> list[str] | None:
@@ -100,7 +101,16 @@ class SuggestionService:
                     elif chunk.type == "done" and chunk.usage:
                         usage = chunk.usage
 
-            await asyncio.wait_for(_collect(), timeout=_SUGGESTION_TIMEOUT)
+            # 生成 LLM 调用采集为独立过程链（trace_type=suggestion），超时/失败
+            # 经 bypass_span 落失败态后原样抛出，由下方兜底吞掉保持原行为
+            async with trace_collector.bypass_span(
+                conversation_id=conversation_id,
+                message_id=message_id,
+                user_id=user_id,
+                model_id=model_id,
+                trace_type="suggestion",
+            ):
+                await asyncio.wait_for(_collect(), timeout=_SUGGESTION_TIMEOUT)
         except TimeoutError:
             logger.warning("类似问题推荐生成超时（%ss），跳过", _SUGGESTION_TIMEOUT)
             return None
@@ -137,7 +147,14 @@ class SuggestionService:
                 return None
             model_id = msg.model or conv.model or settings.AI_DEFAULT_MODEL
 
-            generated = await self._generate_questions(db, model_id, reply_content)
+            generated = await self._generate_questions(
+                db,
+                model_id,
+                reply_content,
+                conversation_id=conversation_id,
+                message_id=message_id,
+                user_id=user_id,
+            )
             if not generated:
                 return None
             questions, sugg_usage = generated

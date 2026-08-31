@@ -97,6 +97,17 @@ export const constantRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: "settings/voice",
+        component: () => import("@/views/settings/voice/index.vue"),
+        name: "SettingsVoice", // 用于 keep-alive，必须与SFC自动推导或者显示声明的组件name一致
+        meta: {
+          title: "语音设置",
+          icon: "setting",
+          hidden: true,
+          keepAlive: true,
+        },
+      },
+      {
         path: "member/center",
         component: () => import("@/views/member/center/index.vue"),
         name: "MemberCenter",
@@ -112,6 +123,17 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import("@/views/member/growth-logs/index.vue"),
         name: "MemberGrowthLogs",
         meta: { title: "成长值明细", hidden: true, keepAlive: true },
+      },
+      {
+        path: "billing",
+        component: () => import("@/views/billing/index.vue"),
+        name: "Billing",
+        meta: {
+          title: "我的计费",
+          icon: "order",
+          hidden: true,
+          keepAlive: true,
+        },
       },
       {
         path: "package/shop",
@@ -158,6 +180,36 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import("@/views/feedback/detail/index.vue"),
         name: "FeedbackDetail",
         meta: { title: "反馈详情", hidden: true },
+      },
+      {
+        path: "admin/ai-knowledge/:id(\\d+)",
+        component: () => import("@/views/ai-kb/detail/index.vue"),
+        name: "AiKbDetail",
+        meta: { title: "知识库详情", hidden: true },
+      },
+      {
+        path: "kb/:id(\\d+)",
+        component: () => import("@/views/kb/detail/index.vue"),
+        name: "KbDetail",
+        meta: { title: "知识库详情", hidden: true },
+      },
+      {
+        // 会话 ID 可选：/chat 进入最近会话，/chat/:conversationId 直达指定会话
+        path: "chat/:conversationId(\\d+)?",
+        component: () => import("@/views/chat/index.vue"),
+        name: "ChatPage",
+        meta: {
+          title: "AI对话",
+          icon: "message",
+          hidden: true,
+          keepAlive: true,
+        },
+      },
+      {
+        path: "admin/ai-agents/:id(\\d+)",
+        component: () => import("@/views/ai-agents/detail/index.vue"),
+        name: "AgentDetailPage",
+        meta: { title: "智能体详情", hidden: true },
       },
     ],
   },

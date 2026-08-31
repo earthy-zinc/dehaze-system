@@ -19,6 +19,8 @@ from mcp.client.session import ClientSession
 from mcp.client.sse import sse_client
 from mcp.client.streamable_http import streamablehttp_client
 
+from app.service.ai_mcp.mcp_connection import apply_ssrf_guard, build_mcp_auth_headers
+
 logger = logging.getLogger(__name__)
 
 # 拉取单次超时（秒）：外部 Server 网络抖动时降级为空，不阻塞管理流程
@@ -36,6 +38,13 @@ class McpToolFetcher:
         """
         if server.protocol_type == "stdio" or not server.endpoint:
             return []
+        # SSRF 前置守卫：端点不安全（非预设 + 非 https/内网）直接拒绝，不发起连接
+        allowed, reason = await apply_ssrf_guard(server)
+        if not allowed:
+            logger.warning(
+                "MCP 工具拉取被 SSRF 守卫拦截: server_id=%s reason=%s", server.id, reason
+            )
+            return []
         try:
             return await self._list_by_url(server)
         except Exception as exc:  # noqa: BLE001 拉取失败不阻断管理，落空工具
@@ -43,10 +52,14 @@ class McpToolFetcher:
             return []
 
     async def _list_by_url(self, server) -> list[dict[str, Any]]:
-        """经 URL 型协议（streamable-http/sse）连接并拉取工具。"""
+        """经 URL 型协议（streamable-http/sse）连接并拉取工具。
+
+        连接时注入 Server 凭据鉴权头（api_key/oauth2 token，AES 解密）。
+        """
+        headers = build_mcp_auth_headers(server)
         client_fn = sse_client if server.protocol_type == "sse" else streamablehttp_client
         async with AsyncExitStack() as stack:
-            transport = _McpTransport(client_fn, server.endpoint)
+            transport = _McpTransport(client_fn, server.endpoint, headers)
             await stack.enter_async_context(transport)
             session = await stack.enter_async_context(transport.session())
             result = await asyncio.wait_for(session.list_tools(), _FETCH_TIMEOUT)
@@ -63,13 +76,14 @@ class McpToolFetcher:
 class _McpTransport:
     """MCP 底层传输上下文：统一封装底层 client 的读写流，供 ClientSession 使用。"""
 
-    def __init__(self, client_fn, url: str):
+    def __init__(self, client_fn, url: str, headers: dict[str, str] | None = None):
         self._client_fn = client_fn
         self._url = url
+        self._headers = headers or {}
         self._client = None
 
     async def __aenter__(self):
-        self._client = await self._client_fn(self._url)
+        self._client = await self._client_fn(self._url, headers=self._headers)
         self._read, self._write, _ = await self._client.__aenter__()
         return self
 

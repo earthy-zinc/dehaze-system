@@ -7,6 +7,7 @@ import {
   CouponVO,
   PackageDetailVO,
   PackageForm,
+  PackageOnSaleVO,
   PackagePageVO,
   PackageQuery,
   PriceResult,
@@ -22,7 +23,7 @@ import {
 class PackageAPI {
   /** 用户端：在售套餐列表 */
   static listOnSale() {
-    return request<PackageDetailVO[]>({
+    return request<PackageOnSaleVO[]>({
       url: "/api/v1/packages",
       method: "get",
     });

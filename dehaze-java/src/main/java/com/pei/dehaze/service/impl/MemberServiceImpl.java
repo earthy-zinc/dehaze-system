@@ -30,6 +30,7 @@ import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.MemberBenefitService;
 import com.pei.dehaze.service.MemberService;
 import com.pei.dehaze.service.MessageService;
+import com.pei.dehaze.service.SysDictService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
@@ -53,8 +54,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> implements MemberService {
 
-    private static final int SIGN_IN_BASE_GROWTH = 3;
-    private static final int SIGN_IN_BONUS_GROWTH = 20;
+    /** 营销激励字典类型（签到/评价成长值） */
+    private static final String GROWTH_RULES_DICT_TYPE = "member_growth_rules";
     private static final int SIGN_IN_BONUS_DAYS = 7;
 
     private static final Map<String, String> CHANGE_TYPE_LABELS = Map.of(
@@ -75,6 +76,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     private final MemberBenefitService memberBenefitService;
     private final MessageService messageService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final SysDictService sysDictService;
 
     @Override
     public MemberProfileVO getProfile() {
@@ -281,7 +283,10 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                 ? yesterdaySignIn.getContinuousDays() + 1 : 1;
 
         boolean bonusTriggered = continuousDays > 0 && continuousDays % SIGN_IN_BONUS_DAYS == 0;
-        int totalGrowth = SIGN_IN_BASE_GROWTH + (bonusTriggered ? SIGN_IN_BONUS_GROWTH : 0);
+        int signInValue = sysDictService.getIntValue(GROWTH_RULES_DICT_TYPE, "sign_in_value", 3);
+        int bonusGrowth = bonusTriggered
+                ? sysDictService.getIntValue(GROWTH_RULES_DICT_TYPE, "sign_in_streak_bonus", 20) : 0;
+        int totalGrowth = signInValue + bonusGrowth;
 
         SysMemberSignIn signIn = new SysMemberSignIn();
         signIn.setUserId(userId);
@@ -312,18 +317,18 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         stringRedisTemplate.delete("member:quota:" + userId + ":dehaze");
         stringRedisTemplate.delete("member:quota:" + userId + ":evaluate");
 
-        recordGrowthLog(userId, "sign_in", SIGN_IN_BASE_GROWTH, oldGrowth + SIGN_IN_BASE_GROWTH,
+        recordGrowthLog(userId, "sign_in", signInValue, oldGrowth + signInValue,
                 String.valueOf(signIn.getId()), "每日签到", null);
         if (bonusTriggered) {
-            recordGrowthLog(userId, "sign_in_bonus", SIGN_IN_BONUS_GROWTH, newGrowth,
+            recordGrowthLog(userId, "sign_in_bonus", bonusGrowth, newGrowth,
                     String.valueOf(signIn.getId()), "连续签到" + SIGN_IN_BONUS_DAYS + "天奖励", null);
         }
 
         SignInResultVO vo = new SignInResultVO();
         vo.setSignDate(today);
         vo.setContinuousDays(continuousDays);
-        vo.setGrowthValue(SIGN_IN_BASE_GROWTH);
-        vo.setBonusGrowth(bonusTriggered ? SIGN_IN_BONUS_GROWTH : 0);
+        vo.setGrowthValue(signInValue);
+        vo.setBonusGrowth(bonusGrowth);
         return vo;
     }
 

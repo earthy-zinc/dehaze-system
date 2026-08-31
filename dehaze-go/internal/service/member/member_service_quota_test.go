@@ -96,6 +96,7 @@ func newQuotaService(t *testing.T, db *gorm.DB, cache types.ICache) *member.Memb
 		nil, // auditLogSvc
 		nil, // messageSender
 		lm,
+		nil, // dictSvc
 	)
 }
 

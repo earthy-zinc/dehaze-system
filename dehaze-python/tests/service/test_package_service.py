@@ -11,7 +11,7 @@
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -644,7 +644,7 @@ async def test_calc_coupon_discount(db):
     })
     coupon = SysCoupon(
         name="测试券-折扣", type="discount", face_value=20, threshold=0,
-        valid_type="permanent", total_qty=-1, per_user_limit=5,
+        valid_type="relative", valid_days=30, total_qty=-1, per_user_limit=5,
         applicable_scope=[], status=1,
     )
     await coupon_repository.create(db, coupon)
@@ -679,7 +679,7 @@ async def test_calc_coupon_not_applicable(db):
     })
     coupon = SysCoupon(
         name="测试券-限定", type="no_threshold", face_value=1000, threshold=0,
-        valid_type="permanent", total_qty=-1, per_user_limit=5,
+        valid_type="relative", valid_days=30, total_qty=-1, per_user_limit=5,
         applicable_scope=[credit.id], status=1,
     )
     await coupon_repository.create(db, coupon)
@@ -706,7 +706,7 @@ async def test_calc_coupon_status_invalid(db):
     })
     coupon = SysCoupon(
         name="测试券-失效", type="no_threshold", face_value=1000, threshold=0,
-        valid_type="permanent", total_qty=-1, per_user_limit=5,
+        valid_type="relative", valid_days=30, total_qty=-1, per_user_limit=5,
         applicable_scope=[], status=1,
     )
     await coupon_repository.create(db, coupon)
@@ -722,7 +722,38 @@ async def test_calc_coupon_status_invalid(db):
     assert exc.value.code == ResultCode.COUPON_STATUS_INVALID
 
 
-async def test_calc_coupon_trial_full(db):
+async def test_calc_coupon_template_disabled(db):
+    from app.models.entity.sys_coupon import SysCoupon
+    from app.models.entity.sys_user_coupon import SysUserCoupon
+    from app.repository.coupon_repository import coupon_repository, user_coupon_repository
+    vip = await _create_pkg(db, {
+        "name": "test_pkg_vip_cd",
+        "packageType": "vip",
+        "levelCode": "level_1",
+        "period": "monthly",
+        "periodDays": 30,
+        "originalPrice": 10000,
+        "salePrice": 8000,
+    })
+    coupon = SysCoupon(
+        name="测试券-禁用", type="no_threshold", face_value=1000, threshold=0,
+        valid_type="relative", valid_days=30, total_qty=-1, per_user_limit=5,
+        applicable_scope=[], status=0,
+    )
+    await coupon_repository.create(db, coupon)
+    user_coupon = SysUserCoupon(
+        user_id=USER_ID, coupon_id=coupon.id, status=1,
+        receive_time=datetime.now(), expire_time=datetime.now() + timedelta(days=30),
+    )
+    await user_coupon_repository.create(db, user_coupon)
+    await package_service.update_status(db, vip.id, 1)
+    with pytest.raises(BusinessException) as exc:
+        await package_service.calculate_price(
+            db, vip.id, user_coupon.id, user_id=USER_ID)
+    assert exc.value.code == ResultCode.COUPON_NOT_FOUND
+
+
+async def test_calc_coupon_trial_rejected(db):
     from app.models.entity.sys_coupon import SysCoupon
     from app.repository.coupon_repository import coupon_repository
     from app.service.coupon_service import coupon_service
@@ -737,16 +768,70 @@ async def test_calc_coupon_trial_full(db):
     })
     coupon = SysCoupon(
         name="测试券-体验", type="trial", face_value=0, threshold=0,
-        valid_type="permanent", total_qty=-1, per_user_limit=1,
+        valid_type="relative", valid_days=3, total_qty=-1, per_user_limit=1,
         applicable_scope=[], status=1,
     )
     await coupon_repository.create(db, coupon)
     received = await coupon_service.receive(db, coupon.id, USER_ID)
     await package_service.update_status(db, vip.id, 1)
-    # trial 券全额抵扣促销后价 → 应付 0
-    result = await package_service.calculate_price(
-        db, vip.id, received["userCouponId"], user_id=USER_ID)
-    assert result["payableAmount"] == 0
+    # 体验券直接激活权益、不产生订单，不参与下单价格计算
+    with pytest.raises(BusinessException) as exc:
+        await package_service.calculate_price(
+            db, vip.id, received["userCouponId"], user_id=USER_ID)
+    assert exc.value.code == ResultCode.BUSINESS_ERROR
+    assert "体验券" in exc.value.message
+
+
+async def test_calc_coupon_scope_by_package_type(db):
+    from app.models.entity.sys_coupon import SysCoupon
+    from app.repository.coupon_repository import coupon_repository
+    from app.service.coupon_service import coupon_service
+    vip = await _create_pkg(db, {
+        "name": "test_pkg_vip_cs",
+        "packageType": "vip",
+        "levelCode": "level_1",
+        "period": "monthly",
+        "periodDays": 30,
+        "originalPrice": 10000,
+        "salePrice": 8000,
+    })
+    credit = await _create_pkg(db, {
+        "name": "test_pkg_credit_cs",
+        "packageType": "credit",
+        "creditAmount": 1000,
+        "originalPrice": 5000,
+        "salePrice": 4000,
+    })
+    vip_coupon = SysCoupon(
+        name="测试券-限定会员卡", type="no_threshold", face_value=1000, threshold=0,
+        valid_type="relative", valid_days=30, total_qty=-1, per_user_limit=5,
+        applicable_scope=["vip"], status=1,
+    )
+    credit_coupon = SysCoupon(
+        name="测试券-限定积分卡", type="no_threshold", face_value=1000, threshold=0,
+        valid_type="relative", valid_days=30, total_qty=-1, per_user_limit=5,
+        applicable_scope=["credit"], status=1,
+    )
+    await coupon_repository.create(db, vip_coupon)
+    await coupon_repository.create(db, credit_coupon)
+    vip_received = await coupon_service.receive(db, vip_coupon.id, USER_ID)
+    credit_received = await coupon_service.receive(db, credit_coupon.id, USER_ID)
+    await package_service.update_status(db, vip.id, 1)
+    await package_service.update_status(db, credit.id, 1)
+
+    vip_result = await package_service.calculate_price(
+        db, vip.id, vip_received["userCouponId"], user_id=USER_ID)
+    assert vip_result["couponAmount"] == 1000
+    assert vip_result["payableAmount"] == 7000
+
+    credit_result = await package_service.calculate_price(
+        db, credit.id, credit_received["userCouponId"], user_id=USER_ID)
+    assert credit_result["payableAmount"] == 3000
+
+    with pytest.raises(BusinessException) as exc:
+        await package_service.calculate_price(
+            db, vip.id, credit_received["userCouponId"], user_id=USER_ID)
+    assert exc.value.code == ResultCode.COUPON_NOT_APPLICABLE
 
 
 # ===================== get_sales_stats =====================
@@ -794,3 +879,9 @@ async def test_get_sales_stats_type_group(db):
     assert type_stats["credit"]["packageTypeName"] == "积分卡"
     assert type_stats["credit"]["salesCount"] == 1
     assert type_stats["credit"]["revenue"] == 4000
+    # 等级/周期维度仅统计会员卡订单（积分卡无等级与周期）
+    level_stats = {i["levelCode"]: i for i in stats["levelStats"]}
+    assert set(level_stats) == {"level_1"}
+    assert level_stats["level_1"]["salesCount"] == 2
+    period_stats = {p["period"]: p["salesCount"] for p in stats["periodStats"]}
+    assert period_stats == {"monthly": 2}

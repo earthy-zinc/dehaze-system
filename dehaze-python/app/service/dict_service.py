@@ -28,36 +28,29 @@ DICT_OPTIONS_CACHE_TTL = CACHE_TTL_HOUR
 SYSTEM_PRESET_DICT_TYPE_CODES = frozenset(
     {
         "gender",
-        "ai_reasoning_defaults",
         "ai_guardrail_defaults",
         "ai_provider_health",
         "ai_embedding",
+        "member_growth_rules",
+        "favorite_capacity",
+        "ai_eval",
     }
 )
 
-# AI 相关系统预置字典默认项（对齐 config/sql/data/sys_dict.sql 种子）。
-# 运行面（AgentConfigResolver / deep_agent_builder）以这些 sys_dict 默认值为
-# 唯一兜底来源（代码无硬编码，缺键快速失败）；数据库初始化可能晚于表创建，
-# 故启动时幂等补齐缺失项，保证内置推理链开箱即用。
-_AI_DICT_TYPE_SEEDS: list[tuple[str, str]] = [
+# 系统预置字典类型与默认项（对齐 config/sql/data/sys_dict.sql 种子）。
+# 推理参数默认值为代码常量（agent_config_resolver.REASONING_DEFAULTS），不入字典；
+# 此处仅收录有运维调整场景的默认值（护栏开关/供应商健康/Embedding/成长值/收藏容量）。
+_SYSTEM_DICT_TYPE_SEEDS: list[tuple[str, str]] = [
     # (type_code, 显示名)
-    ("ai_reasoning_defaults", "AI 推理参数默认"),
     ("ai_guardrail_defaults", "AI 护栏默认"),
     ("ai_provider_health", "AI 供应商健康"),
     ("ai_embedding", "AI 向量化 Embedding"),
+    ("member_growth_rules", "会员成长值规则"),
+    ("favorite_capacity", "收藏容量"),
 ]
 
 # (type_code, name, value, sort, defaulted, remark)
-_AI_DICT_ITEM_SEEDS: list[tuple[str, str, str, int, int, str]] = [
-    ("ai_reasoning_defaults", "max_steps_react", "20", 1, 1, "ReAct 最大推理步数"),
-    ("ai_reasoning_defaults", "max_steps_plan", "30", 2, 1, "Plan-and-Execute 最大推理步数"),
-    ("ai_reasoning_defaults", "max_steps_reflexion", "15", 3, 1, "Reflexion 单次迭代最大步数"),
-    ("ai_reasoning_defaults", "max_iterations_reflexion", "3", 4, 1, "Reflexion 最大迭代次数"),
-    ("ai_reasoning_defaults", "reflexion_threshold", "0.8", 5, 1, "Reflexion 质量达标阈值"),
-    ("ai_reasoning_defaults", "max_parallel", "5", 6, 1, "并行子任务最大数"),
-    ("ai_reasoning_defaults", "tool_timeout", "60", 7, 1, "单工具调用超时（秒）"),
-    ("ai_reasoning_defaults", "token_budget", "500000", 8, 1, "单会话 Token 预算上限"),
-    ("ai_reasoning_defaults", "retry_max", "2", 9, 1, "工具调用失败最大重试次数"),
+_SYSTEM_DICT_ITEM_SEEDS: list[tuple[str, str, str, int, int, str]] = [
     ("ai_guardrail_defaults", "prompt_injection.enabled", "true", 1, 1, "Prompt 注入防护开关"),
     ("ai_guardrail_defaults", "unauthorized_access.enabled", "true", 2, 1, "越权查询检测开关"),
     ("ai_guardrail_defaults", "sensitive_topic.enabled", "false", 3, 1, "敏感话题过滤开关"),
@@ -72,20 +65,33 @@ _AI_DICT_ITEM_SEEDS: list[tuple[str, str, str, int, int, str]] = [
     ("ai_embedding", "provider_code", "openai", 1, 1, "Embedding 供应商编码(经 ai_provider 体系取 Key)"),
     ("ai_embedding", "model", "text-embedding-3-small", 2, 1, "Embedding 模型标识"),
     ("ai_embedding", "dims", "1536", 3, 1, "向量维度(ES dense_vector dims 联动)"),
+    # 会员成长值规则（会员管理 §9.1；营销激励参数）
+    ("member_growth_rules", "sign_in_value", "3", 1, 1, "每日签到获得成长值"),
+    ("member_growth_rules", "sign_in_streak_bonus", "20", 2, 1, "连续签到奖励（连续7天额外获得）"),
+    ("member_growth_rules", "rating_growth_value", "5", 3, 1, "单次评价获得成长值"),
+    ("member_growth_rules", "rating_growth_daily_limit", "5", 4, 1, "评价成长值上限（每日评价获得成长值次数上限）"),
+    # 收藏容量（收藏管理 §11.1；各会员等级收藏容量上限）
+    ("favorite_capacity", "default", "200", 1, 1, "普通用户(level_0)收藏容量"),
+    ("favorite_capacity", "vip1", "500", 2, 1, "VIP1(level_1)收藏容量"),
+    ("favorite_capacity", "vip2", "1000", 3, 1, "VIP2(level_2)收藏容量"),
+    ("favorite_capacity", "svip", "3000", 4, 1, "SVIP(level_3)收藏容量"),
+    # AI 评测质量参数（评测中心 F-M08-014；阈值均为百分比/百分制整数）
+    ("ai_eval", "regression_threshold", "5", 1, 1, "相对退化阈值(%,相对上次评测总分下降超此值判定退化)"),
+    ("ai_eval", "judge_consistency_threshold", "90", 2, 1, "判分一致性阈值(%,人工复核一致率低于此值判定漂移)"),
+    ("ai_eval", "judge_review_ratio", "1", 3, 1, "人工复核抽样比例(%,通过样本按此比例确定性抽样)"),
 ]
 
 
-async def ensure_ai_dict_defaults(db: AsyncSession, redis: Redis) -> None:
-    """幂等补齐 AI 相关系统预置字典类型与默认项（缺失才补，不覆盖管理员修改）。
+async def ensure_system_dict_defaults(db: AsyncSession, redis: Redis) -> None:
+    """幂等补齐系统预置字典类型与默认项（缺失才补，不覆盖管理员修改）。
 
-    运行面（AgentConfigResolver）以 ai_reasoning_defaults / ai_guardrail_defaults
-    为配置唯一默认来源；数据库种子可能未同步，这里在启动时按 sys_dict.sql 契约补齐，
-    保证内置推理链不因缺默认参数而快速失败。
+    覆盖 AI 护栏开关默认值、供应商健康阈值、Embedding、会员成长值规则、收藏容量、AI 评测质量参数；
+    数据库种子可能未同步，这里在启动时按 sys_dict.sql 契约补齐，保证消费链路不因缺默认参数而快速失败。
     """
-    for code, display_name in _AI_DICT_TYPE_SEEDS:
+    for code, display_name in _SYSTEM_DICT_TYPE_SEEDS:
         if await dict_type_repository.get_by_code(db, code) is None:
             db.add(SysDictType(name=display_name, code=code, status=1))
-    for type_code, name, value, sort, defaulted, remark in _AI_DICT_ITEM_SEEDS:
+    for type_code, name, value, sort, defaulted, remark in _SYSTEM_DICT_ITEM_SEEDS:
         # 仅缺项补齐；已存在的（含管理员改过值）一律保留，避免覆盖人工配置
         existing = await dict_repository.get_by_type_code_and_name(db, type_code, name)
         if existing is None:
@@ -106,10 +112,46 @@ async def ensure_ai_dict_defaults(db: AsyncSession, redis: Redis) -> None:
         # 多进程并发启动时的 check-then-insert 竞态：另一进程已插入相同种子
         # （uk_type_value 唯一键冲突）。丢弃本批插入即可——库中已存在等价数据。
         await db.rollback()
-    # 失效配置默认值缓存，避免补齐后仍命中旧的空缓存
-    from app.service.ai.strategies.agent_config_resolver import invalidate_defaults
+    # 失效护栏默认值缓存，避免补齐后仍命中旧的空缓存
+    from app.service.ai.strategies.agent_config_resolver import invalidate_guardrail_defaults
 
-    await invalidate_defaults(redis)
+    await invalidate_guardrail_defaults(redis)
+
+
+# sys_dict int 型键值缓存前缀/TTL（供业务服务读取营销/容量等字典规则时统一走缓存）
+DICT_VALUE_CACHE_PREFIX = "dict:value:"
+DICT_VALUE_CACHE_TTL = CACHE_TTL_HOUR
+
+
+async def get_dict_int(db: AsyncSession, type_code: str, key: str, default: int) -> int:
+    """读取 sys_dict 中 int 型字典键值，带缓存（TTL 1 小时）。
+
+    字典更新时由 DictService/DictTypeService 失效 `dict:options:` 前缀缓存，
+    但本读路径独立缓存，故此处以 `dict:value:` 前缀 + 1 小时 TTL 自洽；
+    运营调整后最长 1 小时生效。缺键或读取失败时记录 warning 并回退设计默认值
+    （与 config/sql/data/sys_dict.sql 种子一致），不抛异常阻断业务。
+    """
+    from app.dependencies.redis import get_redis_client
+
+    cache = CacheService(await get_redis_client())
+    cache_key = f"{DICT_VALUE_CACHE_PREFIX}{type_code}:{key}"
+    cached = await cache.get_json(cache_key)
+    if cached is not None:
+        return int(cached)
+    value = default
+    try:
+        item = await dict_repository.get_by_type_code_and_name(db, type_code, key)
+        if item is not None:
+            value = int(item.value)
+    except Exception as exc:  # noqa: BLE001 - 读取失败回退默认值
+        logger.warning("读取字典[%s:%s]失败，回退默认值 %d: %s", type_code, key, default, exc)
+    await cache.set_json(cache_key, value, DICT_VALUE_CACHE_TTL)
+    return value
+
+
+async def _invalidate_dict_value_cache(redis: Redis, type_code: str) -> None:
+    """失效某类型下的 dict:value 前缀缓存（业务读路径与下拉共用失效钩子）。"""
+    await CacheService(redis).delete_pattern(f"{DICT_VALUE_CACHE_PREFIX}{type_code}:*")
 
 
 class DictService:
@@ -158,6 +200,7 @@ class DictService:
         result = await dict_repository.create_dict(db, data)
 
         await CacheService(redis).delete(f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}")
+        await _invalidate_dict_value_cache(redis, type_code)
 
         return result
 
@@ -193,6 +236,7 @@ class DictService:
         # 清除缓存（typeCode 不变，只需清除一个）
         if old_dict.type_code:
             await CacheService(redis).delete(f"{DICT_OPTIONS_CACHE_PREFIX}{old_dict.type_code}")
+            await _invalidate_dict_value_cache(redis, old_dict.type_code)
 
         return result
 
@@ -216,6 +260,7 @@ class DictService:
         for type_code in type_codes:
             if type_code:
                 await cache.delete(f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}")
+                await _invalidate_dict_value_cache(redis, type_code)
 
         return result > 0
 
@@ -338,6 +383,7 @@ class DictTypeService:
                 cache = CacheService(redis)
                 for code in type_codes:
                     await cache.delete(f"{DICT_OPTIONS_CACHE_PREFIX}{code}")
+                    await _invalidate_dict_value_cache(redis, code)
             else:
                 counts = await dict_repository.count_by_type_codes(db, type_codes)
                 for dt in dict_types:

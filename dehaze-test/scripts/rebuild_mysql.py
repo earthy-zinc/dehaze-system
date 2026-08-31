@@ -6,6 +6,10 @@
 
 用法：
     python scripts/rebuild_mysql.py [--skip-redis] [--skip-mysql] [--only dehaze|dehaze_test]
+    python scripts/rebuild_mysql.py --import sys_ai_provider.sql sys_menu.sql
+
+缓存清理：后端进程存活时走后端统一失效入口（Redis + L1 进程缓存），
+未运行时裸删 Redis。
 
 注意：会清空 dehaze / dehaze_test 两个数据库的全部数据！
 """
@@ -18,9 +22,10 @@ from pathlib import Path
 # 让脚本不依赖 PYTHONPATH 也能 import utils
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import httpx
 import pymysql
 
-from utils import config, redis as redis_utils, cleanup
+from utils import config, cleanup
 
 
 def _connect_admin(database: str | None = None) -> pymysql.Connection:
@@ -120,9 +125,82 @@ def rebuild_mysql(targets: list[str] | None = None) -> None:
                 print(f"  ✓ {f.name} ({n} stmts)")
 
 
-def rebuild_redis() -> None:
-    """清理 Redis 业务缓存（消息未读数、session、角色权限等）。"""
+def import_data_files(targets: list[str], file_names: list[str]) -> None:
+    """增量同步指定 data SQL 文件：先清空对应表再导入（种子数据全量同步，不重建库、不影响其他表）。
+
+    适用于菜单/字典/角色等由 SQL 文件全量管理的种子数据；导入前清表避免主键冲突。
+    """
+    print("\n=== 增量导入 data SQL（先清表再导入，不重建库）===")
+    for db in targets:
+        print(f"--- {db} ---")
+        with _connect_admin(db) as conn:
+            for name in file_names:
+                table = Path(name).stem
+                path = config.SQL_DATA_DIR / name
+                if not path.exists():
+                    raise FileNotFoundError(f"data SQL 文件不存在: {path}")
+                with conn.cursor() as cur:
+                    cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+                    cur.execute(f"DELETE FROM `{table}`")
+                    cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+                n = _exec_sql_file(conn, path)
+                print(f"  ✓ {name} ({n} stmts)，已清空 `{table}` 后导入")
+
+
+CACHE_CLEAR_PATH = "/api/v1/cache/clear"
+
+
+def _cache_backend(backend: str, targets: list[str] | None) -> str | None:
+    """仅 dev 库有常驻后端进程（持有 L1 缓存）时返回后端名；测试库无服务直连，返回 None。"""
+    if targets is not None and config.MYSQL_DATABASE not in targets:
+        return None
+    return backend
+
+
+def _backend_alive(backend: str) -> bool:
+    """探测后端进程是否存活（liveness 探针）。
+
+    后端可能正忙（模型加载、批量任务），超时给到 10s，避免误判为未运行而回退裸删。
+    """
+    base = config.get_backend(backend).base_url
+    try:
+        with httpx.Client(base_url=base, timeout=10) as client:
+            return client.get("/health").status_code < 400
+    except Exception:
+        return False
+
+
+def clear_backend_cache(backend: str) -> None:
+    """经后端统一失效入口清缓存：除 Redis 外，同步失效各实例的 L1 进程缓存。
+
+    不带 key/pattern：后端按内置业务缓存前缀清单逐项失效。
+    不可传 pattern=*，那会连同 session/限流/验证码等基础设施 key 一并扫删。
+    """
+    from utils import api, auth
+
+    auth.login(backend=backend)  # 接口需管理员会话（X-Session-Id），登录后由 api 自动注入
+    result = api.post(CACHE_CLEAR_PATH, backend=backend)
+    deleted = sum(item.get("deleted", 0) for item in result.get("data") or [])
+    print(f"    失效业务缓存 {deleted} 个 key")
+
+
+def rebuild_redis(backend: str | None) -> None:
+    """清理业务缓存（消息未读数、session、角色权限等）。
+
+    backend 非空且进程存活时走后端统一失效入口（Redis + L1 进程缓存一并失效）；
+    否则裸删 Redis，此时 L1 进程缓存只能靠重启后端清除。
+    """
     print("\n=== 清理 Redis 缓存 ===")
+    if backend and _backend_alive(backend):
+        try:
+            clear_backend_cache(backend)
+            print(f"  ✓ 经后端 {backend} {CACHE_CLEAR_PATH} 统一失效（Redis + L1 进程缓存）")
+            return
+        except Exception as e:
+            print(f"  ! 后端 {backend} 缓存失效失败，回退裸删 Redis: {e}")
+    else:
+        print("  ! 后端未运行，仅裸删 Redis；L1 进程缓存需重启后端清除")
+
     result = cleanup.clear_all()
     for k, v in result.items():
         print(f"  ✓ {k}: 删除 {v} 个 key")
@@ -137,18 +215,41 @@ def main() -> None:
         choices=["dehaze", "dehaze_test"],
         help="只重建指定数据库（默认两个都重建）",
     )
+    parser.add_argument(
+        "--import",
+        dest="import_files",
+        nargs="+",
+        metavar="FILE",
+        help="增量同步 config/sql/data/ 下指定的种子数据 SQL 文件（先清对应表再导入，不重建库不清其他数据），"
+        "如：--import sys_menu.sql sys_role_menu.sql",
+    )
+    parser.add_argument(
+        "--backend",
+        choices=sorted(config.BACKENDS),
+        default="python",
+        help="缓存失效调用的后端（dev 库 dehaze 由 dehaze-python 承载，默认 python）",
+    )
     args = parser.parse_args()
+
+    if args.import_files:
+        targets = [args.only] if args.only else [config.MYSQL_DATABASE]
+        import_data_files(targets, args.import_files)
+        if not args.skip_redis:
+            rebuild_redis(_cache_backend(args.backend, targets))
+        print("\n✓ Done")
+        return
 
     if args.skip_mysql and args.skip_redis:
         print("Nothing to do.")
         return
 
+    targets: list[str] | None = None
     if not args.skip_mysql:
         targets = [args.only] if args.only else None
         rebuild_mysql(targets)
 
     if not args.skip_redis:
-        rebuild_redis()
+        rebuild_redis(_cache_backend(args.backend, targets))
 
     print("\n✓ Done")
 

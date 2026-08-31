@@ -48,7 +48,9 @@ def _restore_status_for_order(order) -> int:
     return 2
 
 
-def _calc_refund_amount(order, reason_type: str) -> tuple[int, int | None, int | None]:
+async def _calc_refund_amount(
+    db: AsyncSession, order, reason_type: str, ai_balance_service
+) -> tuple[int, int | None, int | None]:
     """按商品类型折算退款金额，返回 (refund_amount, used_days, used_credits)。"""
     if reason_type == "merchant":
         return order.paid_amount, None, None
@@ -57,10 +59,12 @@ def _calc_refund_amount(order, reason_type: str) -> tuple[int, int | None, int |
 
     if order.package_type == "credit":
         credit_amount = int(order.credit_amount or 0)
-        # 已消耗积分由 AI 计费模块提供；当前按未消耗处理（used_credits=0 全额折算）
-        used_credits = 0
         if credit_amount <= 0:
-            return 0, None, used_credits
+            return 0, None, 0
+        # 积分流水为账户池级记录（consume 不关联到单笔订单），以当前积分余额缺口
+        # 归集本单已消耗：余额不低于到账积分视为未消耗，缺口部分计为本单已消耗
+        balance = await ai_balance_service.get_balance(db, order.user_id)
+        used_credits = max(0, credit_amount - int(balance))
         refund_amount = order.paid_amount * (credit_amount - used_credits) // credit_amount
         return refund_amount, None, used_credits
 
@@ -137,7 +141,9 @@ class RefundService:
         else:
             reason = form.get("reason") or reason_type
 
-        refund_amount, used_days, used_credits = _calc_refund_amount(order, reason_type)
+        refund_amount, used_days, used_credits = await _calc_refund_amount(
+            db, order, reason_type, self.ai_balance_service
+        )
 
         refund = SysRefundRecord(
             refund_no=_gen_refund_no(),

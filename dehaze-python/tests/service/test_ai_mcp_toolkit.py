@@ -38,12 +38,12 @@ def fetcher():
     return _FakeFetcher()
 
 
-async def _create_server(db, name="test_mcp_srv"):
+async def _create_server(db, name="test_mcp_srv", endpoint="https://example.com/mcp"):
     server = SysAiMcpServer(
         name=name,
         description="测试",
         protocol_type="streamable-http",
-        endpoint="https://example.com/mcp",
+        endpoint=endpoint,
         auth_type="api_key",
         status=1,
         tool_count=0,
@@ -98,6 +98,82 @@ class TestGetTools:
         with pytest.raises(BusinessException) as exc:
             await McpManageService(fetcher=fetcher).get_tools(db, 99999)
         assert exc.value.code == ResultCode.RESOURCE_NOT_FOUND
+
+
+class TestToolCall:
+    """外部 MCP 工具试调用（连接经 mock 规避联网，审计真实落库）。"""
+
+    @pytest.fixture(autouse=True)
+    def _allow_ssrf(self, monkeypatch):
+        """测试环境 DNS 无法解析 example.com，SSRF 守卫默认 mock 放行。"""
+
+        async def _allow(_server):
+            return True, ""
+
+        monkeypatch.setattr(
+            "app.service.ai_mcp.mcp_manage_service.apply_ssrf_guard", _allow
+        )
+
+    async def test_success_returns_result_and_records_audit(self, db, monkeypatch):
+        server = await _create_server(db)
+
+        async def _fake_call(server, tool_name, arguments):
+            return "rows: 42"
+
+        monkeypatch.setattr(
+            "app.service.ai_mcp.mcp_manage_service.call_remote_tool", _fake_call
+        )
+        svc = McpManageService(fetcher=_FakeFetcher())
+
+        result = await svc.test_tool(db, server.id, "query", {"sql": "select 1"})
+
+        assert result.success is True
+        assert result.result == "rows: 42"
+        assert result.error is None
+        assert result.latency_ms is not None
+        calls = await svc.list_calls(db, McpCallQuery(tool_name="query"))
+        assert len(calls.list) == 1
+        assert calls.list[0].result == "success"
+
+    async def test_failure_returns_error_and_records_failure(self, db, monkeypatch):
+        server = await _create_server(db)
+
+        async def _fake_call(server, tool_name, arguments):
+            raise ConnectionError("downstream down")
+
+        monkeypatch.setattr(
+            "app.service.ai_mcp.mcp_manage_service.call_remote_tool", _fake_call
+        )
+        svc = McpManageService(fetcher=_FakeFetcher())
+
+        result = await svc.test_tool(db, server.id, "query", {})
+
+        assert result.success is False
+        assert "downstream down" in (result.error or "")
+        assert result.result is None
+        calls = await svc.list_calls(db, McpCallQuery(tool_name="query"))
+        assert calls.list[0].result == "failure"
+
+    async def test_unsafe_endpoint_rejected(self, db, monkeypatch):
+        server = await _create_server(db, endpoint="http://192.168.1.1/mcp")
+
+        async def _deny(_server):
+            return False, "MCP 端点不安全（仅允许 https 且禁止内网地址）"
+
+        async def _fake_call(server, tool_name, arguments):
+            raise AssertionError("不应发起连接")
+
+        monkeypatch.setattr(
+            "app.service.ai_mcp.mcp_manage_service.apply_ssrf_guard", _deny
+        )
+        monkeypatch.setattr(
+            "app.service.ai_mcp.mcp_manage_service.call_remote_tool", _fake_call
+        )
+        svc = McpManageService(fetcher=_FakeFetcher())
+
+        with pytest.raises(BusinessException) as exc:
+            await svc.test_tool(db, server.id, "query", {})
+        assert exc.value.code == ResultCode.PARAM_ERROR
 
 
 class TestMarket:

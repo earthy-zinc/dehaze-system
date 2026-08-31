@@ -1,3 +1,5 @@
+import type { PageQuery } from "@/types";
+
 /** 流式 ASR 会话创建请求 */
 export interface StreamAsrSessionForm {
   /** ASR 模型（默认流式模型 sensevoice） */
@@ -138,4 +140,163 @@ export interface ServiceStatusVO {
   asr: AsrEngineStatusVO;
   /** TTS 引擎状态 */
   tts: TtsEngineStatusVO;
+}
+
+/** 语音引擎（服务提供方） */
+export interface VoiceProviderVO {
+  id: number;
+  /** 引擎编码（engine_type 下唯一，删除后不可复用） */
+  providerCode: string;
+  /** 能力类型（asr/tts） */
+  engineType: string;
+  displayName: string;
+  /** 引擎 API 基础地址（local 引擎为空） */
+  apiBaseUrl?: string | null;
+  /** 认证方式（bearer/x-api-key/custom） */
+  authType: string;
+  /** 默认请求头 */
+  defaultHeaders?: Record<string, unknown> | null;
+  /** 该 engine_type 下默认引擎（0/1，设为 1 时后端自动清同类型其他默认） */
+  isDefault: number;
+  sortOrder: number;
+  /** 健康检查开关（1/0） */
+  healthCheckEnabled: number;
+  remark?: string | null;
+  /** 状态（1:启用;0:禁用） */
+  status: number;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+/** 语音引擎新增请求 */
+export interface VoiceProviderCreateForm {
+  providerCode: string;
+  engineType: string;
+  displayName: string;
+  apiBaseUrl?: string | null;
+  authType?: string;
+  defaultHeaders?: Record<string, unknown> | null;
+  isDefault?: number;
+  sortOrder?: number;
+  healthCheckEnabled?: number;
+  remark?: string | null;
+  status?: number;
+}
+
+/** 语音引擎更新请求（provider_code 与 engine_type 不可变更） */
+export interface VoiceProviderUpdateForm {
+  displayName?: string;
+  apiBaseUrl?: string | null;
+  authType?: string;
+  defaultHeaders?: Record<string, unknown> | null;
+  isDefault?: number;
+  sortOrder?: number;
+  healthCheckEnabled?: number;
+  remark?: string | null;
+  status?: number;
+}
+
+/** 语音引擎分页查询参数 */
+export interface VoiceProviderPageQuery extends PageQuery {
+  /** 关键字（按显示名称/引擎编码模糊搜索） */
+  keyword?: string;
+  /** 能力类型（asr/tts） */
+  engineType?: string;
+}
+
+/** 引擎连通性测试结果 */
+export interface VoiceProviderTestResultVO {
+  /** 结果说明 */
+  result: string;
+  /** 是否连通（云端引擎待接入测试能力时为 null） */
+  connected: boolean | null;
+}
+
+/** 引擎 API Key */
+export interface VoiceProviderKeyVO {
+  id: number;
+  providerId: number;
+  name: string;
+  /** 密钥前缀（掩码展示，明文仅创建时提交一次） */
+  keyPrefix?: string | null;
+  /** 状态（1:启用;0:禁用） */
+  status: number;
+  /** 优先级（数字越小越优先） */
+  priority: number;
+  weight: number;
+  /** 日调用上限 */
+  dailyQuota?: number | null;
+  /** 分钟调用频率上限（0=不限） */
+  rpmLimit?: number | null;
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  lastUsedBy?: number | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+/** 引擎 API Key 新增请求（key 明文，服务端加密存储后不返回） */
+export interface VoiceProviderKeyCreateForm {
+  name: string;
+  key: string;
+  priority?: number;
+  weight?: number;
+  dailyQuota?: number | null;
+  rpmLimit?: number | null;
+  expiresAt?: string | null;
+  status?: number;
+}
+
+/** 引擎 API Key 更新请求 */
+export interface VoiceProviderKeyUpdateForm {
+  name?: string;
+  priority?: number;
+  weight?: number;
+  dailyQuota?: number | null;
+  rpmLimit?: number | null;
+  expiresAt?: string | null;
+  status?: number;
+}
+
+/** 语音模型/音色 */
+export interface VoiceModelVO {
+  id: number;
+  providerId: number;
+  /** 模型/音色业务编码（删除后不可复用） */
+  modelId: string;
+  /** 能力类型（asr/tts） */
+  engineType: string;
+  /** 子类型（ASR: stream/offline；TTS: voice） */
+  modelType: string;
+  displayName: string;
+  /** 模型参数 */
+  params?: Record<string, unknown> | null;
+  /** 状态（1:启用;0:禁用） */
+  status: number;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+/** 语音模型/音色新增请求 */
+export interface VoiceModelCreateForm {
+  providerId: number;
+  modelId: string;
+  engineType: string;
+  modelType: string;
+  displayName: string;
+  params?: Record<string, unknown> | null;
+  status?: number;
+}
+
+/** 语音模型/音色更新请求（model_id 不可变更） */
+export interface VoiceModelUpdateForm {
+  displayName?: string;
+  params?: Record<string, unknown> | null;
+  status?: number;
+}
+
+/** 语音模型/音色列表查询参数 */
+export interface VoiceModelPageQuery {
+  /** 能力类型（asr/tts） */
+  engineType?: string;
 }

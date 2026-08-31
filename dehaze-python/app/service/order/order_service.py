@@ -254,6 +254,21 @@ class OrderService:
         finally:
             await release_lock(lock_key, lock_token)
 
+    async def _unfreeze_if_frozen(self, db: AsyncSession, order) -> None:
+        """解冻余额支付冻结部分；仅在账户实际冻结额足够时解冻。
+
+        balance 支付在 pay 阶段冻结后立即扣减完成，pending 订单可能从未冻结，
+        无条件 unfreeze 会因 frozen_balance >= amount 条件不满足而失败。
+        """
+        if order.pay_method not in ("balance", "combined"):
+            return
+        frozen = order.balance_amount if order.pay_method == "combined" else order.payable_amount
+        if frozen <= 0:
+            return
+        account = await self.balance_account_service.get_account(db, order.user_id)
+        if account and account.frozen_balance >= frozen:
+            await self.balance_account_service.unfreeze(db, order.user_id, frozen)
+
     async def cancel(self, db: AsyncSession, order_no: str, reason: str, user_id: int) -> None:
         order = await self.order_repository.get_by_order_no(db, order_no)
         if not order:
@@ -272,6 +287,9 @@ class OrderService:
                 await self.payment_channel_service.close_order(order.pay_method, order_no)
             except Exception as e:
                 logger.warning("关闭渠道订单失败 orderNo=%s: %s", order_no, e)
+
+        # 与超时取消同规则：解冻余额/组合支付已冻结的余额部分
+        await self._unfreeze_if_frozen(db, order)
 
         order.status = 4
         order.cancel_reason = reason
@@ -515,12 +533,7 @@ class OrderService:
                     await self.payment_channel_service.close_order(order.pay_method, order.order_no)
                 except Exception as e:
                     logger.warning("超时关单失败 orderNo=%s: %s", order.order_no, e)
-            if order.pay_method in ("balance", "combined"):
-                frozen = (
-                    order.balance_amount if order.pay_method == "combined" else order.payable_amount
-                )
-                if frozen > 0:
-                    await self.balance_account_service.unfreeze(db, order.user_id, frozen)
+            await self._unfreeze_if_frozen(db, order)
             order.status = 4
             order.cancel_reason = "超时未支付，系统自动取消"
             await _invalidate_order_detail_cache(order.order_no)

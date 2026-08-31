@@ -100,6 +100,7 @@ class AiMessageService:
 
     async def _run_reasoning(
         self,
+        db: AsyncSession,
         conv_id: int,
         user_id: int,
         model: str,
@@ -112,6 +113,7 @@ class AiMessageService:
             reasoning_service=self.reasoning_service,
             get_redis_client=self.get_redis_client,
             sse_emitter_manager=self.sse_emitter_manager,
+            db=db,
             conv_id=conv_id,
             user_id=user_id,
             model=model,
@@ -122,6 +124,7 @@ class AiMessageService:
 
     def _stream_generator(
         self,
+        db: AsyncSession,
         conv_id: int,
         user_id: int,
         model: str,
@@ -134,6 +137,7 @@ class AiMessageService:
             sse_emitter_manager=self.sse_emitter_manager,
             reasoning_service=self.reasoning_service,
             get_redis_client=self.get_redis_client,
+            db=db,
             conv_id=conv_id,
             user_id=user_id,
             model=model,
@@ -146,15 +150,18 @@ class AiMessageService:
         """幂等命中（已完成）：返回已有消息结果"""
         try:
             data = json.loads(existing)
-            msg = await self.ai_message_repository.get_by_id(db, data.get("messageId"))
-            if msg:
-                return JSONResponse(
-                    content=success(
-                        MessageResult.model_validate(msg).model_dump(by_alias=True)
-                    ).model_dump()
-                )
-        except (json.JSONDecodeError, TypeError):
-            pass
+        except json.JSONDecodeError:
+            logger.warning("幂等键缓存值非法，放弃重放: %s", existing)
+            return JSONResponse(content=success().model_dump())
+        msg = await self.ai_message_repository.get_by_id(db, data.get("messageId"))
+        if msg:
+            # mode="json"：create_time 等 datetime 须在响应体序列化为 ISO 串，
+            # 否则 JSONResponse 渲染时抛 TypeError，前端拿到无 data 的成功响应
+            return JSONResponse(
+                content=success(
+                    MessageResult.model_validate(msg).model_dump(mode="json", by_alias=True)
+                ).model_dump()
+            )
         return JSONResponse(content=success().model_dump())
 
     async def send_message(
@@ -236,6 +243,9 @@ class AiMessageService:
         await self.ai_conversation_repository.update_last_message(
             db, conv_id, assistant_msg.id, datetime.now(), message_delta=2
         )
+        # 显式提交：推理后台任务（run_reasoning）用独立 session 读取上下文，
+        # 必须在本请求事务提交后才能读到新消息与最新分支指针（否则读到上一轮旧上下文）。
+        await db.commit()
 
         # 首条消息发送后异步用 LLM 生成标题（不阻塞消息发送）
         if (
@@ -250,6 +260,7 @@ class AiMessageService:
         # 上下文由 reasoning_service.run 内部组装，此处不再预热（避免 build_context 二次执行）
         return StreamingResponse(
             self._stream_generator(
+                db=db,
                 conv_id=conv_id,
                 user_id=user_id,
                 model=model,
@@ -324,6 +335,8 @@ class AiMessageService:
         await self.ai_conversation_repository.update_last_message(
             db, conv_id, assistant_msg.id, datetime.now(), message_delta=2
         )
+        # 显式提交：推理后台任务用独立 session 读取上下文，须先提交本事务
+        await db.commit()
 
         # 编辑重发不参与幂等，使用一次性 key 复用推理后台任务；
         # 上下文由 reasoning_service.run 内部组装，此处不再预热（避免 build_context 二次执行）
@@ -331,6 +344,7 @@ class AiMessageService:
 
         return StreamingResponse(
             self._stream_generator(
+                db=db,
                 conv_id=conv_id,
                 user_id=user_id,
                 model=model,

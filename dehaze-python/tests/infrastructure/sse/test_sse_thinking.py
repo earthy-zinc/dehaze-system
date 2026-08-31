@@ -162,6 +162,26 @@ async def test_tool_status_3_skipped_persisted_and_emitted(conv):
     assert event["error"] == "服务不可用"
 
 
+async def test_multiple_thinking_segments_each_own_block(conv):
+    """多段思考（思考→回复→思考→回复）每段独立内容块并分别落库"""
+    converter, emitter, repo = conv
+    await converter.handle({"type": "messages", "ns": [], "data": [_thinking_chunk("思考1")]})
+    await converter.handle({"type": "messages", "ns": [], "data": [AIMessageChunk(content="回复1")]})
+    await converter.handle({"type": "messages", "ns": [], "data": [_thinking_chunk("思考2")]})
+    await converter.handle({"type": "messages", "ns": [], "data": [AIMessageChunk(content="回复2")]})
+    await converter.finish()
+    # 第二段思考重新推送 content_block.start（多段独立块）
+    thinking_starts = [
+        e
+        for e in emitter.events
+        if e[0] == "content_block.start" and e[1].get("type") == "thinking"
+    ]
+    assert len(thinking_starts) == 2
+    # 两段思考分别落库为一条 agent_thought
+    thinking_thoughts = [t for t in repo.thoughts if t["tool"] is None]
+    assert [t["thought"] for t in thinking_thoughts] == ["思考1", "思考2"]
+
+
 async def test_finish_flushes_residual_thinking(conv):
     converter, emitter, repo = conv
     await converter.handle({"type": "messages", "ns": [], "data": [_thinking_chunk("只思考")]})

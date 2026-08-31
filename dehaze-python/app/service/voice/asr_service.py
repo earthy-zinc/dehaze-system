@@ -27,7 +27,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.database import get_db_session
 from app.dependencies.redis import get_redis_client
-from app.infrastructure.voice.funasr_client import FunASRClientError, funasr_client
+from app.infrastructure.voice.provider.registry import voice_engine_registry
 from app.service.voice.hotword_service import hotword_service
 from app.service.voice.voice_billing_service import voice_billing_service
 
@@ -53,11 +53,11 @@ class AsrService:
         self,
         hotword_service=hotword_service,
         voice_billing_service=voice_billing_service,
-        funasr_client=funasr_client,
+        engine_registry=voice_engine_registry,
     ):
         self.hotword_service = hotword_service
         self.voice_billing_service = voice_billing_service
-        self.funasr_client = funasr_client
+        self.engine_registry = engine_registry
 
     # ==================== 会话状态与并发（Redis） ====================
 
@@ -113,7 +113,7 @@ class AsrService:
                 "user_id": user_id,
                 "status": "processing",
                 "text": "",
-                "model": model or settings.VOICE_ASR_STREAM_MODEL,
+                "model": model or "",
                 "create_time": now,
             },
         )
@@ -123,16 +123,17 @@ class AsrService:
         await redis.zremrangebyscore(_CONCURRENT_KEY, 0, now - _SESSION_TTL)
 
         # 注册热词（合并全局+用户级），失败仅告警不阻断会话创建
-        await self._register_hotwords(db, user_id)
+        provider = await self.engine_registry.get_asr_provider()
+        await self._register_hotwords(db, user_id, provider)
 
         return session_id
 
-    async def _register_hotwords(self, db: AsyncSession, user_id: int) -> None:
-        """合并全局+用户级热词注册到 FunASR；调用失败仅告警。"""
+    async def _register_hotwords(self, db: AsyncSession, user_id: int, provider) -> None:
+        """合并全局+用户级热词注册到 ASR Provider；调用失败仅告警。"""
         try:
             words = await self.hotword_service.get_effective_words(db, user_id)
             if words:
-                await self.funasr_client.register_hotwords(words)
+                await provider.register_hotwords(words)
         except Exception as e:  # 热词注册失败不阻断会话
             logger.warning("注册热词失败(不影响会话) user_id=%s error=%s", user_id, e)
 
@@ -163,11 +164,12 @@ class AsrService:
             db, user_id, math.ceil(_ESTIMATE_SECONDS * settings.VOICE_ASR_CREDITS_PER_SECOND)
         )
         # 注册热词（离线识别也应用领域热词），失败仅告警
-        await self._register_hotwords(db, user_id)
+        provider = await self.engine_registry.get_asr_provider()
+        await self._register_hotwords(db, user_id, provider)
 
         try:
-            text = await self.funasr_client.offline(audio, model=model)
-        except FunASRClientError as e:
+            text = await provider.recognize_offline(audio)
+        except Exception as e:
             raise BusinessException(ResultCode.BUSINESS_ERROR, f"离线识别失败: {e}") from e
 
         # 按音频时长（秒）实扣，音频字节数折算为秒向上取整
@@ -182,7 +184,7 @@ class AsrService:
                 "user_id": user_id,
                 "status": "completed",
                 "text": text,
-                "model": model or settings.VOICE_ASR_OFFLINE_MODEL,
+                "model": "",
                 "create_time": time.time(),
             },
         )
@@ -220,13 +222,13 @@ class AsrService:
             return
 
         user_id = int(session["user_id"])
-        model = session.get("model")
 
-        # 连接 FunASR（连接延迟到此），失败则标记会话 failed 并关闭前端
+        # 经注册表获取 ASR Provider 并建立流式会话，失败则标记会话 failed 并关闭前端
         try:
-            funasr = await funasr_client.stream_session(model=model)
-        except FunASRClientError as e:
-            logger.error("连接 FunASR 失败 session=%s error=%s", session_id, e)
+            provider = await self.engine_registry.get_asr_provider()
+            funasr = await provider.recognize_stream()
+        except Exception as e:
+            logger.error("连接 ASR 失败 session=%s error=%s", session_id, e)
             await self._fail_session(redis, session_id)
             await self._reject(websocket, "识别服务不可用，请稍后重试")
             return

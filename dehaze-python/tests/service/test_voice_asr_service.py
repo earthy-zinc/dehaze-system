@@ -22,8 +22,8 @@ from app.service.voice.asr_service import AsrService, _CONCURRENT_KEY, _SESSION_
 # ── 测试桩 ──────────────────────────────────────────────────────────────────
 
 
-class FakeFunASRClient:
-    """FunASR 客户端桩：记录调用、可预设返回值/异常。"""
+class FakeAsrProvider:
+    """ASR Provider 桩：记录调用、可预设返回值/异常。"""
 
     def __init__(self, offline_text="识别文本"):
         self._offline_text = offline_text
@@ -31,7 +31,7 @@ class FakeFunASRClient:
         self.registered_hotwords = None
         self.offline_calls = 0
 
-    async def offline(self, audio, *, model=None):
+    async def recognize_offline(self, audio):
         self.offline_calls += 1
         if self._offline_error is not None:
             raise self._offline_error
@@ -42,6 +42,16 @@ class FakeFunASRClient:
 
     def set_offline_error(self, exc):
         self._offline_error = exc
+
+
+class FakeEngineRegistry:
+    """注册表桩：get_asr_provider 返回预设的 Provider。"""
+
+    def __init__(self, provider):
+        self._provider = provider
+
+    async def get_asr_provider(self):
+        return self._provider
 
 
 class StubBillingService:
@@ -71,12 +81,12 @@ class StubHotwordService:
         return list(self._global) + list(self._user.get(user_id, []))
 
 
-def _patch_deps(monkeypatch, *, funasr=None, billing=None, hotword=None):
-    """构造注入 AsrService 的依赖桩（默认参数在 import 时即冻结，故走构造注入）。"""
+def _patch_deps(monkeypatch, *, provider=None, billing=None, hotword=None):
+    """构造注入 AsrService 的依赖桩（Provider 经引擎注册表桩注入）。"""
     return AsrService(
-        funasr_client=funasr or FakeFunASRClient(),
         voice_billing_service=billing or StubBillingService(),
         hotword_service=hotword or StubHotwordService([], {}),
+        engine_registry=FakeEngineRegistry(provider or FakeAsrProvider()),
     )
 
 
@@ -106,7 +116,7 @@ async def test_create_stream_session_returns_session_id_and_writes_redis(monkeyp
     data = json.loads(await redis.get(key))
     assert data["user_id"] == 1001
     assert data["status"] == "processing"
-    assert data["model"] == "sensevoice"
+    assert data["model"] == ""
     assert await redis.zcard(_CONCURRENT_KEY) == 1
 
 
@@ -171,13 +181,13 @@ async def test_create_stream_session_rejects_when_balance_insufficient(monkeypat
 
 @pytest.mark.asyncio
 async def test_create_stream_session_registers_merged_hotwords_to_funasr(monkeypatch):
-    funasr = FakeFunASRClient()
+    funasr = FakeAsrProvider()
     hotword = StubHotwordService(
         global_words=["全局词A", "全局词B"], user_words={5001: ["用户词X"]}
     )
-    _patch_deps(monkeypatch, funasr=funasr, hotword=hotword)
+    _patch_deps(monkeypatch, provider=funasr, hotword=hotword)
     redis = FakeAsyncRedis(decode_responses=True)
-    svc = _patch_deps(monkeypatch, funasr=funasr, hotword=hotword)
+    svc = _patch_deps(monkeypatch, provider=funasr, hotword=hotword)
 
     await svc.create_stream_session(redis, None, 5001, None)
 
@@ -221,9 +231,9 @@ async def test_get_result_raises_for_invalid_session(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_offline_asr_returns_text_for_valid_wav(monkeypatch):
-    _patch_deps(monkeypatch, funasr=FakeFunASRClient(offline_text="离线识别结果"))
+    _patch_deps(monkeypatch, provider=FakeAsrProvider(offline_text="离线识别结果"))
     redis = FakeAsyncRedis(decode_responses=True)
-    svc = _patch_deps(monkeypatch, funasr=FakeFunASRClient(offline_text="离线识别结果"))
+    svc = _patch_deps(monkeypatch, provider=FakeAsrProvider(offline_text="离线识别结果"))
 
     result = await svc.offline_asr(redis, None, 7001, _make_wav_bytes(), None)
 
@@ -233,9 +243,8 @@ async def test_offline_asr_returns_text_for_valid_wav(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_offline_asr_rejects_unsupported_format(monkeypatch):
-    _patch_deps(monkeypatch)
     redis = FakeAsyncRedis(decode_responses=True)
-    svc = AsrService()
+    svc = _patch_deps(monkeypatch)
 
     with pytest.raises(BusinessException) as exc:
         await svc.offline_asr(redis, None, 7001, b"fake-mp3-bytes", None)
@@ -245,11 +254,11 @@ async def test_offline_asr_rejects_unsupported_format(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_offline_asr_fails_on_funasr_error(monkeypatch):
-    funasr = FakeFunASRClient()
+    funasr = FakeAsrProvider()
     funasr.set_offline_error(FunASRClientError("engine down"))
-    _patch_deps(monkeypatch, funasr=funasr)
+    _patch_deps(monkeypatch, provider=funasr)
     redis = FakeAsyncRedis(decode_responses=True)
-    svc = _patch_deps(monkeypatch, funasr=funasr)
+    svc = _patch_deps(monkeypatch, provider=funasr)
 
     with pytest.raises(BusinessException) as exc:
         await svc.offline_asr(redis, None, 7001, _make_wav_bytes(), None)

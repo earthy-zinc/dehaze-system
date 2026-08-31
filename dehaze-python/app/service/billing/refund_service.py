@@ -4,14 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.models.schema.ai_billing import RefundResult
+from app.models.schema.ai_billing import RefundQuery, RefundResult
+from app.models.schema.common import PageResult
 from app.repository.ai_billing_repository import ai_billing_repository
 from app.repository.ai_refund_repository import ai_refund_repository
 from app.service.billing.balance_service import balance_service
 
 
 class RefundService:
-    """退款补偿：申请 → 审核 → 余额回补"""
+    """退款补偿：申请 → 列表 → 审核 → 余额回补"""
 
     def __init__(
         self,
@@ -20,6 +21,26 @@ class RefundService:
     ):
         self.ai_billing_repository = ai_billing_repository
         self.ai_refund_repository = ai_refund_repository
+
+    async def list_refunds(
+        self,
+        db: AsyncSession,
+        query: RefundQuery,
+    ) -> PageResult[RefundResult]:
+        """退款申请分页列表（管理端审核中心）"""
+        items, total = await self.ai_refund_repository.list_page(
+            db,
+            query.page,
+            query.size,
+            status=query.status,
+            user_id=query.user_id,
+            date_start=query.date_start,
+            date_end=query.date_end,
+        )
+        return PageResult(
+            list=[RefundResult.model_validate(item) for item in items],
+            total=total,
+        )
 
     async def apply_refund(self, 
         db: AsyncSession,

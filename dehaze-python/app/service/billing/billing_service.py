@@ -41,7 +41,7 @@ def _publish_chat_completed(user_id: int) -> None:
     async def _run() -> None:
         try:
             async with get_db_session() as db:
-                await member_growth_service.add_ai_consume_growth(db, user_id)
+                await member_growth_service.add_behavior_growth(db, user_id, "ai_consume")
         except Exception:
             logger.warning("ai.chat.completed 消费失败（AI 使用激励） user_id=%s", user_id, exc_info=True)
 

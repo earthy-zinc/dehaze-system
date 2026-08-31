@@ -167,6 +167,29 @@ class AiMemoryRepository(BaseRepository[SysAiMemory]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def exists_active_content(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        memory_type: str,
+        content: str,
+    ) -> bool:
+        """是否存在内容完全一致的活跃记忆（保存前的强去重，不依赖 LLM 去重）。"""
+        stmt = (
+            select(SysAiMemory.id)
+            .where(
+                SysAiMemory.user_id == user_id,
+                SysAiMemory.memory_type == memory_type,
+                SysAiMemory.content == content,
+                SysAiMemory.deleted == 0,
+                SysAiMemory.status == 1,
+                SysAiMemory.archived == 0,
+            )
+            .limit(1)
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
     async def get_by_id_and_user(
         self,
         db: AsyncSession,

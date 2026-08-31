@@ -29,13 +29,9 @@ _executor = ThreadPoolExecutor(
     max_workers=settings.VOICE_ASR_INFERENCE_THREADS, thread_name_prefix="funasr-infer"
 )
 
-# 逻辑模型名 → funasr 模型 ID（ModelScope）
-_MODEL_IDS = {
-    # 流式：SenseVoice-Small，分段增量识别（伪流式，延迟约 1 秒档）
-    "sensevoice": "iic/SenseVoiceSmall",
-    # 离线：SeACo-Paraformer-Large（Paraformer-Large 热词增强版，原生支持热词加权）
-    "paraformer": "iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
-}
+# 模型注册表 {逻辑模型名: funasr ModelScope ID}，由 LocalAsrProvider 从
+# sys_voice_model.params 解析后经 configure_models 注入，不再硬编码
+_model_ids: dict[str, str] = {}
 
 # SenseVoice 输出中的语言/情感/事件标签（如 <|zh|><|NEUTRAL|>），转写前剥离
 _SENSEVOICE_TAG_PATTERN = re.compile(r"<\|[^|]*\|>")
@@ -53,12 +49,18 @@ class FunASREngineError(Exception):
     """本地引擎调用失败（依赖缺失/模型加载失败/音频格式不合规格）"""
 
 
+def configure_models(models: dict[str, str]) -> None:
+    """注入模型注册表（逻辑模型名 → funasr ModelScope ID），替换式更新"""
+    _model_ids.clear()
+    _model_ids.update(models)
+
+
 def resolve_model_id(model: str | None, default_logical: str) -> str:
-    """解析逻辑模型名为 funasr 模型 ID（白名单校验，未知模型直接报错）"""
+    """解析逻辑模型名为 funasr 模型 ID（查注入的注册表，未知模型直接报错）"""
     name = model or default_logical
-    if name not in _MODEL_IDS:
-        raise FunASREngineError(f"不支持的 ASR 模型: {name}（可选: {'/'.join(_MODEL_IDS)}）")
-    return _MODEL_IDS[name]
+    if name not in _model_ids:
+        raise FunASREngineError(f"不支持的 ASR 模型: {name}（可选: {'/'.join(_model_ids) or '未配置'}）")
+    return _model_ids[name]
 
 
 def ensure_model(model: str | None, default_logical: str) -> None:
@@ -144,7 +146,7 @@ def engine_status() -> dict[str, Any]:
     """查询引擎状态（不抛异常）。
 
     返回：engine_status("online"/"offline")、stream_model_loaded、
-    offline_model_loaded，基于模型是否已加载到进程内单例判定。
+    offline_model_loaded，基于注入注册表与模型是否已加载到进程内单例判定。
     """
     if not _models:
         return {
@@ -154,10 +156,8 @@ def engine_status() -> dict[str, Any]:
         }
     return {
         "engine_status": "online",
-        "stream_model_loaded": resolve_model_id(None, settings.VOICE_ASR_STREAM_MODEL)
-        in _models,
-        "offline_model_loaded": resolve_model_id(None, settings.VOICE_ASR_OFFLINE_MODEL)
-        in _models,
+        "stream_model_loaded": _model_ids.get("stream") in _models,
+        "offline_model_loaded": _model_ids.get("offline") in _models,
     }
 
 

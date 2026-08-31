@@ -40,7 +40,9 @@ const SystemMemberDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Row label="进度" value={`${detail.progressPercent}%`} />
           <Row label="状态" value={detail.status === 1 ? '正常' : '冻结'} />
           <Row label="过期时间" value={detail.expireTime || '-'} />
-          <Row label="月去雾额度" value={`${detail.monthlyDehazeUsed}/${detail.monthlyDehazeQuota}`} />
+          <Row label="本月已用次数" value={String(detail.monthlyUsed)} />
+          <Row label="月去雾额度" value={`${detail.benefits?.monthlyDehazeQuota ?? 0} 次`} />
+          <Row label="月评估额度" value={`${detail.benefits?.monthlyEvaluateQuota ?? 0} 次`} />
         </View>
       </ScrollView>
     </View>

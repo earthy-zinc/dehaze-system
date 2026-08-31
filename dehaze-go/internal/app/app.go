@@ -97,6 +97,7 @@ type Application struct {
 	publisher       *mq.Publisher
 	auditLogService *auditlogservice.AuditLogService
 	lifecycleMgr    *lifecycle.Manager
+	defaultStorage  storage.StorageService
 }
 
 func New() *Application {
@@ -246,6 +247,7 @@ func (a *Application) Init() error {
 	if err != nil {
 		return fmt.Errorf("获取默认存储后端失败: %w", err)
 	}
+	a.defaultStorage = defaultStorage
 	fileService := fileservice.NewFileService(fileRepo, storageRegistry)
 	a.taskExecutor = taskservice.NewAsyncTaskExecutor(cfg.RabbitMQ, zap.L())
 	if err := a.taskExecutor.Initialize(); err != nil {
@@ -317,7 +319,7 @@ func (a *Application) Init() error {
 	notificationSettingService := msgservice.NewNotificationSettingService(notifySettingRepo)
 
 	// member module services（需在 predictionService/authService 之前构造，预测/评估/注册需调用权益校验）
-	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient, a.auditLogService, messageService, a.lifecycleMgr)
+	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient, a.auditLogService, messageService, a.lifecycleMgr, dictService)
 
 	// authService 依赖 userService + memberService（注册流程通过 UserService 创建用户、MemberService 初始化会员）
 	authService := authservice.NewAuthService(cacheClient, userService, loginLogService, memberService)
@@ -332,7 +334,7 @@ func (a *Application) Init() error {
 	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, userRepo, memberRepo, memberBenefitRepo, paymentSvc, cacheClient, a.auditLogService, memberService)
 
 	// favorite module services
-	favoriteService := favoriteservice.NewFavoriteService(favoriteRepo, memberRepo, algorithmRepo, predLogRepo, datasetRepo)
+	favoriteService := favoriteservice.NewFavoriteService(favoriteRepo, memberRepo, algorithmRepo, predLogRepo, datasetRepo, dictService)
 
 	// algorithm select module services
 	algorithmSelectService := algoSelectService.NewAlgorithmSelectService(algorithmRepo, predLogRepo, ratingRepo, predictionService)
@@ -347,7 +349,7 @@ func (a *Application) Init() error {
 	}
 	a.publisher = alertPublisher
 	lowRatingAlertService := fbservice.NewLowRatingAlertService(ratingRepo, userRepo, algorithmRepo, messageService, alertPublisher, zap.L())
-	ratingService := fbservice.NewRatingService(gormDB, ratingRepo, predLogRepo, memberService, cacheClient, lowRatingAlertService, zap.L())
+	ratingService := fbservice.NewRatingService(gormDB, ratingRepo, predLogRepo, memberService, cacheClient, lowRatingAlertService, zap.L(), dictService)
 	feedbackService := fbservice.NewFeedbackService(gormDB, feedbackRepo, feedbackReplyRepo, userRepo, cacheClient)
 	recommendationService := recservice.NewRecommendationService(algoClient, recommendationRepo, recommendationRuleRepo, algorithmRepo)
 	presetService := presetservice.NewPresetService(gormDB, presetRepo, memberService)
@@ -703,6 +705,39 @@ func (a *Application) readinessHandler() gingin.HandlerFunc {
 				allHealthy = false
 			} else {
 				components["rabbitmq"] = "UP"
+			}
+		}
+
+		// MongoDB check（必选基础设施）
+		func() {
+			client := mongo.GetMongoClient()
+			if client == nil {
+				components["mongodb"] = "DOWN"
+				allHealthy = false
+				return
+			}
+			pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+			if err := client.Ping(pingCtx, nil); err != nil {
+				components["mongodb"] = "DOWN"
+				allHealthy = false
+				return
+			}
+			components["mongodb"] = "UP"
+		}()
+
+		// MinIO check（仅当默认存储后端为 minio 时检查）
+		if cfg.File.Type == storage.StorageMinIO {
+			if ms, ok := a.defaultStorage.(*storage.MinioStorageService); ok {
+				pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				err := ms.Ping(pingCtx)
+				cancel()
+				if err != nil {
+					components["minio"] = "DOWN"
+					allHealthy = false
+				} else {
+					components["minio"] = "UP"
+				}
 			}
 		}
 

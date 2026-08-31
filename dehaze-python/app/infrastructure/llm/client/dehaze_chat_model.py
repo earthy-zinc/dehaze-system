@@ -200,6 +200,9 @@ class DehazeChatModel(BaseChatModel):
         usage: dict = {}
         call_meta: dict = {}
         pending_tool_calls: dict[int, dict] = {}
+        # 工具调用产出序号：tool_call_chunks 的 index 按产出顺序编号（LangChain
+        # 多工具并行合并时按 index 匹配增量），不能为 None
+        tool_call_seq = 0
         # 思考流累积：LangChain 无标准 thinking 字段，经 additional_kwargs["thinking"]
         # 逐块透出，供 SseEventConverter 识别为思考双流
         thinking_accumulated = ""
@@ -246,12 +249,13 @@ class DehazeChatModel(BaseChatModel):
                                         "name": pending["name"],
                                         "args": pending["arguments"],
                                         "id": pending["id"],
-                                        "index": None,
+                                        "index": tool_call_seq,
                                         "type": "tool_call_chunk",
                                     }
                                 ],
                             )
                         )
+                        tool_call_seq += 1
                 elif chunk.type == "done":
                     usage = chunk.usage or {}
         # 记录 usage 与实际路由归因，供 _agenerate 附加到最终消息（计费结算透出）

@@ -136,6 +136,9 @@ class _MsgRepo:
     async def count_messages_after(self, db, cid, aid):
         return 0
 
+    async def find_latest_ids_by_keyword(self, db, conv_ids, keyword):
+        return {}
+
     async def get_chain_by_id(self, db, cid, tail, limit=None):
         return []
 

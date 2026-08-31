@@ -6,7 +6,6 @@
 
 - **基础路径**：`/api/v1/voice`
 - **流式协议**：WebSocket（ASR 实时语音识别，端点 `ws://{host}/ws/asr`）+ HTTP 流式响应（TTS 语音合成）
-- **公共约定**：参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md)
 
 ## 2. 接口清单
 
@@ -28,8 +27,6 @@
 
 ### 2.3 热词管理接口
 
-> 热词用于提升 ASR 对领域专业术语的识别率。全局热词（所有用户生效）由管理员配置，用户级热词（仅本人生效）由用户自行管理。
-
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/voice/hotwords` | GET | 查询当前用户热词列表 | - | F-VS-004 |
@@ -45,6 +42,25 @@
 |------|------|---------|---------|-----------|
 | `/api/v1/voice/service/status` | GET | 查询 ASR/TTS 服务运行状态（引擎在线状态/并发会话数/模型加载状态，管理端服务监控） | `voice:service:monitor` | F-VS-001/002 |
 
+### 2.5 语音引擎管理接口（管理端）
+
+| 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
+|------|------|---------|---------|-----------|
+| `/api/v1/voice/providers` | GET | 引擎分页列表（含健康状态看板） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/providers` | POST | 新增引擎（provider_code 唯一，删除后不可复用） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/providers/{id}` | PUT | 更新引擎（含 `is_default`/`status`） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/providers/{id}` | DELETE | 删除引擎（有启用模型引用时需先禁用，provider_code 保留） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/providers/enabled` | GET | 指定能力维度启用引擎列表（`engine_type=asr\|tts`） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/providers/{id}/test-connection` | POST | 连通性测试（结果仅提示不阻断保存） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/providers/{id}/keys` | GET | 查询引擎 API Key 列表 | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/providers/{id}/keys` | POST | 新增 API Key（加密存储，返回 Key ID 不返回明文） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/providers/{id}/keys/{keyId}` | PUT | 更新 API Key（禁用/权重/限额等） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/providers/{id}/keys/{keyId}` | DELETE | 删除 API Key（物理删除，状态控制） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/models` | GET | 模型/音色列表（按 `engine_type` 筛选） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/models` | POST | 新增模型/音色（`model_id` 删除后不可复用） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/models/{modelId}` | PUT | 更新模型/音色（含 params） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/models/{modelId}` | DELETE | 删除模型/音色（`model_id` 保留） | `voice:engine:manage` | F-VS-005 |
+
 ## 3. 权限标识汇总
 
 | 权限标识 | 说明 |
@@ -52,6 +68,7 @@
 | - | 语音交互模块基础能力（ASR/TTS/热词查询），登录用户均可使用 |
 | `voice:hotword:edit` | 热词新增/删除（用户级仅本人，全局需管理员） |
 | `voice:service:monitor` | 语音服务状态监控（管理端，仅管理员） |
+| `voice:engine:manage` | 语音引擎管理（注册表/API Key/模型音色配置，管理端，仅管理员） |
 
 ## 4. 业务错误码
 
@@ -61,6 +78,6 @@
 | `A0400` | 请求参数错误 | TTS 空/超长文本、不支持的音色、离线 ASR 非 WAV/PCM 格式或空文件、热词内容为空 |
 | `A0401` | 请求资源不存在 | ASR 会话不存在、热词不存在、缓存音频不存在或已过期 |
 | `A0301` | 权限不足 | 普通用户管理全局热词、访问他人 ASR 会话/热词 |
-| `A0500` | 业务异常 | ASR 并发会话超上限、热词数量超上限 |
+| `A0500` | 业务异常 | ASR 并发会话超上限、热词数量超上限、本地 TTS 引擎失败、纯云端部署下默认引擎冲突（`is_default` 指向 `local` 而本地引擎不可用，抛错不降级） |
 | `A0682` | 配额不足或欠费熔断 | ASR/TTS 调用前 AI 积分余额/配额校验不通过 |
-| `C0001` | 第三方服务调用失败 | FunASR 调用失败（前端降级纯文本）；本地 TTS 引擎失败返回 `A0500` 业务异常 |
+| `C0001` | 第三方服务调用失败 | 云端 ASR/TTS 调用失败 |

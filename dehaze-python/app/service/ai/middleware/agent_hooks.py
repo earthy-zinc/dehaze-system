@@ -21,6 +21,7 @@ from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.service.ai.service.agent_state import AgentState
 from app.service.ai.service.memory_extraction import extract_memories, save_extracted_memories
 from app.service.ai.middleware.tool_recovery import classify_tool_error
+from app.service.ai.service import trace_collector
 from app.service.billing.billing_service import billing_service
 from app.service.billing.estimate_service import estimate_service
 
@@ -182,7 +183,9 @@ async def _memory_extraction_hook(state: AgentState) -> dict | None:
 
     async def _run() -> None:
         try:
-            memories = await extract_memories(user_id, model_id, messages)
+            memories = await extract_memories(
+                user_id, model_id, messages, conversation_id=state.get("conversation_id")
+            )
             await save_extracted_memories(user_id, memories)
         except Exception:
             logger.warning("Memory extraction failed", exc_info=True)
@@ -257,6 +260,27 @@ async def _tool_recovery_hook(state: AgentState) -> dict | None:
     return {"action": action.action, "reason": action.reason, "status": action.status}
 
 
+async def _trace_settle_hook(state: AgentState) -> dict | None:
+    """过程链落库钩子（after_agent）：聚合写入 sys_ai_trace（成功/失败均写）。
+
+    消耗取计费口径 usage（含缓存命中与多模态归集），模型取实际路由归因；
+    采集为旁路：任何失败仅告警，不影响计费/记忆提取等后续钩子。
+    """
+    collector = trace_collector.current()
+    if collector is None:
+        return None
+    try:
+        await collector.settle(
+            status=trace_collector.TRACE_STATUS_SUCCESS,
+            usage=state.get("usage"),
+            step_count=state.get("step_count", 0),
+            actual_model=(state.get("call_meta") or {}).get("model_id"),
+        )
+    except Exception:
+        logger.warning("过程链记录写入失败 trace_id=%s", collector.trace_id, exc_info=True)
+    return None
+
+
 # 注册内置钩子
 agent_hooks.register("before_agent", _billing_pre_charge_hook, priority=10)
 agent_hooks.register("before_model", _step_limit_hook, priority=10)
@@ -264,5 +288,6 @@ agent_hooks.register("before_model", _token_budget_hook, priority=20)
 agent_hooks.register("before_model", _billing_budget_hook, priority=30)
 agent_hooks.register("after_tool", _tool_recovery_hook, priority=10)
 agent_hooks.register("after_agent", _billing_settle_hook, priority=5)
+agent_hooks.register("after_agent", _trace_settle_hook, priority=8)
 agent_hooks.register("after_agent", _memory_extraction_hook, priority=10)
 agent_hooks.register("after_agent", _title_update_hook, priority=20)

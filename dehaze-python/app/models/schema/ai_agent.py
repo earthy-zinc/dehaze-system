@@ -7,6 +7,8 @@ config / guardrails 用 Pydantic 模型表达，避免自由 dict 导致的拼�
 from datetime import datetime
 from typing import Any
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.schema.common import BasePageQuery, OrmResult
@@ -49,7 +51,7 @@ class GuardrailConfig(BaseModel):
 
 
 class AgentConfig(BaseModel):
-    """Agent 推理参数配置（空值继承 sys_dict 系统默认 ai_reasoning_defaults）"""
+    """Agent 推理参数配置（空值继承代码常量系统默认 REASONING_DEFAULTS）"""
 
     max_steps: int | None = Field(
         default=None, ge=1, description="最大推理步数(覆盖按范式区分的默认值)"
@@ -81,6 +83,7 @@ class AgentCreate(OrmResult):
     is_team: bool = Field(default=False, description="是否为Team团队")
     is_exposed: bool = Field(default=False, description="是否对外暴露为A2A子Agent")
     permissions: list[dict[str, Any]] | None = Field(default=None, description="文件系统权限规则")
+    tags: list[str] | None = Field(default=None, description="分类标签(字符串数组)")
     sort_order: int = Field(default=0, ge=0, description="排序序号")
     status: int = Field(default=1, ge=0, le=1, description="状态(1:启用;0:禁用)")
 
@@ -104,6 +107,7 @@ class AgentUpdate(OrmResult):
     is_team: bool | None = Field(default=None, description="是否为Team团队")
     is_exposed: bool | None = Field(default=None, description="是否对外暴露为A2A子Agent")
     permissions: list[dict[str, Any]] | None = Field(default=None, description="文件系统权限规则")
+    tags: list[str] | None = Field(default=None, description="分类标签(字符串数组)")
     sort_order: int | None = Field(default=None, ge=0, description="排序序号")
 
 
@@ -117,9 +121,13 @@ class AgentListItem(OrmResult):
     is_subagent: int = Field(description="是否可作为子Agent")
     is_team: int = Field(description="是否为Team团队")
     is_exposed: int = Field(description="是否对外暴露")
+    tags: list[str] | None = Field(default=None, description="分类标签(字符串数组)")
     status: int = Field(description="状态(1:启用;0:禁用)")
     sort_order: int = Field(description="排序序号")
     create_time: datetime | None = Field(default=None, description="创建时间")
+    skill_count: int = Field(default=0, description="关联Skill数")
+    mcp_count: int = Field(default=0, description="关联MCP命名空间数")
+    sub_agent_count: int = Field(default=0, description="关联子Agent数")
 
 
 class AgentDetail(AgentListItem):
@@ -143,6 +151,10 @@ class SubAgentItem(OrmResult):
 class AgentPageQuery(BasePageQuery):
     keyword: str | None = Field(default=None, description="关键字(按名称/编码模糊搜索)")
     status: int | None = Field(default=None, ge=0, le=1, description="状态过滤")
+    type: Literal["agent", "subagent", "team"] | None = Field(
+        default=None,
+        description="类型筛选(agent:普通Agent;subagent:子Agent;team:Team团队,为空全部)",
+    )
 
 
 class AgentSkillsForm(BaseModel):
@@ -182,6 +194,9 @@ class AgentTestForm(BaseModel):
 
 class AgentPublishForm(BaseModel):
     change_note: str = Field(default="", max_length=512, description="变更说明")
+    force: bool = Field(
+        default=False, description="判分漂移豁免：门禁因判分模型漂移暂停时，管理员确认后强制发布"
+    )
 
 
 class AgentVersionResult(OrmResult):

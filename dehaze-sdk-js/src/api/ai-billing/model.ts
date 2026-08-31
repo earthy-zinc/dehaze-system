@@ -9,8 +9,8 @@ export type BillingType = "chat" | "tool_llm" | "kb_inject" | "asr" | "tts";
 export type CreditLogSource =
   "recharge" | "vip_gift" | "trial" | "admin_adjust" | "refund" | "consume" | "vip_gift_expire";
 
-/** AI 计费退款状态 */
-export type BillingRefundStatus = "pending" | "approved" | "rejected";
+/** AI 计费退款状态（与后端 sys_ai_refund.status tinyint 一致：1待审核/2已通过/3已驳回） */
+export type BillingRefundStatus = 1 | 2 | 3;
 
 /** 统计分组维度 */
 export type BillingStatGroupBy = "user" | "model" | "billType" | "day";
@@ -45,6 +45,8 @@ export interface BillingRecordQuery extends PageQuery {
   modelId?: string;
   dateStart?: string;
   dateEnd?: string;
+  /** 指定用户，管理端下钻查看；不传为当前登录用户 */
+  userId?: number;
 }
 
 /** 计费明细记录 */
@@ -84,6 +86,8 @@ export interface CreditLogQuery extends PageQuery {
   source?: CreditLogSource;
   dateStart?: string;
   dateEnd?: string;
+  /** 指定用户，管理端下钻查看；不传为当前登录用户 */
+  userId?: number;
 }
 
 /** 余额变动流水 */
@@ -153,6 +157,16 @@ export interface BillingRefundAuditForm {
   /** 审核结果：true 通过，false 驳回 */
   approved: boolean;
   auditRemark?: string;
+}
+
+/** 退款申请列表查询参数（管理端审核中心） */
+export interface BillingRefundQuery extends PageQuery {
+  /** 退款状态筛选：1待审核 / 2已通过 / 3已驳回 */
+  status?: number;
+  /** 用户 ID 筛选 */
+  userId?: number;
+  dateStart?: string;
+  dateEnd?: string;
 }
 
 // ==================== 管理员操作 ====================

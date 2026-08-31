@@ -74,6 +74,10 @@ class BasePaymentChannel:
     async def close_order(self, order_no: str) -> None:
         raise NotImplementedError
 
+    async def download_bill(self, bill_date) -> list[dict] | None:
+        """下载渠道对账账单，返回 [{orderNo, paymentNo, amount}]；未接入返回 None。"""
+        return None
+
 
 class MockPaymentChannel(BasePaymentChannel):
     channel = "mock"
@@ -579,6 +583,13 @@ class PaymentChannelService:
 
     async def close_order(self, channel: str, order_no: str) -> None:
         return await self.get_channel(channel).close_order(order_no)
+
+    async def download_bill(self, channel: str, bill_date) -> list[dict] | None:
+        """渠道账单下载：渠道未启用（走 mock）或未实现账单能力时返回 None，跳过对账。"""
+        impl = self._channels.get(channel)
+        if impl is None:
+            return None
+        return await impl.download_bill(bill_date)
 
 
 payment_channel_service = PaymentChannelService()

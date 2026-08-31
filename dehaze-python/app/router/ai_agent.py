@@ -45,7 +45,7 @@ async def list_agents(
 ):
     if _is_manager(user):
         result = await agent_service.list_agents(
-            db, redis, query.pageNum, query.pageSize, query.keyword, query.status
+            db, redis, query.pageNum, query.pageSize, query.keyword, query.status, query.type
         )
     else:
         items = await agent_service.list_enabled(db, redis)
@@ -198,7 +198,9 @@ async def publish_agent(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    version_no = await agent_version_service.publish(db, redis, agent_id, user.id, form.change_note)
+    version_no = await agent_version_service.publish(
+        db, redis, agent_id, user.id, form.change_note, form.force
+    )
     return success({"version_no": version_no})
 
 

@@ -358,11 +358,32 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
     });
   });
 
+  describe("GET /api/v1/ai-billing/refunds - 退款申请列表（管理端审核中心）", () => {
+    test("正向：管理员按状态查询退款申请列表", async () => {
+      await login(USERS.ADMIN.username);
+      const result = await AiBillingAPI.getRefunds({ status: 1, pageNum: 1, pageSize: 10 });
+      expect(Array.isArray(result.list)).toBe(true);
+      expect(typeof result.total).toBe("number");
+      result.list.forEach((r) => expect([1, 2, 3]).toContain(r.status));
+    });
+
+    test("正向：管理员按用户筛选退款申请", async () => {
+      await login(USERS.ADMIN.username);
+      const result = await AiBillingAPI.getRefunds({ userId: USERS.USER.id, pageSize: 10 });
+      expect(Array.isArray(result.list)).toBe(true);
+      result.list.forEach((r) => expect(r.userId).toBe(USERS.USER.id));
+    });
+
+    test("负向：普通用户查询退款列表 → A0301", async () => {
+      await expectForbiddenAsUser(() => expectBizError(AiBillingAPI.getRefunds({}), ["A0301"]));
+    });
+  });
+
   // ===== 数据隔离测试 =====
 
   describe("数据隔离 - 越权访问", () => {
     test("边界：用户无法查询他人余额（接口仅返回本人数据）", async () => {
-      // 余额查询接口仅返回当前登录用户的数据，不存在 userId 参数，故验证不同用户查询结果归属不同
+      // 不传 userId 时接口仅返回当前登录用户数据，故验证不同用户查询结果归属不同
       await login(USERS.ADMIN.username);
       const adminBalance = await AiBillingAPI.getBalance();
 
@@ -372,6 +393,52 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
       expect(adminBalance.userId).not.toBe(userBalance.userId);
 
       await login(USERS.ADMIN.username);
+    });
+
+    test("正向：管理员指定 userId 查询目标用户余额（下钻）", async () => {
+      await login(USERS.ADMIN.username);
+      const balance = await AiBillingAPI.getBalance(USERS.USER.id);
+      expect(balance.userId).toBe(USERS.USER.id);
+    });
+
+    test("正向：管理员指定 userId 查询目标用户计费明细（下钻）", async () => {
+      await login(USERS.ADMIN.username);
+      const result = await AiBillingAPI.getRecords(
+        createBillingRecordQuery({ userId: USERS.USER.id, pageSize: 5 })
+      );
+      expect(result.list.every((r) => r.userId === USERS.USER.id)).toBe(true);
+    });
+
+    test("正向：管理员指定 userId 查询目标用户积分流水（下钻）", async () => {
+      await login(USERS.ADMIN.username);
+      const result = await AiBillingAPI.getCreditLogs(
+        createCreditLogQuery({ userId: USERS.USER.id, pageSize: 5 })
+      );
+      expect(result.list.every((r) => r.userId === USERS.USER.id)).toBe(true);
+    });
+
+    test("负向：普通用户指定他人 userId 查余额 → A0301", async () => {
+      await expectForbiddenAsUser(() =>
+        expectBizError(AiBillingAPI.getBalance(USERS.ADMIN.id), ["A0301"])
+      );
+    });
+
+    test("负向：普通用户指定他人 userId 查明细 → A0301", async () => {
+      await expectForbiddenAsUser(() =>
+        expectBizError(
+          AiBillingAPI.getRecords(createBillingRecordQuery({ userId: USERS.ADMIN.id })),
+          ["A0301"]
+        )
+      );
+    });
+
+    test("负向：普通用户指定他人 userId 查流水 → A0301", async () => {
+      await expectForbiddenAsUser(() =>
+        expectBizError(
+          AiBillingAPI.getCreditLogs(createCreditLogQuery({ userId: USERS.ADMIN.id })),
+          ["A0301"]
+        )
+      );
     });
   });
 

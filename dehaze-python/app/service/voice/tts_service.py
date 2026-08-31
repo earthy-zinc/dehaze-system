@@ -27,8 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.infrastructure.voice import piper_tts_engine
-from app.infrastructure.voice.piper_tts_engine import LocalTtsError
+from app.infrastructure.voice.provider.registry import voice_engine_registry
 from app.models.entity.sys_file import SysFile
 from app.models.schema.voice_tts import FORMAT_VALUES, SAMPLE_RATE_VALUES, VOICE_CATALOG
 from app.service.file_service import file_service
@@ -78,11 +77,11 @@ class TtsService:
         self,
         file_service=file_service,
         voice_billing_service=voice_billing_service,
-        piper_tts_engine=piper_tts_engine,
+        engine_registry=voice_engine_registry,
     ):
         self.file_service = file_service
         self.voice_billing_service = voice_billing_service
-        self.piper_tts_engine = piper_tts_engine
+        self.engine_registry = engine_registry
 
     # ==================== 合成 ====================
 
@@ -112,13 +111,12 @@ class TtsService:
         estimated = math.ceil(len(text) * settings.VOICE_TTS_CREDITS_PER_CHAR)
         await self.voice_billing_service.ensure_balance(db, user_id, estimated)
 
-        # 本地 Piper 引擎合成
+        # 经注册表获取 TTS Provider 并合成（本地 Piper / 云端，应用侧透明）
         try:
-            audio = await self.piper_tts_engine.run_in_executor(
-                self.piper_tts_engine.synthesize, text, voice, speed, format_, sample_rate
-            )
-        except LocalTtsError as exc:
-            logger.error("本地 TTS 合成失败 user_id=%s: %s", user_id, exc)
+            provider = await self.engine_registry.get_tts_provider()
+            audio = await provider.synthesize(text, voice, speed, format_, sample_rate)
+        except Exception as exc:
+            logger.error("TTS 合成失败 user_id=%s: %s", user_id, exc)
             raise BusinessException(ResultCode.BUSINESS_ERROR, f"语音合成失败: {exc}") from exc
 
         # 加密存储 + 写缓存索引

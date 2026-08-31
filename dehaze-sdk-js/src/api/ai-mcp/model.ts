@@ -33,6 +33,8 @@ export interface McpServerVO {
   health?: McpHealthStatus | null;
   /** 工具数量 */
   toolCount?: number;
+  /** 是否已配置凭据（凭据仅写入不回显） */
+  credentialConfigured?: boolean;
   createTime?: string;
   updateTime?: string;
 }
@@ -105,4 +107,23 @@ export interface McpCallQuery extends PageQuery {
   toolName?: string;
   startTime?: string;
   endTime?: string;
+}
+
+/** 外部 MCP 工具试调用表单 */
+export interface McpToolTestForm {
+  /** 待调用工具名 */
+  toolName: string;
+  /** 调用参数（JSON 对象） */
+  arguments?: Record<string, unknown>;
+}
+
+/** 外部 MCP 工具试调用结果 */
+export interface McpToolTestResult {
+  success: boolean;
+  /** 工具返回文本 */
+  result?: string;
+  /** 失败原因 */
+  error?: string;
+  /** 调用耗时（毫秒） */
+  latencyMs?: number;
 }

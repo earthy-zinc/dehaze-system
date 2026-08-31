@@ -75,6 +75,7 @@ export interface PackagePageVO {
   originalPrice: number;
   salePrice: number;
   dailyPrice: number;
+  creditUnitPrice?: number;
   salesCount: number;
   status: PackageStatus;
   createTime: string;
@@ -86,6 +87,7 @@ export interface PackageDetailVO {
   name: string;
   packageType: PackageType;
   creditAmount?: number;
+  creditUnitPrice?: number;
   levelCode: PackageLevelCode;
   levelName: string;
   period: PackagePeriod;
@@ -95,9 +97,12 @@ export interface PackageDetailVO {
   dailyPrice: number;
   description?: string;
   benefits: Record<string, number>;
-  activePromotions?: PromotionVO[];
+  activePromotions: PromotionVO[];
   salesCount: number;
 }
+
+/** 在售套餐列表项：列表接口不查询促销活动，故无 activePromotions */
+export type PackageOnSaleVO = Omit<PackageDetailVO, "activePromotions">;
 
 /** 价格计算结果 */
 export interface PriceResult {
@@ -166,7 +171,8 @@ export interface CouponForm {
   validDays?: number;
   totalQty: number;
   perUserLimit: number;
-  applicableScope?: number[];
+  /** 适用商品：商品ID或商品类型（NULL/空表示全部适用） */
+  applicableScope?: Array<number | PackageType>;
   status?: number;
 }
 
@@ -192,7 +198,8 @@ export interface CouponVO {
   issuedQty: number;
   usedQty: number;
   perUserLimit: number;
-  applicableScope?: number[];
+  /** 适用商品：商品ID或商品类型（NULL/空表示全部适用） */
+  applicableScope?: Array<number | PackageType>;
   status: number;
   createTime: string;
 }
@@ -210,7 +217,8 @@ export interface UserCouponVO {
   expireTime?: string;
   usedTime?: string;
   usedOrderId?: number;
-  applicableScope?: number[];
+  /** 适用商品：商品ID或商品类型（NULL/空表示全部适用） */
+  applicableScope?: Array<number | PackageType>;
 }
 
 /** 批量发放请求 */

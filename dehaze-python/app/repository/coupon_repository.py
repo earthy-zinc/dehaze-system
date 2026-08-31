@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_coupon import SysCoupon
@@ -91,6 +91,30 @@ class UserCouponRepository(BaseRepository[SysUserCoupon]):
         stmt = stmt.order_by(SysUserCoupon.id.desc())
         result = await db.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_active_trial_coupon(
+        self, db: AsyncSession, user_id: int
+    ) -> SysUserCoupon | None:
+        """查询用户持有的有效体验券（未使用且未过期），取最晚到期的一张。"""
+        stmt = (
+            select(SysUserCoupon)
+            .join(SysCoupon, SysCoupon.id == SysUserCoupon.coupon_id)
+            .where(
+                SysUserCoupon.user_id == user_id,
+                SysUserCoupon.deleted == 0,
+                SysUserCoupon.status == 1,
+                SysCoupon.deleted == 0,
+                SysCoupon.type == "trial",
+                or_(
+                    SysUserCoupon.expire_time.is_(None),
+                    SysUserCoupon.expire_time > datetime.now(),
+                ),
+            )
+            .order_by(SysUserCoupon.expire_time.desc())
+            .limit(1)
+        )
+        result = await db.execute(stmt)
+        return result.scalars().first()
 
     async def count_by_user_and_coupon(
         self,

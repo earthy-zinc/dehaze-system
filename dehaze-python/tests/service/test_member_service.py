@@ -17,8 +17,10 @@ import pytest
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_member import QUOTA_TASK_TYPES
+from app.models.entity.sys_coupon import SysCoupon
 from app.models.entity.sys_order import SysOrder
 from app.models.entity.sys_package import SysPackage
+from app.models.entity.sys_user_coupon import SysUserCoupon
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_growth_log_repository import member_growth_log_repository
 from app.repository.member_repository import member_repository
@@ -43,6 +45,33 @@ async def _setup_benefit(db, level_code: str, *, quota: int = 50, ai_daily: int 
     benefit.growth_max = growth_max
     await db.flush()
     return benefit
+
+
+async def _grant_trial_coupon(db, expire_time: datetime) -> None:
+    """向 USER_ID 发放一张体验券（trial），用于试用引导状态测试"""
+    coupon = SysCoupon(
+        name="测试体验券",
+        type="trial",
+        face_value=0,
+        valid_type="relative",
+        valid_days=3,
+        total_qty=-1,
+        per_user_limit=1,
+        applicable_scope=[],
+        status=1,
+    )
+    db.add(coupon)
+    await db.flush()
+    db.add(
+        SysUserCoupon(
+            user_id=USER_ID,
+            coupon_id=coupon.id,
+            status=1,
+            receive_time=datetime.now(),
+            expire_time=expire_time,
+        )
+    )
+    await db.flush()
 
 
 async def _setup_member(db, user_id: int = USER_ID, *, level_code: str = "level_0",
@@ -356,6 +385,28 @@ async def test_trial_status_purchase_member(db):
                         expire_time=datetime.now() + timedelta(days=30))
     status = await member_service.get_trial_status(db, USER_ID)
     assert status["paidMembership"] is True
+
+
+async def test_trial_status_voucher_activated(db):
+    """持有未过期的体验券 → 体验券已激活并返回到期时间"""
+    await _setup_member(db, level_code="level_0", growth_value=0)
+    # MySQL DATETIME 无小数秒，落库会四舍五入，构造整秒时间以便精确断言
+    expire_time = datetime.now().replace(microsecond=0) + timedelta(days=3)
+    await _grant_trial_coupon(db, expire_time)
+
+    status = await member_service.get_trial_status(db, USER_ID)
+    assert status["voucherActivated"] is True
+    assert status["voucherExpireTime"] == expire_time.strftime("%Y-%m-%d %H:%M:%S")
+
+
+async def test_trial_status_expired_voucher_not_activated(db):
+    """体验券已过期 → 激活状态为否（试用到期后引导付费转化）"""
+    await _setup_member(db, level_code="level_0", growth_value=0)
+    await _grant_trial_coupon(db, datetime.now() - timedelta(days=1))
+
+    status = await member_service.get_trial_status(db, USER_ID)
+    assert status["voucherActivated"] is False
+    assert status["voucherExpireTime"] is None
 
 
 # ===================== list_paged_members 8 类月度已用 =====================

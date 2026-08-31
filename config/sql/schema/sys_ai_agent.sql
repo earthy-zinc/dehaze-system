@@ -11,7 +11,7 @@
 -- model_id 关联 sys_ai_model.model_id（字符串引用键，非主键），标识 Agent 使用的 LLM。
 -- reasoning_mode 标识推理范式：auto(复杂度评估自动选择)/direct/react/plan_execute/reflexion。
 -- config(JSON) 存推理参数（max_steps/token_budget/max_parallel/tool_timeout/retry_max/
---   reflexion_threshold/temperature 等），为空的键继承 sys_dict 系统默认（ai_reasoning_defaults）。
+--   reflexion_threshold/temperature 等），为空的键继承代码常量系统默认（REASONING_DEFAULTS）。
 -- is_subagent 标识是否可作为子 Agent（被其他 Agent 通过 task 工具调用），不可被会话直接选择。
 -- is_team 标识是否为 Team 团队（通过 langgraph-supervisor 编排多 Agent 协作）。
 --   is_subagent 和 is_team 互斥（普通 Agent 两者均为 0）。
@@ -36,6 +36,7 @@ CREATE TABLE `sys_ai_agent`
     `is_team`         tinyint                                                         NOT NULL DEFAULT 0 COMMENT '是否为Team团队(0:否;1:是,通过langgraph-supervisor编排多Agent协作)',
     `is_exposed`      tinyint                                                         NOT NULL DEFAULT 0 COMMENT '是否对外暴露为A2A子Agent(0:否;1:是,默认不暴露;仅启用且非子Agent的普通Agent可暴露)',
     `permissions`     json                                                            NULL COMMENT '文件系统权限规则JSON(deepagents FilesystemPermission:operations/paths/mode,mode支持allow/deny/interrupt)',
+    `tags`            json                                                            NULL COMMENT '分类标签(字符串数组,如["客服","去雾"],管理端筛选/展示用)',
     `sort_order`      int                                                             NOT NULL DEFAULT 0 COMMENT '排序序号(数字越小越靠前)',
     `status`          tinyint                                                         NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
     `deleted`         tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',

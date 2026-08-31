@@ -10,6 +10,8 @@ import type {
   McpServerForm,
   McpServerQuery,
   McpServerVO,
+  McpToolTestForm,
+  McpToolTestResult,
   McpToolVO,
 } from "./model";
 
@@ -88,6 +90,15 @@ class AiMCPAPI {
     return request<McpToolVO[]>({
       url: `/api/v1/ai/mcp/servers/${id}/tools`,
       method: "get",
+    });
+  }
+
+  /** 试调用 MCP 工具（管理员验证连通性/参数，不走 LLM） */
+  static testTool(id: number, data: McpToolTestForm) {
+    return request<McpToolTestResult>({
+      url: `/api/v1/ai/mcp/servers/${id}/tools/test`,
+      method: "post",
+      data,
     });
   }
 

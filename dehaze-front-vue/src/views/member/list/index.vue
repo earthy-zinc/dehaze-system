@@ -251,14 +251,15 @@
             <el-descriptions-item label="累计消费">{{
               detailData.totalConsumption
             }}</el-descriptions-item>
-            <el-descriptions-item label="本月去雾已用">
-              {{ detailData.monthlyDehazeUsed }} /
-              {{ detailData.monthlyDehazeQuota }}
-            </el-descriptions-item>
-            <el-descriptions-item label="本月评估已用">
-              {{ detailData.monthlyEvaluateUsed }} /
-              {{ detailData.monthlyEvaluateQuota }}
-            </el-descriptions-item>
+            <el-descriptions-item label="本月已用次数">{{
+              detailData.monthlyUsed
+            }}</el-descriptions-item>
+            <el-descriptions-item label="月度去雾配额">{{
+              detailData.benefits?.monthlyDehazeQuota
+            }}</el-descriptions-item>
+            <el-descriptions-item label="月度评估配额">{{
+              detailData.benefits?.monthlyEvaluateQuota
+            }}</el-descriptions-item>
             <el-descriptions-item
               v-if="detailData.frozenReason"
               label="冻结原因"
@@ -677,8 +678,9 @@ const levelOptions: { label: string; value: MemberLevelCode }[] = [
 ];
 
 const growthChangeTypeLabel: Record<string, string> = {
-  dehaze: "去雾",
+  process: "图像处理",
   evaluate: "评估",
+  ai_consume: "AI 对话",
   rating: "评分",
   sign_in: "签到",
   sign_in_bonus: "签到奖励",

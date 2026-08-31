@@ -713,11 +713,8 @@ describe("订单管理模块接口测试", () => {
 
 /**
  * 余额退款/退款原因类型/积分卡字段（订单管理 API接口.md）。
- *
- * 后端尚未实现 balance-refund 与 reason_type/usedDays/packageType/creditAmount 字段：
- * 测试先行契约，接口 404 或字段缺失时正向用例失败暴露，待后端实现后统一验证。
  */
-describe("余额退款与订单字段扩展（契约先行）", () => {
+describe("余额退款与订单字段扩展", () => {
   test("正向：余额退款 balanceRefund", async () => {
     await login(USERS.USER.username);
     const result = await OrderAPI.balanceRefund({ orderId: 1, amount: 10 });
@@ -727,7 +724,7 @@ describe("余额退款与订单字段扩展（契约先行）", () => {
   test("正向：退款申请含 reasonType（契约）", async () => {
     await login(USERS.USER.username);
     // 后端未实现时该请求 404/业务错误，此处仅验证契约字段经类型层合法可传
-    await OrderAPI.applyRefund("0", { reason: "test", reasonType: "other" }).catch(() => {});
+    await OrderAPI.applyRefund("0", { reasonType: "other" }).catch(() => {});
     expect(true).toBe(true);
   });
 
@@ -746,5 +743,49 @@ describe("余额退款与订单字段扩展（契约先行）", () => {
       const item = result.list[0]!;
       expect(item.usedDays ?? item.usedCredits).toBeDefined();
     }
+  });
+});
+
+/**
+ * 余额充值（F-OM-015 §3.5.3）与余额退款审核（F-OM-015 §3.5.5）。
+ */
+describe("余额充值与余额退款审核", () => {
+  test("正向：创建余额充值订单 createRecharge", async () => {
+    await login(USERS.USER.username);
+    const result = await OrderAPI.createRecharge({ amount: 100, payMethod: "wechat" });
+    expect(result.rechargeNo).toBeTruthy();
+    expect(result.payUrl ?? result.qrCode).toBeTruthy();
+  });
+
+  test("异常：充值金额非法", async () => {
+    await login(USERS.USER.username);
+    await expectBizError(OrderAPI.createRecharge({ amount: 0, payMethod: "wechat" }), [
+      "A0400",
+      "ERR_BAD_REQUEST",
+    ]);
+  });
+
+  test("异常：充值支付方式非法（仅支持 wechat/alipay）", async () => {
+    await login(USERS.USER.username);
+    await expectBizError(
+      OrderAPI.createRecharge({ amount: 100, payMethod: "balance" as "wechat" }),
+      ["A0400", "ERR_BAD_REQUEST"]
+    );
+  });
+
+  test("边界：普通用户余额退款审核应失败（403）", async () => {
+    await login(USERS.USER.username);
+    await expectBizError(OrderAPI.approveBalanceRefund(1, { remark: "test" }), [
+      "A0301",
+      "A0403",
+      "A0400",
+      "B0001",
+      "ERR_BAD_REQUEST",
+    ]);
+  });
+
+  test("异常：审核不存在的余额退款记录", async () => {
+    await login(USERS.ADMIN.username);
+    await expectBizError(OrderAPI.approveBalanceRefund(99999999, { remark: "test" }), ["A0537"]);
   });
 });

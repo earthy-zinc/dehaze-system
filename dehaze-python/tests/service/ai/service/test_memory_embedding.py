@@ -40,6 +40,7 @@ async def _extract(db, monkeypatch, payload: str) -> list[dict]:
         user_id=1,
         model_id="m1",
         messages=[{"role": "user", "content": _MESSAGE_CONTENT}],
+        conversation_id=1,
     )
 
 

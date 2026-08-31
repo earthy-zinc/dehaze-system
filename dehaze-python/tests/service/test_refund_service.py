@@ -70,7 +70,9 @@ def _build_service(**kw):
         ),
         balance_account_service=SimpleNamespace(refund=AsyncMock()),
         member_service=SimpleNamespace(on_order_refunded=AsyncMock()),
-        ai_balance_service=SimpleNamespace(deduct=AsyncMock()),
+        ai_balance_service=SimpleNamespace(
+            deduct=AsyncMock(), get_balance=AsyncMock(return_value=10000)
+        ),
     )
     defaults.update(kw)
     return RefundService(**defaults)
@@ -103,6 +105,7 @@ class TestApplyRefund:
         assert order.status == 5
 
     async def test_apply_credit_prorated_by_usage(self, db):
+        # 积分余额充足（>= 到账积分）→ 未消耗，全额折算
         await _seed_order(
             db, order_no="RF-CR", package_type="credit", payable_amount=5000, paid_amount=5000
         )
@@ -111,6 +114,26 @@ class TestApplyRefund:
         assert data["refundAmount"] == 5000
         refund = await _get_refund_by_no(db, data["refundNo"])
         assert refund.used_credits == 0
+
+    async def test_apply_credit_partial_consumed(self, db):
+        # 积分卡到账 1000，当前积分余额 600 → 缺口 400 计为本单已消耗，退 600/1000 比例
+        await _seed_order(
+            db,
+            order_no="RF-CR2",
+            package_type="credit",
+            credit_amount=1000,
+            payable_amount=1000,
+            paid_amount=1000,
+        )
+        svc = _build_service(
+            ai_balance_service=SimpleNamespace(
+                deduct=AsyncMock(), get_balance=AsyncMock(return_value=600)
+            )
+        )
+        data = await svc.apply_refund(db, "RF-CR2", {"reasonType": "other"}, 100)
+        assert data["refundAmount"] == 600
+        refund = await _get_refund_by_no(db, data["refundNo"])
+        assert refund.used_credits == 400
 
     async def test_apply_merchant_full_refund(self, db):
         await _seed_order(db, order_no="RF-MER")

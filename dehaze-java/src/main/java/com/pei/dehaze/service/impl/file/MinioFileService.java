@@ -208,6 +208,18 @@ public class MinioFileService implements FileService {
     }
 
     /**
+     * MinIO 连通性检查：确认存储桶存在且可访问
+     */
+    public boolean ping() {
+        try {
+            return minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
+        } catch (Exception e) {
+            log.warn("MinIO 健康检查失败: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * 创建存储桶(存储桶不存在)
      *
      * @param bucketName 存储桶名称

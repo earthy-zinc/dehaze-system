@@ -20,6 +20,27 @@ class AiAgentThoughtRepository(BaseRepository[SysAiAgentThought]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_by_messages(
+        self,
+        db: AsyncSession,
+        message_ids: list[int],
+    ) -> dict[int, list[SysAiAgentThought]]:
+        """批量查询多条消息的推理步骤，按 message_id 分组（position 正序）。
+
+        供会话消息列表批量附带思考链，避免逐条 N+1 查询。
+        """
+        if not message_ids:
+            return {}
+        stmt = select(SysAiAgentThought).where(
+            SysAiAgentThought.message_id.in_(message_ids)
+        )
+        stmt = stmt.order_by(SysAiAgentThought.position.asc())
+        result = await db.execute(stmt)
+        grouped: dict[int, list[SysAiAgentThought]] = {}
+        for t in result.scalars().all():
+            grouped.setdefault(t.message_id, []).append(t)
+        return grouped
+
     async def create_thought(
         self,
         db: AsyncSession,

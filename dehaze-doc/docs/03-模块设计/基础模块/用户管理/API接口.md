@@ -19,8 +19,6 @@
 | `/api/v1/users/{userId}/password` | PATCH | 重置用户密码 | `sys:user:password:reset` | F-UM-005 |
 | `/api/v1/users/{userId}/status` | PATCH | 修改用户状态 | `sys:user:status` | F-UM-006 |
 
-> **业务规则**：新增/导入用户首次登录强制改密；用户删除后不可登录；超级管理员不可删除、禁用或修改自己状态；`username` 创建后只读；`deptId` 与 `roleIds`（至少 1 个）为必填；`email` 按邮箱格式 pattern 校验、`mobile` 按手机号格式 pattern 校验（均可为空字符串）。
-
 ## 3. 权限标识汇总
 
 | 权限标识 | 说明 |

@@ -24,13 +24,15 @@ from app.repository.feedback_repository import (
 )
 from app.repository.member_growth_log_repository import member_growth_log_repository
 from app.repository.member_repository import member_repository
+from app.service.dict_service import get_dict_int
 from app.service.member import member_service
 
 logger = logging.getLogger(__name__)
 
 RATING_TIME_LIMIT_DAYS = 30
-RATING_GROWTH_VALUE = 5
-RATING_DAILY_GROWTH_LIMIT = 5
+# 评价成长值默认（与 config/sql/data/sys_dict.sql 的 member_growth_rules 种子一致，缺键回退）
+RATING_GROWTH_VALUE_DEFAULT = 5
+RATING_DAILY_GROWTH_LIMIT_DEFAULT = 5
 RATING_IMAGE_LIMIT = 3
 FEEDBACK_IMAGE_LIMIT = 5
 DAILY_FEEDBACK_LIMIT = 5
@@ -264,23 +266,29 @@ class FeedbackService:
         today = date.today().isoformat()
         count_key = RATING_DAILY_COUNT_KEY.format(user_id=user_id, date=today)
         current_count = await redis.get(count_key)
-        if current_count is not None and int(current_count) >= RATING_DAILY_GROWTH_LIMIT:
+        daily_limit = await get_dict_int(
+            db, "member_growth_rules", "rating_growth_daily_limit", RATING_DAILY_GROWTH_LIMIT_DEFAULT
+        )
+        if current_count is not None and int(current_count) >= daily_limit:
             return
 
         member = await self.member_repository.get_by_user_id(db, user_id)
         if not member:
             return
 
+        growth_value = await get_dict_int(
+            db, "member_growth_rules", "rating_growth_value", RATING_GROWTH_VALUE_DEFAULT
+        )
         old_growth = member.growth_value
-        member.growth_value = old_growth + RATING_GROWTH_VALUE
+        member.growth_value = old_growth + growth_value
         await db.flush()
 
         await self.member_growth_log_repository.create_log(
             db,
             user_id=user_id,
             change_type="rating",
-            change_value=RATING_GROWTH_VALUE,
-            balance=old_growth + RATING_GROWTH_VALUE,
+            change_value=growth_value,
+            balance=old_growth + growth_value,
             related_id=str(rating_id),
             reason="评价处理结果奖励",
             operator_id=SYSTEM_USER_ID,

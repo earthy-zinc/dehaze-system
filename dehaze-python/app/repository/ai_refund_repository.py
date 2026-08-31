@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -35,17 +36,27 @@ class AiRefundRepository(BaseRepository[SysAiRefund]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_by_status(
+    async def list_page(
         self,
         db: AsyncSession,
         page: int,
         size: int,
         *,
         status: int | None = None,
+        user_id: int | None = None,
+        date_start: datetime | None = None,
+        date_end: datetime | None = None,
     ) -> tuple[list[SysAiRefund], int]:
+        """退款申请分页列表（管理端审核），支持状态/用户/时间范围筛选"""
         stmt = select(SysAiRefund)
-        if status:
+        if status is not None:
             stmt = stmt.where(SysAiRefund.status == status)
+        if user_id is not None:
+            stmt = stmt.where(SysAiRefund.user_id == user_id)
+        if date_start is not None:
+            stmt = stmt.where(SysAiRefund.create_time >= date_start)
+        if date_end is not None:
+            stmt = stmt.where(SysAiRefund.create_time <= date_end)
         stmt = stmt.order_by(SysAiRefund.create_time.desc(), SysAiRefund.id.desc())
         return await self.paginate(db, stmt, page, size)
 

@@ -110,6 +110,15 @@ class RefundAuditRequest(OrmResult):
     audit_remark: str | None = Field(default=None, description="审核意见")
 
 
+class RefundQuery(OrmResult):
+    status: int | None = Field(default=None, ge=1, le=3, description="退款状态筛选(1待审核;2已通过;3已驳回)")
+    user_id: int | None = Field(default=None, description="用户ID筛选")
+    date_start: datetime | None = Field(default=None, description="开始时间")
+    date_end: datetime | None = Field(default=None, description="结束时间")
+    page: int = Field(default=1, ge=1, description="页码")
+    size: int = Field(default=20, ge=1, le=100, description="每页数量")
+
+
 class RefundResult(OrmResult):
     id: int = Field(description="主键")
     user_id: int = Field(description="用户ID")

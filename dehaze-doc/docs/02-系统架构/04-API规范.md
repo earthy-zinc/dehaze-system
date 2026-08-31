@@ -101,7 +101,7 @@
 | 算法管理 | `/api/v1/algorithms` | |
 | 数据集管理 | `/api/v1/datasets` | |
 | AI对话 | `/api/v1/ai`（内部）、`/api/v1/chat`（OpenAI 兼容）、`/api/v1/messages`（Claude 兼容） | 双轨设计 |
-| MCP能力网关 | `/api/v1/mcp` | JSON-RPC over HTTP |
+| 内部 MCP 能力网关 | 独立服务 `http://127.0.0.1:8082/mcp`（dehaze-mcp-gateway，不在后端 `/api/v1` 路径下） | JSON-RPC over HTTP（MCP Streamable HTTP） |
 
 ---
 
@@ -251,7 +251,7 @@ Cookie: X-Session-Id=<sessionId>
 | `A0660`~`A066F` | AI知识库 | |
 | `A0670`~`A067F` | 语音交互 | |
 | `A0680`~`A068F` | AI计费管理 | `A0680` 退款申请已存在、`A0681` 退款审核失败、`A0682` 配额不足/欠费熔断 |
-| `A0690`~`A069F` | MCP能力网关 | |
+| `A0690`~`A069F` | 内部 MCP 能力网关 | |
 | `A0700`~`A070F` | 图像输入 | 上传格式/大小/分辨率错误 |
 | `B0001`~`B000F` | 通用系统错误 | |
 | `B0100`~`B010F` | 系统执行超时 | 统一含义：流式输出超时、长任务超时 |
@@ -370,3 +370,38 @@ Cookie: X-Session-Id=<sessionId>
 - **API Key 鉴权**：外部调用通过 `Authorization: Bearer dhak_xxx` 进行认证，详见 [认证管理/API Key认证.md](../03-模块设计/基础模块/认证管理/API Key认证.md)
 - **多端 SDK 自动生成**：使用 `openapi-generator` 按 OpenAPI spec 自动生成多端 SDK（TypeScript/Java/Dart/Kotlin 等），生成的 SDK 作为接口契约层
 - **与手写 SDK 的关系**：现有手写 SDK（`dehaze-sdk-js`、`dehaze-android/sdk`）的网络层封装（拦截器、错误处理、trace_id 透传）保留为上层封装，生成层替换手写的接口定义部分
+
+## 10. 缓存管理接口（运维）
+
+### 10.1 统一失效入口设计
+
+系统缓存为多级架构（L1 进程内存 + L2 Redis），缓存失效必须经 `CacheService.delete/delete_pattern`（自动清 L2 + 本进程 L1 + Pub/Sub 广播其他实例清 L1）。
+
+**禁止任何外部脚本/运维直接裸删 Redis key**——否则其他进程 L1 缓存成为永久脏数据（表现为"改了数据必须重启后端才生效"）。
+
+所有外部清理（如 `dehaze-test/scripts/rebuild_mysql.py --import`）统一调用本接口。
+
+### 10.2 接口契约
+
+| 项 | 值 |
+|----|----|
+| 路径 | `POST /api/v1/cache/clear` |
+| 权限 | 仅 ROOT/ADMIN 角色（`user.is_admin`），普通用户 `A0301` |
+| Body | `{"key": "..."}` 或 `{"pattern": "..."}` 二选一；空 body/`{}` = 清全部业务缓存 |
+| 响应 | `code="00000"`，`data=[{"target": "...", "deleted": <数量>}]` 逐项 |
+
+- `key`/`pattern` 同时传 → `A0400` 参数错误
+- 空 body 清"全部业务缓存"：内部枚举已知业务缓存前缀（`menu:routes`、`role:perms:*`、`ai:model:list`、`user:level:*`、`ai:provider:list`、`ai:agent:*`、`kb:*`、`dict:*`、`package:*`、`member:benefit*` 等），**不包含 session / 限流 / 验证码等基础设施 key**，避免误清登录态
+- **禁止传 `pattern="*"`**：会通配扫删基础设施 key（含 session/限流），导致全量登录失效
+
+### 10.3 调用示例
+
+```bash
+# 清全部业务缓存（推荐，运维日常）
+curl -X POST http://127.0.0.1:8991/api/v1/cache/clear -H "X-Session-Id: <admin-session>"
+
+# 清指定缓存
+curl -X POST http://127.0.0.1:8991/api/v1/cache/clear \
+  -H "X-Session-Id: <admin-session>" -H "Content-Type: application/json" \
+  -d '{"key": "menu:routes"}'
+```

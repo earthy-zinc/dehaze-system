@@ -73,6 +73,19 @@ class AiBillingRepository(BaseRepository[SysAiBilling]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_by_request_id(
+        self,
+        db: AsyncSession,
+        request_id: str,
+    ) -> list[SysAiBilling]:
+        stmt = (
+            select(SysAiBilling)
+            .where(SysAiBilling.request_id == request_id)
+            .order_by(SysAiBilling.id.asc())
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def sum_credits_by_user_and_period(
         self,
         db: AsyncSession,

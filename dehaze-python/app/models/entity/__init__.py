@@ -12,6 +12,7 @@ from app.models.entity.sys_ai_agent_endpoint import SysAiAgentEndpoint
 from app.models.entity.sys_ai_agent_eval_dataset import SysAiAgentEvalDataset
 from app.models.entity.sys_ai_agent_eval_run import SysAiAgentEvalRun
 from app.models.entity.sys_ai_agent_eval_sample import SysAiAgentEvalSample
+from app.models.entity.sys_ai_eval_review import SysAiEvalReview
 from app.models.entity.sys_ai_agent_mcp import SysAiAgentMcp
 from app.models.entity.sys_ai_agent_skill import SysAiAgentSkill
 from app.models.entity.sys_ai_agent_subagent import SysAiAgentSubagent
@@ -37,6 +38,7 @@ from app.models.entity.sys_ai_refund import SysAiRefund
 from app.models.entity.sys_ai_schedule import SysAiSchedule
 from app.models.entity.sys_ai_schedule_run import SysAiScheduleRun
 from app.models.entity.sys_ai_skill import SysAiSkill
+from app.models.entity.sys_ai_skill_file import SysAiSkillFile
 from app.models.entity.sys_algorithm import SysAlgorithm
 from app.models.entity.sys_auto_renew import SysAutoRenew
 from app.models.entity.sys_balance import SysBalance
@@ -67,6 +69,9 @@ from app.models.entity.sys_refund_record import SysRefundRecord
 from app.models.entity.sys_task import SysTask
 from app.models.entity.sys_user import SysRole, SysUser, SysUserRole
 from app.models.entity.sys_user_coupon import SysUserCoupon
+from app.models.entity.sys_voice_model import SysVoiceModel
+from app.models.entity.sys_voice_provider import SysVoiceProvider
+from app.models.entity.sys_voice_provider_key import SysVoiceProviderKey
 from app.models.entity.sys_wpx_file import SysWpxFile
 
 __all__ = [
@@ -100,6 +105,10 @@ __all__ = [
     "SysAiSchedule",
     "SysAiScheduleRun",
     "SysAiSkill",
+    "SysAiSkillFile",
+    # 可观测性
+    "SysAiTrace",
+    "SysAiLlmCall",
     # 智能体管理
     "SysAiAgent",
     "SysAiAgentSkill",
@@ -109,6 +118,7 @@ __all__ = [
     "SysAiAgentEvalDataset",
     "SysAiAgentEvalSample",
     "SysAiAgentEvalRun",
+    "SysAiEvalReview",
     "SysAiAgentEndpoint",
     # 部门
     "SysDept",
@@ -158,4 +168,8 @@ __all__ = [
     # AI知识库
     "SysKnowledgeTestSet",
     "SysKnowledgeChunkFeedback",
+    # 语音引擎注册表
+    "SysVoiceProvider",
+    "SysVoiceProviderKey",
+    "SysVoiceModel",
 ]

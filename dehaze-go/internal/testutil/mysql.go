@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -382,8 +381,7 @@ func testDBDSN(cfg mySQLConfig) string {
 		cfg.user, cfg.password, cfg.host, cfg.port, cfg.database)
 }
 
-// repoRoot 定位仓库根（dehaze-system）：testutil 源文件向上三级。
+// repoRoot 定位仓库根（dehaze-system）：dehaze-go 的上级（config/sql、.env 位于仓库根）。
 func repoRoot() string {
-	_, file, _, _ := runtime.Caller(0)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
+	return filepath.Dir(goRepoRoot())
 }

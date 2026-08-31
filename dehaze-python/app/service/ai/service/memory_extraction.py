@@ -18,6 +18,7 @@ from app.database import get_db_session
 from app.infrastructure.llm.call.llm_client import llm_client
 from app.models.entity.sys_ai_memory import SysAiMemory
 from app.repository.ai_memory_repository import ai_memory_repository
+from app.service.ai.service import trace_collector
 from app.service.ai.service.memory_es_service import sync_memory
 from app.utils.pii import mask_pii
 
@@ -148,13 +149,16 @@ async def _score_importance(db, model_id: str, content: str) -> int:
     return _compute_importance(factors)
 
 
-async def extract_memories(user_id: int, model_id: str, messages: list[dict]) -> list[dict]:
+async def extract_memories(
+    user_id: int, model_id: str, messages: list[dict], *, conversation_id: int
+) -> list[dict]:
     """从对话中提取记忆，返回提取的记忆列表。
 
     返回格式：[{"memory_type", "content", "metadata", "importance"}]
     - 输入注入该用户已有记忆列表供 LLM 去重（避免重复提取）
     - 写入前做 PII 过滤（命中则脱敏或整条丢弃）
     - importance 由五因子评分计算
+    - 提取 LLM 调用经 bypass_span 采集为独立过程链（trace_type=memory_extraction）
     """
     conv_text = "\n".join(f"{m['role']}: {m['content']}" for m in messages[-6:] if m.get("content"))
     if len(conv_text) < 50:
@@ -168,22 +172,29 @@ async def extract_memories(user_id: int, model_id: str, messages: list[dict]) ->
 
         try:
             content = ""
-            async for chunk in llm_client.stream_chat(
-                db,
-                model_id,
-                [
-                    {
-                        "role": "user",
-                        "content": _EXTRACTION_PROMPT.format(existing_memories=existing_text)
-                        + conv_text,
-                    }
-                ],
-                system_prompt="你是记忆提取助手，只提取值得长期记忆的关键信息。",
-                temperature=0,
-                max_tokens=600,
+            async with trace_collector.bypass_span(
+                conversation_id=conversation_id,
+                message_id=None,
+                user_id=user_id,
+                model_id=model_id,
+                trace_type="memory_extraction",
             ):
-                if chunk.type == "text_delta":
-                    content += chunk.content
+                async for chunk in llm_client.stream_chat(
+                    db,
+                    model_id,
+                    [
+                        {
+                            "role": "user",
+                            "content": _EXTRACTION_PROMPT.format(existing_memories=existing_text)
+                            + conv_text,
+                        }
+                    ],
+                    system_prompt="你是记忆提取助手，只提取值得长期记忆的关键信息。",
+                    temperature=0,
+                    max_tokens=600,
+                ):
+                    if chunk.type == "text_delta":
+                        content += chunk.content
 
             content = content.strip()
             match = _JSON_BLOCK_RE.search(content)
@@ -228,8 +239,15 @@ async def save_extracted_memories(user_id: int, memories: list[dict]) -> int:
     """
     if not memories:
         return 0
+    saved = 0
     async with get_db_session() as db:
         for m in memories:
+            # 保存前强去重：内容完全一致的活跃记忆已存在则跳过（LLM 去重可能失效，
+            # 尤其小模型，避免同一条偏好反复堆积为 N 条重复记忆）
+            if await ai_memory_repository.exists_active_content(
+                db, user_id, m["memory_type"], m["content"]
+            ):
+                continue
             memory = SysAiMemory(
                 user_id=user_id,
                 memory_type=m["memory_type"],
@@ -239,6 +257,7 @@ async def save_extracted_memories(user_id: int, memories: list[dict]) -> int:
                 source="conversation",
             )
             memory = await ai_memory_repository.create(db, memory)
+            saved += 1
             # 异步同步到 ES 向量索引（ES 未启用时静默跳过）
             await sync_memory(
                 {
@@ -258,7 +277,7 @@ async def save_extracted_memories(user_id: int, memories: list[dict]) -> int:
             await ai_memory_repository.archive_least_important(
                 db, user_id, count - settings.AI_MEMORY_MAX_COUNT
             )
-    return len(memories)
+    return saved
 
 
 async def _llm_text(db, model_id: str, prompt: str, system_prompt: str, max_tokens: int) -> str:
@@ -318,6 +337,11 @@ async def reflect_and_consolidate(db, user_id: int, model_id: str | None = None)
         if not isinstance(item, dict) or not item.get("content"):
             continue
         memory_type = item.get("type", "semantic")
+        # 反思洞察同样做强去重（内容一致即跳过），避免与既有记忆/其他洞察重复堆积
+        if await ai_memory_repository.exists_active_content(
+            db, user_id, memory_type, item["content"]
+        ):
+            continue
         importance = await _score_importance(db, model_id, item["content"])
         memory = SysAiMemory(
             user_id=user_id,

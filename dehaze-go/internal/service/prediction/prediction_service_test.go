@@ -38,6 +38,7 @@ func newRealMemberService(t *testing.T, db *gorm.DB) memberservice.IMemberServic
 		nil, // auditLogSvc
 		nil, // messageSender
 		nil, // lifecycle
+		nil, // dictSvc
 	)
 }
 

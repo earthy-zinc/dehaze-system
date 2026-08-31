@@ -7,6 +7,7 @@ import pytest
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.infrastructure.es import kb_chunk_index
 from app.models.entity.sys_knowledge_base import SysKnowledgeBase
 from app.service.kb.search_service import search_service, _mmr_rerank
 
@@ -84,6 +85,8 @@ def _fake_settings(**over):
         KB_SEARCH_TIMEOUT_MS=5000,
         KB_SEARCH_DEFAULT_TOP_K=5,
         KB_SEARCH_MAX_TOP_K=20,
+        KB_SEARCH_HYBRID_RANK_CONSTANT=60,
+        KB_SEARCH_HYBRID_RANK_WINDOW=20,
     )
     base.update(over)
     return SimpleNamespace(**base)
@@ -339,3 +342,121 @@ class TestMmrRerank:
 
     def test_empty_candidates_returns_empty(self):
         assert _mmr_rerank([], top_k=3) == []
+
+
+_KI = "app.infrastructure.es.kb_chunk_index"
+
+
+def _hybrid_doc(chunk_id: int) -> dict:
+    doc = _es_doc(
+        doc_id=chunk_id, chunk_id=chunk_id, content=f"片段{chunk_id}", relevance=0.9
+    )
+    doc.pop("content_vector")  # RRF 融合只依赖排名，keyword 候选无向量
+    return doc
+
+
+class TestHybridRrfFusion:
+    """应用层 RRF 融合（kb_chunk_index.hybrid_search）：vector+keyword 候选按排名融合"""
+
+    VECTOR_DOCS = [_hybrid_doc(1), _hybrid_doc(2), _hybrid_doc(3)]
+    KEYWORD_DOCS = [_hybrid_doc(2), _hybrid_doc(4), _hybrid_doc(1)]
+
+    @staticmethod
+    def _patches(vector_docs, keyword_docs):
+        return [
+            patch(f"{_KI}.vector_search", AsyncMock(return_value=list(vector_docs))),
+            patch(f"{_KI}.keyword_search", AsyncMock(return_value=list(keyword_docs))),
+        ]
+
+    async def test_fusion_orders_by_rank_not_raw_score(self):
+        # 语义：B 双榜命中排名高 → 融合第一；原始 relevance 分不参与融合
+        with _enter(self._patches(self.VECTOR_DOCS, self.KEYWORD_DOCS)):
+            docs = await kb_chunk_index.hybrid_search(1, "q", [0.1] * 8, [], top_k=5)
+        assert [d["chunk_id"] for d in docs] == [2, 1, 4, 3]
+        # score = 1/(60+rank)：B=1/61+1/62，A=1/61+1/63
+        assert docs[0]["relevance"] == pytest.approx(1 / 61 + 1 / 62)
+        assert docs[1]["relevance"] == pytest.approx(1 / 61 + 1 / 63)
+
+    async def test_vector_weight_breaks_tie_toward_vector_ranking(self):
+        # 语义：大权重下拉高 vector 榜排名的相对位次（A 反超 B），keyword-only 命中 D 沉底
+        with _enter(self._patches(self.VECTOR_DOCS, self.KEYWORD_DOCS)):
+            docs = await kb_chunk_index.hybrid_search(
+                1, "q", [0.1] * 8, [], top_k=5, vector_weight=10.0
+            )
+        assert [d["chunk_id"] for d in docs] == [1, 2, 3, 4]
+
+    async def test_top_k_truncates_fused_results(self):
+        with _enter(self._patches(self.VECTOR_DOCS, self.KEYWORD_DOCS)):
+            docs = await kb_chunk_index.hybrid_search(1, "q", [0.1] * 8, [], top_k=2)
+        assert [d["chunk_id"] for d in docs] == [2, 1]
+
+    async def test_empty_query_vector_returns_empty_without_search(self):
+        vec_mock, kw_mock = AsyncMock(), AsyncMock()
+        with _enter(
+            [
+                patch(f"{_KI}.vector_search", vec_mock),
+                patch(f"{_KI}.keyword_search", kw_mock),
+            ]
+        ):
+            docs = await kb_chunk_index.hybrid_search(1, "q", [], [], top_k=5)
+        assert docs == []
+        vec_mock.assert_not_called()
+        kw_mock.assert_not_called()
+
+    async def test_filters_passed_to_both_sub_searches(self):
+        vec_mock = AsyncMock(return_value=list(self.VECTOR_DOCS))
+        kw_mock = AsyncMock(return_value=list(self.KEYWORD_DOCS))
+        filters = [{"terms": {"tags": ["x"]}}]
+        with _enter(
+            [
+                patch(f"{_KI}.vector_search", vec_mock),
+                patch(f"{_KI}.keyword_search", kw_mock),
+            ]
+        ):
+            await kb_chunk_index.hybrid_search(1, "q", [0.1] * 8, filters, top_k=5)
+        assert vec_mock.await_args.args[2] == filters
+        assert kw_mock.await_args.args[2] == filters
+
+
+class TestSearchHybridStrategy:
+    """search_service hybrid 策略分发：权重透传与空向量短路"""
+
+    def _patches(self, vector_docs, keyword_docs):
+        kb = _kb(kb_id=1, search_strategy="hybrid", hybrid_weight=0.7)
+        kb_repo = AsyncMock()
+        kb_repo.get_many.return_value = [kb]
+        return [
+            patch(f"{_SI}.knowledge_base_repository", kb_repo),
+            patch(f"{_SI}.embed_text", _embed_mock()),
+            patch(f"{_KI}.vector_search", AsyncMock(return_value=vector_docs)),
+            patch(f"{_KI}.keyword_search", AsyncMock(return_value=keyword_docs)),
+        ]
+
+    async def test_hybrid_dispatch_uses_rrf_fused_order(self, mock_redis):
+        vector_docs = [_hybrid_doc(1), _hybrid_doc(2)]
+        keyword_docs = [_hybrid_doc(2), _hybrid_doc(3)]
+        with _enter(self._patches(vector_docs, keyword_docs)):
+            result = await search_service.search(
+                None, mock_redis, 100, "混合检索", knowledge_base_ids=[1]
+            )
+        # hybrid_weight=0.7 → vector_weight=0.7/keyword_weight=0.3，
+        # 融合分 2: 0.7/61+0.3/61=0.01639 > 1: 0.7/62+0.3/62=0.01613
+        assert [r["chunkId"] for r in result["results"]] == [2, 1, 3]
+
+    async def test_hybrid_empty_query_vector_returns_empty(self, mock_redis):
+        kb = _kb(kb_id=1, search_strategy="hybrid")
+        kb_repo = AsyncMock()
+        kb_repo.get_many.return_value = [kb]
+        vec_mock = AsyncMock()
+        with _enter(
+            [
+                patch(f"{_SI}.knowledge_base_repository", kb_repo),
+                patch(f"{_SI}.embed_text", AsyncMock(return_value=None)),
+                patch(f"{_KI}.vector_search", vec_mock),
+            ]
+        ):
+            result = await search_service.search(
+                None, mock_redis, 100, "空向量混合", knowledge_base_ids=[1]
+            )
+        assert result["results"] == []
+        vec_mock.assert_not_called()

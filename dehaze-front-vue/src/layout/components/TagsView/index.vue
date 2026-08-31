@@ -67,8 +67,8 @@ import {
   useTagsViewStore,
 } from "@/store";
 import { translateRouteTitle } from "@/utils/i18n";
+import { resolveRoutePath } from "@/utils/index";
 import { Close } from "@element-plus/icons-vue";
-import { resolve } from "path-browserify";
 import { RouteRecordRaw, useRoute, useRouter } from "vue-router";
 
 const { proxy } = getCurrentInstance()!;
@@ -122,7 +122,7 @@ watch(contentMenuVisible, (value) => {
 function filterAffixTags(routes: RouteRecordRaw[], basePath = "/") {
   let tags: TagView[] = [];
   routes.forEach((route: RouteRecordRaw) => {
-    const tagPath = resolve(basePath, route.path);
+    const tagPath = resolveRoutePath(basePath, route.path);
     if (route.meta?.affix) {
       tags.push({
         path: tagPath,

@@ -18,9 +18,22 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.repository.favorite_repository import favorite_repository
 from app.repository.member_repository import member_repository
+from app.service.dict_service import get_dict_int
 
-DEFAULT_CAPACITY = 200
-VIP_CAPACITY = 500
+# 会员等级 → favorite_capacity 字典键映射（对齐收藏管理 §5/§11.1）
+LEVEL_TO_CAPACITY_KEY = {
+    "level_0": "default",
+    "level_1": "vip1",
+    "level_2": "vip2",
+    "level_3": "svip",
+}
+# 设计默认容量（与 config/sql/data/sys_dict.sql 种子一致，缺键时回退）
+CAPACITY_DEFAULTS = {
+    "default": 200,
+    "vip1": 500,
+    "vip2": 1000,
+    "svip": 3000,
+}
 
 
 def _format_dt(dt: datetime | None) -> str | None:
@@ -31,11 +44,11 @@ def _format_dt(dt: datetime | None) -> str | None:
 
 class FavoriteService:
     async def _get_capacity(self, db: AsyncSession, user_id: int) -> int:
-        """根据用户会员等级返回收藏容量上限"""
+        """根据用户会员等级返回收藏容量上限（sys_dict: favorite_capacity 实时读取）"""
         member = await member_repository.get_by_user_id(db, user_id)
-        if member and member.level_code != "level_0":
-            return VIP_CAPACITY
-        return DEFAULT_CAPACITY
+        level_code = member.level_code if member else "level_0"
+        key = LEVEL_TO_CAPACITY_KEY.get(level_code, "default")
+        return await get_dict_int(db, "favorite_capacity", key, CAPACITY_DEFAULTS.get(key, 200))
 
     async def add(
         self,

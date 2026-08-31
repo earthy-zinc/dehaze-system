@@ -47,6 +47,8 @@ describe("会员管理模块接口测试", () => {
 
       expect(profile.userId).toBe(targetUser.id);
       expect(["level_0", "level_1", "level_2", "level_3"]).toContain(profile.levelCode);
+      // T-MM-001：会员信息需返回等级来源
+      expect(["growth", "purchase", "admin"]).toContain(profile.levelSource);
       expect(profile.levelName).toBeTruthy();
       expect(typeof profile.growthValue).toBe("number");
       expect(profile.growthValue).toBeGreaterThanOrEqual(0);

@@ -8,6 +8,7 @@ from app.models.entity.sys_ai_conversation import SysAiConversation
 from app.models.entity.sys_ai_memory import SysAiMemory
 from app.models.entity.sys_ai_message import SysAiMessage
 from app.service.ai.builders.context_manager import context_manager
+from app.service.ai.strategies.agent_config_resolver import REASONING_DEFAULTS
 from app.service.ai.service import memory_injection as injection
 from app.service.ai.service.reasoning_service import reasoning_service
 from tests.stubs.fakes import MemberBenefitRepo
@@ -114,21 +115,27 @@ class TestSummaryNoReSummarize:
             for i in range(1, 61)
         ]
 
-        async def _list_for_summary(db, conv_id, watermark):
-            return [r for r in all_rows if r.id > watermark][::-1]
+        async def _get_chain(db, conv_id, start_id, limit=None, max_hops=200):
+            return all_rows
 
         monkeypatch.setattr(
-            "app.service.ai.service.summary_service.ai_message_repository.list_for_summary",
-            _list_for_summary,
+            "app.service.ai.service.summary_service.ai_message_repository.get_chain_by_id",
+            _get_chain,
         )
 
         first = await summary_service._load_messages_to_summarize(
-            None, SimpleNamespace(id=1, summary_upto_message_id=0)
+            None,
+            SimpleNamespace(
+                id=1, summary_upto_message_id=0, current_branch_message_id=60
+            ),
         )
         assert first[0]["id"] == 1 and first[-1]["id"] == 40
 
         second = await summary_service._load_messages_to_summarize(
-            None, SimpleNamespace(id=1, summary_upto_message_id=40)
+            None,
+            SimpleNamespace(
+                id=1, summary_upto_message_id=40, current_branch_message_id=60
+            ),
         )
         assert second == []
 
@@ -212,6 +219,7 @@ class TestScenePromptOnConversationCreate:
             title="新对话",
             model=None,
             modelConfig=None,
+            suggestionsEnabled=True,
             apiKeyId=None,
         )
 
@@ -278,6 +286,7 @@ class TestConversationPromptInjection:
         snapshot = {
             "system_prompt": "Agent 人设",
             "config": {
+                **REASONING_DEFAULTS,
                 "guardrails": {},
                 "mcp_namespaces": [],
                 "token_budget": 100,

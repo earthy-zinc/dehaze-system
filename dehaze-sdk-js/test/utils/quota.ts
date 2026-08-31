@@ -29,7 +29,7 @@ export async function ensureDehazeQuota(minQuota = 200): Promise<void> {
     });
   }
   const detail = await MemberAPI.getDetail(USERS.USER.id);
-  if ((detail.monthlyDehazeQuota ?? 0) < minQuota) {
+  if ((detail.benefits?.monthlyDehazeQuota ?? 0) < minQuota) {
     await MemberAPI.adjustLevel(USERS.USER.id, {
       levelCode: "level_0",
       reason: "测试套件配额自愈",

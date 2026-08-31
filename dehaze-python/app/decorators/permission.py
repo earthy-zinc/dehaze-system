@@ -34,6 +34,13 @@ def _match_permission(user_permissions: list[str], required_permission: str) -> 
     return False
 
 
+def check_permission(user: UserContext, permission: str) -> bool:
+    """检查用户是否拥有权限（ROOT 直接放行，支持通配符）"""
+    if user.is_root:
+        return True
+    return _match_permission(user.permissions, permission)
+
+
 def require_permission(permission: str):
     """
     权限检查装饰器（单一权限）
@@ -54,10 +61,7 @@ def require_permission(permission: str):
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, user: UserContext, **kwargs):
-            if user.is_root:
-                return await func(*args, user=user, **kwargs)
-
-            if not _match_permission(user.permissions, permission):
+            if not check_permission(user, permission):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=ResultCode.FORBIDDEN_OPERATION.msg,

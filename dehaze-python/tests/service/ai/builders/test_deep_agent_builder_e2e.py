@@ -5,6 +5,7 @@ import pytest
 
 from app.core.exceptions import BusinessException
 from app.infrastructure.llm.call import llm_client as llm_client_mod
+from app.service.ai.strategies.agent_config_resolver import REASONING_DEFAULTS
 from app.service.ai.builders.deep_agent_builder import (
     DeepAgentBuilder,
     _build_agent_core,
@@ -27,6 +28,7 @@ def _minimal_snapshot():
         "skills": [],
         "subagents": [],
         "config": {
+            **REASONING_DEFAULTS,
             "max_steps": 3,
             "max_steps_react": 3,
             "max_steps_plan": 3,

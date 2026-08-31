@@ -32,6 +32,7 @@ import com.pei.dehaze.mq.RabbitMQPublisher;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.MemberService;
 import com.pei.dehaze.service.RatingService;
+import com.pei.dehaze.service.SysDictService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -63,8 +64,8 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
             "残留雾气", "色彩失真", "细节丢失", "处理速度慢", "无明显改善");
 
     private static final int RATING_IMAGE_MAX_COUNT = 3;
-    private static final int RATING_GROWTH_VALUE = 5;
-    private static final int RATING_DAILY_GROWTH_LIMIT = 5;
+    /** 营销激励字典类型（评价成长值） */
+    private static final String GROWTH_RULES_DICT_TYPE = "member_growth_rules";
     private static final List<String> ALLOWED_IMAGE_EXTENSIONS = Arrays.asList(".jpg", ".jpeg", ".png", ".webp");
     private static final String CACHE_RATING_STATS_GLOBAL = "rating:stats:global";
 
@@ -74,6 +75,7 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final MemberService memberService;
+    private final SysDictService sysDictService;
     private final ObjectProvider<RabbitMQPublisher> rabbitMQPublisherProvider;
 
     @Value("${file.baseUrl:}")
@@ -499,13 +501,15 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
     }
 
     private void tryGrantGrowth(Long userId) {
+        int growthValue = sysDictService.getIntValue(GROWTH_RULES_DICT_TYPE, "rating_growth_value", 5);
+        int dailyLimit = sysDictService.getIntValue(GROWTH_RULES_DICT_TYPE, "rating_growth_daily_limit", 5);
         String key = "rating:daily:" + userId + ":" + LocalDate.now();
         String countStr = stringRedisTemplate.opsForValue().get(key);
         int count = countStr != null ? Integer.parseInt(countStr) : 0;
-        if (count >= RATING_DAILY_GROWTH_LIMIT) {
+        if (count >= dailyLimit) {
             return;
         }
-        memberService.adjustGrowth(userId, new MemberGrowthAdjustForm(RATING_GROWTH_VALUE, "评价奖励"));
+        memberService.adjustGrowth(userId, new MemberGrowthAdjustForm(growthValue, "评价奖励"));
         Long newCount = stringRedisTemplate.opsForValue().increment(key);
         if (newCount != null && newCount == 1L) {
             stringRedisTemplate.expire(key, Duration.ofHours(25));

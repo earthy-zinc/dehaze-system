@@ -17,10 +17,11 @@ _sql_exec_timers: dict[int, float] = {}
 
 
 def _after_cursor_execute(conn, cursor, statement, parameters, context, executemany) -> None:
-    """SQL 执行后输出结构化审计日志。
+    """SQL 执行后输出审计日志。
 
-    正常执行输出 INFO 级（message=SQL），超过阈值则额外输出 WARNING 级
-    （message=SLOW_SQL）。请求上下文字段由 JsonFormatter 自动注入。
+    消息内直接携带语句/耗时/行数（文本控制台可读），结构化字段
+    （sql/duration_ms/rows）同时保留给 JSON 日志聚合；请求上下文字段由
+    JsonFormatter 自动注入。
     """
     conn_id = id(conn)
     start = _sql_exec_timers.pop(conn_id, None)
@@ -31,12 +32,17 @@ def _after_cursor_execute(conn, cursor, statement, parameters, context, executem
         "duration_ms": duration_ms,
         "rows": cursor.rowcount,
     }
+    detail = f"{duration_ms:.2f}ms" + (f", {cursor.rowcount} rows" if cursor.rowcount >= 0 else "")
     if duration_ms >= settings.SQL_SLOW_THRESHOLD_MS:
         sql_logger.warning(
-            "SLOW_SQL", extra={**fields, "threshold_ms": settings.SQL_SLOW_THRESHOLD_MS}
+            "SLOW_SQL [%s, threshold %dms] %s",
+            detail,
+            settings.SQL_SLOW_THRESHOLD_MS,
+            statement,
+            extra={**fields, "threshold_ms": settings.SQL_SLOW_THRESHOLD_MS},
         )
     else:
-        sql_logger.info("SQL", extra=fields)
+        sql_logger.info("SQL [%s] %s", detail, statement, extra=fields)
 
 
 def _register_sql_logging() -> None:

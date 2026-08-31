@@ -68,6 +68,29 @@ class PaymentService:
             ai_balance_service = _ab
         self.ai_balance_service = ai_balance_service
 
+    async def _prewrite_payment_record(
+        self, db: AsyncSession, order, channel: str, amount: int
+    ) -> None:
+        """支付阶段预写"处理中"支付流水（status=1），回调成功时原地更新为成功。
+
+        同订单已有处理中流水时复用（重复发起支付不重复预写）。
+        """
+        payment = await self.payment_record_repository.get_pending_by_order_id(db, order.id)
+        if payment:
+            payment.channel = channel
+            payment.amount = amount
+            await db.flush()
+        else:
+            payment = SysPaymentRecord(
+                order_id=order.id,
+                user_id=order.user_id,
+                payment_no=_gen_payment_no(channel),
+                channel=channel,
+                amount=amount,
+                status=1,
+            )
+            await self.payment_record_repository.create(db, payment)
+
     async def pay(self, db: AsyncSession, order_no: str, form: dict, user_id: int) -> dict:
         order = await self.order_repository.get_by_order_no(db, order_no)
         if not order:
@@ -109,6 +132,9 @@ class PaymentService:
             pay_result = await self.payment_channel_service.unified_order(
                 pay_method, order_no, third_party_amount, order.package_name
             )
+            await self._prewrite_payment_record(
+                db, order, channel=pay_method, amount=third_party_amount
+            )
             return {
                 "orderNo": order.order_no,
                 "payMethod": pay_method,
@@ -122,6 +148,9 @@ class PaymentService:
         await db.flush()
         pay_result = await self.payment_channel_service.unified_order(
             pay_method, order_no, order.payable_amount, order.package_name
+        )
+        await self._prewrite_payment_record(
+            db, order, channel=pay_method, amount=order.payable_amount
         )
         return {
             "orderNo": order.order_no,
@@ -147,17 +176,26 @@ class PaymentService:
         from app.repository.package_repository import package_repository as _pkg_repo
 
         now = datetime.now()
-        payment = SysPaymentRecord(
-            order_id=order.id,
-            user_id=order.user_id,
-            payment_no=payment_no,
-            channel=channel,
-            amount=order.payable_amount,
-            status=2,
-            callback_time=now,
-            callback_content=callback_content,
-        )
-        await self.payment_record_repository.create(db, payment)
+        # 优先更新 pay 阶段预写的处理中流水；余额支付无预写则新建
+        payment = await self.payment_record_repository.get_pending_by_order_id(db, order.id)
+        if payment:
+            payment.payment_no = payment_no
+            payment.status = 2
+            payment.callback_time = now
+            payment.callback_content = callback_content
+            await db.flush()
+        else:
+            payment = SysPaymentRecord(
+                order_id=order.id,
+                user_id=order.user_id,
+                payment_no=payment_no,
+                channel=channel,
+                amount=order.payable_amount,
+                status=2,
+                callback_time=now,
+                callback_content=callback_content,
+            )
+            await self.payment_record_repository.create(db, payment)
 
         order.status = 2
         order.paid_amount = order.payable_amount
@@ -223,8 +261,10 @@ class PaymentService:
 
         order = await self.order_repository.get_by_order_no(db, callback.order_no)
         if not order:
-            logger.warning("支付回调订单不存在 orderNo=%s", callback.order_no)
-            return False
+            # 非商品订单：尝试按余额充值单处理（充值统一下单以充值单号为商户单号）
+            from app.service.order.recharge_service import recharge_service
+
+            return await recharge_service.handle_payment_callback(db, callback, channel)
 
         # 金额校验：回调金额 > 0 且与渠道应付金额一致，否则 A0538
         # （组合支付渠道仅收取第三方部分 = 应付 - 余额部分）

@@ -1509,9 +1509,9 @@ onUnmounted(() => {
 }
 
 .upload-icon {
+  margin-bottom: 8px;
   font-size: 48px;
   color: #c0c4cc;
-  margin-bottom: 8px;
 }
 
 .naming-table {
@@ -1521,9 +1521,9 @@ onUnmounted(() => {
   }
 
   code {
+    padding: 1px 4px;
     font-size: 12px;
     background: #f5f7fa;
-    padding: 1px 4px;
     border-radius: 2px;
   }
 }
@@ -1531,14 +1531,14 @@ onUnmounted(() => {
 .naming-footer {
   margin-top: 10px;
   font-size: 12px;
-  color: #909399;
   line-height: 1.8;
+  color: #909399;
 
   code {
-    background: #f5f7fa;
     padding: 1px 4px;
-    border-radius: 2px;
     font-size: 12px;
+    background: #f5f7fa;
+    border-radius: 2px;
   }
 }
 

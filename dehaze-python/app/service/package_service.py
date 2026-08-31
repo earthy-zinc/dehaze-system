@@ -467,7 +467,7 @@ class PackageService:
                 raise BusinessException(ResultCode.COUPON_EXPIRED)
 
             coupon = await db.get(SysCoupon, user_coupon.coupon_id)
-            if not coupon:
+            if not coupon or coupon.status != 1:
                 raise BusinessException(ResultCode.COUPON_NOT_FOUND)
 
             if coupon.applicable_scope:
@@ -482,6 +482,10 @@ class PackageService:
                 if not applicable:
                     raise BusinessException(ResultCode.COUPON_NOT_APPLICABLE)
 
+            # 体验券直接激活会员卡权益、不产生订单，不参与下单价格计算
+            if coupon.type == "trial":
+                raise BusinessException(ResultCode.BUSINESS_ERROR, "体验券不参与价格计算，请通过激活流程使用")
+
             base_price = sale_price - discount_amount
             if coupon.type == "full_reduction":
                 if base_price >= (coupon.threshold or 0):
@@ -490,8 +494,6 @@ class PackageService:
                 coupon_amount = base_price * (100 - coupon.face_value) // 100
             elif coupon.type == "no_threshold":
                 coupon_amount = coupon.face_value
-            elif coupon.type == "trial":
-                coupon_amount = base_price
 
         payable_amount = max(0, sale_price - discount_amount - coupon_amount)
         return {
@@ -545,7 +547,12 @@ class PackageService:
                 func.count().label("count"),
                 func.coalesce(func.sum(SysOrder.paid_amount), 0).label("revenue"),
             )
-            .where(SysOrder.deleted == 0, SysOrder.status.in_([2, 3]))
+            .where(
+                SysOrder.deleted == 0,
+                SysOrder.status.in_([2, 3]),
+                SysOrder.package_level.isnot(None),
+                SysOrder.package_level != "",
+            )
             .group_by(SysOrder.package_level)
         )
         level_rows = (await db.execute(level_stats_stmt)).all()
@@ -595,6 +602,7 @@ class PackageService:
                 SysOrder.deleted == 0,
                 SysOrder.status.in_([2, 3]),
                 SysPackage.deleted == 0,
+                SysPackage.period.isnot(None),
             )
             .group_by(SysPackage.period)
         )

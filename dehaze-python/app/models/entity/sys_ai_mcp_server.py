@@ -46,3 +46,8 @@ class SysAiMcpServer(BaseModel, SoftDeleteMixin):
     tool_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="工具数量(冗余,注册/拉取时更新)"
     )
+
+    @property
+    def credential_configured(self) -> bool:
+        """是否已配置凭据（派生字段，凭据密文本身不回显）"""
+        return bool(self.credentials)

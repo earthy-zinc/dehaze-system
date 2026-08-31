@@ -19,6 +19,7 @@ from app.service.ai.builders.context_manager import (
     context_manager,
     estimate_context_tokens,
 )
+from app.service.ai.service import trace_collector
 
 logger = logging.getLogger(__name__)
 
@@ -51,16 +52,24 @@ class SummaryService:
         messages_to_summarize = await self._load_messages_to_summarize(db, conv)
         if not messages_to_summarize:
             return
-        new_content = await self._generate_summary(db, model_id, messages_to_summarize)
-        if not new_content:
-            return
-        old_summary = conv.summary
-        if old_summary:
-            if len(old_summary) > _PRIOR_SUMMARY_MAX_LEN:
-                old_summary = await self._recompress_prior_summary(db, model_id, old_summary)
-            conv.summary = f"前序摘要：{old_summary}\n近期摘要：{new_content}"
-        else:
-            conv.summary = new_content
+        # 主压缩 + 前序再压缩两次 LLM 调用采集进同一条独立过程链（trace_type=summary）
+        async with trace_collector.bypass_span(
+            conversation_id=conv.id,
+            message_id=None,
+            user_id=conv.user_id,
+            model_id=model_id,
+            trace_type="summary",
+        ):
+            new_content = await self._generate_summary(db, model_id, messages_to_summarize)
+            if not new_content:
+                return
+            old_summary = conv.summary
+            if old_summary:
+                if len(old_summary) > _PRIOR_SUMMARY_MAX_LEN:
+                    old_summary = await self._recompress_prior_summary(db, model_id, old_summary)
+                conv.summary = f"前序摘要：{old_summary}\n近期摘要：{new_content}"
+            else:
+                conv.summary = new_content
         # 推进摘要水位到本次覆盖的最后一条消息
         conv.summary_upto_message_id = messages_to_summarize[-1]["id"]
         await db.flush()
@@ -80,16 +89,19 @@ class SummaryService:
 
     @staticmethod
     async def _load_messages_to_summarize(db: AsyncSession, conv) -> list[dict]:
-        """增量加载需要摘要的消息。
+        """增量加载需要摘要的消息（沿当前激活分支链，避免摘要混入其他分支）。
 
         只取"摘要水位之后、最近 N 轮之前"的消息：
         - 上界：summary_upto_message_id（已覆盖范围），未覆盖过则从最早开始
         - 下界：最近 _RECENT_MESSAGE_LIMIT 条保留原文，不参与压缩
         """
         watermark = conv.summary_upto_message_id or 0
-        rows = await ai_message_repository.list_for_summary(db, conv.id, watermark)
-        # 去掉最近 N 轮（按时间倒序的最前面），其余反转成正序
-        rows = list(reversed(rows[_RECENT_MESSAGE_LIMIT:]))
+        chain = await ai_message_repository.get_chain_by_id(
+            db, conv.id, getattr(conv, "current_branch_message_id", None), limit=None
+        )
+        rows = [m for m in chain if m.id > watermark]
+        # 去掉最近 N 轮保留原文，其余按链正序参与压缩
+        rows = rows[:-_RECENT_MESSAGE_LIMIT] if len(rows) > _RECENT_MESSAGE_LIMIT else []
         return [
             {"id": m.id, "role": m.role, "content": m.content}
             for m in rows

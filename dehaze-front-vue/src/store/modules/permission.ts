@@ -1,6 +1,7 @@
 import { constantRoutes } from "@/router";
 import { store } from "@/store";
 import { MenuAPI, RouteVO } from "dehaze-sdk-js";
+import { resolveRoutePath } from "@/utils/index";
 import { RouteRecordRaw } from "vue-router";
 
 const modules = import.meta.glob("../../views/**/**.vue");
@@ -67,7 +68,7 @@ const filterAsyncRoutes = (
   routes.forEach((route) => {
     const tmpRoute = { ...route } as RouteRecordRaw; // 深拷贝 route 对象 避免污染
     if (hasPermission(roles, tmpRoute)) {
-      const fullPath = resolveFullPath(parentPath, tmpRoute.path);
+      const fullPath = resolveRoutePath(parentPath, tmpRoute.path);
       // 生成 PascalCase 路由名称，用于 keep-alive include 匹配（须与 SFC name 一致）
       const routeName = generateRouteName(
         tmpRoute.path,
@@ -106,17 +107,6 @@ const filterAsyncRoutes = (
   return asyncRoutes;
 };
 
-/**
- * 拼接父子路径生成完整路径（用于路由 name 唯一化）
- * 例如：parentPath="/algorithm"，childPath="list" → "/algorithm/list"
- */
-function resolveFullPath(parentPath: string, childPath: string): string {
-  if (!childPath) return parentPath;
-  // 子路径以 "/" 开头时视为绝对路径
-  if (childPath.startsWith("/")) return childPath;
-  if (!parentPath) return childPath;
-  return `${parentPath.replace(/\/$/, "")}/${childPath}`;
-}
 // setup
 export const usePermissionStore = defineStore("permission", () => {
   const routes = ref<RouteRecordRaw[]>([]);

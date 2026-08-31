@@ -121,7 +121,9 @@ class TestRegenerate:
         )
         monkeypatch.setattr(message_streaming, "stream_generator", fake_stream)
 
-        resp = await svc.regenerate_message(object(), 2, 1)
+        resp = await svc.regenerate_message(
+            SimpleNamespace(commit=AsyncMock()), 2, 1
+        )
         assert svc.ai_message_repository.created[0].role == "assistant"
         assert svc.ai_message_repository.created[0].parent_message_id == 1
         assert svc.ai_message_repository.created[0].id == 3
@@ -155,6 +157,7 @@ class TestRegenerate:
         )
 
         await svc._run_reasoning(
+            db=SimpleNamespace(commit=AsyncMock()),
             conv_id=10,
             user_id=1,
             model="gpt",

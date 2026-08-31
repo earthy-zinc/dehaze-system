@@ -22,7 +22,7 @@
 | `/api/v1/datasets` | GET | 分页查询根级数据集列表（支持 keyword/type/status 筛选，返回树形结构） | - | F-M06-001 |
 | `/api/v1/datasets/children/{parentId}` | GET | 获取子数据集列表（树形懒加载） | - | F-M06-001 |
 | `/api/v1/datasets/options` | GET | 获取数据集下拉选项（仅启用，树形 label-value） | - | F-M06-001 |
-| `/api/v1/datasets/evaluation-options` | GET | 测试集选项查询（按 `taskType` 过滤，仅返回含清晰图 GT 的数据集，供算法评估入口选择测试集）【已实现】 | - | - |
+| `/api/v1/datasets/evaluation-options` | GET | 测试集选项查询（按 `taskType` 过滤，仅返回含清晰图 GT 的数据集，供算法评估入口选择测试集） | - | - |
 | `/api/v1/datasets/{id}` | GET | 获取数据集详情（含统计信息） | - | F-M06-003 |
 | `/api/v1/datasets` | POST | 新增数据集 | `sys:dataset:add` | F-M06-002 |
 | `/api/v1/datasets/{id}` | PUT | 修改数据集 | `sys:dataset:edit` | F-M06-002 |
@@ -93,4 +93,4 @@
 | `A0500` | 业务异常 | 通用业务异常（兜底） |
 | `A0230` | token 无效或已过期 | 未认证访问 |
 
-> 数据集导出/下载任务相关错误码由任务管理模块统一管理，详见 [任务管理/API接口.md](../../基础模块/任务管理/API接口.md)。
+> 数据集导出/下载任务相关错误码由任务管理模块统一管理。

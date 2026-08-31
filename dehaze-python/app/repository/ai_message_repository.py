@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_ai_conversation import SysAiConversation
 from app.models.entity.sys_ai_message import SysAiMessage
-from app.repository.base import BaseRepository
+from app.repository.base import BaseRepository, escape_like
 
 
 class AiMessageRepository(BaseRepository[SysAiMessage]):
@@ -15,13 +15,36 @@ class AiMessageRepository(BaseRepository[SysAiMessage]):
         conv_id: int,
         page: int,
         size: int,
+        *,
+        order: str = "asc",
     ) -> tuple[list[SysAiMessage], int]:
+        """会话消息分页。
+
+        order="desc" 时按时间倒序（pageNum=1 返回最新一页，供历史会话加载
+        最近消息，前端展示时反转回正序）；其余调用方默认 asc 保持时间正序。
+        """
         stmt = select(SysAiMessage).where(
             SysAiMessage.conversation_id == conv_id,
             SysAiMessage.deleted == 0,
         )
-        stmt = stmt.order_by(SysAiMessage.create_time.asc(), SysAiMessage.id.asc())
+        if order == "desc":
+            stmt = stmt.order_by(SysAiMessage.create_time.desc(), SysAiMessage.id.desc())
+        else:
+            stmt = stmt.order_by(SysAiMessage.create_time.asc(), SysAiMessage.id.asc())
         return await self.paginate(db, stmt, page, size)
+
+    async def get_by_id(
+        self,
+        db: AsyncSession,
+        msg_id: int,
+    ) -> SysAiMessage | None:
+        """按主键查消息（不限归属用户，供管理端审计 view=admin 使用）"""
+        stmt = select(SysAiMessage).where(
+            SysAiMessage.id == msg_id,
+            SysAiMessage.deleted == 0,
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_by_id_and_user(
         self,
@@ -184,6 +207,49 @@ class AiMessageRepository(BaseRepository[SysAiMessage]):
             values["error"] = error
         stmt = update(SysAiMessage).where(SysAiMessage.id == msg_id).values(**values)
         await db.execute(stmt)
+
+    async def list_anomaly_status_by_conversations(
+        self,
+        db: AsyncSession,
+        conv_ids: list[int],
+    ) -> dict[int, set[int]]:
+        """按会话汇总异常消息状态：{conv_id: {status, ...}}（3:失败;4:已取消）"""
+        if not conv_ids:
+            return {}
+        stmt = (
+            select(SysAiMessage.conversation_id, SysAiMessage.status)
+            .where(
+                SysAiMessage.conversation_id.in_(conv_ids),
+                SysAiMessage.status.in_((3, 4)),
+            )
+            .distinct()
+        )
+        result: dict[int, set[int]] = {}
+        for conv_id, status in (await db.execute(stmt)).all():
+            result.setdefault(conv_id, set()).add(status)
+        return result
+
+    async def find_latest_ids_by_keyword(
+        self,
+        db: AsyncSession,
+        conv_ids: list[int],
+        keyword: str,
+    ) -> dict[int, int]:
+        """按会话定位命中关键词的最新消息：{conv_id: msg_id}（搜索命中消息内容时供前端定位）"""
+        if not conv_ids or not keyword:
+            return {}
+        like_pattern = f"%{escape_like(keyword)}%"
+        stmt = (
+            select(SysAiMessage.conversation_id, func.max(SysAiMessage.id))
+            .where(
+                SysAiMessage.conversation_id.in_(conv_ids),
+                SysAiMessage.deleted == 0,
+                SysAiMessage.content.like(like_pattern, escape="\\"),
+            )
+            .group_by(SysAiMessage.conversation_id)
+        )
+        rows = (await db.execute(stmt)).all()
+        return {row[0]: row[1] for row in rows if row[0]}
 
     async def update_task_id(self, db: AsyncSession, msg_id: int, task_id: str) -> None:
         """更新 assistant 消息关联的异步任务 ID（async_wait 中断时写入）。"""

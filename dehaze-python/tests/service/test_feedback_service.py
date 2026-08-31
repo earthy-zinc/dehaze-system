@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -8,6 +8,10 @@ from app.core.exceptions import BusinessException
 from app.models.schema.feedback import FeedbackCreateForm
 from app.service import feedback_service as m
 from app.service.feedback_service import feedback_service
+
+pytestmark = pytest.mark.requires_db
+
+USER_ID = 1006001
 
 
 def _fake_rating(**overrides):
@@ -152,3 +156,63 @@ class TestFeedbackTypeLiteral:
     def test_content_too_short_rejected(self):
         with pytest.raises(ValidationError):
             FeedbackCreateForm(feedbackType="bug", title="这是一个标题", content="太短")
+
+
+class TestRatingGrowthDictDriven:
+    """评价成长值（rating_growth_value / rating_growth_daily_limit）取自 sys_dict。"""
+
+    async def _create_rating(self, db, redis, user_id):
+        """构造一条可直接发放成长值的评价记录（member 已初始化）。"""
+        from app.repository.member_repository import member_repository
+
+        await member_repository.get_or_init_member(db, user_id)
+        rating = type("R", (), {"id": 9001, "algorithm_id": 1, "user_id": user_id})()
+        await feedback_service._award_rating_growth(db, redis, user_id, rating.id)
+        return rating
+
+    async def test_rating_growth_value_from_dict(self, db, mock_redis):
+        from app.repository.dict_repository import dict_repository
+        from app.repository.member_repository import member_repository
+
+        item = await dict_repository.get_by_type_code_and_name(
+            db, "member_growth_rules", "rating_growth_value"
+        )
+        item.value = "8"
+        await db.flush()
+        # 模拟生产：运营更新字典后失效 dict:value 缓存（测试绕过 DictService 直改 DB）
+        from app.service.dict_service import _invalidate_dict_value_cache
+
+        await _invalidate_dict_value_cache(mock_redis, "member_growth_rules")
+        # 清空当日计数，保证测试独立
+        from app.service.feedback_service import RATING_DAILY_COUNT_KEY
+
+        await mock_redis.delete(RATING_DAILY_COUNT_KEY.format(user_id=USER_ID, date=date.today()))
+        await self._create_rating(db, mock_redis, USER_ID)
+        member = await member_repository.get_by_user_id(db, USER_ID)
+        assert member.growth_value == 8
+
+    async def test_rating_growth_daily_limit_from_dict(self, db, mock_redis):
+        """每日评价成长值上限取自字典，超过后不再累计。"""
+        from app.repository.dict_repository import dict_repository
+        from app.repository.member_repository import member_repository
+
+        limit_item = await dict_repository.get_by_type_code_and_name(
+            db, "member_growth_rules", "rating_growth_daily_limit"
+        )
+        limit_item.value = "1"
+        await db.flush()
+        from app.service.dict_service import _invalidate_dict_value_cache
+        from app.service.feedback_service import RATING_DAILY_COUNT_KEY
+
+        await _invalidate_dict_value_cache(mock_redis, "member_growth_rules")
+        # 清空当日计数，保证测试独立
+        await mock_redis.delete(RATING_DAILY_COUNT_KEY.format(user_id=USER_ID, date=date.today()))
+
+        await self._create_rating(db, mock_redis, USER_ID)
+        member = await member_repository.get_by_user_id(db, USER_ID)
+        assert member.growth_value == 5
+
+        # 第二次评价，当日已达上限 1 次，不再累计
+        await self._create_rating(db, mock_redis, USER_ID)
+        member = await member_repository.get_by_user_id(db, USER_ID)
+        assert member.growth_value == 5

@@ -1,5 +1,6 @@
 import { PageResult } from "@/types";
 import request from "@/utils/request";
+import type { AxiosHeaders } from "axios";
 import type { SkillForm, SkillMarketVO, SkillQuery, SkillTestForm, SkillVO } from "./model";
 
 /**
@@ -18,7 +19,7 @@ class AiSkillAPI {
     });
   }
 
-  /** 创建 Skill（Markdown 指令 + 可选脚本/模板） */
+  /** 创建 Skill（遵循 Agent Skills 规范的最小目录：SKILL.md） */
   static createSkill(data: SkillForm) {
     return request<SkillVO>({
       url: "/api/v1/ai/skills",
@@ -27,11 +28,39 @@ class AiSkillAPI {
     });
   }
 
+  /**
+   * 上传 SKILL 压缩包（zip，遵循 Agent Skills 规范：SKILL.md + reference/script/assets）。
+   * 后端自动解析 SKILL.md frontmatter 并校验（name 命名/目录一致/description），
+   * 文件内容存对象存储，元数据与文件清单入库。
+   */
+  static uploadSkill(file: File | Blob, filename?: string) {
+    const fd = new FormData();
+    const name = filename || (file instanceof File ? file.name : "skill.zip");
+    fd.append("file", file, name);
+    return request<SkillVO>({
+      url: "/api/v1/ai/skills/upload",
+      method: "post",
+      data: fd,
+      // 置空默认的 application/json，由 axios 按 multipart/form-data 处理（Node 端补 boundary）
+      headers: { "Content-Type": undefined } as unknown as AxiosHeaders,
+    });
+  }
+
   /** Skill 详情 */
   static getSkill(id: number) {
     return request<SkillVO>({
       url: `/api/v1/ai/skills/${id}`,
       method: "get",
+    });
+  }
+
+  /** 读取 SKILL 资源文件内容（须命中该 Skill 的文件清单，返回 Blob） */
+  static getSkillFile(id: number, path: string) {
+    return request<Blob>({
+      url: `/api/v1/ai/skills/${id}/file`,
+      method: "get",
+      params: { path },
+      responseType: "blob",
     });
   }
 

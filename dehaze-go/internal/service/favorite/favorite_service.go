@@ -14,12 +14,13 @@ import (
 	favrepo "github.com/earthyzinc/dehaze-go/internal/repository/favorite"
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
+	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 )
 
 const (
-	defaultCapacity = 200
-	vipCapacity     = 500
+	// favoriteCapacityDictType 收藏容量字典类型（sys_dict: favorite_capacity）
+	favoriteCapacityDictType = "favorite_capacity"
 
 	targetTypeAlgorithm = "algorithm"
 	targetTypeResult    = "result"
@@ -36,6 +37,7 @@ type FavoriteService struct {
 	algorithmRepo algorepo.IAlgorithmRepository
 	predLogRepo   predrepo.IPredLogRepository
 	datasetRepo   datasetrepo.IDatasetRepository
+	dictSvc       dictservice.IDictService
 }
 
 func NewFavoriteService(
@@ -44,6 +46,7 @@ func NewFavoriteService(
 	algorithmRepo algorepo.IAlgorithmRepository,
 	predLogRepo predrepo.IPredLogRepository,
 	datasetRepo datasetrepo.IDatasetRepository,
+	dictSvc dictservice.IDictService,
 ) *FavoriteService {
 	return &FavoriteService{
 		favRepo:       favRepo,
@@ -51,6 +54,7 @@ func NewFavoriteService(
 		algorithmRepo: algorithmRepo,
 		predLogRepo:   predLogRepo,
 		datasetRepo:   datasetRepo,
+		dictSvc:       dictSvc,
 	}
 }
 
@@ -192,15 +196,24 @@ func (s *FavoriteService) MarkInvalid(ctx context.Context, targetType string, ta
 	return s.favRepo.MarkInvalid(ctx, targetType, targetIDs)
 }
 
+// levelCapacityKeys 会员等级 → 收藏容量字典键映射（sys_dict: favorite_capacity）
+var levelCapacityKeys = map[string]string{
+	"level_0": "default",
+	"level_1": "vip1",
+	"level_2": "vip2",
+	"level_3": "svip",
+}
+
+// getCapacity 按用户当前会员等级从字典读取收藏容量上限。
+// 缺键/读取失败回退默认容量 200，升级后容量立即扩展（实时读字典）。
 func (s *FavoriteService) getCapacity(ctx context.Context, userID int64) int {
-	member, err := s.memberRepo.FindByUserID(ctx, userID)
-	if err != nil || member == nil {
-		return defaultCapacity
+	key := "default"
+	if member, err := s.memberRepo.FindByUserID(ctx, userID); err == nil && member != nil {
+		if k, ok := levelCapacityKeys[member.LevelCode]; ok {
+			key = k
+		}
 	}
-	if member.LevelCode != "" && member.LevelCode != "level_0" {
-		return vipCapacity
-	}
-	return defaultCapacity
+	return int(dictservice.GetIntValue(ctx, s.dictSvc, favoriteCapacityDictType, key, 200))
 }
 
 var _ IFavoriteService = (*FavoriteService)(nil)

@@ -17,6 +17,7 @@
  */
 import { getRedis, disconnectRedis } from "#/utils/redis";
 import { resetMemberQuota, disconnectMysql } from "#/utils/mysql";
+import { ensureTestResources } from "./ensure-test-resources";
 
 const CACHE_PREFIXES = [
   "captcha_code:",
@@ -32,6 +33,9 @@ const CACHE_PREFIXES = [
 const RATE_LIMIT_PATTERNS = ["{rate:limit:login:*", "rate:limit:/api/v1/*"];
 
 export async function setup() {
+  // 缺失测试资源（图片）会自动生成，避免 beforeAll 读文件 ENOENT 导致的失败与级联跳过
+  ensureTestResources();
+
   const redis = getRedis();
 
   try {

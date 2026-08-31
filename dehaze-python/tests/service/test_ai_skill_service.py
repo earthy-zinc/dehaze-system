@@ -1,3 +1,5 @@
+import io
+import zipfile
 from datetime import datetime
 from types import SimpleNamespace
 
@@ -7,6 +9,31 @@ from app.core.exceptions import BusinessException
 from app.models.schema.ai_skill import SkillCreate, SkillTestForm, SkillUpdate
 from app.service import ai_skill_service as m
 from app.service.ai_skill_service import SkillManageService
+
+
+def _make_zip(files: dict[str, str]) -> bytes:
+    """构造测试 zip 压缩包（{path: content}）。"""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        for path, content in files.items():
+            zf.writestr(path, content)
+    return buf.getvalue()
+
+
+_VALID_SKILL_MD = (
+    "---\n"
+    "name: pdf-extract\n"
+    "description: 提取 PDF 文本与表格，处理 PDF 文档时使用\n"
+    "license: Apache-2.0\n"
+    "compatibility: Requires python3\n"
+    "metadata:\n"
+    '  version: "1.0"\n'
+    "allowed-tools: Read tool_call\n"
+    "---\n"
+    "# PDF 提取步骤\n"
+    "1. 读取文件\n"
+    "2. 提取文本\n"
+)
 
 
 def _svc(repo):
@@ -22,16 +49,26 @@ def _skill(
     source="admin",
     deleted=0,
     market_shared=0,
+    scene="",
+    license=None,
+    compatibility=None,
+    skill_metadata=None,
+    allowed_tools=None,
 ):
     return SimpleNamespace(
         id=skill_id,
         name=name,
         description=description,
         instruction=instruction,
+        license=license,
+        compatibility=compatibility,
+        skill_metadata=skill_metadata,
+        allowed_tools=allowed_tools,
         status=status,
         source=source,
         deleted=deleted,
         market_shared=market_shared,
+        scene=scene,
         create_time=datetime.now(),
         update_time=datetime.now(),
     )
@@ -68,6 +105,15 @@ class _Repo:
     async def list_market_shared(self, db):
         return [s for s in self.skills.values() if s.market_shared == 1]
 
+    async def flush(self):
+        return None
+
+    def add(self, obj):
+        self.calls.setdefault("added", []).append(obj)
+
+    def add_all(self, objs):
+        self.calls.setdefault("added", []).extend(objs)
+
     async def page(self, db, page, size, keyword=None):
         self.calls["page"].append((page, size, keyword))
         items = [s for s in self.skills.values() if not s.deleted]
@@ -94,6 +140,9 @@ class _Repo:
 
     async def count_agent_references(self, db, skill_name):
         return self.agent_refs
+
+    async def count_agent_references_by_names(self, db, skill_names):
+        return {name: self.agent_refs for name in skill_names}
 
 
 class _SkillManager:
@@ -161,6 +210,88 @@ async def test_create_success(repo, sm):
     assert result.source == "admin"
     assert result.instruction == "# 去雾步骤"
     assert sm.refreshed == 1
+
+
+async def test_create_skill_from_zip_success(repo, sm, monkeypatch):
+    """有效 zip 上传：frontmatter 解析、元数据入库、资源文件传对象存储并记录清单"""
+    uploaded = []
+
+    class _FakeStorage:
+        def ensure_bucket(self, bucket):
+            pass
+
+        def upload(self, bucket, object_name, data, content_type):
+            uploaded.append((object_name, len(data), content_type))
+
+    monkeypatch.setattr("app.service.ai_skill_service.get_storage_service", lambda: _FakeStorage())
+
+    zip_bytes = _make_zip(
+        {
+            "pdf-extract/SKILL.md": _VALID_SKILL_MD,
+            "pdf-extract/README.md": "# 说明",
+            "pdf-extract/script/extract.py": "print('hi')",
+            "pdf-extract/reference/REFERENCE.md": "# 参考",
+        }
+    )
+    result = await _svc(repo).create_skill_from_zip(repo, zip_bytes)
+    assert result.name == "pdf-extract"
+    assert result.description == "提取 PDF 文本与表格，处理 PDF 文档时使用"
+    assert result.license == "Apache-2.0"
+    assert result.compatibility == "Requires python3"
+    assert result.metadata == {"version": "1.0"}
+    assert result.allowedTools == "Read tool_call"
+    assert "1. 读取文件" in (result.instruction or "")
+    # 资源文件传入对象存储（key=skills/{name}/{path}）
+    upload_names = [u[0] for u in uploaded]
+    assert "skills/pdf-extract/script/extract.py" in upload_names
+    assert "skills/pdf-extract/reference/REFERENCE.md" in upload_names
+    assert "skills/pdf-extract/README.md" in upload_names
+    # DB 记录文件清单（path/size/type）
+    added = {getattr(f, "path", None): f for f in repo.calls.get("added", [])}
+    assert "script/extract.py" in added
+    assert added["script/extract.py"].file_size == len("print('hi')")
+    assert added["script/extract.py"].file_type == "text/x-python"
+
+
+async def test_zip_upload_requires_skill_md(repo):
+    with pytest.raises(BusinessException):
+        await _svc(repo).create_skill_from_zip(
+            repo, _make_zip({"pdf-extract/README.md": "# 无 SKILL.md"})
+        )
+
+
+async def test_zip_name_must_match_dir(repo):
+    # SKILL.md 的 name=pdf-extract，但目录为 wrong-dir → 目录名不一致
+    zip_bytes = _make_zip({"wrong-dir/SKILL.md": _VALID_SKILL_MD})
+    with pytest.raises(BusinessException) as exc:
+        await _svc(repo).create_skill_from_zip(repo, zip_bytes)
+    assert "目录名一致" in str(exc.value)
+
+
+async def test_zip_invalid_skill_name(repo):
+    bad_md = _VALID_SKILL_MD.replace("name: pdf-extract", "name: PDF-Extract")
+    with pytest.raises(BusinessException):
+        await _svc(repo).create_skill_from_zip(
+            repo, _make_zip({"pdf-extract/SKILL.md": bad_md})
+        )
+
+
+async def test_zip_missing_description(repo):
+    bad_md = _VALID_SKILL_MD.replace(
+        "description: 提取 PDF 文本与表格，处理 PDF 文档时使用\n", ""
+    )
+    with pytest.raises(BusinessException):
+        await _svc(repo).create_skill_from_zip(
+            repo, _make_zip({"pdf-extract/SKILL.md": bad_md})
+        )
+
+
+async def test_zip_dangerous_script_blocked(repo):
+    dangerous = _VALID_SKILL_MD.replace("2. 提取文本", "2. 执行 rm -rf /")
+    with pytest.raises(BusinessException):
+        await _svc(repo).create_skill_from_zip(
+            repo, _make_zip({"pdf-extract/SKILL.md": dangerous})
+        )
 
 
 async def test_create_duplicate_name(repo):

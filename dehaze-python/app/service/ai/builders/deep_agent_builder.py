@@ -26,22 +26,25 @@ from deepagents.profiles import HarnessProfile, register_harness_profile
 from langchain_core.tools import BaseTool, tool
 from langgraph.graph.state import CompiledStateGraph
 
-from app.config import settings
 from app.core.exceptions import BusinessException
-from app.models.entity.sys_ai_agent_endpoint import SysAiAgentEndpoint
 from app.infrastructure.a2a.a2a_client import a2a_client
 from app.infrastructure.a2a.a2a_task_mapper import a2a_task_mapper
-from app.service.ai.middleware.capability_constraints import CapabilityConstraintsMiddleware
-from app.service.ai.strategies.complexity_evaluator import evaluate_complexity
 from app.infrastructure.llm.client.dehaze_chat_model import DehazeChatModel
-from app.service.ai.middleware.dehaze_hooks_middleware import DehazeAgentState, DehazeHooksMiddleware
+from app.models.entity.sys_ai_agent_endpoint import SysAiAgentEndpoint
+from app.repository.ai_agent_version_repository import ai_agent_version_repository
 from app.service.ai.builders.dehaze_tools_builder import build_business_tools
+from app.service.ai.middleware.capability_constraints import CapabilityConstraintsMiddleware
+from app.service.ai.middleware.dehaze_hooks_middleware import (
+    DehazeAgentState,
+    DehazeHooksMiddleware,
+)
 from app.service.ai.middleware.guardrail_middleware import GuardrailMiddleware
 from app.service.ai.middleware.mcp_namespace_prefilter import McpNamespacePrefilterMiddleware
 from app.service.ai.middleware.paradigm_middleware import ParadigmMiddleware
-from app.service.ai.strategies.prompt_composer import compose_system_prompt
 from app.service.ai.middleware.tool_failure_guard import ToolFailureGuardMiddleware
-from app.repository.ai_agent_version_repository import ai_agent_version_repository
+from app.service.ai.strategies.complexity_evaluator import evaluate_complexity
+from app.service.ai.strategies.prompt_composer import compose_system_prompt
+from app.service.ai_mcp.mcp_external_tool_loader import mcp_external_tool_loader
 
 logger = logging.getLogger(__name__)
 
@@ -99,14 +102,14 @@ def _make_ctx(snapshot: dict, config: dict) -> dict:
     """创建共享运行时上下文（计费贯穿 + 步数/预算护栏 + 任务状态）。
 
     config 为三级合并后的完整配置（get_published_snapshot 保证），推理参数默认值
-    唯一来源于 sys_dict 种子（ai_reasoning_defaults），不在此处硬编码兜底；
+    由 resolver 常量 REASONING_DEFAULTS 提供，不在此处硬编码兜底；
     max_steps 未显式配置时以 ReAct 基础范式默认值为准。
     """
     return {
         "max_steps": int(config.get("max_steps") or config["max_steps_react"]),
         "token_budget": int(config["token_budget"]),
-        "tool_timeout": int(config.get("tool_timeout") or settings.AI_REASONING_TOOL_TIMEOUT),
-        "retry_max": int(config.get("retry_max") or settings.AI_REASONING_RETRY_MAX),
+        "tool_timeout": int(config["tool_timeout"]),
+        "retry_max": int(config["retry_max"]),
         "token_used": 0,
         "step_count": 0,
         "task_type": "",
@@ -119,15 +122,18 @@ def _make_ctx(snapshot: dict, config: dict) -> dict:
     }
 
 
-def _build_agent_core(snapshot: dict, ctx: dict) -> dict:
+def _build_agent_core(
+    snapshot: dict, ctx: dict, extra_tools: list[BaseTool] | None = None
+) -> dict:
     """构造单个 Agent（主 Agent 或子 Agent）的核心配置。
 
     返回 {model, tools, middleware}，由 create_deep_agent / SubAgent 消费。
+    extra_tools 为外部 MCP Server 工具（运行时异步装载，注入主 Agent）。
     """
     config = snapshot["config"]
     guardrails = config.get("guardrails") or {}
     mcp_namespaces = snapshot.get("mcp_namespaces") or []
-    tools: list[BaseTool] = build_business_tools(ctx)
+    tools: list[BaseTool] = build_business_tools(ctx) + list(extra_tools or [])
     model = DehazeChatModel(model=snapshot.get("model_id", ""))
     middleware = [
         DehazeHooksMiddleware(ctx),
@@ -288,7 +294,15 @@ class DeepAgentBuilder:
         _ensure_harness_profile()
         config = snapshot["config"]
         ctx = _make_ctx(snapshot, config)
-        core = _build_agent_core(snapshot, ctx)
+        # 外部 MCP Server 工具：按 Agent 命名空间异步装载（带鉴权/SSRF 守卫），
+        # 单 Server 失败降级为空，不阻塞构图；注入主 Agent 的 function calling
+        core = _build_agent_core(
+            snapshot,
+            ctx,
+            extra_tools=await mcp_external_tool_loader.load_tools(
+                db, snapshot.get("mcp_namespaces") or [], ctx
+            ),
+        )
         subagents, remote_tools = await _build_subagents(db, redis, snapshot, ctx)
 
         # 图按 Agent 版本缓存复用：system_prompt 仅含"稳定层+Agent 人设"（随快照稳定），

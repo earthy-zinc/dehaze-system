@@ -60,6 +60,22 @@ class UserRepository(BaseRepository[SysUser]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_display_names(
+        self,
+        db: AsyncSession,
+        user_ids: set[int] | list[int],
+    ) -> dict[int, str]:
+        """批量查询用户展示名（昵称优先，缺省回退用户名；含已软删用户，审计视角需追溯历史归属）"""
+        if not user_ids:
+            return {}
+        stmt = (
+            select(SysUser.id, func.coalesce(SysUser.nickname, SysUser.username))
+            .where(SysUser.id.in_(user_ids))
+            .execution_options(include_deleted=True)
+        )
+        rows = (await db.execute(stmt)).all()
+        return {row[0]: row[1] for row in rows if row[1]}
+
     async def get_user_role_ids(
         self,
         db: AsyncSession,

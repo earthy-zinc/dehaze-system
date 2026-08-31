@@ -41,12 +41,12 @@ from sqlalchemy.pool import NullPool
 
 import app.database as database_module
 import app.dependencies.redis as redis_module
-from app.config import settings
+from app.config import PROJECT_ROOT, settings
 from app.main import app as fastapi_app
 
 # config/sql 位于仓库根（dehaze-python 的上级目录）
-_SQL_SCHEMA_DIR = Path(__file__).resolve().parents[2] / "config" / "sql" / "schema"
-_SQL_DATA_DIR = Path(__file__).resolve().parents[2] / "config" / "sql" / "data"
+_SQL_SCHEMA_DIR = PROJECT_ROOT / "config" / "sql" / "schema"
+_SQL_DATA_DIR = PROJECT_ROOT / "config" / "sql" / "data"
 
 
 def _split_statements(content: str) -> list[str]:

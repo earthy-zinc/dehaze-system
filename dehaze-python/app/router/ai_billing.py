@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Body, Depends, Path, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
@@ -10,6 +10,7 @@ from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
 from app.decorators import require_permission
+from app.decorators.permission import check_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.ai_billing import (
     AdjustRequest,
@@ -26,6 +27,7 @@ from app.models.schema.ai_billing import (
     CreditLogResult,
     RefundAuditRequest,
     RefundCreateRequest,
+    RefundQuery,
     RefundResult,
 )
 from app.models.schema.ai_billing_cost import (
@@ -70,15 +72,28 @@ async def _build_balance(db: AsyncSession, user_id: int) -> BalanceResult:
     )
 
 
+def _resolve_query_user(user: UserContext, user_id_param: int | None) -> int:
+    """解析查询目标用户：管理员可指定 userId 查询他人数据（需 ai:billing:stat），普通用户仅可查本人"""
+    if user_id_param is None or user_id_param == user.id:
+        return user.id
+    if not check_permission(user, "ai:billing:stat"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ResultCode.ACCESS_UNAUTHORIZED.msg,
+        )
+    return user_id_param
+
+
 # ==================== 用户端接口 ====================
 
 
 @router.get("/balance", response_model=Result[BalanceResult], summary="用户余额查询")
 async def get_balance(
+    userId: int | None = Query(default=None, ge=1),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    return success(await _build_balance(db, user.id))
+    return success(await _build_balance(db, _resolve_query_user(user, userId)))
 
 
 @router.get("/summary", response_model=Result[BillingSummaryResult], summary="消耗汇总查询")
@@ -92,6 +107,7 @@ async def get_summary(
 
 @router.get("/records", response_model=Result[PageResult[BillingRecordResult]], summary="计费明细查询")
 async def list_records(
+    userId: int | None = Query(default=None, ge=1),
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=20, ge=1, le=100),
     conversationId: int | None = Query(default=None),
@@ -111,11 +127,14 @@ async def list_records(
         date_start=_parse_datetime(dateStart),
         date_end=_parse_datetime(dateEnd),
     )
-    return success(await billing_record_service.list_by_user(db, user.id, query))
+    return success(
+        await billing_record_service.list_by_user(db, _resolve_query_user(user, userId), query)
+    )
 
 
 @router.get("/credit-logs", response_model=Result[PageResult[CreditLogResult]], summary="余额流水查询")
 async def list_credit_logs(
+    userId: int | None = Query(default=None, ge=1),
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=20, ge=1, le=100),
     source: str | None = Query(default=None),
@@ -131,7 +150,9 @@ async def list_credit_logs(
         date_start=_parse_datetime(dateStart),
         date_end=_parse_datetime(dateEnd),
     )
-    return success(await billing_record_service.list_credit_logs(db, user.id, query))
+    return success(
+        await billing_record_service.list_credit_logs(db, _resolve_query_user(user, userId), query)
+    )
 
 
 @router.get("/bills/{month}", response_model=Result[BillResult], summary="月结账单查询")
@@ -165,6 +186,29 @@ async def apply_refund(
 
 
 # ==================== 管理员接口 ====================
+
+
+@router.get("/refunds", response_model=Result[PageResult[RefundResult]], summary="退款申请列表")
+@require_permission("ai:billing:refund")
+async def list_refunds(
+    userId: int | None = Query(default=None, ge=1),
+    status: int | None = Query(default=None, ge=1, le=3),
+    pageNum: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+    dateStart: str | None = Query(default=None),
+    dateEnd: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    query = RefundQuery(
+        page=pageNum,
+        size=pageSize,
+        status=status,
+        user_id=userId,
+        date_start=_parse_datetime(dateStart),
+        date_end=_parse_datetime(dateEnd),
+    )
+    return success(await refund_service.list_refunds(db, query))
 
 
 @router.get("/stats", response_model=Result[list[BillingStatResult]], summary="管理员计费统计")

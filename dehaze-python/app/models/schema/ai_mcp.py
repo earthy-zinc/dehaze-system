@@ -112,6 +112,7 @@ class McpServerResult(OrmResult):
     status: int = Field(description="状态(1:启用;0:禁用)")
     health: str | None = Field(default=None, description="健康状态(online;offline)")
     tool_count: int = Field(default=0, description="工具数量")
+    credential_configured: bool = Field(default=False, description="是否已配置凭据")
     create_time: datetime | None = Field(default=None, description="创建时间")
     update_time: datetime | None = Field(default=None, description="更新时间")
 
@@ -128,3 +129,19 @@ class McpCredentialForm(OrmResult):
 
     api_key: str | None = Field(default=None, max_length=1024, description="API Key等外部服务凭据")
     extra: dict[str, str] | None = Field(default=None, description="其他凭据字段(服务层加密存储)")
+
+
+class McpToolTestForm(OrmResult):
+    """外部 MCP 工具试调用表单"""
+
+    tool_name: str = Field(..., min_length=1, max_length=256, description="待调用工具名")
+    arguments: dict[str, Any] = Field(default_factory=dict, description="调用参数(JSON)")
+
+
+class McpToolTestResult(OrmResult):
+    """外部 MCP 工具试调用结果"""
+
+    success: bool = Field(description="是否调用成功")
+    result: str | None = Field(default=None, description="工具返回文本")
+    error: str | None = Field(default=None, description="失败原因(失败时透出)")
+    latency_ms: int | None = Field(default=None, description="调用耗时(毫秒)")

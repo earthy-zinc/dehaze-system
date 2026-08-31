@@ -14,7 +14,10 @@
 管理员权限判定沿用 ai_agent 的 _is_manager 模式（is_root 或权限标识命中）。
 """
 
-from fastapi import APIRouter, Depends
+import mimetypes
+
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success
@@ -72,6 +75,19 @@ async def list_market(
     return success(result)
 
 
+@router.post("/upload", response_model=Result[SkillResult], summary="上传 SKILL 压缩包")
+@require_permission(_MANAGE_PERMISSION)
+async def upload_skill(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    """上传遵循 Agent Skills 规范的 SKILL 压缩包（zip），解析校验后入库。"""
+    content = await file.read()
+    result = await skill_manage_service.create_skill_from_zip(db, content)
+    return success(result)
+
+
 @router.get("/{skill_id}", response_model=Result[SkillResult], summary="Skill 详情")
 async def get_skill(
     skill_id: int,
@@ -80,6 +96,19 @@ async def get_skill(
 ):
     result = await skill_manage_service.get_skill(db, skill_id)
     return success(result)
+
+
+@router.get("/{skill_id}/file", summary="读取 SKILL 资源文件")
+async def get_skill_file(
+    skill_id: int,
+    path: str = Query(..., description="相对 SKILL 根目录的文件路径，如 reference/REFERENCE.md"),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    """按路径读取 SKILL 目录内资源文件内容（须命中该 Skill 的文件清单）。"""
+    data = await skill_manage_service.get_skill_file(db, skill_id, path)
+    media_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
+    return Response(content=data, media_type=media_type)
 
 
 @router.post("", response_model=Result[SkillResult], summary="创建 Skill")

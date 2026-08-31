@@ -25,6 +25,7 @@ import time
 
 import httpx
 
+import app as app_pkg
 from app.config import settings
 from app.infrastructure.llm.local.local_llm_model import ensure_embedding_model, ensure_model
 
@@ -147,7 +148,9 @@ def _start_and_wait() -> None:
     """拉起子进程并等待就绪（含模型加载）"""
     global _PROC, _SHUTDOWN_REGISTERED
     logger.info("拉起本地 LLM 子进程（%s）", _base_url())
-    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    # cwd 指向 dehaze-python 根（app 包所在），保证 `python -m app.xxx` 能解析模块；
+    # 以 app 包位置为锚点，避免按 __file__ 相对层数推算在重构后漂移
+    root = os.path.dirname(os.path.dirname(os.path.abspath(app_pkg.__file__)))
     # preexec_fn 仅 POSIX 支持（Windows 传入直接抛 ValueError）；PDEATHSIG 见 _set_pdeathsig
     popen_kwargs: dict = {"preexec_fn": _set_pdeathsig} if os.name == "posix" else {}
     _PROC = subprocess.Popen(

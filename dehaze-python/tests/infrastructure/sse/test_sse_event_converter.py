@@ -2,6 +2,7 @@ import pytest
 from langchain_core.messages import AIMessageChunk, ToolMessage
 
 from app.infrastructure.sse.sse_event_converter import SseEventConverter
+from app.service.ai.service import trace_collector
 from tests.stubs.fakes import RecorderEmitter
 
 
@@ -175,3 +176,88 @@ class TestInterrupt:
             }
         )
         assert emitter.events[0] == ("interrupt", {"type": "confirm", "data": {"foo": "bar"}})
+
+
+class TestSubagentAttribution:
+    """子 Agent/Team 推理步骤归属：ns 非空即子图事件，agent_code 取末段节点名"""
+
+    async def _capture_create(self, monkeypatch):
+        captured = []
+
+        async def _capture(db, **kw):
+            captured.append(kw)
+            return None
+
+        monkeypatch.setattr(
+            "app.infrastructure.sse.sse_event_converter.ai_agent_thought_repository",
+            type("R", (), {"create_thought": staticmethod(_capture)})(),
+        )
+        return captured
+
+    async def test_subagent_thought_attribution(self, conv, monkeypatch):
+        converter, emitter = conv
+        captured = await self._capture_create(monkeypatch)
+        # 子图事件（ns 非空，段格式"节点名:task_id"）：归属子 Agent
+        await converter.handle(
+            {
+                "type": "updates",
+                "ns": ["task:abc123"],
+                "data": {
+                    "tool_node": {
+                        "messages": [
+                            ToolMessage(content="ok", tool_call_id="c9", name="search")
+                        ]
+                    }
+                },
+            }
+        )
+        assert captured[-1]["agent_code"] == "task"
+        assert captured[-1]["is_subagent"] == 1
+        # 主图事件（ns 空）：归属主 Agent
+        await converter.handle(
+            {
+                "type": "updates",
+                "ns": [],
+                "data": {
+                    "tool_node": {
+                        "messages": [
+                            ToolMessage(content="ok", tool_call_id="c10", name="search")
+                        ]
+                    }
+                },
+            }
+        )
+        assert captured[-1]["agent_code"] is None
+        assert captured[-1]["is_subagent"] == 0
+
+    async def test_nested_subgraph_takes_last_segment(self, conv, monkeypatch):
+        """嵌套子图 ns 多段，取最后一段去 task_id 后缀"""
+        converter, emitter = conv
+        captured = await self._capture_create(monkeypatch)
+        await converter.handle(
+            {
+                "type": "updates",
+                "ns": ["task:a", "inner:b"],
+                "data": {
+                    "tool_node": {
+                        "messages": [
+                            ToolMessage(content="ok", tool_call_id="c11", name="search")
+                        ]
+                    }
+                },
+            }
+        )
+        assert captured[-1]["agent_code"] == "inner"
+        assert captured[-1]["is_subagent"] == 1
+
+    async def test_plan_recorded_to_collector(self, conv):
+        converter, emitter = conv
+        collector = trace_collector.start(
+            conversation_id=1, message_id=1, user_id=1, agent_code=None, model_id="m"
+        )
+        try:
+            await converter.record_plan({"tasks": [{"id": "1", "description": "d"}]}, phase="plan")
+            assert collector.context_events[-1]["event"] == "plan"
+            assert collector.context_events[-1]["phase"] == "plan"
+        finally:
+            trace_collector._current_collector.set(None)

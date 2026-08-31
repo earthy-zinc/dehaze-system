@@ -223,6 +223,19 @@ export function isExternal(path: string) {
   return isExternal;
 }
 
+/**
+ * 拼接父子路由路径（浏览器端替代 path.resolve，path-browserify 依赖 process.cwd 不可用）
+ *
+ * @param parentPath 父级完整路径（如 /system）
+ * @param childPath 子路由路径（如 user 或 /user）
+ */
+export function resolveRoutePath(parentPath: string, childPath: string) {
+  if (!childPath) return parentPath;
+  if (childPath.startsWith("/")) return childPath;
+  if (!parentPath) return childPath;
+  return `${parentPath.replace(/\/$/, "")}/${childPath}`;
+}
+
 export function hexToRGBA(hex: string, alpha: number) {
   const r = parseInt(hex.slice(1, 3), 16),
     g = parseInt(hex.slice(3, 5), 16),

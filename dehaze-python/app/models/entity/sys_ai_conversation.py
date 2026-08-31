@@ -49,6 +49,12 @@ class SysAiConversation(BaseModel, SoftDeleteMixin):
     model_config: Mapped[Any | None] = mapped_column(
         JSON, nullable=True, comment="模型参数配置(temperature;top_p;max_tokens等)"
     )
+    suggestions_enabled: Mapped[int] = mapped_column(
+        SmallInteger,
+        nullable=False,
+        default=1,
+        comment="类似问题推荐开关(0:关;1:开,关闭后回复完成不推送suggestions事件)",
+    )
     api_key_id: Mapped[int | None] = mapped_column(
         BigInteger, nullable=True, comment="绑定的API Key ID(关联sys_api_key)"
     )

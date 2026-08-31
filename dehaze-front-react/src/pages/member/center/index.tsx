@@ -1,5 +1,6 @@
 import {
   MemberAPI,
+  type BenefitSummaryVO,
   type MemberLevelCode,
   type MemberProfileVO,
   type SignInCalendarVO,
@@ -45,6 +46,9 @@ const MemberCenter: React.FC = () => {
   const [profile, setProfile] = useState<MemberProfileVO | undefined>(
     undefined
   );
+  const [summary, setSummary] = useState<BenefitSummaryVO | undefined>(
+    undefined
+  );
   const [calendar, setCalendar] = useState<SignInCalendarVO | undefined>(
     undefined
   );
@@ -87,12 +91,8 @@ const MemberCenter: React.FC = () => {
     profile?.nextLevelGrowth != null
       ? Math.max(0, profile.nextLevelGrowth - profile.growthValue)
       : 0;
-  const dehazeRemaining = profile
-    ? Math.max(0, profile.monthlyDehazeQuota - profile.monthlyDehazeUsed)
-    : 0;
-  const evaluateRemaining = profile
-    ? Math.max(0, profile.monthlyEvaluateQuota - profile.monthlyEvaluateUsed)
-    : 0;
+  const imageRemaining = summary?.imageCategory?.remaining ?? 0;
+  const evaluateRemaining = summary?.evaluateCategory?.remaining ?? 0;
 
   const hasAnyUnlockedFeature = profile?.benefits
     ? !!(
@@ -226,22 +226,16 @@ const MemberCenter: React.FC = () => {
           <Row gutter={20}>
             <Col sm={6} xs={12}>
               <div className="benefit-item">
-                <div className="benefit-label">本月去雾剩余</div>
-                <div className="benefit-value">{dehazeRemaining}</div>
-                <div className="benefit-sub">
-                  总额 {profile.monthlyDehazeQuota} / 已用{" "}
-                  {profile.monthlyDehazeUsed}
-                </div>
+                <div className="benefit-label">图像处理剩余</div>
+                <div className="benefit-value">{imageRemaining}</div>
+                <div className="benefit-sub">7 类图像任务取最低剩余</div>
               </div>
             </Col>
             <Col sm={6} xs={12}>
               <div className="benefit-item">
-                <div className="benefit-label">本月评估剩余</div>
+                <div className="benefit-label">评估剩余</div>
                 <div className="benefit-value">{evaluateRemaining}</div>
-                <div className="benefit-sub">
-                  总额 {profile.monthlyEvaluateQuota} / 已用{" "}
-                  {profile.monthlyEvaluateUsed}
-                </div>
+                <div className="benefit-sub">本月剩余评估次数</div>
               </div>
             </Col>
             <Col sm={6} xs={12}>

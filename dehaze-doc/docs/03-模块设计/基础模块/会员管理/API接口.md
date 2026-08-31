@@ -6,7 +6,6 @@
 
 - **基础路径**：`/api/v1/members`
 - **公共约定**：参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md)
-- **需求规格**：[需求规格.md](./需求规格.md)
 
 ## 2. 接口清单
 
@@ -43,9 +42,9 @@
 | member:status:edit | 冻结/解冻 |
 | member:benefit:edit | 权益配置 |
 
-> 权益配置（sys_member_benefit）字段含 `ai_credits_daily`（AI 日限额）、`ai_credits_monthly`（AI 月限额）、`multimodal_limit`（多模态视觉读取日限额）、`vip_gift_credits`（VIP 按月赠送积分）等 AI 计费相关配额列，权益配置接口返回全部限额字段。
+> 权益配置接口返回全部限额字段，含 `ai_credits_daily`（AI 日限额）、`ai_credits_monthly`（AI 月限额）、`multimodal_limit`（多模态视觉读取日限额）、`vip_gift_credits`（VIP 按月赠送积分）。
 
-> 用户端接口（会员信息 / 权益概览 / 试用引导 / 成长值明细 / 签到 / 签到日历）与后台查询接口（会员列表 / 详情 / 权益配置列表）均为登录态访问。
+> 未标注权限标识的接口为登录态访问。
 
 ## 4. 业务错误码
 

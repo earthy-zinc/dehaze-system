@@ -143,7 +143,7 @@ const queryParams = reactive<GrowthLogQuery>({
 });
 
 const changeTypeOptions: Array<{ value: GrowthChangeType; label: string }> = [
-  { value: "dehaze", label: "去雾处理" },
+  { value: "process", label: "图像处理" },
   { value: "evaluate", label: "指标评估" },
   { value: "rating", label: "评价奖励" },
   { value: "sign_in", label: "每日签到" },

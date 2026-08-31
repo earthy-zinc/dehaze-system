@@ -167,6 +167,7 @@ class AgentService:
                 "is_subagent": agent.is_subagent,
                 "is_team": agent.is_team,
                 "is_exposed": agent.is_exposed,
+                "tags": agent.tags or [],
                 "status": agent.status,
                 "sort_order": agent.sort_order,
                 "create_time": agent.create_time,
@@ -187,11 +188,26 @@ class AgentService:
         size: int,
         keyword: str | None = None,
         status: int | None = None,
+        agent_type: str | None = None,
     ) -> PageResult[AgentListItem]:
         agents, total = await self.ai_agent_repository.paginate_agents(
-            db, page, size, keyword, status
+            db, page, size, keyword, status, agent_type
         )
-        return PageResult(list=[AgentListItem.model_validate(a) for a in agents], total=total)
+        items = []
+        if agents:
+            agent_ids = [a.id for a in agents]
+            skill_counts = await self.ai_agent_repository.count_skills_by_agent_ids(db, agent_ids)
+            mcp_counts = await self.ai_agent_repository.count_mcp_by_agent_ids(db, agent_ids)
+            sub_counts = await self.ai_agent_repository.count_subagents_by_agent_ids(
+                db, agent_ids
+            )
+            for a in agents:
+                item = AgentListItem.model_validate(a)
+                item.skill_count = skill_counts.get(a.id, 0)
+                item.mcp_count = mcp_counts.get(a.id, 0)
+                item.sub_agent_count = sub_counts.get(a.id, 0)
+                items.append(item)
+        return PageResult(list=items, total=total)
 
     async def list_enabled(self, db: AsyncSession, redis: Redis) -> list[AgentListItem]:
         """可选 Agent 列表（status=1 且非子 Agent，缓存 ai:agent:list:enabled）。"""
@@ -247,6 +263,7 @@ class AgentService:
             is_team=int(form.is_team),
             is_exposed=int(form.is_exposed),
             permissions=form.permissions,
+            tags=form.tags,
             sort_order=form.sort_order,
             status=form.status,
         )
@@ -320,6 +337,7 @@ class AgentService:
             is_team=source.is_team,
             is_exposed=source.is_exposed,
             permissions=source.permissions,
+            tags=source.tags,
             sort_order=source.sort_order,
             status=1,
         )

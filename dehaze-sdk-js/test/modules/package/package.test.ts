@@ -72,14 +72,26 @@ describe("套餐管理模块接口测试", () => {
       for (const pkg of list) {
         expect(pkg.id).toBeGreaterThan(0);
         expect(pkg.name).toBeTruthy();
-        expect(["level_1", "level_2", "level_3"]).toContain(pkg.levelCode);
-        expect(["monthly", "quarterly", "yearly"]).toContain(pkg.period);
         expect(pkg.salePrice).toBeGreaterThanOrEqual(0);
         expect(pkg.benefits).toBeDefined();
-        // 后端暂未落地 package_type 字段（契约已定义，落地后断言自动生效）
-        if (pkg.packageType !== undefined) {
-          expect(["vip", "credit"]).toContain(pkg.packageType);
+        expect(["vip", "credit"]).toContain(pkg.packageType);
+        // 商品类型差异字段：会员卡有等级/周期，积分卡有可得积分与积分单价
+        if (pkg.packageType === "vip") {
+          expect(["level_1", "level_2", "level_3"]).toContain(pkg.levelCode);
+          expect(["monthly", "quarterly", "yearly"]).toContain(pkg.period);
+        } else {
+          expect(pkg.creditAmount).toBeGreaterThan(0);
+          expect(pkg.creditUnitPrice).toBeGreaterThanOrEqual(0);
         }
+      }
+    });
+
+    test("验证：在售列表含商品差异字段但不含进行中促销活动", async () => {
+      const list = await PackageAPI.listOnSale();
+
+      for (const pkg of list) {
+        // activePromotions 属详情 VO 字段，在售列表不返回
+        expect(pkg).not.toHaveProperty("activePromotions");
       }
     });
 
@@ -153,6 +165,50 @@ describe("套餐管理模块接口测试", () => {
         "A0400",
         "ERR_BAD_REQUEST",
       ]);
+    });
+
+    // T-PM-053：限定商品类型(vip)的券用于会员卡套餐应生效
+    test("正向测试：使用限定商品类型的优惠券计算价格", async () => {
+      await login(USERS.ADMIN.username);
+      const couponId = await createCoupon(
+        createCouponForm({ type: "no_threshold", faceValue: 500, applicableScope: ["vip"] })
+      );
+
+      await login(userAccount);
+      const { userCouponId } = await CouponAPI.receive(couponId);
+      const result = await PackageAPI.calculatePrice(onSalePackageId, userCouponId);
+
+      expect(result.couponAmount).toBe(500);
+    });
+
+    // T-PM-058：券限定商品类型与套餐类型不匹配（credit 券用于 vip 套餐）
+    test("边界：优惠券限定商品类型不匹配应失败", async () => {
+      await login(USERS.ADMIN.username);
+      const couponId = await createCoupon(
+        createCouponForm({ type: "no_threshold", faceValue: 500, applicableScope: ["credit"] })
+      );
+
+      await login(userAccount);
+      const { userCouponId } = await CouponAPI.receive(couponId);
+      await expectBizError(
+        PackageAPI.calculatePrice(onSalePackageId, userCouponId),
+        ["A0527"],
+        "不适用"
+      );
+    });
+
+    // 体验券直接激活权益、不产生订单，不参与下单价格计算
+    test("边界：体验券不参与价格计算", async () => {
+      await login(USERS.ADMIN.username);
+      const couponId = await createCoupon(createCouponForm({ type: "trial", faceValue: 0 }));
+
+      await login(userAccount);
+      const { userCouponId } = await CouponAPI.receive(couponId);
+      await expectBizError(
+        PackageAPI.calculatePrice(onSalePackageId, userCouponId),
+        ["A0500"],
+        "体验券"
+      );
     });
   });
 
@@ -586,6 +642,32 @@ describe("套餐管理模块接口测试", () => {
 
       test("异常：库存为负数", async () => {
         const form = createCouponForm({ totalQty: -2 });
+        await expectBizError(CouponAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      });
+
+      // T-PM-063：券可限定商品类型（vip/credit），不局限于商品 ID
+      test("正向测试：创建限定商品类型的优惠券", async () => {
+        const form = createCouponForm({
+          type: "no_threshold",
+          applicableScope: ["credit"],
+        });
+        const result = await CouponAPI.add(form);
+        createdCouponIds.push(result.id);
+
+        const page = await CouponAPI.getPage(createCouponQuery({ name: form.name }));
+        const created = page.list.find((c) => c.id === result.id);
+        expect(created?.applicableScope).toEqual(["credit"]);
+      });
+
+      test("异常：有效期类型非法应失败", async () => {
+        const form = createCouponForm({ validType: "permanent" as any });
+        await expectBizError(CouponAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      });
+
+      test("异常：相对有效期缺少有效天数应失败", async () => {
+        const form = createCouponForm({ validType: "relative" });
+        delete (form as any).validStart;
+        delete (form as any).validEnd;
         await expectBizError(CouponAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
       });
     });

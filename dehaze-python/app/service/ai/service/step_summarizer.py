@@ -12,6 +12,7 @@ import logging
 
 from app.infrastructure.llm.call.llm_client import llm_client
 from app.repository.ai_agent_thought_repository import ai_agent_thought_repository
+from app.service.ai.service import trace_collector
 
 logger = logging.getLogger(__name__)
 
@@ -27,20 +28,33 @@ observation（结果摘要）。请按输入顺序为每个步骤输出对应的
 """
 
 
-async def _generate_summaries(db, model_id: str, steps: list[dict]) -> list[str] | None:
-    """一次 LLM 调用批量生成步骤概括（temperature=0，失败返回 None）。"""
+async def _generate_summaries(
+    db, model_id: str, steps: list[dict], *, conversation_id: int, message_id: int
+) -> list[str] | None:
+    """一次 LLM 调用批量生成步骤概括（temperature=0，失败返回 None）。
+
+    LLM 调用采集为独立过程链（trace_type=step_summary），失败经 bypass_span
+    落失败态后原样抛出，由 summarize_steps 兜底吞掉保持原行为。
+    """
     steps_text = json.dumps(steps, ensure_ascii=False, indent=1)
     content = ""
-    async for chunk in llm_client.stream_chat(
-        db,
-        model_id,
-        [{"role": "user", "content": _SUMMARY_PROMPT + steps_text}],
-        system_prompt="你是推理步骤摘要助手，为每一步生成一句话概括。",
-        temperature=0,
-        max_tokens=800,
+    async with trace_collector.bypass_span(
+        conversation_id=conversation_id,
+        message_id=message_id,
+        user_id=None,
+        model_id=model_id,
+        trace_type="step_summary",
     ):
-        if chunk.type == "text_delta":
-            content += chunk.content
+        async for chunk in llm_client.stream_chat(
+            db,
+            model_id,
+            [{"role": "user", "content": _SUMMARY_PROMPT + steps_text}],
+            system_prompt="你是推理步骤摘要助手，为每一步生成一句话概括。",
+            temperature=0,
+            max_tokens=800,
+        ):
+            if chunk.type == "text_delta":
+                content += chunk.content
     content = content.strip()
     if content.startswith("```"):
         # 剥离 ```json ... ``` 代码块
@@ -58,7 +72,7 @@ async def _generate_summaries(db, model_id: str, steps: list[dict]) -> list[str]
     return [str(s).strip() for s in summaries if isinstance(s, str) and s.strip()]
 
 
-async def summarize_steps(message_id: int, model_id: str) -> None:
+async def summarize_steps(conversation_id: int, message_id: int, model_id: str) -> None:
     """对本条消息全部推理步骤生成一句话概括并回填 summary 字段（失败记 warning 日志）。
 
     无 steps 或 LLM 调用失败时记 warning 日志返回，不影响主推理结果。
@@ -81,7 +95,9 @@ async def summarize_steps(message_id: int, model_id: str) -> None:
                 for t in thoughts
             ]
             try:
-                summaries = await _generate_summaries(db, model_id, steps)
+                summaries = await _generate_summaries(
+                    db, model_id, steps, conversation_id=conversation_id, message_id=message_id
+                )
             except Exception as e:
                 logger.warning("步骤摘要生成失败 msg_id=%s: %s", message_id, e)
                 return
@@ -94,7 +110,7 @@ async def summarize_steps(message_id: int, model_id: str) -> None:
 
 
 # 供推理层异步触发时引用（防止后台任务被垃圾回收）
-def schedule_step_summaries(message_id: int, model_id: str) -> None:
+def schedule_step_summaries(conversation_id: int, message_id: int, model_id: str) -> None:
     """异步触发步骤摘要生成（不阻塞主回复）。"""
     import asyncio
 
@@ -102,7 +118,7 @@ def schedule_step_summaries(message_id: int, model_id: str) -> None:
 
     async def _run() -> None:
         try:
-            await summarize_steps(message_id, model_id)
+            await summarize_steps(conversation_id, message_id, model_id)
         except Exception:
             logger.warning("步骤摘要后台任务异常 msg_id=%s", message_id, exc_info=True)
 

@@ -38,6 +38,7 @@ CREATE TABLE `sys_ai_conversation`
     `summary_upto_message_id` bigint                                                          NULL DEFAULT NULL COMMENT '摘要水位：已纳入摘要覆盖范围的最后一条消息ID(增量摘要推进依据)',
     `system_prompt`           TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL COMMENT '系统提示词(会话级，不同场景可配置不同prompt)',
     `model_config`            json                                                            NULL COMMENT '模型参数配置(temperature;top_p;max_tokens等)',
+    `suggestions_enabled`     tinyint                                                         NOT NULL DEFAULT 1 COMMENT '类似问题推荐开关(0:关;1:开,关闭后回复完成不推送suggestions事件)',
     `api_key_id`              bigint                                                          NULL DEFAULT NULL COMMENT '绑定的API Key ID(关联sys_api_key，MCP工具调用身份透传)',
     `message_count`           int                                                             NOT NULL DEFAULT 0 COMMENT '消息数(冗余计数，避免COUNT查询)',
     `last_message_at`         datetime                                                        NULL DEFAULT NULL COMMENT '最后消息时间(会话列表按此排序)',

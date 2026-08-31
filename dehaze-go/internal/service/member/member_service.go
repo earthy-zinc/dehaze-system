@@ -13,6 +13,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
+	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
@@ -23,9 +24,11 @@ import (
 )
 
 const (
-	signInBaseGrowth  = 3
-	signInBonusGrowth = 20
-	signInBonusCycle  = 7
+	// memberGrowthRulesDictType 会员成长值规则字典类型（sys_dict: member_growth_rules）
+	memberGrowthRulesDictType = "member_growth_rules"
+	// signInBonusCycle 连续签到奖励周期（连续 7 天额外奖励，字典未覆盖，属代码常量）
+	signInBonusCycle = 7
+
 	timeFormat        = "2006-01-02 15:04:05"
 	dateFormat        = "2006-01-02"
 
@@ -51,6 +54,7 @@ type MemberService struct {
 	auditLogSvc   *auditlogservice.AuditLogService
 	messageSender MessageSender
 	lifecycle     *lifecycle.Manager
+	dictSvc       dictservice.IDictService
 }
 
 func NewMemberService(
@@ -63,6 +67,7 @@ func NewMemberService(
 	auditLogSvc *auditlogservice.AuditLogService,
 	messageSender MessageSender,
 	lm *lifecycle.Manager,
+	dictSvc dictservice.IDictService,
 ) *MemberService {
 	return &MemberService{
 		db:            db,
@@ -74,6 +79,7 @@ func NewMemberService(
 		auditLogSvc:   auditLogSvc,
 		messageSender: messageSender,
 		lifecycle:     lm,
+		dictSvc:       dictSvc,
 	}
 }
 
@@ -245,11 +251,15 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 		continuousDays = yesterdaySign.ContinuousDays + 1
 	}
 
-	bonusGrowth := 0
+	// 营销激励参数来自字典：每日签到成长值 + 连续签到额外奖励（缺键回退默认值）
+	signInBaseGrowth := dictservice.GetIntValue(ctx, s.dictSvc, memberGrowthRulesDictType, "sign_in_value", 3)
+	signInBonusGrowth := dictservice.GetIntValue(ctx, s.dictSvc, memberGrowthRulesDictType, "sign_in_streak_bonus", 20)
+
+	bonusGrowth := int64(0)
 	if continuousDays%signInBonusCycle == 0 {
 		bonusGrowth = signInBonusGrowth
 	}
-	totalGrowth := signInBaseGrowth + bonusGrowth
+	totalGrowth := int(signInBaseGrowth + bonusGrowth)
 
 	benefits, err := s.findAllBenefits(ctx)
 	if err != nil {
@@ -288,11 +298,11 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 			return err
 		}
 
-		balanceAfterBase := member.GrowthValue + int64(signInBaseGrowth)
+		balanceAfterBase := member.GrowthValue + signInBaseGrowth
 		if err := txGrowthLogRepo.Create(ctx, &model.SysMemberGrowthLog{
 			UserID:      userID,
 			ChangeType:  "sign_in",
-			ChangeValue: signInBaseGrowth,
+			ChangeValue: int(signInBaseGrowth),
 			Balance:     balanceAfterBase,
 			RelatedID:   strconv.FormatInt(signRecord.ID, 10),
 		}); err != nil {
@@ -303,7 +313,7 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 			if err := txGrowthLogRepo.Create(ctx, &model.SysMemberGrowthLog{
 				UserID:      userID,
 				ChangeType:  "sign_in_bonus",
-				ChangeValue: bonusGrowth,
+				ChangeValue: int(bonusGrowth),
 				Balance:     newGrowthValue,
 				RelatedID:   strconv.FormatInt(signRecord.ID, 10),
 			}); err != nil {
@@ -344,8 +354,8 @@ func (s *MemberService) SignIn(ctx context.Context, userID int64) (*vo.SignInRes
 	return &vo.SignInResultVO{
 		SignDate:       today.Format(dateFormat),
 		ContinuousDays: continuousDays,
-		GrowthValue:    signInBaseGrowth,
-		BonusGrowth:    bonusGrowth,
+		GrowthValue:    int(signInBaseGrowth),
+		BonusGrowth:    int(bonusGrowth),
 	}, nil
 }
 

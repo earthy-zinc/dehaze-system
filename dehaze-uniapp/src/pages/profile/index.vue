@@ -35,10 +35,7 @@
           </text>
           <text class="vip-title" v-else>开通 VIP 畅享更多次数</text>
           <text class="vip-subtitle" v-if="isVip">
-            本月已用 {{ memberProfile.monthlyDehazeUsed }}/{{
-              memberProfile.monthlyDehazeQuota
-            }}
-            次
+            本月已用 {{ memberProfile.monthlyUsed }} 次
           </text>
           <text class="vip-subtitle" v-else>解锁全部高级功能</text>
         </view>
@@ -310,8 +307,7 @@ const memberProfile = ref({
   levelCode: "level_0",
   levelName: "",
   growthValue: 0,
-  monthlyDehazeQuota: 0,
-  monthlyDehazeUsed: 0,
+  monthlyUsed: 0,
 });
 
 const isVip = computed(

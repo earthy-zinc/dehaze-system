@@ -5,10 +5,6 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 import { configManager } from "@/config";
 import { generateTraceId } from "@/logger";
 import type {
-  AiModelForm,
-  AiModelQuery,
-  AiModelType,
-  AiModelVO,
   CompatCallQuery,
   ArtifactVO,
   ClaudeMessageForm,
@@ -67,6 +63,13 @@ export interface MessageStreamHandlers {
   onError?: (data: ErrorEvent) => void;
   /** message.end：消息结束（含 stopReason 和 usage） */
   onEnd?: (data: MessageEndEvent) => void;
+  /**
+   * 每个 SSE 事件携带的递增 ID（后端 `id:` 帧）。
+   *
+   * 调用方需自行记录最后一次收到的 ID 并传给 `reconnectStream` 的 lastEventId，
+   * 否则重连时服务端从 0 重放整条流。每个事件都会触发，早于同类事件回调。
+   */
+  onEventId?: (id: string) => void;
   /** 网络层错误（连接失败/断开/HTTP 非 2xx），流已中断 */
   onNetworkError?: (error: Error) => void;
   /** 流式正常结束 */
@@ -75,6 +78,7 @@ export interface MessageStreamHandlers {
 
 /** 将 SSE 事件分发到对应回调 */
 function dispatchSSEEvent(event: SSEEvent, handlers: MessageStreamHandlers): void {
+  if (event.id !== undefined) handlers.onEventId?.(event.id);
   if (!event.data) return;
   let payload: unknown;
   try {
@@ -192,7 +196,7 @@ class AiConversationAPI {
   // ==================== 会话管理 ====================
 
   /** 创建对话会话 */
-  static createConversation(data?: ConversationCreateForm) {
+  static createConversation(data: ConversationCreateForm = {}) {
     return request<ConversationVO>({
       url: "/api/v1/ai/conversations",
       method: "post",
@@ -209,11 +213,17 @@ class AiConversationAPI {
     });
   }
 
-  /** 会话详情（含模型配置、消息数等） */
-  static getConversation(id: number) {
+  /**
+   * 会话详情（含模型配置、消息数等）
+   *
+   * query.view=admin 为管理端审计视角，读取任意用户会话并带审计字段（需
+   * `ai:conversation:audit`），省略为当前用户。
+   */
+  static getConversation(id: number, query?: { view?: "admin" }) {
     return request<ConversationVO>({
       url: `/api/v1/ai/conversations/${id}`,
       method: "get",
+      params: query,
     });
   }
 
@@ -416,7 +426,15 @@ class AiConversationAPI {
   }
 
   /** 会话消息列表（分页，按时间正序） */
-  static getMessages(conversationId: number, query?: { pageNum?: number; pageSize?: number }) {
+  static getMessages(
+    conversationId: number,
+    query?: {
+      pageNum?: number;
+      pageSize?: number;
+      /** 管理端审计视角：admin 读取任意用户会话的消息（需 ai:conversation:audit），省略为本人 */
+      view?: "admin";
+    }
+  ) {
     return request<PageResult<AiMessageVO[]>>({
       url: `/api/v1/ai/conversations/${conversationId}/messages`,
       method: "get",
@@ -425,10 +443,11 @@ class AiConversationAPI {
   }
 
   /** 消息详情（含推理步骤、工具调用） */
-  static getMessageDetail(messageId: number) {
+  static getMessageDetail(messageId: number, query?: { view?: "admin" }) {
     return request<AiMessageVO>({
       url: `/api/v1/ai/messages/${messageId}`,
       method: "get",
+      params: query,
     });
   }
 
@@ -481,6 +500,14 @@ class AiConversationAPI {
       }
     );
     return controller;
+  }
+
+  /** 删除助手回复消息（软删除） */
+  static deleteMessage(messageId: number) {
+    return request({
+      url: `/api/v1/ai/messages/${messageId}`,
+      method: "delete",
+    });
   }
 
   /** 停止流式输出 / 取消当前推理 */
@@ -614,25 +641,7 @@ class AiConversationAPI {
     });
   }
 
-  // ==================== 模型管理 ====================
-
-  /** 模型分页列表（管理端） */
-  static getModels(query?: AiModelQuery) {
-    return request<PageResult<AiModelVO[]>>({
-      url: "/api/v1/ai/models",
-      method: "get",
-      params: query,
-    });
-  }
-
-  /** 启用模型列表（用户端，含 VIP 过滤；可按模型类型筛选 chat/embedding/rerank） */
-  static getEnabledModels(modelType?: AiModelType) {
-    return request<AiModelVO[]>({
-      url: "/api/v1/ai/models/enabled",
-      method: "get",
-      params: modelType ? { modelType } : undefined,
-    });
-  }
+  // ==================== 第三方兼容 ====================
 
   /** 兼容调用审计查询（当前登录用户，create_time 倒序分页） */
   static getCompatCalls(query?: CompatCallQuery) {
@@ -640,32 +649,6 @@ class AiConversationAPI {
       url: "/api/v1/ai/compat/calls",
       method: "get",
       params: query,
-    });
-  }
-
-  /** 新增模型配置（管理员） */
-  static createModel(data: AiModelForm) {
-    return request<AiModelVO>({
-      url: "/api/v1/ai/models",
-      method: "post",
-      data,
-    });
-  }
-
-  /** 更新模型配置（管理员；model_id 为业务标识） */
-  static updateModel(modelId: string, data: Partial<AiModelForm>) {
-    return request<AiModelVO>({
-      url: `/api/v1/ai/models/${modelId}`,
-      method: "put",
-      data,
-    });
-  }
-
-  /** 删除模型配置（管理员，软删除，model_id 不可复用） */
-  static deleteModel(modelId: string) {
-    return request({
-      url: `/api/v1/ai/models/${modelId}`,
-      method: "delete",
     });
   }
 

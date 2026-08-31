@@ -16,19 +16,19 @@ from langgraph.types import interrupt
 from app.config import settings
 from app.database import get_db_session
 from app.dependencies.redis import get_redis_client
-from app.service.ai.service.algorithm_recommend_service import recommend_algorithm
-from app.service.ai.middleware.async_resume import submit_batch_task
-from app.service.ai.service.batch_process_service import process_batch
-from app.infrastructure.sandbox.code_sandbox import code_sandbox
-from app.service.ai.middleware.interrupt_handler import interrupt_handler
-from app.service.ai.builders.knowledge_base_tool import knowledge_base_client
 from app.infrastructure.clients.mcp_gateway_client import mcp_gateway_client
-from app.service.ai.service.skill_manager import skill_manager
 from app.infrastructure.clients.web_search_client import (
     check_search_quota,
     format_websearch_results,
     web_search_client,
 )
+from app.infrastructure.sandbox.code_sandbox import code_sandbox
+from app.service.ai.builders.knowledge_base_tool import knowledge_base_client
+from app.service.ai.middleware.async_resume import submit_batch_task
+from app.service.ai.middleware.interrupt_handler import interrupt_handler
+from app.service.ai.service.algorithm_recommend_service import recommend_algorithm
+from app.service.ai.service.batch_process_service import process_batch
+from app.service.ai.service.skill_manager import skill_manager
 from app.service.ai_artifact_service import ai_artifact_service
 
 logger = logging.getLogger(__name__)
@@ -237,11 +237,11 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
 
     async def _mcp_lookup_tool(query: str) -> str:
         result = await mcp_gateway_client.lookup_tool(query)
-        return result[:500] if result else "无匹配工具"
+        return result[:4000] if result else "无匹配工具"
 
     async def _mcp_execute_tool(tool_name: str, arguments: dict) -> str:
         result = await mcp_gateway_client.execute_tool(tool_name, arguments)
-        return result[:500] if result else "工具执行完成"
+        return result[:4000] if result else "工具执行完成"
 
     async def _visual_read(artifact_id: int) -> str:
         # 多模态视觉读取：评估图片效果时使用（与用户主动要求记住的行为无关）。

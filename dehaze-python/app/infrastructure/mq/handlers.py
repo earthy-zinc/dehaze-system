@@ -26,6 +26,9 @@ async def handle_export_task(body: dict[str, Any], headers: dict[str, Any]) -> N
 
     解析导出任务消息，交由 task_consumer.consume_export_message 执行。
     """
+    # 函数内延迟导入：基础设施层 handler 不反向依赖 service 层，消息到达时才解析
+    from app.service.task import task_consumer
+
     await task_consumer.consume_export_message(body, headers)
     logger.debug(f"[MQ] 导出任务 handler 处理完成: taskId={body.get('task_id')}")
 

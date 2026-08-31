@@ -33,15 +33,16 @@ from app.core.exceptions import BusinessException
 from app.core.result import _get_trace_id
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.crypto.aes_cipher import decrypt
-from app.infrastructure.llm.local.local_llm_manager import ensure_running
-from app.infrastructure.llm.common import LlmStreamChunk, _map_httpx_error
 from app.infrastructure.llm.client.model_client import create_chat_client
+from app.infrastructure.llm.common import LlmStreamChunk, _map_httpx_error
+from app.infrastructure.llm.local.local_llm_manager import ensure_running
 from app.infrastructure.provider.model_registry import model_registry
 from app.infrastructure.provider.provider_health_service import provider_health_service
 from app.infrastructure.provider.provider_key_selector import provider_key_selector
 from app.models.base import get_current_user_id
 from app.repository.ai_model_repository import ai_model_repository
 from app.repository.ai_provider_repository import ai_provider_repository
+from app.service.ai.service.trace_collector import begin_llm_call, error_type_of
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,7 @@ class LlmClient:
         tools: list[dict] | None,
         tool_choice: str | None,
         on_route_result: Callable[[dict], None] | None,
+        call=None,
     ) -> AsyncGenerator[LlmStreamChunk, None]:
         """在一个候选路由内按 Key 优先级组逐 Key 尝试；全部 Key 失败抛 _RouteFailed。
 
@@ -120,6 +122,11 @@ class LlmClient:
         started = time.perf_counter()
         keys = await provider_key_selector.list_usable_keys(db, redis, provider.id)
         if not keys:
+            if call:
+                call.observe_attempt(
+                    provider_id=provider.id, key_id=None, model=model.model_id,
+                    status=2, error_code="no_key", latency_ms=None,
+                )
             raise _RouteFailed("no_key", "该供应商无可用 API Key")
 
         last_error: tuple[str, str] = ("no_key", "该供应商无可用 API Key")
@@ -145,11 +152,21 @@ class LlmClient:
                     yield chunk
                 # 流正常结束 → 记录成功并透出归因
                 latency_ms = int((time.perf_counter() - started) * 1000)
+                if call:
+                    call.observe_attempt(
+                        provider_id=provider.id, key_id=key_id, model=model.model_id,
+                        status=1, error_code=None, latency_ms=latency_ms,
+                    )
                 await self._record_success(provider.id, key_id, latency_ms, on_route_result, model)
                 return
             except (httpx.HTTPStatusError, httpx.TransportError) as exc:
                 error_code, detail = _map_httpx_error(exc)
                 latency_ms = int((time.perf_counter() - started) * 1000)
+                if call:
+                    call.observe_attempt(
+                        provider_id=provider.id, key_id=key_id, model=model.model_id,
+                        status=2, error_code=error_code, latency_ms=latency_ms,
+                    )
                 is_local = provider.provider_code == "local"
                 if not is_local:
                     await provider_key_selector.mark_call_failed(redis, key_id, error_code)
@@ -207,6 +224,10 @@ class LlmClient:
         redis 为实例级基础设施依赖：惰性获取全局单例后由类内私有方法
         共享同一引用，不向下透传；provider_health_service / provider_key_selector
         等原子逻辑仍以显式参数接收。
+
+        可观测性采集（旁路）：推理主链路存在采集器时，每次调用记录一条
+        sys_ai_llm_call（Key/供应商重试的多次物理尝试经 attempts 记录明细，
+        调用记录聚合最终结果）；采集失败仅告警，不影响调用与计费。
         """
         redis = await self._get_redis()
 
@@ -219,50 +240,76 @@ class LlmClient:
         if not routes:
             raise BusinessException(ResultCode.AI_MODEL_NOT_AVAILABLE, "模型不可用或已禁用")
 
-        last_error: _RouteFailed | None = None
-        for route in routes:
-            provider_id = route["provider_id"]
-            if await provider_health_service.get_status(redis, provider_id) == "open":
-                logger.warning("供应商 %s 熔断中，跳过该候选路由", provider_id)
-                continue
-            provider = await ai_provider_repository.get_by_id(db, provider_id)
-            model = await ai_model_repository.get_by_id(db, route["model_pk"])
-            if not provider or provider.status != 1 or not model:
-                continue
-            # 内置本地 provider：确保子进程服务就绪（含模型自动下载，可能较慢，
-            # 线程化避免阻塞事件循环）
-            if provider.provider_code == "local":
-                await asyncio.to_thread(ensure_running)
-            try:
-                async for chunk in self._stream_with_key_retry(
-                    db,
-                    provider,
-                    model,
-                    messages,
-                    system_prompt,
-                    temperature,
-                    max_tokens,
-                    tools,
-                    tool_choice,
-                    on_route_result,
-                ):
-                    yield chunk
-                return
-            except _RouteFailed as exc:
-                logger.warning(
-                    "候选路由 %s(供应商 %s) 调用失败: %s", model.model_id, provider_id, exc.detail
-                )
-                last_error = exc
-                continue
+        call = begin_llm_call(model_id, messages, system_prompt, tools)
+        try:
+            last_error: _RouteFailed | None = None
+            # 流是否正常结束：正常结束时 else 记录成功、finally 不再标记 aborted
+            done = False
+            for route in routes:
+                provider_id = route["provider_id"]
+                if await provider_health_service.get_status(redis, provider_id) == "open":
+                    logger.warning("供应商 %s 熔断中，跳过该候选路由", provider_id)
+                    continue
+                provider = await ai_provider_repository.get_by_id(db, provider_id)
+                model = await ai_model_repository.get_by_id(db, route["model_pk"])
+                if not provider or provider.status != 1 or not model:
+                    continue
+                # 内置本地 provider：确保子进程服务就绪（含模型自动下载，可能较慢，
+                # 线程化避免阻塞事件循环）
+                if provider.provider_code == "local":
+                    await asyncio.to_thread(ensure_running)
+                try:
+                    async for chunk in self._stream_with_key_retry(
+                        db,
+                        provider,
+                        model,
+                        messages,
+                        system_prompt,
+                        temperature,
+                        max_tokens,
+                        tools,
+                        tool_choice,
+                        on_route_result,
+                        call,
+                    ):
+                        if call:
+                            call.observe_chunk(chunk)
+                        yield chunk
+                    # 流正常结束：置 done 并跳出路由循环（让外层 else 记录成功、
+                    # finally 不再标记 aborted；不能 return，return 会跳过 else）
+                    done = True
+                    break
+                except _RouteFailed as exc:
+                    logger.warning(
+                        "候选路由 %s(供应商 %s) 调用失败: %s",
+                        model.model_id,
+                        provider_id,
+                        exc.detail,
+                    )
+                    last_error = exc
+                    continue
 
-        code, detail = (
-            (last_error.error_code, last_error.detail)
-            if last_error
-            else ("no_route", "无可用候选路由")
-        )
-        raise BusinessException(
-            ResultCode.AI_LLM_CALL_FAILED, f"主模型和降级模型均不可用: {detail}"
-        )
+            if not done:
+                code, detail = (
+                    (last_error.error_code, last_error.detail)
+                    if last_error
+                    else ("no_route", "无可用候选路由")
+                )
+                raise BusinessException(
+                    ResultCode.AI_LLM_CALL_FAILED, f"主模型和降级模型均不可用: {detail}"
+                )
+        except Exception as exc:
+            if call:
+                await call.finish(completed=False, error_type=error_type_of(exc))
+            raise
+        else:
+            if call:
+                await call.finish(completed=True)
+        finally:
+            # 调用方中途放弃流（断连/取消，GeneratorExit 走 finally）时记录 aborted；
+            # 正常完成（done）或已记录失败（except 分支）时不再重复标记
+            if call and not done:
+                await call.finish(completed=False, error_type="aborted")
 
     async def count_tokens(self, text: str) -> int:
         """简单估算 token 数（字符数 / 4）"""

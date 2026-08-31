@@ -26,7 +26,7 @@ CREATE TABLE `sys_coupon`
     `issued_qty`        int                                                            NOT NULL DEFAULT 0 COMMENT '已发放数量',
     `used_qty`          int                                                            NOT NULL DEFAULT 0 COMMENT '已使用数量',
     `per_user_limit`    int                                                            NOT NULL DEFAULT 1 COMMENT '每人限领数量',
-    `applicable_scope`  json                                                           NULL DEFAULT NULL COMMENT '适用套餐ID列表（JSON数组，NULL表示全部）',
+    `applicable_scope`  json                                                           NULL DEFAULT NULL COMMENT '适用商品（JSON数组，元素为套餐ID或商品类型vip/credit，NULL表示全部适用）',
     `status`            tinyint                                                        NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
     `deleted`           tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
     `create_time`       datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

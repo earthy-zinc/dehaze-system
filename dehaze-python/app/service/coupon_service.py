@@ -13,6 +13,7 @@ from app.models.entity.sys_member import SysMember
 from app.models.entity.sys_user import SysUser
 from app.models.entity.sys_user_coupon import SysUserCoupon
 from app.repository.coupon_repository import coupon_repository, user_coupon_repository
+from app.service.package_service import VALID_PACKAGE_TYPES
 
 
 def _format_dt(dt: datetime | None) -> str | None:
@@ -23,6 +24,24 @@ def _format_dt(dt: datetime | None) -> str | None:
 
 def _parse_dt(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
+
+
+COUPON_VALID_TYPES = {"fixed", "relative"}
+
+
+def _validate_coupon_form(form: dict) -> None:
+    if form["type"] == "full_reduction" and form.get("threshold") is None:
+        raise BusinessException(ResultCode.PARAM_ERROR, "满减券必须设置使用门槛")
+    valid_type = form["validType"]
+    if valid_type not in COUPON_VALID_TYPES:
+        raise BusinessException(ResultCode.PARAM_ERROR, "有效期类型非法")
+    if valid_type == "fixed" and (not form.get("validStart") or not form.get("validEnd")):
+        raise BusinessException(ResultCode.PARAM_ERROR, "固定有效期必须设置起止时间")
+    if valid_type == "relative" and not form.get("validDays"):
+        raise BusinessException(ResultCode.PARAM_ERROR, "相对有效期必须设置有效天数")
+    for scope in form.get("applicableScope") or []:
+        if not isinstance(scope, int) and scope not in VALID_PACKAGE_TYPES:
+            raise BusinessException(ResultCode.PARAM_ERROR, "适用商品非法（仅支持商品ID或商品类型）")
 
 
 def _calc_expire_time(coupon: SysCoupon, receive_time: datetime) -> datetime | None:
@@ -56,10 +75,7 @@ def _coupon_to_vo(coupon: SysCoupon) -> dict:
 
 class CouponService:
     async def create(self, db: AsyncSession, form: dict) -> dict:
-        if form["type"] == "full_reduction" and form.get("threshold") is None:
-            raise BusinessException(ResultCode.BUSINESS_ERROR, "满减券必须设置使用门槛")
-        if form["validType"] == "fixed" and (not form.get("validStart") or not form.get("validEnd")):
-            raise BusinessException(ResultCode.BUSINESS_ERROR, "固定有效期必须设置起止时间")
+        _validate_coupon_form(form)
         coupon = SysCoupon(
             name=form["name"],
             type=form["type"],
@@ -81,10 +97,7 @@ class CouponService:
         coupon = await coupon_repository.get_by_id(db, coupon_id)
         if not coupon:
             raise BusinessException(ResultCode.COUPON_NOT_FOUND)
-        if form["type"] == "full_reduction" and form.get("threshold") is None:
-            raise BusinessException(ResultCode.BUSINESS_ERROR, "满减券必须设置使用门槛")
-        if form["validType"] == "fixed" and (not form.get("validStart") or not form.get("validEnd")):
-            raise BusinessException(ResultCode.BUSINESS_ERROR, "固定有效期必须设置起止时间")
+        _validate_coupon_form(form)
         coupon.name = form["name"]
         coupon.type = form["type"]
         coupon.face_value = form["faceValue"]

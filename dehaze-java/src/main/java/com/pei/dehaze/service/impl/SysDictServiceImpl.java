@@ -20,6 +20,7 @@ import com.pei.dehaze.model.query.DictPageQuery;
 import com.pei.dehaze.model.vo.DictPageVO;
 import com.pei.dehaze.service.SysDictService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +34,7 @@ import java.util.concurrent.TimeUnit;
  * @author earthyzinc
  * @since 2022/10/12
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> implements SysDictService {
@@ -288,6 +290,35 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
             }
         }
         return result;
+    }
+
+    /**
+     * 读取指定字典类型下某个键的整型值。
+     * <p>复用 {@link #listDictOptions} 的缓存（TTL 1 小时、保存/修改/删除时失效），
+     * 在键（name）缺失或数值非法时 warn 日志并回退默认值，不抛异常。</p>
+     */
+    @Override
+    public int getIntValue(String typeCode, String key, int defaultValue) {
+        List<Option<String>> options = listDictOptions(typeCode);
+        if (CollUtil.isEmpty(options)) {
+            log.warn("字典类型[{}]无有效字典项，回退默认值{}", typeCode, defaultValue);
+            return defaultValue;
+        }
+        String raw = options.stream()
+                .filter(o -> key.equals(o.getLabel()))
+                .map(Option::getValue)
+                .findFirst()
+                .orElse(null);
+        if (raw == null) {
+            log.warn("字典类型[{}]缺少键[{}]，回退默认值{}", typeCode, key, defaultValue);
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException e) {
+            log.warn("字典类型[{}]键[{}]的数值非法[{}]，回退默认值{}", typeCode, key, raw, defaultValue);
+            return defaultValue;
+        }
     }
 }
 

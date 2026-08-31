@@ -20,6 +20,7 @@ XXL-Job 定时任务 Handler
 - resetMonthlyQuota:       会员月度配额重置（每月 1 日凌晨 0 点）
 - processExpiredMembers:  会员过期降级（每天凌晨 2 点）
 - retryFailedRefunds:     退款失败重试（每 30 分钟）
+- reconciliation:         渠道对账（每天凌晨 2 点）
 - sendExpireReminders:    会员到期预警（每天 09:00）
 - refreshUnreadCountCache: 未读数缓存全量刷新（每小时）
 - archiveInactiveConversations: AI 会话自动归档（每天凌晨 0 点）
@@ -717,6 +718,33 @@ async def retry_failed_refunds() -> str:
         else:
             msg = "退款失败重试: 无待处理记录"
             logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
+@xxl_handler.register(name="reconciliation")
+async def reconciliation() -> str:
+    """
+    渠道对账
+
+    取前一日支付成功的支付流水，与微信/支付宝渠道账单按支付流水号逐单核对，
+    差异（系统多单/渠道多单/金额不符）落 sys_reconciliation 由运营跟进。
+    渠道账单能力未对接时跳过并告警。
+    与 Java ReconciliationJob、Go reconciliation 对齐。
+
+    CRON 建议: 0 0 2 * * ? （每天凌晨 2 点）
+    """
+    from app.service.order.reconciliation_service import reconciliation_service
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        recon_date = (datetime.now() - timedelta(days=1)).date()
+        async with get_db_session() as db:
+            count = await reconciliation_service.run_daily_reconciliation(db, recon_date)
+
+        msg = f"渠道对账完成: date={recon_date}, 差异={count}"
+        logger.debug(msg)
         return msg
     finally:
         set_current_user_id(None)

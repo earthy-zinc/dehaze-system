@@ -28,7 +28,8 @@ def _coupon_payload(name: str, extra: dict | None = None) -> dict:
         "faceValue": 1000,
         "totalQty": 100,
         "perUserLimit": 1,
-        "validType": "permanent",
+        "validType": "relative",
+        "validDays": 30,
         "applicableScope": [],
         "status": 1,
     }
@@ -48,7 +49,7 @@ async def test_create_full_reduction_missing_threshold(db):
             "测试券-满减缺门槛", extra={
                 "type": "full_reduction", "discountValue": 0})
         )
-    assert exc.value.code == ResultCode.BUSINESS_ERROR
+    assert exc.value.code == ResultCode.PARAM_ERROR
     assert "门槛" in exc.value.message
 
 
@@ -58,8 +59,36 @@ async def test_create_fixed_missing_time(db):
             "测试券-固定缺时间", extra={
                 "validType": "fixed", "validStart": None, "validEnd": None})
         )
-    assert exc.value.code == ResultCode.BUSINESS_ERROR
+    assert exc.value.code == ResultCode.PARAM_ERROR
     assert "起止时间" in exc.value.message
+
+
+async def test_create_relative_missing_days(db):
+    with pytest.raises(BusinessException) as exc:
+        await coupon_service.create(db, _coupon_payload(
+            "测试券-相对缺天数", extra={"validDays": None})
+        )
+    assert exc.value.code == ResultCode.PARAM_ERROR
+    assert "有效天数" in exc.value.message
+
+
+async def test_create_invalid_valid_type(db):
+    with pytest.raises(BusinessException) as exc:
+        await coupon_service.create(db, _coupon_payload(
+            "测试券-有效期非法", extra={"validType": "permanent"})
+        )
+    assert exc.value.code == ResultCode.PARAM_ERROR
+    assert "有效期类型非法" in exc.value.message
+
+
+async def test_update_invalid_valid_type(db):
+    coupon = await _create_coupon(db, _coupon_payload("测试券-改有效期"))
+    with pytest.raises(BusinessException) as exc:
+        await coupon_service.update(db, coupon.id, _coupon_payload(
+            "测试券-改有效期", extra={"validType": "permanent"})
+        )
+    assert exc.value.code == ResultCode.PARAM_ERROR
+    assert "有效期类型非法" in exc.value.message
 
 
 async def test_create_with_applicable_scope(db):
@@ -68,6 +97,22 @@ async def test_create_with_applicable_scope(db):
     )
     assert coupon.id is not None
     assert coupon.applicable_scope == [123]
+
+
+async def test_create_with_applicable_scope_package_type(db):
+    coupon = await _create_coupon(db, _coupon_payload(
+        "测试券-限定商品类型", extra={"applicableScope": ["credit", 123]})
+    )
+    assert coupon.applicable_scope == ["credit", 123]
+
+
+async def test_create_invalid_applicable_scope(db):
+    with pytest.raises(BusinessException) as exc:
+        await coupon_service.create(db, _coupon_payload(
+            "测试券-限定非法", extra={"applicableScope": ["gold"]})
+        )
+    assert exc.value.code == ResultCode.PARAM_ERROR
+    assert "适用商品非法" in exc.value.message
 
 
 async def test_receive_success(db):

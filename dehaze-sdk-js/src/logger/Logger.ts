@@ -480,6 +480,16 @@ export class Logger {
         });
         return;
       }
+      // 过滤浏览器良性警告（不构成功能问题，避免误报刷屏）：
+      // ResizeObserver loop 是浏览器已知 benign 错误（布局测量循环达上限），规范允许并建议忽略，
+      // 常见于 Element Plus 表格/弹层等组件的尺寸自适应场景，无法从应用层根治。
+      const message = event.message || "";
+      if (
+        message.includes("ResizeObserver loop") ||
+        message.includes("ResizeObserver loop completed with undelivered notifications")
+      ) {
+        return;
+      }
       this.error(event.message || "Uncaught error", {
         error_type: "js",
         error_source: "window.onerror",

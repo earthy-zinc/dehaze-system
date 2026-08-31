@@ -15,7 +15,7 @@ def _msg(input_tokens=100, output_tokens=50, cached_input_tokens=0, credits=10, 
 
 
 def _conv(suggest=True):
-    return SimpleNamespace(model_config={"suggest_questions": suggest}, model="gpt-4o")
+    return SimpleNamespace(suggestions_enabled=int(suggest), model="gpt-4o")
 
 
 def _patch_service(monkeypatch, *, conv, msg, gen_result):
@@ -63,7 +63,7 @@ async def test_switch_off_skips(monkeypatch):
 
 
 async def test_generate_success_counts_token_and_pushes(monkeypatch):
-    async def _gen_success(db, model_id, reply):
+    async def _gen_success(db, model_id, reply, **kwargs):
         return ["追问一", "追问二"], {"input_tokens": 10, "output_tokens": 20}
 
     msg = _msg()
@@ -81,7 +81,7 @@ async def test_generate_success_counts_token_and_pushes(monkeypatch):
 
 
 async def test_generate_failure_returns_none(monkeypatch):
-    async def _gen_fail(db, model_id, reply):
+    async def _gen_fail(db, model_id, reply, **kwargs):
         return None
 
     service, emitter = _patch_service(

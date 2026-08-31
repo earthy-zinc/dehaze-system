@@ -3,6 +3,7 @@ import request from "@/utils/request";
 import {
   AutoRenewConfigForm,
   AutoRenewConfigVO,
+  BalanceRefundAuditForm,
   BalanceRefundForm,
   MyOrderQuery,
   MyOrderVO,
@@ -13,6 +14,8 @@ import {
   OrderStatsVO,
   PayRequest,
   PayResult,
+  RechargeCreateForm,
+  RechargeResult,
   RefundApplyForm,
   RefundAuditForm,
   RefundQuery,
@@ -77,6 +80,24 @@ class OrderAPI {
   static balanceRefund(data: BalanceRefundForm) {
     return request({
       url: "/api/v1/orders/balance-refund",
+      method: "post",
+      data,
+    });
+  }
+
+  /** 后台：余额退款审核（原路退回渠道后扣减可用余额） */
+  static approveBalanceRefund(refundId: number, data: BalanceRefundAuditForm) {
+    return request({
+      url: `/api/v1/orders/balance-refunds/${refundId}/audit`,
+      method: "put",
+      data,
+    });
+  }
+
+  /** 用户端：创建余额充值订单（渠道统一下单，返回支付参数） */
+  static createRecharge(data: RechargeCreateForm) {
+    return request<RechargeResult>({
+      url: "/api/v1/orders/recharge",
       method: "post",
       data,
     });

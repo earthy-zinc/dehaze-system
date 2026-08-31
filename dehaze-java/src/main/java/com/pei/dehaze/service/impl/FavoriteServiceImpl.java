@@ -21,6 +21,7 @@ import com.pei.dehaze.model.vo.FavoriteStatusVO;
 import com.pei.dehaze.model.vo.FavoriteVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.FavoriteService;
+import com.pei.dehaze.service.SysDictService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,17 +38,17 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FavoriteServiceImpl extends ServiceImpl<SysFavoriteMapper, SysFavorite> implements FavoriteService {
 
-    /** 普通用户收藏容量上限 */
-    private static final int DEFAULT_CAPACITY = 200;
-    /** VIP用户收藏容量上限 */
-    private static final int VIP_CAPACITY = 500;
     /** 收藏类型常量 */
     private static final List<String> VALID_TARGET_TYPES = Arrays.asList("algorithm", "result", "dataset", "image", "preset");
+
+    /** 收藏容量字典类型 */
+    private static final String FAVORITE_CAPACITY_DICT_TYPE = "favorite_capacity";
 
     private final SysMemberMapper memberMapper;
     private final SysAlgorithmMapper sysAlgorithmMapper;
     private final SysDatasetMapper sysDatasetMapper;
     private final SysPredLogMapper sysPredLogMapper;
+    private final SysDictService sysDictService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -179,14 +180,20 @@ public class FavoriteServiceImpl extends ServiceImpl<SysFavoriteMapper, SysFavor
     }
 
     /**
-     * 根据用户会员等级返回收藏容量上限
+     * 根据用户会员等级返回收藏容量上限。
+     * <p>容量由字典 {@code favorite_capacity} 维护，按等级映射字典键实时读取
+     * （level_0→default、level_1→vip1、level_2→vip2、level_3→svip）。</p>
      */
-    private int getCapacity(Long userId) {
+    int getCapacity(Long userId) {
         SysMember member = memberMapper.selectOne(
                 new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
-        if (member != null && !"level_0".equals(member.getLevelCode())) {
-            return VIP_CAPACITY;
-        }
-        return DEFAULT_CAPACITY;
+        String levelCode = member != null ? member.getLevelCode() : "level_0";
+        String dictKey = switch (levelCode) {
+            case "level_1" -> "vip1";
+            case "level_2" -> "vip2";
+            case "level_3" -> "svip";
+            default -> "default";
+        };
+        return sysDictService.getIntValue(FAVORITE_CAPACITY_DICT_TYPE, dictKey, 200);
     }
 }

@@ -8,7 +8,7 @@ export type MemberLevelSource = "growth" | "purchase" | "admin";
 
 /** 成长值变动类型 */
 export type GrowthChangeType =
-  | "dehaze"
+  | "process"
   | "evaluate"
   | "rating"
   | "sign_in"
@@ -110,15 +110,13 @@ export interface MemberProfileVO {
   nickname: string;
   avatar?: string;
   levelCode: MemberLevelCode;
+  levelSource: MemberLevelSource;
   levelName: string;
   growthValue: number;
   nextLevelGrowth?: number;
   progressPercent: number;
   expireTime?: string;
-  monthlyDehazeQuota: number;
-  monthlyDehazeUsed: number;
-  monthlyEvaluateQuota: number;
-  monthlyEvaluateUsed: number;
+  monthlyUsed: number;
   benefits: BenefitVO;
   status: MemberStatus;
 }
@@ -166,7 +164,6 @@ export interface SignInCalendarVO {
 
 /** 会员详情VO（后台） */
 export interface MemberDetailVO extends MemberProfileVO {
-  levelSource: MemberLevelSource;
   totalConsumption: number;
   becomeMemberTime?: string;
   frozenReason?: string;

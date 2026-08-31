@@ -92,12 +92,15 @@ async def ensure_local_models(db: AsyncSession) -> None:
         logger.info("播种 qwen3-0.6b 模型（对话兜底）")
 
     # Embedding：状态停用，仅登记模型目录（避免出现在对话模型列表）；
-    # 实际向量调用由 embedding_client 按 local provider 的 api_base_url 直连
+    # 实际向量调用由 embedding_client 按 local provider 的 api_base_url 直连。
+    # model_type 须显式为 embedding（schema 默认 chat，会污染模型类型筛选与目录展示）
     if await ai_model_repository.get_by_model_and_provider(db, LOCAL_EMBEDDING_MODEL_ID, provider.id) is None:
         db.add(
             SysAiModel(
                 provider_id=provider.id,
                 model_id=LOCAL_EMBEDDING_MODEL_ID,
+                model_type="embedding",
+                dimension=1024,
                 display_name="Qwen3-Embedding-0.6B（内置本地，向量）",
                 max_context_tokens=4096,
                 max_output_tokens=0,

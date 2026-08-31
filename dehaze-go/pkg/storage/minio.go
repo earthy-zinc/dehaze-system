@@ -42,6 +42,18 @@ func NewMinioStorage(cfg options.FileMinIO) (*MinioStorageService, error) {
 	return svc, nil
 }
 
+// Ping MinIO 连通性检查：确认存储桶存在且可访问
+func (s *MinioStorageService) Ping(ctx context.Context) error {
+	exists, err := s.client.BucketExists(ctx, s.bucketName)
+	if err != nil {
+		return fmt.Errorf("MinIO 连通性检查失败: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("MinIO bucket %s 不存在", s.bucketName)
+	}
+	return nil
+}
+
 // ensureBucket 确保存储桶存在，不存在则创建并设置公开读策略
 func (s *MinioStorageService) ensureBucket(ctx context.Context) error {
 	exists, err := s.client.BucketExists(ctx, s.bucketName)

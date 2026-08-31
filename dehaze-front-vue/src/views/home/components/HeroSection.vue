@@ -69,27 +69,27 @@ const bgUrl =
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
   pointer-events: none;
+  object-fit: cover;
 }
 
 .hero-bg-mask {
   position: absolute;
   inset: 0;
+  pointer-events: none;
   background: linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.8) 0%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0.92) 100%
+    rgb(255 255 255 / 80%) 0%,
+    rgb(255 255 255 / 55%) 50%,
+    rgb(255 255 255 / 92%) 100%
   );
-  pointer-events: none;
 
   html.dark & {
     // 暗色下不叠加白色蒙版，避免设计稿暗色发灰的问题，直接透出暗色背景
     background: linear-gradient(
       to bottom,
       var(--el-bg-color) 0%,
-      rgba(24, 32, 48, 0.55) 50%,
+      rgb(24 32 48 / 55%) 50%,
       var(--el-bg-color) 100%
     );
   }
@@ -98,32 +98,32 @@ const bgUrl =
 .hero-content {
   position: relative;
   max-width: 1280px;
-  margin: 0 auto;
   padding: 96px 24px 128px;
+  margin: 0 auto;
   text-align: center;
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     padding: 128px 24px;
   }
 }
 
 .hero-badge {
   display: inline-flex;
-  align-items: center;
   gap: 8px;
-  margin-bottom: 24px;
+  align-items: center;
   padding: 4px 12px;
+  margin-bottom: 24px;
   font-size: 14px;
   font-weight: 500;
   color: var(--home-primary-700);
-  background-color: rgba(239, 246, 255, 0.8);
+  background-color: rgb(239 246 255 / 80%);
   border: 1px solid var(--home-primary-100);
   border-radius: 9999px;
   backdrop-filter: blur(4px);
 
   html.dark & {
-    background-color: rgba(59, 130, 246, 0.15);
-    border-color: rgba(59, 130, 246, 0.3);
+    background-color: rgb(59 130 246 / 15%);
+    border-color: rgb(59 130 246 / 30%);
   }
 
   &__dot {
@@ -141,7 +141,6 @@ const bgUrl =
   line-height: 1.1;
   letter-spacing: -0.03em;
   background: linear-gradient(100deg, #3b82f6 0%, #06b6d4 45%, #8b5cf6 100%);
-  -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   transform: perspective(900px) rotateX(2deg) skewY(-1deg);
@@ -164,15 +163,15 @@ const bgUrl =
 
 .hero-btn {
   display: inline-flex;
+  gap: 8px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   padding: 14px 32px;
-  font-size: 16px;
   font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
   border: none;
   border-radius: 8px;
-  cursor: pointer;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -189,10 +188,10 @@ const bgUrl =
   &--primary {
     color: #fff;
     background: linear-gradient(135deg, #3b82f6, #6366f1);
-    box-shadow: 0 10px 24px rgba(59, 130, 246, 0.35);
+    box-shadow: 0 10px 24px rgb(59 130 246 / 35%);
 
     &:hover {
-      box-shadow: 0 12px 28px rgba(59, 130, 246, 0.45);
+      box-shadow: 0 12px 28px rgb(59 130 246 / 45%);
       transform: translateY(-1px);
     }
   }

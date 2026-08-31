@@ -3,7 +3,12 @@ import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Star, Gift } from "@taroify/icons";
 import { MemberAPI } from "dehaze-sdk-js";
-import type { MemberProfileVO, GrowthLogVO, BenefitVO } from "dehaze-sdk-js";
+import type {
+  MemberProfileVO,
+  GrowthLogVO,
+  BenefitVO,
+  BenefitSummaryVO,
+} from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import "./index.less";
 
@@ -28,12 +33,18 @@ const BENEFIT_LABELS: Record<string, string> = {
 
 const MemberPage: React.FC = () => {
   const [member, setMember] = useState<MemberProfileVO | null>(null);
+  const [summary, setSummary] = useState<BenefitSummaryVO | null>(null);
   const [growthLogs, setGrowthLogs] = useState<GrowthLogVO[]>([]);
 
   const loadMemberInfo = useCallback(async () => {
     try {
       const info = await MemberAPI.getProfile();
       setMember(info);
+      try {
+        setSummary(await MemberAPI.getBenefitSummary());
+      } catch {
+        // 静默
+      }
       try {
         const logsRes = await MemberAPI.getGrowthLogs({ pageNum: 1, pageSize: 10 });
         setGrowthLogs(logsRes.list || []);
@@ -111,12 +122,12 @@ const MemberPage: React.FC = () => {
             </View>
             <View className="usage-row">
               <View className="usage-item">
-                <Text className="usage-num">{member?.monthlyDehazeUsed || 0}/{member?.monthlyDehazeQuota || 0}</Text>
-                <Text className="usage-label">去雾处理</Text>
+                <Text className="usage-num">{summary?.imageCategory?.remaining ?? 0}</Text>
+                <Text className="usage-label">图像处理剩余</Text>
               </View>
               <View className="usage-item">
-                <Text className="usage-num">{member?.monthlyEvaluateUsed || 0}/{member?.monthlyEvaluateQuota || 0}</Text>
-                <Text className="usage-label">评估分析</Text>
+                <Text className="usage-num">{summary?.evaluateCategory?.remaining ?? 0}</Text>
+                <Text className="usage-label">评估剩余</Text>
               </View>
             </View>
           </View>

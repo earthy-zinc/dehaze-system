@@ -167,6 +167,72 @@ class TestCancelExpire:
         assert refreshed.cancel_reason
         uc_repo.release_coupon.assert_awaited_once_with(db, 9)
 
+    async def test_cancel_unfreezes_combined_balance(self, db):
+        # pending→cancelled 用户主动取消需解冻组合支付的冻结余额（与超时取消同规则）
+        order = SysOrder(
+            order_no="TEST-CANCEL-CMB",
+            user_id=100,
+            package_id=1,
+            package_name="黄金月卡",
+            package_type="vip",
+            package_level="level_1",
+            period_days=30,
+            original_price=10000,
+            payable_amount=9000,
+            balance_amount=3000,
+            pay_method="combined",
+            status=1,
+            expire_time=datetime.now() + timedelta(minutes=5),
+            is_auto_renew=0,
+        )
+        await order_repository.create(db, order)
+        await db.flush()
+
+        svc = _build_service()
+        unfreeze = AsyncMock()
+        svc.balance_account_service = SimpleNamespace(
+            unfreeze=unfreeze,
+            get_account=AsyncMock(return_value=SimpleNamespace(frozen_balance=3000)),
+        )
+
+        await svc.cancel(db, order.order_no, "测试取消", 100)
+        unfreeze.assert_awaited_once_with(db, 100, 3000)
+        refreshed = await _get_order_by_no(db, order.order_no)
+        assert refreshed.status == 4
+
+    async def test_cancel_without_frozen_balance_skips_unfreeze(self, db):
+        # balance 支付在 pay 阶段冻结后立即扣减，pending 未支付订单从未冻结，
+        # 直接取消应跳过解冻而非抛 A0500「余额解冻失败」
+        order = SysOrder(
+            order_no="TEST-CANCEL-NOFREEZE",
+            user_id=100,
+            package_id=1,
+            package_name="黄金月卡",
+            package_type="vip",
+            package_level="level_1",
+            period_days=30,
+            original_price=10000,
+            payable_amount=9000,
+            pay_method="balance",
+            status=1,
+            expire_time=datetime.now() + timedelta(minutes=5),
+            is_auto_renew=0,
+        )
+        await order_repository.create(db, order)
+        await db.flush()
+
+        svc = _build_service()
+        unfreeze = AsyncMock()
+        svc.balance_account_service = SimpleNamespace(
+            unfreeze=unfreeze,
+            get_account=AsyncMock(return_value=SimpleNamespace(frozen_balance=0)),
+        )
+
+        await svc.cancel(db, order.order_no, "测试取消", 100)
+        unfreeze.assert_not_awaited()
+        refreshed = await _get_order_by_no(db, order.order_no)
+        assert refreshed.status == 4
+
     async def test_expire_orders_unfreeze_balance_for_combined(self, db):
         order = SysOrder(
             order_no="TEST-EXPIRE-001",
@@ -189,7 +255,10 @@ class TestCancelExpire:
 
         unfreeze = AsyncMock()
         svc = _build_service()
-        svc.balance_account_service = SimpleNamespace(unfreeze=unfreeze)
+        svc.balance_account_service = SimpleNamespace(
+            unfreeze=unfreeze,
+            get_account=AsyncMock(return_value=SimpleNamespace(frozen_balance=3000)),
+        )
 
         count = await svc.expire_orders(db)
         assert count == 1

@@ -1,6 +1,8 @@
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 from app.service.ai.builders.context_manager import ContextManager
+from app.service.ai.strategies.agent_config_resolver import REASONING_DEFAULTS
 from app.service.ai.strategies.prompt_composer import STABLE_SYSTEM_PROMPT, compose_system_prompt
 from app.service.ai.strategies.scene_templates import SCENE_VALUES, get_scene_prompt
 from app.service.ai.service.reasoning_service import reasoning_service
@@ -46,8 +48,11 @@ def _install_summary_mocks(monkeypatch, prior_summary, load_messages, recompress
 
     class _Conv:
         def __init__(self):
+            self.id = 1
+            self.user_id = 1
             self.summary = prior_summary
             self.summary_upto_message_id = None
+            self.current_branch_message_id = None
 
     conv = _Conv()
 
@@ -63,9 +68,6 @@ def _install_summary_mocks(monkeypatch, prior_summary, load_messages, recompress
     async def _gen_summary(db, model_id, msgs):
         return "新摘要"
 
-    async def _no_memory_extract(db, conv, msgs):
-        return None
-
     monkeypatch.setattr(
         "app.service.ai.service.summary_service.ai_model_repository.get_by_model_id", _get_model
     )
@@ -73,7 +75,7 @@ def _install_summary_mocks(monkeypatch, prior_summary, load_messages, recompress
     monkeypatch.setattr("app.service.ai.service.summary_service.estimate_context_tokens", _estimate)
     monkeypatch.setattr(summary_service, "_load_messages_to_summarize", staticmethod(load_messages))
     monkeypatch.setattr(summary_service, "_generate_summary", staticmethod(_gen_summary))
-    monkeypatch.setattr(summary_service, "_extract_episodic_memory", staticmethod(_no_memory_extract))
+    monkeypatch.setattr(summary_service, "_extract_episodic_memory", AsyncMock(return_value=None))
     if recompress is not None:
         monkeypatch.setattr(summary_service, "_recompress_prior_summary", staticmethod(recompress))
     return conv
@@ -164,6 +166,7 @@ async def test_builder_system_prompt_excludes_conversation(monkeypatch):
     snapshot = {
         "system_prompt": "Agent 人设内容",
         "config": {
+            **REASONING_DEFAULTS,
             "guardrails": {},
             "mcp_namespaces": [],
             "token_budget": 100,
@@ -186,14 +189,16 @@ async def test_summary_watermark_selects_only_after_watermark(monkeypatch):
         SimpleNamespace(id=i, role="user" if i % 2 else "assistant", content=f"c{i}")
         for i in range(1, 41)
     ]
-    conv = SimpleNamespace(id=1, summary_upto_message_id=10)
+    conv = SimpleNamespace(
+        id=1, summary_upto_message_id=10, current_branch_message_id=40
+    )
 
-    async def _list_for_summary(db, conv_id, watermark):
-        return [r for r in all_rows if r.id > watermark][::-1]
+    async def _get_chain(db, conv_id, start_id, limit=None, max_hops=200):
+        return all_rows
 
     monkeypatch.setattr(
-        "app.service.ai.service.summary_service.ai_message_repository.list_for_summary",
-        _list_for_summary,
+        "app.service.ai.service.summary_service.ai_message_repository.get_chain_by_id",
+        _get_chain,
     )
     selected = await summary_service._load_messages_to_summarize(None, conv)
     assert selected
@@ -202,7 +207,8 @@ async def test_summary_watermark_selects_only_after_watermark(monkeypatch):
     assert all(10 < m["id"] <= 20 for m in selected)
 
 
-async def test_maybe_compress_appends_summary_and_advances_watermark(monkeypatch):
+# 挂 db fixture：bypass_span 结算落库经同源事务回滚，避免向测试库提交旁路 trace 污染统计
+async def test_maybe_compress_appends_summary_and_advances_watermark(db, monkeypatch):
     async def _load_messages(db, conv):
         return [{"id": 15, "role": "user", "content": "待压缩的近期消息"}]
 
@@ -212,7 +218,7 @@ async def test_maybe_compress_appends_summary_and_advances_watermark(monkeypatch
     assert conv.summary_upto_message_id == 15
 
 
-async def test_maybe_compress_recompresses_oversized_prior_summary(monkeypatch):
+async def test_maybe_compress_recompresses_oversized_prior_summary(db, monkeypatch):
     async def _load_messages(db, conv):
         return [{"id": 3, "role": "user", "content": "待压缩"}]
 
@@ -230,6 +236,32 @@ def test_artifact_ref_line_format():
     refs = [{"id": 7, "type": "image_result", "summary": {"algorithm": "RIDCP"}}]
     lines = ContextManager._build_artifact_ref_lines(refs)
     assert lines == ["[[产物 #7] image_result：{'algorithm': 'RIDCP'}]"]
+
+
+async def test_recent_messages_folds_tool_result_into_assistant(monkeypatch):
+    """工具调用结果（role=tool）折叠为文本追加到前一条 assistant 消息，跨轮可见"""
+    chain = [
+        _Msg(1, "user", "你好"),
+        _Msg(2, "assistant", "我来调用工具"),
+        _Msg(3, "tool", "工具结果：成功返回数据"),
+        _Msg(4, "assistant", "工具执行完成"),
+    ]
+    async def _get_chain(db, conv_id, start_id, limit=None, max_hops=200):
+        return chain
+
+    monkeypatch.setattr(
+        "app.service.ai.builders.context_manager.ai_message_repository.get_chain_by_id",
+        _get_chain,
+    )
+    conv = SimpleNamespace(id=1, current_branch_message_id=4)
+    msgs = await ContextManager._load_recent_messages(None, conv)
+    assert msgs[0] == {"id": 1, "role": "user", "content": "你好"}
+    assert msgs[1] == {
+        "id": 2,
+        "role": "assistant",
+        "content": "我来调用工具\n[工具调用结果] 工具结果：成功返回数据",
+    }
+    assert msgs[2] == {"id": 4, "role": "assistant", "content": "工具执行完成"}
 
 
 def test_artifact_ref_summary_truncated_200():

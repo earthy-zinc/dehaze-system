@@ -23,20 +23,14 @@
         <text class="section-title">本月用量</text>
         <view class="usage-row">
           <view class="usage-item">
-            <text class="usage-num"
-              >{{ profile.monthlyDehazeUsed }}/{{
-                profile.monthlyDehazeQuota
-              }}</text
-            >
-            <text class="usage-label">去雾处理</text>
+            <text class="usage-num">{{ summary?.imageCategory?.remaining ?? 0 }}</text>
+            <text class="usage-label">图像处理剩余</text>
           </view>
           <view class="usage-item">
-            <text class="usage-num"
-              >{{ profile.monthlyEvaluateUsed }}/{{
-                profile.monthlyEvaluateQuota
-              }}</text
-            >
-            <text class="usage-label">评估分析</text>
+            <text class="usage-num">{{
+              summary?.evaluateCategory?.remaining ?? 0
+            }}</text>
+            <text class="usage-label">评估剩余</text>
           </view>
         </view>
       </view>
@@ -68,24 +62,24 @@
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { MemberAPI } from "dehaze-sdk-js";
-import type { MemberProfileVO } from "dehaze-sdk-js";
+import type { MemberProfileVO, BenefitSummaryVO } from "dehaze-sdk-js";
 
 const profile = ref<MemberProfileVO>({
   userId: 0,
   username: "",
   nickname: "",
   levelCode: "level_0",
+  levelSource: "growth",
   levelName: "普通用户",
   growthValue: 0,
   nextLevelGrowth: undefined,
   progressPercent: 0,
-  monthlyDehazeQuota: 0,
-  monthlyDehazeUsed: 0,
-  monthlyEvaluateQuota: 0,
-  monthlyEvaluateUsed: 0,
+  monthlyUsed: 0,
   benefits: {} as any,
   status: 1,
 });
+
+const summary = ref<BenefitSummaryVO>();
 
 const BENEFIT_LABELS: Record<string, string> = {
   monthlyDehazeQuota: "每月去雾次数",
@@ -117,7 +111,12 @@ function goPackage() {
 
 onMounted(async () => {
   try {
-    profile.value = await MemberAPI.getProfile();
+    const [profileData, summaryData] = await Promise.all([
+      MemberAPI.getProfile(),
+      MemberAPI.getBenefitSummary(),
+    ]);
+    profile.value = profileData;
+    summary.value = summaryData;
   } catch {
     uni.showToast({ title: "获取会员信息失败", icon: "none" });
   }

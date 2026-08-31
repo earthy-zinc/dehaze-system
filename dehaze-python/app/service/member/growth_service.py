@@ -1,4 +1,4 @@
-"""成长值/签到域：每日签到、签到日历、成长值变动明细、AI 使用激励。"""
+"""成长值/签到域：每日签到、签到日历、成长值变动明细、使用行为激励。"""
 
 import logging
 from datetime import date, timedelta
@@ -14,6 +14,7 @@ from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_growth_log_repository import member_growth_log_repository
 from app.repository.member_repository import member_repository
 from app.repository.member_sign_in_repository import member_sign_in_repository
+from app.service.dict_service import get_dict_int
 from app.service.member.member_service import (
     _check_and_adjust_level,
     _format_date,
@@ -23,13 +24,20 @@ from app.service.member.member_service import (
 
 logger = logging.getLogger(__name__)
 
-SIGN_IN_BASE_GROWTH = 3
-SIGN_IN_BONUS_GROWTH = 20
+# 连续签到额外奖励的触发间隔（固定每 7 天，非运营可调参数）
 SIGN_IN_BONUS_INTERVAL = 7
 
-# AI 使用激励：每次 AI 对话 +1 成长值，每日上限 10 次
-AI_CONSUME_GROWTH = 1
-AI_CONSUME_DAILY_LIMIT = 10
+# 会员成长值规则默认值（与 config/sql/data/sys_dict.sql 的 member_growth_rules 种子一致，缺键回退）
+SIGN_IN_BASE_GROWTH_DEFAULT = 3
+SIGN_IN_BONUS_GROWTH_DEFAULT = 20
+
+# 使用行为激励：change_type -> (单次成长值, 每日上限, 流水原因)
+# 口径见需求规格 §2.3.1：图像处理/AI 对话每日各 10 次，效果评估每日 5 次
+BEHAVIOR_GROWTH_RULES = {
+    "process": (1, 10, "图像处理激励"),
+    "evaluate": (1, 5, "效果评估激励"),
+    "ai_consume": (1, 10, "AI 对话激励"),
+}
 
 
 class MemberGrowthService:
@@ -59,8 +67,13 @@ class MemberGrowthService:
         )
         continuous_days = yesterday_continuous + 1 if yesterday_continuous else 1
 
-        base_growth = SIGN_IN_BASE_GROWTH
-        bonus_growth = SIGN_IN_BONUS_GROWTH if continuous_days % SIGN_IN_BONUS_INTERVAL == 0 else 0
+        base_growth = await get_dict_int(
+            db, "member_growth_rules", "sign_in_value", SIGN_IN_BASE_GROWTH_DEFAULT
+        )
+        bonus_value = await get_dict_int(
+            db, "member_growth_rules", "sign_in_streak_bonus", SIGN_IN_BONUS_GROWTH_DEFAULT
+        )
+        bonus_growth = bonus_value if continuous_days % SIGN_IN_BONUS_INTERVAL == 0 else 0
         total_growth = base_growth + bonus_growth
 
         sign_in_record = SysMemberSignIn(
@@ -158,15 +171,16 @@ class MemberGrowthService:
 
         return {"list": list_data, "total": total}
 
-    async def add_ai_consume_growth(self, db: AsyncSession, user_id: int) -> bool:
-        """AI 使用激励：每次 AI 对话 +1 成长值，每日上限 10 次（Redis 计数，与 process 对称）。
-
-        供 AI 计费 ai.chat.completed 事件回调调用；当日已达上限返回 False，不累计成长值。
+    async def add_behavior_growth(
+        self, db: AsyncSession, user_id: int, change_type: str, related_id: str | None = None
+    ) -> bool:
+        """使用行为激励（process / evaluate / ai_consume）：按行为类型累计成长值，每日上限由 Redis 计数控制。
 
         Returns:
-            True 表示已累计成长值；False 表示当日已达激励上限
+            True 表示已累计成长值；False 表示当日已达该行为激励上限
         """
-        count_key = f"ai:growth:ai_consume:{user_id}:{date.today():%Y-%m-%d}"
+        growth, daily_limit, reason = BEHAVIOR_GROWTH_RULES[change_type]
+        count_key = f"member:growth:{change_type}:{user_id}:{date.today():%Y-%m-%d}"
 
         async def _incr():
             redis = await get_redis_client()
@@ -177,24 +191,24 @@ class MemberGrowthService:
             return count
 
         count = await redis_operation_with_fallback(
-            _incr, default=AI_CONSUME_DAILY_LIMIT, operation_name="ai_consume_growth_counter"
+            _incr, default=daily_limit, operation_name=f"{change_type}_growth_counter"
         )
-        if count > AI_CONSUME_DAILY_LIMIT:
+        if count > daily_limit:
             return False
 
         member = await self.member_repository.get_or_init_member(db, user_id)
-        old_growth = member.growth_value
-        new_growth = old_growth + AI_CONSUME_GROWTH
+        new_growth = member.growth_value + growth
         member.growth_value = new_growth
         await db.flush()
 
         await self.member_growth_log_repository.create_log(
             db,
             user_id=user_id,
-            change_type="ai_consume",
-            change_value=AI_CONSUME_GROWTH,
+            change_type=change_type,
+            change_value=growth,
             balance=new_growth,
-            reason="AI 对话激励",
+            related_id=related_id,
+            reason=reason,
         )
 
         old_level = member.level_code

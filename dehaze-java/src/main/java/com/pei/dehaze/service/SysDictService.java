@@ -74,4 +74,16 @@ public interface SysDictService extends IService<SysDict> {
      */
     boolean deleteByTypeCodes(List<String> typeCodes);
 
+    /**
+     * 读取指定字典类型下某个键的整型值（用于营销激励 / 容量等商业参数）。
+     * <p>键为字典项 name 字段（如 favorite_capacity 的 default/vip1/svip），值为 value 字段。
+     * 缺键或非法数值时 warn 日志并回退默认值，不抛异常阻断业务。</p>
+     *
+     * @param typeCode     字典类型编码
+     * @param key          字典项键（name）
+     * @param defaultValue 缺键回退的默认值
+     * @return 字典整型值，缺键或非法时返回 defaultValue
+     */
+    int getIntValue(String typeCode, String key, int defaultValue);
+
 }

@@ -27,6 +27,7 @@ from langchain_core.messages import AIMessageChunk, ToolMessage
 from app.database import get_db_session
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.repository.ai_agent_thought_repository import ai_agent_thought_repository
+from app.service.ai.service import trace_collector
 
 logger = logging.getLogger(__name__)
 
@@ -46,13 +47,15 @@ class SseEventConverter:
         self._thought_position = 0
         # 文本内容块是否已推送 content_block.start（首个 text delta 前触发一次）
         self._text_block_started = False
-        # 思考内容块状态：是否已推送 start / 当前是否打开 / 本轮思考文本累积（用于落库）
-        self._thinking_block_started = False
+        # 思考内容块状态：当前是否打开 / 本轮思考文本累积（用于落库）
         self._thinking_block_open = False
         self._thinking_buffer: list[str] = []
         # 工具调用跟踪：tool_call_id -> {name, args(增量拼接), started_at}
         # ToolMessage 返回时按 id 匹配，还原真实入参与耗时
         self._tool_calls: dict[str, dict[str, Any]] = {}
+        # 当前事件来源 Agent 归属（handle 逐事件解析 ns 更新）
+        self._agent_code: str | None = None
+        self._is_subagent = 0
 
     async def _emit(self, event_type: str, data: dict) -> None:
         stream_session_id = self.ctx.get("stream_session_id")
@@ -69,18 +72,18 @@ class SseEventConverter:
     async def finish(self) -> None:
         """流结束收尾：关闭打开的思考/文本内容块并落库残余思考（message.end 前）。"""
         if self._thinking_block_open:
-            await self._emit("content_block.stop", {"index": self._THINKING_INDEX})
-            self._thinking_block_open = False
-        if self._thinking_buffer:
-            await self._flush_thinking()
+            await self._close_thinking_block()
         if self._text_block_started:
             await self._emit("content_block.stop", {"index": 0})
 
     async def _open_thinking_block(self) -> None:
-        """推送思考内容块 start（type=thinking，独立 index），仅触发一次。"""
-        if self._thinking_block_started:
+        """推送思考内容块 start（type=thinking，独立 index）。
+
+        支持多段思考（思考→回复→再次思考）：每次打开独立推送 start，
+        供前端按段分组展示；已打开时不重复推送。
+        """
+        if self._thinking_block_open:
             return
-        self._thinking_block_started = True
         self._thinking_block_open = True
         await self._emit(
             "content_block.start",
@@ -91,11 +94,16 @@ class SseEventConverter:
         )
 
     async def _close_thinking_block(self) -> None:
-        """关闭思考内容块（文本或工具调用开始时，思考段结束）。"""
+        """关闭思考内容块并落库该段思考（文本/工具调用开始时，思考段结束）。
+
+        每段思考独立关闭并落库一条 agent_thought（tool=NULL），
+        多段思考各成一条记录，前端按段分组展示。
+        """
         if not self._thinking_block_open:
             return
-        await self._emit("content_block.stop", {"index": self._THINKING_INDEX})
         self._thinking_block_open = False
+        await self._emit("content_block.stop", {"index": self._THINKING_INDEX})
+        await self._flush_thinking()
 
     async def _flush_thinking(self) -> None:
         """把本轮思考文本落为一条 agent_thought（thought=思考全文, tool=NULL）。"""
@@ -145,6 +153,8 @@ class SseEventConverter:
                     status=status,
                     error=error,
                     latency_ms=latency_ms,
+                    agent_code=self._agent_code,
+                    is_subagent=self._is_subagent,
                 )
         except Exception:
             logger.warning("thought 落库失败", exc_info=True)
@@ -209,11 +219,31 @@ class SseEventConverter:
                 "phase": phase,
             },
         )
+        # 可观测性：计划快照写入过程链上下文事件（旁路：采集失败不影响 SSE 推送）
+        collector = trace_collector.current()
+        if collector is not None:
+            try:
+                collector.record_event(
+                    event="plan",
+                    phase=phase,
+                    plan_summary=json.dumps(plan, ensure_ascii=False)[:2000],
+                )
+            except Exception:
+                logger.warning("plan 过程链事件记录失败", exc_info=True)
 
     async def handle(self, event: dict[str, Any]) -> None:
         """处理单条 deepagents v2 事件，推送对应的 dehaze SSE 事件。"""
         etype = event.get("type")
         data = event.get("data")
+        # ns 非空即子 Agent/Team 子图事件（主图为空元组）；段格式"节点名:task_id"，
+        # 嵌套时多段，取最后一段的节点名部分作为子 Agent 标识
+        ns = event.get("ns")
+        if ns:
+            self._agent_code = str(ns[-1]).split(":")[0]
+            self._is_subagent = 1
+        else:
+            self._agent_code = None
+            self._is_subagent = 0
 
         if etype == "messages":
             await self._handle_messages(data)

@@ -2,7 +2,7 @@
 
 ## 1. 文档概述
 
-本文档定义 MCP 工具的接口规范。
+本文档定义**内部 MCP 能力网关**（dehaze-mcp-gateway，系统能力出口）的接口规范。它与"MCP Server 管理"（外部能力进口，属 AI 对话模块能力扩展域）是两条独立通道，概念界定见 [需求规格.md](需求规格.md) §1.0。
 
 - **传输协议**：Streamable HTTP（`POST /mcp` 单一端点）
 - **协议规范**：JSON-RPC 2.0 over HTTP（遵循 MCP 2025 规范）

@@ -14,6 +14,7 @@ db 为事务资源经参数显式传递；redis 经 get_redis_client() 自取。
 import logging
 from decimal import Decimal
 
+from redis.exceptions import ResponseError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies.redis import get_redis_client
@@ -66,10 +67,16 @@ class BalanceService:
         redis = await get_redis_client()
         val = await redis.get(_BALANCE_KEY.format(user_id=user_id))
         if val is not None:
-            return Decimal(val)
+            try:
+                return Decimal(val)
+            except Exception:
+                # 缓存坏值（非数字）：删除后走 MySQL 整数化回填
+                await redis.delete(_BALANCE_KEY.format(user_id=user_id))
         current = await self.user_repository.get_credits_balance_and_version(db, user_id)
         balance = current[0] if current else Decimal(0)
-        await redis.setex(_BALANCE_KEY.format(user_id=user_id), _BALANCE_TTL, str(balance))
+        # 余额为整数积分语义：回填一律整数化（str(Decimal) 对 100.00 会输出 "100.00"，
+        # 导致后续 DECRBY/INCRBY 报 "value is not an integer"，历史坏值根因）
+        await redis.setex(_BALANCE_KEY.format(user_id=user_id), _BALANCE_TTL, str(int(balance)))
         return balance
 
     async def check_balance(self, db: AsyncSession, user_id: int, estimated_credits: int) -> bool:
@@ -86,9 +93,17 @@ class BalanceService:
         redis = await get_redis_client()
         # 确保 Redis 已缓存余额（TTL 过期后首次预扣需要从 MySQL 回填）
         await self.get_balance(db, user_id)
-        balance = await redis.decrby(_BALANCE_KEY.format(user_id=user_id), credits)
+        key = _BALANCE_KEY.format(user_id=user_id)
+        try:
+            balance = await redis.decrby(key, credits)
+        except ResponseError:
+            # Redis 余额缓存值为历史坏值（非整数，如 "100.00"）：清缓存由 MySQL 整数化回填后重试一次
+            logger.warning("余额缓存值异常（非整数），重置回填后重试: user_id=%s", user_id)
+            await redis.delete(key)
+            await self.get_balance(db, user_id)
+            balance = await redis.decrby(key, credits)
         if balance < 0:
-            await redis.incrby(_BALANCE_KEY.format(user_id=user_id), credits)
+            await redis.incrby(key, credits)
             return False
         return True
 

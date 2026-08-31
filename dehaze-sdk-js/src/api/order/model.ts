@@ -22,8 +22,30 @@ export interface OrderCreateForm {
 
 /** 余额退款表单 */
 export interface BalanceRefundForm {
-  orderId: number;
+  orderId?: number;
+  amount?: number;
+}
+
+/** 余额退款审核表单（后台） */
+export interface BalanceRefundAuditForm {
+  remark: string;
+  /** 原路退回渠道，无法原路由管理员指定 */
+  channel?: "wechat" | "alipay";
+}
+
+/** 余额充值表单 */
+export interface RechargeCreateForm {
+  /** 充值金额(分) */
   amount: number;
+  payMethod: "wechat" | "alipay";
+}
+
+/** 余额充值结果 */
+export interface RechargeResult {
+  rechargeNo: string;
+  payMethod: "wechat" | "alipay";
+  payUrl?: string;
+  qrCode?: string;
 }
 
 /** 订单查询参数（用户端） */
@@ -59,9 +81,10 @@ export interface PayResult {
 
 /** 退款申请表单 */
 export interface RefundApplyForm {
-  reason: string;
+  /** 售后原因类型：after_sale 售后问题 / force_majeure 不可抗原因 / merchant 商家原因 / other 其他 */
+  reasonType: "after_sale" | "force_majeure" | "merchant" | "other";
+  /** 补充说明，非空时以 reasonType + ":" + customReason 拼接写入 */
   customReason?: string;
-  reasonType?: string;
 }
 
 /** 退款审核表单 */

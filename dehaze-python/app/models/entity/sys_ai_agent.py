@@ -69,6 +69,9 @@ class SysAiAgent(BaseModel, SoftDeleteMixin):
             "mode支持allow/deny/interrupt)"
         ),
     )
+    tags: Mapped[Any | None] = mapped_column(
+        JSON, nullable=True, comment="分类标签(字符串数组,管理端筛选/展示用)"
+    )
     sort_order: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="排序序号(数字越小越靠前)"
     )

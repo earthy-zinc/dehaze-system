@@ -37,3 +37,15 @@ class AutoRenewConfigForm(BaseModel):
 class BalanceRefundForm(BaseModel):
     orderId: int | None = Field(default=None, description="关联订单ID(可空)")
     amount: int | None = Field(default=None, ge=0, description="退款金额(分,为空时按可用余额)")
+
+
+class BalanceRefundAuditForm(BaseModel):
+    remark: str = Field(default="", description="审核备注")
+    channel: str | None = Field(
+        default=None, description="原路退回渠道(wechat/alipay)，无法原路由管理员指定"
+    )
+
+
+class RechargeCreateForm(BaseModel):
+    amount: int = Field(..., gt=0, description="充值金额(分)")
+    payMethod: str = Field(..., description="支付方式(wechat/alipay)")

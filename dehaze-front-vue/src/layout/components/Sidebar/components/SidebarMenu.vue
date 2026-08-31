@@ -23,8 +23,7 @@
 <script lang="ts" setup>
 import { useAppStore, useSettingsStore } from "@/store";
 import variables from "@/styles/variables.module.scss";
-import { isExternal } from "@/utils/index";
-import path from "path-browserify";
+import { isExternal, resolveRoutePath } from "@/utils/index";
 
 const settingsStore = useSettingsStore();
 const appStore = useAppStore();
@@ -57,8 +56,6 @@ function resolvePath(routePath: string) {
     return props.basePath;
   }
 
-  // 完整绝对路径 = 父级路径(/system) + 路由路径(/user)
-  const fullPath = path.resolve(props.basePath, routePath);
-  return fullPath;
+  return resolveRoutePath(props.basePath, routePath);
 }
 </script>

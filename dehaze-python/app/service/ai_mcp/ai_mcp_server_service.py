@@ -31,7 +31,7 @@ from app.models.schema.ai_mcp import (
 )
 from app.repository.ai_mcp_namespace_repository import ai_mcp_namespace_repository
 from app.repository.ai_mcp_server_repository import ai_mcp_server_repository
-from app.utils.ssrf import is_safe_url
+from app.service.ai_mcp.mcp_connection import check_endpoint_safe
 
 logger = logging.getLogger(__name__)
 
@@ -124,13 +124,33 @@ class AiMcpServerService:
         return McpHealthResult(status=status, latency_ms=latency_ms)
 
     async def _probe(self, server: SysAiMcpServer) -> tuple[str, int | None]:
-        """探测外部端点连通性，返回 (status, latency_ms)；异常一律离线降级。"""
-        if not await is_safe_url(server.endpoint):
+        """探测外部端点连通性，返回 (status, latency_ms)；异常一律离线降级。
+
+        streamable-http 按 MCP 协议以 POST initialize（JSON-RPC 2.0）探测，
+        其余协议回退 HTTP GET；端点经统一 SSRF 守卫（预设白名单放行）。
+        """
+        if not await check_endpoint_safe(server.endpoint):
             return "offline", None
         try:
             async with httpx.AsyncClient(timeout=_HEALTH_TIMEOUT, follow_redirects=True) as client:
                 start = time.monotonic()
-                resp = await client.get(server.endpoint)
+                if server.protocol_type == "streamable-http":
+                    resp = await client.post(
+                        server.endpoint,
+                        headers={"Content-Type": "application/json"},
+                        json={
+                            "jsonrpc": "2.0",
+                            "id": 1,
+                            "method": "initialize",
+                            "params": {
+                                "protocolVersion": "2025-03-26",
+                                "capabilities": {},
+                                "clientInfo": {"name": "dehaze-health-probe", "version": "1.0"},
+                            },
+                        },
+                    )
+                else:
+                    resp = await client.get(server.endpoint)
                 latency_ms = int((time.monotonic() - start) * 1000)
             return ("online" if resp.status_code < 400 else "offline"), latency_ms
         except (httpx.HTTPError, Exception) as exc:  # noqa: BLE001 - 探测失败不阻断管理流程

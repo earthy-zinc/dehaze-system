@@ -15,8 +15,12 @@ import logging
 
 from langgraph_supervisor import create_supervisor
 
-from app.service.ai.builders.deep_agent_builder import DeepAgentBuilder, _build_remote_tool, _load_endpoint
 from app.infrastructure.llm.client.dehaze_chat_model import DehazeChatModel
+from app.service.ai.builders.deep_agent_builder import (
+    DeepAgentBuilder,
+    _build_remote_tool,
+    _load_endpoint,
+)
 
 logger = logging.getLogger(__name__)
 

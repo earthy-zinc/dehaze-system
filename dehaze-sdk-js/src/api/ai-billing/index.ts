@@ -19,6 +19,7 @@ import {
   CreditLogQuery,
   CreditLogVO,
   ImportReconcileForm,
+  BillingRefundQuery,
   ModelCostForm,
   ModelCostQuery,
   ModelCostVO,
@@ -33,23 +34,29 @@ import {
 class AiBillingAPI {
   // ==================== 用户端接口 ====================
 
-  /** 查询当前用户余额与配额使用情况 */
-  static getBalance() {
+  /**
+   * 查询余额与配额使用情况
+   *
+   * 传 userId 为管理端下钻查询指定用户，不传为当前登录用户。
+   */
+  static getBalance(userId?: number) {
     return request<BalanceVO>({
       url: "/api/v1/ai-billing/balance",
       method: "get",
+      params: userId == null ? undefined : { userId },
     });
   }
 
-  /** 当前时段消耗汇总（Token 使用量/积分费用） */
-  static getSummary() {
+  /** 当前时段消耗汇总（Token 使用量/积分费用），dimension：day-当日 / month-当月 */
+  static getSummary(dimension?: "day" | "month") {
     return request<BillingSummaryVO>({
       url: "/api/v1/ai-billing/summary",
       method: "get",
+      params: dimension ? { dimension } : undefined,
     });
   }
 
-  /** 分页查询当前用户计费明细 */
+  /** 分页查询计费明细，query.userId 不传为当前登录用户 */
   static getRecords(query?: BillingRecordQuery) {
     return request<PageResult<BillingRecordVO[]>>({
       url: "/api/v1/ai-billing/records",
@@ -58,7 +65,7 @@ class AiBillingAPI {
     });
   }
 
-  /** 分页查询当前用户余额变动流水 */
+  /** 分页查询余额变动流水，query.userId 不传为当前登录用户 */
   static getCreditLogs(query?: CreditLogQuery) {
     return request<PageResult<CreditLogVO[]>>({
       url: "/api/v1/ai-billing/credit-logs",
@@ -123,6 +130,15 @@ class AiBillingAPI {
       url: `/api/v1/ai-billing/refunds/${refundId}/audit`,
       method: "post",
       data,
+    });
+  }
+
+  /** 退款申请列表（管理端审核中心，需 ai:billing:refund） */
+  static getRefunds(query?: BillingRefundQuery) {
+    return request<PageResult<BillingRefundVO[]>>({
+      url: "/api/v1/ai-billing/refunds",
+      method: "get",
+      params: query,
     });
   }
 

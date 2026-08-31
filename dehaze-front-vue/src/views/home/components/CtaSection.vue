@@ -86,8 +86,8 @@ const visualUrl =
 
 .cta-container {
   max-width: 1280px;
-  margin: 0 auto;
   padding: 0 24px;
+  margin: 0 auto;
 }
 
 .cta-panel {
@@ -96,7 +96,7 @@ const visualUrl =
   border-radius: 16px;
   box-shadow: 0 16px 32px rgb(0 0 0 / 14%);
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -110,7 +110,7 @@ const visualUrl =
   color: #fff;
   background: linear-gradient(to bottom right, #1e40af, #2563eb, #4338ca);
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     padding: 56px;
   }
 }
@@ -121,14 +121,10 @@ const visualUrl =
   left: -64px;
   width: 256px;
   height: 256px;
-  background: radial-gradient(
-    circle,
-    rgba(147, 197, 253, 0.5),
-    transparent 70%
-  );
+  pointer-events: none;
+  background: radial-gradient(circle, rgb(147 197 253 / 50%), transparent 70%);
   border-radius: 50%;
   filter: blur(50px);
-  pointer-events: none;
 }
 
 .cta-badge {
@@ -137,8 +133,8 @@ const visualUrl =
   gap: 8px;
   align-items: center;
   align-self: flex-start;
-  margin-bottom: 20px;
   padding: 4px 12px;
+  margin-bottom: 20px;
   font-size: 14px;
   font-weight: 500;
   color: #fff;
@@ -173,7 +169,7 @@ const visualUrl =
   flex-direction: column;
   gap: 12px;
 
-  @media (min-width: 640px) {
+  @media (width >= 640px) {
     flex-direction: row;
   }
 }
@@ -183,12 +179,12 @@ const visualUrl =
   align-items: center;
   justify-content: center;
   padding: 14px 28px;
+  font-family: inherit;
   font-size: 16px;
   font-weight: 600;
-  font-family: inherit;
+  cursor: pointer;
   border: none;
   border-radius: 8px;
-  cursor: pointer;
   transition:
     background-color 0.15s,
     box-shadow 0.15s;
@@ -237,7 +233,7 @@ const visualUrl =
   min-height: 280px;
   background-color: var(--el-fill-color-dark);
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     min-height: 100%;
   }
 
@@ -254,7 +250,7 @@ const visualUrl =
     inset: 0;
     background: linear-gradient(
       90deg,
-      rgba(30, 58, 138, 0.4) 0%,
+      rgb(30 58 138 / 40%) 0%,
       transparent 50%
     );
   }
@@ -273,15 +269,15 @@ const visualUrl =
     width: 50%;
 
     &::before {
-      content: "";
       position: absolute;
       inset: 0;
+      content: "";
       background: linear-gradient(
         90deg,
-        rgba(200, 215, 230, 0.55) 0%,
-        rgba(200, 215, 230, 0.55) 62%,
-        rgba(200, 215, 230, 0.2) 88%,
-        rgba(200, 215, 230, 0) 100%
+        rgb(200 215 230 / 55%) 0%,
+        rgb(200 215 230 / 55%) 62%,
+        rgb(200 215 230 / 20%) 88%,
+        rgb(200 215 230 / 0%) 100%
       );
       backdrop-filter: blur(2px);
     }
@@ -295,8 +291,8 @@ const visualUrl =
   &__tag {
     position: relative;
     z-index: 1;
-    margin-left: 20px;
     padding: 6px 12px;
+    margin-left: 20px;
     font-size: 14px;
     font-weight: 500;
     color: #fff;

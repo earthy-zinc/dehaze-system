@@ -174,24 +174,25 @@ class CodeSandbox:
         code_arg = code
         if _HAS_RESOURCE:
             mem_bytes = self._mem_mb * 1024 * 1024
-            nproc = self._nproc
             cpu = max(1, self._timeout)
+            # 各平台对个别 limit 支持不一（macOS 的 RLIMIT_AS 会抛 ValueError），
+            # 逐个 try 防御，不支持的平台跳过该限制，保留超时终止与临时目录弱隔离兜底
+            rl = (
+                "def _rl(n,a,b):\n"
+                "  try: resource.setrlimit(n,(a,b))\n"
+                "  except (ValueError,OSError): pass\n"
+                f"_rl(resource.RLIMIT_AS,{mem_bytes},{mem_bytes});"
+                f"_rl(resource.RLIMIT_NPROC,{self._nproc},{self._nproc});"
+                f"_rl(resource.RLIMIT_CPU,{cpu},{cpu});"
+            )
             if language == "shell":
                 inner = (
-                    "import resource,subprocess,sys;"
-                    f"resource.setrlimit(resource.RLIMIT_AS,({mem_bytes},{mem_bytes}));"
-                    f"resource.setrlimit(resource.RLIMIT_NPROC,({nproc},{nproc}));"
-                    f"resource.setrlimit(resource.RLIMIT_CPU,({cpu},{cpu}));"
-                    "sys.exit(subprocess.call(['/bin/sh','-c',sys.argv[1]]))"
+                    "import resource,subprocess,sys\n"
+                    + rl
+                    + "sys.exit(subprocess.call(['/bin/sh','-c',sys.argv[1]]))"
                 )
             else:  # python
-                inner = (
-                    "import resource,sys;"
-                    f"resource.setrlimit(resource.RLIMIT_AS,({mem_bytes},{mem_bytes}));"
-                    f"resource.setrlimit(resource.RLIMIT_NPROC,({nproc},{nproc}));"
-                    f"resource.setrlimit(resource.RLIMIT_CPU,({cpu},{cpu}));"
-                    "exec(sys.argv[1])"
-                )
+                inner = "import resource,sys\n" + rl + "exec(sys.argv[1])"
         elif language == "shell":
             inner = "import subprocess,sys;sys.exit(subprocess.call(['/bin/sh','-c',sys.argv[1]]))"
         else:  # python, no resource

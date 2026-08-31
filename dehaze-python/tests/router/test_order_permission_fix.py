@@ -2,9 +2,10 @@ import pytest
 from fastapi import HTTPException
 
 from app.dependencies.auth import UserContext
+from app.models.schema.order import BalanceRefundAuditForm
 
 pytestmark = pytest.mark.api
-from app.router.order import get_order_page, get_order_stats, list_refunds
+from app.router.order import audit_balance_refund, get_order_page, get_order_stats, list_refunds
 
 
 def _user(roles=None, permissions=None):
@@ -60,4 +61,26 @@ async def test_root_bypasses_permission(monkeypatch):
 
     monkeypatch.setattr("app.router.order.order_service.list_paged", _fake_service(called))
     await get_order_page(user=user, db=None)
+    assert called["hit"] is True
+
+
+async def test_balance_refund_audit_requires_permission():
+    user = _user(permissions=[])
+
+    with pytest.raises(HTTPException) as ei:
+        await audit_balance_refund(
+            refund_id=1, body=BalanceRefundAuditForm(), user=user, db=None
+        )
+    assert ei.value.status_code == 403
+
+
+async def test_balance_refund_audit_with_permission_reaches_service(monkeypatch):
+    user = _user(permissions=["order:refund:approve"])
+    called = {"hit": False}
+
+    async def _fake(db, refund_id, form, auditor_id):
+        called["hit"] = True
+
+    monkeypatch.setattr("app.router.order.refund_service.approve_balance_refund", _fake)
+    await audit_balance_refund(refund_id=1, body=BalanceRefundAuditForm(), user=user, db=None)
     assert called["hit"] is True

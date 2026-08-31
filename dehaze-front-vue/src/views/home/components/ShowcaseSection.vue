@@ -160,8 +160,8 @@ const testimonials = [
 // 深色实景区亮暗主题一致，不随 html.dark 变化
 .showcase-section {
   position: relative;
-  overflow: hidden;
   padding: 96px 0 128px;
+  overflow: hidden;
   color: #fff;
   background: linear-gradient(to bottom right, #1e3a8a, #1e40af, #312e81);
 }
@@ -172,17 +172,17 @@ const testimonials = [
   right: -80px;
   width: 384px;
   height: 384px;
-  background: radial-gradient(circle, rgba(96, 165, 250, 0.5), transparent 70%);
+  pointer-events: none;
+  background: radial-gradient(circle, rgb(96 165 250 / 50%), transparent 70%);
   border-radius: 50%;
   filter: blur(60px);
-  pointer-events: none;
 }
 
 .showcase-container {
   position: relative;
   max-width: 1280px;
-  margin: 0 auto;
   padding: 0 24px;
+  margin: 0 auto;
 }
 
 .showcase-grid {
@@ -190,7 +190,7 @@ const testimonials = [
   gap: 40px 56px;
   align-items: center;
 
-  @media (min-width: 1024px) {
+  @media (width >= 1024px) {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -208,7 +208,7 @@ const testimonials = [
     height: 288px;
     object-fit: cover;
 
-    @media (min-width: 768px) {
+    @media (width >= 768px) {
       height: 320px;
     }
   }
@@ -220,10 +220,10 @@ const testimonials = [
     width: 50%;
     background: linear-gradient(
       90deg,
-      rgba(180, 200, 220, 0.6) 0%,
-      rgba(180, 200, 220, 0.6) 62%,
-      rgba(180, 200, 220, 0.22) 88%,
-      rgba(180, 200, 220, 0) 100%
+      rgb(180 200 220 / 60%) 0%,
+      rgb(180 200 220 / 60%) 62%,
+      rgb(180 200 220 / 22%) 88%,
+      rgb(180 200 220 / 0%) 100%
     );
     backdrop-filter: blur(1.5px);
   }
@@ -294,8 +294,8 @@ const testimonials = [
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 20px;
   padding: 4px 12px;
+  margin-bottom: 20px;
   font-size: 14px;
   font-weight: 500;
   color: rgb(255 255 255 / 90%);
@@ -376,8 +376,8 @@ const testimonials = [
 }
 
 .showcase-feedback {
-  margin-top: 56px;
   padding-top: 48px;
+  margin-top: 56px;
   border-top: 1px solid rgb(255 255 255 / 10%);
 
   &__head {
@@ -403,8 +403,8 @@ const testimonials = [
   &__item {
     font-size: 18px;
     font-weight: 600;
-    letter-spacing: 0.05em;
     color: rgb(255 255 255 / 80%);
+    letter-spacing: 0.05em;
   }
 
   &__divider {

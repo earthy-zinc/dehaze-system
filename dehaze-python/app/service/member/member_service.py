@@ -17,6 +17,7 @@ from app.models.base import get_current_user_id
 from app.models.entity.sys_member import IMAGE_TASK_TYPES, QUOTA_TASK_TYPES, SysMember
 from app.models.entity.sys_member_benefit import SysMemberBenefit
 from app.repository.ai_credit_log_repository import ai_credit_log_repository
+from app.repository.coupon_repository import user_coupon_repository
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_growth_log_repository import member_growth_log_repository
 from app.repository.member_repository import member_repository
@@ -200,6 +201,7 @@ class MemberService:
         order_repository=order_repository,
         package_repository=package_repository,
         ai_credit_log_repository=ai_credit_log_repository,
+        user_coupon_repository=user_coupon_repository,
         balance_service=balance_service,
         billing_quota_service=billing_quota_service,
         member_quota_service=member_quota_service,
@@ -211,6 +213,7 @@ class MemberService:
         self.order_repository = order_repository
         self.package_repository = package_repository
         self.ai_credit_log_repository = ai_credit_log_repository
+        self.user_coupon_repository = user_coupon_repository
         self.balance_service = balance_service
         self.billing_quota_service = billing_quota_service
         self.member_quota_service = member_quota_service
@@ -631,9 +634,10 @@ class MemberService:
     async def get_trial_status(self, db: AsyncSession, user_id: int) -> dict:
         member = await self.member_repository.get_or_init_member(db, user_id)
 
-        # 体验券激活状态：套餐管理接口未就绪时默认未激活（结构字段仍返回）
-        voucher_activated = False
-        voucher_expire_time = None
+        # 体验券激活状态：持有未使用且未过期的 trial 券即视为已激活
+        trial_coupon = await self.user_coupon_repository.get_active_trial_coupon(db, user_id)
+        voucher_activated = trial_coupon is not None
+        voucher_expire_time = _format_dt(trial_coupon.expire_time) if trial_coupon else None
 
         # AI 试用积分余额：trial 来源累计（无记录返回 0）
         ai_trial_balance = 0

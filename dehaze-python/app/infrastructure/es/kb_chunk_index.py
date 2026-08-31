@@ -10,7 +10,9 @@ tags(keyword)。metadata 显式定义过滤用子字段（type/algorithm_id/enti
 Embedding 计算、配置读取、API Key 选择等业务编排见 service 层 kb 服务，勿在此引入 httpx/repository。
 """
 
+import asyncio
 import logging
+from collections import defaultdict
 from datetime import datetime
 
 from app.infrastructure.es.es_client import es_client
@@ -255,45 +257,49 @@ async def hybrid_search(
     vector_weight: float = 1.0,
     keyword_weight: float = 1.0,
 ) -> list[dict]:
-    """RRF 混合检索（ES 8.x retriever API）：kNN retriever + standard retriever 融合。
+    """应用层 RRF 混合检索：vector_search(kNN) 与 keyword_search(BM25) 分别取候选后融合。
 
-    过滤条件分别注入各子 retriever（knn retriever 的 filter + standard retriever 的
-    bool 外层），避免顶层 filter 与 retriever 并用的版本兼容风险。
+    不用 ES retriever RRF API：该能力需白金 license，Basic license 请求返回 403
+    导致检索降级空结果；改在应用层做 RRF 融合，仅依赖 Basic 可用的两个检索原语。
     返回命中文档 _source 列表（含 relevance=RRF 融合分数）。
     """
-    filter_clause = {"bool": {"filter": filters}} if filters else None
-    keyword_query: dict = {
-        "multi_match": {"query": query, "fields": ["content", "doc_title^2"]}
-    }
-    if filter_clause:
-        keyword_query = {"bool": {"filter": filters, "must": [keyword_query]}}
-    retrievers: list[dict] = [
-        {
-            "weight": vector_weight,
-            "knn": {
-                "field": "content_vector",
-                "query_vector": query_vector,
-                "k": top_k,
-                "num_candidates": top_k * 10,
-                **({"filter": filter_clause} if filter_clause else {}),
-            },
-        },
-        {
-            "weight": keyword_weight,
-            "standard": {"query": keyword_query},
-        },
-    ]
-    body: dict = {
-        "size": top_k,
-        "retriever": {
-            "rrf": {
-                "retrievers": retrievers,
-                "rank_constant": rank_constant,
-                "rank_window_size": rank_window_size,
-            }
-        },
-    }
-    return await _search(kb_index_name(kb_id), body)
+    if not query_vector:
+        return []
+    vector_docs, keyword_docs = await asyncio.gather(
+        vector_search(kb_id, query_vector, filters, top_n=rank_window_size),
+        keyword_search(kb_id, query, filters, top_n=rank_window_size),
+    )
+    return _rrf_fuse(
+        [(vector_docs, vector_weight), (keyword_docs, keyword_weight)],
+        rank_constant=rank_constant,
+        top_k=top_k,
+    )
+
+
+def _rrf_fuse(
+    result_lists: list[tuple[list[dict], float]], *, rank_constant: int, top_k: int
+) -> list[dict]:
+    """Reciprocal Rank Fusion：score = Σ weight/(rank_constant + rank)，rank 从 1 起。
+
+    按 chunk_id 跨检索器去重合并，各检索器分数不可比故只取排名不取原始分；
+    按融合分数降序取 top_k，relevance 覆盖为融合分数。
+    """
+    scores: dict[int, float] = defaultdict(float)
+    docs: dict[int, dict] = {}
+    for hits, weight in result_lists:
+        for rank, doc in enumerate(hits, start=1):
+            chunk_id = doc.get("chunk_id")
+            if chunk_id is None:
+                continue
+            scores[chunk_id] += weight / (rank_constant + rank)
+            docs.setdefault(chunk_id, doc)
+    fused = sorted(scores.items(), key=lambda item: item[1], reverse=True)[:top_k]
+    results = []
+    for chunk_id, score in fused:
+        doc = dict(docs[chunk_id])
+        doc["relevance"] = score
+        results.append(doc)
+    return results
 
 
 async def _search(index: str, body: dict) -> list[dict]:

@@ -24,7 +24,7 @@
 | `/api/v1/prediction/{taskId}/cancel` | POST | 取消预测任务（幂等） | `dehaze:execute` | F-M04-001 |
 | `/api/v1/prediction/logs` | GET | 预测日志列表（分页，可按算法筛选） | - | F-M04-007 |
 | `/api/v1/prediction/batch` | POST | 批量处理（一次提交多张图片，上限按会员等级动态计算） | `dehaze:execute` | F-M04-002 |
-| `/api/v1/prediction/quota` | GET | 查询用户剩余处理次数 | - | F-M04-006 |
+| `/api/v1/prediction/quota` | GET | 查询用户剩余处理次数（见 §2.4） | - | F-M04-006 |
 
 ### 2.2 评估接口
 

@@ -23,6 +23,11 @@ pytestmark = pytest.mark.requires_db
 _PROBE_URL_RE = re.compile(r"https://example\.com/mcp")
 
 
+async def _probe_safe(_url: str) -> bool:
+    """桩掉 check_endpoint_safe 的真实 DNS 解析（本机 example.com 可能被解析到回环地址）。"""
+    return True
+
+
 def _server_form(**overrides) -> McpServerCreate:
     data = dict(
         name="test_mcp_server",
@@ -132,27 +137,36 @@ async def test_list_namespaces(db, mock_redis):
     assert namespaces == [McpNamespaceItem(name="ns_a", toolNames=["tool_a"])]
 
 
-async def test_probe_health_online(db, mock_redis):
+async def test_probe_health_online(db, mock_redis, monkeypatch):
+    monkeypatch.setattr(
+        "app.service.ai_mcp.ai_mcp_server_service.check_endpoint_safe", _probe_safe
+    )
     created = await ai_mcp_server_service.create_server(db, _server_form())
     with respx.mock(assert_all_mocked=True) as router:
-        router.get(_PROBE_URL_RE).mock(return_value=httpx.Response(200))
+        router.post(_PROBE_URL_RE).mock(return_value=httpx.Response(200))
         health = await ai_mcp_server_service.probe_health(db, created.id)
     assert health.status == "online"
     assert health.latency_ms is not None
 
 
-async def test_probe_health_http_error_offline(db, mock_redis):
+async def test_probe_health_http_error_offline(db, mock_redis, monkeypatch):
+    monkeypatch.setattr(
+        "app.service.ai_mcp.ai_mcp_server_service.check_endpoint_safe", _probe_safe
+    )
     created = await ai_mcp_server_service.create_server(db, _server_form())
     with respx.mock(assert_all_mocked=True) as router:
-        router.get(_PROBE_URL_RE).mock(return_value=httpx.Response(500))
+        router.post(_PROBE_URL_RE).mock(return_value=httpx.Response(500))
         health = await ai_mcp_server_service.probe_health(db, created.id)
     assert health.status == "offline"
 
 
-async def test_probe_health_timeout_offline(db, mock_redis):
+async def test_probe_health_timeout_offline(db, mock_redis, monkeypatch):
+    monkeypatch.setattr(
+        "app.service.ai_mcp.ai_mcp_server_service.check_endpoint_safe", _probe_safe
+    )
     created = await ai_mcp_server_service.create_server(db, _server_form())
     with respx.mock(assert_all_mocked=True) as router:
-        router.get(_PROBE_URL_RE).mock(side_effect=httpx.ConnectTimeout("timeout"))
+        router.post(_PROBE_URL_RE).mock(side_effect=httpx.ConnectTimeout("timeout"))
         health = await ai_mcp_server_service.probe_health(db, created.id)
     assert health.status == "offline"
 
