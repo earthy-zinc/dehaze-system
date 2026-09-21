@@ -1,8 +1,6 @@
 {
   // ============================================================
   // Java (Spring Boot / Android)
-  // java.jdt.ls.java.home 与 java.configuration.runtimes 的 scope 是
-  // machine-overridable，写在工作区设置即可生效，无需放 Remote 级。
   //   java.jdt.ls.java.home —— 语言服务器自身运行 JDK，要求 >= 21；它同时
   //     是 Gradle daemon 的默认 JDK，故必须取本仓库最旧的 Gradle 也支持的
   //     版本（dehaze-android 8.7 / dehaze_flutter 8.12 / dehaze-react-native
@@ -10,19 +8,12 @@
   //   java.configuration.runtimes —— dehaze-java 字节码目标是 17（pom.xml 的
   //     maven.compiler.release=17），需注册 JavaSE-17 供其解析 JRE 容器；
   //     默认运行时取主项目的 17。
+  // 这两项的值是本机 JDK 绝对路径，而 scope 为 machine-overridable —— 工作区
+  // 设置会覆盖各人的用户设置，Windows（C:\Program Files\Java\jdk-21*）与 Linux
+  // （/usr/local/java/jdk21）又不通用，故一律不在此处配置，只放各自机器的用户
+  // 设置里；缺失时 JDT LS 会自动探测，可能选中过新版本（如 JDK 25）导致 Gradle
+  // 同步失败，故每台机器都需显式配置。
   // ============================================================
-  "java.jdt.ls.java.home": "/usr/local/java/jdk21",
-  "java.configuration.runtimes": [
-    {
-      "name": "JavaSE-17",
-      "path": "/usr/local/java/jdk17",
-      "default": true
-    },
-    {
-      "name": "JavaSE-21",
-      "path": "/usr/local/java/jdk21"
-    }
-  ],
   "java.compile.nullAnalysis.mode": "automatic",
   "java.autobuild.enabled": false,
   "java.configuration.updateBuildConfiguration": "disabled",
