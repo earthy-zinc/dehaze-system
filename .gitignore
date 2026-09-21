@@ -469,3 +469,4 @@ dehaze-sdk-js/.session-cache.json
 docker-compose-dev.yml
 .codebuddy/teams/
 dehaze-test/kb_eval/reports/
+dehaze-python/upload

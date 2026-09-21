@@ -32,12 +32,18 @@
   // dehaze_flutter/android 与 dehaze-react-native/android 都是 Gradle 工程
   // （前者 Kotlin DSL，后者 Groovy DSL）而非 Java 工程，导入只会失败并产生
   // 噪音，这里排除；默认 4 项必须一并带上，因为该设置是整体替换默认值而非追加。
+  // Gradle 根项目按"目录"识别，故目录本身与目录内容必须分别排除：只写尾部
+  // /** 的模式匹配不到 android 目录自身，JDT LS 仍会同步该项目，其 Flutter
+  // 插件子项目随即触发跨盘符 buildDir 异常（pub cache 在 C 盘、build/ 在 E 盘，
+  // Gradle 无法在两者间计算相对路径）。
   "java.import.exclusions": [
     "**/node_modules/**",
     "**/.metadata/**",
     "**/archetype-resources/**",
     "**/META-INF/maven/**",
+    "**/dehaze_flutter/android",
     "**/dehaze_flutter/android/**",
+    "**/dehaze-react-native/android",
     "**/dehaze-react-native/android/**"
   ],
 
